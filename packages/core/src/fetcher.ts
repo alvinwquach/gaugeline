@@ -1,3 +1,4 @@
+import { decodeBody } from "./charset.js";
 import { NetworkError, errorCodes } from "./errors.js";
 import { LIMITS } from "./limits.js";
 import { Semaphore } from "./semaphore.js";
@@ -181,7 +182,7 @@ async function readCapped(
     buf.set(c, offset);
     offset += c.byteLength;
   }
-  return { body: new TextDecoder("utf-8").decode(buf), truncated };
+  return { body: decodeBody(buf, res.headers.get("content-type") ?? undefined), truncated };
 }
 
 function isTimeout(err: unknown): boolean {

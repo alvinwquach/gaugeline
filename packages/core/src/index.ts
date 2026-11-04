@@ -48,3 +48,6 @@ export {
 export type { ErrorOptions } from "./errors.js";
 export { exitCodeFor } from "./outcome.js";
 export type { Outcome } from "./outcome.js";
+export { buildSnapshot, jsonLdNodes } from "./snapshot.js";
+export type { PageSnapshot } from "./snapshot.js";
+export { charsetFromContentType, decodeBody, sniffMetaCharset } from "./charset.js";
