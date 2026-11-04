@@ -24,3 +24,12 @@ export {
   severitySchema,
 } from "./result.js";
 export type { Result } from "./result.js";
+export {
+  DEFAULT_USER_AGENT,
+  FetchError,
+  assertReadOnly,
+  createFetcher,
+  normaliseUrl,
+} from "./fetcher.js";
+export type { FetchErrorCode, Fetcher, FetcherOptions, GetOptions, Hop } from "./fetcher.js";
+export { Semaphore } from "./semaphore.js";
