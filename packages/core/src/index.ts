@@ -3,7 +3,6 @@ export type { AddressResult } from "./address.js";
 export {
   AREAS,
   CheckRegistry,
-  RESULT_SCHEMA,
   SEVERITIES,
   SEVERITY_LABEL,
   SEVERITY_ORDER,
@@ -14,3 +13,14 @@ export type { Area, Check, CheckContext, Finding, Severity, Size } from "./model
 export { redact } from "./redact.js";
 export { runChecks, sanitiseFinding } from "./runner.js";
 export type { RunOutcome } from "./runner.js";
+export {
+  RESULT_SCHEMA_VERSION,
+  RESULT_SCHEMA_VERSION as RESULT_SCHEMA,
+  SCHEMA_ID_BASE,
+  findingSchema,
+  buildResult,
+  parseResult,
+  resultSchema,
+  severitySchema,
+} from "./result.js";
+export type { Result } from "./result.js";
