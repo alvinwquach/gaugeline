@@ -1,0 +1,6 @@
+dist
+fixtures
+*.snap
+pnpm-lock.yaml
+CLAUDE.md
+PROGRESS.md

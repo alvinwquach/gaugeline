@@ -20,7 +20,10 @@ export function parseAddress(input: string): AddressResult {
     return { ok: false, reason: `"${trimmed}" is not a web address.` };
   }
   if (url.protocol !== "https:" && url.protocol !== "http:") {
-    return { ok: false, reason: `Only http and https addresses can be checked, not ${url.protocol}` };
+    return {
+      ok: false,
+      reason: `Only http and https addresses can be checked, not ${url.protocol}`,
+    };
   }
   if (url.hostname === "" || /\s/.test(trimmed)) {
     return { ok: false, reason: `"${trimmed}" is not a web address.` };
