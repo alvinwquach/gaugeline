@@ -1,3 +1,4 @@
+import { LIMITS } from "./limits.js";
 import { Semaphore } from "./semaphore.js";
 
 /**
@@ -138,11 +139,11 @@ function hostOf(url: string): string {
 
 export function createFetcher(options: FetcherOptions = {}): Fetcher {
   const {
-    concurrency = 5,
+    concurrency = LIMITS.concurrency,
     timeoutMs = 10_000,
     userAgent = DEFAULT_USER_AGENT,
-    maxHops = 10,
-    maxBodyBytes = 5 * 1024 * 1024,
+    maxHops = LIMITS.redirectHops,
+    maxBodyBytes = LIMITS.bodyBytes,
   } = options;
   const gate = new Semaphore(concurrency);
   /** In-flight promises, so two checks asking at the same moment share one request. */

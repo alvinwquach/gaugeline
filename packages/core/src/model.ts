@@ -1,4 +1,5 @@
 import type * as z from "zod";
+import type { Budget } from "./limits.js";
 import type { findingSchema } from "./result.js";
 
 /** Fix this first / Fix soon / Worth knowing. */
@@ -50,6 +51,8 @@ export type Size = "S" | "M" | "L";
 export interface CheckContext {
   /** Notes for developers (a check returned undefined, for example). Never printed to stdout by core. */
   warn(message: string): void;
+  /** The run's sampling allowance. Every sampler draws from this one counter. */
+  budget?: Budget;
 }
 
 export interface Check<Input> {
