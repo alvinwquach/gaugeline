@@ -1,0 +1,4 @@
+---
+---
+
+(internal) Read-only fetcher.
