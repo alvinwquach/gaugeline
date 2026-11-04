@@ -1,0 +1,24 @@
+{
+  "name": "gaugeline",
+  "version": "0.0.0",
+  "description": "Check a website the way search engines and visitors see it. Read-only.",
+  "type": "module",
+  "license": "MIT",
+  "private": true,
+  "engines": {
+    "node": ">=18.17"
+  },
+  "bin": {
+    "gaugeline": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@gaugeline/core": "workspace:*"
+  }
+}
