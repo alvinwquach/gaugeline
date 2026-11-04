@@ -32,7 +32,7 @@ merged once CI is green on Node 18.17, 20 and 22.
 
 | Id | Branch | Status | PR | Tests | Notes / left undone |
 |---|---|---|---|---|---|
-| G01 | `01/scaffold-workspace` | todo | | | Scaffold the workspace |
+| G01 | `01/scaffold-workspace` | merged | https://github.com/alvinwquach/gaugeline/pull/1 | 19 | Scaffold done; ESLint boundary rule is minimal until G01a. |
 | G01a | `01/lint-format-boundary` | todo | | | Lint, format and the core/cli import boundary |
 | G02 | `01/finding-model` | todo | | | The Finding and Check model |
 | G02a | `01/result-json-schema` | todo | | | Publish the result JSON schema |
