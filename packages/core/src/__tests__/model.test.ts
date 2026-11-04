@@ -1,7 +1,6 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 import {
   CheckRegistry,
-  RESULT_SCHEMA,
   SEVERITY_ORDER,
   defineCheck,
   type Check,
@@ -9,6 +8,7 @@ import {
   type Severity,
 } from "../model.js";
 import { redact } from "../redact.js";
+import { RESULT_SCHEMA_VERSION as RESULT_SCHEMA } from "../result.js";
 import { runChecks } from "../runner.js";
 
 function check(

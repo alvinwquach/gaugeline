@@ -61,6 +61,10 @@ export default tseslint.config(
       "@typescript-eslint/consistent-type-imports": "error",
       "@typescript-eslint/no-explicit-any": "error",
       eqeqeq: ["error", "always"],
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_", destructuredArrayIgnorePattern: "^_" },
+      ],
     },
   },
   {
@@ -97,9 +101,9 @@ export default tseslint.config(
     },
   },
   {
-    // Tests may print while debugging; the walker skips them too.
+    // Tests may print and may reach repository scripts; the walker skips them too.
     files: ["packages/core/src/__tests__/**/*.ts"],
-    rules: { "no-console": "off" },
+    rules: { "no-console": "off", "no-restricted-imports": "off" },
   },
   {
     files: ["**/*.js", "**/*.mjs"],

@@ -1,3 +1,6 @@
+import type * as z from "zod";
+import type { findingSchema } from "./result.js";
+
 /** Fix this first / Fix soon / Worth knowing. */
 export type Severity = "high" | "medium" | "low";
 
@@ -28,19 +31,17 @@ export const AREAS = [
   "Launch day",
 ] as const satisfies readonly Area[];
 
-export interface Finding {
-  /** Stable, kebab-case, e.g. "canonical-elsewhere". */
-  checkId: string;
-  severity: Severity;
-  /** Plain English, for whoever owns the site. */
-  title: string;
-  /** The grey technical line, for whoever fixes it. */
-  evidence: string;
-  /** The address the evidence is about. */
-  url: string;
-  /** For repository checks. */
-  source?: { file: string; line: number };
-}
+/**
+ * One thing found on a site. The shape is defined once, as a zod schema in result.ts, and this
+ * type is inferred from it so the type, the runtime validator and the published JSON Schema agree.
+ *
+ * - checkId: stable, kebab-case, e.g. "canonical-elsewhere"
+ * - title: plain English, for whoever owns the site
+ * - evidence: the grey technical line, for whoever fixes it
+ * - url: the address the evidence is about
+ * - source: for repository checks
+ */
+export type Finding = z.infer<typeof findingSchema>;
 
 /** Effort to fix, used by the work order (G28). */
 export type Size = "S" | "M" | "L";
@@ -67,9 +68,6 @@ export interface Check<Input> {
   done?: string;
   run(input: Input, ctx: CheckContext): Finding[] | Promise<Finding[]>;
 }
-
-/** The --json output's schema number. A change to its shape needs a new number. */
-export const RESULT_SCHEMA = 1 as const;
 
 const KEBAB = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
