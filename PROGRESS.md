@@ -34,7 +34,7 @@ merged once CI is green on Node 18.17, 20 and 22.
 |---|---|---|---|---|---|
 | G01 | `01/scaffold-workspace` | merged | https://github.com/alvinwquach/gaugeline/pull/1 | 19 | Scaffold done; ESLint boundary rule is minimal until G01a. |
 | G01a | `01/lint-format-boundary` | merged | https://github.com/alvinwquach/gaugeline/pull/2 | 38 (5 lint-API tests run on Node 18.18+ only) | ESLint API tests skip on 18.17 (ESLint 9 needs 18.18). |
-| G02 | `01/finding-model` | todo | | | The Finding and Check model |
+| G02 | `01/finding-model` | merged | https://github.com/alvinwquach/gaugeline/pull/3 | 51 | Minimal runChecks added here (failed/passed/warnings); G05 builds the full runner. redact() in core. |
 | G02a | `01/result-json-schema` | todo | | | Publish the result JSON schema |
 | G03 | `01/polite-fetcher` | todo | | | The polite fetcher |
 | G03a | `01/limits-and-budget` | todo | | | Request budgets as one limits object |
