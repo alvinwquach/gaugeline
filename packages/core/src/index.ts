@@ -33,3 +33,6 @@ export {
 } from "./fetcher.js";
 export type { FetchErrorCode, Fetcher, FetcherOptions, GetOptions, Hop } from "./fetcher.js";
 export { Semaphore } from "./semaphore.js";
+export { BUDGET_KINDS, LIMITS, createBudget, formatSampleSummary } from "./limits.js";
+export type { Budget, BudgetKind, BudgetSummary, BudgetTally, Limits } from "./limits.js";
+export { dedupeUrls } from "./sample.js";
