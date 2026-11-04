@@ -1,4 +1,15 @@
+import {
+  ConfigError,
+  createFetcher,
+  exitCodeFor,
+  runChecks,
+  type Check,
+  type FetcherOptions,
+  type Hop,
+  type Outcome,
+} from "@gaugeline/core";
 import { parseCliArgs, USAGE } from "./args.js";
+import { formatError, toOutcome } from "./fail.js";
 import { VERSION } from "./version.js";
 
 export interface Io {
@@ -9,21 +20,53 @@ export interface Io {
 /** Exit codes are a public contract: 0 ran, 1 --ci found fix-first work, 2 could not run. */
 export const EXIT = { ok: 0, findings: 1, couldNotRun: 2 } as const;
 
-export async function main(argv: readonly string[], io: Io): Promise<number> {
+/** What a run checks the fetched page with. G05 replaces this with the registry. */
+export type PageInput = { url: string; hops: Hop[] };
+
+export interface Deps {
+  checks?: readonly Check<PageInput>[];
+  fetcher?: FetcherOptions;
+}
+
+export interface RunReport {
+  outcome: Outcome;
+  ci: boolean;
+}
+
+async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<RunReport> {
   const args = parseCliArgs(argv);
+  const ran: Outcome = { kind: "ran", highFindings: 0, drift: false };
   switch (args.kind) {
     case "help":
       io.stdout.write(`${USAGE}\n`);
-      return EXIT.ok;
+      return { outcome: ran, ci: false };
     case "version":
       io.stdout.write(`${VERSION}\n`);
-      return EXIT.ok;
+      return { outcome: ran, ci: false };
     case "error":
-      io.stderr.write(`gaugeline: ${args.message}\n`);
-      if (args.showUsage) io.stderr.write(`\n${USAGE}\n`);
-      return EXIT.couldNotRun;
-    case "run":
-      io.stdout.write(`Gaugeline ${VERSION} checking ${args.address}\n`);
-      return EXIT.ok;
+      throw new ConfigError(args.message, args.hint === undefined ? {} : { hint: args.hint });
+    case "run": {
+      const fetcher = createFetcher(deps.fetcher);
+      const hops = await fetcher.getSite(args.input);
+      const finalUrl = hops.at(-1)?.url ?? args.address;
+      const result = await runChecks(deps.checks ?? [], { url: finalUrl, hops });
+      io.stdout.write(`Gaugeline ${VERSION} checking ${hops[0]?.url ?? args.address}\n`);
+      for (const f of result.findings) io.stdout.write(`${f.severity}  ${f.checkId}  ${f.title}\n`);
+      if (result.failed.length > 0) io.stdout.write(`Could not run: ${result.failed.join(", ")}\n`);
+      const highFindings = result.findings.filter((f) => f.severity === "high").length;
+      return { outcome: { kind: "ran", highFindings, drift: false }, ci: false };
+    }
+  }
+}
+
+/** Runs the CLI and returns the exit code. Nothing else in the CLI decides an exit code. */
+export async function main(argv: readonly string[], io: Io, deps: Deps = {}): Promise<number> {
+  const verbose = argv.includes("--verbose");
+  try {
+    const report = await execute(argv, io, deps);
+    return exitCodeFor(report.outcome, { ci: report.ci });
+  } catch (err) {
+    io.stderr.write(`${formatError(err, { verbose })}\n`);
+    return exitCodeFor(toOutcome(err), { ci: false });
   }
 }
