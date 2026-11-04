@@ -8,7 +8,10 @@ function capture() {
   const out: string[] = [];
   const err: string[] = [];
   return {
-    io: { stdout: { write: (s: string) => out.push(s) }, stderr: { write: (s: string) => err.push(s) } },
+    io: {
+      stdout: { write: (s: string) => out.push(s) },
+      stderr: { write: (s: string) => err.push(s) },
+    },
     out: () => out.join(""),
     err: () => err.join(""),
   };
