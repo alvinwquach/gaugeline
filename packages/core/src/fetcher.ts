@@ -1,3 +1,4 @@
+import { NetworkError, errorCodes } from "./errors.js";
 import { LIMITS } from "./limits.js";
 import { Semaphore } from "./semaphore.js";
 
@@ -18,19 +19,77 @@ export interface Hop {
   fallbackFrom?: string;
 }
 
-export type FetchErrorCode = "loop" | "too-many-redirects" | "timeout" | "network";
+export type FetchErrorReason =
+  "not-found" | "refused" | "timeout" | "tls" | "loop" | "too-many-redirects" | "network";
 
-export class FetchError extends Error {
-  readonly code: FetchErrorCode;
-  readonly url: string;
+/** A NetworkError that also carries the hops received before it stopped. */
+export class FetchError extends NetworkError {
+  readonly reason: FetchErrorReason;
   readonly hops: Hop[];
-  constructor(code: FetchErrorCode, message: string, url: string, hops: Hop[], cause?: unknown) {
-    super(message, cause === undefined ? undefined : { cause });
-    this.name = "FetchError";
-    this.code = code;
-    this.url = url;
+  constructor(
+    reason: FetchErrorReason,
+    message: string,
+    url: string,
+    hops: Hop[],
+    cause?: unknown,
+    hint?: string,
+  ) {
+    super(message, { url, cause, ...(hint === undefined ? {} : { hint }) });
+    this.reason = reason;
     this.hops = hops;
   }
+}
+
+const TLS_CODES = /CERT|SSL|TLS|SELF_SIGNED|UNABLE_TO_VERIFY|ERR_TLS|EPROTO/;
+
+/** Turn a low-level fetch failure into one plain sentence and one thing to try. */
+export function describeNetworkFailure(
+  url: string,
+  err: unknown,
+  timeoutMs: number,
+): { reason: FetchErrorReason; message: string; hint: string } {
+  const host = hostOf(url);
+  if (isTimeout(err)) {
+    return {
+      reason: "timeout",
+      message: `${host} did not answer within ${timeoutMs / 1000} seconds.`,
+      hint: "Check the site loads in a browser, then try again in a minute.",
+    };
+  }
+  const codes = errorCodes(err);
+  if (codes.some((c) => c === "ENOTFOUND" || c === "EAI_NONAME" || c === "EAI_AGAIN")) {
+    return {
+      reason: "not-found",
+      message: `${host} could not be found. Check the spelling.`,
+      hint: "Type the address the way it appears in a browser, for example example.com.",
+    };
+  }
+  if (codes.some((c) => c === "ECONNREFUSED")) {
+    return {
+      reason: "refused",
+      message: `${host} refused the connection.`,
+      hint: "Check the site is running, and the port if you typed one.",
+    };
+  }
+  if (codes.some((c) => c === "UND_ERR_CONNECT_TIMEOUT" || c === "ETIMEDOUT")) {
+    return {
+      reason: "timeout",
+      message: `${host} did not answer within ${timeoutMs / 1000} seconds.`,
+      hint: "Check the site loads in a browser, then try again in a minute.",
+    };
+  }
+  if (codes.some((c) => TLS_CODES.test(c))) {
+    return {
+      reason: "tls",
+      message: `${host} has a security certificate that could not be verified.`,
+      hint: "Open the address in a browser to see the certificate warning, or try http:// if the site has no certificate.",
+    };
+  }
+  return {
+    reason: "network",
+    message: `${host} could not be reached.`,
+    hint: "Check your internet connection and the address.",
+  };
 }
 
 export interface FetcherOptions {
@@ -168,16 +227,8 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
           signal: AbortSignal.timeout(timeoutMs),
         });
       } catch (err) {
-        if (isTimeout(err)) {
-          throw new FetchError(
-            "timeout",
-            `${hostOf(url)} did not answer within ${timeoutMs / 1000} seconds.`,
-            url,
-            [],
-            err,
-          );
-        }
-        throw new FetchError("network", `${hostOf(url)} could not be reached.`, url, [], err);
+        const d = describeNetworkFailure(url, err, timeoutMs);
+        throw new FetchError(d.reason, d.message, url, [], err, d.hint);
       }
       const hop: Hop = { url, status: res.status, headers: headersToRecord(res.headers), ms: 0 };
       const location = REDIRECTS.has(res.status) ? res.headers.get("location") : null;
@@ -216,7 +267,7 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
         step = await requestOnce(current, method, opts.headers ?? {});
       } catch (err) {
         if (err instanceof FetchError) {
-          throw new FetchError(err.code, err.message, err.url, hops, err.cause);
+          throw new FetchError(err.reason, err.message, err.url, hops, err.cause, err.hint);
         }
         throw err;
       }
@@ -224,7 +275,14 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
       if (step.location === null) return hops;
       const next = new URL(step.location.trim(), current).href;
       if (visited.has(normaliseUrl(next))) {
-        throw new FetchError("loop", `Redirect loop: ${next} was already visited.`, start, hops);
+        throw new FetchError(
+          "loop",
+          `${hostOf(start)} redirects in a loop.`,
+          start,
+          hops,
+          undefined,
+          `Follow the redirects from ${hostOf(start)} and remove the one that points back.`,
+        );
       }
       if (hops.length >= maxHops) {
         throw new FetchError(
@@ -262,7 +320,7 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
       if (
         !(err instanceof FetchError) ||
         err.hops.length > 0 ||
-        (err.code !== "network" && err.code !== "timeout")
+        !["network", "timeout", "refused", "tls"].includes(err.reason)
       ) {
         throw err;
       }

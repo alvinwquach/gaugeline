@@ -41,7 +41,7 @@ merged once CI is green on Node 18.17, 20 and 22.
 | G02a | `01/result-json-schema` | merged | https://github.com/alvinwquach/gaugeline/pull/4 | 65 | Schema lives in packages/core/schema/. Uses zod 4's z.toJSONSchema (not zod-to-json-schema). E2E via bin spawn deferred to G06 (CLI has no --json yet); in-process runner→Ajv E2E included. No evidence union exists (evidence is a string). |
 | G03 | `01/polite-fetcher` | merged | https://github.com/alvinwquach/gaugeline/pull/5 | 108 | Fetcher errors are FetchError(code) for now; G03b maps them to NetworkError. Test fixture server helper in core __tests__/helpers/server.ts (G07 builds fixture sites). |
 | G03a | `01/limits-and-budget` | merged | https://github.com/alvinwquach/gaugeline/pull/6 | 126 | Sampler integration/promise tests use a find→dedupe→take→fetch harness until real checks exist (G10/G12); G07 adds the fixture-site budget test. Budget is optional on CheckContext until G05 wires it. |
-| G03b | `01/typed-errors-exit-codes` | todo | | | Typed errors and the exit-code map |
+| G03b | `01/typed-errors-exit-codes` | merged | https://github.com/alvinwquach/gaugeline/pull/7 | 156 | CLI now fetches the address (getSite) and runs injected checks; --verbose added. 'One check throws' E2E runs main() in-process with injected checks (no registry until G05). FetchError now extends NetworkError, .code→.reason. |
 | G04 | `01/page-snapshot` | todo | | | Parse once: the PageSnapshot |
 | G04a | `01/normalisers-corpus` | todo | | | Shared normalisers with a test corpus |
 | G05 | `01/runner-first-checks` | todo | | | Check runner and the first six checks |

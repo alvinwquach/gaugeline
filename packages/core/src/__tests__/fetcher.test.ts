@@ -142,7 +142,7 @@ describe("fetcher: integration (real sockets)", () => {
       .get(`${s.origin}/a`)
       .catch((e: unknown) => e);
     expect(err).toBeInstanceOf(FetchError);
-    expect((err as FetchError).code).toBe("loop");
+    expect((err as FetchError).reason).toBe("loop");
     expect((err as FetchError).hops).toHaveLength(2);
   });
 
@@ -153,7 +153,7 @@ describe("fetcher: integration (real sockets)", () => {
     const err = await createFetcher()
       .get(`${s.origin}/r0`)
       .catch((e: unknown) => e);
-    expect((err as FetchError).code).toBe("too-many-redirects");
+    expect((err as FetchError).reason).toBe("too-many-redirects");
     expect((err as FetchError).message).toContain("too many redirects");
     expect((err as FetchError).hops).toHaveLength(10);
     expect(s.log).toHaveLength(10);
@@ -191,7 +191,7 @@ describe("fetcher: integration (real sockets)", () => {
     const err = await createFetcher({ timeoutMs: 2000 })
       .getSite(`https://127.0.0.1:${s.port}/`)
       .catch((e: unknown) => e);
-    expect((err as FetchError).code).toBe("network");
+    expect((err as FetchError).reason).toBe("tls");
   });
 });
 
@@ -227,7 +227,7 @@ describe("fetcher: edge cases", () => {
     expect(silent.status).toBe("rejected");
     const err = (silent as PromiseRejectedResult).reason as FetchError;
     expect(err).toBeInstanceOf(FetchError);
-    expect(err.code).toBe("timeout");
+    expect(err.reason).toBe("timeout");
     expect(Date.now() - started).toBeLessThan(3000);
     expect(fine.status).toBe("fulfilled");
   });
@@ -295,7 +295,7 @@ describe("fetcher: edge cases", () => {
     const err = (await createFetcher()
       .get(origin)
       .catch((e: unknown) => e)) as FetchError;
-    expect(err.code).toBe("network");
+    expect(err.reason).toBe("refused");
     expect(err.hops).toEqual([]);
   });
 });

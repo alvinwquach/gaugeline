@@ -3,6 +3,7 @@ import { parseCliArgs } from "../args.js";
 import { main, EXIT } from "../main.js";
 import { VERSION } from "../version.js";
 import pkg from "../../package.json";
+import { html, startServer } from "../../../core/src/__tests__/helpers/server.js";
 
 function capture() {
   const out: string[] = [];
@@ -19,11 +20,14 @@ function capture() {
 
 describe("parseCliArgs: unit", () => {
   it("parses a bare domain as the address", () => {
-    expect(parseCliArgs(["example.com"])).toEqual({ kind: "run", address: "https://example.com/" });
+    expect(parseCliArgs(["example.com"])).toMatchObject({
+      kind: "run",
+      address: "https://example.com/",
+    });
   });
 
   it("parses a full URL as the address", () => {
-    expect(parseCliArgs(["http://example.com/menu?x=1"])).toEqual({
+    expect(parseCliArgs(["http://example.com/menu?x=1"])).toMatchObject({
       kind: "run",
       address: "http://example.com/menu?x=1",
     });
@@ -44,9 +48,14 @@ describe("parseCliArgs: unit", () => {
   });
 
   it("an address prints the checking line and exits 0", async () => {
-    const c = capture();
-    expect(await main(["example.com"], c.io)).toBe(0);
-    expect(c.out()).toBe(`Gaugeline ${pkg.version} checking https://example.com/\n`);
+    const server = await startServer({ "/": html("<title>x</title>") });
+    try {
+      const c = capture();
+      expect(await main([server.origin], c.io)).toBe(0);
+      expect(c.out()).toBe(`Gaugeline ${pkg.version} checking ${server.origin}/\n`);
+    } finally {
+      await server.close();
+    }
   });
 });
 
@@ -56,7 +65,7 @@ describe("parseCliArgs: edge cases", () => {
     expect(await main([], c.io)).toBe(EXIT.couldNotRun);
     expect(EXIT.couldNotRun).toBe(2);
     expect(c.err()).toContain("No address given");
-    expect(c.err()).toContain("Usage:");
+    expect(c.err()).toContain("gaugeline <address> [options]");
     expect(c.out()).toBe("");
   });
 
@@ -68,11 +77,11 @@ describe("parseCliArgs: edge cases", () => {
   });
 
   it("address with trailing whitespace or a pasted newline is trimmed", () => {
-    expect(parseCliArgs(["  example.com \n"])).toEqual({
+    expect(parseCliArgs(["  example.com \n"])).toMatchObject({
       kind: "run",
       address: "https://example.com/",
     });
-    expect(parseCliArgs(["https://example.com/\r\n"])).toEqual({
+    expect(parseCliArgs(["https://example.com/\r\n"])).toMatchObject({
       kind: "run",
       address: "https://example.com/",
     });
