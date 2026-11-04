@@ -1,24 +1,108 @@
 // @ts-check
+import js from "@eslint/js";
+import { fileURLToPath } from "node:url";
 import tseslint from "typescript-eslint";
 
+const ROOT = fileURLToPath(new URL(".", import.meta.url));
+
+/**
+ * The core/cli boundary is enforced twice: by the rules below (editor and pre-commit) and by
+ * packages/core/src/__tests__/boundary.test.ts (CI, even with --no-verify or eslint-disable).
+ * Keep the two in step.
+ */
+const CORE_RESTRICTED_IMPORTS = {
+  paths: [
+    {
+      name: "node:process",
+      importNames: ["default", "exit", "abort", "kill", "exitCode"],
+      message:
+        "packages/core must not end the process. Return a result; the CLI picks the exit code.",
+    },
+    {
+      name: "process",
+      importNames: ["default", "exit", "abort", "kill", "exitCode"],
+      message:
+        "packages/core must not end the process. Return a result; the CLI picks the exit code.",
+    },
+    { name: "gaugeline", message: "packages/core must not import the CLI package." },
+    { name: "@gaugeline/cli", message: "packages/core must not import the CLI package." },
+  ],
+  patterns: [
+    {
+      group: ["@gaugeline/cli/*", "**/packages/cli", "**/packages/cli/**", "**/cli/src/**"],
+      message: "packages/core must not import from packages/cli.",
+    },
+    {
+      // From packages/core/src/x.ts, ../../ is packages/; from deeper files it is caught by the
+      // boundary test, which resolves every specifier exactly.
+      group: ["../../*", "!../../core", "!../../core/**", "../../../**"],
+      message: "packages/core must not import files outside packages/core.",
+    },
+  ],
+};
+
 export default tseslint.config(
-  { ignores: ["**/dist/**", "**/node_modules/**", "**/coverage/**"] },
+  { ignores: ["**/dist/**", "**/node_modules/**", "**/coverage/**", "**/fixtures/**"] },
+  js.configs.recommended,
   ...tseslint.configs.recommended,
+  {
+    // Type-aware rules for the package sources.
+    files: ["packages/*/src/**/*.ts"],
+    languageOptions: {
+      parserOptions: { projectService: true, tsconfigRootDir: ROOT },
+    },
+    rules: {
+      "@typescript-eslint/no-floating-promises": "error",
+    },
+  },
+  {
+    files: ["**/*.ts"],
+    rules: {
+      "@typescript-eslint/consistent-type-imports": "error",
+      "@typescript-eslint/no-explicit-any": "error",
+      eqeqeq: ["error", "always"],
+    },
+  },
   {
     files: ["packages/core/src/**/*.ts"],
     rules: {
-      "no-restricted-imports": [
+      "no-console": "error",
+      "no-restricted-imports": ["error", CORE_RESTRICTED_IMPORTS],
+      "no-restricted-properties": [
         "error",
         {
-          paths: [{ name: "gaugeline", message: "packages/core must not import the CLI package." }],
-          patterns: [
-            {
-              group: ["**/cli/**", "**/packages/cli", "@gaugeline/cli", "@gaugeline/cli/*"],
-              message: "packages/core must not import from packages/cli.",
-            },
-          ],
+          object: "process",
+          property: "exit",
+          message: "packages/core must not call process.exit.",
+        },
+        {
+          object: "process",
+          property: "abort",
+          message: "packages/core must not call process.abort.",
+        },
+        {
+          object: "process",
+          property: "kill",
+          message: "packages/core must not call process.kill.",
+        },
+      ],
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            "AssignmentExpression > MemberExpression.left[object.name='process'][property.name='exitCode']",
+          message: "packages/core must not set process.exitCode.",
         },
       ],
     },
+  },
+  {
+    // Tests may print while debugging; the walker skips them too.
+    files: ["packages/core/src/__tests__/**/*.ts"],
+    rules: { "no-console": "off" },
+  },
+  {
+    files: ["**/*.js", "**/*.mjs"],
+    languageOptions: { globals: { process: "readonly", console: "readonly", URL: "readonly" } },
   },
 );

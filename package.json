@@ -10,11 +10,19 @@
     "build": "pnpm -r build",
     "test": "vitest run",
     "lint": "eslint .",
-    "typecheck": "pnpm -r typecheck"
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "pnpm -r typecheck",
+    "prepare": "husky"
   },
   "devDependencies": {
+    "@eslint/js": "9.39.5",
     "@types/node": "18.19.130",
     "eslint": "9.39.5",
+    "husky": "9.1.7",
+    "lint-staged": "15.5.2",
+    "prettier": "3.9.10",
     "tsup": "8.5.1",
     "typescript": "5.9.3",
     "typescript-eslint": "8.72.1",
@@ -27,6 +35,15 @@
     },
     "onlyBuiltDependencies": [
       "esbuild"
+    ]
+  },
+  "lint-staged": {
+    "*.ts": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yml}": [
+      "prettier --write"
     ]
   }
 }
