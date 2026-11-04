@@ -43,7 +43,7 @@ merged once CI is green on Node 18.17, 20 and 22.
 | G03a | `01/limits-and-budget` | merged | https://github.com/alvinwquach/gaugeline/pull/6 | 126 | Sampler integration/promise tests use a find→dedupe→take→fetch harness until real checks exist (G10/G12); G07 adds the fixture-site budget test. Budget is optional on CheckContext until G05 wires it. |
 | G03b | `01/typed-errors-exit-codes` | merged | https://github.com/alvinwquach/gaugeline/pull/7 | 156 | CLI now fetches the address (getSite) and runs injected checks; --verbose added. 'One check throws' E2E runs main() in-process with injected checks (no registry until G05). FetchError now extends NetworkError, .code→.reason. |
 | G04 | `01/page-snapshot` | merged | https://github.com/alvinwquach/gaugeline/pull/8 | 174 | cheerio pinned to 1.0.0 (last release supporting Node 18.17); uses cheerio/slim (htmlparser2 only). Snapshot adds canonicals[] and stega fields; fetcher now decodes charset (header, then meta, then UTF-8). |
-| G04a | `01/normalisers-corpus` | todo | | | Shared normalisers with a test corpus |
+| G04a | `01/normalisers-corpus` | merged | https://github.com/alvinwquach/gaugeline/pull/9 | 251 | 66 corpus cases (22 per table). normaliseUrl moved to normalise.ts, re-exported from fetcher. No checks exist yet to refactor. |
 | G05 | `01/runner-first-checks` | todo | | | Check runner and the first six checks |
 | G06 | `01/cli-reporters` | todo | | | Terminal output, --json, --ci and exit codes |
 | G06a | `01/logger-verbose-quiet` | todo | | | --verbose, --quiet and progress on stderr |

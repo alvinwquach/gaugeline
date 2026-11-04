@@ -43,3 +43,22 @@ must not print, exit or reach into the CLI. Two locks enforce that:
   TypeScript compiler API and fails with the file and line of any import that leaves the package,
   names the CLI, or calls `process.exit`. It catches dynamic `import()` and `import type`, and runs
   in CI even if a commit skipped the hook. Reuse `findBoundaryViolations(srcDir)` for later packages.
+
+## Comparing addresses and text
+
+Never hand-roll "is this the same address" or "is this the same text" in a check. Use
+`packages/core/src/normalise.ts`:
+
+- `normaliseUrl(input, base?)`: lowercase scheme and host, no default port, no fragment; query and
+  trailing slash kept.
+- `compareAddresses(a, b, { www, trailingSlash, query })`: says _why_ two addresses differ
+  (`scheme`, `www`, `host`, `port`, `path-case`, `trailing-slash`, `path`, `query`). State `www`
+  explicitly when it matters: a canonical on `www.` is a different address; a same-site link is not.
+- `normaliseText` / `sameText`: curly quotes, dashes, odd spaces and zero-width characters do not
+  make two strings different.
+
+The behaviour is pinned by `packages/core/src/__tests__/corpus/normalise.corpus.ts`. The corpus is
+**append only**: add new cases at the end of a table; never edit or delete one. If a change makes an
+old row fail, the change is wrong or needs a decision in its pull request.
+
+Write invisible characters in source as `\u` escapes (`" "`), never as the raw character.
