@@ -1,0 +1,32 @@
+{
+  "name": "gaugeline-workspace",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=18.17"
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "vitest run",
+    "lint": "eslint .",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "devDependencies": {
+    "@types/node": "18.19.130",
+    "eslint": "9.39.5",
+    "tsup": "8.5.1",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.72.1",
+    "vite": "6.4.5",
+    "vitest": "3.2.7"
+  },
+  "pnpm": {
+    "overrides": {
+      "vite": "6.4.5"
+    },
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}
