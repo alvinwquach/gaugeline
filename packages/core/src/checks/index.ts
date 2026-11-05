@@ -12,6 +12,9 @@ import { eventJsonldMismatch } from "./event-jsonld-mismatch.js";
 import { eventLocationMismatch } from "./event-location-mismatch.js";
 import { eventMissingFields } from "./event-missing-fields.js";
 import { eventPastUpcoming } from "./event-past-upcoming.js";
+import { factsMatch } from "./facts-match.js";
+import { factsPaymentLink } from "./facts-payment-link.js";
+import { factsPresent } from "./facts-present.js";
 import { feedBroken } from "./feed-broken.js";
 import { feedInvalid } from "./feed-invalid.js";
 import { feedOversized } from "./feed-oversized.js";
@@ -83,6 +86,9 @@ export const PAGE_CHECKS = [
   eventLocationMismatch,
   eventMissingFields,
   eventPastUpcoming,
+  factsMatch,
+  factsPaymentLink,
+  factsPresent,
   feedBroken,
   feedInvalid,
   feedOversized,
@@ -181,3 +187,4 @@ export { collectNav, contentIndex, navKey, normaliseLabel } from "./content/pars
 export type { ContentIndex, ContentLink } from "./content/parse.js";
 export * as contentLists from "./content/lists.js";
 export { wrappedBy } from "./links-wrapped.js";
+export { compareFact } from "./facts-match.js";

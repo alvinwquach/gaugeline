@@ -4,6 +4,7 @@ import type { Budget } from "./limits.js";
 import type { findingSchema } from "./result.js";
 import type { AppLookup } from "./apps.js";
 import type { CalendarRead } from "./calendars.js";
+import type { FactsConfig } from "./facts/types.js";
 import type { LanguageGroup, LanguageRules } from "./languages.js";
 import type { SchemaRules } from "./schema-rules.js";
 import type { PageSnapshot } from "./snapshot.js";
@@ -94,6 +95,8 @@ export interface CheckContext {
   languages?: () => Promise<LanguageGroup>;
   /** How the site spells its language versions (gaugeline.languages.json). */
   languageRules?: LanguageRules;
+  /** The business's declared facts (gaugeline.facts.json). */
+  facts?: FactsConfig;
   /** The team's schema guide, when one is configured (gaugeline.schema.json). */
   schemaRules?: SchemaRules;
   /** The run's clock. Injectable so every date check is deterministic; defaults to the real time. */

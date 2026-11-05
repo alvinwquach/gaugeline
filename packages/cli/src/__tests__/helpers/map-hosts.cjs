@@ -10,8 +10,19 @@ const map = JSON.parse(process.env.GAUGELINE_TEST_HOSTS || "{}");
 const target = (host) => map[String(host || "").toLowerCase()];
 
 const originalLookup = dnsPromises.lookup;
+// GAUGELINE_TEST_OFFLINE=1: a host that is neither mapped nor an IP address does not resolve, so a
+// test run can never reach the live internet (a payment or store link on a fixture page, say).
+const offline = process.env.GAUGELINE_TEST_OFFLINE === "1";
+const isIp = (h) => /^[\d.]+$/.test(h) || h.includes(":");
+
 dnsPromises.lookup = async function lookup(hostname, options) {
   const t = target(hostname);
+  if (!t && offline && !isIp(String(hostname))) {
+    const err = new Error(`getaddrinfo ENOTFOUND ${hostname} (offline test run)`);
+    err.code = "ENOTFOUND";
+    err.hostname = hostname;
+    throw err;
+  }
   if (!t) return originalLookup.call(this, hostname, options);
   const address = { address: t.split(":")[0], family: 4 };
   return options && options.all ? [address] : address;
