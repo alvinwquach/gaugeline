@@ -3,12 +3,13 @@
  *   pnpm build && pnpm docs:examples [docs-dir]
  */
 import { readFileSync, readdirSync, statSync } from "node:fs";
-import { join, relative } from "node:path";
+import { join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { compare, extractExamples, runExample, type Example } from "./lib/docs-examples.js";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
-const docsDir = process.argv[2] ? join(process.cwd(), process.argv[2]) : join(root, "docs");
+// resolve, not join: an absolute argument (a temp folder on another drive on Windows) must stay absolute.
+const docsDir = process.argv[2] ? resolve(process.argv[2]) : join(root, "docs");
 const bin = join(root, "packages/cli/dist/index.js");
 
 function markdown(dir: string): string[] {
