@@ -1,12 +1,9 @@
 import {
   ConfigError,
   buildResult,
-  buildSnapshot,
-  createBudget,
+  checkSite,
   createFetcher,
-  createPageRegistry,
   exitCodeFor,
-  runChecks,
   type CheckRegistry,
   type FetcherOptions,
   type Outcome,
@@ -14,6 +11,7 @@ import {
 import { parseCliArgs, USAGE } from "./args.js";
 import { useColor } from "./color.js";
 import { formatError, toOutcome } from "./fail.js";
+import { createLogger } from "./logger.js";
 import { formatTerminal } from "./reporter.js";
 import { VERSION } from "./version.js";
 
@@ -67,16 +65,22 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       const env = io.env ?? {};
       const ci = args.ci || isCiEnv(env);
       const startedAt = (io.now ?? (() => new Date()))();
-      const fetcher = createFetcher(deps.fetcher);
-      // The query string can carry a token, so the header shows the address without it.
-      io.stderr.write(`Gaugeline ${VERSION} checking ${withoutQuery(args.address)}\n`);
-      const hops = await fetcher.getSite(args.input);
-      const snapshot = buildSnapshot(hops);
-      const budget = createBudget();
-      const result = await runChecks(snapshot, deps.registry ?? createPageRegistry(), {
-        ctx: { fetcher, budget },
+      const log = createLogger({
+        level: args.quiet ? "quiet" : args.verbose ? "verbose" : "normal",
+        stream: io.stderr,
+        color: useColor(io.stderr, env),
       });
-      for (const w of result.warnings) io.stderr.write(`warning: ${w}\n`);
+      const fetcher = createFetcher({ ...deps.fetcher, onRequest: (info) => log.request(info) });
+      if (!args.quiet) {
+        // The query string can carry a token, so the header shows the address without it.
+        io.stderr.write(`Gaugeline ${VERSION} checking ${withoutQuery(args.address)}\n`);
+      }
+      const { snapshot, result, budget } = await checkSite({
+        address: args.input,
+        fetcher,
+        ...(deps.registry ? { registry: deps.registry } : {}),
+        onProgress: (e) => log.progress(e),
+      });
       if (args.json) {
         const json = buildResult({
           url: snapshot.requestedUrl,
@@ -99,7 +103,8 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
 
 /** Runs the CLI and returns the exit code. Nothing else in the CLI decides an exit code. */
 export async function main(argv: readonly string[], io: Io, deps: Deps = {}): Promise<number> {
-  const verbose = argv.includes("--verbose");
+  // formatError reads the same level as the logger; --quiet --verbose is refused before this matters.
+  const verbose = argv.includes("--verbose") && !argv.includes("--quiet");
   try {
     const report = await execute(argv, io, deps);
     return exitCodeFor(report.outcome, { ci: report.ci });

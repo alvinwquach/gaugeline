@@ -56,7 +56,7 @@ merged once CI is green on Node 18.17, 20 and 22.
 | G04a | `01/normalisers-corpus` | merged | https://github.com/alvinwquach/gaugeline/pull/9 | 251 | 66 corpus cases (22 per table). normaliseUrl moved to normalise.ts, re-exported from fetcher. No checks exist yet to refactor. |
 | G05 | `01/runner-first-checks` | merged | https://github.com/alvinwquach/gaugeline/pull/10 | 288 | run.ts runChecks(input, registry, {only, skip, ctx}); old runner renamed runCheckList. Fetcher gains hosts mapping. Snapshot gains contentWordCount (excl. header/nav/footer). Lint relative-path pattern removed (walker covers it). |
 | G06 | `01/cli-reporters` | merged | https://github.com/alvinwquach/gaugeline/pull/11 | 306 | Header line moved to stderr (query stripped). G02a's deferred --json E2E done here (bin spawn + Ajv; failed-check case via main() with an injected registry). --no-open accepted, no-op until G21. |
-| G06a | `01/logger-verbose-quiet` | todo | | | --verbose, --quiet and progress on stderr |
+| G06a | `01/logger-verbose-quiet` | merged | https://github.com/alvinwquach/gaugeline/pull/12 | 323 | core checkSite() runs the documented steps and emits the 4 progress events; robots/sitemap, link and script checks themselves arrive in G09/G10/G12. Fetcher onRequest hook feeds debug lines. |
 | G06b | `01/flag-table` | todo | | | One flag table for parsing, --help and the docs |
 | G07 | `01/fixture-sites` | todo | | | Fixture sites and the e2e harness |
 | G07a | `01/cassette-record-replay` | todo | | | Record and replay for third-party APIs |

@@ -32,14 +32,15 @@ Query strings and anything that looks like a key are removed from both forms.
 
 ## Flags
 
-| Flag              | Meaning                                                                                                                                     |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--ci`            | Exit 1 when a "Fix this first" finding is found. Also on when the `CI` environment variable is set (any value except empty, `false` or `0`) |
-| `--json`          | Print the result as JSON on stdout, and nothing else (see below)                                                                            |
-| `--no-open`       | Do not open anything in a browser. Accepted now; the app arrives later                                                                      |
-| `--verbose`       | Show technical detail when something goes wrong                                                                                             |
-| `-h`, `--help`    | Show help and exit                                                                                                                          |
-| `-v`, `--version` | Print the version and exit                                                                                                                  |
+| Flag              | Meaning                                                                                                                                            |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--ci`            | Exit 1 when a "Fix this first" finding is found. Also on when the `CI` environment variable is set (any value except empty, `false` or `0`)        |
+| `--json`          | Print the result as JSON on stdout, and nothing else (see below)                                                                                   |
+| `--no-open`       | Do not open anything in a browser. Accepted now; the app arrives later                                                                             |
+| `--quiet`         | Print only results and errors: no progress lines, no warnings                                                                                      |
+| `--verbose`       | Add a `debug` line per request (method, address without its query string, status, milliseconds) and the technical detail when something goes wrong |
+| `-h`, `--help`    | Show help and exit                                                                                                                                 |
+| `-v`, `--version` | Print the version and exit                                                                                                                         |
 
 Only "Fix this first" findings fail CI. "Fix soon" and "Worth knowing" never change the exit code.
 
@@ -48,6 +49,8 @@ Only "Fix this first" findings fail CI. "Fix soon" and "Worth knowing" never cha
 Results go to stdout; progress, warnings and errors go to stderr, so `--json` output can be piped
 straight into another program. Colour is used only when stdout is a terminal, and never when
 `NO_COLOR` is set. `FORCE_COLOR=1` turns it on for a pipe.
+
+`--quiet` and `--verbose` together is refused: "Choose --quiet or --verbose, not both." (exit 2).
 
 ## JSON output
 
