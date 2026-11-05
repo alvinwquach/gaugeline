@@ -159,6 +159,17 @@ describe("pr-gate: edge cases", () => {
     ]);
   }, 30_000);
 
+  it("the Release pull request (it writes packages/cli/CHANGELOG.md) may delete every changeset", () => {
+    expect(
+      gate({
+        files: [".changeset/a.md", "packages/cli/CHANGELOG.md", "packages/cli/package.json"],
+        changesets: [],
+        deletedChangesets: [".changeset/a.md"],
+        labels: [],
+      }).problems,
+    ).toEqual([]);
+  });
+
   it("tests under __tests__ and *.test.ts files are both treated as tests", () => {
     expect(isSource("packages/core/src/checks/__tests__/x.test.ts")).toBe(false);
     expect(isSource("packages/core/src/x.test.ts")).toBe(false);

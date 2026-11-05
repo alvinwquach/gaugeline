@@ -23,14 +23,18 @@ const words = Array.from({ length: 120 }, (_, i) => `word${i}`).join(" ");
 const cleanPage =
   (path: string, extraHead = "") =>
   (origin: string) =>
-    `<html><head><title>Fixture Cafe</title><link rel="canonical" href="${origin}${path}">${extraHead}</head><body><main><h1>Fixture Cafe</h1><p>${words}</p></main></body></html>`;
+    `<html><head><title>Fixture Cafe</title><meta name="viewport" content="width=device-width"><meta property="og:image" content="${origin}/og.png"><link rel="canonical" href="${origin}${path}">${extraHead}</head><body><main><h1>Fixture Cafe</h1><p>${words}</p></main></body></html>`;
 
 let site: FixtureServer;
 beforeAll(async () => {
   const routes: Parameters<typeof startServer>[0] = {
     "/": (_q, res) =>
       void res.writeHead(200, { "content-type": "text/html" }).end(cleanPage("/")(site.origin)),
-    // 0.0.x runs one check (canonical-elsewhere), so the "high finding" page has a wrong canonical.
+    // The "high finding" page has a wrong canonical; everything else about it is clean.
+    "/sitemap.xml": (_q, res) =>
+      void res
+        .writeHead(200, { "content-type": "application/xml" })
+        .end(`<urlset><url><loc>${site.origin}/</loc></url></urlset>`),
     "/wrong-canonical": (_q, res) =>
       void res
         .writeHead(200, { "content-type": "text/html" })

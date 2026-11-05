@@ -22,7 +22,7 @@ that deletes the `.changeset` files, bumps versions (`gaugeline` and, once it ex
 Merging the Release pull request publishes **only** if `PUBLISH_ENABLED` is also `true` and the
 `NPM_TOKEN` secret exists: `changeset publish` runs with provenance, pushes the `v<version>` tag,
 and the smoke job installs the published version by name in a clean `node:18.17-slim` container
-(`scripts/smoke-published.sh`, using the `SMOKE_WRONG_URL` and `SMOKE_CLEAN_URL` variables).
+(`scripts/smoke-published.sh`, using the `SMOKE_WRONG_URL` and `SMOKE_CLEAN_URL` variables). The wrong-canonical page must give a `canonical-elsewhere` finding; the clean page must pass `canonical-elsewhere` and have no "Fix this first" finding. Other findings on either page are fine.
 
 Pushes to `main` only come from merged pull requests, so a fork can never reach the token.
 

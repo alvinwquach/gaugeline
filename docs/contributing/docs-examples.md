@@ -36,8 +36,9 @@ $ npx gaugeline shop.example
 
 Only this, on purpose: the fixture address becomes the page's address; the version after
 "Gaugeline " becomes `X.Y.Z`; colour codes and trailing spaces are removed; absolute paths become
-`./`; ISO timestamps become `2026-01-01T00:00:00.000Z`. A new source of variation needs a new
-named rule, not fuzzy matching.
+`./`; ISO timestamps become `2026-01-01T00:00:00.000Z`; and the `✓ <id>` line each passing check
+prints is dropped ("passed checks"), so an Output block shows the findings and the summary. A new
+source of variation needs a new named rule, not fuzzy matching.
 
 ## Opting out
 

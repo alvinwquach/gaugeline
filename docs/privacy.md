@@ -150,7 +150,7 @@ Checked 25 of 30 sitemap pages, 3 of 4 feeds.
 3 to look at, 2 to fix first.
 ```
 
-These checks run from version 0.1.0; version 0.0.x runs one check (see [Quick start](quick-start.md)).
+These checks run from version 0.1.0; see [Quick start](quick-start.md).
 Each check that passed also prints a `✓ <id>` line, left out above. The output is asserted by `packages/cli/src/__tests__/site-checks.test.ts`.
 
 ### What it sends elsewhere

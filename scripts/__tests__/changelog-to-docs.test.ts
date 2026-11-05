@@ -77,16 +77,20 @@ describe("changelog-to-docs: unit", () => {
     ]);
   });
 
-  it("the committed docs data includes the two backfilled site entries", () => {
+  it("the committed docs data: the real 0.1.0 replaces the backfilled one, 0.1.1 stays", () => {
     const data = JSON.parse(readFileSync(join(repoRoot, "docs/changelog.data.json"), "utf8")) as {
       version: string;
       headline: string;
       date: string;
     }[];
-    expect(data.find((e) => e.version === "0.1.0")).toMatchObject({
-      headline: "The site check",
-      date: "2026-09-22",
-    });
+    // A version the real changelog has wins over the backfill: 0.1.0 is this repository's release,
+    // not yet tagged (no date), under the site's headline.
+    const real = data.find((e) => e.version === "0.1.0") as { items: string[] } & Record<
+      string,
+      unknown
+    >;
+    expect(real).toMatchObject({ headline: "The site check", date: null });
+    expect(real.items.some((i) => i.startsWith("Image checks:"))).toBe(true);
     expect(data.find((e) => e.version === "0.1.1")).toMatchObject({
       headline: "Launches, delivery and generated content",
       date: "2026-09-23",
