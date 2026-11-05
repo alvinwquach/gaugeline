@@ -130,8 +130,8 @@ describe("pr-gate wrapper: integration (temp git repo)", () => {
     const { dir, git, write } = repo();
     write("packages/core/src/a.ts", "export const a = 3;\n");
     git("commit", "-qam", "change source");
-    write("../event.json", JSON.stringify({ pull_request: { labels: [{ name: "internal" }] } }));
-    expect(runGate(dir, { GITHUB_EVENT_PATH: join(dir, "../event.json") }).status).toBe(0);
+    write("event.json", JSON.stringify({ pull_request: { labels: [{ name: "internal" }] } }));
+    expect(runGate(dir, { GITHUB_EVENT_PATH: join(dir, "event.json") }).status).toBe(0);
   }, 30_000);
 });
 
