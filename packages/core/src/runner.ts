@@ -7,6 +7,8 @@ export interface RunOutcome {
   passed: string[];
   /** Check ids that threw. The run continues without them. */
   failed: string[];
+  /** The same failures, with the (redacted) reason. */
+  failures: { id: string; error: string }[];
   /** Developer notes, for the caller to print where it chooses. */
   warnings: string[];
 }
@@ -24,12 +26,12 @@ export function sanitiseFinding(f: Finding): Finding {
 }
 
 /** Runs each check once, in order. A check that throws is recorded in failed; the rest still run. */
-export async function runChecks<I>(
+export async function runCheckList<I>(
   checks: readonly Check<I>[],
   input: I,
   baseCtx: Partial<CheckContext> = {},
 ): Promise<RunOutcome> {
-  const result: RunOutcome = { findings: [], passed: [], failed: [], warnings: [] };
+  const result: RunOutcome = { findings: [], passed: [], failed: [], failures: [], warnings: [] };
   const ctx: CheckContext = {
     ...baseCtx,
     warn: (message) => {
@@ -44,6 +46,7 @@ export async function runChecks<I>(
     } catch (err) {
       result.failed.push(check.id);
       const reason = err instanceof Error ? err.message : String(err);
+      result.failures.push({ id: check.id, error: redact(reason) });
       ctx.warn(`Check "${check.id}" failed to run: ${redact(reason)}`);
       continue;
     }

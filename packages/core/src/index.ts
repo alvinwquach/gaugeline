@@ -11,7 +11,7 @@ export {
 } from "./model.js";
 export type { Area, Check, CheckContext, Finding, Severity, Size } from "./model.js";
 export { redact } from "./redact.js";
-export { runChecks, sanitiseFinding } from "./runner.js";
+export { runCheckList, sanitiseFinding } from "./runner.js";
 export type { RunOutcome } from "./runner.js";
 export {
   RESULT_SCHEMA_VERSION,
@@ -52,3 +52,11 @@ export type { PageSnapshot } from "./snapshot.js";
 export { charsetFromContentType, decodeBody, sniffMetaCharset } from "./charset.js";
 export { compareAddresses, normaliseText, normaliseUrl, sameText } from "./normalise.js";
 export type { AddressComparison, AddressDifference, CompareOptions } from "./normalise.js";
+export { runChecks } from "./run.js";
+export type { RunOptions, RunResult } from "./run.js";
+export {
+  PAGE_CHECKS,
+  THIN_HTML_MIN_WORDS,
+  alternateHost,
+  createPageRegistry,
+} from "./checks/index.js";

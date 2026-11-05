@@ -1,4 +1,5 @@
 import type * as z from "zod";
+import type { Fetcher } from "./fetcher.js";
 import type { Budget } from "./limits.js";
 import type { findingSchema } from "./result.js";
 
@@ -53,6 +54,8 @@ export interface CheckContext {
   warn(message: string): void;
   /** The run's sampling allowance. Every sampler draws from this one counter. */
   budget?: Budget;
+  /** The run's fetcher, for checks that need a second request (host-duplicate). */
+  fetcher?: Fetcher;
 }
 
 export interface Check<Input> {

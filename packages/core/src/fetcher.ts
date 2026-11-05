@@ -100,6 +100,12 @@ export interface FetcherOptions {
   userAgent?: string;
   maxHops?: number;
   maxBodyBytes?: number;
+  /**
+   * Send requests for a host somewhere else, like curl --resolve: { "shop.example": "127.0.0.1:4000" }.
+   * Hops keep the address that was asked for. Used to check a site before DNS points at it, and by
+   * the fixture sites in tests.
+   */
+  hosts?: Record<string, string>;
 }
 
 export interface GetOptions {
@@ -200,6 +206,18 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
     maxBodyBytes = LIMITS.bodyBytes,
   } = options;
   const gate = new Semaphore(concurrency);
+  const hostMap = new Map(
+    Object.entries(options.hosts ?? {}).map(([from, to]) => [from.toLowerCase(), to] as const),
+  );
+  /** The address actually requested: the logical host swapped for its mapped target, if any. */
+  const route = (url: string): string => {
+    if (hostMap.size === 0) return url;
+    const u = new URL(url);
+    const target = hostMap.get(u.host) ?? hostMap.get(u.hostname);
+    if (target === undefined) return url;
+    u.host = target;
+    return u.href;
+  };
   /** In-flight promises, so two checks asking at the same moment share one request. */
   const memo = new Map<string, Promise<Hop[]>>();
   let requests = 0;
@@ -215,7 +233,7 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
       const started = performance.now();
       let res: Response;
       try {
-        res = await fetch(url, {
+        res = await fetch(route(url), {
           method,
           redirect: "manual",
           headers: { "user-agent": userAgent, ...headers },

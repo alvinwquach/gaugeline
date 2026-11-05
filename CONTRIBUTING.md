@@ -36,12 +36,12 @@ runs Prettier. A pre-commit hook runs both on staged files through lint-staged.
 must not print, exit or reach into the CLI. Two locks enforce that:
 
 - **Lint** (`eslint.config.js`): in `packages/core/src`, `no-console`, `no-restricted-imports`
-  (the CLI package, paths outside core, `exit`/`abort`/`kill`/`exitCode` from `process`),
+  (the CLI package, `exit`/`abort`/`kill`/`exitCode` from `process`),
   `no-restricted-properties` (`process.exit`, `abort`, `kill`) and `no-restricted-syntax`
   (assigning `process.exitCode`).
 - **Test** (`packages/core/src/__tests__/boundary.test.ts`): parses every core source file with the
   TypeScript compiler API and fails with the file and line of any import that leaves the package,
-  names the CLI, or calls `process.exit`. It catches dynamic `import()` and `import type`, and runs
+  names the CLI, or calls `process.exit`. Relative paths are only resolved here, not in lint. It catches dynamic `import()` and `import type`, and runs
   in CI even if a commit skipped the hook. Reuse `findBoundaryViolations(srcDir)` for later packages.
 
 ## Comparing addresses and text
