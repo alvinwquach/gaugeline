@@ -5,3 +5,4 @@ pnpm-lock.yaml
 CLAUDE.md
 PROGRESS.md
 packages/core/schema
+packages/testkit/cassettes

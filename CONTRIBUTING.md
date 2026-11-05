@@ -82,3 +82,34 @@ Integration and end-to-end tests run against invented sites served from
 
 Fixture servers listen on 127.0.0.1, which the fetcher refuses by default: use
 `createFetcher({ allowPrivate: true })`, or the `hosts` mapping.
+
+## Recording a cassette
+
+Connector tests replay recorded, scrubbed API responses from `packages/testkit/cassettes/` and never
+reach a real provider in CI.
+
+```ts
+import { createFetcher } from "@gaugeline/core";
+import { useCassette } from "@gaugeline/testkit";
+
+const fetcher = createFetcher({ transport: useCassette("stripe-prices") });
+```
+
+To record, on your own machine only (recording refuses to run when `CI` is set):
+
+```bash
+GAUGELINE_RECORD=1 pnpm vitest run path/to/the.test.ts
+```
+
+Use read-only keys, from environment variables, never in code:
+
+| Provider | Key to record with                                                                         |
+| -------- | ------------------------------------------------------------------------------------------ |
+| Stripe   | A restricted key (`rk_test_...`) with read access only. Secret keys (`sk_...`) are refused |
+| Sanity   | A token with the Viewer role                                                               |
+| Printful | A private token with read scopes only                                                      |
+
+Before committing, read the diff of the cassette. Request headers are never stored; only
+`content-type` and pagination headers are kept from responses; secret-looking query parameters,
+key-shaped strings and email addresses are replaced. `cassettes-clean.test.ts` scans every cassette
+on every CI run as a second lock. A key that reaches git history must be rotated.
