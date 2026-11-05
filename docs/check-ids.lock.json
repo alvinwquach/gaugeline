@@ -10,6 +10,8 @@
   "feed-invalid",
   "feed-oversized",
   "host-duplicate",
+  "html-heavy",
+  "html-huge",
   "image-width-absurd",
   "images-alt-empty",
   "images-alt-missing",
@@ -21,6 +23,7 @@
   "llms-txt-broken-links",
   "llms-txt-stale-facts",
   "noindex",
+  "page-heavy",
   "quotable-facts-disagree",
   "redirect-chain",
   "robots-block",
@@ -28,5 +31,7 @@
   "sitemap-host",
   "sitemap-missing",
   "sitemap-redirects",
-  "thin-html"
+  "tel-format",
+  "thin-html",
+  "viewport"
 ]

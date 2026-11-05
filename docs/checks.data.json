@@ -50,6 +50,16 @@
     "tech": "the alternate host returns 200 instead of 301"
   },
   {
+    "id": "html-huge",
+    "severity": "high",
+    "area": "Visitors",
+    "title": "This page's HTML is enormous",
+    "what": "The HTML of the page alone is over 2 MB, before any image, script or stylesheet.",
+    "why": "Phones on slow connections wait seconds before anything shows, and search engines may stop reading the page before the end.",
+    "fix": "Find what fills the HTML: usually a framework data payload, inlined SVG or CSS, or a long list rendered in full. Load it on demand or paginate it.",
+    "tech": "the UTF-8 HTML body is over 2 MB (2,097,152 bytes); html-heavy is not reported for the same page"
+  },
+  {
     "id": "images-broken",
     "severity": "high",
     "area": "Visitors",
@@ -140,6 +150,16 @@
     "tech": "the feed response is larger than 2 MB (2,097,152 bytes)"
   },
   {
+    "id": "html-heavy",
+    "severity": "medium",
+    "area": "Visitors",
+    "title": "Most of this page's HTML is a data payload",
+    "what": "More than half of the HTML, and over 300 KB, is inline data (JSON, __NEXT_DATA__ or a framework's streamed payload) rather than content.",
+    "why": "Every visitor downloads data the page may never show, and it delays the first paint on phones.",
+    "fix": "Send only the fields the page renders. In Next.js, trim what getServerSideProps or a server component passes to client components.",
+    "tech": "inline data scripts are over 300 KB (307,200 bytes) and more than half the HTML; not reported when html-huge is"
+  },
+  {
     "id": "image-width-absurd",
     "severity": "medium",
     "area": "Visitors",
@@ -200,6 +220,16 @@
     "tech": "hours, telephone or address in /llms.txt differ from the page's LocalBusiness JSON-LD"
   },
   {
+    "id": "page-heavy",
+    "severity": "medium",
+    "area": "Visitors",
+    "title": "This page is heavy to load",
+    "what": "The HTML plus the images Gaugeline sampled add up to over 3 MB, and that is a floor: unsampled files come on top.",
+    "why": "On a phone connection a page this heavy takes many seconds and costs visitors data.",
+    "fix": "Start with the largest files in the evidence: resize and compress images, and trim the HTML's inline data.",
+    "tech": "HTML bytes plus the Content-Length of sampled images (the files the run already requested) is over 3 MB (3,145,728 bytes); no extra requests are made"
+  },
+  {
     "id": "redirect-chain",
     "severity": "medium",
     "area": "Search & sharing",
@@ -238,6 +268,16 @@
     "why": "A sitemap should list the final address of each page. Redirecting entries make search engines do extra work and can keep the old address in results.",
     "fix": "List each page at the address it redirects to. This often follows a move to https, to www, or to a new URL scheme.",
     "tech": "sampled sitemap entries return 3xx"
+  },
+  {
+    "id": "viewport",
+    "severity": "medium",
+    "area": "Visitors",
+    "title": "This page isn't set up for phone screens",
+    "what": "The page has no viewport meta tag, so phones show it zoomed out as if on a desktop screen.",
+    "why": "Visitors have to pinch and zoom to read anything, and Google treats the page as not mobile-friendly.",
+    "fix": "Add <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"> to the page's head.",
+    "tech": "no <meta name=\"viewport\"> anywhere in the document"
   },
   {
     "id": "ai-crawlers-blocked",
@@ -298,5 +338,15 @@
     "why": "Each redirect adds a round trip for visitors, and search engines pass a little less on through every hop.",
     "fix": "Change the link to the address it ends up at. This usually follows a move to new URLs, https or www.",
     "tech": "a sampled same-site a[href] answers 3xx first and ends in 200"
+  },
+  {
+    "id": "tel-format",
+    "severity": "low",
+    "area": "Visitors",
+    "title": "A phone link may not dial correctly",
+    "what": "A tel: link has spaces or brackets in the number.",
+    "why": "Some phones and click-to-call tools dial the wrong number, or nothing, when the link has spaces or brackets.",
+    "fix": "Write the link as digits with a leading + and country code, for example href=\"tel:+14155550100\". Keep the spaced format in the visible text only.",
+    "tech": "an a[href^=\"tel:\"] contains a space, ( or ); \"-\" and \".\" pass. One finding per distinct number"
   }
 ]
