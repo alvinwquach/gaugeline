@@ -128,3 +128,17 @@ Write the sentence for the person who runs the tool: present tense, one sentence
 release's headline on the changelog page. The Release pull request collects these files into
 `packages/cli/CHANGELOG.md`; `pnpm docs:changelog` turns that into `docs/changelog.data.json` and
 `docs/changelog.md`.
+
+## Why did pr-gate fail?
+
+The `PR gate` workflow checks every pull request against three rules. The fixes:
+
+1. **"This changes source but has no changeset."** Run `pnpm changeset` (or `pnpm changeset --empty`
+   for internal work, with a summary starting "(internal)") and commit the file.
+2. **"This changes what users see but no docs page changed."** A patch or minor changeset needs the
+   matching docs page updated in the same pull request (`docs/changelog.*` is generated and does
+   not count). If users really will not notice, make the changeset empty and "(internal)".
+3. **"…the summary must be one full sentence…"** Write at least 12 characters ending with a full stop.
+
+A pull request that touches nothing users would notice (a lockfile bump, CI config) can carry the
+`internal` label, which skips the gate entirely.
