@@ -1,0 +1,274 @@
+{
+  "/img/logo.svg": {
+    "body": "",
+    "headers": {
+      "content-type": "image/svg+xml",
+      "content-length": "1200"
+    }
+  },
+  "/img/garden.jpg": {
+    "body": "",
+    "headers": {
+      "content-type": "image/jpeg",
+      "content-length": "1200"
+    }
+  },
+  "/img/heavy.jpg": {
+    "body": "",
+    "headers": {
+      "content-type": "image/jpeg",
+      "content-length": "900000"
+    }
+  },
+  "/_next/image": {
+    "body": "",
+    "headers": {
+      "content-type": "image/webp",
+      "content-length": "1200"
+    }
+  },
+  "/wp-content/uploads/2019/05/old-sign.jpg": {
+    "body": "",
+    "headers": {
+      "content-type": "image/jpeg",
+      "content-length": "1200"
+    }
+  },
+  "/img/divider.png": {
+    "body": "",
+    "headers": {
+      "content-type": "image/png"
+    }
+  },
+  "/img/swatch-0.png": {
+    "body": "",
+    "headers": {
+      "content-type": "image/png",
+      "content-length": "1200"
+    }
+  },
+  "/img/swatch-1.png": {
+    "body": "",
+    "headers": {
+      "content-type": "image/png",
+      "content-length": "1200"
+    }
+  },
+  "/img/swatch-2.png": {
+    "body": "",
+    "headers": {
+      "content-type": "image/png",
+      "content-length": "1200"
+    }
+  },
+  "/img/swatch-3.png": {
+    "body": "",
+    "headers": {
+      "content-type": "image/png",
+      "content-length": "1200"
+    }
+  },
+  "/img/swatch-4.png": {
+    "body": "",
+    "headers": {
+      "content-type": "image/png",
+      "content-length": "1200"
+    }
+  },
+  "/img/swatch-5.png": {
+    "body": "",
+    "headers": {
+      "content-type": "image/png",
+      "content-length": "1200"
+    }
+  },
+  "/img/swatch-6.png": {
+    "body": "",
+    "headers": {
+      "content-type": "image/png",
+      "content-length": "1200"
+    }
+  },
+  "/img/swatch-7.png": {
+    "body": "",
+    "headers": {
+      "content-type": "image/png",
+      "content-length": "1200"
+    }
+  },
+  "/img/swatch-8.png": {
+    "body": "",
+    "headers": {
+      "content-type": "image/png",
+      "content-length": "1200"
+    }
+  },
+  "/img/swatch-9.png": {
+    "body": "",
+    "headers": {
+      "content-type": "image/png",
+      "content-length": "1200"
+    }
+  },
+  "/img/swatch-10.png": {
+    "body": "",
+    "headers": {
+      "content-type": "image/png",
+      "content-length": "1200"
+    }
+  },
+  "/img/swatch-11.png": {
+    "body": "",
+    "headers": {
+      "content-type": "image/png",
+      "content-length": "1200"
+    }
+  },
+  "/img/swatch-12.png": {
+    "body": "",
+    "headers": {
+      "content-type": "image/png",
+      "content-length": "1200"
+    }
+  },
+  "/img/swatch-13.png": {
+    "body": "",
+    "headers": {
+      "content-type": "image/png",
+      "content-length": "1200"
+    }
+  },
+  "/img/swatch-14.png": {
+    "body": "",
+    "headers": {
+      "content-type": "image/png",
+      "content-length": "1200"
+    }
+  },
+  "/img/swatch-15.png": {
+    "body": "",
+    "headers": {
+      "content-type": "image/png",
+      "content-length": "1200"
+    }
+  },
+  "/img/swatch-16.png": {
+    "body": "",
+    "headers": {
+      "content-type": "image/png",
+      "content-length": "1200"
+    }
+  },
+  "/img/swatch-17.png": {
+    "body": "",
+    "headers": {
+      "content-type": "image/png",
+      "content-length": "1200"
+    }
+  },
+  "/img/swatch-18.png": {
+    "body": "",
+    "headers": {
+      "content-type": "image/png",
+      "content-length": "1200"
+    }
+  },
+  "/img/swatch-19.png": {
+    "body": "",
+    "headers": {
+      "content-type": "image/png",
+      "content-length": "1200"
+    }
+  },
+  "/img/swatch-20.png": {
+    "body": "",
+    "headers": {
+      "content-type": "image/png",
+      "content-length": "1200"
+    }
+  },
+  "/img/swatch-21.png": {
+    "body": "",
+    "headers": {
+      "content-type": "image/png",
+      "content-length": "1200"
+    }
+  },
+  "/img/swatch-22.png": {
+    "body": "",
+    "headers": {
+      "content-type": "image/png",
+      "content-length": "1200"
+    }
+  },
+  "/img/swatch-23.png": {
+    "body": "",
+    "headers": {
+      "content-type": "image/png",
+      "content-length": "1200"
+    }
+  },
+  "/img/swatch-24.png": {
+    "body": "",
+    "headers": {
+      "content-type": "image/png",
+      "content-length": "1200"
+    }
+  },
+  "/img/swatch-25.png": {
+    "body": "",
+    "headers": {
+      "content-type": "image/png",
+      "content-length": "1200"
+    }
+  },
+  "/img/swatch-26.png": {
+    "body": "",
+    "headers": {
+      "content-type": "image/png",
+      "content-length": "1200"
+    }
+  },
+  "/img/swatch-27.png": {
+    "body": "",
+    "headers": {
+      "content-type": "image/png",
+      "content-length": "1200"
+    }
+  },
+  "/img/swatch-28.png": {
+    "body": "",
+    "headers": {
+      "content-type": "image/png",
+      "content-length": "1200"
+    }
+  },
+  "/img/swatch-29.png": {
+    "body": "",
+    "headers": {
+      "content-type": "image/png",
+      "content-length": "1200"
+    }
+  },
+  "/img/swatch-30.png": {
+    "body": "",
+    "headers": {
+      "content-type": "image/png",
+      "content-length": "1200"
+    }
+  },
+  "/img/swatch-31.png": {
+    "body": "",
+    "headers": {
+      "content-type": "image/png",
+      "content-length": "1200"
+    }
+  },
+  "/img/swatch-32.png": {
+    "body": "",
+    "headers": {
+      "content-type": "image/png",
+      "content-length": "1200"
+    }
+  }
+}

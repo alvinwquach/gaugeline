@@ -17,7 +17,16 @@ export interface PageSnapshot {
   metaRobots?: string;
   headings: { level: 1 | 2 | 3; text: string; id?: string }[];
   links: { href: string; text: string; rel?: string; sameSite: boolean }[];
-  images: { src: string; alt: string | null; width?: number; height?: number }[];
+  images: {
+    src: string;
+    alt: string | null;
+    width?: number;
+    height?: number;
+    /** The img's own srcset attribute, as written. */
+    srcset?: string;
+    /** <source> siblings when the img is inside a <picture>, in order. */
+    sources?: { srcset: string; type?: string }[];
+  }[];
   /** Parsed JSON-LD blocks; an array in one script tag becomes several blocks. */
   jsonLd: unknown[];
   jsonLdErrors: string[];
@@ -159,11 +168,23 @@ export function buildSnapshot(hops: Hop[]): PageSnapshot {
     const alt = $(el).attr("alt");
     const width = positiveInt($(el).attr("width"));
     const height = positiveInt($(el).attr("height"));
+    const srcset = $(el).attr("srcset")?.trim();
+    const picture = $(el).parent().is("picture") ? $(el).parent() : undefined;
+    const sources = picture
+      ?.children("source")
+      .map((_, s) => {
+        const type = $(s).attr("type")?.trim().toLowerCase();
+        return { srcset: ($(s).attr("srcset") ?? "").trim(), ...(type ? { type } : {}) };
+      })
+      .get()
+      .filter((s) => s.srcset !== "");
     images.push({
       src,
       alt: alt === undefined ? null : alt,
       ...(width === undefined ? {} : { width }),
       ...(height === undefined ? {} : { height }),
+      ...(srcset ? { srcset } : {}),
+      ...(sources && sources.length > 0 ? { sources } : {}),
     });
   });
 
