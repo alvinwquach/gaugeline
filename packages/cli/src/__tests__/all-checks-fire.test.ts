@@ -28,7 +28,11 @@ const FIXTURES = [
  * never use the live internet, so those three are confirmed in-process against recorded answers
  * (packages/cli/src/__tests__/app-store-links.test.ts), not through the built bin.
  */
-const NEEDS_LIVE_STORES = new Set(["app-link-dead", "app-name-mismatch", "app-smart-banner-mismatch"]);
+const NEEDS_LIVE_STORES = new Set([
+  "app-link-dead",
+  "app-name-mismatch",
+  "app-smart-banner-mismatch",
+]);
 
 async function findingsOf(name: string): Promise<string[]> {
   const site = await startFixture(name);
