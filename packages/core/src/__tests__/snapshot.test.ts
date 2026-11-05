@@ -1,3 +1,4 @@
+// check-community: allow-email (invented addresses at reserved example domains, used by the test)
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { decodeBody } from "../charset.js";
