@@ -30,6 +30,10 @@ merged once CI is green on Node 18.17, 20 and 22.
   `{"id","t","s","a"}` objects (all 89 ids with title, severity 2/1/0 and area) out of the saved HTML.
 - Fixture hosts: `createFetcher({ hosts: { "shop.test": "127.0.0.1:PORT" } })` maps a logical host to a
   local server (like curl --resolve); hops keep the logical address.
+- Since security/hardening, the fetcher refuses non-public addresses. Tests against 127.0.0.1 pass
+  `allowPrivate: true` (core) or `--allow-private` (the bin helper adds it for 127.0.0.1 URLs);
+  the `hosts` mapping is trusted as configured. Workflow actions must be pinned to full SHAs with a
+  `# vX.Y.Z` comment (scripts/__tests__/workflows.test.ts).
 - Tests never use the name "localhost": Node 18 may resolve it to ::1 while fixture servers bind
   127.0.0.1. Use 127.0.0.1 or the fetcher's `hosts` mapping.
 - Write invisible characters in TS source as `\u` escapes. (Commands sent through the agent's shell
@@ -58,6 +62,7 @@ merged once CI is green on Node 18.17, 20 and 22.
 | G06 | `01/cli-reporters` | merged | https://github.com/alvinwquach/gaugeline/pull/11 | 306 | Header line moved to stderr (query stripped). G02a's deferred --json E2E done here (bin spawn + Ajv; failed-check case via main() with an injected registry). --no-open accepted, no-op until G21. |
 | G06a | `01/logger-verbose-quiet` | merged | https://github.com/alvinwquach/gaugeline/pull/12 | 323 | core checkSite() runs the documented steps and emits the 4 progress events; robots/sitemap, link and script checks themselves arrive in G09/G10/G12. Fetcher onRequest hook feeds debug lines. |
 | G06b | `01/flag-table` | merged | https://github.com/alvinwquach/gaugeline/pull/13 | 343 | FLAGS table in packages/cli/src/flags.ts; docs/options.md block between <!-- flags:start/end -->, checked in CI (docs:flags:check). Generator aligns tables the way Prettier does. Seed includes --version (existed since G01). |
+| SEC | `security/hardening` | merged | https://github.com/alvinwquach/gaugeline/pull/14 | 403 | Owner-requested, not in the spec: private/loopback/link-local/CGNAT/multicast/IPv6 blocking on every hop with pinned connect (DNS rebinding), typed blocked-address outcome, --allow-private; CODEOWNERS; actions pinned to SHAs (test enforces); dependabot weekly. Fetcher transport moved from global fetch to node:http/https with a pinned lookup. |
 | G07 | `01/fixture-sites` | todo | | | Fixture sites and the e2e harness |
 | G07a | `01/cassette-record-replay` | todo | | | Record and replay for third-party APIs |
 | G08 | `01/ci-and-release` | todo | | | CI matrix, tarball budget and provenance |

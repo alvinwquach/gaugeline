@@ -82,7 +82,7 @@ describe("semaphore and read-only: unit", () => {
       await new Promise((r) => setTimeout(r, 15));
       res.writeHead(200).end("ok");
     });
-    const f = createFetcher();
+    const f = createFetcher({ allowPrivate: true });
     await Promise.all(Array.from({ length: 50 }, (_, i) => f.get(`${s.origin}/p${i}`)));
     expect(f.stats.requests).toBe(50);
     expect(f.stats.maxInFlight).toBeLessThanOrEqual(5);
@@ -99,7 +99,7 @@ describe("semaphore and read-only: unit", () => {
   });
 
   it("get() refuses a non-read method even when the type is bypassed", () => {
-    const f = createFetcher();
+    const f = createFetcher({ allowPrivate: true });
     expect(() => f.get("http://127.0.0.1:1/", { method: "POST" as "GET" })).toThrow(/read-only/);
   });
 });
@@ -111,7 +111,7 @@ describe("fetcher: integration (real sockets)", () => {
       "/b": redirect(302, "/c"),
       "/c": html("<h1>done</h1>"),
     });
-    const hops = await createFetcher().get(`${s.origin}/a`);
+    const hops = await createFetcher({ allowPrivate: true }).get(`${s.origin}/a`);
     expect(hops.map((h) => [new URL(h.url).pathname, h.status])).toEqual([
       ["/a", 301],
       ["/b", 302],
@@ -124,21 +124,21 @@ describe("fetcher: integration (real sockets)", () => {
 
   it("sends the named user agent and only GET", async () => {
     const s = await serve({ "/": html("x") });
-    await createFetcher().get(s.origin);
+    await createFetcher({ allowPrivate: true }).get(s.origin);
     expect(s.log[0]?.headers["user-agent"]).toBe(DEFAULT_USER_AGENT);
     expect(s.log[0]?.method).toBe("GET");
   });
 
   it("HEAD requests are sent as HEAD and carry no body", async () => {
     const s = await serve({ "/": html("x") });
-    const hops = await createFetcher().get(s.origin, { method: "HEAD" });
+    const hops = await createFetcher({ allowPrivate: true }).get(s.origin, { method: "HEAD" });
     expect(s.log[0]?.method).toBe("HEAD");
     expect(hops[0]?.body).toBeUndefined();
   });
 
   it('redirect loop a -> b -> a stops with a "loop" error, not a hang', async () => {
     const s = await serve({ "/a": redirect(301, "/b"), "/b": redirect(301, "/a") });
-    const err = await createFetcher()
+    const err = await createFetcher({ allowPrivate: true })
       .get(`${s.origin}/a`)
       .catch((e: unknown) => e);
     expect(err).toBeInstanceOf(FetchError);
@@ -150,7 +150,7 @@ describe("fetcher: integration (real sockets)", () => {
     const routes: Record<string, ReturnType<typeof redirect>> = {};
     for (let i = 0; i < 11; i++) routes[`/r${i}`] = redirect(302, `/r${i + 1}`);
     const s = await serve({ ...routes, "/r11": html("end") });
-    const err = await createFetcher()
+    const err = await createFetcher({ allowPrivate: true })
       .get(`${s.origin}/r0`)
       .catch((e: unknown) => e);
     expect((err as FetchError).reason).toBe("too-many-redirects");
@@ -163,14 +163,14 @@ describe("fetcher: integration (real sockets)", () => {
     const routes: Record<string, ReturnType<typeof redirect>> = {};
     for (let i = 0; i < 9; i++) routes[`/r${i}`] = redirect(301, `/r${i + 1}`);
     const s = await serve({ ...routes, "/r9": html("end") });
-    const hops = await createFetcher().get(`${s.origin}/r0`);
+    const hops = await createFetcher({ allowPrivate: true }).get(`${s.origin}/r0`);
     expect(hops).toHaveLength(10);
     expect(hops.at(-1)?.status).toBe(200);
   });
 
   it("the same URL requested twice hits the server once, even at the same moment", async () => {
     const s = await serve({ "/": html("x") });
-    const f = createFetcher();
+    const f = createFetcher({ allowPrivate: true });
     const [a, b] = await Promise.all([f.get(`${s.origin}/`), f.get(`${s.origin}/#frag`)]);
     await f.get(s.origin.toUpperCase().replace("HTTP", "http"));
     expect(a).toBe(b);
@@ -180,7 +180,7 @@ describe("fetcher: integration (real sockets)", () => {
   it("https refused, http answers: fallback used and recorded", async () => {
     const s = await serve({ "/": html("plain") });
     const host = `127.0.0.1:${s.port}`;
-    const hops = await createFetcher({ timeoutMs: 2000 }).getSite(host);
+    const hops = await createFetcher({ allowPrivate: true, timeoutMs: 2000 }).getSite(host);
     expect(hops[0]?.url).toBe(`http://${host}/`);
     expect(hops[0]?.fallbackFrom).toBe(`https://${host}/`);
     expect(hops[0]?.body).toBe("plain");
@@ -188,7 +188,7 @@ describe("fetcher: integration (real sockets)", () => {
 
   it("an explicit https address is never downgraded", async () => {
     const s = await serve({ "/": html("plain") });
-    const err = await createFetcher({ timeoutMs: 2000 })
+    const err = await createFetcher({ allowPrivate: true, timeoutMs: 2000 })
       .getSite(`https://127.0.0.1:${s.port}/`)
       .catch((e: unknown) => e);
     expect((err as FetchError).reason).toBe("tls");
@@ -198,20 +198,20 @@ describe("fetcher: integration (real sockets)", () => {
 describe("fetcher: edge cases", () => {
   it("relative Location header is resolved against the current address", async () => {
     const s = await serve({ "/shop/a": redirect(301, "b?x=1"), "/shop/b": html("b") });
-    const hops = await createFetcher().get(`${s.origin}/shop/a`);
+    const hops = await createFetcher({ allowPrivate: true }).get(`${s.origin}/shop/a`);
     expect(hops[1]?.url).toBe(`${s.origin}/shop/b?x=1`);
   });
 
   it("Location with spaces is trimmed and encoded", async () => {
     const s = await serve({ "/a": redirect(301, "  /new page  "), "/new%20page": html("ok") });
-    const hops = await createFetcher().get(`${s.origin}/a`);
+    const hops = await createFetcher({ allowPrivate: true }).get(`${s.origin}/a`);
     expect(hops[1]?.url).toBe(`${s.origin}/new%20page`);
     expect(hops[1]?.status).toBe(200);
   });
 
   it("missing Location on a 301 ends the trail at the 301", async () => {
     const s = await serve({ "/a": (_q, r) => void r.writeHead(301).end() });
-    const hops = await createFetcher().get(`${s.origin}/a`);
+    const hops = await createFetcher({ allowPrivate: true }).get(`${s.origin}/a`);
     expect(hops).toHaveLength(1);
     expect(hops[0]?.status).toBe(301);
     expect(hops[0]?.headers.location).toBeUndefined();
@@ -221,7 +221,7 @@ describe("fetcher: edge cases", () => {
     const raw = await startRawServer(() => undefined);
     servers.push(raw);
     const ok = await serve({ "/": html("fine") });
-    const f = createFetcher({ timeoutMs: 300 });
+    const f = createFetcher({ allowPrivate: true, timeoutMs: 300 });
     const started = Date.now();
     const [silent, fine] = await Promise.allSettled([f.get(raw.origin), f.get(ok.origin)]);
     expect(silent.status).toBe("rejected");
@@ -235,14 +235,16 @@ describe("fetcher: edge cases", () => {
   it("6 MB body: truncated at 5 MB and flagged", async () => {
     const big = "a".repeat(6 * 1024 * 1024);
     const s = await serve({ "/": html(big) });
-    const hops = await createFetcher().get(s.origin);
+    const hops = await createFetcher({ allowPrivate: true }).get(s.origin);
     expect(hops[0]?.body?.length).toBe(5 * 1024 * 1024);
     expect(hops[0]?.truncated).toBe(true);
   });
 
   it("a body under the cap is not flagged", async () => {
     const s = await serve({ "/": html("small") });
-    expect((await createFetcher().get(s.origin))[0]?.truncated).toBeUndefined();
+    expect(
+      (await createFetcher({ allowPrivate: true }).get(s.origin))[0]?.truncated,
+    ).toBeUndefined();
   });
 
   it("gzip body with a wrong Content-Length: what arrived is kept and flagged, no crash", async () => {
@@ -256,7 +258,7 @@ describe("fetcher: edge cases", () => {
       });
     });
     servers.push(raw);
-    const result = await createFetcher({ timeoutMs: 2000 })
+    const result = await createFetcher({ allowPrivate: true, timeoutMs: 2000 })
       .get(raw.origin)
       .then((hops) => ({ hops }))
       .catch((err: unknown) => ({ err }));
@@ -279,7 +281,7 @@ describe("fetcher: edge cases", () => {
       });
     });
     servers.push(raw);
-    const result = await createFetcher({ timeoutMs: 2000 })
+    const result = await createFetcher({ allowPrivate: true, timeoutMs: 2000 })
       .get(raw.origin)
       .then((hops) => ({ hops }))
       .catch((err: unknown) => ({ err }));
@@ -292,7 +294,7 @@ describe("fetcher: edge cases", () => {
     const origin = s.origin;
     await s.close();
     servers.splice(servers.indexOf(s), 1);
-    const err = (await createFetcher()
+    const err = (await createFetcher({ allowPrivate: true })
       .get(origin)
       .catch((e: unknown) => e)) as FetchError;
     expect(err.reason).toBe("refused");

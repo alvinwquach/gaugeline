@@ -159,7 +159,7 @@ async function sampleAndFetch(
   kind: BudgetKind,
   page: string,
   pattern: RegExp,
-  fetcher = createFetcher(),
+  fetcher = createFetcher({ allowPrivate: true }),
 ) {
   const found = [...page.matchAll(pattern)].map((m) => m[1] ?? "");
   const candidates = dedupeUrls(found, servers[0]?.origin);
@@ -202,7 +202,7 @@ describe("Budget: integration (fixture server)", () => {
       res.writeHead(200).end();
     });
     servers.push(s);
-    const f = createFetcher();
+    const f = createFetcher({ allowPrivate: true });
     await Promise.all(range(20).map((i) => f.get(`${s.origin}/x${i}`)));
     expect(f.stats.maxInFlight).toBe(LIMITS.concurrency);
     const err = (await f.get(`${s.origin}/r0`).catch((e: unknown) => e)) as { hops: unknown[] };
@@ -226,7 +226,7 @@ describe("Budget: promise test (the published request budget)", () => {
     });
     servers.push(s);
     const budget = createBudget();
-    const fetcher = createFetcher();
+    const fetcher = createFetcher({ allowPrivate: true });
     await Promise.all([
       sampleAndFetch(budget, "links", page, /<a href="([^"]+)"/g, fetcher),
       sampleAndFetch(budget, "images", page, /<img src="([^"]+)"/g, fetcher),

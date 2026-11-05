@@ -17,7 +17,10 @@ export async function runBin(
   env: NodeJS.ProcessEnv = {},
 ): Promise<{ status: number; stdout: string; stderr: string }> {
   try {
-    const r = await promisify(execFile)(process.execPath, [bin, ...args], {
+    // Fixture servers listen on 127.0.0.1, which Gaugeline refuses unless asked: opt in explicitly.
+    const local = args.some((a) => a.startsWith("http://127.0.0.1"));
+    const argv = local && !args.includes("--allow-private") ? [...args, "--allow-private"] : args;
+    const r = await promisify(execFile)(process.execPath, [bin, ...argv], {
       encoding: "utf8",
       env: cleanEnv(env),
     });

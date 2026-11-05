@@ -1,9 +1,13 @@
+import { isIP } from "node:net";
+import type { Readable } from "node:stream";
+import { blockedRange } from "./addresses.js";
 import { decodeBody } from "./charset.js";
 import { NetworkError, errorCodes } from "./errors.js";
 import { LIMITS } from "./limits.js";
 import { normaliseUrl } from "./normalise.js";
 import type { RequestInfo } from "./progress.js";
 import { Semaphore } from "./semaphore.js";
+import { send, systemResolver, type ResolvedAddress, type Resolver } from "./transport.js";
 
 /**
  * The only module allowed to touch the network. Every request to a checked site goes through here:
@@ -23,7 +27,14 @@ export interface Hop {
 }
 
 export type FetchErrorReason =
-  "not-found" | "refused" | "timeout" | "tls" | "loop" | "too-many-redirects" | "network";
+  | "not-found"
+  | "refused"
+  | "timeout"
+  | "tls"
+  | "loop"
+  | "too-many-redirects"
+  | "blocked-address"
+  | "network";
 
 /** A NetworkError that also carries the hops received before it stopped. */
 export class FetchError extends NetworkError {
@@ -109,6 +120,13 @@ export interface FetcherOptions {
   hosts?: Record<string, string>;
   /** Called after every request (for --verbose). Gets the method, address, status and time only. */
   onRequest?: (info: RequestInfo) => void;
+  /**
+   * Allow loopback, private, link-local, CGNAT and other non-public addresses. Off by default: a
+   * checked site must not be able to point Gaugeline at your own machine or network.
+   */
+  allowPrivate?: boolean;
+  /** How host names become addresses. Defaults to the system resolver; tests inject one. */
+  resolver?: Resolver;
 }
 
 export interface GetOptions {
@@ -143,49 +161,33 @@ export { normaliseUrl };
 
 const REDIRECTS = new Set([301, 302, 303, 307, 308]);
 
-function headersToRecord(headers: Headers): Record<string, string> {
-  const out: Record<string, string> = {};
-  headers.forEach((value, key) => {
-    out[key] = value;
-  });
-  return out;
-}
-
 async function readCapped(
-  res: Response,
+  body: Readable,
   cap: number,
+  contentType: string | undefined,
 ): Promise<{ body: string; truncated: boolean }> {
-  if (!res.body) return { body: "", truncated: false };
-  const reader = res.body.getReader();
-  const chunks: Uint8Array[] = [];
+  const chunks: Buffer[] = [];
   let size = 0;
   let truncated = false;
   try {
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      if (size + value.byteLength > cap) {
-        chunks.push(value.subarray(0, cap - size));
+    for await (const chunk of body) {
+      const buf = chunk as Buffer;
+      if (size + buf.byteLength > cap) {
+        chunks.push(buf.subarray(0, cap - size));
         size = cap;
         truncated = true;
-        await reader.cancel();
+        body.destroy();
         break;
       }
-      chunks.push(value);
-      size += value.byteLength;
+      chunks.push(buf);
+      size += buf.byteLength;
     }
   } catch (err) {
     // A body that ends early or fails to decompress keeps what arrived and is marked truncated.
     if (isTimeout(err)) throw err;
     truncated = true;
   }
-  const buf = new Uint8Array(size);
-  let offset = 0;
-  for (const c of chunks) {
-    buf.set(c, offset);
-    offset += c.byteLength;
-  }
-  return { body: decodeBody(buf, res.headers.get("content-type") ?? undefined), truncated };
+  return { body: decodeBody(Buffer.concat(chunks, size), contentType), truncated };
 }
 
 function isTimeout(err: unknown): boolean {
@@ -221,6 +223,44 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
     u.host = target;
     return u.href;
   };
+  const resolver = options.resolver ?? systemResolver;
+
+  /**
+   * Resolve the host once and refuse it if any address is not public. The returned address is the
+   * one the socket connects to. Hosts from the explicit `hosts` mapping are trusted as configured.
+   */
+  async function checkedAddress(
+    logical: string,
+    target: URL,
+    mapped: boolean,
+  ): Promise<ResolvedAddress> {
+    const host = target.hostname.replace(/^\[|\]$/g, "");
+    const family = isIP(host);
+    const addresses: ResolvedAddress[] =
+      family === 0 ? await resolver(host) : [{ address: host, family: family === 6 ? 6 : 4 }];
+    if (addresses.length === 0) {
+      throw Object.assign(new Error(`getaddrinfo ENOTFOUND ${host}`), { code: "ENOTFOUND" });
+    }
+    if (!mapped && options.allowPrivate !== true) {
+      for (const a of addresses) {
+        const range = blockedRange(a.address);
+        if (range !== undefined) {
+          throw new FetchError(
+            "blocked-address",
+            `${hostOf(logical)} points at a ${range} address (${a.address}), which Gaugeline does not request.`,
+            logical,
+            [],
+            undefined,
+            "To check a site on your own computer or network, add --allow-private.",
+          );
+        }
+      }
+    }
+    const first = addresses[0];
+    if (!first) throw new Error("unreachable");
+    return first;
+  }
+
   /** In-flight promises, so two checks asking at the same moment share one request. */
   const memo = new Map<string, Promise<Hop[]>>();
   let requests = 0;
@@ -232,15 +272,18 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
   ): Promise<{ hop: Hop; location: string | null }> {
     assertReadOnly(method);
     return gate.run(async () => {
-      requests += 1;
       const started = performance.now();
-      let res: Response;
+      const routed = route(url);
+      const target = new URL(routed);
+      let res;
       try {
-        res = await fetch(route(url), {
+        const pinned = await checkedAddress(url, target, routed !== url);
+        requests += 1;
+        res = await send(target, {
           method,
-          redirect: "manual",
           headers: { "user-agent": userAgent, ...headers },
-          signal: AbortSignal.timeout(timeoutMs),
+          pinned,
+          timeoutMs,
         });
       } catch (err) {
         options.onRequest?.({
@@ -249,16 +292,21 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
           status: "error",
           ms: Math.round(performance.now() - started),
         });
+        if (err instanceof FetchError) throw err;
         const d = describeNetworkFailure(url, err, timeoutMs);
         throw new FetchError(d.reason, d.message, url, [], err, d.hint);
       }
-      const hop: Hop = { url, status: res.status, headers: headersToRecord(res.headers), ms: 0 };
-      const location = REDIRECTS.has(res.status) ? res.headers.get("location") : null;
+      const hop: Hop = { url, status: res.status, headers: res.headers, ms: 0 };
+      const location = REDIRECTS.has(res.status) ? (res.headers.location ?? null) : null;
       if (location !== null || method === "HEAD") {
-        await res.body?.cancel().catch(() => undefined);
+        res.body.destroy();
       } else {
         try {
-          const { body, truncated } = await readCapped(res, maxBodyBytes);
+          const { body, truncated } = await readCapped(
+            res.body,
+            maxBodyBytes,
+            res.headers["content-type"],
+          );
           hop.body = body;
           if (truncated) hop.truncated = true;
         } catch (err) {

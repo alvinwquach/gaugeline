@@ -1,0 +1,6 @@
+# Changes to CI, the build rules for agents, MCP configuration and the root package manifest need
+# the owner's review.
+/.github/      @alvinwquach
+/CLAUDE.md     @alvinwquach
+/.mcp.json     @alvinwquach
+/package.json  @alvinwquach
