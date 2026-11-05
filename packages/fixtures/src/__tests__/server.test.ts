@@ -161,3 +161,19 @@ describe("budget test (the published request budget)", () => {
     expect(site.total).toBeGreaterThan(0);
   });
 });
+
+describe("fixture server: Windows edge cases", () => {
+  it("a CRLF fixture parses like an LF one and passes every page check", async () => {
+    const site = await start("crlf");
+    const [hop] = await get(`${site.origin}/`);
+    expect(hop?.body).toContain("\r\n");
+    const { snapshot, result } = await checkSite({
+      address: `${site.origin}/`,
+      fetcher: createFetcher({ allowPrivate: true }),
+    });
+    expect(snapshot.title).toBe("Fixture Bakery");
+    expect(snapshot.headings[0]?.text).toBe("Fixture Bakery");
+    expect(snapshot.canonical).toBe(`${site.origin}/`);
+    expect(result.findings).toEqual([]);
+  });
+});
