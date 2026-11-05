@@ -27,6 +27,7 @@ export interface RunFlags {
   noOpen: boolean;
   verbose: boolean;
   quiet: boolean;
+  allowPrivate: boolean;
 }
 
 export type ParsedArgs =
@@ -111,6 +112,7 @@ export function parseCliArgs(
     input,
     verbose,
     quiet: values.quiet === true,
+    allowPrivate: values["allow-private"] === true,
     ci: values.ci === true,
     json: values.json === true,
     noOpen: values["no-open"] === true,

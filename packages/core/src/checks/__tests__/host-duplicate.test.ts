@@ -31,6 +31,7 @@ describe("host-duplicate", () => {
     const bare = await serve({ "/": html("bare") });
     const www = await serve({ "/": redirect(301, "http://shop.test/") });
     const fetcher = createFetcher({
+      allowPrivate: true,
       hosts: { "shop.test": `127.0.0.1:${bare.port}`, "www.shop.test": `127.0.0.1:${www.port}` },
     });
     expect(
@@ -42,6 +43,7 @@ describe("host-duplicate", () => {
     const bare = await serve({ "/": html("bare") });
     const www = await serve({ "/": html("www copy") });
     const fetcher = createFetcher({
+      allowPrivate: true,
       hosts: { "shop.test": `127.0.0.1:${bare.port}`, "www.shop.test": `127.0.0.1:${www.port}` },
     });
     expect(
@@ -59,7 +61,7 @@ describe("host-duplicate", () => {
   });
 
   it("edge: no www record at all (DNS failure) is not a finding", async () => {
-    const fetcher = createFetcher({ timeoutMs: 5000 });
+    const fetcher = createFetcher({ allowPrivate: true, timeoutMs: 5000 });
     expect(
       await hostDuplicate.run(page({ finalUrl: "http://gaugeline-no-such-host.invalid/" }), {
         warn,
@@ -74,6 +76,7 @@ describe("host-duplicate", () => {
     const port = closed.port;
     await closed.close();
     const fetcher = createFetcher({
+      allowPrivate: true,
       hosts: { "shop.test": `127.0.0.1:${bare.port}`, "www.shop.test": `127.0.0.1:${port}` },
     });
     expect(

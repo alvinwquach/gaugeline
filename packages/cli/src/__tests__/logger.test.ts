@@ -101,7 +101,7 @@ describe("logger: integration", () => {
     const events: ProgressEvent[] = [];
     await checkSite({
       address: `${site.origin}/`,
-      fetcher: createFetcher(),
+      fetcher: createFetcher({ allowPrivate: true }),
       onProgress: (e) => events.push(e),
     });
     expect(events.filter((e) => e.step !== "warn" && e.step !== "debug")).toEqual([
@@ -162,9 +162,13 @@ describe("logger: promise test", () => {
 
 describe("logger: edge cases", () => {
   it("stderr closed early: the EPIPE is swallowed and the exit code is still correct", async () => {
-    const child = spawn(process.execPath, [bin, `${site.origin}/`, "--verbose"], {
-      stdio: ["ignore", "pipe", "pipe"],
-    });
+    const child = spawn(
+      process.execPath,
+      [bin, `${site.origin}/`, "--verbose", "--allow-private"],
+      {
+        stdio: ["ignore", "pipe", "pipe"],
+      },
+    );
     child.stderr.destroy();
     child.stdout.resume();
     const code = await new Promise<number | null>((resolve) => child.on("close", resolve));

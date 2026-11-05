@@ -126,7 +126,7 @@ describe("cli: e2e (built bin against the fixture server)", () => {
     );
     const out: string[] = [];
     const io = { stdout: { write: (s: string) => out.push(s) }, stderr: { write: () => true } };
-    expect(await main([`${site.origin}/`, "--json"], io, { registry })).toBe(0);
+    expect(await main([`${site.origin}/`, "--json", "--allow-private"], io, { registry })).toBe(0);
     const parsed = JSON.parse(out.join("")) as { failed: string[] };
     expect(parsed.failed).toEqual(["always-throws"]);
     expect(validator()(parsed)).toBe(true);
@@ -166,5 +166,18 @@ describe("cli: edge cases", () => {
     expect(isCiEnv({ CI: "" })).toBe(false);
     expect(isCiEnv({ CI: "1" })).toBe(true);
     expect(isCiEnv({})).toBe(false);
+  });
+});
+
+describe("cli: blocked addresses", () => {
+  it("a private address without --allow-private exits 2 with a one-line reason, never a crash", async () => {
+    const r = await runBin([`http://[::ffff:127.0.0.1]:${site.port}/`]);
+    expect(r.status).toBe(2);
+    expect(r.stdout).toBe("");
+    expect(r.stderr).toContain("points at a loopback address");
+    expect(r.stderr).toContain(
+      "Try: To check a site on your own computer or network, add --allow-private.",
+    );
+    expect(r.stderr).not.toMatch(/\n\s+at /);
   });
 });

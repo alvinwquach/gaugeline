@@ -45,6 +45,14 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     commands: ["check"],
   },
   {
+    name: "allow-private",
+    type: "boolean",
+    description:
+      "Allow addresses on this computer or a private network, such as 127.0.0.1 or 192.168.x.x",
+    since: "0.1.0",
+    commands: ["check"],
+  },
+  {
     name: "quiet",
     type: "boolean",
     description: "Print only results and errors",
