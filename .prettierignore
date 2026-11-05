@@ -1,5 +1,5 @@
 dist
-fixtures
+packages/fixtures/sites
 *.snap
 pnpm-lock.yaml
 CLAUDE.md

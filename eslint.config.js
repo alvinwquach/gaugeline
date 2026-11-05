@@ -36,7 +36,7 @@ const CORE_RESTRICTED_IMPORTS = {
 };
 
 export default tseslint.config(
-  { ignores: ["**/dist/**", "**/node_modules/**", "**/coverage/**", "**/fixtures/**"] },
+  { ignores: ["**/dist/**", "**/node_modules/**", "**/coverage/**", "packages/fixtures/sites/**"] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

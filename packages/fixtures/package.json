@@ -1,0 +1,12 @@
+{
+  "name": "@gaugeline/fixtures",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Invented fixture sites served on 127.0.0.1 for integration and end-to-end tests. Never published.",
+  "type": "module",
+  "license": "MIT",
+  "main": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  }
+}
