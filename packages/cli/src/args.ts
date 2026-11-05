@@ -1,7 +1,25 @@
 import { parseArgs } from "node:util";
 import { parseAddress } from "@gaugeline/core";
+import {
+  FLAGS,
+  nearestFlag,
+  renderHelp,
+  resolveFlags,
+  toParseArgsOptions,
+  type FlagDef,
+} from "./flags.js";
 
 export const USAGE_LINE = "gaugeline <address> [options]";
+export const COMMAND = "check";
+
+export const USAGE = renderHelp(FLAGS, COMMAND, {
+  usage: USAGE_LINE,
+  summary: "Check a website the way search engines and visitors see it. Read-only.",
+  footer: "Exit codes: 0 ran, 1 --ci with a fix-first finding, 2 could not run",
+});
+
+export const USAGE_HINT = `${USAGE_LINE}, for example: gaugeline example.com (see gaugeline --help)`;
+export const UNKNOWN_FLAG_HINT = "Run gaugeline --help to see every option.";
 
 export interface RunFlags {
   ci: boolean;
@@ -11,39 +29,41 @@ export interface RunFlags {
   quiet: boolean;
 }
 
-export const USAGE = `Usage: ${USAGE_LINE}
-
-Check a website the way search engines and visitors see it. Read-only.
-
-Options:
-      --ci         Exit 1 when a "Fix this first" finding is found (also when CI is set)
-      --json       Print the result as JSON on stdout, and nothing else
-      --no-open    Do not open anything in a browser
-      --quiet      Print only results and errors
-      --verbose    Show each request and technical detail when something goes wrong
-  -h, --help       Show this help and exit
-  -v, --version    Print the version and exit
-
-Exit codes: 0 ran, 1 --ci with a fix-first finding, 2 could not run`;
-
-export const USAGE_HINT = `${USAGE_LINE}, for example: gaugeline example.com (see gaugeline --help)`;
-
 export type ParsedArgs =
   | { kind: "help"; verbose: boolean }
   | { kind: "version"; verbose: boolean }
   | ({ kind: "run"; address: string; input: string } & RunFlags)
   | { kind: "error"; message: string; hint?: string; verbose: boolean };
 
-function errorMessage(err: unknown): string {
-  if (err instanceof Error) {
-    // parseArgs names the flag: "Unknown option '--frobnicate'..."
-    const firstLine = err.message.split("\n")[0] ?? err.message;
-    return firstLine.replace(/\. To specify a positional argument.*$/, "").replace(/\.?$/, ".");
+/** Turn a parseArgs error into one sentence naming the flag, plus a hint. */
+export function describeParseError(
+  err: unknown,
+  flags: readonly FlagDef[] = FLAGS,
+  command = COMMAND,
+): { message: string; hint: string } {
+  const code = (err as { code?: string }).code;
+  const text = err instanceof Error ? err.message : String(err);
+  const flag = /'(-[^' ]+)/.exec(text)?.[1] ?? "";
+  if (code === "ERR_PARSE_ARGS_UNKNOWN_OPTION") {
+    const near = nearestFlag(flag, flags, command);
+    return {
+      message: `Unknown option ${flag}.${near ? ` Did you mean --${near}?` : ""}`,
+      hint: UNKNOWN_FLAG_HINT,
+    };
   }
-  return String(err);
+  if (code === "ERR_PARSE_ARGS_INVALID_OPTION_VALUE") {
+    return { message: `${flag} needs a value.`, hint: UNKNOWN_FLAG_HINT };
+  }
+  return {
+    message: `${(text.split("\n")[0] ?? text).replace(/\.?$/, ".")}`,
+    hint: UNKNOWN_FLAG_HINT,
+  };
 }
 
-export function parseCliArgs(argv: readonly string[]): ParsedArgs {
+export function parseCliArgs(
+  argv: readonly string[],
+  env: Record<string, string | undefined> = {},
+): ParsedArgs {
   const verbose = argv.includes("--verbose");
   let parsed;
   try {
@@ -51,24 +71,17 @@ export function parseCliArgs(argv: readonly string[]): ParsedArgs {
       args: [...argv],
       allowPositionals: true,
       strict: true,
-      options: {
-        help: { type: "boolean", short: "h" },
-        version: { type: "boolean", short: "v" },
-        verbose: { type: "boolean" },
-        quiet: { type: "boolean" },
-        ci: { type: "boolean" },
-        json: { type: "boolean" },
-        "no-open": { type: "boolean" },
-      },
+      options: toParseArgsOptions(FLAGS, COMMAND),
     });
   } catch (err) {
-    return { kind: "error", message: errorMessage(err), hint: USAGE_HINT, verbose };
+    return { kind: "error", ...describeParseError(err), verbose };
   }
-  if (parsed.values.quiet === true && parsed.values.verbose === true) {
+  const values = resolveFlags(parsed.values, env, FLAGS);
+  if (values.quiet === true && values.verbose === true) {
     return { kind: "error", message: "Choose --quiet or --verbose, not both.", verbose: false };
   }
-  if (parsed.values.help === true) return { kind: "help", verbose };
-  if (parsed.values.version === true) return { kind: "version", verbose };
+  if (values.help === true) return { kind: "help", verbose };
+  if (values.version === true) return { kind: "version", verbose };
 
   const positionals = parsed.positionals.map((p) => p.trim()).filter((p) => p !== "");
   if (positionals.length === 0) {
@@ -97,9 +110,9 @@ export function parseCliArgs(argv: readonly string[]): ParsedArgs {
     address: address.url.href,
     input,
     verbose,
-    quiet: parsed.values.quiet === true,
-    ci: parsed.values.ci === true,
-    json: parsed.values.json === true,
-    noOpen: parsed.values["no-open"] === true,
+    quiet: values.quiet === true,
+    ci: values.ci === true,
+    json: values.json === true,
+    noOpen: values["no-open"] === true,
   };
 }

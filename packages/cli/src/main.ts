@@ -11,6 +11,7 @@ import {
 import { parseCliArgs, USAGE } from "./args.js";
 import { useColor } from "./color.js";
 import { formatError, toOutcome } from "./fail.js";
+import { envIsOn } from "./flags.js";
 import { createLogger } from "./logger.js";
 import { formatTerminal } from "./reporter.js";
 import { VERSION } from "./version.js";
@@ -31,8 +32,7 @@ export function withoutQuery(address: string): string {
 
 /** CI=true, CI=1 or any other non-empty value except "false" and "0" means a CI run. */
 export function isCiEnv(env: Record<string, string | undefined>): boolean {
-  const v = env.CI;
-  return v !== undefined && v !== "" && v.toLowerCase() !== "false" && v !== "0";
+  return envIsOn(env.CI);
 }
 
 /** Exit codes are a public contract: 0 ran, 1 --ci found fix-first work, 2 could not run. */
@@ -50,7 +50,7 @@ export interface RunReport {
 }
 
 async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<RunReport> {
-  const args = parseCliArgs(argv);
+  const args = parseCliArgs(argv, io.env ?? {});
   const ran: Outcome = { kind: "ran", highFindings: 0, drift: false };
   switch (args.kind) {
     case "help":
@@ -63,7 +63,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       throw new ConfigError(args.message, args.hint === undefined ? {} : { hint: args.hint });
     case "run": {
       const env = io.env ?? {};
-      const ci = args.ci || isCiEnv(env);
+      const ci = args.ci;
       const startedAt = (io.now ?? (() => new Date()))();
       const log = createLogger({
         level: args.quiet ? "quiet" : args.verbose ? "verbose" : "normal",
