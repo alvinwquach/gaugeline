@@ -9,7 +9,7 @@ import {
 } from "../model.js";
 import { redact } from "../redact.js";
 import { RESULT_SCHEMA_VERSION as RESULT_SCHEMA } from "../result.js";
-import { runChecks } from "../runner.js";
+import { runCheckList } from "../runner.js";
 
 function check(
   id: string,
@@ -88,7 +88,7 @@ describe("model: unit", () => {
 
 describe("model: edge cases", () => {
   it("a check that throws: runner records it as a failed check, other checks still run", async () => {
-    const out = await runChecks(
+    const out = await runCheckList(
       [
         check("before", () => [{ ...finding, checkId: "before" }]),
         check("explodes", () => {
@@ -105,12 +105,18 @@ describe("model: edge cases", () => {
   });
 
   it("an async check that rejects is recorded as failed", async () => {
-    const out = await runChecks([check("rejects", () => Promise.reject(new Error("x")))], "input");
+    const out = await runCheckList(
+      [check("rejects", () => Promise.reject(new Error("x")))],
+      "input",
+    );
     expect(out.failed).toEqual(["rejects"]);
   });
 
   it("a check that returns undefined instead of []: treated as no findings, with a dev warning", async () => {
-    const out = await runChecks([check("lazy", () => undefined as unknown as Finding[])], "input");
+    const out = await runCheckList(
+      [check("lazy", () => undefined as unknown as Finding[])],
+      "input",
+    );
     expect(out.findings).toEqual([]);
     expect(out.passed).toEqual(["lazy"]);
     expect(out.failed).toEqual([]);
@@ -119,7 +125,7 @@ describe("model: edge cases", () => {
 
   it("evidence containing a secret-looking string is passed through redact() before output", async () => {
     const key = "sk_live_" + "51HxQ2abcdefghijklmnop";
-    const out = await runChecks(
+    const out = await runCheckList(
       [check("leaky", () => [{ ...finding, checkId: "leaky", evidence: `const k = "${key}"` }])],
       "input",
     );

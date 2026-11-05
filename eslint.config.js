@@ -32,12 +32,6 @@ const CORE_RESTRICTED_IMPORTS = {
       group: ["@gaugeline/cli/*", "**/packages/cli", "**/packages/cli/**", "**/cli/src/**"],
       message: "packages/core must not import from packages/cli.",
     },
-    {
-      // From packages/core/src/x.ts, ../../ is packages/; from deeper files it is caught by the
-      // boundary test, which resolves every specifier exactly.
-      group: ["../../*", "!../../core", "!../../core/**", "../../../**"],
-      message: "packages/core must not import files outside packages/core.",
-    },
   ],
 };
 
@@ -102,7 +96,7 @@ export default tseslint.config(
   },
   {
     // Tests may print and may reach repository scripts; the walker skips them too.
-    files: ["packages/core/src/__tests__/**/*.ts"],
+    files: ["packages/core/src/**/__tests__/**/*.ts"],
     rules: { "no-console": "off", "no-restricted-imports": "off" },
   },
   {
