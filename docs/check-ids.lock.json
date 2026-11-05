@@ -1,5 +1,8 @@
 [
   "ai-crawlers-blocked",
+  "app-link-dead",
+  "app-name-mismatch",
+  "app-smart-banner-mismatch",
   "broken-links",
   "canonical-elsewhere",
   "canonical-missing",

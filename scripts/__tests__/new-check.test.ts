@@ -125,6 +125,8 @@ beforeAll(() => {
     "scripts",
     "packages/core",
     "packages/fixtures",
+    // Core's cassette tests import the testkit.
+    "packages/testkit",
     "docs/check-ids.lock.json",
     "docs/checks.data.json",
     ".changeset/config.json",

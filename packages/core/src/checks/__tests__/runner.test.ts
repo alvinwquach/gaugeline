@@ -55,6 +55,9 @@ describe("runner: unit", () => {
     expect(ids).toEqual([...ids].sort());
     expect(ids).toEqual([
       "ai-crawlers-blocked",
+      "app-link-dead",
+      "app-name-mismatch",
+      "app-smart-banner-mismatch",
       "broken-links",
       "canonical-elsewhere",
       "canonical-missing",
@@ -105,6 +108,9 @@ describe("runner: edge cases", () => {
     // With no site context in this run, the robots, sitemap and feed checks find nothing.
     expect(out.passed.sort()).toEqual([
       "ai-crawlers-blocked",
+      "app-link-dead",
+      "app-name-mismatch",
+      "app-smart-banner-mismatch",
       "broken-links",
       "canonical-elsewhere",
       "feed-broken",

@@ -1,0 +1,34 @@
+{
+  "interactions": [
+    {
+      "body": "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Hollyhock Rewards</title>\n<meta name=\"apple-itunes-app\" content=\"app-id=6440000009, app-argument=https://hollyhock-app.example/\">\n</head>\n<body>\n<main>\n<h1>Hollyhock Rewards</h1>\n<p>An invented bakery's loyalty app, for Gaugeline's tests. Collect a stamp with every loaf and\nget the tenth one free. Nothing here is a real app, business or store listing.</p>\n<p><a href=\"https://apps.apple.com/gb/app/hollyhock-rewards/id6440000001\">App Store (UK)</a></p>\n</main>\n</body>\n</html>\n",
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://hollyhock-app.example/"
+    },
+    {
+      "body": "{\"resultCount\": 0, \"results\": []}",
+      "headers": {
+        "content-type": "text/javascript; charset=utf-8"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://itunes.apple.com/lookup?id=6440000001&country=gb"
+    },
+    {
+      "body": "{\"resultCount\": 1, \"results\": [{\"kind\": \"software\", \"trackId\": 6440000001, \"trackName\": \"Hollyhock Rewards\", \"bundleId\": \"example.hollyhock.6440000001\", \"trackViewUrl\": \"https://apps.apple.com/us/app/id6440000001\"}]}",
+      "headers": {
+        "content-type": "text/javascript; charset=utf-8"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://itunes.apple.com/lookup?id=6440000001&country=us"
+    }
+  ],
+  "name": "app-stores-regional",
+  "recordedAt": "2026-11-05T00:00:00.000Z",
+  "version": 1
+}

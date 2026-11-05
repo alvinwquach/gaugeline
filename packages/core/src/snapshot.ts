@@ -23,6 +23,8 @@ export interface PageSnapshot {
   jsonLdErrors: string[];
   og: Record<string, string>;
   scripts: string[];
+  /** The apple-itunes-app meta tag's content (Smart App Banner), if any. */
+  appleItunesApp?: string;
   /** Feeds the page advertises (link rel="alternate" with an RSS or Atom type), in document order. */
   feeds: { href: string; type: string; title?: string }[];
   forms: { action?: string; method?: string; hiddenFields: string[] }[];
@@ -194,6 +196,12 @@ export function buildSnapshot(hops: Hop[]): PageSnapshot {
     .get()
     .filter((s): s is string => s !== undefined);
 
+  const appBanner = $("meta[name]")
+    .filter((_, el) => ($(el).attr("name") ?? "").toLowerCase() === "apple-itunes-app")
+    .first()
+    .attr("content")
+    ?.trim();
+
   const feeds: PageSnapshot["feeds"] = [];
   $("link[rel][href]").each((_, el) => {
     const rels = ($(el).attr("rel") ?? "").toLowerCase().split(/\s+/);
@@ -244,6 +252,7 @@ export function buildSnapshot(hops: Hop[]): PageSnapshot {
     jsonLdErrors,
     og,
     scripts,
+    ...(appBanner ? { appleItunesApp: appBanner } : {}),
     feeds,
     forms,
     ids,

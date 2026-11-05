@@ -1,0 +1,106 @@
+{
+  "interactions": [
+    {
+      "body": "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<link rel=\"canonical\" href=\"https://hollyhock-app.example/\">\n<title>Hollyhock Rewards</title>\n<meta name=\"apple-itunes-app\" content=\"app-id=6440000009, app-argument=https://hollyhock-app.example/\">\n</head>\n<body>\n<main>\n<h1>Hollyhock Rewards</h1>\n<p>An invented bakery's loyalty app, for Gaugeline's tests. Collect a stamp with every loaf and\nget the tenth one free. Nothing here is a real app, business or store listing.</p>\n<p>Order ahead for collection, see this week's specials, and get a note on your birthday with a\nfree slice of whichever cake is on the counter that morning.</p>\n<p><a href=\"https://apps.apple.com/us/app/hollyhock-rewards/id6440000001\">Download on the App Store</a>\n<a href=\"https://apps.apple.com/gb/app/hollyhock-classic/id6440000002?mt=8\">Our old app (UK)</a>\n<a href=\"https://play.google.com/store/apps/details?id=example.hollyhock.rewards&amp;hl=en_GB\">Get it on Google Play</a>\n<a href=\"market://details?id=example.hollyhock.classic\">Old Android app</a></p>\n</main>\n</body>\n</html>\n",
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://hollyhock-app.example/"
+    },
+    {
+      "body": "{\"resultCount\": 1, \"results\": [{\"kind\": \"software\", \"trackId\": 6440000001, \"trackName\": \"Hollyhock Rewards\", \"bundleId\": \"example.hollyhock.6440000001\", \"trackViewUrl\": \"https://apps.apple.com/us/app/id6440000001\"}]}",
+      "headers": {
+        "content-type": "text/javascript; charset=utf-8"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://itunes.apple.com/lookup?id=6440000001&country=us"
+    },
+    {
+      "body": "{\"resultCount\": 0, \"results\": []}",
+      "headers": {
+        "content-type": "text/javascript; charset=utf-8"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://itunes.apple.com/lookup?id=6440000002&country=gb"
+    },
+    {
+      "body": "{\"resultCount\": 0, \"results\": []}",
+      "headers": {
+        "content-type": "text/javascript; charset=utf-8"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://itunes.apple.com/lookup?id=6440000002&country=us"
+    },
+    {
+      "body": "<!doctype html><html><head><title>Hollyhock Loyalty - Apps on Google Play</title><meta property=\"og:title\" content=\"Hollyhock Loyalty - Apps on Google Play\"></head><body></body></html>",
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://play.google.com/store/apps/details?id=example.hollyhock.rewards&hl=en"
+    },
+    {
+      "body": "<!doctype html><title>Not Found</title><p>We're sorry, the requested URL was not found on this server.</p>",
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "method": "GET",
+      "status": 404,
+      "url": "https://play.google.com/store/apps/details?id=example.hollyhock.classic&hl=en"
+    },
+    {
+      "body": "User-agent: *\nAllow: /\n\nSitemap: https://hollyhock-app.example/sitemap.xml\n",
+      "headers": {
+        "content-type": "text/plain; charset=utf-8"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://hollyhock-app.example/robots.txt"
+    },
+    {
+      "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\n  <url><loc>https://hollyhock-app.example/</loc></url>\n</urlset>\n",
+      "headers": {
+        "content-type": "application/xml"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://hollyhock-app.example/sitemap.xml"
+    },
+    {
+      "body": "",
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "method": "HEAD",
+      "status": 200,
+      "url": "https://hollyhock-app.example/"
+    },
+    {
+      "body": "not found",
+      "headers": {
+        "content-type": "text/plain; charset=utf-8"
+      },
+      "method": "GET",
+      "status": 404,
+      "url": "https://hollyhock-app.example/llms.txt"
+    },
+    {
+      "body": "",
+      "headers": {
+        "location": "https://hollyhock-app.example/"
+      },
+      "method": "GET",
+      "status": 301,
+      "url": "https://www.hollyhock-app.example/"
+    }
+  ],
+  "name": "app-stores",
+  "recordedAt": "2026-11-05T00:00:00.000Z",
+  "version": 1
+}

@@ -67,12 +67,13 @@ describe("check-adr: integration", () => {
     .filter((f) => f.endsWith(".md"))
     .map((name) => ({ name, text: readFileSync(join(adrDir, name), "utf8") }));
 
-  it("the three records and the template pass", () => {
+  it("the records and the template pass", () => {
     expect(files.map((f) => f.name).sort()).toEqual([
       "0000-template.md",
       "0001-read-only-by-construction.md",
       "0002-plain-rules-no-model-calls.md",
       "0003-no-telemetry-nothing-sent.md",
+      "0004-requests-the-checked-page-names.md",
       "README.md",
     ]);
     expect(checkAdrs(files, files.find((f) => f.name === "README.md")?.text ?? "")).toEqual([]);
