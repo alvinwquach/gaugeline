@@ -59,6 +59,10 @@ merged once CI is green on Node 18.17, 20 and 22.
   docs host to report GitHub deployments to an environment named `docs-preview`.
 - **Private vulnerability reporting (K12)**: turn it on in the repository's Settings > Code security
   (SECURITY.md already names it as the preferred route). The build cannot change repository settings.
+- **Reporting (X02)**: deploy `automation/google-apps-script/Code.gs` from the status Doc as a web app,
+  set its Script Properties (`REPORT_SECRET`, `SHEET_ID`, `STATUS_DOC_ID`, `CHANGELOG_DOC_ID`), then
+  add repository secrets `REPORT_POST_URL`, `REPORT_POST_SECRET` (and optionally `DEPLOY_HOOK_URL`).
+  Make the `pr-body` check required in branch protection. Until then on-merge does nothing.
 - **License**: `LICENSE` is MIT, "Copyright (c) 2026 Gaugeline contributors", matching the `license`
   field set since G01. Confirm the licence and the copyright holder.
 
@@ -95,7 +99,7 @@ merged once CI is green on Node 18.17, 20 and 22.
 | K10 | `01b/stability-and-deprecation` | merged | https://github.com/alvinwquach/gaugeline/pull/30 | 574 | STABILITY.md; core deprecate()/DEPRECATED (empty) and publicSurface({flags}) (flags passed in: core cannot import the CLI); public-surface.lock.json + scripts/check-surface.ts (pnpm surface; CI --check --base). Surface also tracks severities. Deprecated-flag E2E runs main() in process with an injected flag table (no flag is deprecated yet). |
 | K11 | `01b/decision-records` | merged | https://github.com/alvinwquach/gaugeline/pull/31 | 591 | docs/adr/ (template + 0001-0003, README index; repository docs, excluded from VitePress, linked from privacy/faq). scripts/check-adr.ts (CI). New: core lint rule banning fetch/http/https/net outside transport.ts; no-model-calls.test.ts (deps, imports, determinism); no-phone-home.test.ts records every socket via a --require preload. |
 | K12 | `01b/contributor-scaffolding` | merged | https://github.com/alvinwquach/gaugeline/pull/32 | 602 | SECURITY.md (refers to the Security page's address, never prints it), CODE_OF_CONDUCT.md (Covenant 2.1), issue forms + config.yml, CONTRIBUTING reorganised with the required sections. scripts/check-community.ts in CI; email scan allows packages/fixtures, docs site pages and files marked 'check-community: allow-email'. yaml devDep. Owner action: enable private vulnerability reporting. Also fixes a flaky G03b test that reused a closed port. |
-| X02 | `chore/02-reporting` | todo | | | Reporting: the changelog and status reports, from the pull request  [from guide 2] [P0] |
+| X02 | `chore/02-reporting` | merged | https://github.com/alvinwquach/gaugeline/pull/33 | 616 (611 + 5 skipped on 18.17) | Built from scratch (guide-2 files did not exist): scripts/reporting/{parse-pr,check-pr-body,on-merge}.ts (tsx), Code.gs, pr-body.yml, on-merge.yml (off until secrets exist), REPORTING.md, template Changelog/Section/Time-Spent. Apps Script deploy and secrets are owner actions. |
 | G09 | `02/robots-sitemap-feeds` | todo | | | robots.txt, sitemaps and feeds |
 | N04 | `02/ai-readability` | todo | | | How AI assistants read the site: llms.txt, AI crawler rules and quotable facts  [new: from your projects] [P1] |
 | G10 | `02/links-images-weight` | todo | | | Links and the shared sampler |
