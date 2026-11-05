@@ -60,3 +60,6 @@ export {
   alternateHost,
   createPageRegistry,
 } from "./checks/index.js";
+export type { ProgressEvent, ProgressSink, RequestInfo } from "./progress.js";
+export { checkSite } from "./site.js";
+export type { SiteCheck, SiteCheckOptions } from "./site.js";

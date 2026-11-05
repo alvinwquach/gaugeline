@@ -11,6 +11,9 @@ redirects twice and asks not to be indexed, the output is:
 
 ```
 Gaugeline 0.0.0 checking http://127.0.0.1:4000/
+ Loading the page without JavaScript
+ Reading robots.txt and the sitemap
+ Scanning the site's JavaScript for leaked keys
 
 ✗ Google sees an almost empty page
     2 words in the server-rendered HTML outside header, nav and footer (fewer than 60)
@@ -25,6 +28,9 @@ Gaugeline 0.0.0 checking http://127.0.0.1:4000/
 
 4 to look at, 2 to fix first.
 ```
+
+The indented lines are progress on stderr; a page with links also shows
+` Checking 24 links on the page`. `--quiet` hides them.
 
 `✗` is "Fix this first", `!` is "Fix soon", `·` is "Worth knowing" and `✓` is a check that
 passed. The grey line under each finding is the technical detail for whoever fixes it.
