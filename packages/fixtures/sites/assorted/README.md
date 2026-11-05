@@ -12,4 +12,6 @@ so a run of the built CLI over every fixture shows every check firing:
 - jsonld-invalid (one broken block), jsonld-404 (`/products/linen-thread` does not exist),
   structured-duplicate (Product in JSON-LD and as microdata).
 - og-url-mismatch (og:url is `/home`, the canonical is `/`), og-image-relative.
+- ics-no-vtimezone: `/classes.ics` uses TZID America/Los_Angeles with no VTIMEZONE.
+- event-location-mismatch: the Sewing circle is "at" Bobbin & Bolt but lists 41 Weft Street; the shop is at 7 Spindle Row.
 - stega-leak: the title ends with invisible Unicode tag characters, written by a script.

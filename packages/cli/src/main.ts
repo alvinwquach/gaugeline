@@ -51,6 +51,8 @@ export interface Deps {
   flags?: readonly FlagDef[];
   /** Defaults to core's DEPRECATED; tests pass deprecated environment variables. */
   deprecated?: ReadonlyMap<string, { since: string; removeIn: string; use?: string }>;
+  /** The run's clock, for date checks. Tests pass a fixed one. */
+  now?: () => Date;
 }
 
 export interface RunReport {
@@ -104,6 +106,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         // The walking skeleton (0.0.x) runs one check; an injected registry is used as given.
         ...(deps.registry === undefined && skeleton ? { only: skeleton } : {}),
         onProgress: (e) => log.progress(e),
+        ...(deps.now ? { now: deps.now } : {}),
       });
       if (args.json) {
         const json = buildResult({

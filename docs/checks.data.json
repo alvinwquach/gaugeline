@@ -30,6 +30,26 @@
     "tech": "<link rel=\"canonical\"> on the page points at another URL"
   },
   {
+    "id": "event-jsonld-mismatch",
+    "severity": "high",
+    "area": "Visitors",
+    "title": "The page and the calendar disagree about an event",
+    "what": "An event in the page's structured data has a different start time, name or place than the .ics calendar entry on the same day.",
+    "why": "Search results, the page and guests' phone calendars each show one of the two versions, so some guests turn up at the wrong time.",
+    "fix": "Correct whichever is wrong, then generate both from one source so they cannot drift.",
+    "tech": "Event JSON-LD and an .ics occurrence on the same local date: matched by normalised name, then start time and location compared; a lone occurrence that day with another name is reported as renamed"
+  },
+  {
+    "id": "event-past-upcoming",
+    "severity": "high",
+    "area": "Visitors",
+    "title": "The page still promotes an event that already happened",
+    "what": "An event in the page's structured data, or a card marked as the next or upcoming event, is dated before now.",
+    "why": "Guests plan around the date on the page. A night that already happened, still shown as next, sends people to a closed room or to a different night.",
+    "fix": "Update the card and the structured data when an event ends. Generating both from the calendar keeps them current.",
+    "tech": "an Event's endDate (or startDate when there is none) is before the run time, or a next/upcoming element's time[datetime] is; dates are read in the venue's time zone"
+  },
+  {
     "id": "feed-broken",
     "severity": "high",
     "area": "Search & sharing",
@@ -58,6 +78,16 @@
     "why": "Phones on slow connections wait seconds before anything shows, and search engines may stop reading the page before the end.",
     "fix": "Find what fills the HTML: usually a framework data payload, inlined SVG or CSS, or a long list rendered in full. Load it on demand or paginate it.",
     "tech": "the UTF-8 HTML body is over 2 MB (2,097,152 bytes); html-heavy is not reported for the same page"
+  },
+  {
+    "id": "ics-floating-time",
+    "severity": "high",
+    "area": "Visitors",
+    "title": "Your calendar shows the wrong hour on some phones",
+    "what": "Events in your .ics calendar have a start time with no time zone (no TZID and no Z).",
+    "why": "Phones read such a time in the guest's own zone, so anyone in another zone, or travelling, sees the event at the wrong hour.",
+    "fix": "Give each DTSTART a time zone, for example DTSTART;TZID=America/Los_Angeles:20261112T190000. Most calendar exports have a time zone setting.",
+    "tech": "a VEVENT's DTSTART has neither TZID nor a trailing Z (a floating time, RFC 5545 §3.3.5); all-day VALUE=DATE events are not reported"
   },
   {
     "id": "images-broken",
@@ -160,6 +190,16 @@
     "tech": "<meta name=\"apple-itunes-app\" content=\"app-id=...\"> differs from every apps.apple.com/.../id<digits> link on the page"
   },
   {
+    "id": "event-location-mismatch",
+    "severity": "medium",
+    "area": "Visitors",
+    "title": "An event at your venue lists a different address",
+    "what": "An event the page says is at the venue (by the venue's name or id) gives a different street address than the venue's own structured data.",
+    "why": "Maps and search results send guests to the event's address, so a stale one sends them to the wrong door.",
+    "fix": "Use the venue's own address in each event's location, ideally by referring to the venue's @id instead of repeating it.",
+    "tech": "Event location names the LocalBusiness (same name or @id) and its address differs by house number or ZIP"
+  },
+  {
     "id": "feed-invalid",
     "severity": "medium",
     "area": "Search & sharing",
@@ -188,6 +228,16 @@
     "why": "Every visitor downloads data the page may never show, and it delays the first paint on phones.",
     "fix": "Send only the fields the page renders. In Next.js, trim what getServerSideProps or a server component passes to client components.",
     "tech": "inline data scripts are over 300 KB (307,200 bytes) and more than half the HTML; not reported when html-huge is"
+  },
+  {
+    "id": "ics-no-vtimezone",
+    "severity": "medium",
+    "area": "Visitors",
+    "title": "Your calendar names a time zone it doesn't describe",
+    "what": "Events in your .ics calendar use a TZID, but the file has no VTIMEZONE section for it.",
+    "why": "The iCalendar standard requires the description. Some calendar apps fall back to UTC or the guest's zone without it, and show the wrong hour.",
+    "fix": "Export the calendar with time zone definitions included, or add a VTIMEZONE for each TZID the events use.",
+    "tech": "a DTSTART or DTEND TZID has no matching VTIMEZONE component (RFC 5545 §3.6.5)"
   },
   {
     "id": "image-width-absurd",
@@ -368,6 +418,16 @@
     "why": "Copies of the page with tracking parameters can be treated as separate pages.",
     "fix": "Add a self-referencing canonical tag.",
     "tech": "no <link rel=\"canonical\">"
+  },
+  {
+    "id": "event-missing-fields",
+    "severity": "low",
+    "area": "Visitors",
+    "title": "Some events are missing details search engines need",
+    "what": "An event in the page's structured data has no start date, no location or no event status.",
+    "why": "Google needs these to show the event in results, and the status is how a cancelled or moved night is shown as such.",
+    "fix": "Give every Event a startDate, a location and an eventStatus (for example https://schema.org/EventScheduled).",
+    "tech": "Event JSON-LD without startDate, location or eventStatus (one finding listing each event and what it lacks)"
   },
   {
     "id": "images-alt-missing",

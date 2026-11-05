@@ -47,6 +47,7 @@ Each run samples a fixed amount and never more. The numbers live in one frozen o
 | Feeds                            | 3       |
 | Links in llms.txt                | 10      |
 | Apps looked up in the stores     | 5       |
+| Calendars (.ics) read            | 3       |
 | JavaScript files                 | 15      |
 | Addresses inside structured data | 12      |
 | Requests at the same time        | 5       |

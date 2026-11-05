@@ -88,6 +88,14 @@ export type { ImageRef, ImageSample } from "./checks/index.js";
 export type { ProgressEvent, ProgressSink, RequestInfo } from "./progress.js";
 export { checkSite } from "./site.js";
 export { getOrNull, probe } from "./probe.js";
+export { calendarUrl, isIcs, lazyCalendars, readCalendars } from "./calendars.js";
+export type { CalendarOptions, CalendarRead } from "./calendars.js";
+export { contentLine, parseIcs, parseIcsTime, unescapeText, unfold } from "./ics/parse.js";
+export type { IcsEvent, IcsFile, IcsTime } from "./ics/parse.js";
+export { EXPAND_DAYS, expandCalendar, nextAfter, onDate, parseRule } from "./ics/expand.js";
+export type { Expansion, Occurrence } from "./ics/expand.js";
+export { isTimeZone, localDate, localTime, offsetAt, wallTimeAt, zonedToUtc } from "./ics/time.js";
+export type { WallTime } from "./ics/time.js";
 export {
   appRefs,
   appleLookupUrl,

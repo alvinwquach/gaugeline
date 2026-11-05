@@ -1,0 +1,7 @@
+{
+  "/calendar.ics": {
+    "headers": {
+      "content-type": "text/calendar; charset=utf-8"
+    }
+  }
+}

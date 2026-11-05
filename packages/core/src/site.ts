@@ -6,6 +6,7 @@ import type { ProgressSink } from "./progress.js";
 import { runChecks, type RunOptions, type RunResult } from "./run.js";
 import { dedupeUrls } from "./sample.js";
 import { lazyAppLookups } from "./apps.js";
+import { lazyCalendars } from "./calendars.js";
 import { lazyImageSample } from "./checks/images/refs.js";
 import { lazyLinkSample, linkCandidates } from "./links.js";
 import type { RunExpectations } from "./model.js";
@@ -23,6 +24,8 @@ export interface SiteCheckOptions {
   skip?: RunOptions["skip"];
   /** Values to compare against, such as the expected app name. */
   expect?: RunExpectations;
+  /** The run's clock, for date checks. Defaults to the real time. */
+  now?: () => Date;
 }
 
 export interface SiteCheck {
@@ -55,6 +58,8 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
       links: lazyLinkSample({ page: snapshot, fetcher: opts.fetcher, budget }),
       apps: lazyAppLookups({ page: snapshot, fetcher: opts.fetcher, budget }),
       images,
+      calendars: lazyCalendars({ page: snapshot, fetcher: opts.fetcher, budget }),
+      ...(opts.now ? { now: opts.now } : {}),
       imagesIfSampled: () => images.peek(),
       ...(opts.expect ? { expect: opts.expect } : {}),
     },
