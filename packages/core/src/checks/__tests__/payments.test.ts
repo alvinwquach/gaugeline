@@ -1,3 +1,4 @@
+// check-community: allow-email (invented addresses at reserved example domains: Zelle emails are a payment detail).
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { SITES_DIR, startFixture } from "../../../../fixtures/src/index.js";

@@ -64,12 +64,17 @@ whose structured data still has last season's hours, version 0.1.0 prints:
     1 test item in the main content: "(503) 555-0142"
 ! A page is missing a fact it should show
     pickup ("Pick up at the side window") is not on /order: it is only in an image description
+! The site shows two different handles for one payment service
+    Venmo has 2 values: "@marigold-tamales" on /; "@Marigold-Tamale" on /menu
 
 Checked all 2 links, all 3 sitemap pages, all 2 other pages, 1 payment link.
-4 to look at, 3 to fix first.
+5 to look at, 3 to fix first.
 ```
 
 The fixture's phone number is in the 555 range reserved for fiction, which is exactly what
-`mock-content-live` looks for. Each check that passed also prints a `✓ <id>` line, left out above.
-The output is asserted by `packages/cli/src/__tests__/facts.test.ts`, with the Venmo profile
-answered locally rather than by venmo.com.
+`mock-content-live` looks for. The fixture has no `gaugeline.payments.json`, so the mistyped handle
+is also `payment-handle-inconsistent` (see
+[Payment details everywhere](/docs/guides/payments)). Each check that passed also prints a
+`✓ <id>` line, left out above. The output is asserted by
+`packages/cli/src/__tests__/facts.test.ts`, with the Venmo profile answered locally rather than by
+venmo.com.
