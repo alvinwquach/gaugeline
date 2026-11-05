@@ -17,3 +17,5 @@ Not to find problems. Checks are plain rules, so the same site gets the same ans
 ### How much does it cost?
 
 Nothing. It's free and open source under the MIT license.
+
+Why checks never call a model, and what enforces it: [ADR-0002 Plain rules, no model calls](https://github.com/alvinwquach/gaugeline/blob/main/docs/adr/0002-plain-rules-no-model-calls.md).

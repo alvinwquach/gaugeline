@@ -9,7 +9,8 @@ export default defineConfig({
   cleanUrls: true,
   // Source files sit in docs/; every page is served under /docs/<slug>, the addresses people already link to.
   rewrites: Object.fromEntries(pages.map((p) => [`${p.slug}.md`, `docs/${p.slug}.md`])),
-  srcExclude: ["**/__tests__/**", "**/README.md"],
+  // Decision records are repository documents, read on GitHub, not site pages.
+  srcExclude: ["**/__tests__/**", "**/README.md", "adr/**"],
   themeConfig: {
     sidebar: NAV.map((g) => ({
       text: g.soon ? `${g.group} (soon)` : g.group,

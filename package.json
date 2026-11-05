@@ -34,7 +34,8 @@
     "new:check": "tsx scripts/new-check.ts",
     "docs:examples": "tsx scripts/docs-examples.ts",
     "dogfood": "tsx scripts/dogfood.ts",
-    "surface": "tsx scripts/check-surface.ts"
+    "surface": "tsx scripts/check-surface.ts",
+    "adr:check": "tsx scripts/check-adr.ts"
   },
   "devDependencies": {
     "@changesets/cli": "2.31.1",

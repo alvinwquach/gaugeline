@@ -25,3 +25,5 @@ browser would:
 
 Nothing. A check runs on your computer and the results stay there unless you send them somewhere
 yourself.
+
+Why nothing is sent anywhere, and what enforces it: [ADR-0003 No telemetry, nothing sent](https://github.com/alvinwquach/gaugeline/blob/main/docs/adr/0003-no-telemetry-nothing-sent.md).
