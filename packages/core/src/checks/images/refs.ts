@@ -189,7 +189,14 @@ export async function sampleImages({
   };
 }
 
-export function lazyImageSample(opts: ImageSampleOptions): () => Promise<ImageSample> {
+/** The shared image sample, built on first call. `peek` returns it only if something already asked. */
+export interface LazyImageSample {
+  (): Promise<ImageSample>;
+  peek(): Promise<ImageSample> | undefined;
+}
+
+export function lazyImageSample(opts: ImageSampleOptions): LazyImageSample {
   let pending: Promise<ImageSample> | undefined;
-  return () => (pending ??= sampleImages(opts));
+  const get = () => (pending ??= sampleImages(opts));
+  return Object.assign(get, { peek: () => pending });
 }

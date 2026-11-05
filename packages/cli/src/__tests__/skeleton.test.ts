@@ -82,6 +82,7 @@ describe("walking skeleton: unit", () => {
       "canonical-elsewhere",
       "noindex",
       "sitemap-missing",
+      "viewport",
     ]);
   });
 });

@@ -65,6 +65,8 @@ describe("runner: unit", () => {
       "feed-invalid",
       "feed-oversized",
       "host-duplicate",
+      "html-heavy",
+      "html-huge",
       "image-width-absurd",
       "images-alt-empty",
       "images-alt-missing",
@@ -76,6 +78,7 @@ describe("runner: unit", () => {
       "llms-txt-broken-links",
       "llms-txt-stale-facts",
       "noindex",
+      "page-heavy",
       "quotable-facts-disagree",
       "redirect-chain",
       "robots-block",
@@ -83,7 +86,9 @@ describe("runner: unit", () => {
       "sitemap-host",
       "sitemap-missing",
       "sitemap-redirects",
+      "tel-format",
       "thin-html",
+      "viewport",
     ]);
     for (const c of PAGE_CHECKS) expect(c.what && c.why && c.fix && c.tech).toBeTruthy();
   });
@@ -111,6 +116,7 @@ describe("runner: edge cases", () => {
       "canonical-missing",
       "noindex",
       "thin-html",
+      "viewport",
     ]);
     // With no site context in this run, the robots, sitemap and feed checks find nothing.
     expect(out.passed.sort()).toEqual([
@@ -123,6 +129,8 @@ describe("runner: edge cases", () => {
       "feed-broken",
       "feed-invalid",
       "feed-oversized",
+      "html-heavy",
+      "html-huge",
       "image-width-absurd",
       "images-alt-empty",
       "images-alt-missing",
@@ -133,6 +141,7 @@ describe("runner: edge cases", () => {
       "links-via-redirect",
       "llms-txt-broken-links",
       "llms-txt-stale-facts",
+      "page-heavy",
       "quotable-facts-disagree",
       "redirect-chain",
       "robots-block",
@@ -140,6 +149,7 @@ describe("runner: edge cases", () => {
       "sitemap-host",
       "sitemap-missing",
       "sitemap-redirects",
+      "tel-format",
     ]);
   });
 });
@@ -152,7 +162,7 @@ afterEach(async () => {
 describe("runner: integration", () => {
   it('fixture site "duplicate-host" produces exactly host-duplicate and nothing else', async () => {
     const words = Array.from({ length: 120 }, (_, i) => `word${i}`).join(" ");
-    const body = `<html><head><title>Fixture Bakery</title><link rel="canonical" href="http://duplicate.test/"></head><body><main><h1>Fixture Bakery</h1><p>${words}</p></main></body></html>`;
+    const body = `<html><head><title>Fixture Bakery</title><meta name="viewport" content="width=device-width"><link rel="canonical" href="http://duplicate.test/"></head><body><main><h1>Fixture Bakery</h1><p>${words}</p></main></body></html>`;
     const bare = await startServer({ "/": html(body) });
     const www = await startServer({ "/": html(body) });
     servers.push(bare, www);

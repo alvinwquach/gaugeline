@@ -32,6 +32,8 @@ export interface PageSnapshot {
   jsonLdErrors: string[];
   og: Record<string, string>;
   scripts: string[];
+  /** The meta name="viewport" tag's content, wherever it is in the document. */
+  viewport?: string;
   /** The apple-itunes-app meta tag's content (Smart App Banner), if any. */
   appleItunesApp?: string;
   /** Feeds the page advertises (link rel="alternate" with an RSS or Atom type), in document order. */
@@ -223,6 +225,11 @@ export function buildSnapshot(hops: Hop[]): PageSnapshot {
     .attr("content")
     ?.trim();
 
+  const viewport = $("meta[name]")
+    .filter((_, el) => ($(el).attr("name") ?? "").toLowerCase() === "viewport")
+    .first()
+    .attr("content");
+
   const feeds: PageSnapshot["feeds"] = [];
   $("link[rel][href]").each((_, el) => {
     const rels = ($(el).attr("rel") ?? "").toLowerCase().split(/\s+/);
@@ -274,6 +281,7 @@ export function buildSnapshot(hops: Hop[]): PageSnapshot {
     og,
     scripts,
     ...(appBanner ? { appleItunesApp: appBanner } : {}),
+    ...(viewport !== undefined ? { viewport } : {}),
     feeds,
     forms,
     ids,
