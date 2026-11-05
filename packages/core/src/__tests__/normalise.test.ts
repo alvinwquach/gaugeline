@@ -41,13 +41,14 @@ afterEach(async () => {
 });
 
 describe("normalise: integration", () => {
-  it("the fetcher's memo dedupes an uppercase host, default port and fragment to one request", async () => {
+  it("the fetcher's memo dedupes an uppercase scheme and a fragment to one request", async () => {
     const s = await startServer({ "/a": html("x") });
     servers.push(s);
     const f = createFetcher();
     const port = s.port;
-    await f.get(`http://LOCALHOST:${port}/a#x`);
-    await f.get(`http://localhost:${port}/a`);
+    // An IP host, not "localhost": Node 18 may resolve localhost to ::1 first.
+    await f.get(`HTTP://127.0.0.1:${port}/a#x`);
+    await f.get(`http://127.0.0.1:${port}/a`);
     expect(s.log).toHaveLength(1);
     // the spec's own pair, normalised to one memo key
     expect(normaliseUrl("https://Example.com:443/a#x")).toBe(normaliseUrl("https://example.com/a"));
