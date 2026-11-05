@@ -1,5 +1,13 @@
 # Every check
 
+What each check catches, why it matters, and how to fix it. Sorted by urgency.
+
+<!-- checks: the list below is generated from the registry (K06) -->
+
+## In this version
+
+What the code in this repository does today. The sections above describe the product as published on the site.
+
 Each check has a stable id, an area, a severity and four lines: what it catches, why it matters,
 how to fix it, and the technical line for whoever fixes it.
 
@@ -15,9 +23,9 @@ Areas: Search & sharing, Visitors, Sales & prices, Leads, Security & email, Laun
 
 <!-- Until K06 generates this list from the registry, entries are written by hand from the catalogue. -->
 
-## Search & sharing
+### Search & sharing
 
-### `canonical-elsewhere`
+#### `canonical-elsewhere`
 
 **This page tells Google to show a different page** · Fix this first (`high`)
 
@@ -26,7 +34,7 @@ Areas: Search & sharing, Visitors, Sales & prices, Leads, Security & email, Laun
 - **How to fix it:** Give each page a canonical tag that points at its own address. Shared SEO components are the usual cause.
 - **Technical line:** `<link rel="canonical"> on the page points at another URL`
 
-### `host-duplicate`
+#### `host-duplicate`
 
 **Your whole site exists at two addresses** · Fix this first (`high`)
 
@@ -35,7 +43,7 @@ Areas: Search & sharing, Visitors, Sales & prices, Leads, Security & email, Laun
 - **How to fix it:** Pick one address and 301-redirect the other to it at your host or DNS provider.
 - **Technical line:** `the alternate host returns 200 instead of 301`
 
-### `thin-html`
+#### `thin-html`
 
 **Google sees an almost empty page** · Fix this first (`high`)
 
@@ -44,7 +52,7 @@ Areas: Search & sharing, Visitors, Sales & prices, Leads, Security & email, Laun
 - **How to fix it:** Render the main content on the server. In Next.js, keep it out of client-only components and Suspense boundaries that wait for the browser.
 - **Technical line:** `word count of server-rendered HTML`
 
-### `noindex`
+#### `noindex`
 
 **This page asks search engines not to list it** · Fix this first (`high`)
 
@@ -53,7 +61,7 @@ Areas: Search & sharing, Visitors, Sales & prices, Leads, Security & email, Laun
 - **How to fix it:** Remove noindex from pages you want found.
 - **Technical line:** `<meta name="robots" content="noindex">`
 
-### `redirect-chain`
+#### `redirect-chain`
 
 **Your address takes several jumps to load** · Fix soon (`medium`)
 
@@ -62,7 +70,7 @@ Areas: Search & sharing, Visitors, Sales & prices, Leads, Security & email, Laun
 - **How to fix it:** Point every redirect straight at the final address.
 - **Technical line:** `more than one 3xx hop on the entered URL`
 
-### `canonical-missing`
+#### `canonical-missing`
 
 **The page doesn't say which address is the real one** · Worth knowing (`low`)
 
@@ -71,7 +79,7 @@ Areas: Search & sharing, Visitors, Sales & prices, Leads, Security & email, Laun
 - **How to fix it:** Add a self-referencing canonical tag.
 - **Technical line:** `no <link rel="canonical">`
 
-#### Notes on how these six decide
+##### Notes on how these six decide
 
 - `canonical-elsewhere` ignores a trailing slash, but a different scheme, `www`, host, path or a
   canonical carrying its own query string is a finding. A canonical that drops the page's tracking

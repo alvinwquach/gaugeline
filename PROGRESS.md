@@ -51,6 +51,9 @@ merged once CI is green on Node 18.17, 20 and 22.
 - **Dependabot**: its first PRs (alvinwquach/gaugeline#16, #17, #18) propose major bumps of the
   pinned actions (setup-node 7, pnpm/action-setup 6, checkout 7). Left open for the owner to review;
   the build does not merge dependency majors unattended.
+- **Docs hosting (K04)**: `.github/workflows/docs.yml` builds, tests and uploads the docs on every PR;
+  deploys are off. To turn them on: pick the host (scripts/deploy-docs.sh uses Netlify), add the
+  `NETLIFY_AUTH_TOKEN` secret and `NETLIFY_SITE_ID` variable, set `DOCS_DEPLOY_ENABLED=true`.
 - **License**: `LICENSE` is MIT, "Copyright (c) 2026 Gaugeline contributors", matching the `license`
   field set since G01. Confirm the licence and the copyright holder.
 
@@ -78,7 +81,7 @@ merged once CI is green on Node 18.17, 20 and 22.
 | K01 | `01b/walking-skeleton` | partial | https://github.com/alvinwquach/gaugeline/pull/21 | 453 | Built and switched off: NOT published (owner publishes). 0.0.2, skeleton gating (only canonical-elsewhere for 0.0.x), skeleton.yml (tag-triggered, gated on vars.PUBLISH_ENABLED), smoke-published.sh (docker by default; tested in local mode against a packed tarball), check-tag-version.ts. The docker/registry smoke itself has not run. |
 | K02 | `01b/changesets-release-pr` | merged | https://github.com/alvinwquach/gaugeline/pull/22 | 464 | Changesets 2.31.1 (3.x needs npm 10.9); human-id pinned to 4.1.3 by override (4.2 is ESM-only and breaks changesets on Node 18). release-pr.yml replaces G08 release.yml and K01 skeleton.yml; gated on vars.RELEASE_PR_ENABLED / PUBLISH_ENABLED. fixed group is [gaugeline] until G14b adds gaugeline-free. 0.1.0/0.1.1 site entries backfilled in docs/changelog.backfill.json (not in CHANGELOG.md, since this repo has not shipped them). |
 | K03 | `01b/pr-gate` | merged | https://github.com/alvinwquach/gaugeline/pull/23 | 480 | scripts/pr-gate.ts (tsx) + lib/gate.ts; separate pr-gate.yml (so label changes do not rerun the matrix); also flags a deleted changeset with none added. Skipped on changeset-release/main. |
-| K04 | `01b/docs-site` | todo | | | Docs site built from the repo, deployed on merge |
+| K04 | `01b/docs-site` | merged | https://github.com/alvinwquach/gaugeline/pull/24 | 488 + 5 docs build + 5 Playwright | 29 site pages converted from window.DOCS (TS-AST extraction, no eval) with site wording; repo-only pages (security, changelog, reference/json-schema) are UNLISTED in docs/nav.ts. Existing repo pages for 6 shared slugs keep their content under 'In this version'. VitePress 1.6.4 (vite 5; vite override scoped to vitest>vite). Soon pages without a callout get one from a theme banner (notReleased front matter). Docs build/E2E tests run in docs.yml (vitest.docs.config.ts, Playwright 1.63). |
 | K05 | `01b/docs-first-template` | todo | | | Docs first: write the page and --help before the code |
 | K06 | `01b/generated-checks-reference` | todo | | | Generate the checks reference from the registry |
 | K07 | `01b/new-check-generator` | todo | | | A generator for new checks |

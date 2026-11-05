@@ -6,3 +6,5 @@ CLAUDE.md
 PROGRESS.md
 packages/core/schema
 packages/testkit/cassettes
+docs/.vitepress/dist
+docs/.vitepress/cache
