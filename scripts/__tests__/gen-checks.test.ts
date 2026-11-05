@@ -61,7 +61,16 @@ describe("gen-checks: integration", () => {
       title: string;
       severity: string;
     }[];
-    expect(data.map((e) => [e.id, e.severity, e.title])).toEqual([
+    const g05 = new Set([
+      "canonical-elsewhere",
+      "host-duplicate",
+      "noindex",
+      "thin-html",
+      "redirect-chain",
+      "canonical-missing",
+    ]);
+    const rows = data.filter((e) => g05.has(e.id));
+    expect(rows.map((e) => [e.id, e.severity, e.title])).toEqual([
       ["canonical-elsewhere", "high", "This page tells Google to show a different page"],
       ["host-duplicate", "high", "Your whole site exists at two addresses"],
       ["noindex", "high", "This page asks search engines not to list it"],

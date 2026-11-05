@@ -21,6 +21,7 @@ export function page(overrides: Partial<PageSnapshot> = {}): PageSnapshot {
     jsonLdErrors: [],
     og: {},
     scripts: [],
+    feeds: [],
     forms: [],
     ids: new Set(),
     wordCount: 300,

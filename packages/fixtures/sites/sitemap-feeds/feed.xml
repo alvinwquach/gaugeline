@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Larkspur journal</title>
+    <link>{{origin}}/</link>
+    <description>Posts from an invented tea room.</description>
+    <item>
+      <title>Spring scones</title>
+      <link>{{origin}}/journal/spring-scones</link>
+      <guid>larkspur-journal-1</guid>
+    </item>
+    <item>
+      <title>A new oolong</title>
+      <link>/journal/new-oolong</link>
+      <guid>larkspur-journal-2</guid>
+    </item>
+  </channel>
+</rss>

@@ -1,4 +1,12 @@
+import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
+
+/** Every check in the generated reference: the page must list them all. */
+const CHECK_COUNT = (
+  JSON.parse(
+    readFileSync(new URL("../docs/checks.data.json", import.meta.url), "utf8"),
+  ) as unknown[]
+).length;
 
 test("/docs/checks?id=canonical-elsewhere shows that check in view and expanded", async ({
   page,
@@ -19,7 +27,7 @@ test("/docs/checks#host-duplicate does the same for that check", async ({ page }
 test("/docs/checks?id=nope shows the full list and the note", async ({ page }) => {
   await page.goto("/docs/checks?id=nope");
   await expect(page.getByText('No check has the id "nope". Here is the full list.')).toBeVisible();
-  await expect(page.locator("details.check")).toHaveCount(6);
+  await expect(page.locator("details.check")).toHaveCount(CHECK_COUNT);
 });
 
 test("the area filter set to Visitors hides a Search & sharing check", async ({ page }) => {
@@ -40,6 +48,6 @@ test.describe("with JavaScript disabled", () => {
   test.use({ javaScriptEnabled: false });
   test("the page still lists every check as static HTML", async ({ page }) => {
     await page.goto("/docs/checks");
-    await expect(page.locator("details.check")).toHaveCount(6);
+    await expect(page.locator("details.check")).toHaveCount(CHECK_COUNT);
   });
 });

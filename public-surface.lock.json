@@ -14,17 +14,33 @@
   "checkIds": [
     "canonical-elsewhere",
     "canonical-missing",
+    "feed-broken",
+    "feed-invalid",
+    "feed-oversized",
     "host-duplicate",
     "noindex",
     "redirect-chain",
+    "robots-block",
+    "sitemap-dead",
+    "sitemap-host",
+    "sitemap-missing",
+    "sitemap-redirects",
     "thin-html"
   ],
   "severities": {
     "canonical-elsewhere": "high",
     "canonical-missing": "low",
+    "feed-broken": "high",
+    "feed-invalid": "medium",
+    "feed-oversized": "medium",
     "host-duplicate": "high",
     "noindex": "high",
     "redirect-chain": "medium",
+    "robots-block": "high",
+    "sitemap-dead": "high",
+    "sitemap-host": "medium",
+    "sitemap-missing": "medium",
+    "sitemap-redirects": "medium",
     "thin-html": "high"
   },
   "envVars": [
