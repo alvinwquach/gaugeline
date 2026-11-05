@@ -1,0 +1,6 @@
+{
+  "hosts": [
+    "assorted.test",
+    "staging.assorted.test"
+  ]
+}

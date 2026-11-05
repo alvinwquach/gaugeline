@@ -124,20 +124,25 @@ export function normalise(text: string, origin: string, address = "shop.example"
   const page = /^[a-z]+:\/\//i.test(address)
     ? new URL(address).origin
     : `https://${address.split("/")[0]}`;
-  return text
-    .split(origin)
-    .join(page)
-    .replace(/Gaugeline \d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?/g, "Gaugeline X.Y.Z")
-    .replace(ANSI, "")
-    .replace(/(?<![\w.:/])(?:\/(?:[^\s/:"'<>]+\/)+|[A-Za-z]:\\(?:[^\s\\"'<>]+\\)+)/g, "./")
-    .replace(
-      /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})/g,
-      "2026-01-01T00:00:00.000Z",
-    )
-    .split("\n")
-    .map((l) => l.replace(/[ \t]+$/, ""))
-    .join("\n")
-    .replace(/\n+$/, "");
+  return (
+    text
+      .split(origin)
+      .join(page)
+      .replace(/Gaugeline \d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?/g, "Gaugeline X.Y.Z")
+      .replace(ANSI, "")
+      .replace(/(?<![\w.:/])(?:\/(?:[^\s/:"'<>]+\/)+|[A-Za-z]:\\(?:[^\s\\"'<>]+\\)+)/g, "./")
+      .replace(
+        /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})/g,
+        "2026-01-01T00:00:00.000Z",
+      )
+      .split("\n")
+      .map((l) => l.replace(/[ \t]+$/, ""))
+      // "passed checks": one "✓ <id>" line per check that passed is left out of docs blocks; the list
+      // grows with every new check and says nothing about the example.
+      .filter((l) => !/^✓ [a-z0-9-]+$/.test(l))
+      .join("\n")
+      .replace(/\n+$/, "")
+  );
 }
 
 export interface RunResult {

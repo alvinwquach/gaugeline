@@ -55,8 +55,7 @@ Checked 1 sitemap page, all 3 llms.txt links.
 2 to look at, none to fix first.
 ```
 
-These checks run from version 0.1.0; version 0.0.x runs one check (see
-[Quick start](../quick-start.md)). Each check that passed also prints a `✓ <id>` line, left out above. The output is asserted by
+These checks run from version 0.1.0; see [Quick start](../quick-start.md). Each check that passed also prints a `✓ <id>` line, left out above. The output is asserted by
 `packages/cli/src/__tests__/ai-readability.test.ts`.
 
 ## What it requests

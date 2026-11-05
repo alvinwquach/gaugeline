@@ -1,0 +1,64 @@
+import { fileURLToPath } from "node:url";
+import { createPageRegistry } from "@gaugeline/core";
+import { startFixture } from "@gaugeline/fixtures";
+import { describe, expect, it } from "vitest";
+import { runBin } from "./helpers/bin.js";
+
+const MAP_HOSTS = fileURLToPath(new URL("./helpers/map-hosts.cjs", import.meta.url));
+
+/** Every fixture whose findings, together, should cover the catalogue. */
+const FIXTURES = [
+  "quick-start",
+  "duplicate-host",
+  "noindex-header",
+  "redirect-chain",
+  "thin-html",
+  "weight",
+  "sitemap-feeds",
+  "ai-blanket",
+  "ai-explicit",
+  "llms-stale",
+  "links",
+  "images",
+  "assorted",
+];
+
+/**
+ * The App Store and Google Play checks answer by asking apple.com and google.com over HTTPS. Tests
+ * never use the live internet, so those three are confirmed in-process against recorded answers
+ * (packages/cli/src/__tests__/app-store-links.test.ts), not through the built bin.
+ */
+const NEEDS_LIVE_STORES = new Set([
+  "app-link-dead",
+  "app-name-mismatch",
+  "app-smart-banner-mismatch",
+]);
+
+async function findingsOf(name: string): Promise<string[]> {
+  const site = await startFixture(name);
+  try {
+    const env: NodeJS.ProcessEnv = { NODE_OPTIONS: `--require=${MAP_HOSTS}` };
+    if (Object.keys(site.hosts).length > 0) env.GAUGELINE_TEST_HOSTS = JSON.stringify(site.hosts);
+    const r = await runBin([site.origin, "--json", "--allow-private"], env);
+    expect(r.status, `${name}: ${r.stderr}`).toBe(0);
+    const json = JSON.parse(r.stdout) as { findings: { checkId: string }[] };
+    return json.findings.map((f) => f.checkId);
+  } finally {
+    await site.close();
+  }
+}
+
+describe("every merged check fires: e2e (the built bin at its package version, over the fixtures)", () => {
+  it("the fixtures' findings together cover every registered check", async () => {
+    const fired = new Map<string, string[]>();
+    for (const name of FIXTURES) {
+      for (const id of await findingsOf(name)) fired.set(id, [...(fired.get(id) ?? []), name]);
+    }
+    const expected = createPageRegistry()
+      .all()
+      .map((c) => c.id)
+      .filter((id) => !NEEDS_LIVE_STORES.has(id))
+      .sort();
+    expect([...fired.keys()].filter((id) => !NEEDS_LIVE_STORES.has(id)).sort()).toEqual(expected);
+  }, 120_000);
+});
