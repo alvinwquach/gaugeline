@@ -181,3 +181,33 @@ describe("cli: blocked addresses", () => {
     expect(r.stderr).not.toMatch(/\n\s+at /);
   });
 });
+
+describe("cli: install paths", () => {
+  it("the bundled bin runs from a folder whose path has spaces", async () => {
+    const { copyFileSync, mkdtempSync, mkdirSync, rmSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const { execFile } = await import("node:child_process");
+    const { promisify } = await import("node:util");
+    const { bin } = await import("./helpers/bin.js");
+    const root = mkdtempSync(join(tmpdir(), "gaugeline e2e "));
+    try {
+      const dir = join(root, "node modules", "gaugeline with space", "dist");
+      mkdirSync(dir, { recursive: true });
+      copyFileSync(bin, join(dir, "index.js"));
+      // As installed: the package's own package.json says the bundle is an ES module.
+      copyFileSync(join(bin, "..", "..", "package.json"), join(dir, "..", "package.json"));
+      const r = await promisify(execFile)(
+        process.execPath,
+        [join(dir, "index.js"), `${site.origin}/`, "--allow-private"],
+        {
+          encoding: "utf8",
+          env: { ...process.env, CI: "" },
+        },
+      );
+      expect(r.stdout).toContain("Nothing to look at.");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+});

@@ -1,1 +1,2 @@
 * text=auto eol=lf
+packages/fixtures/sites/crlf/** -text

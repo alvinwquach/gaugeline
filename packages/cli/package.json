@@ -20,5 +20,22 @@
   },
   "devDependencies": {
     "@gaugeline/core": "workspace:*"
-  }
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alvinwquach/gaugeline.git",
+    "directory": "packages/cli"
+  },
+  "keywords": [
+    "seo",
+    "website",
+    "check",
+    "canonical",
+    "ci",
+    "read-only"
+  ]
 }
