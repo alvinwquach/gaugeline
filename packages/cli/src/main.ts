@@ -16,6 +16,7 @@ import { formatError, toOutcome } from "./fail.js";
 import { envIsOn, type FlagDef } from "./flags.js";
 import { createLogger } from "./logger.js";
 import { formatTerminal } from "./reporter.js";
+import { readSchemaRules } from "./schema-config.js";
 import { skeletonOnly } from "./skeleton.js";
 import { VERSION } from "./version.js";
 
@@ -53,6 +54,8 @@ export interface Deps {
   deprecated?: ReadonlyMap<string, { since: string; removeIn: string; use?: string }>;
   /** The run's clock, for date checks. Tests pass a fixed one. */
   now?: () => Date;
+  /** Where gaugeline.schema.json is looked for. Defaults to the current directory. */
+  cwd?: string;
 }
 
 export interface RunReport {
@@ -84,6 +87,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         if (name && (env[name] ?? "") !== "") deprecate(key, d, warn);
       }
       const startedAt = (io.now ?? (() => new Date()))();
+      const schemaRules = readSchemaRules(deps.cwd ?? process.cwd());
       const log = createLogger({
         level: args.quiet ? "quiet" : args.verbose ? "verbose" : "normal",
         stream: io.stderr,
@@ -107,6 +111,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         ...(deps.registry === undefined && skeleton ? { only: skeleton } : {}),
         onProgress: (e) => log.progress(e),
         ...(deps.now ? { now: deps.now } : {}),
+        ...(schemaRules ? { schemaRules } : {}),
       });
       if (args.json) {
         const json = buildResult({

@@ -1,6 +1,7 @@
+import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { createPageRegistry } from "@gaugeline/core";
-import { startFixture } from "@gaugeline/fixtures";
+import { SITES_DIR, startFixture } from "@gaugeline/fixtures";
 import { describe, expect, it } from "vitest";
 import { runBin } from "./helpers/bin.js";
 
@@ -23,6 +24,8 @@ const FIXTURES = [
   "assorted",
   "venue",
   "content-hygiene",
+  "northwind",
+  "schema-drift",
 ];
 
 /**
@@ -45,7 +48,10 @@ async function findingsOf(name: string): Promise<string[]> {
       GAUGELINE_TEST_NOW: "2026-11-05T20:00:00Z",
     };
     if (Object.keys(site.hosts).length > 0) env.GAUGELINE_TEST_HOSTS = JSON.stringify(site.hosts);
-    const r = await runBin([site.origin, "--json", "--allow-private"], env);
+    // A fixture with a schema guide is run from its own folder, where the CLI looks for it.
+    const dir = `${SITES_DIR}${name}`;
+    const cwd = existsSync(`${dir}/gaugeline.schema.json`) ? dir : undefined;
+    const r = await runBin([site.origin, "--json", "--allow-private"], env, cwd ? { cwd } : {});
     expect(r.status, `${name}: ${r.stderr}`).toBe(0);
     const json = JSON.parse(r.stdout) as { findings: { checkId: string }[] };
     return json.findings.map((f) => f.checkId);

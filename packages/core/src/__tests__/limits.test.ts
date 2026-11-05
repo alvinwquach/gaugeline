@@ -36,6 +36,7 @@ describe("LIMITS and Budget: unit", () => {
       llmsTxtLinks: 10,
       appLinks: 5,
       calendars: 3,
+      pages: 4,
       scripts: 15,
       structuredDataAddresses: 12,
       concurrency: 5,

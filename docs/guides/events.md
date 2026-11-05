@@ -42,7 +42,7 @@ run's clock set to 5 November 2026, version 0.1.0 prints:
 · Some events are missing details search engines need
     "Karaoke" has no eventStatus
 
-Checked 1 link, all 2 sitemap pages, 1 calendar, 1 address in structured data.
+Checked 1 link, all 2 sitemap pages, 1 calendar, 1 other page, 1 address in structured data.
 4 to look at, 3 to fix first.
 ```
 

@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta property="og:image" content="{{origin}}/og.png">
+<title>About us | Northwind Clinics</title>
+<link rel="canonical" href="{{origin}}/about">
+<script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "{{origin}}/#organization",
+      "name": "Northwind Clinics Ltd",
+      "telephone": "+1 503-555-0166"
+    },
+    {
+      "@type": "AboutPage",
+      "@id": "{{origin}}/about#webpage",
+      "isPartOf": {
+        "@id": "{{origin}}/#website"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "{{origin}}/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "About",
+          "item": "{{origin}}/about"
+        }
+      ]
+    }
+  ]
+}</script>
+</head>
+<body>
+<header><nav><a href="/">Northwind Clinics</a> <a href="/clinics">Clinics</a> <a href="/about">About</a></nav></header>
+<main>
+<h1>About us</h1>
+<p>Northwind Clinics is an invented chain of walk-in clinics used only in Gaugeline's tests. Every name, address and page here is made up. Walk in for minor injuries, vaccinations and travel advice, or book a same-day appointment online with one of our nurse practitioners.</p>
+
+</main>
+</body>
+</html>

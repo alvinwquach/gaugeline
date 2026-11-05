@@ -47,6 +47,12 @@ import { placeholderText } from "./placeholder-text.js";
 import { quotableFactsDisagree } from "./quotable-facts-disagree.js";
 import { redirectChain } from "./redirect-chain.js";
 import { robotsBlock } from "./robots-block.js";
+import { schemaBreadcrumbMismatch } from "./schema-breadcrumb-mismatch.js";
+import { schemaBreadcrumbStart } from "./schema-breadcrumb-start.js";
+import { schemaDanglingRef } from "./schema-dangling-ref.js";
+import { schemaIdDrift } from "./schema-id-drift.js";
+import { schemaOrgRedefined } from "./schema-org-redefined.js";
+import { schemaTemplateMissingType } from "./schema-template-missing-type.js";
 import { sitemapDead } from "./sitemap-dead.js";
 import { sitemapHost } from "./sitemap-host.js";
 import { sitemapMissing } from "./sitemap-missing.js";
@@ -106,6 +112,12 @@ export const PAGE_CHECKS = [
   quotableFactsDisagree,
   redirectChain,
   robotsBlock,
+  schemaBreadcrumbMismatch,
+  schemaBreadcrumbStart,
+  schemaDanglingRef,
+  schemaIdDrift,
+  schemaOrgRedefined,
+  schemaTemplateMissingType,
   sitemapDead,
   sitemapHost,
   sitemapMissing,

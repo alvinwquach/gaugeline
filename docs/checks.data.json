@@ -170,6 +170,16 @@
     "tech": "robots.txt: User-agent: * with Disallow: / and no Allow that overrides it"
   },
   {
+    "id": "schema-id-drift",
+    "severity": "high",
+    "area": "Search & sharing",
+    "title": "Your organization has more than one identity in structured data",
+    "what": "The Organization or WebSite @id differs from the one in your schema guide, or differs from page to page.",
+    "why": "Search engines join structured data across pages by @id. Two ids make two organizations, splitting what is known about yours.",
+    "fix": "Use one fixed @id for the Organization and one for the WebSite on every page, for example https://example.com/#organization.",
+    "tech": "an Organization or WebSite @id (compared after resolving and trimming a trailing slash) differs from organizationId/websiteId, or, with no guide, differs between the sampled pages"
+  },
+  {
     "id": "sitemap-dead",
     "severity": "high",
     "area": "Search & sharing",
@@ -400,6 +410,46 @@
     "tech": "more than one 3xx hop on the entered URL"
   },
   {
+    "id": "schema-breadcrumb-mismatch",
+    "severity": "medium",
+    "area": "Search & sharing",
+    "title": "A breadcrumb ends on a different page",
+    "what": "The last item of a page's breadcrumb structured data points at an address other than the page's own canonical.",
+    "why": "The trail should end where the visitor is. One that ends elsewhere usually means the breadcrumb was copied from another page.",
+    "fix": "Make the last ListItem's item the page's canonical address, or leave the last item's URL out.",
+    "tech": "the highest-position ListItem has a URL that differs from the canonical (or the page address) by scheme, host, path or query; needs a gaugeline.schema.json"
+  },
+  {
+    "id": "schema-dangling-ref",
+    "severity": "medium",
+    "area": "Search & sharing",
+    "title": "Structured data refers to something that isn't there",
+    "what": "A structured data reference ({\"@id\": ...}) points at a node that is not defined on the page or on the other pages checked.",
+    "why": "Search engines can't follow the reference, so whatever it stands for (the publisher, the author, the organization) is lost.",
+    "fix": "Define the node the reference names (usually on the homepage), or correct the @id to the one you use.",
+    "tech": "an object with only an @id resolves (after normalisation) to no @id defined on the sampled pages"
+  },
+  {
+    "id": "schema-org-redefined",
+    "severity": "medium",
+    "area": "Search & sharing",
+    "title": "Pages redefine your organization instead of referring to it",
+    "what": "Pages other than the homepage define the Organization or WebSite again, with its properties, instead of referring to the one node by its @id as your schema guide says.",
+    "why": "Copies drift: one page gets an old logo or phone number, and search engines see several organizations where there should be one.",
+    "fix": "On every other page, write {\"@id\": \"<the configured id>\"} where the Organization or WebSite is needed, and define it once on the homepage.",
+    "tech": "an Organization or WebSite node with properties beyond @id and @type on a page other than / (needs organizationId or websiteId in gaugeline.schema.json)"
+  },
+  {
+    "id": "schema-template-missing-type",
+    "severity": "medium",
+    "area": "Search & sharing",
+    "title": "A page is missing structured data its template requires",
+    "what": "A page that matches one of your schema guide's templates (for example /blog/*) lacks a type the guide requires there, such as Article or BreadcrumbList.",
+    "why": "Rich results for that kind of page depend on the type, and one template that drifted usually means every page built from it did.",
+    "fix": "Add the missing type to the template's structured data component.",
+    "tech": "the most specific matching template's require list has a type missing from the page's JSON-LD (@type anywhere, @graph included); common subtypes count (an AboutPage is a WebPage, a BlogPosting an Article); needs templates in gaugeline.schema.json"
+  },
+  {
     "id": "sitemap-host",
     "severity": "medium",
     "area": "Search & sharing",
@@ -548,6 +598,16 @@
     "why": "When the page is shared in a chat or a social post, it shows as a plain link with no picture, which fewer people click.",
     "fix": "Add <meta property=\"og:image\" content=\"https://...\"> with a 1200 by 630 picture for the page.",
     "tech": "no og:image (or og:image:url) meta property"
+  },
+  {
+    "id": "schema-breadcrumb-start",
+    "severity": "low",
+    "area": "Search & sharing",
+    "title": "Breadcrumbs don't start where your guide says",
+    "what": "The first item of a page's breadcrumb structured data is not the Home name and address your schema guide sets.",
+    "why": "Search results show the breadcrumb trail; one that starts somewhere else on some pages looks inconsistent and can point at the wrong page.",
+    "fix": "Start every BreadcrumbList with the configured first item, for example Home at /.",
+    "tech": "the lowest-position ListItem's name or URL differs from breadcrumbs.firstName / breadcrumbs.firstUrl in gaugeline.schema.json (name case ignored, URL resolved)"
   },
   {
     "id": "tel-format",
