@@ -89,6 +89,25 @@ export type { ProgressEvent, ProgressSink, RequestInfo } from "./progress.js";
 export { checkSite } from "./site.js";
 export { getOrNull, probe } from "./probe.js";
 export { lazyPages, samplePages } from "./pages.js";
+export {
+  ISO_639_1,
+  isLanguageTag,
+  languageMap,
+  languageRulesSchema,
+  lazyLanguageGroup,
+  pageKey,
+  pagePrices,
+  parsePrice,
+  primaryLanguage,
+  readLanguageGroup,
+  twinUrl,
+} from "./languages.js";
+export type {
+  LanguageGroup,
+  LanguageOptions,
+  LanguageRules,
+  LanguageVersion,
+} from "./languages.js";
 export type { PagesOptions } from "./pages.js";
 export {
   flattenSchema,

@@ -4,6 +4,7 @@ import type { Budget } from "./limits.js";
 import type { findingSchema } from "./result.js";
 import type { AppLookup } from "./apps.js";
 import type { CalendarRead } from "./calendars.js";
+import type { LanguageGroup, LanguageRules } from "./languages.js";
 import type { SchemaRules } from "./schema-rules.js";
 import type { PageSnapshot } from "./snapshot.js";
 import type { ImageSample } from "./checks/images/refs.js";
@@ -89,6 +90,10 @@ export interface CheckContext {
   calendars?: () => Promise<CalendarRead[]>;
   /** The checked page and a few other same-site pages, fetched once on first use. */
   pages?: () => Promise<PageSnapshot[]>;
+  /** The checked page's other-language versions, read once on first use. */
+  languages?: () => Promise<LanguageGroup>;
+  /** How the site spells its language versions (gaugeline.languages.json). */
+  languageRules?: LanguageRules;
   /** The team's schema guide, when one is configured (gaugeline.schema.json). */
   schemaRules?: SchemaRules;
   /** The run's clock. Injectable so every date check is deterministic; defaults to the real time. */

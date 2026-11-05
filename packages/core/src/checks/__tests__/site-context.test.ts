@@ -88,6 +88,7 @@ function emptySite(overrides: Partial<SiteContext> = {}): SiteContext {
     robotsState: "missing",
     sitemaps: [],
     sitemapUrls: [],
+    sitemapAlternates: [],
     sitemapSample: [],
     feeds: [],
     llms: { url: "https://tea.example/llms.txt", state: "missing", file: null },

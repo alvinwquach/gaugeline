@@ -7,6 +7,7 @@ import { runChecks, type RunOptions, type RunResult } from "./run.js";
 import { dedupeUrls } from "./sample.js";
 import { lazyAppLookups } from "./apps.js";
 import { lazyCalendars } from "./calendars.js";
+import { lazyLanguageGroup, type LanguageRules } from "./languages.js";
 import { lazyPages } from "./pages.js";
 import type { SchemaRules } from "./schema-rules.js";
 import { lazyImageSample } from "./checks/images/refs.js";
@@ -30,6 +31,8 @@ export interface SiteCheckOptions {
   now?: () => Date;
   /** The team's schema guide, for the structured data rules checks. */
   schemaRules?: SchemaRules;
+  /** How the site spells its language versions. */
+  languageRules?: LanguageRules;
 }
 
 export interface SiteCheck {
@@ -54,17 +57,26 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
   sink({ step: "links", count: Math.min(sameSite.length, budget.remaining("links")) });
   sink({ step: "scripts" });
   const images = lazyImageSample({ page: snapshot, fetcher: opts.fetcher, budget });
+  const site = lazySiteContext({ page: snapshot, fetcher: opts.fetcher, budget });
   const result = await runChecks(snapshot, opts.registry ?? createPageRegistry(), {
     ctx: {
       fetcher: opts.fetcher,
       budget,
-      site: lazySiteContext({ page: snapshot, fetcher: opts.fetcher, budget }),
+      site,
       links: lazyLinkSample({ page: snapshot, fetcher: opts.fetcher, budget }),
       apps: lazyAppLookups({ page: snapshot, fetcher: opts.fetcher, budget }),
       images,
       calendars: lazyCalendars({ page: snapshot, fetcher: opts.fetcher, budget }),
       ...(opts.now ? { now: opts.now } : {}),
       pages: lazyPages({ page: snapshot, fetcher: opts.fetcher, budget }),
+      languages: lazyLanguageGroup({
+        page: snapshot,
+        fetcher: opts.fetcher,
+        budget,
+        ...(opts.languageRules ? { rules: opts.languageRules } : {}),
+        sitemapAlternates: async () => (await site()).sitemapAlternates,
+      }),
+      ...(opts.languageRules ? { languageRules: opts.languageRules } : {}),
       ...(opts.schemaRules ? { schemaRules: opts.schemaRules } : {}),
       imagesIfSampled: () => images.peek(),
       ...(opts.expect ? { expect: opts.expect } : {}),

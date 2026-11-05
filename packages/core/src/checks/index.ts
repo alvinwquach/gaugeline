@@ -16,6 +16,8 @@ import { feedBroken } from "./feed-broken.js";
 import { feedInvalid } from "./feed-invalid.js";
 import { feedOversized } from "./feed-oversized.js";
 import { hostDuplicate } from "./host-duplicate.js";
+import { hreflangBadCode } from "./hreflang-bad-code.js";
+import { hreflangNotReciprocal } from "./hreflang-not-reciprocal.js";
 import { htmlHeavy } from "./html-heavy.js";
 import { htmlHuge } from "./html-huge.js";
 import { icsFloatingTime } from "./ics-floating-time.js";
@@ -29,6 +31,10 @@ import { imagesLegacyFormat } from "./images-legacy-format.js";
 import { imagesLegacyWp } from "./images-legacy-wp.js";
 import { jsonld404 } from "./jsonld-404.js";
 import { jsonldInvalid } from "./jsonld-invalid.js";
+import { langAttrMismatch } from "./lang-attr-mismatch.js";
+import { langPriceMismatch } from "./lang-price-mismatch.js";
+import { langTwinMissing } from "./lang-twin-missing.js";
+import { langUntranslated } from "./lang-untranslated.js";
 import { linksVagueText } from "./links-vague-text.js";
 import { linksViaRedirect } from "./links-via-redirect.js";
 import { linksWrapped } from "./links-wrapped.js";
@@ -81,6 +87,8 @@ export const PAGE_CHECKS = [
   feedInvalid,
   feedOversized,
   hostDuplicate,
+  hreflangBadCode,
+  hreflangNotReciprocal,
   htmlHeavy,
   htmlHuge,
   icsFloatingTime,
@@ -94,6 +102,10 @@ export const PAGE_CHECKS = [
   imagesLegacyWp,
   jsonld404,
   jsonldInvalid,
+  langAttrMismatch,
+  langPriceMismatch,
+  langTwinMissing,
+  langUntranslated,
   linksVagueText,
   linksViaRedirect,
   linksWrapped,
