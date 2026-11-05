@@ -23,7 +23,8 @@
     "changeset": "changeset",
     "version": "changeset version && pnpm docs:changelog",
     "release": "pnpm build && changeset publish",
-    "docs:changelog": "tsx scripts/changelog-to-docs.ts"
+    "docs:changelog": "tsx scripts/changelog-to-docs.ts",
+    "pr-gate": "tsx scripts/pr-gate.ts"
   },
   "devDependencies": {
     "@changesets/cli": "2.31.1",
