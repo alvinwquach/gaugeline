@@ -7,6 +7,7 @@ import { appSmartBannerMismatch } from "./app-smart-banner-mismatch.js";
 import { brokenLinks } from "./broken-links.js";
 import { canonicalElsewhere } from "./canonical-elsewhere.js";
 import { canonicalMissing } from "./canonical-missing.js";
+import { duplicateTitle } from "./duplicate-title.js";
 import { eventJsonldMismatch } from "./event-jsonld-mismatch.js";
 import { eventLocationMismatch } from "./event-location-mismatch.js";
 import { eventMissingFields } from "./event-missing-fields.js";
@@ -28,14 +29,21 @@ import { imagesLegacyFormat } from "./images-legacy-format.js";
 import { imagesLegacyWp } from "./images-legacy-wp.js";
 import { jsonld404 } from "./jsonld-404.js";
 import { jsonldInvalid } from "./jsonld-invalid.js";
+import { linksVagueText } from "./links-vague-text.js";
 import { linksViaRedirect } from "./links-via-redirect.js";
+import { linksWrapped } from "./links-wrapped.js";
 import { llmsTxtBrokenLinks } from "./llms-txt-broken-links.js";
 import { llmsTxtStaleFacts } from "./llms-txt-stale-facts.js";
+import { mockContentLive } from "./mock-content-live.js";
+import { navHomeLinks } from "./nav-home-links.js";
+import { navLabelDrift } from "./nav-label-drift.js";
 import { noindex } from "./noindex.js";
 import { ogImageMissing } from "./og-image-missing.js";
 import { ogImageRelative } from "./og-image-relative.js";
 import { ogUrlMismatch } from "./og-url-mismatch.js";
 import { pageHeavy } from "./page-heavy.js";
+import { placeholderImages } from "./placeholder-images.js";
+import { placeholderText } from "./placeholder-text.js";
 import { quotableFactsDisagree } from "./quotable-facts-disagree.js";
 import { redirectChain } from "./redirect-chain.js";
 import { robotsBlock } from "./robots-block.js";
@@ -58,6 +66,7 @@ export const PAGE_CHECKS = [
   brokenLinks,
   canonicalElsewhere,
   canonicalMissing,
+  duplicateTitle,
   eventJsonldMismatch,
   eventLocationMismatch,
   eventMissingFields,
@@ -79,14 +88,21 @@ export const PAGE_CHECKS = [
   imagesLegacyWp,
   jsonld404,
   jsonldInvalid,
+  linksVagueText,
   linksViaRedirect,
+  linksWrapped,
   llmsTxtBrokenLinks,
   llmsTxtStaleFacts,
+  mockContentLive,
+  navHomeLinks,
+  navLabelDrift,
   noindex,
   ogImageMissing,
   ogImageRelative,
   ogUrlMismatch,
   pageHeavy,
+  placeholderImages,
+  placeholderText,
   quotableFactsDisagree,
   redirectChain,
   robotsBlock,
@@ -137,3 +153,7 @@ export type { PageMeasure } from "./weight.js";
 export { badTelNumber } from "./mobile.js";
 export { collectUrls, jsonLdTypes, schemaType } from "./structured/collect.js";
 export { STEGA_ZERO_WIDTH_RUN, findStega, jsonStrings } from "./sharing/stega.js";
+export { collectNav, contentIndex, navKey, normaliseLabel } from "./content/parse.js";
+export type { ContentIndex, ContentLink } from "./content/parse.js";
+export * as contentLists from "./content/lists.js";
+export { wrappedBy } from "./links-wrapped.js";

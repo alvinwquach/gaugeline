@@ -22,6 +22,7 @@ const FIXTURES = [
   "images",
   "assorted",
   "venue",
+  "content-hygiene",
 ];
 
 /**
