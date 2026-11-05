@@ -50,14 +50,16 @@ describe("runner: unit", () => {
     await expect(runChecks(page(), r, { only: ["nope"] })).rejects.toBeInstanceOf(ConfigError);
   });
 
-  it("registers the six checks in the documented order", () => {
-    expect(PAGE_CHECKS.map((c) => c.id)).toEqual([
+  it("registers the six checks sorted by id (the order pnpm new:check keeps)", () => {
+    const ids = PAGE_CHECKS.map((c) => c.id);
+    expect(ids).toEqual([...ids].sort());
+    expect(ids).toEqual([
       "canonical-elsewhere",
+      "canonical-missing",
       "host-duplicate",
-      "thin-html",
       "noindex",
       "redirect-chain",
-      "canonical-missing",
+      "thin-html",
     ]);
     for (const c of PAGE_CHECKS) expect(c.what && c.why && c.fix && c.tech).toBeTruthy();
   });
