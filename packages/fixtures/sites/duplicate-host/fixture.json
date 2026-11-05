@@ -1,0 +1,6 @@
+{
+  "hosts": [
+    "duplicate.test",
+    "www.duplicate.test"
+  ]
+}

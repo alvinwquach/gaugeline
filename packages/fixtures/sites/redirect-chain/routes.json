@@ -1,0 +1,10 @@
+{
+  "/": {
+    "status": 301,
+    "location": "/step-two"
+  },
+  "/step-two": {
+    "status": 302,
+    "location": "/home"
+  }
+}

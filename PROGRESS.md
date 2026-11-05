@@ -63,7 +63,7 @@ merged once CI is green on Node 18.17, 20 and 22.
 | G06a | `01/logger-verbose-quiet` | merged | https://github.com/alvinwquach/gaugeline/pull/12 | 323 | core checkSite() runs the documented steps and emits the 4 progress events; robots/sitemap, link and script checks themselves arrive in G09/G10/G12. Fetcher onRequest hook feeds debug lines. |
 | G06b | `01/flag-table` | merged | https://github.com/alvinwquach/gaugeline/pull/13 | 343 | FLAGS table in packages/cli/src/flags.ts; docs/options.md block between <!-- flags:start/end -->, checked in CI (docs:flags:check). Generator aligns tables the way Prettier does. Seed includes --version (existed since G01). |
 | SEC | `security/hardening` | merged | https://github.com/alvinwquach/gaugeline/pull/14 | 403 | Owner-requested, not in the spec: private/loopback/link-local/CGNAT/multicast/IPv6 blocking on every hop with pinned connect (DNS rebinding), typed blocked-address outcome, --allow-private; CODEOWNERS; actions pinned to SHAs (test enforces); dependabot weekly. Fetcher transport moved from global fetch to node:http/https with a pinned lookup. |
-| G07 | `01/fixture-sites` | todo | | | Fixture sites and the e2e harness |
+| G07 | `01/fixture-sites` | merged | https://github.com/alvinwquach/gaugeline/pull/15 | 417 | packages/fixtures (private): startFixture/withFixture, routes.json + fixture.json (multi-host). Seven invented sites. Budget test: clean fixture <=5 concurrent, <=60 total. |
 | G07a | `01/cassette-record-replay` | todo | | | Record and replay for third-party APIs |
 | G08 | `01/ci-and-release` | todo | | | CI matrix, tarball budget and provenance |
 | K01 | `01b/walking-skeleton` | todo | | | Walking skeleton: publish 0.0.x with one check |
