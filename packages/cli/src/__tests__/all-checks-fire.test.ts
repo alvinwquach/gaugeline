@@ -21,6 +21,7 @@ const FIXTURES = [
   "links",
   "images",
   "assorted",
+  "venue",
 ];
 
 /**
@@ -37,7 +38,11 @@ const NEEDS_LIVE_STORES = new Set([
 async function findingsOf(name: string): Promise<string[]> {
   const site = await startFixture(name);
   try {
-    const env: NodeJS.ProcessEnv = { NODE_OPTIONS: `--require=${MAP_HOSTS}` };
+    // The fixtures' event dates are fixed, so the run's clock is too (the preload pins Date).
+    const env: NodeJS.ProcessEnv = {
+      NODE_OPTIONS: `--require=${MAP_HOSTS}`,
+      GAUGELINE_TEST_NOW: "2026-11-05T20:00:00Z",
+    };
     if (Object.keys(site.hosts).length > 0) env.GAUGELINE_TEST_HOSTS = JSON.stringify(site.hosts);
     const r = await runBin([site.origin, "--json", "--allow-private"], env);
     expect(r.status, `${name}: ${r.stderr}`).toBe(0);

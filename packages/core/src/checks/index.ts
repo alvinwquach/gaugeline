@@ -7,12 +7,18 @@ import { appSmartBannerMismatch } from "./app-smart-banner-mismatch.js";
 import { brokenLinks } from "./broken-links.js";
 import { canonicalElsewhere } from "./canonical-elsewhere.js";
 import { canonicalMissing } from "./canonical-missing.js";
+import { eventJsonldMismatch } from "./event-jsonld-mismatch.js";
+import { eventLocationMismatch } from "./event-location-mismatch.js";
+import { eventMissingFields } from "./event-missing-fields.js";
+import { eventPastUpcoming } from "./event-past-upcoming.js";
 import { feedBroken } from "./feed-broken.js";
 import { feedInvalid } from "./feed-invalid.js";
 import { feedOversized } from "./feed-oversized.js";
 import { hostDuplicate } from "./host-duplicate.js";
 import { htmlHeavy } from "./html-heavy.js";
 import { htmlHuge } from "./html-huge.js";
+import { icsFloatingTime } from "./ics-floating-time.js";
+import { icsNoVtimezone } from "./ics-no-vtimezone.js";
 import { imageWidthAbsurd } from "./image-width-absurd.js";
 import { imagesAltEmpty } from "./images-alt-empty.js";
 import { imagesAltMissing } from "./images-alt-missing.js";
@@ -52,12 +58,18 @@ export const PAGE_CHECKS = [
   brokenLinks,
   canonicalElsewhere,
   canonicalMissing,
+  eventJsonldMismatch,
+  eventLocationMismatch,
+  eventMissingFields,
+  eventPastUpcoming,
   feedBroken,
   feedInvalid,
   feedOversized,
   hostDuplicate,
   htmlHeavy,
   htmlHuge,
+  icsFloatingTime,
+  icsNoVtimezone,
   imageWidthAbsurd,
   imagesAltEmpty,
   imagesAltMissing,

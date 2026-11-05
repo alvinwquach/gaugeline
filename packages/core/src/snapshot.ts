@@ -32,6 +32,10 @@ export interface PageSnapshot {
   jsonLdErrors: string[];
   og: Record<string, string>;
   scripts: string[];
+  /** Calendar feeds: link rel="alternate" type="text/calendar", links ending .ics, webcal: links. */
+  calendars?: string[];
+  /** Elements marked as the next or upcoming event (by class, id or data attribute) with a time[datetime]. */
+  nextCards?: { label: string; datetime: string }[];
   /** Microdata itemtype values, each URL of a whitespace-separated list, in document order. */
   itemTypes?: string[];
   /** The title and every meta content exactly as sent, before invisible characters are stripped. */
@@ -211,6 +215,36 @@ export function buildSnapshot(hops: Hop[]): PageSnapshot {
     }
   });
 
+  const calendars: string[] = [];
+  $("link[rel][href]").each((_, el) => {
+    const rels = ($(el).attr("rel") ?? "").toLowerCase().split(/\s+/);
+    const type = ($(el).attr("type") ?? "").toLowerCase().split(";")[0]?.trim();
+    const href = resolve($(el).attr("href"), base);
+    if (href && rels.includes("alternate") && type === "text/calendar") calendars.push(href);
+  });
+  $("a[href]").each((_, el) => {
+    const raw = ($(el).attr("href") ?? "").trim();
+    if (/^webcal:\/\//i.test(raw)) calendars.push(raw);
+    else {
+      const href = resolve(raw, base);
+      if (href && /\.ics$/i.test(new URL(href).pathname)) calendars.push(href);
+    }
+  });
+  const NEXT = /(?:^|[-_\s])(?:next|upcoming)(?:[-_\s]|$)/i;
+  const nextCards: { label: string; datetime: string }[] = [];
+  $("*").each((_, el) => {
+    const attribs = (el as { attribs?: Record<string, string> }).attribs ?? {};
+    const marked = Object.entries(attribs).some(
+      ([k, v]) =>
+        ((k === "class" || k === "id") && NEXT.test(v)) ||
+        (k.startsWith("data-") && NEXT.test(k.slice(5))),
+    );
+    if (!marked) return;
+    const time = $(el).find("time[datetime]").first();
+    const datetime = time.attr("datetime")?.trim();
+    if (datetime) nextCards.push({ label: clean($(el).text(), state).slice(0, 80), datetime });
+  });
+
   const itemTypes = $("[itemtype]")
     .map((_, el) => ($(el).attr("itemtype") ?? "").trim().split(/\s+/))
     .get()
@@ -296,6 +330,8 @@ export function buildSnapshot(hops: Hop[]): PageSnapshot {
     ...(appBanner ? { appleItunesApp: appBanner } : {}),
     ...(viewport !== undefined ? { viewport } : {}),
     itemTypes,
+    calendars,
+    nextCards,
     rawText: { ...($("title").length > 0 ? { title: titleText } : {}), meta: rawMeta },
     feeds,
     forms,
