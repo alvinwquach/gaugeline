@@ -54,6 +54,9 @@ merged once CI is green on Node 18.17, 20 and 22.
 - **Docs hosting (K04)**: `.github/workflows/docs.yml` builds, tests and uploads the docs on every PR;
   deploys are off. To turn them on: pick the host (scripts/deploy-docs.sh uses Netlify), add the
   `NETLIFY_AUTH_TOKEN` secret and `NETLIFY_SITE_ID` variable, set `DOCS_DEPLOY_ENABLED=true`.
+- **Dogfooding (K09)**: `.github/workflows/dogfood.yml` is off until the docs are deployed. Set the
+  repository variable `DOCS_URL` (production docs address) for the nightly run; preview runs need the
+  docs host to report GitHub deployments to an environment named `docs-preview`.
 - **License**: `LICENSE` is MIT, "Copyright (c) 2026 Gaugeline contributors", matching the `license`
   field set since G01. Confirm the licence and the copyright holder.
 
@@ -86,7 +89,7 @@ merged once CI is green on Node 18.17, 20 and 22.
 | K06 | `01b/generated-checks-reference` | merged | https://github.com/alvinwquach/gaugeline/pull/26 | 511 + 11 Playwright | Check.tech required; defineCheck rejects empty what/why/fix/tech. catalogue() in core; scripts/gen-checks.ts writes docs/checks.data.json + append-only docs/check-ids.lock.json (CI --check). docs/checks.md renders via ChecksList.vue (SSR static list, area filter over all six areas, ?id= / #id deep links). STABILITY.md is referenced but arrives in K10. |
 | K07 | `01b/new-check-generator` | merged | https://github.com/alvinwquach/gaugeline/pull/27 | 526 | pnpm new:check (scripts/new-check.ts + lib/new-check.ts: planNewCheck/applyPlan). index.ts now has a generated '// checks:start/end' block sorted by id (reordered the four high checks). Plan has 8 files in 6 places (fixture folder = 3 files). gen-checks refuses TODO text. |
 | K08 | `01b/tested-docs-examples` | merged | https://github.com/alvinwquach/gaugeline/pull/28 | 542 | scripts/docs-examples.ts + lib; quick-start fixture; tested example is in Quick start 'In this version' (the site's 0.1.0 sample is untested with a reason: it needs checks not built yet). 11 other pages' examples marked untested until their own branches. Fixture server now counts methods. |
-| K09 | `01b/dogfood-docs-site` | todo | | | Dogfooding: Gaugeline checks its own docs site |
+| K09 | `01b/dogfood-docs-site` | merged | https://github.com/alvinwquach/gaugeline/pull/29 | 554 | scripts/dogfood.ts (two runs of the built bin), lib/dogfood.ts (summarise, issueAction), dogfood-issue.ts (gh). Exit-1 integration uses the quick-start fixture (0.0.x runs only canonical-elsewhere, so duplicate-host gives no finding yet). gaugeline-report.html is uploaded when it exists (the HTML report arrives in G13). |
 | K10 | `01b/stability-and-deprecation` | todo | | | Stability promise and deprecation policy |
 | K11 | `01b/decision-records` | todo | | | Decision records, and the first three |
 | K12 | `01b/contributor-scaffolding` | todo | | | Contributor scaffolding: CONTRIBUTING, SECURITY, issue forms |

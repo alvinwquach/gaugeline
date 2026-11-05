@@ -1,0 +1,65 @@
+name: Dogfood
+
+# Gaugeline checks its own docs site with the CLI built from the commit under test.
+# - deployment_status: a successful deploy to the "docs-preview" environment, against its address.
+# - nightly at 03:17 UTC and by hand: against production, read from the repository variable DOCS_URL.
+# Switched off until the docs are deployed: with no DOCS_URL (and no docs-preview deployments) every
+# run is skipped.
+on:
+  deployment_status:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  self-check:
+    if: >-
+      (github.event_name == 'deployment_status' &&
+       github.event.deployment_status.state == 'success' &&
+       github.event.deployment.environment == 'docs-preview') ||
+      (github.event_name != 'deployment_status' && vars.DOCS_URL != '')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write # nightly only: one issue, updated, never one per night
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          ref: ${{ github.event.deployment.sha || github.sha }}
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - id: run
+        name: Check the docs site with the built CLI
+        run: |
+          set +e
+          pnpm dogfood "$ADDRESS" --out self-check
+          echo "code=$?" >> "$GITHUB_OUTPUT"
+        env:
+          ADDRESS: ${{ github.event.deployment_status.environment_url || github.event.deployment_status.target_url || vars.DOCS_URL }}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: gaugeline-self-check
+          path: |
+            self-check/gaugeline-report.html
+            self-check/findings.json
+          retention-days: 14
+          if-no-files-found: warn
+      - name: Open, update or close the self-check issue
+        if: github.event_name == 'schedule' && (steps.run.outputs.code == '0' || steps.run.outputs.code == '1')
+        run: pnpm exec tsx scripts/dogfood-issue.ts "${{ steps.run.outputs.code }}" self-check/summary.md
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - name: Result
+        run: |
+          code="${{ steps.run.outputs.code }}"
+          if [ "$code" = "2" ]; then echo "The docs site did not answer."; exit 2; fi
+          exit "$code"
