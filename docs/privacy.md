@@ -38,33 +38,43 @@ and footer and a paint link that redirects, version 0.1.0 prints:
     "Garden centre" <a href="/garden-centre"> returned 404
 · Links on this page go through a redirect
     /old-paint (301) ends at /paint
-✓ ai-crawlers-blocked
-✓ app-link-dead
-✓ app-name-mismatch
-✓ app-smart-banner-mismatch
-✓ canonical-elsewhere
-✓ canonical-missing
-✓ feed-broken
-✓ feed-invalid
-✓ feed-oversized
-✓ host-duplicate
-✓ llms-txt-broken-links
-✓ llms-txt-stale-facts
-✓ noindex
-✓ quotable-facts-disagree
-✓ redirect-chain
-✓ robots-block
-✓ sitemap-dead
-✓ sitemap-host
-✓ sitemap-missing
-✓ sitemap-redirects
-✓ thin-html
 
 Checked all 6 links, 1 sitemap page.
 2 to look at, 1 to fix first.
 ```
 
-The output above is asserted by `packages/cli/src/__tests__/links.test.ts`.
+Each check that passed also prints a `✓ <id>` line, left out above. The output is asserted by `packages/cli/src/__tests__/links.test.ts`.
+
+### Images
+
+The image checks request at most 20 of the page's same-site images, the first 20 in document order
+after removing repeats. Each is a `HEAD` request (a `GET` only when the server refuses `HEAD`), and
+only the response headers are read: `Content-Length` for the weight and `Content-Type` for the
+format. No image body is downloaded, so a server that sends no `Content-Length` gives no weight
+finding. Images on other hosts and `data:` images are never requested.
+
+Against the invented `images` fixture, a haberdashery with 40 images, version 0.1.0 prints:
+
+```text title=Output
+✗ Some images on this page don't load
+    <img src="/img/missing.png"> returned 404
+! Images are requested at an enormous width
+    1 image is offered at 3840 pixels or wider: /hero.jpg (3840w)
+! Some images are very large files
+    /img/heavy.jpg is 879 KB (Content-Length 900,000)
+! Images still load from an old WordPress site
+    1 image loads from /wp-content/uploads/: /wp-content/uploads/2019/05/old-sign.jpg
+· Some images have no alt attribute
+    2 images have no alt: /img/swatch-0.png, /img/swatch-1.png
+· Images use older, heavier file formats
+    16 of 20 sampled images are JPEG, PNG or GIF only: /img/heavy.jpg, /wp-content/uploads/2019/05/old-sign.jpg, /img/divider.png and 13 more
+
+Checked 20 of 40 images, 1 sitemap page.
+6 to look at, 1 to fix first.
+```
+
+Each check that passed also prints a `✓ <id>` line, left out above. The output is asserted by
+`packages/cli/src/__tests__/images.test.ts`.
 
 ### App stores
 
@@ -94,33 +104,12 @@ Against an invented bakery's page, replayed from a recording of the store answer
     market://details?id=example.hollyhock.classic names Google Play app example.hollyhock.classic, which Google Play does not have (404)
 ! The iPhone app banner promotes a different app
     apple-itunes-app names app-id=6440000009; the App Store link is id6440000001
-✓ ai-crawlers-blocked
-✓ app-name-mismatch
-✓ broken-links
-✓ canonical-elsewhere
-✓ canonical-missing
-✓ feed-broken
-✓ feed-invalid
-✓ feed-oversized
-✓ host-duplicate
-✓ links-via-redirect
-✓ llms-txt-broken-links
-✓ llms-txt-stale-facts
-✓ noindex
-✓ quotable-facts-disagree
-✓ redirect-chain
-✓ robots-block
-✓ sitemap-dead
-✓ sitemap-host
-✓ sitemap-missing
-✓ sitemap-redirects
-✓ thin-html
 
 Checked 1 sitemap page, all 4 app store links.
 3 to look at, 2 to fix first.
 ```
 
-The output above is asserted by `packages/cli/src/__tests__/app-store-links.test.ts`.
+Each check that passed also prints a `✓ <id>` line, left out above. The output is asserted by `packages/cli/src/__tests__/app-store-links.test.ts`.
 
 ### robots.txt, sitemaps and feeds
 
@@ -156,33 +145,13 @@ advertises four feeds, the run requests 25 sitemap pages and 3 feeds. It reports
     1 of 25 sampled sitemap entries return an error: /closed-room (404)
 ! Your sitemap lists old addresses that redirect
     1 of 25 sampled sitemap entries redirect: /old-menu (301 to /menu/01)
-✓ ai-crawlers-blocked
-✓ app-link-dead
-✓ app-name-mismatch
-✓ app-smart-banner-mismatch
-✓ broken-links
-✓ canonical-elsewhere
-✓ canonical-missing
-✓ feed-invalid
-✓ feed-oversized
-✓ host-duplicate
-✓ links-via-redirect
-✓ llms-txt-broken-links
-✓ llms-txt-stale-facts
-✓ noindex
-✓ quotable-facts-disagree
-✓ redirect-chain
-✓ robots-block
-✓ sitemap-host
-✓ sitemap-missing
-✓ thin-html
 
 Checked 25 of 30 sitemap pages, 3 of 4 feeds.
 3 to look at, 2 to fix first.
 ```
 
 These checks run from version 0.1.0; version 0.0.x runs one check (see [Quick start](quick-start.md)).
-The output above is asserted by `packages/cli/src/__tests__/site-checks.test.ts`.
+Each check that passed also prints a `✓ <id>` line, left out above. The output is asserted by `packages/cli/src/__tests__/site-checks.test.ts`.
 
 ### What it sends elsewhere
 

@@ -3,6 +3,7 @@ import type { Fetcher } from "./fetcher.js";
 import type { Budget } from "./limits.js";
 import type { findingSchema } from "./result.js";
 import type { AppLookup } from "./apps.js";
+import type { ImageSample } from "./checks/images/refs.js";
 import type { LinkSample } from "./links.js";
 import type { SiteContext } from "./site-context.js";
 
@@ -72,6 +73,8 @@ export interface CheckContext {
   site?: () => Promise<SiteContext>;
   /** The run's same-site link sample, probed once on first use and shared by the link checks. */
   links?: () => Promise<LinkSample>;
+  /** The run's same-site image sample (headers only), probed once on first use. */
+  images?: () => Promise<ImageSample>;
   /** The page's App Store and Google Play apps, looked up once on first use. */
   apps?: () => Promise<AppLookup[]>;
   /** Values the run was told to expect (for example the app's name). Until the config file, API only. */

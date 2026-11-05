@@ -50,6 +50,16 @@
     "tech": "the alternate host returns 200 instead of 301"
   },
   {
+    "id": "images-broken",
+    "severity": "high",
+    "area": "Visitors",
+    "title": "Some images on this page don't load",
+    "what": "An image on the site (or the original behind a Next.js /_next/image address) returns an error.",
+    "why": "Visitors see an empty box or a broken-image icon where a product photo or a diagram should be.",
+    "fix": "Upload the image again, or point the img at its current address. For /_next/image, check the file named by url= exists.",
+    "tech": "a sampled same-site img src answers 4xx or 5xx (images on other hosts are not requested)"
+  },
+  {
     "id": "noindex",
     "severity": "high",
     "area": "Search & sharing",
@@ -128,6 +138,46 @@
     "why": "Feed readers and aggregators time out or truncate large feeds, and frameworks such as Next.js do not cache responses over 2 MB, so every request rebuilds it.",
     "fix": "Limit the feed to recent items (20 to 50 is typical) and put a summary in each item instead of the full post.",
     "tech": "the feed response is larger than 2 MB (2,097,152 bytes)"
+  },
+  {
+    "id": "image-width-absurd",
+    "severity": "medium",
+    "area": "Visitors",
+    "title": "Images are requested at an enormous width",
+    "what": "An image is offered or requested 3840 pixels wide or more, wider than almost any screen shows it.",
+    "why": "Phones and laptops may download a 4K-wide picture to show it a few hundred pixels across, which wastes data and slows the page.",
+    "fix": "Cap the widths your image component generates (for Next.js, deviceSizes and imageSizes in next.config) and set the sizes attribute.",
+    "tech": "a srcset candidate with a w descriptor, or a w= parameter, of 3840 or more"
+  },
+  {
+    "id": "images-alt-empty",
+    "severity": "medium",
+    "area": "Visitors",
+    "title": "None of the images on this page are described",
+    "what": "The page has images, and not one has alt text that says what it shows.",
+    "why": "Screen reader users hear nothing about any picture, and search engines have no words to index the images by.",
+    "fix": "Give each meaningful image an alt that says what it shows. alt=\"\" is right for decorative images, but a page where every image is decorative is rare.",
+    "tech": "every img has a missing, empty or whitespace-only alt"
+  },
+  {
+    "id": "images-heavy",
+    "severity": "medium",
+    "area": "Visitors",
+    "title": "Some images are very large files",
+    "what": "An image on the page is over 500 KB.",
+    "why": "Large images are the most common reason a page is slow on a phone, and a slow page loses visitors before it loads.",
+    "fix": "Resize the image to the size it is shown at and export it as WebP or AVIF, or serve it through an image CDN or your framework's image component.",
+    "tech": "a sampled image's Content-Length header is over 512,000 bytes; a server that sends no Content-Length gives no finding"
+  },
+  {
+    "id": "images-legacy-wp",
+    "severity": "medium",
+    "area": "Visitors",
+    "title": "Images still load from an old WordPress site",
+    "what": "Images on the page are served from /wp-content/uploads/, usually left over from a WordPress site the new site replaced.",
+    "why": "When the old WordPress install or its host is switched off, every one of these images breaks at once.",
+    "fix": "Move the images into the new site's own media library or asset folder and update the addresses.",
+    "tech": "img src or srcset candidates under /wp-content/uploads/"
   },
   {
     "id": "llms-txt-broken-links",
@@ -218,6 +268,26 @@
     "why": "Copies of the page with tracking parameters can be treated as separate pages.",
     "fix": "Add a self-referencing canonical tag.",
     "tech": "no <link rel=\"canonical\">"
+  },
+  {
+    "id": "images-alt-missing",
+    "severity": "low",
+    "area": "Visitors",
+    "title": "Some images have no alt attribute",
+    "what": "Some images have no alt attribute at all, not even an empty one.",
+    "why": "Without alt, screen readers read the file name aloud. An empty alt=\"\" tells them to skip a decorative image; a missing one does not.",
+    "fix": "Add alt to every img: a short description, or alt=\"\" for decorative images.",
+    "tech": "img elements with no alt attribute (one finding with a count and the first three)"
+  },
+  {
+    "id": "images-legacy-format",
+    "severity": "low",
+    "area": "Visitors",
+    "title": "Images use older, heavier file formats",
+    "what": "Images are served as JPEG, PNG or GIF with no WebP or AVIF version offered.",
+    "why": "WebP and AVIF are usually a quarter to a half smaller for the same picture, so the page loads faster.",
+    "fix": "Offer WebP or AVIF with a <picture> element or srcset, or let your image CDN or framework image component pick the format.",
+    "tech": "a sampled image's Content-Type is image/jpeg, image/png or image/gif and it has no WebP or AVIF candidate (SVG is never reported)"
   },
   {
     "id": "links-via-redirect",

@@ -6,6 +6,7 @@ import type { ProgressSink } from "./progress.js";
 import { runChecks, type RunOptions, type RunResult } from "./run.js";
 import { dedupeUrls } from "./sample.js";
 import { lazyAppLookups } from "./apps.js";
+import { lazyImageSample } from "./checks/images/refs.js";
 import { lazyLinkSample, linkCandidates } from "./links.js";
 import type { RunExpectations } from "./model.js";
 import { lazySiteContext } from "./site-context.js";
@@ -52,6 +53,7 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
       site: lazySiteContext({ page: snapshot, fetcher: opts.fetcher, budget }),
       links: lazyLinkSample({ page: snapshot, fetcher: opts.fetcher, budget }),
       apps: lazyAppLookups({ page: snapshot, fetcher: opts.fetcher, budget }),
+      images: lazyImageSample({ page: snapshot, fetcher: opts.fetcher, budget }),
       ...(opts.expect ? { expect: opts.expect } : {}),
     },
     onProgress: sink,
