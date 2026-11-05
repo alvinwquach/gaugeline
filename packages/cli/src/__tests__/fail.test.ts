@@ -136,7 +136,7 @@ describe("CLI errors: e2e (built bin)", () => {
     const io = { stdout: { write: (s: string) => out.push(s) }, stderr: { write: () => true } };
     const registry = new CheckRegistry();
     for (const c of checks) registry.register(c);
-    expect(await main([site.origin], io, { registry })).toBe(0);
+    expect(await main([site.origin, "--allow-private"], io, { registry })).toBe(0);
     expect(out.join("")).toContain("1 check could not run: throws-here");
     expect(out.join("")).toContain("Still reports");
   });

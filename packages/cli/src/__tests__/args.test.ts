@@ -51,7 +51,7 @@ describe("parseCliArgs: unit", () => {
     const server = await startServer({ "/": html("<title>x</title>") });
     try {
       const c = capture();
-      expect(await main([server.origin], c.io)).toBe(0);
+      expect(await main([server.origin, "--allow-private"], c.io)).toBe(0);
       expect(c.err().split("\n")[0]).toBe(`Gaugeline ${pkg.version} checking ${server.origin}/`);
     } finally {
       await server.close();

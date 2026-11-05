@@ -103,6 +103,7 @@ describe("runner: integration", () => {
     const www = await startServer({ "/": html(body) });
     servers.push(bare, www);
     const fetcher = createFetcher({
+      allowPrivate: true,
       hosts: {
         "duplicate.test": `127.0.0.1:${bare.port}`,
         "www.duplicate.test": `127.0.0.1:${www.port}`,

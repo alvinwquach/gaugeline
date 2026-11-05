@@ -37,15 +37,16 @@ between the markers; CI fails when it differs from the flag table.
 
 <!-- flags:start -->
 
-| Flag              | Does                                                              | Environment variable | Since |
-| ----------------- | ----------------------------------------------------------------- | -------------------- | ----- |
-| `--ci`            | Exit 1 when a "Fix this first" finding is found                   | `CI`                 | 0.1.0 |
-| `--json`          | Print the result as JSON on stdout, and nothing else              |                      | 0.1.0 |
-| `--no-open`       | Do not open anything in a browser                                 |                      | 0.1.0 |
-| `--quiet`         | Print only results and errors                                     |                      | 0.1.0 |
-| `--verbose`       | Show each request, and technical detail when something goes wrong |                      | 0.1.0 |
-| `-h`, `--help`    | Show this help and exit                                           |                      | 0.1.0 |
-| `-v`, `--version` | Print the version and exit                                        |                      | 0.1.0 |
+| Flag              | Does                                                                                    | Environment variable | Since |
+| ----------------- | --------------------------------------------------------------------------------------- | -------------------- | ----- |
+| `--ci`            | Exit 1 when a "Fix this first" finding is found                                         | `CI`                 | 0.1.0 |
+| `--json`          | Print the result as JSON on stdout, and nothing else                                    |                      | 0.1.0 |
+| `--no-open`       | Do not open anything in a browser                                                       |                      | 0.1.0 |
+| `--allow-private` | Allow addresses on this computer or a private network, such as 127.0.0.1 or 192.168.x.x |                      | 0.1.0 |
+| `--quiet`         | Print only results and errors                                                           |                      | 0.1.0 |
+| `--verbose`       | Show each request, and technical detail when something goes wrong                       |                      | 0.1.0 |
+| `-h`, `--help`    | Show this help and exit                                                                 |                      | 0.1.0 |
+| `-v`, `--version` | Print the version and exit                                                              |                      | 0.1.0 |
 
 <!-- flags:end -->
 

@@ -70,7 +70,11 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         stream: io.stderr,
         color: useColor(io.stderr, env),
       });
-      const fetcher = createFetcher({ ...deps.fetcher, onRequest: (info) => log.request(info) });
+      const fetcher = createFetcher({
+        ...deps.fetcher,
+        ...(args.allowPrivate ? { allowPrivate: true } : {}),
+        onRequest: (info) => log.request(info),
+      });
       if (!args.quiet) {
         // The query string can carry a token, so the header shows the address without it.
         io.stderr.write(`Gaugeline ${VERSION} checking ${withoutQuery(args.address)}\n`);

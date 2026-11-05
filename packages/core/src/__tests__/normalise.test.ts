@@ -44,7 +44,7 @@ describe("normalise: integration", () => {
   it("the fetcher's memo dedupes an uppercase scheme and a fragment to one request", async () => {
     const s = await startServer({ "/a": html("x") });
     servers.push(s);
-    const f = createFetcher();
+    const f = createFetcher({ allowPrivate: true });
     const port = s.port;
     // An IP host, not "localhost": Node 18 may resolve localhost to ::1 first.
     await f.get(`HTTP://127.0.0.1:${port}/a#x`);

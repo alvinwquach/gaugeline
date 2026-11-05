@@ -68,7 +68,7 @@ describe("errors: integration (fetcher)", () => {
     const s = await startServer({});
     const origin = s.origin;
     await s.close();
-    const err = await createFetcher()
+    const err = await createFetcher({ allowPrivate: true })
       .get(origin)
       .catch((e: unknown) => e);
     expect(err).toBeInstanceOf(NetworkError);
@@ -78,7 +78,7 @@ describe("errors: integration (fetcher)", () => {
   });
 
   it('fetcher against a name that does not resolve (.invalid) gives the "could not be found" sentence', async () => {
-    const err = await createFetcher({ timeoutMs: 5000 })
+    const err = await createFetcher({ allowPrivate: true, timeoutMs: 5000 })
       .get("http://not-a-real-host.invalid/")
       .catch((e: unknown) => e);
     expect(err).toBeInstanceOf(NetworkError);
