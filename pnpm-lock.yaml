@@ -80,6 +80,15 @@ importers:
 
   packages/fixtures: {}
 
+  packages/testkit:
+    devDependencies:
+      '@gaugeline/core':
+        specifier: workspace:*
+        version: link:../core
+      '@gaugeline/fixtures':
+        specifier: workspace:*
+        version: link:../fixtures
+
 packages:
 
   '@esbuild/aix-ppc64@0.25.12':

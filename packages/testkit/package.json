@@ -1,0 +1,17 @@
+{
+  "name": "@gaugeline/testkit",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Test helpers: recorded, secret-scrubbed API responses (cassettes). Never published.",
+  "type": "module",
+  "license": "MIT",
+  "main": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "record:example": "tsx scripts/record-example.ts"
+  },
+  "devDependencies": {
+    "@gaugeline/core": "workspace:*",
+    "@gaugeline/fixtures": "workspace:*"
+  }
+}
