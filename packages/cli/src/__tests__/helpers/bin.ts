@@ -15,6 +15,7 @@ function cleanEnv(extra: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
 export async function runBin(
   args: string[],
   env: NodeJS.ProcessEnv = {},
+  opts: { cwd?: string } = {},
 ): Promise<{ status: number; stdout: string; stderr: string }> {
   try {
     // Fixture servers listen on 127.0.0.1, which Gaugeline refuses unless asked: opt in explicitly.
@@ -23,6 +24,7 @@ export async function runBin(
     const r = await promisify(execFile)(process.execPath, [bin, ...argv], {
       encoding: "utf8",
       env: cleanEnv(env),
+      ...(opts.cwd ? { cwd: opts.cwd } : {}),
     });
     return { status: 0, stdout: r.stdout, stderr: r.stderr };
   } catch (err) {

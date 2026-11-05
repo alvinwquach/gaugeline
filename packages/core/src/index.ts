@@ -88,6 +88,16 @@ export type { ImageRef, ImageSample } from "./checks/index.js";
 export type { ProgressEvent, ProgressSink, RequestInfo } from "./progress.js";
 export { checkSite } from "./site.js";
 export { getOrNull, probe } from "./probe.js";
+export { lazyPages, samplePages } from "./pages.js";
+export type { PagesOptions } from "./pages.js";
+export {
+  flattenSchema,
+  globToRegex,
+  matchTemplate,
+  normaliseId,
+  schemaRulesSchema,
+} from "./schema-rules.js";
+export type { FlatSchema, SchemaNode, SchemaRules } from "./schema-rules.js";
 export { calendarUrl, isIcs, lazyCalendars, readCalendars } from "./calendars.js";
 export type { CalendarOptions, CalendarRead } from "./calendars.js";
 export { contentLine, parseIcs, parseIcsTime, unescapeText, unfold } from "./ics/parse.js";

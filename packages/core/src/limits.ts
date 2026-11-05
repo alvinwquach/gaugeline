@@ -16,6 +16,8 @@ export const LIMITS = Object.freeze({
   appLinks: 5,
   /** .ics calendar feeds read. */
   calendars: 3,
+  /** Other same-site pages fetched for checks that compare pages (structured data rules). */
+  pages: 4,
   scripts: 15,
   structuredDataAddresses: 12,
   concurrency: 5,
@@ -33,6 +35,7 @@ export type BudgetKind =
   | "llmsTxtLinks"
   | "appLinks"
   | "calendars"
+  | "pages"
   | "scripts"
   | "structuredDataAddresses";
 
@@ -45,6 +48,7 @@ export const BUDGET_KINDS = [
   "llmsTxtLinks",
   "appLinks",
   "calendars",
+  "pages",
   "scripts",
   "structuredDataAddresses",
 ] as const satisfies readonly BudgetKind[];
@@ -100,6 +104,7 @@ const NOUNS: Record<BudgetKind, [singular: string, plural: string]> = {
   llmsTxtLinks: ["llms.txt link", "llms.txt links"],
   appLinks: ["app store link", "app store links"],
   calendars: ["calendar", "calendars"],
+  pages: ["other page", "other pages"],
   scripts: ["JavaScript file", "JavaScript files"],
   structuredDataAddresses: ["address in structured data", "addresses in structured data"],
 };

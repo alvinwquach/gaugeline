@@ -4,6 +4,8 @@ import type { Budget } from "./limits.js";
 import type { findingSchema } from "./result.js";
 import type { AppLookup } from "./apps.js";
 import type { CalendarRead } from "./calendars.js";
+import type { SchemaRules } from "./schema-rules.js";
+import type { PageSnapshot } from "./snapshot.js";
 import type { ImageSample } from "./checks/images/refs.js";
 import type { LinkSample } from "./links.js";
 import type { SiteContext } from "./site-context.js";
@@ -85,6 +87,10 @@ export interface CheckContext {
   imagesIfSampled?: () => Promise<ImageSample> | undefined;
   /** The page's .ics calendars, read once on first use. */
   calendars?: () => Promise<CalendarRead[]>;
+  /** The checked page and a few other same-site pages, fetched once on first use. */
+  pages?: () => Promise<PageSnapshot[]>;
+  /** The team's schema guide, when one is configured (gaugeline.schema.json). */
+  schemaRules?: SchemaRules;
   /** The run's clock. Injectable so every date check is deterministic; defaults to the real time. */
   now?: () => Date;
   /** The page's App Store and Google Play apps, looked up once on first use. */

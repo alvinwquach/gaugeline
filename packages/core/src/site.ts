@@ -7,6 +7,8 @@ import { runChecks, type RunOptions, type RunResult } from "./run.js";
 import { dedupeUrls } from "./sample.js";
 import { lazyAppLookups } from "./apps.js";
 import { lazyCalendars } from "./calendars.js";
+import { lazyPages } from "./pages.js";
+import type { SchemaRules } from "./schema-rules.js";
 import { lazyImageSample } from "./checks/images/refs.js";
 import { lazyLinkSample, linkCandidates } from "./links.js";
 import type { RunExpectations } from "./model.js";
@@ -26,6 +28,8 @@ export interface SiteCheckOptions {
   expect?: RunExpectations;
   /** The run's clock, for date checks. Defaults to the real time. */
   now?: () => Date;
+  /** The team's schema guide, for the structured data rules checks. */
+  schemaRules?: SchemaRules;
 }
 
 export interface SiteCheck {
@@ -60,6 +64,8 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
       images,
       calendars: lazyCalendars({ page: snapshot, fetcher: opts.fetcher, budget }),
       ...(opts.now ? { now: opts.now } : {}),
+      pages: lazyPages({ page: snapshot, fetcher: opts.fetcher, budget }),
+      ...(opts.schemaRules ? { schemaRules: opts.schemaRules } : {}),
       imagesIfSampled: () => images.peek(),
       ...(opts.expect ? { expect: opts.expect } : {}),
     },
