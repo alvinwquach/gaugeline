@@ -1,5 +1,58 @@
 # Contributing to Gaugeline
 
+## Set up
+
+You need Node.js 18.17 or newer and pnpm.
+
+```bash
+pnpm install
+pnpm build
+pnpm test
+```
+
+Tests run against invented fixture sites on 127.0.0.1 and recorded API responses. They need no
+network and no keys.
+
+## Add a check
+
+Run `pnpm new:check <id> --area <area> --severity <level>`, fill in the four texts (what it catches,
+why it matters, how to fix it, the technical line) and the rule, then run `pnpm gen:checks` to
+regenerate the checks reference. The whole walkthrough is in
+[docs/contributing/adding-a-check.md](docs/contributing/adding-a-check.md).
+
+## Add a fixture
+
+A fixture is a folder under `packages/fixtures/sites/` with static files and an optional
+`routes.json` (see "Adding a fixture site" below). One fixture per behaviour. Never point a test at a
+real site.
+
+## Add a connector
+
+Connectors read counts and shapes from another system, never content. Keys come from environment
+variables and are never printed or stored. The connector interface arrives with the first connector
+branch; this section links to it then. Not yet.
+
+## Docs first, changesets and the PR gate
+
+- Write the docs page and the `--help` text first, with the intended output
+  ([docs/contributing/docs-first.md](docs/contributing/docs-first.md)); tests then assert that output,
+  and examples in the docs run in CI ([docs/contributing/docs-examples.md](docs/contributing/docs-examples.md)).
+- Add a changeset with `pnpm changeset` (see "Add a changeset" below).
+- If the PR gate fails, see "Why did pr-gate fail?" below.
+
+## The three rules a pull request cannot break
+
+1. **Read-only.** Requests to a checked site are `GET` or `HEAD`, through the fetcher only.
+   ([ADR-0001](docs/adr/0001-read-only-by-construction.md))
+2. **Plain rules.** No check calls a model; the same input gives the same findings.
+   ([ADR-0002](docs/adr/0002-plain-rules-no-model-calls.md))
+3. **Nothing sent.** No request to any host the user did not name or configure: no telemetry, no
+   update check. ([ADR-0003](docs/adr/0003-no-telemetry-nothing-sent.md))
+
+What may change between versions and what may not is in [STABILITY.md](STABILITY.md#semver-rules).
+Security problems go through [SECURITY.md](SECURITY.md), and everyone follows the
+[Code of Conduct](CODE_OF_CONDUCT.md).
+
 ## Layout
 
 - `packages/core` is the check engine. It never imports the CLI and never calls `process.exit`.

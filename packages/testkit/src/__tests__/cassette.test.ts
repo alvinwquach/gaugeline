@@ -1,3 +1,4 @@
+// check-community: allow-email (invented addresses at reserved example domains, used by the test)
 import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import net from "node:net";
 import { tmpdir } from "node:os";

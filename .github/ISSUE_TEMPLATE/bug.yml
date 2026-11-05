@@ -1,0 +1,57 @@
+name: Bug report
+description: Gaugeline did something wrong, crashed, or reported something that is not true.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Please remove keys, webhook addresses and private URLs before you paste anything.
+  - type: textarea
+    id: command
+    attributes:
+      label: The command you ran
+      description: With keys, tokens and webhook addresses removed.
+      placeholder: npx gaugeline shop.example --ci
+      render: shell
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Output of gaugeline --version
+    validations:
+      required: true
+  - type: input
+    id: node
+    attributes:
+      label: Node version
+      placeholder: node --version
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options: [macOS, Windows, Linux, Other]
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened
+      description: The output, with --verbose if you can.
+    validations:
+      required: true
+  - type: checkboxes
+    id: redacted
+    attributes:
+      label: Before you submit
+      options:
+        - label: I removed keys, webhook addresses and private URLs from this report
+          required: true

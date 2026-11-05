@@ -1,3 +1,4 @@
+// check-community: allow-email (invented addresses at reserved example domains, used by the test)
 import { gzipSync } from "node:zlib";
 import { afterEach, describe, expect, it } from "vitest";
 import {
