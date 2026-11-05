@@ -10,6 +10,7 @@ import { lazyCalendars } from "./calendars.js";
 import { lazyLanguageGroup, type LanguageRules } from "./languages.js";
 import { lazyPages } from "./pages.js";
 import type { FactsConfig } from "./facts/types.js";
+import type { PaymentsConfig } from "./payments/types.js";
 import type { SchemaRules } from "./schema-rules.js";
 import { lazyImageSample } from "./checks/images/refs.js";
 import { lazyLinkSample, linkCandidates } from "./links.js";
@@ -36,6 +37,8 @@ export interface SiteCheckOptions {
   languageRules?: LanguageRules;
   /** The business's declared facts. */
   facts?: FactsConfig;
+  /** The business's payment handles and links. */
+  payments?: PaymentsConfig;
 }
 
 export interface SiteCheck {
@@ -81,6 +84,7 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
       }),
       ...(opts.languageRules ? { languageRules: opts.languageRules } : {}),
       ...(opts.facts ? { facts: opts.facts } : {}),
+      ...(opts.payments ? { payments: opts.payments } : {}),
       ...(opts.schemaRules ? { schemaRules: opts.schemaRules } : {}),
       imagesIfSampled: () => images.peek(),
       ...(opts.expect ? { expect: opts.expect } : {}),
