@@ -43,6 +43,11 @@ merged once CI is green on Node 18.17, 20 and 22.
 
 ## Owner actions (things the build cannot finish alone)
 
+- **K01 skeleton publish**: `packages/cli` is now `gaugeline@0.0.2`, `"private": false`. To publish,
+  set repository variable `PUBLISH_ENABLED=true`, add the `NPM_TOKEN` secret, set `SMOKE_WRONG_URL`
+  (a page you own with a wrong canonical) and `SMOKE_CLEAN_URL` variables, then push tag `v0.0.2`
+  (`.github/workflows/skeleton.yml`). Or run `npm publish --provenance --access public` in
+  `packages/cli` yourself, then `bash scripts/smoke-published.sh 0.0.2` (needs docker).
 - **npm publish** (G08/K01): add the `NPM_TOKEN` repository secret, set `"private": false` in
   `packages/cli/package.json`, then run the Release workflow by hand with "publish" ticked (it is a
   dry run otherwise). See RELEASING.md. Nothing has been published.
@@ -73,7 +78,7 @@ merged once CI is green on Node 18.17, 20 and 22.
 | G07 | `01/fixture-sites` | merged | https://github.com/alvinwquach/gaugeline/pull/15 | 417 | packages/fixtures (private): startFixture/withFixture, routes.json + fixture.json (multi-host). Seven invented sites. Budget test: clean fixture <=5 concurrent, <=60 total. |
 | G07a | `01/cassette-record-replay` | merged | https://github.com/alvinwquach/gaugeline/pull/19 | 438 | packages/testkit (private). Fetcher gains an injectable transport (createNetworkTransport is the default); cassettes plug in as createFetcher({ transport }). KEY_PATTERNS live in core (secrets.ts) for G12. Example cassette recorded against the clean fixture (record:example script). |
 | G08 | `01/ci-and-release` | merged | https://github.com/alvinwquach/gaugeline/pull/20 | 442 | CI: ubuntu 18.17/20/22 + macOS/Windows Node 20 (full suite) + pack job (pnpm smoke: contents allowlist, 1 MB budget, npx run on 18.17). release.yml is manual, dry-run by default, provenance. Tarball ~123 kB. |
-| K01 | `01b/walking-skeleton` | todo | | | Walking skeleton: publish 0.0.x with one check |
+| K01 | `01b/walking-skeleton` | partial | https://github.com/alvinwquach/gaugeline/pull/21 | 453 | Built and switched off: NOT published (owner publishes). 0.0.2, skeleton gating (only canonical-elsewhere for 0.0.x), skeleton.yml (tag-triggered, gated on vars.PUBLISH_ENABLED), smoke-published.sh (docker by default; tested in local mode against a packed tarball), check-tag-version.ts. The docker/registry smoke itself has not run. |
 | K02 | `01b/changesets-release-pr` | todo | | | Changesets and the release pull request |
 | K03 | `01b/pr-gate` | todo | | | CI gate: no source change without a changeset and docs |
 | K04 | `01b/docs-site` | todo | | | Docs site built from the repo, deployed on merge |

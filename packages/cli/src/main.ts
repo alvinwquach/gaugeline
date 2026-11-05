@@ -14,6 +14,7 @@ import { formatError, toOutcome } from "./fail.js";
 import { envIsOn } from "./flags.js";
 import { createLogger } from "./logger.js";
 import { formatTerminal } from "./reporter.js";
+import { skeletonOnly } from "./skeleton.js";
 import { VERSION } from "./version.js";
 
 export interface Io {
@@ -42,6 +43,8 @@ export interface Deps {
   /** The checks to run. Defaults to every page check. */
   registry?: CheckRegistry;
   fetcher?: FetcherOptions;
+  /** Defaults to the package version; tests pass one to see 0.0.x and 0.1.0 behaviour. */
+  version?: string;
 }
 
 export interface RunReport {
@@ -79,10 +82,13 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         // The query string can carry a token, so the header shows the address without it.
         io.stderr.write(`Gaugeline ${VERSION} checking ${withoutQuery(args.address)}\n`);
       }
+      const skeleton = skeletonOnly(deps.version ?? VERSION);
       const { snapshot, result, budget } = await checkSite({
         address: args.input,
         fetcher,
         ...(deps.registry ? { registry: deps.registry } : {}),
+        // The walking skeleton (0.0.x) runs one check; an injected registry is used as given.
+        ...(deps.registry === undefined && skeleton ? { only: skeleton } : {}),
         onProgress: (e) => log.progress(e),
       });
       if (args.json) {

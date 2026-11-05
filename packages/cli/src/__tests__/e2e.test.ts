@@ -30,10 +30,16 @@ beforeAll(async () => {
   const routes: Parameters<typeof startServer>[0] = {
     "/": (_q, res) =>
       void res.writeHead(200, { "content-type": "text/html" }).end(cleanPage("/")(site.origin)),
-    "/noindex": (_q, res) =>
+    // 0.0.x runs one check (canonical-elsewhere), so the "high finding" page has a wrong canonical.
+    "/wrong-canonical": (_q, res) =>
       void res
         .writeHead(200, { "content-type": "text/html" })
-        .end(cleanPage("/noindex", '<meta name="robots" content="noindex">')(site.origin)),
+        .end(
+          cleanPage("/wrong-canonical")(site.origin).replace(
+            /href="[^"]*\/wrong-canonical"/,
+            'href="https://other.example/"',
+          ),
+        ),
     "/hop1": redirect(301, "/hop2"),
     "/hop2": redirect(301, "/"),
     "/plain": html("<p>x</p>"),
@@ -63,17 +69,17 @@ describe("cli: e2e (built bin against the fixture server)", () => {
   });
 
   it("high finding without --ci: exit 0", async () => {
-    const r = await runBin([`${site.origin}/noindex`]);
+    const r = await runBin([`${site.origin}/wrong-canonical`]);
     expect(r.status).toBe(0);
-    expect(r.stdout).toContain("✗ This page asks search engines not to list it");
+    expect(r.stdout).toContain("✗ This page tells Google to show a different page");
   });
 
   it("high finding with --ci: exit 1", async () => {
-    expect((await runBin([`${site.origin}/noindex`, "--ci"])).status).toBe(1);
+    expect((await runBin([`${site.origin}/wrong-canonical`, "--ci"])).status).toBe(1);
   });
 
   it("CI=true in the environment behaves like --ci", async () => {
-    expect((await runBin([`${site.origin}/noindex`], { CI: "true" })).status).toBe(1);
+    expect((await runBin([`${site.origin}/wrong-canonical`], { CI: "true" })).status).toBe(1);
   });
 
   it("unreachable host: exit 2 and a one-line reason on stderr", async () => {
@@ -87,7 +93,7 @@ describe("cli: e2e (built bin against the fixture server)", () => {
   });
 
   it("--json output parses and matches the zod schema and result.v1.json; stdout has no other bytes", async () => {
-    const r = await runBin([`${site.origin}/noindex`, "--json"]);
+    const r = await runBin([`${site.origin}/wrong-canonical`, "--json"]);
     expect(r.status).toBe(0);
     const parsed: unknown = JSON.parse(r.stdout);
     expect(resultSchema.safeParse(parsed).success).toBe(true);
@@ -96,7 +102,7 @@ describe("cli: e2e (built bin against the fixture server)", () => {
     expect(r.stdout.trim().startsWith("{")).toBe(true);
     expect(r.stdout.trim().endsWith("}")).toBe(true);
     expect((parsed as { findings: { checkId: string }[] }).findings.map((f) => f.checkId)).toEqual([
-      "noindex",
+      "canonical-elsewhere",
     ]);
   });
 
@@ -138,25 +144,30 @@ describe("cli: e2e (built bin against the fixture server)", () => {
 });
 
 describe("cli: edge cases", () => {
-  it("only medium findings with --ci: exit 0", async () => {
-    const r = await runBin([`${site.origin}/hop1`, "--ci"]);
-    expect(r.stdout).toContain("! Your address takes several jumps to load");
-    expect(r.stdout).not.toContain("✗");
-    expect(r.status).toBe(0);
+  it("only medium findings with --ci: exit 0 (full check set, in process)", async () => {
+    const out: string[] = [];
+    const io = { stdout: { write: (x: string) => out.push(x) }, stderr: { write: () => true } };
+    const code = await main([`${site.origin}/hop1`, "--ci", "--allow-private"], io, {
+      registry: createPageRegistry(),
+    });
+    expect(out.join("")).toContain("! Your address takes several jumps to load");
+    expect(out.join("")).not.toContain("\u2717");
+    expect(code).toBe(0);
   });
 
   it("output piped to a file has no ANSI codes", async () => {
-    const r = await runBin([`${site.origin}/noindex`]);
+    const r = await runBin([`${site.origin}/wrong-canonical`]);
     expect(r.stdout).not.toContain("\u001b[");
     expect(r.stderr).not.toContain("\u001b[");
   });
 
   it("NO_COLOR wins over FORCE_COLOR; FORCE_COLOR adds colour to a pipe", async () => {
-    expect((await runBin([`${site.origin}/noindex`], { FORCE_COLOR: "1" })).stdout).toContain(
-      "\u001b[",
-    );
     expect(
-      (await runBin([`${site.origin}/noindex`], { FORCE_COLOR: "1", NO_COLOR: "1" })).stdout,
+      (await runBin([`${site.origin}/wrong-canonical`], { FORCE_COLOR: "1" })).stdout,
+    ).toContain("\u001b[");
+    expect(
+      (await runBin([`${site.origin}/wrong-canonical`], { FORCE_COLOR: "1", NO_COLOR: "1" }))
+        .stdout,
     ).not.toContain("\u001b[");
   });
 

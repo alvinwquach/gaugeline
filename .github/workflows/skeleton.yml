@@ -1,0 +1,61 @@
+name: Skeleton release
+
+# Publishes a 0.0.x walking-skeleton version when the owner pushes a tag like v0.0.2. Switched off
+# until the repository variable PUBLISH_ENABLED is set to "true" (and the NPM_TOKEN secret exists):
+# without it the publish and smoke jobs are skipped. Tags cannot come from a fork's pull request.
+on:
+  push:
+    tags: ["v0.0.*"]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: "18.17.0"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm build
+      - run: pnpm test
+      - run: npm pack --dry-run
+        working-directory: packages/cli
+
+  publish:
+    needs: verify
+    if: startsWith(github.ref, 'refs/tags/v0.0.') && vars.PUBLISH_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # npm provenance
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec tsx scripts/check-tag-version.ts "$GITHUB_REF_NAME"
+      - run: pnpm build
+      - run: npm publish --provenance --access public
+        working-directory: packages/cli
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  smoke:
+    needs: publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - run: bash scripts/smoke-published.sh "${GITHUB_REF_NAME#v}"
+        env:
+          SMOKE_WRONG_URL: ${{ vars.SMOKE_WRONG_URL }}
+          SMOKE_CLEAN_URL: ${{ vars.SMOKE_CLEAN_URL }}

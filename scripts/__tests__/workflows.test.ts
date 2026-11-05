@@ -69,3 +69,20 @@ describe("forks and the npm token", () => {
     expect(release).toMatch(/id-token: write/);
   });
 });
+
+describe("skeleton release workflow", () => {
+  const text = readFileSync(join(dir, "skeleton.yml"), "utf8");
+  it("runs only on v0.0.* tags, never on pull requests, so a fork cannot reach the npm token", () => {
+    const on = text.slice(text.indexOf("\non:"), text.indexOf("\npermissions:"));
+    expect(on).toContain('tags: ["v0.0.*"]');
+    expect(on).not.toMatch(/pull_request/);
+  });
+
+  it("publishing is switched off unless PUBLISH_ENABLED is set, and checks the tag against the version first", () => {
+    expect(text).toContain(
+      "if: startsWith(github.ref, 'refs/tags/v0.0.') && vars.PUBLISH_ENABLED == 'true'",
+    );
+    expect(text.indexOf("check-tag-version.ts")).toBeLessThan(text.indexOf("npm publish"));
+    expect(text).toContain("--provenance");
+  });
+});
