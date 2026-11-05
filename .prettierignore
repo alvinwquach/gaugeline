@@ -9,3 +9,7 @@ packages/testkit/cassettes
 docs/.vitepress/dist
 docs/.vitepress/cache
 .github/pull_request_template.md
+docs/checks.data.json
+docs/check-ids.lock.json
+docs/slugs.lock.json
+docs/changelog.data.json

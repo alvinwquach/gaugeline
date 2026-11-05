@@ -66,8 +66,8 @@ export interface Check<Input> {
   what: string;
   why: string;
   fix: string;
-  /** The technical line in the checks reference (K06). */
-  tech?: string;
+  /** The technical line in the checks reference, for whoever fixes it. */
+  tech: string;
   /** Effort to fix (G28). */
   size?: Size;
   /** What fixed looks like (G28). */
@@ -87,6 +87,14 @@ export function defineCheck<I>(c: Check<I>): Check<I> {
     throw new TypeError(
       `Check id "${c.id}" must be kebab-case, for example "canonical-elsewhere".`,
     );
+  }
+  // The checks reference prints these four lines for every check, so none may be empty.
+  for (const field of ["what", "why", "fix", "tech"] as const) {
+    if (typeof c[field] !== "string" || c[field].trim() === "") {
+      throw new TypeError(
+        `Check "${c.id}" has an empty ${field}. Every check needs what, why, fix and tech.`,
+      );
+    }
   }
   return Object.freeze({ ...c });
 }
