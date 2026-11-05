@@ -1,0 +1,32 @@
+[
+  {
+    "version": "0.1.1",
+    "date": "2026-09-23",
+    "headline": "Launches, delivery and generated content",
+    "items": [
+      "gaugeline plan: check a built site against the sitemap plan — duplicate addresses, slugs that misspell their own heading, pages competing for one keyword, title and heading drift, the 301 map, and live pages with no destination.",
+      "Paid downloads: a file people pay for on a public asset address, and a download route that hands the file to anyone with no session.",
+      "Generated content: --totals compares a stated number with the sum of its parts, and --refs finds documents linking to things nobody published.",
+      "Pagination a crawler can follow, and pages where later pages return the same content as the first.",
+      "Unpublished work reaching the live page: draft ids in the payload, or a drafts perspective shipped to the browser.",
+      "Page weight, split into HTML, scripts and images, so you know which one to fix.",
+      "Fields fetched but never used, in GROQ and in GraphQL.",
+      "A price stored in two systems, flagged before they disagree."
+    ]
+  },
+  {
+    "version": "0.1.0",
+    "date": "2026-09-22",
+    "headline": "The site check",
+    "items": [
+      "The first release: one command that reads any live page the way a search engine does.",
+      "89 checks, from canonicals and duplicate addresses to leaked keys, broken feeds and public Sanity datasets.",
+      "A plain-English HTML report that opens automatically and can be shared as a single file.",
+      "--ci exits with code 1 when anything needs fixing first.",
+      "Products and prices: what your website shows, what Stripe charges and what Printful makes, compared, with duplicates found.",
+      "npx gaugeline open: the app in a browser tab on your computer.",
+      "Four checks from real client work: duplicate titles, unfinished content, menu items that go to the homepage, and pages with two menu labels.",
+      "Results in Slack, Discord, email or any webhook."
+    ]
+  }
+]

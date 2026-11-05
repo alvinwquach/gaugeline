@@ -19,9 +19,14 @@
     "schema:check": "tsx scripts/build-schema.ts --check",
     "docs:flags": "tsx scripts/build-docs.ts",
     "docs:flags:check": "tsx scripts/build-docs.ts --check",
-    "smoke": "tsx scripts/smoke.ts"
+    "smoke": "tsx scripts/smoke.ts",
+    "changeset": "changeset",
+    "version": "changeset version && pnpm docs:changelog",
+    "release": "pnpm build && changeset publish",
+    "docs:changelog": "tsx scripts/changelog-to-docs.ts"
   },
   "devDependencies": {
+    "@changesets/cli": "2.31.1",
     "@eslint/js": "9.39.5",
     "@types/node": "18.19.130",
     "ajv": "8.17.1",
@@ -41,7 +46,8 @@
   },
   "pnpm": {
     "overrides": {
-      "vite": "6.4.5"
+      "vite": "6.4.5",
+      "human-id": "4.1.3"
     },
     "onlyBuiltDependencies": [
       "esbuild"
