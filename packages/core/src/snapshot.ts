@@ -32,6 +32,10 @@ export interface PageSnapshot {
   jsonLdErrors: string[];
   og: Record<string, string>;
   scripts: string[];
+  /** link rel="alternate" hreflang entries, in document order. */
+  hreflang?: { hreflang: string; href: string }[];
+  /** The html element's lang attribute. */
+  htmlLang?: string;
   /** Calendar feeds: link rel="alternate" type="text/calendar", links ending .ics, webcal: links. */
   calendars?: string[];
   /** Elements marked as the next or upcoming event (by class, id or data attribute) with a time[datetime]. */
@@ -215,6 +219,15 @@ export function buildSnapshot(hops: Hop[]): PageSnapshot {
     }
   });
 
+  const hreflang: { hreflang: string; href: string }[] = [];
+  $("link[hreflang][href]").each((_, el) => {
+    const rels = ($(el).attr("rel") ?? "").toLowerCase().split(/\s+/);
+    const href = resolve($(el).attr("href"), base);
+    const code = ($(el).attr("hreflang") ?? "").trim();
+    if (rels.includes("alternate") && href && code) hreflang.push({ hreflang: code, href });
+  });
+  const htmlLang = $("html").attr("lang")?.trim();
+
   const calendars: string[] = [];
   $("link[rel][href]").each((_, el) => {
     const rels = ($(el).attr("rel") ?? "").toLowerCase().split(/\s+/);
@@ -332,6 +345,8 @@ export function buildSnapshot(hops: Hop[]): PageSnapshot {
     itemTypes,
     calendars,
     nextCards,
+    hreflang,
+    ...(htmlLang ? { htmlLang } : {}),
     rawText: { ...($("title").length > 0 ? { title: titleText } : {}), meta: rawMeta },
     feeds,
     forms,

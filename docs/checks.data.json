@@ -130,6 +130,16 @@
     "tech": "JSON.parse fails on a script type=\"application/ld+json\" block (one finding per block)"
   },
   {
+    "id": "lang-price-mismatch",
+    "severity": "high",
+    "area": "Sales & prices",
+    "title": "Prices differ between language versions",
+    "what": "The same item (matched by its structured data sku, or name) shows a different price on another language version of the page.",
+    "why": "Customers see one price and pay another, or compare the two versions and stop trusting either.",
+    "fix": "Update the price on every version, ideally from one product record. A version that was copied and translated keeps last month's price.",
+    "tech": "Product or Offer price in JSON-LD (then the configured priceSelector; never free text) differs for one sku across versions; \"$12\", \"12 USD\" and \"$12.00\" are equal"
+  },
+  {
     "id": "mock-content-live",
     "severity": "high",
     "area": "Visitors",
@@ -250,6 +260,16 @@
     "tech": "the feed response is larger than 2 MB (2,097,152 bytes)"
   },
   {
+    "id": "hreflang-not-reciprocal",
+    "severity": "medium",
+    "area": "Search & sharing",
+    "title": "A language version doesn't link back",
+    "what": "This page's hreflang points at a version in another language, but that version's hreflang doesn't point back.",
+    "why": "Search engines ignore hreflang pairs that aren't confirmed from both sides, so searchers may get the wrong language.",
+    "fix": "Give every version the same full set of hreflang links, including one to itself.",
+    "tech": "page A has <link rel=alternate hreflang> to B, and B (fetched) has none to A (a trailing slash is not a difference)"
+  },
+  {
     "id": "html-heavy",
     "severity": "medium",
     "area": "Visitors",
@@ -308,6 +328,16 @@
     "why": "When the old WordPress install or its host is switched off, every one of these images breaks at once.",
     "fix": "Move the images into the new site's own media library or asset folder and update the addresses.",
     "tech": "img src or srcset candidates under /wp-content/uploads/"
+  },
+  {
+    "id": "lang-twin-missing",
+    "severity": "medium",
+    "area": "Visitors",
+    "title": "A language version of this page is missing",
+    "what": "The page says (through hreflang, the sitemap or your language settings) that it has a version in another language, but that version returns an error or redirects to the homepage.",
+    "why": "Visitors who switch language land on an error or on the homepage, and search engines drop the alternate from results.",
+    "fix": "Publish the missing version, or remove it from the page's hreflang links and the sitemap. Pages meant to exist in one language only can be excluded in gaugeline.languages.json.",
+    "tech": "an expected twin (hreflang, sitemap xhtml:link or the configured prefix, subdomain or parameter) answers 4xx or 5xx, or redirects to / or a language root; at most 5 versions are fetched"
   },
   {
     "id": "links-wrapped",
@@ -540,6 +570,16 @@
     "tech": "Event JSON-LD without startDate, location or eventStatus (one finding listing each event and what it lacks)"
   },
   {
+    "id": "hreflang-bad-code",
+    "severity": "low",
+    "area": "Search & sharing",
+    "title": "Some language codes are not valid",
+    "what": "hreflang uses a code that isn't a valid language tag (such as \"sp\" or \"es_US\"), or a page with three or more languages has no x-default.",
+    "why": "Search engines ignore an hreflang with an invalid code, and without x-default they guess which version to show everyone else.",
+    "fix": "Use BCP 47 codes such as es, es-US or es-419 (a hyphen, not an underscore), and add hreflang=\"x-default\" for the version to show when no language matches.",
+    "tech": "an hreflang value is not a BCP 47 tag (two-letter languages must be ISO 639-1), or 3+ distinct languages have no x-default"
+  },
+  {
     "id": "images-alt-missing",
     "severity": "low",
     "area": "Visitors",
@@ -558,6 +598,26 @@
     "why": "WebP and AVIF are usually a quarter to a half smaller for the same picture, so the page loads faster.",
     "fix": "Offer WebP or AVIF with a <picture> element or srcset, or let your image CDN or framework image component pick the format.",
     "tech": "a sampled image's Content-Type is image/jpeg, image/png or image/gif and it has no WebP or AVIF candidate (SVG is never reported)"
+  },
+  {
+    "id": "lang-attr-mismatch",
+    "severity": "low",
+    "area": "Visitors",
+    "title": "A language version declares the wrong language",
+    "what": "A version's <html lang> names a different language than the version is (for example the Spanish page still says lang=\"en\").",
+    "why": "Screen readers read the page with the wrong voice and pronunciation, and browsers offer to translate it into its own language.",
+    "fix": "Set <html lang> per version from the page's language, usually in the layout component.",
+    "tech": "<html lang>'s primary subtag differs from the version's language (from hreflang or the configured scheme)"
+  },
+  {
+    "id": "lang-untranslated",
+    "severity": "low",
+    "area": "Visitors",
+    "title": "Some text wasn't translated",
+    "what": "Strings you listed as default-language text (button labels, headings) appear on another language version.",
+    "why": "A Spanish page with an English \"Add to cart\" button looks unfinished, and some visitors won't know what it does.",
+    "fix": "Translate the strings in the components that render them; they are usually hard-coded in a shared button or heading.",
+    "tech": "a string from untranslated in gaugeline.languages.json appears in another version's main text or link names (case ignored); needs the list"
   },
   {
     "id": "links-vague-text",
