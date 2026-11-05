@@ -30,7 +30,6 @@ export {
   assertReadOnly,
   describeNetworkFailure,
   createFetcher,
-  normaliseUrl,
 } from "./fetcher.js";
 export type { FetchErrorReason, Fetcher, FetcherOptions, GetOptions, Hop } from "./fetcher.js";
 export { Semaphore } from "./semaphore.js";
@@ -51,3 +50,5 @@ export type { Outcome } from "./outcome.js";
 export { buildSnapshot, jsonLdNodes } from "./snapshot.js";
 export type { PageSnapshot } from "./snapshot.js";
 export { charsetFromContentType, decodeBody, sniffMetaCharset } from "./charset.js";
+export { compareAddresses, normaliseText, normaliseUrl, sameText } from "./normalise.js";
+export type { AddressComparison, AddressDifference, CompareOptions } from "./normalise.js";

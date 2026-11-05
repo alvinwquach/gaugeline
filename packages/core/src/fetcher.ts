@@ -1,6 +1,7 @@
 import { decodeBody } from "./charset.js";
 import { NetworkError, errorCodes } from "./errors.js";
 import { LIMITS } from "./limits.js";
+import { normaliseUrl } from "./normalise.js";
 import { Semaphore } from "./semaphore.js";
 
 /**
@@ -128,15 +129,8 @@ export function assertReadOnly(method: string): void {
   }
 }
 
-/**
- * The memo key for an address: lowercase scheme and host (IDN hosts become punycode), no default
- * port, no fragment. The query and the trailing slash are kept as they are.
- */
-export function normaliseUrl(input: string | URL): string {
-  const url = new URL(typeof input === "string" ? input.trim() : input.href);
-  url.hash = "";
-  return url.href;
-}
+/** Moved to normalise.ts (G04a); re-exported so existing imports keep working. */
+export { normaliseUrl };
 
 const REDIRECTS = new Set([301, 302, 303, 307, 308]);
 

@@ -1,4 +1,4 @@
-import { normaliseUrl } from "./fetcher.js";
+import { normaliseUrl } from "./normalise.js";
 
 /**
  * Keep the first occurrence of each address, compared by normalised URL, in document order.
@@ -11,7 +11,7 @@ export function dedupeUrls(urls: Iterable<string>, base?: string): string[] {
   for (const raw of urls) {
     let key: string;
     try {
-      key = normaliseUrl(base === undefined ? raw : new URL(raw.trim(), base).href);
+      key = normaliseUrl(raw, base);
     } catch {
       continue;
     }
