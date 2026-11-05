@@ -23,6 +23,30 @@ Every flag the CLI accepts.
 
 What the code in this repository does today. The sections above describe the product as published on the site.
 
+### Usage
+
+`gaugeline --help` prints:
+
+```text title=Output
+Usage: gaugeline <address> [options]
+
+Check a website the way search engines and visitors see it. Read-only.
+
+Options:
+      --ci               Exit 1 when a "Fix this first" finding is found [CI]
+      --json             Print the result as JSON on stdout, and nothing else
+      --no-open          Do not open anything in a browser
+      --allow-private    Allow addresses on this computer or a private network,
+                         such as 127.0.0.1 or 192.168.x.x
+      --quiet            Print only results and errors
+      --verbose          Show each request, and technical detail when something
+                         goes wrong
+  -h, --help             Show this help and exit
+  -v, --version          Print the version and exit
+
+Exit codes: 0 ran, 1 --ci with a fix-first finding, 2 could not run
+```
+
 ```
 gaugeline <address> [options]
 ```
