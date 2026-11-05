@@ -8,3 +8,4 @@ packages/core/schema
 packages/testkit/cassettes
 docs/.vitepress/dist
 docs/.vitepress/cache
+.github/pull_request_template.md

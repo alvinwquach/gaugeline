@@ -84,4 +84,5 @@ export const UNLISTED: NavPage[] = [
   { slug: "security", title: "Security" },
   { slug: "changelog", title: "Changelog" },
   { slug: "reference/json-schema", title: "JSON output reference" },
+  { slug: "contributing/docs-first", title: "Docs first" },
 ];
