@@ -65,6 +65,10 @@ jobs:
       - run: pnpm docs:flags:check
       - run: pnpm docs:changelog --check
       - run: pnpm gen:checks --check
+      - name: Public surface (STABILITY.md)
+        run: |
+          git fetch --depth=1 origin "${{ github.base_ref || 'main' }}"
+          pnpm surface --check --base FETCH_HEAD
 
   docs-examples:
     # Runs every "$ npx gaugeline" example in the docs against its fixture and compares the output.

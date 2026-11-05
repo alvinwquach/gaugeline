@@ -1,5 +1,8 @@
 # Options
 
+What stays stable between versions, and what may change, is written down in
+[STABILITY.md](https://github.com/alvinwquach/gaugeline/blob/main/STABILITY.md).
+
 Every flag the CLI accepts.
 
 | Flag                                           | Does                                                                                                      |
@@ -18,6 +21,15 @@ Every flag the CLI accepts.
 | `0`  | The check ran. Without `--ci`, this is the code even when problems were found |
 | `1`  | `--ci` mode, and at least one finding is “Fix this first”                     |
 | `2`  | The check couldn't run, for example the site didn't answer                    |
+
+## Deprecated
+
+Flags and environment variables that are going away, with the version they will be removed in.
+Using one prints a single warning on stderr; see [STABILITY.md](https://github.com/alvinwquach/gaugeline/blob/main/STABILITY.md).
+
+| Flag or variable | Deprecated in | Removed in | Use instead |
+| ---------------- | ------------- | ---------- | ----------- |
+| (none yet)       |               |            |             |
 
 ## In this version
 
