@@ -21,6 +21,48 @@ browser would:
 - At most five requests at a time, with the user agent `Gaugeline/0.1 (read-only site check)`.
 - Each address once per run.
 
+### Links on the page
+
+The link checks request at most 30 of the page's same-site links (the same host, with or without
+`www`), the first 30 in document order after removing repeats, so the same page gives the same
+sample every run. Each link is a `HEAD` request, or a `GET` when the server refuses `HEAD` (405 or
+501). `mailto:`, `tel:` and `javascript:` links, `#` links to the page itself and links to other
+sites are never requested. A link that answers 401, 403 or 429 is not reported as broken, and a page
+that answers 200 but says "not found" (a soft 404) is out of scope.
+
+Against the invented `links` fixture, a hardware shop with a dead garden-centre link in its header
+and footer and a paint link that redirects, version 0.1.0 prints:
+
+```text title=Output
+✗ Links on this page go nowhere
+    "Garden centre" <a href="/garden-centre"> returned 404
+· Links on this page go through a redirect
+    /old-paint (301) ends at /paint
+✓ ai-crawlers-blocked
+✓ canonical-elsewhere
+✓ canonical-missing
+✓ feed-broken
+✓ feed-invalid
+✓ feed-oversized
+✓ host-duplicate
+✓ llms-txt-broken-links
+✓ llms-txt-stale-facts
+✓ noindex
+✓ quotable-facts-disagree
+✓ redirect-chain
+✓ robots-block
+✓ sitemap-dead
+✓ sitemap-host
+✓ sitemap-missing
+✓ sitemap-redirects
+✓ thin-html
+
+Checked all 6 links, 1 sitemap page.
+2 to look at, 1 to fix first.
+```
+
+The output above is asserted by `packages/cli/src/__tests__/links.test.ts`.
+
 ### robots.txt, sitemaps and feeds
 
 When a check needs them, a run reads the site's `/robots.txt`, its sitemaps and the feeds the page
@@ -56,11 +98,13 @@ advertises four feeds, the run requests 25 sitemap pages and 3 feeds. It reports
 ! Your sitemap lists old addresses that redirect
     1 of 25 sampled sitemap entries redirect: /old-menu (301 to /menu/01)
 ✓ ai-crawlers-blocked
+✓ broken-links
 ✓ canonical-elsewhere
 ✓ canonical-missing
 ✓ feed-invalid
 ✓ feed-oversized
 ✓ host-duplicate
+✓ links-via-redirect
 ✓ llms-txt-broken-links
 ✓ llms-txt-stale-facts
 ✓ noindex

@@ -2,6 +2,7 @@ import type * as z from "zod";
 import type { Fetcher } from "./fetcher.js";
 import type { Budget } from "./limits.js";
 import type { findingSchema } from "./result.js";
+import type { LinkSample } from "./links.js";
 import type { SiteContext } from "./site-context.js";
 
 /** Fix this first / Fix soon / Worth knowing. */
@@ -62,6 +63,8 @@ export interface CheckContext {
    * check. Absent when the run has no site to read (a unit test, a single-page check).
    */
   site?: () => Promise<SiteContext>;
+  /** The run's same-site link sample, probed once on first use and shared by the link checks. */
+  links?: () => Promise<LinkSample>;
 }
 
 export interface Check<Input> {

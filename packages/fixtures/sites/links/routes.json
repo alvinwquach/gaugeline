@@ -1,0 +1,9 @@
+{
+  "/old-paint": { "status": 301, "location": "/paint" },
+  "/staff": { "status": 403, "body": "Staff only" },
+  "/busy": { "status": 429, "body": "Too many requests" },
+  "/old-catalogue": {
+    "body": "<!doctype html><title>Not found</title><h1>Sorry, this page was not found</h1>",
+    "headers": { "content-type": "text/html; charset=utf-8" }
+  }
+}
