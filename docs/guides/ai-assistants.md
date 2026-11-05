@@ -51,12 +51,14 @@ and Saturday hours, version 0.1.0 prints:
 ! Your llms.txt gives assistants an old phone number, address or hours
     phone: llms.txt says (503) 555-0119, structured data says +1 503-555-0142. hours: Sat 08:00-13:00 in llms.txt, 08:00-14:00 in structured data
 ✓ ai-crawlers-blocked
+✓ broken-links
 ✓ canonical-elsewhere
 ✓ canonical-missing
 ✓ feed-broken
 ✓ feed-invalid
 ✓ feed-oversized
 ✓ host-duplicate
+✓ links-via-redirect
 ✓ noindex
 ✓ quotable-facts-disagree
 ✓ redirect-chain

@@ -45,7 +45,8 @@ export type {
 export { Semaphore } from "./semaphore.js";
 export { BUDGET_KINDS, LIMITS, createBudget, formatSampleSummary } from "./limits.js";
 export type { Budget, BudgetKind, BudgetSummary, BudgetTally, Limits } from "./limits.js";
-export { dedupeUrls } from "./sample.js";
+export { dedupeUrls, isSameSite, sampleUrls, siteOf } from "./sample.js";
+export type { SampleItem } from "./sample.js";
 export {
   ConfigError,
   CouldNotRunError,
@@ -72,6 +73,9 @@ export {
 } from "./checks/index.js";
 export type { ProgressEvent, ProgressSink, RequestInfo } from "./progress.js";
 export { checkSite } from "./site.js";
+export { getOrNull, probe } from "./probe.js";
+export { lazyLinkSample, linkCandidates, sampleLinks } from "./links.js";
+export type { LinkResult, LinkSample, LinkSampleOptions } from "./links.js";
 export type { SiteCheck, SiteCheckOptions } from "./site.js";
 export { buildSiteContext, lazySiteContext, parseFeedLinks, parseSitemap } from "./site-context.js";
 export type {

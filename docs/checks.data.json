@@ -1,5 +1,15 @@
 [
   {
+    "id": "broken-links",
+    "severity": "high",
+    "area": "Visitors",
+    "title": "Links on this page go nowhere",
+    "what": "Links to other pages on the site return an error (404, 410 or 5xx).",
+    "why": "Visitors who click hit a dead end, and search engines take broken links as a sign the site is neglected.",
+    "fix": "Point each link at the page's current address, or remove it. When a page moved, add a 301 redirect from the old address.",
+    "tech": "a sampled same-site a[href] ends in 4xx (not 401, 403 or 429) or 5xx. A 200 page that says \"not found\" (a soft 404) is out of scope"
+  },
+  {
     "id": "canonical-elsewhere",
     "severity": "high",
     "area": "Search & sharing",
@@ -178,5 +188,15 @@
     "why": "Copies of the page with tracking parameters can be treated as separate pages.",
     "fix": "Add a self-referencing canonical tag.",
     "tech": "no <link rel=\"canonical\">"
+  },
+  {
+    "id": "links-via-redirect",
+    "severity": "low",
+    "area": "Visitors",
+    "title": "Links on this page go through a redirect",
+    "what": "Links to other pages on the site answer with a redirect (3xx) before reaching the page.",
+    "why": "Each redirect adds a round trip for visitors, and search engines pass a little less on through every hop.",
+    "fix": "Change the link to the address it ends up at. This usually follows a move to new URLs, https or www.",
+    "tech": "a sampled same-site a[href] answers 3xx first and ends in 200"
   }
 ]
