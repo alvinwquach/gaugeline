@@ -167,6 +167,10 @@ describe("logger: edge cases", () => {
       [bin, `${site.origin}/`, "--verbose", "--allow-private"],
       {
         stdio: ["ignore", "pipe", "pipe"],
+        // Like runBin: a CI runner's CI variable would turn on --ci and change the exit code.
+        env: Object.fromEntries(
+          Object.entries(process.env).filter(([k]) => !["CI", "GITHUB_ACTIONS"].includes(k)),
+        ),
       },
     );
     child.stderr.destroy();
