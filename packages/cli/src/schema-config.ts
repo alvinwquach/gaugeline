@@ -4,9 +4,11 @@ import {
   ConfigError,
   factsConfigSchema,
   languageRulesSchema,
+  paymentsConfigSchema,
   schemaRulesSchema,
   type FactsConfig,
   type LanguageRules,
+  type PaymentsConfig,
   type SchemaRules,
 } from "@gaugeline/core";
 import type * as z from "zod";
@@ -17,6 +19,8 @@ export const SCHEMA_CONFIG_FILE = "gaugeline.schema.json";
 export const LANGUAGES_CONFIG_FILE = "gaugeline.languages.json";
 /** The business's declared facts, likewise. */
 export const FACTS_CONFIG_FILE = "gaugeline.facts.json";
+/** The business's payment handles and links, likewise. */
+export const PAYMENTS_CONFIG_FILE = "gaugeline.payments.json";
 
 /** A JSON settings file in `dir`, validated, or undefined when there is none. Invalid is a ConfigError. */
 function readJsonConfig<T>(
@@ -56,4 +60,8 @@ export function readLanguageRules(dir: string): LanguageRules | undefined {
 
 export function readFacts(dir: string): FactsConfig | undefined {
   return readJsonConfig(dir, FACTS_CONFIG_FILE, factsConfigSchema, "declared facts");
+}
+
+export function readPayments(dir: string): PaymentsConfig | undefined {
+  return readJsonConfig(dir, PAYMENTS_CONFIG_FILE, paymentsConfigSchema, "payment details");
 }

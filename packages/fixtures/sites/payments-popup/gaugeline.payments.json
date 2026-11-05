@@ -1,0 +1,9 @@
+{
+  "payments": [
+    { "kind": "venmo", "value": "@solana-tamales", "label": "Venmo" },
+    { "kind": "cashapp", "value": "$SolanaTamales", "label": "Cash App" },
+    { "kind": "zelle", "value": "(408) 555-0100", "label": "Zelle" },
+    { "kind": "square-link", "value": "https://square.link/u/Sol4Box9", "label": "Tamal box" },
+    { "kind": "stripe-link", "value": "https://buy.stripe.com/solana-gift-28", "label": "Gift card" }
+  ]
+}

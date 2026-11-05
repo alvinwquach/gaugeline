@@ -22,6 +22,8 @@ export const LIMITS = Object.freeze({
   languageVersions: 5,
   /** Cash App and Venmo profile links requested. */
   paymentLinks: 5,
+  /** Square and Stripe payment links read (GET, nothing submitted). */
+  checkoutLinks: 5,
   scripts: 15,
   structuredDataAddresses: 12,
   concurrency: 5,
@@ -42,6 +44,7 @@ export type BudgetKind =
   | "pages"
   | "languageVersions"
   | "paymentLinks"
+  | "checkoutLinks"
   | "scripts"
   | "structuredDataAddresses";
 
@@ -57,6 +60,7 @@ export const BUDGET_KINDS = [
   "pages",
   "languageVersions",
   "paymentLinks",
+  "checkoutLinks",
   "scripts",
   "structuredDataAddresses",
 ] as const satisfies readonly BudgetKind[];
@@ -115,6 +119,7 @@ const NOUNS: Record<BudgetKind, [singular: string, plural: string]> = {
   pages: ["other page", "other pages"],
   languageVersions: ["language version", "language versions"],
   paymentLinks: ["payment link", "payment links"],
+  checkoutLinks: ["checkout link", "checkout links"],
   scripts: ["JavaScript file", "JavaScript files"],
   structuredDataAddresses: ["address in structured data", "addresses in structured data"],
 };

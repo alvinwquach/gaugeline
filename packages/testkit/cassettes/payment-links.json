@@ -1,0 +1,43 @@
+{
+  "interactions": [
+    {
+      "method": "GET",
+      "url": "https://square.link/u/Sol4Box9",
+      "status": 200,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Tamal box \u00b7 Solana Tamales</title>\n</head>\n<body>\n<main>\n<h1>Tamal box</h1>\n<p>Invented checkout page for Gaugeline's tests. A dozen tamales, $12.00.</p>\n<button>Pay $12.00</button>\n</main>\n</body>\n</html>\n"
+    },
+    {
+      "method": "GET",
+      "url": "https://buy.stripe.com/solana-gift-28",
+      "status": 200,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Solana Tamales</title>\n</head>\n<body>\n<main>\n<h1>This link is no longer active</h1>\n<p>Invented page for Gaugeline's tests: the seller has turned off this payment link.</p>\n</main>\n</body>\n</html>\n"
+    },
+    {
+      "method": "GET",
+      "url": "https://square.link/u/OldBox01",
+      "status": 200,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Square Checkout</title>\n</head>\n<body>\n<main>\n<h1>This link is no longer active.</h1>\n<p>Invented page for Gaugeline's tests: contact the seller for a new link.</p>\n</main>\n</body>\n</html>\n"
+    },
+    {
+      "method": "GET",
+      "url": "https://buy.stripe.com/gone-404",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Not found</title>\n</head>\n<body>\n<main>\n<p>Invented page for Gaugeline's tests: no such payment link.</p>\n</main>\n</body>\n</html>\n"
+    }
+  ],
+  "name": "payment-links",
+  "recordedAt": "2026-11-05T00:00:00.000Z",
+  "version": 1
+}
