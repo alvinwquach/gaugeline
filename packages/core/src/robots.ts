@@ -76,6 +76,12 @@ export function rulesFor(file: RobotsFile, agent: string): RobotsRule[] {
   return groups.flatMap((g) => g.rules);
 }
 
+/** True when a group names `agent` itself (not only "*"): its rules were written for it. */
+export function hasOwnGroup(file: RobotsFile, agent: string): boolean {
+  const token = agent.toLowerCase();
+  return token !== "*" && file.groups.some((g) => g.agents.includes(token));
+}
+
 const patternCache = new Map<string, RegExp>();
 
 function patternRegex(pattern: string): RegExp {

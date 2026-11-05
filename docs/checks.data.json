@@ -40,6 +40,16 @@
     "tech": "<meta name=\"robots\" content=\"noindex\">"
   },
   {
+    "id": "quotable-facts-disagree",
+    "severity": "high",
+    "area": "Search & sharing",
+    "title": "Assistants find two different names for your business",
+    "what": "The business name in the page's structured data and the title of /llms.txt are not the same name.",
+    "why": "Assistants match a question to a business by name. Two names can make them treat one business as two, or quote the wrong one.",
+    "fix": "Use the same business name in the LocalBusiness structured data and as the first heading of llms.txt.",
+    "tech": "LocalBusiness JSON-LD name and the llms.txt H1 disagree (case, punctuation and a leading \"The\" ignored)"
+  },
+  {
     "id": "robots-block",
     "severity": "high",
     "area": "Search & sharing",
@@ -90,6 +100,26 @@
     "tech": "the feed response is larger than 2 MB (2,097,152 bytes)"
   },
   {
+    "id": "llms-txt-broken-links",
+    "severity": "medium",
+    "area": "Search & sharing",
+    "title": "Your llms.txt sends assistants to pages that don't work",
+    "what": "Links in /llms.txt return an error (4xx or 5xx) or redirect to a different site.",
+    "why": "llms.txt is a short guide for AI assistants to your most useful pages. A dead or off-site link is the page they quote, or fail to.",
+    "fix": "Update the links to the pages' current addresses, or remove the ones that no longer exist.",
+    "tech": "links in /llms.txt answer 4xx or 5xx, or redirect off-site"
+  },
+  {
+    "id": "llms-txt-stale-facts",
+    "severity": "medium",
+    "area": "Search & sharing",
+    "title": "Your llms.txt gives assistants an old phone number, address or hours",
+    "what": "The phone number, street address or opening hours in /llms.txt disagree with the page's structured data.",
+    "why": "Assistants quote llms.txt directly. An old number or old hours there is what someone hears when they ask if you're open tonight.",
+    "fix": "Update llms.txt to match the structured data (or the other way round, whichever is wrong). Generate both from one source if you can.",
+    "tech": "hours, telephone or address in /llms.txt differ from the page's LocalBusiness JSON-LD"
+  },
+  {
     "id": "redirect-chain",
     "severity": "medium",
     "area": "Search & sharing",
@@ -128,6 +158,16 @@
     "why": "A sitemap should list the final address of each page. Redirecting entries make search engines do extra work and can keep the old address in results.",
     "fix": "List each page at the address it redirects to. This often follows a move to https, to www, or to a new URL scheme.",
     "tech": "sampled sitemap entries return 3xx"
+  },
+  {
+    "id": "ai-crawlers-blocked",
+    "severity": "low",
+    "area": "Search & sharing",
+    "title": "Some AI assistants can't read your site",
+    "what": "robots.txt stops one or more known AI crawlers from reading the home page. Gaugeline says which, and whether the block names them or comes from a rule for every crawler.",
+    "why": "People ask assistants about a business before they open its site. Blocking AI crawlers is a fair choice; blocking them by accident means assistants answer from old or second-hand information.",
+    "fix": "If the block is on purpose, there is nothing to do. If it comes from a Disallow: / meant for a staging site, remove it, or add groups for the assistants you want to allow.",
+    "tech": "known AI user-agent tokens (packages/core/src/data/ai-agents.json) are disallowed / by robots.txt"
   },
   {
     "id": "canonical-missing",
