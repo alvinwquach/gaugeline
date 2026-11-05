@@ -31,7 +31,7 @@ describe("buildSnapshot: unit", () => {
       '<h1 id="top">Fish &amp; <em>Chips</em>&nbsp;<span>to&#8209;go</span></h1><h2>Two</h2><h4>Four</h4>',
     );
     expect(s.headings).toEqual([
-      { level: 1, text: "Fish & Chips to‑go", id: "top" },
+      { level: 1, text: "Fish & Chips to\u2011go", id: "top" },
       { level: 2, text: "Two" },
     ]);
   });
@@ -137,7 +137,7 @@ describe("buildSnapshot: edge cases", () => {
   });
 
   it("a BOM at the start is ignored", () => {
-    expect(snap("﻿<title>Hi</title>").title).toBe("Hi");
+    expect(snap("\uFEFF<title>Hi</title>").title).toBe("Hi");
     const bytes = new Uint8Array([
       0xef,
       0xbb,
@@ -167,7 +167,7 @@ describe("buildSnapshot: edge cases", () => {
   });
 
   it("stega zero-width characters inside the title are stripped and recorded", () => {
-    const s = snap("<title>Pop​up‌‍ nights﻿</title>");
+    const s = snap("<title>Pop\u200Bup\u200C\u200D nights\uFEFF</title>");
     expect(s.title).toBe("Popup nights");
     expect(s.stega).toBe(true);
     expect(snap("<title>Plain</title>").stega).toBe(false);
@@ -208,7 +208,7 @@ describe("buildSnapshot: property test", () => {
       "{",
       "[",
       "&amp",
-      "​",
+      "\u200B",
       "javascript:",
       "//",
       "http://[",
