@@ -1,0 +1,87 @@
+/**
+ * The docs sidebar, as data. Groups and slugs are exactly the published site's window.DOCS: slugs are
+ * public addresses, so never rename one without a redirect (docs/slugs.lock.json pins them).
+ */
+export interface NavPage {
+  slug: string;
+  title: string;
+  soon?: boolean;
+}
+
+export interface NavGroup {
+  group: string;
+  soon?: boolean;
+  pages: NavPage[];
+}
+
+export const NAV: NavGroup[] = [
+  {
+    group: "Getting started",
+    pages: [
+      { slug: "introduction", title: "Introduction" },
+      { slug: "quick-start", title: "Quick start" },
+      { slug: "how-it-works", title: "How it works" },
+    ],
+  },
+  {
+    group: "The site check",
+    pages: [
+      { slug: "running-a-check", title: "Running a check" },
+      { slug: "reading-the-report", title: "Reading the report" },
+      { slug: "options", title: "Options" },
+      { slug: "the-app", title: "Open the app" },
+      { slug: "products-and-prices", title: "Products and prices" },
+      { slug: "plan-check", title: "Checking a launch plan" },
+      { slug: "delivery", title: "Paid downloads and delivery" },
+      { slug: "query-check", title: "Checking your queries" },
+      { slug: "no-developer", title: "When you don't have a developer" },
+      { slug: "ad-landing-pages", title: "Ad landing pages" },
+      { slug: "forms-and-crm", title: "Forms and CRM tracking" },
+      { slug: "crawler-view", title: "What a crawler gets" },
+      { slug: "notifications", title: "Send results anywhere" },
+      { slug: "why-not-playwright", title: "Why not just use Playwright?" },
+      { slug: "ci", title: "Use it in CI" },
+    ],
+  },
+  {
+    group: "Checks",
+    pages: [{ slug: "checks", title: "Every check" }],
+  },
+  {
+    group: "Sanity plugin",
+    soon: true,
+    pages: [
+      { slug: "plugin", title: "Install the plugin", soon: true },
+      { slug: "publish-gate", title: "The publish gate", soon: true },
+      { slug: "automatic-messages", title: "Automatic messages", soon: true },
+    ],
+  },
+  {
+    group: "Integrations",
+    soon: true,
+    pages: [
+      { slug: "playwright", title: "Playwright helper", soon: true },
+      { slug: "mcp", title: "MCP server", soon: true },
+    ],
+  },
+  {
+    group: "Reference",
+    pages: [
+      { slug: "writes", title: "What it can and can't write" },
+      { slug: "private-datasets", title: "Private datasets" },
+      { slug: "privacy", title: "Privacy and safety" },
+      { slug: "glossary", title: "Glossary" },
+      { slug: "faq", title: "FAQ" },
+    ],
+  },
+];
+
+/**
+ * Pages in this repository that are not on the published site's sidebar. They build and can be
+ * linked to, but are not listed.
+ */
+export const UNLISTED: NavPage[] = [
+  { slug: "security", title: "Security" },
+  { slug: "changelog", title: "Changelog" },
+  { slug: "reference/json-schema", title: "JSON output reference" },
+];

@@ -80,3 +80,19 @@ describe("K01 publish path, moved into the Release PR workflow by K02", () => {
     expect(release).toContain("scripts/smoke-published.sh");
   });
 });
+
+describe("docs workflow", () => {
+  const text = readFileSync(join(dir, "docs.yml"), "utf8");
+  it("a pull request from a fork still builds and uploads, and the preview deploy is skipped without failing", () => {
+    expect(text).toContain("github.event.pull_request.head.repo.full_name == github.repository");
+    expect(text.slice(text.indexOf("  build:"), text.indexOf("  preview:"))).not.toMatch(
+      /secrets\./,
+    );
+    expect(text).toContain("upload-artifact");
+  });
+
+  it("deploys are switched off unless DOCS_DEPLOY_ENABLED is set, and the host lives in one script", () => {
+    expect(text.match(/vars\.DOCS_DEPLOY_ENABLED == 'true'/g)).toHaveLength(2);
+    expect(text.match(/scripts\/deploy-docs\.sh/g)?.length).toBeGreaterThanOrEqual(2);
+  });
+});
