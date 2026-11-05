@@ -1,11 +1,13 @@
 import {
   ConfigError,
+  buildSnapshot,
+  createBudget,
   createFetcher,
+  createPageRegistry,
   exitCodeFor,
   runChecks,
-  type Check,
+  type CheckRegistry,
   type FetcherOptions,
-  type Hop,
   type Outcome,
 } from "@gaugeline/core";
 import { parseCliArgs, USAGE } from "./args.js";
@@ -20,11 +22,9 @@ export interface Io {
 /** Exit codes are a public contract: 0 ran, 1 --ci found fix-first work, 2 could not run. */
 export const EXIT = { ok: 0, findings: 1, couldNotRun: 2 } as const;
 
-/** What a run checks the fetched page with. G05 replaces this with the registry. */
-export type PageInput = { url: string; hops: Hop[] };
-
 export interface Deps {
-  checks?: readonly Check<PageInput>[];
+  /** The checks to run. Defaults to every page check. */
+  registry?: CheckRegistry;
   fetcher?: FetcherOptions;
 }
 
@@ -48,11 +48,15 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
     case "run": {
       const fetcher = createFetcher(deps.fetcher);
       const hops = await fetcher.getSite(args.input);
-      const finalUrl = hops.at(-1)?.url ?? args.address;
-      const result = await runChecks(deps.checks ?? [], { url: finalUrl, hops });
+      const snapshot = buildSnapshot(hops);
+      const result = await runChecks(snapshot, deps.registry ?? createPageRegistry(), {
+        ctx: { fetcher, budget: createBudget() },
+      });
       io.stdout.write(`Gaugeline ${VERSION} checking ${hops[0]?.url ?? args.address}\n`);
       for (const f of result.findings) io.stdout.write(`${f.severity}  ${f.checkId}  ${f.title}\n`);
-      if (result.failed.length > 0) io.stdout.write(`Could not run: ${result.failed.join(", ")}\n`);
+      if (result.failed.length > 0) {
+        io.stdout.write(`Could not run: ${result.failed.map((f) => f.id).join(", ")}\n`);
+      }
       const highFindings = result.findings.filter((f) => f.severity === "high").length;
       return { outcome: { kind: "ran", highFindings, drift: false }, ci: false };
     }

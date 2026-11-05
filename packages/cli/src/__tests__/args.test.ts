@@ -52,7 +52,7 @@ describe("parseCliArgs: unit", () => {
     try {
       const c = capture();
       expect(await main([server.origin], c.io)).toBe(0);
-      expect(c.out()).toBe(`Gaugeline ${pkg.version} checking ${server.origin}/\n`);
+      expect(c.out().split("\n")[0]).toBe(`Gaugeline ${pkg.version} checking ${server.origin}/`);
     } finally {
       await server.close();
     }

@@ -1,7 +1,13 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { ConfigError, NetworkError, defineCheck } from "@gaugeline/core";
+import {
+  CheckRegistry,
+  ConfigError,
+  NetworkError,
+  defineCheck,
+  type PageSnapshot,
+} from "@gaugeline/core";
 import { formatError, toOutcome } from "../fail.js";
-import { main, type PageInput } from "../main.js";
+import { main } from "../main.js";
 import {
   html,
   startRawServer,
@@ -98,7 +104,7 @@ describe("CLI errors: e2e (built bin)", () => {
   it("a fixture where one check throws: exit 0, the check id is in failed, the others still report", async () => {
     const base = { area: "Visitors", severity: "high", what: "w", why: "y", fix: "f" } as const;
     const checks = [
-      defineCheck<PageInput>({
+      defineCheck<PageSnapshot>({
         ...base,
         id: "throws-here",
         title: "t",
@@ -106,7 +112,7 @@ describe("CLI errors: e2e (built bin)", () => {
           throw new Error("bug");
         },
       }),
-      defineCheck<PageInput>({
+      defineCheck<PageSnapshot>({
         ...base,
         id: "still-reports",
         title: "Still reports",
@@ -116,14 +122,16 @@ describe("CLI errors: e2e (built bin)", () => {
             severity: "high",
             title: "Still reports",
             evidence: "e",
-            url: input.url,
+            url: input.finalUrl,
           },
         ],
       }),
     ];
     const out: string[] = [];
     const io = { stdout: { write: (s: string) => out.push(s) }, stderr: { write: () => true } };
-    expect(await main([site.origin], io, { checks })).toBe(0);
+    const registry = new CheckRegistry();
+    for (const c of checks) registry.register(c);
+    expect(await main([site.origin], io, { registry })).toBe(0);
     expect(out.join("")).toContain("Could not run: throws-here");
     expect(out.join("")).toContain("still-reports");
   });

@@ -15,7 +15,7 @@ import {
 } from "../../../../scripts/lib/schema.js";
 import { defineCheck, type Finding } from "../model.js";
 import { RESULT_SCHEMA_VERSION, buildResult, findingSchema, resultSchema } from "../result.js";
-import { runChecks } from "../runner.js";
+import { runCheckList } from "../runner.js";
 
 const repoRoot = fileURLToPath(new URL("../../../../", import.meta.url));
 const schemaDir = join(repoRoot, "packages/core/schema");
@@ -149,8 +149,8 @@ describe("result schema: integration", () => {
 
 describe("result schema: end to end through the runner", () => {
   // The CLI gains --json in G06, which spawns the bin and validates its stdout against this file.
-  const run = async (checks: Parameters<typeof runChecks<string>>[0]) => {
-    const out = await runChecks(checks, "page");
+  const run = async (checks: Parameters<typeof runCheckList<string>>[0]) => {
+    const out = await runCheckList(checks, "page");
     return buildResult({ url: "https://shop.example/", startedAt: new Date(0), ...out });
   };
   const base = {

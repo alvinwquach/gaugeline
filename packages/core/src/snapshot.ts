@@ -28,6 +28,8 @@ export interface PageSnapshot {
   ids: Set<string>;
   /** Visible words without running JavaScript. */
   wordCount: number;
+  /** Visible words outside the header, nav and footer (what thin-html reads). */
+  contentWordCount: number;
   /** Sanity stega (zero-width) characters were found in the text and stripped. */
   stega: boolean;
 }
@@ -76,9 +78,15 @@ function isHiddenStyle(style: string | undefined): boolean {
   );
 }
 
-function countWords($: CheerioAPI, state: { stega: boolean }): number {
-  const copy = $("body").length > 0 ? $("body").clone() : $.root().children().clone();
+function countWords($: CheerioAPI, state: { stega: boolean }, chrome = false): number {
+  // htmlparser2 does not invent a <body>, so a fragment is wrapped to make find() see top-level tags.
+  const copy =
+    $("body").length > 0 ? $("body").clone() : $("<div></div>").append($.root().contents().clone());
   copy.find("script, style, noscript, template, [hidden], [aria-hidden='true']").remove();
+  if (chrome)
+    copy
+      .find("header, nav, footer, [role='banner'], [role='navigation'], [role='contentinfo']")
+      .remove();
   copy.find("[style]").each((_, el) => {
     if (isHiddenStyle($(el).attr("style"))) $(el).remove();
   });
@@ -201,6 +209,7 @@ export function buildSnapshot(hops: Hop[]): PageSnapshot {
   });
 
   const wordCount = countWords($, state);
+  const contentWordCount = countWords($, state, true);
   const title = titleText === "" && $("title").length === 0 ? undefined : clean(titleText, state);
 
   return {
@@ -222,6 +231,7 @@ export function buildSnapshot(hops: Hop[]): PageSnapshot {
     forms,
     ids,
     wordCount,
+    contentWordCount,
     stega: state.stega,
   };
 }
