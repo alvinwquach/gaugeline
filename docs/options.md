@@ -32,15 +32,22 @@ Query strings and anything that looks like a key are removed from both forms.
 
 ## Flags
 
-| Flag              | Meaning                                                                                                                                            |
-| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--ci`            | Exit 1 when a "Fix this first" finding is found. Also on when the `CI` environment variable is set (any value except empty, `false` or `0`)        |
-| `--json`          | Print the result as JSON on stdout, and nothing else (see below)                                                                                   |
-| `--no-open`       | Do not open anything in a browser. Accepted now; the app arrives later                                                                             |
-| `--quiet`         | Print only results and errors: no progress lines, no warnings                                                                                      |
-| `--verbose`       | Add a `debug` line per request (method, address without its query string, status, milliseconds) and the technical detail when something goes wrong |
-| `-h`, `--help`    | Show help and exit                                                                                                                                 |
-| `-v`, `--version` | Print the version and exit                                                                                                                         |
+The table below is generated from `packages/cli/src/flags.ts` (`pnpm docs:flags`). Do not edit
+between the markers; CI fails when it differs from the flag table.
+
+<!-- flags:start -->
+
+| Flag              | Does                                                              | Environment variable | Since |
+| ----------------- | ----------------------------------------------------------------- | -------------------- | ----- |
+| `--ci`            | Exit 1 when a "Fix this first" finding is found                   | `CI`                 | 0.1.0 |
+| `--json`          | Print the result as JSON on stdout, and nothing else              |                      | 0.1.0 |
+| `--no-open`       | Do not open anything in a browser                                 |                      | 0.1.0 |
+| `--quiet`         | Print only results and errors                                     |                      | 0.1.0 |
+| `--verbose`       | Show each request, and technical detail when something goes wrong |                      | 0.1.0 |
+| `-h`, `--help`    | Show this help and exit                                           |                      | 0.1.0 |
+| `-v`, `--version` | Print the version and exit                                        |                      | 0.1.0 |
+
+<!-- flags:end -->
 
 Only "Fix this first" findings fail CI. "Fix soon" and "Worth knowing" never change the exit code.
 

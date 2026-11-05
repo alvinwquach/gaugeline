@@ -42,3 +42,4 @@ jobs:
       - run: pnpm lint
       - run: pnpm format:check
       - run: pnpm schema:check
+      - run: pnpm docs:flags:check
