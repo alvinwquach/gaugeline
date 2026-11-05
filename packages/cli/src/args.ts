@@ -24,7 +24,7 @@ export interface RunFlags {
 export type ParsedArgs =
   | { kind: "help"; verbose: boolean }
   | { kind: "version"; verbose: boolean }
-  | ({ kind: "run"; address: string; input: string } & RunFlags)
+  | ({ kind: "run"; address: string; input: string; deprecatedUsed: FlagDef[] } & RunFlags)
   | { kind: "error"; message: string; hint?: string; verbose: boolean };
 
 /** Turn a parseArgs error into one sentence naming the flag, plus a hint. */
@@ -55,6 +55,7 @@ export function describeParseError(
 export function parseCliArgs(
   argv: readonly string[],
   env: Record<string, string | undefined> = {},
+  flags: readonly FlagDef[] = FLAGS,
 ): ParsedArgs {
   const verbose = argv.includes("--verbose");
   let parsed;
@@ -63,12 +64,13 @@ export function parseCliArgs(
       args: [...argv],
       allowPositionals: true,
       strict: true,
-      options: toParseArgsOptions(FLAGS, COMMAND),
+      options: toParseArgsOptions(flags, COMMAND),
     });
   } catch (err) {
-    return { kind: "error", ...describeParseError(err), verbose };
+    return { kind: "error", ...describeParseError(err, flags), verbose };
   }
-  const values = resolveFlags(parsed.values, env, FLAGS);
+  const values = resolveFlags(parsed.values, env, flags);
+  const deprecatedUsed = flags.filter((f) => f.deprecated && parsed.values[f.name] !== undefined);
   if (values.quiet === true && values.verbose === true) {
     return { kind: "error", message: "Choose --quiet or --verbose, not both.", verbose: false };
   }
@@ -101,6 +103,7 @@ export function parseCliArgs(
     kind: "run",
     address: address.url.href,
     input,
+    deprecatedUsed,
     verbose,
     quiet: values.quiet === true,
     allowPrivate: values["allow-private"] === true,

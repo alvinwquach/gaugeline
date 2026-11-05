@@ -1,0 +1,41 @@
+{
+  "flags": {
+    "check": [
+      "allow-private",
+      "ci",
+      "help",
+      "json",
+      "no-open",
+      "quiet",
+      "verbose",
+      "version"
+    ]
+  },
+  "checkIds": [
+    "canonical-elsewhere",
+    "canonical-missing",
+    "host-duplicate",
+    "noindex",
+    "redirect-chain",
+    "thin-html"
+  ],
+  "severities": {
+    "canonical-elsewhere": "high",
+    "canonical-missing": "low",
+    "host-duplicate": "high",
+    "noindex": "high",
+    "redirect-chain": "medium",
+    "thin-html": "high"
+  },
+  "envVars": [
+    "CI",
+    "FORCE_COLOR",
+    "NO_COLOR"
+  ],
+  "exitCodes": [
+    0,
+    1,
+    2
+  ],
+  "jsonSchema": 1
+}

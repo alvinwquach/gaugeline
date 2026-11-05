@@ -19,6 +19,8 @@ export interface FlagDef {
   short?: string;
   /** Parsed, but left out of help and docs. */
   hidden?: boolean;
+  /** Going away: using it prints one warning on stderr (see STABILITY.md). */
+  deprecated?: { since: string; removeIn: string; use?: string };
 }
 
 export const FLAGS: readonly FlagDef[] = Object.freeze([
