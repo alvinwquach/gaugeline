@@ -43,7 +43,14 @@ merged once CI is green on Node 18.17, 20 and 22.
 
 ## Owner actions (things the build cannot finish alone)
 
-- (none yet)
+- **npm publish** (G08/K01): add the `NPM_TOKEN` repository secret, set `"private": false` in
+  `packages/cli/package.json`, then run the Release workflow by hand with "publish" ticked (it is a
+  dry run otherwise). See RELEASING.md. Nothing has been published.
+- **Dependabot**: its first PRs (alvinwquach/gaugeline#16, #17, #18) propose major bumps of the
+  pinned actions (setup-node 7, pnpm/action-setup 6, checkout 7). Left open for the owner to review;
+  the build does not merge dependency majors unattended.
+- **License**: `LICENSE` is MIT, "Copyright (c) 2026 Gaugeline contributors", matching the `license`
+  field set since G01. Confirm the licence and the copyright holder.
 
 ## Branches
 
@@ -65,7 +72,7 @@ merged once CI is green on Node 18.17, 20 and 22.
 | SEC | `security/hardening` | merged | https://github.com/alvinwquach/gaugeline/pull/14 | 403 | Owner-requested, not in the spec: private/loopback/link-local/CGNAT/multicast/IPv6 blocking on every hop with pinned connect (DNS rebinding), typed blocked-address outcome, --allow-private; CODEOWNERS; actions pinned to SHAs (test enforces); dependabot weekly. Fetcher transport moved from global fetch to node:http/https with a pinned lookup. |
 | G07 | `01/fixture-sites` | merged | https://github.com/alvinwquach/gaugeline/pull/15 | 417 | packages/fixtures (private): startFixture/withFixture, routes.json + fixture.json (multi-host). Seven invented sites. Budget test: clean fixture <=5 concurrent, <=60 total. |
 | G07a | `01/cassette-record-replay` | merged | https://github.com/alvinwquach/gaugeline/pull/19 | 438 | packages/testkit (private). Fetcher gains an injectable transport (createNetworkTransport is the default); cassettes plug in as createFetcher({ transport }). KEY_PATTERNS live in core (secrets.ts) for G12. Example cassette recorded against the clean fixture (record:example script). |
-| G08 | `01/ci-and-release` | todo | | | CI matrix, tarball budget and provenance |
+| G08 | `01/ci-and-release` | merged | https://github.com/alvinwquach/gaugeline/pull/20 | 442 | CI: ubuntu 18.17/20/22 + macOS/Windows Node 20 (full suite) + pack job (pnpm smoke: contents allowlist, 1 MB budget, npx run on 18.17). release.yml is manual, dry-run by default, provenance. Tarball ~123 kB. |
 | K01 | `01b/walking-skeleton` | todo | | | Walking skeleton: publish 0.0.x with one check |
 | K02 | `01b/changesets-release-pr` | todo | | | Changesets and the release pull request |
 | K03 | `01b/pr-gate` | todo | | | CI gate: no source change without a changeset and docs |

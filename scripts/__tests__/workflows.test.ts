@@ -48,3 +48,24 @@ describe("GitHub Actions supply chain", () => {
     }
   });
 });
+
+describe("forks and the npm token", () => {
+  const read = (f: string) => readFileSync(join(dir, f), "utf8");
+  it("the CI workflow never reads a secret and only has read permission", () => {
+    const ci = read("ci.yml");
+    expect(ci).not.toMatch(/secrets\./);
+    expect(ci).toMatch(/permissions:\n\s+contents: read/);
+    expect(ci).not.toMatch(/pull_request_target/);
+  });
+
+  it("the release workflow can only be started by hand on main, and is a dry run unless asked", () => {
+    const release = read("release.yml");
+    const on = release.slice(release.indexOf("\non:"), release.indexOf("\npermissions:"));
+    expect(on).toContain("workflow_dispatch:");
+    expect(on).not.toMatch(/pull_request|push:|schedule:/);
+    expect(release).toContain("if: github.ref == 'refs/heads/main'");
+    expect(release).toContain("--provenance");
+    expect(release).toContain("|| '--dry-run'");
+    expect(release).toMatch(/id-token: write/);
+  });
+});

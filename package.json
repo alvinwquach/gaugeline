@@ -18,7 +18,8 @@
     "schema:build": "tsx scripts/build-schema.ts",
     "schema:check": "tsx scripts/build-schema.ts --check",
     "docs:flags": "tsx scripts/build-docs.ts",
-    "docs:flags:check": "tsx scripts/build-docs.ts --check"
+    "docs:flags:check": "tsx scripts/build-docs.ts --check",
+    "smoke": "tsx scripts/smoke.ts"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",
