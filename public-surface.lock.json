@@ -13,6 +13,9 @@
   },
   "checkIds": [
     "ai-crawlers-blocked",
+    "app-link-dead",
+    "app-name-mismatch",
+    "app-smart-banner-mismatch",
     "broken-links",
     "canonical-elsewhere",
     "canonical-missing",
@@ -35,6 +38,9 @@
   ],
   "severities": {
     "ai-crawlers-blocked": "low",
+    "app-link-dead": "high",
+    "app-name-mismatch": "low",
+    "app-smart-banner-mismatch": "medium",
     "broken-links": "high",
     "canonical-elsewhere": "high",
     "canonical-missing": "low",

@@ -2,6 +2,7 @@ import type * as z from "zod";
 import type { Fetcher } from "./fetcher.js";
 import type { Budget } from "./limits.js";
 import type { findingSchema } from "./result.js";
+import type { AppLookup } from "./apps.js";
 import type { LinkSample } from "./links.js";
 import type { SiteContext } from "./site-context.js";
 
@@ -51,6 +52,12 @@ export type Finding = z.infer<typeof findingSchema>;
 export type Size = "S" | "M" | "L";
 
 /** Passed to every check. Later branches add the fetcher, the budget and the run's options. */
+/** What the person running the check says should be true, for checks that compare against it. */
+export interface RunExpectations {
+  /** The app's name as it should appear in the App Store and on Google Play. */
+  appName?: string;
+}
+
 export interface CheckContext {
   /** Notes for developers (a check returned undefined, for example). Never printed to stdout by core. */
   warn(message: string): void;
@@ -65,6 +72,10 @@ export interface CheckContext {
   site?: () => Promise<SiteContext>;
   /** The run's same-site link sample, probed once on first use and shared by the link checks. */
   links?: () => Promise<LinkSample>;
+  /** The page's App Store and Google Play apps, looked up once on first use. */
+  apps?: () => Promise<AppLookup[]>;
+  /** Values the run was told to expect (for example the app's name). Until the config file, API only. */
+  expect?: RunExpectations;
 }
 
 export interface Check<Input> {

@@ -1,5 +1,15 @@
 [
   {
+    "id": "app-link-dead",
+    "severity": "high",
+    "area": "Visitors",
+    "title": "The app this page links to isn't in the store",
+    "what": "An App Store or Google Play link on the page names an app the store no longer has.",
+    "why": "Visitors who tap \"Get the app\" land on an error page. Apps disappear when they are renamed, moved to a new developer account or pulled.",
+    "fix": "Link to the app's current store page, or remove the link if the app is gone.",
+    "tech": "the iTunes Lookup API returns no result for the id (in the link's storefront and in the US), or the Google Play listing answers 404. A 429 or a regional-only app is could-not-check, not dead"
+  },
+  {
     "id": "broken-links",
     "severity": "high",
     "area": "Visitors",
@@ -90,6 +100,16 @@
     "tech": "word count of server-rendered HTML"
   },
   {
+    "id": "app-smart-banner-mismatch",
+    "severity": "medium",
+    "area": "Visitors",
+    "title": "The iPhone app banner promotes a different app",
+    "what": "The page's Smart App Banner (the apple-itunes-app meta tag) names a different app id than the page's App Store link.",
+    "why": "Safari shows the banner at the top of the page on iPhone, so visitors install whichever app it names, which here is not the one the page links to.",
+    "fix": "Set app-id in the apple-itunes-app meta tag to the same id as the App Store link.",
+    "tech": "<meta name=\"apple-itunes-app\" content=\"app-id=...\"> differs from every apps.apple.com/.../id<digits> link on the page"
+  },
+  {
     "id": "feed-invalid",
     "severity": "medium",
     "area": "Search & sharing",
@@ -178,6 +198,16 @@
     "why": "People ask assistants about a business before they open its site. Blocking AI crawlers is a fair choice; blocking them by accident means assistants answer from old or second-hand information.",
     "fix": "If the block is on purpose, there is nothing to do. If it comes from a Disallow: / meant for a staging site, remove it, or add groups for the assistants you want to allow.",
     "tech": "known AI user-agent tokens (packages/core/src/data/ai-agents.json) are disallowed / by robots.txt"
+  },
+  {
+    "id": "app-name-mismatch",
+    "severity": "low",
+    "area": "Visitors",
+    "title": "The store lists the app under a different name",
+    "what": "The name the App Store or Google Play shows for a linked app differs from the name you expect.",
+    "why": "A renamed or replaced app can mean the link points at an old listing, or at someone else's app.",
+    "fix": "Check the link points at the right listing. If the app was renamed on purpose, update the expected name.",
+    "tech": "the store's app name differs from the expected app name (case, punctuation and a leading \"The\" ignored); only runs when an expected name is set"
   },
   {
     "id": "canonical-missing",

@@ -1,0 +1,26 @@
+{
+  "interactions": [
+    {
+      "body": "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Hollyhock Rewards</title>\n<meta name=\"apple-itunes-app\" content=\"app-id=6440000009, app-argument=https://hollyhock-app.example/\">\n</head>\n<body>\n<main>\n<h1>Hollyhock Rewards</h1>\n<p>An invented bakery's loyalty app, for Gaugeline's tests. Collect a stamp with every loaf and\nget the tenth one free. Nothing here is a real app, business or store listing.</p>\n<p><a href=\"https://play.google.com/store/apps/details?id=example.hollyhock.rewards\">Google Play</a></p>\n</main>\n</body>\n</html>\n",
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://hollyhock-app.example/"
+    },
+    {
+      "body": "<!doctype html><title>Error 429 (Too Many Requests)</title>",
+      "headers": {
+        "content-type": "text/html; charset=utf-8",
+        "retry-after": "120"
+      },
+      "method": "GET",
+      "status": 429,
+      "url": "https://play.google.com/store/apps/details?id=example.hollyhock.rewards&hl=en"
+    }
+  ],
+  "name": "app-stores-rate-limited",
+  "recordedAt": "2026-11-05T00:00:00.000Z",
+  "version": 1
+}

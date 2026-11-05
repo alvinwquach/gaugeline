@@ -9,7 +9,15 @@ export {
   defineCheck,
   isKebabCase,
 } from "./model.js";
-export type { Area, Check, CheckContext, Finding, Severity, Size } from "./model.js";
+export type {
+  Area,
+  Check,
+  CheckContext,
+  Finding,
+  RunExpectations,
+  Severity,
+  Size,
+} from "./model.js";
 export { redact } from "./redact.js";
 export { runCheckList, sanitiseFinding } from "./runner.js";
 export type { RunOutcome } from "./runner.js";
@@ -74,6 +82,18 @@ export {
 export type { ProgressEvent, ProgressSink, RequestInfo } from "./progress.js";
 export { checkSite } from "./site.js";
 export { getOrNull, probe } from "./probe.js";
+export {
+  appRefs,
+  appleLookupUrl,
+  appleRef,
+  bannerAppId,
+  googleListingUrl,
+  googleRef,
+  lazyAppLookups,
+  lookupApps,
+  playTitle,
+} from "./apps.js";
+export type { AppLookup, AppLookupOptions, AppRef } from "./apps.js";
 export { lazyLinkSample, linkCandidates, sampleLinks } from "./links.js";
 export type { LinkResult, LinkSample, LinkSampleOptions } from "./links.js";
 export type { SiteCheck, SiteCheckOptions } from "./site.js";

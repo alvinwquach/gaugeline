@@ -39,6 +39,9 @@ and footer and a paint link that redirects, version 0.1.0 prints:
 · Links on this page go through a redirect
     /old-paint (301) ends at /paint
 ✓ ai-crawlers-blocked
+✓ app-link-dead
+✓ app-name-mismatch
+✓ app-smart-banner-mismatch
 ✓ canonical-elsewhere
 ✓ canonical-missing
 ✓ feed-broken
@@ -62,6 +65,62 @@ Checked all 6 links, 1 sitemap page.
 ```
 
 The output above is asserted by `packages/cli/src/__tests__/links.test.ts`.
+
+### App stores
+
+When the page links to an app (`apps.apple.com/.../id<digits>`, `play.google.com/store/apps/details?id=<package>`
+or `market://details?id=<package>`), a run asks the store whether that app still exists. This is the
+one place a run contacts a host other than the site, and only for an address the page itself
+publishes ([ADR-0004](https://github.com/alvinwquach/gaugeline/blob/main/docs/adr/0004-requests-the-checked-page-names.md)):
+
+- Apple: one request to the public iTunes Lookup endpoint,
+  `https://itunes.apple.com/lookup?id=<id>&country=<storefront>`. It needs no key. A link to a
+  regional store (`/gb/app/...`) that has no result there is asked about once more in the US store.
+- Google Play: one `GET` of the public listing page, of which only the status and the title are read.
+- At most 5 apps per run, the first 5 on the page. Each request carries only the app id the page
+  names and a storefront or language parameter: nothing about you, your machine or the run.
+
+When the store cannot say (it answers 429, or the app is sold only in another country), the app is
+"could not check", never "dead". To make no store requests at all, skip `app-link-dead` and
+`app-name-mismatch`.
+
+Against an invented bakery's page, replayed from a recording of the store answers
+(`packages/testkit/cassettes/app-stores.json`), version 0.1.0 prints:
+
+```text title=Output
+✗ The app this page links to isn't in the store
+    https://apps.apple.com/gb/app/hollyhock-classic/id6440000002?mt=8 names App Store app 6440000002, which App Store does not have
+✗ The app this page links to isn't in the store
+    market://details?id=example.hollyhock.classic names Google Play app example.hollyhock.classic, which Google Play does not have (404)
+! The iPhone app banner promotes a different app
+    apple-itunes-app names app-id=6440000009; the App Store link is id6440000001
+✓ ai-crawlers-blocked
+✓ app-name-mismatch
+✓ broken-links
+✓ canonical-elsewhere
+✓ canonical-missing
+✓ feed-broken
+✓ feed-invalid
+✓ feed-oversized
+✓ host-duplicate
+✓ links-via-redirect
+✓ llms-txt-broken-links
+✓ llms-txt-stale-facts
+✓ noindex
+✓ quotable-facts-disagree
+✓ redirect-chain
+✓ robots-block
+✓ sitemap-dead
+✓ sitemap-host
+✓ sitemap-missing
+✓ sitemap-redirects
+✓ thin-html
+
+Checked 1 sitemap page, all 4 app store links.
+3 to look at, 2 to fix first.
+```
+
+The output above is asserted by `packages/cli/src/__tests__/app-store-links.test.ts`.
 
 ### robots.txt, sitemaps and feeds
 
@@ -98,6 +157,9 @@ advertises four feeds, the run requests 25 sitemap pages and 3 feeds. It reports
 ! Your sitemap lists old addresses that redirect
     1 of 25 sampled sitemap entries redirect: /old-menu (301 to /menu/01)
 ✓ ai-crawlers-blocked
+✓ app-link-dead
+✓ app-name-mismatch
+✓ app-smart-banner-mismatch
 ✓ broken-links
 ✓ canonical-elsewhere
 ✓ canonical-missing
