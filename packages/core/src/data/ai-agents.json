@@ -1,0 +1,109 @@
+{
+  "note": "AI crawler user-agent tokens. lastVerified is the date an entry was last checked against its documentation page. A test fails when any entry is older than 180 days: re-read the page, fix the entry, and update the date.",
+  "agents": [
+    {
+      "token": "GPTBot",
+      "name": "OpenAI's training crawler",
+      "owner": "OpenAI",
+      "purpose": "training",
+      "docs": "https://platform.openai.com/docs/bots",
+      "lastVerified": "2026-06-01"
+    },
+    {
+      "token": "OAI-SearchBot",
+      "name": "ChatGPT search",
+      "owner": "OpenAI",
+      "purpose": "search",
+      "docs": "https://platform.openai.com/docs/bots",
+      "lastVerified": "2026-06-01"
+    },
+    {
+      "token": "ChatGPT-User",
+      "name": "ChatGPT, when a person asks it to open a page",
+      "owner": "OpenAI",
+      "purpose": "user",
+      "docs": "https://platform.openai.com/docs/bots",
+      "lastVerified": "2026-06-01"
+    },
+    {
+      "token": "ClaudeBot",
+      "name": "Anthropic's training crawler",
+      "owner": "Anthropic",
+      "purpose": "training",
+      "docs": "https://support.anthropic.com/en/articles/8896518-does-anthropic-crawl-data-from-the-web-and-how-can-site-owners-block-the-crawler",
+      "lastVerified": "2026-06-01"
+    },
+    {
+      "token": "Claude-SearchBot",
+      "name": "Claude search",
+      "owner": "Anthropic",
+      "purpose": "search",
+      "docs": "https://support.anthropic.com/en/articles/8896518-does-anthropic-crawl-data-from-the-web-and-how-can-site-owners-block-the-crawler",
+      "lastVerified": "2026-06-01"
+    },
+    {
+      "token": "Claude-User",
+      "name": "Claude, when a person asks it to open a page",
+      "owner": "Anthropic",
+      "purpose": "user",
+      "docs": "https://support.anthropic.com/en/articles/8896518-does-anthropic-crawl-data-from-the-web-and-how-can-site-owners-block-the-crawler",
+      "lastVerified": "2026-06-01"
+    },
+    {
+      "token": "Google-Extended",
+      "name": "Gemini (Google's AI training control)",
+      "owner": "Google",
+      "purpose": "training",
+      "docs": "https://developers.google.com/search/docs/crawling-indexing/google-common-crawlers#google-extended",
+      "lastVerified": "2026-06-01"
+    },
+    {
+      "token": "Applebot-Extended",
+      "name": "Apple Intelligence (training control)",
+      "owner": "Apple",
+      "purpose": "training",
+      "docs": "https://support.apple.com/en-us/119829",
+      "lastVerified": "2026-06-01"
+    },
+    {
+      "token": "PerplexityBot",
+      "name": "Perplexity search",
+      "owner": "Perplexity",
+      "purpose": "search",
+      "docs": "https://docs.perplexity.ai/guides/bots",
+      "lastVerified": "2026-06-01"
+    },
+    {
+      "token": "Perplexity-User",
+      "name": "Perplexity, when a person asks it to open a page",
+      "owner": "Perplexity",
+      "purpose": "user",
+      "docs": "https://docs.perplexity.ai/guides/bots",
+      "lastVerified": "2026-06-01"
+    },
+    {
+      "token": "CCBot",
+      "name": "Common Crawl, used to train many models",
+      "owner": "Common Crawl",
+      "purpose": "training",
+      "docs": "https://commoncrawl.org/ccbot",
+      "lastVerified": "2026-06-01"
+    },
+    {
+      "token": "meta-externalagent",
+      "name": "Meta AI's crawler",
+      "owner": "Meta",
+      "purpose": "training",
+      "docs": "https://developers.facebook.com/docs/sharing/webmasters/web-crawlers",
+      "lastVerified": "2026-06-01"
+    },
+    {
+      "token": "Amazonbot",
+      "name": "Amazon's crawler, used by Alexa answers",
+      "owner": "Amazon",
+      "purpose": "search",
+      "docs": "https://developer.amazon.com/amazonbot",
+      "lastVerified": "2026-06-01"
+    }
+  ]
+}

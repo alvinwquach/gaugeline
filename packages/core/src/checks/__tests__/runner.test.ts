@@ -54,13 +54,17 @@ describe("runner: unit", () => {
     const ids = PAGE_CHECKS.map((c) => c.id);
     expect(ids).toEqual([...ids].sort());
     expect(ids).toEqual([
+      "ai-crawlers-blocked",
       "canonical-elsewhere",
       "canonical-missing",
       "feed-broken",
       "feed-invalid",
       "feed-oversized",
       "host-duplicate",
+      "llms-txt-broken-links",
+      "llms-txt-stale-facts",
       "noindex",
+      "quotable-facts-disagree",
       "redirect-chain",
       "robots-block",
       "sitemap-dead",
@@ -98,10 +102,14 @@ describe("runner: edge cases", () => {
     ]);
     // With no site context in this run, the robots, sitemap and feed checks find nothing.
     expect(out.passed.sort()).toEqual([
+      "ai-crawlers-blocked",
       "canonical-elsewhere",
       "feed-broken",
       "feed-invalid",
       "feed-oversized",
+      "llms-txt-broken-links",
+      "llms-txt-stale-facts",
+      "quotable-facts-disagree",
       "redirect-chain",
       "robots-block",
       "sitemap-dead",

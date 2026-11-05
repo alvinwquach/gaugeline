@@ -1,0 +1,12 @@
+{
+  "/order": {
+    "status": 301,
+    "location": "http://orders.test/hollyhock"
+  },
+  "/hollyhock": {
+    "body": "<!doctype html><title>Orders</title><p>Order page.</p>",
+    "headers": {
+      "content-type": "text/html; charset=utf-8"
+    }
+  }
+}

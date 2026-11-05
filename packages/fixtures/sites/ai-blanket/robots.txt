@@ -1,0 +1,5 @@
+# Left over from the staging site
+User-agent: *
+Disallow: /
+
+Sitemap: {{origin}}/sitemap.xml

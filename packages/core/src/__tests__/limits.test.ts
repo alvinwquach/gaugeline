@@ -33,6 +33,7 @@ describe("LIMITS and Budget: unit", () => {
       sitemapPages: 25,
       sitemapFiles: 10,
       feeds: 3,
+      llmsTxtLinks: 10,
       scripts: 15,
       structuredDataAddresses: 12,
       concurrency: 5,

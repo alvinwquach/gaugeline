@@ -1,0 +1,16 @@
+# Hollyhock Bakery
+
+> An invented neighbourhood bakery in Fernvale. Bread, pastries and celebration cakes.
+
+Phone: (503) 555-0119
+Address: 214 Quince Street, Fernvale, OR 97999
+Hours: Mon–Fri 7am–3pm, Sat 8am–1pm, Sun closed
+
+## Visit
+
+- [Menu]({{origin}}/menu): what is baked each day
+- [Catering]({{origin}}/catering): cakes and platters for events
+
+## Order
+
+- [Order online]({{origin}}/order): pick up at the counter

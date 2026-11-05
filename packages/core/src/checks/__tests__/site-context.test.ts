@@ -90,6 +90,7 @@ function emptySite(overrides: Partial<SiteContext> = {}): SiteContext {
     sitemapUrls: [],
     sitemapSample: [],
     feeds: [],
+    llms: { url: "https://tea.example/llms.txt", state: "missing", file: null },
     ...overrides,
   };
 }

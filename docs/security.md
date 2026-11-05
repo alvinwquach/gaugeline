@@ -45,6 +45,7 @@ Each run samples a fixed amount and never more. The numbers live in one frozen o
 | Sitemap pages                    | 25      |
 | Sitemap files read               | 10      |
 | Feeds                            | 3       |
+| Links in llms.txt                | 10      |
 | JavaScript files                 | 15      |
 | Addresses inside structured data | 12      |
 | Requests at the same time        | 5       |

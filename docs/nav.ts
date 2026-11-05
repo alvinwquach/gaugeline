@@ -88,4 +88,5 @@ export const UNLISTED: NavPage[] = [
   { slug: "contributing/adding-a-check", title: "Adding a check" },
   { slug: "contributing/docs-examples", title: "Tested docs examples" },
   { slug: "known-findings", title: "Known findings on our own site" },
+  { slug: "guides/ai-assistants", title: "How AI assistants read your site" },
 ];

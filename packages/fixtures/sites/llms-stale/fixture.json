@@ -1,0 +1,6 @@
+{
+  "hosts": [
+    "hollyhock.test",
+    "orders.test"
+  ]
+}
