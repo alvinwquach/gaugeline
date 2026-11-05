@@ -35,6 +35,19 @@ const CORE_RESTRICTED_IMPORTS = {
   ],
 };
 
+/** ADR-0001: in core, only the transport may open a connection. */
+const NETWORK_IMPORTS = [
+  ...["node:http", "http", "node:https", "https"].map((name) => ({
+    name,
+    message: "Only packages/core/src/transport.ts may make requests (ADR-0001). Use the fetcher.",
+  })),
+  ...["node:net", "net", "node:tls", "tls"].map((name) => ({
+    name,
+    importNames: ["connect", "createConnection", "Socket", "TLSSocket"],
+    message: "Only packages/core/src/transport.ts may open sockets (ADR-0001). Use the fetcher.",
+  })),
+];
+
 export default tseslint.config(
   { ignores: ["**/dist/**", "**/node_modules/**", "**/coverage/**", "packages/fixtures/sites/**"] },
   js.configs.recommended,
@@ -65,7 +78,20 @@ export default tseslint.config(
     files: ["packages/core/src/**/*.ts"],
     rules: {
       "no-console": "error",
-      "no-restricted-imports": ["error", CORE_RESTRICTED_IMPORTS],
+      "no-restricted-imports": [
+        "error",
+        {
+          ...CORE_RESTRICTED_IMPORTS,
+          paths: [...CORE_RESTRICTED_IMPORTS.paths, ...NETWORK_IMPORTS],
+        },
+      ],
+      "no-restricted-globals": [
+        "error",
+        ...["fetch", "XMLHttpRequest", "WebSocket", "EventSource"].map((name) => ({
+          name,
+          message: "Only the fetcher talks to the network (ADR-0001).",
+        })),
+      ],
       "no-restricted-properties": [
         "error",
         {
@@ -95,12 +121,24 @@ export default tseslint.config(
     },
   },
   {
+    // The transport is the one module allowed to open connections (ADR-0001).
+    files: ["packages/core/src/transport.ts"],
+    rules: { "no-restricted-imports": ["error", CORE_RESTRICTED_IMPORTS] },
+  },
+  {
     // Tests may print and may reach repository scripts; the walker skips them too.
     files: ["packages/core/src/**/__tests__/**/*.ts"],
     rules: { "no-console": "off", "no-restricted-imports": "off" },
   },
   {
-    files: ["**/*.js", "**/*.mjs"],
-    languageOptions: { globals: { process: "readonly", console: "readonly", URL: "readonly" } },
+    files: ["**/*.js", "**/*.mjs", "**/*.cjs"],
+    languageOptions: {
+      globals: { process: "readonly", console: "readonly", URL: "readonly", require: "readonly" },
+    },
+  },
+  {
+    // CommonJS test helpers (node --require preloads) use require by design.
+    files: ["**/*.cjs"],
+    rules: { "@typescript-eslint/no-require-imports": "off" },
   },
 );

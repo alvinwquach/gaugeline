@@ -65,6 +65,7 @@ jobs:
       - run: pnpm docs:flags:check
       - run: pnpm docs:changelog --check
       - run: pnpm gen:checks --check
+      - run: pnpm adr:check
       - name: Public surface (STABILITY.md)
         run: |
           git fetch --depth=1 origin "${{ github.base_ref || 'main' }}"
