@@ -8,6 +8,7 @@ export interface RunFlags {
   json: boolean;
   noOpen: boolean;
   verbose: boolean;
+  quiet: boolean;
 }
 
 export const USAGE = `Usage: ${USAGE_LINE}
@@ -18,7 +19,8 @@ Options:
       --ci         Exit 1 when a "Fix this first" finding is found (also when CI is set)
       --json       Print the result as JSON on stdout, and nothing else
       --no-open    Do not open anything in a browser
-      --verbose    Show technical detail when something goes wrong
+      --quiet      Print only results and errors
+      --verbose    Show each request and technical detail when something goes wrong
   -h, --help       Show this help and exit
   -v, --version    Print the version and exit
 
@@ -53,6 +55,7 @@ export function parseCliArgs(argv: readonly string[]): ParsedArgs {
         help: { type: "boolean", short: "h" },
         version: { type: "boolean", short: "v" },
         verbose: { type: "boolean" },
+        quiet: { type: "boolean" },
         ci: { type: "boolean" },
         json: { type: "boolean" },
         "no-open": { type: "boolean" },
@@ -60,6 +63,9 @@ export function parseCliArgs(argv: readonly string[]): ParsedArgs {
     });
   } catch (err) {
     return { kind: "error", message: errorMessage(err), hint: USAGE_HINT, verbose };
+  }
+  if (parsed.values.quiet === true && parsed.values.verbose === true) {
+    return { kind: "error", message: "Choose --quiet or --verbose, not both.", verbose: false };
   }
   if (parsed.values.help === true) return { kind: "help", verbose };
   if (parsed.values.version === true) return { kind: "version", verbose };
@@ -91,6 +97,7 @@ export function parseCliArgs(argv: readonly string[]): ParsedArgs {
     address: address.url.href,
     input,
     verbose,
+    quiet: parsed.values.quiet === true,
     ci: parsed.values.ci === true,
     json: parsed.values.json === true,
     noOpen: parsed.values["no-open"] === true,

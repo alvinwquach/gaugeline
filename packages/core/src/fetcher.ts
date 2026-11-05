@@ -2,6 +2,7 @@ import { decodeBody } from "./charset.js";
 import { NetworkError, errorCodes } from "./errors.js";
 import { LIMITS } from "./limits.js";
 import { normaliseUrl } from "./normalise.js";
+import type { RequestInfo } from "./progress.js";
 import { Semaphore } from "./semaphore.js";
 
 /**
@@ -106,6 +107,8 @@ export interface FetcherOptions {
    * the fixture sites in tests.
    */
   hosts?: Record<string, string>;
+  /** Called after every request (for --verbose). Gets the method, address, status and time only. */
+  onRequest?: (info: RequestInfo) => void;
 }
 
 export interface GetOptions {
@@ -240,6 +243,12 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
           signal: AbortSignal.timeout(timeoutMs),
         });
       } catch (err) {
+        options.onRequest?.({
+          method,
+          url,
+          status: "error",
+          ms: Math.round(performance.now() - started),
+        });
         const d = describeNetworkFailure(url, err, timeoutMs);
         throw new FetchError(d.reason, d.message, url, [], err, d.hint);
       }
@@ -263,6 +272,7 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
         }
       }
       hop.ms = Math.round(performance.now() - started);
+      options.onRequest?.({ method, url, status: hop.status, ms: hop.ms });
       return { hop, location };
     });
   }

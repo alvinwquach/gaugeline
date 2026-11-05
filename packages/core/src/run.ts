@@ -1,6 +1,7 @@
 import { ConfigError } from "./errors.js";
 import type { CheckContext, CheckRegistry, Finding } from "./model.js";
 import { SEVERITY_ORDER } from "./model.js";
+import type { ProgressSink } from "./progress.js";
 import { runCheckList } from "./runner.js";
 
 export interface RunOptions {
@@ -9,6 +10,8 @@ export interface RunOptions {
   /** Skip these check ids. */
   skip?: readonly string[];
   ctx?: Partial<CheckContext>;
+  /** Receives warnings as they happen. Core never prints. */
+  onProgress?: ProgressSink;
 }
 
 export interface RunResult {
@@ -40,7 +43,15 @@ export async function runChecks<I>(
   const all = registry.all();
   const order = new Map(all.map((c, i) => [c.id, i] as const));
   const selected = all.filter((c) => (only === undefined || only.has(c.id)) && !skip.has(c.id));
-  const out = await runCheckList(selected, input, opts.ctx);
+  const sink = opts.onProgress;
+  const ctx: Partial<CheckContext> = {
+    ...opts.ctx,
+    warn: (message) => {
+      opts.ctx?.warn?.(message);
+      sink?.({ step: "warn", message });
+    },
+  };
+  const out = await runCheckList(selected, input, ctx);
   const findings = out.findings
     .map((f, i) => ({ f, i }))
     .sort(

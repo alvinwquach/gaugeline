@@ -85,11 +85,11 @@ describe("CLI errors: e2e (built bin)", () => {
     const r = await runBin(["not-a-real-host.invalid"]);
     expect(r.status).toBe(2);
     expect(r.stdout).toBe("");
-    // Progress lines (the checking header) come first; the error itself is two lines.
+    // Progress lines (the header, then lines starting with a space) come first; the error is two lines.
     const errorLines = r.stderr
       .trimEnd()
       .split("\n")
-      .filter((l) => !l.startsWith("Gaugeline "));
+      .filter((l) => !l.startsWith("Gaugeline ") && !l.startsWith(" "));
     expect(errorLines).toHaveLength(2);
     expect(r.stderr).toContain("not-a-real-host.invalid could not be found. Check the spelling.");
   });
