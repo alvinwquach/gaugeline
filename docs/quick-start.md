@@ -6,6 +6,9 @@ Gaugeline needs Node.js 18.17 or newer.
 npx gaugeline example.com
 ```
 
+> Versions 0.0.x run a single check (`canonical-elsewhere`) while the release pipeline is proven.
+> The sample below is from the full set of checks that 0.1.0 runs.
+
 A run prints what it is doing on stderr and the results on stdout. Against a small test page that
 redirects twice and asks not to be indexed, the output is:
 

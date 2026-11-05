@@ -10,6 +10,9 @@ npx gaugeline example.com
 
 Requires Node.js 18.17 or newer.
 
+> Versions 0.0.x are a walking skeleton: they run a single check, `canonical-elsewhere`, to prove
+> the install path. 0.1.0 runs every check.
+
 | Exit code | Meaning                                                                  |
 | --------- | ------------------------------------------------------------------------ |
 | 0         | The check ran                                                            |
