@@ -76,13 +76,38 @@ export type { SiteCheck, SiteCheckOptions } from "./site.js";
 export { buildSiteContext, lazySiteContext, parseFeedLinks, parseSitemap } from "./site-context.js";
 export type {
   FeedRead,
+  LlmsRead,
   RobotsState,
   SiteContext,
   SiteContextOptions,
   SitemapKind,
   SitemapRead,
 } from "./site-context.js";
-export { decidingRule, isAllowed, parseRobots, patternMatches, rulesFor } from "./robots.js";
+export {
+  decidingRule,
+  hasOwnGroup,
+  isAllowed,
+  parseRobots,
+  patternMatches,
+  rulesFor,
+} from "./robots.js";
+export { AI_AGENTS, AI_AGENTS_MAX_AGE_DAYS, staleAgents } from "./ai-agents.js";
+export type { AiAgent, AiPurpose } from "./ai-agents.js";
+export { llmsFacts, parseLlmsTxt } from "./llms.js";
+export type { LlmsFile, LlmsLink } from "./llms.js";
+export { addressParts, businessFromJsonLd } from "./facts/business.js";
+export type { BusinessFacts } from "./facts/business.js";
+export {
+  DAYS,
+  hoursDisagree,
+  normalisePhone,
+  parseDay,
+  parseDays,
+  parseHoursText,
+  parseTime,
+  parseTimeRange,
+} from "./facts/normalise.js";
+export type { Day, Hours } from "./facts/normalise.js";
 export type { RobotsFile, RobotsGroup, RobotsRule } from "./robots.js";
 export { blockedRange, isBlockedAddress } from "./addresses.js";
 export type { BlockedRange } from "./addresses.js";

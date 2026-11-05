@@ -95,7 +95,8 @@ describe("planNewCheck: edge cases", () => {
     const plan = planNewCheck({ ...opts, id: "canonical" }, state());
     expect(plan[0]?.path).toBe("packages/core/src/checks/canonical.ts");
     const ids = registeredIds(plan.find((s) => s.path.endsWith("index.ts"))?.content ?? "");
-    expect(ids.slice(0, 2)).toEqual(["canonical", "canonical-elsewhere"]);
+    const at = ids.indexOf("canonical");
+    expect(ids.slice(at, at + 2)).toEqual(["canonical", "canonical-elsewhere"]);
   });
 
   it("a title containing a double quote is escaped in the generated TypeScript", () => {

@@ -2,6 +2,7 @@ import { Parser } from "htmlparser2";
 import { NetworkError } from "./errors.js";
 import type { Fetcher, Hop } from "./fetcher.js";
 import { LIMITS, type Budget } from "./limits.js";
+import { parseLlmsTxt, type LlmsFile } from "./llms.js";
 import { parseRobots, type RobotsFile } from "./robots.js";
 import { dedupeUrls } from "./sample.js";
 import type { PageSnapshot } from "./snapshot.js";
@@ -36,6 +37,13 @@ export type SitemapKind = "urlset" | "sitemapindex" | "unknown";
  */
 export type RobotsState = "found" | "missing" | "unknown";
 
+/** /llms.txt, read like robots.txt: found, missing (4xx or an HTML page) or unknown (5xx). */
+export interface LlmsRead {
+  url: string;
+  state: RobotsState;
+  file: LlmsFile | null;
+}
+
 /** Read once per run, before the checks that need it, and shared by all of them. */
 export interface SiteContext {
   robotsUrl: string;
@@ -48,6 +56,7 @@ export interface SiteContext {
   /** The sampled entries, in sitemapUrls order; [] for one that could not be reached. */
   sitemapSample: Hop[][];
   feeds: FeedRead[];
+  llms: LlmsRead;
 }
 
 /** Strip a namespace prefix: <s:loc> reads as loc. */
@@ -148,6 +157,20 @@ function looksLikeHtml(hop: Hop): boolean {
   return /html/i.test(type) || start.startsWith("<!doctype") || start.startsWith("<html");
 }
 
+/** A plain-text file at the site root (robots.txt, llms.txt): found, missing or unknown. */
+async function readRootText(
+  fetcher: Fetcher,
+  url: string,
+): Promise<{ body: string | null; state: RobotsState }> {
+  const hops = await getOrNull(fetcher, url);
+  const last = hops.at(-1);
+  if (!last || last.status >= 500) return { body: null, state: "unknown" };
+  if (last.status < 200 || last.status >= 300 || looksLikeHtml(last)) {
+    return { body: null, state: "missing" };
+  }
+  return { body: last.body ?? "", state: "found" };
+}
+
 async function getOrNull(fetcher: Fetcher, url: string, method?: "HEAD"): Promise<Hop[]> {
   try {
     return await fetcher.get(url, method ? { method } : undefined);
@@ -158,7 +181,7 @@ async function getOrNull(fetcher: Fetcher, url: string, method?: "HEAD"): Promis
 }
 
 /** HEAD first; a server that refuses HEAD (405, 501) is asked again with GET. */
-async function probe(fetcher: Fetcher, url: string): Promise<Hop[]> {
+export async function probe(fetcher: Fetcher, url: string): Promise<Hop[]> {
   const head = await getOrNull(fetcher, url, "HEAD");
   const status = head.at(-1)?.status;
   if (status === 405 || status === 501) return getOrNull(fetcher, url);
@@ -169,13 +192,8 @@ async function readRobots(
   fetcher: Fetcher,
   robotsUrl: string,
 ): Promise<{ robots: RobotsFile | null; state: RobotsState }> {
-  const hops = await getOrNull(fetcher, robotsUrl);
-  const last = hops.at(-1);
-  if (!last || last.status >= 500) return { robots: null, state: "unknown" };
-  if (last.status >= 400 || last.status < 200 || last.status >= 300 || looksLikeHtml(last)) {
-    return { robots: null, state: "missing" };
-  }
-  return { robots: parseRobots(last.body ?? ""), state: "found" };
+  const { body, state } = await readRootText(fetcher, robotsUrl);
+  return { robots: body === null ? null : parseRobots(body), state };
 }
 
 /**
@@ -259,6 +277,8 @@ export async function buildSiteContext({
       .take("feeds", dedupeUrls(page.feeds.map((f) => f.href)))
       .map((u) => readFeed(fetcher, u)),
   );
+  const llmsUrl = `${origin}/llms.txt`;
+  const llmsRead = readRootText(fetcher, llmsUrl);
   const { robots, state } = await readRobots(fetcher, robotsUrl);
   const named = (robots?.sitemaps ?? []).flatMap((s) => dedupeUrls([s], robotsUrl));
   const starts = named.length > 0 ? named : [`${origin}/sitemap.xml`];
@@ -273,6 +293,11 @@ export async function buildSiteContext({
     sitemapUrls: urls,
     sitemapSample,
     feeds: await feedsRead,
+    llms: await llmsRead.then(({ body, state: llmsState }) => ({
+      url: llmsUrl,
+      state: llmsState,
+      file: body === null ? null : parseLlmsTxt(body),
+    })),
   };
 }
 

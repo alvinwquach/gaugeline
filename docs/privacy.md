@@ -38,6 +38,9 @@ requests none of them. The limits are fixed (see [Security](security.md#how-much
 - **Feeds.** At most 3 of the feeds the page advertises (`<link rel="alternate">` with an RSS or
   Atom type) are read, the first 3 on the page. Each is read up to the 5 MB body limit.
 
+The same run reads `/llms.txt` once, and requests at most 10 of the links it lists (see
+[How AI assistants read your site](guides/ai-assistants.md)).
+
 A robots.txt that answers 404, or with an HTML page, counts as "no robots file", the way search
 engines read it. One that answers 5xx or not at all is unknown, and no robots or sitemap finding is
 reported from it.
@@ -52,12 +55,16 @@ advertises four feeds, the run requests 25 sitemap pages and 3 feeds. It reports
     1 of 25 sampled sitemap entries return an error: /closed-room (404)
 ! Your sitemap lists old addresses that redirect
     1 of 25 sampled sitemap entries redirect: /old-menu (301 to /menu/01)
+✓ ai-crawlers-blocked
 ✓ canonical-elsewhere
 ✓ canonical-missing
 ✓ feed-invalid
 ✓ feed-oversized
 ✓ host-duplicate
+✓ llms-txt-broken-links
+✓ llms-txt-stale-facts
 ✓ noindex
+✓ quotable-facts-disagree
 ✓ redirect-chain
 ✓ robots-block
 ✓ sitemap-host

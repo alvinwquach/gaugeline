@@ -10,6 +10,8 @@ export const LIMITS = Object.freeze({
   /** Sitemap files read (robots.txt's, /sitemap.xml, an index's children) to fill that sample. */
   sitemapFiles: 10,
   feeds: 3,
+  /** Links listed in /llms.txt that are requested. */
+  llmsTxtLinks: 10,
   scripts: 15,
   structuredDataAddresses: 12,
   concurrency: 5,
@@ -20,7 +22,13 @@ export const LIMITS = Object.freeze({
 export type Limits = { readonly [K in keyof typeof LIMITS]: number };
 
 export type BudgetKind =
-  "links" | "images" | "sitemapPages" | "feeds" | "scripts" | "structuredDataAddresses";
+  | "links"
+  | "images"
+  | "sitemapPages"
+  | "feeds"
+  | "llmsTxtLinks"
+  | "scripts"
+  | "structuredDataAddresses";
 
 /** Report order. */
 export const BUDGET_KINDS = [
@@ -28,6 +36,7 @@ export const BUDGET_KINDS = [
   "images",
   "sitemapPages",
   "feeds",
+  "llmsTxtLinks",
   "scripts",
   "structuredDataAddresses",
 ] as const satisfies readonly BudgetKind[];
@@ -80,6 +89,7 @@ const NOUNS: Record<BudgetKind, [singular: string, plural: string]> = {
   images: ["image", "images"],
   sitemapPages: ["sitemap page", "sitemap pages"],
   feeds: ["feed", "feeds"],
+  llmsTxtLinks: ["llms.txt link", "llms.txt links"],
   scripts: ["JavaScript file", "JavaScript files"],
   structuredDataAddresses: ["address in structured data", "addresses in structured data"],
 };
