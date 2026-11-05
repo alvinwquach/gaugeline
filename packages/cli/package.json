@@ -1,10 +1,9 @@
 {
   "name": "gaugeline",
-  "version": "0.0.0",
+  "version": "0.0.2",
   "description": "Check a website the way search engines and visitors see it. Read-only.",
   "type": "module",
   "license": "MIT",
-  "private": true,
   "engines": {
     "node": ">=18.17"
   },
@@ -12,19 +11,10 @@
     "gaugeline": "./dist/index.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
-  "scripts": {
-    "build": "tsup",
-    "typecheck": "tsc -p tsconfig.json"
-  },
-  "devDependencies": {
-    "@gaugeline/core": "workspace:*"
-  },
-  "publishConfig": {
-    "access": "public",
-    "provenance": true
-  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/alvinwquach/gaugeline.git",
@@ -37,5 +27,17 @@
     "canonical",
     "ci",
     "read-only"
-  ]
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@gaugeline/core": "workspace:*"
+  },
+  "private": false
 }
