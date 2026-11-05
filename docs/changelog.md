@@ -15,7 +15,7 @@ Released 2026-09-23.
 - Fields fetched but never used, in GROQ and in GraphQL.
 - A price stored in two systems, flagged before they disagree.
 
-## 0.1.0
+## 0.1.0: The site check
 
 Not released yet.
 
@@ -35,4 +35,4 @@ Not released yet.
 - The --help text and the Options page now come from the same list, and a mistyped flag suggests the nearest real one.
 - Flags and check ids that are going away now print one warning with the version they will be removed in.
 - When a check cannot run, Gaugeline now prints one plain sentence and a suggestion in place of a stack trace. Add --verbose for the technical detail.
-- First published package: npx gaugeline runs one check, canonical-elsewhere, so the install path is proven.
+- First published package: npx gaugeline downloads one package with no dependencies and runs on Node.js 18.17 or newer.

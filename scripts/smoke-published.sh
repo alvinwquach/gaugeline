@@ -52,18 +52,19 @@ json_field() { node -e "const r=JSON.parse(require('fs').readFileSync(0,'utf8'))
 
 out=$(run "$SMOKE_WRONG_URL" --json --quiet); code=$?
 [[ $code -eq 0 ]] || fail "wrong-canonical page: expected exit 0, got $code"
-first=$(printf '%s' "$out" | json_field 'r.findings.length + " " + (r.findings[0] ? r.findings[0].checkId : "")') \
+# 0.1.0 runs every check, so a real page may have other findings too: require the canonical one.
+first=$(printf '%s' "$out" | json_field 'String(r.findings.filter((f) => f.checkId === "canonical-elsewhere").length)') \
   || fail "wrong-canonical page: stdout is not JSON"
-[[ "$first" == "1 canonical-elsewhere" ]] || fail "wrong-canonical page: expected one canonical-elsewhere finding, got: $first"
+[[ "$first" == "1" ]] || fail "wrong-canonical page: expected one canonical-elsewhere finding, got: $first"
 
 run "$SMOKE_WRONG_URL" --ci --quiet >/dev/null; code=$?
 [[ $code -eq 1 ]] || fail "wrong-canonical page with --ci: expected exit 1, got $code"
 
 out=$(run "$SMOKE_CLEAN_URL" --json --quiet); code=$?
 [[ $code -eq 0 ]] || fail "clean page: expected exit 0, got $code"
-clean=$(printf '%s' "$out" | json_field 'r.findings.length + " " + r.passed.includes("canonical-elsewhere")') \
+clean=$(printf '%s' "$out" | json_field 'r.findings.filter((f) => f.severity === "high").length + " " + r.passed.includes("canonical-elsewhere")') \
   || fail "clean page: stdout is not JSON"
-[[ "$clean" == "0 true" ]] || fail "clean page: expected no findings and canonical-elsewhere passed, got: $clean"
+[[ "$clean" == "0 true" ]] || fail "clean page: expected no fix-first findings and canonical-elsewhere passed, got: $clean"
 
 errfile=$(mktemp)
 out=$(run "$unreachable" --quiet 2>"$errfile"); code=$?

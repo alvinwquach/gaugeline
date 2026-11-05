@@ -4,6 +4,7 @@
 
 ### Minor Changes
 
+- Headline: The site check
 - ffc89e9: AI assistants: see which assistants can read your site, and whether the facts they'd quote agree. Four new checks report AI crawlers blocked by robots.txt, broken links and stale phone numbers, addresses or hours in llms.txt, and a business name that differs between llms.txt and the structured data.
 - 56e7b26: App store links: checks that the app your site links to is still live. Up to 5 App Store and Google Play apps on the page are looked up, and an iPhone app banner that names a different app is reported.
 - 2f455f8: One command checks a page. --ci exits 1 on fix-first findings; --json prints a versioned result.

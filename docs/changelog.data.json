@@ -16,7 +16,7 @@
   },
   {
     "version": "0.1.0",
-    "headline": null,
+    "headline": "The site check",
     "items": [
       "AI assistants: see which assistants can read your site, and whether the facts they'd quote agree. Four new checks report AI crawlers blocked by robots.txt, broken links and stale phone numbers, addresses or hours in llms.txt, and a business name that differs between llms.txt and the structured data.",
       "App store links: checks that the app your site links to is still live. Up to 5 App Store and Google Play apps on the page are looked up, and an iPhone app banner that names a different app is reported.",
@@ -34,7 +34,7 @@
       "The --help text and the Options page now come from the same list, and a mistyped flag suggests the nearest real one.",
       "Flags and check ids that are going away now print one warning with the version they will be removed in.",
       "When a check cannot run, Gaugeline now prints one plain sentence and a suggestion in place of a stack trace. Add --verbose for the technical detail.",
-      "First published package: npx gaugeline runs one check, canonical-elsewhere, so the install path is proven."
+      "First published package: npx gaugeline downloads one package with no dependencies and runs on Node.js 18.17 or newer."
     ],
     "date": null
   }

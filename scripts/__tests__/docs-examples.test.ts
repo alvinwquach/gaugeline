@@ -1,3 +1,4 @@
+import { createPageRegistry } from "../../packages/core/src/index.js";
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -134,7 +135,11 @@ describe("docs examples: integration", () => {
       exit: 0,
       expected: JSON.stringify({
         failed: [],
-        passed: [],
+        // 0.1.0 runs every check: all but canonical-elsewhere pass on this fixture.
+        passed: createPageRegistry()
+          .all()
+          .map((c) => c.id)
+          .filter((id) => id !== "canonical-elsewhere"),
         startedAt: "2020-02-02T02:02:02.000Z",
         url: "https://shop.example/",
         schema: 1,
@@ -204,7 +209,7 @@ describe("docs examples: edge cases", () => {
 
   it("an expected exit code other than 0 is declared with <!-- exit: 1 --> and asserted", async () => {
     const md = page(
-      `<!-- fixture: quick-start -->\n<!-- exit: 1 -->\n${F}sh title=Terminal\n$ npx gaugeline shop.example --ci\n${F}\n\n${F}text title=Output\n✗ This page tells Google to show a different page\n    <link rel="canonical" href="https://shop.example/tools"> on https://shop.example/ (differs by path)\n\n1 to look at, 1 to fix first.\n${F}`,
+      `<!-- fixture: quick-start -->\n<!-- exit: 1 -->\n${F}sh title=Terminal\n$ npx gaugeline shop.example --ci\n${F}\n\n${F}text title=Output\n✗ This page tells Google to show a different page\n    <link rel="canonical" href="https://shop.example/tools"> on https://shop.example/ (differs by path)\n\nChecked all 2 sitemap pages.\n1 to look at, 1 to fix first.\n${F}`,
     );
     const [e] = extractExamples(md, "p.md");
     expect(e?.exit).toBe(1);
