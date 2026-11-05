@@ -11,6 +11,8 @@ import { feedBroken } from "./feed-broken.js";
 import { feedInvalid } from "./feed-invalid.js";
 import { feedOversized } from "./feed-oversized.js";
 import { hostDuplicate } from "./host-duplicate.js";
+import { htmlHeavy } from "./html-heavy.js";
+import { htmlHuge } from "./html-huge.js";
 import { imageWidthAbsurd } from "./image-width-absurd.js";
 import { imagesAltEmpty } from "./images-alt-empty.js";
 import { imagesAltMissing } from "./images-alt-missing.js";
@@ -22,6 +24,7 @@ import { linksViaRedirect } from "./links-via-redirect.js";
 import { llmsTxtBrokenLinks } from "./llms-txt-broken-links.js";
 import { llmsTxtStaleFacts } from "./llms-txt-stale-facts.js";
 import { noindex } from "./noindex.js";
+import { pageHeavy } from "./page-heavy.js";
 import { quotableFactsDisagree } from "./quotable-facts-disagree.js";
 import { redirectChain } from "./redirect-chain.js";
 import { robotsBlock } from "./robots-block.js";
@@ -29,7 +32,9 @@ import { sitemapDead } from "./sitemap-dead.js";
 import { sitemapHost } from "./sitemap-host.js";
 import { sitemapMissing } from "./sitemap-missing.js";
 import { sitemapRedirects } from "./sitemap-redirects.js";
+import { telFormat } from "./tel-format.js";
 import { thinHtml } from "./thin-html.js";
+import { viewport } from "./viewport.js";
 
 /** Page checks in registration order (sorted by id): within a severity, findings follow this order. */
 export const PAGE_CHECKS = [
@@ -44,6 +49,8 @@ export const PAGE_CHECKS = [
   feedInvalid,
   feedOversized,
   hostDuplicate,
+  htmlHeavy,
+  htmlHuge,
   imageWidthAbsurd,
   imagesAltEmpty,
   imagesAltMissing,
@@ -55,6 +62,7 @@ export const PAGE_CHECKS = [
   llmsTxtBrokenLinks,
   llmsTxtStaleFacts,
   noindex,
+  pageHeavy,
   quotableFactsDisagree,
   redirectChain,
   robotsBlock,
@@ -62,7 +70,9 @@ export const PAGE_CHECKS = [
   sitemapHost,
   sitemapMissing,
   sitemapRedirects,
+  telFormat,
   thinHtml,
+  viewport,
 ] as const;
 // checks:end
 
@@ -90,3 +100,12 @@ export {
   widthParam,
 } from "./images/refs.js";
 export type { ImageRef, ImageResult, ImageSample, ImageSampleOptions } from "./images/refs.js";
+export {
+  HTML_HUGE_BYTES,
+  INLINE_DATA_HEAVY_BYTES,
+  PAGE_HEAVY_BYTES,
+  describeSize,
+  measurePage,
+} from "./weight.js";
+export type { PageMeasure } from "./weight.js";
+export { badTelNumber } from "./mobile.js";

@@ -46,6 +46,7 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
   const sameSite = dedupeUrls(linkCandidates(snapshot).map((l) => l.url));
   sink({ step: "links", count: Math.min(sameSite.length, budget.remaining("links")) });
   sink({ step: "scripts" });
+  const images = lazyImageSample({ page: snapshot, fetcher: opts.fetcher, budget });
   const result = await runChecks(snapshot, opts.registry ?? createPageRegistry(), {
     ctx: {
       fetcher: opts.fetcher,
@@ -53,7 +54,8 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
       site: lazySiteContext({ page: snapshot, fetcher: opts.fetcher, budget }),
       links: lazyLinkSample({ page: snapshot, fetcher: opts.fetcher, budget }),
       apps: lazyAppLookups({ page: snapshot, fetcher: opts.fetcher, budget }),
-      images: lazyImageSample({ page: snapshot, fetcher: opts.fetcher, budget }),
+      images,
+      imagesIfSampled: () => images.peek(),
       ...(opts.expect ? { expect: opts.expect } : {}),
     },
     onProgress: sink,

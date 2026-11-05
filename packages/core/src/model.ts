@@ -75,6 +75,11 @@ export interface CheckContext {
   links?: () => Promise<LinkSample>;
   /** The run's same-site image sample (headers only), probed once on first use. */
   images?: () => Promise<ImageSample>;
+  /**
+   * The image sample only if another check already asked for it, else undefined. For checks that
+   * must make no request of their own (page-heavy).
+   */
+  imagesIfSampled?: () => Promise<ImageSample> | undefined;
   /** The page's App Store and Google Play apps, looked up once on first use. */
   apps?: () => Promise<AppLookup[]>;
   /** Values the run was told to expect (for example the app's name). Until the config file, API only. */

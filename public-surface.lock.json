@@ -23,6 +23,8 @@
     "feed-invalid",
     "feed-oversized",
     "host-duplicate",
+    "html-heavy",
+    "html-huge",
     "image-width-absurd",
     "images-alt-empty",
     "images-alt-missing",
@@ -34,6 +36,7 @@
     "llms-txt-broken-links",
     "llms-txt-stale-facts",
     "noindex",
+    "page-heavy",
     "quotable-facts-disagree",
     "redirect-chain",
     "robots-block",
@@ -41,7 +44,9 @@
     "sitemap-host",
     "sitemap-missing",
     "sitemap-redirects",
-    "thin-html"
+    "tel-format",
+    "thin-html",
+    "viewport"
   ],
   "severities": {
     "ai-crawlers-blocked": "low",
@@ -55,6 +60,8 @@
     "feed-invalid": "medium",
     "feed-oversized": "medium",
     "host-duplicate": "high",
+    "html-heavy": "medium",
+    "html-huge": "high",
     "image-width-absurd": "medium",
     "images-alt-empty": "medium",
     "images-alt-missing": "low",
@@ -66,6 +73,7 @@
     "llms-txt-broken-links": "medium",
     "llms-txt-stale-facts": "medium",
     "noindex": "high",
+    "page-heavy": "medium",
     "quotable-facts-disagree": "high",
     "redirect-chain": "medium",
     "robots-block": "high",
@@ -73,7 +81,9 @@
     "sitemap-host": "medium",
     "sitemap-missing": "medium",
     "sitemap-redirects": "medium",
-    "thin-html": "high"
+    "tel-format": "low",
+    "thin-html": "high",
+    "viewport": "medium"
   },
   "envVars": [
     "CI",
