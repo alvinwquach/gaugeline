@@ -4,7 +4,7 @@ A rebuild starts as a spreadsheet. This checks the built site kept every promise
 
 Every migration begins as rows: the page, its address, its title tag, its H1, the keyword it targets and which old URL redirects to it. Nothing checks whether the site that got built matches.
 
-```sh title=Terminal
+```sh title=Terminal untested="Converted with a fixture in this page's own branch."
 $ npx gaugeline plan sitemap.csv --base https://preview.yoursite.com
 ```
 
@@ -46,7 +46,7 @@ With a Legacy URL column, each one is requested and checked for a single hop, a 
 
 Pass --live with any export of the addresses that exist today — a crawl, a sitemap, a Search Console export — and it lists the ones the plan doesn't cover. A page that ranks and has no row in the plan is the most expensive thing on a migration.
 
-```sh title=Terminal
+```sh title=Terminal untested="Converted with a fixture in this page's own branch."
 $ npx gaugeline plan sitemap.csv --live crawl-export.csv
 ```
 

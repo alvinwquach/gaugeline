@@ -4,7 +4,7 @@ Your developer moved on, or is busy. Here's how to find out what's wrong and han
 
 You don't need to understand any of this to use it. One command reads your live website and writes a work order in plain English. Nothing on the site changes.
 
-```sh title=Terminal
+```sh title=Terminal untested="Converted with a fixture in this page's own branch."
 $ npx gaugeline brief yoursite.com --business "The Corner Bar" --rate 110 --out work-order.md
 ```
 
@@ -25,7 +25,7 @@ Two developers quote the same fix differently, and both can be right: one link b
 | Medium | 3      | Touches a component, a setting or a third-party system, and needs checking across pages |
 | Large  | 8      | Changes something shared, or needs a decision or content from someone else first        |
 
-```sh title=Terminal
+```sh title=Terminal untested="Converted with a fixture in this page's own branch."
 $ npx gaugeline brief yoursite.com --hours-per-point 1.5 --rate 110
 
 At 1.5 hours per point, that's roughly 13–21 hours (about $1,452–$2,360 at $110/hour).

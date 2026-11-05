@@ -4,7 +4,7 @@ GROQ, GraphQL and the mutations you ship — checked against the content that ac
 
 Sanity's TypeGen compares your queries with your schema at build time, which catches a field you spelled wrong. It can't tell you that the field exists in the schema and is empty on every document you've ever published. That gap is where restructures go wrong.
 
-```sh title=Terminal
+```sh title=Terminal untested="Converted with a fixture in this page's own branch."
 $ SANITY_PROJECT_ID=abc123 SANITY_TOKEN=… npx gaugeline query ./src
 ```
 
@@ -23,7 +23,7 @@ Every line carries the file and line number. The check asks the dataset for coun
 
 The other direction: instead of checking a query you wrote, have it written from the content you have.
 
-```sh title=Terminal
+```sh title=Terminal untested="Converted with a fixture in this page's own branch."
 $ npx gaugeline query ./src --suggest --type resource
 ```
 
@@ -57,7 +57,7 @@ It describes what your content has today, not what your page needs. Read it, del
 
 If your project exposes Sanity's GraphQL API, or any other endpoint, the same command checks it. It reads your `.graphql` files and `gql` tags, introspects the schema, and reports fields that don't exist — then checks the same document types against the content, which introspection alone can't do.
 
-```sh title=Terminal
+```sh title=Terminal untested="Converted with a fixture in this page's own branch."
 $ npx gaugeline query ./src --graphql            # Sanity's GraphQL API for this project
 $ npx gaugeline query ./src --graphql https://…  # or any endpoint
 ```
@@ -78,7 +78,7 @@ A mutation is a write, and Gaugeline never writes. What it can do is read the mu
 - A mutation with no drafts handling, so it edits published content directly
 - Two routes writing the same field, which is where drift starts
 
-```sh title=Terminal
+```sh title=Terminal untested="Converted with a fixture in this page's own branch."
 $ npx gaugeline query ./src --mutations
 ```
 
@@ -90,7 +90,7 @@ It reads them. It never sends them. Nothing here writes to your dataset, and a m
 
 The same shape that writes a query can scaffold the route around it. The point isn't saving keystrokes: it's that the generated page already satisfies the checks people fail most.
 
-```sh title=Terminal
+```sh title=Terminal untested="Converted with a fixture in this page's own branch."
 $ npx gaugeline query --page --type resource --out "./src/app/resource/[slug]"
 
 Wrote 3 files to ./src/app/resource/[slug] from 12 published resource documents
@@ -112,7 +112,7 @@ It is not a page builder. There's no design in it, no layout opinions, and no co
 
 Duplicates are the other half of one source of truth: two documents that mean the same thing, at two addresses.
 
-```sh title=Terminal
+```sh title=Terminal untested="Converted with a fixture in this page's own branch."
 $ npx gaugeline query ./src --dupes
 
 ✕ 2 resource documents share the slug “claim-denials”

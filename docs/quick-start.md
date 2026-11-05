@@ -4,7 +4,7 @@ Check any website in about a minute. You need Node.js 18.17 or newer, and nothin
 
 ## Run a check
 
-```sh title=Terminal
+```sh title=Terminal untested="Shows version 0.1.0, which runs every check; this repository is at 0.0.x, which runs one. The tested example is under In this version."
 $ npx gaugeline shop.example
 ```
 
@@ -12,7 +12,7 @@ Gaugeline loads the page without JavaScript, follows its redirects, reads robots
 
 ## What you'll see
 
-```sh title=Terminal
+```text title=Output
 Gaugeline 0.1.0  checking shop.example
 
 ✕ This page tells Google to show a different page
@@ -46,29 +46,30 @@ npx gaugeline example.com
 ```
 
 > Versions 0.0.x run a single check (`canonical-elsewhere`) while the release pipeline is proven.
-> The sample below is from the full set of checks that 0.1.0 runs.
 
-A run prints what it is doing on stderr and the results on stdout. Against a small test page that
-redirects twice and asks not to be indexed, the output is:
+A run prints what it is doing on stderr and the results on stdout. Against an invented page whose
+canonical tag points at another page, version 0.0.x prints:
 
+<!-- fixture: quick-start -->
+
+```sh title=Terminal
+$ npx gaugeline shop.example
 ```
-Gaugeline 0.0.0 checking http://127.0.0.1:4000/
+
+```text title=Output
+✗ This page tells Google to show a different page
+    <link rel="canonical" href="https://shop.example/tools"> on https://shop.example/ (differs by path)
+
+1 to look at, 1 to fix first.
+```
+
+On stderr, before the results, it says what it is doing:
+
+```text
+Gaugeline 0.0.2 checking https://shop.example/
  Loading the page without JavaScript
  Reading robots.txt and the sitemap
  Scanning the site's JavaScript for leaked keys
-
-✗ Google sees an almost empty page
-    2 words in the server-rendered HTML outside header, nav and footer (fewer than 60)
-✗ This page asks search engines not to list it
-    <meta name="robots" content="noindex"> on http://127.0.0.1:4000/menu
-! Your address takes several jumps to load
-    2 redirects: http://127.0.0.1:4000/ (301) -> http://127.0.0.1:4000/home (301) -> http://127.0.0.1:4000/menu (200)
-· The page doesn't say which address is the real one
-    no <link rel="canonical"> on http://127.0.0.1:4000/menu
-✓ canonical-elsewhere
-✓ host-duplicate
-
-4 to look at, 2 to fix first.
 ```
 
 The indented lines are progress on stderr; a page with links also shows
