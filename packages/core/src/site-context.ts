@@ -53,6 +53,8 @@ export interface SiteContext {
   sitemaps: SitemapRead[];
   /** Page addresses listed by the sitemaps read, deduplicated, in document order. */
   sitemapUrls: string[];
+  /** xhtml:link hreflang alternates the sitemaps list, by page. */
+  sitemapAlternates: { loc: string; hreflang: string; href: string }[];
   /** The sampled entries, in sitemapUrls order; [] for one that could not be reached. */
   sitemapSample: Hop[][];
   feeds: FeedRead[];
@@ -66,18 +68,34 @@ function local(name: string): string {
 }
 
 /** The root element and every <loc> under <url> or <sitemap>, in document order. */
-export function parseSitemap(xml: string): { kind: SitemapKind; locs: string[] } {
+export function parseSitemap(xml: string): {
+  kind: SitemapKind;
+  locs: string[];
+  alternates?: { loc: string; hreflang: string; href: string }[];
+} {
   let root: string | undefined;
   const locs: string[] = [];
+  // xhtml:link rel="alternate" hreflang inside a <url>: the page's language versions.
+  const alternates: { loc: string; hreflang: string; href: string }[] = [];
+  let pending: { hreflang: string; href: string }[] = [];
   const stack: string[] = [];
   let text: string | undefined;
   const parser = new Parser(
     {
-      onopentag(name) {
+      onopentag(name, attribs) {
         const tag = local(name);
         root ??= tag;
         const parent = stack.at(-1);
         if (tag === "loc" && (parent === "url" || parent === "sitemap")) text = "";
+        if (
+          tag === "link" &&
+          parent === "url" &&
+          attribs.hreflang &&
+          attribs.href &&
+          (attribs.rel ?? "alternate") === "alternate"
+        )
+          pending.push({ hreflang: attribs.hreflang, href: attribs.href });
+        if (tag === "url") pending = [];
         stack.push(tag);
       },
       ontext(chunk) {
@@ -90,6 +108,11 @@ export function parseSitemap(xml: string): { kind: SitemapKind; locs: string[] }
           if (loc !== "") locs.push(loc);
           text = undefined;
         }
+        if (tag === "url") {
+          const loc = locs.at(-1);
+          if (loc) for (const a of pending) alternates.push({ loc, ...a });
+          pending = [];
+        }
       },
     },
     { xmlMode: true, decodeEntities: true },
@@ -98,7 +121,8 @@ export function parseSitemap(xml: string): { kind: SitemapKind; locs: string[] }
   parser.end();
   const kind: SitemapKind =
     root === "urlset" ? "urlset" : root === "sitemapindex" ? "sitemapindex" : "unknown";
-  return { kind, locs: kind === "unknown" ? [] : locs };
+  if (kind === "unknown") return { kind, locs: [] };
+  return alternates.length > 0 ? { kind, locs, alternates } : { kind, locs };
 }
 
 /** Item links of an RSS (<item><link>) or Atom (<entry><link href>) feed, resolved, in order. */
@@ -189,11 +213,16 @@ async function readSitemaps(
   fetcher: Fetcher,
   starts: string[],
   want: number,
-): Promise<{ sitemaps: SitemapRead[]; urls: string[] }> {
+): Promise<{
+  sitemaps: SitemapRead[];
+  urls: string[];
+  alternates: { loc: string; hreflang: string; href: string }[];
+}> {
   const sitemaps: SitemapRead[] = [];
   const urls: string[] = [];
+  const alternates: { loc: string; hreflang: string; href: string }[] = [];
   const seen = new Set<string>();
-  const read = async (url: string): Promise<{ kind: SitemapKind; locs: string[] }> => {
+  const read = async (url: string): Promise<ReturnType<typeof parseSitemap>> => {
     seen.add(url);
     const hops = await getOrNull(fetcher, url);
     const last = hops.at(-1);
@@ -213,6 +242,7 @@ async function readSitemaps(
     if (seen.has(start)) continue;
     const top = await read(start);
     if (top.kind === "urlset") urls.push(...top.locs);
+    alternates.push(...(top.alternates ?? []));
     if (top.kind !== "sitemapindex") continue;
     for (const child of dedupeUrls(top.locs, start)) {
       if (enough()) break;
@@ -220,9 +250,10 @@ async function readSitemaps(
       const sub = await read(child);
       // One level only: an index inside an index is recorded and not followed.
       if (sub.kind === "urlset") urls.push(...sub.locs);
+      alternates.push(...(sub.alternates ?? []));
     }
   }
-  return { sitemaps, urls: dedupeUrls(urls) };
+  return { sitemaps, urls: dedupeUrls(urls), alternates };
 }
 
 async function readFeed(fetcher: Fetcher, url: string): Promise<FeedRead> {
@@ -265,7 +296,11 @@ export async function buildSiteContext({
   const { robots, state } = await readRobots(fetcher, robotsUrl);
   const named = (robots?.sitemaps ?? []).flatMap((s) => dedupeUrls([s], robotsUrl));
   const starts = named.length > 0 ? named : [`${origin}/sitemap.xml`];
-  const { sitemaps, urls } = await readSitemaps(fetcher, starts, budget.remaining("sitemapPages"));
+  const { sitemaps, urls, alternates } = await readSitemaps(
+    fetcher,
+    starts,
+    budget.remaining("sitemapPages"),
+  );
   const sampled = budget.take("sitemapPages", urls);
   const sitemapSample = await Promise.all(sampled.map((u) => probe(u, fetcher)));
   return {
@@ -274,6 +309,7 @@ export async function buildSiteContext({
     robotsState: state,
     sitemaps,
     sitemapUrls: urls,
+    sitemapAlternates: alternates,
     sitemapSample,
     feeds: await feedsRead,
     llms: await llmsRead.then(({ body, state: llmsState }) => ({

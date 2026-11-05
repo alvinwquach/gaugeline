@@ -16,7 +16,7 @@ import { formatError, toOutcome } from "./fail.js";
 import { envIsOn, type FlagDef } from "./flags.js";
 import { createLogger } from "./logger.js";
 import { formatTerminal } from "./reporter.js";
-import { readSchemaRules } from "./schema-config.js";
+import { readLanguageRules, readSchemaRules } from "./schema-config.js";
 import { skeletonOnly } from "./skeleton.js";
 import { VERSION } from "./version.js";
 
@@ -88,6 +88,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       }
       const startedAt = (io.now ?? (() => new Date()))();
       const schemaRules = readSchemaRules(deps.cwd ?? process.cwd());
+      const languageRules = readLanguageRules(deps.cwd ?? process.cwd());
       const log = createLogger({
         level: args.quiet ? "quiet" : args.verbose ? "verbose" : "normal",
         stream: io.stderr,
@@ -112,6 +113,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         onProgress: (e) => log.progress(e),
         ...(deps.now ? { now: deps.now } : {}),
         ...(schemaRules ? { schemaRules } : {}),
+        ...(languageRules ? { languageRules } : {}),
       });
       if (args.json) {
         const json = buildResult({

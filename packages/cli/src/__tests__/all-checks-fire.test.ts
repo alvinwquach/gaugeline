@@ -26,6 +26,8 @@ const FIXTURES = [
   "content-hygiene",
   "northwind",
   "schema-drift",
+  "bilingual-popup",
+  "bilingual-drift",
 ];
 
 /**
@@ -50,7 +52,11 @@ async function findingsOf(name: string): Promise<string[]> {
     if (Object.keys(site.hosts).length > 0) env.GAUGELINE_TEST_HOSTS = JSON.stringify(site.hosts);
     // A fixture with a schema guide is run from its own folder, where the CLI looks for it.
     const dir = `${SITES_DIR}${name}`;
-    const cwd = existsSync(`${dir}/gaugeline.schema.json`) ? dir : undefined;
+    const cwd = ["gaugeline.schema.json", "gaugeline.languages.json"].some((f) =>
+      existsSync(`${dir}/${f}`),
+    )
+      ? dir
+      : undefined;
     const r = await runBin([site.origin, "--json", "--allow-private"], env, cwd ? { cwd } : {});
     expect(r.status, `${name}: ${r.stderr}`).toBe(0);
     const json = JSON.parse(r.stdout) as { findings: { checkId: string }[] };

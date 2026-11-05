@@ -1,0 +1,10 @@
+{
+  "prefixes": {
+    "en": "/",
+    "es": "/es/"
+  },
+  "default": "en",
+  "untranslated": [
+    "Order now"
+  ]
+}

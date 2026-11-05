@@ -1,0 +1,8 @@
+{
+  "prefixes": {
+    "en": "/",
+    "es": "/es/",
+    "fr": "/fr/"
+  },
+  "default": "en"
+}
