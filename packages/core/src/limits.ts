@@ -12,6 +12,8 @@ export const LIMITS = Object.freeze({
   feeds: 3,
   /** Links listed in /llms.txt that are requested. */
   llmsTxtLinks: 10,
+  /** App Store and Google Play apps looked up in the stores. */
+  appLinks: 5,
   scripts: 15,
   structuredDataAddresses: 12,
   concurrency: 5,
@@ -27,6 +29,7 @@ export type BudgetKind =
   | "sitemapPages"
   | "feeds"
   | "llmsTxtLinks"
+  | "appLinks"
   | "scripts"
   | "structuredDataAddresses";
 
@@ -37,6 +40,7 @@ export const BUDGET_KINDS = [
   "sitemapPages",
   "feeds",
   "llmsTxtLinks",
+  "appLinks",
   "scripts",
   "structuredDataAddresses",
 ] as const satisfies readonly BudgetKind[];
@@ -90,6 +94,7 @@ const NOUNS: Record<BudgetKind, [singular: string, plural: string]> = {
   sitemapPages: ["sitemap page", "sitemap pages"],
   feeds: ["feed", "feeds"],
   llmsTxtLinks: ["llms.txt link", "llms.txt links"],
+  appLinks: ["app store link", "app store links"],
   scripts: ["JavaScript file", "JavaScript files"],
   structuredDataAddresses: ["address in structured data", "addresses in structured data"],
 };

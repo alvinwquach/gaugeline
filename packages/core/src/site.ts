@@ -5,7 +5,9 @@ import type { CheckRegistry } from "./model.js";
 import type { ProgressSink } from "./progress.js";
 import { runChecks, type RunOptions, type RunResult } from "./run.js";
 import { dedupeUrls } from "./sample.js";
+import { lazyAppLookups } from "./apps.js";
 import { lazyLinkSample, linkCandidates } from "./links.js";
+import type { RunExpectations } from "./model.js";
 import { lazySiteContext } from "./site-context.js";
 import { buildSnapshot, type PageSnapshot } from "./snapshot.js";
 
@@ -18,6 +20,8 @@ export interface SiteCheckOptions {
   onProgress?: ProgressSink;
   only?: RunOptions["only"];
   skip?: RunOptions["skip"];
+  /** Values to compare against, such as the expected app name. */
+  expect?: RunExpectations;
 }
 
 export interface SiteCheck {
@@ -47,6 +51,8 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
       budget,
       site: lazySiteContext({ page: snapshot, fetcher: opts.fetcher, budget }),
       links: lazyLinkSample({ page: snapshot, fetcher: opts.fetcher, budget }),
+      apps: lazyAppLookups({ page: snapshot, fetcher: opts.fetcher, budget }),
+      ...(opts.expect ? { expect: opts.expect } : {}),
     },
     onProgress: sink,
     ...(opts.only ? { only: opts.only } : {}),
