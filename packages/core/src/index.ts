@@ -81,3 +81,7 @@ export { KEY_PATTERNS, findKeys, keyPatterns } from "./secrets.js";
 export type { KeyPattern } from "./secrets.js";
 export { catalogue } from "./catalogue.js";
 export type { CatalogueEntry } from "./catalogue.js";
+export { DEPRECATED, deprecate, resetDeprecations } from "./deprecate.js";
+export type { Deprecation } from "./deprecate.js";
+export { EXIT_CODES, PUBLIC_ENV_VARS, publicSurface } from "./public-surface.js";
+export type { PublicSurface } from "./public-surface.js";

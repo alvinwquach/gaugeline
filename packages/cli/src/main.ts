@@ -1,7 +1,9 @@
 import {
   ConfigError,
   buildResult,
+  DEPRECATED,
   checkSite,
+  deprecate,
   createFetcher,
   exitCodeFor,
   type CheckRegistry,
@@ -11,7 +13,7 @@ import {
 import { parseCliArgs, USAGE } from "./args.js";
 import { useColor } from "./color.js";
 import { formatError, toOutcome } from "./fail.js";
-import { envIsOn } from "./flags.js";
+import { envIsOn, type FlagDef } from "./flags.js";
 import { createLogger } from "./logger.js";
 import { formatTerminal } from "./reporter.js";
 import { skeletonOnly } from "./skeleton.js";
@@ -45,6 +47,10 @@ export interface Deps {
   fetcher?: FetcherOptions;
   /** Defaults to the package version; tests pass one to see 0.0.x and 0.1.0 behaviour. */
   version?: string;
+  /** Defaults to the flag table; tests pass one with a deprecated flag. */
+  flags?: readonly FlagDef[];
+  /** Defaults to core's DEPRECATED; tests pass deprecated environment variables. */
+  deprecated?: ReadonlyMap<string, { since: string; removeIn: string; use?: string }>;
 }
 
 export interface RunReport {
@@ -53,7 +59,7 @@ export interface RunReport {
 }
 
 async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<RunReport> {
-  const args = parseCliArgs(argv, io.env ?? {});
+  const args = parseCliArgs(argv, io.env ?? {}, deps.flags);
   const ran: Outcome = { kind: "ran", highFindings: 0, drift: false };
   switch (args.kind) {
     case "help":
@@ -67,6 +73,14 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
     case "run": {
       const env = io.env ?? {};
       const ci = args.ci;
+      // Deprecations: one line on stderr per key per run, never stdout, and the exit code is unchanged.
+      const warn = (line: string) => io.stderr.write(`${line}\n`);
+      for (const f of args.deprecatedUsed)
+        if (f.deprecated) deprecate(`--${f.name}`, f.deprecated, warn);
+      for (const [key, d] of deps.deprecated ?? DEPRECATED) {
+        const name = key.startsWith("env:") ? key.slice(4) : undefined;
+        if (name && (env[name] ?? "") !== "") deprecate(key, d, warn);
+      }
       const startedAt = (io.now ?? (() => new Date()))();
       const log = createLogger({
         level: args.quiet ? "quiet" : args.verbose ? "verbose" : "normal",
