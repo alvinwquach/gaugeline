@@ -24,7 +24,7 @@ describe("built bin: integration", () => {
   it(`the bin runs under this node (${process.version}) and exits 0`, async () => {
     const r = await runBin([server.origin]);
     expect(r.status).toBe(0);
-    expect(r.stdout.split("\n")[0]).toBe(`Gaugeline ${pkg.version} checking ${server.origin}/`);
+    expect(r.stderr.split("\n")[0]).toBe(`Gaugeline ${pkg.version} checking ${server.origin}/`);
   });
 
   it("the bin exits 2 with the usage hint on stderr when no address is given", async () => {

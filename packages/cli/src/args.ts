@@ -3,14 +3,24 @@ import { parseAddress } from "@gaugeline/core";
 
 export const USAGE_LINE = "gaugeline <address> [options]";
 
+export interface RunFlags {
+  ci: boolean;
+  json: boolean;
+  noOpen: boolean;
+  verbose: boolean;
+}
+
 export const USAGE = `Usage: ${USAGE_LINE}
 
 Check a website the way search engines and visitors see it. Read-only.
 
 Options:
+      --ci         Exit 1 when a "Fix this first" finding is found (also when CI is set)
+      --json       Print the result as JSON on stdout, and nothing else
+      --no-open    Do not open anything in a browser
+      --verbose    Show technical detail when something goes wrong
   -h, --help       Show this help and exit
   -v, --version    Print the version and exit
-      --verbose    Show technical detail when something goes wrong
 
 Exit codes: 0 ran, 1 --ci with a fix-first finding, 2 could not run`;
 
@@ -19,7 +29,7 @@ export const USAGE_HINT = `${USAGE_LINE}, for example: gaugeline example.com (se
 export type ParsedArgs =
   | { kind: "help"; verbose: boolean }
   | { kind: "version"; verbose: boolean }
-  | { kind: "run"; address: string; input: string; verbose: boolean }
+  | ({ kind: "run"; address: string; input: string } & RunFlags)
   | { kind: "error"; message: string; hint?: string; verbose: boolean };
 
 function errorMessage(err: unknown): string {
@@ -43,6 +53,9 @@ export function parseCliArgs(argv: readonly string[]): ParsedArgs {
         help: { type: "boolean", short: "h" },
         version: { type: "boolean", short: "v" },
         verbose: { type: "boolean" },
+        ci: { type: "boolean" },
+        json: { type: "boolean" },
+        "no-open": { type: "boolean" },
       },
     });
   } catch (err) {
@@ -73,5 +86,13 @@ export function parseCliArgs(argv: readonly string[]): ParsedArgs {
       verbose,
     };
   }
-  return { kind: "run", address: address.url.href, input, verbose };
+  return {
+    kind: "run",
+    address: address.url.href,
+    input,
+    verbose,
+    ci: parsed.values.ci === true,
+    json: parsed.values.json === true,
+    noOpen: parsed.values["no-open"] === true,
+  };
 }
