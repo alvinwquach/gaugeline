@@ -29,6 +29,8 @@ const FIXTURES = [
   "bilingual-popup",
   "bilingual-drift",
   "popup",
+  "payments-popup",
+  "payments-drift",
 ];
 
 /**
@@ -42,6 +44,8 @@ const NEEDS_LIVE_STORES = new Set([
   "app-smart-banner-mismatch",
   // Cash App and Venmo profiles: confirmed in-process with stubbed hosts (facts.test.ts).
   "facts-payment-link",
+  // Square and Stripe payment links: confirmed in-process against the payment-links cassette.
+  "payment-link-dead",
 ]);
 
 async function findingsOf(name: string): Promise<string[]> {
@@ -57,9 +61,12 @@ async function findingsOf(name: string): Promise<string[]> {
     if (Object.keys(site.hosts).length > 0) env.GAUGELINE_TEST_HOSTS = JSON.stringify(site.hosts);
     // A fixture with a schema guide is run from its own folder, where the CLI looks for it.
     const dir = `${SITES_DIR}${name}`;
-    const cwd = ["gaugeline.schema.json", "gaugeline.languages.json", "gaugeline.facts.json"].some(
-      (f) => existsSync(`${dir}/${f}`),
-    )
+    const cwd = [
+      "gaugeline.schema.json",
+      "gaugeline.languages.json",
+      "gaugeline.facts.json",
+      "gaugeline.payments.json",
+    ].some((f) => existsSync(`${dir}/${f}`))
       ? dir
       : undefined;
     const r = await runBin([site.origin, "--json", "--allow-private"], env, cwd ? { cwd } : {});

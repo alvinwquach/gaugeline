@@ -166,6 +166,10 @@ export { addressParts, businessFromJsonLd } from "./facts/business.js";
 export { findFact } from "./facts/extract.js";
 export { factSchema, factsConfigSchema } from "./facts/types.js";
 export type { Fact, FactsConfig, Occurrence as FactOccurrence } from "./facts/types.js";
+export { ANCHOR_WINDOW, PAYMENT_RULES, configValue, extractPayments } from "./payments/extract.js";
+export type { PaymentRule } from "./payments/extract.js";
+export { KIND_NAME, PAYMENT_KINDS, paymentSchema, paymentsConfigSchema } from "./payments/types.js";
+export type { Payment, PaymentDetail, PaymentKind, PaymentsConfig } from "./payments/types.js";
 export type { BusinessFacts } from "./facts/business.js";
 export {
   DAYS,

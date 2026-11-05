@@ -93,4 +93,5 @@ export const UNLISTED: NavPage[] = [
   { slug: "guides/schema-rules", title: "Checking structured data against your schema guide" },
   { slug: "guides/languages", title: "Checking language versions" },
   { slug: "guides/facts", title: "Facts that must match everywhere" },
+  { slug: "guides/payments", title: "Payment details everywhere" },
 ];

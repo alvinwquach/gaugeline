@@ -51,6 +51,10 @@ import { ogImageMissing } from "./og-image-missing.js";
 import { ogImageRelative } from "./og-image-relative.js";
 import { ogUrlMismatch } from "./og-url-mismatch.js";
 import { pageHeavy } from "./page-heavy.js";
+import { paymentHandleInconsistent } from "./payment-handle-inconsistent.js";
+import { paymentHandleMismatch } from "./payment-handle-mismatch.js";
+import { paymentHandleUnknown } from "./payment-handle-unknown.js";
+import { paymentLinkDead } from "./payment-link-dead.js";
 import { placeholderImages } from "./placeholder-images.js";
 import { placeholderText } from "./placeholder-text.js";
 import { quotableFactsDisagree } from "./quotable-facts-disagree.js";
@@ -125,6 +129,10 @@ export const PAGE_CHECKS = [
   ogImageRelative,
   ogUrlMismatch,
   pageHeavy,
+  paymentHandleInconsistent,
+  paymentHandleMismatch,
+  paymentHandleUnknown,
+  paymentLinkDead,
   placeholderImages,
   placeholderText,
   quotableFactsDisagree,

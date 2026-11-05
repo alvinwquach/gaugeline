@@ -180,6 +180,36 @@
     "tech": "<meta name=\"robots\" content=\"noindex\">"
   },
   {
+    "id": "payment-handle-mismatch",
+    "severity": "high",
+    "area": "Sales & prices",
+    "title": "A payment handle differs from yours",
+    "what": "A page shows a Zelle, Cash App, Venmo or PayPal handle that is not the one you set for that service.",
+    "why": "Customers who copy it send their money to someone else, and nobody finds out until you ask where the money went.",
+    "fix": "Correct the handle where it is written (usually one shared footer or CMS field), then open it on a phone to check it is yours.",
+    "tech": "Handles read from links, visible text, image descriptions and aria-labels (text handles only within 40 characters of the provider's name, in the same sentence) on the pages checked, compared case-insensitively with gaugeline.payments.json; Zelle phone numbers by their digits"
+  },
+  {
+    "id": "payment-handle-unknown",
+    "severity": "high",
+    "area": "Sales & prices",
+    "title": "A payment detail you didn't set is on the site",
+    "what": "A page shows a payment handle for a service you didn't set up, or a Square or Stripe payment link that isn't one of yours.",
+    "why": "An old account, a copied template or a stranger's handle takes customers' money where you can't see it.",
+    "fix": "Remove it, or add it to gaugeline.payments.json if it really is yours.",
+    "tech": "Handles for a service with no entry in gaugeline.payments.json, and square.link, checkout.square.site and buy.stripe.com links not listed there, on the pages checked"
+  },
+  {
+    "id": "payment-link-dead",
+    "severity": "high",
+    "area": "Sales & prices",
+    "title": "A payment link no longer works",
+    "what": "A Square or Stripe payment link on the site answers 404, or shows the provider's page for a link that has been turned off.",
+    "why": "Customers who are ready to pay hit a dead end, and most of them don't come back to try another way.",
+    "fix": "Make a new payment link in Square or Stripe and replace the old one everywhere it appears.",
+    "tech": "square.link, checkout.square.site and buy.stripe.com links on the pages checked, requested once each with GET (nothing is submitted), at most 5: dead on 404 or 410, or a 2xx page with the provider's inactive-link wording"
+  },
+  {
     "id": "quotable-facts-disagree",
     "severity": "high",
     "area": "Search & sharing",
@@ -438,6 +468,16 @@
     "why": "On a phone connection a page this heavy takes many seconds and costs visitors data.",
     "fix": "Start with the largest files in the evidence: resize and compress images, and trim the HTML's inline data.",
     "tech": "HTML bytes plus the Content-Length of sampled images (the files the run already requested) is over 3 MB (3,145,728 bytes); no extra requests are made"
+  },
+  {
+    "id": "payment-handle-inconsistent",
+    "severity": "medium",
+    "area": "Sales & prices",
+    "title": "The site shows two different handles for one payment service",
+    "what": "With no payment details set, the pages checked show two or more different handles for the same service.",
+    "why": "At most one of them is right. Customers can't tell which, and some pay the other one.",
+    "fix": "Keep the right handle everywhere, and set it in gaugeline.payments.json so Gaugeline checks against it.",
+    "tech": "Only without gaugeline.payments.json: a Zelle, Cash App, Venmo or PayPal handle with more than one distinct value (compared case-insensitively; Zelle phones by digits) across the pages checked"
   },
   {
     "id": "placeholder-images",
