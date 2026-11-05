@@ -180,7 +180,10 @@ describe("flag table: integration (docs/options.md)", () => {
   });
 
   it("editing a description between the markers by hand fails the check", () => {
-    const edited = optionsMd.replace("Print only results and errors", "Print only results");
+    const start = optionsMd.indexOf("<!-- flags:start -->");
+    const edited =
+      optionsMd.slice(0, start) +
+      optionsMd.slice(start).replace("Print only results and errors", "Print only results");
     expect(checkBlock(edited, "flags", renderOptionsTable(FLAGS)).ok).toBe(false);
   });
 

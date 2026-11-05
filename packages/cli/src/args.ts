@@ -1,22 +1,13 @@
 import { parseArgs } from "node:util";
 import { parseAddress } from "@gaugeline/core";
-import {
-  FLAGS,
-  nearestFlag,
-  renderHelp,
-  resolveFlags,
-  toParseArgsOptions,
-  type FlagDef,
-} from "./flags.js";
+import { HELP } from "./help.js";
+import { FLAGS, nearestFlag, resolveFlags, toParseArgsOptions, type FlagDef } from "./flags.js";
 
 export const USAGE_LINE = "gaugeline <address> [options]";
 export const COMMAND = "check";
 
-export const USAGE = renderHelp(FLAGS, COMMAND, {
-  usage: USAGE_LINE,
-  summary: "Check a website the way search engines and visitors see it. Read-only.",
-  footer: "Exit codes: 0 ran, 1 --ci with a fix-first finding, 2 could not run",
-});
+/** The root command's help, from help.ts. */
+export const USAGE = HELP[""] ?? "";
 
 export const USAGE_HINT = `${USAGE_LINE}, for example: gaugeline example.com (see gaugeline --help)`;
 export const UNKNOWN_FLAG_HINT = "Run gaugeline --help to see every option.";
