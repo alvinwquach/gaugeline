@@ -58,31 +58,25 @@ describe("forks and the npm token", () => {
     expect(ci).not.toMatch(/pull_request_target/);
   });
 
-  it("the release workflow can only be started by hand on main, and is a dry run unless asked", () => {
-    const release = read("release.yml");
+  it("the release workflow runs only on pushes to main and is off unless the owner opts in", () => {
+    const release = read("release-pr.yml");
     const on = release.slice(release.indexOf("\non:"), release.indexOf("\npermissions:"));
-    expect(on).toContain("workflow_dispatch:");
-    expect(on).not.toMatch(/pull_request|push:|schedule:/);
-    expect(release).toContain("if: github.ref == 'refs/heads/main'");
-    expect(release).toContain("--provenance");
-    expect(release).toContain("|| '--dry-run'");
+    expect(on).toMatch(/push:\n\s+branches: \[main\]/);
+    expect(on).not.toMatch(/pull_request|tags:|schedule:/);
+    expect(release).toContain("if: vars.RELEASE_PR_ENABLED == 'true'");
+    expect(release).toContain("vars.PUBLISH_ENABLED == 'true' && 'pnpm run release' || ''");
     expect(release).toMatch(/id-token: write/);
+    expect(release).toContain('NPM_CONFIG_PROVENANCE: "true"');
   });
 });
 
-describe("skeleton release workflow", () => {
-  const text = readFileSync(join(dir, "skeleton.yml"), "utf8");
-  it("runs only on v0.0.* tags, never on pull requests, so a fork cannot reach the npm token", () => {
-    const on = text.slice(text.indexOf("\non:"), text.indexOf("\npermissions:"));
-    expect(on).toContain('tags: ["v0.0.*"]');
-    expect(on).not.toMatch(/pull_request/);
-  });
-
-  it("publishing is switched off unless PUBLISH_ENABLED is set, and checks the tag against the version first", () => {
-    expect(text).toContain(
-      "if: startsWith(github.ref, 'refs/tags/v0.0.') && vars.PUBLISH_ENABLED == 'true'",
-    );
-    expect(text.indexOf("check-tag-version.ts")).toBeLessThan(text.indexOf("npm publish"));
-    expect(text).toContain("--provenance");
+describe("K01 publish path, moved into the Release PR workflow by K02", () => {
+  it("the old tag-triggered and manual publish workflows are gone; the smoke job runs after a publish", () => {
+    const files = readdirSync(dir);
+    expect(files).not.toContain("skeleton.yml");
+    expect(files).not.toContain("release.yml");
+    const release = readFileSync(join(dir, "release-pr.yml"), "utf8");
+    expect(release).toContain("if: needs.release.outputs.published == 'true'");
+    expect(release).toContain("scripts/smoke-published.sh");
   });
 });
