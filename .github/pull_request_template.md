@@ -13,3 +13,9 @@ One sentence, written for the person who runs the tool.
 
 ## Changeset
 - [ ] Added with pnpm changeset, or this pull request is labelled internal
+
+## Changelog
+(<time>) One line a user would understand.
+
+Section: Reliability
+Time-Spent: 0m
