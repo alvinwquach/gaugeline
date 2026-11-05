@@ -5,6 +5,7 @@ import {
   mkdtempSync,
   readFileSync,
   readdirSync,
+  realpathSync,
   rmSync,
   symlinkSync,
 } from "node:fs";
@@ -107,7 +108,8 @@ describe("planNewCheck: edge cases", () => {
 /** A temp copy of the parts of the workspace the generator touches, with the real node_modules linked. */
 let temp = "";
 beforeAll(() => {
-  temp = mkdtempSync(join(tmpdir(), "gaugeline-newcheck-"));
+  // The long path: on Windows, tmpdir() can be an 8.3 short name (RUNNER~1) that Vite resolves differently.
+  temp = realpathSync.native(mkdtempSync(join(tmpdir(), "gaugeline-newcheck-")));
   const copy = (p: string) =>
     cpSync(join(repoRoot, p), join(temp, p), {
       recursive: true,
