@@ -30,6 +30,16 @@
     "tech": "<link rel=\"canonical\"> on the page points at another URL"
   },
   {
+    "id": "dataset-private-types",
+    "severity": "high",
+    "area": "Security & email",
+    "title": "Private-looking content is in a public Sanity dataset",
+    "what": "The Sanity dataset your images come from answers without a token, and it has document types that sound like people's details: orders, inquiries, customers, bookings.",
+    "why": "Anyone can download those documents with one request: names, emails and whatever else the forms collect.",
+    "fix": "Make the dataset private in sanity.io/manage today and give the site a read token, or move those types to a private dataset.",
+    "tech": "As dataset-public, and a type name whose last word is in checks/leaks/private-types.ts (order, inquiry, submission, customer and others); only the type names are read, never the documents. dataset-public is not also reported"
+  },
+  {
     "id": "duplicate-title",
     "severity": "high",
     "area": "Search & sharing",
@@ -238,6 +248,16 @@
     "why": "Search engines join structured data across pages by @id. Two ids make two organizations, splitting what is known about yours.",
     "fix": "Use one fixed @id for the Organization and one for the WebSite on every page, for example https://example.com/#organization.",
     "tech": "an Organization or WebSite @id (compared after resolving and trimming a trailing slash) differs from organizationId/websiteId, or, with no guide, differs between the sampled pages"
+  },
+  {
+    "id": "secret-in-js",
+    "severity": "high",
+    "area": "Security & email",
+    "title": "A private key is in your site's JavaScript",
+    "what": "A secret key (a Stripe secret or restricted key, a Sanity token, or a long random value named like a secret) is in JavaScript the site sends to every visitor.",
+    "why": "Anyone can read it in their browser and use it as you: take payments, read customer data or change your content.",
+    "fix": "Revoke the key in the provider's dashboard now, make a new one, and keep it on the server: never in code the browser loads.",
+    "tech": "Inline scripts and up to 15 same-site script files (GET, first 5 MB each) matched against the detectors in checks/leaks/detectors.ts; publishable keys (pk_) are ignored; every value is redacted to its first 6 and last 2 characters before a finding exists"
   },
   {
     "id": "sitemap-dead",
@@ -628,6 +648,16 @@
     "why": "Copies of the page with tracking parameters can be treated as separate pages.",
     "fix": "Add a self-referencing canonical tag.",
     "tech": "no <link rel=\"canonical\">"
+  },
+  {
+    "id": "dataset-public",
+    "severity": "low",
+    "area": "Security & email",
+    "title": "Your Sanity content can be read by anyone",
+    "what": "The Sanity dataset your images come from answers queries without a token.",
+    "why": "That is fine for a blog, and a risk the day someone adds a form or an order type to it: everything in it is readable by anyone who looks.",
+    "fix": "If nothing in it is private, nothing to do. Otherwise make the dataset private in sanity.io/manage and give the site a read token.",
+    "tech": "Project and dataset read from cdn.sanity.io image addresses; one GET to <project>.api.sanity.io with the query {\"count\": count(*), \"types\": array::unique(*[]._type)} and no token, at most 2 datasets; never document contents"
   },
   {
     "id": "event-missing-fields",

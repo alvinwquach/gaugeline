@@ -53,6 +53,7 @@ Each run samples a fixed amount and never more. The numbers live in one frozen o
 | Payment links (Cash App, Venmo)  | 5       |
 | Checkout links (Square, Stripe)  | 5       |
 | JavaScript files                 | 15      |
+| Sanity datasets asked            | 2       |
 | Addresses inside structured data | 12      |
 | Requests at the same time        | 5       |
 | Redirect hops followed           | 10      |
