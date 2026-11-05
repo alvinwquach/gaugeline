@@ -22,7 +22,7 @@ A fair question, asked early by anyone who has handed a tool credentials before:
 - **The provider's own dry run.** Sanity mutations have dryRun, Stripe has test mode, Postgres has BEGIN … ROLLBACK. Driven from your CI with your credentials; the result comes back as a finding, not a change.
 - **A scratch copy nobody serves.** Branch the database or copy the dataset, apply the change there, check the outcome, discard it. The only honest way to verify something destructive.
 
-```sh title=Terminal
+```sh title=Terminal untested="Converted with a fixture in this page's own branch."
 $ npx gaugeline query ./src --mutations      # parsed, never sent
 $ npx gaugeline migrate ./migrations --dry-run
 $ npx gaugeline compare staging production --schema
@@ -32,7 +32,7 @@ $ npx gaugeline compare staging production --schema
 
 One flag writes, and only ever to your own repository: changes that are unambiguous and local to your files — an absolute share image, a missing width and height, alt text copied from the CMS. It edits files and opens a branch. It never touches a live system, a dataset or a payment provider.
 
-```sh title=Terminal
+```sh title=Terminal untested="Converted with a fixture in this page's own branch."
 $ npx gaugeline yoursite.com --fix --branch fix/share-images
 ```
 

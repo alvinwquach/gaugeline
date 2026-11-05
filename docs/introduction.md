@@ -15,7 +15,7 @@ Websites built with a headless CMS like Sanity keep content in one place and the
 
 The site check: one command that reads any live page the way a search engine does and writes a plain-English report. It's free, open source, and works on any website, not just Sanity sites.
 
-```sh title=Terminal
+```sh title=Terminal untested="Converted with a fixture in this page's own branch."
 $ npx gaugeline yoursite.com
 ```
 

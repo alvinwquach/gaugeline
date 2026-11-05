@@ -6,7 +6,7 @@ Addresses, pages and politeness.
 
 Type a bare domain or a full URL. With a bare domain, Gaugeline tries `https://` first and falls back to `http://` if the secure address doesn't answer.
 
-```sh title=Terminal
+```sh title=Terminal untested="Converted with a fixture in this page's own branch."
 $ npx gaugeline shop.example
 $ npx gaugeline https://www.shop.example/macro-calculator
 ```

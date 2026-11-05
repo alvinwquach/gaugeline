@@ -4,7 +4,7 @@ Check every page your ads send people to: broken, sold out, or losing the campai
 
 Paid clicks are the most expensive visitors you get. Export your ads from Meta Ads Manager or Google Ads, keep the link and amount-spent columns, and point Gaugeline at the file.
 
-```sh title=Terminal
+```sh title=Terminal untested="Converted with a fixture in this page's own branch."
 $ npx gaugeline ads ads-export.csv
 $ npx gaugeline open --ads ads-export.csv   # the same, in the app
 ```

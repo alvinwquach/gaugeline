@@ -2,7 +2,7 @@
 
 Run checks from a browser tab on your own computer, the way dbpeek opens a database.
 
-```sh title=Terminal
+```sh title=Terminal untested="Converted with a fixture in this page's own branch."
 $ npx gaugeline open yoursite.com
   Loading the page without JavaScript
   Reading robots.txt and the sitemap

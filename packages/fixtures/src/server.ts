@@ -29,6 +29,8 @@ export interface Fixture {
   origin: string;
   /** Requests per path, across every origin of this fixture. */
   hits: Map<string, number>;
+  /** Requests per HTTP method. */
+  methods: Map<string, number>;
   /** For multi-host fixtures: logical host -> "127.0.0.1:port", to pass to createFetcher({ hosts }). */
   hosts: Record<string, string>;
   /** The highest number of requests in flight at once. */
@@ -93,11 +95,13 @@ export async function startFixture(name: string): Promise<Fixture> {
     ? (JSON.parse(readFileSync(join(root, "fixture.json"), "utf8")) as FixtureDef)
     : {};
   const hits = new Map<string, number>();
+  const methods = new Map<string, number>();
   const state = { inFlight: 0, maxConcurrent: 0, total: 0 };
   const sockets = new Set<Socket>();
 
   const handle = (req: IncomingMessage, res: ServerResponse) => {
     state.total += 1;
+    methods.set(req.method ?? "", (methods.get(req.method ?? "") ?? 0) + 1);
     state.inFlight += 1;
     state.maxConcurrent = Math.max(state.maxConcurrent, state.inFlight);
     res.on("close", () => {
@@ -164,6 +168,7 @@ export async function startFixture(name: string): Promise<Fixture> {
   return {
     origin: def.hosts?.[0] ? `http://${def.hosts[0]}` : `http://127.0.0.1:${firstPort}`,
     hits,
+    methods,
     hosts,
     get maxConcurrent() {
       return state.maxConcurrent;
