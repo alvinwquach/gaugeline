@@ -1,6 +1,6 @@
 import { defineCheck } from "../model.js";
 import { dedupeUrls } from "../sample.js";
-import { probe } from "../site-context.js";
+import { probe } from "../probe.js";
 import type { PageSnapshot } from "../snapshot.js";
 import { finalStatus, firstFew, shortUrl } from "./site-helpers.js";
 
@@ -32,7 +32,7 @@ export const llmsTxtBrokenLinks = defineCheck<PageSnapshot>({
       site.llms.url,
     ).filter((u) => /^https?:/.test(u));
     const sample = ctx.budget.take("llmsTxtLinks", links);
-    const hops = await Promise.all(sample.map((u) => probe(fetcher, u)));
+    const hops = await Promise.all(sample.map((u) => probe(u, fetcher)));
     const origin = new URL(page.finalUrl).origin;
     const bad = sample.flatMap((url, i) => {
       const h = hops[i] ?? [];

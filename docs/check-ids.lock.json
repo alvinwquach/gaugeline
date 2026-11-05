@@ -1,11 +1,13 @@
 [
   "ai-crawlers-blocked",
+  "broken-links",
   "canonical-elsewhere",
   "canonical-missing",
   "feed-broken",
   "feed-invalid",
   "feed-oversized",
   "host-duplicate",
+  "links-via-redirect",
   "llms-txt-broken-links",
   "llms-txt-stale-facts",
   "noindex",

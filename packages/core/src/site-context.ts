@@ -1,7 +1,7 @@
 import { Parser } from "htmlparser2";
-import { NetworkError } from "./errors.js";
 import type { Fetcher, Hop } from "./fetcher.js";
 import { LIMITS, type Budget } from "./limits.js";
+import { getOrNull, probe } from "./probe.js";
 import { parseLlmsTxt, type LlmsFile } from "./llms.js";
 import { parseRobots, type RobotsFile } from "./robots.js";
 import { dedupeUrls } from "./sample.js";
@@ -171,23 +171,6 @@ async function readRootText(
   return { body: last.body ?? "", state: "found" };
 }
 
-async function getOrNull(fetcher: Fetcher, url: string, method?: "HEAD"): Promise<Hop[]> {
-  try {
-    return await fetcher.get(url, method ? { method } : undefined);
-  } catch (err) {
-    if (err instanceof NetworkError) return [];
-    throw err;
-  }
-}
-
-/** HEAD first; a server that refuses HEAD (405, 501) is asked again with GET. */
-export async function probe(fetcher: Fetcher, url: string): Promise<Hop[]> {
-  const head = await getOrNull(fetcher, url, "HEAD");
-  const status = head.at(-1)?.status;
-  if (status === 405 || status === 501) return getOrNull(fetcher, url);
-  return head;
-}
-
 async function readRobots(
   fetcher: Fetcher,
   robotsUrl: string,
@@ -284,7 +267,7 @@ export async function buildSiteContext({
   const starts = named.length > 0 ? named : [`${origin}/sitemap.xml`];
   const { sitemaps, urls } = await readSitemaps(fetcher, starts, budget.remaining("sitemapPages"));
   const sampled = budget.take("sitemapPages", urls);
-  const sitemapSample = await Promise.all(sampled.map((u) => probe(fetcher, u)));
+  const sitemapSample = await Promise.all(sampled.map((u) => probe(u, fetcher)));
   return {
     robotsUrl,
     robots,

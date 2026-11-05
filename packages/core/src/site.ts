@@ -5,6 +5,7 @@ import type { CheckRegistry } from "./model.js";
 import type { ProgressSink } from "./progress.js";
 import { runChecks, type RunOptions, type RunResult } from "./run.js";
 import { dedupeUrls } from "./sample.js";
+import { lazyLinkSample, linkCandidates } from "./links.js";
 import { lazySiteContext } from "./site-context.js";
 import { buildSnapshot, type PageSnapshot } from "./snapshot.js";
 
@@ -36,7 +37,8 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
   sink({ step: "load-page" });
   const snapshot = buildSnapshot(await opts.fetcher.getSite(opts.address));
   sink({ step: "robots-sitemap" });
-  const sameSite = dedupeUrls(snapshot.links.filter((l) => l.sameSite).map((l) => l.href));
+  // The same candidates the link checks sample: same-site http(s), no #fragment of this page.
+  const sameSite = dedupeUrls(linkCandidates(snapshot).map((l) => l.url));
   sink({ step: "links", count: Math.min(sameSite.length, budget.remaining("links")) });
   sink({ step: "scripts" });
   const result = await runChecks(snapshot, opts.registry ?? createPageRegistry(), {
@@ -44,6 +46,7 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
       fetcher: opts.fetcher,
       budget,
       site: lazySiteContext({ page: snapshot, fetcher: opts.fetcher, budget }),
+      links: lazyLinkSample({ page: snapshot, fetcher: opts.fetcher, budget }),
     },
     onProgress: sink,
     ...(opts.only ? { only: opts.only } : {}),
