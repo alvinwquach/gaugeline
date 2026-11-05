@@ -38,6 +38,7 @@ describe("LIMITS and Budget: unit", () => {
       calendars: 3,
       pages: 4,
       languageVersions: 5,
+      paymentLinks: 5,
       scripts: 15,
       structuredDataAddresses: 12,
       concurrency: 5,

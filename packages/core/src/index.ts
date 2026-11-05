@@ -163,10 +163,15 @@ export type { AiAgent, AiPurpose } from "./ai-agents.js";
 export { llmsFacts, parseLlmsTxt } from "./llms.js";
 export type { LlmsFile, LlmsLink } from "./llms.js";
 export { addressParts, businessFromJsonLd } from "./facts/business.js";
+export { findFact } from "./facts/extract.js";
+export { factSchema, factsConfigSchema } from "./facts/types.js";
+export type { Fact, FactsConfig, Occurrence as FactOccurrence } from "./facts/types.js";
 export type { BusinessFacts } from "./facts/business.js";
 export {
   DAYS,
   hoursDisagree,
+  normaliseAmount,
+  normaliseHandle,
   normalisePhone,
   parseDay,
   parseDays,

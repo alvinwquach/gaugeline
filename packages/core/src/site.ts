@@ -9,6 +9,7 @@ import { lazyAppLookups } from "./apps.js";
 import { lazyCalendars } from "./calendars.js";
 import { lazyLanguageGroup, type LanguageRules } from "./languages.js";
 import { lazyPages } from "./pages.js";
+import type { FactsConfig } from "./facts/types.js";
 import type { SchemaRules } from "./schema-rules.js";
 import { lazyImageSample } from "./checks/images/refs.js";
 import { lazyLinkSample, linkCandidates } from "./links.js";
@@ -33,6 +34,8 @@ export interface SiteCheckOptions {
   schemaRules?: SchemaRules;
   /** How the site spells its language versions. */
   languageRules?: LanguageRules;
+  /** The business's declared facts. */
+  facts?: FactsConfig;
 }
 
 export interface SiteCheck {
@@ -77,6 +80,7 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
         sitemapAlternates: async () => (await site()).sitemapAlternates,
       }),
       ...(opts.languageRules ? { languageRules: opts.languageRules } : {}),
+      ...(opts.facts ? { facts: opts.facts } : {}),
       ...(opts.schemaRules ? { schemaRules: opts.schemaRules } : {}),
       imagesIfSampled: () => images.peek(),
       ...(opts.expect ? { expect: opts.expect } : {}),

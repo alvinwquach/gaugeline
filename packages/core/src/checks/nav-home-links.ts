@@ -1,3 +1,4 @@
+import { businessFromJsonLd } from "../facts/business.js";
 import { defineCheck } from "../model.js";
 import { jsonLdNodes, type PageSnapshot } from "../snapshot.js";
 import { collectNav, contentIndex, navKey, normaliseLabel } from "./content/parse.js";
@@ -5,7 +6,7 @@ import { firstFew } from "./site-helpers.js";
 
 const HOME = new Set(["home", "homepage", "home page", "start", "back to home"]);
 
-/** Names the site goes by: og:site_name, a WebSite or Organization name, the title's first part. */
+/** Names the site goes by: og:site_name, a WebSite, Organization or business name, any part of the title. */
 function siteNames(page: PageSnapshot): Set<string> {
   const names = new Set<string>();
   if (page.og["og:site_name"]) names.add(normaliseLabel(page.og["og:site_name"]));
@@ -18,8 +19,11 @@ function siteNames(page: PageSnapshot): Set<string> {
     )
       names.add(normaliseLabel(n.name));
   }
-  const first = page.title?.split(/\s+[|·–—-]\s+/)[0];
-  if (first) names.add(normaliseLabel(first));
+  // "Page | Site" and "Site – Page": every segment of the title can be the site's name.
+  for (const part of page.title?.split(/\s+[|·–—-]\s+/) ?? [])
+    if (part.trim()) names.add(normaliseLabel(part));
+  const business = businessFromJsonLd(page)?.name;
+  if (business) names.add(normaliseLabel(business));
   return names;
 }
 

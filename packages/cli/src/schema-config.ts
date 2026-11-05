@@ -2,8 +2,10 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   ConfigError,
+  factsConfigSchema,
   languageRulesSchema,
   schemaRulesSchema,
+  type FactsConfig,
   type LanguageRules,
   type SchemaRules,
 } from "@gaugeline/core";
@@ -13,6 +15,8 @@ import type * as z from "zod";
 export const SCHEMA_CONFIG_FILE = "gaugeline.schema.json";
 /** The language settings' file name, likewise. */
 export const LANGUAGES_CONFIG_FILE = "gaugeline.languages.json";
+/** The business's declared facts, likewise. */
+export const FACTS_CONFIG_FILE = "gaugeline.facts.json";
 
 /** A JSON settings file in `dir`, validated, or undefined when there is none. Invalid is a ConfigError. */
 function readJsonConfig<T>(
@@ -48,4 +52,8 @@ export function readSchemaRules(dir: string): SchemaRules | undefined {
 
 export function readLanguageRules(dir: string): LanguageRules | undefined {
   return readJsonConfig(dir, LANGUAGES_CONFIG_FILE, languageRulesSchema, "language settings");
+}
+
+export function readFacts(dir: string): FactsConfig | undefined {
+  return readJsonConfig(dir, FACTS_CONFIG_FILE, factsConfigSchema, "declared facts");
 }
