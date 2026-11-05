@@ -64,6 +64,7 @@ jobs:
       - run: pnpm schema:check
       - run: pnpm docs:flags:check
       - run: pnpm docs:changelog --check
+      - run: pnpm gen:checks --check
 
   pack:
     # The tarball people will npx: contents, size budget, and a run under the oldest supported Node.

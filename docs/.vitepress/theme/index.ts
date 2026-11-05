@@ -1,6 +1,8 @@
 import { h } from "vue";
 import { useData } from "vitepress";
 import DefaultTheme from "vitepress/theme";
+import type { App } from "vue";
+import ChecksList from "./ChecksList.vue";
 
 /**
  * Pages for features that have not shipped carry `notReleased: true` in their front matter. The
@@ -8,6 +10,9 @@ import DefaultTheme from "vitepress/theme";
  */
 export default {
   extends: DefaultTheme,
+  enhanceApp({ app }: { app: App }) {
+    app.component("ChecksList", ChecksList);
+  },
   Layout() {
     return h(DefaultTheme.Layout, null, {
       "doc-before": () => {

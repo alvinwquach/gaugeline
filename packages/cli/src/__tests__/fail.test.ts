@@ -107,7 +107,14 @@ describe("CLI errors: e2e (built bin)", () => {
   });
 
   it("a fixture where one check throws: exit 0, the check id is in failed, the others still report", async () => {
-    const base = { area: "Visitors", severity: "high", what: "w", why: "y", fix: "f" } as const;
+    const base = {
+      area: "Visitors",
+      severity: "high",
+      what: "w",
+      why: "y",
+      fix: "f",
+      tech: "t",
+    } as const;
     const checks = [
       defineCheck<PageSnapshot>({
         ...base,
