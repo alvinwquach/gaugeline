@@ -1,3 +1,4 @@
+// check-community: allow-email (the scrubber replaces addresses with this reserved example one)
 import { keyPatterns } from "@gaugeline/core";
 
 export interface Interaction {

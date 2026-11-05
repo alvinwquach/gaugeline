@@ -1,0 +1,35 @@
+name: Check request
+description: Something that goes wrong on websites that Gaugeline should catch.
+labels: [check-request]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What goes wrong on the site
+      description: In plain words, as you would tell the person who owns it.
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Who notices, and what it costs
+    validations:
+      required: true
+  - type: textarea
+    id: detect
+    attributes:
+      label: How you would spot it from outside, without logging in
+      description: Every check reads what a visitor or a search engine sees. A problem that needs a login or a change to the site cannot become a check.
+    validations:
+      required: true
+  - type: input
+    id: example
+    attributes:
+      label: An example public address, if there is one
+  - type: dropdown
+    id: level
+    attributes:
+      label: Suggested level
+      options: [Fix this first, Fix soon, Worth knowing]
+    validations:
+      required: true

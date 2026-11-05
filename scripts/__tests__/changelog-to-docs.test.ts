@@ -1,3 +1,4 @@
+// check-community: allow-email (invented addresses at reserved example domains, used by the test)
 import { execFileSync, spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";

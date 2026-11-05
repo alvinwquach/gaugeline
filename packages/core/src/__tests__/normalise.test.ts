@@ -1,3 +1,4 @@
+// check-community: allow-email (invented addresses at reserved example domains, used by the test)
 import { afterEach, describe, expect, it } from "vitest";
 import { createFetcher } from "../fetcher.js";
 import { compareAddresses, normaliseText, normaliseUrl, sameText } from "../normalise.js";

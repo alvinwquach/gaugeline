@@ -153,9 +153,10 @@ describe("CLI errors: promise test (no secrets in error output)", () => {
   const env = { STRIPE_API_KEY: "MARKER_STRIPE_9f2c", SANITY_TOKEN: "MARKER_SANITY_41ab" };
   it("no marker appears in stderr on any error path, with or without --verbose", async () => {
     const silent = await startRawServer(() => undefined);
-    const closed = await startServer({});
-    const closedOrigin = closed.origin;
-    await closed.close();
+    // A server that resets every connection: a refused-style failure without relying on a closed
+    // port staying free while other test files run in parallel.
+    const reset = await startRawServer((socket) => socket.destroy());
+    const closedOrigin = reset.origin;
     try {
       const paths: string[][] = [
         [],
@@ -177,6 +178,7 @@ describe("CLI errors: promise test (no secrets in error output)", () => {
       }
     } finally {
       await silent.close();
+      await reset.close();
     }
   }, 60_000);
 });
