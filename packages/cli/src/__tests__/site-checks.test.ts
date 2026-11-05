@@ -2,6 +2,8 @@ import { expectedOutput, startFixture } from "@gaugeline/fixtures";
 import { describe, expect, it } from "vitest";
 import { main } from "../main.js";
 
+const withoutPassed = (text: string) => text.replace(/^✓ [a-z0-9-]+\n/gm, "");
+
 function capture() {
   const out: string[] = [];
   return {
@@ -23,7 +25,10 @@ describe("robots, sitemap and feed checks: e2e (CLI, version 0.1.0)", () => {
       });
       expect(code).toBe(0);
       const stdout = run.out();
-      expect(stdout.trimEnd()).toBe(expectedOutput("privacy", "robots.txt, sitemaps and feeds"));
+      // One "✓ <id>" line per passed check is left out of the docs block: it grows with every check.
+      expect(withoutPassed(stdout).trimEnd()).toBe(
+        expectedOutput("privacy", "robots.txt, sitemaps and feeds"),
+      );
     } finally {
       if (prev === undefined) delete process.env.NO_COLOR;
       else process.env.NO_COLOR = prev;

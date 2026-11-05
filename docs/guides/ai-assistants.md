@@ -50,34 +50,13 @@ and Saturday hours, version 0.1.0 prints:
     2 of 3 links in llms.txt do not work: /catering (404), /order (redirects to http://orders.test/hollyhock)
 ! Your llms.txt gives assistants an old phone number, address or hours
     phone: llms.txt says (503) 555-0119, structured data says +1 503-555-0142. hours: Sat 08:00-13:00 in llms.txt, 08:00-14:00 in structured data
-✓ ai-crawlers-blocked
-✓ app-link-dead
-✓ app-name-mismatch
-✓ app-smart-banner-mismatch
-✓ broken-links
-✓ canonical-elsewhere
-✓ canonical-missing
-✓ feed-broken
-✓ feed-invalid
-✓ feed-oversized
-✓ host-duplicate
-✓ links-via-redirect
-✓ noindex
-✓ quotable-facts-disagree
-✓ redirect-chain
-✓ robots-block
-✓ sitemap-dead
-✓ sitemap-host
-✓ sitemap-missing
-✓ sitemap-redirects
-✓ thin-html
 
 Checked 1 sitemap page, all 3 llms.txt links.
 2 to look at, none to fix first.
 ```
 
 These checks run from version 0.1.0; version 0.0.x runs one check (see
-[Quick start](../quick-start.md)). The output above is asserted by
+[Quick start](../quick-start.md)). Each check that passed also prints a `✓ <id>` line, left out above. The output is asserted by
 `packages/cli/src/__tests__/ai-readability.test.ts`.
 
 ## What it requests

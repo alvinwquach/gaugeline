@@ -76,9 +76,15 @@ export type { RunOptions, RunResult } from "./run.js";
 export {
   PAGE_CHECKS,
   THIN_HTML_MIN_WORDS,
+  IMAGE_ABSURD_WIDTH,
+  IMAGE_HEAVY_BYTES,
   alternateHost,
   createPageRegistry,
+  imageRefs,
+  parseSrcset,
+  sampleImages,
 } from "./checks/index.js";
+export type { ImageRef, ImageSample } from "./checks/index.js";
 export type { ProgressEvent, ProgressSink, RequestInfo } from "./progress.js";
 export { checkSite } from "./site.js";
 export { getOrNull, probe } from "./probe.js";

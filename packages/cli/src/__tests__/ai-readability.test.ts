@@ -2,6 +2,8 @@ import { expectedOutput, startFixture } from "@gaugeline/fixtures";
 import { describe, expect, it } from "vitest";
 import { main } from "../main.js";
 
+const withoutPassed = (text: string) => text.replace(/^✓ [a-z0-9-]+\n/gm, "");
+
 describe("AI readability: e2e (CLI, version 0.1.0)", () => {
   it("the llms-stale fixture prints exactly the guide's Output block", async () => {
     const site = await startFixture("llms-stale");
@@ -15,7 +17,10 @@ describe("AI readability: e2e (CLI, version 0.1.0)", () => {
         fetcher: { hosts: site.hosts },
       });
       expect(code).toBe(0);
-      expect(out.join("").trimEnd()).toBe(expectedOutput("guides/ai-assistants", "Example"));
+      // One "✓ <id>" line per passed check is left out of the docs block: it grows with every check.
+      expect(withoutPassed(out.join("")).trimEnd()).toBe(
+        expectedOutput("guides/ai-assistants", "Example"),
+      );
     } finally {
       if (prev === undefined) delete process.env.NO_COLOR;
       else process.env.NO_COLOR = prev;

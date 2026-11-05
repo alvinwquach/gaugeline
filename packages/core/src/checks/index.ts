@@ -11,6 +11,13 @@ import { feedBroken } from "./feed-broken.js";
 import { feedInvalid } from "./feed-invalid.js";
 import { feedOversized } from "./feed-oversized.js";
 import { hostDuplicate } from "./host-duplicate.js";
+import { imageWidthAbsurd } from "./image-width-absurd.js";
+import { imagesAltEmpty } from "./images-alt-empty.js";
+import { imagesAltMissing } from "./images-alt-missing.js";
+import { imagesBroken } from "./images-broken.js";
+import { imagesHeavy } from "./images-heavy.js";
+import { imagesLegacyFormat } from "./images-legacy-format.js";
+import { imagesLegacyWp } from "./images-legacy-wp.js";
 import { linksViaRedirect } from "./links-via-redirect.js";
 import { llmsTxtBrokenLinks } from "./llms-txt-broken-links.js";
 import { llmsTxtStaleFacts } from "./llms-txt-stale-facts.js";
@@ -37,6 +44,13 @@ export const PAGE_CHECKS = [
   feedInvalid,
   feedOversized,
   hostDuplicate,
+  imageWidthAbsurd,
+  imagesAltEmpty,
+  imagesAltMissing,
+  imagesBroken,
+  imagesHeavy,
+  imagesLegacyFormat,
+  imagesLegacyWp,
   linksViaRedirect,
   llmsTxtBrokenLinks,
   llmsTxtStaleFacts,
@@ -64,3 +78,15 @@ export { FEED_MAX_BYTES } from "./feed-oversized.js";
 export { startsLikeFeed } from "./feed-invalid.js";
 export { sameName } from "./quotable-facts-disagree.js";
 export { THIN_HTML_MIN_WORDS } from "./thin-html.js";
+export {
+  IMAGE_ABSURD_WIDTH,
+  IMAGE_HEAVY_BYTES,
+  hasModernCandidate,
+  imageRefs,
+  lazyImageSample,
+  nextImage,
+  parseSrcset,
+  sampleImages,
+  widthParam,
+} from "./images/refs.js";
+export type { ImageRef, ImageResult, ImageSample, ImageSampleOptions } from "./images/refs.js";
