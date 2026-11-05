@@ -50,6 +50,7 @@ Each run samples a fixed amount and never more. The numbers live in one frozen o
 | Calendars (.ics) read            | 3       |
 | Other pages (structured data)    | 4       |
 | Language versions                | 5       |
+| Payment links (Cash App, Venmo)  | 5       |
 | JavaScript files                 | 15      |
 | Addresses inside structured data | 12      |
 | Requests at the same time        | 5       |

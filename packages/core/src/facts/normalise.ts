@@ -172,3 +172,16 @@ export function hoursDisagree(a: Hours, b: Hours): { day: Day; a: string; b: str
     return x !== undefined && y !== undefined && x !== y ? [{ day, a: x, b: y }] : [];
   });
 }
+
+/** "$5", "$5.00", "5 USD" and "5.00" are one amount: cents, or undefined when there is no amount. */
+export function normaliseAmount(text: string): number | undefined {
+  const m = /(\d+)(?:[.,](\d{1,2}))?/.exec(text.replace(/,(?=\d{3}\b)/g, ""));
+  if (!m) return undefined;
+  return Number(m[1]) * 100 + Number((m[2] ?? "0").padEnd(2, "0"));
+}
+
+/** A payment handle compared without its @ or $ and without letter case: "@Marigold-Pop" = "marigold-pop". */
+export function normaliseHandle(text: string): string | undefined {
+  const h = text.trim().replace(/^[@$]/, "").toLowerCase();
+  return /^[a-z0-9][a-z0-9._-]{1,40}$/.test(h) ? h : undefined;
+}

@@ -1,0 +1,40 @@
+{
+  "facts": [
+    {
+      "id": "phone",
+      "kind": "phone",
+      "value": "(503) 555-0142"
+    },
+    {
+      "id": "hours",
+      "kind": "hours",
+      "value": "Fri 5pm-9pm; Sat 5pm-9pm"
+    },
+    {
+      "id": "venmo",
+      "kind": "handle",
+      "service": "venmo",
+      "value": "@marigold-tamales"
+    },
+    {
+      "id": "tamal-box",
+      "kind": "price",
+      "item": "Tamal box",
+      "value": "$12",
+      "variants": [
+        {
+          "name": "Tamal box (half)",
+          "value": "$7"
+        }
+      ]
+    },
+    {
+      "id": "pickup",
+      "kind": "text",
+      "value": "Pick up at the side window",
+      "mustAppearOn": [
+        "/order"
+      ]
+    }
+  ]
+}

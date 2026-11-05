@@ -28,6 +28,7 @@ const FIXTURES = [
   "schema-drift",
   "bilingual-popup",
   "bilingual-drift",
+  "popup",
 ];
 
 /**
@@ -39,6 +40,8 @@ const NEEDS_LIVE_STORES = new Set([
   "app-link-dead",
   "app-name-mismatch",
   "app-smart-banner-mismatch",
+  // Cash App and Venmo profiles: confirmed in-process with stubbed hosts (facts.test.ts).
+  "facts-payment-link",
 ]);
 
 async function findingsOf(name: string): Promise<string[]> {
@@ -48,12 +51,14 @@ async function findingsOf(name: string): Promise<string[]> {
     const env: NodeJS.ProcessEnv = {
       NODE_OPTIONS: `--require=${MAP_HOSTS}`,
       GAUGELINE_TEST_NOW: "2026-11-05T20:00:00Z",
+      // Nothing but the mapped fixture hosts resolves: no live request can leave this test.
+      GAUGELINE_TEST_OFFLINE: "1",
     };
     if (Object.keys(site.hosts).length > 0) env.GAUGELINE_TEST_HOSTS = JSON.stringify(site.hosts);
     // A fixture with a schema guide is run from its own folder, where the CLI looks for it.
     const dir = `${SITES_DIR}${name}`;
-    const cwd = ["gaugeline.schema.json", "gaugeline.languages.json"].some((f) =>
-      existsSync(`${dir}/${f}`),
+    const cwd = ["gaugeline.schema.json", "gaugeline.languages.json", "gaugeline.facts.json"].some(
+      (f) => existsSync(`${dir}/${f}`),
     )
       ? dir
       : undefined;

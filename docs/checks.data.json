@@ -60,6 +60,26 @@
     "tech": "an Event's endDate (or startDate when there is none) is before the run time, or a next/upcoming element's time[datetime] is; dates are read in the venue's time zone"
   },
   {
+    "id": "facts-match",
+    "severity": "high",
+    "area": "Sales & prices",
+    "title": "A fact about your business differs between pages",
+    "what": "A phone number, opening hours, payment handle or price you declared shows a different value somewhere on the site, in the text, a link or the structured data.",
+    "why": "Customers call the old number, turn up at the old time or send money to a mistyped handle. Search engines show whichever version they read.",
+    "fix": "Correct each place the evidence names. Better, render the fact from one source so the pages cannot drift.",
+    "tech": "every occurrence (visible text by pattern or selector, links, JSON-LD; not image descriptions) equals the declared value in gaugeline.facts.json. \"$5\" = \"$5.00\", \"5pm\" = \"5:00 PM\", handle case ignored; a value that doesn't parse is unchecked"
+  },
+  {
+    "id": "facts-payment-link",
+    "severity": "high",
+    "area": "Sales & prices",
+    "title": "A payment link goes nowhere",
+    "what": "A Cash App or Venmo link on the site answers with an error: the profile it names doesn't exist.",
+    "why": "Customers who tap Pay land on an error, or worse, find a look-alike profile and pay a stranger.",
+    "fix": "Correct the handle in the link, and check it by opening the link on a phone.",
+    "tech": "cash.app/$handle and venmo.com/(u/)handle links on the pages checked are requested (HEAD, then GET on 405/501) and answer 4xx or 5xx; at most 5, and only the address the page names is sent (ADR-0004)"
+  },
+  {
     "id": "feed-broken",
     "severity": "high",
     "area": "Search & sharing",
@@ -238,6 +258,16 @@
     "why": "Maps and search results send guests to the event's address, so a stale one sends them to the wrong door.",
     "fix": "Use the venue's own address in each event's location, ideally by referring to the venue's @id instead of repeating it.",
     "tech": "Event location names the LocalBusiness (same name or @id) and its address differs by house number or ZIP"
+  },
+  {
+    "id": "facts-present",
+    "severity": "medium",
+    "area": "Sales & prices",
+    "title": "A page is missing a fact it should show",
+    "what": "A fact you declared must appear on a page (mustAppearOn) is not in that page's HTML as it is sent.",
+    "why": "The page visitors use to decide (the order page, the contact page) leaves out the thing they came for, or shows it only after JavaScript runs, which search engines and assistants may not.",
+    "fix": "Put the fact in the page's server-rendered HTML. A fact in an image's description only is not visible text: write it out.",
+    "tech": "for each mustAppearOn path among the pages checked, the fact's declared value is in the visible text, a link or JSON-LD of the HTML as sent (image descriptions don't count, and say so)"
   },
   {
     "id": "feed-invalid",
