@@ -115,6 +115,8 @@ function tempRepo(packages: Record<string, string>, fixed: string[][]): string {
     JSON.stringify({ ...config, fixed, ignore: [] }),
   );
   symlinkSync(join(repoRoot, "node_modules"), join(dir, "node_modules"), "junction");
+  // Keep git away from the linked node_modules (Windows git cannot add a junction).
+  writeFileSync(join(dir, ".gitignore"), "node_modules\n");
   const git = (...args: string[]) => execFileSync("git", args, { cwd: dir, stdio: "ignore" });
   git("init", "-q", "-b", "main");
   git("-c", "user.email=t@example.com", "-c", "user.name=t", "add", "-A");
