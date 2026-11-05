@@ -62,3 +62,23 @@ The behaviour is pinned by `packages/core/src/__tests__/corpus/normalise.corpus.
 old row fail, the change is wrong or needs a decision in its pull request.
 
 Write invisible characters in source as `\u` escapes (`" "`), never as the raw character.
+
+## Adding a fixture site
+
+Integration and end-to-end tests run against invented sites served from
+`packages/fixtures/sites/<name>/` on 127.0.0.1, never against the internet.
+
+1. Make a folder under `packages/fixtures/sites/`. Every name, address, price and sentence in it is
+   invented; no real client content goes in the repository.
+2. Add static files. `/` serves `index.html`; `/menu` serves `menu.html` or `menu/index.html`.
+   Canonicals and links can be relative, since the port changes on every run.
+3. Optional `routes.json`, keyed by path, for what a static file cannot say:
+   `{ "/": { "status": 301, "location": "/home", "headers": { "x-robots-tag": "noindex" }, "delayMs": 50 } }`.
+   `"hang": true` accepts the request and never answers; `"bodyBytes": N` answers with N bytes of HTML.
+4. Optional `fixture.json` with `{ "hosts": ["shop.test", "www.shop.test"] }` serves the same files on
+   one port per host. Pass `site.hosts` to `createFetcher({ hosts })`.
+5. In a test: `await withFixture("name", async (site) => { ... })`. `site.hits` counts requests per
+   path, and `site.maxConcurrent` / `site.total` let a test assert the request budget.
+
+Fixture servers listen on 127.0.0.1, which the fetcher refuses by default: use
+`createFetcher({ allowPrivate: true })`, or the `hosts` mapping.
