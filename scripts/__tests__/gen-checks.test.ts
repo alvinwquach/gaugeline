@@ -64,8 +64,8 @@ describe("gen-checks: integration", () => {
     expect(data.map((e) => [e.id, e.severity, e.title])).toEqual([
       ["canonical-elsewhere", "high", "This page tells Google to show a different page"],
       ["host-duplicate", "high", "Your whole site exists at two addresses"],
-      ["thin-html", "high", "Google sees an almost empty page"],
       ["noindex", "high", "This page asks search engines not to list it"],
+      ["thin-html", "high", "Google sees an almost empty page"],
       ["redirect-chain", "medium", "Your address takes several jumps to load"],
       ["canonical-missing", "low", "The page doesn't say which address is the real one"],
     ]);

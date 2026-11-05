@@ -14,6 +14,18 @@ const lockPath = process.env.GEN_CHECKS_LOCK ?? `${root}docs/check-ids.lock.json
 const check = process.argv.includes("--check");
 
 const entries = catalogue(createPageRegistry());
+// A scaffold from pnpm new:check imports and runs, but its TODO text must never reach the docs.
+const unfinished = entries.flatMap((e) =>
+  (["title", "what", "why", "fix", "tech"] as const)
+    .filter((f) => e[f].trim().startsWith("TODO"))
+    .map((f) => `${e.id} (${f})`),
+);
+if (unfinished.length > 0) {
+  process.stderr
+    .write(`gen:checks: TODO text left in ${unfinished.join(", ")}. Write the real text before merging.
+`);
+  process.exit(1);
+}
 const data = `${JSON.stringify(entries, null, 2)}\n`;
 const lock = existsSync(lockPath) ? (JSON.parse(readFileSync(lockPath, "utf8")) as string[]) : [];
 const next = updateLock(

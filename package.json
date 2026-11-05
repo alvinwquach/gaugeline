@@ -30,7 +30,8 @@
     "docs:preview": "vitepress preview docs --host 127.0.0.1 --port 4173",
     "docs:check": "tsx scripts/check-docs.ts",
     "docs:e2e": "playwright test",
-    "gen:checks": "tsx scripts/gen-checks.ts"
+    "gen:checks": "tsx scripts/gen-checks.ts",
+    "new:check": "tsx scripts/new-check.ts"
   },
   "devDependencies": {
     "@changesets/cli": "2.31.1",
