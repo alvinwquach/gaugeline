@@ -50,15 +50,23 @@ describe("runner: unit", () => {
     await expect(runChecks(page(), r, { only: ["nope"] })).rejects.toBeInstanceOf(ConfigError);
   });
 
-  it("registers the six checks sorted by id (the order pnpm new:check keeps)", () => {
+  it("registers the page and site checks sorted by id (the order pnpm new:check keeps)", () => {
     const ids = PAGE_CHECKS.map((c) => c.id);
     expect(ids).toEqual([...ids].sort());
     expect(ids).toEqual([
       "canonical-elsewhere",
       "canonical-missing",
+      "feed-broken",
+      "feed-invalid",
+      "feed-oversized",
       "host-duplicate",
       "noindex",
       "redirect-chain",
+      "robots-block",
+      "sitemap-dead",
+      "sitemap-host",
+      "sitemap-missing",
+      "sitemap-redirects",
       "thin-html",
     ]);
     for (const c of PAGE_CHECKS) expect(c.what && c.why && c.fix && c.tech).toBeTruthy();
@@ -66,7 +74,7 @@ describe("runner: unit", () => {
 });
 
 describe("runner: edge cases", () => {
-  it("one check throws, the other five still report", async () => {
+  it("one check throws, the others still report", async () => {
     const r = new CheckRegistry();
     r.register(
       defineCheck<PageSnapshot>({
@@ -88,7 +96,19 @@ describe("runner: edge cases", () => {
       "noindex",
       "thin-html",
     ]);
-    expect(out.passed.sort()).toEqual(["canonical-elsewhere", "redirect-chain"]);
+    // With no site context in this run, the robots, sitemap and feed checks find nothing.
+    expect(out.passed.sort()).toEqual([
+      "canonical-elsewhere",
+      "feed-broken",
+      "feed-invalid",
+      "feed-oversized",
+      "redirect-chain",
+      "robots-block",
+      "sitemap-dead",
+      "sitemap-host",
+      "sitemap-missing",
+      "sitemap-redirects",
+    ]);
   });
 });
 

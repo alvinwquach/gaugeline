@@ -54,6 +54,24 @@ const TYPES: Record<string, string> = {
   ".ics": "text/calendar",
 };
 
+/** Files whose text may hold the {{origin}} placeholder. */
+const TEXT_EXTS: ReadonlySet<string> = new Set([".html", ".xml", ".txt"]);
+
+/**
+ * Replace {{origin}} with the origin the request was made to, so a sitemap or robots.txt can list
+ * absolute addresses on a fixture whose port is chosen at start. On a multi-host fixture that is
+ * the logical host the port serves (a hosts mapping connects to 127.0.0.1:port).
+ */
+export function withOrigin(
+  text: string,
+  req: IncomingMessage,
+  logical: ReadonlyMap<number, string> = new Map(),
+): string {
+  if (!text.includes("{{origin}}")) return text;
+  const host = logical.get(req.socket.localPort ?? 0) ?? req.headers.host ?? "127.0.0.1";
+  return text.replaceAll("{{origin}}", `http://${host}`);
+}
+
 function fileFor(root: string, path: string): string | undefined {
   const candidates = path.endsWith("/")
     ? [`${path}index.html`]
@@ -95,6 +113,8 @@ export async function startFixture(name: string): Promise<Fixture> {
     ? (JSON.parse(readFileSync(join(root, "fixture.json"), "utf8")) as FixtureDef)
     : {};
   const hits = new Map<string, number>();
+  /** Port -> logical host, for {{origin}} on multi-host fixtures. */
+  const portHosts = new Map<number, string>();
   const methods = new Map<string, number>();
   const state = { inFlight: 0, maxConcurrent: 0, total: 0 };
   const sockets = new Set<Socket>();
@@ -131,7 +151,7 @@ export async function startFixture(name: string): Promise<Fixture> {
       ) {
         res
           .writeHead(route.status ?? 200, { "content-type": TYPES[".txt"] ?? "", ...headers })
-          .end(route.body ?? "");
+          .end(withOrigin(route.body ?? "", req, portHosts));
         return;
       }
       const file = fileFor(root, path);
@@ -142,9 +162,12 @@ export async function startFixture(name: string): Promise<Fixture> {
         return;
       }
       const type = TYPES[extname(file)] ?? "application/octet-stream";
+      const bytes = readFileSync(file);
       res
         .writeHead(route?.status ?? 200, { "content-type": type, ...headers })
-        .end(readFileSync(file));
+        .end(
+          TEXT_EXTS.has(extname(file)) ? withOrigin(bytes.toString("utf8"), req, portHosts) : bytes,
+        );
     };
     if (route?.delayMs) setTimeout(answer, route.delayMs);
     else answer();
@@ -162,7 +185,10 @@ export async function startFixture(name: string): Promise<Fixture> {
     await new Promise<void>((done) => server.listen(0, "127.0.0.1", done));
     const { port } = server.address() as AddressInfo;
     servers.push(server);
-    if (host) hosts[host] = `127.0.0.1:${port}`;
+    if (host) {
+      hosts[host] = `127.0.0.1:${port}`;
+      portHosts.set(port, host);
+    }
   }
   const firstPort = (servers[0]?.address() as AddressInfo).port;
   return {

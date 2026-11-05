@@ -77,7 +77,12 @@ describe("walking skeleton: unit", () => {
     const full = capture();
     await main([`${site.origin}/both`, "--json", "--allow-private"], full.io, { version: "0.1.0" });
     const f = JSON.parse(full.out()) as { findings: { checkId: string }[] };
-    expect(f.findings.map((x) => x.checkId).sort()).toEqual(["canonical-elsewhere", "noindex"]);
+    // The test server has no sitemap, which the full catalogue reports too.
+    expect(f.findings.map((x) => x.checkId).sort()).toEqual([
+      "canonical-elsewhere",
+      "noindex",
+      "sitemap-missing",
+    ]);
   });
 });
 

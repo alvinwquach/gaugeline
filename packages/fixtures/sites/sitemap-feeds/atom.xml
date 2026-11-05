@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Larkspur menu changes</title>
+  <id>urn:larkspur:menu</id>
+  <updated>2026-01-01T00:00:00Z</updated>
+  <link rel="self" href="{{origin}}/atom.xml" />
+  <entry>
+    <title>Lemon curd is back</title>
+    <id>urn:larkspur:menu:1</id>
+    <updated>2026-01-01T00:00:00Z</updated>
+    <link href="{{origin}}/menu/01" />
+  </entry>
+</feed>

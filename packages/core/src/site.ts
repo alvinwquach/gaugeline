@@ -5,6 +5,7 @@ import type { CheckRegistry } from "./model.js";
 import type { ProgressSink } from "./progress.js";
 import { runChecks, type RunOptions, type RunResult } from "./run.js";
 import { dedupeUrls } from "./sample.js";
+import { lazySiteContext } from "./site-context.js";
 import { buildSnapshot, type PageSnapshot } from "./snapshot.js";
 
 export interface SiteCheckOptions {
@@ -39,7 +40,11 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
   sink({ step: "links", count: Math.min(sameSite.length, budget.remaining("links")) });
   sink({ step: "scripts" });
   const result = await runChecks(snapshot, opts.registry ?? createPageRegistry(), {
-    ctx: { fetcher: opts.fetcher, budget },
+    ctx: {
+      fetcher: opts.fetcher,
+      budget,
+      site: lazySiteContext({ page: snapshot, fetcher: opts.fetcher, budget }),
+    },
     onProgress: sink,
     ...(opts.only ? { only: opts.only } : {}),
     ...(opts.skip ? { skip: opts.skip } : {}),

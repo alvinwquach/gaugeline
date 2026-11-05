@@ -9,3 +9,7 @@ coverage/
 *.tgz
 docs/.vitepress/dist
 docs/.vitepress/cache
+
+# Playwright output
+test-results/
+playwright-report/

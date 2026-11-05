@@ -1,5 +1,6 @@
 import { isIP } from "node:net";
-import type { Readable } from "node:stream";
+import { Readable } from "node:stream";
+import { createGunzip } from "node:zlib";
 import { blockedRange } from "./addresses.js";
 import { decodeBody } from "./charset.js";
 import { NetworkError, errorCodes } from "./errors.js";
@@ -28,6 +29,8 @@ export interface Hop {
   ms: number;
   /** The body passed the size cap and was cut there. */
   truncated?: boolean;
+  /** Bytes of body read, after any Content-Encoding and gzip file decoding, before the charset. */
+  bytes?: number;
   /** Set on the first hop when https did not answer and http was used instead. */
   fallbackFrom?: string;
 }
@@ -169,11 +172,17 @@ export { normaliseUrl };
 
 const REDIRECTS = new Set([301, 302, 303, 307, 308]);
 
+/** A gzip file (a sitemap.xml.gz) rather than a gzip Content-Encoding: the first two bytes. */
+function isGzipFile(buf: Buffer): boolean {
+  return buf.byteLength >= 2 && buf[0] === 0x1f && buf[1] === 0x8b;
+}
+
 async function readCapped(
   body: Readable,
   cap: number,
   contentType: string | undefined,
-): Promise<{ body: string; truncated: boolean }> {
+  unzip = true,
+): Promise<{ body: string; truncated: boolean; bytes: number }> {
   const chunks: Buffer[] = [];
   let size = 0;
   let truncated = false;
@@ -195,7 +204,19 @@ async function readCapped(
     if (isTimeout(err)) throw err;
     truncated = true;
   }
-  return { body: decodeBody(Buffer.concat(chunks, size), contentType), truncated };
+  const buf = Buffer.concat(chunks, size);
+  // No text starts with 0x1f 0x8b, so a body that does is a gzip file: read it decompressed,
+  // under the same cap. One level only: a gzip inside a gzip stays as it is.
+  if (unzip && isGzipFile(buf)) {
+    const inner = await readCapped(
+      Readable.from([buf]).pipe(createGunzip()),
+      cap,
+      contentType,
+      false,
+    );
+    return { ...inner, truncated: inner.truncated || truncated };
+  }
+  return { body: decodeBody(buf, contentType), truncated, bytes: size };
 }
 
 function isTimeout(err: unknown): boolean {
@@ -346,12 +367,13 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
         res.body.destroy();
       } else {
         try {
-          const { body, truncated } = await readCapped(
+          const { body, truncated, bytes } = await readCapped(
             res.body,
             maxBodyBytes,
             res.headers["content-type"],
           );
           hop.body = body;
+          hop.bytes = bytes;
           if (truncated) hop.truncated = true;
         } catch (err) {
           throw new FetchError(

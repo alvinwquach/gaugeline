@@ -1,8 +1,16 @@
 [
   "canonical-elsewhere",
   "canonical-missing",
+  "feed-broken",
+  "feed-invalid",
+  "feed-oversized",
   "host-duplicate",
   "noindex",
   "redirect-chain",
+  "robots-block",
+  "sitemap-dead",
+  "sitemap-host",
+  "sitemap-missing",
+  "sitemap-redirects",
   "thin-html"
 ]
