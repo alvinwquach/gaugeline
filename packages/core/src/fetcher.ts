@@ -7,7 +7,13 @@ import { LIMITS } from "./limits.js";
 import { normaliseUrl } from "./normalise.js";
 import type { RequestInfo } from "./progress.js";
 import { Semaphore } from "./semaphore.js";
-import { send, systemResolver, type ResolvedAddress, type Resolver } from "./transport.js";
+import {
+  send,
+  systemResolver,
+  type ResolvedAddress,
+  type Resolver,
+  type TransportResponse,
+} from "./transport.js";
 
 /**
  * The only module allowed to touch the network. Every request to a checked site goes through here:
@@ -127,6 +133,8 @@ export interface FetcherOptions {
   allowPrivate?: boolean;
   /** How host names become addresses. Defaults to the system resolver; tests inject one. */
   resolver?: Resolver;
+  /** Replace the network, e.g. with a recorded cassette. hosts/allowPrivate/resolver then do nothing. */
+  transport?: Transport;
 }
 
 export interface GetOptions {
@@ -202,35 +210,46 @@ function hostOf(url: string): string {
   }
 }
 
-export function createFetcher(options: FetcherOptions = {}): Fetcher {
-  const {
-    concurrency = LIMITS.concurrency,
-    timeoutMs = 10_000,
-    userAgent = DEFAULT_USER_AGENT,
-    maxHops = LIMITS.redirectHops,
-    maxBodyBytes = LIMITS.bodyBytes,
-  } = options;
-  const gate = new Semaphore(concurrency);
+export interface TransportRequest {
+  method: "GET" | "HEAD";
+  headers: Record<string, string>;
+  timeoutMs: number;
+}
+
+/**
+ * How a request leaves the fetcher. The default is the network; tests inject a recorded cassette
+ * (packages/testkit). An injected transport gets the address as asked for and never touches DNS.
+ */
+export type Transport = (url: URL, req: TransportRequest) => Promise<TransportResponse>;
+
+export interface NetworkTransportOptions {
+  hosts?: Record<string, string>;
+  allowPrivate?: boolean;
+  resolver?: Resolver;
+  /** Called once a request has passed the address check and is about to be sent. */
+  onSend?: () => void;
+}
+
+/**
+ * The real network: apply the hosts mapping, resolve the host once, refuse any non-public address
+ * (unless allowPrivate, or the host comes from the explicit hosts mapping), then connect to the
+ * address that was checked.
+ */
+export function createNetworkTransport(options: NetworkTransportOptions = {}): Transport {
   const hostMap = new Map(
     Object.entries(options.hosts ?? {}).map(([from, to]) => [from.toLowerCase(), to] as const),
   );
-  /** The address actually requested: the logical host swapped for its mapped target, if any. */
-  const route = (url: string): string => {
-    if (hostMap.size === 0) return url;
-    const u = new URL(url);
-    const target = hostMap.get(u.host) ?? hostMap.get(u.hostname);
-    if (target === undefined) return url;
-    u.host = target;
-    return u.href;
-  };
   const resolver = options.resolver ?? systemResolver;
-
-  /**
-   * Resolve the host once and refuse it if any address is not public. The returned address is the
-   * one the socket connects to. Hosts from the explicit `hosts` mapping are trusted as configured.
-   */
+  /** The address actually requested: the logical host swapped for its mapped target, if any. */
+  const route = (u: URL): URL => {
+    const target = hostMap.get(u.host) ?? hostMap.get(u.hostname);
+    if (target === undefined) return u;
+    const routed = new URL(u.href);
+    routed.host = target;
+    return routed;
+  };
   async function checkedAddress(
-    logical: string,
+    logical: URL,
     target: URL,
     mapped: boolean,
   ): Promise<ResolvedAddress> {
@@ -247,8 +266,8 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
         if (range !== undefined) {
           throw new FetchError(
             "blocked-address",
-            `${hostOf(logical)} points at a ${range} address (${a.address}), which Gaugeline does not request.`,
-            logical,
+            `${logical.host} points at a ${range} address (${a.address}), which Gaugeline does not request.`,
+            logical.href,
             [],
             undefined,
             "To check a site on your own computer or network, add --allow-private.",
@@ -260,10 +279,40 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
     if (!first) throw new Error("unreachable");
     return first;
   }
+  return async (url, req) => {
+    const target = route(url);
+    const pinned = await checkedAddress(url, target, target !== url);
+    options.onSend?.();
+    return send(target, { ...req, pinned });
+  };
+}
+
+export function createFetcher(options: FetcherOptions = {}): Fetcher {
+  const {
+    concurrency = LIMITS.concurrency,
+    timeoutMs = 10_000,
+    userAgent = DEFAULT_USER_AGENT,
+    maxHops = LIMITS.redirectHops,
+    maxBodyBytes = LIMITS.bodyBytes,
+  } = options;
+  const gate = new Semaphore(concurrency);
+  let requests = 0;
+  const transport: Transport = options.transport
+    ? (url, req) => {
+        requests += 1;
+        return (options.transport as Transport)(url, req);
+      }
+    : createNetworkTransport({
+        ...(options.hosts ? { hosts: options.hosts } : {}),
+        ...(options.allowPrivate ? { allowPrivate: true } : {}),
+        ...(options.resolver ? { resolver: options.resolver } : {}),
+        onSend: () => {
+          requests += 1;
+        },
+      });
 
   /** In-flight promises, so two checks asking at the same moment share one request. */
   const memo = new Map<string, Promise<Hop[]>>();
-  let requests = 0;
 
   async function requestOnce(
     url: string,
@@ -273,16 +322,11 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
     assertReadOnly(method);
     return gate.run(async () => {
       const started = performance.now();
-      const routed = route(url);
-      const target = new URL(routed);
       let res;
       try {
-        const pinned = await checkedAddress(url, target, routed !== url);
-        requests += 1;
-        res = await send(target, {
+        res = await transport(new URL(url), {
           method,
           headers: { "user-agent": userAgent, ...headers },
-          pinned,
           timeoutMs,
         });
       } catch (err) {

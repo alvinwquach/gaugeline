@@ -28,10 +28,20 @@ export {
   DEFAULT_USER_AGENT,
   FetchError,
   assertReadOnly,
+  createNetworkTransport,
   describeNetworkFailure,
   createFetcher,
 } from "./fetcher.js";
-export type { FetchErrorReason, Fetcher, FetcherOptions, GetOptions, Hop } from "./fetcher.js";
+export type {
+  NetworkTransportOptions,
+  Transport,
+  TransportRequest,
+  FetchErrorReason,
+  Fetcher,
+  FetcherOptions,
+  GetOptions,
+  Hop,
+} from "./fetcher.js";
 export { Semaphore } from "./semaphore.js";
 export { BUDGET_KINDS, LIMITS, createBudget, formatSampleSummary } from "./limits.js";
 export type { Budget, BudgetKind, BudgetSummary, BudgetTally, Limits } from "./limits.js";
@@ -63,3 +73,9 @@ export {
 export type { ProgressEvent, ProgressSink, RequestInfo } from "./progress.js";
 export { checkSite } from "./site.js";
 export type { SiteCheck, SiteCheckOptions } from "./site.js";
+export { blockedRange, isBlockedAddress } from "./addresses.js";
+export type { BlockedRange } from "./addresses.js";
+export { send, systemResolver } from "./transport.js";
+export type { ResolvedAddress, Resolver, TransportResponse } from "./transport.js";
+export { KEY_PATTERNS, findKeys, keyPatterns } from "./secrets.js";
+export type { KeyPattern } from "./secrets.js";

@@ -1,0 +1,34 @@
+{
+  "interactions": [
+    {
+      "body": "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Fixture Bakery</title>\n<meta name=\"description\" content=\"An invented bakery for Gaugeline's fixture tests.\">\n<link rel=\"canonical\" href=\"/\">\n</head>\n<body>\n<header><nav><a href=\"/\">Home</a> <a href=\"/menu\">Menu</a> <a href=\"/about\">About</a></nav></header>\n<main>\n<h1>Fixture Bakery</h1>\n<p>Fixture Bakery is an invented neighbourhood bakery used only in Gaugeline's tests. We bake sourdough loaves, rye bread and seeded rolls every morning before the doors open at seven. On weekends the counter fills with cardamom buns, plum tarts and a lemon cake that sells out by noon. Orders for birthdays and office mornings can be collected from the side door on Example Street. Every price on this page is made up, every name is made up, and no real business is described here.</p>\n<p>Fixture Bakery is an invented neighbourhood bakery used only in Gaugeline's tests. We bake sourdough loaves, rye bread and seeded rolls every morning before the doors open at seven. On weekends the counter fills with cardamom buns, plum tarts and a lemon cake that sells out by noon. Orders for birthdays and office mornings can be collected from the side door on Example Street. Every price on this page is made up, every name is made up, and no real business is described here.</p>\n<img src=\"/loaf.svg\" alt=\"A sourdough loaf\" width=\"120\" height=\"80\">\n</main>\n<footer><p>Fixture Bakery, 1 Example Street. Invented for tests.</p></footer>\n</body>\n</html>\n",
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "http://provider.test/"
+    },
+    {
+      "body": "User-agent: *\nAllow: /\n",
+      "headers": {
+        "content-type": "text/plain; charset=utf-8"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "http://provider.test/robots.txt"
+    },
+    {
+      "body": "",
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "method": "HEAD",
+      "status": 200,
+      "url": "http://provider.test/menu"
+    }
+  ],
+  "name": "example-fixture",
+  "recordedAt": "2026-11-05T00:00:00.000Z",
+  "version": 1
+}
