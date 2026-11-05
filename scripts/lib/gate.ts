@@ -30,6 +30,9 @@ export function isDocsChange(path: string): boolean {
   return path.startsWith("docs/") && !GENERATED_DOCS.has(path);
 }
 
+/** Written only by `changeset version` (pnpm version). */
+export const RELEASE_CHANGELOG = "packages/cli/CHANGELOG.md";
+
 export function isUserFacing(c: GateInput["changesets"][number]): boolean {
   return c.bump !== "none" && !c.summary.trim().startsWith("(internal)");
 }
@@ -42,7 +45,10 @@ export function gate(input: GateInput): GateResult {
   if (sourceChanged && input.changesets.length === 0) {
     problems.push("This changes source but has no changeset. Run pnpm changeset.");
   }
-  if ((input.deletedChangesets ?? []).length > 0 && input.changesets.length === 0) {
+  // The Release pull request deletes every changeset; `changeset version` is the only thing that
+  // writes the CLI's CHANGELOG.md, so a pull request that changes it is the release.
+  const isRelease = input.files.includes(RELEASE_CHANGELOG);
+  if (!isRelease && (input.deletedChangesets ?? []).length > 0 && input.changesets.length === 0) {
     problems.push(
       `This deletes a changeset (${(input.deletedChangesets ?? []).join(", ")}) and adds none. Changesets are removed by the Release pull request.`,
     );

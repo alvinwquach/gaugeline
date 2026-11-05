@@ -1,6 +1,6 @@
 {
   "name": "gaugeline",
-  "version": "0.0.2",
+  "version": "0.1.0",
   "description": "Check a website the way search engines and visitors see it. Read-only.",
   "type": "module",
   "license": "MIT",

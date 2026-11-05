@@ -136,6 +136,9 @@ export function normalise(text: string, origin: string, address = "shop.example"
     )
     .split("\n")
     .map((l) => l.replace(/[ \t]+$/, ""))
+    // "passed checks": one "✓ <id>" line per check that passed is left out of docs blocks; the list
+    // grows with every new check and says nothing about the example.
+    .filter((l) => !/^✓ [a-z0-9-]+$/.test(l))
     .join("\n")
     .replace(/\n+$/, "");
 }

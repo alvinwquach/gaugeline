@@ -1,0 +1,25 @@
+{
+  "/feed": {
+    "body": "<!doctype html><title>News</title><p>Our news page.</p>",
+    "headers": {
+      "content-type": "text/html; charset=utf-8"
+    }
+  },
+  "/archive.xml": {
+    "bodyBytes": 2200000
+  },
+  "/img/bolt-1.jpg": {
+    "body": "",
+    "headers": {
+      "content-type": "image/jpeg",
+      "content-length": "1700000"
+    }
+  },
+  "/img/bolt-2.jpg": {
+    "body": "",
+    "headers": {
+      "content-type": "image/jpeg",
+      "content-length": "1700000"
+    }
+  }
+}
