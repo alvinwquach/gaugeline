@@ -32,6 +32,10 @@ export interface PageSnapshot {
   jsonLdErrors: string[];
   og: Record<string, string>;
   scripts: string[];
+  /** Microdata itemtype values, each URL of a whitespace-separated list, in document order. */
+  itemTypes?: string[];
+  /** The title and every meta content exactly as sent, before invisible characters are stripped. */
+  rawText?: { title?: string; meta: string[] };
   /** The meta name="viewport" tag's content, wherever it is in the document. */
   viewport?: string;
   /** The apple-itunes-app meta tag's content (Smart App Banner), if any. */
@@ -207,6 +211,15 @@ export function buildSnapshot(hops: Hop[]): PageSnapshot {
     }
   });
 
+  const itemTypes = $("[itemtype]")
+    .map((_, el) => ($(el).attr("itemtype") ?? "").trim().split(/\s+/))
+    .get()
+    .filter((t: string) => t !== "");
+  const rawMeta = $("meta[content]")
+    .map((_, el) => $(el).attr("content") ?? "")
+    .get()
+    .filter((c: string) => c !== "");
+
   const og: Record<string, string> = {};
   $("meta[property]").each((_, el) => {
     const property = ($(el).attr("property") ?? "").trim().toLowerCase();
@@ -282,6 +295,8 @@ export function buildSnapshot(hops: Hop[]): PageSnapshot {
     scripts,
     ...(appBanner ? { appleItunesApp: appBanner } : {}),
     ...(viewport !== undefined ? { viewport } : {}),
+    itemTypes,
+    rawText: { ...($("title").length > 0 ? { title: titleText } : {}), meta: rawMeta },
     feeds,
     forms,
     ids,

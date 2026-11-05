@@ -81,6 +81,7 @@ describe("walking skeleton: unit", () => {
     expect(f.findings.map((x) => x.checkId).sort()).toEqual([
       "canonical-elsewhere",
       "noindex",
+      "og-image-missing",
       "sitemap-missing",
       "viewport",
     ]);

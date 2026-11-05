@@ -70,6 +70,26 @@
     "tech": "a sampled same-site img src answers 4xx or 5xx (images on other hosts are not requested)"
   },
   {
+    "id": "jsonld-404",
+    "severity": "high",
+    "area": "Search & sharing",
+    "title": "Structured data points at pages that don't exist",
+    "what": "Addresses on the site named in the page's structured data (a product URL, an image, a logo) return an error.",
+    "why": "Search engines use these addresses for rich results. A dead product or image address can drop the rich result entirely.",
+    "fix": "Update the structured data to the current addresses. Generated structured data usually means a stale CMS field or a renamed route.",
+    "tech": "same-site http(s) strings inside JSON-LD answer 4xx or 5xx; at most 12 are requested, the first 12 in document order"
+  },
+  {
+    "id": "jsonld-invalid",
+    "severity": "high",
+    "area": "Search & sharing",
+    "title": "This page's structured data is broken",
+    "what": "A structured data block (script type=\"application/ld+json\") is not valid JSON.",
+    "why": "Search engines ignore the whole block, so prices, reviews, FAQs or opening hours in it never reach the results.",
+    "fix": "Fix the JSON in that block: usually a trailing comma, an unescaped quote or a template that printed nothing. Paste it into a JSON validator to find the line.",
+    "tech": "JSON.parse fails on a script type=\"application/ld+json\" block (one finding per block)"
+  },
+  {
     "id": "noindex",
     "severity": "high",
     "area": "Search & sharing",
@@ -108,6 +128,16 @@
     "why": "The sitemap is where you tell search engines which pages matter. Dead entries waste their visits and make them trust the sitemap less.",
     "fix": "Remove the dead addresses from the sitemap, or restore the pages. A generated sitemap usually means a deleted page is still in the CMS or the route list.",
     "tech": "sampled sitemap entries return 4xx or 5xx"
+  },
+  {
+    "id": "stega-leak",
+    "severity": "high",
+    "area": "Search & sharing",
+    "title": "Hidden editing characters leaked onto the live site",
+    "what": "The title, a meta tag or the structured data contains invisible characters: Unicode tag characters or long runs of zero-width characters, the kind a CMS preview (such as Sanity's stega) adds.",
+    "why": "They are invisible to you but not to everyone else: search results, share previews and copied text carry them, and they can break string comparisons and structured data.",
+    "fix": "Turn stega encoding off for production builds (in Sanity, set stega: false outside preview) and strip it from fields that end up in metadata.",
+    "tech": "a code point in U+E0000 to U+E007F, or 4 or more zero-width characters in a row, in the title, meta content or JSON-LD strings"
   },
   {
     "id": "thin-html",
@@ -220,6 +250,26 @@
     "tech": "hours, telephone or address in /llms.txt differ from the page's LocalBusiness JSON-LD"
   },
   {
+    "id": "og-image-relative",
+    "severity": "medium",
+    "area": "Search & sharing",
+    "title": "Shared links may show no picture",
+    "what": "og:image is a relative address (like /previews/landing.webp), not a full https:// address.",
+    "why": "Facebook, LinkedIn, Slack and iMessage need a full address. With a relative one, shares of the page show no picture.",
+    "fix": "Write og:image as a full address, including https:// and the domain. Most frameworks have a site URL setting for this.",
+    "tech": "og:image does not start with http:// or https:// (protocol-relative // addresses are flagged too)"
+  },
+  {
+    "id": "og-url-mismatch",
+    "severity": "medium",
+    "area": "Search & sharing",
+    "title": "Shared links point at a different page than search engines see",
+    "what": "The page's og:url (the address social apps use when it is shared) differs from its canonical tag.",
+    "why": "Likes and shares are counted against one address while search engines rank another, and a share can open the wrong page.",
+    "fix": "Set og:url to the same address as the canonical tag. Both usually come from one SEO component.",
+    "tech": "og:url and <link rel=\"canonical\"> differ by scheme, host, path or query (a trailing slash is not a difference)"
+  },
+  {
     "id": "page-heavy",
     "severity": "medium",
     "area": "Visitors",
@@ -268,6 +318,16 @@
     "why": "A sitemap should list the final address of each page. Redirecting entries make search engines do extra work and can keep the old address in results.",
     "fix": "List each page at the address it redirects to. This often follows a move to https, to www, or to a new URL scheme.",
     "tech": "sampled sitemap entries return 3xx"
+  },
+  {
+    "id": "structured-duplicate",
+    "severity": "medium",
+    "area": "Search & sharing",
+    "title": "The same structured data is on this page twice",
+    "what": "A schema.org type is described both in JSON-LD and as microdata (itemtype) on the same page.",
+    "why": "Search engines see two descriptions of one thing, which can disagree, and may pick the wrong one or ignore both.",
+    "fix": "Keep one: usually the JSON-LD, and remove the itemscope and itemtype attributes from the theme or plugin that adds microdata.",
+    "tech": "a schema.org @type in JSON-LD is also a microdata itemtype"
   },
   {
     "id": "viewport",
@@ -338,6 +398,16 @@
     "why": "Each redirect adds a round trip for visitors, and search engines pass a little less on through every hop.",
     "fix": "Change the link to the address it ends up at. This usually follows a move to new URLs, https or www.",
     "tech": "a sampled same-site a[href] answers 3xx first and ends in 200"
+  },
+  {
+    "id": "og-image-missing",
+    "severity": "low",
+    "area": "Search & sharing",
+    "title": "Shared links have no picture",
+    "what": "The page has no og:image tag.",
+    "why": "When the page is shared in a chat or a social post, it shows as a plain link with no picture, which fewer people click.",
+    "fix": "Add <meta property=\"og:image\" content=\"https://...\"> with a 1200 by 630 picture for the page.",
+    "tech": "no og:image (or og:image:url) meta property"
   },
   {
     "id": "tel-format",

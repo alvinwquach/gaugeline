@@ -11,4 +11,6 @@ The words on this site, in plain English.
 | Crawler                   | A program, like Google's, that reads websites to list them                                             |
 | Webhook                   | An automatic message one system sends another when something happens                                   |
 | Stega                     | Invisible characters Sanity adds so you can click text on a preview to edit it                         |
+| Microdata                 | Structured data written as attributes (itemscope, itemtype) on the page's own tags, instead of JSON-LD |
+| Open Graph (og:)          | Meta tags that set the title, picture and address a link shows when it is shared                       |
 | Dataset                   | The database where a Sanity site's content lives                                                       |
