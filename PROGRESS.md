@@ -43,14 +43,11 @@ merged once CI is green on Node 18.17, 20 and 22.
 
 ## Owner actions (things the build cannot finish alone)
 
-- **K01 skeleton publish**: `packages/cli` is now `gaugeline@0.0.2`, `"private": false`. To publish,
-  set repository variable `PUBLISH_ENABLED=true`, add the `NPM_TOKEN` secret, set `SMOKE_WRONG_URL`
-  (a page you own with a wrong canonical) and `SMOKE_CLEAN_URL` variables, then push tag `v0.0.2`
-  (`.github/workflows/skeleton.yml`). Or run `npm publish --provenance --access public` in
-  `packages/cli` yourself, then `bash scripts/smoke-published.sh 0.0.2` (needs docker).
-- **npm publish** (G08/K01): add the `NPM_TOKEN` repository secret, set `"private": false` in
-  `packages/cli/package.json`, then run the Release workflow by hand with "publish" ticked (it is a
-  dry run otherwise). See RELEASING.md. Nothing has been published.
+- **Publishing (K01/K02)**: `packages/cli` is `gaugeline@0.0.2`, `"private": false`, nothing
+  published. To turn on releases: set repository variables `RELEASE_PR_ENABLED=true` (opens the
+  "Release" PR) and `PUBLISH_ENABLED=true` (publishes when it is merged), add the `NPM_TOKEN` secret,
+  and set `SMOKE_WRONG_URL` / `SMOKE_CLEAN_URL` to pages you own (one with a wrong canonical, one
+  clean). Or publish by hand as in RELEASING.md.
 - **Dependabot**: its first PRs (alvinwquach/gaugeline#16, #17, #18) propose major bumps of the
   pinned actions (setup-node 7, pnpm/action-setup 6, checkout 7). Left open for the owner to review;
   the build does not merge dependency majors unattended.
@@ -79,7 +76,7 @@ merged once CI is green on Node 18.17, 20 and 22.
 | G07a | `01/cassette-record-replay` | merged | https://github.com/alvinwquach/gaugeline/pull/19 | 438 | packages/testkit (private). Fetcher gains an injectable transport (createNetworkTransport is the default); cassettes plug in as createFetcher({ transport }). KEY_PATTERNS live in core (secrets.ts) for G12. Example cassette recorded against the clean fixture (record:example script). |
 | G08 | `01/ci-and-release` | merged | https://github.com/alvinwquach/gaugeline/pull/20 | 442 | CI: ubuntu 18.17/20/22 + macOS/Windows Node 20 (full suite) + pack job (pnpm smoke: contents allowlist, 1 MB budget, npx run on 18.17). release.yml is manual, dry-run by default, provenance. Tarball ~123 kB. |
 | K01 | `01b/walking-skeleton` | partial | https://github.com/alvinwquach/gaugeline/pull/21 | 453 | Built and switched off: NOT published (owner publishes). 0.0.2, skeleton gating (only canonical-elsewhere for 0.0.x), skeleton.yml (tag-triggered, gated on vars.PUBLISH_ENABLED), smoke-published.sh (docker by default; tested in local mode against a packed tarball), check-tag-version.ts. The docker/registry smoke itself has not run. |
-| K02 | `01b/changesets-release-pr` | todo | | | Changesets and the release pull request |
+| K02 | `01b/changesets-release-pr` | merged | https://github.com/alvinwquach/gaugeline/pull/22 | 464 | Changesets 2.31.1 (3.x needs npm 10.9); human-id pinned to 4.1.3 by override (4.2 is ESM-only and breaks changesets on Node 18). release-pr.yml replaces G08 release.yml and K01 skeleton.yml; gated on vars.RELEASE_PR_ENABLED / PUBLISH_ENABLED. fixed group is [gaugeline] until G14b adds gaugeline-free. 0.1.0/0.1.1 site entries backfilled in docs/changelog.backfill.json (not in CHANGELOG.md, since this repo has not shipped them). |
 | K03 | `01b/pr-gate` | todo | | | CI gate: no source change without a changeset and docs |
 | K04 | `01b/docs-site` | todo | | | Docs site built from the repo, deployed on merge |
 | K05 | `01b/docs-first-template` | todo | | | Docs first: write the page and --help before the code |

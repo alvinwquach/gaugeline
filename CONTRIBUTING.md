@@ -113,3 +113,18 @@ Before committing, read the diff of the cassette. Request headers are never stor
 `content-type` and pagination headers are kept from responses; secret-looking query parameters,
 key-shaped strings and email addresses are replaced. `cassettes-clean.test.ts` scans every cassette
 on every CI run as a second lock. A key that reaches git history must be rotated.
+
+## Add a changeset
+
+Every pull request that changes `packages/*/src` adds a changeset:
+
+```bash
+pnpm changeset          # pick gaugeline, choose patch or minor, write one sentence
+pnpm changeset --empty  # internal work: write a sentence starting "(internal)"
+```
+
+Write the sentence for the person who runs the tool: present tense, one sentence, no file names.
+"Checks the 301 map against the plan." not "Add legacy.ts". A summary starting `Headline:` sets the
+release's headline on the changelog page. The Release pull request collects these files into
+`packages/cli/CHANGELOG.md`; `pnpm docs:changelog` turns that into `docs/changelog.data.json` and
+`docs/changelog.md`.
