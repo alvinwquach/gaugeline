@@ -79,3 +79,5 @@ export { send, systemResolver } from "./transport.js";
 export type { ResolvedAddress, Resolver, TransportResponse } from "./transport.js";
 export { KEY_PATTERNS, findKeys, keyPatterns } from "./secrets.js";
 export type { KeyPattern } from "./secrets.js";
+export { catalogue } from "./catalogue.js";
+export type { CatalogueEntry } from "./catalogue.js";

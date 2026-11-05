@@ -160,6 +160,7 @@ describe("result schema: end to end through the runner", () => {
     what: "w",
     why: "y",
     fix: "f",
+    tech: "t",
   } as const;
 
   it("a run with zero findings validates", async () => {

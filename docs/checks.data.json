@@ -1,0 +1,62 @@
+[
+  {
+    "id": "canonical-elsewhere",
+    "severity": "high",
+    "area": "Search & sharing",
+    "title": "This page tells Google to show a different page",
+    "what": "The page's canonical tag names a different address as the real one.",
+    "why": "Search engines treat the page as a copy, so it may never appear in results.",
+    "fix": "Give each page a canonical tag that points at its own address. Shared SEO components are the usual cause.",
+    "tech": "<link rel=\"canonical\"> on the page points at another URL"
+  },
+  {
+    "id": "host-duplicate",
+    "severity": "high",
+    "area": "Search & sharing",
+    "title": "Your whole site exists at two addresses",
+    "what": "Both www and the bare domain load the site, instead of one redirecting to the other.",
+    "why": "Search engines can split your ranking between two copies of every page.",
+    "fix": "Pick one address and 301-redirect the other to it at your host or DNS provider.",
+    "tech": "the alternate host returns 200 instead of 301"
+  },
+  {
+    "id": "thin-html",
+    "severity": "high",
+    "area": "Search & sharing",
+    "title": "Google sees an almost empty page",
+    "what": "Fewer than 60 words exist in the page before JavaScript runs, outside the header, nav and footer.",
+    "why": "Many crawlers and AI tools read the page without running JavaScript, so they see almost nothing.",
+    "fix": "Render the main content on the server. In Next.js, keep it out of client-only components and Suspense boundaries that wait for the browser.",
+    "tech": "word count of server-rendered HTML"
+  },
+  {
+    "id": "noindex",
+    "severity": "high",
+    "area": "Search & sharing",
+    "title": "This page asks search engines not to list it",
+    "what": "The page has a robots meta tag containing noindex.",
+    "why": "If that isn't on purpose, the page is invisible in search.",
+    "fix": "Remove noindex from pages you want found.",
+    "tech": "<meta name=\"robots\" content=\"noindex\">"
+  },
+  {
+    "id": "redirect-chain",
+    "severity": "medium",
+    "area": "Search & sharing",
+    "title": "Your address takes several jumps to load",
+    "what": "The address you entered redirects more than once before the page loads.",
+    "why": "Each jump slows the first visit and can weaken how search engines credit the page.",
+    "fix": "Point every redirect straight at the final address.",
+    "tech": "more than one 3xx hop on the entered URL"
+  },
+  {
+    "id": "canonical-missing",
+    "severity": "low",
+    "area": "Search & sharing",
+    "title": "The page doesn't say which address is the real one",
+    "what": "There's no canonical tag.",
+    "why": "Copies of the page with tracking parameters can be treated as separate pages.",
+    "fix": "Add a self-referencing canonical tag.",
+    "tech": "no <link rel=\"canonical\">"
+  }
+]

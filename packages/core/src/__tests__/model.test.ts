@@ -24,6 +24,7 @@ function check(
     what: "what",
     why: "why",
     fix: "fix",
+    tech: "tech",
     run,
   });
 }
