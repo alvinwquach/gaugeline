@@ -74,10 +74,15 @@ describe("runner: unit", () => {
       "images-heavy",
       "images-legacy-format",
       "images-legacy-wp",
+      "jsonld-404",
+      "jsonld-invalid",
       "links-via-redirect",
       "llms-txt-broken-links",
       "llms-txt-stale-facts",
       "noindex",
+      "og-image-missing",
+      "og-image-relative",
+      "og-url-mismatch",
       "page-heavy",
       "quotable-facts-disagree",
       "redirect-chain",
@@ -86,6 +91,8 @@ describe("runner: unit", () => {
       "sitemap-host",
       "sitemap-missing",
       "sitemap-redirects",
+      "stega-leak",
+      "structured-duplicate",
       "tel-format",
       "thin-html",
       "viewport",
@@ -115,6 +122,7 @@ describe("runner: edge cases", () => {
     expect(out.findings.map((f) => f.checkId).sort()).toEqual([
       "canonical-missing",
       "noindex",
+      "og-image-missing",
       "thin-html",
       "viewport",
     ]);
@@ -138,9 +146,13 @@ describe("runner: edge cases", () => {
       "images-heavy",
       "images-legacy-format",
       "images-legacy-wp",
+      "jsonld-404",
+      "jsonld-invalid",
       "links-via-redirect",
       "llms-txt-broken-links",
       "llms-txt-stale-facts",
+      "og-image-relative",
+      "og-url-mismatch",
       "page-heavy",
       "quotable-facts-disagree",
       "redirect-chain",
@@ -149,6 +161,8 @@ describe("runner: edge cases", () => {
       "sitemap-host",
       "sitemap-missing",
       "sitemap-redirects",
+      "stega-leak",
+      "structured-duplicate",
       "tel-format",
     ]);
   });
@@ -162,7 +176,7 @@ afterEach(async () => {
 describe("runner: integration", () => {
   it('fixture site "duplicate-host" produces exactly host-duplicate and nothing else', async () => {
     const words = Array.from({ length: 120 }, (_, i) => `word${i}`).join(" ");
-    const body = `<html><head><title>Fixture Bakery</title><meta name="viewport" content="width=device-width"><link rel="canonical" href="http://duplicate.test/"></head><body><main><h1>Fixture Bakery</h1><p>${words}</p></main></body></html>`;
+    const body = `<html><head><title>Fixture Bakery</title><meta name="viewport" content="width=device-width"><meta property="og:image" content="http://duplicate.test/og.png"><link rel="canonical" href="http://duplicate.test/"></head><body><main><h1>Fixture Bakery</h1><p>${words}</p></main></body></html>`;
     const bare = await startServer({ "/": html(body) });
     const www = await startServer({ "/": html(body) });
     servers.push(bare, www);

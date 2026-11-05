@@ -20,10 +20,15 @@ import { imagesBroken } from "./images-broken.js";
 import { imagesHeavy } from "./images-heavy.js";
 import { imagesLegacyFormat } from "./images-legacy-format.js";
 import { imagesLegacyWp } from "./images-legacy-wp.js";
+import { jsonld404 } from "./jsonld-404.js";
+import { jsonldInvalid } from "./jsonld-invalid.js";
 import { linksViaRedirect } from "./links-via-redirect.js";
 import { llmsTxtBrokenLinks } from "./llms-txt-broken-links.js";
 import { llmsTxtStaleFacts } from "./llms-txt-stale-facts.js";
 import { noindex } from "./noindex.js";
+import { ogImageMissing } from "./og-image-missing.js";
+import { ogImageRelative } from "./og-image-relative.js";
+import { ogUrlMismatch } from "./og-url-mismatch.js";
 import { pageHeavy } from "./page-heavy.js";
 import { quotableFactsDisagree } from "./quotable-facts-disagree.js";
 import { redirectChain } from "./redirect-chain.js";
@@ -32,6 +37,8 @@ import { sitemapDead } from "./sitemap-dead.js";
 import { sitemapHost } from "./sitemap-host.js";
 import { sitemapMissing } from "./sitemap-missing.js";
 import { sitemapRedirects } from "./sitemap-redirects.js";
+import { stegaLeak } from "./stega-leak.js";
+import { structuredDuplicate } from "./structured-duplicate.js";
 import { telFormat } from "./tel-format.js";
 import { thinHtml } from "./thin-html.js";
 import { viewport } from "./viewport.js";
@@ -58,10 +65,15 @@ export const PAGE_CHECKS = [
   imagesHeavy,
   imagesLegacyFormat,
   imagesLegacyWp,
+  jsonld404,
+  jsonldInvalid,
   linksViaRedirect,
   llmsTxtBrokenLinks,
   llmsTxtStaleFacts,
   noindex,
+  ogImageMissing,
+  ogImageRelative,
+  ogUrlMismatch,
   pageHeavy,
   quotableFactsDisagree,
   redirectChain,
@@ -70,6 +82,8 @@ export const PAGE_CHECKS = [
   sitemapHost,
   sitemapMissing,
   sitemapRedirects,
+  stegaLeak,
+  structuredDuplicate,
   telFormat,
   thinHtml,
   viewport,
@@ -109,3 +123,5 @@ export {
 } from "./weight.js";
 export type { PageMeasure } from "./weight.js";
 export { badTelNumber } from "./mobile.js";
+export { collectUrls, jsonLdTypes, schemaType } from "./structured/collect.js";
+export { STEGA_ZERO_WIDTH_RUN, findStega, jsonStrings } from "./sharing/stega.js";
