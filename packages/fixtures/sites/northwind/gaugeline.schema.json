@@ -1,0 +1,24 @@
+{
+  "organizationId": "/#organization",
+  "websiteId": "/#website",
+  "templates": [
+    {
+      "match": "/blog/*",
+      "require": [
+        "Article",
+        "WebPage",
+        "BreadcrumbList"
+      ]
+    },
+    {
+      "match": "/**",
+      "require": [
+        "WebPage"
+      ]
+    }
+  ],
+  "breadcrumbs": {
+    "firstName": "Home",
+    "firstUrl": "/"
+  }
+}
