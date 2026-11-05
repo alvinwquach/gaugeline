@@ -16,7 +16,7 @@ The real bug in this area: serving both formats from one address **without** `Va
 
 ## Re-check an audit export
 
-```sh title=Terminal
+```sh title=Terminal untested="Converted with a fixture in this page's own branch."
 $ npx gaugeline verify crawl-export.csv --limit 40
 ```
 

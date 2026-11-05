@@ -2,7 +2,7 @@
 
 Get the findings in Slack, Discord, email, or any tool that accepts a webhook.
 
-```sh title=Terminal
+```sh title=Terminal untested="Converted with a fixture in this page's own branch."
 $ GAUGELINE_SLACK_WEBHOOK=https://hooks.slack.com/services/... npx gaugeline yoursite.com
 $ GAUGELINE_DISCORD_WEBHOOK=https://discord.com/api/webhooks/... npx gaugeline yoursite.com
 $ RESEND_API_KEY=re_... npx gaugeline yoursite.com --email you@yourdomain.com
