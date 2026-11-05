@@ -30,6 +30,16 @@
     "tech": "<link rel=\"canonical\"> on the page points at another URL"
   },
   {
+    "id": "duplicate-title",
+    "severity": "high",
+    "area": "Search & sharing",
+    "title": "This page has two titles",
+    "what": "The HTML has more than one title element (titles inside SVG images do not count).",
+    "why": "Search engines pick one, not always the one you meant, so the result shows the wrong title. It usually means two SEO components both render one.",
+    "fix": "Keep one <title> in the head. Remove the one a theme, plugin or layout adds on top of your SEO component.",
+    "tech": "more than one <title> element outside <svg>"
+  },
+  {
     "id": "event-jsonld-mismatch",
     "severity": "high",
     "area": "Visitors",
@@ -118,6 +128,16 @@
     "why": "Search engines ignore the whole block, so prices, reviews, FAQs or opening hours in it never reach the results.",
     "fix": "Fix the JSON in that block: usually a trailing comma, an unescaped quote or a template that printed nothing. Paste it into a JSON validator to find the line.",
     "tech": "JSON.parse fails on a script type=\"application/ld+json\" block (one finding per block)"
+  },
+  {
+    "id": "mock-content-live",
+    "severity": "high",
+    "area": "Visitors",
+    "title": "Test content is on the live site",
+    "what": "The page's main content shows test or sample content: a test product, a sample post, John Doe, an example.com email address or a 555 phone number.",
+    "why": "Unlike placeholder copy, a visitor can act on it: buy the test product, email the example address or call the fake number.",
+    "fix": "Delete or unpublish the test entries in the CMS or shop, and replace sample contact details with real ones.",
+    "tech": "main content (code and pre ignored) contains \"test product\", \"sample product\", \"sample post\", \"sample page\", \"test post\", \"hello world!\", \"john doe\", \"jane doe\", \"john smith example\", \"your name here\", \"product name here\", an @example.com/.org/.net address, or a 555 phone number (English lists)"
   },
   {
     "id": "noindex",
@@ -280,6 +300,16 @@
     "tech": "img src or srcset candidates under /wp-content/uploads/"
   },
   {
+    "id": "links-wrapped",
+    "severity": "medium",
+    "area": "Visitors",
+    "title": "Some links go through a link shortener",
+    "what": "Links leave the page through a shortener or redirector (bit.ly, t.co, lnkd.in, a /redirect?url= address) instead of linking directly.",
+    "why": "Visitors can't see where the link goes before they click, the redirect adds a delay, and if the shortener expires or is blocked the link breaks.",
+    "fix": "Link straight to the destination. Social icons in the footer are a common place for these.",
+    "tech": "a[href] on bit.ly, t.co, lnkd.in, buff.ly, ow.ly, tinyurl.com, goo.gl, rebrand.ly, is.gd, cutt.ly, shorturl.at, tiny.cc (or a subdomain), or a /redirect, /out or /go path with a url= style parameter holding an http(s) address; footer links count too"
+  },
+  {
     "id": "llms-txt-broken-links",
     "severity": "medium",
     "area": "Search & sharing",
@@ -298,6 +328,16 @@
     "why": "Assistants quote llms.txt directly. An old number or old hours there is what someone hears when they ask if you're open tonight.",
     "fix": "Update llms.txt to match the structured data (or the other way round, whichever is wrong). Generate both from one source if you can.",
     "tech": "hours, telephone or address in /llms.txt differ from the page's LocalBusiness JSON-LD"
+  },
+  {
+    "id": "nav-home-links",
+    "severity": "medium",
+    "area": "Visitors",
+    "title": "Menu items go to the homepage",
+    "what": "Links in the menu or header point at the homepage but are labelled as something else, such as Services or Contact.",
+    "why": "Visitors who click Services land back on the homepage and think the page is missing. It usually means a menu item was added with no link.",
+    "fix": "Point each menu item at its own page, or remove it until the page exists.",
+    "tech": "a nav or header a[href] resolving to / whose text (or aria-label) is not Home or the site's name"
   },
   {
     "id": "og-image-relative",
@@ -328,6 +368,26 @@
     "why": "On a phone connection a page this heavy takes many seconds and costs visitors data.",
     "fix": "Start with the largest files in the evidence: resize and compress images, and trim the HTML's inline data.",
     "tech": "HTML bytes plus the Content-Length of sampled images (the files the run already requested) is over 3 MB (3,145,728 bytes); no extra requests are made"
+  },
+  {
+    "id": "placeholder-images",
+    "severity": "medium",
+    "area": "Visitors",
+    "title": "The page shows placeholder images",
+    "what": "Images on the page come from a placeholder service such as placehold.co, dummyimage.com or picsum.photos.",
+    "why": "Visitors see grey boxes or random stock photos where the real product or team picture should be.",
+    "fix": "Upload the real images and point the img tags at them.",
+    "tech": "img src on placehold.co, placehold.it, placeholder.com, via.placeholder.com, dummyimage.com, picsum.photos, placekitten.com, placebear.com, loremflickr.com, fakeimg.pl, placeimg.com, lorempixel.com (or a subdomain)"
+  },
+  {
+    "id": "placeholder-text",
+    "severity": "medium",
+    "area": "Visitors",
+    "title": "The page still has placeholder text",
+    "what": "The page shows unfinished copy: lorem ipsum, TODO or TBD, a [bracketed placeholder], or a title or main heading such as Untitled, Staging or Test.",
+    "why": "Visitors see an unfinished site, and search engines may show the placeholder in results.",
+    "fix": "Replace the placeholder with the real copy. Search the CMS for \"lorem\", \"TODO\" and \"[\" before publishing.",
+    "tech": "main content text matches \"lorem ipsum\", TODO/TBD/FIXME or [insert ...]-style brackets (code and pre ignored), or the whole title or h1 is one of \"untitled\", \"untitled page\", \"untitled document\", \"new page\", \"page title\", \"title\", \"test\", \"test page\", \"testing\", \"staging\", \"staging site\", \"my site\", \"my website\", \"site title\", \"home page title\" (English lists)"
   },
   {
     "id": "redirect-chain",
@@ -450,6 +510,16 @@
     "tech": "a sampled image's Content-Type is image/jpeg, image/png or image/gif and it has no WebP or AVIF candidate (SVG is never reported)"
   },
   {
+    "id": "links-vague-text",
+    "severity": "low",
+    "area": "Visitors",
+    "title": "Some links don't say where they go",
+    "what": "Links whose whole text is \"read more\", \"click here\", \"learn more\" or \"here\".",
+    "why": "Screen reader users often browse a page by its links, and hear a list of identical \"read more\"s. Search engines also read link text to understand the destination.",
+    "fix": "Make the link text name the destination, such as \"Read more about pricing\", or add an aria-label that does.",
+    "tech": "a link's accessible name (aria-label, else its text) is exactly \"read more\", \"click here\", \"learn more\", \"here\" (English list)"
+  },
+  {
     "id": "links-via-redirect",
     "severity": "low",
     "area": "Visitors",
@@ -458,6 +528,16 @@
     "why": "Each redirect adds a round trip for visitors, and search engines pass a little less on through every hop.",
     "fix": "Change the link to the address it ends up at. This usually follows a move to new URLs, https or www.",
     "tech": "a sampled same-site a[href] answers 3xx first and ends in 200"
+  },
+  {
+    "id": "nav-label-drift",
+    "severity": "low",
+    "area": "Visitors",
+    "title": "One page has two names in your menus",
+    "what": "The same link appears in the menu, header or footer with two different labels.",
+    "why": "Visitors wonder whether the two labels are two pages, and the site reads as unfinished.",
+    "fix": "Use one label for each page everywhere. Menus kept in two places (a header and a footer component) drift apart first.",
+    "tech": "one href (a #fragment makes a different destination) has more than one distinct label across nav, header and footer (case and trailing arrows ignored)"
   },
   {
     "id": "og-image-missing",
