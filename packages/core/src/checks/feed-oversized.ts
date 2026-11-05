@@ -1,0 +1,40 @@
+import { defineCheck } from "../model.js";
+import type { PageSnapshot } from "../snapshot.js";
+import { finalStatus } from "./site-helpers.js";
+
+/** 2 MB: the response size above which frameworks' data caches stop caching a fetch. */
+export const FEED_MAX_BYTES = 2 * 1024 * 1024;
+
+function megabytes(bytes: number): string {
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+export const feedOversized = defineCheck<PageSnapshot>({
+  id: "feed-oversized",
+  area: "Search & sharing",
+  severity: "medium",
+  title: "The feed this page advertises is too large",
+  what: "The feed response is larger than 2 MB.",
+  why: "Feed readers and aggregators time out or truncate large feeds, and frameworks such as Next.js do not cache responses over 2 MB, so every request rebuilds it.",
+  fix: "Limit the feed to recent items (20 to 50 is typical) and put a summary in each item instead of the full post.",
+  tech: "the feed response is larger than 2 MB (2,097,152 bytes)",
+  async run(_page, ctx) {
+    const site = await ctx.site?.();
+    if (!site) return [];
+    return site.feeds.flatMap((feed) => {
+      const status = finalStatus(feed.hops);
+      if (status === undefined || status >= 400) return [];
+      const truncated = feed.hops.at(-1)?.truncated === true;
+      if (feed.bytes <= FEED_MAX_BYTES && !truncated) return [];
+      return [
+        {
+          checkId: "feed-oversized",
+          severity: "medium" as const,
+          title: this.title,
+          evidence: `${feed.url} is ${truncated ? "over " : ""}${megabytes(feed.bytes)} (${feed.bytes.toLocaleString("en-US")} bytes)`,
+          url: feed.url,
+        },
+      ];
+    });
+  },
+});

@@ -7,6 +7,8 @@ export const LIMITS = Object.freeze({
   links: 30,
   images: 20,
   sitemapPages: 25,
+  /** Sitemap files read (robots.txt's, /sitemap.xml, an index's children) to fill that sample. */
+  sitemapFiles: 10,
   feeds: 3,
   scripts: 15,
   structuredDataAddresses: 12,

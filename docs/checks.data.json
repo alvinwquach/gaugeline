@@ -10,6 +10,16 @@
     "tech": "<link rel=\"canonical\"> on the page points at another URL"
   },
   {
+    "id": "feed-broken",
+    "severity": "high",
+    "area": "Search & sharing",
+    "title": "The feed this page advertises is broken",
+    "what": "The page links to an RSS or Atom feed that returns an error (4xx or 5xx).",
+    "why": "Feed readers, podcast apps and newsletter tools that follow the site stop getting new posts, usually without anyone noticing.",
+    "fix": "Restore the feed at that address, or update the link rel=\"alternate\" tag to where the feed lives now.",
+    "tech": "an advertised feed returns 4xx or 5xx"
+  },
+  {
     "id": "host-duplicate",
     "severity": "high",
     "area": "Search & sharing",
@@ -30,6 +40,26 @@
     "tech": "<meta name=\"robots\" content=\"noindex\">"
   },
   {
+    "id": "robots-block",
+    "severity": "high",
+    "area": "Search & sharing",
+    "title": "Your robots.txt tells every search engine to stay away",
+    "what": "robots.txt has a group for every crawler (User-agent: *) that disallows the whole site.",
+    "why": "Search engines stop crawling the site, so new pages never appear and old ones fade out of results.",
+    "fix": "Remove the Disallow: / line from the User-agent: * group, or replace it with the paths you mean to hide. This line is often left over from a staging site.",
+    "tech": "robots.txt: User-agent: * with Disallow: / and no Allow that overrides it"
+  },
+  {
+    "id": "sitemap-dead",
+    "severity": "high",
+    "area": "Search & sharing",
+    "title": "Your sitemap lists pages that don't exist",
+    "what": "Pages listed in the sitemap return an error (4xx or 5xx).",
+    "why": "The sitemap is where you tell search engines which pages matter. Dead entries waste their visits and make them trust the sitemap less.",
+    "fix": "Remove the dead addresses from the sitemap, or restore the pages. A generated sitemap usually means a deleted page is still in the CMS or the route list.",
+    "tech": "sampled sitemap entries return 4xx or 5xx"
+  },
+  {
     "id": "thin-html",
     "severity": "high",
     "area": "Search & sharing",
@@ -40,6 +70,26 @@
     "tech": "word count of server-rendered HTML"
   },
   {
+    "id": "feed-invalid",
+    "severity": "medium",
+    "area": "Search & sharing",
+    "title": "The feed this page advertises is not a feed",
+    "what": "The advertised feed address answers, but with something that is not RSS or Atom, often an HTML page.",
+    "why": "Feed readers cannot read it, so subscribers get nothing. A framework's catch-all route is the usual cause.",
+    "fix": "Serve the feed's XML at that address, or point the link rel=\"alternate\" tag at the address that does.",
+    "tech": "the feed body does not start with an XML declaration, <rss> or <feed>"
+  },
+  {
+    "id": "feed-oversized",
+    "severity": "medium",
+    "area": "Search & sharing",
+    "title": "The feed this page advertises is too large",
+    "what": "The feed response is larger than 2 MB.",
+    "why": "Feed readers and aggregators time out or truncate large feeds, and frameworks such as Next.js do not cache responses over 2 MB, so every request rebuilds it.",
+    "fix": "Limit the feed to recent items (20 to 50 is typical) and put a summary in each item instead of the full post.",
+    "tech": "the feed response is larger than 2 MB (2,097,152 bytes)"
+  },
+  {
     "id": "redirect-chain",
     "severity": "medium",
     "area": "Search & sharing",
@@ -48,6 +98,36 @@
     "why": "Each jump slows the first visit and can weaken how search engines credit the page.",
     "fix": "Point every redirect straight at the final address.",
     "tech": "more than one 3xx hop on the entered URL"
+  },
+  {
+    "id": "sitemap-host",
+    "severity": "medium",
+    "area": "Search & sharing",
+    "title": "Your sitemap lists pages on a different address",
+    "what": "Every entry in the sitemap uses a different host than the site, for example a staging domain or the other of www and the bare domain.",
+    "why": "Search engines ignore sitemap entries for a host the sitemap does not belong to, so the sitemap does nothing for this site.",
+    "fix": "Generate the sitemap with the site's public address. In most frameworks this is a site URL or base URL setting.",
+    "tech": "every sitemap entry's host differs from the page's host"
+  },
+  {
+    "id": "sitemap-missing",
+    "severity": "medium",
+    "area": "Search & sharing",
+    "title": "Search engines can't find a list of your pages",
+    "what": "There is no sitemap at /sitemap.xml, and robots.txt does not say where one is.",
+    "why": "Without a sitemap, search engines find pages only by following links, so new or deep pages take longer to appear.",
+    "fix": "Publish a sitemap at /sitemap.xml (most site builders and frameworks can generate one) and add a Sitemap: line with its full address to robots.txt.",
+    "tech": "/sitemap.xml is not a 200 sitemap and robots.txt has no Sitemap: line"
+  },
+  {
+    "id": "sitemap-redirects",
+    "severity": "medium",
+    "area": "Search & sharing",
+    "title": "Your sitemap lists old addresses that redirect",
+    "what": "Pages listed in the sitemap answer with a redirect (3xx) instead of the page.",
+    "why": "A sitemap should list the final address of each page. Redirecting entries make search engines do extra work and can keep the old address in results.",
+    "fix": "List each page at the address it redirects to. This often follows a move to https, to www, or to a new URL scheme.",
+    "tech": "sampled sitemap entries return 3xx"
   },
   {
     "id": "canonical-missing",

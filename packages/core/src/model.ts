@@ -2,6 +2,7 @@ import type * as z from "zod";
 import type { Fetcher } from "./fetcher.js";
 import type { Budget } from "./limits.js";
 import type { findingSchema } from "./result.js";
+import type { SiteContext } from "./site-context.js";
 
 /** Fix this first / Fix soon / Worth knowing. */
 export type Severity = "high" | "medium" | "low";
@@ -56,6 +57,11 @@ export interface CheckContext {
   budget?: Budget;
   /** The run's fetcher, for checks that need a second request (host-duplicate). */
   fetcher?: Fetcher;
+  /**
+   * robots.txt, the sitemaps and the feeds, read once per run on first use and shared by every
+   * check. Absent when the run has no site to read (a unit test, a single-page check).
+   */
+  site?: () => Promise<SiteContext>;
 }
 
 export interface Check<Input> {

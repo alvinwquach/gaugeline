@@ -1,0 +1,177 @@
+{
+  "/menu/01": {
+    "body": "<!doctype html><title>Menu</title><p>Today's menu.</p>",
+    "headers": {
+      "content-type": "text/html; charset=utf-8"
+    }
+  },
+  "/menu/02": {
+    "body": "<!doctype html><title>Menu</title><p>Today's menu.</p>",
+    "headers": {
+      "content-type": "text/html; charset=utf-8"
+    }
+  },
+  "/menu/04": {
+    "body": "<!doctype html><title>Menu</title><p>Today's menu.</p>",
+    "headers": {
+      "content-type": "text/html; charset=utf-8"
+    }
+  },
+  "/menu/06": {
+    "body": "<!doctype html><title>Menu</title><p>Today's menu.</p>",
+    "headers": {
+      "content-type": "text/html; charset=utf-8"
+    }
+  },
+  "/menu/07": {
+    "body": "<!doctype html><title>Menu</title><p>Today's menu.</p>",
+    "headers": {
+      "content-type": "text/html; charset=utf-8"
+    }
+  },
+  "/menu/08": {
+    "body": "<!doctype html><title>Menu</title><p>Today's menu.</p>",
+    "headers": {
+      "content-type": "text/html; charset=utf-8"
+    }
+  },
+  "/menu/09": {
+    "body": "<!doctype html><title>Menu</title><p>Today's menu.</p>",
+    "headers": {
+      "content-type": "text/html; charset=utf-8"
+    }
+  },
+  "/menu/10": {
+    "body": "<!doctype html><title>Menu</title><p>Today's menu.</p>",
+    "headers": {
+      "content-type": "text/html; charset=utf-8"
+    }
+  },
+  "/menu/11": {
+    "body": "<!doctype html><title>Menu</title><p>Today's menu.</p>",
+    "headers": {
+      "content-type": "text/html; charset=utf-8"
+    }
+  },
+  "/menu/12": {
+    "body": "<!doctype html><title>Menu</title><p>Today's menu.</p>",
+    "headers": {
+      "content-type": "text/html; charset=utf-8"
+    }
+  },
+  "/menu/13": {
+    "body": "<!doctype html><title>Menu</title><p>Today's menu.</p>",
+    "headers": {
+      "content-type": "text/html; charset=utf-8"
+    }
+  },
+  "/menu/14": {
+    "body": "<!doctype html><title>Menu</title><p>Today's menu.</p>",
+    "headers": {
+      "content-type": "text/html; charset=utf-8"
+    }
+  },
+  "/menu/15": {
+    "body": "<!doctype html><title>Menu</title><p>Today's menu.</p>",
+    "headers": {
+      "content-type": "text/html; charset=utf-8"
+    }
+  },
+  "/menu/16": {
+    "body": "<!doctype html><title>Menu</title><p>Today's menu.</p>",
+    "headers": {
+      "content-type": "text/html; charset=utf-8"
+    }
+  },
+  "/menu/17": {
+    "body": "<!doctype html><title>Menu</title><p>Today's menu.</p>",
+    "headers": {
+      "content-type": "text/html; charset=utf-8"
+    }
+  },
+  "/menu/18": {
+    "body": "<!doctype html><title>Menu</title><p>Today's menu.</p>",
+    "headers": {
+      "content-type": "text/html; charset=utf-8"
+    }
+  },
+  "/menu/19": {
+    "body": "<!doctype html><title>Menu</title><p>Today's menu.</p>",
+    "headers": {
+      "content-type": "text/html; charset=utf-8"
+    }
+  },
+  "/menu/20": {
+    "body": "<!doctype html><title>Menu</title><p>Today's menu.</p>",
+    "headers": {
+      "content-type": "text/html; charset=utf-8"
+    }
+  },
+  "/menu/21": {
+    "body": "<!doctype html><title>Menu</title><p>Today's menu.</p>",
+    "headers": {
+      "content-type": "text/html; charset=utf-8"
+    }
+  },
+  "/menu/22": {
+    "body": "<!doctype html><title>Menu</title><p>Today's menu.</p>",
+    "headers": {
+      "content-type": "text/html; charset=utf-8"
+    }
+  },
+  "/menu/23": {
+    "body": "<!doctype html><title>Menu</title><p>Today's menu.</p>",
+    "headers": {
+      "content-type": "text/html; charset=utf-8"
+    }
+  },
+  "/menu/24": {
+    "body": "<!doctype html><title>Menu</title><p>Today's menu.</p>",
+    "headers": {
+      "content-type": "text/html; charset=utf-8"
+    }
+  },
+  "/menu/25": {
+    "body": "<!doctype html><title>Menu</title><p>Today's menu.</p>",
+    "headers": {
+      "content-type": "text/html; charset=utf-8"
+    }
+  },
+  "/menu/26": {
+    "body": "<!doctype html><title>Menu</title><p>Today's menu.</p>",
+    "headers": {
+      "content-type": "text/html; charset=utf-8"
+    }
+  },
+  "/menu/27": {
+    "body": "<!doctype html><title>Menu</title><p>Today's menu.</p>",
+    "headers": {
+      "content-type": "text/html; charset=utf-8"
+    }
+  },
+  "/menu/28": {
+    "body": "<!doctype html><title>Menu</title><p>Today's menu.</p>",
+    "headers": {
+      "content-type": "text/html; charset=utf-8"
+    }
+  },
+  "/menu/29": {
+    "body": "<!doctype html><title>Menu</title><p>Today's menu.</p>",
+    "headers": {
+      "content-type": "text/html; charset=utf-8"
+    }
+  },
+  "/menu/30": {
+    "body": "<!doctype html><title>Menu</title><p>Today's menu.</p>",
+    "headers": {
+      "content-type": "text/html; charset=utf-8"
+    }
+  },
+  "/old-menu": {
+    "status": 301,
+    "location": "/menu/01"
+  },
+  "/closed-room": {
+    "status": 404
+  }
+}

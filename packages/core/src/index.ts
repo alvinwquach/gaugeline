@@ -73,6 +73,17 @@ export {
 export type { ProgressEvent, ProgressSink, RequestInfo } from "./progress.js";
 export { checkSite } from "./site.js";
 export type { SiteCheck, SiteCheckOptions } from "./site.js";
+export { buildSiteContext, lazySiteContext, parseFeedLinks, parseSitemap } from "./site-context.js";
+export type {
+  FeedRead,
+  RobotsState,
+  SiteContext,
+  SiteContextOptions,
+  SitemapKind,
+  SitemapRead,
+} from "./site-context.js";
+export { decidingRule, isAllowed, parseRobots, patternMatches, rulesFor } from "./robots.js";
+export type { RobotsFile, RobotsGroup, RobotsRule } from "./robots.js";
 export { blockedRange, isBlockedAddress } from "./addresses.js";
 export type { BlockedRange } from "./addresses.js";
 export { send, systemResolver } from "./transport.js";

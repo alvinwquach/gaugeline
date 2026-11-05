@@ -23,6 +23,8 @@ export interface PageSnapshot {
   jsonLdErrors: string[];
   og: Record<string, string>;
   scripts: string[];
+  /** Feeds the page advertises (link rel="alternate" with an RSS or Atom type), in document order. */
+  feeds: { href: string; type: string; title?: string }[];
   forms: { action?: string; method?: string; hiddenFields: string[] }[];
   /** Every element id, for #anchor checks. */
   ids: Set<string>;
@@ -42,6 +44,9 @@ function clean(text: string, state: { stega: boolean }): string {
   if (STEGA_TEST.test(text)) state.stega = true;
   return text.replace(STEGA, "").replace(/\s+/g, " ").trim();
 }
+
+/** The link types that advertise a feed. */
+const FEED_TYPES: ReadonlySet<string> = new Set(["application/rss+xml", "application/atom+xml"]);
 
 function resolve(href: string | undefined, base: string): string | undefined {
   if (href === undefined) return undefined;
@@ -189,6 +194,17 @@ export function buildSnapshot(hops: Hop[]): PageSnapshot {
     .get()
     .filter((s): s is string => s !== undefined);
 
+  const feeds: PageSnapshot["feeds"] = [];
+  $("link[rel][href]").each((_, el) => {
+    const rels = ($(el).attr("rel") ?? "").toLowerCase().split(/\s+/);
+    const type = ($(el).attr("type") ?? "").toLowerCase().split(";")[0]?.trim() ?? "";
+    if (!rels.includes("alternate") || !FEED_TYPES.has(type)) return;
+    const href = resolve($(el).attr("href"), base);
+    if (href === undefined) return;
+    const title = $(el).attr("title");
+    feeds.push({ href, type, ...(title ? { title: clean(title, state) } : {}) });
+  });
+
   const forms: PageSnapshot["forms"] = [];
   $("form").each((_, el) => {
     const action = resolve($(el).attr("action"), base);
@@ -228,6 +244,7 @@ export function buildSnapshot(hops: Hop[]): PageSnapshot {
     jsonLdErrors,
     og,
     scripts,
+    feeds,
     forms,
     ids,
     wordCount,
