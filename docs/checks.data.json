@@ -20,16 +20,6 @@
     "tech": "the alternate host returns 200 instead of 301"
   },
   {
-    "id": "thin-html",
-    "severity": "high",
-    "area": "Search & sharing",
-    "title": "Google sees an almost empty page",
-    "what": "Fewer than 60 words exist in the page before JavaScript runs, outside the header, nav and footer.",
-    "why": "Many crawlers and AI tools read the page without running JavaScript, so they see almost nothing.",
-    "fix": "Render the main content on the server. In Next.js, keep it out of client-only components and Suspense boundaries that wait for the browser.",
-    "tech": "word count of server-rendered HTML"
-  },
-  {
     "id": "noindex",
     "severity": "high",
     "area": "Search & sharing",
@@ -38,6 +28,16 @@
     "why": "If that isn't on purpose, the page is invisible in search.",
     "fix": "Remove noindex from pages you want found.",
     "tech": "<meta name=\"robots\" content=\"noindex\">"
+  },
+  {
+    "id": "thin-html",
+    "severity": "high",
+    "area": "Search & sharing",
+    "title": "Google sees an almost empty page",
+    "what": "Fewer than 60 words exist in the page before JavaScript runs, outside the header, nav and footer.",
+    "why": "Many crawlers and AI tools read the page without running JavaScript, so they see almost nothing.",
+    "fix": "Render the main content on the server. In Next.js, keep it out of client-only components and Suspense boundaries that wait for the browser.",
+    "tech": "word count of server-rendered HTML"
   },
   {
     "id": "redirect-chain",
