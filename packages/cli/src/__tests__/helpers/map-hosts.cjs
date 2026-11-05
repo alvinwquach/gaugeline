@@ -31,3 +31,19 @@ net.Socket.prototype.connect = function connect(...args) {
   }
   return originalConnect.apply(this, args);
 };
+
+// GAUGELINE_TEST_NOW (an ISO time) pins the clock, so date checks give the same answer every run.
+if (process.env.GAUGELINE_TEST_NOW) {
+  const fixed = Date.parse(process.env.GAUGELINE_TEST_NOW);
+  const RealDate = Date;
+  class FixedDate extends RealDate {
+    constructor(...args) {
+      if (args.length === 0) super(fixed);
+      else super(...args);
+    }
+    static now() {
+      return fixed;
+    }
+  }
+  globalThis.Date = FixedDate;
+}

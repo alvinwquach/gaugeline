@@ -3,6 +3,7 @@ import type { Fetcher } from "./fetcher.js";
 import type { Budget } from "./limits.js";
 import type { findingSchema } from "./result.js";
 import type { AppLookup } from "./apps.js";
+import type { CalendarRead } from "./calendars.js";
 import type { ImageSample } from "./checks/images/refs.js";
 import type { LinkSample } from "./links.js";
 import type { SiteContext } from "./site-context.js";
@@ -57,6 +58,8 @@ export type Size = "S" | "M" | "L";
 export interface RunExpectations {
   /** The app's name as it should appear in the App Store and on Google Play. */
   appName?: string;
+  /** The venue's IANA time zone ("America/Los_Angeles"), for event dates. */
+  timeZone?: string;
 }
 
 export interface CheckContext {
@@ -80,6 +83,10 @@ export interface CheckContext {
    * must make no request of their own (page-heavy).
    */
   imagesIfSampled?: () => Promise<ImageSample> | undefined;
+  /** The page's .ics calendars, read once on first use. */
+  calendars?: () => Promise<CalendarRead[]>;
+  /** The run's clock. Injectable so every date check is deterministic; defaults to the real time. */
+  now?: () => Date;
   /** The page's App Store and Google Play apps, looked up once on first use. */
   apps?: () => Promise<AppLookup[]>;
   /** Values the run was told to expect (for example the app's name). Until the config file, API only. */

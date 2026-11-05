@@ -1,0 +1,10 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Invented//Bobbin and Bolt//EN
+BEGIN:VEVENT
+UID:circle@assorted.test
+SUMMARY:Sewing circle
+LOCATION:Bobbin & Bolt
+DTSTART;TZID=America/Los_Angeles:20261119T180000
+END:VEVENT
+END:VCALENDAR
