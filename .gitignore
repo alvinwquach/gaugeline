@@ -7,3 +7,5 @@ coverage/
 .env.*
 !.env.example
 *.tgz
+docs/.vitepress/dist
+docs/.vitepress/cache

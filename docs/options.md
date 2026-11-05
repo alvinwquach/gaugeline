@@ -1,10 +1,33 @@
 # Options
 
+Every flag the CLI accepts.
+
+| Flag                                           | Does                                                                                                      |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `--ci`                                         | Exits with code 1 if anything is marked “Fix this first”. Also on when the CI environment variable is set |
+| `--json`                                       | Prints findings as JSON instead of the terminal summary, and skips the report                             |
+| `--no-open`                                    | Writes the report without opening a browser                                                               |
+| `--help`                                       | Shows usage                                                                                               |
+| `--slack`, `--discord`, `--email`, `--webhook` | Send the results somewhere. See [Send results anywhere](/docs/notifications)                              |
+| `--notify-on`, `--report-url`                  | Control when messages are sent, and link to a hosted report                                               |
+
+## Exit codes
+
+| Code | Meaning                                                                       |
+| ---- | ----------------------------------------------------------------------------- |
+| `0`  | The check ran. Without `--ci`, this is the code even when problems were found |
+| `1`  | `--ci` mode, and at least one finding is “Fix this first”                     |
+| `2`  | The check couldn't run, for example the site didn't answer                    |
+
+## In this version
+
+What the code in this repository does today. The sections above describe the product as published on the site.
+
 ```
 gaugeline <address> [options]
 ```
 
-## Exit codes
+### Exit codes
 
 | Code | Meaning                                                     |
 | ---- | ----------------------------------------------------------- |
@@ -30,7 +53,7 @@ Try: Check the site is running, and the port if you typed one.
 `--verbose` adds the technical detail after a blank line: the stack and every underlying cause.
 Query strings and anything that looks like a key are removed from both forms.
 
-## Flags
+### Flags
 
 The table below is generated from `packages/cli/src/flags.ts` (`pnpm docs:flags`). Do not edit
 between the markers; CI fails when it differs from the flag table.
@@ -52,7 +75,7 @@ between the markers; CI fails when it differs from the flag table.
 
 Only "Fix this first" findings fail CI. "Fix soon" and "Worth knowing" never change the exit code.
 
-## Streams and colour
+### Streams and colour
 
 Results go to stdout; progress, warnings and errors go to stderr, so `--json` output can be piped
 straight into another program. Colour is used only when stdout is a terminal, and never when
@@ -60,10 +83,10 @@ straight into another program. Colour is used only when stdout is a terminal, an
 
 `--quiet` and `--verbose` together is refused: "Choose --quiet or --verbose, not both." (exit 2).
 
-## JSON output
+### JSON output
 
 `--json` prints one object on stdout. Its shape is published as a JSON Schema file,
-[`packages/core/schema/result.v1.json`](../packages/core/schema/result.v1.json) (draft 2020-12),
+[`packages/core/schema/result.v1.json`](https://github.com/alvinwquach/gaugeline/blob/main/packages/core/schema/result.v1.json) (draft 2020-12),
 that scripts can validate against:
 
 ```json

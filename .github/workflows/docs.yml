@@ -1,0 +1,76 @@
+name: Docs
+
+# Builds and tests the docs site on every pull request and uploads it as an artifact. Deploys
+# (a preview per pull request, production on merge) are switched off until the owner sets the
+# repository variable DOCS_DEPLOY_ENABLED=true and the Netlify settings in scripts/deploy-docs.sh.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm docs:check
+      - run: pnpm docs:build
+      - run: pnpm vitest run --config vitest.docs.config.ts
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm docs:e2e
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: docs-site
+          path: docs/.vitepress/dist
+
+  preview:
+    needs: build
+    # Forks get no secrets, so the preview is skipped for them; the build and artifact above still run.
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      vars.DOCS_DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: docs-site
+          path: docs/.vitepress/dist
+      - id: deploy
+        run: echo "url=$(bash scripts/deploy-docs.sh preview ${{ github.event.pull_request.number }})" >> "$GITHUB_OUTPUT"
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID }}
+      - if: steps.deploy.outputs.url != ''
+        run: |
+          gh pr comment "${{ github.event.pull_request.number }}" --body "Docs preview at ${{ steps.deploy.outputs.url }}"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  production:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.DOCS_DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: docs-site
+          path: docs/.vitepress/dist
+      - run: bash scripts/deploy-docs.sh production
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID }}
