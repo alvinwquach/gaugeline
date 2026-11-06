@@ -23,7 +23,7 @@ import {
   annotate,
   BUILT_CHECK_IDS,
   checkBuilt,
-  type Finding,
+  type BuiltResult,
   createBudget,
   createPlanRegistry,
   extractLegacy,
@@ -39,6 +39,9 @@ import {
   type DnsReader,
   type FetcherOptions,
   type Outcome,
+  authHeaders,
+  previewAuth,
+  type PreviewAuth,
 } from "@gaugeline/core";
 import { parseCliArgs } from "./args.js";
 import { HELP } from "./help.js";
@@ -199,23 +202,36 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       if (plan.columns.primaryKeyword === undefined && !args.quiet)
         io.stderr.write("Keyword checks skipped: the plan has no Primary Keyword column.\n");
       // The built site against the plan (--base): each planned path fetched once with GET.
-      let built: Finding[] | undefined;
+      let built: BuiltResult | undefined;
       if (args.base !== undefined) {
         if (args.planOnly)
           throw new ConfigError("Choose --plan-only or --base: --plan-only makes no request.");
+        const base = args.base;
+        let origin: string;
+        try {
+          origin = new URL(base).origin;
+        } catch {
+          throw new ConfigError(`--base: "${base}" is not an address.`, {
+            hint: "Give the preview's address, for example https://preview.yoursite.com.",
+          });
+        }
+        // A protected preview: the secret from the environment, sent to this origin only.
+        const auth = previewAuth(io.env ?? {}, origin);
+        if (auth?.warning && !args.quiet) io.stderr.write(`${auth.warning}\n`);
         const fetcher = createFetcher({
           ...deps.fetcher,
           ...(args.allowPrivate ? { allowPrivate: true } : {}),
+          ...(auth ? { headersFor: authHeaders(auth) } : {}),
         });
-        const base = args.base;
         built = await checkBuilt(plan.rows, {
           base,
           fetcher,
           file: basename(args.file),
+          ...(auth ? { auth } : {}),
           onProgress: (done, total) => {
             if (done === 1 && !args.quiet)
               io.stderr.write(
-                `Reading ${total} planned address${total === 1 ? "" : "es"} on ${new URL(base).origin}\n`,
+                `Reading ${total} planned address${total === 1 ? "" : "es"} on ${origin}${auth ? ` (${auth.describe})` : ""}\n`,
               );
           },
         });
@@ -263,6 +279,8 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           kind: "ran",
           highFindings: planResult.findings.filter((f) => f.severity === "high").length,
           drift: planResult.findings.length > 0,
+          // A planned page behind a password was not checked: the run could not finish (exit 2).
+          incomplete: planResult.couldNotCheck.length > 0,
         },
         ci: true,
       };
@@ -348,14 +366,20 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         stream: io.stderr,
         color: useColor(io.stderr, env),
       });
+      // A protected preview checked as a site: the secret goes to the checked origin only.
+      const auth: PreviewAuth | undefined = previewAuth(io.env ?? {}, new URL(args.address).origin);
       const fetcher = createFetcher({
         ...deps.fetcher,
         ...(args.allowPrivate ? { allowPrivate: true } : {}),
+        ...(auth ? { headersFor: authHeaders(auth) } : {}),
         onRequest: (info) => log.request(info),
       });
       if (!args.quiet) {
         // The query string can carry a token, so the header shows the address without it.
-        io.stderr.write(`Gaugeline ${VERSION} checking ${withoutQuery(args.address)}\n`);
+        io.stderr.write(
+          `Gaugeline ${VERSION} checking ${withoutQuery(args.address)}${auth ? ` (${auth.describe})` : ""}\n`,
+        );
+        if (auth?.warning) io.stderr.write(`${auth.warning}\n`);
       }
       const skeleton = skeletonOnly(deps.version ?? VERSION);
       // launch: a preset of check ids through the runner's own `only` filter, not a second runner.

@@ -244,7 +244,17 @@ export {
   planBuiltChecks,
 } from "./plan/checks.js";
 export { BUILT_CHECK_IDS, BUILT_TITLES, canonicalIsThisPage, checkBuilt } from "./plan/built.js";
-export type { BuiltOptions } from "./plan/built.js";
+export type { BuiltOptions, BuiltResult } from "./plan/built.js";
+export {
+  PREVIEW_AUTH_ENV,
+  SECRET_FLAGS,
+  authHeaders,
+  previewAuth,
+  protectionMessage,
+  protectionOf,
+  protectionPage,
+} from "./fetch/preview-auth.js";
+export type { PreviewAuth, Protection } from "./fetch/preview-auth.js";
 export { checkKeywords, keywordKey, secondaryTerms } from "./plan/keywords.js";
 export { ANNOTATION_HEADER, annotate, byLine } from "./plan/annotate.js";
 export { addressKey, groupBy, textKey } from "./plan/keys.js";
