@@ -28,7 +28,8 @@ on the site.
 Every run that isn't `--json` writes `gaugeline-report.html` in the folder you run it from, and
 prints `Report written to ./gaugeline-report.html` on stderr. It opens in your browser when you run
 Gaugeline yourself at a terminal; it is never opened with `--no-open`, when `CI` is set, or when the
-output is piped.
+output is piped. In a folder Gaugeline can't write to, the run still finishes and prints its
+results, with one line on stderr saying the report wasn't written.
 
 The file is one page with its styles inline: no scripts, no fonts, no images, nothing requested from
 anywhere, so it reads the same attached to an email. It holds:

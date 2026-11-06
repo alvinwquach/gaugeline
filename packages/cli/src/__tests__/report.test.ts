@@ -53,6 +53,30 @@ describe("html report: e2e (CLI)", () => {
     expect((await run([], { CI: "true" })).opened).toEqual([]);
   });
 
+  it("a folder the run can't write to: a warning on stderr, the run still exits 0, nothing is opened", async () => {
+    const site = await startFixture("quick-start");
+    const opened: string[] = [];
+    const err: string[] = [];
+    try {
+      const io = {
+        stdout: { write: () => true, isTTY: true },
+        stderr: { write: (s: string) => err.push(s) },
+        env: { NO_COLOR: "1" },
+      };
+      // A folder that doesn't exist fails the write the same way a read-only one does, even as root.
+      const code = await main([site.origin, "--allow-private"], io, {
+        cwd: join(tmpdir(), "gaugeline-no-such-folder", "deeper"),
+        open: (p) => opened.push(p),
+      });
+      expect(code).toBe(0);
+      expect(err.join("")).toContain(`Could not write ./${REPORT_FILE} in this folder (ENOENT)`);
+      expect(err.join("")).not.toContain("Report written");
+      expect(opened).toEqual([]);
+    } finally {
+      await site.close();
+    }
+  });
+
   it("--json writes no report", async () => {
     const r = await run(["--json"]);
     expect(existsSync(join(r.cwd, REPORT_FILE))).toBe(false);

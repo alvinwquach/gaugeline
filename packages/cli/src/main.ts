@@ -224,19 +224,29 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       // for a person at a terminal (not with --no-open, not in CI, not when piped).
       if (!args.json) {
         const reportPath = join(cwd, REPORT_FILE);
-        writeFileSync(
-          reportPath,
-          renderReport({
-            result,
-            url: snapshot.finalUrl,
-            startedAt,
-            registry,
-            sampled: formatSampleSummary(budget.summary()),
-            version: deps.version ?? VERSION,
-          }),
-        );
-        if (!args.quiet) io.stderr.write(`Report written to ./${REPORT_FILE}\n`);
-        if (!args.noOpen && !isCiEnv(env) && io.stdout.isTTY === true)
+        // A folder the run can't write to (a read-only checkout, /) costs the report, not the run.
+        let written = false;
+        try {
+          writeFileSync(
+            reportPath,
+            renderReport({
+              result,
+              url: snapshot.finalUrl,
+              startedAt,
+              registry,
+              sampled: formatSampleSummary(budget.summary()),
+              version: deps.version ?? VERSION,
+            }),
+          );
+          written = true;
+        } catch (err) {
+          const code = (err as { code?: string }).code ?? "an error";
+          io.stderr.write(
+            `Could not write ./${REPORT_FILE} in this folder (${code}); the results above are complete. Run from a folder you can write to, or use --json.\n`,
+          );
+        }
+        if (written && !args.quiet) io.stderr.write(`Report written to ./${REPORT_FILE}\n`);
+        if (written && !args.noOpen && !isCiEnv(env) && io.stdout.isTTY === true)
           (deps.open ?? openInBrowser)(reportPath);
       }
       const highFindings = result.findings.filter((f) => f.severity === "high").length;
