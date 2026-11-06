@@ -36,6 +36,7 @@ const FIXTURES = [
   "preview-host",
   "paged-list",
   "load-more",
+  "hidden-library",
 ];
 
 /**
@@ -82,6 +83,7 @@ async function findingsOf(name: string): Promise<string[]> {
       "gaugeline.languages.json",
       "gaugeline.facts.json",
       "gaugeline.payments.json",
+      "gaugeline.hidden.json",
     ].some((f) => existsSync(`${dir}/${f}`))
       ? dir
       : undefined;

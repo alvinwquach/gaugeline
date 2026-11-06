@@ -1,0 +1,6 @@
+{
+  "hidden": [
+    { "match": "/library/*", "until": "2026-10-01" },
+    { "match": "/beta/*" }
+  ]
+}

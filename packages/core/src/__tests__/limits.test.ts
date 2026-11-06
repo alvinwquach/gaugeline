@@ -42,6 +42,7 @@ describe("LIMITS and Budget: unit", () => {
       checkoutLinks: 5,
       sanityDatasets: 2,
       accessTables: 20,
+      hiddenPages: 5,
       scripts: 15,
       structuredDataAddresses: 12,
       concurrency: 5,
