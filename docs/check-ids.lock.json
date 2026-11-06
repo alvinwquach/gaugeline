@@ -84,6 +84,8 @@
   "plan-duplicate-address",
   "plan-duplicate-h1",
   "plan-duplicate-title",
+  "plan-keyword-cannibalisation",
+  "plan-keyword-overlap",
   "plan-legacy-unresolved",
   "plan-slug-misspelling",
   "price-changed",

@@ -890,6 +890,16 @@
     "tech": "Words of 5+ letters in the last path segment, not in the row's page name or H1, within Damerau distance 1 of a heading word (2 for words of 8+ letters). Plural and tense endings (s, es, ed, ing) and listed British/American pairs are excused; accents are folded. One finding per row"
   },
   {
+    "id": "plan-keyword-cannibalisation",
+    "severity": "medium",
+    "area": "Launch day",
+    "title": "Two pages in the plan target the same primary keyword",
+    "what": "Two or more pages of the plan have the same Primary Keyword, so they will compete for one search before a line of code is written.",
+    "why": "Search engines show one page per query from a site; two pages chasing the same term split their links and usually both rank worse than one would.",
+    "fix": "Give each page its own primary keyword, or merge the pages into one.",
+    "tech": "Primary Keyword cells compared trimmed, lower case, spaces collapsed, quotes straightened and a trailing full stop removed; no stemming (singular and plural differ). Empty, n/a, none, tbd, - and bracketed placeholders are left out. A page and its anchor rows count once. Groups sorted by a Primary Volume column when there is one"
+  },
+  {
     "id": "plan-legacy-unresolved",
     "severity": "medium",
     "area": "Launch day",
@@ -1118,5 +1128,15 @@
     "why": "If a search engine finds the temporary address, nothing tells it the real page is on your domain, and the preview can show up in results.",
     "fix": "Add <link rel=\"canonical\" href=\"https://yourdomain/...\"> to every page, so each preview points at the real address.",
     "tech": "The final address's host ends in .vercel.app, .netlify.app or .pages.dev and the HTML has no link rel=canonical"
+  },
+  {
+    "id": "plan-keyword-overlap",
+    "severity": "low",
+    "area": "Launch day",
+    "title": "One page's primary keyword is another page's secondary",
+    "what": "A page's Primary Keyword is also listed as a Secondary Keyword of other pages.",
+    "why": "Often deliberate, supporting pages in a cluster; worth a look, because a strong supporting page can outrank the page meant to win the term.",
+    "fix": "Check the supporting pages link to the primary page, and that none of them is built to rank for the term itself.",
+    "tech": "Each Secondary Keyword cell is split on commas, semicolons and line breaks and compared like primaries. Reported from the primary's side, only when one page has the term as its primary"
   }
 ]
