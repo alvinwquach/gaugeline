@@ -144,11 +144,11 @@ Specialties,Specialties topic 25,/specialties/topic-25,Specialties topic 25 | Ha
 Specialties,Specialties topic 26,/specialties/topic-26,Specialties topic 26 | Harbourline Billing,Specialties topic 26,specialties topic 26,specialties help,,info,2,content,"Draft 26, reviewed"
 Specialties,Specialties topic 27,/specialties/topic-27,Specialties topic 27 | Harbourline Billing,Specialties topic 27,specialties topic 27,specialties help,,commercial,3,content,
 Specialties,Specialties topic 28,/specialties/topic-28,Specialties topic 28 | Harbourline Billing,Specialties topic 28,specialties topic 28,specialties help,/old/specialties/topic-28,info,1,content,
-Resources,Resources topic 1,/resources/topic-01,Resources topic 1 | Harbourline Billing,Resources topic 1,resources topic 1,resources help,/old/resources/topic-01,commercial,1,content,"Draft 1, reviewed"
-Resources,Resources topic 2,/resources/topic-02,Resources topic 2 | Harbourline Billing,Resources topic 2,resources topic 2,resources help,,info,2,content,
-Resources,Resources topic 3,/resources/topic-03,Resources topic 3 | Harbourline Billing,Resources topic 3,resources topic 3,resources help,,commercial,3,content,
-Resources,Resources topic 4,/resources/topic-04,Resources topic 4 | Harbourline Billing,Resources topic 4,resources topic 4,resources help,/old/resources/topic-04,info,1,content,
-Resources,Resources topic 5,/resources/topic-05,Resources topic 5 | Harbourline Billing,Resources topic 5,resources topic 5,resources help,,commercial,2,content,
+Resources,Resources topic 1,/software/ai-automation,Resources topic 1 | Harbourline Billing,Resources topic 1,resources topic 1,resources help,/old/resources/topic-01,commercial,1,content,"Draft 1, reviewed"
+Resources,Resources topic 2,/software/ai-automation,Resources topic 2 | Harbourline Billing,Resources topic 2,resources topic 2,resources help,,info,2,content,
+Resources,Resources topic 3,/software/ai-automation,Resources topic 3 | Harbourline Billing,Resources topic 3,resources topic 3,resources help,,commercial,3,content,
+Resources,Resources topic 4,/software/intelligent-platform,Resources topic 4 | Harbourline Billing,Resources topic 4,resources topic 4,resources help,/old/resources/topic-04,info,1,content,
+Resources,Resources topic 5,/software/intelligent-platform/,Resources topic 5 | Harbourline Billing,Resources topic 5,resources topic 5,resources help,,commercial,2,content,
 Resources,Resources topic 6,/resources/topic-06,Resources topic 6 | Harbourline Billing,Resources topic 6,resources topic 6,resources help,,info,3,content,"Draft 6, reviewed"
 Resources,Resources topic 7,/resources/topic-07,Resources topic 7 | Harbourline Billing,Resources topic 7,resources topic 7,resources help,/old/resources/topic-07,commercial,1,content,
 Resources,Resources topic 8,/resources/topic-08,Resources topic 8 | Harbourline Billing,Resources topic 8,resources topic 8,resources help,,info,2,content,

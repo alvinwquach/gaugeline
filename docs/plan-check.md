@@ -59,9 +59,10 @@ Exit code 1 when anything drifts, so this can gate a launch in CI.
 What the code in this repository does today. The sections above describe the product as published
 on the site.
 
-`gaugeline plan <file>` reads the plan and says what it found. The checks of the plan against itself,
-against the built site (`--base`), the redirects and `--live` arrive in the next branches; `--plan-only`
-is accepted now and makes no request.
+`gaugeline plan <file>` reads the plan, says what it found, and checks the plan against itself. The
+checks against the built site (`--base`), the redirects and `--live` arrive in the next branches.
+`--plan-only` runs only the checks of the plan against itself and makes no request. Any finding exits
+1, so the plan can gate a launch in CI.
 
 ### What it reads
 
@@ -91,6 +92,21 @@ Read tab: Kim's Keywords (6 other tabs skipped)
 ```
 
 The other tabs are kept for the checks that read menus.
+
+### The plan against itself
+
+Before anything is built, each rule groups the rows that mean the same thing, in one pass, and every
+group of two or more is one finding listing all its lines:
+
+| Check                    | Level          | Two rows are the same when                                                                                                             |
+| ------------------------ | -------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `plan-duplicate-address` | Fix this first | Their address is: host without `www.`, path in lower case without a trailing slash or query, and the `#section`                        |
+| `plan-duplicate-title`   | Fix soon       | Their title tag is, ignoring case, extra spaces and curly quotes. A brand suffix counts: "Billing" and "Billing \| Harbourline" differ |
+| `plan-duplicate-h1`      | Fix soon       | Their H1 is, compared the same way                                                                                                     |
+
+An anchor row (`/medical#rural`) and its page (`/medical`) are different addresses; two rows with
+the same anchor are the same. Empty title and H1 cells are left out, and rows with no URL never
+reach the checks. The example below shows two duplicate-address groups.
 
 ### Old addresses in a notes column
 
@@ -175,6 +191,12 @@ Against the invented `keyword-map.csv` fixture, a billing company's keyword map 
 Read 163 pages from keyword-map.csv (4 rows without a URL skipped).
 Columns: URL from "URL", page from "Page", title tag from "Title Tag", H1 from "H1", primary keyword from "Primary Keyword", secondary keyword from "Secondary Keyword", legacy URL from "Legacy URL".
 7 rows are anchors (#section) on a page.
+✗ Two rows in the plan share one address
+    /software/ai-automation on lines 146, 147 and 148 (3 rows)
+✗ Two rows in the plan share one address
+    /software/intelligent-platform on lines 149 and 150 (2 rows)
+
+2 to look at, 2 to fix first.
 ```
 
 The output is asserted by `packages/cli/src/__tests__/plan.test.ts`.
