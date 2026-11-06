@@ -21,6 +21,9 @@ import {
   readPlan,
   applyLegacy,
   annotate,
+  BUILT_CHECK_IDS,
+  checkBuilt,
+  type Finding,
   createBudget,
   createPlanRegistry,
   extractLegacy,
@@ -195,10 +198,33 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       }
       if (plan.columns.primaryKeyword === undefined && !args.quiet)
         io.stderr.write("Keyword checks skipped: the plan has no Primary Keyword column.\n");
+      // The built site against the plan (--base): each planned path fetched once with GET.
+      let built: Finding[] | undefined;
+      if (args.base !== undefined) {
+        if (args.planOnly)
+          throw new ConfigError("Choose --plan-only or --base: --plan-only makes no request.");
+        const fetcher = createFetcher({
+          ...deps.fetcher,
+          ...(args.allowPrivate ? { allowPrivate: true } : {}),
+        });
+        const base = args.base;
+        built = await checkBuilt(plan.rows, {
+          base,
+          fetcher,
+          file: basename(args.file),
+          onProgress: (done, total) => {
+            if (done === 1 && !args.quiet)
+              io.stderr.write(
+                `Reading ${total} planned address${total === 1 ? "" : "es"} on ${new URL(base).origin}\n`,
+              );
+          },
+        });
+      }
       // The plan against itself (no requests). Any finding is drift: exit 1, so it can gate a launch.
       const planResult = await runChecks(
-        { plan, legacy: mentions, file: basename(args.file) },
+        { plan, legacy: mentions, file: basename(args.file), ...(built ? { built } : {}) },
         createPlanRegistry(),
+        built ? {} : { skip: [...BUILT_CHECK_IDS] },
       );
       io.stdout.write(
         formatTerminal({

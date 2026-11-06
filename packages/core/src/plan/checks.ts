@@ -1,4 +1,5 @@
-import { CheckRegistry, defineCheck } from "../model.js";
+import { CheckRegistry, defineCheck, type Finding } from "../model.js";
+import { BUILT_CHECK_IDS, BUILT_TITLES } from "./built.js";
 import type { LegacyMention } from "./legacy-notes.js";
 import type { Plan } from "./read.js";
 import { SELF_RULES, runSelfRule, type SelfRule } from "./self.js";
@@ -10,6 +11,8 @@ export interface PlanCheckInput {
   plan: Plan;
   legacy: readonly LegacyMention[];
   file: string;
+  /** What checkBuilt found on --base; absent when there is no --base (those checks are skipped). */
+  built?: readonly Finding[];
 }
 
 const WHY: Record<string, string> = {
@@ -125,8 +128,62 @@ export const planKeywordOverlap = defineCheck<PlanCheckInput>({
   },
 });
 
+const BUILT_TEXT: Record<
+  (typeof BUILT_CHECK_IDS)[number],
+  { severity: Finding["severity"]; what: string; why: string; fix: string; tech: string }
+> = {
+  "plan-404": {
+    severity: "high",
+    what: "A page the plan lists returns 404 (or 410) on the preview given with --base.",
+    why: "A planned page that doesn't exist at cutover loses every visitor and link meant for it.",
+    fix: "Build the page, or take the row out of the plan if it was dropped.",
+    tech: "Each planned path on --base fetched once with GET; 404 or 410 on the final hop. One finding per path, with every row on it",
+  },
+  "plan-title-drift": {
+    severity: "medium",
+    what: "The title tag the preview sends isn't the one the plan gives the page.",
+    why: "Someone edited the page, or the template overrode it, and the title the plan chose for search is gone.",
+    fix: "Set the page's title to the plan's, or update the plan if the change was deliberate.",
+    tech: "The page row's Title Tag against the HTML title, compared trimmed, case-folded, whitespace collapsed, quotes and dashes straightened; a brand suffix counts. No title in the HTML is reported with a hint that it may be set by JavaScript",
+  },
+  "plan-h1-drift": {
+    severity: "medium",
+    what: "The page's first H1 isn't the one the plan gives it.",
+    why: "Usually a content change nobody recorded; the heading the plan chose for the keyword is gone.",
+    fix: "Set the H1 to the plan's, or update the plan.",
+    tech: "The page row's H1 against the first h1 in the HTML, compared like titles; a page with several H1s is noted",
+  },
+  "plan-canonical-elsewhere": {
+    severity: "high",
+    what: "The page's canonical names another address, often the legacy one, instead of the planned page.",
+    why: "Search engines index the canonical: the new page won't be listed, the old address will.",
+    fix: "Point the canonical at the page's own planned address on production.",
+    tech: "The canonical's path (lower case, no trailing slash) against the row's path, on the preview's host or the plan's production host, with or without www",
+  },
+  "plan-anchor-missing": {
+    severity: "medium",
+    what: "A plan row with a #section points at an id that isn't on the page.",
+    why: "Links to the section land at the top of the page, and the plan's section was never built.",
+    fix: "Add the section with that id, or change the row to the id the page uses.",
+    tech: "The row's fragment against every element id in the HTML the preview sends",
+  },
+};
+
+export const planBuiltChecks = BUILT_CHECK_IDS.map((id) =>
+  defineCheck<PlanCheckInput>({
+    id,
+    area: "Launch day",
+    title: BUILT_TITLES[id],
+    ...BUILT_TEXT[id],
+    run(input) {
+      return (input.built ?? []).filter((f) => f.checkId === id);
+    },
+  }),
+);
+
 /** The plan checks, apart from the page checks: they read a plan, not a page. */
 export const PLAN_CHECKS = [
+  ...planBuiltChecks,
   ...planSelfChecks,
   planSlugMisspelling,
   planKeywordCannibalisation,

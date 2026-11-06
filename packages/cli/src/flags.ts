@@ -54,7 +54,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     description:
       "Allow addresses on this computer or a private network, such as 127.0.0.1 or 192.168.x.x",
     since: "0.1.0",
-    commands: ["check", "launch"],
+    commands: ["check", "launch", "plan"],
   },
   {
     name: "dns",
@@ -134,6 +134,13 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     name: "legacy-review",
     type: "string",
     description: "Write the old addresses read with --legacy-from to this CSV file, for review",
+    since: "0.2.0",
+    commands: ["plan"],
+  },
+  {
+    name: "base",
+    type: "string",
+    description: "Check the plan against the site built at this address, such as a preview",
     since: "0.2.0",
     commands: ["plan"],
   },

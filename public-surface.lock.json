@@ -47,7 +47,9 @@
       "webhook"
     ],
     "plan": [
+      "allow-private",
       "annotate",
+      "base",
       "force",
       "help",
       "legacy-from",
