@@ -1,0 +1,68 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`html report: unit > a mixed result renders summary counts, findings by level, what looked right and the sample (snapshot) 1`] = `
+"<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gaugeline report: https://shop.example/</title>
+<style>body{font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;color:#101828;max-width:52rem;margin:2rem auto;padding:0 1rem}
+h1{font-size:1.5rem;margin:0 0 .25rem}h2{font-size:1.15rem;margin:2rem 0 .5rem}h2 span{color:#667085;font-weight:400}
+.meta{color:#667085;margin:0 0 1.5rem}.counts{display:flex;gap:1rem;flex-wrap:wrap;padding:0;list-style:none}
+.counts li{border:1px solid #eaecf0;border-radius:.5rem;padding:.5rem .75rem}
+.f{border-left:4px solid;padding:.25rem 0 .25rem .75rem;margin:1rem 0}.f h3{font-size:1rem;margin:0}
+.f p{margin:.25rem 0}.tech,.id{color:#475467;font-size:.875rem}.tech code{white-space:pre-wrap;word-break:break-word}
+ul.ok li{margin:.15rem 0}code{font-family:ui-monospace,Menlo,Consolas,monospace}</style>
+</head>
+<body>
+<h1>Gaugeline report</h1>
+<p class="meta">https://shop.example/ · 2026-11-05T20:00:00.000Z · Gaugeline 0.1.0</p>
+<ul class="counts">
+<li style="color:#b42318">Fix this first: <strong>1</strong></li>
+<li style="color:#b54708">Fix soon: <strong>1</strong></li>
+<li style="color:#475467">Worth knowing: <strong>1</strong></li>
+</ul>
+<h2>Fix this first <span>1</span></h2>
+<article class="f" style="border-color:#b42318">
+<h3 dir="auto">This page tells Google to show a different page</h3>
+<p><strong>Why it matters:</strong> Search engines treat the page as a copy, so it may never appear in results.</p>
+<p><strong>How to fix:</strong> Give each page a canonical tag that points at its own address. Shared SEO components are the usual cause.</p>
+<p class="tech" dir="auto"><code>&lt;link rel=&quot;canonical&quot; href=&quot;https://shop.example/tools&quot;&gt;</code></p>
+<p class="tech">&lt;link rel=&quot;canonical&quot;&gt; on the page points at another URL</p>
+<p class="id">canonical-elsewhere · https://shop.example/</p>
+</article>
+<h2>Fix soon <span>1</span></h2>
+<article class="f" style="border-color:#b54708">
+<h3 dir="auto">Shared links have no picture</h3>
+<p><strong>Why it matters:</strong> When the page is shared in a chat or a social post, it shows as a plain link with no picture, which fewer people click.</p>
+<p><strong>How to fix:</strong> Add &lt;meta property=&quot;og:image&quot; content=&quot;https://...&quot;&gt; with a 1200 by 630 picture for the page.</p>
+<p class="tech" dir="auto"><code>no og:image on https://shop.example/</code></p>
+<p class="tech">no og:image (or og:image:url) meta property</p>
+<p class="id">og-image-missing · https://shop.example/</p>
+</article>
+<h2>Worth knowing <span>1</span></h2>
+<article class="f" style="border-color:#475467">
+<h3 dir="auto">Links go through redirects</h3>
+<p><strong>Why it matters:</strong> Each redirect adds a round trip for visitors, and search engines pass a little less on through every hop.</p>
+<p><strong>How to fix:</strong> Change the link to the address it ends up at. This usually follows a move to new URLs, https or www.</p>
+<p class="tech" dir="auto"><code>/old -&gt; /new</code></p>
+<p class="tech">a sampled same-site a[href] answers 3xx first and ends in 200</p>
+<p class="id">links-via-redirect · https://shop.example/</p>
+</article>
+<h2>What looked right <span>2</span></h2>
+<ul class="ok">
+<li>This page asks search engines not to list it: passed <code>noindex</code></li>
+<li>This page isn&#39;t set up for phone screens: passed <code>viewport</code></li>
+</ul>
+<h2>Could not check <span>2</span></h2>
+<ul>
+<li><code>broken-links</code>: rate limited (429) (https://shop.example/busy)</li>
+<li><code>explodes</code>: the check failed to run</li>
+</ul>
+<h2>How much was sampled</h2>
+<p>Checked all 2 links, 1 image.</p>
+</body>
+</html>
+"
+`;
