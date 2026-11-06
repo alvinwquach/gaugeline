@@ -209,12 +209,19 @@ Old addresses read from "SEO Notes" (10):
      12  redirect-here   /old-contact                        301 from legacy https://www.harbourline.example/old-contact.
      13  redirect-here   /old-services/medical-coding        301 legacy /old-services/medical-coding here.
 
+✗ One old address is claimed by two rows
+    /old-services/medical-coding is the legacy address of 2 rows: /billing-services/coding, /specialties/pathology
+    lines 2, 13
 ! Some old addresses in the plan's notes aren't settled
     3 mentions in "SEO Notes": line 3 (names the old page in words, not its address): "301 legacy medical-billing page here."; line 5 /specialties/correctional-rcm (asks whether to redirect): "Confirm whether the legacy /specialties/correctional-rcm should redirect here."; line 11 /old-services/medical-coding (asks whether to redirect): "301 legacy /old-services/medical-coding here?"
     lines 3, 5, 11
 
-1 to look at, none to fix first.
+2 to look at, 1 to fix first.
 ```
+
+Two notes send `/old-services/medical-coding` to two different pages (lines 2 and 13), and one
+address can only redirect to one place: that is `plan-redirect-conflict` (see
+[The 301 map](#the-301-map)).
 
 ### The built site against the plan
 
@@ -268,6 +275,53 @@ Columns: URL from "URL", page from "Page", title tag from "Title Tag", H1 from "
     line 10
 
 5 to look at, 2 to fix first.
+```
+
+### The 301 map
+
+With a Legacy URL column (or old addresses read with `--legacy-from`), `--base` also checks the 301
+map. Each old address is moved onto the preview, requested once with GET, and its trail of
+redirects is read:
+
+| Check                             | Level          | When                                                                                     |
+| --------------------------------- | -------------- | ---------------------------------------------------------------------------------------- |
+| `plan-redirect-missing`           | Fix this first | The old address still answers 200 or 404. A meta refresh or JavaScript redirect is named |
+| `plan-redirect-not-301`           | Fix this first | The first redirect is 302, 303 or 307, or a 308 to the wrong place                       |
+| `plan-redirect-wrong-destination` | Fix this first | The trail ends somewhere other than the row's URL                                        |
+| `plan-redirect-chain`             | Fix soon       | More than one redirect, including a trailing slash added first                           |
+| `plan-redirect-drops-query`       | Worth a look   | The old address's query string is gone at the end                                        |
+| `plan-redirect-conflict`          | Fix this first | Two rows planning different pages claim one old address (no `--base` needed)             |
+
+A cell may hold several old addresses, one per line or separated by commas; an absolute old address
+keeps only its path, since it moves onto the preview. A trail may end on the preview's host or
+exactly on the plan's production host; the right path on `www.` instead of the bare host (or the
+reverse) is the wrong destination, because it costs every visitor another hop. A 308 to the right
+place is accepted like a 301, with a note on stderr: it is permanent too. An old address that is
+the row's own address needs no redirect and isn't requested.
+
+Against the invented `plan-redirects` fixture, a bookshop's preview with five planted errors,
+`gaugeline plan plan.csv --base <preview>` prints:
+
+```text title=Output
+Read 9 pages from plan.csv.
+Columns: URL from "URL", page from "Page", legacy URL from "Legacy URL".
+✗ An old address doesn't redirect
+    /old-about still returns 200: it doesn't redirect
+    line 8
+✗ An old address redirects with a temporary status
+    /old-poetry redirects with 302, not 301
+    line 5
+✗ An old address redirects somewhere the plan doesn't say
+    /old-gifts redirects to /shop, the plan says /gifts
+    line 7
+! An old address takes more than one redirect
+    /old-events takes 2 redirects: /old-events → /old-events/ → /events (the server adds a trailing slash first, then redirects again: point the old address's own form at the destination)
+    line 6
+· A redirect drops the old address's query string
+    /old-blog?tag=news redirects to /blog without its query string ?tag=news
+    line 10
+
+5 to look at, 3 to fix first.
 ```
 
 ### A preview behind a password

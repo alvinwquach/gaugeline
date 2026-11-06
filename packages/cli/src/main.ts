@@ -24,6 +24,9 @@ import {
   BUILT_CHECK_IDS,
   checkBuilt,
   type BuiltResult,
+  REDIRECT_CHECK_IDS,
+  checkRedirects,
+  type RedirectResult,
   createBudget,
   createPlanRegistry,
   extractLegacy,
@@ -229,6 +232,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       }
       // The built site against the plan (--base): each planned path fetched once with GET.
       let built: BuiltResult | undefined;
+      let redirects: RedirectResult | undefined;
       if (args.base !== undefined) {
         if (args.planOnly)
           throw new ConfigError("Choose --plan-only or --base: --plan-only makes no request.");
@@ -261,12 +265,31 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
               );
           },
         });
+        // The 301 map: each old address in the Legacy URL column, on the same preview.
+        redirects = await checkRedirects(plan.rows, {
+          base,
+          fetcher,
+          file: basename(args.file),
+          onProgress: (done, total) => {
+            if (done === 1 && !args.quiet)
+              io.stderr.write(
+                `Reading ${total} old address${total === 1 ? "" : "es"} from the Legacy URL column\n`,
+              );
+          },
+        });
+        if (!args.quiet) for (const note of redirects.notes) io.stderr.write(`${note}\n`);
       }
       // The plan against itself (no requests). Any finding is drift: exit 1, so it can gate a launch.
       const planResult = await runChecks(
-        { plan, legacy: mentions, file: basename(args.file), ...(built ? { built } : {}) },
+        {
+          plan,
+          legacy: mentions,
+          file: basename(args.file),
+          ...(built ? { built } : {}),
+          ...(redirects ? { redirects } : {}),
+        },
         createPlanRegistry(),
-        built ? {} : { skip: [...BUILT_CHECK_IDS] },
+        built ? {} : { skip: [...BUILT_CHECK_IDS, ...REDIRECT_CHECK_IDS] },
       );
       // With --progress: the new findings in full, the fixed ones one line each, the rest as a count.
       let shown = planResult;

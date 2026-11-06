@@ -80,8 +80,13 @@ describe("legacy notes: integration (the invented legacy-notes plan, SEO Notes)"
       { plan: p, legacy: mentions, file: "legacy-notes.csv" },
       createPlanRegistry(),
     );
-    expect(result.findings).toHaveLength(1);
-    const evidence = result.findings[0]?.evidence ?? "";
+    // Coding and Pathology both claim /old-services/medical-coding: the planted conflict.
+    expect(result.findings.map((f) => f.checkId)).toEqual([
+      "plan-redirect-conflict",
+      "plan-legacy-unresolved",
+    ]);
+    const evidence =
+      result.findings.find((f) => f.checkId === "plan-legacy-unresolved")?.evidence ?? "";
     expect(evidence.match(/line 3 /g)).toHaveLength(1);
     expect(evidence).toContain(
       'line 3 (names the old page in words, not its address): "301 legacy medical-billing page here."',
