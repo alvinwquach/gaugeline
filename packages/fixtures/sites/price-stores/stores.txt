@@ -1,0 +1,6 @@
+# Three invented stores' products, for the study (X: G14b). One address per line.
+{{origin}}/products/mug
+{{origin}}/products/tea
+
+{{origin}}/products/bowl
+{{origin}}/products/tea

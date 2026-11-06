@@ -37,3 +37,31 @@ Gaugeline can tell you two systems disagree. It can't tell you which one is righ
 ::: info
 Keys stay on your computer, are only read from environment variables, and are never printed or saved. If one system can't be reached, the rest of the check still runs.
 :::
+
+## In this version: the free price agreement check
+
+`npx gaugeline-free price <product-url>` reads three prices for one product page, all as whole
+numbers of cents:
+
+| Price        | Read from                                                                                                                                  |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| On the page  | The theme's price element, as sent without JavaScript. "From $48" is read as 48.00 and marked a starting price                             |
+| Product data | The JSON-LD `Product` offer search engines read: its `price` and `priceCurrency` (with several offers, the one for the page's `?variant=`) |
+| Charged      | On a Shopify store only: the variant's price in the public product JSON, `/products/<handle>.js`. One extra GET, no key                    |
+
+Any two that differ are reported, compared on the ones that exist. A currency on the page that
+differs from the product data's is reported too, and amounts are never converted. "In stock" in the
+product data for a product that can't be bought (sold out in the product JSON, or a disabled or
+"Sold out" add-to-cart button) is reported as well. Nothing else is requested.
+
+Against the invented `price-stores` fixture, a pottery shop whose mug says 48.00 on the page and in
+the product data but charges 52.00, `gaugeline-free price <origin>/products/mug` prints:
+
+```text title=Output
+✗ This product's prices disagree
+    the page shows 48.00 but the store charges 52.00; the product data says 48.00 but the store charges 52.00
+
+1 to look at, 1 to fix first.
+```
+
+The output is asserted by `packages/free/src/__tests__/free.test.ts`.
