@@ -50,6 +50,9 @@ const NEEDS_LIVE_STORES = new Set([
   // Sanity's query API: confirmed in-process against the sanity-datasets cassette (leaks.test.ts).
   "dataset-public",
   "dataset-private-types",
+  // The configured database project: confirmed in-process against the supabase-access cassette.
+  "access-public-read",
+  "access-role-scope",
 ]);
 
 async function findingsOf(name: string): Promise<string[]> {
