@@ -25,6 +25,8 @@ export interface PlanRow {
   primaryKeyword?: string;
   secondaryKeyword?: string;
   legacyUrl?: string;
+  /** The notes column legacyUrl was read from (--legacy-from), when it isn't a Legacy URL column. */
+  legacySource?: string;
   /** Every cell of the row, by its header as written. */
   raw: Record<string, string>;
 }

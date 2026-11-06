@@ -92,6 +92,57 @@ Read tab: Kim's Keywords (6 other tabs skipped)
 
 The other tabs are kept for the checks that read menus.
 
+### Old addresses in a notes column
+
+Some plans keep the old addresses in a free-text column instead of a Legacy URL column ("301
+legacy /old-page here."). `--legacy-from "<column>"` reads them out of that column (repeat it for
+more than one). It only applies when the plan has no Legacy URL column: with both, the run stops
+(exit 2) and says which to drop. Without it, one line on stderr names any column whose cells say
+"legacy", with how many rows.
+
+Each cell is split into sentences, and only sentences with the word "legacy" are read. A path is a
+word that starts with `/` and has a letter in it (a full address is reduced to its path), with
+trailing punctuation removed; a path that is one of the plan's own pages is dropped. Each sentence
+is then one of:
+
+| Kind             | The sentence                                                                 | What happens                          |
+| ---------------- | ---------------------------------------------------------------------------- | ------------------------------------- |
+| `redirect-here`  | has a path and says "301 … here", "redirect … here", "via 301" or "301 from" | The path becomes the row's legacy URL |
+| `unconfirmed`    | has a path and starts with "Confirm", says "whether" or ends with "?"        | Listed as unresolved                  |
+| `no-destination` | says "no destination"                                                        | Listed for review only                |
+| `no-path`        | says legacy and 301 but names the page in words                              | Listed as unresolved                  |
+
+Nothing else is turned into an address: "Link to /blog" or "FIX SLUG TYPO: /a should be /b" are not
+about an old page, and a page named in words is never guessed. Every mention is printed in a review
+table before any finding, with its line and the sentence it came from, and `--legacy-review <file>`
+writes the same table as CSV for the spreadsheet's owner to confirm. The `no-path` and
+`unconfirmed` mentions are one finding, `plan-legacy-unresolved`, listing every line.
+
+Against the invented `legacy-notes.csv` fixture, `gaugeline plan legacy-notes.csv --plan-only
+--legacy-from "SEO Notes" --legacy-review out.csv` prints:
+
+```text title=Output
+Read 12 pages from legacy-notes.csv.
+Columns: URL from "URL", page from "Page", H1 from "H1".
+Old addresses read from "SEO Notes" (10):
+   line  kind            path                                sentence
+      2  redirect-here   /old-services/medical-coding        Primary KD 8. 301 legacy /old-services/medical-coding here.
+      3  no-path         -                                   301 legacy medical-billing page here.
+      4  redirect-here   /old-services                       Absorbs legacy /old-services via 301.
+      5  unconfirmed     /specialties/correctional-rcm       Confirm whether the legacy /specialties/correctional-rcm should redirect here.
+      6  no-destination  /specialties/ophthalmology-billing  The legacy /specialties/ophthalmology-billing has no destination in the new sitemap.
+     10  redirect-here   /old/labs                           301 legacy /old/labs here.
+     10  no-destination  /old/lab-results                    The legacy /old/lab-results has no destination.
+     11  unconfirmed     /old-services/medical-coding        301 legacy /old-services/medical-coding here?
+     12  redirect-here   /old-contact                        301 from legacy https://www.harbourline.example/old-contact.
+     13  redirect-here   /old-services/medical-coding        301 legacy /old-services/medical-coding here.
+
+! Some old addresses in the plan's notes aren't settled
+    3 mentions in "SEO Notes": line 3 (names the old page in words, not its address): "301 legacy medical-billing page here."; line 5 /specialties/correctional-rcm (asks whether to redirect): "Confirm whether the legacy /specialties/correctional-rcm should redirect here."; line 11 /old-services/medical-coding (asks whether to redirect): "301 legacy /old-services/medical-coding here?"
+
+1 to look at, none to fix first.
+```
+
 ### Column names
 
 Names are matched loosely: case, spaces, underscores and punctuation don't matter

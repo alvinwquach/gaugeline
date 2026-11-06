@@ -17,6 +17,8 @@ export interface FlagDef {
   commands: readonly string[];
   /** One letter, only where the flag already had one. */
   short?: string;
+  /** May be given more than once; the values arrive as a list. */
+  multiple?: boolean;
   /** Parsed, but left out of help and docs. */
   hidden?: boolean;
   /** Going away: using it prints one warning on stderr (see STABILITY.md). */
@@ -120,6 +122,22 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     commands: ["plan"],
   },
   {
+    name: "legacy-from",
+    type: "string",
+    description:
+      "Read old addresses from this notes column when the plan has no Legacy URL column (repeatable)",
+    since: "0.2.0",
+    commands: ["plan"],
+    multiple: true,
+  },
+  {
+    name: "legacy-review",
+    type: "string",
+    description: "Write the old addresses read with --legacy-from to this CSV file, for review",
+    since: "0.2.0",
+    commands: ["plan"],
+  },
+  {
     name: "runs",
     type: "string",
     description: "The folder of saved runs (each one saved with --json) to read",
@@ -189,11 +207,15 @@ export type ParseArgsOptions = Record<string, { type: "boolean" | "string"; shor
 export function toParseArgsOptions(flags: readonly FlagDef[], command: string): ParseArgsOptions {
   const out: ParseArgsOptions = {};
   for (const f of flagsFor(flags, command))
-    out[f.name] = f.short ? { type: f.type, short: f.short } : { type: f.type };
+    out[f.name] = {
+      type: f.type,
+      ...(f.short ? { short: f.short } : {}),
+      ...(f.multiple ? { multiple: true } : {}),
+    };
   return out;
 }
 
-export type FlagValues = Record<string, boolean | string | undefined>;
+export type FlagValues = Record<string, boolean | string | string[] | undefined>;
 
 /** A boolean environment variable is on when set and not "", "0" or "false". */
 export function envIsOn(value: string | undefined): boolean {

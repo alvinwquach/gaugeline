@@ -31,7 +31,9 @@ const SAMPLE_VALUES: Record<string, string> = {
   "notify-on": "any",
   "time-zone": "UTC",
   // A file with no tabs is one tab named after the file.
-  sheet: "keyword-map.csv",
+  sheet: "legacy-notes.csv",
+  "legacy-from": "SEO Notes",
+  "legacy-review": "review.csv",
 };
 
 const repoRoot = fileURLToPath(new URL("../../../../", import.meta.url));
@@ -281,7 +283,7 @@ describe("flag table: e2e", () => {
       // Each flag is given to a command that accepts it: launch-only flags to gaugeline launch,
       // digest-only flags to gaugeline digest over the fixture's saved runs.
       const runs = `${repoRoot}packages/fixtures/runs/digest-week`;
-      const plan = `${repoRoot}packages/fixtures/plans/keyword-map.csv`;
+      const plan = `${repoRoot}packages/fixtures/plans/legacy-notes.csv`;
       const planOnly = f.commands.length === 1 && f.commands[0] === "plan";
       const digestOnly =
         !planOnly &&
@@ -291,7 +293,13 @@ describe("flag table: e2e", () => {
       const value =
         f.type === "string" ? [f.name === "runs" ? runs : (SAMPLE_VALUES[f.name] ?? "x")] : [];
       const args = planOnly
-        ? ["plan", plan, `--${f.name}`, ...value]
+        ? [
+            "plan",
+            plan,
+            ...(f.name === "legacy-review" ? ["--legacy-from", "SEO Notes"] : []),
+            `--${f.name}`,
+            ...value,
+          ]
         : digestOnly
           ? ["digest", ...(f.name === "runs" ? [] : ["--runs", runs]), `--${f.name}`, ...value]
           : [
