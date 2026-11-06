@@ -50,6 +50,8 @@ export type ParsedArgs =
       /** "" when given without a file name: the default name is used. */
       annotate?: string;
       force: boolean;
+      base?: string;
+      allowPrivate: boolean;
       verbose: boolean;
       quiet: boolean;
     }
@@ -169,6 +171,8 @@ export function parseCliArgs(
           : [],
       ...(typeof values.annotate === "string" ? { annotate: values.annotate } : {}),
       force: values.force === true,
+      ...(typeof values.base === "string" ? { base: values.base } : {}),
+      allowPrivate: values["allow-private"] === true,
       ...(typeof values["legacy-review"] === "string"
         ? { legacyReview: values["legacy-review"] }
         : {}),

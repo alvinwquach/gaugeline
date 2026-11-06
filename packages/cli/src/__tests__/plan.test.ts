@@ -10,7 +10,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { SITES_DIR, expectedOutput } from "@gaugeline/fixtures";
+import { SITES_DIR, expectedOutput, startFixture } from "@gaugeline/fixtures";
 import { afterEach, describe, expect, it } from "vitest";
 import { main } from "../main.js";
 
@@ -258,6 +258,55 @@ describe("gaugeline plan: e2e (CLI)", () => {
       } finally {
         chmodSync(dir, 0o755);
       }
+    }
+  });
+
+  it("--base: the built site against the plan prints the docs Output block and exits 1", async () => {
+    const site = await startFixture("plan-built");
+    try {
+      const dir = mkdtempSync(join(tmpdir(), "gaugeline-built-"));
+      dirs.push(dir);
+      cpSync(join(SITES_DIR, "plan-built", "plan.csv"), join(dir, "plan.csv"));
+      const run = capture();
+      expect(
+        await main(["plan", "plan.csv", "--base", site.origin, "--allow-private"], run.io, {
+          cwd: dir,
+        }),
+      ).toBe(1);
+      expect(withoutPassed(run.out()).trimEnd()).toBe(
+        expectedOutput("plan-check", "The built site against the plan"),
+      );
+      expect(run.err()).toContain(`Reading 8 planned addresses on ${site.origin}`);
+      expect(site.hits.get("/classes")).toBe(1);
+    } finally {
+      await site.close();
+    }
+  });
+
+  it("--base with --plan-only, or a preview behind a login: exit 2", async () => {
+    const dir = workdir();
+    let run = capture();
+    expect(
+      await main(
+        ["plan", "keyword-map.csv", "--plan-only", "--base", "https://preview.example"],
+        run.io,
+        { cwd: dir },
+      ),
+    ).toBe(2);
+    expect(run.err()).toContain("Choose --plan-only or --base");
+    const site = await startFixture("refusing");
+    try {
+      writeFileSync(join(dir, "small.csv"), "URL\n/\n/a\n/b\n");
+      run = capture();
+      expect(
+        await main(["plan", "small.csv", "--base", site.origin, "--allow-private"], run.io, {
+          cwd: dir,
+        }),
+      ).toBe(2);
+      expect(run.err()).toContain(`The preview at ${site.origin} asked for a login (403)`);
+      expect(run.out()).not.toContain("returned 404");
+    } finally {
+      await site.close();
     }
   });
 });

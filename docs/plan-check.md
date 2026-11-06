@@ -59,8 +59,8 @@ Exit code 1 when anything drifts, so this can gate a launch in CI.
 What the code in this repository does today. The sections above describe the product as published
 on the site.
 
-`gaugeline plan <file>` reads the plan, says what it found, and checks the plan against itself. The
-checks against the built site (`--base`), the redirects and `--live` arrive in the next branches.
+`gaugeline plan <file>` reads the plan, says what it found, and checks the plan against itself;
+`--base` also checks it against a built site. The redirects and `--live` arrive in the next branches.
 `--plan-only` runs only the checks of the plan against itself and makes no request. Any finding exits
 1, so the plan can gate a launch in CI.
 
@@ -214,6 +214,59 @@ Old addresses read from "SEO Notes" (10):
     lines 3, 5, 11
 
 1 to look at, none to fix first.
+```
+
+### The built site against the plan
+
+`--base <address>` checks the plan against a site that has been built, usually a preview:
+
+```bash
+npx gaugeline plan sitemap.csv --base https://preview.yoursite.com
+```
+
+Each planned path is moved onto that address and requested once with GET, however many rows sit on
+it (a page and its `#section` rows are one request). Then each row is compared with what the page
+sends, without running its JavaScript:
+
+| Check                      | Level          | When                                                                                               |
+| -------------------------- | -------------- | -------------------------------------------------------------------------------------------------- |
+| `plan-404`                 | Fix this first | The page answers 404 (or 410)                                                                      |
+| `plan-canonical-elsewhere` | Fix this first | The canonical names another path, often the legacy address                                         |
+| `plan-title-drift`         | Fix soon       | The title tag isn't the plan's. No title at all is reported with a hint that JavaScript may set it |
+| `plan-h1-drift`            | Fix soon       | The first H1 isn't the plan's; a page with several H1s is noted                                    |
+| `plan-anchor-missing`      | Fix soon       | A `#section` row's id isn't on the page                                                            |
+
+Titles and headings compare the way the self-check does: case, spaces, curly quotes and dashes don't
+matter, and a brand suffix does. A preview's canonical should already name production, so a canonical
+on the preview's host, the plan's production host or either with `www.` passes when its path is the
+planned one. A preview that asks for a login (401 or 403) stops the run (exit 2) instead of reporting
+every page; `--plan-only` and `--base` can't be used together. One line on stderr says how many
+addresses are read.
+
+Against the invented `plan-built` fixture, a pottery shop's preview with five planted errors,
+`gaugeline plan plan.csv --base <preview>` prints:
+
+```text title=Output
+Read 10 pages from plan.csv.
+Columns: URL from "URL", page from "Page", title tag from "Title Tag", H1 from "H1".
+3 rows are anchors (#section) on a page.
+✗ A planned page doesn't exist on the preview
+    /gallery returned 404 on the preview
+    line 9
+✗ A canonical points somewhere other than the planned page
+    /contact: the canonical is https://harbour-pottery.example/contact-us
+    line 8
+! A title tag isn't what the plan says
+    /shop: the plan says "Shop | Harbour", the page says "Shop – Harbour Pottery"
+    line 6
+! An H1 isn't what the plan says
+    /about: the plan says "About us", the page says "Our story"
+    line 7
+! A planned #section isn't on the page
+    /faq#returns: no element has id="returns"
+    line 10
+
+5 to look at, 2 to fix first.
 ```
 
 ### Sending the result back to whoever owns the spreadsheet
