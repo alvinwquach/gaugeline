@@ -470,3 +470,7 @@ export {
   readNavTab,
 } from "./plan/nav.js";
 export type { NavCheckId, NavItem, NavLabelRow, NavResult, NavTab } from "./plan/nav.js";
+export { destinationKey, navRulesSchema, readRegions } from "./nav/read-regions.js";
+export type { NavEntry, NavRegion, NavRules, PageNav } from "./nav/read-regions.js";
+export { COMPARED, diffNav, inboundLinks, orphans } from "./nav/graph.js";
+export type { NavChange, NavChangeKind } from "./nav/graph.js";

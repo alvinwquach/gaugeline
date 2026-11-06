@@ -6,6 +6,7 @@ import {
   eventsConfigSchema,
   factsConfigSchema,
   hiddenConfigSchema,
+  navRulesSchema,
   languageRulesSchema,
   paymentsConfigSchema,
   readContainer,
@@ -15,6 +16,7 @@ import {
   type EventsConfig,
   type FactsConfig,
   type HiddenConfig,
+  type NavRules,
   type LanguageRules,
   type PaymentsConfig,
   type SchemaRules,
@@ -36,6 +38,8 @@ export const ACCESS_CONFIG_FILE = "gaugeline.access.json";
 export const HIDDEN_CONFIG_FILE = "gaugeline.hidden.json";
 /** The tracking plan: which clicks must push which event, likewise. */
 export const EVENTS_CONFIG_FILE = "gaugeline.events.json";
+/** Where the menus are and which footer links are required, likewise (nav-orphans, nav-footer). */
+export const NAV_CONFIG_FILE = "gaugeline.nav.json";
 /** Where the Tag Manager container export is, likewise. The export is a file: no account is used. */
 export const TAGS_CONFIG_FILE = "gaugeline.tags.json";
 
@@ -115,4 +119,8 @@ export function readTags(dir: string): TagContainer | undefined {
 
 export function readEvents(dir: string): EventsConfig | undefined {
   return readJsonConfig(dir, EVENTS_CONFIG_FILE, eventsConfigSchema, "the click event checks");
+}
+
+export function readNavRules(dir: string): NavRules | undefined {
+  return readJsonConfig(dir, NAV_CONFIG_FILE, navRulesSchema, "the menu settings");
 }

@@ -65,6 +65,10 @@ import { llmsTxtStaleFacts } from "./llms-txt-stale-facts.js";
 import { mockContentLive } from "./mock-content-live.js";
 import { navHomeLinks } from "./nav-home-links.js";
 import { navLabelDrift } from "./nav-label-drift.js";
+import { navChanged } from "./nav-changed.js";
+import { navFooter } from "./nav-footer.js";
+import { navOrphans } from "./nav-orphans.js";
+import { navParity } from "./nav-parity.js";
 import { nextDraftPublic } from "./next-draft-public.js";
 import { nextPreviewCanonical } from "./next-preview-canonical.js";
 import { nextStaleAfterPublish } from "./next-stale-after-publish.js";
@@ -173,8 +177,12 @@ export const PAGE_CHECKS = [
   llmsTxtBrokenLinks,
   llmsTxtStaleFacts,
   mockContentLive,
+  navChanged,
+  navFooter,
   navHomeLinks,
   navLabelDrift,
+  navOrphans,
+  navParity,
   nextDraftPublic,
   nextPreviewCanonical,
   nextStaleAfterPublish,

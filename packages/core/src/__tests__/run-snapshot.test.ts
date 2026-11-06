@@ -69,6 +69,8 @@ describe("run snapshot: unit", () => {
       takenAt: TAKEN,
       prices: { "BOX USD": 4800 },
       forms: { "#signup": { provider: "HubSpot", actionHost: "forms.hsforms.com" } },
+      // The header and footer menus (nav-changed): this page has none.
+      nav: [],
     });
   });
 

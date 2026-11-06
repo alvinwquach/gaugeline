@@ -41,6 +41,7 @@ const FIXTURES = [
   "refusing",
   "tag-rules",
   "nav-events",
+  "nav-after",
 ];
 
 /**
@@ -77,6 +78,8 @@ const NEEDS_LIVE_STORES = new Set([
   "price-changed",
   "form-provider-changed",
   "form-destination-changed",
+  // A menu compared with the last run's: confirmed in-process (nav.test.ts, nav-before then nav-after).
+  "nav-changed",
 ]);
 
 async function findingsOf(name: string): Promise<string[]> {
@@ -100,6 +103,7 @@ async function findingsOf(name: string): Promise<string[]> {
       "gaugeline.hidden.json",
       "gaugeline.tags.json",
       "gaugeline.events.json",
+      "gaugeline.nav.json",
     ].some((f) => existsSync(`${dir}/${f}`))
       ? dir
       : undefined;
