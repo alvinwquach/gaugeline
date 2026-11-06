@@ -19,3 +19,9 @@ company (Harbourline Billing), its pages and keywords are made up.
   named in words (Billing), "via 301", a question to confirm, a "no destination", a slug typo note,
   a planned path, two kinds in one cell, the same old path on two rows (Coding and Pathology), and a
   full address.
+- `keywords.csv`: an invented plan with Primary Keyword, Primary Volume and Secondary Keyword
+  columns, for the keyword checks: three pages on "medical billing services" (590), two on
+  "patient payments" (210) and two on "credentialing services" (n/a (<10)); a page's primary that is
+  another page's secondary ("medical billing companies", "coding audits"); a page and its anchor row
+  with one keyword; singular and plural keywords; placeholders ("(branded news)", "n/a", "N/A"); a
+  secondary two pages share that neither has as its primary.

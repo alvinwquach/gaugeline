@@ -139,14 +139,17 @@ describe("gaugeline plan: e2e (CLI)", () => {
     const csvRows = readFileSync(join(dir, "out.csv"), "utf8").trimEnd().split("\n").slice(1);
     expect(csvRows).toHaveLength(tableRows.length);
     expect(tableRows).toHaveLength(10);
-    expect(run.err()).toBe("Review table written to out.csv\n");
+    expect(run.err()).toBe(
+      "Review table written to out.csv\nKeyword checks skipped: the plan has no Primary Keyword column.\n",
+    );
   });
 
   it("without --legacy-from: nothing is read, and one hint names the column", async () => {
     const run = capture();
     await main(["plan", "legacy-notes.csv"], run.io, { cwd: workdir() });
     expect(run.err()).toBe(
-      '"SEO Notes" mentions "legacy" in 10 rows: add --legacy-from "SEO Notes" to read old addresses from it.\n',
+      '"SEO Notes" mentions "legacy" in 10 rows: add --legacy-from "SEO Notes" to read old addresses from it.\n' +
+        "Keyword checks skipped: the plan has no Primary Keyword column.\n",
     );
     expect(run.out()).not.toContain("Old addresses read");
   });
@@ -172,5 +175,13 @@ describe("gaugeline plan: e2e (CLI)", () => {
       await main(["plan", "legacy-notes.csv", "--legacy-review", "x.csv"], run.io, { cwd: dir }),
     ).toBe(2);
     expect(run.err()).toContain("--legacy-review needs --legacy-from");
+  });
+
+  it("keyword checks: cannibalisation and overlap on the keywords plan, sorted by volume", async () => {
+    const dir = workdir();
+    cpSync(join(SITES_DIR, "..", "plans", "keywords.csv"), join(dir, "keywords.csv"));
+    const run = capture();
+    expect(await main(["plan", "keywords.csv", "--plan-only"], run.io, { cwd: dir })).toBe(1);
+    expect(withoutPassed(run.out()).trimEnd()).toBe(expectedOutput("plan-check", "Keywords"));
   });
 });
