@@ -1,0 +1,7 @@
+﻿url,where,printedOn,expectedDestination
+http://copperkettle.example/menu,table tents,2026-03-01,http://copperkettle.example/menu
+http://copperkettle.example/table-menu?utm_source=table-tent&utm_medium=qr,table tents,2026-03-01,http://copperkettle.example/menu
+http://copperkettle.example/spring-flyer,"flyers, spring 2026",2026-04-02,
+http://copperkettle.example/events-2025,events poster,2025-11-20,
+http://copperkettle.example/book,business cards,2025-06-10,http://copperkettle.example/reservations
+http://copperkettle.example/menu,"flyers, spring 2026",2026-04-02,http://copperkettle.example/menu

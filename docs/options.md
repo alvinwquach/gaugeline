@@ -243,6 +243,9 @@ between the markers; CI fails when it differs from the flag table.
 | `--force`                 | Let --annotate replace a file that already exists                                                  |                      | 0.2.0 |
 | `--progress <value>`      | With --base, say what was fixed and what is new since the last run (state file optional)           |                      | 0.2.0 |
 | `--all`                   | With --progress, list the findings still open, not only how many                                   |                      | 0.2.0 |
+| `--printed <value>`       | With --base, add the printed register's addresses to the 301 map                                   |                      | 0.2.0 |
+| `--decode <value>`        | Read the QR code in these PNG images (or a folder) and add new ones to the register                |                      | 0.2.0 |
+| `--tags <value>`          | Query parameters that must reach the destination, as name prefixes (default utm_)                  |                      | 0.2.0 |
 | `--runs <value>`          | The folder of saved runs (each one saved with --json) to read                                      |                      | 0.2.0 |
 | `--time-zone <value>`     | The time zone for dates and ages, such as America/Los_Angeles (default UTC)                        |                      | 0.2.0 |
 | `--notify-on <value>`     | When to send: any (something was found, the default), high or always                               |                      | 0.2.0 |

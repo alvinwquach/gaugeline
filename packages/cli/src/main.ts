@@ -49,6 +49,11 @@ import {
   fingerprint,
   progressLine,
   type PlanState,
+  checkPrinted,
+  createPrintedRegistry,
+  readQr,
+  readRegister,
+  registerAdditions,
 } from "@gaugeline/core";
 import { parseCliArgs } from "./args.js";
 import { HELP } from "./help.js";
@@ -75,7 +80,7 @@ import { defaultPlanStatePath, readPlanStateFile, writePlanStateFile } from "./p
 import { openInBrowser } from "./open.js";
 import { addIgnore, applyIgnore, IGNORE_FILE, readIgnore } from "./ignore.js";
 import { canShowView, runView, type ViewIo } from "./tui/app.js";
-import { existsSync, readFileSync } from "node:fs";
+import { appendFileSync, existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { writeFileSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 
@@ -230,6 +235,41 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
             `${progressPath} could not be read: treated as the first run. The old file is kept as ${last.backup}.\n`,
           );
       }
+      // --printed: the register's addresses join the 301 map, each on the row of its expected page.
+      if (args.printed !== undefined) {
+        if (args.base === undefined)
+          throw new ConfigError("--printed checks printed addresses on a preview: add --base.");
+        const printedRows = readRegister(readText(resolve(cwd, args.printed), args.printed));
+        let unplaced = 0;
+        for (const p of printedRows) {
+          let printedPath: string;
+          let expectedPath: string | undefined;
+          try {
+            const u = new URL(p.url);
+            printedPath = `${u.pathname}${u.search}`;
+            expectedPath = p.expectedDestination
+              ? new URL(p.expectedDestination, u).pathname
+              : undefined;
+          } catch {
+            continue;
+          }
+          const same = (a: string, b: string) =>
+            a.toLowerCase().replace(/\/+$/, "") === b.toLowerCase().replace(/\/+$/, "");
+          if (plan.rows.some((r) => same(r.path, printedPath.split("?")[0] ?? ""))) continue;
+          const target = expectedPath
+            ? plan.rows.find((r) => same(r.path, expectedPath))
+            : undefined;
+          if (!target) {
+            unplaced++;
+            continue;
+          }
+          target.legacyUrl = target.legacyUrl ? `${target.legacyUrl}\n${printedPath}` : printedPath;
+        }
+        if (unplaced > 0 && !args.quiet)
+          io.stderr.write(
+            `${unplaced} printed address${unplaced === 1 ? " has" : "es have"} no planned page to land on: give ${unplaced === 1 ? "it" : "them"} an expectedDestination in ${args.printed}.\n`,
+          );
+      }
       // The built site against the plan (--base): each planned path fetched once with GET.
       let built: BuiltResult | undefined;
       let redirects: RedirectResult | undefined;
@@ -366,6 +406,85 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           drift: planResult.findings.length > 0,
           // A planned page behind a password was not checked: the run could not finish (exit 2).
           incomplete: planResult.couldNotCheck.length > 0,
+        },
+        ci: true,
+      };
+    }
+    case "printed": {
+      const cwd = deps.cwd ?? process.cwd();
+      const path = resolve(cwd, args.file);
+      let text = readText(path, args.file);
+      // --decode: what was actually printed, read from the images on this computer.
+      const unread: { image: string; reason: string }[] = [];
+      if (args.decode.length > 0) {
+        const images = args.decode.flatMap((d) => {
+          const full = resolve(cwd, d);
+          let isDir = false;
+          try {
+            isDir = statSync(full).isDirectory();
+          } catch {
+            throw new ConfigError(`--decode: ${d} could not be read.`);
+          }
+          return isDir
+            ? readdirSync(full)
+                .filter((f) => f.toLowerCase().endsWith(".png"))
+                .sort()
+                .map((f) => join(full, f))
+            : [full];
+        });
+        const decoded: { url: string; where: string }[] = [];
+        for (const image of images) {
+          const read = readQr(readFileSync(image));
+          if (!read.ok) unread.push({ image: basename(image), reason: read.reason });
+          else if (!/^https?:\/\//i.test(read.text))
+            unread.push({
+              image: basename(image),
+              reason: `its QR code holds "${read.text}", not an address`,
+            });
+          else decoded.push({ url: read.text, where: basename(image) });
+        }
+        const add = registerAdditions(text, decoded);
+        if (add !== "") {
+          appendFileSync(path, text.endsWith("\n") || text === "" ? add : `\n${add}`);
+          text = readText(path, args.file);
+        }
+        if (!args.quiet)
+          io.stderr.write(
+            `Read ${decoded.length} QR code${decoded.length === 1 ? "" : "s"} from ${images.length} image${images.length === 1 ? "" : "s"}; ${add === "" ? "the register already had every address" : `added ${add.trimEnd().split("\n").length} to ${args.file}`}\n`,
+          );
+      }
+      const rows = readRegister(text);
+      const places = new Set(rows.map((r) => r.where)).size;
+      io.stdout.write(
+        `Read ${rows.length} printed address${rows.length === 1 ? "" : "es"} from ${args.file}, in ${places} place${places === 1 ? "" : "s"}.\n`,
+      );
+      for (const u of unread) io.stdout.write(`? ${u.image} could not be checked: ${u.reason}\n`);
+      const fetcher = createFetcher({
+        ...deps.fetcher,
+        ...(args.allowPrivate ? { allowPrivate: true } : {}),
+      });
+      const printed = await checkPrinted(rows, {
+        fetcher,
+        file: basename(args.file),
+        ...(args.tags ? { tags: args.tags } : {}),
+      });
+      const result = await runChecks(
+        { printed, file: basename(args.file) },
+        createPrintedRegistry(),
+      );
+      io.stdout.write(
+        formatTerminal({
+          result,
+          sampled: createBudget().summary(),
+          color: useColor(io.stdout, io.env ?? {}),
+        }),
+      );
+      return {
+        outcome: {
+          kind: "ran",
+          highFindings: result.findings.filter((f) => f.severity === "high").length,
+          drift: result.findings.length > 0,
+          incomplete: result.couldNotCheck.length > 0,
         },
         ci: true,
       };
@@ -671,5 +790,14 @@ export async function main(argv: readonly string[], io: Io, deps: Deps = {}): Pr
   } catch (err) {
     io.stderr.write(`${formatError(err, { verbose })}\n`);
     return exitCodeFor(toOutcome(err), { ci: false });
+  }
+}
+
+/** A file the command was given, as text: one plain sentence when it can't be read. */
+function readText(path: string, shown: string): string {
+  try {
+    return readFileSync(path, "utf8");
+  } catch {
+    throw new ConfigError(`${shown} could not be read.`);
   }
 }
