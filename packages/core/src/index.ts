@@ -244,6 +244,7 @@ export {
   planBuiltChecks,
   planRedirectChecks,
   planRedirectConflict,
+  planUncoveredPage,
 } from "./plan/checks.js";
 export { BUILT_CHECK_IDS, BUILT_TITLES, canonicalIsThisPage, checkBuilt } from "./plan/built.js";
 export type { BuiltOptions, BuiltResult } from "./plan/built.js";
@@ -429,3 +430,18 @@ export type {
 } from "./printed/check.js";
 export { PRINTED_CHECKS, createPrintedRegistry } from "./printed/checks.js";
 export type { PrintedCheckInput } from "./printed/checks.js";
+export {
+  checkCoverage,
+  coverageKey,
+  detectLiveFormat,
+  globToRegExp,
+  ignored as ignoredLive,
+  readLive,
+} from "./plan/coverage.js";
+export type {
+  CoverageOptions,
+  CoverageResult,
+  LiveFormat,
+  LiveRead,
+  LiveUrl,
+} from "./plan/coverage.js";

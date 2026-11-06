@@ -54,6 +54,11 @@ import {
   readQr,
   readRegister,
   registerAdditions,
+  checkCoverage,
+  readLive,
+  type CoverageOptions,
+  type CoverageResult,
+  type LiveRead,
 } from "@gaugeline/core";
 import { parseCliArgs } from "./args.js";
 import { HELP } from "./help.js";
@@ -80,7 +85,14 @@ import { defaultPlanStatePath, readPlanStateFile, writePlanStateFile } from "./p
 import { openInBrowser } from "./open.js";
 import { addIgnore, applyIgnore, IGNORE_FILE, readIgnore } from "./ignore.js";
 import { canShowView, runView, type ViewIo } from "./tui/app.js";
-import { appendFileSync, existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import {
+  appendFileSync,
+  createReadStream,
+  existsSync,
+  readFileSync,
+  readdirSync,
+  statSync,
+} from "node:fs";
 import { writeFileSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 
@@ -319,6 +331,34 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         });
         if (!args.quiet) for (const note of redirects.notes) io.stderr.write(`${note}\n`);
       }
+      // --live: what exists today, read as a stream, against every planned and legacy path.
+      let coverage: CoverageResult | undefined;
+      if (args.live !== undefined) {
+        const livePath = resolve(cwd, args.live);
+        if (!existsSync(livePath) || !statSync(livePath).isFile())
+          throw new ConfigError(`--live: ${args.live} could not be read.`, {
+            hint: "Give a crawl export, a sitemap.xml, a Search Console export or a list of addresses.",
+          });
+        // One pass: the format (and its clicks column) is known from the first line, and the
+        // uncovered pages are sorted only once the stream has ended.
+        let format: LiveRead | undefined;
+        const options: CoverageOptions = {
+          file: basename(args.file),
+          ...(args.ignore.length > 0 ? { ignore: args.ignore } : {}),
+        };
+        coverage = await checkCoverage(
+          plan.rows,
+          readLive(createReadStream(livePath), (r) => {
+            format = r;
+            if (r.metric) options.metric = r.metric;
+          }),
+          options,
+        );
+        if (!args.quiet)
+          io.stderr.write(
+            `Read ${coverage.live} live address${coverage.live === 1 ? "" : "es"} from ${args.live} (${describeLive(format)}); ${coverage.ignored} left out as assets, feeds, paged or --ignore\n`,
+          );
+      }
       // The plan against itself (no requests). Any finding is drift: exit 1, so it can gate a launch.
       const planResult = await runChecks(
         {
@@ -327,9 +367,15 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           file: basename(args.file),
           ...(built ? { built } : {}),
           ...(redirects ? { redirects } : {}),
+          ...(coverage ? { coverage } : {}),
         },
         createPlanRegistry(),
-        built ? {} : { skip: [...BUILT_CHECK_IDS, ...REDIRECT_CHECK_IDS] },
+        {
+          skip: [
+            ...(built ? [] : [...BUILT_CHECK_IDS, ...REDIRECT_CHECK_IDS]),
+            ...(coverage ? [] : ["plan-uncovered-page"]),
+          ],
+        },
       );
       // With --progress: the new findings in full, the fixed ones one line each, the rest as a count.
       let shown = planResult;
@@ -801,3 +847,16 @@ function readText(path: string, shown: string): string {
     throw new ConfigError(`${shown} could not be read.`);
   }
 }
+
+function describeLive(format: LiveRead | undefined): string {
+  if (!format) return "an empty file";
+  return `${LIVE_NAMES[format.format]}${format.metric ? `, sorted by ${format.metric}` : ""}`;
+}
+
+/** How --live's detected format is named on stderr. */
+const LIVE_NAMES: Readonly<Record<LiveRead["format"], string>> = {
+  crawl: "a crawl export",
+  "search-console": "a Search Console export",
+  sitemap: "a sitemap",
+  list: "a list of addresses",
+};

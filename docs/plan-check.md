@@ -60,7 +60,8 @@ What the code in this repository does today. The sections above describe the pro
 on the site.
 
 `gaugeline plan <file>` reads the plan, says what it found, and checks the plan against itself;
-`--base` also checks it against a built site. The redirects and `--live` arrive in the next branches.
+`--base` also checks it against a built site and its redirects, and `--live` lists the pages that
+exist today and have no row.
 `--plan-only` runs only the checks of the plan against itself and makes no request. Any finding exits
 1, so the plan can gate a launch in CI.
 
@@ -406,6 +407,42 @@ no page content, header or secret. In CI, keep it between runs with the cache.
   compares with the last complete one.
 - A state file written by a later version is refused (exit 2) and left as it is. An unreadable one
   is kept as `.bak` and the run starts over.
+
+### Live pages the plan misses
+
+`--live <file>` reads what exists today and lists the pages with no row in the plan and no Legacy
+URL pointing at them. It reads any of these, and decides which from the file's first line:
+
+- a crawler's export with an `Address` column (rows with a Status Code other than 200 are left out);
+- a sitemap (`<urlset>` or `<sitemapindex>`);
+- a Search Console pages export (`Top pages`, `Clicks`, `Impressions`, `Position`);
+- a plain list, one address or path per line.
+
+Addresses compare on their path: case, a trailing slash and the query string don't matter. Assets,
+feeds and paginated pages (`?page=2`, `/page/2`) aren't pages to plan for; `--ignore '/tag/*'`
+leaves out more (`*` is one path segment, `**` any number). The file is read as a stream, so a
+200,000-row crawl export doesn't fill memory. When the export has clicks (or impressions, or
+position), the pages are sorted by them, most-visited first, with the number in the evidence.
+
+When three or more live pages differ from planned rows only by a leading prefix (the plan says
+`/resources/blog/…`, the site has `/blog/…`), that is one finding for the prefix, not one per page:
+the plan assumes a structure that doesn't exist today.
+
+Against a three-row invented plan (`packages/fixtures/plans/live/plan.csv`) and a Search Console
+export of the same site, `gaugeline plan plan.csv --live search-console.csv` prints:
+
+```text title=Output
+Read 3 pages from plan.csv.
+Columns: URL from "URL", page from "Page", title tag from "Title Tag", H1 from "H1", legacy URL from "Legacy URL".
+✗ A page that exists today has no row in the plan
+    /outsourced-healthcare-operations exists today and has no row or redirect in the plan (1,240 clicks)
+✗ A page that exists today has no row in the plan
+    /specialties/wound-care-billing exists today and has no row or redirect in the plan (310 clicks)
+
+2 to look at, 2 to fix first.
+```
+
+`/company/press` is in the export too, and is covered: it is a row's Legacy URL.
 
 ### Sending the result back to whoever owns the spreadsheet
 
