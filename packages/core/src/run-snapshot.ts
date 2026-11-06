@@ -1,5 +1,6 @@
 import { load } from "cheerio/slim";
 import type { Severity } from "./model.js";
+import { readRegions, type NavEntry } from "./nav/read-regions.js";
 import { jsonLdNodes, type PageSnapshot } from "./snapshot.js";
 
 /**
@@ -15,6 +16,11 @@ export interface RunSnapshot {
   prices: Record<string, number>;
   /** Form key -> where it posts. */
   forms: Record<string, { provider: string; actionHost: string }>;
+  /**
+   * The header and footer menus: region, parent, text, destination, order (nav-changed). Absent
+   * in a snapshot written before navigation was saved: nav-changed is then could not check.
+   */
+  nav?: NavEntry[];
 }
 
 export const RUN_SNAPSHOT_SCHEMA = 1;
@@ -83,7 +89,8 @@ export function buildRunSnapshot(
     }
     forms[key.slice(0, KEY_MAX)] = { provider: providerFor(actionHost), actionHost };
   });
-  return { schema: 1, url: page.finalUrl, takenAt: now().toISOString(), prices, forms };
+  const nav = readRegions(page).entries.filter((e) => e.region !== "body");
+  return { schema: 1, url: page.finalUrl, takenAt: now().toISOString(), prices, forms, nav };
 }
 
 export interface SnapshotChange {

@@ -11,6 +11,7 @@ import type { SchemaRules } from "./schema-rules.js";
 import type { AccessRead } from "./access/probe.js";
 import type { DnsReader } from "./dns.js";
 import type { HiddenConfig } from "./hidden.js";
+import type { NavRules } from "./nav/read-regions.js";
 import type { EventsRead } from "./events/observe.js";
 import type { TagAnalysis } from "./tags/analyse.js";
 import type { TagContainer } from "./tags/read-container.js";
@@ -131,8 +132,12 @@ export interface CheckContext {
   couldNotCheck?(url: string, reason: string): void;
   /** The last run's snapshot of this page (--since last), for the checks that report a change. */
   previous?: RunSnapshot;
+  /** --since last was asked for: a missing snapshot then means "nothing saved yet", not "not asked". */
+  baselineRequested?: boolean;
   /** Sections hidden until launch (gaugeline.hidden.json). */
   hidden?: HiddenConfig;
+  /** Where the menus are and which footer links are required (gaugeline.nav.json). */
+  navRules?: NavRules;
   /** The tracking plan's elements, clicked by the run's observer, once on first use (gaugeline.events.json). */
   events?: () => Promise<EventsRead>;
   /** The Tag Manager container export named in gaugeline.tags.json, read from the file only. */
