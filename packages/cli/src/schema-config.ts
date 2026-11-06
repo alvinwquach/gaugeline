@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import {
   ConfigError,
   accessConfigSchema,
@@ -7,13 +7,16 @@ import {
   hiddenConfigSchema,
   languageRulesSchema,
   paymentsConfigSchema,
+  readContainer,
   schemaRulesSchema,
+  tagsConfigSchema,
   type AccessConfig,
   type FactsConfig,
   type HiddenConfig,
   type LanguageRules,
   type PaymentsConfig,
   type SchemaRules,
+  type TagContainer,
 } from "@gaugeline/core";
 import type * as z from "zod";
 
@@ -29,6 +32,8 @@ export const PAYMENTS_CONFIG_FILE = "gaugeline.payments.json";
 export const ACCESS_CONFIG_FILE = "gaugeline.access.json";
 /** Sections hidden until launch, likewise. */
 export const HIDDEN_CONFIG_FILE = "gaugeline.hidden.json";
+/** Where the Tag Manager container export is, likewise. The export is a file: no account is used. */
+export const TAGS_CONFIG_FILE = "gaugeline.tags.json";
 
 /** A JSON settings file in `dir`, validated, or undefined when there is none. Invalid is a ConfigError. */
 function readJsonConfig<T>(
@@ -80,4 +85,26 @@ export function readAccess(dir: string): AccessConfig | undefined {
 
 export function readHidden(dir: string): HiddenConfig | undefined {
   return readJsonConfig(dir, HIDDEN_CONFIG_FILE, hiddenConfigSchema, "hidden sections");
+}
+
+/** The container export gaugeline.tags.json names (relative to that file), read and parsed. */
+export function readTags(dir: string): TagContainer | undefined {
+  const config = readJsonConfig(dir, TAGS_CONFIG_FILE, tagsConfigSchema, "the tag rule checks");
+  if (!config) return undefined;
+  const path = resolve(dirname(join(dir, TAGS_CONFIG_FILE)), config.container);
+  let json: unknown;
+  try {
+    json = JSON.parse(readFileSync(path, "utf8"));
+  } catch (err) {
+    const code = (err as { code?: string }).code;
+    throw new ConfigError(
+      code === "ENOENT"
+        ? `${TAGS_CONFIG_FILE}: container: ${config.container} was not found.`
+        : `${config.container} is not valid JSON: ${(err as Error).message}`,
+      {
+        hint: "Export the container from Tag Manager (Admin > Export container) and name that file.",
+      },
+    );
+  }
+  return readContainer(json, config.container);
 }

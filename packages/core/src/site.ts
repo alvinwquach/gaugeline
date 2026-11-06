@@ -14,6 +14,8 @@ import { lazyAccess } from "./access/probe.js";
 import type { AccessSettings } from "./access/types.js";
 import type { DnsReader } from "./dns.js";
 import type { HiddenConfig } from "./hidden.js";
+import { lazyTagAnalysis, summarise, type TagSummary } from "./tags/analyse.js";
+import type { TagContainer } from "./tags/read-container.js";
 import type { RunSnapshot } from "./run-snapshot.js";
 import { lazyPages } from "./pages.js";
 import { lazyDatasets } from "./sanity.js";
@@ -54,6 +56,8 @@ export interface SiteCheckOptions {
   dns?: DnsReader;
   /** Sections hidden until launch. */
   hidden?: HiddenConfig;
+  /** A Tag Manager container export, already read from its file. */
+  tags?: TagContainer;
   /** The last run's snapshot (--since last): the change checks compare with it. */
   previous?: RunSnapshot;
 }
@@ -62,6 +66,8 @@ export interface SiteCheck {
   snapshot: PageSnapshot;
   result: RunResult;
   budget: Budget;
+  /** How many of the container's triggers can fire, when a tag check read them. */
+  tags?: TagSummary;
 }
 
 /**
@@ -83,6 +89,15 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
   const images = lazyImageSample({ page: snapshot, fetcher: opts.fetcher, budget });
   const site = lazySiteContext({ page: snapshot, fetcher: opts.fetcher, budget });
   const registry = opts.registry ?? createPageRegistry();
+  const pages = lazyPages({ page: snapshot, fetcher: opts.fetcher, budget });
+  const container = opts.tags;
+  const tagRules = container
+    ? lazyTagAnalysis(async () => ({
+        container,
+        pages: await pages(),
+        known: (await site()).sitemapUrls,
+      }))
+    : undefined;
   // The page itself refused: run only the checks that need no page; list the rest as could not
   // check. No retry, no other user agent, no extra headers.
   const pageOutcome = classifyHop(snapshot.hops.at(-1));
@@ -104,7 +119,7 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
       images,
       calendars: lazyCalendars({ page: snapshot, fetcher: opts.fetcher, budget }),
       ...(opts.now ? { now: opts.now } : {}),
-      pages: lazyPages({ page: snapshot, fetcher: opts.fetcher, budget }),
+      pages,
       scripts: lazyScripts({ page: snapshot, fetcher: opts.fetcher, budget }),
       datasets: lazyDatasets({ page: snapshot, fetcher: opts.fetcher, budget }),
       languages: lazyLanguageGroup({
@@ -119,6 +134,7 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
       ...(opts.payments ? { payments: opts.payments } : {}),
       ...(opts.dns ? { dns: opts.dns } : {}),
       ...(opts.hidden ? { hidden: opts.hidden } : {}),
+      ...(container && tagRules ? { tagContainer: container, tagRules } : {}),
       ...(opts.previous ? { previous: opts.previous } : {}),
       ...(opts.access
         ? { access: lazyAccess({ fetcher: opts.fetcher, budget, settings: opts.access }) }
@@ -136,5 +152,6 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
     result.couldNotCheck.push(...refusedIds.map((id) => ({ id, reason, url: snapshot.finalUrl })));
   }
   result.sampled = sampleCounts(budget.summary());
-  return { snapshot, result, budget };
+  const analysis = await tagRules?.peek();
+  return { snapshot, result, budget, ...(analysis ? { tags: summarise(analysis) } : {}) };
 }
