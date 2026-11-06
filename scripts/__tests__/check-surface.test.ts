@@ -52,7 +52,9 @@ describe("check-surface: rules", () => {
 
   it("remove a deprecated flag whose removeIn is a later version: not yet", () => {
     const after = clone(lock);
-    after.flags.check = (after.flags.check ?? []).filter((f) => f !== "quiet");
+    // Removed from every command that has it (check and launch).
+    for (const c of Object.keys(after.flags))
+      after.flags[c] = (after.flags[c] ?? []).filter((f) => f !== "quiet");
     const deprecated = new Map([["--quiet", { since: "1.0.0", removeIn: "2.0.0" }]]);
     const r = run(lock, after, "major", { deprecated });
     expect(r.problems).toEqual([

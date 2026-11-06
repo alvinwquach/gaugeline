@@ -5,7 +5,10 @@ import {
   checkSite,
   deprecate,
   createFetcher,
+  EMAIL_PRESET,
+  LAUNCH_PRESET,
   createDnsReader,
+  createPageRegistry,
   exitCodeFor,
   resolveAccess,
   type CheckRegistry,
@@ -13,7 +16,8 @@ import {
   type FetcherOptions,
   type Outcome,
 } from "@gaugeline/core";
-import { parseCliArgs, USAGE } from "./args.js";
+import { parseCliArgs } from "./args.js";
+import { HELP } from "./help.js";
 import { useColor } from "./color.js";
 import { formatError, toOutcome } from "./fail.js";
 import { envIsOn, type FlagDef } from "./flags.js";
@@ -79,7 +83,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
   const ran: Outcome = { kind: "ran", highFindings: 0, drift: false };
   switch (args.kind) {
     case "help":
-      io.stdout.write(`${USAGE}\n`);
+      io.stdout.write(`${HELP[args.command === "check" ? "" : args.command] ?? ""}\n`);
       return { outcome: ran, ci: false };
     case "version":
       io.stdout.write(`${VERSION}\n`);
@@ -120,12 +124,26 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         io.stderr.write(`Gaugeline ${VERSION} checking ${withoutQuery(args.address)}\n`);
       }
       const skeleton = skeletonOnly(deps.version ?? VERSION);
+      // launch: a preset of check ids through the runner's own `only` filter, not a second runner.
+      const launch = args.command === "launch";
+      const registry = deps.registry ?? createPageRegistry();
+      let only: readonly string[] | undefined =
+        deps.registry === undefined && skeleton ? skeleton : undefined;
+      if (launch) {
+        const registered = new Set(registry.all().map((c) => c.id));
+        const wanted = [...LAUNCH_PRESET, ...(args.dns ? EMAIL_PRESET : [])];
+        for (const id of wanted.filter((id) => !registered.has(id)))
+          io.stderr.write(`${id}: not available in this version\n`);
+        only = wanted.filter((id) => registered.has(id));
+      }
+      // DNS is read for the page check, and for launch only with --dns: launch's default is HTTP only.
+      const dns = !launch || args.dns ? (deps.dns ?? createDnsReader()) : undefined;
       const { snapshot, result, budget } = await checkSite({
         address: args.input,
         fetcher,
-        ...(deps.registry ? { registry: deps.registry } : {}),
+        registry,
         // The walking skeleton (0.0.x) runs one check; an injected registry is used as given.
-        ...(deps.registry === undefined && skeleton ? { only: skeleton } : {}),
+        ...(only ? { only } : {}),
         onProgress: (e) => log.progress(e),
         ...(deps.now ? { now: deps.now } : {}),
         ...(schemaRules ? { schemaRules } : {}),
@@ -133,7 +151,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         ...(facts ? { facts } : {}),
         ...(payments ? { payments } : {}),
         ...(access ? { access } : {}),
-        dns: deps.dns ?? createDnsReader(),
+        ...(dns ? { dns } : {}),
       });
       if (args.json) {
         const json = buildResult({
@@ -150,6 +168,10 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         );
       }
       const highFindings = result.findings.filter((f) => f.severity === "high").length;
+      if (launch && !args.json)
+        io.stdout.write(
+          highFindings === 0 ? "Ready to launch\n" : `Not yet: ${highFindings} to fix first\n`,
+        );
       return { outcome: { kind: "ran", highFindings, drift: false }, ci };
     }
   }

@@ -9,6 +9,17 @@
       "quiet",
       "verbose",
       "version"
+    ],
+    "launch": [
+      "allow-private",
+      "ci",
+      "dns",
+      "help",
+      "json",
+      "no-open",
+      "quiet",
+      "verbose",
+      "version"
     ]
   },
   "checkIds": [
@@ -67,6 +78,7 @@
     "nav-home-links",
     "nav-label-drift",
     "noindex",
+    "og-image-broken",
     "og-image-missing",
     "og-image-relative",
     "og-url-mismatch",
@@ -91,9 +103,12 @@
     "sitemap-host",
     "sitemap-missing",
     "sitemap-redirects",
+    "staging-indexable",
     "stega-leak",
     "structured-duplicate",
     "tel-format",
+    "temp-host-canonical",
+    "temp-host-links",
     "thin-html",
     "viewport"
   ],
@@ -153,6 +168,7 @@
     "nav-home-links": "medium",
     "nav-label-drift": "low",
     "noindex": "high",
+    "og-image-broken": "medium",
     "og-image-missing": "low",
     "og-image-relative": "medium",
     "og-url-mismatch": "medium",
@@ -177,9 +193,12 @@
     "sitemap-host": "medium",
     "sitemap-missing": "medium",
     "sitemap-redirects": "medium",
+    "staging-indexable": "high",
     "stega-leak": "high",
     "structured-duplicate": "medium",
     "tel-format": "low",
+    "temp-host-canonical": "low",
+    "temp-host-links": "high",
     "thin-html": "high",
     "viewport": "medium"
   },

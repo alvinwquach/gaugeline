@@ -50,7 +50,7 @@ whose images come from a public dataset with an `order` type, version 0.1.0 prin
 ✗ A private key is in your site's JavaScript
     Stripe secret key sk_liv…00 in /assets/app.js at byte 405
 
-Checked 1 link, all 2 sitemap pages, 1 JavaScript file, 1 Sanity dataset.
+Checked 1 link, 1 image, all 2 sitemap pages, 1 JavaScript file, 1 Sanity dataset.
 2 to look at, 2 to fix first.
 ```
 

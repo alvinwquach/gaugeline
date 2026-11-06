@@ -39,7 +39,7 @@ and footer and a paint link that redirects, version 0.1.0 prints:
 · Links on this page go through a redirect
     /old-paint (301) ends at /paint
 
-Checked all 6 links, 1 sitemap page.
+Checked all 6 links, 1 image, 1 sitemap page.
 2 to look at, 1 to fix first.
 ```
 
@@ -69,7 +69,7 @@ Against the invented `images` fixture, a haberdashery with 40 images, version 0.
 · Images use older, heavier file formats
     16 of 20 sampled images are JPEG, PNG or GIF only: /img/heavy.jpg, /wp-content/uploads/2019/05/old-sign.jpg, /img/divider.png and 13 more
 
-Checked 20 of 40 images, 1 sitemap page.
+Checked 20 of 41 images, 1 sitemap page.
 6 to look at, 1 to fix first.
 ```
 
@@ -105,7 +105,7 @@ Against an invented bakery's page, replayed from a recording of the store answer
 ! The iPhone app banner promotes a different app
     apple-itunes-app names app-id=6440000009; the App Store link is id6440000001
 
-Checked 1 sitemap page, all 4 app store links.
+Checked 1 image, 1 sitemap page, all 4 app store links.
 3 to look at, 2 to fix first.
 ```
 
@@ -146,7 +146,7 @@ advertises four feeds, the run requests 25 sitemap pages and 3 feeds. It reports
 ! Your sitemap lists old addresses that redirect
     1 of 25 sampled sitemap entries redirect: /old-menu (301 to /menu/01)
 
-Checked 25 of 30 sitemap pages, 3 of 4 feeds.
+Checked 1 image, 25 of 30 sitemap pages, 3 of 4 feeds.
 3 to look at, 2 to fix first.
 ```
 
@@ -201,7 +201,7 @@ version 0.1.0 prints:
 · Your DMARC policy only watches
     _dmarc.bellwether.test: "v=DMARC1; p=none; rua=mailto:dmarc@bellwether.test"
 
-Checked 1 sitemap page.
+Checked 1 image, 1 sitemap page.
 2 to look at, none to fix first.
 ```
 
