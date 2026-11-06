@@ -106,49 +106,55 @@ export async function* readLive(
   const lines = createInterface({ input: stream, crlfDelay: Infinity });
   let read: LiveRead | undefined;
   let columns: { url: number; metric?: number; status?: number } | undefined;
-  for await (const raw of lines) {
-    const line = read === undefined ? raw.replace(/^\uFEFF/, "") : raw;
-    if (read === undefined) {
-      if (line.trim() === "") continue;
-      read = detectLiveFormat(line);
-      onFormat?.(read);
-      if (read.format === "crawl" || read.format === "search-console") {
-        const header = (parseCsv(line)[0]?.cells ?? []).map((c) => c.trim().toLowerCase());
-        const url = header.findIndex((h) =>
-          ["address", "top pages", "page", "pages", "url"].includes(h),
-        );
-        const metric = read.metric ? header.indexOf(read.metric) : -1;
-        const status = header.indexOf("status code");
-        columns = {
-          url: Math.max(0, url),
-          ...(metric >= 0 ? { metric } : {}),
-          ...(status >= 0 ? { status } : {}),
-        };
+  // Closed however the reading ends: at the end, on an error, or when the caller stops early.
+  try {
+    for await (const raw of lines) {
+      const line = read === undefined ? raw.replace(/^\uFEFF/, "") : raw;
+      if (read === undefined) {
+        if (line.trim() === "") continue;
+        read = detectLiveFormat(line);
+        onFormat?.(read);
+        if (read.format === "crawl" || read.format === "search-console") {
+          const header = (parseCsv(line)[0]?.cells ?? []).map((c) => c.trim().toLowerCase());
+          const url = header.findIndex((h) =>
+            ["address", "top pages", "page", "pages", "url"].includes(h),
+          );
+          const metric = read.metric ? header.indexOf(read.metric) : -1;
+          const status = header.indexOf("status code");
+          columns = {
+            url: Math.max(0, url),
+            ...(metric >= 0 ? { metric } : {}),
+            ...(status >= 0 ? { status } : {}),
+          };
+          continue;
+        }
+      }
+      if (read.format === "sitemap") {
+        for (const m of line.matchAll(/<loc>\s*([^<]+?)\s*<\/loc>/gi))
+          if (m[1]) yield { url: m[1].replace(/&amp;/g, "&") };
         continue;
       }
+      if (read.format === "list") {
+        const url = line.trim();
+        if (url !== "" && !url.startsWith("#")) yield { url };
+        continue;
+      }
+      const cells = parseCsv(line)[0]?.cells ?? [];
+      const url = cells[columns?.url ?? 0]?.trim() ?? "";
+      if (url === "") continue;
+      if (columns?.status !== undefined) {
+        const status = cells[columns.status]?.trim();
+        if (status !== undefined && status !== "" && status !== "200") continue;
+      }
+      const metric =
+        columns?.metric !== undefined
+          ? Number((cells[columns.metric] ?? "").replace(/[,%\s]/g, ""))
+          : Number.NaN;
+      yield Number.isFinite(metric) ? { url, metric } : { url };
     }
-    if (read.format === "sitemap") {
-      for (const m of line.matchAll(/<loc>\s*([^<]+?)\s*<\/loc>/gi))
-        if (m[1]) yield { url: m[1].replace(/&amp;/g, "&") };
-      continue;
-    }
-    if (read.format === "list") {
-      const url = line.trim();
-      if (url !== "" && !url.startsWith("#")) yield { url };
-      continue;
-    }
-    const cells = parseCsv(line)[0]?.cells ?? [];
-    const url = cells[columns?.url ?? 0]?.trim() ?? "";
-    if (url === "") continue;
-    if (columns?.status !== undefined) {
-      const status = cells[columns.status]?.trim();
-      if (status !== undefined && status !== "" && status !== "200") continue;
-    }
-    const metric =
-      columns?.metric !== undefined
-        ? Number((cells[columns.metric] ?? "").replace(/[,%\s]/g, ""))
-        : Number.NaN;
-    yield Number.isFinite(metric) ? { url, metric } : { url };
+  } finally {
+    lines.close();
+    stream.destroy();
   }
 }
 

@@ -75,66 +75,75 @@ export async function readRankExport(input: Readable | string): Promise<RankExpo
   let range: string | undefined;
   let rows = 0;
   const worth = new Map<string, Worth>();
-  for await (const raw of lines) {
-    const line = raw.replace(/^\uFEFF/, "");
-    if (columns === undefined) {
-      if (line.trim() === "") continue;
-      const r = RANGE.exec(line);
-      if (r?.[1]) {
-        range = r[1].trim();
+  // A ConfigError mid-file (the Queries tab) must still close the file: Windows can't remove an
+  // open one, and a long-running caller would leak the handle.
+  try {
+    for await (const raw of lines) {
+      const line = raw.replace(/^\uFEFF/, "");
+      if (columns === undefined) {
+        if (line.trim() === "") continue;
+        const r = RANGE.exec(line);
+        if (r?.[1]) {
+          range = r[1].trim();
+          continue;
+        }
+        const header = parseCsv(line)[0]?.cells ?? [];
+        const found: Partial<Record<Field, number>> = {};
+        header.forEach((h, i) => {
+          const f = RANK_COLUMNS[normaliseHeader(h)];
+          if (f && found[f] === undefined) found[f] = i;
+        });
+        if (found.page === undefined) {
+          if (found.query !== undefined)
+            throw new ConfigError(
+              "--rank: this is a Search Console Queries export; it has no page addresses.",
+              {
+                hint: "In Search Console's Performance report, open the Pages tab and export that.",
+              },
+            );
+          throw new ConfigError(`--rank: no page column. Headers: ${header.join(", ")}.`, {
+            hint: "Use a Search Console Pages export, or a rank export with a URL and a Position column.",
+          });
+        }
+        if (
+          found.clicks === undefined &&
+          found.impressions === undefined &&
+          found.position === undefined
+        )
+          throw new ConfigError("--rank: no Clicks, Impressions or Position column.", {
+            hint: "Use a Search Console Pages export, or a rank export with a URL and a Position column.",
+          });
+        source =
+          found.clicks !== undefined || found.impressions !== undefined
+            ? "search-console"
+            : "rank-export";
+        columns = found;
         continue;
       }
-      const header = parseCsv(line)[0]?.cells ?? [];
-      const found: Partial<Record<Field, number>> = {};
-      header.forEach((h, i) => {
-        const f = RANK_COLUMNS[normaliseHeader(h)];
-        if (f && found[f] === undefined) found[f] = i;
-      });
-      if (found.page === undefined) {
-        if (found.query !== undefined)
-          throw new ConfigError(
-            "--rank: this is a Search Console Queries export; it has no page addresses.",
-            { hint: "In Search Console's Performance report, open the Pages tab and export that." },
-          );
-        throw new ConfigError(`--rank: no page column. Headers: ${header.join(", ")}.`, {
-          hint: "Use a Search Console Pages export, or a rank export with a URL and a Position column.",
-        });
-      }
-      if (
-        found.clicks === undefined &&
-        found.impressions === undefined &&
-        found.position === undefined
-      )
-        throw new ConfigError("--rank: no Clicks, Impressions or Position column.", {
-          hint: "Use a Search Console Pages export, or a rank export with a URL and a Position column.",
-        });
-      source =
-        found.clicks !== undefined || found.impressions !== undefined
-          ? "search-console"
-          : "rank-export";
-      columns = found;
-      continue;
+      const cells = parseCsv(line)[0]?.cells ?? [];
+      const key = coverageKey(cells[columns.page ?? 0] ?? "");
+      if (!key || (cells[columns.page ?? 0] ?? "").trim() === "") continue;
+      rows++;
+      const clicks = parseNumber(cells[columns.clicks ?? -1]);
+      const impressions = parseNumber(cells[columns.impressions ?? -1]);
+      const position = parseNumber(cells[columns.position ?? -1]);
+      const had = worth.get(key);
+      const best = (a?: number, b?: number) =>
+        a === undefined || a <= 0 ? b : b === undefined || b <= 0 ? a : Math.min(a, b);
+      const sum = (a?: number, b?: number) =>
+        a === undefined && b === undefined ? undefined : (a ?? 0) + (b ?? 0);
+      const next: Worth = { source };
+      const c = sum(had?.clicks, clicks);
+      const i = sum(had?.impressions, impressions);
+      const p = best(had?.position, position);
+      if (c !== undefined) next.clicks = c;
+      if (i !== undefined) next.impressions = i;
+      if (p !== undefined && p > 0) next.position = p;
+      worth.set(key, next);
     }
-    const cells = parseCsv(line)[0]?.cells ?? [];
-    const key = coverageKey(cells[columns.page ?? 0] ?? "");
-    if (!key || (cells[columns.page ?? 0] ?? "").trim() === "") continue;
-    rows++;
-    const clicks = parseNumber(cells[columns.clicks ?? -1]);
-    const impressions = parseNumber(cells[columns.impressions ?? -1]);
-    const position = parseNumber(cells[columns.position ?? -1]);
-    const had = worth.get(key);
-    const best = (a?: number, b?: number) =>
-      a === undefined || a <= 0 ? b : b === undefined || b <= 0 ? a : Math.min(a, b);
-    const sum = (a?: number, b?: number) =>
-      a === undefined && b === undefined ? undefined : (a ?? 0) + (b ?? 0);
-    const next: Worth = { source };
-    const c = sum(had?.clicks, clicks);
-    const i = sum(had?.impressions, impressions);
-    const p = best(had?.position, position);
-    if (c !== undefined) next.clicks = c;
-    if (i !== undefined) next.impressions = i;
-    if (p !== undefined && p > 0) next.position = p;
-    worth.set(key, next);
+  } finally {
+    lines.close();
+    stream.destroy();
   }
   if (columns === undefined) throw new ConfigError("--rank: the export is empty.");
   return { worth, source, ...(range ? { range } : {}), rows };

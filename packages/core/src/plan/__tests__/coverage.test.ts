@@ -110,6 +110,13 @@ describe("pages with nowhere to go: integration (the invented keyword map agains
 });
 
 describe("pages with nowhere to go: edge cases", () => {
+  it("the file is closed when the caller stops reading early", async () => {
+    const stream = new Readable({ read() {} });
+    stream.push("/a\n/b\n/c\n");
+    for await (const u of readLive(stream)) if (u.url === "/a") break;
+    expect(stream.destroyed).toBe(true);
+  });
+
   it("a live address covered only by a row's Legacy URL is covered", async () => {
     const out = await checkCoverage(
       [row(2, "/new", "/old\n/older")],

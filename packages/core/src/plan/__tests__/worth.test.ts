@@ -165,6 +165,14 @@ describe("worth: edge cases", () => {
     );
   });
 
+  it("the file is closed when reading stops on an error (Windows can't remove an open file)", async () => {
+    // A stream that never ends by itself, like a large file still being read.
+    const stream = new Readable({ read() {} });
+    stream.push("Top queries,Clicks\nbilling,5\n");
+    await expect(readRankExport(stream)).rejects.toThrow(ConfigError);
+    expect(stream.destroyed).toBe(true);
+  });
+
   it("position 0 or missing while clicks exist: sorted by clicks, shown as unknown", async () => {
     const r = await readRankExport("Page,Clicks,Position\n/a,40,0\n/b,90,\n/c,10,2\n");
     const out = rankUncovered([uncovered("/c"), uncovered("/a"), uncovered("/b")], r);
