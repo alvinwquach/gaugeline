@@ -24,6 +24,10 @@ export interface RunFlags {
   since?: "last";
   /** -i, --interactive: open the terminal view after the run. */
   interactive: boolean;
+  /** Channel addresses given as flags (the environment can supply them too). */
+  notify: { slack?: string; discord?: string; webhook?: string };
+  notifyOn: "any" | "high" | "always";
+  reportUrl?: string;
   ci: boolean;
   json: boolean;
   noOpen: boolean;
@@ -90,6 +94,15 @@ export function parseCliArgs(
     return { kind: "error", message: "Choose --quiet or --verbose, not both.", verbose: false };
   }
   if (values.help === true) return { kind: "help", verbose, command };
+  const notifyOn = values["notify-on"] ?? "any";
+  if (notifyOn !== "any" && notifyOn !== "high" && notifyOn !== "always") {
+    return {
+      kind: "error",
+      message: `--notify-on accepts any, high or always, not "${String(notifyOn)}".`,
+      hint: UNKNOWN_FLAG_HINT,
+      verbose,
+    };
+  }
   if (values.since !== undefined && values.since !== "last") {
     return {
       kind: "error",
@@ -137,6 +150,13 @@ export function parseCliArgs(
     command,
     dns: values.dns === true,
     interactive: values.interactive === true,
+    notify: {
+      ...(typeof values.slack === "string" ? { slack: values.slack } : {}),
+      ...(typeof values.discord === "string" ? { discord: values.discord } : {}),
+      ...(typeof values.webhook === "string" ? { webhook: values.webhook } : {}),
+    },
+    notifyOn,
+    ...(typeof values["report-url"] === "string" ? { reportUrl: values["report-url"] } : {}),
     ...(values.since === "last" ? { since: "last" as const } : {}),
     address: address.url.href,
     input,

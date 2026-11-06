@@ -64,10 +64,10 @@ describe("check-surface: rules", () => {
 
   it("add a flag with a minor changeset: ok", () => {
     const after = clone(lock);
-    after.flags.check = [...(after.flags.check ?? []), "slack"].sort();
+    after.flags.check = [...(after.flags.check ?? []), "teams"].sort();
     expect(run(lock, after, "minor").ok).toBe(true);
     expect(run(lock, after, "patch").problems).toEqual([
-      "--slack was added: that needs a minor changeset, not patch.",
+      "--teams was added: that needs a minor changeset, not patch.",
     ]);
   });
 
@@ -145,12 +145,12 @@ function surfaceScript(
 describe("check-surface script: integration", () => {
   it("add a flag with a minor changeset: exit 0 and the lock file is updated", () => {
     const current = clone(lock);
-    current.flags.check = [...(current.flags.check ?? []), "slack"].sort();
+    current.flags.check = [...(current.flags.check ?? []), "teams"].sort();
     const r = surfaceScript({
       lock,
       current,
       version: "0.1.0",
-      changesets: { "slack.md": '---\n"gaugeline": minor\n---\n\nSends results to Slack.\n' },
+      changesets: { "teams.md": '---\n"gaugeline": minor\n---\n\nSends results to Teams.\n' },
     });
     expect(r.status, r.stderr).toBe(0);
     expect(
@@ -176,10 +176,10 @@ describe("check-surface script: integration", () => {
 
   it("the Release pull request (no changesets left) compares against the version bump instead", () => {
     const current = clone(lock);
-    current.flags.check = [...(current.flags.check ?? []), "slack"].sort();
+    current.flags.check = [...(current.flags.check ?? []), "teams"].sort();
     const r = surfaceScript({ lock, current, version: "0.1.0", changesets: {} });
     expect(r.status).toBe(1);
-    expect(r.stderr).toContain("--slack was added: that needs a minor changeset, not none.");
+    expect(r.stderr).toContain("--teams was added: that needs a minor changeset, not none.");
   }, 30_000);
 
   it("--check fails when the committed lock file is out of date, and passes when it is current", () => {

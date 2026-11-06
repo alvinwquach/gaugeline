@@ -45,22 +45,34 @@ Usage: gaugeline <address> [options]
 Check a website the way search engines and visitors see it. Read-only.
 
 Options:
-      --ci               Exit 1 when a "Fix this first" finding is found [CI]
-      --json             Print the result as JSON on stdout, and nothing else
-      --no-open          Do not open anything in a browser
-      --allow-private    Allow addresses on this computer or a private network,
-                         such as 127.0.0.1 or 192.168.x.x
-      --dns              Also read the domain's mail records (SPF and DMARC)
-                         from DNS
-      --since <value>    Compare with this site's last run and save this one;
-                         the only value is last (.gaugeline/last-run/)
-  -i, --interactive      Open a terminal view of the results to move through,
-                         filter and dismiss findings
-      --quiet            Print only results and errors
-      --verbose          Show each request, and technical detail when something
-                         goes wrong
-  -h, --help             Show this help and exit
-  -v, --version          Print the version and exit
+      --ci                    Exit 1 when a "Fix this first" finding is found
+                              [CI]
+      --json                  Print the result as JSON on stdout, and nothing
+                              else
+      --no-open               Do not open anything in a browser
+      --allow-private         Allow addresses on this computer or a private
+                              network, such as 127.0.0.1 or 192.168.x.x
+      --dns                   Also read the domain's mail records (SPF and
+                              DMARC) from DNS
+      --since <value>         Compare with this site's last run and save this
+                              one; the only value is last (.gaugeline/last-run/)
+  -i, --interactive           Open a terminal view of the results to move
+                              through, filter and dismiss findings
+      --slack <value>         Send a summary to this Slack incoming webhook (or
+                              set GAUGELINE_SLACK_WEBHOOK)
+      --discord <value>       Send an embed to this Discord webhook (or set
+                              GAUGELINE_DISCORD_WEBHOOK)
+      --webhook <value>       POST the result as JSON to this address (or set
+                              GAUGELINE_WEBHOOK)
+      --notify-on <value>     When to send: any (something was found, the
+                              default), high or always
+      --report-url <value>    Link each message to a hosted copy of the report
+                              at this address
+      --quiet                 Print only results and errors
+      --verbose               Show each request, and technical detail when
+                              something goes wrong
+  -h, --help                  Show this help and exit
+  -v, --version               Print the version and exit
 
 Exit codes: 0 ran, 1 --ci with a fix-first finding, 2 could not run
 ```
@@ -146,18 +158,30 @@ Run the launch-day checks: links to preview addresses, the share picture, an
 indexable staging site, noindex and robots.txt. Read-only.
 
 Options:
-      --ci               Exit 1 when a "Fix this first" finding is found [CI]
-      --json             Print the result as JSON on stdout, and nothing else
-      --no-open          Do not open anything in a browser
-      --allow-private    Allow addresses on this computer or a private network,
-                         such as 127.0.0.1 or 192.168.x.x
-      --dns              Also read the domain's mail records (SPF and DMARC)
-                         from DNS
-      --quiet            Print only results and errors
-      --verbose          Show each request, and technical detail when something
-                         goes wrong
-  -h, --help             Show this help and exit
-  -v, --version          Print the version and exit
+      --ci                    Exit 1 when a "Fix this first" finding is found
+                              [CI]
+      --json                  Print the result as JSON on stdout, and nothing
+                              else
+      --no-open               Do not open anything in a browser
+      --allow-private         Allow addresses on this computer or a private
+                              network, such as 127.0.0.1 or 192.168.x.x
+      --dns                   Also read the domain's mail records (SPF and
+                              DMARC) from DNS
+      --slack <value>         Send a summary to this Slack incoming webhook (or
+                              set GAUGELINE_SLACK_WEBHOOK)
+      --discord <value>       Send an embed to this Discord webhook (or set
+                              GAUGELINE_DISCORD_WEBHOOK)
+      --webhook <value>       POST the result as JSON to this address (or set
+                              GAUGELINE_WEBHOOK)
+      --notify-on <value>     When to send: any (something was found, the
+                              default), high or always
+      --report-url <value>    Link each message to a hosted copy of the report
+                              at this address
+      --quiet                 Print only results and errors
+      --verbose               Show each request, and technical detail when
+                              something goes wrong
+  -h, --help                  Show this help and exit
+  -v, --version               Print the version and exit
 
 Exit codes: 0 ran, 1 --ci with a fix-first finding, 2 could not run
 ```
@@ -169,19 +193,24 @@ between the markers; CI fails when it differs from the flag table.
 
 <!-- flags:start -->
 
-| Flag                  | Does                                                                                               | Environment variable | Since |
-| --------------------- | -------------------------------------------------------------------------------------------------- | -------------------- | ----- |
-| `--ci`                | Exit 1 when a "Fix this first" finding is found                                                    | `CI`                 | 0.1.0 |
-| `--json`              | Print the result as JSON on stdout, and nothing else                                               |                      | 0.1.0 |
-| `--no-open`           | Do not open anything in a browser                                                                  |                      | 0.1.0 |
-| `--allow-private`     | Allow addresses on this computer or a private network, such as 127.0.0.1 or 192.168.x.x            |                      | 0.1.0 |
-| `--dns`               | Also read the domain's mail records (SPF and DMARC) from DNS                                       |                      | 0.2.0 |
-| `--since <value>`     | Compare with this site's last run and save this one; the only value is last (.gaugeline/last-run/) |                      | 0.2.0 |
-| `-i`, `--interactive` | Open a terminal view of the results to move through, filter and dismiss findings                   |                      | 0.2.0 |
-| `--quiet`             | Print only results and errors                                                                      |                      | 0.1.0 |
-| `--verbose`           | Show each request, and technical detail when something goes wrong                                  |                      | 0.1.0 |
-| `-h`, `--help`        | Show this help and exit                                                                            |                      | 0.1.0 |
-| `-v`, `--version`     | Print the version and exit                                                                         |                      | 0.1.0 |
+| Flag                   | Does                                                                                               | Environment variable | Since |
+| ---------------------- | -------------------------------------------------------------------------------------------------- | -------------------- | ----- |
+| `--ci`                 | Exit 1 when a "Fix this first" finding is found                                                    | `CI`                 | 0.1.0 |
+| `--json`               | Print the result as JSON on stdout, and nothing else                                               |                      | 0.1.0 |
+| `--no-open`            | Do not open anything in a browser                                                                  |                      | 0.1.0 |
+| `--allow-private`      | Allow addresses on this computer or a private network, such as 127.0.0.1 or 192.168.x.x            |                      | 0.1.0 |
+| `--dns`                | Also read the domain's mail records (SPF and DMARC) from DNS                                       |                      | 0.2.0 |
+| `--since <value>`      | Compare with this site's last run and save this one; the only value is last (.gaugeline/last-run/) |                      | 0.2.0 |
+| `-i`, `--interactive`  | Open a terminal view of the results to move through, filter and dismiss findings                   |                      | 0.2.0 |
+| `--slack <value>`      | Send a summary to this Slack incoming webhook (or set GAUGELINE_SLACK_WEBHOOK)                     |                      | 0.2.0 |
+| `--discord <value>`    | Send an embed to this Discord webhook (or set GAUGELINE_DISCORD_WEBHOOK)                           |                      | 0.2.0 |
+| `--webhook <value>`    | POST the result as JSON to this address (or set GAUGELINE_WEBHOOK)                                 |                      | 0.2.0 |
+| `--notify-on <value>`  | When to send: any (something was found, the default), high or always                               |                      | 0.2.0 |
+| `--report-url <value>` | Link each message to a hosted copy of the report at this address                                   |                      | 0.2.0 |
+| `--quiet`              | Print only results and errors                                                                      |                      | 0.1.0 |
+| `--verbose`            | Show each request, and technical detail when something goes wrong                                  |                      | 0.1.0 |
+| `-h`, `--help`         | Show this help and exit                                                                            |                      | 0.1.0 |
+| `-v`, `--version`      | Print the version and exit                                                                         |                      | 0.1.0 |
 
 <!-- flags:end -->
 

@@ -174,6 +174,10 @@ export { SANITY_QUERY, readDataset, sanityQueryUrl, sanityRefs } from "./sanity.
 export type { DatasetRead, SanityRef } from "./sanity.js";
 export { readScripts } from "./scripts.js";
 export { EMAIL_PRESET, LAUNCH_PRESET } from "./presets.js";
+export { CHANNELS, NOTIFY_ON, notifyAll, resolveTargets, shouldNotify } from "./notify/index.js";
+export type { Channel, NotifyOn, Sent, Target } from "./notify/index.js";
+export { discordPayload, slackPayload, webhookPayload } from "./notify/payloads.js";
+export { NOTIFY_TIMEOUT_MS, postJson, safeTarget } from "./notify/post.js";
 export { escapeHtml, renderLookedRight, renderReport, renderSampled } from "./report/html.js";
 export type { ReportInput } from "./report/html.js";
 export {
