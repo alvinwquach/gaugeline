@@ -37,7 +37,7 @@
     "what": "Links to other pages on the site return an error (404, 410 or 5xx).",
     "why": "Visitors who click hit a dead end, and search engines take broken links as a sign the site is neglected.",
     "fix": "Point each link at the page's current address, or remove it. When a page moved, add a 301 redirect from the old address.",
-    "tech": "a sampled same-site a[href] ends in 4xx (not 401, 403 or 429) or 5xx. A 200 page that says \"not found\" (a soft 404) is out of scope"
+    "tech": "a sampled same-site a[href] ends in 4xx or 5xx. 401, 403, 429 and 503 with Retry-After are refusals: listed as could not check, never broken. A 200 page that says \"not found\" (a soft 404) is out of scope"
   },
   {
     "id": "canonical-elsewhere",
@@ -217,7 +217,7 @@
     "what": "An image on the site (or the original behind a Next.js /_next/image address) returns an error.",
     "why": "Visitors see an empty box or a broken-image icon where a product photo or a diagram should be.",
     "fix": "Upload the image again, or point the img at its current address. For /_next/image, check the file named by url= exists.",
-    "tech": "a sampled same-site img src answers 4xx or 5xx (images on other hosts are not requested)"
+    "tech": "a sampled same-site img src answers 4xx or 5xx (images on other hosts are not requested); a refusal (401, 403, 429, 503 with Retry-After) is listed as could not check"
   },
   {
     "id": "jsonld-404",
@@ -387,7 +387,7 @@
     "what": "Pages listed in the sitemap return an error (4xx or 5xx).",
     "why": "The sitemap is where you tell search engines which pages matter. Dead entries waste their visits and make them trust the sitemap less.",
     "fix": "Remove the dead addresses from the sitemap, or restore the pages. A generated sitemap usually means a deleted page is still in the CMS or the route list.",
-    "tech": "sampled sitemap entries return 4xx or 5xx"
+    "tech": "sampled sitemap entries return 4xx or 5xx; a refusal (401, 403, 429, 503 with Retry-After) is listed as could not check"
   },
   {
     "id": "staging-indexable",
@@ -838,6 +838,16 @@
     "why": "A renamed or replaced app can mean the link points at an old listing, or at someone else's app.",
     "fix": "Check the link points at the right listing. If the app was renamed on purpose, update the expected name.",
     "tech": "the store's app name differs from the expected app name (case, punctuation and a leading \"The\" ignored); only runs when an expected name is set"
+  },
+  {
+    "id": "blocked",
+    "severity": "low",
+    "area": "Search & sharing",
+    "title": "The site wouldn't let Gaugeline read the page",
+    "what": "The page answered with a refusal (401, 403, 429, 503 with Retry-After) or a bot-challenge page instead of its content.",
+    "why": "A firewall or bot protection is in front of the site. That isn't a broken site, but it can also stop search engines' and AI assistants' crawlers, and nothing else could be checked.",
+    "fix": "If the site should be readable by crawlers, allow them in the firewall or bot-protection settings. Gaugeline never retries or disguises itself to get through.",
+    "tech": "The final answer for the page is 401, 403, 429, 503 with a Retry-After header, or a 200 under 60 words with a known challenge marker (Just a moment, Attention Required, cf-chl, a captcha form). Every check that needs the page is then listed as could not check; only robots.txt and DNS checks run"
   },
   {
     "id": "canonical-missing",

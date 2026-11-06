@@ -143,7 +143,8 @@ describe("docs examples: integration", () => {
           .filter((id) => id !== "canonical-elsewhere" && !EMAIL_PRESET.includes(id)),
         startedAt: "2020-02-02T02:02:02.000Z",
         url: "https://shop.example/",
-        schema: 1,
+        schema: 2,
+        couldNotCheck: [],
         findings: [
           {
             url: "https://shop.example/",

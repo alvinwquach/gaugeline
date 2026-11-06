@@ -189,6 +189,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           findings: result.findings,
           passed: result.passed,
           failed: [...result.failed.map((f) => f.id), ...dnsSkipped],
+          couldNotCheck: result.couldNotCheck,
         });
         io.stdout.write(`${JSON.stringify(json, null, 2)}\n`);
       } else {
@@ -197,6 +198,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
             result,
             sampled: budget.summary(),
             color: useColor(io.stdout, env),
+            origin: new URL(snapshot.finalUrl).origin,
             ...(dnsSkipped.length > 0 ? { notRun: { ids: dnsSkipped, hint: DNS_HINT } } : {}),
           }),
         );

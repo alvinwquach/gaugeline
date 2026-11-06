@@ -7,8 +7,8 @@ what will not change without a major version, and what can change at any time.
 
 - **Commands and flags**, as listed on the Options page and each command's docs page.
 - **Exit codes**: 0 (ran), 1 (`--ci` and a "Fix this first" finding), 2 (could not run).
-- **The `--json` shape**, identified by its schema number (`"schema": 1`, published as
-  `packages/core/schema/result.v1.json`).
+- **The `--json` shape**, identified by its schema number (`"schema": 2`, published as
+  `packages/core/schema/result.v2.json`).
 - **Check ids**, such as `canonical-elsewhere`. An id that has shipped is never reused for a
   different rule (`docs/check-ids.lock.json`).
 - **Environment variable names**, such as `CI`, `NO_COLOR` and later `GAUGELINE_SLACK_WEBHOOK`.

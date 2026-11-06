@@ -6,6 +6,11 @@ import {
 } from "@gaugeline/core";
 import { paint } from "./color.js";
 
+function firstFew(items: readonly string[], n = 3): string {
+  const shown = items.slice(0, n).join(", ");
+  return items.length > n ? `${shown} and ${items.length - n} more` : shown;
+}
+
 const MARK = { high: "✗", medium: "!", low: "·" } as const;
 const TICK = "✓";
 
@@ -26,10 +31,20 @@ export interface TerminalReport {
   color: boolean;
   /** Checks left out of this run on purpose, with what to do to run them (DNS without --dns). */
   notRun?: { ids: readonly string[]; hint: string };
+  /** The checked page's origin: same-site addresses in "?" rows are shown as paths. */
+  origin?: string;
 }
 
 /** The plain-English report on stdout. Evidence is indented and greyed under each finding. */
-export function formatTerminal({ result, sampled, color, notRun }: TerminalReport): string {
+export function formatTerminal({ result, sampled, color, notRun, origin }: TerminalReport): string {
+  const short = (url: string) => {
+    try {
+      const u = new URL(url);
+      return origin && u.origin === origin ? `${u.pathname}${u.search}` : url;
+    } catch {
+      return url;
+    }
+  };
   const p = paint(color);
   const lines: string[] = [];
   for (const f of result.findings) {
@@ -48,6 +63,20 @@ export function formatTerminal({ result, sampled, color, notRun }: TerminalRepor
       `${p.yellow("?")} ${failedLine(result.failed.length)}: ${result.failed.map((f) => f.id).join(", ")}`,
     );
   }
+  // One "?" row per check that could not read what it needed (a refused page or sample).
+  const refused = new Map<string, { reason: string; urls: string[] }[]>();
+  for (const c of result.couldNotCheck ?? []) {
+    const rows = refused.get(c.id) ?? [];
+    const row = rows.find((r) => r.reason === c.reason);
+    if (row) row.urls.push(short(c.url));
+    else rows.push({ reason: c.reason, urls: [short(c.url)] });
+    refused.set(c.id, rows);
+  }
+  for (const [id, rows] of refused)
+    for (const r of rows)
+      lines.push(
+        `${p.yellow("?")} ${id} could not be checked: ${r.reason}${r.urls.length > 1 || !r.reason.startsWith("the page") ? ` (${firstFew(r.urls)})` : ""}`,
+      );
   if (notRun && notRun.ids.length > 0) {
     lines.push(`${p.yellow("?")} ${failedLine(notRun.ids.length)}: ${notRun.ids.join(", ")}`);
     lines.push(`    ${p.grey(notRun.hint)}`);

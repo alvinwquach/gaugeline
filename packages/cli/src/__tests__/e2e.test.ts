@@ -55,7 +55,7 @@ afterAll(() => site.close());
 
 const schema = JSON.parse(
   readFileSync(
-    fileURLToPath(new URL("../../../core/schema/result.v1.json", import.meta.url)),
+    fileURLToPath(new URL("../../../core/schema/result.v2.json", import.meta.url)),
     "utf8",
   ),
 ) as object;
@@ -97,7 +97,7 @@ describe("cli: e2e (built bin against the fixture server)", () => {
     expect(r.stderr).toContain("refused the connection.");
   });
 
-  it("--json output parses and matches the zod schema and result.v1.json; stdout has no other bytes", async () => {
+  it("--json output parses and matches the zod schema and result.v2.json; stdout has no other bytes", async () => {
     const r = await runBin([`${site.origin}/wrong-canonical`, "--json"]);
     expect(r.status).toBe(0);
     const parsed: unknown = JSON.parse(r.stdout);
@@ -111,7 +111,7 @@ describe("cli: e2e (built bin against the fixture server)", () => {
     ]);
   });
 
-  it("--json with zero findings validates against result.v1.json (deferred from G02a)", async () => {
+  it("--json with zero findings validates against result.v2.json (deferred from G02a)", async () => {
     const r = await runBin([`${site.origin}/`, "--json"]);
     const parsed = JSON.parse(r.stdout) as { findings: unknown[] };
     expect(parsed.findings).toEqual([]);
