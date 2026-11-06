@@ -31,6 +31,10 @@ export const LIMITS = Object.freeze({
   accessTables: 20,
   /** Addresses in hidden sections asked for their status and robots directives. */
   hiddenPages: 5,
+  /** Conventional Next.js draft and preview routes asked once each, with no secret. */
+  draftRoutes: 4,
+  /** Framework addresses (/_next/, ?_rsc=) found and ignored: never requested, so the limit is 0. */
+  frameworkAddresses: 0,
   structuredDataAddresses: 12,
   concurrency: 5,
   redirectHops: 10,
@@ -55,6 +59,8 @@ export type BudgetKind =
   | "sanityDatasets"
   | "accessTables"
   | "hiddenPages"
+  | "draftRoutes"
+  | "frameworkAddresses"
   | "structuredDataAddresses";
 
 /** Report order. */
@@ -74,6 +80,8 @@ export const BUDGET_KINDS = [
   "sanityDatasets",
   "accessTables",
   "hiddenPages",
+  "draftRoutes",
+  "frameworkAddresses",
   "structuredDataAddresses",
 ] as const satisfies readonly BudgetKind[];
 
@@ -136,6 +144,8 @@ const NOUNS: Record<BudgetKind, [singular: string, plural: string]> = {
   sanityDatasets: ["Sanity dataset", "Sanity datasets"],
   accessTables: ["database table", "database tables"],
   hiddenPages: ["hidden page", "hidden pages"],
+  draftRoutes: ["draft route", "draft routes"],
+  frameworkAddresses: ["framework address", "framework addresses"],
   structuredDataAddresses: ["address in structured data", "addresses in structured data"],
 };
 
@@ -147,10 +157,15 @@ export function formatSampleSummary(summary: BudgetSummary): string {
   const parts: string[] = [];
   for (const kind of BUDGET_KINDS) {
     const { sampled, found } = summary[kind];
-    if (found === 0) continue;
+    if (found === 0 || kind === "frameworkAddresses") continue;
     const [one, many] = NOUNS[kind];
     if (sampled === found) parts.push(found === 1 ? `1 ${one}` : `all ${found} ${many}`);
     else parts.push(`${sampled} of ${found} ${found === 1 ? one : many}`);
   }
-  return parts.length === 0 ? "" : `Checked ${parts.join(", ")}.`;
+  const checked = parts.length === 0 ? "" : `Checked ${parts.join(", ")}.`;
+  // Framework addresses are never requested: they are counted, not checked.
+  const ignored = summary.frameworkAddresses.found;
+  const note =
+    ignored === 0 ? "" : `${ignored} framework address${ignored === 1 ? "" : "es"} ignored.`;
+  return [checked, note].filter((s) => s !== "").join(" ");
 }

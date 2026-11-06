@@ -19,7 +19,7 @@ import type { FactsConfig } from "./facts/types.js";
 import type { PaymentsConfig } from "./payments/types.js";
 import type { SchemaRules } from "./schema-rules.js";
 import { lazyImageSample } from "./checks/images/refs.js";
-import { lazyLinkSample, linkCandidates } from "./links.js";
+import { frameworkLinks, lazyLinkSample, linkCandidates } from "./links.js";
 import type { RunExpectations } from "./model.js";
 import { lazySiteContext } from "./site-context.js";
 import { buildSnapshot, type PageSnapshot } from "./snapshot.js";
@@ -72,6 +72,7 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
   sink({ step: "robots-sitemap" });
   // The same candidates the link checks sample: same-site http(s), no #fragment of this page.
   const sameSite = dedupeUrls(linkCandidates(snapshot).map((l) => l.url));
+  budget.take("frameworkAddresses", frameworkLinks(snapshot));
   sink({ step: "links", count: Math.min(sameSite.length, budget.remaining("links")) });
   sink({ step: "scripts" });
   const images = lazyImageSample({ page: snapshot, fetcher: opts.fetcher, budget });

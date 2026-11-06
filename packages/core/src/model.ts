@@ -103,6 +103,11 @@ export interface CheckContext {
   languageRules?: LanguageRules;
   /** The business's declared facts (gaugeline.facts.json). */
   facts?: FactsConfig;
+  /**
+   * When documents last changed in a connected content source, by page address. Absent until a
+   * source is connected (branch 30): next-stale-after-publish is then unchecked.
+   */
+  contentChanges?: () => Promise<{ url: string; changedAt: Date }[]>;
   /** Sections hidden until launch (gaugeline.hidden.json). */
   hidden?: HiddenConfig;
   /** The business's payment handles and links (gaugeline.payments.json). */

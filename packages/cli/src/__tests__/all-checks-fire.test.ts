@@ -37,6 +37,7 @@ const FIXTURES = [
   "paged-list",
   "load-more",
   "hidden-library",
+  "next-like",
 ];
 
 /**
@@ -63,6 +64,8 @@ const NEEDS_LIVE_STORES = new Set([
   "email-dmarc-none",
   "email-spf-missing",
   "email-spf-multiple",
+  // Needs a content source (branch 30): until then it is never run.
+  "next-stale-after-publish",
 ]);
 
 async function findingsOf(name: string): Promise<string[]> {

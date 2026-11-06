@@ -1,0 +1,8 @@
+{
+  "/api/draft": {
+    "status": 307,
+    "location": "/",
+    "headers": { "set-cookie": "__prerender_bypass=invented-fixture-value; Path=/; HttpOnly; SameSite=None; Secure" }
+  },
+  "/api/preview": { "status": 401, "body": "Invalid token" }
+}

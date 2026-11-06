@@ -174,6 +174,10 @@ export { SANITY_QUERY, readDataset, sanityQueryUrl, sanityRefs } from "./sanity.
 export type { DatasetRead, SanityRef } from "./sanity.js";
 export { readScripts } from "./scripts.js";
 export { EMAIL_PRESET, LAUNCH_PRESET } from "./presets.js";
+export { NEXT_RENDERED_NOTE, isNextSite, readCache } from "./next/detect.js";
+export type { CacheRead } from "./next/detect.js";
+export { isFrameworkUrl } from "./next/framework-urls.js";
+export { frameworkLinks } from "./links.js";
 export { hiddenConfigSchema, isHidden, matchesGlob, overdue } from "./hidden.js";
 export type { HiddenConfig, HiddenSection } from "./hidden.js";
 export { findPagination, mainTextFingerprint, pageNumber } from "./checks/listing/pagination.js";
