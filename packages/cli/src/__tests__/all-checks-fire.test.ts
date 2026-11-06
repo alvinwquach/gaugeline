@@ -34,6 +34,8 @@ const FIXTURES = [
   "leaks",
   "launch-preview",
   "preview-host",
+  "paged-list",
+  "load-more",
 ];
 
 /**

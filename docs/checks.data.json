@@ -60,6 +60,16 @@
     "tech": "As dataset-public, and a type name whose last word is in checks/leaks/private-types.ts (order, inquiry, submission, customer and others); only the type names are read, never the documents. dataset-public is not also reported"
   },
   {
+    "id": "drafts-live",
+    "severity": "high",
+    "area": "Launch day",
+    "title": "Unpublished work is in the live page",
+    "what": "The published HTML carries Sanity draft document ids (drafts.…) or a preview-mode banner.",
+    "why": "Drafts are work nobody approved: prices, announcements or pages that weren't meant to be public yet, readable by anyone who opens the page source.",
+    "fix": "Build the live site with the published perspective (no drafts), turn preview mode off for public requests, and rebuild.",
+    "tech": "Ids matching drafts.<id> in attribute values or as string values inside JSON script blocks (application/json, ld+json, __NEXT_DATA__), not in prose; or visible text such as Preview mode or Exit preview. Only the count and the first id are reported, never document content"
+  },
+  {
     "id": "duplicate-title",
     "severity": "high",
     "area": "Search & sharing",
@@ -218,6 +228,26 @@
     "why": "If that isn't on purpose, the page is invisible in search.",
     "fix": "Remove noindex from pages you want found.",
     "tech": "<meta name=\"robots\" content=\"noindex\">"
+  },
+  {
+    "id": "pagination-same-content",
+    "severity": "high",
+    "area": "Search & sharing",
+    "title": "Page 2 of this list shows page 1 again",
+    "what": "A later page of the list answers, and its main text is identical to the first page's.",
+    "why": "The page parameter is ignored, so every older item is unreachable for visitors and search engines, and the copies count as duplicate pages.",
+    "fix": "Make the list read the page number (often a query parameter the framework drops, or a cache that ignores the query string).",
+    "tech": "At most 2 later pages (from findPagination), fetched with GET inside the links budget; the main text (no header, nav, footer, script or style), whitespace collapsed, hashed with SHA-256, equals page 1's. A later page that answers 4xx/5xx is broken-links' to report"
+  },
+  {
+    "id": "pagination-unreachable",
+    "severity": "high",
+    "area": "Search & sharing",
+    "title": "Page 2 of this list has no address",
+    "what": "The page shows page numbers or a next or load-more control, and the HTML has no address for page 2: the control only works with JavaScript.",
+    "why": "Search engines don't click buttons, so everything after the first page of the list is never found, and nobody can link to it.",
+    "fix": "Give the control a real link (<a href=\"/blog?page=2\">) and add <link rel=\"next\">, keeping the JavaScript on top if you like.",
+    "tech": "Read from the HTML as sent: no link rel=next, no a[rel=next], and no same-site link differing from this address only by ?page=N or /page/N, while a button, [role=button] or href-less a says Next or Load more, or a pagination element shows 2. Infinite scroll with no control at all can't be seen and isn't reported"
   },
   {
     "id": "payment-handle-mismatch",
@@ -388,6 +418,16 @@
     "why": "The page visitors use to decide (the order page, the contact page) leaves out the thing they came for, or shows it only after JavaScript runs, which search engines and assistants may not.",
     "fix": "Put the fact in the page's server-rendered HTML. A fact in an image's description only is not visible text: write it out.",
     "tech": "for each mustAppearOn path among the pages checked, the fact's declared value is in the visible text, a link or JSON-LD of the HTML as sent (image descriptions don't count, and say so)"
+  },
+  {
+    "id": "feed-duplicate",
+    "severity": "medium",
+    "area": "Search & sharing",
+    "title": "Two of your feeds serve the same posts",
+    "what": "Two feeds the page advertises list exactly the same item links.",
+    "why": "Subscribers to one feed get the other's posts (a news feed serving the blog, say), and readers who follow both see everything twice.",
+    "fix": "Point each feed at its own collection, usually a query or category filter that was copied from the other.",
+    "tech": "The advertised feeds read for feed-broken (at most 3), compared as Sets of normalised item links: equal and non-empty, in any order. Sharing most items is not a duplicate"
   },
   {
     "id": "feed-invalid",

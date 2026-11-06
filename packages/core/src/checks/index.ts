@@ -11,6 +11,7 @@ import { canonicalElsewhere } from "./canonical-elsewhere.js";
 import { canonicalMissing } from "./canonical-missing.js";
 import { datasetPrivateTypes } from "./dataset-private-types.js";
 import { datasetPublic } from "./dataset-public.js";
+import { draftsLive } from "./drafts-live.js";
 import { duplicateTitle } from "./duplicate-title.js";
 import { emailDmarcMissing } from "./email-dmarc-missing.js";
 import { emailDmarcNone } from "./email-dmarc-none.js";
@@ -24,6 +25,7 @@ import { factsMatch } from "./facts-match.js";
 import { factsPaymentLink } from "./facts-payment-link.js";
 import { factsPresent } from "./facts-present.js";
 import { feedBroken } from "./feed-broken.js";
+import { feedDuplicate } from "./feed-duplicate.js";
 import { feedInvalid } from "./feed-invalid.js";
 import { feedOversized } from "./feed-oversized.js";
 import { hostDuplicate } from "./host-duplicate.js";
@@ -60,6 +62,8 @@ import { ogImageMissing } from "./og-image-missing.js";
 import { ogImageRelative } from "./og-image-relative.js";
 import { ogUrlMismatch } from "./og-url-mismatch.js";
 import { pageHeavy } from "./page-heavy.js";
+import { paginationSameContent } from "./pagination-same-content.js";
+import { paginationUnreachable } from "./pagination-unreachable.js";
 import { paymentHandleInconsistent } from "./payment-handle-inconsistent.js";
 import { paymentHandleMismatch } from "./payment-handle-mismatch.js";
 import { paymentHandleUnknown } from "./payment-handle-unknown.js";
@@ -102,6 +106,7 @@ export const PAGE_CHECKS = [
   canonicalMissing,
   datasetPrivateTypes,
   datasetPublic,
+  draftsLive,
   duplicateTitle,
   emailDmarcMissing,
   emailDmarcNone,
@@ -115,6 +120,7 @@ export const PAGE_CHECKS = [
   factsPaymentLink,
   factsPresent,
   feedBroken,
+  feedDuplicate,
   feedInvalid,
   feedOversized,
   hostDuplicate,
@@ -151,6 +157,8 @@ export const PAGE_CHECKS = [
   ogImageRelative,
   ogUrlMismatch,
   pageHeavy,
+  paginationSameContent,
+  paginationUnreachable,
   paymentHandleInconsistent,
   paymentHandleMismatch,
   paymentHandleUnknown,

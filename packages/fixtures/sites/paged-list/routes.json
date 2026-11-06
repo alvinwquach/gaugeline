@@ -1,0 +1,4 @@
+{
+  "/news.xml": { "headers": { "content-type": "application/rss+xml" } },
+  "/blog.xml": { "headers": { "content-type": "application/rss+xml" } }
+}
