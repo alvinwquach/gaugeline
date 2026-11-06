@@ -98,6 +98,8 @@ import { sitemapRedirects } from "./sitemap-redirects.js";
 import { stagingIndexable } from "./staging-indexable.js";
 import { stegaLeak } from "./stega-leak.js";
 import { structuredDuplicate } from "./structured-duplicate.js";
+import { tagsDeadRules } from "./tags-dead-rules.js";
+import { tagsDuplicate } from "./tags-duplicate.js";
 import { telFormat } from "./tel-format.js";
 import { tempHostCanonical } from "./temp-host-canonical.js";
 import { tempHostLinks } from "./temp-host-links.js";
@@ -204,6 +206,8 @@ export const PAGE_CHECKS = [
   stagingIndexable,
   stegaLeak,
   structuredDuplicate,
+  tagsDeadRules,
+  tagsDuplicate,
   telFormat,
   tempHostCanonical,
   tempHostLinks,

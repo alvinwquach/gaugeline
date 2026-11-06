@@ -17,6 +17,7 @@ import {
   type Result,
   renderReport,
   exitCodeFor,
+  formatTagSummary,
   resolveAccess,
   type CheckRegistry,
   type DnsReader,
@@ -37,6 +38,7 @@ import {
   readLanguageRules,
   readPayments,
   readSchemaRules,
+  readTags,
 } from "./schema-config.js";
 import { skeletonOnly } from "./skeleton.js";
 import { readLastRun, statePath, writeLastRun } from "./state.js";
@@ -171,6 +173,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       const facts = readFacts(deps.cwd ?? process.cwd());
       const payments = readPayments(deps.cwd ?? process.cwd());
       const hidden = readHidden(deps.cwd ?? process.cwd());
+      const tags = readTags(deps.cwd ?? process.cwd());
       const accessConfig = readAccess(deps.cwd ?? process.cwd());
       // Keys are read from the environment here and go only into request headers.
       const access = accessConfig ? resolveAccess(accessConfig, io.env ?? {}) : undefined;
@@ -207,7 +210,12 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       const registeredIds = new Set(registry.all().map((c) => c.id));
       const dnsSkipped =
         !launch && !args.dns ? EMAIL_PRESET.filter((id) => registeredIds.has(id)) : [];
-      const { snapshot, result, budget } = await checkSite({
+      const {
+        snapshot,
+        result,
+        budget,
+        tags: tagSummary,
+      } = await checkSite({
         address: args.input,
         fetcher,
         registry,
@@ -221,6 +229,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         ...(facts ? { facts } : {}),
         ...(payments ? { payments } : {}),
         ...(hidden ? { hidden } : {}),
+        ...(tags ? { tags } : {}),
         ...(last?.kind === "ok" ? { previous: last.snapshot } : {}),
         ...(access ? { access } : {}),
         ...(dns ? { dns } : {}),
@@ -257,6 +266,9 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           }),
         );
       }
+      // How many of the container's triggers can fire: one stderr line, like the sample line.
+      if (tagSummary && !args.json && !args.quiet)
+        io.stderr.write(`${formatTagSummary(tagSummary)}\n`);
       if (args.since && last?.kind !== "newer")
         writeLastRun(
           cwd,

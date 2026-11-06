@@ -810,6 +810,26 @@
     "tech": "a schema.org @type in JSON-LD is also a microdata itemtype"
   },
   {
+    "id": "tags-dead-rules",
+    "severity": "medium",
+    "area": "Leads",
+    "title": "A tracking rule points at something that no longer exists",
+    "what": "A Tag Manager trigger waits for a page address, link, form or element that no page on the site has, so its tags never fire.",
+    "why": "Tag rules outlive the pages they were written for: a download or form trigger tied to a retired address goes quiet, and the report just shows fewer leads.",
+    "fix": "Point the trigger at what the site uses now (the nearest match is in the evidence), or delete it and the tags that only it fires.",
+    "tech": "The container export named in gaugeline.tags.json (no Tag Manager account is used). Page address conditions are compared with the pages read, their same-site links and the sitemap; click and form conditions (Click URL, ID, Classes, Text, Element; Form ID, Classes, Text, URL, Element) with the elements of the pages read. A trigger type, variable or comparison it doesn't read, a custom event, or a trigger limited to pages the run didn't read is listed under could not check"
+  },
+  {
+    "id": "tags-duplicate",
+    "severity": "medium",
+    "area": "Leads",
+    "title": "Two tags send the same event at the same moment",
+    "what": "Two Tag Manager tags that aren't paused send the same event to the same place on the same trigger.",
+    "why": "Every lead, download or sale is counted twice, so conversion numbers and the ad bidding built on them are wrong.",
+    "fix": "Keep one of the tags and pause or delete the other (usually the copy).",
+    "tech": "The container export named in gaugeline.tags.json, read without requests. GA4 event tags are the same when the event name and the measurement ID match; any other tag type when its type and every setting match. Paused tags are left out"
+  },
+  {
     "id": "viewport",
     "severity": "medium",
     "area": "Visitors",

@@ -194,6 +194,35 @@ export { isFrameworkUrl } from "./next/framework-urls.js";
 export { frameworkLinks } from "./links.js";
 export { hiddenConfigSchema, isHidden, matchesGlob, overdue } from "./hidden.js";
 export type { HiddenConfig, HiddenSection } from "./hidden.js";
+export {
+  ALL_PAGES_TRIGGER_ID,
+  readCondition,
+  readContainer,
+  tagsConfigSchema,
+} from "./tags/read-container.js";
+export type {
+  TagCondition,
+  TagContainer,
+  TagEntry,
+  TagOperator,
+  TagSubject,
+  TagTrigger,
+  TagsConfig,
+  TriggerKind,
+} from "./tags/read-container.js";
+export {
+  analyseTags,
+  duplicateTags,
+  formatTagSummary,
+  summarise as summariseTags,
+} from "./tags/analyse.js";
+export type {
+  AnalyseInput,
+  DuplicateTags,
+  TagAnalysis,
+  TagSummary,
+  TriggerVerdict,
+} from "./tags/analyse.js";
 export { findPagination, mainTextFingerprint, pageNumber } from "./checks/listing/pagination.js";
 export type { Pagination } from "./checks/listing/pagination.js";
 export { TEMP_HOST_SUFFIXES, isTemporaryHost } from "./checks/launch/hosts.js";
