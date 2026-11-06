@@ -20,6 +20,7 @@ import {
   formatTagSummary,
   readPlan,
   applyLegacy,
+  annotate,
   createBudget,
   createPlanRegistry,
   extractLegacy,
@@ -152,7 +153,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       const tabs = plan.workbook.sheets.length;
       if (tabs > 1 && !args.quiet)
         io.stderr.write(
-          `Read tab: ${plan.workbook.chosen.name.trim()} (${tabs - 1} other tab${tabs === 2 ? "" : "s"} skipped)\n`,
+          `Read tab: ${plan.workbook.chosen.name.trim()} (${tabs - 1} other tab${tabs === 2 ? "" : "s"} skipped${args.annotate !== undefined ? "; the annotated copy has this tab only" : ""})\n`,
         );
       io.stdout.write(formatPlanSummary(plan, args.file));
       // Old addresses in a notes column (--legacy-from): read, shown for review, then checked.
@@ -206,6 +207,31 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           color: useColor(io.stdout, io.env ?? {}),
         }),
       );
+      // The annotated copy: a new file next to the plan, never the plan itself. The exit code doesn't change.
+      if (args.annotate !== undefined) {
+        const target = resolve(
+          cwd,
+          args.annotate !== ""
+            ? args.annotate
+            : `${basename(args.file).replace(/\.[^.]+$/, "")}.gaugeline.csv`,
+        );
+        if (target === path)
+          throw new ConfigError(`--annotate would write over the plan itself (${args.file}).`, {
+            hint: "Give another file name, or leave it out to use <plan>.gaugeline.csv.",
+          });
+        const text = annotate(plan.workbook.chosen, plan.rows, planResult.findings);
+        try {
+          writeFileSync(target, text, { flag: args.force ? "w" : "wx" });
+        } catch (err) {
+          const code = (err as { code?: string }).code;
+          throw new ConfigError(
+            code === "EEXIST"
+              ? `${target} already exists: add --force to replace it.`
+              : `Could not write ${target} (${code ?? "an error"}); the findings above are complete.`,
+          );
+        }
+        if (!args.quiet) io.stderr.write(`Annotated copy written to ${target}\n`);
+      }
       return {
         outcome: {
           kind: "ran",

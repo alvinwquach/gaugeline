@@ -47,6 +47,9 @@ export type ParsedArgs =
       sheet?: string;
       legacyFrom: string[];
       legacyReview?: string;
+      /** "" when given without a file name: the default name is used. */
+      annotate?: string;
+      force: boolean;
       verbose: boolean;
       quiet: boolean;
     }
@@ -102,7 +105,13 @@ export function parseCliArgs(
           : argv[0] === "plan"
             ? "plan"
             : COMMAND;
-  const rest = command === COMMAND ? argv : argv.slice(1);
+  const given = command === COMMAND ? argv : argv.slice(1);
+  // --annotate takes an optional file name: alone, or before another flag, it means the default.
+  const rest = given.map((a, i) =>
+    a === "--annotate" && (given[i + 1] === undefined || given[i + 1]?.startsWith("-"))
+      ? "--annotate="
+      : a,
+  );
   let parsed;
   try {
     parsed = parseArgs({
@@ -158,6 +167,8 @@ export function parseCliArgs(
         : typeof values["legacy-from"] === "string"
           ? [values["legacy-from"]]
           : [],
+      ...(typeof values.annotate === "string" ? { annotate: values.annotate } : {}),
+      force: values.force === true,
       ...(typeof values["legacy-review"] === "string"
         ? { legacyReview: values["legacy-review"] }
         : {}),

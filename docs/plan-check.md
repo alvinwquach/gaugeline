@@ -139,17 +139,23 @@ Read 17 pages from keywords.csv.
 Columns: URL from "URL", page from "Page", H1 from "H1", primary keyword from "Primary Keyword", secondary keyword from "Secondary Keyword".
 2 rows are anchors (#section) on a page.
 ! Two rows in the plan have the same H1
-    "Coding audits" on lines 7 and 14 (2 rows)
+    "Coding audits" on 2 rows
+    lines 7, 14
 ! Two pages in the plan target the same primary keyword
-    "medical billing services" (volume 590) is the primary keyword for lines 3, 4 and 5
+    "medical billing services" (volume 590) is the primary keyword of 3 pages
+    lines 3, 4, 5
 ! Two pages in the plan target the same primary keyword
-    "patient payments" (volume 210) is the primary keyword for lines 17 and 18
+    "patient payments" (volume 210) is the primary keyword of 2 pages
+    lines 17, 18
 ! Two pages in the plan target the same primary keyword
-    "credentialing services" (volume n/a (<10)) is the primary keyword for lines 10 and 11
+    "credentialing services" (volume n/a (<10)) is the primary keyword of 2 pages
+    lines 10, 11
 · One page's primary keyword is another page's secondary
     "medical billing companies" (volume 90) is the primary for line 12 and a secondary for line 3
+    lines 3, 12
 · One page's primary keyword is another page's secondary
     "coding audits" (volume 30) is the primary for line 14 and a secondary for line 6
+    lines 6, 14
 
 6 to look at, none to fix first.
 ```
@@ -205,9 +211,30 @@ Old addresses read from "SEO Notes" (10):
 
 ! Some old addresses in the plan's notes aren't settled
     3 mentions in "SEO Notes": line 3 (names the old page in words, not its address): "301 legacy medical-billing page here."; line 5 /specialties/correctional-rcm (asks whether to redirect): "Confirm whether the legacy /specialties/correctional-rcm should redirect here."; line 11 /old-services/medical-coding (asks whether to redirect): "301 legacy /old-services/medical-coding here?"
+    lines 3, 5, 11
 
 1 to look at, none to fix first.
 ```
+
+### Sending the result back to whoever owns the spreadsheet
+
+Each plan finding covers a group of rows (three rows on one address is one decision, so it is one
+finding) and the terminal prints every line of the group under it. `--annotate` writes the plan's
+tab again as CSV, every cell as it was read, with one more column, **Gaugeline**, saying what is
+wrong on each row, so the owner can filter it in the spreadsheet:
+
+```text
+URL,H1,...,Gaugeline
+/software/ai-automation,...,"plan-duplicate-address: same address as lines 147, 148"
+/billing-services/coding,...,
+```
+
+A clean row's cell is empty, and a row with no URL reads `skipped: no URL`. Several findings on one
+row are joined with `; `, most urgent first. The copy is named after the plan (`keyword-map.csv` gives
+`keyword-map.gaugeline.csv`), or give a name: `--annotate notes.csv`. It is always CSV, even from an
+`.xlsx`, and holds only the tab that was read. It never writes over the plan, and refuses to replace a
+file that exists unless `--force` is given (exit 2). A copy fed back in has its Gaugeline column
+replaced, not added again. The exit code is the same with or without `--annotate`.
 
 ### Column names
 
@@ -242,13 +269,17 @@ Read 163 pages from keyword-map.csv (4 rows without a URL skipped).
 Columns: URL from "URL", page from "Page", title tag from "Title Tag", H1 from "H1", primary keyword from "Primary Keyword", secondary keyword from "Secondary Keyword", legacy URL from "Legacy URL".
 7 rows are anchors (#section) on a page.
 ✗ Two rows in the plan share one address
-    /software/ai-automation on lines 146, 147 and 148 (3 rows)
+    /software/ai-automation on 3 rows
+    lines 146, 147, 148
 ✗ Two rows in the plan share one address
-    /software/intelligent-platform on lines 149 and 150 (2 rows)
+    /software/intelligent-platform on 2 rows
+    lines 149, 150
 ! A slug misspells its own heading
-    line 4: "ambutatory" in /billing-services/ambutatory-care, the heading says "ambulatory"; did you mean /billing-services/ambulatory-care
+    "ambutatory" in /billing-services/ambutatory-care, the heading says "ambulatory"; did you mean /billing-services/ambulatory-care
+    line 4
 ! A slug misspells its own heading
-    line 61: "credentialling" in /credentialing/provider-credentialling, the heading says "credentialing"; did you mean /credentialing/provider-credentialing
+    "credentialling" in /credentialing/provider-credentialling, the heading says "credentialing"; did you mean /credentialing/provider-credentialing
+    line 61
 
 4 to look at, 2 to fix first.
 ```
