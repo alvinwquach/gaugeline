@@ -48,6 +48,8 @@
     ],
     "plan": [
       "help",
+      "legacy-from",
+      "legacy-review",
       "plan-only",
       "quiet",
       "sheet",

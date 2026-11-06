@@ -1,4 +1,4 @@
-import { cpSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { SITES_DIR, expectedOutput } from "@gaugeline/fixtures";
@@ -26,7 +26,7 @@ afterEach(() => {
 function workdir(): string {
   const dir = mkdtempSync(join(tmpdir(), "gaugeline-plan-"));
   dirs.push(dir);
-  for (const f of ["keyword-map.csv", "workbook-export.txt"])
+  for (const f of ["keyword-map.csv", "workbook-export.txt", "legacy-notes.csv"])
     cpSync(join(SITES_DIR, "..", "plans", f), join(dir, f));
   return dir;
 }
@@ -106,5 +106,67 @@ describe("gaugeline plan: e2e (CLI)", () => {
       "old.xls is an .xls workbook (the old Excel format) or a password-protected one: save it as .xlsx without a password, or as CSV.",
     );
     expect(run.err()).not.toMatch(/\bat \S+:\d+/);
+  });
+
+  it("--legacy-from with --legacy-review: the CSV has one row per line of the printed table", async () => {
+    const dir = workdir();
+    const run = capture();
+    const code = await main(
+      [
+        "plan",
+        "legacy-notes.csv",
+        "--plan-only",
+        "--legacy-from",
+        "SEO Notes",
+        "--legacy-review",
+        "out.csv",
+      ],
+      run.io,
+      { cwd: dir },
+    );
+    expect(code).toBe(0);
+    expect(run.out().trimEnd()).toBe(
+      expectedOutput("plan-check", "Old addresses in a notes column"),
+    );
+    const tableRows = run
+      .out()
+      .split("\n")
+      .filter((l) => /^ +\d+ {2}[a-z-]+ /.test(l));
+    const csvRows = readFileSync(join(dir, "out.csv"), "utf8").trimEnd().split("\n").slice(1);
+    expect(csvRows).toHaveLength(tableRows.length);
+    expect(tableRows).toHaveLength(10);
+    expect(run.err()).toBe("Review table written to out.csv\n");
+  });
+
+  it("without --legacy-from: nothing is read, and one hint names the column", async () => {
+    const run = capture();
+    await main(["plan", "legacy-notes.csv"], run.io, { cwd: workdir() });
+    expect(run.err()).toBe(
+      '"SEO Notes" mentions "legacy" in 10 rows: add --legacy-from "SEO Notes" to read old addresses from it.\n',
+    );
+    expect(run.out()).not.toContain("Old addresses read");
+  });
+
+  it("a Legacy URL column and --legacy-from, an unknown column, or --legacy-review alone: exit 2", async () => {
+    const dir = workdir();
+    let run = capture();
+    expect(
+      await main(["plan", "keyword-map.csv", "--legacy-from", "Notes"], run.io, { cwd: dir }),
+    ).toBe(2);
+    expect(run.err()).toContain(
+      'The plan has a Legacy URL column ("Legacy URL") and --legacy-from "Notes"',
+    );
+    run = capture();
+    expect(
+      await main(["plan", "legacy-notes.csv", "--legacy-from", "Comments"], run.io, { cwd: dir }),
+    ).toBe(2);
+    expect(run.err()).toContain(
+      '--legacy-from: there is no column named "Comments". Headers: Page, URL, H1, SEO Notes.',
+    );
+    run = capture();
+    expect(
+      await main(["plan", "legacy-notes.csv", "--legacy-review", "x.csv"], run.io, { cwd: dir }),
+    ).toBe(2);
+    expect(run.err()).toContain("--legacy-review needs --legacy-from");
   });
 });

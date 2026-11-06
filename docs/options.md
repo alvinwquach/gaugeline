@@ -197,29 +197,31 @@ between the markers; CI fails when it differs from the flag table.
 
 <!-- flags:start -->
 
-| Flag                   | Does                                                                                               | Environment variable | Since |
-| ---------------------- | -------------------------------------------------------------------------------------------------- | -------------------- | ----- |
-| `--ci`                 | Exit 1 when a "Fix this first" finding is found                                                    | `CI`                 | 0.1.0 |
-| `--json`               | Print the result as JSON on stdout, and nothing else                                               |                      | 0.1.0 |
-| `--no-open`            | Do not open anything in a browser                                                                  |                      | 0.1.0 |
-| `--allow-private`      | Allow addresses on this computer or a private network, such as 127.0.0.1 or 192.168.x.x            |                      | 0.1.0 |
-| `--dns`                | Also read the domain's mail records (SPF and DMARC) from DNS                                       |                      | 0.2.0 |
-| `--since <value>`      | Compare with this site's last run and save this one; the only value is last (.gaugeline/last-run/) |                      | 0.2.0 |
-| `-i`, `--interactive`  | Open a terminal view of the results to move through, filter and dismiss findings                   |                      | 0.2.0 |
-| `--slack <value>`      | Send a summary to this Slack incoming webhook (or set GAUGELINE_SLACK_WEBHOOK)                     |                      | 0.2.0 |
-| `--discord <value>`    | Send an embed to this Discord webhook (or set GAUGELINE_DISCORD_WEBHOOK)                           |                      | 0.2.0 |
-| `--webhook <value>`    | POST the result as JSON to this address (or set GAUGELINE_WEBHOOK)                                 |                      | 0.2.0 |
-| `--email <value>`      | Email the full report to these addresses through Resend (or set GAUGELINE_EMAIL)                   |                      | 0.2.0 |
-| `--plan-only`          | Check the plan on its own, before anything is built (no requests)                                  |                      | 0.2.0 |
-| `--sheet <value>`      | Read this tab of a workbook instead of the one with a URL column                                   |                      | 0.2.0 |
-| `--runs <value>`       | The folder of saved runs (each one saved with --json) to read                                      |                      | 0.2.0 |
-| `--time-zone <value>`  | The time zone for dates and ages, such as America/Los_Angeles (default UTC)                        |                      | 0.2.0 |
-| `--notify-on <value>`  | When to send: any (something was found, the default), high or always                               |                      | 0.2.0 |
-| `--report-url <value>` | Link each message to a hosted copy of the report at this address                                   |                      | 0.2.0 |
-| `--quiet`              | Print only results and errors                                                                      |                      | 0.1.0 |
-| `--verbose`            | Show each request, and technical detail when something goes wrong                                  |                      | 0.1.0 |
-| `-h`, `--help`         | Show this help and exit                                                                            |                      | 0.1.0 |
-| `-v`, `--version`      | Print the version and exit                                                                         |                      | 0.1.0 |
+| Flag                      | Does                                                                                               | Environment variable | Since |
+| ------------------------- | -------------------------------------------------------------------------------------------------- | -------------------- | ----- |
+| `--ci`                    | Exit 1 when a "Fix this first" finding is found                                                    | `CI`                 | 0.1.0 |
+| `--json`                  | Print the result as JSON on stdout, and nothing else                                               |                      | 0.1.0 |
+| `--no-open`               | Do not open anything in a browser                                                                  |                      | 0.1.0 |
+| `--allow-private`         | Allow addresses on this computer or a private network, such as 127.0.0.1 or 192.168.x.x            |                      | 0.1.0 |
+| `--dns`                   | Also read the domain's mail records (SPF and DMARC) from DNS                                       |                      | 0.2.0 |
+| `--since <value>`         | Compare with this site's last run and save this one; the only value is last (.gaugeline/last-run/) |                      | 0.2.0 |
+| `-i`, `--interactive`     | Open a terminal view of the results to move through, filter and dismiss findings                   |                      | 0.2.0 |
+| `--slack <value>`         | Send a summary to this Slack incoming webhook (or set GAUGELINE_SLACK_WEBHOOK)                     |                      | 0.2.0 |
+| `--discord <value>`       | Send an embed to this Discord webhook (or set GAUGELINE_DISCORD_WEBHOOK)                           |                      | 0.2.0 |
+| `--webhook <value>`       | POST the result as JSON to this address (or set GAUGELINE_WEBHOOK)                                 |                      | 0.2.0 |
+| `--email <value>`         | Email the full report to these addresses through Resend (or set GAUGELINE_EMAIL)                   |                      | 0.2.0 |
+| `--plan-only`             | Check the plan on its own, before anything is built (no requests)                                  |                      | 0.2.0 |
+| `--sheet <value>`         | Read this tab of a workbook instead of the one with a URL column                                   |                      | 0.2.0 |
+| `--legacy-from <value>`   | Read old addresses from this notes column when the plan has no Legacy URL column (repeatable)      |                      | 0.2.0 |
+| `--legacy-review <value>` | Write the old addresses read with --legacy-from to this CSV file, for review                       |                      | 0.2.0 |
+| `--runs <value>`          | The folder of saved runs (each one saved with --json) to read                                      |                      | 0.2.0 |
+| `--time-zone <value>`     | The time zone for dates and ages, such as America/Los_Angeles (default UTC)                        |                      | 0.2.0 |
+| `--notify-on <value>`     | When to send: any (something was found, the default), high or always                               |                      | 0.2.0 |
+| `--report-url <value>`    | Link each message to a hosted copy of the report at this address                                   |                      | 0.2.0 |
+| `--quiet`                 | Print only results and errors                                                                      |                      | 0.1.0 |
+| `--verbose`               | Show each request, and technical detail when something goes wrong                                  |                      | 0.1.0 |
+| `-h`, `--help`            | Show this help and exit                                                                            |                      | 0.1.0 |
+| `-v`, `--version`         | Print the version and exit                                                                         |                      | 0.1.0 |
 
 <!-- flags:end -->
 

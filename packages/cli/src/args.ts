@@ -45,6 +45,8 @@ export type ParsedArgs =
       file: string;
       planOnly: boolean;
       sheet?: string;
+      legacyFrom: string[];
+      legacyReview?: string;
       verbose: boolean;
       quiet: boolean;
     }
@@ -151,6 +153,14 @@ export function parseCliArgs(
       file: positionals[0] ?? "",
       planOnly: values["plan-only"] === true,
       ...(typeof values.sheet === "string" ? { sheet: values.sheet } : {}),
+      legacyFrom: Array.isArray(values["legacy-from"])
+        ? values["legacy-from"]
+        : typeof values["legacy-from"] === "string"
+          ? [values["legacy-from"]]
+          : [],
+      ...(typeof values["legacy-review"] === "string"
+        ? { legacyReview: values["legacy-review"] }
+        : {}),
       verbose,
       quiet: values.quiet === true,
     };

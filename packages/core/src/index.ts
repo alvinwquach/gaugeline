@@ -222,6 +222,18 @@ export type { PriceDisagreement, PriceReading } from "./price.js";
 export { COLUMN_ALIASES, normaliseHeader, parseCsv, readPlan } from "./plan/read.js";
 export type { ColumnMap, Plan, PlanField, PlanRow } from "./plan/read.js";
 export { formatDate, readWorkbook } from "./plan/workbook.js";
+export {
+  applyLegacy,
+  classify as classifyLegacy,
+  extractLegacy,
+  legacyHints,
+  legacyReviewCsv,
+  pathsIn,
+  splitSentences,
+} from "./plan/legacy-notes.js";
+export type { LegacyKind, LegacyMention } from "./plan/legacy-notes.js";
+export { PLAN_CHECKS, createPlanRegistry, planLegacyUnresolved } from "./plan/checks.js";
+export type { PlanCheckInput } from "./plan/checks.js";
 export type { Sheet, Workbook } from "./plan/workbook.js";
 export type { BuiltEmail, EmailSettings } from "./notify/email.js";
 export { discordPayload, slackPayload, webhookPayload } from "./notify/payloads.js";
