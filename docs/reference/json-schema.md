@@ -4,7 +4,7 @@
 only changes with a new published schema file.
 
 Current schema number: `1` (`RESULT_SCHEMA_VERSION` in `@gaugeline/core`). The full schema is
-[`packages/core/schema/result.v1.json`](../../packages/core/schema/result.v1.json); see [Options → JSON output](../options.md#json-output).
+[`packages/core/schema/result.v2.json`](../../packages/core/schema/result.v2.json); see [Options → JSON output](../options.md#json-output).
 
 ## Finding
 

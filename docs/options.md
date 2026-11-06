@@ -176,22 +176,27 @@ straight into another program. Colour is used only when stdout is a terminal, an
 ### JSON output
 
 `--json` prints one object on stdout. Its shape is published as a JSON Schema file,
-[`packages/core/schema/result.v1.json`](https://github.com/alvinwquach/gaugeline/blob/main/packages/core/schema/result.v1.json) (draft 2020-12),
+[`packages/core/schema/result.v2.json`](https://github.com/alvinwquach/gaugeline/blob/main/packages/core/schema/result.v2.json) (draft 2020-12),
 that scripts can validate against:
 
 ```json
 {
-  "schema": 1,
+  "schema": 2,
   "url": "https://shop.example/",
   "startedAt": "2026-01-02T03:04:05.000Z",
   "findings": [],
   "passed": ["title-missing"],
-  "failed": []
+  "failed": [],
+  "couldNotCheck": []
 }
 ```
 
 - `passed` and `failed` are check ids. `failed` lists checks that could not execute; the rest of the
   run still reports.
+- `couldNotCheck` lists what a check could not read because the site refused it (401, 403, 429,
+  503 with Retry-After, or a bot challenge page): `{ id, reason, url }`. It is never a finding, and
+  a check with an entry is never in `passed`. Schema 2 added it; schema 1 had no such field.
 - Unknown keys are not allowed, so a misspelt field fails validation.
-- The `schema` number only changes with a new file. `result.v1.json` is never edited in place; a new
+- The `schema` number only changes with a new file. Published files (`result.v1.json`,
+  `result.v2.json`) are never edited in place; a new
   shape ships as `result.v2.json` and the old file stays in the package so consumers can pin.

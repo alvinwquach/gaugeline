@@ -27,7 +27,8 @@ The link checks request at most 30 of the page's same-site links (the same host,
 `www`), the first 30 in document order after removing repeats, so the same page gives the same
 sample every run. Each link is a `HEAD` request, or a `GET` when the server refuses `HEAD` (405 or
 501). `mailto:`, `tel:` and `javascript:` links, `#` links to the page itself and links to other
-sites are never requested. A link that answers 401, 403 or 429 is not reported as broken, and a page
+sites are never requested. A link that answers 401, 403, 429 or 503 with Retry-After is not reported as broken: it is
+listed as could not check, with its address, and a page
 that answers 200 but says "not found" (a soft 404) is out of scope.
 
 Against the invented `links` fixture, a hardware shop with a dead garden-centre link in its header
@@ -38,6 +39,8 @@ and footer and a paint link that redirects, version 0.1.0 prints:
     "Garden centre" <a href="/garden-centre"> returned 404
 · Links on this page go through a redirect
     /old-paint (301) ends at /paint
+? broken-links could not be checked: refused automated readers (403) (/staff)
+? broken-links could not be checked: rate limited (429) (/busy)
 ? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
     Mail records are read from DNS only with --dns. Rerun with --dns to check them.
 

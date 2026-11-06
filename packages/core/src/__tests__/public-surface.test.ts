@@ -12,7 +12,7 @@ describe("publicSurface: unit", () => {
     expect(a.checkIds).toEqual([...a.checkIds].sort());
     expect(a.envVars).toEqual([...a.envVars].sort());
     expect(a.exitCodes).toEqual([0, 1, 2]);
-    expect(a.jsonSchema).toBe(1);
+    expect(a.jsonSchema).toBe(2);
     expect(Object.keys(a.severities)).toEqual(a.checkIds);
   });
 });
