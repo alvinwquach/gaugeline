@@ -175,6 +175,22 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     commands: ["plan"],
   },
   {
+    name: "live",
+    type: "string",
+    description:
+      "List pages in this crawl, sitemap, Search Console export or list that the plan misses",
+    since: "0.2.0",
+    commands: ["plan"],
+  },
+  {
+    name: "ignore",
+    type: "string",
+    description: "With --live, leave out paths matching this glob, such as /tag/* (repeatable)",
+    since: "0.2.0",
+    commands: ["plan"],
+    multiple: true,
+  },
+  {
     name: "printed",
     type: "string",
     description: "With --base, add the printed register's addresses to the 301 map",

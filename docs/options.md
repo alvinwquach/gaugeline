@@ -243,6 +243,8 @@ between the markers; CI fails when it differs from the flag table.
 | `--force`                 | Let --annotate replace a file that already exists                                                  |                      | 0.2.0 |
 | `--progress <value>`      | With --base, say what was fixed and what is new since the last run (state file optional)           |                      | 0.2.0 |
 | `--all`                   | With --progress, list the findings still open, not only how many                                   |                      | 0.2.0 |
+| `--live <value>`          | List pages in this crawl, sitemap, Search Console export or list that the plan misses              |                      | 0.2.0 |
+| `--ignore <value>`        | With --live, leave out paths matching this glob, such as /tag/* (repeatable)                       |                      | 0.2.0 |
 | `--printed <value>`       | With --base, add the printed register's addresses to the 301 map                                   |                      | 0.2.0 |
 | `--decode <value>`        | Read the QR code in these PNG images (or a folder) and add new ones to the register                |                      | 0.2.0 |
 | `--tags <value>`          | Query parameters that must reach the destination, as name prefixes (default utm_)                  |                      | 0.2.0 |

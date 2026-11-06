@@ -7,6 +7,7 @@ import {
   type RedirectCheckId,
   type RedirectResult,
 } from "./redirects.js";
+import type { CoverageResult } from "./coverage.js";
 import type { LegacyMention } from "./legacy-notes.js";
 import type { Plan } from "./read.js";
 import { SELF_RULES, runSelfRule, type SelfRule } from "./self.js";
@@ -22,6 +23,8 @@ export interface PlanCheckInput {
   built?: BuiltResult;
   /** What checkRedirects found on --base; absent without --base (those checks are skipped). */
   redirects?: RedirectResult;
+  /** What checkCoverage found against --live; absent without --live (the check is skipped). */
+  coverage?: CoverageResult;
 }
 
 const WHY: Record<string, string> = {
@@ -262,11 +265,26 @@ export const planRedirectConflict = defineCheck<PlanCheckInput>({
   },
 });
 
+export const planUncoveredPage = defineCheck<PlanCheckInput>({
+  id: "plan-uncovered-page",
+  area: "Launch day",
+  severity: "high",
+  title: "A page that exists today has no row in the plan",
+  what: "An address in the --live export (a crawl, a sitemap, a Search Console export or a list) has no row in the plan and no Legacy URL pointing at it.",
+  why: "A page that ranks today and has nowhere to go at launch loses its traffic and links: the most expensive thing on a migration.",
+  fix: "Add a row for the page, or put its address in the Legacy URL of the row that replaces it.",
+  tech: "Live paths (lower case, no trailing slash, no query) against a Set of every row path and legacy path; assets, feeds, ?page= and --ignore globs left out. Sorted by clicks, impressions or position when the export has them. Three or more that differ from planned rows only by a leading prefix are one finding",
+  run(input) {
+    return [...(input.coverage?.findings ?? [])];
+  },
+});
+
 /** The plan checks, apart from the page checks: they read a plan, not a page. */
 export const PLAN_CHECKS = [
   ...planBuiltChecks,
   ...planRedirectChecks,
   planRedirectConflict,
+  planUncoveredPage,
   ...planSelfChecks,
   planSlugMisspelling,
   planKeywordCannibalisation,

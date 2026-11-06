@@ -306,6 +306,48 @@ describe("gaugeline plan: e2e (CLI)", () => {
     }
   });
 
+  it("--live: the pages that exist today with no row, sorted by clicks, as the docs show", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "gaugeline-live-"));
+    dirs.push(dir);
+    for (const f of ["plan.csv", "search-console.csv"])
+      cpSync(join(SITES_DIR, "..", "plans", "live", f), join(dir, f));
+    const run = capture();
+    expect(
+      await main(["plan", "plan.csv", "--live", "search-console.csv"], run.io, { cwd: dir }),
+    ).toBe(1);
+    expect(withoutPassed(run.out()).trimEnd()).toBe(
+      expectedOutput("plan-check", "Live pages the plan misses"),
+    );
+    expect(run.err()).toContain(
+      "Read 3 live addresses from search-console.csv (a Search Console export, sorted by clicks); 0 left out as assets, feeds, paged or --ignore",
+    );
+    // Without --live the check is skipped, not passed.
+    const none = capture();
+    await main(["plan", "plan.csv"], none.io, { cwd: dir });
+    expect(none.out()).not.toContain("plan-uncovered-page");
+    // --ignore leaves a path out; a missing file is exit 2.
+    const ignored = capture();
+    expect(
+      await main(
+        [
+          "plan",
+          "plan.csv",
+          "--live",
+          "search-console.csv",
+          "--ignore",
+          "/specialties/**",
+          "--ignore",
+          "/outsourced-*",
+        ],
+        ignored.io,
+        { cwd: dir },
+      ),
+    ).toBe(0);
+    expect(await main(["plan", "plan.csv", "--live", "nope.csv"], capture().io, { cwd: dir })).toBe(
+      2,
+    );
+  });
+
   it("a legacy address claimed by two rows is a conflict without --base", async () => {
     const dir = workdir();
     writeFileSync(join(dir, "claims.csv"), "URL,Legacy URL\n/a,/old\n/b,/old\n");

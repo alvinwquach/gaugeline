@@ -66,7 +66,8 @@ export function formatTerminal({
     lines.push(`${mark} ${f.title}`);
     lines.push(`    ${p.grey(f.evidence)}`);
     // A plan finding covers a group of rows: every line once, so the owner can find them.
-    if (f.group)
+    // A live page the plan misses has no plan line to name.
+    if (f.group && f.group.lines.length > 0)
       lines.push(
         `    ${p.grey(`${f.group.lines.length === 1 ? "line" : "lines"} ${f.group.lines.join(", ")}`)}`,
       );

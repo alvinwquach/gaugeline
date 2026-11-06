@@ -36,6 +36,8 @@ const SAMPLE_VALUES: Record<string, string> = {
   "legacy-review": "review.csv",
   progress: "plan-state.json",
   tags: "utm_,ref",
+  live: `${fileURLToPath(new URL("../../../fixtures/plans/live/list.txt", import.meta.url))}`,
+  ignore: "/tag/*",
 };
 
 const repoRoot = fileURLToPath(new URL("../../../../", import.meta.url));

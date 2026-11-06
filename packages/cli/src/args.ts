@@ -54,6 +54,8 @@ export type ParsedArgs =
       progress?: string;
       all: boolean;
       printed?: string;
+      live?: string;
+      ignore: string[];
       base?: string;
       allowPrivate: boolean;
       verbose: boolean;
@@ -203,6 +205,12 @@ export function parseCliArgs(
       ...(typeof values.progress === "string" ? { progress: values.progress } : {}),
       all: values.all === true,
       ...(typeof values.printed === "string" ? { printed: values.printed } : {}),
+      ...(typeof values.live === "string" ? { live: values.live } : {}),
+      ignore: Array.isArray(values.ignore)
+        ? values.ignore
+        : typeof values.ignore === "string"
+          ? [values.ignore]
+          : [],
       ...(typeof values.base === "string" ? { base: values.base } : {}),
       allowPrivate: values["allow-private"] === true,
       ...(typeof values["legacy-review"] === "string"
