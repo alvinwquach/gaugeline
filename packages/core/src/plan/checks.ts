@@ -3,6 +3,7 @@ import type { LegacyMention } from "./legacy-notes.js";
 import type { Plan } from "./read.js";
 import { SELF_RULES, runSelfRule, type SelfRule } from "./self.js";
 import { checkSlugs } from "./slug.js";
+import { checkKeywords } from "./keywords.js";
 
 /** What a plan check reads: the plan, what was read out of its notes, and the file's name. */
 export interface PlanCheckInput {
@@ -92,8 +93,42 @@ export const planSlugMisspelling = defineCheck<PlanCheckInput>({
   },
 });
 
+export const planKeywordCannibalisation = defineCheck<PlanCheckInput>({
+  id: "plan-keyword-cannibalisation",
+  area: "Launch day",
+  severity: "medium",
+  title: "Two pages in the plan target the same primary keyword",
+  what: "Two or more pages of the plan have the same Primary Keyword, so they will compete for one search before a line of code is written.",
+  why: "Search engines show one page per query from a site; two pages chasing the same term split their links and usually both rank worse than one would.",
+  fix: "Give each page its own primary keyword, or merge the pages into one.",
+  tech: "Primary Keyword cells compared trimmed, lower case, spaces collapsed, quotes straightened and a trailing full stop removed; no stemming (singular and plural differ). Empty, n/a, none, tbd, - and bracketed placeholders are left out. A page and its anchor rows count once. Groups sorted by a Primary Volume column when there is one",
+  run(input) {
+    return checkKeywords(input.plan.rows, input.file).filter((f) => f.checkId === this.id);
+  },
+});
+
+export const planKeywordOverlap = defineCheck<PlanCheckInput>({
+  id: "plan-keyword-overlap",
+  area: "Launch day",
+  severity: "low",
+  title: "One page's primary keyword is another page's secondary",
+  what: "A page's Primary Keyword is also listed as a Secondary Keyword of other pages.",
+  why: "Often deliberate, supporting pages in a cluster; worth a look, because a strong supporting page can outrank the page meant to win the term.",
+  fix: "Check the supporting pages link to the primary page, and that none of them is built to rank for the term itself.",
+  tech: "Each Secondary Keyword cell is split on commas, semicolons and line breaks and compared like primaries. Reported from the primary's side, only when one page has the term as its primary",
+  run(input) {
+    return checkKeywords(input.plan.rows, input.file).filter((f) => f.checkId === this.id);
+  },
+});
+
 /** The plan checks, apart from the page checks: they read a plan, not a page. */
-export const PLAN_CHECKS = [...planSelfChecks, planSlugMisspelling, planLegacyUnresolved] as const;
+export const PLAN_CHECKS = [
+  ...planSelfChecks,
+  planSlugMisspelling,
+  planKeywordCannibalisation,
+  planKeywordOverlap,
+  planLegacyUnresolved,
+] as const;
 
 export function createPlanRegistry(): CheckRegistry {
   const registry = new CheckRegistry();

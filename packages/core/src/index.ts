@@ -238,7 +238,10 @@ export {
   planLegacyUnresolved,
   planSelfChecks,
   planSlugMisspelling,
+  planKeywordCannibalisation,
+  planKeywordOverlap,
 } from "./plan/checks.js";
+export { checkKeywords, keywordKey, secondaryTerms } from "./plan/keywords.js";
 export { addressKey, groupBy, textKey } from "./plan/keys.js";
 export { SELF_RULES, checkPlan, runSelfRule } from "./plan/self.js";
 export { LONG_WORD, MIN_WORD, checkSlugs, misspelling, sameStem } from "./plan/slug.js";

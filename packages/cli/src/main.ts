@@ -192,6 +192,8 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
             `"${h.column}" mentions "legacy" in ${h.rows} row${h.rows === 1 ? "" : "s"}: add --legacy-from "${h.column}" to read old addresses from it.\n`,
           );
       }
+      if (plan.columns.primaryKeyword === undefined && !args.quiet)
+        io.stderr.write("Keyword checks skipped: the plan has no Primary Keyword column.\n");
       // The plan against itself (no requests). Any finding is drift: exit 1, so it can gate a launch.
       const planResult = await runChecks(
         { plan, legacy: mentions, file: basename(args.file) },

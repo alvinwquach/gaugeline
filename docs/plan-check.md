@@ -113,6 +113,47 @@ American spelling on the list (`optimise` and "optimize"). Accents are folded, s
 "Résumé". Short words and abbreviations (`ar-management` for "Accounts Receivable Management")
 never fire. The evidence names the corrected path.
 
+#### Keywords
+
+Two rules read the Primary Keyword and Secondary Keyword columns:
+
+- `plan-keyword-cannibalisation` (Fix soon): two or more pages have the same primary keyword. They
+  will compete for one search before a line of code is written.
+- `plan-keyword-overlap` (Worth knowing): one page's primary keyword is listed as another page's
+  secondary. This is often deliberate, supporting pages in a cluster, so it is reported from the
+  primary's side at a lower level.
+
+Keywords are compared exactly after tidying: case, extra spaces, curly quotes and a trailing full
+stop don't matter. Nothing is stemmed, so "medical billing company" and "medical billing companies"
+are different keywords. Empty cells, `n/a`, `none`, `tbd`, `-` and anything wholly in brackets, such
+as "(branded news)", are left out. A Secondary Keyword cell can hold several terms separated by
+commas, semicolons or line breaks. A page and its anchor rows count as one page. With a Primary
+Volume column, the volume is shown and the groups are sorted by it, highest first; a volume that
+isn't a number ("n/a (<10)") is shown as written and sorts last. A plan with no Primary Keyword
+column skips these rules, with one line on stderr saying so.
+
+Against the invented `keywords.csv` fixture, `gaugeline plan keywords.csv --plan-only` prints:
+
+```text title=Output
+Read 17 pages from keywords.csv.
+Columns: URL from "URL", page from "Page", H1 from "H1", primary keyword from "Primary Keyword", secondary keyword from "Secondary Keyword".
+2 rows are anchors (#section) on a page.
+! Two rows in the plan have the same H1
+    "Coding audits" on lines 7 and 14 (2 rows)
+! Two pages in the plan target the same primary keyword
+    "medical billing services" (volume 590) is the primary keyword for lines 3, 4 and 5
+! Two pages in the plan target the same primary keyword
+    "patient payments" (volume 210) is the primary keyword for lines 17 and 18
+! Two pages in the plan target the same primary keyword
+    "credentialing services" (volume n/a (<10)) is the primary keyword for lines 10 and 11
+· One page's primary keyword is another page's secondary
+    "medical billing companies" (volume 90) is the primary for line 12 and a secondary for line 3
+· One page's primary keyword is another page's secondary
+    "coding audits" (volume 30) is the primary for line 14 and a secondary for line 6
+
+6 to look at, none to fix first.
+```
+
 An anchor row (`/medical#rural`) and its page (`/medical`) are different addresses; two rows with
 the same anchor are the same. Empty title and H1 cells are left out, and rows with no URL never
 reach the checks. The example below shows two duplicate-address groups and two misspelled slugs.

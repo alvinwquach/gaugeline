@@ -1,6 +1,7 @@
 import type { Finding, Severity } from "../model.js";
 import { addressKey, groupBy, textKey } from "./keys.js";
 import type { PlanRow } from "./read.js";
+import { checkKeywords } from "./keywords.js";
 import { checkSlugs } from "./slug.js";
 
 /**
@@ -73,5 +74,6 @@ export function checkPlan(rows: readonly PlanRow[], file = "the plan"): Finding[
   return [
     ...SELF_RULES.flatMap((rule) => runSelfRule(rule, rows, file)),
     ...checkSlugs(rows, file),
+    ...checkKeywords(rows, file),
   ];
 }
