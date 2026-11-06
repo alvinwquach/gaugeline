@@ -9,6 +9,7 @@ import {
 } from "./redirects.js";
 import type { CoverageResult } from "./coverage.js";
 import type { LegacyMention } from "./legacy-notes.js";
+import { NAV_TITLES, type NavCheckId, type NavResult } from "./nav.js";
 import type { Plan } from "./read.js";
 import { SELF_RULES, runSelfRule, type SelfRule } from "./self.js";
 import { checkSlugs } from "./slug.js";
@@ -27,6 +28,8 @@ export interface PlanCheckInput {
   coverage?: CoverageResult;
   /** plan-rank-unknown-address, worked out with --rank; absent without it (the check is skipped). */
   rankUnknown?: readonly Finding[];
+  /** What checkNav found with --nav; absent without it (the three checks are skipped). */
+  nav?: NavResult;
 }
 
 const WHY: Record<string, string> = {
@@ -295,6 +298,51 @@ export const planRankUnknownAddress = defineCheck<PlanCheckInput>({
   },
 });
 
+export const NAV_CHECK_IDS: readonly NavCheckId[] = [
+  "plan-nav-missing-row",
+  "plan-nav-label-mismatch",
+  "plan-nav-needs-page",
+];
+
+const NAV_TEXT: Record<
+  NavCheckId,
+  { severity: Finding["severity"]; what: string; why: string; fix: string; tech: string }
+> = {
+  "plan-nav-missing-row": {
+    severity: "high",
+    what: "An item in a menu tab of the plan workbook has no page row in the page plan, and no page shares a distinctive word with it (or several do).",
+    why: "The menu will link to a page nobody planned: it gets built late, without a title or keyword, or the link goes nowhere.",
+    fix: "Add a row for the page, or rename the menu item to the page it means. A menu heading with no page of its own can have a row with no URL.",
+    tech: "Menu labels against Page and H1 cells by labelKey (G16's textKey, & as and, a trailing note such as (anchor) dropped). Headings (the first column) may match a row with no URL and are reported at medium. With several candidates, up to three are named",
+  },
+  "plan-nav-label-mismatch": {
+    severity: "medium",
+    what: "A menu item matches no page by name, and exactly one page shares a distinctive word with it.",
+    why: "The menu and the page plan disagree on the name, so the page's title, H1 and keyword may not be what visitors click.",
+    fix: "Use one name in both places, or record the difference on purpose.",
+    tech: "Distinctive words are five letters or more, not health, healthcare, medical, service(s) or management. Exactly one page name with one of them; the evidence gives both labels and both lines",
+  },
+  "plan-nav-needs-page": {
+    severity: "medium",
+    what: "A menu item matches a page row whose Status says Need Page.",
+    why: "The menu will link to a page that hasn't been built: at launch it is a 404 in the navigation.",
+    fix: "Build the page before launch, or leave the item out of the menu until it exists.",
+    tech: "The matched row's Status cell against /need(s) page/i. Skipped, with a note, when the plan has no Status column",
+  },
+};
+
+export const planNavChecks = NAV_CHECK_IDS.map((id) =>
+  defineCheck<PlanCheckInput>({
+    id,
+    area: "Launch day",
+    title: NAV_TITLES[id],
+    ...NAV_TEXT[id],
+    run(input) {
+      return (input.nav?.findings ?? []).filter((f) => f.checkId === id);
+    },
+  }),
+);
+
 /** The plan checks, apart from the page checks: they read a plan, not a page. */
 export const PLAN_CHECKS = [
   ...planBuiltChecks,
@@ -302,6 +350,7 @@ export const PLAN_CHECKS = [
   planRedirectConflict,
   planUncoveredPage,
   planRankUnknownAddress,
+  ...planNavChecks,
   ...planSelfChecks,
   planSlugMisspelling,
   planKeywordCannibalisation,

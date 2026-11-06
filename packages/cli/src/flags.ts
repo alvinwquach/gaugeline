@@ -183,6 +183,14 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     commands: ["plan"],
   },
   {
+    name: "nav",
+    type: "string",
+    description:
+      "Check the menu tabs (all headed Main category, or these, comma separated) against the pages",
+    since: "0.2.0",
+    commands: ["plan"],
+  },
+  {
     name: "rank",
     type: "string",
     description:

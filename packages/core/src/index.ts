@@ -246,6 +246,8 @@ export {
   planRedirectConflict,
   planUncoveredPage,
   planRankUnknownAddress,
+  planNavChecks,
+  NAV_CHECK_IDS,
 } from "./plan/checks.js";
 export { BUILT_CHECK_IDS, BUILT_TITLES, canonicalIsThisPage, checkBuilt } from "./plan/built.js";
 export type { BuiltOptions, BuiltResult } from "./plan/built.js";
@@ -455,3 +457,16 @@ export {
   readRankExport,
 } from "./plan/worth.js";
 export type { RankExport, Ranked, Worth } from "./plan/worth.js";
+export {
+  NAV_STOP_WORDS,
+  NAV_TITLES,
+  checkNav,
+  distinctiveWords,
+  labelKey,
+  navLabelRows,
+  navSheets,
+  navTabLine,
+  readNav,
+  readNavTab,
+} from "./plan/nav.js";
+export type { NavCheckId, NavItem, NavLabelRow, NavResult, NavTab } from "./plan/nav.js";

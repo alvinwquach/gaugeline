@@ -244,6 +244,7 @@ between the markers; CI fails when it differs from the flag table.
 | `--progress <value>`      | With --base, say what was fixed and what is new since the last run (state file optional)           |                      | 0.2.0 |
 | `--all`                   | With --progress, list the findings still open, not only how many                                   |                      | 0.2.0 |
 | `--live <value>`          | List pages in this crawl, sitemap, Search Console export or list that the plan misses              |                      | 0.2.0 |
+| `--nav <value>`           | Check the menu tabs (all headed Main category, or these, comma separated) against the pages        |                      | 0.2.0 |
 | `--rank <value>`          | With --live, sort the missing pages by clicks from this Search Console or rank export              |                      | 0.2.0 |
 | `--ignore <value>`        | With --live, leave out paths matching this glob, such as /tag/* (repeatable)                       |                      | 0.2.0 |
 | `--printed <value>`       | With --base, add the printed register's addresses to the 301 map                                   |                      | 0.2.0 |

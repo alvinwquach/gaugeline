@@ -500,6 +500,16 @@
     "tech": "Live paths (lower case, no trailing slash, no query) against a Set of every row path and legacy path; assets, feeds, ?page= and --ignore globs left out. Sorted by clicks, impressions or position when the export has them. Three or more that differ from planned rows only by a leading prefix are one finding"
   },
   {
+    "id": "plan-nav-missing-row",
+    "severity": "high",
+    "area": "Launch day",
+    "title": "A menu item has no page in the plan",
+    "what": "An item in a menu tab of the plan workbook has no page row in the page plan, and no page shares a distinctive word with it (or several do).",
+    "why": "The menu will link to a page nobody planned: it gets built late, without a title or keyword, or the link goes nowhere.",
+    "fix": "Add a row for the page, or rename the menu item to the page it means. A menu heading with no page of its own can have a row with no URL.",
+    "tech": "Menu labels against Page and H1 cells by labelKey (G16's textKey, & as and, a trailing note such as (anchor) dropped). Headings (the first column) may match a row with no URL and are reported at medium. With several candidates, up to three are named"
+  },
+  {
     "id": "plan-duplicate-address",
     "severity": "high",
     "area": "Launch day",
@@ -988,6 +998,26 @@
     "why": "Each hop costs visitors time, and search engines follow only so many before giving up on passing signals.",
     "fix": "Redirect the old address straight to the final page. A server that adds a trailing slash first counts: redirect the old address's own form.",
     "tech": "More than one 3xx in the hop list the fetcher records; the trail is in the evidence"
+  },
+  {
+    "id": "plan-nav-label-mismatch",
+    "severity": "medium",
+    "area": "Launch day",
+    "title": "A menu item and its page are named differently",
+    "what": "A menu item matches no page by name, and exactly one page shares a distinctive word with it.",
+    "why": "The menu and the page plan disagree on the name, so the page's title, H1 and keyword may not be what visitors click.",
+    "fix": "Use one name in both places, or record the difference on purpose.",
+    "tech": "Distinctive words are five letters or more, not health, healthcare, medical, service(s) or management. Exactly one page name with one of them; the evidence gives both labels and both lines"
+  },
+  {
+    "id": "plan-nav-needs-page",
+    "severity": "medium",
+    "area": "Launch day",
+    "title": "A menu item links to a page that still needs building",
+    "what": "A menu item matches a page row whose Status says Need Page.",
+    "why": "The menu will link to a page that hasn't been built: at launch it is a 404 in the navigation.",
+    "fix": "Build the page before launch, or leave the item out of the menu until it exists.",
+    "tech": "The matched row's Status cell against /need(s) page/i. Skipped, with a note, when the plan has no Status column"
   },
   {
     "id": "plan-duplicate-title",
