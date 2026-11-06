@@ -750,6 +750,26 @@
     "tech": "hours, telephone or address in /llms.txt differ from the page's LocalBusiness JSON-LD"
   },
   {
+    "id": "nav-changed",
+    "severity": "medium",
+    "area": "Visitors",
+    "title": "The menu changed since the last run",
+    "what": "Against the last run saved with --since last, links in the header or footer menu were added, removed, moved to another parent, renamed or reordered.",
+    "why": "A menu restructure changes many links at once and every page still loads, so nothing else reports the page that lost its only link.",
+    "fix": "Check each change was meant. A removed link whose page now has no other link needs one, or a redirect if the page is gone.",
+    "tech": "With --since last only. A link is its region, parent item and destination. Same destination under a new parent is moved; same identity with new text is renamed. A removed link whose destination has no inbound link from the pages read is high. On a first run (no saved menu yet): could not check"
+  },
+  {
+    "id": "nav-footer",
+    "severity": "medium",
+    "area": "Visitors",
+    "title": "The footer isn't the same on every page",
+    "what": "A page's footer links differ from the footer most of the pages read have, or a footer link gaugeline.nav.json marks as required (privacy, terms, contact) is missing.",
+    "why": "A footer that differs on one template usually means that template was missed in a change; a missing privacy or terms link can be a legal problem.",
+    "fix": "Use one footer for every template, and add any required link that is missing.",
+    "tech": "With --since last or a gaugeline.nav.json (it reads the run's other pages). Footer destinations on the checked page and the run's other pages (4); the most common set is the reference. Required links match a footer link's text or path, case-insensitively"
+  },
+  {
     "id": "nav-home-links",
     "severity": "medium",
     "area": "Visitors",
@@ -758,6 +778,26 @@
     "why": "Visitors who click Services land back on the homepage and think the page is missing. It usually means a menu item was added with no link.",
     "fix": "Point each menu item at its own page, or remove it until the page exists.",
     "tech": "a nav or header a[href] resolving to / whose text (or aria-label) is not Home or the site's name"
+  },
+  {
+    "id": "nav-orphans",
+    "severity": "medium",
+    "area": "Visitors",
+    "title": "Pages in the sitemap that no page links to",
+    "what": "Addresses the sitemap lists that none of the pages read link to, in their menus, footers or text.",
+    "why": "Visitors can only reach them from search or an old bookmark, and search engines treat a page nothing links to as unimportant.",
+    "fix": "Link to each page from its section's menu or a related page, or take it out of the sitemap if it is gone.",
+    "tech": "With --since last or a gaugeline.nav.json (it reads the run's other pages). Same-site sitemap addresses (one level of index) against every link on the checked page and the run's other pages (4); the checked page itself is excepted. A page linked only from a page not read is reported too: the evidence says how many were read"
+  },
+  {
+    "id": "nav-parity",
+    "severity": "medium",
+    "area": "Visitors",
+    "title": "The mobile menu is missing links the desktop menu has",
+    "what": "The page has a separate mobile menu, and some destinations in the desktop header menu aren't in it.",
+    "why": "Most visitors are on a phone: a page missing from the mobile menu is missing for them.",
+    "fix": "Add the missing links to the mobile menu, or build both menus from one list.",
+    "tech": "The separate mobile menu's destinations (gaugeline.nav.json regions.mobile, or a [data-mobile-menu], #mobile-menu or .mobile-menu element) against the header's. A menu toggle whose menu isn't in the HTML is could not check: it is built at a phone width, which needs a rendered read (not on yet)"
   },
   {
     "id": "next-stale-after-publish",

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>{{origin}}/</loc></url>
+  <url><loc>{{origin}}/menu</loc></url>
+  <url><loc>{{origin}}/menu/breads</loc></url>
+  <url><loc>{{origin}}/menu/pastries</loc></url>
+  <url><loc>{{origin}}/catering</loc></url>
+  <url><loc>{{origin}}/about</loc></url>
+  <url><loc>{{origin}}/visit</loc></url>
+  <url><loc>{{origin}}/blog</loc></url>
+  <url><loc>{{origin}}/privacy</loc></url>
+  <url><loc>{{origin}}/terms</loc></url>
+  <url><loc>{{origin}}/gift-cards</loc></url>
+</urlset>
