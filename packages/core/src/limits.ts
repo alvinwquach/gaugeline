@@ -29,6 +29,8 @@ export const LIMITS = Object.freeze({
   sanityDatasets: 2,
   /** Tables of the configured database project counted (HEAD, counts only). */
   accessTables: 20,
+  /** Addresses in hidden sections asked for their status and robots directives. */
+  hiddenPages: 5,
   structuredDataAddresses: 12,
   concurrency: 5,
   redirectHops: 10,
@@ -52,6 +54,7 @@ export type BudgetKind =
   | "scripts"
   | "sanityDatasets"
   | "accessTables"
+  | "hiddenPages"
   | "structuredDataAddresses";
 
 /** Report order. */
@@ -70,6 +73,7 @@ export const BUDGET_KINDS = [
   "scripts",
   "sanityDatasets",
   "accessTables",
+  "hiddenPages",
   "structuredDataAddresses",
 ] as const satisfies readonly BudgetKind[];
 
@@ -131,6 +135,7 @@ const NOUNS: Record<BudgetKind, [singular: string, plural: string]> = {
   scripts: ["JavaScript file", "JavaScript files"],
   sanityDatasets: ["Sanity dataset", "Sanity datasets"],
   accessTables: ["database table", "database tables"],
+  hiddenPages: ["hidden page", "hidden pages"],
   structuredDataAddresses: ["address in structured data", "addresses in structured data"],
 };
 

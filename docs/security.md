@@ -55,6 +55,7 @@ Each run samples a fixed amount and never more. The numbers live in one frozen o
 | JavaScript files                 | 15      |
 | Sanity datasets asked            | 2       |
 | Database tables counted          | 20      |
+| Hidden-section pages asked       | 5       |
 | Addresses inside structured data | 12      |
 | Requests at the same time        | 5       |
 | Redirect hops followed           | 10      |

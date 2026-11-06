@@ -4,11 +4,13 @@ import {
   ConfigError,
   accessConfigSchema,
   factsConfigSchema,
+  hiddenConfigSchema,
   languageRulesSchema,
   paymentsConfigSchema,
   schemaRulesSchema,
   type AccessConfig,
   type FactsConfig,
+  type HiddenConfig,
   type LanguageRules,
   type PaymentsConfig,
   type SchemaRules,
@@ -25,6 +27,8 @@ export const FACTS_CONFIG_FILE = "gaugeline.facts.json";
 export const PAYMENTS_CONFIG_FILE = "gaugeline.payments.json";
 /** The database project and roles to test its access rules as, likewise. Keys stay in the environment. */
 export const ACCESS_CONFIG_FILE = "gaugeline.access.json";
+/** Sections hidden until launch, likewise. */
+export const HIDDEN_CONFIG_FILE = "gaugeline.hidden.json";
 
 /** A JSON settings file in `dir`, validated, or undefined when there is none. Invalid is a ConfigError. */
 function readJsonConfig<T>(
@@ -72,4 +76,8 @@ export function readPayments(dir: string): PaymentsConfig | undefined {
 
 export function readAccess(dir: string): AccessConfig | undefined {
   return readJsonConfig(dir, ACCESS_CONFIG_FILE, accessConfigSchema, "database access checks");
+}
+
+export function readHidden(dir: string): HiddenConfig | undefined {
+  return readJsonConfig(dir, HIDDEN_CONFIG_FILE, hiddenConfigSchema, "hidden sections");
 }
