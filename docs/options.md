@@ -52,6 +52,8 @@ Options:
                          such as 127.0.0.1 or 192.168.x.x
       --dns              Also read the domain's mail records (SPF and DMARC)
                          from DNS
+      --since <value>    Compare with this site's last run and save this one;
+                         the only value is last (.gaugeline/last-run/)
       --quiet            Print only results and errors
       --verbose          Show each request, and technical detail when something
                          goes wrong
@@ -91,6 +93,27 @@ Try: Check the site is running, and the port if you typed one.
 `--verbose` adds the technical detail after a blank line: the stack and every underlying cause.
 Query strings and anything that looks like a key are removed from both forms.
 
+### Comparing with the last run
+
+`--since last` compares this run with the last one saved for the same site, reports what changed,
+then saves this run in its place:
+
+```bash
+npx gaugeline yoursite.com --since last
+```
+
+- `price-changed` (worth knowing): a product's price in the structured data is different.
+- `form-provider-changed` (fix first): a form now posts to a different service (HubSpot to
+  Formstack, say).
+- `form-destination-changed` (fix soon): the same service, a different address.
+
+The run is saved in `.gaugeline/last-run/<host>.json` in the folder you run from: hosts, amounts and
+provider names only, never form values, page text or keys. Without `--since` nothing is read or
+written. The first run prints `nothing to compare yet` on stderr and saves. A file Gaugeline can't
+read is replaced with a warning. A file written by a newer version (another schema) is left alone,
+and nothing is compared. Delete the folder to start again. Two forms with no id or name that swap
+places on the page read as a change: give forms an id.
+
 ### The launch command
 
 `gaugeline launch --help` prints:
@@ -125,17 +148,18 @@ between the markers; CI fails when it differs from the flag table.
 
 <!-- flags:start -->
 
-| Flag              | Does                                                                                    | Environment variable | Since |
-| ----------------- | --------------------------------------------------------------------------------------- | -------------------- | ----- |
-| `--ci`            | Exit 1 when a "Fix this first" finding is found                                         | `CI`                 | 0.1.0 |
-| `--json`          | Print the result as JSON on stdout, and nothing else                                    |                      | 0.1.0 |
-| `--no-open`       | Do not open anything in a browser                                                       |                      | 0.1.0 |
-| `--allow-private` | Allow addresses on this computer or a private network, such as 127.0.0.1 or 192.168.x.x |                      | 0.1.0 |
-| `--dns`           | Also read the domain's mail records (SPF and DMARC) from DNS                            |                      | 0.2.0 |
-| `--quiet`         | Print only results and errors                                                           |                      | 0.1.0 |
-| `--verbose`       | Show each request, and technical detail when something goes wrong                       |                      | 0.1.0 |
-| `-h`, `--help`    | Show this help and exit                                                                 |                      | 0.1.0 |
-| `-v`, `--version` | Print the version and exit                                                              |                      | 0.1.0 |
+| Flag              | Does                                                                                               | Environment variable | Since |
+| ----------------- | -------------------------------------------------------------------------------------------------- | -------------------- | ----- |
+| `--ci`            | Exit 1 when a "Fix this first" finding is found                                                    | `CI`                 | 0.1.0 |
+| `--json`          | Print the result as JSON on stdout, and nothing else                                               |                      | 0.1.0 |
+| `--no-open`       | Do not open anything in a browser                                                                  |                      | 0.1.0 |
+| `--allow-private` | Allow addresses on this computer or a private network, such as 127.0.0.1 or 192.168.x.x            |                      | 0.1.0 |
+| `--dns`           | Also read the domain's mail records (SPF and DMARC) from DNS                                       |                      | 0.2.0 |
+| `--since <value>` | Compare with this site's last run and save this one; the only value is last (.gaugeline/last-run/) |                      | 0.2.0 |
+| `--quiet`         | Print only results and errors                                                                      |                      | 0.1.0 |
+| `--verbose`       | Show each request, and technical detail when something goes wrong                                  |                      | 0.1.0 |
+| `-h`, `--help`    | Show this help and exit                                                                            |                      | 0.1.0 |
+| `-v`, `--version` | Print the version and exit                                                                         |                      | 0.1.0 |
 
 <!-- flags:end -->
 
