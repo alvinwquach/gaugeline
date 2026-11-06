@@ -174,6 +174,8 @@ export { SANITY_QUERY, readDataset, sanityQueryUrl, sanityRefs } from "./sanity.
 export type { DatasetRead, SanityRef } from "./sanity.js";
 export { readScripts } from "./scripts.js";
 export { EMAIL_PRESET, LAUNCH_PRESET } from "./presets.js";
+export { findPagination, mainTextFingerprint, pageNumber } from "./checks/listing/pagination.js";
+export type { Pagination } from "./checks/listing/pagination.js";
 export { TEMP_HOST_SUFFIXES, isTemporaryHost } from "./checks/launch/hosts.js";
 export {
   DnsLookupError,
