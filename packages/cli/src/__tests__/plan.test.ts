@@ -383,6 +383,41 @@ describe("gaugeline plan: e2e (CLI)", () => {
     expect(queries.err()).toContain("open the Pages tab and export that");
   });
 
+  it("--nav: the per-tab counts first, then the menu findings, as the docs show; exit 1", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "gaugeline-nav-"));
+    dirs.push(dir);
+    cpSync(join(SITES_DIR, "..", "plans", "nav-workbook.txt"), join(dir, "nav-workbook.txt"));
+    const run = capture();
+    expect(
+      await main(["plan", "nav-workbook.txt", "--plan-only", "--nav"], run.io, { cwd: dir }),
+    ).toBe(1);
+    expect(withoutPassed(run.out()).trimEnd()).toBe(
+      expectedOutput("plan-check", "Menus against pages"),
+    );
+    expect(run.out().split("\n")[3]).toBe("Solutions: 4 items in 1 category");
+    expect(run.err()).toContain("Resources: no menu items were read.");
+    // Naming tabs reads only those; naming the page plan, or a one-tab CSV, is exit 2.
+    const two = capture();
+    await main(
+      ["plan", "nav-workbook.txt", "--plan-only", "--nav", "Who We Serve,Footer"],
+      two.io,
+      { cwd: dir },
+    );
+    expect(two.out()).toContain(
+      "Who We Serve: 6 items in 2 categories\nFooter: 5 items in 2 categories\n",
+    );
+    expect(two.out()).not.toContain("Solutions:");
+    const pagePlan = capture();
+    expect(
+      await main(["plan", "nav-workbook.txt", "--nav", "Page plan"], pagePlan.io, { cwd: dir }),
+    ).toBe(2);
+    expect(pagePlan.err()).toContain("that is the page plan, not a menu");
+    writeFileSync(join(dir, "one.csv"), "URL,Page\n/a,A\n");
+    const one = capture();
+    expect(await main(["plan", "one.csv", "--nav"], one.io, { cwd: dir })).toBe(2);
+    expect(one.err()).toContain("--nav: no menu tab was found");
+  });
+
   it("a legacy address claimed by two rows is a conflict without --base", async () => {
     const dir = workdir();
     writeFileSync(join(dir, "claims.csv"), "URL,Legacy URL\n/a,/old\n/b,/old\n");

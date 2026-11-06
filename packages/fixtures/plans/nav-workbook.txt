@@ -1,0 +1,67 @@
+## Sheet name: Page plan
+Section,Page,URL,H1,Status
+Solutions,Solutions,,,
+Solutions,Medical billing,/solutions/medical-billing,Medical billing,Live
+Solutions,Anesthesia billing,/solutions/anesthesia-billing,Anesthesia billing,Live
+Solutions,Coding audits,/solutions/coding-audits,Coding audits,Need Page
+Solutions,Credentialing,/solutions/credentialing,Credentialing,Live
+Who We Serve,Hospitals,/who-we-serve/hospitals,Hospitals,Live
+Who We Serve,Ambulatory Surgery Centers (ASCs),/who-we-serve/ascs,Ambulatory Surgery Centers,Live
+Who We Serve,Behavioral Health,/who-we-serve/behavioral-health,Behavioral Health,Live
+Who We Serve,Behavioral Health (anchor),/who-we-serve#behavioral-health,,Live
+Who We Serve,Physician practices,/who-we-serve/physician-practices,Physician practices,Live
+Technology,Technology,,,
+Technology,Security & Compliance,/technology/security-compliance,Security & Compliance,Live
+Technology,Patient portal,/technology/patient-portal,Patient portal,Need Page
+Technology,Analytics,/technology/analytics,Analytics,Live
+About,Our story,/about/our-story,Our story,Live
+About,Leadership,/about/leadership,Leadership,Live
+About,Careers,/about/careers,Careers,Live
+About,Privacy policy,/privacy,Privacy policy,Live
+## Sheet name: Solutions
+Main category,Popup Column
+Solutions,Medical billing
+,Claims out the door the same day
+,Anesthesia billing
+,RCM built for anesthesia complexity
+,Coding audits
+,Find what your coders miss
+,Credentialing
+,Payer enrollment without the wait
+## Sheet name: Who We Serve
+Main category,Popup Column
+Providers,Hospitals
+,Billing for every department
+,Ambulatory Surgery Centers (ASCs)
+,Same-day claims for ASCs
+,Physician practices
+,Behavioral Health
+,Care that takes time
+Specialties,Mental Health
+,Therapy and psychiatry practices
+,DSOs
+,Dental service organizations
+## Sheet name: Technology
+Main category,Popup Column
+Technology,Security & Trust
+,How we protect patient data
+,Patient portal
+,Statements and payments online
+,Billing analytics
+,Dashboards for every practice
+## Sheet name: Resources
+Main category,Popup Column
+Yellow = No current page
+## Sheet name: About Us
+Main category,Popup Column
+About Us,Our story
+,Twenty years of billing
+,Leadership
+,The team behind Harbourline
+## Sheet name: Footer
+Main category,Link
+Company,Our story
+,Leadership
+,Careers
+Legal,Privacy policy
+,Terms of use
