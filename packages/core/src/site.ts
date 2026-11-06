@@ -10,6 +10,7 @@ import { lazyCalendars } from "./calendars.js";
 import { lazyLanguageGroup, type LanguageRules } from "./languages.js";
 import { lazyAccess } from "./access/probe.js";
 import type { AccessSettings } from "./access/types.js";
+import type { DnsReader } from "./dns.js";
 import { lazyPages } from "./pages.js";
 import { lazyDatasets } from "./sanity.js";
 import { lazyScripts } from "./scripts.js";
@@ -45,6 +46,8 @@ export interface SiteCheckOptions {
   payments?: PaymentsConfig;
   /** The database project to read as each role, with its keys already read from the environment. */
   access?: AccessSettings;
+  /** Public DNS for the email record checks. Without one, they find nothing and nothing is resolved. */
+  dns?: DnsReader;
 }
 
 export interface SiteCheck {
@@ -93,6 +96,7 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
       ...(opts.languageRules ? { languageRules: opts.languageRules } : {}),
       ...(opts.facts ? { facts: opts.facts } : {}),
       ...(opts.payments ? { payments: opts.payments } : {}),
+      ...(opts.dns ? { dns: opts.dns } : {}),
       ...(opts.access
         ? { access: lazyAccess({ fetcher: opts.fetcher, budget, settings: opts.access }) }
         : {}),

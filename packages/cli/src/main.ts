@@ -5,9 +5,11 @@ import {
   checkSite,
   deprecate,
   createFetcher,
+  createDnsReader,
   exitCodeFor,
   resolveAccess,
   type CheckRegistry,
+  type DnsReader,
   type FetcherOptions,
   type Outcome,
 } from "@gaugeline/core";
@@ -53,6 +55,8 @@ export interface Deps {
   /** The checks to run. Defaults to every page check. */
   registry?: CheckRegistry;
   fetcher?: FetcherOptions;
+  /** Public DNS for the email record checks. Defaults to node:dns/promises; tests pass a fake. */
+  dns?: DnsReader;
   /** Defaults to the package version; tests pass one to see 0.0.x and 0.1.0 behaviour. */
   version?: string;
   /** Defaults to the flag table; tests pass one with a deprecated flag. */
@@ -129,6 +133,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         ...(facts ? { facts } : {}),
         ...(payments ? { payments } : {}),
         ...(access ? { access } : {}),
+        dns: deps.dns ?? createDnsReader(),
       });
       if (args.json) {
         const json = buildResult({

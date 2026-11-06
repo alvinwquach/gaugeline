@@ -12,6 +12,10 @@ import { canonicalMissing } from "./canonical-missing.js";
 import { datasetPrivateTypes } from "./dataset-private-types.js";
 import { datasetPublic } from "./dataset-public.js";
 import { duplicateTitle } from "./duplicate-title.js";
+import { emailDmarcMissing } from "./email-dmarc-missing.js";
+import { emailDmarcNone } from "./email-dmarc-none.js";
+import { emailSpfMissing } from "./email-spf-missing.js";
+import { emailSpfMultiple } from "./email-spf-multiple.js";
 import { eventJsonldMismatch } from "./event-jsonld-mismatch.js";
 import { eventLocationMismatch } from "./event-location-mismatch.js";
 import { eventMissingFields } from "./event-missing-fields.js";
@@ -95,6 +99,10 @@ export const PAGE_CHECKS = [
   datasetPrivateTypes,
   datasetPublic,
   duplicateTitle,
+  emailDmarcMissing,
+  emailDmarcNone,
+  emailSpfMissing,
+  emailSpfMultiple,
   eventJsonldMismatch,
   eventLocationMismatch,
   eventMissingFields,
