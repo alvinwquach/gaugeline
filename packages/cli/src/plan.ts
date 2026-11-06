@@ -33,8 +33,6 @@ export function formatPlanSummary(plan: Plan, file: string): string {
     lines.push(
       `${anchors} row${anchors === 1 ? " is an anchor" : "s are anchors"} (#section) on a page.`,
     );
-  const sheets = new Set(plan.rows.flatMap((r) => (r.sheet ? [r.sheet] : [])));
-  if (sheets.size > 0) lines.push(`Tabs read: ${[...sheets].join(", ")}.`);
   for (const w of plan.warnings) lines.push(`! ${w}`);
   return `${lines.join("\n")}\n`;
 }

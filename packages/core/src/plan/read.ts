@@ -1,4 +1,9 @@
 import { ConfigError } from "../errors.js";
+import { COLUMN_ALIASES, normaliseHeader, parseCsv, type PlanField } from "./columns.js";
+import { readWorkbook, type Workbook } from "./workbook.js";
+
+export { COLUMN_ALIASES, normaliseHeader, parseCsv } from "./columns.js";
+export type { PlanField } from "./columns.js";
 
 /**
  * A launch plan read from any CSV with a URL column: one row per planned page. Column names are
@@ -24,9 +29,6 @@ export interface PlanRow {
   raw: Record<string, string>;
 }
 
-export type PlanField =
-  "url" | "page" | "titleTag" | "h1" | "primaryKeyword" | "secondaryKeyword" | "legacyUrl";
-
 /** Field -> the header it was read from, as written. */
 export type ColumnMap = Partial<Record<PlanField, string>>;
 
@@ -36,108 +38,9 @@ export interface Plan {
   warnings: string[];
   /** Rows with no URL (a nav label, a section heading): skipped and counted. */
   skipped: number;
+  /** Every tab of the file, and the one read. Later checks read the other tabs. */
+  workbook: Workbook;
 }
-
-/**
- * Normalised header -> field. A header either maps or it doesn't: "URL notes" is not the URL.
- * The docs list these names; a test reads every one.
- */
-export const COLUMN_ALIASES: Readonly<Record<string, PlanField>> = Object.freeze({
-  url: "url",
-  address: "url",
-  "new url": "url",
-  destination: "url",
-  "new address": "url",
-  "page url": "url",
-  page: "page",
-  "page name": "page",
-  "title tag": "titleTag",
-  title: "titleTag",
-  "meta title": "titleTag",
-  h1: "h1",
-  heading: "h1",
-  "primary keyword": "primaryKeyword",
-  keyword: "primaryKeyword",
-  "target keyword": "primaryKeyword",
-  "secondary keyword": "secondaryKeyword",
-  "secondary keywords": "secondaryKeyword",
-  "legacy url": "legacyUrl",
-  "old url": "legacyUrl",
-  "current url": "legacyUrl",
-  "redirect from": "legacyUrl",
-});
-
-/** "Title_Tag", " TITLE-TAG " and "title tag" are one header. */
-export function normaliseHeader(h: string): string {
-  return h
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
-}
-
-/**
- * RFC 4180: fields separated by commas, records by CRLF or LF; a field in double quotes may hold
- * commas, line breaks and doubled quotes. Returns each record with the line it starts on.
- */
-export function parseCsv(text: string): { line: number; cells: string[] }[] {
-  const records: { line: number; cells: string[] }[] = [];
-  let cells: string[] = [];
-  let cell = "";
-  let quoted = false;
-  let line = 1;
-  let start = 1;
-  let i = 0;
-  const endRecord = () => {
-    cells.push(cell);
-    records.push({ line: start, cells });
-    cells = [];
-    cell = "";
-  };
-  while (i < text.length) {
-    const c = text[i];
-    if (quoted) {
-      if (c === '"') {
-        if (text[i + 1] === '"') {
-          cell += '"';
-          i += 2;
-          continue;
-        }
-        quoted = false;
-        i++;
-        continue;
-      }
-      if (c === "\n") line++;
-      cell += c;
-      i++;
-      continue;
-    }
-    if (c === '"' && cell === "") {
-      quoted = true;
-      i++;
-    } else if (c === ",") {
-      cells.push(cell);
-      cell = "";
-      i++;
-    } else if (c === "\r" && text[i + 1] === "\n") {
-      endRecord();
-      i += 2;
-      line++;
-      start = line;
-    } else if (c === "\n" || c === "\r") {
-      endRecord();
-      i++;
-      line++;
-      start = line;
-    } else {
-      cell += c;
-      i++;
-    }
-  }
-  if (cell !== "" || cells.length > 0) endRecord();
-  return records;
-}
-
-const SHEET = /^## Sheet name:\s*(.*?)\s*$/;
 
 function split(url: string): { path: string; fragment?: string } {
   const hash = url.indexOf("#");
@@ -215,26 +118,31 @@ function readSection(
 }
 
 /**
- * Read a plan. Only a URL column is required; a file without one is a ConfigError listing the
- * headers found. A multi-tab export pasted into one file ("## Sheet name: …" lines) is read tab by
- * tab, each with its own header.
+ * Read a plan: a CSV, a multi-tab text export or an .xlsx (told apart by its first bytes). The
+ * workbook's page-list tab is chosen (see readWorkbook) and its rows read. Only a URL column is
+ * required; a tab without one is a ConfigError listing the headers found.
  */
-export function readPlan(csvText: string): Plan {
-  const text = csvText.replace(/^\uFEFF/, "");
-  const plan: Plan = { rows: [], columns: {}, warnings: [], skipped: 0 };
-  const records = parseCsv(text);
-  const sections: { sheet?: string; records: typeof records }[] = [{ records: [] }];
-  for (const r of records) {
-    const m = r.cells.length === 1 ? SHEET.exec(r.cells[0] ?? "") : null;
-    if (m) sections.push({ sheet: m[1] ?? "", records: [] });
-    else sections.at(-1)?.records.push(r);
-  }
+export function readPlan(
+  input: string | Uint8Array,
+  opts: { sheet?: string; fileName?: string } = {},
+): Plan {
+  const workbook = readWorkbook(input, opts);
+  const chosen = workbook.chosen;
+  const plan: Plan = {
+    rows: [],
+    columns: {},
+    warnings: [...workbook.warnings],
+    skipped: 0,
+    workbook,
+  };
+  const records = parseCsv(chosen.csvText).map((r) => ({ ...r, line: r.line + chosen.lineOffset }));
   const headersSeen: string[][] = [];
-  for (const s of sections) readSection(s.records, s.sheet, plan, headersSeen);
+  const multi = workbook.sheets.length > 1;
+  readSection(records, multi ? chosen.name.trim() : undefined, plan, headersSeen);
   if (plan.columns.url === undefined) {
-    const found = headersSeen[0] ?? [];
+    const found = headersSeen[0] ?? chosen.headers;
     throw new ConfigError(
-      `The plan has no URL column. Headers found: ${found.length > 0 ? found.join(", ") : "none"}.`,
+      `${multi ? `The "${chosen.name.trim()}" tab` : "The plan"} has no URL column. Headers found: ${found.length > 0 ? found.join(", ") : "none"}.`,
       {
         hint: 'Call the column that holds each address "URL" (or Address, New URL or Destination).',
       },

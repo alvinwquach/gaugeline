@@ -26,7 +26,8 @@ afterEach(() => {
 function workdir(): string {
   const dir = mkdtempSync(join(tmpdir(), "gaugeline-plan-"));
   dirs.push(dir);
-  cpSync(join(SITES_DIR, "..", "plans", "keyword-map.csv"), join(dir, "keyword-map.csv"));
+  for (const f of ["keyword-map.csv", "workbook-export.txt"])
+    cpSync(join(SITES_DIR, "..", "plans", f), join(dir, f));
   return dir;
 }
 
@@ -68,5 +69,42 @@ describe("gaugeline plan: e2e (CLI)", () => {
     expect(run.out()).toContain(
       '! Columns "URL" and "Address" both look like the URL column; using "URL".',
     );
+  });
+
+  it("a workbook export: one line on stderr says which tab was read", async () => {
+    const run = capture();
+    expect(
+      await main(["plan", "workbook-export.txt", "--plan-only"], run.io, { cwd: workdir() }),
+    ).toBe(0);
+    expect(run.err()).toBe("Read tab: Kim's Keywords (6 other tabs skipped)\n");
+    expect(run.out()).toContain(
+      "Read 163 pages from workbook-export.txt (4 rows without a URL skipped).",
+    );
+  });
+
+  it("--sheet Footer: exit 2 naming the headers it found", async () => {
+    const run = capture();
+    expect(
+      await main(["plan", "workbook-export.txt", "--sheet", "Footer", "--plan-only"], run.io, {
+        cwd: workdir(),
+      }),
+    ).toBe(2);
+    expect(run.err()).toContain(
+      'The "Footer" tab has no URL column. Headers found: Main category, Link, Phase.',
+    );
+  });
+
+  it("an .xls file: exit 2 saying to save it as .xlsx or CSV", async () => {
+    const dir = workdir();
+    writeFileSync(
+      join(dir, "old.xls"),
+      Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]),
+    );
+    const run = capture();
+    expect(await main(["plan", "old.xls"], run.io, { cwd: dir })).toBe(2);
+    expect(run.err().split("\n")[0]).toBe(
+      "old.xls is an .xls workbook (the old Excel format) or a password-protected one: save it as .xlsx without a password, or as CSV.",
+    );
+    expect(run.err()).not.toMatch(/\bat \S+:\d+/);
   });
 });

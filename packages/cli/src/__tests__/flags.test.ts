@@ -30,6 +30,8 @@ const SAMPLE_VALUES: Record<string, string> = {
   since: "last",
   "notify-on": "any",
   "time-zone": "UTC",
+  // A file with no tabs is one tab named after the file.
+  sheet: "keyword-map.csv",
 };
 
 const repoRoot = fileURLToPath(new URL("../../../../", import.meta.url));

@@ -221,6 +221,8 @@ export {
 export type { PriceDisagreement, PriceReading } from "./price.js";
 export { COLUMN_ALIASES, normaliseHeader, parseCsv, readPlan } from "./plan/read.js";
 export type { ColumnMap, Plan, PlanField, PlanRow } from "./plan/read.js";
+export { formatDate, readWorkbook } from "./plan/workbook.js";
+export type { Sheet, Workbook } from "./plan/workbook.js";
 export type { BuiltEmail, EmailSettings } from "./notify/email.js";
 export { discordPayload, slackPayload, webhookPayload } from "./notify/payloads.js";
 export { NOTIFY_TIMEOUT_MS, postJson, providerMessage, safeTarget } from "./notify/post.js";
