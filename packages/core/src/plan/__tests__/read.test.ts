@@ -89,7 +89,7 @@ describe("plan reader: edge cases", () => {
     );
   });
 
-  it('a multi-tab export pasted into one file ("## Sheet name:" lines), each tab with its header', () => {
+  it('a multi-tab export ("## Sheet name:" lines): the first tab with a URL column is read, the rest kept', () => {
     const plan = readPlan(
       [
         "## Sheet name: Pages",
@@ -101,9 +101,10 @@ describe("plan reader: edge cases", () => {
         "",
       ].join("\n"),
     );
-    expect(plan.rows.map((r) => [r.sheet, r.url, r.h1 ?? r.titleTag, r.line])).toEqual([
-      ["Pages", "/a", "A", 3],
-      ["Blog", "/blog/x", "X", 6],
+    expect(plan.rows.map((r) => [r.sheet, r.url, r.h1, r.line])).toEqual([["Pages", "/a", "A", 3]]);
+    expect(plan.workbook.sheets.map((s) => s.name)).toEqual(["Pages", "Blog"]);
+    expect(plan.warnings).toEqual([
+      'More than one tab has a URL column; reading "Pages". The others: Blog. Choose one with --sheet.',
     ]);
   });
 });

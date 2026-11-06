@@ -50,6 +50,7 @@
       "help",
       "plan-only",
       "quiet",
+      "sheet",
       "verbose",
       "version"
     ]

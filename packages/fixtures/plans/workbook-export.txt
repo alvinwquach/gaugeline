@@ -1,0 +1,202 @@
+## Sheet name: Kim's Keywords 
+Section,Page,URL,Title Tag,H1,Primary Keyword,Secondary Keyword,Legacy URL,Intent,Priority,Owner,Notes
+Billing services,,,,,,,,nav,,web,"Menu label for Billing services, no page"
+Billing services,Billing services topic 1,/billing-services/topic-01,Billing services topic 1 | Harbourline Billing,Billing services topic 1,billing services topic 1,billing services help,/old/billing-services/topic-01,commercial,1,content,"Draft 1, reviewed"
+Billing services,Billing services topic 2,/billing-services/topic-02,Billing services topic 2 | Harbourline Billing,Billing services topic 2,billing services topic 2,billing services help,,info,2,content,
+Billing services,Billing services topic 3,/billing-services/topic-03,Billing services topic 3 | Harbourline Billing,Billing services topic 3,billing services topic 3,billing services help,,commercial,3,content,
+Billing services,Billing services topic 4,/billing-services/topic-04,Billing services topic 4 | Harbourline Billing,Billing services topic 4,billing services topic 4,billing services help,/old/billing-services/topic-04,info,1,content,
+Billing services,Billing services topic 5,/billing-services/topic-05,Billing services topic 5 | Harbourline Billing,Billing services topic 5,billing services topic 5,billing services help,,commercial,2,content,
+Billing services,Billing services topic 6,/billing-services/topic-06,Billing services topic 6 | Harbourline Billing,Billing services topic 6,billing services topic 6,billing services help,,info,3,content,"Draft 6, reviewed"
+Billing services,Billing services topic 7,/billing-services/topic-07,Billing services topic 7 | Harbourline Billing,Billing services topic 7,billing services topic 7,billing services help,/old/billing-services/topic-07,commercial,1,content,
+Billing services,Billing services topic 8,/billing-services/topic-08,Billing services topic 8 | Harbourline Billing,Billing services topic 8,billing services topic 8,billing services help,,info,2,content,
+Billing services,Billing services topic 9,/billing-services/topic-09,Billing services topic 9 | Harbourline Billing,Billing services topic 9,billing services topic 9,billing services help,,commercial,3,content,
+Billing services,Billing services topic 10,/billing-services/topic-10,Billing services topic 10 | Harbourline Billing,Billing services topic 10,billing services topic 10,billing services help,/old/billing-services/topic-10,info,1,content,
+Billing services,Billing services topic 11,/billing-services/topic-11,Billing services topic 11 | Harbourline Billing,Billing services topic 11,billing services topic 11,billing services help,,commercial,2,content,"Draft 11, reviewed"
+Billing services,Billing services topic 12,/billing-services/topic-12,Billing services topic 12 | Harbourline Billing,Billing services topic 12,billing services topic 12,billing services help,,info,3,content,
+Billing services,Billing services topic 13,/billing-services/topic-13,Billing services topic 13 | Harbourline Billing,Billing services topic 13,billing services topic 13,billing services help,/old/billing-services/topic-13,commercial,1,content,
+Billing services,Billing services topic 14,/billing-services/topic-14,Billing services topic 14 | Harbourline Billing,Billing services topic 14,billing services topic 14,billing services help,,info,2,content,
+Billing services,Billing services topic 15,/billing-services/topic-15,Billing services topic 15 | Harbourline Billing,Billing services topic 15,billing services topic 15,billing services help,,commercial,3,content,
+Billing services,Billing services topic 16,/billing-services/topic-16,Billing services topic 16 | Harbourline Billing,Billing services topic 16,billing services topic 16,billing services help,/old/billing-services/topic-16,info,1,content,"Draft 16, reviewed"
+Billing services,Billing services topic 17,/billing-services/topic-17,Billing services topic 17 | Harbourline Billing,Billing services topic 17,billing services topic 17,billing services help,,commercial,2,content,
+Billing services,Billing services topic 18,/billing-services/topic-18,Billing services topic 18 | Harbourline Billing,Billing services topic 18,billing services topic 18,billing services help,,info,3,content,
+Billing services,Billing services topic 19,/billing-services/topic-19,Billing services topic 19 | Harbourline Billing,Billing services topic 19,billing services topic 19,billing services help,/old/billing-services/topic-19,commercial,1,content,
+Billing services,Billing services topic 20,/billing-services/topic-20,Billing services topic 20 | Harbourline Billing,Billing services topic 20,billing services topic 20,billing services help,,info,2,content,
+Billing services,Billing services topic 21,/billing-services/topic-21,Billing services topic 21 | Harbourline Billing,Billing services topic 21,billing services topic 21,billing services help,,commercial,3,content,"Draft 21, reviewed"
+Billing services,Billing services topic 22,/billing-services/topic-22,Billing services topic 22 | Harbourline Billing,Billing services topic 22,billing services topic 22,billing services help,/old/billing-services/topic-22,info,1,content,
+Billing services,Billing services topic 23,/billing-services/topic-23,Billing services topic 23 | Harbourline Billing,Billing services topic 23,billing services topic 23,billing services help,,commercial,2,content,
+Billing services,Billing services topic 24,/billing-services/topic-24,Billing services topic 24 | Harbourline Billing,Billing services topic 24,billing services topic 24,billing services help,,info,3,content,
+Billing services,Billing services topic 25,/billing-services/topic-25,Billing services topic 25 | Harbourline Billing,Billing services topic 25,billing services topic 25,billing services help,/old/billing-services/topic-25,commercial,1,content,
+Billing services,Billing services topic 26,/billing-services/topic-26,Billing services topic 26 | Harbourline Billing,Billing services topic 26,billing services topic 26,billing services help,,info,2,content,"Draft 26, reviewed"
+Billing services,Billing services topic 27,/billing-services/topic-27,Billing services topic 27 | Harbourline Billing,Billing services topic 27,billing services topic 27,billing services help,,commercial,3,content,
+Billing services,Billing services topic 28,/billing-services/topic-28,Billing services topic 28 | Harbourline Billing,Billing services topic 28,billing services topic 28,billing services help,/old/billing-services/topic-28,info,1,content,
+Coding,,,,,,,,nav,,web,"Menu label for Coding, no page"
+Coding,Coding topic 1,/coding/topic-01,Coding topic 1 | Harbourline Billing,Coding topic 1,coding topic 1,coding help,/old/coding/topic-01,commercial,1,content,"Draft 1, reviewed"
+Coding,Coding topic 2,/coding/topic-02,Coding topic 2 | Harbourline Billing,Coding topic 2,coding topic 2,coding help,,info,2,content,
+Coding,Coding topic 3,/coding/topic-03,Coding topic 3 | Harbourline Billing,Coding topic 3,coding topic 3,coding help,,commercial,3,content,
+Coding,Coding topic 4,/coding/topic-04,Coding topic 4 | Harbourline Billing,Coding topic 4,coding topic 4,coding help,/old/coding/topic-04,info,1,content,
+Coding,Coding topic 5,/coding/topic-05,Coding topic 5 | Harbourline Billing,Coding topic 5,coding topic 5,coding help,,commercial,2,content,
+Coding,Coding topic 6,/coding/topic-06,Coding topic 6 | Harbourline Billing,Coding topic 6,coding topic 6,coding help,,info,3,content,"Draft 6, reviewed"
+Coding,Coding topic 7,/coding/topic-07,Coding topic 7 | Harbourline Billing,Coding topic 7,coding topic 7,coding help,/old/coding/topic-07,commercial,1,content,
+Coding,Coding topic 8,/coding/topic-08,Coding topic 8 | Harbourline Billing,Coding topic 8,coding topic 8,coding help,,info,2,content,
+Coding,Coding topic 9,/coding/topic-09,Coding topic 9 | Harbourline Billing,Coding topic 9,coding topic 9,coding help,,commercial,3,content,
+Coding,Coding topic 10,/coding/topic-10,Coding topic 10 | Harbourline Billing,Coding topic 10,coding topic 10,coding help,/old/coding/topic-10,info,1,content,
+Coding,Coding topic 11,/coding/topic-11,Coding topic 11 | Harbourline Billing,Coding topic 11,coding topic 11,coding help,,commercial,2,content,"Draft 11, reviewed"
+Coding,Coding topic 12,/coding/topic-12,Coding topic 12 | Harbourline Billing,Coding topic 12,coding topic 12,coding help,,info,3,content,
+Coding,Coding topic 13,/coding/topic-13,Coding topic 13 | Harbourline Billing,Coding topic 13,coding topic 13,coding help,/old/coding/topic-13,commercial,1,content,
+Coding,Coding topic 14,/coding/topic-14,Coding topic 14 | Harbourline Billing,Coding topic 14,coding topic 14,coding help,,info,2,content,
+Coding,Coding topic 15,/coding/topic-15,Coding topic 15 | Harbourline Billing,Coding topic 15,coding topic 15,coding help,,commercial,3,content,
+Coding,Coding topic 16,/coding/topic-16,Coding topic 16 | Harbourline Billing,Coding topic 16,coding topic 16,coding help,/old/coding/topic-16,info,1,content,"Draft 16, reviewed"
+Coding,Coding topic 17,/coding/topic-17,Coding topic 17 | Harbourline Billing,Coding topic 17,coding topic 17,coding help,,commercial,2,content,
+Coding,Coding topic 18,/coding/topic-18,Coding topic 18 | Harbourline Billing,Coding topic 18,coding topic 18,coding help,,info,3,content,
+Coding,Coding topic 19,/coding/topic-19,Coding topic 19 | Harbourline Billing,Coding topic 19,coding topic 19,coding help,/old/coding/topic-19,commercial,1,content,
+Coding,Coding topic 20,/coding/topic-20,Coding topic 20 | Harbourline Billing,Coding topic 20,coding topic 20,coding help,,info,2,content,
+Coding,Coding topic 21,/coding/topic-21,Coding topic 21 | Harbourline Billing,Coding topic 21,coding topic 21,coding help,,commercial,3,content,"Draft 21, reviewed"
+Coding,Coding topic 22,/coding/topic-22,Coding topic 22 | Harbourline Billing,Coding topic 22,coding topic 22,coding help,/old/coding/topic-22,info,1,content,
+Coding,Coding topic 23,/coding/topic-23,Coding topic 23 | Harbourline Billing,Coding topic 23,coding topic 23,coding help,,commercial,2,content,
+Coding,Coding topic 24,/coding/topic-24,Coding topic 24 | Harbourline Billing,Coding topic 24,coding topic 24,coding help,,info,3,content,
+Coding,Coding topic 25,/coding/topic-25,Coding topic 25 | Harbourline Billing,Coding topic 25,coding topic 25,coding help,/old/coding/topic-25,commercial,1,content,
+Coding,Coding topic 26,/coding/topic-26,Coding topic 26 | Harbourline Billing,Coding topic 26,coding topic 26,coding help,,info,2,content,"Draft 26, reviewed"
+Coding,Coding topic 27,/coding/topic-27,Coding topic 27 | Harbourline Billing,Coding topic 27,coding topic 27,coding help,,commercial,3,content,
+Coding,Coding topic 28,/coding/topic-28,Coding topic 28 | Harbourline Billing,Coding topic 28,coding topic 28,coding help,/old/coding/topic-28,info,1,content,
+Credentialing,,,,,,,,nav,,web,"Menu label for Credentialing, no page"
+Credentialing,Credentialing topic 1,/credentialing/topic-01,Credentialing topic 1 | Harbourline Billing,Credentialing topic 1,credentialing topic 1,credentialing help,/old/credentialing/topic-01,commercial,1,content,"Draft 1, reviewed"
+Credentialing,Credentialing topic 2,/credentialing/topic-02,Credentialing topic 2 | Harbourline Billing,Credentialing topic 2,credentialing topic 2,credentialing help,,info,2,content,
+Credentialing,Credentialing topic 3,/credentialing/topic-03,Credentialing topic 3 | Harbourline Billing,Credentialing topic 3,credentialing topic 3,credentialing help,,commercial,3,content,
+Credentialing,Credentialing topic 4,/credentialing/topic-04,Credentialing topic 4 | Harbourline Billing,Credentialing topic 4,credentialing topic 4,credentialing help,/old/credentialing/topic-04,info,1,content,
+Credentialing,Credentialing topic 5,/credentialing/topic-05,Credentialing topic 5 | Harbourline Billing,Credentialing topic 5,credentialing topic 5,credentialing help,,commercial,2,content,
+Credentialing,Credentialing topic 6,/credentialing/topic-06,Credentialing topic 6 | Harbourline Billing,Credentialing topic 6,credentialing topic 6,credentialing help,,info,3,content,"Draft 6, reviewed"
+Credentialing,Credentialing topic 7,/credentialing/topic-07,Credentialing topic 7 | Harbourline Billing,Credentialing topic 7,credentialing topic 7,credentialing help,/old/credentialing/topic-07,commercial,1,content,
+Credentialing,Credentialing topic 8,/credentialing/topic-08,Credentialing topic 8 | Harbourline Billing,Credentialing topic 8,credentialing topic 8,credentialing help,,info,2,content,
+Credentialing,Credentialing topic 9,/credentialing/topic-09,Credentialing topic 9 | Harbourline Billing,Credentialing topic 9,credentialing topic 9,credentialing help,,commercial,3,content,
+Credentialing,Credentialing topic 10,/credentialing/topic-10,Credentialing topic 10 | Harbourline Billing,Credentialing topic 10,credentialing topic 10,credentialing help,/old/credentialing/topic-10,info,1,content,
+Credentialing,Credentialing topic 11,/credentialing/topic-11,Credentialing topic 11 | Harbourline Billing,Credentialing topic 11,credentialing topic 11,credentialing help,,commercial,2,content,"Draft 11, reviewed"
+Credentialing,Credentialing topic 12,/credentialing/topic-12,Credentialing topic 12 | Harbourline Billing,Credentialing topic 12,credentialing topic 12,credentialing help,,info,3,content,
+Credentialing,Credentialing topic 13,/credentialing/topic-13,Credentialing topic 13 | Harbourline Billing,Credentialing topic 13,credentialing topic 13,credentialing help,/old/credentialing/topic-13,commercial,1,content,
+Credentialing,Credentialing topic 14,/credentialing/topic-14,Credentialing topic 14 | Harbourline Billing,Credentialing topic 14,credentialing topic 14,credentialing help,,info,2,content,
+Credentialing,Credentialing topic 15,/credentialing/topic-15,Credentialing topic 15 | Harbourline Billing,Credentialing topic 15,credentialing topic 15,credentialing help,,commercial,3,content,
+Credentialing,Credentialing topic 16,/credentialing/topic-16,Credentialing topic 16 | Harbourline Billing,Credentialing topic 16,credentialing topic 16,credentialing help,/old/credentialing/topic-16,info,1,content,"Draft 16, reviewed"
+Credentialing,Credentialing topic 17,/credentialing/topic-17,Credentialing topic 17 | Harbourline Billing,Credentialing topic 17,credentialing topic 17,credentialing help,,commercial,2,content,
+Credentialing,Credentialing topic 18,/credentialing/topic-18,Credentialing topic 18 | Harbourline Billing,Credentialing topic 18,credentialing topic 18,credentialing help,,info,3,content,
+Credentialing,Credentialing topic 19,/credentialing/topic-19,Credentialing topic 19 | Harbourline Billing,Credentialing topic 19,credentialing topic 19,credentialing help,/old/credentialing/topic-19,commercial,1,content,
+Credentialing,Credentialing topic 20,/credentialing/topic-20,Credentialing topic 20 | Harbourline Billing,Credentialing topic 20,credentialing topic 20,credentialing help,,info,2,content,
+Credentialing,Credentialing topic 21,/credentialing/topic-21,Credentialing topic 21 | Harbourline Billing,Credentialing topic 21,credentialing topic 21,credentialing help,,commercial,3,content,"Draft 21, reviewed"
+Credentialing,Credentialing topic 22,/credentialing/topic-22,Credentialing topic 22 | Harbourline Billing,Credentialing topic 22,credentialing topic 22,credentialing help,/old/credentialing/topic-22,info,1,content,
+Credentialing,Credentialing topic 23,/credentialing/topic-23,Credentialing topic 23 | Harbourline Billing,Credentialing topic 23,credentialing topic 23,credentialing help,,commercial,2,content,
+Credentialing,Credentialing topic 24,/credentialing/topic-24,Credentialing topic 24 | Harbourline Billing,Credentialing topic 24,credentialing topic 24,credentialing help,,info,3,content,
+Credentialing,Credentialing topic 25,/credentialing/topic-25,Credentialing topic 25 | Harbourline Billing,Credentialing topic 25,credentialing topic 25,credentialing help,/old/credentialing/topic-25,commercial,1,content,
+Credentialing,Credentialing topic 26,/credentialing/topic-26,Credentialing topic 26 | Harbourline Billing,Credentialing topic 26,credentialing topic 26,credentialing help,,info,2,content,"Draft 26, reviewed"
+Credentialing,Credentialing topic 27,/credentialing/topic-27,Credentialing topic 27 | Harbourline Billing,Credentialing topic 27,credentialing topic 27,credentialing help,,commercial,3,content,
+Credentialing,Credentialing topic 28,/credentialing/topic-28,Credentialing topic 28 | Harbourline Billing,Credentialing topic 28,credentialing topic 28,credentialing help,/old/credentialing/topic-28,info,1,content,
+Patient payments,,,,,,,,nav,,web,"Menu label for Patient payments, no page"
+Patient payments,Patient payments topic 1,/patient-payments/topic-01,Patient payments topic 1 | Harbourline Billing,Patient payments topic 1,patient payments topic 1,patient payments help,/old/patient-payments/topic-01,commercial,1,content,"Draft 1, reviewed"
+Patient payments,Patient payments topic 2,/patient-payments/topic-02,Patient payments topic 2 | Harbourline Billing,Patient payments topic 2,patient payments topic 2,patient payments help,,info,2,content,
+Patient payments,Patient payments topic 3,/patient-payments/topic-03,Patient payments topic 3 | Harbourline Billing,Patient payments topic 3,patient payments topic 3,patient payments help,,commercial,3,content,
+Patient payments,Patient payments topic 4,/patient-payments/topic-04,Patient payments topic 4 | Harbourline Billing,Patient payments topic 4,patient payments topic 4,patient payments help,/old/patient-payments/topic-04,info,1,content,
+Patient payments,Patient payments topic 5,/patient-payments/topic-05,Patient payments topic 5 | Harbourline Billing,Patient payments topic 5,patient payments topic 5,patient payments help,,commercial,2,content,
+Patient payments,Patient payments topic 6,/patient-payments/topic-06,Patient payments topic 6 | Harbourline Billing,Patient payments topic 6,patient payments topic 6,patient payments help,,info,3,content,"Draft 6, reviewed"
+Patient payments,Patient payments topic 7,/patient-payments/topic-07,Patient payments topic 7 | Harbourline Billing,Patient payments topic 7,patient payments topic 7,patient payments help,/old/patient-payments/topic-07,commercial,1,content,
+Patient payments,Patient payments topic 8,/patient-payments/topic-08,Patient payments topic 8 | Harbourline Billing,Patient payments topic 8,patient payments topic 8,patient payments help,,info,2,content,
+Patient payments,Patient payments topic 9,/patient-payments/topic-09,Patient payments topic 9 | Harbourline Billing,Patient payments topic 9,patient payments topic 9,patient payments help,,commercial,3,content,
+Patient payments,Patient payments topic 10,/patient-payments/topic-10,Patient payments topic 10 | Harbourline Billing,Patient payments topic 10,patient payments topic 10,patient payments help,/old/patient-payments/topic-10,info,1,content,
+Patient payments,Patient payments topic 11,/patient-payments/topic-11,Patient payments topic 11 | Harbourline Billing,Patient payments topic 11,patient payments topic 11,patient payments help,,commercial,2,content,"Draft 11, reviewed"
+Patient payments,Patient payments topic 12,/patient-payments/topic-12,Patient payments topic 12 | Harbourline Billing,Patient payments topic 12,patient payments topic 12,patient payments help,,info,3,content,
+Patient payments,Patient payments topic 13,/patient-payments/topic-13,Patient payments topic 13 | Harbourline Billing,Patient payments topic 13,patient payments topic 13,patient payments help,/old/patient-payments/topic-13,commercial,1,content,
+Patient payments,Patient payments topic 14,/patient-payments/topic-14,Patient payments topic 14 | Harbourline Billing,Patient payments topic 14,patient payments topic 14,patient payments help,,info,2,content,
+Patient payments,Patient payments topic 15,/patient-payments/topic-15,Patient payments topic 15 | Harbourline Billing,Patient payments topic 15,patient payments topic 15,patient payments help,,commercial,3,content,
+Patient payments,Patient payments topic 16,/patient-payments/topic-16,Patient payments topic 16 | Harbourline Billing,Patient payments topic 16,patient payments topic 16,patient payments help,/old/patient-payments/topic-16,info,1,content,"Draft 16, reviewed"
+Patient payments,Patient payments topic 17,/patient-payments/topic-17,Patient payments topic 17 | Harbourline Billing,Patient payments topic 17,patient payments topic 17,patient payments help,,commercial,2,content,
+Patient payments,Patient payments topic 18,/patient-payments/topic-18,Patient payments topic 18 | Harbourline Billing,Patient payments topic 18,patient payments topic 18,patient payments help,,info,3,content,
+Patient payments,Patient payments topic 19,/patient-payments/topic-19,Patient payments topic 19 | Harbourline Billing,Patient payments topic 19,patient payments topic 19,patient payments help,/old/patient-payments/topic-19,commercial,1,content,
+Patient payments,Patient payments topic 20,/patient-payments/topic-20,Patient payments topic 20 | Harbourline Billing,Patient payments topic 20,patient payments topic 20,patient payments help,,info,2,content,
+Patient payments,Patient payments topic 21,/patient-payments/topic-21,Patient payments topic 21 | Harbourline Billing,Patient payments topic 21,patient payments topic 21,patient payments help,,commercial,3,content,"Draft 21, reviewed"
+Patient payments,Patient payments topic 22,/patient-payments/topic-22,Patient payments topic 22 | Harbourline Billing,Patient payments topic 22,patient payments topic 22,patient payments help,/old/patient-payments/topic-22,info,1,content,
+Patient payments,Patient payments topic 23,/patient-payments/topic-23,Patient payments topic 23 | Harbourline Billing,Patient payments topic 23,patient payments topic 23,patient payments help,,commercial,2,content,
+Patient payments,Patient payments topic 24,/patient-payments/topic-24,Patient payments topic 24 | Harbourline Billing,Patient payments topic 24,patient payments topic 24,patient payments help,,info,3,content,
+Patient payments,Patient payments topic 25,/patient-payments/topic-25,Patient payments topic 25 | Harbourline Billing,Patient payments topic 25,patient payments topic 25,patient payments help,/old/patient-payments/topic-25,commercial,1,content,
+Patient payments,Patient payments topic 26,/patient-payments/topic-26,Patient payments topic 26 | Harbourline Billing,Patient payments topic 26,patient payments topic 26,patient payments help,,info,2,content,"Draft 26, reviewed"
+Patient payments,Patient payments topic 27,/patient-payments/topic-27,Patient payments topic 27 | Harbourline Billing,Patient payments topic 27,patient payments topic 27,patient payments help,,commercial,3,content,
+Patient payments,Patient payments topic 28,/patient-payments/topic-28,Patient payments topic 28 | Harbourline Billing,Patient payments topic 28,patient payments topic 28,patient payments help,/old/patient-payments/topic-28,info,1,content,
+Specialties,Specialties topic 1,/specialties#area-1,Specialties topic 1 | Harbourline Billing,Specialties topic 1,specialties topic 1,specialties help,/old/specialties/topic-01,commercial,1,content,"Draft 1, reviewed"
+Specialties,Specialties topic 2,/specialties#area-2,Specialties topic 2 | Harbourline Billing,Specialties topic 2,specialties topic 2,specialties help,,info,2,content,
+Specialties,Specialties topic 3,/specialties#area-3,Specialties topic 3 | Harbourline Billing,Specialties topic 3,specialties topic 3,specialties help,,commercial,3,content,
+Specialties,Specialties topic 4,/specialties#area-4,Specialties topic 4 | Harbourline Billing,Specialties topic 4,specialties topic 4,specialties help,/old/specialties/topic-04,info,1,content,
+Specialties,Specialties topic 5,/specialties#area-5,Specialties topic 5 | Harbourline Billing,Specialties topic 5,specialties topic 5,specialties help,,commercial,2,content,
+Specialties,Specialties topic 6,/specialties#area-6,Specialties topic 6 | Harbourline Billing,Specialties topic 6,specialties topic 6,specialties help,,info,3,content,"Draft 6, reviewed"
+Specialties,Specialties topic 7,/specialties#area-7,Specialties topic 7 | Harbourline Billing,Specialties topic 7,specialties topic 7,specialties help,/old/specialties/topic-07,commercial,1,content,
+Specialties,Specialties topic 8,/specialties/topic-08,Specialties topic 8 | Harbourline Billing,Specialties topic 8,specialties topic 8,specialties help,,info,2,content,
+Specialties,Specialties topic 9,/specialties/topic-09,Specialties topic 9 | Harbourline Billing,Specialties topic 9,specialties topic 9,specialties help,,commercial,3,content,
+Specialties,Specialties topic 10,/specialties/topic-10,Specialties topic 10 | Harbourline Billing,Specialties topic 10,specialties topic 10,specialties help,/old/specialties/topic-10,info,1,content,
+Specialties,Specialties topic 11,/specialties/topic-11,Specialties topic 11 | Harbourline Billing,Specialties topic 11,specialties topic 11,specialties help,,commercial,2,content,"Draft 11, reviewed"
+Specialties,Specialties topic 12,/specialties/topic-12,Specialties topic 12 | Harbourline Billing,Specialties topic 12,specialties topic 12,specialties help,,info,3,content,
+Specialties,Specialties topic 13,/specialties/topic-13,Specialties topic 13 | Harbourline Billing,Specialties topic 13,specialties topic 13,specialties help,/old/specialties/topic-13,commercial,1,content,
+Specialties,Specialties topic 14,/specialties/topic-14,Specialties topic 14 | Harbourline Billing,Specialties topic 14,specialties topic 14,specialties help,,info,2,content,
+Specialties,Specialties topic 15,/specialties/topic-15,Specialties topic 15 | Harbourline Billing,Specialties topic 15,specialties topic 15,specialties help,,commercial,3,content,
+Specialties,Specialties topic 16,/specialties/topic-16,Specialties topic 16 | Harbourline Billing,Specialties topic 16,specialties topic 16,specialties help,/old/specialties/topic-16,info,1,content,"Draft 16, reviewed"
+Specialties,Specialties topic 17,/specialties/topic-17,Specialties topic 17 | Harbourline Billing,Specialties topic 17,specialties topic 17,specialties help,,commercial,2,content,
+Specialties,Specialties topic 18,/specialties/topic-18,Specialties topic 18 | Harbourline Billing,Specialties topic 18,specialties topic 18,specialties help,,info,3,content,
+Specialties,Specialties topic 19,/specialties/topic-19,Specialties topic 19 | Harbourline Billing,Specialties topic 19,specialties topic 19,specialties help,/old/specialties/topic-19,commercial,1,content,
+Specialties,Specialties topic 20,/specialties/topic-20,Specialties topic 20 | Harbourline Billing,Specialties topic 20,specialties topic 20,specialties help,,info,2,content,
+Specialties,Specialties topic 21,/specialties/topic-21,Specialties topic 21 | Harbourline Billing,Specialties topic 21,specialties topic 21,specialties help,,commercial,3,content,"Draft 21, reviewed"
+Specialties,Specialties topic 22,/specialties/topic-22,Specialties topic 22 | Harbourline Billing,Specialties topic 22,specialties topic 22,specialties help,/old/specialties/topic-22,info,1,content,
+Specialties,Specialties topic 23,/specialties/topic-23,Specialties topic 23 | Harbourline Billing,Specialties topic 23,specialties topic 23,specialties help,,commercial,2,content,
+Specialties,Specialties topic 24,/specialties/topic-24,Specialties topic 24 | Harbourline Billing,Specialties topic 24,specialties topic 24,specialties help,,info,3,content,
+Specialties,Specialties topic 25,/specialties/topic-25,Specialties topic 25 | Harbourline Billing,Specialties topic 25,specialties topic 25,specialties help,/old/specialties/topic-25,commercial,1,content,
+Specialties,Specialties topic 26,/specialties/topic-26,Specialties topic 26 | Harbourline Billing,Specialties topic 26,specialties topic 26,specialties help,,info,2,content,"Draft 26, reviewed"
+Specialties,Specialties topic 27,/specialties/topic-27,Specialties topic 27 | Harbourline Billing,Specialties topic 27,specialties topic 27,specialties help,,commercial,3,content,
+Specialties,Specialties topic 28,/specialties/topic-28,Specialties topic 28 | Harbourline Billing,Specialties topic 28,specialties topic 28,specialties help,/old/specialties/topic-28,info,1,content,
+Resources,Resources topic 1,/resources/topic-01,Resources topic 1 | Harbourline Billing,Resources topic 1,resources topic 1,resources help,/old/resources/topic-01,commercial,1,content,"Draft 1, reviewed"
+Resources,Resources topic 2,/resources/topic-02,Resources topic 2 | Harbourline Billing,Resources topic 2,resources topic 2,resources help,,info,2,content,
+Resources,Resources topic 3,/resources/topic-03,Resources topic 3 | Harbourline Billing,Resources topic 3,resources topic 3,resources help,,commercial,3,content,
+Resources,Resources topic 4,/resources/topic-04,Resources topic 4 | Harbourline Billing,Resources topic 4,resources topic 4,resources help,/old/resources/topic-04,info,1,content,
+Resources,Resources topic 5,/resources/topic-05,Resources topic 5 | Harbourline Billing,Resources topic 5,resources topic 5,resources help,,commercial,2,content,
+Resources,Resources topic 6,/resources/topic-06,Resources topic 6 | Harbourline Billing,Resources topic 6,resources topic 6,resources help,,info,3,content,"Draft 6, reviewed"
+Resources,Resources topic 7,/resources/topic-07,Resources topic 7 | Harbourline Billing,Resources topic 7,resources topic 7,resources help,/old/resources/topic-07,commercial,1,content,
+Resources,Resources topic 8,/resources/topic-08,Resources topic 8 | Harbourline Billing,Resources topic 8,resources topic 8,resources help,,info,2,content,
+Resources,Resources topic 9,/resources/topic-09,Resources topic 9 | Harbourline Billing,Resources topic 9,resources topic 9,resources help,,commercial,3,content,
+Resources,Resources topic 10,/resources/topic-10,Resources topic 10 | Harbourline Billing,Resources topic 10,resources topic 10,resources help,/old/resources/topic-10,info,1,content,
+Resources,Resources topic 11,/resources/topic-11,Resources topic 11 | Harbourline Billing,Resources topic 11,resources topic 11,resources help,,commercial,2,content,"Draft 11, reviewed"
+Resources,Resources topic 12,/resources/topic-12,Resources topic 12 | Harbourline Billing,Resources topic 12,resources topic 12,resources help,,info,3,content,
+Resources,Resources topic 13,/resources/topic-13,Resources topic 13 | Harbourline Billing,Resources topic 13,resources topic 13,resources help,/old/resources/topic-13,commercial,1,content,
+Resources,Resources topic 14,/resources/topic-14,Resources topic 14 | Harbourline Billing,Resources topic 14,resources topic 14,resources help,,info,2,content,
+Resources,Resources topic 15,/resources/topic-15,Resources topic 15 | Harbourline Billing,Resources topic 15,resources topic 15,resources help,,commercial,3,content,
+Resources,Resources topic 16,/resources/topic-16,Resources topic 16 | Harbourline Billing,Resources topic 16,resources topic 16,resources help,/old/resources/topic-16,info,1,content,"Draft 16, reviewed"
+Resources,Resources topic 17,/resources/topic-17,Resources topic 17 | Harbourline Billing,Resources topic 17,resources topic 17,resources help,,commercial,2,content,
+Resources,Resources topic 18,/resources/topic-18,Resources topic 18 | Harbourline Billing,Resources topic 18,resources topic 18,resources help,,info,3,content,
+Resources,Resources topic 19,/resources/topic-19,Resources topic 19 | Harbourline Billing,Resources topic 19,resources topic 19,resources help,/old/resources/topic-19,commercial,1,content,
+Resources,Resources topic 20,/resources/topic-20,Resources topic 20 | Harbourline Billing,Resources topic 20,resources topic 20,resources help,,info,2,content,
+Resources,Resources topic 21,/resources/topic-21,Resources topic 21 | Harbourline Billing,Resources topic 21,resources topic 21,resources help,,commercial,3,content,"Draft 21, reviewed"
+Resources,Resources topic 22,/resources/topic-22,Resources topic 22 | Harbourline Billing,Resources topic 22,resources topic 22,resources help,/old/resources/topic-22,info,1,content,
+Resources,Resources topic 23,/resources/topic-23,Resources topic 23 | Harbourline Billing,Resources topic 23,resources topic 23,resources help,,commercial,2,content,
+## Sheet name: Solutions
+Main category,Sub category,Label
+Solutions,Billing,Billing page
+Solutions,Coding,Coding page
+Solutions,Credentialing,Credentialing page
+Solutions,Patient payments,Patient payments page
+## Sheet name: Who We Serve
+Main category,Sub category,Label
+Who We Serve,Clinics,Clinics page
+Who We Serve,Hospitals,Hospitals page
+Who We Serve,Labs,Labs page
+Who We Serve,Specialty groups,"Groups, by specialty"
+## Sheet name: Technology
+Main category,Sub category,Label
+Technology,Portal,Portal page
+Technology,Reporting,Reporting page
+## Sheet name: Resources
+Main category,Sub category,Label
+These pages are planned for phase two.
+Writers should check the style guide first.
+"Two-line note:
+both lines are one cell"
+Yellow = No current page
+## Sheet name: About Us
+Main category,Sub category,Label
+About Us,Team,Team page
+About Us,Careers,Careers page
+About Us,Contact,Contact page
+## Sheet name: Footer
+Main category,Link,Phase
+Company,About,1
+Company,Careers,2
+Legal,Privacy,1

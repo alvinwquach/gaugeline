@@ -54,7 +54,7 @@ import { addIgnore, applyIgnore, IGNORE_FILE, readIgnore } from "./ignore.js";
 import { canShowView, runView, type ViewIo } from "./tui/app.js";
 import { existsSync, readFileSync } from "node:fs";
 import { writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { basename, join, resolve } from "node:path";
 
 /** The report file, in the folder the run starts from. */
 export const REPORT_FILE = "gaugeline-report.html";
@@ -128,15 +128,25 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
     case "plan": {
       const cwd = deps.cwd ?? process.cwd();
       const path = resolve(cwd, args.file);
-      let text: string;
+      let bytes: Uint8Array;
       try {
-        text = readFileSync(path, "utf8");
+        bytes = readFileSync(path);
       } catch {
         throw new ConfigError(`${args.file} could not be read.`, {
-          hint: "Export the plan from your spreadsheet as CSV and give its path.",
+          hint: "Export the plan from your spreadsheet as CSV or .xlsx and give its path.",
         });
       }
-      io.stdout.write(formatPlanSummary(readPlan(text), args.file));
+      // CSV, a multi-tab text export or .xlsx: the file's first bytes decide, not its name.
+      const plan = readPlan(bytes, {
+        fileName: basename(args.file),
+        ...(args.sheet !== undefined ? { sheet: args.sheet } : {}),
+      });
+      const tabs = plan.workbook.sheets.length;
+      if (tabs > 1 && !args.quiet)
+        io.stderr.write(
+          `Read tab: ${plan.workbook.chosen.name.trim()} (${tabs - 1} other tab${tabs === 2 ? "" : "s"} skipped)\n`,
+        );
+      io.stdout.write(formatPlanSummary(plan, args.file));
       return { outcome: ran, ci: false };
     }
     case "digest": {

@@ -71,7 +71,26 @@ are all fine. Rows with no URL (menu labels, section headings) are skipped and c
 with a `#section` is kept as its page and the anchor, so `/medical#rural` is the page `/medical`
 and the section `rural`. A file with no URL column stops the run (exit 2) and lists the headers it
 found. A multi-tab export pasted into one file, with a `## Sheet name: <tab>` line before each tab,
-is read tab by tab.
+is read as a workbook (below).
+
+### Workbooks and tabs
+
+The plan can also be a whole workbook: an `.xlsx` file, or a multi-tab export pasted into one text
+file with a `## Sheet name: <tab>` line before each tab. The file's first bytes decide how it is
+read, not its name, so an `.xlsx` renamed to `.csv` still works. An old `.xls` file, or a
+password-protected one, stops the run (exit 2) and says to save it as `.xlsx` or CSV. Every cell is
+read as the spreadsheet shows it: dates as their displayed text, numbers without float noise.
+
+The tab with the page list is chosen by its header: the one tab whose header has a URL column. If
+several do, the first is read and a warning names the others; if none does, the run stops and
+lists every tab with its headers. `--sheet <name>` picks a tab by name (case and surrounding spaces
+don't matter). One line on stderr says which tab was read:
+
+```text
+Read tab: Kim's Keywords (6 other tabs skipped)
+```
+
+The other tabs are kept for the checks that read menus.
 
 ### Column names
 
