@@ -174,6 +174,8 @@ export { SANITY_QUERY, readDataset, sanityQueryUrl, sanityRefs } from "./sanity.
 export type { DatasetRead, SanityRef } from "./sanity.js";
 export { readScripts } from "./scripts.js";
 export { EMAIL_PRESET, LAUNCH_PRESET } from "./presets.js";
+export { escapeHtml, renderReport } from "./report/html.js";
+export type { ReportInput } from "./report/html.js";
 export {
   RUN_SNAPSHOT_SCHEMA,
   buildRunSnapshot,

@@ -10,6 +10,8 @@ import {
   buildRunSnapshot,
   createDnsReader,
   createPageRegistry,
+  formatSampleSummary,
+  renderReport,
   exitCodeFor,
   resolveAccess,
   type CheckRegistry,
@@ -34,6 +36,12 @@ import {
 } from "./schema-config.js";
 import { skeletonOnly } from "./skeleton.js";
 import { readLastRun, statePath, writeLastRun } from "./state.js";
+import { openInBrowser } from "./open.js";
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
+
+/** The report file, in the folder the run starts from. */
+export const REPORT_FILE = "gaugeline-report.html";
 import { VERSION } from "./version.js";
 
 /** Shown under the mail record checks a run without --dns leaves out. */
@@ -78,6 +86,8 @@ export interface Deps {
   now?: () => Date;
   /** Where gaugeline.schema.json is looked for. Defaults to the current directory. */
   cwd?: string;
+  /** Opens the written report. Defaults to the system browser; tests pass a fake. */
+  open?: (path: string) => void;
 }
 
 export interface RunReport {
@@ -210,6 +220,35 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           buildRunSnapshot(snapshot, () => startedAt),
           `Gaugeline ${deps.version ?? VERSION}`,
         );
+      // The report: one self-contained file, written on every run that isn't --json, opened only
+      // for a person at a terminal (not with --no-open, not in CI, not when piped).
+      if (!args.json) {
+        const reportPath = join(cwd, REPORT_FILE);
+        // A folder the run can't write to (a read-only checkout, /) costs the report, not the run.
+        let written = false;
+        try {
+          writeFileSync(
+            reportPath,
+            renderReport({
+              result,
+              url: snapshot.finalUrl,
+              startedAt,
+              registry,
+              sampled: formatSampleSummary(budget.summary()),
+              version: deps.version ?? VERSION,
+            }),
+          );
+          written = true;
+        } catch (err) {
+          const code = (err as { code?: string }).code ?? "an error";
+          io.stderr.write(
+            `Could not write ./${REPORT_FILE} in this folder (${code}); the results above are complete. Run from a folder you can write to, or use --json.\n`,
+          );
+        }
+        if (written && !args.quiet) io.stderr.write(`Report written to ./${REPORT_FILE}\n`);
+        if (written && !args.noOpen && !isCiEnv(env) && io.stdout.isTTY === true)
+          (deps.open ?? openInBrowser)(reportPath);
+      }
       const highFindings = result.findings.filter((f) => f.severity === "high").length;
       if (launch && !args.json)
         io.stdout.write(

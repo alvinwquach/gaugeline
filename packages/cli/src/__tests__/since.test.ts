@@ -78,11 +78,12 @@ describe("--since last: integration", () => {
     expect(second.out).not.toContain("A form now posts to a different address");
   });
 
-  it("a run without --since leaves the directory empty", async () => {
+  it("a run without --since writes no state: the folder holds only the report", async () => {
     const server = await shop({ price: "12.00", action: "/order" });
     const cwd = tmp();
     await run(server.origin, cwd, []);
-    expect(readdirSync(cwd)).toEqual([]);
+    // Only the report (G13): no last-run state is read or written without --since.
+    expect(readdirSync(cwd)).toEqual(["gaugeline-report.html"]);
   });
 
   it("--since with anything but last is refused (exit 2)", async () => {
