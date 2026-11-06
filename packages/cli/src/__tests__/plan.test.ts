@@ -283,6 +283,40 @@ describe("gaugeline plan: e2e (CLI)", () => {
     }
   });
 
+  it("--base with a Legacy URL column checks the 301 map and prints the docs Output block", async () => {
+    const site = await startFixture("plan-redirects");
+    try {
+      const dir = mkdtempSync(join(tmpdir(), "gaugeline-redirects-"));
+      dirs.push(dir);
+      cpSync(join(SITES_DIR, "plan-redirects", "plan.csv"), join(dir, "plan.csv"));
+      const run = capture();
+      expect(
+        await main(["plan", "plan.csv", "--base", site.origin, "--allow-private"], run.io, {
+          cwd: dir,
+        }),
+      ).toBe(1);
+      expect(withoutPassed(run.out()).trimEnd()).toBe(expectedOutput("plan-check", "The 301 map"));
+      expect(run.err()).toContain("Reading 8 old addresses from the Legacy URL column\n");
+      expect(run.err()).toContain(
+        "/old-kids redirects with 308 (permanent, keeps the method): accepted like a 301",
+      );
+      expect([...site.methods.keys()]).toEqual(["GET"]);
+    } finally {
+      await site.close();
+    }
+  });
+
+  it("a legacy address claimed by two rows is a conflict without --base", async () => {
+    const dir = workdir();
+    writeFileSync(join(dir, "claims.csv"), "URL,Legacy URL\n/a,/old\n/b,/old\n");
+    const run = capture();
+    expect(await main(["plan", "claims.csv"], run.io, { cwd: dir })).toBe(1);
+    expect(run.out()).toContain(
+      "✗ One old address is claimed by two rows\n    /old is the legacy address of 2 rows: /a, /b\n    lines 2, 3",
+    );
+    expect(run.out()).not.toContain("plan-redirect-missing");
+  });
+
   it("--base with --plan-only, or a preview behind a login: exit 2", async () => {
     const dir = workdir();
     let run = capture();

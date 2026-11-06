@@ -1,5 +1,12 @@
 import { CheckRegistry, defineCheck, type Finding } from "../model.js";
 import { BUILT_CHECK_IDS, BUILT_TITLES, type BuiltResult } from "./built.js";
+import {
+  REDIRECT_CHECK_IDS,
+  REDIRECT_TITLES,
+  redirectConflicts,
+  type RedirectCheckId,
+  type RedirectResult,
+} from "./redirects.js";
 import type { LegacyMention } from "./legacy-notes.js";
 import type { Plan } from "./read.js";
 import { SELF_RULES, runSelfRule, type SelfRule } from "./self.js";
@@ -13,6 +20,8 @@ export interface PlanCheckInput {
   file: string;
   /** What checkBuilt found on --base; absent when there is no --base (those checks are skipped). */
   built?: BuiltResult;
+  /** What checkRedirects found on --base; absent without --base (those checks are skipped). */
+  redirects?: RedirectResult;
 }
 
 const WHY: Record<string, string> = {
@@ -183,9 +192,81 @@ export const planBuiltChecks = BUILT_CHECK_IDS.map((id) =>
   }),
 );
 
+const REDIRECT_TEXT: Record<
+  RedirectCheckId,
+  { severity: Finding["severity"]; what: string; why: string; fix: string; tech: string }
+> = {
+  "plan-redirect-missing": {
+    severity: "high",
+    what: "An old address in the plan's Legacy URL column still answers 200 or 404 on the preview instead of redirecting.",
+    why: "The old address's rankings and links go nowhere: a 404 loses them, a page left in place competes with the new one.",
+    fix: "Add a 301 from the old address to the row's new one. A meta refresh or JavaScript redirect isn't one.",
+    tech: "The legacy address (its path and query, moved onto --base) fetched with GET; the first hop isn't a 3xx. A 200 with a meta refresh or a location assignment is reported with that hint",
+  },
+  "plan-redirect-not-301": {
+    severity: "high",
+    what: "An old address redirects with 302, 303 or 307, or with 308 to the wrong place.",
+    why: "A temporary redirect tells search engines the old address is coming back, so its rankings may not move to the new page.",
+    fix: "Make it a 301. A 308 is permanent too and is accepted when it goes to the right place.",
+    tech: "The status of the first hop. 308 to the planned page is accepted, with a note on stderr",
+  },
+  "plan-redirect-wrong-destination": {
+    severity: "high",
+    what: "An old address redirects, but not to the page the plan says it should.",
+    why: "The old address's visitors and rankings land on the wrong page, and the planned page starts from nothing.",
+    fix: "Point the redirect at the row's URL. Right path on www instead of the bare host (or the reverse) costs another hop.",
+    tech: "The trail's final address (or where the last hop points, when it leaves the preview): its path against the row's, on the preview's host or exactly the plan's",
+  },
+  "plan-redirect-chain": {
+    severity: "medium",
+    what: "An old address takes two or more redirects to reach its page.",
+    why: "Each hop costs visitors time, and search engines follow only so many before giving up on passing signals.",
+    fix: "Redirect the old address straight to the final page. A server that adds a trailing slash first counts: redirect the old address's own form.",
+    tech: "More than one 3xx in the hop list the fetcher records; the trail is in the evidence",
+  },
+  "plan-redirect-drops-query": {
+    severity: "low",
+    what: "An old address with a query string redirects to an address without it.",
+    why: "Campaign tags and filters on old links are lost, so their visits can't be told apart.",
+    fix: "Pass the query string on in the redirect rule.",
+    tech: "The legacy address has a query; the trail's final address has none",
+  },
+  "plan-redirect-conflict": {
+    severity: "high",
+    what: "One old address is the Legacy URL of two rows that plan different pages.",
+    why: "An address can redirect to one place only: one of the two rows won't get its traffic, and no crawl will show it.",
+    fix: "Decide which page the old address goes to and remove it from the other row.",
+    tech: "Legacy URL cells split on line breaks and commas, keyed by path and query (lower case, no trailing slash); two rows with different addresses on one key. Needs no --base",
+  },
+};
+
+export const planRedirectChecks = REDIRECT_CHECK_IDS.map((id) =>
+  defineCheck<PlanCheckInput>({
+    id,
+    area: "Launch day",
+    title: REDIRECT_TITLES[id],
+    ...REDIRECT_TEXT[id],
+    run(input) {
+      return (input.redirects?.findings ?? []).filter((f) => f.checkId === id);
+    },
+  }),
+);
+
+export const planRedirectConflict = defineCheck<PlanCheckInput>({
+  id: "plan-redirect-conflict",
+  area: "Launch day",
+  title: REDIRECT_TITLES["plan-redirect-conflict"],
+  ...REDIRECT_TEXT["plan-redirect-conflict"],
+  run(input) {
+    return redirectConflicts(input.plan.rows, input.file);
+  },
+});
+
 /** The plan checks, apart from the page checks: they read a plan, not a page. */
 export const PLAN_CHECKS = [
   ...planBuiltChecks,
+  ...planRedirectChecks,
+  planRedirectConflict,
   ...planSelfChecks,
   planSlugMisspelling,
   planKeywordCannibalisation,

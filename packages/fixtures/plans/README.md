@@ -17,7 +17,8 @@ company (Harbourline Billing), its pages and keywords are made up.
 - `legacy-notes.csv`: an invented plan with no Legacy URL column; old addresses are only in the
   "SEO Notes" column, written the way people write them: a redirect instruction (Coding), a page
   named in words (Billing), "via 301", a question to confirm, a "no destination", a slug typo note,
-  a planned path, two kinds in one cell, the same old path on two rows (Coding and Pathology), and a
+  a planned path, two kinds in one cell, the same old path on two rows (Coding and Pathology:
+  plan-redirect-conflict), and a
   full address.
 - `keywords.csv`: an invented plan with Primary Keyword, Primary Volume and Secondary Keyword
   columns, for the keyword checks: three pages on "medical billing services" (590), two on

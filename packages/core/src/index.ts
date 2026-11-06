@@ -242,6 +242,8 @@ export {
   planKeywordCannibalisation,
   planKeywordOverlap,
   planBuiltChecks,
+  planRedirectChecks,
+  planRedirectConflict,
 } from "./plan/checks.js";
 export { BUILT_CHECK_IDS, BUILT_TITLES, canonicalIsThisPage, checkBuilt } from "./plan/built.js";
 export type { BuiltOptions, BuiltResult } from "./plan/built.js";
@@ -265,6 +267,22 @@ export {
   rowsMatching,
 } from "./plan/progress.js";
 export type { PlanProgress, PlanState, ReadState as PlanStateRead } from "./plan/progress.js";
+export {
+  REDIRECT_CHECK_IDS,
+  REDIRECT_TITLES,
+  checkRedirects,
+  classify as classifyRedirect,
+  legacyClaims,
+  legacyPath,
+  redirectConflicts,
+  splitLegacy,
+} from "./plan/redirects.js";
+export type {
+  RedirectCheckId,
+  RedirectOptions,
+  RedirectResult,
+  RedirectVerdict,
+} from "./plan/redirects.js";
 export { checkKeywords, keywordKey, secondaryTerms } from "./plan/keywords.js";
 export { ANNOTATION_HEADER, annotate, byLine } from "./plan/annotate.js";
 export { addressKey, groupBy, textKey } from "./plan/keys.js";
