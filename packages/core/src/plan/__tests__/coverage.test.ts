@@ -114,7 +114,7 @@ describe("pages with nowhere to go: edge cases", () => {
     const stream = new Readable({ read() {} });
     stream.push("/a\n/b\n/c\n");
     for await (const u of readLive(stream)) if (u.url === "/a") break;
-    expect(stream.destroyed).toBe(true);
+    expect(stream.closed).toBe(true);
   });
 
   it("a live address covered only by a row's Legacy URL is covered", async () => {

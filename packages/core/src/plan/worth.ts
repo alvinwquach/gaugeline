@@ -3,7 +3,7 @@ import { Readable } from "node:stream";
 import { ConfigError } from "../errors.js";
 import type { Finding } from "../model.js";
 import { normaliseHeader, parseCsv } from "./columns.js";
-import { coverageKey } from "./coverage.js";
+import { closeStream, coverageKey } from "./coverage.js";
 
 /**
  * What an uncovered page is worth: a Search Console pages export or a rank tracker's export,
@@ -143,7 +143,7 @@ export async function readRankExport(input: Readable | string): Promise<RankExpo
     }
   } finally {
     lines.close();
-    stream.destroy();
+    await closeStream(stream);
   }
   if (columns === undefined) throw new ConfigError("--rank: the export is empty.");
   return { worth, source, ...(range ? { range } : {}), rows };

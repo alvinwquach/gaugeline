@@ -1,4 +1,6 @@
-import { createReadStream, readFileSync } from "node:fs";
+import { createReadStream, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { Readable } from "node:stream";
 import { describe, expect, it } from "vitest";
 import { SITES_DIR } from "../../../../fixtures/src/index.js";
@@ -170,7 +172,20 @@ describe("worth: edge cases", () => {
     const stream = new Readable({ read() {} });
     stream.push("Top queries,Clicks\nbilling,5\n");
     await expect(readRankExport(stream)).rejects.toThrow(ConfigError);
-    expect(stream.destroyed).toBe(true);
+    expect(stream.closed).toBe(true);
+  });
+
+  it("a real file is closed by the time the error reaches the caller, not later", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "gaugeline-worth-"));
+    try {
+      writeFileSync(join(dir, "queries.csv"), "Top queries,Clicks\nbilling,5\n");
+      const stream = createReadStream(join(dir, "queries.csv"));
+      await expect(readRankExport(stream)).rejects.toThrow(ConfigError);
+      // destroy() alone closes the file a tick later; on Windows the folder can't be removed then.
+      expect(stream.closed).toBe(true);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it("position 0 or missing while clicks exist: sorted by clicks, shown as unknown", async () => {

@@ -154,8 +154,19 @@ export async function* readLive(
     }
   } finally {
     lines.close();
-    stream.destroy();
+    await closeStream(stream);
   }
+}
+
+/**
+ * Destroy a stream and wait until its file is closed: destroy() alone only schedules the close,
+ * and on Windows a file still open can't be removed by whoever runs next.
+ */
+export async function closeStream(stream: Readable): Promise<void> {
+  if (stream.closed) return;
+  const closed = new Promise<void>((resolve) => stream.once("close", () => resolve()));
+  stream.destroy();
+  await closed;
 }
 
 export interface CoverageOptions {
