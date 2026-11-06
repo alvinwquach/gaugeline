@@ -187,12 +187,15 @@ that scripts can validate against:
   "findings": [],
   "passed": ["title-missing"],
   "failed": [],
-  "couldNotCheck": []
+  "couldNotCheck": [],
+  "sampled": { "links": { "seen": 0, "taken": 0, "limit": 30 } }
 }
 ```
 
 - `passed` and `failed` are check ids. `failed` lists checks that could not execute; the rest of the
   run still reports.
+- `sampled` has every kind the run samples (links, images, sitemap pages, ...), zeros included:
+  `{ seen, taken, limit }`. Schema 2 added it with `couldNotCheck`.
 - `couldNotCheck` lists what a check could not read because the site refused it (401, 403, 429,
   503 with Retry-After, or a bot challenge page): `{ id, reason, url }`. It is never a finding, and
   a check with an entry is never in `passed`. Schema 2 added it; schema 1 had no such field.

@@ -80,9 +80,7 @@ describe("next: unit", () => {
     const budget = createBudget();
     budget.take("frameworkAddresses", ["a", "b", "c"]);
     budget.take("links", ["x"]);
-    expect(formatSampleSummary(budget.summary())).toBe(
-      "Checked 1 link. 3 framework addresses ignored.",
-    );
+    expect(formatSampleSummary(budget.summary())).toBe("3 framework addresses ignored.");
   });
 });
 

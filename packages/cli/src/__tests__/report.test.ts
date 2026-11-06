@@ -77,6 +77,28 @@ describe("html report: e2e (CLI)", () => {
     }
   });
 
+  it("the report for the clean fixture lists what was verified and has no empty section headings", async () => {
+    const site = await startFixture("clean");
+    const cwd = mkdtempSync(join(tmpdir(), "gaugeline-report-"));
+    dirs.push(cwd);
+    try {
+      const io = {
+        stdout: { write: () => true },
+        stderr: { write: () => true },
+        env: { NO_COLOR: "1" },
+      };
+      await main([site.origin, "--allow-private", "--no-open"], io, { cwd });
+    } finally {
+      await site.close();
+    }
+    const html = readFileSync(join(cwd, REPORT_FILE), "utf8");
+    expect(html).toContain("<h2>What looked right");
+    expect(html).toContain("<h3>Search &amp; sharing</h3>");
+    // Every heading is followed by content, never straight by another heading or the end.
+    expect(html).not.toMatch(/<\/h2>\s*(?:<h2|<\/body>)/);
+    expect(html).not.toMatch(/<\/h3>\s*(?:<h[23]|<\/body>)/);
+  });
+
   it("--json writes no report", async () => {
     const r = await run(["--json"]);
     expect(existsSync(join(r.cwd, REPORT_FILE))).toBe(false);

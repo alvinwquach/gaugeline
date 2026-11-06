@@ -48,7 +48,6 @@ Spanish page has an old price, version 0.1.0 prints:
 ? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
     Mail records are read from DNS only with --dns. Rerun with --dns to check them.
 
-Checked 1 image, all 2 sitemap pages, all 2 language versions.
 2 to look at, 1 to fix first.
 ```
 

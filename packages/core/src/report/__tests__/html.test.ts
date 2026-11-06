@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createPageRegistry } from "../../checks/index.js";
+import { createBudget } from "../../limits.js";
 import type { Finding } from "../../model.js";
 import type { RunResult } from "../../run.js";
 import { escapeHtml, renderReport } from "../html.js";
@@ -25,9 +26,16 @@ const result = (r: Partial<RunResult>): RunResult => ({
   failed: [],
   warnings: [],
   couldNotCheck: [],
+  sampled: {},
   ...r,
 });
-const render = (r: RunResult, sampled = "Checked all 2 links, 1 image.") =>
+function twoLinksOneImage() {
+  const b = createBudget();
+  b.take("links", ["a", "b"]);
+  b.take("images", ["i"]);
+  return b.summary();
+}
+const render = (r: RunResult, sampled = twoLinksOneImage()) =>
   renderReport({
     result: r,
     url: "https://shop.example/",
@@ -66,7 +74,8 @@ describe("html report: unit", () => {
     expect(html).toMatchSnapshot();
     expect(html).toContain("<h2>Fix this first <span>1</span></h2>");
     expect(html).toContain("<h2>What looked right <span>2</span></h2>");
-    expect(html).toContain("Checked all 2 links, 1 image.");
+    expect(html).toContain("<h2>Could not check</h2>");
+    expect(html).toContain("<li>all 2 links checked</li><li>the 1 image checked</li>");
   });
 
   it("every dynamic value is escaped: <script> in a title or evidence is text, never markup", () => {
@@ -104,7 +113,6 @@ describe("html report: edge cases", () => {
   it("0 findings: the report still lists what was verified", () => {
     const html = render(result({ passed: ["canonical-missing", "noindex"] }));
     expect(html).toContain("Nothing to fix");
-    expect(html).toContain("canonical-missing");
     expect(html).toContain("The page doesn&#39;t say which address is the real one");
   });
 

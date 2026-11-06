@@ -53,7 +53,6 @@ and Saturday hours, version 0.1.0 prints:
 ? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
     Mail records are read from DNS only with --dns. Rerun with --dns to check them.
 
-Checked 1 image, 1 sitemap page, all 3 llms.txt links.
 2 to look at, none to fix first.
 ```
 

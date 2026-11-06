@@ -10,7 +10,6 @@ import {
   buildRunSnapshot,
   createDnsReader,
   createPageRegistry,
-  formatSampleSummary,
   renderReport,
   exitCodeFor,
   resolveAccess,
@@ -200,6 +199,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           passed: result.passed,
           failed: [...result.failed.map((f) => f.id), ...dnsSkipped],
           couldNotCheck: result.couldNotCheck,
+          sampled: result.sampled,
         });
         io.stdout.write(`${JSON.stringify(json, null, 2)}\n`);
       } else {
@@ -234,7 +234,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
               url: snapshot.finalUrl,
               startedAt,
               registry,
-              sampled: formatSampleSummary(budget.summary()),
+              sampled: budget.summary(),
               version: deps.version ?? VERSION,
             }),
           );
