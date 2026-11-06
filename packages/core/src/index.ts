@@ -255,6 +255,16 @@ export {
   protectionPage,
 } from "./fetch/preview-auth.js";
 export type { PreviewAuth, Protection } from "./fetch/preview-auth.js";
+export { fingerprint, stableEvidence } from "./fingerprint.js";
+export {
+  PLAN_STATE_SCHEMA,
+  compare as comparePlanProgress,
+  planHash,
+  progressLine,
+  readPlanState,
+  rowsMatching,
+} from "./plan/progress.js";
+export type { PlanProgress, PlanState, ReadState as PlanStateRead } from "./plan/progress.js";
 export { checkKeywords, keywordKey, secondaryTerms } from "./plan/keywords.js";
 export { ANNOTATION_HEADER, annotate, byLine } from "./plan/annotate.js";
 export { addressKey, groupBy, textKey } from "./plan/keys.js";

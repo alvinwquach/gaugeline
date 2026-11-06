@@ -47,6 +47,7 @@
       "webhook"
     ],
     "plan": [
+      "all",
       "allow-private",
       "annotate",
       "base",
@@ -55,6 +56,7 @@
       "legacy-from",
       "legacy-review",
       "plan-only",
+      "progress",
       "quiet",
       "sheet",
       "verbose",

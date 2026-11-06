@@ -33,10 +33,19 @@ export interface TerminalReport {
   notRun?: { ids: readonly string[]; hint: string };
   /** The checked page's origin: same-site addresses in "?" rows are shown as paths. */
   origin?: string;
+  /** Lines printed last in place of the count line (plan --progress: what changed, then the summary). */
+  footer?: readonly string[];
 }
 
 /** The plain-English report on stdout. Evidence is indented and greyed under each finding. */
-export function formatTerminal({ result, sampled, color, notRun, origin }: TerminalReport): string {
+export function formatTerminal({
+  result,
+  sampled,
+  color,
+  notRun,
+  origin,
+  footer,
+}: TerminalReport): string {
   const short = (url: string) => {
     try {
       const u = new URL(url);
@@ -89,6 +98,7 @@ export function formatTerminal({ result, sampled, color, notRun, origin }: Termi
   lines.push("");
   const sample = sampled ? formatSampleSummary(sampled) : "";
   if (sample !== "") lines.push(sample);
-  lines.push(p.bold(summaryLine(result.findings)));
+  if (footer) lines.push(...footer.slice(0, -1), p.bold(footer.at(-1) ?? ""));
+  else lines.push(p.bold(summaryLine(result.findings)));
   return `${lines.join("\n")}\n`;
 }
