@@ -45,6 +45,8 @@ Spanish page has an old price, version 0.1.0 prints:
     TAMAL-BOX: 12.00 USD on / (en), 14 USD on /es/ (es)
 ! A language version of this page is missing
     1 of 2 language versions are missing: fr /fr/ returned 404
+? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
+    Mail records are read from DNS only with --dns. Rerun with --dns to check them.
 
 Checked 1 image, all 2 sitemap pages, all 2 language versions.
 2 to look at, 1 to fix first.

@@ -60,6 +60,8 @@ $ npx gaugeline shop.example
 ```text title=Output
 ✗ This page tells Google to show a different page
     <link rel="canonical" href="https://shop.example/tools"> on https://shop.example/ (differs by path)
+? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
+    Mail records are read from DNS only with --dns. Rerun with --dns to check them.
 
 Checked 1 image, all 2 sitemap pages.
 1 to look at, 1 to fix first.

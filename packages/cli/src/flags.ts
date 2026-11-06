@@ -57,9 +57,9 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
   {
     name: "dns",
     type: "boolean",
-    description: "launch: also check the mail records (SPF and DMARC) a DNS change would break",
+    description: "Also read the domain's mail records (SPF and DMARC) from DNS",
     since: "0.2.0",
-    commands: ["launch"],
+    commands: ["check", "launch"],
   },
   {
     name: "quiet",

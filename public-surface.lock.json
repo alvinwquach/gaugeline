@@ -3,6 +3,7 @@
     "check": [
       "allow-private",
       "ci",
+      "dns",
       "help",
       "json",
       "no-open",
