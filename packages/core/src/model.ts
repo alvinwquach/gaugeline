@@ -11,6 +11,8 @@ import type { SchemaRules } from "./schema-rules.js";
 import type { AccessRead } from "./access/probe.js";
 import type { DnsReader } from "./dns.js";
 import type { HiddenConfig } from "./hidden.js";
+import type { TagAnalysis } from "./tags/analyse.js";
+import type { TagContainer } from "./tags/read-container.js";
 import type { RunSnapshot } from "./run-snapshot.js";
 import type { DatasetRead } from "./sanity.js";
 import type { ScriptRead } from "./scripts.js";
@@ -118,6 +120,10 @@ export interface CheckContext {
   previous?: RunSnapshot;
   /** Sections hidden until launch (gaugeline.hidden.json). */
   hidden?: HiddenConfig;
+  /** The Tag Manager container export named in gaugeline.tags.json, read from the file only. */
+  tagContainer?: TagContainer;
+  /** That container's triggers judged against the pages read, once on first use. */
+  tagRules?: () => Promise<TagAnalysis>;
   /** The business's payment handles and links (gaugeline.payments.json). */
   payments?: PaymentsConfig;
   /** The team's schema guide, when one is configured (gaugeline.schema.json). */

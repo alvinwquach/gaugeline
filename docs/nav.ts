@@ -96,4 +96,5 @@ export const UNLISTED: NavPage[] = [
   { slug: "guides/payments", title: "Payment details everywhere" },
   { slug: "guides/access-rules", title: "Database access rules, tested from outside" },
   { slug: "guides/nextjs", title: "Next.js sites" },
+  { slug: "guides/tag-rules", title: "Tracking rules that point at things that no longer exist" },
 ];

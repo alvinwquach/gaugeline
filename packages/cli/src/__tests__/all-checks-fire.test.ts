@@ -39,6 +39,7 @@ const FIXTURES = [
   "hidden-library",
   "next-like",
   "refusing",
+  "tag-rules",
 ];
 
 /**
@@ -92,6 +93,7 @@ async function findingsOf(name: string): Promise<string[]> {
       "gaugeline.facts.json",
       "gaugeline.payments.json",
       "gaugeline.hidden.json",
+      "gaugeline.tags.json",
     ].some((f) => existsSync(`${dir}/${f}`))
       ? dir
       : undefined;

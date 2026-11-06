@@ -97,6 +97,8 @@
   "staging-indexable",
   "stega-leak",
   "structured-duplicate",
+  "tags-dead-rules",
+  "tags-duplicate",
   "tel-format",
   "temp-host-canonical",
   "temp-host-links",
