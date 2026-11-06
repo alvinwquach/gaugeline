@@ -77,7 +77,6 @@ with the project's answers replayed from an invented recording, version 0.1.0 pr
 ? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
     Mail records are read from DNS only with --dns. Rerun with --dns to check them.
 
-Checked 1 image, 1 sitemap page, all 5 database tables.
 3 to look at, 3 to fix first.
 ```
 

@@ -155,12 +155,12 @@ const NOUNS: Record<BudgetKind, [singular: string, plural: string]> = {
  */
 export function formatSampleSummary(summary: BudgetSummary): string {
   const parts: string[] = [];
+  // Only the kinds that were cut short: "Checked 30 of 112 links, 20 of 46 images." A full sample
+  // is in the report's "How much was sampled", not on the terminal.
   for (const kind of BUDGET_KINDS) {
     const { sampled, found } = summary[kind];
-    if (found === 0 || kind === "frameworkAddresses") continue;
-    const [one, many] = NOUNS[kind];
-    if (sampled === found) parts.push(found === 1 ? `1 ${one}` : `all ${found} ${many}`);
-    else parts.push(`${sampled} of ${found} ${found === 1 ? one : many}`);
+    if (found === 0 || sampled >= found || kind === "frameworkAddresses") continue;
+    parts.push(`${sampled} of ${found} ${kindNoun(kind, found)}`);
   }
   const checked = parts.length === 0 ? "" : `Checked ${parts.join(", ")}.`;
   // Framework addresses are never requested: they are counted, not checked.
@@ -168,4 +168,26 @@ export function formatSampleSummary(summary: BudgetSummary): string {
   const note =
     ignored === 0 ? "" : `${ignored} framework address${ignored === 1 ? "" : "es"} ignored.`;
   return [checked, note].filter((s) => s !== "").join(" ");
+}
+
+/** "link" or "links", for a count of that kind. */
+export function kindNoun(kind: BudgetKind, count: number): string {
+  const [one, many] = NOUNS[kind];
+  return count === 1 ? one : many;
+}
+
+/** How much of each kind was found and taken, for the result and --json: every kind, zeros included. */
+export interface SampleCount {
+  seen: number;
+  taken: number;
+  limit: number;
+}
+
+export function sampleCounts(summary: BudgetSummary): Record<BudgetKind, SampleCount> {
+  const out = {} as Record<BudgetKind, SampleCount>;
+  for (const kind of BUDGET_KINDS) {
+    const { limit, sampled, found } = summary[kind];
+    out[kind] = { seen: found, taken: sampled, limit };
+  }
+  return out;
 }

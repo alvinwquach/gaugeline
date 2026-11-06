@@ -44,7 +44,6 @@ run's clock set to 5 November 2026, version 0.1.0 prints:
 ? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
     Mail records are read from DNS only with --dns. Rerun with --dns to check them.
 
-Checked 1 link, 1 image, all 2 sitemap pages, 1 calendar, 1 other page, 1 address in structured data.
 4 to look at, 3 to fix first.
 ```
 

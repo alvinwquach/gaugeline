@@ -47,6 +47,7 @@ const finding: Finding = {
 const minimal = {
   schema: RESULT_SCHEMA_VERSION,
   couldNotCheck: [],
+  sampled: {},
   url: "https://shop.example/",
   startedAt: "2026-01-02T03:04:05.000Z",
   findings: [finding],
@@ -83,6 +84,16 @@ describe("result schema: unit", () => {
       .strict();
     const shuffled = z
       .object({
+        sampled: z.record(
+          z.string(),
+          z
+            .object({
+              seen: z.number().int().nonnegative(),
+              taken: z.number().int().nonnegative(),
+              limit: z.number().int().nonnegative(),
+            })
+            .strict(),
+        ),
         couldNotCheck: z.array(
           z.object({ url: z.string(), reason: z.string(), id: z.string() }).strict(),
         ),

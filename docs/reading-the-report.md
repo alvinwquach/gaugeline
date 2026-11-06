@@ -37,10 +37,14 @@ anywhere, so it reads the same attached to an email. It holds:
 - the counts for each level;
 - each finding, grouped by level, with why it matters, how to fix it, the technical line and the
   check id;
-- "What looked right": every check that passed, by name, so a clean report still shows what was
-  verified;
+- "What looked right": every check that passed, by its plain-English title, grouped by area in the
+  same order as the findings, so a clean report still shows what was verified. A check that could
+  not read something, or failed to run, is never listed there;
 - what could not be checked (a refused page or sample) and any check that failed to run;
-- how much was sampled, the same line the terminal prints.
+- how much was sampled, one line per kind: "30 of 112 links checked", or "all 14 links checked"
+  when nothing was left out. Kinds with nothing found are left out; a page with nothing to sample
+  says so. The terminal's closing line names only the kinds that were cut short ("Checked 30 of 112
+  links, 20 of 46 images.") and `--json` carries every kind, zeros included, under `sampled`.
 
 Every value from the site (a page title, an address, evidence) is escaped before it goes into the
 file, so a page that puts markup in its title can't put markup in your report.

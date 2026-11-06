@@ -126,6 +126,18 @@ describe("docs examples: integration", () => {
   }, 60_000);
 
   it("an example with --json is compared as parsed JSON, key order ignored", async () => {
+    // The sample counts are the run's own (G13a); what is under test is the key-order-free compare.
+    const probe: Example = {
+      file: "p.md",
+      line: 1,
+      outputLine: 2,
+      command: "npx gaugeline shop.example --json",
+      fixture: "quick-start",
+      exit: 0,
+      expected: "{}",
+    };
+    const ran = await runExample(probe, bin);
+    const sampled = (JSON.parse(ran.stdout) as { sampled: unknown }).sampled;
     const e: Example = {
       file: "p.md",
       line: 1,
@@ -145,6 +157,7 @@ describe("docs examples: integration", () => {
         url: "https://shop.example/",
         schema: 2,
         couldNotCheck: [],
+        sampled,
         findings: [
           {
             url: "https://shop.example/",
@@ -211,7 +224,7 @@ describe("docs examples: edge cases", () => {
 
   it("an expected exit code other than 0 is declared with <!-- exit: 1 --> and asserted", async () => {
     const md = page(
-      `<!-- fixture: quick-start -->\n<!-- exit: 1 -->\n${F}sh title=Terminal\n$ npx gaugeline shop.example --ci\n${F}\n\n${F}text title=Output\n✗ This page tells Google to show a different page\n    <link rel="canonical" href="https://shop.example/tools"> on https://shop.example/ (differs by path)\n? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none\n    Mail records are read from DNS only with --dns. Rerun with --dns to check them.\n\nChecked 1 image, all 2 sitemap pages.\n1 to look at, 1 to fix first.\n${F}`,
+      `<!-- fixture: quick-start -->\n<!-- exit: 1 -->\n${F}sh title=Terminal\n$ npx gaugeline shop.example --ci\n${F}\n\n${F}text title=Output\n✗ This page tells Google to show a different page\n    <link rel="canonical" href="https://shop.example/tools"> on https://shop.example/ (differs by path)\n? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none\n    Mail records are read from DNS only with --dns. Rerun with --dns to check them.\n\n1 to look at, 1 to fix first.\n${F}`,
     );
     const [e] = extractExamples(md, "p.md");
     expect(e?.exit).toBe(1);

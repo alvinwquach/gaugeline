@@ -35,6 +35,17 @@ export const resultSchema = z
     couldNotCheck: z.array(
       z.object({ id: z.string(), reason: z.string(), url: z.string() }).strict(),
     ),
+    /** How much of each kind (links, images, sitemap pages, ...) was found and read. */
+    sampled: z.record(
+      z.string(),
+      z
+        .object({
+          seen: z.number().int().nonnegative(),
+          taken: z.number().int().nonnegative(),
+          limit: z.number().int().nonnegative(),
+        })
+        .strict(),
+    ),
   })
   .strict();
 
@@ -52,6 +63,7 @@ export function buildResult(run: {
   passed: string[];
   failed: string[];
   couldNotCheck?: Result["couldNotCheck"];
+  sampled?: Result["sampled"];
 }): Result {
   return {
     schema: RESULT_SCHEMA_VERSION,
@@ -61,5 +73,6 @@ export function buildResult(run: {
     passed: run.passed,
     failed: run.failed,
     couldNotCheck: run.couldNotCheck ?? [],
+    sampled: run.sampled ?? {},
   };
 }

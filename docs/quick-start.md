@@ -63,7 +63,6 @@ $ npx gaugeline shop.example
 ? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
     Mail records are read from DNS only with --dns. Rerun with --dns to check them.
 
-Checked 1 image, all 2 sitemap pages.
 1 to look at, 1 to fix first.
 ```
 
@@ -90,8 +89,8 @@ When a run samples part of a page, a line before the summary says how much, for 
 Checked 24 of 61 links, 20 of 34 images, 25 of 310 sitemap pages.
 ```
 
-A kind that was checked in full reads "all 24 links". Kinds with nothing found are left out. The
-limits are fixed (see [Security](security.md#how-much-a-run-requests)); there is no flag to raise them.
+Only the kinds that were cut short appear; when everything found was read, there is no such line.
+The report's "How much was sampled" lists every kind, cut short or not. The limits are fixed (see [Security](security.md#how-much-a-run-requests)); there is no flag to raise them.
 
 ### In CI
 
@@ -131,7 +130,6 @@ address, version 0.1.0 prints:
 ✗ Links still point at a temporary address
     1 link to a temporary address: https://fernwood-git-main-studio.vercel.app/classes
 
-Checked 1 image, 1 sitemap page.
 1 to look at, 1 to fix first.
 Not yet: 1 to fix first
 ```

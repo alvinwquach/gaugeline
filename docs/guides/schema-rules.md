@@ -64,7 +64,6 @@ version 0.1.0 prints:
 ? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
     Mail records are read from DNS only with --dns. Rerun with --dns to check them.
 
-Checked all 4 links, 1 image, all 5 sitemap pages, all 4 other pages, all 2 addresses in structured data.
 3 to look at, none to fix first.
 ```
 

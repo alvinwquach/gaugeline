@@ -48,7 +48,7 @@ Against the invented `next-like` fixture, a letterpress studio copied from a pre
 ? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
     Mail records are read from DNS only with --dns. Rerun with --dns to check them.
 
-Checked 1 link, 1 image, all 2 sitemap pages, 1 JavaScript file, all 4 draft routes. 40 framework addresses ignored.
+40 framework addresses ignored.
 3 to look at, 3 to fix first.
 ```
 
