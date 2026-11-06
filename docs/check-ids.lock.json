@@ -1,4 +1,6 @@
 [
+  "access-public-read",
+  "access-role-scope",
   "ai-crawlers-blocked",
   "app-link-dead",
   "app-name-mismatch",

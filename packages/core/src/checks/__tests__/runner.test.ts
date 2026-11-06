@@ -54,6 +54,8 @@ describe("runner: unit", () => {
     const ids = PAGE_CHECKS.map((c) => c.id);
     expect(ids).toEqual([...ids].sort());
     expect(ids).toEqual([
+      "access-public-read",
+      "access-role-scope",
       "ai-crawlers-blocked",
       "app-link-dead",
       "app-name-mismatch",
@@ -164,6 +166,8 @@ describe("runner: edge cases", () => {
     ]);
     // With no site context in this run, the robots, sitemap and feed checks find nothing.
     expect(out.passed.sort()).toEqual([
+      "access-public-read",
+      "access-role-scope",
       "ai-crawlers-blocked",
       "app-link-dead",
       "app-name-mismatch",

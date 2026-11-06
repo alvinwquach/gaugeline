@@ -12,6 +12,8 @@
     ]
   },
   "checkIds": [
+    "access-public-read",
+    "access-role-scope",
     "ai-crawlers-blocked",
     "app-link-dead",
     "app-name-mismatch",
@@ -92,6 +94,8 @@
     "viewport"
   ],
   "severities": {
+    "access-public-read": "high",
+    "access-role-scope": "high",
     "ai-crawlers-blocked": "low",
     "app-link-dead": "high",
     "app-name-mismatch": "low",
