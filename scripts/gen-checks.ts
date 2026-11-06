@@ -5,7 +5,12 @@
  */
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { PLAN_CHECKS, catalogue, createPageRegistry } from "../packages/core/src/index.js";
+import {
+  PLAN_CHECKS,
+  PRINTED_CHECKS,
+  catalogue,
+  createPageRegistry,
+} from "../packages/core/src/index.js";
 import { format, resolveConfig } from "prettier";
 import { updateLock } from "./lib/check-ids.js";
 import { renderChecksTable, replaceChecksBlock } from "./lib/readme-checks.js";
@@ -25,6 +30,7 @@ const readmes = (
 // The reference lists the page checks and the plan checks (which read a plan file, not a page).
 const registry = createPageRegistry();
 for (const c of PLAN_CHECKS) registry.register(c);
+for (const c of PRINTED_CHECKS) registry.register(c);
 const entries = catalogue(registry);
 // A scaffold from pnpm new:check imports and runs, but its TODO text must never reach the docs.
 const unfinished = entries.flatMap((e) =>

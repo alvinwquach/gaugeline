@@ -11,7 +11,7 @@ import { fileURLToPath } from "node:url";
 import { withFixture } from "../packages/fixtures/src/index.js";
 
 export const SIZE_BUDGET_BYTES = 1024 * 1024;
-const ALLOWED = /^package\/(dist\/.+|README\.md|LICENSE|package\.json)$/;
+const ALLOWED = /^package\/(dist\/.+|README\.md|LICENSE|THIRD_PARTY_LICENSES\.md|package\.json)$/;
 
 const cliDir = fileURLToPath(new URL("../packages/cli/", import.meta.url));
 const out = mkdtempSync(join(tmpdir(), "gaugeline-smoke-"));
@@ -38,6 +38,8 @@ try {
     "package/dist/index.js",
     "package/README.md",
     "package/LICENSE",
+    // Bundled code under another licence (jsQR, Apache-2.0) ships with its licence text.
+    "package/THIRD_PARTY_LICENSES.md",
   ]) {
     if (!files.includes(required)) fail(`${required} is missing from the tarball`);
   }
@@ -94,6 +96,8 @@ try {
       .split("\n")
       .filter(Boolean);
     const extra = freeFiles.filter((f) => !ALLOWED.test(f));
+    if (!freeFiles.includes("package/THIRD_PARTY_LICENSES.md"))
+      fail("package/THIRD_PARTY_LICENSES.md is missing from the gaugeline-free tarball");
     if (extra.length > 0)
       fail(`unexpected files in the gaugeline-free tarball: ${extra.join(", ")}`);
     const freeSize = statSync(freePath).size;

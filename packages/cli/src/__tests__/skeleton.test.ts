@@ -89,7 +89,7 @@ describe("walking skeleton: unit", () => {
 });
 
 describe("walking skeleton: integration (the packed tarball)", () => {
-  it("npm pack lists dist, README.md, LICENSE, package.json and nothing else", async () => {
+  it("npm pack lists dist, README.md, LICENSE, THIRD_PARTY_LICENSES.md, package.json and nothing else", async () => {
     const { stdout } = await exec("npm", ["pack", "--dry-run", "--json"], {
       cwd: cliDir,
       shell: process.platform === "win32",
@@ -98,6 +98,7 @@ describe("walking skeleton: integration (the packed tarball)", () => {
     expect(info.files.map((f) => f.path).sort()).toEqual([
       "LICENSE",
       "README.md",
+      "THIRD_PARTY_LICENSES.md",
       "dist/index.js",
       "package.json",
     ]);

@@ -407,3 +407,25 @@ export { DEPRECATED, deprecate, resetDeprecations } from "./deprecate.js";
 export type { Deprecation } from "./deprecate.js";
 export { EXIT_CODES, PUBLIC_ENV_VARS, publicSurface } from "./public-surface.js";
 export type { PublicSurface } from "./public-surface.js";
+export { readQr } from "./printed/qr.js";
+export type { QrRead } from "./printed/qr.js";
+export { decodePng, PngError } from "./printed/png.js";
+export type { Rgba } from "./printed/png.js";
+export { PRINTED_COLUMNS, readRegister, registerAdditions } from "./printed/register.js";
+export type { PrintedField, PrintedRow } from "./printed/register.js";
+export {
+  DEFAULT_TAG_PREFIXES,
+  PRINTED_CHECK_IDS,
+  PRINTED_TITLES,
+  byAddress,
+  checkPrinted,
+  classifyPrinted,
+} from "./printed/check.js";
+export type {
+  PrintedCheckId,
+  PrintedOptions,
+  PrintedResult,
+  PrintedVerdict,
+} from "./printed/check.js";
+export { PRINTED_CHECKS, createPrintedRegistry } from "./printed/checks.js";
+export type { PrintedCheckInput } from "./printed/checks.js";
