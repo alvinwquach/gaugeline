@@ -33,6 +33,7 @@ import { useColor } from "./color.js";
 import { formatError, toOutcome } from "./fail.js";
 import { envIsOn, type FlagDef } from "./flags.js";
 import { createLogger } from "./logger.js";
+import { runDigest } from "./digest.js";
 import { formatTerminal } from "./reporter.js";
 import {
   readAccess,
@@ -122,6 +123,20 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
     case "version":
       io.stdout.write(`${VERSION}\n`);
       return { outcome: ran, ci: false };
+    case "digest": {
+      await runDigest(
+        {
+          runs: args.runs,
+          ...(args.timeZone ? { timeZone: args.timeZone } : {}),
+          notify: args.notify,
+          quiet: args.quiet,
+          cwd: deps.cwd ?? process.cwd(),
+          ...(deps.emailEndpoint ? { emailEndpoint: deps.emailEndpoint } : {}),
+        },
+        { stdout: io.stdout, stderr: io.stderr, env: io.env ?? {} },
+      );
+      return { outcome: ran, ci: false };
+    }
     case "view": {
       const cwd = deps.cwd ?? process.cwd();
       const path = join(cwd, args.file);

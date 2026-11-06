@@ -19,6 +19,16 @@
       "version",
       "webhook"
     ],
+    "digest": [
+      "email",
+      "help",
+      "quiet",
+      "runs",
+      "time-zone",
+      "verbose",
+      "version",
+      "webhook"
+    ],
     "launch": [
       "allow-private",
       "ci",

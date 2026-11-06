@@ -1,7 +1,7 @@
 import { FLAGS, renderHelp } from "./flags.js";
 
 /** Every command the CLI registers. "" is the root command (gaugeline <address>). */
-export const COMMANDS = ["", "launch", "view"] as const;
+export const COMMANDS = ["", "launch", "view", "digest"] as const;
 export type Command = (typeof COMMANDS)[number];
 
 /**
@@ -29,5 +29,14 @@ export const HELP: Record<string, string> = {
       "Keys: j/k move, enter expand, / filter, d dismiss with a reason, q quit.",
     ].join("\n"),
     footer: "Exit codes: 0 viewed, 2 the file could not be read",
+  }),
+  digest: renderHelp(FLAGS, "digest", {
+    usage: "gaugeline digest --runs <folder> [options]",
+    summary: [
+      "Read a week of saved runs and write what is new, fixed and still open, in plain",
+      "English, to gaugeline-digest.md and gaugeline-digest.html. Sends only by email",
+      "or webhook, and only when one is configured.",
+    ].join("\n"),
+    footer: "Exit codes: 0 written, 2 the runs could not be read",
   }),
 };
