@@ -241,7 +241,10 @@ export {
   planSlugMisspelling,
   planKeywordCannibalisation,
   planKeywordOverlap,
+  planBuiltChecks,
 } from "./plan/checks.js";
+export { BUILT_CHECK_IDS, BUILT_TITLES, canonicalIsThisPage, checkBuilt } from "./plan/built.js";
+export type { BuiltOptions } from "./plan/built.js";
 export { checkKeywords, keywordKey, secondaryTerms } from "./plan/keywords.js";
 export { ANNOTATION_HEADER, annotate, byLine } from "./plan/annotate.js";
 export { addressKey, groupBy, textKey } from "./plan/keys.js";

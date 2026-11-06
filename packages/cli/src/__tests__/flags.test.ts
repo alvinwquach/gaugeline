@@ -298,7 +298,7 @@ describe("flag table: e2e", () => {
             plan,
             ...(f.name === "legacy-review" ? ["--legacy-from", "SEO Notes"] : []),
             `--${f.name}`,
-            ...value,
+            ...(f.name === "base" ? [`${site.origin}/`, "--allow-private"] : value),
           ]
         : digestOnly
           ? ["digest", ...(f.name === "runs" ? [] : ["--runs", runs]), `--${f.name}`, ...value]
