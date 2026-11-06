@@ -15,6 +15,11 @@ export interface DnsReader {
   /** TXT records at the name, each record's chunks joined into one string. [] when there are none. */
   txt(name: string): Promise<string[]>;
   mx(name: string): Promise<MxRecord[]>;
+  /**
+   * True for a name this reader will not look up (reserved for examples and tests): the checks
+   * then skip it, rather than read "no records" as a missing record.
+   */
+  skips?(name: string): boolean;
 }
 
 /** The two node:dns/promises calls the reader makes. Injectable so tests never touch a resolver. */
@@ -83,6 +88,7 @@ export function createDnsReader({
     return pending;
   }
   return {
+    skips: (name) => !askReserved && isReservedName(name),
     txt: (name) =>
       read("TXT", name, async () => (await r.resolveTxt(name)).map((chunks) => chunks.join(""))),
     mx: (name) => read("MX", name, () => r.resolveMx(name)),

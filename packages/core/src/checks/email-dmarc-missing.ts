@@ -14,7 +14,7 @@ export const emailDmarcMissing = defineCheck<PageSnapshot>({
   tech: "Public DNS only: no TXT record starting v=DMARC1 at _dmarc.<host without www.>. The host is read as given; a parent domain's policy is not looked up",
   async run(page, ctx) {
     const domain = dnsName(page.finalUrl);
-    if (!ctx.dns || !domain) return [];
+    if (!ctx.dns || !domain || ctx.dns.skips?.(domain)) return [];
     if ((await ctx.dns.txt(`_dmarc.${domain}`)).some(isDmarc)) return [];
     return [
       {

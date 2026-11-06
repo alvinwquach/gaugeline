@@ -142,6 +142,8 @@ describe("email records: unit (fake DnsReader)", () => {
     const dns = createDnsReader({ resolver });
     expect([await dns.txt("shop.test"), await dns.mx("pop.example")]).toEqual([[], []]);
     expect(asked).toEqual([]);
+    // And the checks skip them, rather than report a missing record.
+    expect(await idsFor("https://shop.test/", dns)).toEqual([]);
   });
 });
 

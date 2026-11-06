@@ -15,7 +15,7 @@ export const emailSpfMissing = defineCheck<PageSnapshot>({
   tech: "Public DNS only (node:dns/promises, TXT and MX): MX records exist and are not a null MX, and no TXT record at the host (without www.) starts with v=spf1. No mail server is contacted",
   async run(page, ctx) {
     const domain = dnsName(page.finalUrl);
-    if (!ctx.dns || !domain) return [];
+    if (!ctx.dns || !domain || ctx.dns.skips?.(domain)) return [];
     const mx = await ctx.dns.mx(domain);
     if (!receivesMail(mx)) return [];
     if ((await ctx.dns.txt(domain)).some(isSpf)) return [];

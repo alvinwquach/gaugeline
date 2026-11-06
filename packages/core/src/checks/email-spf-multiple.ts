@@ -14,7 +14,7 @@ export const emailSpfMultiple = defineCheck<PageSnapshot>({
   tech: "Public DNS only: the domain has MX records (not a null MX) and two or more TXT records start with v=spf1 (RFC 7208 §4.5: a permerror)",
   async run(page, ctx) {
     const domain = dnsName(page.finalUrl);
-    if (!ctx.dns || !domain) return [];
+    if (!ctx.dns || !domain || ctx.dns.skips?.(domain)) return [];
     if (!receivesMail(await ctx.dns.mx(domain))) return [];
     const spf = (await ctx.dns.txt(domain)).filter(isSpf);
     if (spf.length < 2) return [];

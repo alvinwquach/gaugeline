@@ -14,7 +14,7 @@ export const emailDmarcNone = defineCheck<PageSnapshot>({
   tech: "Public DNS only: the TXT record at _dmarc.<host> starting v=DMARC1 has p=none; sp (the subdomain policy) does not change this",
   async run(page, ctx) {
     const domain = dnsName(page.finalUrl);
-    if (!ctx.dns || !domain) return [];
+    if (!ctx.dns || !domain || ctx.dns.skips?.(domain)) return [];
     const record = (await ctx.dns.txt(`_dmarc.${domain}`)).find(isDmarc);
     if (!record || dmarcTags(record).get("p") !== "none") return [];
     return [
