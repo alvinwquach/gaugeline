@@ -194,6 +194,26 @@ export { isFrameworkUrl } from "./next/framework-urls.js";
 export { frameworkLinks } from "./links.js";
 export { hiddenConfigSchema, isHidden, matchesGlob, overdue } from "./hidden.js";
 export type { HiddenConfig, HiddenSection } from "./hidden.js";
+export { eventRuleSchema, eventsConfigSchema, REGIONS } from "./events/types.js";
+export type { EventRule, EventsConfig, Region } from "./events/types.js";
+export {
+  EVENT_WAIT_MS,
+  MAX_EVENT_TARGETS,
+  NO_OBSERVER,
+  asSent,
+  clickTargets,
+  judgeClick,
+  observedEvents,
+  recordedObserver,
+} from "./events/observe.js";
+export type {
+  ClickTarget,
+  ClickVerdict,
+  EventObserver,
+  EventsRead,
+  ObserveResult,
+  ObservedClick,
+} from "./events/observe.js";
 export {
   ALL_PAGES_TRIGGER_ID,
   readCondition,

@@ -14,6 +14,8 @@ import { lazyAccess } from "./access/probe.js";
 import type { AccessSettings } from "./access/types.js";
 import type { DnsReader } from "./dns.js";
 import type { HiddenConfig } from "./hidden.js";
+import { lazyEvents, type EventObserver } from "./events/observe.js";
+import type { EventsConfig } from "./events/types.js";
 import { lazyTagAnalysis, summarise, type TagSummary } from "./tags/analyse.js";
 import type { TagContainer } from "./tags/read-container.js";
 import type { RunSnapshot } from "./run-snapshot.js";
@@ -56,6 +58,10 @@ export interface SiteCheckOptions {
   dns?: DnsReader;
   /** Sections hidden until launch. */
   hidden?: HiddenConfig;
+  /** The tracking plan: elements whose clicks must push an event (gaugeline.events.json). */
+  events?: EventsConfig;
+  /** Clicks the plan's elements in a rendered page. None until rendered reads (G39): could not check. */
+  eventObserver?: EventObserver;
   /** A Tag Manager container export, already read from its file. */
   tags?: TagContainer;
   /** The last run's snapshot (--since last): the change checks compare with it. */
@@ -135,6 +141,15 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
       ...(opts.dns ? { dns: opts.dns } : {}),
       ...(opts.hidden ? { hidden: opts.hidden } : {}),
       ...(container && tagRules ? { tagContainer: container, tagRules } : {}),
+      ...(opts.events
+        ? {
+            events: lazyEvents({
+              page: snapshot,
+              config: opts.events,
+              ...(opts.eventObserver ? { observer: opts.eventObserver } : {}),
+            }),
+          }
+        : {}),
       ...(opts.previous ? { previous: opts.previous } : {}),
       ...(opts.access
         ? { access: lazyAccess({ fetcher: opts.fetcher, budget, settings: opts.access }) }

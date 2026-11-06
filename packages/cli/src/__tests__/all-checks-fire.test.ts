@@ -40,6 +40,7 @@ const FIXTURES = [
   "next-like",
   "refusing",
   "tag-rules",
+  "nav-events",
 ];
 
 /**
@@ -68,6 +69,10 @@ const NEEDS_LIVE_STORES = new Set([
   "email-spf-multiple",
   // Needs a content source (branch 30): until then it is never run.
   "next-stale-after-publish",
+  // Need a rendered read to click anything (G39): confirmed in-process with a recorded observer
+  // (packages/core/src/checks/__tests__/click-events.test.ts).
+  "events-fire",
+  "events-distinct",
   // Need two runs with --since last: confirmed in-process (since.test.ts).
   "price-changed",
   "form-provider-changed",
@@ -94,6 +99,7 @@ async function findingsOf(name: string): Promise<string[]> {
       "gaugeline.payments.json",
       "gaugeline.hidden.json",
       "gaugeline.tags.json",
+      "gaugeline.events.json",
     ].some((f) => existsSync(`${dir}/${f}`))
       ? dir
       : undefined;

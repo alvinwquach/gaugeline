@@ -1,0 +1,5 @@
+{
+  "events": [
+    { "region": "nav", "event": "menu_click", "params": ["link_text", "link_url", "menu_parent"] }
+  ]
+}
