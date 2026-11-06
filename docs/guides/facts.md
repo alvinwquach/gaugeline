@@ -66,6 +66,8 @@ whose structured data still has last season's hours, version 0.1.0 prints:
     pickup ("Pick up at the side window") is not on /order: it is only in an image description
 ! The site shows two different handles for one payment service
     Venmo has 2 values: "@marigold-tamales" on /; "@Marigold-Tamale" on /menu
+? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
+    Mail records are read from DNS only with --dns. Rerun with --dns to check them.
 
 Checked all 2 links, 1 image, all 3 sitemap pages, all 2 other pages, 1 payment link.
 5 to look at, 3 to fix first.

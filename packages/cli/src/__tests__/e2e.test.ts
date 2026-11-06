@@ -140,7 +140,14 @@ describe("cli: e2e (built bin against the fixture server)", () => {
     const io = { stdout: { write: (s: string) => out.push(s) }, stderr: { write: () => true } };
     expect(await main([`${site.origin}/`, "--json", "--allow-private"], io, { registry })).toBe(0);
     const parsed = JSON.parse(out.join("")) as { failed: string[] };
-    expect(parsed.failed).toEqual(["always-throws"]);
+    // Without --dns the mail record checks are listed as not run, never hidden.
+    expect(parsed.failed).toEqual([
+      "always-throws",
+      "email-spf-missing",
+      "email-spf-multiple",
+      "email-dmarc-missing",
+      "email-dmarc-none",
+    ]);
     expect(validator()(parsed)).toBe(true);
   });
 

@@ -24,10 +24,12 @@ export interface TerminalReport {
   result: RunResult;
   sampled?: BudgetSummary;
   color: boolean;
+  /** Checks left out of this run on purpose, with what to do to run them (DNS without --dns). */
+  notRun?: { ids: readonly string[]; hint: string };
 }
 
 /** The plain-English report on stdout. Evidence is indented and greyed under each finding. */
-export function formatTerminal({ result, sampled, color }: TerminalReport): string {
+export function formatTerminal({ result, sampled, color, notRun }: TerminalReport): string {
   const p = paint(color);
   const lines: string[] = [];
   for (const f of result.findings) {
@@ -45,6 +47,10 @@ export function formatTerminal({ result, sampled, color }: TerminalReport): stri
     lines.push(
       `${p.yellow("?")} ${failedLine(result.failed.length)}: ${result.failed.map((f) => f.id).join(", ")}`,
     );
+  }
+  if (notRun && notRun.ids.length > 0) {
+    lines.push(`${p.yellow("?")} ${failedLine(notRun.ids.length)}: ${notRun.ids.join(", ")}`);
+    lines.push(`    ${p.grey(notRun.hint)}`);
   }
   lines.push("");
   const sample = sampled ? formatSampleSummary(sampled) : "";

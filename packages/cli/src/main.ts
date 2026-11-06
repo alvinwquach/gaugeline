@@ -33,6 +33,10 @@ import {
 import { skeletonOnly } from "./skeleton.js";
 import { VERSION } from "./version.js";
 
+/** Shown under the mail record checks a run without --dns leaves out. */
+export const DNS_HINT =
+  "Mail records are read from DNS only with --dns. Rerun with --dns to check them.";
+
 export interface Io {
   stdout: { write(chunk: string): unknown; isTTY?: boolean };
   stderr: { write(chunk: string): unknown; isTTY?: boolean };
@@ -136,14 +140,19 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           io.stderr.write(`${id}: not available in this version\n`);
         only = wanted.filter((id) => registered.has(id));
       }
-      // DNS is read for the page check, and for launch only with --dns: launch's default is HTTP only.
-      const dns = !launch || args.dns ? (deps.dns ?? createDnsReader()) : undefined;
+      // DNS is read only with --dns, for either command: the default run is HTTP only. Without it,
+      // the page check lists the mail record checks as not run, with the flag to run them.
+      const dns = args.dns ? (deps.dns ?? createDnsReader()) : undefined;
+      const registeredIds = new Set(registry.all().map((c) => c.id));
+      const dnsSkipped =
+        !launch && !args.dns ? EMAIL_PRESET.filter((id) => registeredIds.has(id)) : [];
       const { snapshot, result, budget } = await checkSite({
         address: args.input,
         fetcher,
         registry,
         // The walking skeleton (0.0.x) runs one check; an injected registry is used as given.
         ...(only ? { only } : {}),
+        ...(dnsSkipped.length > 0 ? { skip: dnsSkipped } : {}),
         onProgress: (e) => log.progress(e),
         ...(deps.now ? { now: deps.now } : {}),
         ...(schemaRules ? { schemaRules } : {}),
@@ -159,12 +168,17 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           startedAt,
           findings: result.findings,
           passed: result.passed,
-          failed: result.failed.map((f) => f.id),
+          failed: [...result.failed.map((f) => f.id), ...dnsSkipped],
         });
         io.stdout.write(`${JSON.stringify(json, null, 2)}\n`);
       } else {
         io.stdout.write(
-          formatTerminal({ result, sampled: budget.summary(), color: useColor(io.stdout, env) }),
+          formatTerminal({
+            result,
+            sampled: budget.summary(),
+            color: useColor(io.stdout, env),
+            ...(dnsSkipped.length > 0 ? { notRun: { ids: dnsSkipped, hint: DNS_HINT } } : {}),
+          }),
         );
       }
       const highFindings = result.findings.filter((f) => f.severity === "high").length;

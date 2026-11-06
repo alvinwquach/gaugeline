@@ -50,6 +50,8 @@ Options:
       --no-open          Do not open anything in a browser
       --allow-private    Allow addresses on this computer or a private network,
                          such as 127.0.0.1 or 192.168.x.x
+      --dns              Also read the domain's mail records (SPF and DMARC)
+                         from DNS
       --quiet            Print only results and errors
       --verbose          Show each request, and technical detail when something
                          goes wrong
@@ -105,8 +107,8 @@ Options:
       --no-open          Do not open anything in a browser
       --allow-private    Allow addresses on this computer or a private network,
                          such as 127.0.0.1 or 192.168.x.x
-      --dns              launch: also check the mail records (SPF and DMARC) a
-                         DNS change would break
+      --dns              Also read the domain's mail records (SPF and DMARC)
+                         from DNS
       --quiet            Print only results and errors
       --verbose          Show each request, and technical detail when something
                          goes wrong
@@ -129,7 +131,7 @@ between the markers; CI fails when it differs from the flag table.
 | `--json`          | Print the result as JSON on stdout, and nothing else                                    |                      | 0.1.0 |
 | `--no-open`       | Do not open anything in a browser                                                       |                      | 0.1.0 |
 | `--allow-private` | Allow addresses on this computer or a private network, such as 127.0.0.1 or 192.168.x.x |                      | 0.1.0 |
-| `--dns`           | launch: also check the mail records (SPF and DMARC) a DNS change would break            |                      | 0.2.0 |
+| `--dns`           | Also read the domain's mail records (SPF and DMARC) from DNS                            |                      | 0.2.0 |
 | `--quiet`         | Print only results and errors                                                           |                      | 0.1.0 |
 | `--verbose`       | Show each request, and technical detail when something goes wrong                       |                      | 0.1.0 |
 | `-h`, `--help`    | Show this help and exit                                                                 |                      | 0.1.0 |

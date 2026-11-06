@@ -74,6 +74,8 @@ with the project's answers replayed from an invented recording, version 0.1.0 pr
     orders: 42 rows readable without signing in; columns: id, created_at, customer_id, customer_email, total
 ✗ A signed-in user can read other people's rows
     as customer, orders: 3 rows whose customer_id is someone else's are readable; columns: id, created_at, customer_id, customer_email, total
+? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
+    Mail records are read from DNS only with --dns. Rerun with --dns to check them.
 
 Checked 1 image, 1 sitemap page, all 5 database tables.
 3 to look at, 3 to fix first.
