@@ -11,6 +11,7 @@ import { lazyLanguageGroup, type LanguageRules } from "./languages.js";
 import { lazyAccess } from "./access/probe.js";
 import type { AccessSettings } from "./access/types.js";
 import type { DnsReader } from "./dns.js";
+import type { HiddenConfig } from "./hidden.js";
 import { lazyPages } from "./pages.js";
 import { lazyDatasets } from "./sanity.js";
 import { lazyScripts } from "./scripts.js";
@@ -48,6 +49,8 @@ export interface SiteCheckOptions {
   access?: AccessSettings;
   /** Public DNS for the email record checks. Without one, they find nothing and nothing is resolved. */
   dns?: DnsReader;
+  /** Sections hidden until launch. */
+  hidden?: HiddenConfig;
 }
 
 export interface SiteCheck {
@@ -97,6 +100,7 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
       ...(opts.facts ? { facts: opts.facts } : {}),
       ...(opts.payments ? { payments: opts.payments } : {}),
       ...(opts.dns ? { dns: opts.dns } : {}),
+      ...(opts.hidden ? { hidden: opts.hidden } : {}),
       ...(opts.access
         ? { access: lazyAccess({ fetcher: opts.fetcher, budget, settings: opts.access }) }
         : {}),

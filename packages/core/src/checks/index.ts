@@ -28,6 +28,10 @@ import { feedBroken } from "./feed-broken.js";
 import { feedDuplicate } from "./feed-duplicate.js";
 import { feedInvalid } from "./feed-invalid.js";
 import { feedOversized } from "./feed-oversized.js";
+import { hiddenInSitemap } from "./hidden-in-sitemap.js";
+import { hiddenIndexable } from "./hidden-indexable.js";
+import { hiddenLinked } from "./hidden-linked.js";
+import { hiddenPastLaunch } from "./hidden-past-launch.js";
 import { hostDuplicate } from "./host-duplicate.js";
 import { hreflangBadCode } from "./hreflang-bad-code.js";
 import { hreflangNotReciprocal } from "./hreflang-not-reciprocal.js";
@@ -123,6 +127,10 @@ export const PAGE_CHECKS = [
   feedDuplicate,
   feedInvalid,
   feedOversized,
+  hiddenInSitemap,
+  hiddenIndexable,
+  hiddenLinked,
+  hiddenPastLaunch,
   hostDuplicate,
   hreflangBadCode,
   hreflangNotReciprocal,

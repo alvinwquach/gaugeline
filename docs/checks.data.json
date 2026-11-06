@@ -140,6 +140,36 @@
     "tech": "an advertised feed returns 4xx or 5xx"
   },
   {
+    "id": "hidden-in-sitemap",
+    "severity": "high",
+    "area": "Launch day",
+    "title": "Unlaunched pages are in your sitemap",
+    "what": "The sitemap lists addresses in a section gaugeline.hidden.json says is hidden until launch.",
+    "why": "The sitemap is the list you hand to search engines: they will crawl and index the section before anyone meant it to be public.",
+    "fix": "Leave the hidden section out of the sitemap until launch, usually a filter on the same flag that hides the pages.",
+    "tech": "Every address listed by the sitemaps read (robots.txt's, /sitemap.xml, one level of sitemap index), matched against the hidden path globs"
+  },
+  {
+    "id": "hidden-indexable",
+    "severity": "high",
+    "area": "Launch day",
+    "title": "An unlaunched page can be indexed",
+    "what": "An address in a hidden section, found in the sitemap or through a link, answers 200 with no noindex and no login.",
+    "why": "Anyone who finds it can read it, and search engines can list it before launch.",
+    "fix": "Send noindex (X-Robots-Tag or a robots meta tag) on the hidden section until launch, or put it behind a login.",
+    "tech": "Hidden addresses from the sitemaps and from hiddenLinks, at most 5, fetched once with GET for the status, X-Robots-Tag and meta robots only (nothing else of the page is read); 401, 403, 404 or a redirect out of the section is a pass"
+  },
+  {
+    "id": "hidden-linked",
+    "severity": "high",
+    "area": "Launch day",
+    "title": "A public page links to an unlaunched section",
+    "what": "A public page links to an address in a hidden section, directly or through a redirect.",
+    "why": "Visitors and search engines follow the link into pages nobody meant to show yet, usually from a shared menu, footer or related-posts block.",
+    "fix": "Hide the link behind the same flag as the section, or remove it until launch.",
+    "tech": "Links on the checked page and the run's other public pages whose address matches a hidden path glob, and sampled same-site links whose redirects end in one"
+  },
+  {
     "id": "host-duplicate",
     "severity": "high",
     "area": "Search & sharing",
@@ -798,6 +828,16 @@
     "why": "Google needs these to show the event in results, and the status is how a cancelled or moved night is shown as such.",
     "fix": "Give every Event a startDate, a location and an eventStatus (for example https://schema.org/EventScheduled).",
     "tech": "Event JSON-LD without startDate, location or eventStatus (one finding listing each event and what it lacks)"
+  },
+  {
+    "id": "hidden-past-launch",
+    "severity": "low",
+    "area": "Launch day",
+    "title": "A hidden section is past its launch date",
+    "what": "Today is after the launch date set for a hidden section, and gaugeline.hidden.json still lists it as hidden.",
+    "why": "Either the launch slipped and nobody updated the plan, or it launched and the hidden checks are now guarding the wrong thing.",
+    "fix": "Move the until date, or remove the section from gaugeline.hidden.json now that it's live.",
+    "tech": "A hidden section's until date (YYYY-MM-DD, the whole day in UTC) is before the run's clock; no request is made"
   },
   {
     "id": "hreflang-bad-code",

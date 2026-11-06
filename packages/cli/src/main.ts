@@ -26,6 +26,7 @@ import { formatTerminal } from "./reporter.js";
 import {
   readAccess,
   readFacts,
+  readHidden,
   readLanguageRules,
   readPayments,
   readSchemaRules,
@@ -110,6 +111,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       const languageRules = readLanguageRules(deps.cwd ?? process.cwd());
       const facts = readFacts(deps.cwd ?? process.cwd());
       const payments = readPayments(deps.cwd ?? process.cwd());
+      const hidden = readHidden(deps.cwd ?? process.cwd());
       const accessConfig = readAccess(deps.cwd ?? process.cwd());
       // Keys are read from the environment here and go only into request headers.
       const access = accessConfig ? resolveAccess(accessConfig, io.env ?? {}) : undefined;
@@ -159,6 +161,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         ...(languageRules ? { languageRules } : {}),
         ...(facts ? { facts } : {}),
         ...(payments ? { payments } : {}),
+        ...(hidden ? { hidden } : {}),
         ...(access ? { access } : {}),
         ...(dns ? { dns } : {}),
       });
