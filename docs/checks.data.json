@@ -850,6 +850,16 @@
     "tech": "no <meta name=\"viewport\"> anywhere in the document"
   },
   {
+    "id": "plan-legacy-unresolved",
+    "severity": "medium",
+    "area": "Launch day",
+    "title": "Some old addresses in the plan's notes aren't settled",
+    "what": "A notes column read with --legacy-from mentions a legacy page in words instead of by its address, or asks whether it should redirect, so no redirect can be checked for it.",
+    "why": "Old addresses that rank keep their traffic only with a 301 to the right new page. A note nobody resolved is a redirect nobody will build.",
+    "fix": "Put the old address in the note (\"301 legacy /old-page here.\") or decide and write it, then run the plan check again.",
+    "tech": "Sentences in the --legacy-from columns containing \"legacy\": one that says 301 but names no path (no-path), or one with a path that starts with Confirm, contains whether or ends with a question mark (unconfirmed). One finding listing every line"
+  },
+  {
     "id": "ai-crawlers-blocked",
     "severity": "low",
     "area": "Search & sharing",
