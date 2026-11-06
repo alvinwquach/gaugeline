@@ -8,6 +8,8 @@ import type { FactsConfig } from "./facts/types.js";
 import type { PaymentsConfig } from "./payments/types.js";
 import type { LanguageGroup, LanguageRules } from "./languages.js";
 import type { SchemaRules } from "./schema-rules.js";
+import type { DatasetRead } from "./sanity.js";
+import type { ScriptRead } from "./scripts.js";
 import type { PageSnapshot } from "./snapshot.js";
 import type { ImageSample } from "./checks/images/refs.js";
 import type { LinkSample } from "./links.js";
@@ -104,6 +106,10 @@ export interface CheckContext {
   schemaRules?: SchemaRules;
   /** The run's clock. Injectable so every date check is deterministic; defaults to the real time. */
   now?: () => Date;
+  /** The page's same-site JavaScript files, fetched once on first use. */
+  scripts?: () => Promise<ScriptRead[]>;
+  /** The Sanity datasets the page's images name, asked for counts and type names once on first use. */
+  datasets?: () => Promise<DatasetRead[]>;
   /** The page's App Store and Google Play apps, looked up once on first use. */
   apps?: () => Promise<AppLookup[]>;
   /** Values the run was told to expect (for example the app's name). Until the config file, API only. */

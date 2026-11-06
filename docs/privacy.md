@@ -79,9 +79,9 @@ Each check that passed also prints a `✓ <id>` line, left out above. The output
 ### App stores
 
 When the page links to an app (`apps.apple.com/.../id<digits>`, `play.google.com/store/apps/details?id=<package>`
-or `market://details?id=<package>`), a run asks the store whether that app still exists. This is the
-one place a run contacts a host other than the site, and only for an address the page itself
-publishes ([ADR-0004](https://github.com/alvinwquach/gaugeline/blob/main/docs/adr/0004-requests-the-checked-page-names.md)):
+or `market://details?id=<package>`), a run asks the store whether that app still exists. Like the
+payment-link and Sanity checks below, this contacts a host other than the site, and only for an
+address the page itself publishes ([ADR-0004](https://github.com/alvinwquach/gaugeline/blob/main/docs/adr/0004-requests-the-checked-page-names.md)):
 
 - Apple: one request to the public iTunes Lookup endpoint,
   `https://itunes.apple.com/lookup?id=<id>&country=<storefront>`. It needs no key. A link to a
@@ -152,6 +152,32 @@ Checked 25 of 30 sitemap pages, 3 of 4 feeds.
 
 These checks run from version 0.1.0; see [Quick start](quick-start.md).
 Each check that passed also prints a `✓ <id>` line, left out above. The output is asserted by `packages/cli/src/__tests__/site-checks.test.ts`.
+
+### JavaScript files
+
+To look for private keys, a run reads the page's inline scripts and at most 15 of its same-site
+script files (`<script src>` on the same host, with or without `www`), the first 15 in document
+order. Each is one `GET`, and at most the first 5 MB of a file is read. Scripts from other sites are
+never requested: they are not the site's to fix.
+
+A key that is found is cut down to its first 6 and last 2 characters before anything else sees it,
+so the whole key never reaches a finding, a log line or a report: `sk_liv…L2`. Publishable keys
+(`pk_live_`, `pk_test_`) are meant to be public and are not reported.
+
+### Sanity datasets
+
+When the page's images come from `cdn.sanity.io`, the address names the Sanity project and dataset
+(`cdn.sanity.io/images/<project>/<dataset>/...`). A run asks that dataset one question, with no
+token, through Sanity's public query API:
+
+```text
+GET https://<project>.api.sanity.io/v2021-10-21/data/query/<dataset>?query={"count": count(*), "types": array::unique(*[]._type)}
+```
+
+That is the number of documents and the names of their types: never a document's contents. At most
+2 datasets per run. A private dataset refuses the question, and that is a pass. To make no Sanity
+request at all, skip `dataset-public` and `dataset-private-types`. What the answers mean:
+[Private datasets](/docs/private-datasets).
 
 ### What it sends elsewhere
 
