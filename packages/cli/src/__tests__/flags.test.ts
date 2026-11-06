@@ -26,7 +26,11 @@ import {
 import { runBin } from "./helpers/bin.js";
 
 /** A value each string flag accepts, for the every-flag test. */
-const SAMPLE_VALUES: Record<string, string> = { since: "last", "notify-on": "any" };
+const SAMPLE_VALUES: Record<string, string> = {
+  since: "last",
+  "notify-on": "any",
+  "time-zone": "UTC",
+};
 
 const repoRoot = fileURLToPath(new URL("../../../../", import.meta.url));
 const optionsMd = readFileSync(`${repoRoot}docs/options.md`, "utf8");
@@ -272,15 +276,23 @@ describe("flag table: e2e", () => {
     // --since writes its state file into the working directory: use a throwaway one.
     const scratch = mkdtempSync(join(tmpdir(), "gaugeline-flags-"));
     for (const f of FLAGS) {
-      // Each flag is given to a command that accepts it: launch-only flags to gaugeline launch.
-      const command = flagsFor(FLAGS, "check").includes(f) ? [] : ["launch"];
+      // Each flag is given to a command that accepts it: launch-only flags to gaugeline launch,
+      // digest-only flags to gaugeline digest over the fixture's saved runs.
+      const runs = `${repoRoot}packages/fixtures/runs/digest-week`;
+      const digestOnly =
+        !flagsFor(FLAGS, "check").includes(f) && !flagsFor(FLAGS, "launch").includes(f);
       // A string flag needs a value: the one it accepts.
-      const value = f.type === "string" ? [SAMPLE_VALUES[f.name] ?? "x"] : [];
-      const r = await runBin(
-        [...command, `${site.origin}/`, `--${f.name}`, ...value],
-        {},
-        { cwd: scratch },
-      );
+      const value =
+        f.type === "string" ? [f.name === "runs" ? runs : (SAMPLE_VALUES[f.name] ?? "x")] : [];
+      const args = digestOnly
+        ? ["digest", ...(f.name === "runs" ? [] : ["--runs", runs]), `--${f.name}`, ...value]
+        : [
+            ...(flagsFor(FLAGS, "check").includes(f) ? [] : ["launch"]),
+            `${site.origin}/`,
+            `--${f.name}`,
+            ...value,
+          ];
+      const r = await runBin(args, {}, { cwd: scratch });
       expect(r.stderr, f.name).not.toContain("Unknown option");
       expect([0, 1], f.name).toContain(r.status);
     }

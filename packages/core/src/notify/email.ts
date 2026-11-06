@@ -184,13 +184,8 @@ function scrub(text: string | undefined, key: string): string | undefined {
   return text === undefined || key === "" ? text : text.split(key).join("[redacted]");
 }
 
-/** One POST to Resend. The result's error never contains the key. */
-export async function sendEmail(
-  result: Result,
-  settings: EmailSettings,
-  opts: { reportUrl?: string; registry?: CheckRegistry; maxBytes?: number; version?: string } = {},
-): Promise<PostResult> {
-  const mail = buildEmail(result, opts);
+/** One POST to Resend with a prepared message. The result's error never contains the key. */
+export async function postEmail(settings: EmailSettings, mail: BuiltEmail): Promise<PostResult> {
   const sent = await postJson(
     settings.endpoint ?? RESEND_EMAILS_URL,
     {
@@ -212,4 +207,13 @@ export async function sendEmail(
     ...(sent.status ? { status: sent.status } : {}),
     ...(error ? { error } : {}),
   };
+}
+
+/** The run's report, built and sent with one POST to Resend. */
+export function sendEmail(
+  result: Result,
+  settings: EmailSettings,
+  opts: { reportUrl?: string; registry?: CheckRegistry; maxBytes?: number; version?: string } = {},
+): Promise<PostResult> {
+  return postEmail(settings, buildEmail(result, opts));
 }

@@ -1,0 +1,70 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`digest: integration (seven recorded runs of the digest-week fixture) > one new, one fixed and two still open, and the digest matches the saved snapshot > html 1`] = `
+"<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>harbour-books.example: the week</title></head>
+<body><div style="font:16px/1.5 system-ui,-apple-system,'Segoe UI',sans-serif;color:#101828;max-width:44rem;margin:0 auto;padding:0 1rem">
+<h1 style="font-size:1.4rem;margin:1rem 0 .25rem">harbour-books.example: the week</h1>
+<p style="font-size:1.1rem;margin:0 0 1rem"><strong>This week: 1 new thing to fix, 1 fixed and 2 older ones still open.</strong></p>
+<h2 style="font-size:1.1rem;margin:1.5rem 0 .5rem">New this week</h2>
+<ul>
+<li><strong>Links on this page go nowhere</strong> (on /, first seen Wed 4 Nov). What to do: Point each link at the page&#39;s current address, or remove it. When a page moved, add a 301 redirect from the old address.</li>
+</ul>
+<h2 style="font-size:1.1rem;margin:1.5rem 0 .5rem">Fixed this week</h2>
+<ul>
+<li><strong>Shared links have no picture</strong> (on /, seen Mon 2 Nov, fixed by Wed 4 Nov).</li>
+</ul>
+<h2 style="font-size:1.1rem;margin:1.5rem 0 .5rem">Still open</h2>
+<ul>
+<li><strong>This page tells Google to show a different page</strong> (on /, open 6 days). What to do: Give each page a canonical tag that points at its own address. Shared SEO components are the usual cause.</li>
+<li><strong>Some images have no alt attribute</strong> (on /menu, open 6 days). What to do: Add alt to every img: a short description, or alt=&quot;&quot; for decorative images.</li>
+</ul>
+<h2 style="font-size:1.1rem;margin:1.5rem 0 .5rem">What was checked</h2>
+<p>https://harbour-books.example/ was checked 7 times between Mon 2 Nov and Sun 8 Nov. 104 things looked right in the latest check.</p>
+<hr style="border:0;border-top:1px solid #eaecf0;margin:2rem 0 1rem">
+<h2 style="font-size:1rem;margin:0 0 .5rem;color:#475467">Technical notes</h2>
+<ul style="color:#475467;font-size:.875rem">
+<li><code style="font-family:ui-monospace,Menlo,Consolas,monospace;word-break:break-word">broken-links on /: &quot;Order online&quot; &lt;a href=&quot;https://harbour-books.example/order?…&quot;&gt; returned 404</code></li>
+<li><code style="font-family:ui-monospace,Menlo,Consolas,monospace;word-break:break-word">og-image-missing on /: no og:image on the page</code></li>
+<li><code style="font-family:ui-monospace,Menlo,Consolas,monospace;word-break:break-word">canonical-elsewhere on /: &lt;link rel=&quot;canonical&quot; href=&quot;https://harbour-books.example/old-home&quot;&gt;</code></li>
+<li><code style="font-family:ui-monospace,Menlo,Consolas,monospace;word-break:break-word">images-alt-missing on /menu: 4 of 13 images on /menu have no alt attribute</code></li>
+</ul>
+</div></body>
+</html>
+"
+`;
+
+exports[`digest: integration (seven recorded runs of the digest-week fixture) > one new, one fixed and two still open, and the digest matches the saved snapshot > markdown 1`] = `
+"# harbour-books.example: the week
+
+This week: 1 new thing to fix, 1 fixed and 2 older ones still open.
+
+## New this week
+
+- **Links on this page go nowhere** (on /, first seen Wed 4 Nov). What to do: Point each link at the page's current address, or remove it. When a page moved, add a 301 redirect from the old address.
+
+## Fixed this week
+
+- **Shared links have no picture** (on /, seen Mon 2 Nov, fixed by Wed 4 Nov).
+
+## Still open
+
+- **This page tells Google to show a different page** (on /, open 6 days). What to do: Give each page a canonical tag that points at its own address. Shared SEO components are the usual cause.
+- **Some images have no alt attribute** (on /menu, open 6 days). What to do: Add alt to every img: a short description, or alt="" for decorative images.
+
+## What was checked
+
+https://harbour-books.example/ was checked 7 times between Mon 2 Nov and Sun 8 Nov. 104 things looked right in the latest check.
+
+---
+
+## Technical notes
+
+- \`broken-links on /: "Order online" <a href="https://harbour-books.example/order?…"> returned 404\`
+- \`og-image-missing on /: no og:image on the page\`
+- \`canonical-elsewhere on /: <link rel="canonical" href="https://harbour-books.example/old-home">\`
+- \`images-alt-missing on /menu: 4 of 13 images on /menu have no alt attribute\`
+"
+`;

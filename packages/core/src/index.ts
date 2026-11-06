@@ -193,8 +193,22 @@ export {
   buildEmail,
   emailSubject,
   parseAddresses,
+  postEmail,
   sendEmail,
 } from "./notify/email.js";
+export {
+  DIGEST_DAYS,
+  buildDigest,
+  daysBetween,
+  digestHtml,
+  digestMarkdown,
+  findingKey,
+  safeEvidence,
+  shortDate,
+  stripQuery,
+  verdict as digestVerdict,
+} from "./digest.js";
+export type { Digest, DigestItem } from "./digest.js";
 export type { BuiltEmail, EmailSettings } from "./notify/email.js";
 export { discordPayload, slackPayload, webhookPayload } from "./notify/payloads.js";
 export { NOTIFY_TIMEOUT_MS, postJson, providerMessage, safeTarget } from "./notify/post.js";
