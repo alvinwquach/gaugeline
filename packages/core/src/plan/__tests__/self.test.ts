@@ -18,7 +18,11 @@ const row = (line: number, url: string, extra: Partial<PlanRow> = {}): PlanRow =
     ...extra,
   };
 };
-const ids = (rows: PlanRow[]) => checkPlan(rows, "plan.csv").map((f) => [f.checkId, f.evidence]);
+const ids = (rows: PlanRow[]) =>
+  checkPlan(rows, "plan.csv").map((f) => [
+    f.checkId,
+    `${f.evidence} @ ${f.group?.lines.join(",") ?? ""}`,
+  ]);
 
 describe("plan self-check: unit", () => {
   it("each rule: a passing table and a failing table", () => {
@@ -26,13 +30,13 @@ describe("plan self-check: unit", () => {
       ids([row(2, "/a", { titleTag: "A", h1: "A" }), row(3, "/b", { titleTag: "B", h1: "B" })]),
     ).toEqual([]);
     expect(ids([row(2, "/a"), row(3, "/a")])).toEqual([
-      ["plan-duplicate-address", "/a on lines 2 and 3 (2 rows)"],
+      ["plan-duplicate-address", "/a on 2 rows @ 2,3"],
     ]);
     expect(
       ids([row(2, "/a", { titleTag: "Billing" }), row(3, "/b", { titleTag: "Billing" })]),
-    ).toEqual([["plan-duplicate-title", '"Billing" on lines 2 and 3 (2 rows)']]);
+    ).toEqual([["plan-duplicate-title", '"Billing" on 2 rows @ 2,3']]);
     expect(ids([row(2, "/a", { h1: "Coding" }), row(3, "/b", { h1: "Coding" })])).toEqual([
-      ["plan-duplicate-h1", '"Coding" on lines 2 and 3 (2 rows)'],
+      ["plan-duplicate-h1", '"Coding" on 2 rows @ 2,3'],
     ]);
   });
 
@@ -66,8 +70,8 @@ describe("plan self-check: integration (the invented keyword map)", () => {
 
   it("exactly two duplicate-address groups: /software/ai-automation (3) and /software/intelligent-platform (2)", () => {
     expect(ids(plan().rows).filter(([id]) => id === "plan-duplicate-address")).toEqual([
-      ["plan-duplicate-address", "/software/ai-automation on lines 146, 147 and 148 (3 rows)"],
-      ["plan-duplicate-address", "/software/intelligent-platform on lines 149 and 150 (2 rows)"],
+      ["plan-duplicate-address", "/software/ai-automation on 3 rows @ 146,147,148"],
+      ["plan-duplicate-address", "/software/intelligent-platform on 2 rows @ 149,150"],
     ]);
   });
 
@@ -86,7 +90,7 @@ describe("plan self-check: edge cases", () => {
   it("an anchor row and its page row are not duplicates; two identical anchors are", () => {
     expect(ids([row(2, "/medical"), row(3, "/medical#rural")])).toEqual([]);
     expect(ids([row(2, "/medical#rural"), row(3, "/medical#rural")])).toEqual([
-      ["plan-duplicate-address", "/medical#rural on lines 2 and 3 (2 rows)"],
+      ["plan-duplicate-address", "/medical#rural on 2 rows @ 2,3"],
     ]);
   });
 

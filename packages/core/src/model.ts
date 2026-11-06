@@ -62,7 +62,19 @@ export const AREAS = [
  * - url: the address the evidence is about
  * - source: for repository checks
  */
-export type Finding = z.infer<typeof findingSchema>;
+export type Finding = z.infer<typeof findingSchema> & {
+  /**
+   * Plan findings only: the key a group of rows shares and every line in it, so one decision is one
+   * finding. Not part of the page result schema (result.v2.json): page checks never set it.
+   */
+  group?: FindingGroup;
+};
+
+/** The rows one plan finding covers: what they share, and the line of each in the plan. */
+export interface FindingGroup {
+  key: string;
+  lines: number[];
+}
 
 /** Effort to fix, used by the work order (G28). */
 export type Size = "S" | "M" | "L";

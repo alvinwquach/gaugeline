@@ -138,6 +138,21 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     commands: ["plan"],
   },
   {
+    name: "annotate",
+    type: "string",
+    description:
+      "Write a copy of the plan with a Gaugeline column saying what is wrong on each row",
+    since: "0.2.0",
+    commands: ["plan"],
+  },
+  {
+    name: "force",
+    type: "boolean",
+    description: "Let --annotate replace a file that already exists",
+    since: "0.2.0",
+    commands: ["plan"],
+  },
+  {
     name: "runs",
     type: "string",
     description: "The folder of saved runs (each one saved with --json) to read",

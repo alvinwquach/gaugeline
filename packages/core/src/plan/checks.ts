@@ -40,6 +40,10 @@ export const planLegacyUnresolved = defineCheck<PlanCheckInput>({
         title: this.title,
         evidence: `${open.length} mention${open.length === 1 ? "" : "s"} in "${open[0]?.column ?? ""}": ${parts.join("; ")}`,
         url: input.file,
+        group: {
+          key: open[0]?.column ?? "",
+          lines: [...new Set(open.map((m) => m.line))].sort((a, b) => a - b),
+        },
       },
     ];
   },

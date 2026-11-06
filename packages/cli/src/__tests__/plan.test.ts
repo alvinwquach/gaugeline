@@ -1,4 +1,13 @@
-import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  cpSync,
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { SITES_DIR, expectedOutput } from "@gaugeline/fixtures";
@@ -80,7 +89,7 @@ describe("gaugeline plan: e2e (CLI)", () => {
       await main(["plan", "workbook-export.txt", "--plan-only"], run.io, { cwd: workdir() }),
     ).toBe(1);
     expect(run.err()).toBe("Read tab: Kim's Keywords (6 other tabs skipped)\n");
-    expect(run.out()).toContain("/software/ai-automation on lines 147, 148 and 149 (3 rows)");
+    expect(run.out()).toContain("/software/ai-automation on 3 rows\n    lines 147, 148, 149");
     expect(run.out()).toContain(
       "Read 163 pages from workbook-export.txt (4 rows without a URL skipped).",
     );
@@ -183,5 +192,72 @@ describe("gaugeline plan: e2e (CLI)", () => {
     const run = capture();
     expect(await main(["plan", "keywords.csv", "--plan-only"], run.io, { cwd: dir })).toBe(1);
     expect(withoutPassed(run.out()).trimEnd()).toBe(expectedOutput("plan-check", "Keywords"));
+  });
+
+  it("--annotate writes <plan>.gaugeline.csv, keeps the exit code, and a second run needs --force", async () => {
+    const dir = workdir();
+    const before = {
+      bytes: readFileSync(join(dir, "workbook-export.txt")),
+      mtime: statSync(join(dir, "workbook-export.txt")).mtimeMs,
+    };
+    let run = capture();
+    expect(
+      await main(["plan", "workbook-export.txt", "--plan-only", "--annotate"], run.io, {
+        cwd: dir,
+      }),
+    ).toBe(1);
+    const out = join(dir, "workbook-export.gaugeline.csv");
+    expect(run.err().split("\n")[0]).toBe(
+      "Read tab: Kim's Keywords (6 other tabs skipped; the annotated copy has this tab only)",
+    );
+    expect(run.err()).toContain(`Annotated copy written to ${out}\n`);
+    const written = readFileSync(out, "utf8");
+    expect(written.split("\n")[0]?.endsWith(",Gaugeline")).toBe(true);
+    run = capture();
+    expect(
+      await main(["plan", "workbook-export.txt", "--plan-only", "--annotate"], run.io, {
+        cwd: dir,
+      }),
+    ).toBe(2);
+    expect(run.err()).toContain("already exists: add --force to replace it.");
+    expect(readFileSync(out, "utf8")).toBe(written);
+    run = capture();
+    expect(
+      await main(["plan", "workbook-export.txt", "--annotate", "--force"], run.io, { cwd: dir }),
+    ).toBe(1);
+    // The plan itself is never touched.
+    expect(readFileSync(join(dir, "workbook-export.txt")).equals(before.bytes)).toBe(true);
+    expect(statSync(join(dir, "workbook-export.txt")).mtimeMs).toBe(before.mtime);
+  });
+
+  it("--annotate with a name, never over the plan; a folder it can't write to is exit 2 with the path", async () => {
+    const dir = workdir();
+    let run = capture();
+    expect(
+      await main(["plan", "keyword-map.csv", "--annotate", "notes.csv"], run.io, { cwd: dir }),
+    ).toBe(1);
+    expect(existsSync(join(dir, "notes.csv"))).toBe(true);
+    run = capture();
+    expect(
+      await main(["plan", "keyword-map.csv", "--annotate", "keyword-map.csv", "--force"], run.io, {
+        cwd: dir,
+      }),
+    ).toBe(2);
+    expect(run.err()).toContain("--annotate would write over the plan itself (keyword-map.csv).");
+    if (process.platform !== "win32" && process.getuid?.() !== 0) {
+      const locked = join(dir, "locked");
+      cpSync(join(dir, "keyword-map.csv"), join(dir, "copy.csv"));
+      rmSync(locked, { recursive: true, force: true });
+      writeFileSync(join(dir, "placeholder"), "");
+      chmodSync(dir, 0o555);
+      run = capture();
+      try {
+        expect(await main(["plan", "copy.csv", "--annotate"], run.io, { cwd: dir })).toBe(2);
+        expect(run.err()).toContain(`Could not write ${join(dir, "copy.gaugeline.csv")}`);
+        expect(run.out()).toContain("Two rows in the plan share one address");
+      } finally {
+        chmodSync(dir, 0o755);
+      }
+    }
   });
 });

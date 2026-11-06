@@ -120,8 +120,9 @@ export function checkKeywords(rows: readonly PlanRow[], file = "the plan"): Find
       checkId: "plan-keyword-cannibalisation",
       severity: "medium",
       title: "Two pages in the plan target the same primary keyword",
-      evidence: `"${g.key}"${vol(g)} is the primary keyword for ${lines(g.rows)}`,
+      evidence: `"${g.key}"${vol(g)} is the primary keyword of ${g.rows.length} pages`,
       url: file,
+      group: { key: g.key, lines: g.rows.map((r) => r.line) },
     })),
     ...[...overlap]
       .sort((a, b) => byVolume(a.group, b.group))
@@ -131,6 +132,10 @@ export function checkKeywords(rows: readonly PlanRow[], file = "the plan"): Find
         title: "One page's primary keyword is another page's secondary",
         evidence: `"${group.key}"${vol(group)} is the primary for ${lines(group.rows)} and a secondary for ${lines(secondary)}`,
         url: file,
+        group: {
+          key: group.key,
+          lines: [...group.rows, ...secondary].map((r) => r.line).sort((a, b) => a - b),
+        },
       })),
   ];
 }

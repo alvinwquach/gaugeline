@@ -56,6 +56,11 @@ export function formatTerminal({ result, sampled, color, notRun, origin }: Termi
           : p.grey(MARK.low);
     lines.push(`${mark} ${f.title}`);
     lines.push(`    ${p.grey(f.evidence)}`);
+    // A plan finding covers a group of rows: every line once, so the owner can find them.
+    if (f.group)
+      lines.push(
+        `    ${p.grey(`${f.group.lines.length === 1 ? "line" : "lines"} ${f.group.lines.join(", ")}`)}`,
+      );
   }
   for (const id of result.passed) lines.push(`${p.green(TICK)} ${p.grey(id)}`);
   if (result.failed.length > 0) {

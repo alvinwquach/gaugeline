@@ -46,8 +46,8 @@ describe("slug misspelling: integration (the invented keyword map)", () => {
 
   it("exactly 2 findings: credentialling and ambutatory, each with the corrected path", () => {
     expect(checkSlugs(plan().rows, "keyword-map.csv").map((f) => f.evidence)).toEqual([
-      'line 4: "ambutatory" in /billing-services/ambutatory-care, the heading says "ambulatory"; did you mean /billing-services/ambulatory-care',
-      'line 61: "credentialling" in /credentialing/provider-credentialling, the heading says "credentialing"; did you mean /credentialing/provider-credentialing',
+      '"ambutatory" in /billing-services/ambutatory-care, the heading says "ambulatory"; did you mean /billing-services/ambulatory-care',
+      '"credentialling" in /credentialing/provider-credentialling, the heading says "credentialing"; did you mean /credentialing/provider-credentialing',
     ]);
   });
 
@@ -77,7 +77,7 @@ describe("slug misspelling: edge cases", () => {
   it("a non-ASCII heading compares after Unicode folding", () => {
     expect(evidence(row("/careers/resume-tips", "Résumé tips"))).toEqual([]);
     expect(evidence(row("/careers/resmue-guide", "Résumé guide"))).toEqual([
-      'line 2: "resmue" in /careers/resmue-guide, the heading says "resume"; did you mean /careers/resume-guide',
+      '"resmue" in /careers/resmue-guide, the heading says "resume"; did you mean /careers/resume-guide',
     ]);
   });
 

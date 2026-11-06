@@ -43,14 +43,6 @@ export const SELF_RULES: readonly SelfRule[] = Object.freeze([
   },
 ]);
 
-/** "lines 12, 30 and 41" */
-function lines(rows: readonly PlanRow[]): string {
-  const ns = rows.map((r) => String(r.line));
-  return ns.length === 1
-    ? `line ${ns[0] ?? ""}`
-    : `lines ${ns.slice(0, -1).join(", ")} and ${ns.at(-1) ?? ""}`;
-}
-
 /** One rule over the rows. `file` is the finding's url: the plan a person opens. */
 export function runSelfRule(rule: SelfRule, rows: readonly PlanRow[], file: string): Finding[] {
   const out: Finding[] = [];
@@ -62,8 +54,9 @@ export function runSelfRule(rule: SelfRule, rows: readonly PlanRow[], file: stri
       checkId: rule.id,
       severity: rule.severity,
       title: rule.title,
-      evidence: `${rule.label(first)} on ${lines(group)} (${group.length} rows)`,
+      evidence: `${rule.label(first)} on ${group.length} rows`,
       url: file,
+      group: { key: rule.label(first), lines: group.map((r) => r.line) },
     });
   }
   return out;

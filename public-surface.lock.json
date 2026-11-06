@@ -47,6 +47,8 @@
       "webhook"
     ],
     "plan": [
+      "annotate",
+      "force",
       "help",
       "legacy-from",
       "legacy-review",

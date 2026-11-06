@@ -16,3 +16,4 @@ export type { Cassette, CassetteFetch, CassetteOptions, CassetteProblem } from "
 export { DEFAULT_SCRUBBERS, SCRUBBED, scrub, scrubBody, scrubText, scrubUrl } from "./scrub.js";
 export type { Interaction, Scrubber } from "./scrub.js";
 export { KEY_PATTERNS } from "@gaugeline/core";
+export { assertGrouped } from "./grouped.js";

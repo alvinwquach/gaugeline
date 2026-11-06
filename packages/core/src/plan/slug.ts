@@ -80,8 +80,9 @@ export function checkSlugs(rows: readonly PlanRow[], file = "the plan"): Finding
       checkId: "plan-slug-misspelling",
       severity: "medium",
       title: "A slug misspells its own heading",
-      evidence: `line ${row.line}: ${fixes.map((f) => `"${f.from}" in ${row.path}, the heading says "${f.to}"`).join("; ")}; did you mean ${prefix}/${corrected.join("-")}`,
+      evidence: `${fixes.map((f) => `"${f.from}" in ${row.path}, the heading says "${f.to}"`).join("; ")}; did you mean ${prefix}/${corrected.join("-")}`,
       url: file,
+      group: { key: row.path, lines: [row.line] },
     });
   }
   return out;

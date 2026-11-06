@@ -214,6 +214,8 @@ between the markers; CI fails when it differs from the flag table.
 | `--sheet <value>`         | Read this tab of a workbook instead of the one with a URL column                                   |                      | 0.2.0 |
 | `--legacy-from <value>`   | Read old addresses from this notes column when the plan has no Legacy URL column (repeatable)      |                      | 0.2.0 |
 | `--legacy-review <value>` | Write the old addresses read with --legacy-from to this CSV file, for review                       |                      | 0.2.0 |
+| `--annotate <value>`      | Write a copy of the plan with a Gaugeline column saying what is wrong on each row                  |                      | 0.2.0 |
+| `--force`                 | Let --annotate replace a file that already exists                                                  |                      | 0.2.0 |
 | `--runs <value>`          | The folder of saved runs (each one saved with --json) to read                                      |                      | 0.2.0 |
 | `--time-zone <value>`     | The time zone for dates and ages, such as America/Los_Angeles (default UTC)                        |                      | 0.2.0 |
 | `--notify-on <value>`     | When to send: any (something was found, the default), high or always                               |                      | 0.2.0 |

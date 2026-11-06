@@ -37,9 +37,7 @@ describe("keywords: unit", () => {
   it("a primary group of 3 rows is one finding listing 3 lines", () => {
     expect(
       found([row(2, "/a", "billing"), row(3, "/b", "Billing"), row(4, "/c", "billing ")]),
-    ).toEqual([
-      ["plan-keyword-cannibalisation", '"billing" is the primary keyword for lines 2, 3 and 4'],
-    ]);
+    ).toEqual([["plan-keyword-cannibalisation", '"billing" is the primary keyword of 3 pages']]);
   });
 
   it("overlap: A's primary as B's secondary is one low finding; both primary is one medium and no low", () => {
@@ -47,7 +45,7 @@ describe("keywords: unit", () => {
       ["plan-keyword-overlap", '"billing" is the primary for line 2 and a secondary for line 3'],
     ]);
     expect(found([row(2, "/a", "billing"), row(3, "/b", "billing", "billing")])).toEqual([
-      ["plan-keyword-cannibalisation", '"billing" is the primary keyword for lines 2 and 3'],
+      ["plan-keyword-cannibalisation", '"billing" is the primary keyword of 2 pages'],
     ]);
   });
 
@@ -71,15 +69,15 @@ describe("keywords: integration (the invented keywords plan)", () => {
     expect(checkKeywords(plan().rows).map((f) => [f.checkId, f.evidence])).toEqual([
       [
         "plan-keyword-cannibalisation",
-        '"medical billing services" (volume 590) is the primary keyword for lines 3, 4 and 5',
+        '"medical billing services" (volume 590) is the primary keyword of 3 pages',
       ],
       [
         "plan-keyword-cannibalisation",
-        '"patient payments" (volume 210) is the primary keyword for lines 17 and 18',
+        '"patient payments" (volume 210) is the primary keyword of 2 pages',
       ],
       [
         "plan-keyword-cannibalisation",
-        '"credentialing services" (volume n/a (<10)) is the primary keyword for lines 10 and 11',
+        '"credentialing services" (volume n/a (<10)) is the primary keyword of 2 pages',
       ],
       [
         "plan-keyword-overlap",
