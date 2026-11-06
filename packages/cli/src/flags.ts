@@ -106,6 +106,13 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     commands: ["check", "launch", "digest"],
   },
   {
+    name: "plan-only",
+    type: "boolean",
+    description: "Check the plan on its own, before anything is built (no requests)",
+    since: "0.2.0",
+    commands: ["plan"],
+  },
+  {
     name: "runs",
     type: "string",
     description: "The folder of saved runs (each one saved with --json) to read",

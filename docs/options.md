@@ -210,6 +210,7 @@ between the markers; CI fails when it differs from the flag table.
 | `--discord <value>`    | Send an embed to this Discord webhook (or set GAUGELINE_DISCORD_WEBHOOK)                           |                      | 0.2.0 |
 | `--webhook <value>`    | POST the result as JSON to this address (or set GAUGELINE_WEBHOOK)                                 |                      | 0.2.0 |
 | `--email <value>`      | Email the full report to these addresses through Resend (or set GAUGELINE_EMAIL)                   |                      | 0.2.0 |
+| `--plan-only`          | Check the plan on its own, before anything is built (no requests)                                  |                      | 0.2.0 |
 | `--runs <value>`       | The folder of saved runs (each one saved with --json) to read                                      |                      | 0.2.0 |
 | `--time-zone <value>`  | The time zone for dates and ages, such as America/Los_Angeles (default UTC)                        |                      | 0.2.0 |
 | `--notify-on <value>`  | When to send: any (something was found, the default), high or always                               |                      | 0.2.0 |

@@ -6,7 +6,7 @@ import { FLAGS, nearestFlag, resolveFlags, toParseArgsOptions, type FlagDef } fr
 export const USAGE_LINE = "gaugeline <address> [options]";
 export const COMMAND = "check";
 /** Subcommands, by their first word on the command line. "check" is the default. */
-export const SUBCOMMANDS = ["launch", "view", "digest"] as const;
+export const SUBCOMMANDS = ["launch", "view", "digest", "plan"] as const;
 export type CliCommand = "check" | (typeof SUBCOMMANDS)[number];
 
 /** The root command's help, from help.ts. */
@@ -40,6 +40,7 @@ export type ParsedArgs =
   | { kind: "help"; verbose: boolean; command: CliCommand }
   | { kind: "version"; verbose: boolean }
   | { kind: "view"; file: string; verbose: boolean }
+  | { kind: "plan"; file: string; planOnly: boolean; verbose: boolean; quiet: boolean }
   | {
       kind: "digest";
       runs: string;
@@ -89,7 +90,9 @@ export function parseCliArgs(
         ? "view"
         : argv[0] === "digest"
           ? "digest"
-          : COMMAND;
+          : argv[0] === "plan"
+            ? "plan"
+            : COMMAND;
   const rest = command === COMMAND ? argv : argv.slice(1);
   let parsed;
   try {
@@ -128,6 +131,22 @@ export function parseCliArgs(
   if (values.version === true) return { kind: "version", verbose };
 
   const positionals = parsed.positionals.map((p) => p.trim()).filter((p) => p !== "");
+  if (command === "plan") {
+    if (positionals.length !== 1)
+      return {
+        kind: "error",
+        message: "gaugeline plan needs one plan file: gaugeline plan sitemap.csv",
+        hint: "Export the plan from your spreadsheet as CSV.",
+        verbose,
+      };
+    return {
+      kind: "plan",
+      file: positionals[0] ?? "",
+      planOnly: values["plan-only"] === true,
+      verbose,
+      quiet: values.quiet === true,
+    };
+  }
   if (command === "digest") {
     const runs = typeof values.runs === "string" ? values.runs.trim() : (positionals[0] ?? "");
     if (runs === "")

@@ -45,6 +45,13 @@
       "verbose",
       "version",
       "webhook"
+    ],
+    "plan": [
+      "help",
+      "plan-only",
+      "quiet",
+      "verbose",
+      "version"
     ]
   },
   "checkIds": [
