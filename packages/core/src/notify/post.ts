@@ -8,6 +8,21 @@ import { request as httpsRequest } from "node:https";
  */
 export const NOTIFY_TIMEOUT_MS = 10_000;
 
+/** How much of a failed answer is read for its message. */
+const ERROR_BODY_BYTES = 4096;
+
+/** The "message" of a JSON error body, on one line and at most 300 characters; else undefined. */
+export function providerMessage(body: string): string | undefined {
+  try {
+    const parsed = JSON.parse(body) as { message?: unknown };
+    if (typeof parsed.message !== "string") return undefined;
+    const line = parsed.message.replace(/\s+/g, " ").trim();
+    return line === "" ? undefined : line.slice(0, 300);
+  } catch {
+    return undefined;
+  }
+}
+
 export interface PostResult {
   ok: boolean;
   status?: number;
@@ -26,7 +41,12 @@ export function safeTarget(url: string): string {
 export function postJson(
   url: string,
   body: unknown,
-  opts: { timeoutMs?: number; headers?: Record<string, string> } = {},
+  opts: {
+    timeoutMs?: number;
+    headers?: Record<string, string>;
+    /** On a failed answer, add the provider's JSON "message" (first 4 KB read) to the error. */
+    readError?: boolean;
+  } = {},
 ): Promise<PostResult> {
   const timeoutMs = opts.timeoutMs ?? NOTIFY_TIMEOUT_MS;
   const host = safeTarget(url);
@@ -63,13 +83,33 @@ export function postJson(
         },
       },
       (res) => {
-        res.resume();
         const status = res.statusCode ?? 0;
-        done(
-          status >= 200 && status < 300
-            ? { ok: true, status }
-            : { ok: false, status, error: `${host} answered ${status}` },
-        );
+        if ((status >= 200 && status < 300) || !opts.readError) {
+          res.resume();
+          done(
+            status >= 200 && status < 300
+              ? { ok: true, status }
+              : { ok: false, status, error: `${host} answered ${status}` },
+          );
+          return;
+        }
+        const chunks: Buffer[] = [];
+        let size = 0;
+        res.on("data", (c: Buffer) => {
+          if (size < ERROR_BODY_BYTES) chunks.push(c);
+          size += c.length;
+        });
+        res.on("end", () => {
+          const message = providerMessage(
+            Buffer.concat(chunks).subarray(0, ERROR_BODY_BYTES).toString("utf8"),
+          );
+          done({
+            ok: false,
+            status,
+            error: `${host} answered ${status}${message ? `: ${message}` : ""}`,
+          });
+        });
+        res.on("error", () => done({ ok: false, status, error: `${host} answered ${status}` }));
       },
     );
     req.setTimeout(timeoutMs, () => {

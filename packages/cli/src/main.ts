@@ -18,6 +18,9 @@ import {
   renderReport,
   exitCodeFor,
   formatTagSummary,
+  EMAIL_FROM_ENV,
+  ONBOARDING_FROM,
+  RESEND_KEY_ENV,
   resolveAccess,
   type CheckRegistry,
   type DnsReader,
@@ -100,6 +103,8 @@ export interface Deps {
   cwd?: string;
   /** Opens the written report. Defaults to the system browser; tests pass a fake. */
   open?: (path: string) => void;
+  /** Where the email is POSTed. Defaults to Resend's API; tests pass a local server. */
+  emailEndpoint?: string;
 }
 
 export interface RunReport {
@@ -323,20 +328,35 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           sampled: result.sampled,
         });
         const NAME = { slack: "Slack", discord: "Discord", webhook: "the webhook" } as const;
+        const emailing = targets.some((t) => t.channel === "email");
+        const from = env[EMAIL_FROM_ENV]?.trim();
         if (!shouldNotify(sent, args.notifyOn)) {
           io.stderr.write(
             `Nothing sent: --notify-on ${args.notifyOn} and ${args.notifyOn === "high" ? "nothing needs fixing first" : "nothing was found"}.\n`,
           );
         } else {
-          for (const r of await notifyAll(
-            sent,
-            targets,
-            args.reportUrl ? { reportUrl: args.reportUrl } : {},
-          ))
+          if (emailing && !from && env[RESEND_KEY_ENV])
             io.stderr.write(
-              r.ok
-                ? `Sent to ${NAME[r.channel]}.\n`
-                : `Could not send to ${NAME[r.channel]}: ${r.error ?? "it failed"}.\n`,
+              `Email is sent from Resend's shared address (${ONBOARDING_FROM}). Set ${EMAIL_FROM_ENV} to send from your own domain.\n`,
+            );
+          for (const r of await notifyAll(sent, targets, {
+            ...(args.reportUrl ? { reportUrl: args.reportUrl } : {}),
+            // The key is read here and goes only into the Authorization header of one request.
+            email: {
+              ...(env[RESEND_KEY_ENV] ? { apiKey: env[RESEND_KEY_ENV] } : {}),
+              ...(from ? { from } : {}),
+              ...(deps.emailEndpoint ? { endpoint: deps.emailEndpoint } : {}),
+              version: deps.version ?? VERSION,
+            },
+          }))
+            io.stderr.write(
+              r.channel === "email"
+                ? r.ok
+                  ? "Emailed the report.\n"
+                  : `Could not send the email: ${r.error ?? "it failed"}.\n`
+                : r.ok
+                  ? `Sent to ${NAME[r.channel]}.\n`
+                  : `Could not send to ${NAME[r.channel]}: ${r.error ?? "it failed"}.\n`,
             );
         }
       }
