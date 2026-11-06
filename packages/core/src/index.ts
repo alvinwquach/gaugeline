@@ -173,6 +173,14 @@ export { PRIVATE_TYPE_WORDS, isPrivateType } from "./checks/leaks/private-types.
 export { SANITY_QUERY, readDataset, sanityQueryUrl, sanityRefs } from "./sanity.js";
 export type { DatasetRead, SanityRef } from "./sanity.js";
 export { readScripts } from "./scripts.js";
+export {
+  DnsLookupError,
+  createDnsReader,
+  dnsName,
+  isReservedName,
+  registrableDomain,
+} from "./dns.js";
+export type { DnsReader, DnsReaderOptions, DnsResolver, MxRecord } from "./dns.js";
 export { accessConfigSchema, resolveAccess } from "./access/types.js";
 export type { AccessConfig, AccessSettings } from "./access/types.js";
 export { classify as classifyAccessRead, probeAccess } from "./access/probe.js";

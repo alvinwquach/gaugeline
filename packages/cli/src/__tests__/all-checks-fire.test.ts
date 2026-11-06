@@ -53,6 +53,11 @@ const NEEDS_LIVE_STORES = new Set([
   // The configured database project: confirmed in-process against the supabase-access cassette.
   "access-public-read",
   "access-role-scope",
+  // Public DNS: the built-bin run resolves nothing; confirmed in-process with a fake reader.
+  "email-dmarc-missing",
+  "email-dmarc-none",
+  "email-spf-missing",
+  "email-spf-multiple",
 ]);
 
 async function findingsOf(name: string): Promise<string[]> {

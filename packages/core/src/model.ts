@@ -9,6 +9,7 @@ import type { PaymentsConfig } from "./payments/types.js";
 import type { LanguageGroup, LanguageRules } from "./languages.js";
 import type { SchemaRules } from "./schema-rules.js";
 import type { AccessRead } from "./access/probe.js";
+import type { DnsReader } from "./dns.js";
 import type { DatasetRead } from "./sanity.js";
 import type { ScriptRead } from "./scripts.js";
 import type { PageSnapshot } from "./snapshot.js";
@@ -113,6 +114,8 @@ export interface CheckContext {
   datasets?: () => Promise<DatasetRead[]>;
   /** The configured database project, read as each role (counts only) once on first use. */
   access?: () => Promise<AccessRead>;
+  /** Public DNS (TXT and MX only), for the email record checks. Absent: those checks find nothing. */
+  dns?: DnsReader;
   /** The page's App Store and Google Play apps, looked up once on first use. */
   apps?: () => Promise<AppLookup[]>;
   /** Values the run was told to expect (for example the app's name). Until the config file, API only. */

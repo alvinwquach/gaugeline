@@ -179,6 +179,35 @@ That is the number of documents and the names of their types: never a document's
 request at all, skip `dataset-public` and `dataset-private-types`. What the answers mean:
 [Private datasets](/docs/private-datasets).
 
+### Email records
+
+The email record checks read two kinds of public DNS record for the checked host, and nothing
+else: `TXT` (at the host and at `_dmarc.<host>`) and `MX`. They never open a connection to a mail
+server and never send mail. The host is read as given, without a leading `www.`: checking
+`app.example.com` reads `app.example.com`'s records, not `example.com`'s, because working out the
+parent domain needs the public suffix list. Lookups go through your machine's resolver, so they show
+what it returns: a network with its own internal DNS can see different records than the public
+does. A lookup that times out or fails is "could not check", never a finding. IP addresses,
+`localhost` and names reserved for examples and tests (`.example`, `.test`, `.invalid`,
+`.localhost`, `example.com`) are never looked up.
+
+Against the invented `email-records` fixture, a bike shop with one SPF record per sending service
+and a DMARC policy that only watches, with its DNS answers served from the fixture's `dns.json`,
+version 0.1.0 prints:
+
+```text title=Output
+! Your domain has two SPF records, which cancels both
+    bellwether.test has 2 SPF records: "v=spf1 include:_spf.mailhost.test ~all"; "v=spf1 include:send.newsletter.test -all"
+· Your DMARC policy only watches
+    _dmarc.bellwether.test: "v=DMARC1; p=none; rua=mailto:dmarc@bellwether.test"
+
+Checked 1 sitemap page.
+2 to look at, none to fix first.
+```
+
+Each check that passed also prints a `✓ <id>` line, left out above. The output is asserted by
+`packages/cli/src/__tests__/email.test.ts`.
+
 ### What it sends elsewhere
 
 Nothing. A check runs on your computer and the results stay there unless you send them somewhere

@@ -70,6 +70,16 @@
     "tech": "more than one <title> element outside <svg>"
   },
   {
+    "id": "email-spf-missing",
+    "severity": "high",
+    "area": "Security & email",
+    "title": "Your domain doesn't say who may send its email",
+    "what": "The domain receives email but publishes no SPF record listing the services allowed to send mail as it.",
+    "why": "Mail you send (receipts, booking confirmations) is more likely to land in spam, and anyone can send mail that claims to be from you.",
+    "fix": "Add one TXT record at the domain starting v=spf1 that includes each service that sends your mail (your email host, your newsletter tool), ending -all or ~all.",
+    "tech": "Public DNS only (node:dns/promises, TXT and MX): MX records exist and are not a null MX, and no TXT record at the host (without www.) starts with v=spf1. No mail server is contacted"
+  },
+  {
     "id": "event-jsonld-mismatch",
     "severity": "high",
     "area": "Visitors",
@@ -318,6 +328,26 @@
     "why": "Safari shows the banner at the top of the page on iPhone, so visitors install whichever app it names, which here is not the one the page links to.",
     "fix": "Set app-id in the apple-itunes-app meta tag to the same id as the App Store link.",
     "tech": "<meta name=\"apple-itunes-app\" content=\"app-id=...\"> differs from every apps.apple.com/.../id<digits> link on the page"
+  },
+  {
+    "id": "email-dmarc-missing",
+    "severity": "medium",
+    "area": "Security & email",
+    "title": "Your domain has no DMARC policy",
+    "what": "There is no DMARC record at _dmarc.<your domain>, so receiving servers have no instruction for mail that fails SPF or DKIM.",
+    "why": "Mail pretending to be from you is delivered like any other, and large mail providers increasingly expect a DMARC record from anyone who sends.",
+    "fix": "Add a TXT record at _dmarc.<your domain>: start with v=DMARC1; p=none; rua=mailto:<an address you read>, then move to quarantine once the reports look right.",
+    "tech": "Public DNS only: no TXT record starting v=DMARC1 at _dmarc.<host without www.>. The host is read as given; a parent domain's policy is not looked up"
+  },
+  {
+    "id": "email-spf-multiple",
+    "severity": "medium",
+    "area": "Security & email",
+    "title": "Your domain has two SPF records, which cancels both",
+    "what": "Two or more TXT records at the domain start with v=spf1.",
+    "why": "Receiving mail servers treat more than one SPF record as an error and ignore all of them, so your mail is checked as if you had none.",
+    "fix": "Merge them into one record: one v=spf1, every include from both, one -all or ~all at the end.",
+    "tech": "Public DNS only: the domain has MX records (not a null MX) and two or more TXT records start with v=spf1 (RFC 7208 §4.5: a permerror)"
   },
   {
     "id": "event-location-mismatch",
@@ -678,6 +708,16 @@
     "why": "That is fine for a blog, and a risk the day someone adds a form or an order type to it: everything in it is readable by anyone who looks.",
     "fix": "If nothing in it is private, nothing to do. Otherwise make the dataset private in sanity.io/manage and give the site a read token.",
     "tech": "Project and dataset read from cdn.sanity.io image addresses; one GET to <project>.api.sanity.io with the query {\"count\": count(*), \"types\": array::unique(*[]._type)} and no token, at most 2 datasets; never document contents"
+  },
+  {
+    "id": "email-dmarc-none",
+    "severity": "low",
+    "area": "Security & email",
+    "title": "Your DMARC policy only watches",
+    "what": "The domain's DMARC record has p=none: receiving servers report mail that fails, and deliver it anyway.",
+    "why": "That is the right first step, and it doesn't stop anyone sending mail as you. Left at none, it never will.",
+    "fix": "Read the DMARC reports for a few weeks, fix any service of yours that fails, then change p=none to p=quarantine (and later p=reject).",
+    "tech": "Public DNS only: the TXT record at _dmarc.<host> starting v=DMARC1 has p=none; sp (the subdomain policy) does not change this"
   },
   {
     "id": "event-missing-fields",
