@@ -62,7 +62,7 @@ version 0.1.0 prints:
 · Breadcrumbs don't start where your guide says
     /blog/flu-season: the breadcrumb starts with "Start" at /; the guide says "Home" at /
 
-Checked all 4 links, all 5 sitemap pages, all 4 other pages, all 2 addresses in structured data.
+Checked all 4 links, 1 image, all 5 sitemap pages, all 4 other pages, all 2 addresses in structured data.
 3 to look at, none to fix first.
 ```
 

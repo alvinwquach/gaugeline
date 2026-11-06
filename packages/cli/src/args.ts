@@ -5,6 +5,9 @@ import { FLAGS, nearestFlag, resolveFlags, toParseArgsOptions, type FlagDef } fr
 
 export const USAGE_LINE = "gaugeline <address> [options]";
 export const COMMAND = "check";
+/** Subcommands, by their first word on the command line. "check" is the default. */
+export const SUBCOMMANDS = ["launch"] as const;
+export type CliCommand = "check" | (typeof SUBCOMMANDS)[number];
 
 /** The root command's help, from help.ts. */
 export const USAGE = HELP[""] ?? "";
@@ -13,6 +16,10 @@ export const USAGE_HINT = `${USAGE_LINE}, for example: gaugeline example.com (se
 export const UNKNOWN_FLAG_HINT = "Run gaugeline --help to see every option.";
 
 export interface RunFlags {
+  /** Which command: the default page check, or launch. */
+  command: CliCommand;
+  /** launch --dns: add the email record checks. */
+  dns: boolean;
   ci: boolean;
   json: boolean;
   noOpen: boolean;
@@ -22,7 +29,7 @@ export interface RunFlags {
 }
 
 export type ParsedArgs =
-  | { kind: "help"; verbose: boolean }
+  | { kind: "help"; verbose: boolean; command: CliCommand }
   | { kind: "version"; verbose: boolean }
   | ({ kind: "run"; address: string; input: string; deprecatedUsed: FlagDef[] } & RunFlags)
   | { kind: "error"; message: string; hint?: string; verbose: boolean };
@@ -58,23 +65,25 @@ export function parseCliArgs(
   flags: readonly FlagDef[] = FLAGS,
 ): ParsedArgs {
   const verbose = argv.includes("--verbose");
+  const command: CliCommand = argv[0] === "launch" ? "launch" : COMMAND;
+  const rest = command === COMMAND ? argv : argv.slice(1);
   let parsed;
   try {
     parsed = parseArgs({
-      args: [...argv],
+      args: [...rest],
       allowPositionals: true,
       strict: true,
-      options: toParseArgsOptions(flags, COMMAND),
+      options: toParseArgsOptions(flags, command),
     });
   } catch (err) {
-    return { kind: "error", ...describeParseError(err, flags), verbose };
+    return { kind: "error", ...describeParseError(err, flags, command), verbose };
   }
   const values = resolveFlags(parsed.values, env, flags);
   const deprecatedUsed = flags.filter((f) => f.deprecated && parsed.values[f.name] !== undefined);
   if (values.quiet === true && values.verbose === true) {
     return { kind: "error", message: "Choose --quiet or --verbose, not both.", verbose: false };
   }
-  if (values.help === true) return { kind: "help", verbose };
+  if (values.help === true) return { kind: "help", verbose, command };
   if (values.version === true) return { kind: "version", verbose };
 
   const positionals = parsed.positionals.map((p) => p.trim()).filter((p) => p !== "");
@@ -101,6 +110,8 @@ export function parseCliArgs(
   }
   return {
     kind: "run",
+    command,
+    dns: values.dns === true,
     address: address.url.href,
     input,
     deprecatedUsed,

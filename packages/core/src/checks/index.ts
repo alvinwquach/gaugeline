@@ -55,6 +55,7 @@ import { mockContentLive } from "./mock-content-live.js";
 import { navHomeLinks } from "./nav-home-links.js";
 import { navLabelDrift } from "./nav-label-drift.js";
 import { noindex } from "./noindex.js";
+import { ogImageBroken } from "./og-image-broken.js";
 import { ogImageMissing } from "./og-image-missing.js";
 import { ogImageRelative } from "./og-image-relative.js";
 import { ogUrlMismatch } from "./og-url-mismatch.js";
@@ -79,9 +80,12 @@ import { sitemapDead } from "./sitemap-dead.js";
 import { sitemapHost } from "./sitemap-host.js";
 import { sitemapMissing } from "./sitemap-missing.js";
 import { sitemapRedirects } from "./sitemap-redirects.js";
+import { stagingIndexable } from "./staging-indexable.js";
 import { stegaLeak } from "./stega-leak.js";
 import { structuredDuplicate } from "./structured-duplicate.js";
 import { telFormat } from "./tel-format.js";
+import { tempHostCanonical } from "./temp-host-canonical.js";
+import { tempHostLinks } from "./temp-host-links.js";
 import { thinHtml } from "./thin-html.js";
 import { viewport } from "./viewport.js";
 
@@ -142,6 +146,7 @@ export const PAGE_CHECKS = [
   navHomeLinks,
   navLabelDrift,
   noindex,
+  ogImageBroken,
   ogImageMissing,
   ogImageRelative,
   ogUrlMismatch,
@@ -166,9 +171,12 @@ export const PAGE_CHECKS = [
   sitemapHost,
   sitemapMissing,
   sitemapRedirects,
+  stagingIndexable,
   stegaLeak,
   structuredDuplicate,
   telFormat,
+  tempHostCanonical,
+  tempHostLinks,
   thinHtml,
   viewport,
 ] as const;

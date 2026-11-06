@@ -67,7 +67,7 @@ whose structured data still has last season's hours, version 0.1.0 prints:
 ! The site shows two different handles for one payment service
     Venmo has 2 values: "@marigold-tamales" on /; "@Marigold-Tamale" on /menu
 
-Checked all 2 links, all 3 sitemap pages, all 2 other pages, 1 payment link.
+Checked all 2 links, 1 image, all 3 sitemap pages, all 2 other pages, 1 payment link.
 5 to look at, 3 to fix first.
 ```
 
