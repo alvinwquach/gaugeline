@@ -81,7 +81,7 @@ turned off in Stripe, version 0.1.0 prints:
 ✗ A payment link no longer works
     Stripe link https://buy.stripe.com/solana-gift-28 on 3 pages (/, /order, /es/) says "This link is no longer active"
 
-Checked all 2 links, 1 image, all 3 sitemap pages, all 2 other pages, 1 language version, 1 payment link, all 2 checkout links.
+Checked all 2 links, all 2 images, all 3 sitemap pages, all 2 other pages, 1 language version, 1 payment link, all 2 checkout links.
 3 to look at, 3 to fix first.
 ```
 

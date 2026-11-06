@@ -109,6 +109,7 @@ describe("runner: unit", () => {
       "nav-home-links",
       "nav-label-drift",
       "noindex",
+      "og-image-broken",
       "og-image-missing",
       "og-image-relative",
       "og-url-mismatch",
@@ -133,9 +134,12 @@ describe("runner: unit", () => {
       "sitemap-host",
       "sitemap-missing",
       "sitemap-redirects",
+      "staging-indexable",
       "stega-leak",
       "structured-duplicate",
       "tel-format",
+      "temp-host-canonical",
+      "temp-host-links",
       "thin-html",
       "viewport",
     ]);
@@ -222,6 +226,7 @@ describe("runner: edge cases", () => {
       "mock-content-live",
       "nav-home-links",
       "nav-label-drift",
+      "og-image-broken",
       "og-image-relative",
       "og-url-mismatch",
       "page-heavy",
@@ -245,9 +250,12 @@ describe("runner: edge cases", () => {
       "sitemap-host",
       "sitemap-missing",
       "sitemap-redirects",
+      "staging-indexable",
       "stega-leak",
       "structured-duplicate",
       "tel-format",
+      "temp-host-canonical",
+      "temp-host-links",
     ]);
   });
 });

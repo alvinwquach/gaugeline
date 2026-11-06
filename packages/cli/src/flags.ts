@@ -30,21 +30,21 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     description: 'Exit 1 when a "Fix this first" finding is found',
     env: "CI",
     since: "0.1.0",
-    commands: ["check"],
+    commands: ["check", "launch"],
   },
   {
     name: "json",
     type: "boolean",
     description: "Print the result as JSON on stdout, and nothing else",
     since: "0.1.0",
-    commands: ["check"],
+    commands: ["check", "launch"],
   },
   {
     name: "no-open",
     type: "boolean",
     description: "Do not open anything in a browser",
     since: "0.1.0",
-    commands: ["check"],
+    commands: ["check", "launch"],
   },
   {
     name: "allow-private",
@@ -52,7 +52,14 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     description:
       "Allow addresses on this computer or a private network, such as 127.0.0.1 or 192.168.x.x",
     since: "0.1.0",
-    commands: ["check"],
+    commands: ["check", "launch"],
+  },
+  {
+    name: "dns",
+    type: "boolean",
+    description: "launch: also check the mail records (SPF and DMARC) a DNS change would break",
+    since: "0.2.0",
+    commands: ["launch"],
   },
   {
     name: "quiet",

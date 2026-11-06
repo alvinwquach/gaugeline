@@ -32,6 +32,8 @@ const FIXTURES = [
   "payments-popup",
   "payments-drift",
   "leaks",
+  "launch-preview",
+  "preview-host",
 ];
 
 /**

@@ -300,6 +300,16 @@
     "tech": "sampled sitemap entries return 4xx or 5xx"
   },
   {
+    "id": "staging-indexable",
+    "severity": "high",
+    "area": "Launch day",
+    "title": "Your staging site can be found by search engines",
+    "what": "staging.<your domain> answers with a page and doesn't ask search engines to stay away.",
+    "why": "Search engines can index the unfinished copy alongside the real site, with old prices, test content or duplicate pages competing with yours.",
+    "fix": "Put the staging site behind a password, or send X-Robots-Tag: noindex (or <meta name=\"robots\" content=\"noindex\">) on every staging page.",
+    "tech": "One GET of <scheme>://staging.<host without www.>/: a final 200 on the staging host with no noindex or none in meta robots or X-Robots-Tag. A staging host that doesn't resolve, asks for a login or redirects away is a pass"
+  },
+  {
     "id": "stega-leak",
     "severity": "high",
     "area": "Search & sharing",
@@ -308,6 +318,16 @@
     "why": "They are invisible to you but not to everyone else: search results, share previews and copied text carry them, and they can break string comparisons and structured data.",
     "fix": "Turn stega encoding off for production builds (in Sanity, set stega: false outside preview) and strip it from fields that end up in metadata.",
     "tech": "a code point in U+E0000 to U+E007F, or 4 or more zero-width characters in a row, in the title, meta content or JSON-LD strings"
+  },
+  {
+    "id": "temp-host-links",
+    "severity": "high",
+    "area": "Launch day",
+    "title": "Links still point at a temporary address",
+    "what": "The page, on your own domain, links to a hosting provider's temporary address (vercel.app, netlify.app or pages.dev).",
+    "why": "Those addresses are previews: they can show old content, ask for a login, or vanish when the preview is cleaned up, and search engines split your site between two names.",
+    "fix": "Change each link to the same path on your domain. Search the code and the CMS for the temporary name: it is often in a menu, a button or an environment variable.",
+    "tech": "a[href] whose host ends in .vercel.app, .netlify.app or .pages.dev (checks/launch/hosts.ts), on a page that is not itself served from one"
   },
   {
     "id": "thin-html",
@@ -508,6 +528,16 @@
     "why": "Visitors who click Services land back on the homepage and think the page is missing. It usually means a menu item was added with no link.",
     "fix": "Point each menu item at its own page, or remove it until the page exists.",
     "tech": "a nav or header a[href] resolving to / whose text (or aria-label) is not Home or the site's name"
+  },
+  {
+    "id": "og-image-broken",
+    "severity": "medium",
+    "area": "Launch day",
+    "title": "The share picture doesn't load",
+    "what": "The og:image the page names answers with an error, or can't be reached.",
+    "why": "When someone shares the page, the preview card shows no picture, or none at all, on the day you most want it to look right.",
+    "fix": "Point og:image at an image that loads on the live domain (open the address in a browser to check), and use a full https:// address.",
+    "tech": "One probe of the og:image address (HEAD, then GET on 405/501), counted in the images budget; 4xx, 5xx or no answer is a finding. No og:image is og-image-missing's to report"
   },
   {
     "id": "og-image-relative",
@@ -838,5 +868,15 @@
     "why": "Some phones and click-to-call tools dial the wrong number, or nothing, when the link has spaces or brackets.",
     "fix": "Write the link as digits with a leading + and country code, for example href=\"tel:+14155550100\". Keep the spaced format in the visible text only.",
     "tech": "an a[href^=\"tel:\"] contains a space, ( or ); \"-\" and \".\" pass. One finding per distinct number"
+  },
+  {
+    "id": "temp-host-canonical",
+    "severity": "low",
+    "area": "Launch day",
+    "title": "A temporary address doesn't name the real one",
+    "what": "The page is served from a hosting provider's temporary address and has no canonical tag.",
+    "why": "If a search engine finds the temporary address, nothing tells it the real page is on your domain, and the preview can show up in results.",
+    "fix": "Add <link rel=\"canonical\" href=\"https://yourdomain/...\"> to every page, so each preview points at the real address.",
+    "tech": "The final address's host ends in .vercel.app, .netlify.app or .pages.dev and the HTML has no link rel=canonical"
   }
 ]

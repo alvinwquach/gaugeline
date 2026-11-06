@@ -46,7 +46,7 @@ Spanish page has an old price, version 0.1.0 prints:
 ! A language version of this page is missing
     1 of 2 language versions are missing: fr /fr/ returned 404
 
-Checked all 2 sitemap pages, all 2 language versions.
+Checked 1 image, all 2 sitemap pages, all 2 language versions.
 2 to look at, 1 to fix first.
 ```
 

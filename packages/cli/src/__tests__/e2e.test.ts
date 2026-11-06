@@ -47,6 +47,7 @@ beforeAll(async () => {
     "/hop1": redirect(301, "/hop2"),
     "/hop2": redirect(301, "/"),
     "/plain": html("<p>x</p>"),
+    "/og.png": (_q, res) => void res.writeHead(200, { "content-type": "image/png" }).end(""),
   };
   site = await startServer(routes);
 });

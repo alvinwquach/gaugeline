@@ -75,7 +75,7 @@ with the project's answers replayed from an invented recording, version 0.1.0 pr
 ✗ A signed-in user can read other people's rows
     as customer, orders: 3 rows whose customer_id is someone else's are readable; columns: id, created_at, customer_id, customer_email, total
 
-Checked 1 sitemap page, all 5 database tables.
+Checked 1 image, 1 sitemap page, all 5 database tables.
 3 to look at, 3 to fix first.
 ```
 

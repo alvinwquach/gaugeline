@@ -173,6 +173,8 @@ export { PRIVATE_TYPE_WORDS, isPrivateType } from "./checks/leaks/private-types.
 export { SANITY_QUERY, readDataset, sanityQueryUrl, sanityRefs } from "./sanity.js";
 export type { DatasetRead, SanityRef } from "./sanity.js";
 export { readScripts } from "./scripts.js";
+export { EMAIL_PRESET, LAUNCH_PRESET } from "./presets.js";
+export { TEMP_HOST_SUFFIXES, isTemporaryHost } from "./checks/launch/hosts.js";
 export {
   DnsLookupError,
   createDnsReader,
