@@ -6,7 +6,7 @@ import { FLAGS, nearestFlag, resolveFlags, toParseArgsOptions, type FlagDef } fr
 export const USAGE_LINE = "gaugeline <address> [options]";
 export const COMMAND = "check";
 /** Subcommands, by their first word on the command line. "check" is the default. */
-export const SUBCOMMANDS = ["launch", "view", "digest", "plan"] as const;
+export const SUBCOMMANDS = ["launch", "view", "digest", "plan", "printed"] as const;
 export type CliCommand = "check" | (typeof SUBCOMMANDS)[number];
 
 /** The root command's help, from help.ts. */
@@ -53,7 +53,18 @@ export type ParsedArgs =
       /** "" when given without a file name: the state file beside the plan. */
       progress?: string;
       all: boolean;
+      printed?: string;
       base?: string;
+      allowPrivate: boolean;
+      verbose: boolean;
+      quiet: boolean;
+    }
+  | {
+      kind: "printed";
+      file: string;
+      /** Images (or folders) to read QR codes from: --decode values and the positionals after the file. */
+      decode: string[];
+      tags?: string[];
       allowPrivate: boolean;
       verbose: boolean;
       quiet: boolean;
@@ -109,7 +120,9 @@ export function parseCliArgs(
           ? "digest"
           : argv[0] === "plan"
             ? "plan"
-            : COMMAND;
+            : argv[0] === "printed"
+              ? "printed"
+              : COMMAND;
   const given = command === COMMAND ? argv : argv.slice(1);
   // --annotate and --progress take an optional file name: alone, or before another flag, the default.
   const rest = given.map((a, i) =>
@@ -189,11 +202,43 @@ export function parseCliArgs(
       force: values.force === true,
       ...(typeof values.progress === "string" ? { progress: values.progress } : {}),
       all: values.all === true,
+      ...(typeof values.printed === "string" ? { printed: values.printed } : {}),
       ...(typeof values.base === "string" ? { base: values.base } : {}),
       allowPrivate: values["allow-private"] === true,
       ...(typeof values["legacy-review"] === "string"
         ? { legacyReview: values["legacy-review"] }
         : {}),
+      verbose,
+      quiet: values.quiet === true,
+    };
+  }
+  if (command === "printed") {
+    const decodeValues = Array.isArray(values.decode)
+      ? values.decode
+      : typeof values.decode === "string"
+        ? [values.decode]
+        : [];
+    // A shell expands --decode ./flyers/*.png into one value and more positionals: those are images too.
+    if (positionals.length === 0 || (decodeValues.length === 0 && positionals.length > 1))
+      return {
+        kind: "error",
+        message: "gaugeline printed needs one register file: gaugeline printed printed.csv",
+        hint: "Columns: url, where, printedOn, expectedDestination. Add --decode <images> to read QR codes.",
+        verbose,
+      };
+    const tags =
+      typeof values.tags === "string"
+        ? values.tags
+            .split(",")
+            .map((t) => t.trim())
+            .filter((t) => t !== "")
+        : undefined;
+    return {
+      kind: "printed",
+      file: positionals[0] ?? "",
+      decode: [...decodeValues, ...positionals.slice(1)],
+      ...(tags && tags.length > 0 ? { tags } : {}),
+      allowPrivate: values["allow-private"] === true,
       verbose,
       quiet: values.quiet === true,
     };

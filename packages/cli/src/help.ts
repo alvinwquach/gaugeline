@@ -1,7 +1,7 @@
 import { FLAGS, renderHelp } from "./flags.js";
 
 /** Every command the CLI registers. "" is the root command (gaugeline <address>). */
-export const COMMANDS = ["", "launch", "view", "digest", "plan"] as const;
+export const COMMANDS = ["", "launch", "view", "digest", "plan", "printed"] as const;
 export type Command = (typeof COMMANDS)[number];
 
 /**
@@ -37,6 +37,14 @@ export const HELP: Record<string, string> = {
       "legacy URL columns are used when present; names are matched loosely.",
     ].join("\n"),
     footer: "Exit codes: 0 read, 2 the plan could not be read",
+  }),
+  printed: renderHelp(FLAGS, "printed", {
+    usage: "gaugeline printed <register.csv> [options]",
+    summary: [
+      "Check every printed address (QR codes, flyers, short links) in a register still",
+      "lands where it should. Columns: url, where, printedOn, expectedDestination.",
+    ].join("\n"),
+    footer: "Exit codes: 0 every address lands, 1 one needs fixing, 2 could not check",
   }),
   digest: renderHelp(FLAGS, "digest", {
     usage: "gaugeline digest --runs <folder> [options]",

@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -35,6 +35,7 @@ const SAMPLE_VALUES: Record<string, string> = {
   "legacy-from": "SEO Notes",
   "legacy-review": "review.csv",
   progress: "plan-state.json",
+  tags: "utm_,ref",
 };
 
 const repoRoot = fileURLToPath(new URL("../../../../", import.meta.url));
@@ -286,8 +287,14 @@ describe("flag table: e2e", () => {
       const runs = `${repoRoot}packages/fixtures/runs/digest-week`;
       const plan = `${repoRoot}packages/fixtures/plans/legacy-notes.csv`;
       const planOnly = f.commands.length === 1 && f.commands[0] === "plan";
+      const printedOnly = f.commands.length === 1 && f.commands[0] === "printed";
+      // A register of one printed address on the fixture, and a folder with no images to decode.
+      const register = join(scratch, "printed.csv");
+      writeFileSync(register, `url,where\n${site.origin}/,flags test\n`);
+      mkdirSync(join(scratch, "no-images"), { recursive: true });
       const digestOnly =
         !planOnly &&
+        !printedOnly &&
         !flagsFor(FLAGS, "check").includes(f) &&
         !flagsFor(FLAGS, "launch").includes(f);
       // A string flag needs a value: the one it accepts.
@@ -299,20 +306,32 @@ describe("flag table: e2e", () => {
             plan,
             ...(f.name === "legacy-review" ? ["--legacy-from", "SEO Notes"] : []),
             // --progress and --all compare runs against a preview: they need --base.
-            ...(f.name === "progress" || f.name === "all"
+            ...(f.name === "progress" || f.name === "all" || f.name === "printed"
               ? ["--base", `${site.origin}/`, "--allow-private"]
               : []),
             `--${f.name}`,
-            ...(f.name === "base" ? [`${site.origin}/`, "--allow-private"] : value),
+            ...(f.name === "base"
+              ? [`${site.origin}/`, "--allow-private"]
+              : f.name === "printed"
+                ? [register]
+                : value),
           ]
-        : digestOnly
-          ? ["digest", ...(f.name === "runs" ? [] : ["--runs", runs]), `--${f.name}`, ...value]
-          : [
-              ...(flagsFor(FLAGS, "check").includes(f) ? [] : ["launch"]),
-              `${site.origin}/`,
+        : printedOnly
+          ? [
+              "printed",
+              register,
+              "--allow-private",
               `--${f.name}`,
-              ...value,
-            ];
+              ...(f.name === "decode" ? [join(scratch, "no-images")] : value),
+            ]
+          : digestOnly
+            ? ["digest", ...(f.name === "runs" ? [] : ["--runs", runs]), `--${f.name}`, ...value]
+            : [
+                ...(flagsFor(FLAGS, "check").includes(f) ? [] : ["launch"]),
+                `${site.origin}/`,
+                `--${f.name}`,
+                ...value,
+              ];
       const r = await runBin(args, {}, { cwd: scratch });
       expect(r.stderr, f.name).not.toContain("Unknown option");
       expect([0, 1], f.name).toContain(r.status);

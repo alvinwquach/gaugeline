@@ -54,7 +54,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     description:
       "Allow addresses on this computer or a private network, such as 127.0.0.1 or 192.168.x.x",
     since: "0.1.0",
-    commands: ["check", "launch", "plan"],
+    commands: ["check", "launch", "plan", "printed"],
   },
   {
     name: "dns",
@@ -173,6 +173,30 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     description: "With --progress, list the findings still open, not only how many",
     since: "0.2.0",
     commands: ["plan"],
+  },
+  {
+    name: "printed",
+    type: "string",
+    description: "With --base, add the printed register's addresses to the 301 map",
+    since: "0.2.0",
+    commands: ["plan"],
+  },
+  {
+    name: "decode",
+    type: "string",
+    description:
+      "Read the QR code in these PNG images (or a folder) and add new ones to the register",
+    since: "0.2.0",
+    commands: ["printed"],
+    multiple: true,
+  },
+  {
+    name: "tags",
+    type: "string",
+    description:
+      "Query parameters that must reach the destination, as name prefixes (default utm_)",
+    since: "0.2.0",
+    commands: ["printed"],
   },
   {
     name: "runs",

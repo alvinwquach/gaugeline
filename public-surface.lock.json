@@ -56,9 +56,19 @@
       "legacy-from",
       "legacy-review",
       "plan-only",
+      "printed",
       "progress",
       "quiet",
       "sheet",
+      "verbose",
+      "version"
+    ],
+    "printed": [
+      "allow-private",
+      "decode",
+      "help",
+      "quiet",
+      "tags",
       "verbose",
       "version"
     ]

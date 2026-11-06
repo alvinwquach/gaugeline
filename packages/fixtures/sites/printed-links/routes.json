@@ -1,0 +1,18 @@
+{
+  "/table-menu": {
+    "status": 301,
+    "location": "/menu"
+  },
+  "/events-2025": {
+    "status": 301,
+    "location": "/"
+  },
+  "/book": {
+    "status": 301,
+    "location": "/reservations"
+  },
+  "/spring-flyer": {
+    "status": 404,
+    "body": "not found"
+  }
+}

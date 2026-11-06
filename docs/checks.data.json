@@ -500,6 +500,26 @@
     "tech": "Rows grouped by host without www. and path in lower case, no trailing slash or query, plus #fragment when there is one; an anchor row and its page row differ by the fragment. One finding per group, with every line"
   },
   {
+    "id": "printed-dead",
+    "severity": "high",
+    "area": "Launch day",
+    "title": "A printed address doesn't land on a page",
+    "what": "A printed address (a QR code, a flyer, a short link) ends in a 4xx or 5xx, or no longer answers on the http:// that was printed.",
+    "why": "A printed code can't be reprinted when a page moves: everyone who scans it gets an error.",
+    "fix": "Add a redirect from the printed address to the page it was for, and answer on http if http was printed.",
+    "tech": "The printed URL fetched as printed with GET; the trail's last hop is 400 or above. A printed http:// that refuses the connection while https:// answers is reported here"
+  },
+  {
+    "id": "printed-wrong-destination",
+    "severity": "high",
+    "area": "Launch day",
+    "title": "A printed address lands somewhere it shouldn't",
+    "what": "A printed address lands somewhere other than its expectedDestination, or stops on an interstitial page that sends people on.",
+    "why": "People scanned a code for one thing and got another, or a page they have to wait through.",
+    "fix": "Point the printed address's redirect at the expected page, and make a short link redirect with a 301 rather than show its own page.",
+    "tech": "The trail's final address against expectedDestination (host without www, path without trailing slash). A 200 with a meta refresh or a location assignment and no redirect is an interstitial"
+  },
+  {
     "id": "app-smart-banner-mismatch",
     "severity": "medium",
     "area": "Visitors",
@@ -1010,6 +1030,26 @@
     "tech": "Sentences in the --legacy-from columns containing \"legacy\": one that says 301 but names no path (no-path), or one with a path that starts with Confirm, contains whether or ends with a question mark (unconfirmed). One finding listing every line"
   },
   {
+    "id": "printed-to-home",
+    "severity": "medium",
+    "area": "Launch day",
+    "title": "A printed link to a page now lands on the home page",
+    "what": "A printed link to a page deeper than the home page now lands on the home page.",
+    "why": "The classic lazy redirect after a restructure: the visitor who scanned for the menu has to find it again.",
+    "fix": "Redirect the printed address to the page that replaced the one it was printed for, and add its expectedDestination to the register.",
+    "tech": "No expectedDestination; the printed path isn't / and the trail ends on /"
+  },
+  {
+    "id": "printed-tags-lost",
+    "severity": "medium",
+    "area": "Launch day",
+    "title": "A printed address loses its tracking tags",
+    "what": "A printed address's utm_ (or other configured) parameters are gone by the time it reaches its page.",
+    "why": "Scans of that table tent or flyer can't be counted: the campaign looks like it did nothing.",
+    "fix": "Pass the query string on in the redirect.",
+    "tech": "Parameters on the printed URL whose names start with a tag prefix (utm_ by default) and are missing from the final address"
+  },
+  {
     "id": "ai-crawlers-blocked",
     "severity": "low",
     "area": "Search & sharing",
@@ -1248,5 +1288,15 @@
     "why": "Often deliberate, supporting pages in a cluster; worth a look, because a strong supporting page can outrank the page meant to win the term.",
     "fix": "Check the supporting pages link to the primary page, and that none of them is built to rank for the term itself.",
     "tech": "Each Secondary Keyword cell is split on commas, semicolons and line breaks and compared like primaries. Reported from the primary's side, only when one page has the term as its primary"
+  },
+  {
+    "id": "printed-chain",
+    "severity": "low",
+    "area": "Launch day",
+    "title": "A printed address takes more than two redirects",
+    "what": "A printed address takes more than two redirects to land.",
+    "why": "Every hop is a wait on a phone, often on a weak signal, and one broken hop breaks the code.",
+    "fix": "Redirect the printed address straight to its page.",
+    "tech": "More than two 3xx in the trail; the trail is in the evidence"
   }
 ]
