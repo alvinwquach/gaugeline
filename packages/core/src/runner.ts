@@ -30,6 +30,7 @@ export function sanitiseFinding(f: Finding): Finding {
     url: redact(f.url),
   };
   if (f.source) out.source = { ...f.source };
+  if (f.group) out.group = { key: redact(f.group.key), lines: [...f.group.lines] };
   return out;
 }
 
