@@ -12,6 +12,7 @@ import {
 import { USAGE, describeParseError } from "../args.js";
 import {
   FLAGS,
+  flagsFor,
   HELP_WIDTH,
   nearestFlag,
   renderHelp,
@@ -211,9 +212,12 @@ describe("flag table: e2e", () => {
     expect(r.status).toBe(0);
     expect(r.stderr).toBe("");
     const options = r.stdout.slice(r.stdout.indexOf("Options:"), r.stdout.indexOf("Exit codes:"));
-    for (const f of FLAGS.filter((x) => !x.hidden)) {
+    for (const f of flagsFor(FLAGS, "check").filter((x) => !x.hidden)) {
       expect(options.split(`--${f.name} `).length - 1, f.name).toBe(1);
     }
+    // A flag of another command only (launch --dns) is not in the root help.
+    for (const f of FLAGS.filter((x) => !flagsFor(FLAGS, "check").includes(x)))
+      expect(options, f.name).not.toContain(`--${f.name} `);
   });
 
   it("gaugeline example.com --nope exits 2 with the one-line message and the hint", async () => {
@@ -232,7 +236,9 @@ describe("flag table: e2e", () => {
 
   it("every flag in the table is accepted by the built bin", async () => {
     for (const f of FLAGS) {
-      const r = await runBin([`${site.origin}/`, `--${f.name}`]);
+      // Each flag is given to a command that accepts it: launch-only flags to gaugeline launch.
+      const command = flagsFor(FLAGS, "check").includes(f) ? [] : ["launch"];
+      const r = await runBin([...command, `${site.origin}/`, `--${f.name}`]);
       expect(r.stderr, f.name).not.toContain("Unknown option");
       expect([0, 1], f.name).toContain(r.status);
     }
