@@ -25,6 +25,8 @@ export interface PlanCheckInput {
   redirects?: RedirectResult;
   /** What checkCoverage found against --live; absent without --live (the check is skipped). */
   coverage?: CoverageResult;
+  /** plan-rank-unknown-address, worked out with --rank; absent without it (the check is skipped). */
+  rankUnknown?: readonly Finding[];
 }
 
 const WHY: Record<string, string> = {
@@ -279,12 +281,27 @@ export const planUncoveredPage = defineCheck<PlanCheckInput>({
   },
 });
 
+export const planRankUnknownAddress = defineCheck<PlanCheckInput>({
+  id: "plan-rank-unknown-address",
+  area: "Launch day",
+  severity: "low",
+  title: "Addresses in the rank export are neither live nor planned",
+  what: "Pages in the --rank export (Search Console or a rank tracker) are neither in the --live list nor in the plan.",
+  why: "Usually the export is of another site or property, or of pages already gone: the numbers on the uncovered list may not be the site's.",
+  fix: "Check the export is of this site's property and recent, or add the pages to --live if they still exist.",
+  tech: "Export paths (the --live key: lower case, no trailing slash, no query or host) not in the set of live paths or row paths. One finding with the count and three examples",
+  run(input) {
+    return [...(input.rankUnknown ?? [])];
+  },
+});
+
 /** The plan checks, apart from the page checks: they read a plan, not a page. */
 export const PLAN_CHECKS = [
   ...planBuiltChecks,
   ...planRedirectChecks,
   planRedirectConflict,
   planUncoveredPage,
+  planRankUnknownAddress,
   ...planSelfChecks,
   planSlugMisspelling,
   planKeywordCannibalisation,

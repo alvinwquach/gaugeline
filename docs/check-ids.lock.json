@@ -91,6 +91,7 @@
   "plan-keyword-cannibalisation",
   "plan-keyword-overlap",
   "plan-legacy-unresolved",
+  "plan-rank-unknown-address",
   "plan-redirect-chain",
   "plan-redirect-conflict",
   "plan-redirect-drops-query",

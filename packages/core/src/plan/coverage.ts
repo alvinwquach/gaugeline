@@ -160,6 +160,8 @@ export interface CoverageOptions {
   metric?: LiveRead["metric"];
   /** At least this many pages sharing one prefix swap are reported once. */
   prefixGroup?: number;
+  /** Keep every live path (for --rank's unknown addresses): one string per live page. */
+  keepLive?: boolean;
 }
 
 export interface CoverageResult {
@@ -167,6 +169,10 @@ export interface CoverageResult {
   /** Live addresses read, and how many were left out as assets, feeds, pages or --ignore. */
   live: number;
   ignored: number;
+  /** Uncovered live pages, a grouped prefix counting each of its pages. */
+  pages: number;
+  /** Every live path read, with keepLive. */
+  liveKeys?: Set<string>;
 }
 
 const segments = (path: string) => path.split("/").filter((s) => s !== "");
@@ -204,6 +210,7 @@ export async function checkCoverage(
   const uncovered = new Map<string, LiveUrl>();
   /** Planned paths that exist today: only the others can be a planned page under another prefix. */
   const plannedLive = new Set<string>();
+  const liveKeys = opts.keepLive ? new Set<string>() : undefined;
   for await (const item of live) {
     count++;
     if (ignored(item.url, globs)) {
@@ -211,6 +218,7 @@ export async function checkCoverage(
       continue;
     }
     const key = coverageKey(item.url);
+    if (key) liveKeys?.add(key);
     if (!key || uncovered.has(key)) continue;
     if (covered.has(key)) {
       if (planned.has(key)) plannedLive.add(key);
@@ -279,5 +287,11 @@ export async function checkCoverage(
       url: file,
       group: { key, lines: [] },
     });
-  return { findings, live: count, ignored: skipped };
+  return {
+    findings,
+    live: count,
+    ignored: skipped,
+    pages: uncovered.size,
+    ...(liveKeys ? { liveKeys } : {}),
+  };
 }
