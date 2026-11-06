@@ -279,19 +279,25 @@ describe("flag table: e2e", () => {
       // Each flag is given to a command that accepts it: launch-only flags to gaugeline launch,
       // digest-only flags to gaugeline digest over the fixture's saved runs.
       const runs = `${repoRoot}packages/fixtures/runs/digest-week`;
+      const plan = `${repoRoot}packages/fixtures/plans/keyword-map.csv`;
+      const planOnly = f.commands.length === 1 && f.commands[0] === "plan";
       const digestOnly =
-        !flagsFor(FLAGS, "check").includes(f) && !flagsFor(FLAGS, "launch").includes(f);
+        !planOnly &&
+        !flagsFor(FLAGS, "check").includes(f) &&
+        !flagsFor(FLAGS, "launch").includes(f);
       // A string flag needs a value: the one it accepts.
       const value =
         f.type === "string" ? [f.name === "runs" ? runs : (SAMPLE_VALUES[f.name] ?? "x")] : [];
-      const args = digestOnly
-        ? ["digest", ...(f.name === "runs" ? [] : ["--runs", runs]), `--${f.name}`, ...value]
-        : [
-            ...(flagsFor(FLAGS, "check").includes(f) ? [] : ["launch"]),
-            `${site.origin}/`,
-            `--${f.name}`,
-            ...value,
-          ];
+      const args = planOnly
+        ? ["plan", plan, `--${f.name}`, ...value]
+        : digestOnly
+          ? ["digest", ...(f.name === "runs" ? [] : ["--runs", runs]), `--${f.name}`, ...value]
+          : [
+              ...(flagsFor(FLAGS, "check").includes(f) ? [] : ["launch"]),
+              `${site.origin}/`,
+              `--${f.name}`,
+              ...value,
+            ];
       const r = await runBin(args, {}, { cwd: scratch });
       expect(r.stderr, f.name).not.toContain("Unknown option");
       expect([0, 1], f.name).toContain(r.status);
