@@ -168,14 +168,19 @@ describe("preview auth: integration (the protected fixtures)", () => {
     try {
       const auth = previewAuth({ [PREVIEW_AUTH_ENV.basic]: BASIC }, site.origin);
       if (!auth) throw new Error("expected auth");
-      const fetcher = createFetcher({ allowPrivate: true, headersFor: authHeaders(auth) });
+      // elsewhere.test is this same server under another name: another origin, no DNS involved.
+      const fetcher = createFetcher({
+        allowPrivate: true,
+        headersFor: authHeaders(auth),
+        hosts: { "elsewhere.test": new URL(site.origin).host },
+      });
       const hops = await fetcher.get(`${site.origin}/away`);
       expect(hops.map((h) => h.status)).toEqual([302, 401]);
       const [away, landing] = site.requests;
       expect(away?.path).toBe("/away");
       expect(away?.headers.authorization).toBe(`Basic ${b64(BASIC)}`);
       expect(landing?.path).toBe("/landing");
-      expect(landing?.host).toMatch(/^localhost:/);
+      expect(hops[1]?.url).toMatch(/^http:\/\/elsewhere\.test:\d+\/landing$/);
       expect(landing?.headers.authorization).toBeUndefined();
     } finally {
       await site.close();

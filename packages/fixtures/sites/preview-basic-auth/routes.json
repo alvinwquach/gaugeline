@@ -1,5 +1,5 @@
 {
-  "/away": { "status": 302, "location": "http://localhost:{{port}}/landing" },
+  "/away": { "status": 302, "location": "http://elsewhere.test:{{port}}/landing" },
   "/members": {
     "status": 401,
     "headers": { "www-authenticate": "Basic realm=\"Members\"" },
