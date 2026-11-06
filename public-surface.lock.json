@@ -5,6 +5,7 @@
       "ci",
       "dns",
       "help",
+      "interactive",
       "json",
       "no-open",
       "quiet",

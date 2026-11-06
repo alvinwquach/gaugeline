@@ -70,6 +70,14 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     commands: ["check"],
   },
   {
+    name: "interactive",
+    type: "boolean",
+    description: "Open a terminal view of the results to move through, filter and dismiss findings",
+    since: "0.2.0",
+    commands: ["check"],
+    short: "i",
+  },
+  {
     name: "quiet",
     type: "boolean",
     description: "Print only results and errors",
