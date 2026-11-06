@@ -136,3 +136,23 @@ Not yet: 1 to fix first
 
 Each check that passed also prints a `✓ <id>` line, left out above. The output is asserted by
 `packages/cli/src/__tests__/launch.test.ts`.
+
+### Free tools
+
+`gaugeline-free` is a separate, smaller package with three commands and no keys or account. Each
+writes the same forwardable report and exits 1 with `--ci` (or `CI` set) when something serious
+turns up:
+
+```bash
+npx gaugeline-free price https://yourshop.example/products/mug
+npx gaugeline-free launch yoursite.com
+npx gaugeline-free study stores.txt
+```
+
+- `price <product-url>` (New): the price a visitor sees, the price in the product data Google reads,
+  and the price Shopify will actually charge. See [Products and prices](products-and-prices.md).
+- `launch <site>` (New): the launch-day check above, with `--dns` always on.
+- `study <stores.txt>`: the price check on every product address in a file (one per line; blank
+  lines and lines starting with `#` are skipped), one site at a time, then a table and the totals:
+  stores read, and stores where the prices disagree. A store that refuses the request is counted
+  as could not check, never as agreeing. `--json` prints the rows.

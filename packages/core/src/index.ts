@@ -72,6 +72,8 @@ export { charsetFromContentType, decodeBody, sniffMetaCharset } from "./charset.
 export { compareAddresses, normaliseText, normaliseUrl, sameText } from "./normalise.js";
 export type { AddressComparison, AddressDifference, CompareOptions } from "./normalise.js";
 export { runChecks } from "./run.js";
+export { classifyHop, describeRefusal } from "./refusal.js";
+export type { HopOutcome } from "./refusal.js";
 export type { RunOptions, RunResult } from "./run.js";
 export {
   PAGE_CHECKS,
@@ -209,6 +211,14 @@ export {
   verdict as digestVerdict,
 } from "./digest.js";
 export type { Digest, DigestItem } from "./digest.js";
+export {
+  comparePrices,
+  parseAmount,
+  pricesDisagree,
+  readPrices,
+  shopifyProductJs,
+} from "./price.js";
+export type { PriceDisagreement, PriceReading } from "./price.js";
 export type { BuiltEmail, EmailSettings } from "./notify/email.js";
 export { discordPayload, slackPayload, webhookPayload } from "./notify/payloads.js";
 export { NOTIFY_TIMEOUT_MS, postJson, providerMessage, safeTarget } from "./notify/post.js";

@@ -96,6 +96,12 @@ importers:
 
   packages/fixtures: {}
 
+  packages/free:
+    devDependencies:
+      '@gaugeline/core':
+        specifier: workspace:*
+        version: link:../core
+
   packages/testkit:
     devDependencies:
       '@gaugeline/core':
