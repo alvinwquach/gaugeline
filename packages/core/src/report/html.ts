@@ -1,0 +1,127 @@
+import {
+  SEVERITIES,
+  SEVERITY_LABEL,
+  type CheckRegistry,
+  type Finding,
+  type Severity,
+} from "../model.js";
+import type { RunResult } from "../run.js";
+
+/** Text and attribute values, escaped for both (OWASP rule #1 and #2: & < > " '). */
+export function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+export interface ReportInput {
+  result: RunResult;
+  url: string;
+  startedAt: Date;
+  /** For each finding's why, fix and technical line, and the titles of what passed. */
+  registry: CheckRegistry;
+  /** The sample line ("Checked all 2 links, …"), as the terminal prints it. */
+  sampled?: string;
+  version: string;
+}
+
+const COLOR: Readonly<Record<Severity, string>> = {
+  high: "#b42318",
+  medium: "#b54708",
+  low: "#475467",
+};
+
+/** Inline styles only: the file must read the same opened from an email, with no network. */
+const STYLE = `
+body{font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;color:#101828;max-width:52rem;margin:2rem auto;padding:0 1rem}
+h1{font-size:1.5rem;margin:0 0 .25rem}h2{font-size:1.15rem;margin:2rem 0 .5rem}h2 span{color:#667085;font-weight:400}
+.meta{color:#667085;margin:0 0 1.5rem}.counts{display:flex;gap:1rem;flex-wrap:wrap;padding:0;list-style:none}
+.counts li{border:1px solid #eaecf0;border-radius:.5rem;padding:.5rem .75rem}
+.f{border-left:4px solid;padding:.25rem 0 .25rem .75rem;margin:1rem 0}.f h3{font-size:1rem;margin:0}
+.f p{margin:.25rem 0}.tech,.id{color:#475467;font-size:.875rem}.tech code{white-space:pre-wrap;word-break:break-word}
+ul.ok li{margin:.15rem 0}code{font-family:ui-monospace,Menlo,Consolas,monospace}
+`.trim();
+
+function findingHtml(f: Finding, registry: CheckRegistry): string {
+  const check = registry.get(f.checkId);
+  const e = escapeHtml;
+  return [
+    `<article class="f" style="border-color:${COLOR[f.severity]}">`,
+    `<h3 dir="auto">${e(f.title)}</h3>`,
+    check ? `<p><strong>Why it matters:</strong> ${e(check.why)}</p>` : "",
+    check ? `<p><strong>How to fix:</strong> ${e(check.fix)}</p>` : "",
+    `<p class="tech" dir="auto"><code>${e(f.evidence)}</code></p>`,
+    check ? `<p class="tech">${e(check.tech)}</p>` : "",
+    `<p class="id">${e(f.checkId)} · ${e(f.url)}</p>`,
+    "</article>",
+  ]
+    .filter((l) => l !== "")
+    .join("\n");
+}
+
+/**
+ * The report as one self-contained HTML file: inline CSS, no scripts, no external requests, every
+ * interpolated value escaped. Summary counts, findings by level, what looked right, what could not
+ * be checked, and how much was sampled.
+ */
+export function renderReport({
+  result,
+  url,
+  startedAt,
+  registry,
+  sampled,
+  version,
+}: ReportInput): string {
+  const e = escapeHtml;
+  const by = (s: Severity) => result.findings.filter((f) => f.severity === s);
+  const parts: string[] = [
+    "<!doctype html>",
+    '<html lang="en">',
+    "<head>",
+    '<meta charset="utf-8">',
+    '<meta name="viewport" content="width=device-width, initial-scale=1">',
+    `<title>Gaugeline report: ${e(url)}</title>`,
+    `<style>${STYLE}</style>`,
+    "</head>",
+    "<body>",
+    `<h1>Gaugeline report</h1>`,
+    `<p class="meta">${e(url)} · ${e(startedAt.toISOString())} · Gaugeline ${e(version)}</p>`,
+    '<ul class="counts">',
+    ...SEVERITIES.map(
+      (s) =>
+        `<li style="color:${COLOR[s]}">${e(SEVERITY_LABEL[s])}: <strong>${by(s).length}</strong></li>`,
+    ),
+    "</ul>",
+  ];
+  if (result.findings.length === 0)
+    parts.push("<p><strong>Nothing to fix.</strong> Every check that ran passed.</p>");
+  for (const s of SEVERITIES) {
+    const list = by(s);
+    if (list.length === 0) continue;
+    parts.push(`<h2>${e(SEVERITY_LABEL[s])} <span>${list.length}</span></h2>`);
+    for (const f of list) parts.push(findingHtml(f, registry));
+  }
+  parts.push(`<h2>What looked right <span>${result.passed.length}</span></h2>`, '<ul class="ok">');
+  for (const id of result.passed) {
+    const title = registry.get(id)?.title;
+    parts.push(`<li>${title ? `${e(title)}: passed ` : ""}<code>${e(id)}</code></li>`);
+  }
+  parts.push("</ul>");
+  if (result.couldNotCheck.length > 0 || result.failed.length > 0) {
+    parts.push(
+      `<h2>Could not check <span>${result.couldNotCheck.length + result.failed.length}</span></h2>`,
+      "<ul>",
+    );
+    for (const c of result.couldNotCheck)
+      parts.push(`<li><code>${e(c.id)}</code>: ${e(c.reason)} (${e(c.url)})</li>`);
+    for (const f of result.failed)
+      parts.push(`<li><code>${e(f.id)}</code>: the check failed to run</li>`);
+    parts.push("</ul>");
+  }
+  if (sampled) parts.push("<h2>How much was sampled</h2>", `<p>${e(sampled)}</p>`);
+  parts.push("</body>", "</html>", "");
+  return parts.join("\n");
+}
