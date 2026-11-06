@@ -13,3 +13,4 @@ docs/.vitepress/cache
 # Playwright output
 test-results/
 playwright-report/
+.gaugeline/

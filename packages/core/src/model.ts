@@ -11,6 +11,7 @@ import type { SchemaRules } from "./schema-rules.js";
 import type { AccessRead } from "./access/probe.js";
 import type { DnsReader } from "./dns.js";
 import type { HiddenConfig } from "./hidden.js";
+import type { RunSnapshot } from "./run-snapshot.js";
 import type { DatasetRead } from "./sanity.js";
 import type { ScriptRead } from "./scripts.js";
 import type { PageSnapshot } from "./snapshot.js";
@@ -108,6 +109,8 @@ export interface CheckContext {
    * source is connected (branch 30): next-stale-after-publish is then unchecked.
    */
   contentChanges?: () => Promise<{ url: string; changedAt: Date }[]>;
+  /** The last run's snapshot of this page (--since last), for the checks that report a change. */
+  previous?: RunSnapshot;
   /** Sections hidden until launch (gaugeline.hidden.json). */
   hidden?: HiddenConfig;
   /** The business's payment handles and links (gaugeline.payments.json). */

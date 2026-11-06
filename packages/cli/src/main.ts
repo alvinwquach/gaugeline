@@ -7,6 +7,7 @@ import {
   createFetcher,
   EMAIL_PRESET,
   LAUNCH_PRESET,
+  buildRunSnapshot,
   createDnsReader,
   createPageRegistry,
   exitCodeFor,
@@ -32,6 +33,7 @@ import {
   readSchemaRules,
 } from "./schema-config.js";
 import { skeletonOnly } from "./skeleton.js";
+import { readLastRun, statePath, writeLastRun } from "./state.js";
 import { VERSION } from "./version.js";
 
 /** Shown under the mail record checks a run without --dns leaves out. */
@@ -107,6 +109,20 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         if (name && (env[name] ?? "") !== "") deprecate(key, d, warn);
       }
       const startedAt = (io.now ?? (() => new Date()))();
+      // --since last: read the stored run before checking, replace it after. Without it, nothing
+      // is read or written.
+      const cwd = deps.cwd ?? process.cwd();
+      const host = new URL(args.address).host;
+      const last = args.since ? readLastRun(cwd, host) : undefined;
+      if (last?.kind === "none") io.stderr.write("nothing to compare yet\n");
+      if (last?.kind === "corrupt")
+        io.stderr.write(
+          `${statePath(".", host)} is not valid JSON: treated as no previous run, and replaced.\n`,
+        );
+      if (last?.kind === "newer")
+        io.stderr.write(
+          `${statePath(".", host)} was written by ${last.writtenBy ?? "another version"} (schema ${String(last.schema)}); this version reads schema 1, so nothing was compared.\n`,
+        );
       const schemaRules = readSchemaRules(deps.cwd ?? process.cwd());
       const languageRules = readLanguageRules(deps.cwd ?? process.cwd());
       const facts = readFacts(deps.cwd ?? process.cwd());
@@ -162,6 +178,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         ...(facts ? { facts } : {}),
         ...(payments ? { payments } : {}),
         ...(hidden ? { hidden } : {}),
+        ...(last?.kind === "ok" ? { previous: last.snapshot } : {}),
         ...(access ? { access } : {}),
         ...(dns ? { dns } : {}),
       });
@@ -184,6 +201,13 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           }),
         );
       }
+      if (args.since && last?.kind !== "newer")
+        writeLastRun(
+          cwd,
+          host,
+          buildRunSnapshot(snapshot, () => startedAt),
+          `Gaugeline ${deps.version ?? VERSION}`,
+        );
       const highFindings = result.findings.filter((f) => f.severity === "high").length;
       if (launch && !args.json)
         io.stdout.write(

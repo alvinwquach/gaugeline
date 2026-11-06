@@ -66,6 +66,10 @@ const NEEDS_LIVE_STORES = new Set([
   "email-spf-multiple",
   // Needs a content source (branch 30): until then it is never run.
   "next-stale-after-publish",
+  // Need two runs with --since last: confirmed in-process (since.test.ts).
+  "price-changed",
+  "form-provider-changed",
+  "form-destination-changed",
 ]);
 
 async function findingsOf(name: string): Promise<string[]> {
