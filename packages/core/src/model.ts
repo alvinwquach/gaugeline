@@ -8,6 +8,7 @@ import type { FactsConfig } from "./facts/types.js";
 import type { PaymentsConfig } from "./payments/types.js";
 import type { LanguageGroup, LanguageRules } from "./languages.js";
 import type { SchemaRules } from "./schema-rules.js";
+import type { AccessRead } from "./access/probe.js";
 import type { DatasetRead } from "./sanity.js";
 import type { ScriptRead } from "./scripts.js";
 import type { PageSnapshot } from "./snapshot.js";
@@ -110,6 +111,8 @@ export interface CheckContext {
   scripts?: () => Promise<ScriptRead[]>;
   /** The Sanity datasets the page's images name, asked for counts and type names once on first use. */
   datasets?: () => Promise<DatasetRead[]>;
+  /** The configured database project, read as each role (counts only) once on first use. */
+  access?: () => Promise<AccessRead>;
   /** The page's App Store and Google Play apps, looked up once on first use. */
   apps?: () => Promise<AppLookup[]>;
   /** Values the run was told to expect (for example the app's name). Until the config file, API only. */

@@ -6,6 +6,7 @@ import {
   deprecate,
   createFetcher,
   exitCodeFor,
+  resolveAccess,
   type CheckRegistry,
   type FetcherOptions,
   type Outcome,
@@ -16,7 +17,13 @@ import { formatError, toOutcome } from "./fail.js";
 import { envIsOn, type FlagDef } from "./flags.js";
 import { createLogger } from "./logger.js";
 import { formatTerminal } from "./reporter.js";
-import { readFacts, readLanguageRules, readPayments, readSchemaRules } from "./schema-config.js";
+import {
+  readAccess,
+  readFacts,
+  readLanguageRules,
+  readPayments,
+  readSchemaRules,
+} from "./schema-config.js";
 import { skeletonOnly } from "./skeleton.js";
 import { VERSION } from "./version.js";
 
@@ -91,6 +98,9 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       const languageRules = readLanguageRules(deps.cwd ?? process.cwd());
       const facts = readFacts(deps.cwd ?? process.cwd());
       const payments = readPayments(deps.cwd ?? process.cwd());
+      const accessConfig = readAccess(deps.cwd ?? process.cwd());
+      // Keys are read from the environment here and go only into request headers.
+      const access = accessConfig ? resolveAccess(accessConfig, io.env ?? {}) : undefined;
       const log = createLogger({
         level: args.quiet ? "quiet" : args.verbose ? "verbose" : "normal",
         stream: io.stderr,
@@ -118,6 +128,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         ...(languageRules ? { languageRules } : {}),
         ...(facts ? { facts } : {}),
         ...(payments ? { payments } : {}),
+        ...(access ? { access } : {}),
       });
       if (args.json) {
         const json = buildResult({

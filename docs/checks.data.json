@@ -1,5 +1,25 @@
 [
   {
+    "id": "access-public-read",
+    "severity": "high",
+    "area": "Security & email",
+    "title": "Anyone can read a table you didn't make public",
+    "what": "Your database answers anonymous visitors with rows from a table that gaugeline.access.json doesn't list as public.",
+    "why": "The project's public key is in your site's code by design, so anyone can use it to download every row of that table: orders, emails, whatever it holds.",
+    "fix": "Turn on row level security for the table and add a policy that allows only what visitors need, or mark the table public in gaugeline.access.json if it really is.",
+    "tech": "Supabase: the exposed tables from PostgREST's OpenAPI description (GET /rest/v1/), then one HEAD /rest/v1/<table>?select=* per table with the anon key and Prefer: count=exact (at most 20); the count comes from Content-Range and no row is downloaded. Readable and empty is not a finding"
+  },
+  {
+    "id": "access-role-scope",
+    "severity": "high",
+    "area": "Security & email",
+    "title": "A signed-in user can read other people's rows",
+    "what": "Signed in as a test user, Gaugeline can read rows of a table that belong to someone else, by the owner column set in gaugeline.access.json.",
+    "why": "Any customer who signs up can read every other customer's records, and nobody sees it from the site.",
+    "fix": "Change the table's read policy so a user sees only rows where the owner column is their own id (auth.uid()).",
+    "tech": "Supabase: per configured test user and per table with an owner column, one HEAD /rest/v1/<table>?select=*&<owner>=neq.<user id> with that user's token and Prefer: count=exact; a count above 0 is a finding. Tokens come from the environment and are only ever sent in the Authorization header"
+  },
+  {
     "id": "app-link-dead",
     "severity": "high",
     "area": "Visitors",

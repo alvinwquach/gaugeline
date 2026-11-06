@@ -1,0 +1,79 @@
+{
+  "version": 1,
+  "name": "supabase-access",
+  "recordedAt": "2026-11-05T00:00:00.000Z",
+  "interactions": [
+    {
+      "method": "GET",
+      "url": "https://gaugelinefixture.supabase.co/rest/v1/",
+      "status": 200,
+      "headers": {
+        "content-type": "application/openapi+json; charset=utf-8"
+      },
+      "body": "{\"swagger\":\"2.0\",\"info\":{\"title\":\"Invented project for Gaugeline's tests\",\"version\":\"12.2.0\"},\"paths\":{\"/\":{\"get\":{}},\"/menu_items\":{\"get\":{},\"post\":{},\"patch\":{},\"delete\":{}},\"/newsletter\":{\"get\":{},\"post\":{},\"patch\":{},\"delete\":{}},\"/order_totals\":{\"get\":{}},\"/orders\":{\"get\":{},\"post\":{},\"patch\":{},\"delete\":{}},\"/profiles\":{\"get\":{},\"post\":{},\"patch\":{},\"delete\":{}}},\"definitions\":{\"menu_items\":{\"properties\":{\"id\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"},\"price\":{\"type\":\"string\"}}},\"newsletter\":{\"properties\":{\"id\":{\"type\":\"string\"},\"email\":{\"type\":\"string\"},\"created_at\":{\"type\":\"string\"}}},\"order_totals\":{\"properties\":{\"day\":{\"type\":\"string\"},\"orders\":{\"type\":\"string\"},\"revenue\":{\"type\":\"string\"}}},\"orders\":{\"properties\":{\"id\":{\"type\":\"string\"},\"created_at\":{\"type\":\"string\"},\"customer_id\":{\"type\":\"string\"},\"customer_email\":{\"type\":\"string\"},\"total\":{\"type\":\"string\"}}},\"profiles\":{\"properties\":{\"id\":{\"type\":\"string\"},\"display_name\":{\"type\":\"string\"},\"phone\":{\"type\":\"string\"}}}}}"
+    },
+    {
+      "method": "HEAD",
+      "url": "https://gaugelinefixture.supabase.co/rest/v1/menu_items?select=*",
+      "status": 200,
+      "headers": {
+        "content-range": "0-11/12"
+      },
+      "body": ""
+    },
+    {
+      "method": "HEAD",
+      "url": "https://gaugelinefixture.supabase.co/rest/v1/newsletter?select=*",
+      "status": 200,
+      "headers": {
+        "content-range": "*/0"
+      },
+      "body": ""
+    },
+    {
+      "method": "HEAD",
+      "url": "https://gaugelinefixture.supabase.co/rest/v1/order_totals?select=*",
+      "status": 200,
+      "headers": {
+        "content-range": "0-6/7"
+      },
+      "body": ""
+    },
+    {
+      "method": "HEAD",
+      "url": "https://gaugelinefixture.supabase.co/rest/v1/orders?select=*",
+      "status": 200,
+      "headers": {
+        "content-range": "0-41/42"
+      },
+      "body": ""
+    },
+    {
+      "method": "HEAD",
+      "url": "https://gaugelinefixture.supabase.co/rest/v1/profiles?select=*",
+      "status": 401,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": ""
+    },
+    {
+      "method": "HEAD",
+      "url": "https://gaugelinefixture.supabase.co/rest/v1/orders?select=*&customer_id=neq.4f9c2e1a-0b7d-4c3e-9a51-6d8e2f0b1c47",
+      "status": 200,
+      "headers": {
+        "content-range": "0-2/3"
+      },
+      "body": ""
+    },
+    {
+      "method": "GET",
+      "url": "https://gaugelinequiet.supabase.co/rest/v1/",
+      "status": 200,
+      "headers": {
+        "content-type": "application/openapi+json; charset=utf-8"
+      },
+      "body": "{\"swagger\":\"2.0\",\"info\":{\"title\":\"Invented, nothing exposed\",\"version\":\"12.2.0\"},\"paths\":{\"/\":{\"get\":{}}},\"definitions\":{}}"
+    }
+  ]
+}

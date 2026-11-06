@@ -173,6 +173,10 @@ export { PRIVATE_TYPE_WORDS, isPrivateType } from "./checks/leaks/private-types.
 export { SANITY_QUERY, readDataset, sanityQueryUrl, sanityRefs } from "./sanity.js";
 export type { DatasetRead, SanityRef } from "./sanity.js";
 export { readScripts } from "./scripts.js";
+export { accessConfigSchema, resolveAccess } from "./access/types.js";
+export type { AccessConfig, AccessSettings } from "./access/types.js";
+export { classify as classifyAccessRead, probeAccess } from "./access/probe.js";
+export type { AccessRead, ProbedTable, ReadState, ScopedRead } from "./access/probe.js";
 export type { ScriptRead } from "./scripts.js";
 export type { PaymentRule } from "./payments/extract.js";
 export { KIND_NAME, PAYMENT_KINDS, paymentSchema, paymentsConfigSchema } from "./payments/types.js";
