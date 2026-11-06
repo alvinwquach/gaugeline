@@ -160,6 +160,21 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     commands: ["plan"],
   },
   {
+    name: "progress",
+    type: "string",
+    description:
+      "With --base, say what was fixed and what is new since the last run (state file optional)",
+    since: "0.2.0",
+    commands: ["plan"],
+  },
+  {
+    name: "all",
+    type: "boolean",
+    description: "With --progress, list the findings still open, not only how many",
+    since: "0.2.0",
+    commands: ["plan"],
+  },
+  {
     name: "runs",
     type: "string",
     description: "The folder of saved runs (each one saved with --json) to read",

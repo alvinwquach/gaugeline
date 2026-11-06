@@ -310,6 +310,49 @@ If the home page opens and one planned page still asks for a password (a members
 "could not be checked", the rest are checked, and the run ends with exit 2 so CI can tell it from
 drift. To pass the secret from CI, see [Use it in CI](/docs/ci#a-protected-preview).
 
+### Watching a preview fill in
+
+A preview fills in over weeks. `--progress` (with `--base`) remembers each run and says what changed:
+
+```bash
+npx gaugeline plan sitemap.csv --base https://preview.yoursite.com --progress
+```
+
+The last line counts the rows that match the plan (a row matches when no finding names its line) and
+what changed since the last run: fixed, new and still open. Above it, only the news: new findings in
+full, fixed ones one line each, and the still-open ones as a count (`--all` lists them too). The exit
+code doesn't change: it stays 1 while anything is open.
+
+The invented `plan-progress` fixture is a pottery studio's 10-row plan. In the first week 6 of its
+pages are built (the first run prints `6 of 10 rows match the plan. First run: 4 open.`); a week
+later 9 are, and the second run prints:
+
+```text title=Output
+Read 10 pages from plan.csv.
+Columns: URL from "URL", page from "Page", title tag from "Title Tag", H1 from "H1".
+
+✓ Fixed: A planned page doesn't exist on the preview (line 5 last time)
+✓ Fixed: A planned page doesn't exist on the preview (line 7 last time)
+✓ Fixed: A planned page doesn't exist on the preview (line 9 last time)
+1 still open: add --all to list it.
+9 of 10 rows match the plan (was 6). 3 fixed since 3 Oct, 0 new, 1 still open.
+```
+
+The state is a small JSON file, `.gaugeline/plan-state.json` beside the plan, or the file named after
+`--progress`. It holds a fingerprint, the check id, the line and the title of each open finding, and
+no page content, header or secret. In CI, keep it between runs with the cache.
+
+- A finding is "the same" from run to run by its fingerprint: the check, the planned path and what
+  it's about, never the line number, the preview's address or a count. Sorting the spreadsheet or a
+  new preview address reports nothing new.
+- Correcting a planned address (`/provider-credentialling` to `/provider-credentialing`) is a new
+  path: the old finding counts as fixed, and anything wrong on the corrected one is new.
+- Adding or editing rows says so: `(was 6 of 10; the plan changed)`.
+- A run where a page couldn't be checked (a password, exit 2) saves nothing, so the next run still
+  compares with the last complete one.
+- A state file written by a later version is refused (exit 2) and left as it is. An unreadable one
+  is kept as `.bak` and the run starts over.
+
 ### Sending the result back to whoever owns the spreadsheet
 
 Each plan finding covers a group of rows (three rows on one address is one decision, so it is one

@@ -42,6 +42,10 @@ import {
   authHeaders,
   previewAuth,
   type PreviewAuth,
+  comparePlanProgress,
+  fingerprint,
+  progressLine,
+  type PlanState,
 } from "@gaugeline/core";
 import { parseCliArgs } from "./args.js";
 import { HELP } from "./help.js";
@@ -64,6 +68,7 @@ import {
 } from "./schema-config.js";
 import { skeletonOnly } from "./skeleton.js";
 import { readLastRun, statePath, writeLastRun } from "./state.js";
+import { defaultPlanStatePath, readPlanStateFile, writePlanStateFile } from "./plan-state.js";
 import { openInBrowser } from "./open.js";
 import { addIgnore, applyIgnore, IGNORE_FILE, readIgnore } from "./ignore.js";
 import { canShowView, runView, type ViewIo } from "./tui/app.js";
@@ -201,6 +206,27 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       }
       if (plan.columns.primaryKeyword === undefined && !args.quiet)
         io.stderr.write("Keyword checks skipped: the plan has no Primary Keyword column.\n");
+      // --progress: the last run's state, read before any request so a file this version can't
+      // read stops the run (exit 2) before it costs anything.
+      if (args.progress !== undefined && args.base === undefined)
+        throw new ConfigError(
+          "--progress compares runs of the plan against a preview: add --base.",
+        );
+      const progressPath =
+        args.progress === undefined
+          ? undefined
+          : args.progress === ""
+            ? defaultPlanStatePath(path)
+            : resolve(cwd, args.progress);
+      let previous: PlanState | undefined;
+      if (progressPath) {
+        const last = readPlanStateFile(progressPath);
+        if (last.kind === "ok") previous = last.state;
+        if (last.kind === "corrupt" && !args.quiet)
+          io.stderr.write(
+            `${progressPath} could not be read: treated as the first run. The old file is kept as ${last.backup}.\n`,
+          );
+      }
       // The built site against the plan (--base): each planned path fetched once with GET.
       let built: BuiltResult | undefined;
       if (args.base !== undefined) {
@@ -242,11 +268,47 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         createPlanRegistry(),
         built ? {} : { skip: [...BUILT_CHECK_IDS] },
       );
+      // With --progress: the new findings in full, the fixed ones one line each, the rest as a count.
+      let shown = planResult;
+      let footer: string[] | undefined;
+      if (progressPath && args.base !== undefined) {
+        if (planResult.couldNotCheck.length > 0) {
+          if (!args.quiet)
+            io.stderr.write(
+              `No progress saved to ${progressPath}: some planned pages could not be checked.\n`,
+            );
+        } else {
+          const progress = comparePlanProgress(previous, planResult.findings, plan.rows, {
+            base: new URL(args.base).origin,
+            at: (deps.now?.() ?? new Date()).toISOString(),
+          });
+          writePlanStateFile(progressPath, progress.state);
+          const added = new Set(progress.added);
+          if (!args.all)
+            shown = {
+              ...planResult,
+              findings: planResult.findings.filter((f) => added.has(fingerprint(f))),
+            };
+          footer = [
+            ...progress.fixed.map((k) => {
+              const was = previous?.open[k];
+              return `✓ Fixed: ${was?.title ?? k}${was ? ` (line ${was.line} last time)` : ""}`;
+            }),
+            ...(!args.all && progress.still > 0
+              ? [
+                  `${progress.still} still open: add --all to list ${progress.still === 1 ? "it" : "them"}.`,
+                ]
+              : []),
+            progressLine(progress),
+          ];
+        }
+      }
       io.stdout.write(
         formatTerminal({
-          result: planResult,
+          result: shown,
           sampled: createBudget().summary(),
           color: useColor(io.stdout, io.env ?? {}),
+          ...(footer ? { footer } : {}),
         }),
       );
       // The annotated copy: a new file next to the plan, never the plan itself. The exit code doesn't change.

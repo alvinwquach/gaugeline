@@ -109,6 +109,14 @@ Try: Check the site is running, and the port if you typed one.
 `--verbose` adds the technical detail after a blank line: the stack and every underlying cause.
 Query strings and anything that looks like a key are removed from both forms.
 
+### Plan progress
+
+`gaugeline plan <plan> --base <address> --progress [file]` compares with the last run of the plan
+and prints what was fixed and what is new; the state file defaults to `.gaugeline/plan-state.json`
+beside the plan. `--all` lists the findings still open, which otherwise print as a count. Without
+`--progress` nothing is read or written. See
+[Watching a preview fill in](/docs/plan-check#watching-a-preview-fill-in).
+
 ### Protected previews
 
 Three environment variables, read once at start, open a protected preview for `gaugeline plan
@@ -233,6 +241,8 @@ between the markers; CI fails when it differs from the flag table.
 | `--base <value>`          | Check the plan against the site built at this address, such as a preview                           |                      | 0.2.0 |
 | `--annotate <value>`      | Write a copy of the plan with a Gaugeline column saying what is wrong on each row                  |                      | 0.2.0 |
 | `--force`                 | Let --annotate replace a file that already exists                                                  |                      | 0.2.0 |
+| `--progress <value>`      | With --base, say what was fixed and what is new since the last run (state file optional)           |                      | 0.2.0 |
+| `--all`                   | With --progress, list the findings still open, not only how many                                   |                      | 0.2.0 |
 | `--runs <value>`          | The folder of saved runs (each one saved with --json) to read                                      |                      | 0.2.0 |
 | `--time-zone <value>`     | The time zone for dates and ages, such as America/Los_Angeles (default UTC)                        |                      | 0.2.0 |
 | `--notify-on <value>`     | When to send: any (something was found, the default), high or always                               |                      | 0.2.0 |
