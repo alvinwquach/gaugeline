@@ -237,9 +237,13 @@ export {
   createPlanRegistry,
   planLegacyUnresolved,
   planSelfChecks,
+  planSlugMisspelling,
 } from "./plan/checks.js";
 export { addressKey, groupBy, textKey } from "./plan/keys.js";
 export { SELF_RULES, checkPlan, runSelfRule } from "./plan/self.js";
+export { LONG_WORD, MIN_WORD, checkSlugs, misspelling, sameStem } from "./plan/slug.js";
+export { damerau } from "./text/distance.js";
+export { SPELLING_VARIANTS, isSpellingVariant } from "./text/variants.js";
 export type { SelfRule } from "./plan/self.js";
 export type { PlanCheckInput } from "./plan/checks.js";
 export type { Sheet, Workbook } from "./plan/workbook.js";

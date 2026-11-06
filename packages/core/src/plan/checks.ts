@@ -2,6 +2,7 @@ import { CheckRegistry, defineCheck } from "../model.js";
 import type { LegacyMention } from "./legacy-notes.js";
 import type { Plan } from "./read.js";
 import { SELF_RULES, runSelfRule, type SelfRule } from "./self.js";
+import { checkSlugs } from "./slug.js";
 
 /** What a plan check reads: the plan, what was read out of its notes, and the file's name. */
 export interface PlanCheckInput {
@@ -77,8 +78,22 @@ export const planSelfChecks = SELF_RULES.map((rule) =>
   }),
 );
 
+export const planSlugMisspelling = defineCheck<PlanCheckInput>({
+  id: "plan-slug-misspelling",
+  area: "Launch day",
+  severity: "medium",
+  title: "A slug misspells its own heading",
+  what: "A word in a page's address is one or two letters away from a word in the same row's page name or H1, such as credentialling for Credentialing.",
+  why: "The address is permanent once it is indexed and linked; fixing a typo later means a redirect, and until then the page looks careless in results.",
+  fix: "Use the heading's spelling in the slug (the corrected path is in the evidence) before the page is built.",
+  tech: "Words of 5+ letters in the last path segment, not in the row's page name or H1, within Damerau distance 1 of a heading word (2 for words of 8+ letters). Plural and tense endings (s, es, ed, ing) and listed British/American pairs are excused; accents are folded. One finding per row",
+  run(input) {
+    return checkSlugs(input.plan.rows, input.file);
+  },
+});
+
 /** The plan checks, apart from the page checks: they read a plan, not a page. */
-export const PLAN_CHECKS = [...planSelfChecks, planLegacyUnresolved] as const;
+export const PLAN_CHECKS = [...planSelfChecks, planSlugMisspelling, planLegacyUnresolved] as const;
 
 export function createPlanRegistry(): CheckRegistry {
   const registry = new CheckRegistry();

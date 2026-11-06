@@ -65,7 +65,7 @@ describe("plan self-check: integration (the invented keyword map)", () => {
   const plan = () => readPlan(readFileSync(`${PLANS}keyword-map.csv`, "utf8"));
 
   it("exactly two duplicate-address groups: /software/ai-automation (3) and /software/intelligent-platform (2)", () => {
-    expect(ids(plan().rows)).toEqual([
+    expect(ids(plan().rows).filter(([id]) => id === "plan-duplicate-address")).toEqual([
       ["plan-duplicate-address", "/software/ai-automation on lines 146, 147 and 148 (3 rows)"],
       ["plan-duplicate-address", "/software/intelligent-platform on lines 149 and 150 (2 rows)"],
     ]);

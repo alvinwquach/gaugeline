@@ -104,9 +104,18 @@ group of two or more is one finding listing all its lines:
 | `plan-duplicate-title`   | Fix soon       | Their title tag is, ignoring case, extra spaces and curly quotes. A brand suffix counts: "Billing" and "Billing \| Harbourline" differ |
 | `plan-duplicate-h1`      | Fix soon       | Their H1 is, compared the same way                                                                                                     |
 
+A fourth rule, `plan-slug-misspelling` (Fix soon), reads each slug against its own row: a word of
+five letters or more in the last part of the address that isn't in the row's Page or H1, but is one
+letter away from a word there (two for words of eight letters or more), such as `credentialling`
+for "Credentialing" or `ambutatory` for "Ambulatory". It is excused when the two differ only by a
+plural or tense ending (`payments` and "Payment", `billed` and "billing"), or are a British and
+American spelling on the list (`optimise` and "optimize"). Accents are folded, so `resume` matches
+"Résumé". Short words and abbreviations (`ar-management` for "Accounts Receivable Management")
+never fire. The evidence names the corrected path.
+
 An anchor row (`/medical#rural`) and its page (`/medical`) are different addresses; two rows with
 the same anchor are the same. Empty title and H1 cells are left out, and rows with no URL never
-reach the checks. The example below shows two duplicate-address groups.
+reach the checks. The example below shows two duplicate-address groups and two misspelled slugs.
 
 ### Old addresses in a notes column
 
@@ -195,8 +204,12 @@ Columns: URL from "URL", page from "Page", title tag from "Title Tag", H1 from "
     /software/ai-automation on lines 146, 147 and 148 (3 rows)
 ✗ Two rows in the plan share one address
     /software/intelligent-platform on lines 149 and 150 (2 rows)
+! A slug misspells its own heading
+    line 4: "ambutatory" in /billing-services/ambutatory-care, the heading says "ambulatory"; did you mean /billing-services/ambulatory-care
+! A slug misspells its own heading
+    line 61: "credentialling" in /credentialing/provider-credentialling, the heading says "credentialing"; did you mean /credentialing/provider-credentialing
 
-2 to look at, 2 to fix first.
+4 to look at, 2 to fix first.
 ```
 
 The output is asserted by `packages/cli/src/__tests__/plan.test.ts`.
