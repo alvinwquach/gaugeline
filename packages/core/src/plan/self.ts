@@ -1,6 +1,7 @@
 import type { Finding, Severity } from "../model.js";
 import { addressKey, groupBy, textKey } from "./keys.js";
 import type { PlanRow } from "./read.js";
+import { checkSlugs } from "./slug.js";
 
 /**
  * The plan against itself, before anything is built: pure, no requests. Each rule groups rows by
@@ -69,5 +70,8 @@ export function runSelfRule(rule: SelfRule, rows: readonly PlanRow[], file: stri
 
 /** Every self-check rule over the plan's rows, in rule order. */
 export function checkPlan(rows: readonly PlanRow[], file = "the plan"): Finding[] {
-  return SELF_RULES.flatMap((rule) => runSelfRule(rule, rows, file));
+  return [
+    ...SELF_RULES.flatMap((rule) => runSelfRule(rule, rows, file)),
+    ...checkSlugs(rows, file),
+  ];
 }

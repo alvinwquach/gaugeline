@@ -2,7 +2,7 @@
 Section,Page,URL,Title Tag,H1,Primary Keyword,Secondary Keyword,Legacy URL,Intent,Priority,Owner,Notes
 Billing services,,,,,,,,nav,,web,"Menu label for Billing services, no page"
 Billing services,Billing services topic 1,/billing-services/topic-01,Billing services topic 1 | Harbourline Billing,Billing services topic 1,billing services topic 1,billing services help,/old/billing-services/topic-01,commercial,1,content,"Draft 1, reviewed"
-Billing services,Billing services topic 2,/billing-services/topic-02,Billing services topic 2 | Harbourline Billing,Billing services topic 2,billing services topic 2,billing services help,,info,2,content,
+Billing services,Ambulatory care billing,/billing-services/ambutatory-care,Ambulatory care billing | Harbourline Billing,Ambulatory care billing,billing services topic 2,billing services help,,info,2,content,
 Billing services,Billing services topic 3,/billing-services/topic-03,Billing services topic 3 | Harbourline Billing,Billing services topic 3,billing services topic 3,billing services help,,commercial,3,content,
 Billing services,Billing services topic 4,/billing-services/topic-04,Billing services topic 4 | Harbourline Billing,Billing services topic 4,billing services topic 4,billing services help,/old/billing-services/topic-04,info,1,content,
 Billing services,Billing services topic 5,/billing-services/topic-05,Billing services topic 5 | Harbourline Billing,Billing services topic 5,billing services topic 5,billing services help,,commercial,2,content,
@@ -59,7 +59,7 @@ Coding,Coding topic 26,/coding/topic-26,Coding topic 26 | Harbourline Billing,Co
 Coding,Coding topic 27,/coding/topic-27,Coding topic 27 | Harbourline Billing,Coding topic 27,coding topic 27,coding help,,commercial,3,content,
 Coding,Coding topic 28,/coding/topic-28,Coding topic 28 | Harbourline Billing,Coding topic 28,coding topic 28,coding help,/old/coding/topic-28,info,1,content,
 Credentialing,,,,,,,,nav,,web,"Menu label for Credentialing, no page"
-Credentialing,Credentialing topic 1,/credentialing/topic-01,Credentialing topic 1 | Harbourline Billing,Credentialing topic 1,credentialing topic 1,credentialing help,/old/credentialing/topic-01,commercial,1,content,"Draft 1, reviewed"
+Credentialing,Provider credentialing,/credentialing/provider-credentialling,Provider credentialing | Harbourline Billing,Provider credentialing,credentialing topic 1,credentialing help,/old/credentialing/topic-01,commercial,1,content,"Draft 1, reviewed"
 Credentialing,Credentialing topic 2,/credentialing/topic-02,Credentialing topic 2 | Harbourline Billing,Credentialing topic 2,credentialing topic 2,credentialing help,,info,2,content,
 Credentialing,Credentialing topic 3,/credentialing/topic-03,Credentialing topic 3 | Harbourline Billing,Credentialing topic 3,credentialing topic 3,credentialing help,,commercial,3,content,
 Credentialing,Credentialing topic 4,/credentialing/topic-04,Credentialing topic 4 | Harbourline Billing,Credentialing topic 4,credentialing topic 4,credentialing help,/old/credentialing/topic-04,info,1,content,

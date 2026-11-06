@@ -6,7 +6,9 @@ company (Harbourline Billing), its pages and keywords are made up.
 - `keyword-map.csv`: a keyword map exported from a spreadsheet, 167 rows and 12 columns (quoted notes with commas;
   the repository stores it with LF line endings, and CRLF is tested inline). Four rows are menu labels with no URL; 163 are pages, seven
   of them anchors on `/specialties`. Three Resources rows share `/software/ai-automation` and two
-  share `/software/intelligent-platform` (one with a trailing slash): the duplicate-address groups.
+  share `/software/intelligent-platform` (one with a trailing slash): the duplicate-address groups. Two slugs misspell their own
+  heading: `/credentialing/provider-credentialling` (Provider credentialing) and
+  `/billing-services/ambutatory-care` (Ambulatory care billing).
 - `workbook-export.txt`: the same company's whole workbook pasted into one text file, seven tabs,
   each after a `## Sheet name: <tab>` line. "Kim's Keywords " (with a trailing space) is
   `keyword-map.csv`; Solutions, Who We Serve, Technology, Resources and About Us are menu tabs
