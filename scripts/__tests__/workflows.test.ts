@@ -24,6 +24,28 @@ describe("GitHub Actions supply chain", () => {
     expect(bad).toEqual([]);
   });
 
+  it("the example workflows are pinned the same way; the weekly one checks daily and sends only with secrets", () => {
+    const examples = fileURLToPath(new URL("../../examples/workflows/", import.meta.url));
+    const text = readFileSync(join(examples, "weekly.yml"), "utf8");
+    for (const [i, line] of text.split("\n").entries()) {
+      const m = /^\s*-?\s*uses:\s*(\S+)(.*)$/.exec(line);
+      if (!m) continue;
+      expect(`${i + 1}: ${m[1] ?? ""}`).toMatch(/@[0-9a-f]{40}$/);
+      expect(m[2] ?? "").toMatch(/#\s*v\d+(\.\d+)*/);
+    }
+    expect(text).toContain('cron: "0 15 * * *"');
+    expect(text).toContain("permissions:\n  contents: read\n  actions: read");
+    expect(text).toContain("npx --yes gaugeline digest --runs all --time-zone America/Los_Angeles");
+    // Sending comes only from secrets; no address or key is written in the file.
+    for (const name of [
+      "GAUGELINE_EMAIL",
+      "RESEND_API_KEY",
+      "GAUGELINE_EMAIL_FROM",
+      "GAUGELINE_WEBHOOK",
+    ])
+      expect(text).toContain(`${name}: \${{ secrets.${name} }}`);
+  });
+
   it("CODEOWNERS covers .github/, CLAUDE.md, .mcp.json and package.json", () => {
     const owners = readFileSync(
       fileURLToPath(new URL("../../.github/CODEOWNERS", import.meta.url)),

@@ -6,7 +6,7 @@ import { FLAGS, nearestFlag, resolveFlags, toParseArgsOptions, type FlagDef } fr
 export const USAGE_LINE = "gaugeline <address> [options]";
 export const COMMAND = "check";
 /** Subcommands, by their first word on the command line. "check" is the default. */
-export const SUBCOMMANDS = ["launch", "view"] as const;
+export const SUBCOMMANDS = ["launch", "view", "digest"] as const;
 export type CliCommand = "check" | (typeof SUBCOMMANDS)[number];
 
 /** The root command's help, from help.ts. */
@@ -40,6 +40,14 @@ export type ParsedArgs =
   | { kind: "help"; verbose: boolean; command: CliCommand }
   | { kind: "version"; verbose: boolean }
   | { kind: "view"; file: string; verbose: boolean }
+  | {
+      kind: "digest";
+      runs: string;
+      timeZone?: string;
+      notify: { email?: string; webhook?: string };
+      verbose: boolean;
+      quiet: boolean;
+    }
   | ({ kind: "run"; address: string; input: string; deprecatedUsed: FlagDef[] } & RunFlags)
   | { kind: "error"; message: string; hint?: string; verbose: boolean };
 
@@ -75,7 +83,13 @@ export function parseCliArgs(
 ): ParsedArgs {
   const verbose = argv.includes("--verbose");
   const command: CliCommand =
-    argv[0] === "launch" ? "launch" : argv[0] === "view" ? "view" : COMMAND;
+    argv[0] === "launch"
+      ? "launch"
+      : argv[0] === "view"
+        ? "view"
+        : argv[0] === "digest"
+          ? "digest"
+          : COMMAND;
   const rest = command === COMMAND ? argv : argv.slice(1);
   let parsed;
   try {
@@ -114,6 +128,27 @@ export function parseCliArgs(
   if (values.version === true) return { kind: "version", verbose };
 
   const positionals = parsed.positionals.map((p) => p.trim()).filter((p) => p !== "");
+  if (command === "digest") {
+    const runs = typeof values.runs === "string" ? values.runs.trim() : (positionals[0] ?? "");
+    if (runs === "")
+      return {
+        kind: "error",
+        message: "gaugeline digest needs the folder of saved runs: gaugeline digest --runs runs",
+        hint: "Save each run with gaugeline <address> --json > runs/<date>.json.",
+        verbose,
+      };
+    return {
+      kind: "digest",
+      runs,
+      ...(typeof values["time-zone"] === "string" ? { timeZone: values["time-zone"] } : {}),
+      notify: {
+        ...(typeof values.email === "string" ? { email: values.email } : {}),
+        ...(typeof values.webhook === "string" ? { webhook: values.webhook } : {}),
+      },
+      verbose,
+      quiet: values.quiet === true,
+    };
+  }
   if (command === "view") {
     if (positionals.length !== 1)
       return {
