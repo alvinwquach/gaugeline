@@ -54,6 +54,7 @@ Each run samples a fixed amount and never more. The numbers live in one frozen o
 | Checkout links (Square, Stripe)  | 5       |
 | JavaScript files                 | 15      |
 | Sanity datasets asked            | 2       |
+| Database tables counted          | 20      |
 | Addresses inside structured data | 12      |
 | Requests at the same time        | 5       |
 | Redirect hops followed           | 10      |

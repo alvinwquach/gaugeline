@@ -27,6 +27,8 @@ export const LIMITS = Object.freeze({
   scripts: 15,
   /** Sanity datasets asked for their document count and type names (no token, no contents). */
   sanityDatasets: 2,
+  /** Tables of the configured database project counted (HEAD, counts only). */
+  accessTables: 20,
   structuredDataAddresses: 12,
   concurrency: 5,
   redirectHops: 10,
@@ -49,6 +51,7 @@ export type BudgetKind =
   | "checkoutLinks"
   | "scripts"
   | "sanityDatasets"
+  | "accessTables"
   | "structuredDataAddresses";
 
 /** Report order. */
@@ -66,6 +69,7 @@ export const BUDGET_KINDS = [
   "checkoutLinks",
   "scripts",
   "sanityDatasets",
+  "accessTables",
   "structuredDataAddresses",
 ] as const satisfies readonly BudgetKind[];
 
@@ -126,6 +130,7 @@ const NOUNS: Record<BudgetKind, [singular: string, plural: string]> = {
   checkoutLinks: ["checkout link", "checkout links"],
   scripts: ["JavaScript file", "JavaScript files"],
   sanityDatasets: ["Sanity dataset", "Sanity datasets"],
+  accessTables: ["database table", "database tables"],
   structuredDataAddresses: ["address in structured data", "addresses in structured data"],
 };
 

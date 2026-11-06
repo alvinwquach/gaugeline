@@ -1,0 +1,16 @@
+{
+  "provider": "supabase",
+  "url": "https://gaugelinefixture.supabase.co",
+  "anonKeyEnv": "SUPABASE_ANON_KEY",
+  "tables": [
+    { "name": "menu_items", "public": true },
+    { "name": "orders", "owner": "customer_id" }
+  ],
+  "users": [
+    {
+      "role": "customer",
+      "tokenEnv": "GAUGELINE_TEST_CUSTOMER_TOKEN",
+      "userIdEnv": "GAUGELINE_TEST_CUSTOMER_ID"
+    }
+  ]
+}

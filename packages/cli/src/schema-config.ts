@@ -2,10 +2,12 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   ConfigError,
+  accessConfigSchema,
   factsConfigSchema,
   languageRulesSchema,
   paymentsConfigSchema,
   schemaRulesSchema,
+  type AccessConfig,
   type FactsConfig,
   type LanguageRules,
   type PaymentsConfig,
@@ -21,6 +23,8 @@ export const LANGUAGES_CONFIG_FILE = "gaugeline.languages.json";
 export const FACTS_CONFIG_FILE = "gaugeline.facts.json";
 /** The business's payment handles and links, likewise. */
 export const PAYMENTS_CONFIG_FILE = "gaugeline.payments.json";
+/** The database project and roles to test its access rules as, likewise. Keys stay in the environment. */
+export const ACCESS_CONFIG_FILE = "gaugeline.access.json";
 
 /** A JSON settings file in `dir`, validated, or undefined when there is none. Invalid is a ConfigError. */
 function readJsonConfig<T>(
@@ -64,4 +68,8 @@ export function readFacts(dir: string): FactsConfig | undefined {
 
 export function readPayments(dir: string): PaymentsConfig | undefined {
   return readJsonConfig(dir, PAYMENTS_CONFIG_FILE, paymentsConfigSchema, "payment details");
+}
+
+export function readAccess(dir: string): AccessConfig | undefined {
+  return readJsonConfig(dir, ACCESS_CONFIG_FILE, accessConfigSchema, "database access checks");
 }
