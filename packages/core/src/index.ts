@@ -245,6 +245,7 @@ export {
   planRedirectChecks,
   planRedirectConflict,
   planUncoveredPage,
+  planRankUnknownAddress,
 } from "./plan/checks.js";
 export { BUILT_CHECK_IDS, BUILT_TITLES, canonicalIsThisPage, checkBuilt } from "./plan/built.js";
 export type { BuiltOptions, BuiltResult } from "./plan/built.js";
@@ -445,3 +446,12 @@ export type {
   LiveRead,
   LiveUrl,
 } from "./plan/coverage.js";
+export {
+  RANK_COLUMNS,
+  compareWorth,
+  parseNumber,
+  rankUncovered,
+  rankUnknown,
+  readRankExport,
+} from "./plan/worth.js";
+export type { RankExport, Ranked, Worth } from "./plan/worth.js";

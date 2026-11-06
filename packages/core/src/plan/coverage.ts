@@ -106,50 +106,67 @@ export async function* readLive(
   const lines = createInterface({ input: stream, crlfDelay: Infinity });
   let read: LiveRead | undefined;
   let columns: { url: number; metric?: number; status?: number } | undefined;
-  for await (const raw of lines) {
-    const line = read === undefined ? raw.replace(/^\uFEFF/, "") : raw;
-    if (read === undefined) {
-      if (line.trim() === "") continue;
-      read = detectLiveFormat(line);
-      onFormat?.(read);
-      if (read.format === "crawl" || read.format === "search-console") {
-        const header = (parseCsv(line)[0]?.cells ?? []).map((c) => c.trim().toLowerCase());
-        const url = header.findIndex((h) =>
-          ["address", "top pages", "page", "pages", "url"].includes(h),
-        );
-        const metric = read.metric ? header.indexOf(read.metric) : -1;
-        const status = header.indexOf("status code");
-        columns = {
-          url: Math.max(0, url),
-          ...(metric >= 0 ? { metric } : {}),
-          ...(status >= 0 ? { status } : {}),
-        };
+  // Closed however the reading ends: at the end, on an error, or when the caller stops early.
+  try {
+    for await (const raw of lines) {
+      const line = read === undefined ? raw.replace(/^\uFEFF/, "") : raw;
+      if (read === undefined) {
+        if (line.trim() === "") continue;
+        read = detectLiveFormat(line);
+        onFormat?.(read);
+        if (read.format === "crawl" || read.format === "search-console") {
+          const header = (parseCsv(line)[0]?.cells ?? []).map((c) => c.trim().toLowerCase());
+          const url = header.findIndex((h) =>
+            ["address", "top pages", "page", "pages", "url"].includes(h),
+          );
+          const metric = read.metric ? header.indexOf(read.metric) : -1;
+          const status = header.indexOf("status code");
+          columns = {
+            url: Math.max(0, url),
+            ...(metric >= 0 ? { metric } : {}),
+            ...(status >= 0 ? { status } : {}),
+          };
+          continue;
+        }
+      }
+      if (read.format === "sitemap") {
+        for (const m of line.matchAll(/<loc>\s*([^<]+?)\s*<\/loc>/gi))
+          if (m[1]) yield { url: m[1].replace(/&amp;/g, "&") };
         continue;
       }
+      if (read.format === "list") {
+        const url = line.trim();
+        if (url !== "" && !url.startsWith("#")) yield { url };
+        continue;
+      }
+      const cells = parseCsv(line)[0]?.cells ?? [];
+      const url = cells[columns?.url ?? 0]?.trim() ?? "";
+      if (url === "") continue;
+      if (columns?.status !== undefined) {
+        const status = cells[columns.status]?.trim();
+        if (status !== undefined && status !== "" && status !== "200") continue;
+      }
+      const metric =
+        columns?.metric !== undefined
+          ? Number((cells[columns.metric] ?? "").replace(/[,%\s]/g, ""))
+          : Number.NaN;
+      yield Number.isFinite(metric) ? { url, metric } : { url };
     }
-    if (read.format === "sitemap") {
-      for (const m of line.matchAll(/<loc>\s*([^<]+?)\s*<\/loc>/gi))
-        if (m[1]) yield { url: m[1].replace(/&amp;/g, "&") };
-      continue;
-    }
-    if (read.format === "list") {
-      const url = line.trim();
-      if (url !== "" && !url.startsWith("#")) yield { url };
-      continue;
-    }
-    const cells = parseCsv(line)[0]?.cells ?? [];
-    const url = cells[columns?.url ?? 0]?.trim() ?? "";
-    if (url === "") continue;
-    if (columns?.status !== undefined) {
-      const status = cells[columns.status]?.trim();
-      if (status !== undefined && status !== "" && status !== "200") continue;
-    }
-    const metric =
-      columns?.metric !== undefined
-        ? Number((cells[columns.metric] ?? "").replace(/[,%\s]/g, ""))
-        : Number.NaN;
-    yield Number.isFinite(metric) ? { url, metric } : { url };
+  } finally {
+    lines.close();
+    await closeStream(stream);
   }
+}
+
+/**
+ * Destroy a stream and wait until its file is closed: destroy() alone only schedules the close,
+ * and on Windows a file still open can't be removed by whoever runs next.
+ */
+export async function closeStream(stream: Readable): Promise<void> {
+  if (stream.closed) return;
+  const closed = new Promise<void>((resolve) => stream.once("close", () => resolve()));
+  stream.destroy();
+  await closed;
 }
 
 export interface CoverageOptions {
@@ -160,6 +177,8 @@ export interface CoverageOptions {
   metric?: LiveRead["metric"];
   /** At least this many pages sharing one prefix swap are reported once. */
   prefixGroup?: number;
+  /** Keep every live path (for --rank's unknown addresses): one string per live page. */
+  keepLive?: boolean;
 }
 
 export interface CoverageResult {
@@ -167,6 +186,10 @@ export interface CoverageResult {
   /** Live addresses read, and how many were left out as assets, feeds, pages or --ignore. */
   live: number;
   ignored: number;
+  /** Uncovered live pages, a grouped prefix counting each of its pages. */
+  pages: number;
+  /** Every live path read, with keepLive. */
+  liveKeys?: Set<string>;
 }
 
 const segments = (path: string) => path.split("/").filter((s) => s !== "");
@@ -204,6 +227,7 @@ export async function checkCoverage(
   const uncovered = new Map<string, LiveUrl>();
   /** Planned paths that exist today: only the others can be a planned page under another prefix. */
   const plannedLive = new Set<string>();
+  const liveKeys = opts.keepLive ? new Set<string>() : undefined;
   for await (const item of live) {
     count++;
     if (ignored(item.url, globs)) {
@@ -211,6 +235,7 @@ export async function checkCoverage(
       continue;
     }
     const key = coverageKey(item.url);
+    if (key) liveKeys?.add(key);
     if (!key || uncovered.has(key)) continue;
     if (covered.has(key)) {
       if (planned.has(key)) plannedLive.add(key);
@@ -279,5 +304,11 @@ export async function checkCoverage(
       url: file,
       group: { key, lines: [] },
     });
-  return { findings, live: count, ignored: skipped };
+  return {
+    findings,
+    live: count,
+    ignored: skipped,
+    pages: uncovered.size,
+    ...(liveKeys ? { liveKeys } : {}),
+  };
 }

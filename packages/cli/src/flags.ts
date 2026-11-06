@@ -183,6 +183,14 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     commands: ["plan"],
   },
   {
+    name: "rank",
+    type: "string",
+    description:
+      "With --live, sort the missing pages by clicks from this Search Console or rank export",
+    since: "0.2.0",
+    commands: ["plan"],
+  },
+  {
     name: "ignore",
     type: "string",
     description: "With --live, leave out paths matching this glob, such as /tag/* (repeatable)",

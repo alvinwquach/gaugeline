@@ -61,6 +61,7 @@
       "printed",
       "progress",
       "quiet",
+      "rank",
       "sheet",
       "verbose",
       "version"
