@@ -239,8 +239,9 @@ sends, without running its JavaScript:
 Titles and headings compare the way the self-check does: case, spaces, curly quotes and dashes don't
 matter, and a brand suffix does. A preview's canonical should already name production, so a canonical
 on the preview's host, the plan's production host or either with `www.` passes when its path is the
-planned one. A preview that asks for a login (401 or 403) stops the run (exit 2) instead of reporting
-every page; `--plan-only` and `--base` can't be used together. One line on stderr says how many
+planned one. A preview that asks for a password stops the run (exit 2) instead of reporting every
+page; see [A preview behind a password](#a-preview-behind-a-password). `--plan-only` and `--base`
+can't be used together. One line on stderr says how many
 addresses are read.
 
 Against the invented `plan-built` fixture, a pottery shop's preview with five planted errors,
@@ -268,6 +269,46 @@ Columns: URL from "URL", page from "Page", title tag from "Title Tag", H1 from "
 
 5 to look at, 2 to fix first.
 ```
+
+### A preview behind a password
+
+Most previews are protected. Gaugeline reads the secret from one environment variable, never from a
+flag, and sends it only to the `--base` address:
+
+| Variable                   | Sent as                                                                     |
+| -------------------------- | --------------------------------------------------------------------------- |
+| `GAUGELINE_VERCEL_BYPASS`  | `x-vercel-protection-bypass` (Vercel's Protection Bypass for Automation)    |
+| `GAUGELINE_BASIC_AUTH`     | `Authorization: Basic`, from `user:password` (the password may hold colons) |
+| `GAUGELINE_PREVIEW_HEADER` | Any one other header, written `Name: value`                                 |
+
+```bash
+GAUGELINE_VERCEL_BYPASS=... npx gaugeline plan sitemap.csv --base https://preview.yoursite.com
+```
+
+- A redirect to another address gets no header: the secret goes to the preview's origin and nowhere
+  else.
+- The value is never printed. Messages and reports say `Vercel bypass (set)`, `basic auth (set)` or
+  `header X-Name (set)`.
+- A flag like `--password` is refused with the variable to set instead: a value on the command line
+  lands in shell history, CI logs and the process list.
+- Over plain `http`, a secret is sent only to `127.0.0.1` and `localhost`, with a warning.
+- Netlify's site password is a form Gaugeline won't post. Protect the preview with Netlify basic
+  auth instead (a `Basic-Auth` line in `_headers`) and set `GAUGELINE_BASIC_AUTH`.
+
+Before reading the plan's pages, Gaugeline asks for the preview's home page once. A 401, a 403 or a
+login page (Vercel's, or Netlify's password form) stops the run with exit 2, one message and no
+findings: a locked preview says nothing about the plan. A 403 that isn't a password (a firewall
+that blocks automated readers) says so, without asking for one. Without the variable, the invented
+`preview-basic-auth` fixture (the pottery shop behind basic auth) prints on stderr:
+
+```text title=Output
+Could not check: the preview at https://preview.yoursite.com asked for a password (401, Basic).
+Try: Set GAUGELINE_BASIC_AUTH to user:password.
+```
+
+If the home page opens and one planned page still asks for a password (a members area), that row is
+"could not be checked", the rest are checked, and the run ends with exit 2 so CI can tell it from
+drift. To pass the secret from CI, see [Use it in CI](/docs/ci#a-protected-preview).
 
 ### Sending the result back to whoever owns the spreadsheet
 

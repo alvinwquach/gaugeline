@@ -1,5 +1,5 @@
 import { parseArgs } from "node:util";
-import { parseAddress } from "@gaugeline/core";
+import { SECRET_FLAGS, parseAddress } from "@gaugeline/core";
 import { HELP } from "./help.js";
 import { FLAGS, nearestFlag, resolveFlags, toParseArgsOptions, type FlagDef } from "./flags.js";
 
@@ -114,6 +114,18 @@ export function parseCliArgs(
       ? "--annotate="
       : a,
   );
+  // No flag takes a secret: a value on the command line lands in shell history and CI logs.
+  for (const a of rest) {
+    const name = /^--([a-z-]+)(?:=|$)/.exec(a)?.[1];
+    const variable = name !== undefined ? SECRET_FLAGS[name] : undefined;
+    if (name !== undefined && variable !== undefined)
+      return {
+        kind: "error",
+        message: `--${name}: no option takes a password or token. Set ${variable} in the environment instead.`,
+        hint: "Secrets are read only from environment variables and never printed (see docs/plan-check).",
+        verbose,
+      };
+  }
   let parsed;
   try {
     parsed = parseArgs({

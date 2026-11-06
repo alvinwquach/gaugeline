@@ -76,11 +76,12 @@ describe("built site: integration (the plan-built fixture, a 10-row plan with fi
     const site = await startFixture("plan-built");
     try {
       const plan = readPlan(readFileSync(`${SITES_DIR}plan-built/plan.csv`, "utf8"));
-      const found = await checkBuilt(plan.rows, {
+      const { findings: found, couldNotCheck } = await checkBuilt(plan.rows, {
         base: site.origin,
         fetcher: createFetcher({ allowPrivate: true }),
         file: "plan.csv",
       });
+      expect(couldNotCheck).toEqual([]);
       expect(found.map((f) => [f.checkId, f.group?.lines])).toEqual([
         ["plan-canonical-elsewhere", [8]],
         ["plan-404", [9]],
@@ -100,20 +101,20 @@ describe("built site: integration (the plan-built fixture, a 10-row plan with fi
 });
 
 describe("built site: edge cases", () => {
-  it("a preview behind a login (401) is a ConfigError, not a finding per row", async () => {
+  it("a preview behind a login (401) is one ConfigError from the probe, not a finding per row", async () => {
     const { fetcher } = fake({ "/": 401, "/a": 401 });
     const rows = [row(2, "https://x.example/"), row(3, "https://x.example/a")];
     await expect(checkBuilt(rows, { base: "https://preview.example", fetcher })).rejects.toThrow(
       ConfigError,
     );
     await expect(checkBuilt(rows, { base: "https://preview.example", fetcher })).rejects.toThrow(
-      "The preview at https://preview.example asked for a login (401): it is protected, so the plan can't be checked against it.",
+      "Could not check: the preview at https://preview.example asked for a password (401).",
     );
   });
 
   it("a page with two H1s is compared on the first, with a note", async () => {
     const { fetcher } = fake({ "/a": "<title>A</title><h1>First</h1><h1>Second</h1>" });
-    const found = await checkBuilt(
+    const { findings: found } = await checkBuilt(
       [row(2, "https://x.example/a", { h1: "Second", titleTag: "A" })],
       {
         base: "https://preview.example",
@@ -127,10 +128,13 @@ describe("built site: edge cases", () => {
 
   it("a title only set by JavaScript is drift, with a hint", async () => {
     const { fetcher } = fake({ "/a": "<h1>A</h1><script>document.title='A'</script>" });
-    const found = await checkBuilt([row(2, "https://x.example/a", { titleTag: "A", h1: "A" })], {
-      base: "https://preview.example",
-      fetcher,
-    });
+    const { findings: found } = await checkBuilt(
+      [row(2, "https://x.example/a", { titleTag: "A", h1: "A" })],
+      {
+        base: "https://preview.example",
+        fetcher,
+      },
+    );
     expect(found.map((f) => f.evidence)).toEqual([
       '/a: the plan says "A", the page sends no title tag (it may be set by JavaScript, which this read doesn\'t run)',
     ]);
@@ -145,6 +149,6 @@ describe("built site: edge cases", () => {
         base: "https://preview.example",
         fetcher,
       }),
-    ).toEqual([]);
+    ).toEqual({ findings: [], couldNotCheck: [] });
   });
 });

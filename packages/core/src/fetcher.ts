@@ -138,6 +138,11 @@ export interface FetcherOptions {
   resolver?: Resolver;
   /** Replace the network, e.g. with a recorded cassette. hosts/allowPrivate/resolver then do nothing. */
   transport?: Transport;
+  /**
+   * Extra headers per request, asked for each hop's own address (a protected preview's secret goes
+   * to its origin only, so a redirect to another origin sends none). Never logged.
+   */
+  headersFor?: (url: URL) => Record<string, string> | undefined;
 }
 
 export interface GetOptions {
@@ -344,10 +349,11 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
     return gate.run(async () => {
       const started = performance.now();
       let res;
+      const target = new URL(url);
       try {
-        res = await transport(new URL(url), {
+        res = await transport(target, {
           method,
-          headers: { "user-agent": userAgent, ...headers },
+          headers: { "user-agent": userAgent, ...headers, ...options.headersFor?.(target) },
           timeoutMs,
         });
       } catch (err) {

@@ -85,11 +85,11 @@ gaugeline <address> [options]
 
 ### Exit codes
 
-| Code | Meaning                                                     |
-| ---- | ----------------------------------------------------------- |
-| 0    | The check ran                                               |
-| 1    | `--ci` was set and a "Fix this first" finding was found     |
-| 2    | Gaugeline could not run, for example the site didn't answer |
+| Code | Meaning                                                                                          |
+| ---- | ------------------------------------------------------------------------------------------------ |
+| 0    | The check ran                                                                                    |
+| 1    | `--ci` was set and a "Fix this first" finding was found                                          |
+| 2    | Gaugeline could not run, for example the site didn't answer, or a plan page asked for a password |
 
 When Gaugeline exits 2 it prints one plain sentence and one thing to try on stderr, and nothing on
 stdout. For example:
@@ -108,6 +108,22 @@ Try: Check the site is running, and the port if you typed one.
 
 `--verbose` adds the technical detail after a blank line: the stack and every underlying cause.
 Query strings and anything that looks like a key are removed from both forms.
+
+### Protected previews
+
+Three environment variables, read once at start, open a protected preview for `gaugeline plan
+--base` and for a plain check. No flag takes a secret; `--password` and the like are refused with
+the variable to set.
+
+| Variable                   | Sent as                                | Form            |
+| -------------------------- | -------------------------------------- | --------------- |
+| `GAUGELINE_VERCEL_BYPASS`  | `x-vercel-protection-bypass`           | the secret      |
+| `GAUGELINE_BASIC_AUTH`     | `Authorization: Basic` (UTF-8, base64) | `user:password` |
+| `GAUGELINE_PREVIEW_HEADER` | that one header                        | `Name: value`   |
+
+They are sent only to the checked origin, never printed, and over `http` only to `127.0.0.1` and
+`localhost`. A malformed one exits 2, naming the variable but not its value. See
+[A preview behind a password](/docs/plan-check#a-preview-behind-a-password).
 
 ### Comparing with the last run
 

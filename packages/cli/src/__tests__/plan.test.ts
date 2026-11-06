@@ -303,7 +303,9 @@ describe("gaugeline plan: e2e (CLI)", () => {
           cwd: dir,
         }),
       ).toBe(2);
-      expect(run.err()).toContain(`The preview at ${site.origin} asked for a login (403)`);
+      expect(run.err()).toContain(
+        `Could not check: the preview at ${site.origin} refused the request (403). It did not ask for a password`,
+      );
       expect(run.out()).not.toContain("returned 404");
     } finally {
       await site.close();

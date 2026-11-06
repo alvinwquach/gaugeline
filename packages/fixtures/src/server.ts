@@ -22,6 +22,21 @@ export interface RouteDef {
 /** Optional fixture.json: extra hosts served by the same files, one origin each. */
 export interface FixtureDef {
   hosts?: string[];
+  /** Serve another fixture folder's files (and routes.json): the same pages behind a gate. */
+  files?: string;
+  /**
+   * A protected preview: every path answers `status` (401) unless the request carries `header`
+   * with exactly `value`. `challenge` is sent as WWW-Authenticate; `body` is the login page.
+   */
+  auth?: { header: string; value: string; status?: number; challenge?: string; body?: string };
+}
+
+/** One request as the fixture saw it, headers included: tests assert where a secret went. */
+export interface LoggedRequest {
+  method: string;
+  path: string;
+  host: string;
+  headers: Record<string, string | string[] | undefined>;
 }
 
 export interface Fixture {
@@ -31,6 +46,8 @@ export interface Fixture {
   hits: Map<string, number>;
   /** Requests per HTTP method. */
   methods: Map<string, number>;
+  /** Every request in order, with its headers. */
+  requests: LoggedRequest[];
   /** For multi-host fixtures: logical host -> "127.0.0.1:port", to pass to createFetcher({ hosts }). */
   hosts: Record<string, string>;
   /** The highest number of requests in flight at once. */
@@ -120,12 +137,24 @@ export async function startFixture(name: string): Promise<Fixture> {
       `Fixture site "${name}" does not exist: no folder ${join("packages/fixtures/sites", name)}.`,
     );
   }
-  const routes: Record<string, RouteDef> = existsSync(join(root, "routes.json"))
-    ? (JSON.parse(readFileSync(join(root, "routes.json"), "utf8")) as Record<string, RouteDef>)
-    : {};
   const def: FixtureDef = existsSync(join(root, "fixture.json"))
     ? (JSON.parse(readFileSync(join(root, "fixture.json"), "utf8")) as FixtureDef)
     : {};
+  const files = def.files ? resolve(SITES_DIR, def.files) : root;
+  if (!files.startsWith(resolve(SITES_DIR) + sep) || !existsSync(files))
+    throw new Error(
+      `Fixture site "${name}": its files folder "${def.files ?? ""}" does not exist.`,
+    );
+  const routes: Record<string, RouteDef> = existsSync(join(files, "routes.json"))
+    ? (JSON.parse(readFileSync(join(files, "routes.json"), "utf8")) as Record<string, RouteDef>)
+    : {};
+  const ownRoutes = files !== root && existsSync(join(root, "routes.json"));
+  if (ownRoutes)
+    Object.assign(
+      routes,
+      JSON.parse(readFileSync(join(root, "routes.json"), "utf8")) as Record<string, RouteDef>,
+    );
+  const requests: LoggedRequest[] = [];
   const hits = new Map<string, number>();
   /** Port -> logical host, for {{origin}} on multi-host fixtures. */
   const portHosts = new Map<number, string>();
@@ -147,11 +176,29 @@ export async function startFixture(name: string): Promise<Fixture> {
       return;
     }
     hits.set(path, (hits.get(path) ?? 0) + 1);
+    requests.push({
+      method: req.method ?? "",
+      path,
+      host: req.headers.host ?? "",
+      headers: { ...req.headers },
+    });
+    const gate = def.auth;
+    if (gate && req.headers[gate.header.toLowerCase()] !== gate.value) {
+      res
+        .writeHead(gate.status ?? 401, {
+          "content-type": gate.body ? (TYPES[".html"] ?? "") : (TYPES[".txt"] ?? ""),
+          ...(gate.challenge ? { "www-authenticate": gate.challenge } : {}),
+        })
+        .end(gate.body ?? "Authentication required");
+      return;
+    }
     const route = routes[path];
     const answer = () => {
       if (route?.hang) return;
       const headers: Record<string, string> = { ...(route?.headers ?? {}) };
-      if (route?.location) headers.location = route.location;
+      // {{port}}: the port this request came in on, for a redirect to another origin on it.
+      if (route?.location)
+        headers.location = route.location.replaceAll("{{port}}", String(req.socket.localPort ?? 0));
       if (route?.bodyBytes !== undefined) {
         const filler = "<p>" + "x".repeat(Math.max(0, route.bodyBytes - 7)) + "</p>";
         res
@@ -168,7 +215,7 @@ export async function startFixture(name: string): Promise<Fixture> {
           .end(withOrigin(route.body ?? "", req, portHosts));
         return;
       }
-      const file = fileFor(root, path);
+      const file = fileFor(files, path);
       if (!file) {
         res
           .writeHead(route?.status ?? 404, { "content-type": TYPES[".txt"] ?? "", ...headers })
@@ -211,6 +258,7 @@ export async function startFixture(name: string): Promise<Fixture> {
     origin: def.hosts?.[0] ? `http://${def.hosts[0]}` : `http://127.0.0.1:${firstPort}`,
     hits,
     methods,
+    requests,
     hosts,
     get maxConcurrent() {
       return state.maxConcurrent;
