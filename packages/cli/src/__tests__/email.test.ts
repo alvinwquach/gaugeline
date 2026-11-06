@@ -1,4 +1,3 @@
-import { recordOutput } from "/tmp/claude-0/-home-user-gaugeline/7bf7ac94-1068-5e05-b6f8-a9a00fb47e66/scratchpad/record-output.ts";
 import { readFileSync } from "node:fs";
 import type { DnsReader, MxRecord } from "@gaugeline/core";
 import { SITES_DIR, expectedOutput, startFixture } from "@gaugeline/fixtures";
@@ -65,7 +64,7 @@ describe("email records: e2e (CLI, version 0.1.0, the fixture's DNS answers)", (
         dns: fixtureDns("email-records"),
       });
       expect(code).toBe(0);
-      expect(recordOutput(withoutPassed(out.join("")).trimEnd(), "privacy", "Email records")).toBe(
+      expect(withoutPassed(out.join("")).trimEnd()).toBe(
         expectedOutput("privacy", "Email records"),
       );
     } finally {
