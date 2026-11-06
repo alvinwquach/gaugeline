@@ -64,6 +64,12 @@ import {
   rankUnknown,
   readRankExport,
   type Finding,
+  NAV_CHECK_IDS,
+  checkNav,
+  navLabelRows,
+  navTabLine,
+  readNav,
+  type NavResult,
 } from "@gaugeline/core";
 import { parseCliArgs } from "./args.js";
 import { HELP } from "./help.js";
@@ -189,9 +195,26 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       const tabs = plan.workbook.sheets.length;
       if (tabs > 1 && !args.quiet)
         io.stderr.write(
-          `Read tab: ${plan.workbook.chosen.name.trim()} (${tabs - 1} other tab${tabs === 2 ? "" : "s"} skipped${args.annotate !== undefined ? "; the annotated copy has this tab only" : ""})\n`,
+          `Read tab: ${plan.workbook.chosen.name.trim()} (${tabs - 1} other tab${tabs === 2 ? "" : "s"} ${args.nav !== undefined ? "read for menus with --nav" : "skipped"}${args.annotate !== undefined ? "; the annotated copy has this tab only" : ""})\n`,
         );
       io.stdout.write(formatPlanSummary(plan, args.file));
+      // --nav: the menu tabs, read first so the per-tab count shows how each was read. Pure.
+      let nav: NavResult | undefined;
+      if (args.nav !== undefined) {
+        const tabs = readNav(plan.workbook, { names: args.nav, rows: plan.rows });
+        for (const tab of tabs) io.stdout.write(`${navTabLine(tab)}\n`);
+        nav = checkNav(
+          tabs.flatMap((t) => t.items),
+          plan.rows,
+          {
+            labels: navLabelRows(plan.workbook.chosen, plan.columns.page, plan.columns.url),
+            file: basename(args.file),
+          },
+        );
+        if (!args.quiet)
+          for (const w of [...tabs.flatMap((t) => t.warnings), ...nav.notes])
+            io.stderr.write(`${w}\n`);
+      }
       // Old addresses in a notes column (--legacy-from): read, shown for review, then checked.
       const headers = Object.keys(plan.rows[0]?.raw ?? {});
       let mentions: LegacyMention[] = [];
@@ -407,6 +430,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           ...(redirects ? { redirects } : {}),
           ...(coverage ? { coverage } : {}),
           ...(rankUnknownFindings ? { rankUnknown: rankUnknownFindings } : {}),
+          ...(nav ? { nav } : {}),
         },
         createPlanRegistry(),
         {
@@ -414,6 +438,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
             ...(built ? [] : [...BUILT_CHECK_IDS, ...REDIRECT_CHECK_IDS]),
             ...(coverage ? [] : ["plan-uncovered-page"]),
             ...(rankUnknownFindings ? [] : ["plan-rank-unknown-address"]),
+            ...(nav ? [] : NAV_CHECK_IDS),
           ],
         },
       );

@@ -31,3 +31,13 @@ company (Harbourline Billing), its pages and keywords are made up.
   with a query), 3 covered only by a Legacy URL, and 18 with no row, among them
   `/specialties/wound-care-billing` and `/outsourced-healthcare-operations`.
 - `live/`: one small invented export per `--live` format (see `live/README.md`).
+- `nav-workbook.txt`: an invented Harbourline workbook for `--nav` (G19b): a page plan tab (Section,
+  Page, URL, H1, Status; three rows with no URL name the Solutions and Technology sections) and six
+  menu tabs. Solutions, Who We Serve, Technology and About Us use a Popup Column (label, then
+  description); Footer uses a Link column. Resources holds only a footnote. Planted: "Mental Health"
+  and "DSOs" have no page; "Security & Trust" is "Security & Compliance" in the plan; "Billing
+  analytics" shares words with three pages; "Coding audits" and "Patient portal" are Need Page;
+  "Physician practices" has no description, so "Behavioral Health" comes where its description
+  should; "Behavioral Health" is a page and an anchor row; "Leadership" is in About Us and the
+  Footer; "Terms of use" has no page; Providers, Specialties, About Us, Company and Legal are
+  headings with no page.

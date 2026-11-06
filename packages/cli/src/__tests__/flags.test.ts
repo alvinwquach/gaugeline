@@ -38,6 +38,7 @@ const SAMPLE_VALUES: Record<string, string> = {
   tags: "utm_,ref",
   live: `${fileURLToPath(new URL("../../../fixtures/plans/live/list.txt", import.meta.url))}`,
   ignore: "/tag/*",
+  nav: "Footer",
   rank: `${fileURLToPath(new URL("../../../fixtures/plans/live/gsc-pages.csv", import.meta.url))}`,
 };
 
@@ -306,7 +307,8 @@ describe("flag table: e2e", () => {
       const args = planOnly
         ? [
             "plan",
-            plan,
+            // --nav reads menu tabs: a workbook that has them.
+            f.name === "nav" ? `${repoRoot}packages/fixtures/plans/nav-workbook.txt` : plan,
             ...(f.name === "legacy-review" ? ["--legacy-from", "SEO Notes"] : []),
             // --progress and --all compare runs against a preview: they need --base.
             // --rank joins traffic numbers to --live's list: it needs --live.

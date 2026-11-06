@@ -56,6 +56,8 @@ export type ParsedArgs =
       printed?: string;
       live?: string;
       rank?: string;
+      /** --nav: [] for every tab headed Main category, or the tabs named. Absent without --nav. */
+      nav?: string[];
       ignore: string[];
       base?: string;
       allowPrivate: boolean;
@@ -129,7 +131,7 @@ export function parseCliArgs(
   const given = command === COMMAND ? argv : argv.slice(1);
   // --annotate and --progress take an optional file name: alone, or before another flag, the default.
   const rest = given.map((a, i) =>
-    (a === "--annotate" || a === "--progress") &&
+    (a === "--annotate" || a === "--progress" || a === "--nav") &&
     (given[i + 1] === undefined || given[i + 1]?.startsWith("-"))
       ? `${a}=`
       : a,
@@ -208,6 +210,14 @@ export function parseCliArgs(
       ...(typeof values.printed === "string" ? { printed: values.printed } : {}),
       ...(typeof values.live === "string" ? { live: values.live } : {}),
       ...(typeof values.rank === "string" ? { rank: values.rank } : {}),
+      ...(typeof values.nav === "string"
+        ? {
+            nav: values.nav
+              .split(",")
+              .map((n) => n.trim())
+              .filter((n) => n !== ""),
+          }
+        : {}),
       ignore: Array.isArray(values.ignore)
         ? values.ignore
         : typeof values.ignore === "string"

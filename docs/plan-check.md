@@ -484,6 +484,96 @@ Columns: URL from "URL", page from "Page", title tag from "Title Tag", H1 from "
 2 to look at, 1 to fix first.
 ```
 
+### Menus against pages
+
+A workbook often has the menus too, one tab each. `--nav` reads them and checks every item has a
+page in the page plan, with the same name. It needs no `--base` and makes no request:
+
+```bash
+npx gaugeline plan workbook.xlsx --nav
+```
+
+With no names, it reads every tab whose first header is `Main category`; `--nav "Who We Serve,Footer"`
+reads only those. A tab with a URL column is the page plan, and naming it is exit 2, as is a file
+with no menu tab. A menu tab is read in one of two layouts:
+
+- **Main category, Popup Column.** The first column is the category and fills down over blank
+  cells. The second alternates a label and its description (the line under it in a mega-menu).
+- **Main category, Link.** Every line in the second column is a label.
+
+Blank lines, lines with no second column and footnotes ("Yellow = No current page") are skipped.
+A third layout needs a new rule: it is read as nothing, with a warning naming its second column.
+Each tab's count is printed first, so a misread is visible at once. If a description is missing,
+the next label lands in its place; when that line is a page name, it is read as the next item, with
+a warning naming the line.
+
+Labels compare like the self-check's text, plus `&` as "and" and a trailing note such as
+`(anchor)` dropped (`(ASCs)` is kept as a word). Then:
+
+| Check                     | Level          | When                                                                                                           |
+| ------------------------- | -------------- | -------------------------------------------------------------------------------------------------------------- |
+| `plan-nav-missing-row`    | Fix this first | No page row has the name, and no page shares a distinctive word with it (or several do: up to three are named) |
+| `plan-nav-label-mismatch` | Fix soon       | No page has the name, and exactly one shares a distinctive word: both labels and lines are given               |
+| `plan-nav-needs-page`     | Fix soon       | The matching row's Status says Need Page                                                                       |
+
+A distinctive word has five letters or more and isn't health, healthcare, medical, service(s) or
+management. A menu heading (the first column) is checked too and may match a row with no URL; one
+that matches nothing is reported at Fix soon, since headings often have no page. Without a Status
+column, `plan-nav-needs-page` is skipped and stderr says so.
+
+Against the invented Harbourline workbook (`packages/fixtures/plans/nav-workbook.txt`),
+`gaugeline plan nav-workbook.txt --plan-only --nav` prints:
+
+```text title=Output
+Read 16 pages from nav-workbook.txt (2 rows without a URL skipped).
+Columns: URL from "URL", page from "Page", H1 from "H1".
+1 row is an anchor (#section) on a page.
+Solutions: 4 items in 1 category
+Who We Serve: 6 items in 2 categories
+Technology: 3 items in 1 category
+Resources: 0 items in 0 categories
+About Us: 2 items in 1 category
+Footer: 5 items in 2 categories
+✗ A menu item has no page in the plan
+    "Mental Health" (Who We Serve › Specialties, line 40) has no page row in the plan
+    line 40
+✗ A menu item has no page in the plan
+    "DSOs" (Who We Serve › Specialties, line 42) has no page row in the plan
+    line 42
+✗ A menu item has no page in the plan
+    "Billing analytics" (Technology, line 50) has no page row in the plan; it shares a word with "Medical billing" (line 4), "Anesthesia billing" (line 5), "Analytics" (line 16)
+    line 50
+✗ A menu item has no page in the plan
+    "Terms of use" (Footer › Legal, line 67) has no page row in the plan
+    line 67
+! A menu item has no page in the plan
+    "Providers" (Who We Serve, line 33) has no page row in the plan (a menu heading: headings often have no page; add a row with no URL if this one has none)
+    line 33
+! A menu item has no page in the plan
+    "Specialties" (Who We Serve, line 40) has no page row in the plan (a menu heading: headings often have no page; add a row with no URL if this one has none)
+    line 40
+! A menu item has no page in the plan
+    "About Us" (About Us, line 57) has no page row in the plan (a menu heading: headings often have no page; add a row with no URL if this one has none)
+    line 57
+! A menu item has no page in the plan
+    "Company" (Footer, line 63) has no page row in the plan (a menu heading: headings often have no page; add a row with no URL if this one has none)
+    line 63
+! A menu item has no page in the plan
+    "Legal" (Footer, line 66) has no page row in the plan (a menu heading: headings often have no page; add a row with no URL if this one has none)
+    line 66
+! A menu item and its page are named differently
+    "Security & Trust" (Technology, line 46) is "Security & Compliance" in the page plan (line 14)
+    lines 46, 14
+! A menu item links to a page that still needs building
+    "Coding audits" (Solutions, line 27) links to "Coding audits", whose Status is "Need Page" (line 6)
+    lines 27, 6
+! A menu item links to a page that still needs building
+    "Patient portal" (Technology, line 48) links to "Patient portal", whose Status is "Need Page" (line 15)
+    lines 48, 15
+
+12 to look at, 4 to fix first.
+```
+
 ### Sending the result back to whoever owns the spreadsheet
 
 Each plan finding covers a group of rows (three rows on one address is one decision, so it is one
