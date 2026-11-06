@@ -1,7 +1,7 @@
 import { FLAGS, renderHelp } from "./flags.js";
 
 /** Every command the CLI registers. "" is the root command (gaugeline <address>). */
-export const COMMANDS = ["", "launch"] as const;
+export const COMMANDS = ["", "launch", "view"] as const;
 export type Command = (typeof COMMANDS)[number];
 
 /**
@@ -21,5 +21,13 @@ export const HELP: Record<string, string> = {
       "indexable staging site, noindex and robots.txt. Read-only.",
     ].join("\n"),
     footer: "Exit codes: 0 ran, 1 --ci with a fix-first finding, 2 could not run",
+  }),
+  view: renderHelp(FLAGS, "view", {
+    usage: "gaugeline view <run.json> [options]",
+    summary: [
+      "Open a saved run (gaugeline <address> --json > run.json) in a terminal view.",
+      "Keys: j/k move, enter expand, / filter, d dismiss with a reason, q quit.",
+    ].join("\n"),
+    footer: "Exit codes: 0 viewed, 2 the file could not be read",
   }),
 };

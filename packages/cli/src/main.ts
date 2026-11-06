@@ -10,6 +10,8 @@ import {
   buildRunSnapshot,
   createDnsReader,
   createPageRegistry,
+  parseResult,
+  type Result,
   renderReport,
   exitCodeFor,
   resolveAccess,
@@ -36,6 +38,9 @@ import {
 import { skeletonOnly } from "./skeleton.js";
 import { readLastRun, statePath, writeLastRun } from "./state.js";
 import { openInBrowser } from "./open.js";
+import { addIgnore, applyIgnore, IGNORE_FILE, readIgnore } from "./ignore.js";
+import { canShowView, runView, type ViewIo } from "./tui/app.js";
+import { existsSync, readFileSync } from "node:fs";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -48,7 +53,9 @@ export const DNS_HINT =
   "Mail records are read from DNS only with --dns. Rerun with --dns to check them.";
 
 export interface Io {
-  stdout: { write(chunk: string): unknown; isTTY?: boolean };
+  /** For the interactive view only. */
+  stdin?: ViewIo["stdin"];
+  stdout: { write(chunk: string): unknown; isTTY?: boolean; columns?: number; rows?: number };
   stderr: { write(chunk: string): unknown; isTTY?: boolean };
   /** Defaults to an empty environment, so tests are not affected by the shell running them. */
   env?: Record<string, string | undefined>;
@@ -104,6 +111,30 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
     case "version":
       io.stdout.write(`${VERSION}\n`);
       return { outcome: ran, ci: false };
+    case "view": {
+      const cwd = deps.cwd ?? process.cwd();
+      const path = join(cwd, args.file);
+      if (!existsSync(path))
+        throw new ConfigError(`${args.file} does not exist.`, {
+          hint: "Save a run with gaugeline <address> --json > run.json.",
+        });
+      let saved: Result;
+      try {
+        saved = parseResult(JSON.parse(readFileSync(path, "utf8")));
+      } catch {
+        throw new ConfigError(`${args.file} is not a saved Gaugeline run (--json output).`, {
+          hint: "Save a run with gaugeline <address> --json > run.json.",
+        });
+      }
+      await runView({
+        result: saved,
+        registry: deps.registry ?? createPageRegistry(),
+        stdin: io.stdin ?? process.stdin,
+        stdout: io.stdout,
+        onDismiss: (d) => addIgnore(cwd, d, (io.now ?? (() => new Date()))()),
+      });
+      return { outcome: ran, ci: false };
+    }
     case "error":
       throw new ConfigError(args.message, args.hint === undefined ? {} : { hint: args.hint });
     case "run": {
@@ -191,6 +222,16 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         ...(access ? { access } : {}),
         ...(dns ? { dns } : {}),
       });
+      // Findings dismissed with a reason (gaugeline.ignore.json, written by the view's d key).
+      const ignored = readIgnore(cwd);
+      if (ignored.length > 0) {
+        const { kept, dismissed } = applyIgnore(result.findings, ignored);
+        result.findings = kept;
+        if (dismissed > 0 && !args.quiet)
+          io.stderr.write(
+            `${dismissed} finding${dismissed === 1 ? "" : "s"} dismissed in ${IGNORE_FILE}\n`,
+          );
+      }
       if (args.json) {
         const json = buildResult({
           url: snapshot.requestedUrl,
@@ -249,6 +290,29 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         if (written && !args.noOpen && !isCiEnv(env) && io.stdout.isTTY === true)
           (deps.open ?? openInBrowser)(reportPath);
       }
+      // -i: the terminal view over this run, for a person at a wide enough terminal, never in CI.
+      const stdin = io.stdin ?? process.stdin;
+      if (
+        args.interactive &&
+        !args.json &&
+        !isCiEnv(env) &&
+        canShowView({ stdin, stdout: io.stdout })
+      )
+        await runView({
+          result: buildResult({
+            url: snapshot.requestedUrl,
+            startedAt,
+            findings: result.findings,
+            passed: result.passed,
+            failed: result.failed.map((f) => f.id),
+            couldNotCheck: result.couldNotCheck,
+            sampled: result.sampled,
+          }),
+          registry,
+          stdin,
+          stdout: io.stdout,
+          onDismiss: (d) => addIgnore(cwd, d, startedAt),
+        });
       const highFindings = result.findings.filter((f) => f.severity === "high").length;
       if (launch && !args.json)
         io.stdout.write(

@@ -54,6 +54,8 @@ Options:
                          from DNS
       --since <value>    Compare with this site's last run and save this one;
                          the only value is last (.gaugeline/last-run/)
+  -i, --interactive      Open a terminal view of the results to move through,
+                         filter and dismiss findings
       --quiet            Print only results and errors
       --verbose          Show each request, and technical detail when something
                          goes wrong
@@ -114,6 +116,25 @@ read is replaced with a warning. A file written by a newer version (another sche
 and nothing is compared. Delete the folder to start again. Two forms with no id or name that swap
 places on the page read as a change: give forms an id.
 
+### Moving through the results
+
+`gaugeline <address> -i` opens a terminal view after the run, and `gaugeline view run.json` opens a
+run saved with `--json`. Findings are on the left, grouped by level, with what couldn't be checked
+last; the selected one is on the right, with why it matters and, after enter, how to fix it.
+
+| Key              | Does                                                            |
+| ---------------- | --------------------------------------------------------------- |
+| arrows, `j`, `k` | Move                                                            |
+| enter            | Show how to fix the selected finding                            |
+| `/`              | Filter by title, check id or evidence; enter or esc to finish   |
+| `d`              | Dismiss the selected finding: type the reason, enter to save it |
+| `q`              | Quit                                                            |
+
+A dismissal is written to `gaugeline.ignore.json` in the folder you run from, with its reason and
+date, and later runs leave that finding out (with one line on stderr saying how many). The view
+shows nothing the plain report doesn't. It never opens in CI, when the output is piped, or in a
+window narrower than 60 columns: the plain report is printed instead.
+
 ### The launch command
 
 `gaugeline launch --help` prints:
@@ -148,18 +169,19 @@ between the markers; CI fails when it differs from the flag table.
 
 <!-- flags:start -->
 
-| Flag              | Does                                                                                               | Environment variable | Since |
-| ----------------- | -------------------------------------------------------------------------------------------------- | -------------------- | ----- |
-| `--ci`            | Exit 1 when a "Fix this first" finding is found                                                    | `CI`                 | 0.1.0 |
-| `--json`          | Print the result as JSON on stdout, and nothing else                                               |                      | 0.1.0 |
-| `--no-open`       | Do not open anything in a browser                                                                  |                      | 0.1.0 |
-| `--allow-private` | Allow addresses on this computer or a private network, such as 127.0.0.1 or 192.168.x.x            |                      | 0.1.0 |
-| `--dns`           | Also read the domain's mail records (SPF and DMARC) from DNS                                       |                      | 0.2.0 |
-| `--since <value>` | Compare with this site's last run and save this one; the only value is last (.gaugeline/last-run/) |                      | 0.2.0 |
-| `--quiet`         | Print only results and errors                                                                      |                      | 0.1.0 |
-| `--verbose`       | Show each request, and technical detail when something goes wrong                                  |                      | 0.1.0 |
-| `-h`, `--help`    | Show this help and exit                                                                            |                      | 0.1.0 |
-| `-v`, `--version` | Print the version and exit                                                                         |                      | 0.1.0 |
+| Flag                  | Does                                                                                               | Environment variable | Since |
+| --------------------- | -------------------------------------------------------------------------------------------------- | -------------------- | ----- |
+| `--ci`                | Exit 1 when a "Fix this first" finding is found                                                    | `CI`                 | 0.1.0 |
+| `--json`              | Print the result as JSON on stdout, and nothing else                                               |                      | 0.1.0 |
+| `--no-open`           | Do not open anything in a browser                                                                  |                      | 0.1.0 |
+| `--allow-private`     | Allow addresses on this computer or a private network, such as 127.0.0.1 or 192.168.x.x            |                      | 0.1.0 |
+| `--dns`               | Also read the domain's mail records (SPF and DMARC) from DNS                                       |                      | 0.2.0 |
+| `--since <value>`     | Compare with this site's last run and save this one; the only value is last (.gaugeline/last-run/) |                      | 0.2.0 |
+| `-i`, `--interactive` | Open a terminal view of the results to move through, filter and dismiss findings                   |                      | 0.2.0 |
+| `--quiet`             | Print only results and errors                                                                      |                      | 0.1.0 |
+| `--verbose`           | Show each request, and technical detail when something goes wrong                                  |                      | 0.1.0 |
+| `-h`, `--help`        | Show this help and exit                                                                            |                      | 0.1.0 |
+| `-v`, `--version`     | Print the version and exit                                                                         |                      | 0.1.0 |
 
 <!-- flags:end -->
 

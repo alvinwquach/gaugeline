@@ -6,7 +6,7 @@ import { FLAGS, nearestFlag, resolveFlags, toParseArgsOptions, type FlagDef } fr
 export const USAGE_LINE = "gaugeline <address> [options]";
 export const COMMAND = "check";
 /** Subcommands, by their first word on the command line. "check" is the default. */
-export const SUBCOMMANDS = ["launch"] as const;
+export const SUBCOMMANDS = ["launch", "view"] as const;
 export type CliCommand = "check" | (typeof SUBCOMMANDS)[number];
 
 /** The root command's help, from help.ts. */
@@ -22,6 +22,8 @@ export interface RunFlags {
   dns: boolean;
   /** --since last: compare with the stored last run and replace it. */
   since?: "last";
+  /** -i, --interactive: open the terminal view after the run. */
+  interactive: boolean;
   ci: boolean;
   json: boolean;
   noOpen: boolean;
@@ -33,6 +35,7 @@ export interface RunFlags {
 export type ParsedArgs =
   | { kind: "help"; verbose: boolean; command: CliCommand }
   | { kind: "version"; verbose: boolean }
+  | { kind: "view"; file: string; verbose: boolean }
   | ({ kind: "run"; address: string; input: string; deprecatedUsed: FlagDef[] } & RunFlags)
   | { kind: "error"; message: string; hint?: string; verbose: boolean };
 
@@ -67,7 +70,8 @@ export function parseCliArgs(
   flags: readonly FlagDef[] = FLAGS,
 ): ParsedArgs {
   const verbose = argv.includes("--verbose");
-  const command: CliCommand = argv[0] === "launch" ? "launch" : COMMAND;
+  const command: CliCommand =
+    argv[0] === "launch" ? "launch" : argv[0] === "view" ? "view" : COMMAND;
   const rest = command === COMMAND ? argv : argv.slice(1);
   let parsed;
   try {
@@ -97,6 +101,16 @@ export function parseCliArgs(
   if (values.version === true) return { kind: "version", verbose };
 
   const positionals = parsed.positionals.map((p) => p.trim()).filter((p) => p !== "");
+  if (command === "view") {
+    if (positionals.length !== 1)
+      return {
+        kind: "error",
+        message: "gaugeline view needs one saved run: gaugeline view run.json",
+        hint: "Save a run with gaugeline <address> --json > run.json.",
+        verbose,
+      };
+    return { kind: "view", file: positionals[0] ?? "", verbose };
+  }
   if (positionals.length === 0) {
     return { kind: "error", message: "No address given.", hint: USAGE_HINT, verbose };
   }
@@ -122,6 +136,7 @@ export function parseCliArgs(
     kind: "run",
     command,
     dns: values.dns === true,
+    interactive: values.interactive === true,
     ...(values.since === "last" ? { since: "last" as const } : {}),
     address: address.url.href,
     input,
