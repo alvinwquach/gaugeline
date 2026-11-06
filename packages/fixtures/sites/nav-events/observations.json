@@ -1,0 +1,111 @@
+{
+  "clicks": [
+    {
+      "path": "#menu > ul > li:nth-of-type(1) > a",
+      "pushes": [
+        {
+          "atMs": 120,
+          "data": {
+            "event": "menu_click",
+            "link_text": "Shop",
+            "link_url": "/shop",
+            "menu_parent": "top"
+          }
+        }
+      ],
+      "blocked": [
+        "www.google-analytics.com"
+      ]
+    },
+    {
+      "path": "#menu > ul > li:nth-of-type(1) > ul > li:nth-of-type(1) > a",
+      "pushes": [
+        {
+          "atMs": 120,
+          "data": {
+            "event": "menu_click",
+            "link_text": "Coffee",
+            "link_url": "/coffee",
+            "menu_parent": "Shop"
+          }
+        }
+      ],
+      "blocked": [
+        "www.google-analytics.com"
+      ]
+    },
+    {
+      "path": "#menu > ul > li:nth-of-type(1) > ul > li:nth-of-type(2) > a",
+      "pushes": [
+        {
+          "atMs": 120,
+          "data": {
+            "event": "menu_click",
+            "link_text": "Gifts",
+            "link_url": "/gifts",
+            "menu_parent": "Shop"
+          }
+        }
+      ],
+      "blocked": [
+        "www.google-analytics.com"
+      ]
+    },
+    {
+      "path": "#menu > ul > li:nth-of-type(2) > a",
+      "pushes": [
+        {
+          "atMs": 120,
+          "data": {
+            "event": "menu_click",
+            "link_text": "Visit",
+            "link_url": "/visit",
+            "menu_parent": "top"
+          }
+        }
+      ],
+      "blocked": [
+        "www.google-analytics.com"
+      ]
+    },
+    {
+      "path": "#menu > ul > li:nth-of-type(2) > ul > li:nth-of-type(1) > a",
+      "pushes": [
+        {
+          "atMs": 120,
+          "data": {
+            "event": "menu_click",
+            "link_text": "Coffee",
+            "link_url": "/coffee",
+            "menu_parent": "Shop"
+          }
+        }
+      ],
+      "blocked": [
+        "www.google-analytics.com"
+      ]
+    },
+    {
+      "path": "#menu > ul > li:nth-of-type(2) > ul > li:nth-of-type(2) > a",
+      "pushes": [],
+      "blocked": []
+    },
+    {
+      "path": "#menu > ul > li:nth-of-type(3) > a",
+      "pushes": [
+        {
+          "atMs": 340,
+          "data": {
+            "event": "menu_click",
+            "link_text": "Map",
+            "link_url": "https://maps.example/ridgeback",
+            "menu_parent": "top"
+          }
+        }
+      ],
+      "blocked": [
+        "www.google-analytics.com"
+      ]
+    }
+  ]
+}

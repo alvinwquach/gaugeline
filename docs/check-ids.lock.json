@@ -21,6 +21,8 @@
   "event-location-mismatch",
   "event-missing-fields",
   "event-past-upcoming",
+  "events-distinct",
+  "events-fire",
   "facts-match",
   "facts-payment-link",
   "facts-present",

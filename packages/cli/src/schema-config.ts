@@ -3,6 +3,7 @@ import { dirname, join, resolve } from "node:path";
 import {
   ConfigError,
   accessConfigSchema,
+  eventsConfigSchema,
   factsConfigSchema,
   hiddenConfigSchema,
   languageRulesSchema,
@@ -11,6 +12,7 @@ import {
   schemaRulesSchema,
   tagsConfigSchema,
   type AccessConfig,
+  type EventsConfig,
   type FactsConfig,
   type HiddenConfig,
   type LanguageRules,
@@ -32,6 +34,8 @@ export const PAYMENTS_CONFIG_FILE = "gaugeline.payments.json";
 export const ACCESS_CONFIG_FILE = "gaugeline.access.json";
 /** Sections hidden until launch, likewise. */
 export const HIDDEN_CONFIG_FILE = "gaugeline.hidden.json";
+/** The tracking plan: which clicks must push which event, likewise. */
+export const EVENTS_CONFIG_FILE = "gaugeline.events.json";
 /** Where the Tag Manager container export is, likewise. The export is a file: no account is used. */
 export const TAGS_CONFIG_FILE = "gaugeline.tags.json";
 
@@ -107,4 +111,8 @@ export function readTags(dir: string): TagContainer | undefined {
     );
   }
   return readContainer(json, config.container);
+}
+
+export function readEvents(dir: string): EventsConfig | undefined {
+  return readJsonConfig(dir, EVENTS_CONFIG_FILE, eventsConfigSchema, "the click event checks");
 }

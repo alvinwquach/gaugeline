@@ -22,6 +22,8 @@ import { eventJsonldMismatch } from "./event-jsonld-mismatch.js";
 import { eventLocationMismatch } from "./event-location-mismatch.js";
 import { eventMissingFields } from "./event-missing-fields.js";
 import { eventPastUpcoming } from "./event-past-upcoming.js";
+import { eventsDistinct } from "./events-distinct.js";
+import { eventsFire } from "./events-fire.js";
 import { factsMatch } from "./facts-match.js";
 import { factsPaymentLink } from "./facts-payment-link.js";
 import { factsPresent } from "./facts-present.js";
@@ -130,6 +132,8 @@ export const PAGE_CHECKS = [
   eventLocationMismatch,
   eventMissingFields,
   eventPastUpcoming,
+  eventsDistinct,
+  eventsFire,
   factsMatch,
   factsPaymentLink,
   factsPresent,

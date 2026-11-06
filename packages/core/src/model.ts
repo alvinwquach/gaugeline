@@ -11,6 +11,7 @@ import type { SchemaRules } from "./schema-rules.js";
 import type { AccessRead } from "./access/probe.js";
 import type { DnsReader } from "./dns.js";
 import type { HiddenConfig } from "./hidden.js";
+import type { EventsRead } from "./events/observe.js";
 import type { TagAnalysis } from "./tags/analyse.js";
 import type { TagContainer } from "./tags/read-container.js";
 import type { RunSnapshot } from "./run-snapshot.js";
@@ -120,6 +121,8 @@ export interface CheckContext {
   previous?: RunSnapshot;
   /** Sections hidden until launch (gaugeline.hidden.json). */
   hidden?: HiddenConfig;
+  /** The tracking plan's elements, clicked by the run's observer, once on first use (gaugeline.events.json). */
+  events?: () => Promise<EventsRead>;
   /** The Tag Manager container export named in gaugeline.tags.json, read from the file only. */
   tagContainer?: TagContainer;
   /** That container's triggers judged against the pages read, once on first use. */

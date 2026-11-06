@@ -470,6 +470,16 @@
     "tech": "Event location names the LocalBusiness (same name or @id) and its address differs by house number or ZIP"
   },
   {
+    "id": "events-fire",
+    "severity": "medium",
+    "area": "Leads",
+    "title": "A click your tracking plan expects isn't reported",
+    "what": "An element in gaugeline.events.json sends no event when clicked, sends it twice, or sends it without a parameter the plan requires.",
+    "why": "Tracking breaks quietly when templates change: the report for that menu or button just goes empty, and before-and-after comparisons stop meaning anything.",
+    "fix": "Restore the click handler or tag for that element, and fill every parameter the plan names (for a menu: link text, destination and parent menu).",
+    "tech": "Each element a plan line selects (a CSS selector, or every link in nav, header, footer or main; at most 20) is clicked in the rendered page with analytics requests intercepted and never delivered, and dataLayer pushes are read for 1500 ms. One push with the event name and every listed parameter filled passes. Needs a rendered read (G39): until then it is could not check"
+  },
+  {
     "id": "facts-present",
     "severity": "medium",
     "area": "Sales & prices",
@@ -908,6 +918,16 @@
     "why": "Google needs these to show the event in results, and the status is how a cancelled or moved night is shown as such.",
     "fix": "Give every Event a startDate, a location and an eventStatus (for example https://schema.org/EventScheduled).",
     "tech": "Event JSON-LD without startDate, location or eventStatus (one finding listing each event and what it lacks)"
+  },
+  {
+    "id": "events-distinct",
+    "severity": "low",
+    "area": "Leads",
+    "title": "Two menu links report the same click",
+    "what": "Two links to the same page, under different parent menus, send identical event values, so the report can't tell which one was clicked.",
+    "why": "A comparison of a new menu is only real if every link reports where it sits: identical values merge the two links into one row.",
+    "fix": "Add the parent menu (or another value that tells them apart) to the event both links send.",
+    "tech": "Links that passed events-fire, grouped by destination: two with different parent menus whose events carry the same values for the plan's parameters. Needs a rendered read (G39): until then it is could not check"
   },
   {
     "id": "hidden-past-launch",
