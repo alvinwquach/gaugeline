@@ -126,6 +126,11 @@ export default tseslint.config(
     rules: { "no-restricted-imports": ["error", CORE_RESTRICTED_IMPORTS] },
   },
   {
+    // Notifications POST to the person's own channels, never to the checked site (ADR-0005).
+    files: ["packages/core/src/notify/post.ts"],
+    rules: { "no-restricted-imports": ["error", CORE_RESTRICTED_IMPORTS] },
+  },
+  {
     // Tests may print and may reach repository scripts; the walker skips them too.
     files: ["packages/core/src/**/__tests__/**/*.ts"],
     rules: { "no-console": "off", "no-restricted-imports": "off" },

@@ -1,0 +1,125 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`notify: unit > Discord: an embed coloured by the worst finding 1`] = `
+{
+  "embeds": [
+    {
+      "color": 11805464,
+      "description": "1 fix this first · 1 worth knowing",
+      "fields": [
+        {
+          "name": "Fix this first: Finding 0",
+          "value": "e",
+        },
+        {
+          "name": "Worth knowing: Finding 1",
+          "value": "e",
+        },
+      ],
+      "title": "Gaugeline: https://shop.example/",
+    },
+  ],
+}
+`;
+
+exports[`notify: unit > Slack: the ten most urgent findings, and how many more 1`] = `
+{
+  "blocks": [
+    {
+      "text": {
+        "text": "*Gaugeline* checked https://shop.example/: 2 fix this first · 12 fix soon",
+        "type": "mrkdwn",
+      },
+      "type": "section",
+    },
+    {
+      "text": {
+        "text": "*Fix this first:* Finding 0
+\`e\`",
+        "type": "mrkdwn",
+      },
+      "type": "section",
+    },
+    {
+      "text": {
+        "text": "*Fix this first:* Finding 1
+\`e\`",
+        "type": "mrkdwn",
+      },
+      "type": "section",
+    },
+    {
+      "text": {
+        "text": "*Fix soon:* Finding 2
+\`e\`",
+        "type": "mrkdwn",
+      },
+      "type": "section",
+    },
+    {
+      "text": {
+        "text": "*Fix soon:* Finding 3
+\`e\`",
+        "type": "mrkdwn",
+      },
+      "type": "section",
+    },
+    {
+      "text": {
+        "text": "*Fix soon:* Finding 4
+\`e\`",
+        "type": "mrkdwn",
+      },
+      "type": "section",
+    },
+    {
+      "text": {
+        "text": "*Fix soon:* Finding 5
+\`e\`",
+        "type": "mrkdwn",
+      },
+      "type": "section",
+    },
+    {
+      "text": {
+        "text": "*Fix soon:* Finding 6
+\`e\`",
+        "type": "mrkdwn",
+      },
+      "type": "section",
+    },
+    {
+      "text": {
+        "text": "*Fix soon:* Finding 7
+\`e\`",
+        "type": "mrkdwn",
+      },
+      "type": "section",
+    },
+    {
+      "text": {
+        "text": "*Fix soon:* Finding 8
+\`e\`",
+        "type": "mrkdwn",
+      },
+      "type": "section",
+    },
+    {
+      "text": {
+        "text": "*Fix soon:* Finding 9
+\`e\`",
+        "type": "mrkdwn",
+      },
+      "type": "section",
+    },
+    {
+      "text": {
+        "text": "and 4 more · <https://reports.example/r/1|Open the full report>",
+        "type": "mrkdwn",
+      },
+      "type": "context",
+    },
+  ],
+  "text": "*Gaugeline* checked https://shop.example/: 2 fix this first · 12 fix soon",
+}
+`;
