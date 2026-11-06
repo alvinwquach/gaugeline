@@ -18,6 +18,7 @@ import {
   renderReport,
   exitCodeFor,
   formatTagSummary,
+  readPlan,
   EMAIL_FROM_ENV,
   ONBOARDING_FROM,
   RESEND_KEY_ENV,
@@ -34,6 +35,7 @@ import { formatError, toOutcome } from "./fail.js";
 import { envIsOn, type FlagDef } from "./flags.js";
 import { createLogger } from "./logger.js";
 import { runDigest } from "./digest.js";
+import { formatPlanSummary } from "./plan.js";
 import { formatTerminal } from "./reporter.js";
 import {
   readAccess,
@@ -52,7 +54,7 @@ import { addIgnore, applyIgnore, IGNORE_FILE, readIgnore } from "./ignore.js";
 import { canShowView, runView, type ViewIo } from "./tui/app.js";
 import { existsSync, readFileSync } from "node:fs";
 import { writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
 /** The report file, in the folder the run starts from. */
 export const REPORT_FILE = "gaugeline-report.html";
@@ -123,6 +125,20 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
     case "version":
       io.stdout.write(`${VERSION}\n`);
       return { outcome: ran, ci: false };
+    case "plan": {
+      const cwd = deps.cwd ?? process.cwd();
+      const path = resolve(cwd, args.file);
+      let text: string;
+      try {
+        text = readFileSync(path, "utf8");
+      } catch {
+        throw new ConfigError(`${args.file} could not be read.`, {
+          hint: "Export the plan from your spreadsheet as CSV and give its path.",
+        });
+      }
+      io.stdout.write(formatPlanSummary(readPlan(text), args.file));
+      return { outcome: ran, ci: false };
+    }
     case "digest": {
       await runDigest(
         {

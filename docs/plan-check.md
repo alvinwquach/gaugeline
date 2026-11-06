@@ -53,3 +53,58 @@ $ npx gaugeline plan sitemap.csv --live crawl-export.csv
 ::: warning
 Exit code 1 when anything drifts, so this can gate a launch in CI.
 :::
+
+## In this version
+
+What the code in this repository does today. The sections above describe the product as published
+on the site.
+
+`gaugeline plan <file>` reads the plan and says what it found. The checks of the plan against itself,
+against the built site (`--base`), the redirects and `--live` arrive in the next branches; `--plan-only`
+is accepted now and makes no request.
+
+### What it reads
+
+Any CSV with a URL column, exported from a spreadsheet as it is: a byte-order mark, Windows line
+endings, a title row above the header, blank lines and quoted cells holding commas or line breaks
+are all fine. Rows with no URL (menu labels, section headings) are skipped and counted. An address
+with a `#section` is kept as its page and the anchor, so `/medical#rural` is the page `/medical`
+and the section `rural`. A file with no URL column stops the run (exit 2) and lists the headers it
+found. A multi-tab export pasted into one file, with a `## Sheet name: <tab>` line before each tab,
+is read tab by tab.
+
+### Column names
+
+Names are matched loosely: case, spaces, underscores and punctuation don't matter
+(`Title Tag`, `title_tag` and `TITLE-TAG` are one name). A header either maps or it doesn't, so
+`URL notes` is never taken for the URL. When two columns map to the same thing, the first is used
+and a warning names both.
+
+| Read as           | Column names                                              |
+| ----------------- | --------------------------------------------------------- |
+| URL (required)    | URL, Address, New URL, Destination, New Address, Page URL |
+| Page              | Page, Page Name                                           |
+| Title tag         | Title Tag, Title, Meta Title                              |
+| H1                | H1, Heading                                               |
+| Primary keyword   | Primary Keyword, Keyword, Target Keyword                  |
+| Secondary keyword | Secondary Keyword, Secondary Keywords                     |
+| Legacy URL        | Legacy URL, Old URL, Current URL, Redirect From           |
+
+Every other column is kept as it is, with the line number, so a finding can point back to the row.
+
+### Example
+
+```bash
+npx gaugeline plan keyword-map.csv
+```
+
+Against the invented `keyword-map.csv` fixture, a billing company's keyword map with 167 rows and
+12 columns, `gaugeline plan keyword-map.csv` prints:
+
+```text title=Output
+Read 163 pages from keyword-map.csv (4 rows without a URL skipped).
+Columns: URL from "URL", page from "Page", title tag from "Title Tag", H1 from "H1", primary keyword from "Primary Keyword", secondary keyword from "Secondary Keyword", legacy URL from "Legacy URL".
+7 rows are anchors (#section) on a page.
+```
+
+The output is asserted by `packages/cli/src/__tests__/plan.test.ts`.
