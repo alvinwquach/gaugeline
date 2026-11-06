@@ -1,5 +1,7 @@
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -22,6 +24,9 @@ import {
   type FlagDef,
 } from "../flags.js";
 import { runBin } from "./helpers/bin.js";
+
+/** A value each string flag accepts, for the every-flag test. */
+const SAMPLE_VALUES: Record<string, string> = { since: "last" };
 
 const repoRoot = fileURLToPath(new URL("../../../../", import.meta.url));
 const optionsMd = readFileSync(`${repoRoot}docs/options.md`, "utf8");
@@ -241,13 +246,22 @@ describe("flag table: e2e", () => {
   });
 
   it("every flag in the table is accepted by the built bin", async () => {
+    // --since writes its state file into the working directory: use a throwaway one.
+    const scratch = mkdtempSync(join(tmpdir(), "gaugeline-flags-"));
     for (const f of FLAGS) {
       // Each flag is given to a command that accepts it: launch-only flags to gaugeline launch.
       const command = flagsFor(FLAGS, "check").includes(f) ? [] : ["launch"];
-      const r = await runBin([...command, `${site.origin}/`, `--${f.name}`]);
+      // A string flag needs a value: the one it accepts.
+      const value = f.type === "string" ? [SAMPLE_VALUES[f.name] ?? "x"] : [];
+      const r = await runBin(
+        [...command, `${site.origin}/`, `--${f.name}`, ...value],
+        {},
+        { cwd: scratch },
+      );
       expect(r.stderr, f.name).not.toContain("Unknown option");
       expect([0, 1], f.name).toContain(r.status);
     }
+    rmSync(scratch, { recursive: true, force: true });
   }, 60_000);
 });
 
