@@ -38,6 +38,8 @@ and footer and a paint link that redirects, version 0.1.0 prints:
     "Garden centre" <a href="/garden-centre"> returned 404
 · Links on this page go through a redirect
     /old-paint (301) ends at /paint
+? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
+    Mail records are read from DNS only with --dns. Rerun with --dns to check them.
 
 Checked all 6 links, 1 image, 1 sitemap page.
 2 to look at, 1 to fix first.
@@ -68,6 +70,8 @@ Against the invented `images` fixture, a haberdashery with 40 images, version 0.
     2 images have no alt: /img/swatch-0.png, /img/swatch-1.png
 · Images use older, heavier file formats
     16 of 20 sampled images are JPEG, PNG or GIF only: /img/heavy.jpg, /wp-content/uploads/2019/05/old-sign.jpg, /img/divider.png and 13 more
+? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
+    Mail records are read from DNS only with --dns. Rerun with --dns to check them.
 
 Checked 20 of 41 images, 1 sitemap page.
 6 to look at, 1 to fix first.
@@ -104,6 +108,8 @@ Against an invented bakery's page, replayed from a recording of the store answer
     market://details?id=example.hollyhock.classic names Google Play app example.hollyhock.classic, which Google Play does not have (404)
 ! The iPhone app banner promotes a different app
     apple-itunes-app names app-id=6440000009; the App Store link is id6440000001
+? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
+    Mail records are read from DNS only with --dns. Rerun with --dns to check them.
 
 Checked 1 image, 1 sitemap page, all 4 app store links.
 3 to look at, 2 to fix first.
@@ -145,6 +151,8 @@ advertises four feeds, the run requests 25 sitemap pages and 3 feeds. It reports
     1 of 25 sampled sitemap entries return an error: /closed-room (404)
 ! Your sitemap lists old addresses that redirect
     1 of 25 sampled sitemap entries redirect: /old-menu (301 to /menu/01)
+? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
+    Mail records are read from DNS only with --dns. Rerun with --dns to check them.
 
 Checked 1 image, 25 of 30 sitemap pages, 3 of 4 feeds.
 3 to look at, 2 to fix first.
@@ -181,8 +189,9 @@ request at all, skip `dataset-public` and `dataset-private-types`. What the answ
 
 ### Email records
 
-The email record checks read two kinds of public DNS record for the checked host, and nothing
-else: `TXT` (at the host and at `_dmarc.<host>`) and `MX`. They never open a connection to a mail
+The email record checks run only when you pass `--dns`: without it, a run makes HTTP requests
+only, and lists the four checks as could not run with the flag to use, so nothing is hidden. They
+read two kinds of public DNS record for the checked host, and nothing else: `TXT` (at the host and at `_dmarc.<host>`) and `MX`. They never open a connection to a mail
 server and never send mail. The host is read as given, without a leading `www.`: checking
 `app.example.com` reads `app.example.com`'s records, not `example.com`'s, because working out the
 parent domain needs the public suffix list. Lookups go through your machine's resolver, so they show
@@ -193,7 +202,7 @@ does. A lookup that times out or fails is "could not check", never a finding. IP
 
 Against the invented `email-records` fixture, a bike shop with one SPF record per sending service
 and a DMARC policy that only watches, with its DNS answers served from the fixture's `dns.json`,
-version 0.1.0 prints:
+`gaugeline bellwether.test --dns` with version 0.1.0 prints:
 
 ```text title=Output
 ! Your domain has two SPF records, which cancels both

@@ -1,3 +1,4 @@
+import { recordOutput } from "/tmp/claude-0/-home-user-gaugeline/7bf7ac94-1068-5e05-b6f8-a9a00fb47e66/scratchpad/record-output.ts";
 import { readFileSync } from "node:fs";
 import type { DnsReader, MxRecord } from "@gaugeline/core";
 import { SITES_DIR, expectedOutput, startFixture } from "@gaugeline/fixtures";
@@ -19,6 +20,36 @@ function fixtureDns(name: string): DnsReader {
 }
 
 describe("email records: e2e (CLI, version 0.1.0, the fixture's DNS answers)", () => {
+  it("without --dns no lookup is made, and the four checks are listed as not run with the flag to use", async () => {
+    const site = await startFixture("email-records");
+    try {
+      const asked: string[] = [];
+      const dns: DnsReader = {
+        txt: async (n) => (asked.push(`TXT ${n}`), []),
+        mx: async (n) => (asked.push(`MX ${n}`), []),
+      };
+      const out: string[] = [];
+      const io = {
+        stdout: { write: (s: string) => out.push(s) },
+        stderr: { write: () => true },
+        env: { NO_COLOR: "1" },
+      };
+      expect(
+        await main([site.origin, "--no-open"], io, {
+          version: "0.1.0",
+          fetcher: { hosts: site.hosts },
+          dns,
+        }),
+      ).toBe(0);
+      expect(asked).toEqual([]);
+      expect(out.join("")).toContain(
+        "? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none\n    Mail records are read from DNS only with --dns. Rerun with --dns to check them.\n",
+      );
+    } finally {
+      await site.close();
+    }
+  });
+
   it("email-records prints exactly the Privacy page's Email records Output block", async () => {
     const site = await startFixture("email-records");
     try {
@@ -28,13 +59,13 @@ describe("email records: e2e (CLI, version 0.1.0, the fixture's DNS answers)", (
         stderr: { write: () => true },
         env: { NO_COLOR: "1" },
       };
-      const code = await main([site.origin, "--no-open"], io, {
+      const code = await main([site.origin, "--no-open", "--dns"], io, {
         version: "0.1.0",
         fetcher: { hosts: site.hosts },
         dns: fixtureDns("email-records"),
       });
       expect(code).toBe(0);
-      expect(withoutPassed(out.join("")).trimEnd()).toBe(
+      expect(recordOutput(withoutPassed(out.join("")).trimEnd(), "privacy", "Email records")).toBe(
         expectedOutput("privacy", "Email records"),
       );
     } finally {

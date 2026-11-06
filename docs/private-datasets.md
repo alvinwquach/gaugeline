@@ -49,6 +49,8 @@ whose images come from a public dataset with an `order` type, version 0.1.0 prin
     project ab12cd34, dataset "production" answers without a token and has "order" among its 2 types (42 documents)
 ✗ A private key is in your site's JavaScript
     Stripe secret key sk_liv…00 in /assets/app.js at byte 405
+? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
+    Mail records are read from DNS only with --dns. Rerun with --dns to check them.
 
 Checked 1 link, 1 image, all 2 sitemap pages, 1 JavaScript file, 1 Sanity dataset.
 2 to look at, 2 to fix first.

@@ -50,6 +50,8 @@ and Saturday hours, version 0.1.0 prints:
     2 of 3 links in llms.txt do not work: /catering (404), /order (redirects to http://orders.test/hollyhock)
 ! Your llms.txt gives assistants an old phone number, address or hours
     phone: llms.txt says (503) 555-0119, structured data says +1 503-555-0142. hours: Sat 08:00-13:00 in llms.txt, 08:00-14:00 in structured data
+? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
+    Mail records are read from DNS only with --dns. Rerun with --dns to check them.
 
 Checked 1 image, 1 sitemap page, all 3 llms.txt links.
 2 to look at, none to fix first.
