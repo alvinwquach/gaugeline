@@ -77,6 +77,55 @@ try {
     else if (!run.stdout.includes("Nothing to look at.")) fail(`unexpected output:\n${run.stdout}`);
     else process.stdout.write(`smoke: npx ran under Node ${process.version} and exited 0\n`);
   });
+
+  // gaugeline-free: the same packing rules, and its --help lists exactly its three commands.
+  const freeDir = fileURLToPath(new URL("../packages/free/", import.meta.url));
+  const freeOut = mkdtempSync(join(tmpdir(), "gaugeline-free-smoke-"));
+  try {
+    execFileSync("npm", ["pack", "--pack-destination", freeOut], {
+      cwd: freeDir,
+      stdio: "pipe",
+      shell,
+    });
+    const freeTarball = readdirSync(freeOut).find((f) => f.endsWith(".tgz"));
+    if (!freeTarball) throw new Error("npm pack produced no gaugeline-free tarball");
+    const freePath = join(freeOut, freeTarball);
+    const freeFiles = execFileSync("tar", ["-tzf", freePath], { encoding: "utf8" })
+      .split("\n")
+      .filter(Boolean);
+    const extra = freeFiles.filter((f) => !ALLOWED.test(f));
+    if (extra.length > 0)
+      fail(`unexpected files in the gaugeline-free tarball: ${extra.join(", ")}`);
+    const freeSize = statSync(freePath).size;
+    if (freeSize > SIZE_BUDGET_BYTES)
+      fail(
+        `gaugeline-free tarball is ${freeSize} bytes, over the ${SIZE_BUDGET_BYTES}-byte budget`,
+      );
+    const help = execFileSync(
+      "npx",
+      ["--yes", `--package=${freePath}`, "gaugeline-free", "--help"],
+      {
+        cwd: freeOut,
+        encoding: "utf8",
+        shell,
+        env: { ...process.env, CI: "" },
+      },
+    );
+    const commands = help.split("\n").filter((l) => /^ {2}(price|launch|study) /.test(l));
+    const expected = [
+      "  price <product-url>   Price agreement check (New)",
+      "  launch <site>         Launch-day check (New)",
+      "  study <stores.txt>    How often does a store disagree with itself?",
+    ];
+    if (commands.join("\n") !== expected.join("\n"))
+      fail(`gaugeline-free --help commands:\n${commands.join("\n")}`);
+    else
+      process.stdout.write(
+        `smoke: ${freeTarball} is ${(freeSize / 1024).toFixed(1)} kB; --help lists its three commands\n`,
+      );
+  } finally {
+    rmSync(freeOut, { recursive: true, force: true });
+  }
 } finally {
   rmSync(out, { recursive: true, force: true });
 }
