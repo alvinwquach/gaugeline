@@ -37,6 +37,7 @@ import {
   readHidden,
   readLanguageRules,
   readPayments,
+  readEvents,
   readSchemaRules,
   readTags,
 } from "./schema-config.js";
@@ -174,6 +175,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       const payments = readPayments(deps.cwd ?? process.cwd());
       const hidden = readHidden(deps.cwd ?? process.cwd());
       const tags = readTags(deps.cwd ?? process.cwd());
+      const events = readEvents(deps.cwd ?? process.cwd());
       const accessConfig = readAccess(deps.cwd ?? process.cwd());
       // Keys are read from the environment here and go only into request headers.
       const access = accessConfig ? resolveAccess(accessConfig, io.env ?? {}) : undefined;
@@ -230,6 +232,8 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         ...(payments ? { payments } : {}),
         ...(hidden ? { hidden } : {}),
         ...(tags ? { tags } : {}),
+        // No observer until rendered reads (G39): the click event checks are could not check.
+        ...(events ? { events } : {}),
         ...(last?.kind === "ok" ? { previous: last.snapshot } : {}),
         ...(access ? { access } : {}),
         ...(dns ? { dns } : {}),
