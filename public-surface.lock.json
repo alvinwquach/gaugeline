@@ -3,26 +3,36 @@
     "check": [
       "allow-private",
       "ci",
+      "discord",
       "dns",
       "help",
       "interactive",
       "json",
       "no-open",
+      "notify-on",
       "quiet",
+      "report-url",
       "since",
+      "slack",
       "verbose",
-      "version"
+      "version",
+      "webhook"
     ],
     "launch": [
       "allow-private",
       "ci",
+      "discord",
       "dns",
       "help",
       "json",
       "no-open",
+      "notify-on",
       "quiet",
+      "report-url",
+      "slack",
       "verbose",
-      "version"
+      "version",
+      "webhook"
     ]
   },
   "checkIds": [

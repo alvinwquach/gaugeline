@@ -10,6 +10,9 @@ import {
   buildRunSnapshot,
   createDnsReader,
   createPageRegistry,
+  notifyAll,
+  resolveTargets,
+  shouldNotify,
   parseResult,
   type Result,
   renderReport,
@@ -289,6 +292,37 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         if (written && !args.quiet) io.stderr.write(`Report written to ./${REPORT_FILE}\n`);
         if (written && !args.noOpen && !isCiEnv(env) && io.stdout.isTTY === true)
           (deps.open ?? openInBrowser)(reportPath);
+      }
+      // Notifications: the person's own channels. A failed send is reported and never changes the
+      // exit code; a webhook's address is never printed, only its host.
+      const targets = resolveTargets(args.notify, env);
+      if (targets.length > 0) {
+        const sent = buildResult({
+          url: snapshot.requestedUrl,
+          startedAt,
+          findings: result.findings,
+          passed: result.passed,
+          failed: [...result.failed.map((f) => f.id), ...dnsSkipped],
+          couldNotCheck: result.couldNotCheck,
+          sampled: result.sampled,
+        });
+        const NAME = { slack: "Slack", discord: "Discord", webhook: "the webhook" } as const;
+        if (!shouldNotify(sent, args.notifyOn)) {
+          io.stderr.write(
+            `Nothing sent: --notify-on ${args.notifyOn} and ${args.notifyOn === "high" ? "nothing needs fixing first" : "nothing was found"}.\n`,
+          );
+        } else {
+          for (const r of await notifyAll(
+            sent,
+            targets,
+            args.reportUrl ? { reportUrl: args.reportUrl } : {},
+          ))
+            io.stderr.write(
+              r.ok
+                ? `Sent to ${NAME[r.channel]}.\n`
+                : `Could not send to ${NAME[r.channel]}: ${r.error ?? "it failed"}.\n`,
+            );
+        }
       }
       // -i: the terminal view over this run, for a person at a wide enough terminal, never in CI.
       const stdin = io.stdin ?? process.stdin;

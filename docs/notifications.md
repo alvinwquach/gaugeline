@@ -30,3 +30,36 @@ Anyone with a webhook address can post to your channel. Store addresses as CI se
 ::: info
 If a message fails to send, the check still finishes and tells you which channel failed. A broken webhook never fails your build.
 :::
+
+## In this version
+
+What the code in this repository does today. The sections above describe the product as published
+on the site.
+
+Slack, Discord and the webhook work; email arrives in its own branch. Each channel is a flag or an
+environment variable, and a flag wins when both are set:
+
+```bash
+GAUGELINE_SLACK_WEBHOOK=https://hooks.slack.com/services/... npx gaugeline yoursite.com
+```
+
+- **Slack** gets a summary line and the ten most urgent findings, then "and N more". A section longer
+  than Slack's limit is cut short with "…", never rejected.
+- **Discord** gets one embed coloured by the worst finding (red, amber, grey, or green when there is
+  nothing to fix), with up to ten findings as fields.
+- **The webhook** gets the run exactly as `--json` prints it, with `X-Gaugeline-Report` set when
+  `--report-url` is.
+
+`--report-url` adds a link to a hosted copy of the report in each message. After the run, one line
+per channel on stderr says `Sent to Slack.` or `Could not send to Discord: hooks.example answered 500.`;
+with `--notify-on high` and nothing to fix first it says `Nothing sent: ...`. Sends run together and
+each is reported on its own, and a failed or slow send (it gives up after 10 seconds) never changes
+the exit code.
+
+Webhook addresses are secrets. Only their host is ever printed; the path never appears in output,
+logs or errors. Prefer the environment variables over flags, so the address stays out of your shell
+history and CI logs.
+
+This is the one place Gaugeline sends a `POST`: to your own channels, at your request, from
+`packages/core/src/notify/`. Every request to the site being checked still goes through the
+read-only fetcher, which refuses anything but `GET` and `HEAD`.

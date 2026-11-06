@@ -1,0 +1,104 @@
+import { SEVERITY_LABEL, SEVERITY_ORDER, type Finding, type Severity } from "../model.js";
+import type { Result } from "../result.js";
+
+/** Slack's limit for one section's text (Block Kit). Longer text is trimmed, never rejected. */
+export const SLACK_SECTION_MAX = 3000;
+/** The findings listed in a Slack or Discord message: the most urgent first. */
+export const MESSAGE_FINDINGS = 10;
+
+const trim = (s: string, max: number) => (s.length > max ? `${s.slice(0, max - 1)}…` : s);
+
+function urgent(result: Result): Finding[] {
+  return [...result.findings].sort(
+    (a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity],
+  );
+}
+
+function counts(result: Result): string {
+  const n = (s: Severity) => result.findings.filter((f) => f.severity === s).length;
+  if (result.findings.length === 0) return "Nothing to fix.";
+  return (["high", "medium", "low"] as const)
+    .filter((s) => n(s) > 0)
+    .map((s) => `${n(s)} ${SEVERITY_LABEL[s].toLowerCase()}`)
+    .join(" · ");
+}
+
+export interface SlackPayload {
+  text: string;
+  blocks: { type: string; text?: { type: string; text: string } }[];
+}
+
+export function slackPayload(result: Result, reportUrl?: string): SlackPayload {
+  const list = urgent(result);
+  const head = `*Gaugeline* checked ${result.url}: ${counts(result)}`;
+  const blocks: SlackPayload["blocks"] = [
+    { type: "section", text: { type: "mrkdwn", text: trim(head, SLACK_SECTION_MAX) } },
+  ];
+  for (const f of list.slice(0, MESSAGE_FINDINGS))
+    blocks.push({
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: trim(
+          `*${SEVERITY_LABEL[f.severity]}:* ${f.title}\n\`${f.evidence}\``,
+          SLACK_SECTION_MAX,
+        ),
+      },
+    });
+  const more = list.length - MESSAGE_FINDINGS;
+  const tail = [
+    more > 0 ? `and ${more} more` : "",
+    reportUrl ? `<${reportUrl}|Open the full report>` : "",
+  ]
+    .filter((s) => s !== "")
+    .join(" · ");
+  if (tail)
+    blocks.push({ type: "context", text: { type: "mrkdwn", text: trim(tail, SLACK_SECTION_MAX) } });
+  return { text: trim(head, SLACK_SECTION_MAX), blocks };
+}
+
+/** Embed colours by the worst finding; green when there is nothing to fix. */
+export const DISCORD_COLOR: Readonly<Record<Severity | "none", number>> = {
+  high: 0xb42318,
+  medium: 0xb54708,
+  low: 0x475467,
+  none: 0x039855,
+};
+
+export interface DiscordPayload {
+  embeds: {
+    title: string;
+    description: string;
+    color: number;
+    url?: string;
+    fields: { name: string; value: string }[];
+  }[];
+}
+
+export function discordPayload(result: Result, reportUrl?: string): DiscordPayload {
+  const list = urgent(result);
+  const worst = list[0]?.severity ?? "none";
+  const more = list.length - MESSAGE_FINDINGS;
+  return {
+    embeds: [
+      {
+        title: trim(`Gaugeline: ${result.url}`, 256),
+        description: trim(
+          `${counts(result)}${more > 0 ? ` (the ${MESSAGE_FINDINGS} most urgent below, and ${more} more)` : ""}`,
+          4096,
+        ),
+        color: DISCORD_COLOR[worst],
+        ...(reportUrl ? { url: reportUrl } : {}),
+        fields: list.slice(0, MESSAGE_FINDINGS).map((f) => ({
+          name: trim(`${SEVERITY_LABEL[f.severity]}: ${f.title}`, 256),
+          value: trim(f.evidence, 1024),
+        })),
+      },
+    ],
+  };
+}
+
+/** The webhook gets the run exactly as --json prints it. */
+export function webhookPayload(result: Result): Result {
+  return result;
+}
