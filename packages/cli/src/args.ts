@@ -25,7 +25,7 @@ export interface RunFlags {
   /** -i, --interactive: open the terminal view after the run. */
   interactive: boolean;
   /** Channel addresses given as flags (the environment can supply them too). */
-  notify: { slack?: string; discord?: string; webhook?: string };
+  notify: { slack?: string; discord?: string; webhook?: string; email?: string };
   notifyOn: "any" | "high" | "always";
   reportUrl?: string;
   ci: boolean;
@@ -154,6 +154,7 @@ export function parseCliArgs(
       ...(typeof values.slack === "string" ? { slack: values.slack } : {}),
       ...(typeof values.discord === "string" ? { discord: values.discord } : {}),
       ...(typeof values.webhook === "string" ? { webhook: values.webhook } : {}),
+      ...(typeof values.email === "string" ? { email: values.email } : {}),
     },
     notifyOn,
     ...(typeof values["report-url"] === "string" ? { reportUrl: values["report-url"] } : {}),
