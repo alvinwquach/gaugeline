@@ -430,6 +430,16 @@
     "tech": "word count of server-rendered HTML"
   },
   {
+    "id": "plan-duplicate-address",
+    "severity": "high",
+    "area": "Launch day",
+    "title": "Two rows in the plan share one address",
+    "what": "Two or more rows of the plan give the same address (path and #section), so only one of those pages can exist.",
+    "why": "The pages compete for one address: one gets built, the other is lost, and whichever wins gets the wrong title, heading and redirects.",
+    "fix": "Give each planned page its own address, or merge the rows into one page.",
+    "tech": "Rows grouped by host without www. and path in lower case, no trailing slash or query, plus #fragment when there is one; an anchor row and its page row differ by the fragment. One finding per group, with every line"
+  },
+  {
     "id": "app-smart-banner-mismatch",
     "severity": "medium",
     "area": "Visitors",
@@ -848,6 +858,26 @@
     "why": "Visitors have to pinch and zoom to read anything, and Google treats the page as not mobile-friendly.",
     "fix": "Add <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"> to the page's head.",
     "tech": "no <meta name=\"viewport\"> anywhere in the document"
+  },
+  {
+    "id": "plan-duplicate-title",
+    "severity": "medium",
+    "area": "Launch day",
+    "title": "Two rows in the plan have the same title tag",
+    "what": "Two or more rows of the plan plan the same title tag.",
+    "why": "Search engines show the title in results; two pages with one title compete with each other and neither looks like the answer.",
+    "fix": "Write a title that says what is different about each page.",
+    "tech": "Title Tag cells compared trimmed, whitespace collapsed, lower case, with curly quotes and dashes straightened; a brand suffix is part of the title. Empty cells are left out"
+  },
+  {
+    "id": "plan-duplicate-h1",
+    "severity": "medium",
+    "area": "Launch day",
+    "title": "Two rows in the plan have the same H1",
+    "what": "Two or more rows of the plan plan the same H1.",
+    "why": "The H1 tells visitors and search engines what the page is about; two pages with the same heading read as the same page.",
+    "fix": "Give each page a heading that names its own topic.",
+    "tech": "H1 cells compared the same way as titles. Empty cells are left out"
   },
   {
     "id": "plan-legacy-unresolved",

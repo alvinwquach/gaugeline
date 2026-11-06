@@ -26,6 +26,7 @@ import {
   legacyHints,
   legacyReviewCsv,
   runChecks,
+  type LegacyMention,
   EMAIL_FROM_ENV,
   ONBOARDING_FROM,
   RESEND_KEY_ENV,
@@ -156,6 +157,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       io.stdout.write(formatPlanSummary(plan, args.file));
       // Old addresses in a notes column (--legacy-from): read, shown for review, then checked.
       const headers = Object.keys(plan.rows[0]?.raw ?? {});
+      let mentions: LegacyMention[] = [];
       if (args.legacyReview && args.legacyFrom.length === 0)
         throw new ConfigError(
           "--legacy-review needs --legacy-from: it writes the old addresses read from a notes column.",
@@ -176,24 +178,13 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
             );
           return found;
         });
-        const mentions = extractLegacy(plan.rows, columns);
+        mentions = extractLegacy(plan.rows, columns);
         applyLegacy(plan.rows, mentions);
         io.stdout.write(formatLegacyTable(mentions, columns));
         if (args.legacyReview) {
           writeFileSync(resolve(cwd, args.legacyReview), legacyReviewCsv(mentions));
           if (!args.quiet) io.stderr.write(`Review table written to ${args.legacyReview}\n`);
         }
-        const result = await runChecks(
-          { plan, legacy: mentions, file: basename(args.file) },
-          createPlanRegistry(),
-        );
-        io.stdout.write(
-          formatTerminal({
-            result,
-            sampled: createBudget().summary(),
-            color: useColor(io.stdout, io.env ?? {}),
-          }),
-        );
       } else if (plan.columns.legacyUrl === undefined && !args.quiet) {
         const own = Object.values(plan.columns);
         for (const h of legacyHints(plan.rows, own))
@@ -201,7 +192,26 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
             `"${h.column}" mentions "legacy" in ${h.rows} row${h.rows === 1 ? "" : "s"}: add --legacy-from "${h.column}" to read old addresses from it.\n`,
           );
       }
-      return { outcome: ran, ci: false };
+      // The plan against itself (no requests). Any finding is drift: exit 1, so it can gate a launch.
+      const planResult = await runChecks(
+        { plan, legacy: mentions, file: basename(args.file) },
+        createPlanRegistry(),
+      );
+      io.stdout.write(
+        formatTerminal({
+          result: planResult,
+          sampled: createBudget().summary(),
+          color: useColor(io.stdout, io.env ?? {}),
+        }),
+      );
+      return {
+        outcome: {
+          kind: "ran",
+          highFindings: planResult.findings.filter((f) => f.severity === "high").length,
+          drift: planResult.findings.length > 0,
+        },
+        ci: true,
+      };
     }
     case "digest": {
       await runDigest(

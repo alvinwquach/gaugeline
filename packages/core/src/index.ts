@@ -232,7 +232,15 @@ export {
   splitSentences,
 } from "./plan/legacy-notes.js";
 export type { LegacyKind, LegacyMention } from "./plan/legacy-notes.js";
-export { PLAN_CHECKS, createPlanRegistry, planLegacyUnresolved } from "./plan/checks.js";
+export {
+  PLAN_CHECKS,
+  createPlanRegistry,
+  planLegacyUnresolved,
+  planSelfChecks,
+} from "./plan/checks.js";
+export { addressKey, groupBy, textKey } from "./plan/keys.js";
+export { SELF_RULES, checkPlan, runSelfRule } from "./plan/self.js";
+export type { SelfRule } from "./plan/self.js";
 export type { PlanCheckInput } from "./plan/checks.js";
 export type { Sheet, Workbook } from "./plan/workbook.js";
 export type { BuiltEmail, EmailSettings } from "./notify/email.js";

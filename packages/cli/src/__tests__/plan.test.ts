@@ -5,6 +5,8 @@ import { SITES_DIR, expectedOutput } from "@gaugeline/fixtures";
 import { afterEach, describe, expect, it } from "vitest";
 import { main } from "../main.js";
 
+const withoutPassed = (text: string) => text.replace(/^✓ [a-z0-9-]+\n/gm, "");
+
 function capture() {
   const out: string[] = [];
   const err: string[] = [];
@@ -35,14 +37,15 @@ describe("gaugeline plan: e2e (CLI)", () => {
   it("reads the keyword map and prints the plan check page's Output block", async () => {
     const run = capture();
     const code = await main(["plan", "keyword-map.csv"], run.io, { cwd: workdir() });
-    expect(code).toBe(0);
-    expect(run.out().trimEnd()).toBe(expectedOutput("plan-check", "Example"));
+    // Two duplicate-address groups: any plan finding exits 1, so it can gate a launch.
+    expect(code).toBe(1);
+    expect(withoutPassed(run.out()).trimEnd()).toBe(expectedOutput("plan-check", "Example"));
   });
 
   it("--plan-only is accepted and makes no request", async () => {
     const run = capture();
     expect(await main(["plan", "keyword-map.csv", "--plan-only"], run.io, { cwd: workdir() })).toBe(
-      0,
+      1,
     );
     expect(run.out()).toContain("Read 163 pages");
   });
@@ -75,8 +78,9 @@ describe("gaugeline plan: e2e (CLI)", () => {
     const run = capture();
     expect(
       await main(["plan", "workbook-export.txt", "--plan-only"], run.io, { cwd: workdir() }),
-    ).toBe(0);
+    ).toBe(1);
     expect(run.err()).toBe("Read tab: Kim's Keywords (6 other tabs skipped)\n");
+    expect(run.out()).toContain("/software/ai-automation on lines 147, 148 and 149 (3 rows)");
     expect(run.out()).toContain(
       "Read 163 pages from workbook-export.txt (4 rows without a URL skipped).",
     );
@@ -124,8 +128,8 @@ describe("gaugeline plan: e2e (CLI)", () => {
       run.io,
       { cwd: dir },
     );
-    expect(code).toBe(0);
-    expect(run.out().trimEnd()).toBe(
+    expect(code).toBe(1);
+    expect(withoutPassed(run.out()).trimEnd()).toBe(
       expectedOutput("plan-check", "Old addresses in a notes column"),
     );
     const tableRows = run
