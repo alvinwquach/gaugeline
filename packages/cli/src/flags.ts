@@ -113,6 +113,13 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     commands: ["plan"],
   },
   {
+    name: "sheet",
+    type: "string",
+    description: "Read this tab of a workbook instead of the one with a URL column",
+    since: "0.2.0",
+    commands: ["plan"],
+  },
+  {
     name: "runs",
     type: "string",
     description: "The folder of saved runs (each one saved with --json) to read",

@@ -40,7 +40,14 @@ export type ParsedArgs =
   | { kind: "help"; verbose: boolean; command: CliCommand }
   | { kind: "version"; verbose: boolean }
   | { kind: "view"; file: string; verbose: boolean }
-  | { kind: "plan"; file: string; planOnly: boolean; verbose: boolean; quiet: boolean }
+  | {
+      kind: "plan";
+      file: string;
+      planOnly: boolean;
+      sheet?: string;
+      verbose: boolean;
+      quiet: boolean;
+    }
   | {
       kind: "digest";
       runs: string;
@@ -143,6 +150,7 @@ export function parseCliArgs(
       kind: "plan",
       file: positionals[0] ?? "",
       planOnly: values["plan-only"] === true,
+      ...(typeof values.sheet === "string" ? { sheet: values.sheet } : {}),
       verbose,
       quiet: values.quiet === true,
     };
