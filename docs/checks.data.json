@@ -250,6 +250,26 @@
     "tech": "main content (code and pre ignored) contains \"test product\", \"sample product\", \"sample post\", \"sample page\", \"test post\", \"hello world!\", \"john doe\", \"jane doe\", \"john smith example\", \"your name here\", \"product name here\", an @example.com/.org/.net address, or a 555 phone number (English lists)"
   },
   {
+    "id": "next-draft-public",
+    "severity": "high",
+    "area": "Launch day",
+    "title": "Anyone can switch on draft mode",
+    "what": "A draft or preview route on this Next.js site turns draft mode on for a request that carries no secret.",
+    "why": "Anyone who visits that address sees unpublished content (prices, announcements, pages nobody approved) as if it were live.",
+    "fix": "Make the route check a secret (compare a token from the request with one from your environment) before it enables draft mode, and return 401 otherwise.",
+    "tech": "Next.js sites only: one GET per conventional route (/api/draft, /api/preview, /api/draft-mode/enable, /api/enable-draft), no secret sent or guessed; a Set-Cookie of __prerender_bypass or __next_preview_data on any hop is a finding"
+  },
+  {
+    "id": "next-preview-canonical",
+    "severity": "high",
+    "area": "Launch day",
+    "title": "The live site points search engines at a preview deployment",
+    "what": "A production page of this Next.js site gives a preview domain as its canonical address, its og:url or og:image, or in its sitemap.",
+    "why": "Search engines and social cards follow those addresses to the preview, which can show old content or vanish when the preview is cleaned up.",
+    "fix": "Build the site's base address from the production domain (often NEXT_PUBLIC_SITE_URL set only for preview builds), and rebuild.",
+    "tech": "Next.js sites served from a non-temporary host: the canonical, og:url, og:image and sitemap entries whose host ends in .vercel.app, .netlify.app or .pages.dev"
+  },
+  {
     "id": "noindex",
     "severity": "high",
     "area": "Search & sharing",
@@ -598,6 +618,16 @@
     "why": "Visitors who click Services land back on the homepage and think the page is missing. It usually means a menu item was added with no link.",
     "fix": "Point each menu item at its own page, or remove it until the page exists.",
     "tech": "a nav or header a[href] resolving to / whose text (or aria-label) is not Home or the site's name"
+  },
+  {
+    "id": "next-stale-after-publish",
+    "severity": "medium",
+    "area": "Launch day",
+    "title": "The page still shows an old copy after an edit",
+    "what": "With a content source connected, this Next.js page is still a cached copy made before its document last changed, more than 10 minutes after the change.",
+    "why": "Editors publish a fix and visitors keep seeing the old version, so the fix looks broken.",
+    "fix": "Revalidate the page when its document changes (an on-demand revalidation webhook from the CMS), or lower its revalidate time.",
+    "tech": "Next.js sites with a content source (branch 30) only, otherwise unchecked: x-nextjs-cache or x-vercel-cache HIT or STALE with an Age header, the copy's age older than the document's last change, and the change more than 10 minutes ago. Without an Age header nothing is reported"
   },
   {
     "id": "og-image-broken",

@@ -4,6 +4,7 @@ import { LIMITS, type Budget } from "./limits.js";
 import { getOrNull, probe } from "./probe.js";
 import { parseLlmsTxt, type LlmsFile } from "./llms.js";
 import { parseRobots, type RobotsFile } from "./robots.js";
+import { isFrameworkUrl } from "./next/framework-urls.js";
 import { dedupeUrls } from "./sample.js";
 import type { PageSnapshot } from "./snapshot.js";
 
@@ -301,7 +302,12 @@ export async function buildSiteContext({
     starts,
     budget.remaining("sitemapPages"),
   );
-  const sampled = budget.take("sitemapPages", urls);
+  // A sitemap that lists framework addresses: counted as ignored, never sampled.
+  budget.take("frameworkAddresses", urls.filter(isFrameworkUrl));
+  const sampled = budget.take(
+    "sitemapPages",
+    urls.filter((u) => !isFrameworkUrl(u)),
+  );
   const sitemapSample = await Promise.all(sampled.map((u) => probe(u, fetcher)));
   return {
     robotsUrl,

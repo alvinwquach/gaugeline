@@ -1,3 +1,4 @@
+import { NEXT_RENDERED_NOTE, isNextSite } from "../next/detect.js";
 import { defineCheck } from "../model.js";
 import type { PageSnapshot } from "../snapshot.js";
 import { isHtmlPage } from "./page.js";
@@ -21,7 +22,7 @@ export const thinHtml = defineCheck<PageSnapshot>({
         checkId: "thin-html",
         severity: "high",
         title: this.title,
-        evidence: `${page.contentWordCount} words in the server-rendered HTML outside header, nav and footer (fewer than ${THIN_HTML_MIN_WORDS})`,
+        evidence: `${page.contentWordCount} words in the server-rendered HTML outside header, nav and footer (fewer than ${THIN_HTML_MIN_WORDS})${isNextSite(page) ? `. ${NEXT_RENDERED_NOTE}` : ""}`,
         url: page.finalUrl,
       },
     ];

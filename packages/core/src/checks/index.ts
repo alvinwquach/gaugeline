@@ -60,6 +60,9 @@ import { llmsTxtStaleFacts } from "./llms-txt-stale-facts.js";
 import { mockContentLive } from "./mock-content-live.js";
 import { navHomeLinks } from "./nav-home-links.js";
 import { navLabelDrift } from "./nav-label-drift.js";
+import { nextDraftPublic } from "./next-draft-public.js";
+import { nextPreviewCanonical } from "./next-preview-canonical.js";
+import { nextStaleAfterPublish } from "./next-stale-after-publish.js";
 import { noindex } from "./noindex.js";
 import { ogImageBroken } from "./og-image-broken.js";
 import { ogImageMissing } from "./og-image-missing.js";
@@ -159,6 +162,9 @@ export const PAGE_CHECKS = [
   mockContentLive,
   navHomeLinks,
   navLabelDrift,
+  nextDraftPublic,
+  nextPreviewCanonical,
+  nextStaleAfterPublish,
   noindex,
   ogImageBroken,
   ogImageMissing,
