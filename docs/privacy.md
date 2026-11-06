@@ -44,7 +44,6 @@ and footer and a paint link that redirects, version 0.1.0 prints:
 ? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
     Mail records are read from DNS only with --dns. Rerun with --dns to check them.
 
-Checked all 6 links, 1 image, 1 sitemap page.
 2 to look at, 1 to fix first.
 ```
 
@@ -76,7 +75,7 @@ Against the invented `images` fixture, a haberdashery with 40 images, version 0.
 ? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
     Mail records are read from DNS only with --dns. Rerun with --dns to check them.
 
-Checked 20 of 41 images, 1 sitemap page.
+Checked 20 of 41 images.
 6 to look at, 1 to fix first.
 ```
 
@@ -114,7 +113,6 @@ Against an invented bakery's page, replayed from a recording of the store answer
 ? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
     Mail records are read from DNS only with --dns. Rerun with --dns to check them.
 
-Checked 1 image, 1 sitemap page, all 4 app store links.
 3 to look at, 2 to fix first.
 ```
 
@@ -157,7 +155,7 @@ advertises four feeds, the run requests 25 sitemap pages and 3 feeds. It reports
 ? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
     Mail records are read from DNS only with --dns. Rerun with --dns to check them.
 
-Checked 1 image, 25 of 30 sitemap pages, 3 of 4 feeds.
+Checked 25 of 30 sitemap pages, 3 of 4 feeds.
 3 to look at, 2 to fix first.
 ```
 
@@ -213,7 +211,6 @@ and a DMARC policy that only watches, with its DNS answers served from the fixtu
 · Your DMARC policy only watches
     _dmarc.bellwether.test: "v=DMARC1; p=none; rua=mailto:dmarc@bellwether.test"
 
-Checked 1 image, 1 sitemap page.
 2 to look at, none to fix first.
 ```
 

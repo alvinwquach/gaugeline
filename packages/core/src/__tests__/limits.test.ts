@@ -88,17 +88,17 @@ describe("LIMITS and Budget: unit", () => {
     expect(b.remaining("links")).toBe(30);
   });
 
-  it("summary line: partial sample, full sample, nothing found, singular", () => {
+  it("summary line: only the kinds cut short; a full sample, nothing found and one item print nothing", () => {
     const b = createBudget();
     b.take("links", range(61).slice(0, 24));
     b.take("images", range(34));
     b.take("sitemapPages", range(310));
     expect(formatSampleSummary(b.summary())).toBe(
-      "Checked all 24 links, 20 of 34 images, 25 of 310 sitemap pages.",
+      "Checked 20 of 34 images, 25 of 310 sitemap pages.",
     );
     const one = createBudget();
     one.take("links", ["only"]);
-    expect(formatSampleSummary(one.summary())).toBe("Checked 1 link.");
+    expect(formatSampleSummary(one.summary())).toBe("");
     const partial = createBudget();
     partial.take("links", range(61));
     expect(formatSampleSummary(partial.summary())).toBe("Checked 30 of 61 links.");

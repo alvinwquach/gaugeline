@@ -20,6 +20,7 @@ const result = (r: Partial<RunResult>): RunResult => ({
   failed: [],
   warnings: [],
   couldNotCheck: [],
+  sampled: {},
   ...r,
 });
 

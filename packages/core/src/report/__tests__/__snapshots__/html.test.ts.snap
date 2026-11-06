@@ -51,17 +51,21 @@ ul.ok li{margin:.15rem 0}code{font-family:ui-monospace,Menlo,Consolas,monospace}
 <p class="id">links-via-redirect · https://shop.example/</p>
 </article>
 <h2>What looked right <span>2</span></h2>
+<h3>Search &amp; sharing</h3>
 <ul class="ok">
-<li>This page asks search engines not to list it: passed <code>noindex</code></li>
-<li>This page isn&#39;t set up for phone screens: passed <code>viewport</code></li>
+<li>This page asks search engines not to list it</li>
 </ul>
-<h2>Could not check <span>2</span></h2>
-<ul>
-<li><code>broken-links</code>: rate limited (429) (https://shop.example/busy)</li>
-<li><code>explodes</code>: the check failed to run</li>
+<h3>Visitors</h3>
+<ul class="ok">
+<li>This page isn&#39;t set up for phone screens</li>
 </ul>
 <h2>How much was sampled</h2>
-<p>Checked all 2 links, 1 image.</p>
+<ul><li>all 2 links checked</li><li>the 1 image checked</li></ul>
+<h2>Could not check</h2>
+<ul>
+<li><code>broken-links</code>: rate limited (429) (https://shop.example/busy)</li>
+<li><code>explodes</code>: the check failed to run (https://shop.example/)</li>
+</ul>
 </body>
 </html>
 "

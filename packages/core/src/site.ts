@@ -1,6 +1,6 @@
 import { createPageRegistry } from "./checks/index.js";
 import type { Fetcher } from "./fetcher.js";
-import { createBudget, type Budget } from "./limits.js";
+import { createBudget, sampleCounts, type Budget } from "./limits.js";
 import type { CheckRegistry } from "./model.js";
 import type { ProgressSink } from "./progress.js";
 import { NO_PAGE_CHECKS } from "./checks/blocked.js";
@@ -135,5 +135,6 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
     const reason = `the page ${describeRefusal(pageOutcome)}`;
     result.couldNotCheck.push(...refusedIds.map((id) => ({ id, reason, url: snapshot.finalUrl })));
   }
+  result.sampled = sampleCounts(budget.summary());
   return { snapshot, result, budget };
 }

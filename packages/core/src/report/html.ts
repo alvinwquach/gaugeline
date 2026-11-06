@@ -1,4 +1,6 @@
+import { BUDGET_KINDS, kindNoun, type BudgetSummary } from "../limits.js";
 import {
+  AREAS,
   SEVERITIES,
   SEVERITY_LABEL,
   type CheckRegistry,
@@ -6,6 +8,7 @@ import {
   type Severity,
 } from "../model.js";
 import type { RunResult } from "../run.js";
+import type { CouldNotCheck } from "../runner.js";
 
 /** Text and attribute values, escaped for both (OWASP rule #1 and #2: & < > " '). */
 export function escapeHtml(value: string): string {
@@ -23,8 +26,8 @@ export interface ReportInput {
   startedAt: Date;
   /** For each finding's why, fix and technical line, and the titles of what passed. */
   registry: CheckRegistry;
-  /** The sample line ("Checked all 2 links, …"), as the terminal prints it. */
-  sampled?: string;
+  /** The run's budget summary: how much of each kind was found and read. */
+  sampled?: BudgetSummary;
   version: string;
 }
 
@@ -104,24 +107,83 @@ export function renderReport({
     parts.push(`<h2>${e(SEVERITY_LABEL[s])} <span>${list.length}</span></h2>`);
     for (const f of list) parts.push(findingHtml(f, registry));
   }
-  parts.push(`<h2>What looked right <span>${result.passed.length}</span></h2>`, '<ul class="ok">');
-  for (const id of result.passed) {
-    const title = registry.get(id)?.title;
-    parts.push(`<li>${title ? `${e(title)}: passed ` : ""}<code>${e(id)}</code></li>`);
-  }
-  parts.push("</ul>");
-  if (result.couldNotCheck.length > 0 || result.failed.length > 0) {
-    parts.push(
-      `<h2>Could not check <span>${result.couldNotCheck.length + result.failed.length}</span></h2>`,
-      "<ul>",
-    );
-    for (const c of result.couldNotCheck)
-      parts.push(`<li><code>${e(c.id)}</code>: ${e(c.reason)} (${e(c.url)})</li>`);
-    for (const f of result.failed)
-      parts.push(`<li><code>${e(f.id)}</code>: the check failed to run</li>`);
-    parts.push("</ul>");
-  }
-  if (sampled) parts.push("<h2>How much was sampled</h2>", `<p>${e(sampled)}</p>`);
+  parts.push(renderLookedRight(result.passed, registry));
+  const notChecked: CouldNotCheck[] = [
+    ...result.couldNotCheck,
+    ...result.failed.map((f) => ({ id: f.id, reason: "the check failed to run", url })),
+  ];
+  if (sampled) parts.push(renderSampled(sampled, notChecked));
   parts.push("</body>", "</html>", "");
   return parts.join("\n");
+}
+
+/**
+ * "What looked right": the checks that passed, grouped by area in the findings' area order, by
+ * their plain-English titles. No evidence and no check ids in the visible text. Empty when nothing
+ * passed, so no empty heading is written.
+ */
+export function renderLookedRight(passed: readonly string[], registry: CheckRegistry): string {
+  const e = escapeHtml;
+  const byArea = new Map<string, string[]>();
+  for (const id of passed) {
+    const check = registry.get(id);
+    if (!check) continue;
+    const list = byArea.get(check.area) ?? [];
+    list.push(check.title);
+    byArea.set(check.area, list);
+  }
+  if (byArea.size === 0) return "";
+  const out = [`<h2>What looked right <span>${passed.length}</span></h2>`];
+  for (const area of AREAS) {
+    const titles = byArea.get(area);
+    if (!titles) continue;
+    out.push(
+      `<h3>${e(area)}</h3>`,
+      '<ul class="ok">',
+      ...titles.map((t) => `<li>${e(t)}</li>`),
+      "</ul>",
+    );
+  }
+  return out.join("\n");
+}
+
+/**
+ * "How much was sampled": one line per kind with something found ("30 of 112 links checked", "all
+ * 14 links checked"), then what could not be checked, with the reason, when there is any.
+ */
+export function renderSampled(
+  sampled: BudgetSummary,
+  couldNotCheck: readonly CouldNotCheck[],
+): string {
+  const e = escapeHtml;
+  const lines: string[] = [];
+  for (const kind of BUDGET_KINDS) {
+    const { sampled: taken, found } = sampled[kind];
+    if (found === 0) continue;
+    if (kind === "frameworkAddresses") {
+      lines.push(`${found} ${kindNoun(kind, found)} ignored (never requested)`);
+      continue;
+    }
+    const noun = kindNoun(kind, found);
+    lines.push(
+      taken >= found
+        ? found === 1
+          ? `the 1 ${noun} checked`
+          : `all ${found} ${noun} checked`
+        : `${taken} of ${found} ${noun} checked`,
+    );
+  }
+  const out = ["<h2>How much was sampled</h2>"];
+  out.push(
+    lines.length === 0
+      ? "<p>Nothing was sampled: the page had no links, images or other addresses to read.</p>"
+      : `<ul>${lines.map((l) => `<li>${e(l)}</li>`).join("")}</ul>`,
+  );
+  if (couldNotCheck.length > 0) {
+    out.push("<h2>Could not check</h2>", "<ul>");
+    for (const c of couldNotCheck)
+      out.push(`<li><code>${e(c.id)}</code>: ${e(c.reason)} (${e(c.url)})</li>`);
+    out.push("</ul>");
+  }
+  return out.join("\n");
 }
