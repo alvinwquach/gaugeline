@@ -34,6 +34,7 @@ const SAMPLE_VALUES: Record<string, string> = {
   sheet: "legacy-notes.csv",
   "legacy-from": "SEO Notes",
   "legacy-review": "review.csv",
+  progress: "plan-state.json",
 };
 
 const repoRoot = fileURLToPath(new URL("../../../../", import.meta.url));
@@ -297,6 +298,10 @@ describe("flag table: e2e", () => {
             "plan",
             plan,
             ...(f.name === "legacy-review" ? ["--legacy-from", "SEO Notes"] : []),
+            // --progress and --all compare runs against a preview: they need --base.
+            ...(f.name === "progress" || f.name === "all"
+              ? ["--base", `${site.origin}/`, "--allow-private"]
+              : []),
             `--${f.name}`,
             ...(f.name === "base" ? [`${site.origin}/`, "--allow-private"] : value),
           ]

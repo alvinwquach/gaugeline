@@ -1,0 +1,18 @@
+{
+  "/classes/handbuilding": {
+    "status": 404,
+    "body": "not built yet"
+  },
+  "/shop/mugs": {
+    "status": 404,
+    "body": "not built yet"
+  },
+  "/visit": {
+    "status": 404,
+    "body": "not built yet"
+  },
+  "/gift-cards": {
+    "status": 404,
+    "body": "not built yet"
+  }
+}

@@ -50,6 +50,9 @@ export type ParsedArgs =
       /** "" when given without a file name: the default name is used. */
       annotate?: string;
       force: boolean;
+      /** "" when given without a file name: the state file beside the plan. */
+      progress?: string;
+      all: boolean;
       base?: string;
       allowPrivate: boolean;
       verbose: boolean;
@@ -108,10 +111,11 @@ export function parseCliArgs(
             ? "plan"
             : COMMAND;
   const given = command === COMMAND ? argv : argv.slice(1);
-  // --annotate takes an optional file name: alone, or before another flag, it means the default.
+  // --annotate and --progress take an optional file name: alone, or before another flag, the default.
   const rest = given.map((a, i) =>
-    a === "--annotate" && (given[i + 1] === undefined || given[i + 1]?.startsWith("-"))
-      ? "--annotate="
+    (a === "--annotate" || a === "--progress") &&
+    (given[i + 1] === undefined || given[i + 1]?.startsWith("-"))
+      ? `${a}=`
       : a,
   );
   // No flag takes a secret: a value on the command line lands in shell history and CI logs.
@@ -183,6 +187,8 @@ export function parseCliArgs(
           : [],
       ...(typeof values.annotate === "string" ? { annotate: values.annotate } : {}),
       force: values.force === true,
+      ...(typeof values.progress === "string" ? { progress: values.progress } : {}),
+      all: values.all === true,
       ...(typeof values.base === "string" ? { base: values.base } : {}),
       allowPrivate: values["allow-private"] === true,
       ...(typeof values["legacy-review"] === "string"
