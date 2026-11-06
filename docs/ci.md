@@ -21,6 +21,25 @@ jobs:
 
 Vercel and Netlify both report preview deployments to GitHub, so this runs against every preview with real content.
 
+## A protected preview
+
+A preview behind deployment protection answers every request with a login page. Store its secret
+as a CI secret and pass it in the environment; Gaugeline sends it only to the checked address and
+never prints it:
+
+```yaml title=.github/workflows/gaugeline.yml
+- run: npx gaugeline plan sitemap.csv --base ${{ github.event.deployment_status.target_url }}
+  env:
+    # Vercel: Project Settings → Deployment Protection → Protection Bypass for Automation
+    GAUGELINE_VERCEL_BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+    # Or basic auth, as user:password:
+    # GAUGELINE_BASIC_AUTH: ${{ secrets.PREVIEW_BASIC_AUTH }}
+```
+
+The same variables work for a plain check (`npx gaugeline <preview>`). Without them, a locked
+preview exits 2 ("could not run"), never 1, so the job fails for the right reason. See
+[A preview behind a password](/docs/plan-check#a-preview-behind-a-password).
+
 ## Docker
 
 ```sh title=Terminal

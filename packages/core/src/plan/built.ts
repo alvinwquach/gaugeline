@@ -1,7 +1,7 @@
 import { ConfigError, NetworkError } from "../errors.js";
 import type { Fetcher } from "../fetcher.js";
 import { SEVERITY_ORDER, type Finding } from "../model.js";
-import { classifyHop } from "../refusal.js";
+import { protectionMessage, protectionOf, type PreviewAuth } from "../fetch/preview-auth.js";
 import { buildSnapshot, type PageSnapshot } from "../snapshot.js";
 import { addressKey, groupBy, textKey } from "./keys.js";
 import type { PlanRow } from "./read.js";
@@ -155,15 +155,43 @@ export interface BuiltOptions {
   base: string;
   fetcher: Fetcher;
   file?: string;
+  /** The preview's protection secret, when one is set: named in a message, never shown. */
+  auth?: Pick<PreviewAuth, "describe">;
   /** Called after each page is read. */
   onProgress?: (done: number, total: number) => void;
 }
 
+/** A planned page that couldn't be read: the rows on it are neither checked nor passed. */
+export interface BuiltCouldNotCheck {
+  url: string;
+  reason: string;
+  lines: number[];
+}
+
+export interface BuiltResult {
+  findings: Finding[];
+  couldNotCheck: BuiltCouldNotCheck[];
+}
+
+async function read(fetcher: Fetcher, url: string, origin: string) {
+  try {
+    return await fetcher.get(url);
+  } catch (err) {
+    if (err instanceof NetworkError)
+      throw new ConfigError(`The preview at ${origin} could not be reached: ${err.message}`);
+    throw err;
+  }
+}
+
 /**
- * Fetch each planned path on the preview once and compare its rows. A preview that asks for a login
- * (401 or 403) is a ConfigError: it can't be checked, and fifty findings would be wrong.
+ * Probe the base once, then fetch each planned path on the preview once and compare its rows. A
+ * locked preview (401, 403 or a protection page on the probe) is a ConfigError: it can't be checked,
+ * and fifty findings would be wrong. A single locked page after a good probe is could-not-check.
  */
-export async function checkBuilt(rows: readonly PlanRow[], opts: BuiltOptions): Promise<Finding[]> {
+export async function checkBuilt(
+  rows: readonly PlanRow[],
+  opts: BuiltOptions,
+): Promise<BuiltResult> {
   const file = opts.file ?? "the plan";
   let origin: string;
   try {
@@ -173,31 +201,32 @@ export async function checkBuilt(rows: readonly PlanRow[], opts: BuiltOptions): 
       hint: "Give the preview's address, for example https://preview.yoursite.com.",
     });
   }
+  const locked = protectionOf((await read(opts.fetcher, `${origin}/`, origin)).at(-1));
+  if (locked) throw protectionMessage(locked, origin, opts.auth);
+
   const groups = [...groupBy(rows, (r) => addressKey({ url: r.path, path: r.path })).values()];
   const out: Finding[] = [];
+  const couldNotCheck: BuiltCouldNotCheck[] = [];
   let done = 0;
   for (const group of groups) {
     const path = group[0]?.path ?? "/";
     const url = new URL(path, origin).href;
-    let hops;
-    try {
-      hops = await opts.fetcher.get(url);
-    } catch (err) {
-      if (err instanceof NetworkError)
-        throw new ConfigError(`The preview at ${origin} could not be reached: ${err.message}`);
-      throw err;
-    }
+    const hops = await read(opts.fetcher, url, origin);
     const last = hops.at(-1);
-    const outcome = classifyHop(last);
-    if (outcome.kind === "refused" && (last?.status === 401 || last?.status === 403))
-      throw new ConfigError(
-        `The preview at ${origin} asked for a login (${last.status}): it is protected, so the plan can't be checked against it.`,
-        {
-          hint: "Check a preview that is open to read, or one you can reach with its protection bypass.",
-        },
-      );
     done++;
     opts.onProgress?.(done, groups.length);
+    const p = protectionOf(last);
+    if (p) {
+      couldNotCheck.push({
+        url,
+        reason:
+          p.kind === "password"
+            ? `asked for a password (${p.status})`
+            : `refused the request (${p.status})`,
+        lines: group.map((r) => r.line),
+      });
+      continue;
+    }
     if (last?.status === 404 || last?.status === 410) {
       out.push(
         finding(
@@ -215,7 +244,10 @@ export async function checkBuilt(rows: readonly PlanRow[], opts: BuiltOptions): 
     out.push(...compare(buildSnapshot(hops), group, origin, file));
   }
   const first = (f: Finding) => f.group?.lines[0] ?? 0;
-  return out.sort(
-    (a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity] || first(a) - first(b),
-  );
+  return {
+    findings: out.sort(
+      (a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity] || first(a) - first(b),
+    ),
+    couldNotCheck,
+  };
 }

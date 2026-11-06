@@ -1,0 +1,9 @@
+{
+  "files": "plan-built",
+  "auth": {
+    "header": "x-vercel-protection-bypass",
+    "value": "gaugeline-fixture-bypass-0001",
+    "status": 401,
+    "body": "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><title>Authentication Required</title></head><body><h1>Authentication Required</h1><p>This deployment is protected. Log in with Vercel to continue.</p><a href=\"https://vercel.com/sso-api?url=https%3A%2F%2Fharbour-preview.vercel.app%2F\">Continue with Vercel</a></body></html>"
+  }
+}

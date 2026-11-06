@@ -1,5 +1,5 @@
 import { CheckRegistry, defineCheck, type Finding } from "../model.js";
-import { BUILT_CHECK_IDS, BUILT_TITLES } from "./built.js";
+import { BUILT_CHECK_IDS, BUILT_TITLES, type BuiltResult } from "./built.js";
 import type { LegacyMention } from "./legacy-notes.js";
 import type { Plan } from "./read.js";
 import { SELF_RULES, runSelfRule, type SelfRule } from "./self.js";
@@ -12,7 +12,7 @@ export interface PlanCheckInput {
   legacy: readonly LegacyMention[];
   file: string;
   /** What checkBuilt found on --base; absent when there is no --base (those checks are skipped). */
-  built?: readonly Finding[];
+  built?: BuiltResult;
 }
 
 const WHY: Record<string, string> = {
@@ -175,8 +175,10 @@ export const planBuiltChecks = BUILT_CHECK_IDS.map((id) =>
     area: "Launch day",
     title: BUILT_TITLES[id],
     ...BUILT_TEXT[id],
-    run(input) {
-      return (input.built ?? []).filter((f) => f.checkId === id);
+    run(input, ctx) {
+      // A page that asked for a password: none of the five could read it.
+      for (const c of input.built?.couldNotCheck ?? []) ctx.couldNotCheck?.(c.url, c.reason);
+      return (input.built?.findings ?? []).filter((f) => f.checkId === id);
     },
   }),
 );
