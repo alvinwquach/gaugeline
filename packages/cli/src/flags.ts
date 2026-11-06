@@ -108,7 +108,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
   {
     name: "runs",
     type: "string",
-    description: "The folder of saved runs (gaugeline <address> --json) to read",
+    description: "The folder of saved runs (each one saved with --json) to read",
     since: "0.2.0",
     commands: ["digest"],
   },
