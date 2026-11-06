@@ -26,3 +26,8 @@ company (Harbourline Billing), its pages and keywords are made up.
   another page's secondary ("medical billing companies", "coding audits"); a page and its anchor row
   with one keyword; singular and plural keywords; placeholders ("(branded news)", "n/a", "N/A"); a
   secondary two pages share that neither has as its primary.
+- `live-nav.txt`: the invented Harbourline site's live navigation today, 51 addresses on
+  `www.harbourline.example`, for `--live` (G19): 30 planned pages (one with a trailing slash, one
+  with a query), 3 covered only by a Legacy URL, and 18 with no row, among them
+  `/specialties/wound-care-billing` and `/outsourced-healthcare-operations`.
+- `live/`: one small invented export per `--live` format (see `live/README.md`).

@@ -1,0 +1,5 @@
+"Address","Content Type","Status Code","Status","Indexability","Title 1"
+"https://www.harbourline.example/","text/html; charset=UTF-8","200","OK","Indexable","Harbourline Billing"
+"https://www.harbourline.example/specialties/wound-care-billing","text/html; charset=UTF-8","200","OK","Indexable","Wound care billing, done right"
+"https://www.harbourline.example/old-page","text/html; charset=UTF-8","404","Not Found","Non-Indexable",""
+"https://www.harbourline.example/assets/site.css","text/css","200","OK","Indexable",""
