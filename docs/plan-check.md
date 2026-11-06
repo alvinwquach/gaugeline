@@ -444,6 +444,46 @@ Columns: URL from "URL", page from "Page", title tag from "Title Tag", H1 from "
 
 `/company/press` is in the export too, and is covered: it is a row's Legacy URL.
 
+#### Adding traffic numbers
+
+The list of what exists usually comes from a crawl or a sitemap, and the traffic from Search
+Console: two downloads from two tools. `--rank <export>` joins the second to the first, so the
+missing pages with visits are at the top, without merging the files in a spreadsheet:
+
+```bash
+npx gaugeline plan sitemap.csv --live crawl.csv --rank gsc-pages.csv
+```
+
+- It reads a Search Console Performance export of **pages** (Top pages, Clicks, Impressions, CTR,
+  Position) or a rank tracker's export (an address column and a position or rank column), and
+  matches column names loosely. The Queries tab has no addresses: it stops the run (exit 2) and
+  says which export to download.
+- Pages join on their path, so `http`/`https`, `www.`, case, a trailing slash and a query string
+  don't matter. A page on two rows has its clicks added up and keeps its better position.
+- Missing pages are sorted by clicks, then impressions, then position, then path; pages with no
+  numbers come last. The numbers go in the evidence, with the date range when the export states one
+  (a "Date range" line above the header). A 7-day export says so, and isn't scaled.
+- `--rank` wins over a clicks column in the `--live` file, and the first line says which file the
+  numbers came from. Pages in the export that are neither live nor planned are one low finding,
+  `plan-rank-unknown-address`: often an export of another property.
+- Only numbers are read. No request is made, and query text never reaches a finding.
+
+With the three-row plan, a crawl export and a Search Console pages export of the invented site
+(`packages/fixtures/plans/live/`), `gaugeline plan plan.csv --live crawl.csv --rank gsc-pages.csv`
+prints:
+
+```text title=Output
+Read 3 pages from plan.csv.
+Columns: URL from "URL", page from "Page", title tag from "Title Tag", H1 from "H1", legacy URL from "Legacy URL".
+1 live page has no row in the plan. 1 of them had clicks: 310 in total. Numbers from gsc-pages.csv, 1 Sep 2026 – 30 Sep 2026.
+✗ A page that exists today has no row in the plan
+    /specialties/wound-care-billing exists today and has no row or redirect in the plan (310 clicks, 5,400 impressions, position 7.9, 1 Sep 2026 – 30 Sep 2026)
+· Addresses in the rank export are neither live nor planned
+    28 addresses in gsc-pages.csv are in neither --live nor the plan, e.g. /2019/press-release, /billing-services/topic-01, /billing-services/topic-06
+
+2 to look at, 1 to fix first.
+```
+
 ### Sending the result back to whoever owns the spreadsheet
 
 Each plan finding covers a group of rows (three rows on one address is one decision, so it is one

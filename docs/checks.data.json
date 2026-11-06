@@ -1290,6 +1290,16 @@
     "tech": "The legacy address has a query; the trail's final address has none"
   },
   {
+    "id": "plan-rank-unknown-address",
+    "severity": "low",
+    "area": "Launch day",
+    "title": "Addresses in the rank export are neither live nor planned",
+    "what": "Pages in the --rank export (Search Console or a rank tracker) are neither in the --live list nor in the plan.",
+    "why": "Usually the export is of another site or property, or of pages already gone: the numbers on the uncovered list may not be the site's.",
+    "fix": "Check the export is of this site's property and recent, or add the pages to --live if they still exist.",
+    "tech": "Export paths (the --live key: lower case, no trailing slash, no query or host) not in the set of live paths or row paths. One finding with the count and three examples"
+  },
+  {
     "id": "plan-keyword-overlap",
     "severity": "low",
     "area": "Launch day",

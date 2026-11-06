@@ -59,6 +59,11 @@ import {
   type CoverageOptions,
   type CoverageResult,
   type LiveRead,
+  coverageKey,
+  rankUncovered,
+  rankUnknown,
+  readRankExport,
+  type Finding,
 } from "@gaugeline/core";
 import { parseCliArgs } from "./args.js";
 import { HELP } from "./help.js";
@@ -331,8 +336,14 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         });
         if (!args.quiet) for (const note of redirects.notes) io.stderr.write(`${note}\n`);
       }
+      if (args.rank !== undefined && args.live === undefined)
+        throw new ConfigError(
+          "--rank adds traffic numbers to the pages --live finds missing from the plan: add --live.",
+        );
       // --live: what exists today, read as a stream, against every planned and legacy path.
       let coverage: CoverageResult | undefined;
+      let rankUnknownFindings: Finding[] | undefined;
+      let rankSummary: string | undefined;
       if (args.live !== undefined) {
         const livePath = resolve(cwd, args.live);
         if (!existsSync(livePath) || !statSync(livePath).isFile())
@@ -344,16 +355,43 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         let format: LiveRead | undefined;
         const options: CoverageOptions = {
           file: basename(args.file),
+          ...(args.rank !== undefined ? { keepLive: true } : {}),
           ...(args.ignore.length > 0 ? { ignore: args.ignore } : {}),
         };
         coverage = await checkCoverage(
           plan.rows,
           readLive(createReadStream(livePath), (r) => {
             format = r;
-            if (r.metric) options.metric = r.metric;
+            // --rank wins over --live's own clicks column.
+            if (r.metric && args.rank === undefined) options.metric = r.metric;
           }),
           options,
         );
+        // --rank: the traffic numbers, joined on the same path key, read as a stream. No request.
+        if (args.rank !== undefined) {
+          const rankPath = resolve(cwd, args.rank);
+          if (!existsSync(rankPath) || !statSync(rankPath).isFile())
+            throw new ConfigError(`--rank: ${args.rank} could not be read.`);
+          const rank = await readRankExport(createReadStream(rankPath));
+          const ranked = rankUncovered(coverage.findings, rank, {
+            pages: coverage.pages,
+            file: basename(args.rank),
+          });
+          coverage = { ...coverage, findings: ranked.findings };
+          rankSummary = ranked.summary;
+          const planned = new Set(
+            plan.rows.flatMap((r) => {
+              const k = coverageKey(r.path);
+              return k ? [k] : [];
+            }),
+          );
+          const live = coverage.liveKeys;
+          rankUnknownFindings = rankUnknown(
+            rank,
+            (k) => planned.has(k) || live?.has(k) === true,
+            basename(args.rank),
+          );
+        }
         if (!args.quiet)
           io.stderr.write(
             `Read ${coverage.live} live address${coverage.live === 1 ? "" : "es"} from ${args.live} (${describeLive(format)}); ${coverage.ignored} left out as assets, feeds, paged or --ignore\n`,
@@ -368,12 +406,14 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           ...(built ? { built } : {}),
           ...(redirects ? { redirects } : {}),
           ...(coverage ? { coverage } : {}),
+          ...(rankUnknownFindings ? { rankUnknown: rankUnknownFindings } : {}),
         },
         createPlanRegistry(),
         {
           skip: [
             ...(built ? [] : [...BUILT_CHECK_IDS, ...REDIRECT_CHECK_IDS]),
             ...(coverage ? [] : ["plan-uncovered-page"]),
+            ...(rankUnknownFindings ? [] : ["plan-rank-unknown-address"]),
           ],
         },
       );
@@ -412,6 +452,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           ];
         }
       }
+      if (rankSummary) io.stdout.write(`${rankSummary}\n`);
       io.stdout.write(
         formatTerminal({
           result: shown,

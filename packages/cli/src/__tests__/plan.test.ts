@@ -348,6 +348,41 @@ describe("gaugeline plan: e2e (CLI)", () => {
     );
   });
 
+  it("--rank: the uncovered list highest clicks first, with the summary line; --rank without --live is exit 2", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "gaugeline-rank-"));
+    dirs.push(dir);
+    for (const f of ["plan.csv", "crawl.csv", "gsc-pages.csv", "search-console.csv"])
+      cpSync(join(SITES_DIR, "..", "plans", "live", f), join(dir, f));
+    const run = capture();
+    expect(
+      await main(["plan", "plan.csv", "--live", "crawl.csv", "--rank", "gsc-pages.csv"], run.io, {
+        cwd: dir,
+      }),
+    ).toBe(1);
+    expect(withoutPassed(run.out()).trimEnd()).toBe(
+      expectedOutput("plan-check", "Adding traffic numbers"),
+    );
+    const alone = capture();
+    expect(
+      await main(["plan", "plan.csv", "--rank", "gsc-pages.csv"], alone.io, { cwd: dir }),
+    ).toBe(2);
+    expect(alone.err()).toContain(
+      "--rank adds traffic numbers to the pages --live finds missing from the plan: add --live.",
+    );
+    // The Queries tab: exit 2 naming the export to download.
+    writeFileSync(
+      join(dir, "queries.csv"),
+      "Top queries,Clicks,Impressions,CTR,Position\nbilling,4,40,10%,3\n",
+    );
+    const queries = capture();
+    expect(
+      await main(["plan", "plan.csv", "--live", "crawl.csv", "--rank", "queries.csv"], queries.io, {
+        cwd: dir,
+      }),
+    ).toBe(2);
+    expect(queries.err()).toContain("open the Pages tab and export that");
+  });
+
   it("a legacy address claimed by two rows is a conflict without --base", async () => {
     const dir = workdir();
     writeFileSync(join(dir, "claims.csv"), "URL,Legacy URL\n/a,/old\n/b,/old\n");

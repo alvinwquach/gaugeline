@@ -55,6 +55,7 @@ export type ParsedArgs =
       all: boolean;
       printed?: string;
       live?: string;
+      rank?: string;
       ignore: string[];
       base?: string;
       allowPrivate: boolean;
@@ -206,6 +207,7 @@ export function parseCliArgs(
       all: values.all === true,
       ...(typeof values.printed === "string" ? { printed: values.printed } : {}),
       ...(typeof values.live === "string" ? { live: values.live } : {}),
+      ...(typeof values.rank === "string" ? { rank: values.rank } : {}),
       ignore: Array.isArray(values.ignore)
         ? values.ignore
         : typeof values.ignore === "string"
