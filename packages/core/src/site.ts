@@ -3,6 +3,8 @@ import type { Fetcher } from "./fetcher.js";
 import { createBudget, type Budget } from "./limits.js";
 import type { CheckRegistry } from "./model.js";
 import type { ProgressSink } from "./progress.js";
+import { NO_PAGE_CHECKS } from "./checks/blocked.js";
+import { classifyHop, describeRefusal } from "./refusal.js";
 import { runChecks, type RunOptions, type RunResult } from "./run.js";
 import { dedupeUrls } from "./sample.js";
 import { lazyAppLookups } from "./apps.js";
@@ -80,7 +82,19 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
   sink({ step: "scripts" });
   const images = lazyImageSample({ page: snapshot, fetcher: opts.fetcher, budget });
   const site = lazySiteContext({ page: snapshot, fetcher: opts.fetcher, budget });
-  const result = await runChecks(snapshot, opts.registry ?? createPageRegistry(), {
+  const registry = opts.registry ?? createPageRegistry();
+  // The page itself refused: run only the checks that need no page; list the rest as could not
+  // check. No retry, no other user agent, no extra headers.
+  const pageOutcome = classifyHop(snapshot.hops.at(-1));
+  const wanted = registry
+    .all()
+    .map((c) => c.id)
+    .filter((id) => (!opts.only || opts.only.includes(id)) && !(opts.skip ?? []).includes(id));
+  const refusedIds =
+    pageOutcome.kind === "refused" ? wanted.filter((id) => !NO_PAGE_CHECKS.includes(id)) : [];
+  const only =
+    pageOutcome.kind === "refused" ? wanted.filter((id) => NO_PAGE_CHECKS.includes(id)) : opts.only;
+  const result = await runChecks(snapshot, registry, {
     ctx: {
       fetcher: opts.fetcher,
       budget,
@@ -114,8 +128,12 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
       ...(opts.expect ? { expect: opts.expect } : {}),
     },
     onProgress: sink,
-    ...(opts.only ? { only: opts.only } : {}),
+    ...(only ? { only } : {}),
     ...(opts.skip ? { skip: opts.skip } : {}),
   });
+  if (pageOutcome.kind === "refused") {
+    const reason = `the page ${describeRefusal(pageOutcome)}`;
+    result.couldNotCheck.push(...refusedIds.map((id) => ({ id, reason, url: snapshot.finalUrl })));
+  }
   return { snapshot, result, budget };
 }

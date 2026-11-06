@@ -302,19 +302,18 @@ export async function buildSiteContext({
     starts,
     budget.remaining("sitemapPages"),
   );
-  // A sitemap that lists framework addresses: counted as ignored, never sampled.
+  // A sitemap that lists framework addresses: counted as ignored, never sampled, and left out of
+  // sitemapUrls so each sample lines up with the address it was taken from.
   budget.take("frameworkAddresses", urls.filter(isFrameworkUrl));
-  const sampled = budget.take(
-    "sitemapPages",
-    urls.filter((u) => !isFrameworkUrl(u)),
-  );
+  const pageUrls = urls.filter((u) => !isFrameworkUrl(u));
+  const sampled = budget.take("sitemapPages", pageUrls);
   const sitemapSample = await Promise.all(sampled.map((u) => probe(u, fetcher)));
   return {
     robotsUrl,
     robots,
     robotsState: state,
     sitemaps,
-    sitemapUrls: urls,
+    sitemapUrls: pageUrls,
     sitemapAlternates: alternates,
     sitemapSample,
     feeds: await feedsRead,

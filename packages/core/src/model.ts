@@ -109,6 +109,11 @@ export interface CheckContext {
    * source is connected (branch 30): next-stale-after-publish is then unchecked.
    */
   contentChanges?: () => Promise<{ url: string; changedAt: Date }[]>;
+  /**
+   * Record something this check could not read because the site refused it (401, 403, 429, a
+   * challenge page): it goes under the check in couldNotCheck, and the check is not passed.
+   */
+  couldNotCheck?(url: string, reason: string): void;
   /** The last run's snapshot of this page (--since last), for the checks that report a change. */
   previous?: RunSnapshot;
   /** Sections hidden until launch (gaugeline.hidden.json). */

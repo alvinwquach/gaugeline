@@ -31,6 +31,7 @@
     "app-link-dead",
     "app-name-mismatch",
     "app-smart-banner-mismatch",
+    "blocked",
     "broken-links",
     "canonical-elsewhere",
     "canonical-missing",
@@ -135,6 +136,7 @@
     "app-link-dead": "high",
     "app-name-mismatch": "low",
     "app-smart-banner-mismatch": "medium",
+    "blocked": "low",
     "broken-links": "high",
     "canonical-elsewhere": "high",
     "canonical-missing": "low",
@@ -242,5 +244,5 @@
     1,
     2
   ],
-  "jsonSchema": 1
+  "jsonSchema": 2
 }

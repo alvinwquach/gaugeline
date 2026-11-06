@@ -6,6 +6,7 @@ import { aiCrawlersBlocked } from "./ai-crawlers-blocked.js";
 import { appLinkDead } from "./app-link-dead.js";
 import { appNameMismatch } from "./app-name-mismatch.js";
 import { appSmartBannerMismatch } from "./app-smart-banner-mismatch.js";
+import { blocked } from "./blocked.js";
 import { brokenLinks } from "./broken-links.js";
 import { canonicalElsewhere } from "./canonical-elsewhere.js";
 import { canonicalMissing } from "./canonical-missing.js";
@@ -111,6 +112,7 @@ export const PAGE_CHECKS = [
   appLinkDead,
   appNameMismatch,
   appSmartBannerMismatch,
+  blocked,
   brokenLinks,
   canonicalElsewhere,
   canonicalMissing,

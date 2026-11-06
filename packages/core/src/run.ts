@@ -2,7 +2,7 @@ import { ConfigError } from "./errors.js";
 import type { CheckContext, CheckRegistry, Finding } from "./model.js";
 import { SEVERITY_ORDER } from "./model.js";
 import type { ProgressSink } from "./progress.js";
-import { runCheckList } from "./runner.js";
+import { runCheckList, type CouldNotCheck } from "./runner.js";
 
 export interface RunOptions {
   /** Run only these check ids. */
@@ -20,6 +20,8 @@ export interface RunResult {
   passed: string[];
   failed: { id: string; error: string }[];
   warnings: string[];
+  /** Checks that could not read what they needed (a refusal), with the reason and the address. */
+  couldNotCheck: CouldNotCheck[];
 }
 
 function unknownIds(ids: readonly string[] | undefined, registry: CheckRegistry): string[] {
@@ -61,5 +63,11 @@ export async function runChecks<I>(
         a.i - b.i,
     )
     .map(({ f }) => f);
-  return { findings, passed: out.passed, failed: out.failures, warnings: out.warnings };
+  return {
+    findings,
+    passed: out.passed,
+    failed: out.failures,
+    warnings: out.warnings,
+    couldNotCheck: out.couldNotCheck,
+  };
 }

@@ -1,4 +1,4 @@
-import { resultSchema, type Result } from "../../packages/core/src/index.js";
+import { RESULT_SCHEMA_VERSION, resultSchema, type Result } from "../../packages/core/src/index.js";
 
 const LEVEL = { high: "Fix this first", medium: "Fix soon", low: "Worth knowing" } as const;
 const ORDER = { high: 0, medium: 1, low: 2 } as const;
@@ -6,8 +6,10 @@ const ORDER = { high: 0, medium: 1, low: 2 } as const;
 /** Markdown for the job summary and the issue body. Validates the --json output first. */
 export function summarise(json: unknown): string {
   const schema = (json as { schema?: unknown } | null)?.schema;
-  if (schema !== 1)
-    throw new Error(`Expected a Gaugeline result with schema 1, got schema ${String(schema)}.`);
+  if (schema !== RESULT_SCHEMA_VERSION)
+    throw new Error(
+      `Expected a Gaugeline result with schema ${RESULT_SCHEMA_VERSION}, got schema ${String(schema)}.`,
+    );
   const result: Result = resultSchema.parse(json);
   const count = (s: keyof typeof LEVEL) => result.findings.filter((f) => f.severity === s).length;
   const lines = [

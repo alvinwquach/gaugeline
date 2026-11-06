@@ -12,7 +12,8 @@ const result = (
   findings: { checkId: string; severity: "high" | "medium" | "low" }[],
   passed: string[] = [],
 ) => ({
-  schema: 1,
+  schema: 2,
+  couldNotCheck: [],
   url: "https://docs.example/",
   startedAt: "2026-01-01T00:00:00.000Z",
   findings: findings.map((f) => ({
@@ -55,8 +56,8 @@ describe("summarise: unit", () => {
     );
   });
 
-  it("JSON with a schema other than 1 throws, naming the schema number", () => {
-    expect(() => summarise({ ...result([]), schema: 2 })).toThrow("got schema 2");
+  it("JSON with a schema other than the current one throws, naming the schema number", () => {
+    expect(() => summarise({ ...result([]), schema: 1 })).toThrow("got schema 1");
   });
 });
 
@@ -101,7 +102,7 @@ describe("dogfood: integration (built bin against fixtures)", () => {
     expect(r.status, r.stderr).toBe(0);
     expect(
       (JSON.parse(readFileSync(join(r.out, "findings.json"), "utf8")) as { schema: number }).schema,
-    ).toBe(1);
+    ).toBe(2);
     expect(readFileSync(join(r.out, "step-summary.md"), "utf8")).toContain("**0 to fix first**");
   }, 60_000);
 
