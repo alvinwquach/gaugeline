@@ -99,6 +99,13 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     commands: ["check", "launch"],
   },
   {
+    name: "email",
+    type: "string",
+    description: "Email the full report to these addresses through Resend (or set GAUGELINE_EMAIL)",
+    since: "0.2.0",
+    commands: ["check", "launch"],
+  },
+  {
     name: "notify-on",
     type: "string",
     description: "When to send: any (something was found, the default), high or always",

@@ -1,0 +1,138 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`email: unit > buildEmail for a clean result (snapshot) > html 1`] = `
+"<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gaugeline report: https://shop.example/tools?x=1</title>
+</head>
+<body><div style="font:16px/1.5 system-ui,-apple-system,'Segoe UI',sans-serif;color:#101828;max-width:52rem;margin:0 auto;padding:0 1rem">
+<h1 style="font-size:1.5rem;margin:0 0 .25rem">Gaugeline report</h1>
+<p style="color:#667085;margin:0 0 1.5rem">https://shop.example/tools?x=1 · 2026-11-06T12:00:00.000Z · Gaugeline 0.1.0</p>
+<ul style="padding:0;list-style:none">
+<li style="display:inline-block;border:1px solid #eaecf0;border-radius:.5rem;padding:.5rem .75rem;margin:0 .5rem .5rem 0;color:#b42318">Fix this first: <strong>0</strong></li>
+<li style="display:inline-block;border:1px solid #eaecf0;border-radius:.5rem;padding:.5rem .75rem;margin:0 .5rem .5rem 0;color:#b54708">Fix soon: <strong>0</strong></li>
+<li style="display:inline-block;border:1px solid #eaecf0;border-radius:.5rem;padding:.5rem .75rem;margin:0 .5rem .5rem 0;color:#475467">Worth knowing: <strong>0</strong></li>
+</ul>
+<p style="margin:.25rem 0"><strong>Nothing to fix.</strong> Every check that ran passed.</p>
+<h2>What looked right <span>2</span></h2>
+<h3>Search &amp; sharing</h3>
+<ul class="ok">
+<li>This page asks search engines not to list it</li>
+</ul>
+<h3>Visitors</h3>
+<ul class="ok">
+<li>This page isn&#39;t set up for phone screens</li>
+</ul>
+<h2>How much was sampled</h2>
+<p>Nothing was sampled: the page had no links, images or other addresses to read.</p>
+<h2>Could not check</h2>
+<ul>
+<li><code>sitemap-dead</code>: refused automated readers (403) (https://shop.example/a)</li>
+</ul>
+</div></body>
+</html>
+"
+`;
+
+exports[`email: unit > buildEmail for a mixed result (snapshot) > html 1`] = `
+"<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gaugeline report: https://shop.example/tools?x=1</title>
+</head>
+<body><div style="font:16px/1.5 system-ui,-apple-system,'Segoe UI',sans-serif;color:#101828;max-width:52rem;margin:0 auto;padding:0 1rem">
+<h1 style="font-size:1.5rem;margin:0 0 .25rem">Gaugeline report</h1>
+<p style="color:#667085;margin:0 0 1.5rem">https://shop.example/tools?x=1 · 2026-11-06T12:00:00.000Z · Gaugeline 0.1.0</p>
+<ul style="padding:0;list-style:none">
+<li style="display:inline-block;border:1px solid #eaecf0;border-radius:.5rem;padding:.5rem .75rem;margin:0 .5rem .5rem 0;color:#b42318">Fix this first: <strong>2</strong></li>
+<li style="display:inline-block;border:1px solid #eaecf0;border-radius:.5rem;padding:.5rem .75rem;margin:0 .5rem .5rem 0;color:#b54708">Fix soon: <strong>1</strong></li>
+<li style="display:inline-block;border:1px solid #eaecf0;border-radius:.5rem;padding:.5rem .75rem;margin:0 .5rem .5rem 0;color:#475467">Worth knowing: <strong>1</strong></li>
+</ul>
+<p style="color:#667085;margin:0 0 1.5rem">Full report: https://reports.example/r/1</p>
+<h2 style="font-size:1.15rem;margin:2rem 0 .5rem">Fix this first <span style="color:#667085;font-weight:400">2</span></h2>
+<article style="border-left:4px solid;padding:.25rem 0 .25rem .75rem;margin:1rem 0;border-color:#b42318">
+<h3 dir="auto" style="font-size:1rem;margin:0">Finding 0</h3>
+<p style="margin:.25rem 0"><strong>Why it matters:</strong> Search engines treat the page as a copy, so it may never appear in results.</p>
+<p style="margin:.25rem 0"><strong>How to fix:</strong> Give each page a canonical tag that points at its own address. Shared SEO components are the usual cause.</p>
+<p style="margin:.25rem 0;color:#475467;font-size:.875rem" dir="auto"><code style="font-family:ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;word-break:break-word">evidence 0</code></p>
+<p style="margin:.25rem 0;color:#475467;font-size:.875rem">&lt;link rel=&quot;canonical&quot;&gt; on the page points at another URL</p>
+<p style="margin:.25rem 0;color:#475467;font-size:.875rem">canonical-elsewhere · https://shop.example/</p>
+</article>
+<article style="border-left:4px solid;padding:.25rem 0 .25rem .75rem;margin:1rem 0;border-color:#b42318">
+<h3 dir="auto" style="font-size:1rem;margin:0">Finding 1</h3>
+<p style="margin:.25rem 0"><strong>Why it matters:</strong> Search engines treat the page as a copy, so it may never appear in results.</p>
+<p style="margin:.25rem 0"><strong>How to fix:</strong> Give each page a canonical tag that points at its own address. Shared SEO components are the usual cause.</p>
+<p style="margin:.25rem 0;color:#475467;font-size:.875rem" dir="auto"><code style="font-family:ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;word-break:break-word">evidence 1</code></p>
+<p style="margin:.25rem 0;color:#475467;font-size:.875rem">&lt;link rel=&quot;canonical&quot;&gt; on the page points at another URL</p>
+<p style="margin:.25rem 0;color:#475467;font-size:.875rem">canonical-elsewhere · https://shop.example/</p>
+</article>
+<h2 style="font-size:1.15rem;margin:2rem 0 .5rem">Fix soon <span style="color:#667085;font-weight:400">1</span></h2>
+<article style="border-left:4px solid;padding:.25rem 0 .25rem .75rem;margin:1rem 0;border-color:#b54708">
+<h3 dir="auto" style="font-size:1rem;margin:0">Finding 2</h3>
+<p style="margin:.25rem 0"><strong>Why it matters:</strong> Search engines treat the page as a copy, so it may never appear in results.</p>
+<p style="margin:.25rem 0"><strong>How to fix:</strong> Give each page a canonical tag that points at its own address. Shared SEO components are the usual cause.</p>
+<p style="margin:.25rem 0;color:#475467;font-size:.875rem" dir="auto"><code style="font-family:ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;word-break:break-word">evidence 2</code></p>
+<p style="margin:.25rem 0;color:#475467;font-size:.875rem">&lt;link rel=&quot;canonical&quot;&gt; on the page points at another URL</p>
+<p style="margin:.25rem 0;color:#475467;font-size:.875rem">canonical-elsewhere · https://shop.example/</p>
+</article>
+<h2 style="font-size:1.15rem;margin:2rem 0 .5rem">Worth knowing <span style="color:#667085;font-weight:400">1</span></h2>
+<article style="border-left:4px solid;padding:.25rem 0 .25rem .75rem;margin:1rem 0;border-color:#475467">
+<h3 dir="auto" style="font-size:1rem;margin:0">Finding 3</h3>
+<p style="margin:.25rem 0"><strong>Why it matters:</strong> Search engines treat the page as a copy, so it may never appear in results.</p>
+<p style="margin:.25rem 0"><strong>How to fix:</strong> Give each page a canonical tag that points at its own address. Shared SEO components are the usual cause.</p>
+<p style="margin:.25rem 0;color:#475467;font-size:.875rem" dir="auto"><code style="font-family:ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;word-break:break-word">evidence 3</code></p>
+<p style="margin:.25rem 0;color:#475467;font-size:.875rem">&lt;link rel=&quot;canonical&quot;&gt; on the page points at another URL</p>
+<p style="margin:.25rem 0;color:#475467;font-size:.875rem">canonical-elsewhere · https://shop.example/</p>
+</article>
+<h2>What looked right <span>2</span></h2>
+<h3>Search &amp; sharing</h3>
+<ul class="ok">
+<li>This page asks search engines not to list it</li>
+</ul>
+<h3>Visitors</h3>
+<ul class="ok">
+<li>This page isn&#39;t set up for phone screens</li>
+</ul>
+<h2>How much was sampled</h2>
+<p>Nothing was sampled: the page had no links, images or other addresses to read.</p>
+<h2>Could not check</h2>
+<ul>
+<li><code>sitemap-dead</code>: refused automated readers (403) (https://shop.example/a)</li>
+</ul>
+</div></body>
+</html>
+"
+`;
+
+exports[`email: unit > buildEmail for a mixed result (snapshot) > text 1`] = `
+"Gaugeline checked https://shop.example/tools?x=1
+
+Fix this first (2)
+- Finding 0
+  evidence 0
+  canonical-elsewhere · https://shop.example/
+- Finding 1
+  evidence 1
+  canonical-elsewhere · https://shop.example/
+
+Fix soon (1)
+- Finding 2
+  evidence 2
+  canonical-elsewhere · https://shop.example/
+
+Worth knowing (1)
+- Finding 3
+  evidence 3
+  canonical-elsewhere · https://shop.example/
+
+Could not check
+- sitemap-dead: refused automated readers (403) (https://shop.example/a)
+
+Full report: https://reports.example/r/1
+"
+`;

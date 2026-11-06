@@ -64,6 +64,8 @@ Options:
                               GAUGELINE_DISCORD_WEBHOOK)
       --webhook <value>       POST the result as JSON to this address (or set
                               GAUGELINE_WEBHOOK)
+      --email <value>         Email the full report to these addresses through
+                              Resend (or set GAUGELINE_EMAIL)
       --notify-on <value>     When to send: any (something was found, the
                               default), high or always
       --report-url <value>    Link each message to a hosted copy of the report
@@ -173,6 +175,8 @@ Options:
                               GAUGELINE_DISCORD_WEBHOOK)
       --webhook <value>       POST the result as JSON to this address (or set
                               GAUGELINE_WEBHOOK)
+      --email <value>         Email the full report to these addresses through
+                              Resend (or set GAUGELINE_EMAIL)
       --notify-on <value>     When to send: any (something was found, the
                               default), high or always
       --report-url <value>    Link each message to a hosted copy of the report
@@ -205,6 +209,7 @@ between the markers; CI fails when it differs from the flag table.
 | `--slack <value>`      | Send a summary to this Slack incoming webhook (or set GAUGELINE_SLACK_WEBHOOK)                     |                      | 0.2.0 |
 | `--discord <value>`    | Send an embed to this Discord webhook (or set GAUGELINE_DISCORD_WEBHOOK)                           |                      | 0.2.0 |
 | `--webhook <value>`    | POST the result as JSON to this address (or set GAUGELINE_WEBHOOK)                                 |                      | 0.2.0 |
+| `--email <value>`      | Email the full report to these addresses through Resend (or set GAUGELINE_EMAIL)                   |                      | 0.2.0 |
 | `--notify-on <value>`  | When to send: any (something was found, the default), high or always                               |                      | 0.2.0 |
 | `--report-url <value>` | Link each message to a hosted copy of the report at this address                                   |                      | 0.2.0 |
 | `--quiet`              | Print only results and errors                                                                      |                      | 0.1.0 |

@@ -174,10 +174,30 @@ export { SANITY_QUERY, readDataset, sanityQueryUrl, sanityRefs } from "./sanity.
 export type { DatasetRead, SanityRef } from "./sanity.js";
 export { readScripts } from "./scripts.js";
 export { EMAIL_PRESET, LAUNCH_PRESET } from "./presets.js";
-export { CHANNELS, NOTIFY_ON, notifyAll, resolveTargets, shouldNotify } from "./notify/index.js";
-export type { Channel, NotifyOn, Sent, Target } from "./notify/index.js";
+export {
+  CHANNELS,
+  EMAIL_ENV,
+  EMAIL_FROM_ENV,
+  NOTIFY_ON,
+  RESEND_KEY_ENV,
+  notifyAll,
+  resolveTargets,
+  shouldNotify,
+} from "./notify/index.js";
+export type { Channel, ChannelId, EmailOptions, NotifyOn, Sent, Target } from "./notify/index.js";
+export {
+  EMAIL_CUT_FINDINGS,
+  EMAIL_MAX_BYTES,
+  ONBOARDING_FROM,
+  RESEND_EMAILS_URL,
+  buildEmail,
+  emailSubject,
+  parseAddresses,
+  sendEmail,
+} from "./notify/email.js";
+export type { BuiltEmail, EmailSettings } from "./notify/email.js";
 export { discordPayload, slackPayload, webhookPayload } from "./notify/payloads.js";
-export { NOTIFY_TIMEOUT_MS, postJson, safeTarget } from "./notify/post.js";
+export { NOTIFY_TIMEOUT_MS, postJson, providerMessage, safeTarget } from "./notify/post.js";
 export { escapeHtml, renderLookedRight, renderReport, renderSampled } from "./report/html.js";
 export type { ReportInput } from "./report/html.js";
 export {
