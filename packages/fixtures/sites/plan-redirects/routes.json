@@ -1,0 +1,34 @@
+{
+  "/old-fiction": {
+    "status": 301,
+    "location": "/fiction"
+  },
+  "/fiction-old": {
+    "status": 301,
+    "location": "/fiction"
+  },
+  "/old-poetry": {
+    "status": 302,
+    "location": "/poetry"
+  },
+  "/old-events": {
+    "status": 301,
+    "location": "/old-events/"
+  },
+  "/old-events/": {
+    "status": 301,
+    "location": "/events"
+  },
+  "/old-gifts": {
+    "status": 301,
+    "location": "/shop"
+  },
+  "/old-kids": {
+    "status": 308,
+    "location": "/kids"
+  },
+  "/old-blog": {
+    "status": 301,
+    "location": "/blog"
+  }
+}
