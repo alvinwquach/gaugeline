@@ -54,8 +54,22 @@ const TYPES: Record<string, string> = {
   ".ics": "text/calendar",
 };
 
-/** Files whose text may hold the {{origin}} placeholder. */
-const TEXT_EXTS: ReadonlySet<string> = new Set([".html", ".xml", ".txt"]);
+/** Files whose text may hold the {{origin}} and {{planted:<name>}} placeholders. */
+const TEXT_EXTS: ReadonlySet<string> = new Set([".html", ".xml", ".txt", ".js"]);
+
+/**
+ * Invented key-shaped values for the leaked-key fixtures, put together here at serve time so no
+ * key-shaped string is in the repository for a scanner to flag. None of them is a real key.
+ */
+export const PLANTED: Readonly<Record<string, string>> = Object.freeze({
+  "stripe-secret": ["sk", "live", "GaugelineFixtureNotAKey00"].join("_"),
+  "stripe-publishable": ["pk", "live", "GaugelineFixturePublic000"].join("_"),
+});
+
+/** Replace {{planted:<name>}} with the invented value of that name. */
+export function withPlanted(text: string): string {
+  return text.replace(/\{\{planted:([a-z-]+)\}\}/g, (all, name: string) => PLANTED[name] ?? all);
+}
 
 /**
  * Replace {{origin}} with the origin the request was made to, so a sitemap or robots.txt can list
@@ -166,7 +180,9 @@ export async function startFixture(name: string): Promise<Fixture> {
       res
         .writeHead(route?.status ?? 200, { "content-type": type, ...headers })
         .end(
-          TEXT_EXTS.has(extname(file)) ? withOrigin(bytes.toString("utf8"), req, portHosts) : bytes,
+          TEXT_EXTS.has(extname(file))
+            ? withPlanted(withOrigin(bytes.toString("utf8"), req, portHosts))
+            : bytes,
         );
     };
     if (route?.delayMs) setTimeout(answer, route.delayMs);

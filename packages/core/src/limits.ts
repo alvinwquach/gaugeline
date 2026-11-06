@@ -25,6 +25,8 @@ export const LIMITS = Object.freeze({
   /** Square and Stripe payment links read (GET, nothing submitted). */
   checkoutLinks: 5,
   scripts: 15,
+  /** Sanity datasets asked for their document count and type names (no token, no contents). */
+  sanityDatasets: 2,
   structuredDataAddresses: 12,
   concurrency: 5,
   redirectHops: 10,
@@ -46,6 +48,7 @@ export type BudgetKind =
   | "paymentLinks"
   | "checkoutLinks"
   | "scripts"
+  | "sanityDatasets"
   | "structuredDataAddresses";
 
 /** Report order. */
@@ -62,6 +65,7 @@ export const BUDGET_KINDS = [
   "paymentLinks",
   "checkoutLinks",
   "scripts",
+  "sanityDatasets",
   "structuredDataAddresses",
 ] as const satisfies readonly BudgetKind[];
 
@@ -121,6 +125,7 @@ const NOUNS: Record<BudgetKind, [singular: string, plural: string]> = {
   paymentLinks: ["payment link", "payment links"],
   checkoutLinks: ["checkout link", "checkout links"],
   scripts: ["JavaScript file", "JavaScript files"],
+  sanityDatasets: ["Sanity dataset", "Sanity datasets"],
   structuredDataAddresses: ["address in structured data", "addresses in structured data"],
 };
 

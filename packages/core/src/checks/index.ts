@@ -7,6 +7,8 @@ import { appSmartBannerMismatch } from "./app-smart-banner-mismatch.js";
 import { brokenLinks } from "./broken-links.js";
 import { canonicalElsewhere } from "./canonical-elsewhere.js";
 import { canonicalMissing } from "./canonical-missing.js";
+import { datasetPrivateTypes } from "./dataset-private-types.js";
+import { datasetPublic } from "./dataset-public.js";
 import { duplicateTitle } from "./duplicate-title.js";
 import { eventJsonldMismatch } from "./event-jsonld-mismatch.js";
 import { eventLocationMismatch } from "./event-location-mismatch.js";
@@ -66,6 +68,7 @@ import { schemaDanglingRef } from "./schema-dangling-ref.js";
 import { schemaIdDrift } from "./schema-id-drift.js";
 import { schemaOrgRedefined } from "./schema-org-redefined.js";
 import { schemaTemplateMissingType } from "./schema-template-missing-type.js";
+import { secretInJs } from "./secret-in-js.js";
 import { sitemapDead } from "./sitemap-dead.js";
 import { sitemapHost } from "./sitemap-host.js";
 import { sitemapMissing } from "./sitemap-missing.js";
@@ -85,6 +88,8 @@ export const PAGE_CHECKS = [
   brokenLinks,
   canonicalElsewhere,
   canonicalMissing,
+  datasetPrivateTypes,
+  datasetPublic,
   duplicateTitle,
   eventJsonldMismatch,
   eventLocationMismatch,
@@ -144,6 +149,7 @@ export const PAGE_CHECKS = [
   schemaIdDrift,
   schemaOrgRedefined,
   schemaTemplateMissingType,
+  secretInJs,
   sitemapDead,
   sitemapHost,
   sitemapMissing,

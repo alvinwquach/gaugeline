@@ -40,6 +40,7 @@ describe("LIMITS and Budget: unit", () => {
       languageVersions: 5,
       paymentLinks: 5,
       checkoutLinks: 5,
+      sanityDatasets: 2,
       scripts: 15,
       structuredDataAddresses: 12,
       concurrency: 5,

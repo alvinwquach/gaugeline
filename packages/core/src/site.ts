@@ -9,6 +9,8 @@ import { lazyAppLookups } from "./apps.js";
 import { lazyCalendars } from "./calendars.js";
 import { lazyLanguageGroup, type LanguageRules } from "./languages.js";
 import { lazyPages } from "./pages.js";
+import { lazyDatasets } from "./sanity.js";
+import { lazyScripts } from "./scripts.js";
 import type { FactsConfig } from "./facts/types.js";
 import type { PaymentsConfig } from "./payments/types.js";
 import type { SchemaRules } from "./schema-rules.js";
@@ -75,6 +77,8 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
       calendars: lazyCalendars({ page: snapshot, fetcher: opts.fetcher, budget }),
       ...(opts.now ? { now: opts.now } : {}),
       pages: lazyPages({ page: snapshot, fetcher: opts.fetcher, budget }),
+      scripts: lazyScripts({ page: snapshot, fetcher: opts.fetcher, budget }),
+      datasets: lazyDatasets({ page: snapshot, fetcher: opts.fetcher, budget }),
       languages: lazyLanguageGroup({
         page: snapshot,
         fetcher: opts.fetcher,

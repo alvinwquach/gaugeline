@@ -31,6 +31,7 @@ const FIXTURES = [
   "popup",
   "payments-popup",
   "payments-drift",
+  "leaks",
 ];
 
 /**
@@ -46,6 +47,9 @@ const NEEDS_LIVE_STORES = new Set([
   "facts-payment-link",
   // Square and Stripe payment links: confirmed in-process against the payment-links cassette.
   "payment-link-dead",
+  // Sanity's query API: confirmed in-process against the sanity-datasets cassette (leaks.test.ts).
+  "dataset-public",
+  "dataset-private-types",
 ]);
 
 async function findingsOf(name: string): Promise<string[]> {
