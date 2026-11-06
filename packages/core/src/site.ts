@@ -12,6 +12,7 @@ import { lazyAccess } from "./access/probe.js";
 import type { AccessSettings } from "./access/types.js";
 import type { DnsReader } from "./dns.js";
 import type { HiddenConfig } from "./hidden.js";
+import type { RunSnapshot } from "./run-snapshot.js";
 import { lazyPages } from "./pages.js";
 import { lazyDatasets } from "./sanity.js";
 import { lazyScripts } from "./scripts.js";
@@ -51,6 +52,8 @@ export interface SiteCheckOptions {
   dns?: DnsReader;
   /** Sections hidden until launch. */
   hidden?: HiddenConfig;
+  /** The last run's snapshot (--since last): the change checks compare with it. */
+  previous?: RunSnapshot;
 }
 
 export interface SiteCheck {
@@ -102,6 +105,7 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
       ...(opts.payments ? { payments: opts.payments } : {}),
       ...(opts.dns ? { dns: opts.dns } : {}),
       ...(opts.hidden ? { hidden: opts.hidden } : {}),
+      ...(opts.previous ? { previous: opts.previous } : {}),
       ...(opts.access
         ? { access: lazyAccess({ fetcher: opts.fetcher, budget, settings: opts.access }) }
         : {}),

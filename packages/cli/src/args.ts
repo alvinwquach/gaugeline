@@ -20,6 +20,8 @@ export interface RunFlags {
   command: CliCommand;
   /** launch --dns: add the email record checks. */
   dns: boolean;
+  /** --since last: compare with the stored last run and replace it. */
+  since?: "last";
   ci: boolean;
   json: boolean;
   noOpen: boolean;
@@ -84,6 +86,14 @@ export function parseCliArgs(
     return { kind: "error", message: "Choose --quiet or --verbose, not both.", verbose: false };
   }
   if (values.help === true) return { kind: "help", verbose, command };
+  if (values.since !== undefined && values.since !== "last") {
+    return {
+      kind: "error",
+      message: `--since accepts only last in this version, not "${String(values.since)}".`,
+      hint: "Use --since last to compare with the previous run of this site.",
+      verbose,
+    };
+  }
   if (values.version === true) return { kind: "version", verbose };
 
   const positionals = parsed.positionals.map((p) => p.trim()).filter((p) => p !== "");
@@ -112,6 +122,7 @@ export function parseCliArgs(
     kind: "run",
     command,
     dns: values.dns === true,
+    ...(values.since === "last" ? { since: "last" as const } : {}),
     address: address.url.href,
     input,
     deprecatedUsed,

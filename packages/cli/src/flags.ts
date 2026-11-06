@@ -62,6 +62,14 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     commands: ["check", "launch"],
   },
   {
+    name: "since",
+    type: "string",
+    description:
+      "Compare with this site's last run and save this one; the only value is last (.gaugeline/last-run/)",
+    since: "0.2.0",
+    commands: ["check"],
+  },
+  {
     name: "quiet",
     type: "boolean",
     description: "Print only results and errors",

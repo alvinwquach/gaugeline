@@ -28,6 +28,8 @@ import { feedBroken } from "./feed-broken.js";
 import { feedDuplicate } from "./feed-duplicate.js";
 import { feedInvalid } from "./feed-invalid.js";
 import { feedOversized } from "./feed-oversized.js";
+import { formDestinationChanged } from "./form-destination-changed.js";
+import { formProviderChanged } from "./form-provider-changed.js";
 import { hiddenInSitemap } from "./hidden-in-sitemap.js";
 import { hiddenIndexable } from "./hidden-indexable.js";
 import { hiddenLinked } from "./hidden-linked.js";
@@ -77,6 +79,7 @@ import { paymentHandleUnknown } from "./payment-handle-unknown.js";
 import { paymentLinkDead } from "./payment-link-dead.js";
 import { placeholderImages } from "./placeholder-images.js";
 import { placeholderText } from "./placeholder-text.js";
+import { priceChanged } from "./price-changed.js";
 import { quotableFactsDisagree } from "./quotable-facts-disagree.js";
 import { redirectChain } from "./redirect-chain.js";
 import { robotsBlock } from "./robots-block.js";
@@ -130,6 +133,8 @@ export const PAGE_CHECKS = [
   feedDuplicate,
   feedInvalid,
   feedOversized,
+  formDestinationChanged,
+  formProviderChanged,
   hiddenInSitemap,
   hiddenIndexable,
   hiddenLinked,
@@ -179,6 +184,7 @@ export const PAGE_CHECKS = [
   paymentLinkDead,
   placeholderImages,
   placeholderText,
+  priceChanged,
   quotableFactsDisagree,
   redirectChain,
   robotsBlock,
