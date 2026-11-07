@@ -290,6 +290,26 @@
     "tech": "<meta name=\"robots\" content=\"noindex\">"
   },
   {
+    "id": "page-gone",
+    "severity": "high",
+    "area": "Visitors",
+    "title": "A page from the last run is gone",
+    "what": "An address the last run read (saved with --since last) now answers 404 or 410, or redirects to a different page; the evidence says where it now leads.",
+    "why": "Links from other sites, bookmarks and search results still point at the old address: a page that went missing loses them all, and one redirected to the wrong place loses them more slowly.",
+    "fix": "Put the page back, or redirect it with a 301 to the page that replaces it. A page removed on purpose goes under expectedChanges in gaugeline.pages.json.",
+    "tech": "With --since last only. Each saved address is taken from this run's pages when it was read anyway, else requested once with GET. A redirect that ends on the same path (a trailing slash, https) is not gone. A server error or refusal is could not check. On a first run: could not check"
+  },
+  {
+    "id": "page-lost-content",
+    "severity": "high",
+    "area": "Visitors",
+    "title": "A page lost content since the last run",
+    "what": "Against the last run saved with --since last, a page's main content fell by more than 40%, or a whole section (a heading and everything under it) is gone.",
+    "why": "The page still loads, so nothing else notices: a template change, a failed import or an editor's mistake can empty a page that visitors and search engines relied on.",
+    "fix": "Restore what went missing, or list the page under expectedChanges in gaugeline.pages.json with the reason when the loss was meant.",
+    "tech": "With --since last only. Words are counted in the main content (main, else body) with the header, footer, navigation and asides left out, so a menu change doesn't count. A section is an h2 or h3; a heading gone is a section gone. Exactly 40% fewer words is not a loss. On a first run: could not check"
+  },
+  {
     "id": "pagination-same-content",
     "severity": "high",
     "area": "Search & sharing",
@@ -848,6 +868,26 @@
     "why": "On a phone connection a page this heavy takes many seconds and costs visitors data.",
     "fix": "Start with the largest files in the evidence: resize and compress images, and trim the HTML's inline data.",
     "tech": "HTML bytes plus the Content-Length of sampled images (the files the run already requested) is over 3 MB (3,145,728 bytes); no extra requests are made"
+  },
+  {
+    "id": "page-lost-items",
+    "severity": "medium",
+    "area": "Visitors",
+    "title": "A listing has fewer items than last run",
+    "what": "Against the last run saved with --since last, a repeated list on a page (products, posts, people, events) has fewer items, with the ones that are gone where items carry links.",
+    "why": "A shop page with 7 products instead of 12 still looks complete: items drop out when a feed, a filter or a category breaks, and nobody counts.",
+    "fix": "Check the items that are gone were removed on purpose. If they weren't, look at what feeds the list. A listing meant to shrink goes under expectedChanges in gaugeline.pages.json.",
+    "tech": "With --since last only. A list is a ul or ol with 3 or more items, or an element marked data-list, in the main content; it is named by its data-list value or the heading before it. For a paginated list only the first page is compared, and the evidence says so. On a first run: could not check"
+  },
+  {
+    "id": "page-lost-structured-data",
+    "severity": "medium",
+    "area": "Search & sharing",
+    "title": "A page lost its structured data since the last run",
+    "what": "Against the last run saved with --since last, a structured-data type that a page had (Product, Recipe, Event, Article) is no longer there.",
+    "why": "Search results show rich listings (prices, ratings, dates) only from structured data; when a template or plugin change drops it, the page reads the same and the listing quietly goes plain.",
+    "fix": "Put the markup back where the template lost it, or list the page under expectedChanges in gaugeline.pages.json when it was removed on purpose.",
+    "tech": "With --since last only. Types are read from JSON-LD @type and microdata itemtype, with the schema.org prefix dropped. One finding per page, naming every type gone. On a first run: could not check"
   },
   {
     "id": "payment-handle-inconsistent",
