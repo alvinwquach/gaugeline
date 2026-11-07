@@ -153,6 +153,8 @@ export interface FetcherOptions {
 export interface GetOptions {
   headers?: Record<string, string>;
   method?: "GET" | "HEAD";
+  /** Send `headers` only to hops on the first address's origin: a redirect elsewhere gets none. */
+  headersSameOrigin?: boolean;
 }
 
 export interface Fetcher {
@@ -416,12 +418,15 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
     assertReadOnly(method);
     const hops: Hop[] = [];
     const visited = new Set<string>();
+    const origin = new URL(start).origin;
     let current = start;
     for (;;) {
       visited.add(normaliseUrl(current));
       let step;
+      const headers =
+        opts.headersSameOrigin && new URL(current).origin !== origin ? {} : (opts.headers ?? {});
       try {
-        step = await requestOnce(current, method, opts.headers ?? {});
+        step = await requestOnce(current, method, headers);
       } catch (err) {
         if (err instanceof FetchError) {
           throw new FetchError(err.reason, err.message, err.url, hops, err.cause, err.hint);
@@ -457,7 +462,7 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
     const method = opts.method ?? "GET";
     assertReadOnly(method);
     const normal = normaliseUrl(url);
-    const key = `${method} ${normal}${opts.headers ? ` ${JSON.stringify(Object.entries(opts.headers).sort())}` : ""}`;
+    const key = `${method} ${normal}${opts.headers ? ` ${JSON.stringify(Object.entries(opts.headers).sort())}` : ""}${opts.headersSameOrigin ? " same-origin" : ""}`;
     let pending = memo.get(key);
     if (!pending) {
       pending = follow(normal, opts);

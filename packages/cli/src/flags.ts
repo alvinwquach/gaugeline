@@ -32,7 +32,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     description: 'Exit 1 when a "Fix this first" finding is found',
     env: "CI",
     since: "0.1.0",
-    commands: ["check", "launch"],
+    commands: ["check", "launch", "verify"],
   },
   {
     name: "json",
@@ -54,7 +54,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     description:
       "Allow addresses on this computer or a private network, such as 127.0.0.1 or 192.168.x.x",
     since: "0.1.0",
-    commands: ["check", "launch", "plan", "printed", "snapshot", "cutover"],
+    commands: ["check", "launch", "plan", "printed", "snapshot", "cutover", "verify"],
   },
   {
     name: "dns",
@@ -236,6 +236,14 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
       "Query parameters that must reach the destination, as name prefixes (default utm_)",
     since: "0.2.0",
     commands: ["printed"],
+  },
+  {
+    name: "limit",
+    type: "string",
+    description:
+      "Re-check this many of the export's pages (default 40; 0 only classifies the rows)",
+    since: "0.2.0",
+    commands: ["verify"],
   },
   {
     name: "out",

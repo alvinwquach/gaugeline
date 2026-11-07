@@ -126,6 +126,8 @@
   "quotable-facts-disagree",
   "redirect-chain",
   "robots-block",
+  "rsc-served-as-page",
+  "rsc-vary-missing",
   "schema-breadcrumb-mismatch",
   "schema-breadcrumb-start",
   "schema-dangling-ref",

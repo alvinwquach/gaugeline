@@ -11,6 +11,12 @@ export interface CrawlRow {
   issue?: string;
 }
 
+/** What a summary keeps per page: the export lines that resolved to it, and how many were payloads. */
+export interface PageRows {
+  lines: number[];
+  payloads: number;
+}
+
 export type RowKind = "page" | "asset" | "data-route" | "prefetch-payload";
 export const ROW_KINDS: readonly RowKind[] = ["prefetch-payload", "asset", "data-route", "page"];
 export type Framework = "next" | "astro" | "nuxt";
@@ -121,8 +127,11 @@ export interface CrawlSummary {
   /** Rows read with an address. */
   total: number;
   byKind: Record<RowKind, number>;
-  /** Page key -> the rows that resolved to it, real page rows included. */
-  pages: Map<string, CrawlRow[]>;
+  /**
+   * Page key -> the export lines that resolved to it (real page rows included) and how many were
+   * payloads. Line numbers only, never the rows' text: memory follows pages and lines, not bytes.
+   */
+  pages: Map<string, PageRows>;
   /** Issue name -> rows and payload rows under it, when the export has an issue column. */
   byIssue: Map<string, { total: number; payloads: number }>;
   /** Rows with an empty address: skipped and counted. */
@@ -136,8 +145,8 @@ const emptyKinds = (): Record<RowKind, number> => ({
   page: 0,
 });
 
-/** Count and group rows. With `linesOnly`, each page keeps only line numbers (a large export). */
-export function createSummariser(opts: { linesOnly?: boolean } = {}) {
+/** Count and group rows, one at a time. */
+export function createSummariser() {
   const s: CrawlSummary = {
     total: 0,
     byKind: emptyKinds(),
@@ -161,9 +170,10 @@ export function createSummariser(opts: { linesOnly?: boolean } = {}) {
         s.byIssue.set(row.issue, g);
       }
       if (c.pageUrl !== undefined) {
-        const list = s.pages.get(c.pageUrl) ?? [];
-        list.push(opts.linesOnly ? { line: row.line, address: "" } : row);
-        s.pages.set(c.pageUrl, list);
+        const p = s.pages.get(c.pageUrl) ?? { lines: [], payloads: 0 };
+        p.lines.push(row.line);
+        if (c.kind === "prefetch-payload") p.payloads++;
+        s.pages.set(c.pageUrl, p);
       }
     },
     result: () => s,
@@ -274,7 +284,7 @@ export function readCrawlExport(text: string): CrawlExport {
 export async function summariseStream(
   chunks: AsyncIterable<string | Uint8Array>,
 ): Promise<{ summary: CrawlSummary; columns: CrawlColumns; warnings: string[] }> {
-  const sum = createSummariser({ linesOnly: true });
+  const sum = createSummariser();
   const reader = createCrawlReader((r) => sum.add(r));
   const decoder = new TextDecoder();
   for await (const chunk of chunks)

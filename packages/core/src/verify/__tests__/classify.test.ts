@@ -117,7 +117,8 @@ describe("verify: integration", () => {
     }));
     const s = summarise(rows);
     expect(s.pages.size).toBe(12);
-    expect(s.pages.get(`${H}/shop/pot-0`)?.length).toBe(25);
+    expect(s.pages.get(`${H}/shop/pot-0`)).toMatchObject({ payloads: 25 });
+    expect(s.pages.get(`${H}/shop/pot-0`)?.lines).toHaveLength(25);
   });
 });
 
@@ -192,7 +193,7 @@ describe("verify: edge cases", () => {
     const grown = process.memoryUsage().heapUsed - before;
     expect([summary.total, summary.pages.size]).toEqual([200_000, 12]);
     // Each page keeps line numbers only, never the rows' text.
-    expect(summary.pages.get(`${H}/shop/pot-0`)?.[0]).toEqual({ line: 2, address: "" });
+    expect(summary.pages.get(`${H}/shop/pot-0`)?.lines.slice(0, 2)).toEqual([2, 14]);
     // The whole export as text is about 10 MB; the summary stays well under it.
     expect(grown).toBeLessThan(40 * 1024 * 1024);
   });
