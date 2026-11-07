@@ -93,6 +93,12 @@ const NEEDS_LIVE_STORES = new Set([
   // (verify/__tests__/recheck.test.ts) and end to end by gaugeline verify (verify.test.ts).
   "rsc-served-as-page",
   "rsc-vary-missing",
+  // These read the site's other host (www, staging). Here every fixture host resolves to 127.0.0.1,
+  // and with --allow-private only the typed host and port may be private (the address policy), so
+  // the stand-in "public" hosts are refused. Confirmed in-process, where the fetcher's hosts map
+  // marks them as stand-ins (runner.test.ts duplicate-host, launch tests for staging-indexable).
+  "host-duplicate",
+  "staging-indexable",
 ]);
 
 async function findingsOf(name: string): Promise<string[]> {

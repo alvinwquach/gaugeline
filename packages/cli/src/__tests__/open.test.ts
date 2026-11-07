@@ -1,7 +1,8 @@
 import { spawn } from "node:child_process";
 import { mkdtempSync, readdirSync, rmSync, statSync } from "node:fs";
 import { request as httpRequest } from "node:http";
-import { createServer, type Server } from "node:net";
+import { connect, createServer, type Server } from "node:net";
+import { startFixture } from "@gaugeline/fixtures";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -37,12 +38,12 @@ const hold = (port: number) =>
 const release = (s: Server) => new Promise<void>((r) => s.close(() => r()));
 
 /** The built bin, `gaugeline open --no-open`, with its own home and working folder. */
-function open(env: Record<string, string> = {}) {
+function open(env: Record<string, string> = {}, extra: string[] = []) {
   const home = scratch("home");
   const cwd = scratch("cwd");
   // Its own temp folder too: the shared one fills with other test files' folders meanwhile.
   const tmp = scratch("tmp");
-  const child = spawn(process.execPath, [bin, "open", "--no-open"], {
+  const child = spawn(process.execPath, [bin, "open", ...extra, "--no-open"], {
     cwd,
     env: {
       ...process.env,
@@ -88,6 +89,29 @@ function files(dir: string): { path: string; mtime: number }[] {
 }
 
 const POSIX = process.platform !== "win32";
+
+/** A raw GET to 127.0.0.1 with the Host (and cookie) a browser would send. */
+function rawGet(
+  port: number,
+  path: string,
+  host: string,
+  cookie = "",
+): Promise<{ head: string; body: string }> {
+  return new Promise((resolve, reject) => {
+    const c = connect({ host: "127.0.0.1", port }, () =>
+      c.write(
+        `GET ${path} HTTP/1.1\r\nHost: ${host}\r\n${cookie ? `Cookie: ${cookie}\r\n` : ""}Connection: close\r\n\r\n`,
+      ),
+    );
+    let data = "";
+    c.on("data", (d: Buffer) => (data += d.toString()));
+    c.on("end", () => {
+      const i = data.indexOf("\r\n\r\n");
+      resolve({ head: data.slice(0, i), body: data.slice(i + 4) });
+    });
+    c.on("error", reject);
+  });
+}
 
 describe("gaugeline open: e2e (the built bin)", () => {
   it.skipIf(!POSIX)(
@@ -143,6 +167,37 @@ describe("gaugeline open: e2e (the built bin)", () => {
         );
       }
       expect(codes).toEqual([0, 0, 0, 0, 0]);
+    },
+  );
+
+  it.skipIf(!POSIX)(
+    "gaugeline open <address> prints the progress lines, then the link; /api/runs has one finished run",
+    async () => {
+      const site = await startFixture("clean");
+      const run = open({}, [site.origin]);
+      try {
+        const url = await run.url;
+        const before = run.out().slice(0, run.out().indexOf("Gaugeline is running at"));
+        expect(before.trimEnd().split("\n")).toEqual([
+          " Loading the page without JavaScript",
+          " Reading robots.txt and the sitemap",
+          " Checking 2 links on the page",
+          " Scanning the site's JavaScript for leaked keys",
+        ]);
+        const u = new URL(url);
+        const host = `localhost:${u.port}`;
+        const link = await rawGet(Number(u.port), `/${u.search}`, host);
+        const cookie = /^set-cookie: ([^;]+)/im.exec(link.head)?.[1] ?? "";
+        const runs = JSON.parse((await rawGet(Number(u.port), "/api/runs", host, cookie)).body) as {
+          state: string;
+          url: string;
+        }[];
+        expect(runs.map((r) => r.state)).toEqual(["done"]);
+      } finally {
+        run.child.kill("SIGINT");
+        await run.exited;
+        await site.close();
+      }
     },
   );
 

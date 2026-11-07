@@ -761,7 +761,19 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       // The key is printed once, here, and nowhere else: not in stderr, not in an error.
       let app: RunningApp;
       try {
-        app = await startApp({ ...(args.address ? { address: args.address } : {}) });
+        app = await startApp({
+          ...(args.address
+            ? {
+                address: args.address,
+                // The first check's progress, in the terminal's own words, before the link.
+                onFirstStep: (text: string) => {
+                  if (!args.quiet) io.stdout.write(` ${text}\n`);
+                },
+              }
+            : {}),
+          ...(deps.fetcher ? { fetcher: deps.fetcher } : {}),
+          ...(deps.now ? { now: deps.now } : {}),
+        });
       } catch (err) {
         if (err instanceof PortRangeError) throw new ConfigError(err.message);
         const e = err as NodeJS.ErrnoException;
@@ -786,11 +798,15 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         process.on("SIGINT", stop);
         process.on("SIGTERM", stop);
       }
-      io.stdout.write(
-        `Gaugeline is running at ${app.url}\nIt's only reachable from this computer. Press Ctrl+C to stop.\n`,
-      );
-      const env = io.env ?? {};
-      if (!args.noOpen && !isCiEnv(env)) (deps.open ?? openInBrowser)(app.url);
+      // With an address, its check runs first; Ctrl+C meanwhile still stops cleanly.
+      if (app.firstRun) await Promise.race([app.firstRun, done]);
+      if (!stopping) {
+        io.stdout.write(
+          `${app.firstRun ? "\n" : ""}Gaugeline is running at ${app.url}\nIt's only reachable from this computer. Press Ctrl+C to stop.\n`,
+        );
+        const env = io.env ?? {};
+        if (!args.noOpen && !isCiEnv(env)) (deps.open ?? openInBrowser)(app.url);
+      }
       await done;
       return { outcome: ran, ci: false };
     }
@@ -932,7 +948,9 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       const auth: PreviewAuth | undefined = previewAuth(io.env ?? {}, new URL(args.address).origin);
       const fetcher = createFetcher({
         ...deps.fetcher,
-        ...(args.allowPrivate ? { allowPrivate: true } : {}),
+        // --allow-private trusts the address you typed, not where its pages point: a redirect or a
+        // link to another non-public address is refused (private-address-refused).
+        ...(args.allowPrivate ? { allowPrivate: true, target: args.address } : {}),
         ...(auth ? { headersFor: authHeaders(auth) } : {}),
         onRequest: (info) => log.request(info),
       });

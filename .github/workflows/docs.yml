@@ -26,6 +26,8 @@ jobs:
       - run: pnpm docs:build
       - run: pnpm vitest run --config vitest.docs.config.ts
       - run: pnpm exec playwright install --with-deps chromium
+      # e2e/app.spec.ts drives the built CLI (gaugeline open).
+      - run: pnpm build
       - run: pnpm docs:e2e
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:

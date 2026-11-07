@@ -1,4 +1,4 @@
-import type { ProgressEvent, RequestInfo } from "@gaugeline/core";
+import { progressText, type ProgressEvent, type RequestInfo } from "@gaugeline/core";
 import { paint } from "./color.js";
 
 export type Level = "quiet" | "normal" | "verbose";
@@ -17,24 +17,8 @@ interface Stream {
 
 /** The exact progress wording from the docs' sample output. Each line starts with one space. */
 export function progressLine(e: ProgressEvent): string | undefined {
-  switch (e.step) {
-    case "load-page":
-      return " Loading the page without JavaScript";
-    case "robots-sitemap":
-      return " Reading robots.txt and the sitemap";
-    case "links":
-      if (e.count === 0) return undefined;
-      return ` Checking ${e.count === 1 ? "1 link" : `${e.count} links`} on the page`;
-    case "scripts":
-      return " Scanning the site's JavaScript for leaked keys";
-    case "debug":
-    case "warn":
-      return undefined;
-    default: {
-      const never: never = e;
-      return never;
-    }
-  }
+  const text = progressText(e);
+  return text === undefined ? undefined : ` ${text}`;
 }
 
 /** Addresses in debug lines lose their query string; headers are never printed. */
