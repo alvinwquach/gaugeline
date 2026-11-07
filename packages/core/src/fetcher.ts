@@ -284,6 +284,16 @@ export interface NetworkTransportOptions {
  * (unless allowPrivate, or the host comes from the explicit hosts mapping), then connect to the
  * address that was checked.
  */
+/** Connection failures where another address of the same name may still answer. */
+const UNREACHABLE: ReadonlySet<string> = new Set([
+  "ECONNREFUSED",
+  "EHOSTUNREACH",
+  "ENETUNREACH",
+  "EADDRNOTAVAIL",
+  // No IPv6 on this machine at all: the IPv4 address may still answer.
+  "EAFNOSUPPORT",
+]);
+
 export function createNetworkTransport(options: NetworkTransportOptions = {}): Transport {
   const hostMap = new Map(
     Object.entries(options.hosts ?? {}).map(([from, to]) => [from.toLowerCase(), to] as const),
@@ -297,11 +307,11 @@ export function createNetworkTransport(options: NetworkTransportOptions = {}): T
     routed.host = target;
     return routed;
   };
-  async function checkedAddress(
+  async function checkedAddresses(
     logical: URL,
     target: URL,
     mapped: boolean,
-  ): Promise<ResolvedAddress> {
+  ): Promise<ResolvedAddress[]> {
     const host = target.hostname.replace(/^\[|\]$/g, "");
     const family = isIP(host);
     const addresses: ResolvedAddress[] =
@@ -338,15 +348,24 @@ export function createNetworkTransport(options: NetworkTransportOptions = {}): T
         }
       }
     }
-    const first = addresses[0];
-    if (!first) throw new Error("unreachable");
-    return first;
+    return addresses;
   }
   return async (url, req) => {
     const target = route(url);
-    const pinned = await checkedAddress(url, target, target !== url);
-    options.onSend?.();
-    return send(target, { ...req, pinned, ...(options.ca ? { ca: options.ca } : {}) });
+    const addresses = await checkedAddresses(url, target, target !== url);
+    // Every address was checked above. Connect to the first; when it refuses the connection, the
+    // next (localhost is ::1 first on macOS, while many dev servers listen on 127.0.0.1 only).
+    let refused: unknown;
+    for (const pinned of addresses) {
+      try {
+        options.onSend?.();
+        return await send(target, { ...req, pinned, ...(options.ca ? { ca: options.ca } : {}) });
+      } catch (err) {
+        if (!UNREACHABLE.has(String((err as { code?: unknown }).code))) throw err;
+        refused = err;
+      }
+    }
+    throw refused;
   };
 }
 

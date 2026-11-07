@@ -116,6 +116,25 @@ describe("address policy: integration (the fetcher, real sockets)", () => {
     expect([(err as FetchError).reason, sent]).toEqual(["private-address-refused", 0]);
   });
 
+  it("a name that resolves to ::1 first reaches a server on 127.0.0.1 only (localhost on macOS)", async () => {
+    const site = await server((res) =>
+      res.writeHead(200, { "content-type": "text/html" }).end("<p>ok</p>"),
+    );
+    try {
+      const port = new URL(site.origin).port;
+      const f = createFetcher({
+        target: `http://localhost:${port}/`,
+        resolver: async () => [
+          { address: "::1", family: 6 },
+          { address: "127.0.0.1", family: 4 },
+        ],
+      });
+      expect((await f.get(`http://localhost:${port}/`)).map((h) => h.status)).toEqual([200]);
+    } finally {
+      await site.close();
+    }
+  });
+
   it("the typed target on loopback is requested, private and all", async () => {
     const site = await server((res) =>
       res.writeHead(200, { "content-type": "text/html" }).end("<p>ok</p>"),

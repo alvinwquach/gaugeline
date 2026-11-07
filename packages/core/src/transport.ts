@@ -77,14 +77,21 @@ function decode(res: IncomingMessage): Readable {
  * (rebinding) cannot redirect it. TLS still verifies the certificate against the host name.
  */
 export function send(url: URL, opts: SendOptions): Promise<TransportResponse> {
+  // Answered on the next turn, as a real lookup would be: a connect that fails at once (no IPv6 on
+  // this machine, say) is then raised after the request is listening for it, not before.
   const pinnedLookup: LookupFunction = (_hostname, options, callback) => {
-    if ((options as { all?: boolean }).all === true) {
-      (
-        callback as unknown as (err: null, addresses: { address: string; family: number }[]) => void
-      )(null, [{ address: opts.pinned.address, family: opts.pinned.family }]);
-    } else {
-      callback(null, opts.pinned.address, opts.pinned.family);
-    }
+    setImmediate(() => {
+      if ((options as { all?: boolean }).all === true) {
+        (
+          callback as unknown as (
+            err: null,
+            addresses: { address: string; family: number }[],
+          ) => void
+        )(null, [{ address: opts.pinned.address, family: opts.pinned.family }]);
+      } else {
+        callback(null, opts.pinned.address, opts.pinned.family);
+      }
+    });
   };
   const request = url.protocol === "https:" ? httpsRequest : httpRequest;
   return new Promise((resolve, reject) => {
