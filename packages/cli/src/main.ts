@@ -86,6 +86,7 @@ import { formatLegacyTable, formatPlanSummary } from "./plan.js";
 import { formatTerminal } from "./reporter.js";
 import { runCutover } from "./cutover.js";
 import { runSnapshot } from "./snapshot.js";
+import { runVerify } from "./verify.js";
 import {
   readAccess,
   readFacts,
@@ -707,6 +708,11 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           ...deps,
           ...(deps.now ? {} : io.now ? { now: io.now } : {}),
         }),
+        ci: false,
+      };
+    case "verify":
+      return {
+        outcome: (await runVerify(args, io, deps.cwd ?? process.cwd())).outcome,
         ci: false,
       };
     case "cutover":

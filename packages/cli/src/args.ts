@@ -14,6 +14,7 @@ export const SUBCOMMANDS = [
   "printed",
   "snapshot",
   "cutover",
+  "verify",
 ] as const;
 export type CliCommand = "check" | (typeof SUBCOMMANDS)[number];
 
@@ -96,6 +97,7 @@ export type ParsedArgs =
       quiet: boolean;
     }
   | { kind: "cutover"; before: string; allowPrivate: boolean; verbose: boolean; quiet: boolean }
+  | { kind: "verify"; file: string; verbose: boolean; quiet: boolean }
   | {
       kind: "digest";
       runs: string;
@@ -153,7 +155,9 @@ export function parseCliArgs(
                 ? "snapshot"
                 : argv[0] === "cutover"
                   ? "cutover"
-                  : COMMAND;
+                  : argv[0] === "verify"
+                    ? "verify"
+                    : COMMAND;
   const given = command === COMMAND ? argv : argv.slice(1);
   // --annotate and --progress take an optional file name: alone, or before another flag, the default.
   const rest = given.map((a, i) =>
@@ -314,6 +318,16 @@ export function parseCliArgs(
       verbose,
       quiet: values.quiet === true,
     };
+  }
+  if (command === "verify") {
+    if (positionals.length !== 1)
+      return {
+        kind: "error",
+        message: "gaugeline verify needs one crawler export: gaugeline verify crawl-export.csv",
+        hint: "Export the audit's URLs as CSV from your crawler (an Address or URL column).",
+        verbose,
+      };
+    return { kind: "verify", file: positionals[0] ?? "", verbose, quiet: values.quiet === true };
   }
   if (command === "cutover") {
     if (typeof values.before !== "string" || values.before === "" || positionals.length > 0)

@@ -10,6 +10,7 @@ export const COMMANDS = [
   "printed",
   "snapshot",
   "cutover",
+  "verify",
 ] as const;
 export type Command = (typeof COMMANDS)[number];
 
@@ -71,6 +72,15 @@ export const HELP: Record<string, string> = {
       "SPF change is fix first unless gaugeline.cutover.json lists it as expected.",
     ].join("\n"),
     footer: "Exit codes: 0 nothing to fix first, 1 something to fix first, 2 could not check",
+  }),
+  verify: renderHelp(FLAGS, "verify", {
+    usage: "gaugeline verify <crawl-export.csv> [options]",
+    summary: [
+      "Read a crawler's export (an Address or URL column, and the issue name if there",
+      "is one), set aside assets, data routes and framework prefetch payloads, and",
+      "resolve each payload to the page it belongs to. Makes no request.",
+    ].join("\n"),
+    footer: "Exit codes: 0 read, 2 the export has no address column or could not be read",
   }),
   digest: renderHelp(FLAGS, "digest", {
     usage: "gaugeline digest --runs <folder> [options]",
