@@ -3,6 +3,7 @@ import { Readable } from "node:stream";
 import { createGunzip } from "node:zlib";
 import { blockedRange } from "./addresses.js";
 import type { Certificate } from "./dns/certificate.js";
+import { classifyAddress, createAddressPolicy, isTarget } from "./net/address-policy.js";
 import { decodeBody } from "./charset.js";
 import { NetworkError, errorCodes } from "./errors.js";
 import { LIMITS } from "./limits.js";
@@ -36,6 +37,8 @@ export interface Hop {
   fallbackFrom?: string;
   /** Over https: the certificate this hop's server presented. */
   certificate?: Certificate;
+  /** Set when this hop was not requested: a redirect to a non-public address off the target. */
+  error?: "private-address-refused";
 }
 
 export type FetchErrorReason =
@@ -46,6 +49,7 @@ export type FetchErrorReason =
   | "loop"
   | "too-many-redirects"
   | "blocked-address"
+  | "private-address-refused"
   | "network";
 
 /** A NetworkError that also carries the hops received before it stopped. */
@@ -141,6 +145,14 @@ export interface FetcherOptions {
   resolver?: Resolver;
   /** Over https, trust only this certificate authority (PEM). Verification stays on. */
   ca?: string;
+  /**
+   * The address the person typed. Requests to its host and port may go anywhere it resolves,
+   * private and loopback included; every other request must resolve to a public address, or it is
+   * refused before a socket opens ("private-address-refused").
+   */
+  target?: string;
+  /** Share the in-flight limit with other fetchers (the app's runs share one). */
+  semaphore?: Semaphore;
   /** Replace the network, e.g. with a recorded cassette. hosts/allowPrivate/resolver then do nothing. */
   transport?: Transport;
   /**
@@ -263,6 +275,8 @@ export interface NetworkTransportOptions {
   onSend?: () => void;
   /** Over https, trust only this certificate authority (PEM). */
   ca?: string;
+  /** See FetcherOptions.target. */
+  target?: string;
 }
 
 /**
@@ -270,6 +284,16 @@ export interface NetworkTransportOptions {
  * (unless allowPrivate, or the host comes from the explicit hosts mapping), then connect to the
  * address that was checked.
  */
+/** Connection failures where another address of the same name may still answer. */
+const UNREACHABLE: ReadonlySet<string> = new Set([
+  "ECONNREFUSED",
+  "EHOSTUNREACH",
+  "ENETUNREACH",
+  "EADDRNOTAVAIL",
+  // No IPv6 on this machine at all: the IPv4 address may still answer.
+  "EAFNOSUPPORT",
+]);
+
 export function createNetworkTransport(options: NetworkTransportOptions = {}): Transport {
   const hostMap = new Map(
     Object.entries(options.hosts ?? {}).map(([from, to]) => [from.toLowerCase(), to] as const),
@@ -283,11 +307,11 @@ export function createNetworkTransport(options: NetworkTransportOptions = {}): T
     routed.host = target;
     return routed;
   };
-  async function checkedAddress(
+  async function checkedAddresses(
     logical: URL,
     target: URL,
     mapped: boolean,
-  ): Promise<ResolvedAddress> {
+  ): Promise<ResolvedAddress[]> {
     const host = target.hostname.replace(/^\[|\]$/g, "");
     const family = isIP(host);
     const addresses: ResolvedAddress[] =
@@ -295,7 +319,21 @@ export function createNetworkTransport(options: NetworkTransportOptions = {}): T
     if (addresses.length === 0) {
       throw Object.assign(new Error(`getaddrinfo ENOTFOUND ${host}`), { code: "ENOTFOUND" });
     }
-    if (!mapped && options.allowPrivate !== true) {
+    if (!mapped && options.target !== undefined) {
+      // The typed address may resolve anywhere; everything else must be public unless it is on
+      // the typed host and port. Judged on each resolved address, before any socket opens.
+      const typed = new URL(options.target);
+      const policy = createAddressPolicy(typed);
+      const kind = isTarget(logical, typed) ? "target" : "followed";
+      for (const a of addresses)
+        if (!policy(logical, a.address, kind))
+          throw new FetchError(
+            "private-address-refused",
+            `${logical.host} resolves to ${a.address}, a ${classifyAddress(a.address)} address: Gaugeline follows redirects and links to non-public addresses only on the address you typed.`,
+            logical.href,
+            [],
+          );
+    } else if (!mapped && options.allowPrivate !== true) {
       for (const a of addresses) {
         const range = blockedRange(a.address);
         if (range !== undefined) {
@@ -310,15 +348,24 @@ export function createNetworkTransport(options: NetworkTransportOptions = {}): T
         }
       }
     }
-    const first = addresses[0];
-    if (!first) throw new Error("unreachable");
-    return first;
+    return addresses;
   }
   return async (url, req) => {
     const target = route(url);
-    const pinned = await checkedAddress(url, target, target !== url);
-    options.onSend?.();
-    return send(target, { ...req, pinned, ...(options.ca ? { ca: options.ca } : {}) });
+    const addresses = await checkedAddresses(url, target, target !== url);
+    // Every address was checked above. Connect to the first; when it refuses the connection, the
+    // next (localhost is ::1 first on macOS, while many dev servers listen on 127.0.0.1 only).
+    let refused: unknown;
+    for (const pinned of addresses) {
+      try {
+        options.onSend?.();
+        return await send(target, { ...req, pinned, ...(options.ca ? { ca: options.ca } : {}) });
+      } catch (err) {
+        if (!UNREACHABLE.has(String((err as { code?: unknown }).code))) throw err;
+        refused = err;
+      }
+    }
+    throw refused;
   };
 }
 
@@ -330,7 +377,7 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
     maxHops = LIMITS.redirectHops,
     maxBodyBytes = LIMITS.bodyBytes,
   } = options;
-  const gate = new Semaphore(concurrency);
+  const gate = options.semaphore ?? new Semaphore(concurrency);
   let requests = 0;
   const transport: Transport = options.transport
     ? (url, req) => {
@@ -342,6 +389,7 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
         ...(options.allowPrivate ? { allowPrivate: true } : {}),
         ...(options.resolver ? { resolver: options.resolver } : {}),
         ...(options.ca ? { ca: options.ca } : {}),
+        ...(options.target ? { target: options.target } : {}),
         onSend: () => {
           requests += 1;
         },
@@ -428,6 +476,17 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
       try {
         step = await requestOnce(current, method, headers);
       } catch (err) {
+        // A redirect to a non-public address off the target: recorded as a hop that was not
+        // requested, and the trail ends there.
+        if (
+          err instanceof FetchError &&
+          err.reason === "private-address-refused" &&
+          hops.length > 0
+        )
+          throw new FetchError(err.reason, err.message, err.url, [
+            ...hops,
+            { url: current, status: 0, headers: {}, ms: 0, error: "private-address-refused" },
+          ]);
         if (err instanceof FetchError) {
           throw new FetchError(err.reason, err.message, err.url, hops, err.cause, err.hint);
         }

@@ -91,6 +91,13 @@ that session) and taken out of the address bar. Requests from other websites are
 they claim. The app saves nothing: no file is written in your
 working folder or your home folder, and Ctrl+C leaves nothing behind.
 
+### Private addresses
+
+The address you type is trusted, private or not (with `--allow-private` on the command line, always
+in the app). Nothing else is: a redirect, a link, a sitemap entry or a script that resolves to a
+private, loopback or link-local address, other than the host and port you typed, is refused before
+a request is sent. A public page can't make Gaugeline send requests into your network.
+
 ### App stores
 
 When the page links to an app (`apps.apple.com/.../id<digits>`, `play.google.com/store/apps/details?id=<package>`
