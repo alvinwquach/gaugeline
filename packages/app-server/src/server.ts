@@ -3,6 +3,10 @@ import type { AddressInfo, Socket } from "node:net";
 import { createKey } from "./key.js";
 import { checkRequest, REFUSAL_TEXT } from "./origin.js";
 import { createSession, sessionCookie, setSessionCookie } from "./session.js";
+import type { FetcherOptions } from "@gaugeline/core";
+import { route } from "./routes.js";
+import { createRunner } from "./runs.js";
+import { createStore, type Run, type RunEvent, type Store } from "./store.js";
 
 /** The only address the app listens on: this computer. Never 0.0.0.0, never "::", never omitted. */
 export const APP_HOST = "127.0.0.1";
@@ -47,15 +51,29 @@ export interface RunningApp {
   host: string;
   /** Requests that passed every rule (the link's exchange included). For tests. */
   accepted(): number;
+  /** Every request the app received, refused ones included. For tests. */
+  received(): number;
+  /** The session's runs (in memory only). */
+  store: Store;
+  /** With an address: the first run, settled when it has finished. */
+  firstRun?: Promise<Run>;
   /** Stop listening, end open connections (keep-alive included), resolve once the port is free. */
   close(): Promise<void>;
 }
 
 export interface StartOptions {
   port?: number;
-  /** The address to check, given on the command line. Read by the API in G21b. */
+  /** The address to check first, given on the command line: started like POST /api/check. */
   address?: string;
   signal?: AbortSignal;
+  /** Base fetcher options for every run (tests pass a fixture's hosts map). */
+  fetcher?: FetcherOptions;
+  /** The runs' clock (tests). */
+  now?: () => Date;
+  /** Each progress line of the first run, as it happens (the CLI prints them). */
+  onFirstStep?: (text: string) => void;
+  /** Most runs kept in the session (default 50). */
+  maxRuns?: number;
 }
 
 const PLACEHOLDER =
@@ -74,6 +92,11 @@ export async function startApp(opts: StartOptions = {}): Promise<RunningApp> {
   const key = createKey();
   const session = createSession(key);
   const sockets = new Set<Socket>();
+  const store = createStore({ ...(opts.maxRuns ? { max: opts.maxRuns } : {}) });
+  const runner = createRunner(store, {
+    ...(opts.fetcher ? { fetcher: opts.fetcher } : {}),
+    ...(opts.now ? { now: opts.now } : {}),
+  });
   let port = 0;
   let accepted = 0;
   const refuse = (res: ServerResponse, why: keyof typeof REFUSAL_TEXT) =>
@@ -84,7 +107,9 @@ export async function startApp(opts: StartOptions = {}): Promise<RunningApp> {
         "cache-control": "no-store",
       })
       .end(REFUSAL_TEXT[why]);
-  const handle = (req: IncomingMessage, res: ServerResponse) => {
+  let received = 0;
+  const handle = async (req: IncomingMessage, res: ServerResponse) => {
+    received++;
     // Before any route: Host, Origin, the method's Origin, Sec-Fetch-Site. No CORS header, ever.
     const verdict = checkRequest(
       {
@@ -117,6 +142,7 @@ export async function startApp(opts: StartOptions = {}): Promise<RunningApp> {
     }
     if (!session.isValid(sessionCookie(one(req.headers.cookie)))) return refuse(res, "session");
     accepted++;
+    if (await route(req, res, { store, runner })) return;
     if ((req.method === "GET" || req.method === "HEAD") && url.pathname === "/") {
       res
         .writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" })
@@ -125,7 +151,12 @@ export async function startApp(opts: StartOptions = {}): Promise<RunningApp> {
     }
     res.writeHead(404, { "content-type": "text/plain; charset=utf-8" }).end("Not found.\n");
   };
-  const server = createServer(handle);
+  const server = createServer((req, res) => {
+    handle(req, res).catch(() => {
+      if (!res.headersSent) res.writeHead(500, { "content-type": "text/plain; charset=utf-8" });
+      res.end("Something went wrong in the app.\n");
+    });
+  });
   server.on("connection", (s) => {
     sockets.add(s);
     s.once("close", () => sockets.delete(s));
@@ -156,5 +187,28 @@ export async function startApp(opts: StartOptions = {}): Promise<RunningApp> {
     }));
   opts.signal?.addEventListener("abort", () => void close(), { once: true });
   const host = (server.address() as AddressInfo).address;
-  return { url: `http://localhost:${port}/?s=${key}`, port, host, close, accepted: () => accepted };
+  // The address from the command line starts the first run the way POST /api/check does.
+  let firstRun: Promise<Run> | undefined;
+  if (opts.address !== undefined) {
+    const { run, finished } = runner.start(opts.address);
+    const print = (e: RunEvent) => {
+      if (e.event === "step") opts.onFirstStep?.(e.data.text);
+    };
+    for (const e of run.events) print(e);
+    run.listeners.add(print);
+    firstRun = finished.then(() => {
+      run.listeners.delete(print);
+      return run;
+    });
+  }
+  return {
+    url: `http://localhost:${port}/?s=${key}`,
+    port,
+    host,
+    close,
+    accepted: () => accepted,
+    received: () => received,
+    store,
+    ...(firstRun ? { firstRun } : {}),
+  };
 }

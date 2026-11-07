@@ -88,6 +88,7 @@ export {
   sampleImages,
 } from "./checks/index.js";
 export type { ImageRef, ImageSample } from "./checks/index.js";
+export { progressText } from "./progress.js";
 export type { ProgressEvent, ProgressSink, RequestInfo } from "./progress.js";
 export { checkSite } from "./site.js";
 export { getOrNull, probe } from "./probe.js";
@@ -581,3 +582,5 @@ export {
   LiveRefusal,
 } from "./tools/check-redirects.js";
 export type { LiveResult, LiveRow } from "./tools/check-redirects.js";
+export { classifyAddress, createAddressPolicy, isTarget } from "./net/address-policy.js";
+export type { AddressClass } from "./net/address-policy.js";

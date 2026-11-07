@@ -12,7 +12,15 @@ The link opens in your browser (not with `--no-open`, and not in CI). If port 48
 uses the next free one, up to 4826, and the link says which. If all ten are taken, it stops with exit
 code 2 and says so.
 
-The address is optional. Run `npx gaugeline open` on its own and enter one in the app. You can check as many pages as you like in one session; each one appears in the sidebar.
+The address is optional. With one (`npx gaugeline open yoursite.com`), its check runs first and the
+terminal shows its progress, the same lines a plain check prints, before the link. Without one, enter
+an address in the app. You can check as many pages as you like in one session; each one appears in
+the sidebar, oldest first. A session keeps the last 50 checks, in memory only: Ctrl+C ends it and
+they are gone.
+
+The address you enter can be on your own computer or network (`localhost:3000`, a staging machine
+at `192.168.1.20`), the way your own terminal can reach it. Where its pages point is another
+matter: a redirect or a link to some other private address is not followed.
 
 ## What's in it
 
