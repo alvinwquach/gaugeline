@@ -49,6 +49,10 @@ import {
   fingerprint,
   progressLine,
   type PlanState,
+  planHash,
+  watchDay,
+  watchLine,
+  watchSummary,
   checkPrinted,
   createPrintedRegistry,
   readQr,
@@ -198,6 +202,56 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         io.stderr.write(
           `Read tab: ${plan.workbook.chosen.name.trim()} (${tabs - 1} other tab${tabs === 2 ? "" : "s"} ${args.nav !== undefined ? "read for menus with --nav" : "skipped"}${args.annotate !== undefined ? "; the annotated copy has this tab only" : ""})\n`,
         );
+      // --watch: the 30-day cutover watch. The day is counted before anything else; after day 30
+      // the command stops itself, with no request.
+      let watching: number | undefined;
+      if (args.watch !== undefined) {
+        if (args.base === undefined)
+          throw new ConfigError(
+            "--watch re-checks production against the plan: add --base with the production address.",
+          );
+        const day = watchDay(args.watch, deps.now?.() ?? new Date());
+        if (day.kind === "over") {
+          io.stdout.write(
+            `The 30-day watch is over: the cutover was ${args.watch}, ${day.day - 1} days ago. No request was made.\n`,
+          );
+          return { outcome: { kind: "ran", highFindings: 0, drift: false }, ci: true };
+        }
+        watching = day.day;
+      }
+      // --progress: the last run's state, read before any request so a file this version can't
+      // read stops the run (exit 2) before it costs anything.
+      if (args.progress !== undefined && args.base === undefined)
+        throw new ConfigError(
+          "--progress compares runs of the plan against a preview: add --base.",
+        );
+      // --watch implies --progress: the state file beside the plan, unless one is named.
+      const progressPath =
+        args.progress === undefined
+          ? args.watch !== undefined
+            ? defaultPlanStatePath(path)
+            : undefined
+          : args.progress === ""
+            ? defaultPlanStatePath(path)
+            : resolve(cwd, args.progress);
+      let previous: PlanState | undefined;
+      if (progressPath) {
+        const last = readPlanStateFile(progressPath);
+        if (last.kind === "ok") previous = last.state;
+        if (last.kind === "corrupt" && !args.quiet)
+          io.stderr.write(
+            `${progressPath} could not be read: treated as the first run. The old file is kept as ${last.backup}.\n`,
+          );
+      }
+      if (watching !== undefined) {
+        io.stdout.write(
+          `${watchLine(watching, previous !== undefined && previous.planHash !== planHash(plan.rows))}\n`,
+        );
+        if (!previous)
+          io.stdout.write(
+            "No saved state for this watch: this run is the baseline. On a scheduled run that usually means the CI cache was cleared, which is fine.\n",
+          );
+      }
       io.stdout.write(formatPlanSummary(plan, args.file));
       // --nav: the menu tabs, read first so the per-tab count shows how each was read. Pure.
       let nav: NavResult | undefined;
@@ -255,27 +309,6 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       }
       if (plan.columns.primaryKeyword === undefined && !args.quiet)
         io.stderr.write("Keyword checks skipped: the plan has no Primary Keyword column.\n");
-      // --progress: the last run's state, read before any request so a file this version can't
-      // read stops the run (exit 2) before it costs anything.
-      if (args.progress !== undefined && args.base === undefined)
-        throw new ConfigError(
-          "--progress compares runs of the plan against a preview: add --base.",
-        );
-      const progressPath =
-        args.progress === undefined
-          ? undefined
-          : args.progress === ""
-            ? defaultPlanStatePath(path)
-            : resolve(cwd, args.progress);
-      let previous: PlanState | undefined;
-      if (progressPath) {
-        const last = readPlanStateFile(progressPath);
-        if (last.kind === "ok") previous = last.state;
-        if (last.kind === "corrupt" && !args.quiet)
-          io.stderr.write(
-            `${progressPath} could not be read: treated as the first run. The old file is kept as ${last.backup}.\n`,
-          );
-      }
       // --printed: the register's addresses join the 301 map, each on the row of its expected page.
       if (args.printed !== undefined) {
         if (args.base === undefined)
@@ -446,6 +479,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       // With --progress: the new findings in full, the fixed ones one line each, the rest as a count.
       let shown = planResult;
       let footer: string[] | undefined;
+      let watchNew: Finding[] | undefined;
       if (progressPath && args.base !== undefined) {
         if (planResult.couldNotCheck.length > 0) {
           if (!args.quiet)
@@ -459,23 +493,43 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           });
           writePlanStateFile(progressPath, progress.state);
           const added = new Set(progress.added);
-          if (!args.all)
+          watchNew = planResult.findings.filter((f) => added.has(fingerprint(f)));
+          if (watching !== undefined && previous) {
+            // Only what is new since the last day; the known ones as a count, the fixed ones named.
+            if (!args.all)
+              shown = {
+                ...planResult,
+                findings: planResult.findings.filter((f) => added.has(fingerprint(f))),
+              };
+            footer = [
+              ...progress.fixed.map((k) => {
+                const was = previous?.open[k];
+                return `✓ Fixed: ${was?.title ?? k}${was ? ` (line ${was.line} last time)` : ""}`;
+              }),
+              watchSummary(progress.added.length, progress.still, progress.fixed.length),
+            ];
+          } else if (watching !== undefined) {
+            footer = [
+              `Baseline saved: ${Object.keys(progress.state.open).length} finding${Object.keys(progress.state.open).length === 1 ? "" : "s"} open. From the next run, only new ones are reported.`,
+            ];
+          } else if (!args.all)
             shown = {
               ...planResult,
               findings: planResult.findings.filter((f) => added.has(fingerprint(f))),
             };
-          footer = [
-            ...progress.fixed.map((k) => {
-              const was = previous?.open[k];
-              return `✓ Fixed: ${was?.title ?? k}${was ? ` (line ${was.line} last time)` : ""}`;
-            }),
-            ...(!args.all && progress.still > 0
-              ? [
-                  `${progress.still} still open: add --all to list ${progress.still === 1 ? "it" : "them"}.`,
-                ]
-              : []),
-            progressLine(progress),
-          ];
+          if (watching === undefined)
+            footer = [
+              ...progress.fixed.map((k) => {
+                const was = previous?.open[k];
+                return `✓ Fixed: ${was?.title ?? k}${was ? ` (line ${was.line} last time)` : ""}`;
+              }),
+              ...(!args.all && progress.still > 0
+                ? [
+                    `${progress.still} still open: add --all to list ${progress.still === 1 ? "it" : "them"}.`,
+                  ]
+                : []),
+              progressLine(progress),
+            ];
         }
       }
       if (rankSummary) io.stdout.write(`${rankSummary}\n`);
@@ -487,6 +541,40 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           ...(footer ? { footer } : {}),
         }),
       );
+      // Notifications: the findings shown (with --watch, only the new ones), to the person's own
+      // webhooks. A failed send is reported and never changes the exit code.
+      const planTargets = resolveTargets(args.notify, io.env ?? {}).filter(
+        (t) => t.channel !== "email",
+      );
+      if (planTargets.length > 0) {
+        const sent = buildResult({
+          url: args.base ?? basename(args.file),
+          startedAt: deps.now?.() ?? new Date(),
+          findings: shown.findings,
+          passed: shown.passed,
+          failed: shown.failed.map((f) => f.id),
+          couldNotCheck: shown.couldNotCheck,
+        });
+        if (!shouldNotify(sent, args.notifyOn)) {
+          if (!args.quiet)
+            io.stderr.write(
+              `Nothing sent: --notify-on ${args.notifyOn} and ${args.notifyOn === "high" ? "nothing needs fixing first" : watching !== undefined ? "nothing is new" : "nothing was found"}.\n`,
+            );
+        } else {
+          const NAMES = {
+            slack: "Slack",
+            discord: "Discord",
+            webhook: "the webhook",
+            email: "email",
+          } as const;
+          for (const r of await notifyAll(sent, planTargets))
+            io.stderr.write(
+              r.ok
+                ? `Sent to ${NAMES[r.channel]}.\n`
+                : `Could not send to ${NAMES[r.channel]}: ${r.error ?? "it failed"}.\n`,
+            );
+        }
+      }
       // The annotated copy: a new file next to the plan, never the plan itself. The exit code doesn't change.
       if (args.annotate !== undefined) {
         const target = resolve(
@@ -515,8 +603,16 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       return {
         outcome: {
           kind: "ran",
-          highFindings: planResult.findings.filter((f) => f.severity === "high").length,
-          drift: planResult.findings.length > 0,
+          // The watch counts only what is new: known drift exits 0, new drift exits 1 (the baseline
+          // day by the normal rule).
+          highFindings: (watching !== undefined && previous && watchNew
+            ? watchNew
+            : planResult.findings
+          ).filter((f) => f.severity === "high").length,
+          drift:
+            watching !== undefined && previous && watchNew
+              ? watchNew.length > 0
+              : planResult.findings.length > 0,
           // A planned page behind a password was not checked: the run could not finish (exit 2).
           incomplete: planResult.couldNotCheck.length > 0,
         },

@@ -190,6 +190,8 @@ export interface RedirectResult {
   findings: Finding[];
   /** Accepted trails worth a line (a 308). */
   notes: string[];
+  /** Old addresses that answered a server error: neither a redirect finding nor a pass. */
+  couldNotCheck: { url: string; reason: string; lines: number[] }[];
   /** Legacy addresses requested. */
   checked: number;
 }
@@ -254,6 +256,7 @@ export async function checkRedirects(
   );
   const findings: Finding[] = [];
   const notes: string[] = [];
+  const couldNotCheck: RedirectResult["couldNotCheck"] = [];
   let done = 0;
   for (const [key, claim] of claims) {
     const p = legacyPath(claim.legacy);
@@ -277,6 +280,14 @@ export async function checkRedirects(
     // Claimed by rows planning different pages: that's plan-redirect-conflict, not a wrong destination.
     const conflict =
       new Set(claim.rows.map((r) => addressKey({ url: r.url, path: r.path }))).size > 1;
+    if ((hops[0]?.status ?? 0) >= 500) {
+      couldNotCheck.push({
+        url,
+        reason: `answered ${hops[0]?.status ?? 0}`,
+        lines: claim.rows.map((r) => r.line),
+      });
+      continue;
+    }
     const verdict = classify(hops, row, shown, origin, { skipDestination: conflict });
     if (verdict.note) notes.push(verdict.note);
     for (const id of verdict.ids)
@@ -295,6 +306,7 @@ export async function checkRedirects(
       (a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity] || first(a) - first(b),
     ),
     notes,
+    couldNotCheck,
     checked: done,
   };
 }

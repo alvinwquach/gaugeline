@@ -84,21 +84,21 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     type: "string",
     description: "Send a summary to this Slack incoming webhook (or set GAUGELINE_SLACK_WEBHOOK)",
     since: "0.2.0",
-    commands: ["check", "launch"],
+    commands: ["check", "launch", "plan"],
   },
   {
     name: "discord",
     type: "string",
     description: "Send an embed to this Discord webhook (or set GAUGELINE_DISCORD_WEBHOOK)",
     since: "0.2.0",
-    commands: ["check", "launch"],
+    commands: ["check", "launch", "plan"],
   },
   {
     name: "webhook",
     type: "string",
     description: "POST the result as JSON to this address (or set GAUGELINE_WEBHOOK)",
     since: "0.2.0",
-    commands: ["check", "launch", "digest"],
+    commands: ["check", "launch", "digest", "plan"],
   },
   {
     name: "email",
@@ -164,6 +164,13 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     type: "string",
     description:
       "With --base, say what was fixed and what is new since the last run (state file optional)",
+    since: "0.2.0",
+    commands: ["plan"],
+  },
+  {
+    name: "watch",
+    type: "string",
+    description: "With --base on production: the 30-day watch from this cutover date (YYYY-MM-DD)",
     since: "0.2.0",
     commands: ["plan"],
   },
@@ -249,7 +256,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     type: "string",
     description: "When to send: any (something was found, the default), high or always",
     since: "0.2.0",
-    commands: ["check", "launch"],
+    commands: ["check", "launch", "plan"],
   },
   {
     name: "report-url",

@@ -474,3 +474,5 @@ export { destinationKey, navRulesSchema, readRegions } from "./nav/read-regions.
 export type { NavEntry, NavRegion, NavRules, PageNav } from "./nav/read-regions.js";
 export { COMPARED, diffNav, inboundLinks, orphans } from "./nav/graph.js";
 export type { NavChange, NavChangeKind } from "./nav/graph.js";
+export { WATCH_DAYS, newSince, watchDay, watchLine, watchSummary } from "./plan/watch.js";
+export type { WatchDay } from "./plan/watch.js";

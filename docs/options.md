@@ -242,6 +242,7 @@ between the markers; CI fails when it differs from the flag table.
 | `--annotate <value>`      | Write a copy of the plan with a Gaugeline column saying what is wrong on each row                  |                      | 0.2.0 |
 | `--force`                 | Let --annotate replace a file that already exists                                                  |                      | 0.2.0 |
 | `--progress <value>`      | With --base, say what was fixed and what is new since the last run (state file optional)           |                      | 0.2.0 |
+| `--watch <value>`         | With --base on production: the 30-day watch from this cutover date (YYYY-MM-DD)                    |                      | 0.2.0 |
 | `--all`                   | With --progress, list the findings still open, not only how many                                   |                      | 0.2.0 |
 | `--live <value>`          | List pages in this crawl, sitemap, Search Console export or list that the plan misses              |                      | 0.2.0 |
 | `--nav <value>`           | Check the menu tabs (all headed Main category, or these, comma separated) against the pages        |                      | 0.2.0 |

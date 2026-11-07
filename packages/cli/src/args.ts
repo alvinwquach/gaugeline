@@ -52,6 +52,11 @@ export type ParsedArgs =
       force: boolean;
       /** "" when given without a file name: the state file beside the plan. */
       progress?: string;
+      /** --watch: the cutover date, YYYY-MM-DD (the 30-day watch). */
+      watch?: string;
+      /** Where to send the findings the run shows (with --watch, only the new ones). */
+      notify: { slack?: string; discord?: string; webhook?: string };
+      notifyOn: "any" | "high" | "always";
       all: boolean;
       printed?: string;
       live?: string;
@@ -206,6 +211,13 @@ export function parseCliArgs(
       ...(typeof values.annotate === "string" ? { annotate: values.annotate } : {}),
       force: values.force === true,
       ...(typeof values.progress === "string" ? { progress: values.progress } : {}),
+      ...(typeof values.watch === "string" ? { watch: values.watch } : {}),
+      notify: {
+        ...(typeof values.slack === "string" ? { slack: values.slack } : {}),
+        ...(typeof values.discord === "string" ? { discord: values.discord } : {}),
+        ...(typeof values.webhook === "string" ? { webhook: values.webhook } : {}),
+      },
+      notifyOn,
       all: values.all === true,
       ...(typeof values.printed === "string" ? { printed: values.printed } : {}),
       ...(typeof values.live === "string" ? { live: values.live } : {}),
