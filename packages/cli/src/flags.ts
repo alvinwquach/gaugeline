@@ -54,7 +54,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     description:
       "Allow addresses on this computer or a private network, such as 127.0.0.1 or 192.168.x.x",
     since: "0.1.0",
-    commands: ["check", "launch", "plan", "printed", "snapshot", "cutover", "verify"],
+    commands: ["check", "launch", "plan", "printed", "snapshot", "cutover", "verify", "run"],
   },
   {
     name: "dns",
@@ -177,9 +177,10 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
   {
     name: "all",
     type: "boolean",
-    description: "With --progress, list the findings still open, not only how many",
+    description:
+      "plan --progress: list the findings still open; run: check every site in gaugeline.sites.json",
     since: "0.2.0",
-    commands: ["plan"],
+    commands: ["plan", "run"],
   },
   {
     name: "live",
@@ -236,6 +237,28 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
       "Query parameters that must reach the destination, as name prefixes (default utm_)",
     since: "0.2.0",
     commands: ["printed"],
+  },
+  {
+    name: "site",
+    type: "string",
+    description: "Check this site from gaugeline.sites.json, by name (repeatable)",
+    since: "0.2.0",
+    commands: ["run"],
+    multiple: true,
+  },
+  {
+    name: "tag",
+    type: "string",
+    description: "Check the sites in gaugeline.sites.json with this tag, such as client",
+    since: "0.2.0",
+    commands: ["run"],
+  },
+  {
+    name: "parallel",
+    type: "string",
+    description: "Check this many sites at once (default 1); sites on one host never overlap",
+    since: "0.2.0",
+    commands: ["run"],
   },
   {
     name: "limit",

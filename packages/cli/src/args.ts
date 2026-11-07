@@ -15,6 +15,7 @@ export const SUBCOMMANDS = [
   "snapshot",
   "cutover",
   "verify",
+  "run",
 ] as const;
 export type CliCommand = "check" | (typeof SUBCOMMANDS)[number];
 
@@ -98,6 +99,16 @@ export type ParsedArgs =
     }
   | { kind: "cutover"; before: string; allowPrivate: boolean; verbose: boolean; quiet: boolean }
   | {
+      kind: "run-all";
+      all: boolean;
+      sites: string[];
+      tag?: string;
+      parallel: number;
+      allowPrivate: boolean;
+      verbose: boolean;
+      quiet: boolean;
+    }
+  | {
       kind: "verify";
       file: string;
       limit: number;
@@ -165,7 +176,9 @@ export function parseCliArgs(
                   ? "cutover"
                   : argv[0] === "verify"
                     ? "verify"
-                    : COMMAND;
+                    : argv[0] === "run"
+                      ? "run"
+                      : COMMAND;
   const given = command === COMMAND ? argv : argv.slice(1);
   // --annotate and --progress take an optional file name: alone, or before another flag, the default.
   const rest = given.map((a, i) =>
@@ -322,6 +335,43 @@ export function parseCliArgs(
       kind: "snapshot",
       domain,
       out: typeof values.out === "string" && values.out !== "" ? values.out : "before.json",
+      allowPrivate: values["allow-private"] === true,
+      verbose,
+      quiet: values.quiet === true,
+    };
+  }
+  if (command === "run") {
+    const names = Array.isArray(values.site)
+      ? values.site
+      : typeof values.site === "string"
+        ? [values.site]
+        : [];
+    const tag = typeof values.tag === "string" ? values.tag : undefined;
+    const all = values.all === true;
+    if (
+      (all ? 1 : 0) + (names.length > 0 ? 1 : 0) + (tag !== undefined ? 1 : 0) !== 1 ||
+      positionals.length > 0
+    )
+      return {
+        kind: "error",
+        message: "gaugeline run needs one of --all, --site <name> or --tag <tag>.",
+        hint: "The sites are listed in gaugeline.sites.json, in the folder you run from.",
+        verbose,
+      };
+    const p = typeof values.parallel === "string" ? values.parallel.trim() : "1";
+    if (!/^[1-9]\d*$/.test(p))
+      return {
+        kind: "error",
+        message: `--parallel takes a number of sites at once, 1 or more, not "${p}".`,
+        hint: UNKNOWN_FLAG_HINT,
+        verbose,
+      };
+    return {
+      kind: "run-all",
+      all,
+      sites: names,
+      ...(tag !== undefined ? { tag } : {}),
+      parallel: Number(p),
       allowPrivate: values["allow-private"] === true,
       verbose,
       quiet: values.quiet === true,

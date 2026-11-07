@@ -11,6 +11,7 @@ export const COMMANDS = [
   "snapshot",
   "cutover",
   "verify",
+  "run",
 ] as const;
 export type Command = (typeof COMMANDS)[number];
 
@@ -72,6 +73,15 @@ export const HELP: Record<string, string> = {
       "SPF change is fix first unless gaugeline.cutover.json lists it as expected.",
     ].join("\n"),
     footer: "Exit codes: 0 nothing to fix first, 1 something to fix first, 2 could not check",
+  }),
+  run: renderHelp(FLAGS, "run", {
+    usage: "gaugeline run --all | --site <name> | --tag <tag> [options]",
+    summary: [
+      "Check the sites listed in gaugeline.sites.json, one at a time, and save each run",
+      "to runs/<site>/<date>.json. Ends with a summary, worst first: new, fixed and",
+      "open fix-first findings against each site's last run, or why it couldn't run.",
+    ].join("\n"),
+    footer: "Exit codes: 0 no new fix-first finding, 1 a site has one, 2 a site couldn't run",
   }),
   verify: renderHelp(FLAGS, "verify", {
     usage: "gaugeline verify <crawl-export.csv> [options]",

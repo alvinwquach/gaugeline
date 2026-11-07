@@ -1,0 +1,24 @@
+{
+  "sites": [
+    {
+      "name": "harbour",
+      "address": "{{clean}}",
+      "config": "harbour",
+      "keyPrefix": "HARBOUR",
+      "tags": ["client"],
+      "permission": { "by": "Harbour Pottery (invented)", "on": "2026-10-01" }
+    },
+    {
+      "name": "fern-and-kiln",
+      "address": "{{noindex-header}}",
+      "tags": ["mine"],
+      "permission": { "by": "me", "on": "2026-10-01" }
+    },
+    {
+      "name": "old-shop",
+      "address": "http://127.0.0.1:1/",
+      "tags": ["client"],
+      "permission": { "by": "Old Shop (invented)", "on": "2026-10-01", "note": "being retired" }
+    }
+  ]
+}
