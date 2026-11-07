@@ -29,8 +29,13 @@ The address is optional. Run `npx gaugeline open` on its own and enter one in th
 
 - The app listens on 127.0.0.1 only, so nothing else on your network can reach it.
 - The link in your terminal carries a one-time key, made new each time and printed only there. Without
-  it, every request is refused.
-- Requests that claim to come from another website are refused, so a page open in another tab can't drive it.
+  it, every request is refused. The link works once: opening it swaps the key for a session cookie
+  and takes the key out of the address bar. To open the app in another browser or a private window,
+  restart `gaugeline open`.
+- Requests that claim to come from another website are refused, so a page open in another tab can't
+  drive it: the app answers only to `localhost` and `127.0.0.1` on its own port (which also stops a
+  hostile name that resolves to your computer), and refuses any other Origin and any cross-site
+  request.
 - Press Ctrl+C and it's gone: the port is closed, open connections end, and nothing is saved.
 
 ::: info
