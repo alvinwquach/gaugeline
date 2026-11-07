@@ -1,0 +1,4 @@
+{
+  "files": "plan-redirects",
+  "hosts": ["lanternbooks.example", "www.lanternbooks.example"]
+}

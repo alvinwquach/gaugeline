@@ -1,3 +1,5 @@
+import { setFlagsFromString } from "node:v8";
+import { runInNewContext } from "node:vm";
 import { describe, expect, it } from "vitest";
 import { crawlExport } from "../../../../fixtures/src/crawl-export.js";
 import { parseCsv } from "../../plan/columns.js";
@@ -188,13 +190,32 @@ describe("verify: edge cases", () => {
         yield block;
       }
     }
-    const before = process.memoryUsage().heapUsed;
-    const { summary } = await summariseStream(chunks());
-    const grown = process.memoryUsage().heapUsed - before;
+    // What the summary keeps, measured after a full collection on both sides: heapUsed alone also
+    // counts garbage not yet collected, which swings with whatever else the machine is running.
+    setFlagsFromString("--expose_gc");
+    const gc = runInNewContext("gc") as () => void;
+    const retained = async <T>(make: () => Promise<T> | T): Promise<[T, number]> => {
+      gc();
+      const before = process.memoryUsage().heapUsed;
+      const value = await make();
+      gc();
+      return [value, process.memoryUsage().heapUsed - before];
+    };
+    const [{ summary }, kept] = await retained(() => summariseStream(chunks()));
     expect([summary.total, summary.pages.size]).toEqual([200_000, 12]);
     // Each page keeps line numbers only, never the rows' text.
     expect(summary.pages.get(`${H}/shop/pot-0`)?.lines.slice(0, 2)).toEqual([2, 14]);
-    // The whole export as text is about 10 MB; the summary stays well under it.
-    expect(grown).toBeLessThan(40 * 1024 * 1024);
+    // 200,000 line numbers are about 2 MB. The export's text is about 12 MB: holding it, as reading
+    // the file whole would, fails the same bound, so the bound tells the two apart.
+    const BOUND = 8 * 1024 * 1024;
+    expect(kept).toBeLessThan(BOUND);
+    made = 0;
+    const [whole, held] = await retained(async () => {
+      let text = "";
+      for await (const block of chunks()) text += block;
+      return text.split("\n");
+    });
+    expect(whole.length).toBeGreaterThan(200_000);
+    expect(held).toBeGreaterThan(BOUND);
   });
 });

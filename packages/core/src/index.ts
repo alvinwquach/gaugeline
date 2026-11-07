@@ -561,3 +561,23 @@ export {
   sitesFileSchema,
 } from "./config/sites-schema.js";
 export type { SiteEntry, SitesFile } from "./config/sites-schema.js";
+export {
+  LIVE_LIMIT,
+  lintPlan,
+  lintRedirects,
+  parsePlanSheet,
+  parseRedirectList,
+  PLAN_COMMAND,
+  REDIRECT_COMMAND,
+  ShapeError,
+} from "./tools/lint.js";
+export type { Issue, ListRow, PlanRule, PlanToolRow, RedirectRule } from "./tools/lint.js";
+export {
+  createLimiter,
+  domainFetcher,
+  handleCheckRedirects,
+  liveCheck,
+  liveDomain,
+  LiveRefusal,
+} from "./tools/check-redirects.js";
+export type { LiveResult, LiveRow } from "./tools/check-redirects.js";

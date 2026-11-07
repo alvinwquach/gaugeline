@@ -81,6 +81,8 @@ export const NAV: NavGroup[] = [
  * linked to, but are not listed.
  */
 export const UNLISTED: NavPage[] = [
+  { slug: "tools/redirects", title: "Check a redirect list" },
+  { slug: "tools/plan", title: "Check a launch plan" },
   { slug: "security", title: "Security" },
   { slug: "changelog", title: "Changelog" },
   { slug: "reference/json-schema", title: "JSON output reference" },
