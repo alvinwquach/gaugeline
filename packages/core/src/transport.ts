@@ -4,6 +4,7 @@ import { request as httpsRequest } from "node:https";
 import type { LookupFunction } from "node:net";
 import type { Readable } from "node:stream";
 import { createBrotliDecompress, createGunzip, createInflate } from "node:zlib";
+import { certificateOf, type Certificate } from "./dns/certificate.js";
 
 export interface ResolvedAddress {
   address: string;
@@ -24,6 +25,8 @@ export interface TransportResponse {
   headers: Record<string, string>;
   /** Decompressed body. Errors with name "TimeoutError" when the deadline passes. */
   body: Readable;
+  /** Over https: the certificate the server presented (read from the connection, no extra request). */
+  certificate?: Certificate;
 }
 
 export interface SendOptions {
@@ -32,6 +35,11 @@ export interface SendOptions {
   /** The address that was checked. The socket connects here and nowhere else: no second lookup. */
   pinned: ResolvedAddress;
   timeoutMs: number;
+  /**
+   * Over https: trust only this certificate authority instead of the system's (a private staging
+   * CA, or the tests' own). Verification is never turned off.
+   */
+  ca?: string;
 }
 
 function timeoutError(ms: number): Error {
@@ -86,6 +94,7 @@ export function send(url: URL, opts: SendOptions): Promise<TransportResponse> {
       headers: { "accept-encoding": "gzip, deflate, br", ...opts.headers },
       agent: false,
       lookup: pinnedLookup,
+      ...(opts.ca && url.protocol === "https:" ? { ca: opts.ca } : {}),
     });
     const timer = setTimeout(() => {
       const err = timeoutError(opts.timeoutMs);
@@ -112,7 +121,13 @@ export function send(url: URL, opts: SendOptions): Promise<TransportResponse> {
       // The deadline covers the body too.
       req.removeAllListeners("error");
       req.on("error", (err) => body.destroy(err));
-      resolve({ status: res.statusCode ?? 0, headers: toRecord(res.headers), body });
+      const certificate = certificateOf(res.socket);
+      resolve({
+        status: res.statusCode ?? 0,
+        headers: toRecord(res.headers),
+        body,
+        ...(certificate ? { certificate } : {}),
+      });
     });
     req.end();
   });

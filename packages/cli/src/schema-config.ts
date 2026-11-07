@@ -3,6 +3,7 @@ import { dirname, join, resolve } from "node:path";
 import {
   ConfigError,
   accessConfigSchema,
+  cutoverConfigSchema,
   eventsConfigSchema,
   factsConfigSchema,
   hiddenConfigSchema,
@@ -14,6 +15,7 @@ import {
   schemaRulesSchema,
   tagsConfigSchema,
   type AccessConfig,
+  type CutoverConfig,
   type EventsConfig,
   type FactsConfig,
   type HiddenConfig,
@@ -44,6 +46,8 @@ export const EVENTS_CONFIG_FILE = "gaugeline.events.json";
 export const NAV_CONFIG_FILE = "gaugeline.nav.json";
 /** Pages whose loss was intended, each with its reason, likewise (the page checks). */
 export const PAGES_CONFIG_FILE = "gaugeline.pages.json";
+/** The DKIM selectors to read and the changes meant at cutover, likewise (snapshot, cutover). */
+export const CUTOVER_CONFIG_FILE = "gaugeline.cutover.json";
 /** Where the Tag Manager container export is, likewise. The export is a file: no account is used. */
 export const TAGS_CONFIG_FILE = "gaugeline.tags.json";
 
@@ -127,6 +131,10 @@ export function readEvents(dir: string): EventsConfig | undefined {
 
 export function readNavRules(dir: string): NavRules | undefined {
   return readJsonConfig(dir, NAV_CONFIG_FILE, navRulesSchema, "the menu settings");
+}
+
+export function readCutoverConfig(dir: string): CutoverConfig | undefined {
+  return readJsonConfig(dir, CUTOVER_CONFIG_FILE, cutoverConfigSchema, "the cutover settings");
 }
 
 export function readPagesConfig(dir: string): PagesConfig | undefined {

@@ -2,7 +2,7 @@ import { Resolver } from "node:dns/promises";
 import { isIP } from "node:net";
 
 /**
- * Public DNS reads, for the email record checks: TXT and MX only. This module never opens a
+ * Public DNS reads, for the email record checks and the cutover snapshot: TXT, MX, A and AAAA. This module never opens a
  * connection to a mail server and never sends mail. Answers are whatever the machine's resolver
  * returns, so a network with its own internal DNS can see different records than the public does.
  */
@@ -15,6 +15,9 @@ export interface DnsReader {
   /** TXT records at the name, each record's chunks joined into one string. [] when there are none. */
   txt(name: string): Promise<string[]>;
   mx(name: string): Promise<MxRecord[]>;
+  /** IPv4 and IPv6 address records (the cutover snapshot). Absent on a reader that has none. */
+  a?(name: string): Promise<string[]>;
+  aaaa?(name: string): Promise<string[]>;
   /**
    * True for a name this reader will not look up (reserved for examples and tests): the checks
    * then skip it, rather than read "no records" as a missing record.
@@ -26,12 +29,14 @@ export interface DnsReader {
 export interface DnsResolver {
   resolveTxt(name: string): Promise<string[][]>;
   resolveMx(name: string): Promise<MxRecord[]>;
+  resolve4?(name: string): Promise<string[]>;
+  resolve6?(name: string): Promise<string[]>;
 }
 
 /** A lookup that failed for a reason other than "no records": the checks report could-not-check. */
 export class DnsLookupError extends Error {
   constructor(
-    readonly rrtype: "TXT" | "MX",
+    readonly rrtype: "TXT" | "MX" | "A" | "AAAA",
     readonly hostname: string,
     readonly reason: string,
   ) {
@@ -72,7 +77,11 @@ export function createDnsReader({
 }: DnsReaderOptions = {}): DnsReader {
   const r: DnsResolver = resolver ?? new Resolver({ timeout: timeoutMs, tries: 2 });
   const memo = new Map<string, Promise<unknown>>();
-  function read<T>(rrtype: "TXT" | "MX", name: string, ask: () => Promise<T[]>): Promise<T[]> {
+  function read<T>(
+    rrtype: DnsLookupError["rrtype"],
+    name: string,
+    ask: () => Promise<T[]>,
+  ): Promise<T[]> {
     const host = name.toLowerCase().replace(/\.$/, "");
     if (!askReserved && isReservedName(host)) return Promise.resolve([]);
     const key = `${rrtype} ${host}`;
@@ -92,6 +101,8 @@ export function createDnsReader({
     txt: (name) =>
       read("TXT", name, async () => (await r.resolveTxt(name)).map((chunks) => chunks.join(""))),
     mx: (name) => read("MX", name, () => r.resolveMx(name)),
+    a: (name) => read("A", name, async () => (r.resolve4 ? r.resolve4(name) : [])),
+    aaaa: (name) => read("AAAA", name, async () => (r.resolve6 ? r.resolve6(name) : [])),
   };
 }
 

@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import {
   PLAN_CHECKS,
   PRINTED_CHECKS,
+  CUTOVER_ONLY_CHECKS,
   catalogue,
   createPageRegistry,
 } from "../packages/core/src/index.js";
@@ -31,6 +32,7 @@ const readmes = (
 const registry = createPageRegistry();
 for (const c of PLAN_CHECKS) registry.register(c);
 for (const c of PRINTED_CHECKS) registry.register(c);
+for (const c of CUTOVER_ONLY_CHECKS) registry.register(c);
 const entries = catalogue(registry);
 // A scaffold from pnpm new:check imports and runs, but its TODO text must never reach the docs.
 const unfinished = entries.flatMap((e) =>
