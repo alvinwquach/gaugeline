@@ -8,6 +8,7 @@ import {
   hiddenConfigSchema,
   navRulesSchema,
   languageRulesSchema,
+  pagesConfigSchema,
   paymentsConfigSchema,
   readContainer,
   schemaRulesSchema,
@@ -18,6 +19,7 @@ import {
   type HiddenConfig,
   type NavRules,
   type LanguageRules,
+  type PagesConfig,
   type PaymentsConfig,
   type SchemaRules,
   type TagContainer,
@@ -40,6 +42,8 @@ export const HIDDEN_CONFIG_FILE = "gaugeline.hidden.json";
 export const EVENTS_CONFIG_FILE = "gaugeline.events.json";
 /** Where the menus are and which footer links are required, likewise (nav-orphans, nav-footer). */
 export const NAV_CONFIG_FILE = "gaugeline.nav.json";
+/** Pages whose loss was intended, each with its reason, likewise (the page checks). */
+export const PAGES_CONFIG_FILE = "gaugeline.pages.json";
 /** Where the Tag Manager container export is, likewise. The export is a file: no account is used. */
 export const TAGS_CONFIG_FILE = "gaugeline.tags.json";
 
@@ -123,4 +127,8 @@ export function readEvents(dir: string): EventsConfig | undefined {
 
 export function readNavRules(dir: string): NavRules | undefined {
   return readJsonConfig(dir, NAV_CONFIG_FILE, navRulesSchema, "the menu settings");
+}
+
+export function readPagesConfig(dir: string): PagesConfig | undefined {
+  return readJsonConfig(dir, PAGES_CONFIG_FILE, pagesConfigSchema, "the expected page changes");
 }

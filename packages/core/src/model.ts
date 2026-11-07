@@ -12,6 +12,7 @@ import type { AccessRead } from "./access/probe.js";
 import type { DnsReader } from "./dns.js";
 import type { HiddenConfig } from "./hidden.js";
 import type { NavRules } from "./nav/read-regions.js";
+import type { ContentNow, PagesConfig } from "./snapshot/compare.js";
 import type { EventsRead } from "./events/observe.js";
 import type { TagAnalysis } from "./tags/analyse.js";
 import type { TagContainer } from "./tags/read-container.js";
@@ -138,6 +139,13 @@ export interface CheckContext {
   hidden?: HiddenConfig;
   /** Where the menus are and which footer links are required (gaugeline.nav.json). */
   navRules?: NavRules;
+  /**
+   * Each page saved with the last run (--since last), as it is now: read once on first use. Absent
+   * when the last run saved no pages.
+   */
+  contentNow?: () => Promise<Map<string, ContentNow>>;
+  /** Pages whose loss was intended, with the reason (gaugeline.pages.json). */
+  expectedChanges?: PagesConfig["expectedChanges"];
   /** The tracking plan's elements, clicked by the run's observer, once on first use (gaugeline.events.json). */
   events?: () => Promise<EventsRead>;
   /** The Tag Manager container export named in gaugeline.tags.json, read from the file only. */

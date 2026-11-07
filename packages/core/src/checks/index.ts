@@ -77,7 +77,11 @@ import { ogImageBroken } from "./og-image-broken.js";
 import { ogImageMissing } from "./og-image-missing.js";
 import { ogImageRelative } from "./og-image-relative.js";
 import { ogUrlMismatch } from "./og-url-mismatch.js";
+import { pageGone } from "./page-gone.js";
 import { pageHeavy } from "./page-heavy.js";
+import { pageLostContent } from "./page-lost-content.js";
+import { pageLostItems } from "./page-lost-items.js";
+import { pageLostStructuredData } from "./page-lost-structured-data.js";
 import { paginationSameContent } from "./pagination-same-content.js";
 import { paginationUnreachable } from "./pagination-unreachable.js";
 import { paymentHandleInconsistent } from "./payment-handle-inconsistent.js";
@@ -191,7 +195,11 @@ export const PAGE_CHECKS = [
   ogImageMissing,
   ogImageRelative,
   ogUrlMismatch,
+  pageGone,
   pageHeavy,
+  pageLostContent,
+  pageLostItems,
+  pageLostStructuredData,
   paginationSameContent,
   paginationUnreachable,
   paymentHandleInconsistent,

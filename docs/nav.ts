@@ -101,4 +101,5 @@ export const UNLISTED: NavPage[] = [
   { slug: "guides/tag-rules", title: "Tracking rules that point at things that no longer exist" },
   { slug: "guides/printed-links", title: "Printed QR codes and short links" },
   { slug: "guides/navigation", title: "Navigation and footer: what changed" },
+  { slug: "guides/page-snapshots", title: "Page snapshots: what each page lost" },
 ];

@@ -21,6 +21,14 @@ import { lazyTagAnalysis, summarise, type TagSummary } from "./tags/analyse.js";
 import type { TagContainer } from "./tags/read-container.js";
 import type { RunSnapshot } from "./run-snapshot.js";
 import { lazyPages } from "./pages.js";
+import { contentGains, type ContentNow, type PagesConfig } from "./snapshot/compare.js";
+import { lazyContentNow } from "./snapshot/now.js";
+import { pathKey } from "./checks/page-shared.js";
+import {
+  buildContentSnapshot,
+  contentKey,
+  type ContentSnapshot,
+} from "./snapshot/page-snapshot.js";
 import { lazyDatasets } from "./sanity.js";
 import { lazyScripts } from "./scripts.js";
 import type { FactsConfig } from "./facts/types.js";
@@ -71,6 +79,8 @@ export interface SiteCheckOptions {
   previous?: RunSnapshot;
   /** --since last was asked for, whether or not a last run was found. */
   baselineRequested?: boolean;
+  /** Pages whose loss was intended (gaugeline.pages.json). */
+  pagesConfig?: PagesConfig;
 }
 
 export interface SiteCheck {
@@ -79,6 +89,13 @@ export interface SiteCheck {
   budget: Budget;
   /** How many of the container's triggers can fire, when a tag check read them. */
   tags?: TagSummary;
+  /**
+   * With --since last: what each page read holds, by path, to save with the run. The pages
+   * from the last run that are still there are kept, so a page outside this run's sample isn't lost.
+   */
+  contents?: Record<string, ContentSnapshot>;
+  /** With --since last: gains since the last run (new pages, sections, items), and the expected changes. Information, never findings. */
+  contentNotes?: string[];
 }
 
 /**
@@ -101,6 +118,15 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
   const site = lazySiteContext({ page: snapshot, fetcher: opts.fetcher, budget });
   const registry = opts.registry ?? createPageRegistry();
   const pages = lazyPages({ page: snapshot, fetcher: opts.fetcher, budget });
+  const saved = opts.previous?.pages;
+  const contentNow = saved
+    ? lazyContentNow({
+        previous: saved,
+        pages,
+        fetcher: opts.fetcher,
+        origin: new URL(snapshot.finalUrl).origin,
+      })
+    : undefined;
   const container = opts.tags;
   const tagRules = container
     ? lazyTagAnalysis(async () => ({
@@ -158,6 +184,8 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
         : {}),
       ...(opts.previous ? { previous: opts.previous } : {}),
       ...(opts.baselineRequested ? { baselineRequested: true } : {}),
+      ...(contentNow ? { contentNow } : {}),
+      ...(opts.pagesConfig ? { expectedChanges: opts.pagesConfig.expectedChanges } : {}),
       ...(opts.access
         ? { access: lazyAccess({ fetcher: opts.fetcher, budget, settings: opts.access }) }
         : {}),
@@ -175,5 +203,45 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
   }
   result.sampled = sampleCounts(budget.summary());
   const analysis = await tagRules?.peek();
-  return { snapshot, result, budget, ...(analysis ? { tags: summarise(analysis) } : {}) };
+  const content =
+    opts.baselineRequested && pageOutcome.kind !== "refused"
+      ? await savedContents(await pages(), contentNow, saved, opts.pagesConfig)
+      : undefined;
+  return {
+    snapshot,
+    result,
+    budget,
+    ...(analysis ? { tags: summarise(analysis) } : {}),
+    ...(content ? { contents: content.contents, contentNotes: content.notes } : {}),
+  };
+}
+
+/** The pages to save with this run, and what they gained against the last one. */
+async function savedContents(
+  read: readonly PageSnapshot[],
+  contentNow: (() => Promise<Map<string, ContentNow>>) | undefined,
+  saved: Readonly<Record<string, ContentSnapshot>> | undefined,
+  config: PagesConfig | undefined,
+): Promise<{ contents: Record<string, ContentSnapshot>; notes: string[] }> {
+  const contents: Record<string, ContentSnapshot> = {};
+  for (const p of read) {
+    const last = p.hops.at(-1);
+    if (last && last.status >= 200 && last.status < 300) {
+      const key = contentKey(p.requestedUrl);
+      // A page that redirects elsewhere is saved under neither address.
+      if (key === contentKey(p.finalUrl)) contents[key] = buildContentSnapshot(p);
+    }
+  }
+  if (contentNow)
+    for (const [key, now] of await contentNow())
+      if (now.kind === "page" && !(key in contents)) contents[key] = now.snap;
+  const notes = saved ? contentGains(saved, contents) : [];
+  for (const e of config?.expectedChanges ?? [])
+    if (saved && pathKey(e.path) in saved)
+      notes.push(`Expected change, not reported: ${e.path} (${e.reason})`);
+  // Keys sorted, so the saved file diffs cleanly between runs.
+  return {
+    contents: Object.fromEntries(Object.entries(contents).sort(([a], [b]) => (a < b ? -1 : 1))),
+    notes,
+  };
 }

@@ -2,6 +2,7 @@ import { load } from "cheerio/slim";
 import type { Severity } from "./model.js";
 import { readRegions, type NavEntry } from "./nav/read-regions.js";
 import { jsonLdNodes, type PageSnapshot } from "./snapshot.js";
+import type { ContentSnapshot } from "./snapshot/page-snapshot.js";
 
 /**
  * What one run remembers about a page, so the next run can say what changed. Hosts, amounts and
@@ -21,6 +22,11 @@ export interface RunSnapshot {
    * in a snapshot written before navigation was saved: nav-changed is then could not check.
    */
   nav?: NavEntry[];
+  /**
+   * What each page read held, by path (page-lost-content and the other page checks): counts,
+   * headings and item addresses, never body text. Absent in a snapshot written before pages were.
+   */
+  pages?: Record<string, ContentSnapshot>;
 }
 
 export const RUN_SNAPSHOT_SCHEMA = 1;
@@ -61,6 +67,7 @@ export function providerFor(host: string): string {
 export function buildRunSnapshot(
   page: PageSnapshot,
   now: () => Date = () => new Date(),
+  contents?: Record<string, ContentSnapshot>,
 ): RunSnapshot {
   const prices: Record<string, number> = {};
   for (const n of jsonLdNodes(page)) {
@@ -90,7 +97,15 @@ export function buildRunSnapshot(
     forms[key.slice(0, KEY_MAX)] = { provider: providerFor(actionHost), actionHost };
   });
   const nav = readRegions(page).entries.filter((e) => e.region !== "body");
-  return { schema: 1, url: page.finalUrl, takenAt: now().toISOString(), prices, forms, nav };
+  return {
+    schema: 1,
+    url: page.finalUrl,
+    takenAt: now().toISOString(),
+    prices,
+    forms,
+    nav,
+    ...(contents ? { pages: contents } : {}),
+  };
 }
 
 export interface SnapshotChange {

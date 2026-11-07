@@ -94,6 +94,7 @@ import {
   readSchemaRules,
   readTags,
   readNavRules,
+  readPagesConfig,
 } from "./schema-config.js";
 import { skeletonOnly } from "./skeleton.js";
 import { readLastRun, statePath, writeLastRun } from "./state.js";
@@ -772,6 +773,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       const tags = readTags(deps.cwd ?? process.cwd());
       const events = readEvents(deps.cwd ?? process.cwd());
       const navRules = readNavRules(deps.cwd ?? process.cwd());
+      const pagesConfig = readPagesConfig(deps.cwd ?? process.cwd());
       const accessConfig = readAccess(deps.cwd ?? process.cwd());
       // Keys are read from the environment here and go only into request headers.
       const access = accessConfig ? resolveAccess(accessConfig, io.env ?? {}) : undefined;
@@ -819,6 +821,8 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         result,
         budget,
         tags: tagSummary,
+        contents,
+        contentNotes,
       } = await checkSite({
         address: args.input,
         fetcher,
@@ -839,6 +843,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         ...(events ? { events } : {}),
         ...(last?.kind === "ok" ? { previous: last.snapshot } : {}),
         ...(args.since === "last" ? { baselineRequested: true } : {}),
+        ...(pagesConfig ? { pagesConfig } : {}),
         ...(access ? { access } : {}),
         ...(dns ? { dns } : {}),
       });
@@ -877,11 +882,14 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       // How many of the container's triggers can fire: one stderr line, like the sample line.
       if (tagSummary && !args.json && !args.quiet)
         io.stderr.write(`${formatTagSummary(tagSummary)}\n`);
+      // Gains since the last run: information on stderr, never findings.
+      if (contentNotes && contentNotes.length > 0 && !args.json && !args.quiet)
+        io.stderr.write(`Since the last run:\n${contentNotes.map((l) => `  ${l}`).join("\n")}\n`);
       if (args.since && last?.kind !== "newer")
         writeLastRun(
           cwd,
           host,
-          buildRunSnapshot(snapshot, () => startedAt),
+          buildRunSnapshot(snapshot, () => startedAt, contents),
           `Gaugeline ${deps.version ?? VERSION}`,
         );
       // The report: one self-contained file, written on every run that isn't --json, opened only
