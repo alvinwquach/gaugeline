@@ -87,6 +87,7 @@ import { formatTerminal } from "./reporter.js";
 import { runCutover } from "./cutover.js";
 import { runSnapshot } from "./snapshot.js";
 import { runVerify } from "./verify.js";
+import { PortRangeError, startApp, type RunningApp } from "@gaugeline/app-server";
 import { formatRunAll, runAll, runAllExit } from "./run-all.js";
 import { readSites, selectSites, SITES_FILE } from "./sites.js";
 import { appendStepSummary, planStepSummary } from "./step-summary.js";
@@ -171,6 +172,8 @@ export interface Deps {
   open?: (path: string) => void;
   /** Where the email is POSTed. Defaults to Resend's API; tests pass a local server. */
   emailEndpoint?: string;
+  /** gaugeline open stops when this aborts, as it does on Ctrl+C. For tests that run it in-process. */
+  stop?: AbortSignal;
 }
 
 export interface RunReport {
@@ -754,6 +757,42 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         }),
         ci: false,
       };
+    case "open": {
+      // The key is printed once, here, and nowhere else: not in stderr, not in an error.
+      let app: RunningApp;
+      try {
+        app = await startApp({ ...(args.address ? { address: args.address } : {}) });
+      } catch (err) {
+        if (err instanceof PortRangeError) throw new ConfigError(err.message);
+        const e = err as NodeJS.ErrnoException;
+        throw new ConfigError(
+          `The app could not start: ${e.code ? `${e.code} ` : ""}${e.message.replace(/\?s=[^\s&]+/g, "")}`,
+        );
+      }
+      io.stdout.write(
+        `Gaugeline is running at ${app.url}\nIt's only reachable from this computer. Press Ctrl+C to stop.\n`,
+      );
+      const env = io.env ?? {};
+      if (!args.noOpen && !isCiEnv(env)) (deps.open ?? openInBrowser)(app.url);
+      // Ctrl+C or SIGTERM closes the listener and any open connection, then the run ends 0. A
+      // second signal while it closes changes nothing.
+      await new Promise<void>((resolve) => {
+        let stopping = false;
+        const stop = () => {
+          if (stopping) return;
+          stopping = true;
+          void app.close().then(() => {
+            process.off("SIGINT", stop);
+            process.off("SIGTERM", stop);
+            resolve();
+          });
+        };
+        process.on("SIGINT", stop);
+        process.on("SIGTERM", stop);
+        deps.stop?.addEventListener("abort", stop, { once: true });
+      });
+      return { outcome: ran, ci: false };
+    }
     case "run-all": {
       const cwd = deps.cwd ?? process.cwd();
       const picked = selectSites(readSites(cwd), {

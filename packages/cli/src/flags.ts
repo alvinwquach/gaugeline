@@ -46,7 +46,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     type: "boolean",
     description: "Do not open anything in a browser",
     since: "0.1.0",
-    commands: ["check", "launch"],
+    commands: ["check", "launch", "open"],
   },
   {
     name: "allow-private",

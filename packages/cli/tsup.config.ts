@@ -6,7 +6,7 @@ export default defineConfig({
   target: "node18",
   platform: "node",
   // One bundled file: the engine is inlined so `npx gaugeline` downloads one package.
-  noExternal: ["@gaugeline/core"],
+  noExternal: ["@gaugeline/core", "@gaugeline/app-server"],
   dts: false,
   clean: true,
   banner: { js: "#!/usr/bin/env node" },

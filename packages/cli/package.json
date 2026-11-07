@@ -38,6 +38,7 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "devDependencies": {
+    "@gaugeline/app-server": "workspace:*",
     "@gaugeline/core": "workspace:*"
   },
   "private": false
