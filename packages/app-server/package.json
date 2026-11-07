@@ -1,0 +1,12 @@
+{
+  "name": "@gaugeline/app-server",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The local server behind gaugeline open: 127.0.0.1 only, a one-time key, nothing saved. Bundled into the CLI, never published on its own.",
+  "type": "module",
+  "license": "MIT",
+  "main": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  }
+}

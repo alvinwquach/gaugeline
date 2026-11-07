@@ -12,6 +12,7 @@ export const COMMANDS = [
   "cutover",
   "verify",
   "run",
+  "open",
 ] as const;
 export type Command = (typeof COMMANDS)[number];
 
@@ -73,6 +74,15 @@ export const HELP: Record<string, string> = {
       "SPF change is fix first unless gaugeline.cutover.json lists it as expected.",
     ].join("\n"),
     footer: "Exit codes: 0 nothing to fix first, 1 something to fix first, 2 could not check",
+  }),
+  open: renderHelp(FLAGS, "open", {
+    usage: "gaugeline open [address] [options]",
+    summary: [
+      "Start the app in a browser tab on this computer: it listens on 127.0.0.1 only,",
+      "on port 4817 or the next free one, and every request needs the one-time key in",
+      "the printed link. Press Ctrl+C to stop; nothing is saved.",
+    ].join("\n"),
+    footer: "Exit codes: 0 stopped with Ctrl+C, 2 could not start",
   }),
   run: renderHelp(FLAGS, "run", {
     usage: "gaugeline run --all | --site <name> | --tag <tag> [options]",

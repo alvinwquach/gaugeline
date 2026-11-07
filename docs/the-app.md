@@ -2,16 +2,15 @@
 
 Run checks from a browser tab on your own computer, the way dbpeek opens a database.
 
-```sh title=Terminal untested="Converted with a fixture in this page's own branch."
-$ npx gaugeline open yoursite.com
-  Loading the page without JavaScript
-  Reading robots.txt and the sitemap
-  Checking 24 links on the page
-  Scanning the site's JavaScript for leaked keys
-
-✓ Gaugeline is running at http://localhost:4817/?s=…
-  It's only reachable from this computer. Press Ctrl+C to stop.
+```sh title=Terminal untested="gaugeline open runs until Ctrl+C: open.test.ts runs the built bin and checks these two lines."
+$ npx gaugeline open
+Gaugeline is running at http://localhost:4817/?s=…
+It's only reachable from this computer. Press Ctrl+C to stop.
 ```
+
+The link opens in your browser (not with `--no-open`, and not in CI). If port 4817 is taken, the app
+uses the next free one, up to 4826, and the link says which. If all ten are taken, it stops with exit
+code 2 and says so.
 
 The address is optional. Run `npx gaugeline open` on its own and enter one in the app. You can check as many pages as you like in one session; each one appears in the sidebar.
 
@@ -29,9 +28,10 @@ The address is optional. Run `npx gaugeline open` on its own and enter one in th
 ## Private to your computer
 
 - The app listens on 127.0.0.1 only, so nothing else on your network can reach it.
-- The link in your terminal carries a one-time key. Without it, every request is refused.
+- The link in your terminal carries a one-time key, made new each time and printed only there. Without
+  it, every request is refused.
 - Requests that claim to come from another website are refused, so a page open in another tab can't drive it.
-- Press Ctrl+C and it's gone. Nothing is saved.
+- Press Ctrl+C and it's gone: the port is closed, open connections end, and nothing is saved.
 
 ::: info
 Want to see it first? [Open the live demo](https://claude.ai/artifact/MwQmr83pa7xZdkAKvGBcNH) with example results.

@@ -16,6 +16,7 @@ export const SUBCOMMANDS = [
   "cutover",
   "verify",
   "run",
+  "open",
 ] as const;
 export type CliCommand = "check" | (typeof SUBCOMMANDS)[number];
 
@@ -98,6 +99,7 @@ export type ParsedArgs =
       quiet: boolean;
     }
   | { kind: "cutover"; before: string; allowPrivate: boolean; verbose: boolean; quiet: boolean }
+  | { kind: "open"; address?: string; noOpen: boolean; verbose: boolean; quiet: boolean }
   | {
       kind: "run-all";
       all: boolean;
@@ -178,7 +180,9 @@ export function parseCliArgs(
                     ? "verify"
                     : argv[0] === "run"
                       ? "run"
-                      : COMMAND;
+                      : argv[0] === "open"
+                        ? "open"
+                        : COMMAND;
   const given = command === COMMAND ? argv : argv.slice(1);
   // --annotate and --progress take an optional file name: alone, or before another flag, the default.
   const rest = given.map((a, i) =>
@@ -336,6 +340,22 @@ export function parseCliArgs(
       domain,
       out: typeof values.out === "string" && values.out !== "" ? values.out : "before.json",
       allowPrivate: values["allow-private"] === true,
+      verbose,
+      quiet: values.quiet === true,
+    };
+  }
+  if (command === "open") {
+    if (positionals.length > 1)
+      return {
+        kind: "error",
+        message: `gaugeline open takes at most one address, got ${positionals.length}.`,
+        hint: "Run gaugeline open on its own, or gaugeline open yoursite.com.",
+        verbose,
+      };
+    return {
+      kind: "open",
+      ...(positionals[0] ? { address: positionals[0] } : {}),
+      noOpen: values["no-open"] === true,
       verbose,
       quiet: values.quiet === true,
     };

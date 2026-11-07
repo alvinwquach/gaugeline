@@ -82,6 +82,13 @@ Checked 20 of 41 images.
 Each check that passed also prints a `✓ <id>` line, left out above. The output is asserted by
 `packages/cli/src/__tests__/images.test.ts`.
 
+### The app (gaugeline open)
+
+`gaugeline open` starts a server on 127.0.0.1 only, so nothing else on your network can reach it.
+Every request needs the one-time key from the printed link; the key is made new each start, held in
+memory, and never written to disk or logged. The app saves nothing: no file is written in your
+working folder or your home folder, and Ctrl+C leaves nothing behind.
+
 ### App stores
 
 When the page links to an app (`apps.apple.com/.../id<digits>`, `play.google.com/store/apps/details?id=<package>`

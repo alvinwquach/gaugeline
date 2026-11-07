@@ -5,6 +5,9 @@ export default defineConfig({
   resolve: {
     alias: {
       "@gaugeline/core": fileURLToPath(new URL("./packages/core/src/index.ts", import.meta.url)),
+      "@gaugeline/app-server": fileURLToPath(
+        new URL("./packages/app-server/src/index.ts", import.meta.url),
+      ),
       "@gaugeline/testkit": fileURLToPath(
         new URL("./packages/testkit/src/index.ts", import.meta.url),
       ),
