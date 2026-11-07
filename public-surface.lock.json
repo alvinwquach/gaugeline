@@ -96,6 +96,15 @@
       "quiet",
       "verbose",
       "version"
+    ],
+    "verify": [
+      "allow-private",
+      "ci",
+      "help",
+      "limit",
+      "quiet",
+      "verbose",
+      "version"
     ]
   },
   "checkIds": [
@@ -194,6 +203,8 @@
     "quotable-facts-disagree",
     "redirect-chain",
     "robots-block",
+    "rsc-served-as-page",
+    "rsc-vary-missing",
     "schema-breadcrumb-mismatch",
     "schema-breadcrumb-start",
     "schema-dangling-ref",
@@ -312,6 +323,8 @@
     "quotable-facts-disagree": "high",
     "redirect-chain": "medium",
     "robots-block": "high",
+    "rsc-served-as-page": "high",
+    "rsc-vary-missing": "high",
     "schema-breadcrumb-mismatch": "medium",
     "schema-breadcrumb-start": "low",
     "schema-dangling-ref": "medium",

@@ -17,6 +17,11 @@ export interface RouteDef {
   bodyBytes?: number;
   /** Answer with this text instead of a file. */
   body?: string;
+  /**
+   * When the request carries this header with this value (names in lower case), answer with
+   * `then` instead: the same address serving another format (a framework's RSC: 1 request).
+   */
+  ifHeader?: { name: string; value: string; then: RouteDef };
 }
 
 /** Optional fixture.json: extra hosts served by the same files, one origin each. */
@@ -192,7 +197,10 @@ export async function startFixture(name: string): Promise<Fixture> {
         .end(gate.body ?? "Authentication required");
       return;
     }
-    const route = routes[path];
+    const listed = routes[path];
+    const variant = listed?.ifHeader;
+    const route =
+      variant && req.headers[variant.name.toLowerCase()] === variant.value ? variant.then : listed;
     const answer = () => {
       if (route?.hang) return;
       const headers: Record<string, string> = { ...(route?.headers ?? {}) };

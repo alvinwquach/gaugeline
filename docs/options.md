@@ -257,6 +257,7 @@ between the markers; CI fails when it differs from the flag table.
 | `--printed <value>`       | With --base, add the printed register's addresses to the 301 map                                   |                      | 0.2.0 |
 | `--decode <value>`        | Read the QR code in these PNG images (or a folder) and add new ones to the register                |                      | 0.2.0 |
 | `--tags <value>`          | Query parameters that must reach the destination, as name prefixes (default utm_)                  |                      | 0.2.0 |
+| `--limit <value>`         | Re-check this many of the export's pages (default 40; 0 only classifies the rows)                  |                      | 0.2.0 |
 | `--out <value>`           | Where to write the snapshot (default before.json)                                                  |                      | 0.2.0 |
 | `--before <value>`        | The snapshot taken before cutover, written by gaugeline snapshot                                   |                      | 0.2.0 |
 | `--runs <value>`          | The folder of saved runs (each one saved with --json) to read                                      |                      | 0.2.0 |

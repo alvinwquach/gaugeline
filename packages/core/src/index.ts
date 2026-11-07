@@ -543,3 +543,14 @@ export type {
 } from "./verify/classify.js";
 export { createCsvStream } from "./verify/csv-stream.js";
 export type { CsvRecord, CsvStream } from "./verify/csv-stream.js";
+export {
+  formatRecheck,
+  judge as judgeCrawlerView,
+  parseVary,
+  recheck,
+  RSC_HEADER,
+  selectPages,
+  varyCoversRsc,
+  viewPage,
+} from "./verify/recheck.js";
+export type { CrawlerView, PageToCheck, RecheckResult, Unread } from "./verify/recheck.js";
