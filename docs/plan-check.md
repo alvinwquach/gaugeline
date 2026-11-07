@@ -574,6 +574,115 @@ Footer: 5 items in 2 categories
 12 to look at, 4 to fix first.
 ```
 
+### Gate a launch
+
+Exit code 1 when anything drifts, so the plan check can hold a launch in CI. Two jobs answer two
+questions at two moments:
+
+- **plan-only** runs on every pull request and push that changes the plan file. It judges the
+  spreadsheet against itself (duplicates, missing titles, conflicting old addresses) in seconds,
+  with no site, before anyone waits for a build.
+- **plan-against-preview** runs when a deployment succeeds, against the address the host reports
+  in the `deployment_status` event.
+
+Copy [`examples/workflows/plan-gate.yml`](https://github.com/alvinwquach/gaugeline/blob/main/examples/workflows/plan-gate.yml)
+to `.github/workflows/` and set `PLAN` to your CSV:
+
+```yaml title=examples/workflows/plan-gate.yml
+# An example: copy it to .github/workflows/ in the repository that holds your launch plan.
+#
+# Two jobs, two moments:
+# - plan-only runs on every pull request and push that changes the plan file: the spreadsheet
+#   against itself, in seconds, with no site.
+# - plan-against-preview runs when a deployment succeeds, against the address the host reports.
+#
+# Exit 1 means something drifts; exit 2 means the check could not run (a locked preview, a missing
+# file). Mark both jobs as required status checks, and exit 1 holds the merge or the promotion.
+#
+# Renamed or moved the CSV? Update PLAN and both paths filters below. A filter naming the old path
+# matches nothing, and plan-only quietly stops running.
+name: Gaugeline plan gate
+
+on:
+  pull_request:
+    paths:
+      - docs/sitemap-plan.csv
+  push:
+    paths:
+      - docs/sitemap-plan.csv
+  deployment_status:
+
+permissions:
+  contents: read
+
+env:
+  PLAN: docs/sitemap-plan.csv
+
+jobs:
+  plan-only:
+    if: github.event_name != 'deployment_status'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 20
+      - name: Check the plan against itself
+        run: npx --yes gaugeline plan "$PLAN" --plan-only
+
+  plan-against-preview:
+    # Every successful deployment, production included. For previews only, add:
+    #   && github.event.deployment.environment == 'Preview'
+    # (use the environment name your host reports: Vercel says Preview, Netlify deploy-preview).
+    if: github.event_name == 'deployment_status' && github.event.deployment_status.state == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 20
+      - name: Check the preview against the plan
+        env:
+          # The address comes in through the environment, never pasted into the script.
+          TARGET_URL: ${{ github.event.deployment_status.target_url }}
+          # Only when the preview is protected; unset secrets are empty and ignored. A run from a
+          # fork gets no secrets: a protected preview then exits 2, never a false pass.
+          GAUGELINE_VERCEL_BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+          GAUGELINE_BASIC_AUTH: ${{ secrets.PREVIEW_BASIC_AUTH }}
+        run: npx --yes gaugeline plan "$PLAN" --base "$TARGET_URL"
+```
+
+What the exit codes mean to the job:
+
+| Exit | Meaning                                                                                        |
+| ---- | ---------------------------------------------------------------------------------------------- |
+| 0    | The plan (and the preview, with `--base`) matched                                              |
+| 1    | Something drifts: a finding in the plan, or a built page that differs from it                  |
+| 2    | The check could not run: the file is missing, or the preview is locked and no secret was given |
+
+Mark both jobs as **required status checks** in the branch protection rules. Exit 1 then holds the
+merge, or the promotion to production, until the plan and the site agree. Exit 2 holds it too, for
+a different reason: nothing was checked. A locked preview is exit 2 even when the plan has findings
+of its own, and the message says those findings were not evaluated against the site.
+
+- **If you rename or move the CSV,** update `PLAN` and both `paths` filters in the same pull
+  request. A paths filter naming the old file matches nothing, so the plan-only job stops running
+  without failing.
+- **Every successful deployment runs the preview job, production included.** To check previews
+  only, add the environment to the condition (the name your host reports: Vercel says `Preview`,
+  Netlify `deploy-preview`):
+
+  ```yaml
+  if: github.event_name == 'deployment_status' && github.event.deployment_status.state == 'success' && github.event.deployment.environment == 'Preview'
+  ```
+
+- **A pull request from a fork** gets no secrets. Against a protected preview the job then exits 2
+  with the variable to set (see [A preview behind a password](#a-preview-behind-a-password)),
+  never a false pass.
+- **In GitHub Actions** the run also writes a short summary to the job's page
+  (`GITHUB_STEP_SUMMARY`): rows read and matching, findings by level, and the first 10 findings
+  with their plan lines. Outside Actions nothing is written.
+
 ### After cutover, the 30-day watch
 
 The redirects are the part nobody verifies until after cutover, and they keep breaking for weeks

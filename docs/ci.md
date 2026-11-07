@@ -40,6 +40,37 @@ The same variables work for a plain check (`npx gaugeline <preview>`). Without t
 preview exits 2 ("could not run"), never 1, so the job fails for the right reason. See
 [A preview behind a password](/docs/plan-check#a-preview-behind-a-password).
 
+## Gate a launch on the plan
+
+[`examples/workflows/plan-gate.yml`](https://github.com/alvinwquach/gaugeline/blob/main/examples/workflows/plan-gate.yml)
+runs the plan check twice: on every change to the plan file (`--plan-only`, no site), and after
+every successful deployment (`--base` the preview). Both exit 1 when anything drifts and 2 when the
+check could not run, so as required status checks they hold the merge or the promotion to
+production (see [Gate a launch](/docs/plan-check#gate-a-launch)):
+
+```yaml title=.github/workflows/plan-gate.yml
+on:
+  pull_request:
+    paths: [docs/sitemap-plan.csv]
+  deployment_status:
+jobs:
+  plan-only:
+    if: github.event_name != 'deployment_status'
+    runs-on: ubuntu-latest
+    steps:
+      # checkout and setup-node (Node 20), then:
+      - run: npx --yes gaugeline plan docs/sitemap-plan.csv --plan-only
+  plan-against-preview:
+    if: github.event_name == 'deployment_status' && github.event.deployment_status.state == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      # checkout and setup-node (Node 20), then:
+      - run: npx --yes gaugeline plan docs/sitemap-plan.csv --base "$TARGET_URL"
+        env:
+          TARGET_URL: ${{ github.event.deployment_status.target_url }}
+          GAUGELINE_VERCEL_BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+```
+
 ## The 30-day cutover watch
 
 [`examples/workflows/cutover-watch.yml`](https://github.com/alvinwquach/gaugeline/blob/main/examples/workflows/cutover-watch.yml)
