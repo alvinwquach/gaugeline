@@ -1,0 +1,7 @@
+# The docs site and the free tools' one function. Deploys are run by scripts/deploy-docs.sh.
+[build]
+  publish = "docs/.vitepress/dist"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
