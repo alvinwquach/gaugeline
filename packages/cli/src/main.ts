@@ -87,6 +87,7 @@ import { formatTerminal } from "./reporter.js";
 import { runCutover } from "./cutover.js";
 import { runSnapshot } from "./snapshot.js";
 import { runVerify } from "./verify.js";
+import { appendStepSummary, planStepSummary } from "./step-summary.js";
 import {
   readAccess,
   readFacts,
@@ -371,18 +372,49 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           ...(args.allowPrivate ? { allowPrivate: true } : {}),
           ...(auth ? { headersFor: authHeaders(auth) } : {}),
         });
-        built = await checkBuilt(plan.rows, {
-          base,
-          fetcher,
-          file: basename(args.file),
-          ...(auth ? { auth } : {}),
-          onProgress: (done, total) => {
-            if (done === 1 && !args.quiet)
-              io.stderr.write(
-                `Reading ${total} planned address${total === 1 ? "" : "es"} on ${origin}${auth ? ` (${auth.describe})` : ""}\n`,
+        try {
+          built = await checkBuilt(plan.rows, {
+            base,
+            fetcher,
+            file: basename(args.file),
+            ...(auth ? { auth } : {}),
+            onProgress: (done, total) => {
+              if (done === 1 && !args.quiet)
+                io.stderr.write(
+                  `Reading ${total} planned address${total === 1 ? "" : "es"} on ${origin}${auth ? ` (${auth.describe})` : ""}\n`,
+                );
+            },
+          });
+        } catch (err) {
+          // A locked preview is exit 2 even when the plan has findings of its own: say so, so a CI
+          // job held at 2 isn't read as "the plan is clean".
+          if (
+            err instanceof ConfigError &&
+            err.message.startsWith("Could not check: the preview")
+          ) {
+            const own = (
+              await runChecks(
+                { plan, legacy: mentions, file: basename(args.file) },
+                createPlanRegistry(),
+                {
+                  skip: [
+                    ...BUILT_CHECK_IDS,
+                    ...REDIRECT_CHECK_IDS,
+                    "plan-uncovered-page",
+                    "plan-rank-unknown-address",
+                    ...NAV_CHECK_IDS,
+                  ],
+                },
+              )
+            ).findings.length;
+            if (own > 0)
+              throw new ConfigError(
+                `${err.message} The plan has ${own} finding${own === 1 ? "" : "s"} of its own, not evaluated against the site and not reported: this run could not finish.`,
+                { ...(err.hint ? { hint: err.hint } : {}) },
               );
-          },
-        });
+          }
+          throw err;
+        }
         // The 301 map: each old address in the Legacy URL column, on the same preview.
         redirects = await checkRedirects(plan.rows, {
           base,
@@ -543,6 +575,16 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           sampled: createBudget().summary(),
           color: useColor(io.stdout, io.env ?? {}),
           ...(footer ? { footer } : {}),
+        }),
+      );
+      // In GitHub Actions: a short Markdown summary on the run's page. Nothing without the variable.
+      appendStepSummary(
+        io.env ?? {},
+        planStepSummary({
+          file: basename(args.file),
+          rows: plan.rows.length,
+          findings: shown.findings,
+          couldNotCheck: shown.couldNotCheck.length,
         }),
       );
       // Notifications: the findings shown (with --watch, only the new ones), to the person's own
