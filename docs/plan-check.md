@@ -2,6 +2,9 @@
 
 A rebuild starts as a spreadsheet. This checks the built site kept every promise in it.
 
+Nothing to install yet? Paste a sheet into the free [launch plan checker](/docs/tools/plan) or
+[redirect list checker](/docs/tools/redirects): they run in your browser, and end with this command.
+
 Every migration begins as rows: the page, its address, its title tag, its H1, the keyword it targets and which old URL redirects to it. Nothing checks whether the site that got built matches.
 
 ```sh title=Terminal untested="Converted with a fixture in this page's own branch."
