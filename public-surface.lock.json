@@ -89,6 +89,17 @@
       "verbose",
       "version"
     ],
+    "run": [
+      "all",
+      "allow-private",
+      "help",
+      "parallel",
+      "quiet",
+      "site",
+      "tag",
+      "verbose",
+      "version"
+    ],
     "snapshot": [
       "allow-private",
       "help",

@@ -292,7 +292,21 @@ describe("flag table: e2e", () => {
       // digest-only flags to gaugeline digest over the fixture's saved runs.
       const runs = `${repoRoot}packages/fixtures/runs/digest-week`;
       const plan = `${repoRoot}packages/fixtures/plans/legacy-notes.csv`;
-      const planOnly = f.commands.length === 1 && f.commands[0] === "plan";
+      const planOnly = f.commands[0] === "plan" && !f.commands.includes("check");
+      const runOnly = f.commands.length === 1 && f.commands[0] === "run";
+      // One site, the fixture, with a permission entry: run --site and --parallel check it.
+      writeFileSync(
+        join(scratch, "gaugeline.sites.json"),
+        JSON.stringify({
+          sites: [
+            {
+              name: "x",
+              address: `${site.origin}/`,
+              permission: { by: "flags test", on: "2026-11-01" },
+            },
+          ],
+        }),
+      );
       const printedOnly = f.commands.length === 1 && f.commands[0] === "printed";
       // A register of one printed address on the fixture, and a folder with no images to decode.
       const register = join(scratch, "printed.csv");
@@ -321,6 +335,7 @@ describe("flag table: e2e", () => {
         !snapshotOnly &&
         !cutoverOnly &&
         !verifyOnly &&
+        !runOnly &&
         !flagsFor(FLAGS, "check").includes(f) &&
         !flagsFor(FLAGS, "launch").includes(f);
       // A string flag needs a value: the one it accepts.
@@ -354,27 +369,33 @@ describe("flag table: e2e", () => {
             ? ["cutover", `--${f.name}`, before]
             : verifyOnly
               ? ["verify", crawl, `--${f.name}`, "0"]
-              : printedOnly
-                ? [
-                    "printed",
-                    register,
-                    "--allow-private",
-                    `--${f.name}`,
-                    ...(f.name === "decode" ? [join(scratch, "no-images")] : value),
-                  ]
-                : digestOnly
+              : runOnly
+                ? f.name === "tag"
+                  ? ["run", "--tag", "nobody"]
+                  : f.name === "site"
+                    ? ["run", "--site", "x", "--allow-private"]
+                    : ["run", "--tag", "nobody", `--${f.name}`, "2"]
+                : printedOnly
                   ? [
-                      "digest",
-                      ...(f.name === "runs" ? [] : ["--runs", runs]),
+                      "printed",
+                      register,
+                      "--allow-private",
                       `--${f.name}`,
-                      ...value,
+                      ...(f.name === "decode" ? [join(scratch, "no-images")] : value),
                     ]
-                  : [
-                      ...(flagsFor(FLAGS, "check").includes(f) ? [] : ["launch"]),
-                      `${site.origin}/`,
-                      `--${f.name}`,
-                      ...value,
-                    ];
+                  : digestOnly
+                    ? [
+                        "digest",
+                        ...(f.name === "runs" ? [] : ["--runs", runs]),
+                        `--${f.name}`,
+                        ...value,
+                      ]
+                    : [
+                        ...(flagsFor(FLAGS, "check").includes(f) ? [] : ["launch"]),
+                        `${site.origin}/`,
+                        `--${f.name}`,
+                        ...value,
+                      ];
       const r = await runBin(args, {}, { cwd: scratch });
       expect(r.stderr, f.name).not.toContain("Unknown option");
       expect([0, 1], f.name).toContain(r.status);
