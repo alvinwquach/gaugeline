@@ -85,8 +85,10 @@ Each check that passed also prints a `✓ <id>` line, left out above. The output
 ### The app (gaugeline open)
 
 `gaugeline open` starts a server on 127.0.0.1 only, so nothing else on your network can reach it.
-Every request needs the one-time key from the printed link; the key is made new each start, held in
-memory, and never written to disk or logged. The app saves nothing: no file is written in your
+The printed link works once: its one-time key, made new each start and never written to disk or
+logged, is exchanged for a session cookie (HttpOnly, SameSite=Strict, held only by your browser for
+that session) and taken out of the address bar. Requests from other websites are refused, whatever
+they claim. The app saves nothing: no file is written in your
 working folder or your home folder, and Ctrl+C leaves nothing behind.
 
 ### App stores
