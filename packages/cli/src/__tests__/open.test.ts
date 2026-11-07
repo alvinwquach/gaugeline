@@ -97,7 +97,7 @@ describe("gaugeline open: e2e (the built bin)", () => {
       const run = open({ DEBUG: "*" });
       const url = await run.url;
       expect(url).toMatch(/^http:\/\/localhost:\d+\/\?s=[A-Za-z0-9_-]{43}$/);
-      expect(await get(url)).toBe(200);
+      expect(await get(url)).toBe(303);
       run.child.kill("SIGINT");
       expect(await run.exited).toBe(0);
       const key = new URL(url).searchParams.get("s") ?? "";
@@ -152,7 +152,7 @@ describe("gaugeline open: e2e (the built bin)", () => {
     try {
       const url = await run.url;
       if (held) expect(new URL(url).port).toBe("4818");
-      expect(await get(url)).toBe(200);
+      expect(await get(url)).toBe(303);
     } finally {
       run.child.kill(POSIX ? "SIGINT" : "SIGTERM");
       await run.exited;

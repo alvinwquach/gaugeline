@@ -6,18 +6,30 @@ import { createKey, keyMatches } from "../key.js";
 import { APP_HOST, pickPort, PortRangeError, startApp } from "../server.js";
 
 /** A GET as a browser would send it: to the printed address, localhost included. */
-function get(url: string, agent?: Agent): Promise<{ status: number; body: string }> {
+function get(
+  url: string,
+  agent?: Agent,
+  headers: Record<string, string> = {},
+): Promise<{ status: number; body: string; cookie?: string }> {
   return new Promise((resolve, reject) => {
     // Both address families, as a browser tries them: on Node 18.17 localhost may resolve to ::1
     // first, and the app answers on 127.0.0.1 only.
-    const opts = { agent: agent ?? false, autoSelectFamily: true } as Parameters<
+    const opts = { agent: agent ?? false, autoSelectFamily: true, headers } as Parameters<
       typeof httpRequest
     >[1];
     const req = httpRequest(url, opts, (res) => {
       let body = "";
       res.setEncoding("utf8");
       res.on("data", (c: string) => (body += c));
-      res.on("end", () => resolve({ status: res.statusCode ?? 0, body }));
+      res.on("end", () =>
+        resolve({
+          status: res.statusCode ?? 0,
+          body,
+          ...(res.headers["set-cookie"]?.[0]
+            ? { cookie: res.headers["set-cookie"][0].split(";")[0] }
+            : {}),
+        }),
+      );
     });
     req.on("error", reject);
     req.end();
@@ -81,13 +93,15 @@ describe("app server: unit", () => {
 });
 
 describe("app server: integration (real sockets)", () => {
-  it("no s: 403. A wrong s: 403. The right s: 200, at the printed address", async () => {
+  it("no s: 403. A wrong s: 403. The right s: 303 with the session, then 200, at the printed address", async () => {
     const app = await startApp({ port: 4900 });
     try {
       const base = `http://localhost:${app.port}/`;
       expect((await get(base)).status).toBe(403);
       expect((await get(`${base}?s=nope`)).status).toBe(403);
-      const ok = await get(app.url);
+      const link = await get(app.url);
+      expect(link.status).toBe(303);
+      const ok = await get(base, undefined, { cookie: link.cookie ?? "" });
       expect([ok.status, ok.body]).toEqual([
         200,
         expect.stringContaining("Gaugeline is running on this computer"),
@@ -135,7 +149,7 @@ describe("app server: integration (real sockets)", () => {
   it("close() resolves with a keep-alive connection open, and the port binds again straight after", async () => {
     const app = await startApp({ port: 4930 });
     const agent = new Agent({ keepAlive: true });
-    expect((await get(app.url, agent)).status).toBe(200);
+    expect((await get(app.url, agent)).status).toBe(303);
     await app.close();
     const again = await hold(app.port);
     await release(again);
@@ -149,7 +163,7 @@ describe("app server: integration (real sockets)", () => {
       try {
         expect(app.port).toBe(4941);
         expect(app.url).toMatch(/^http:\/\/localhost:4941\/\?s=[A-Za-z0-9_-]{43}$/);
-        expect((await get(app.url)).status).toBe(200);
+        expect((await get(app.url)).status).toBe(303);
       } finally {
         await app.close();
       }
