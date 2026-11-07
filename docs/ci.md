@@ -40,6 +40,45 @@ The same variables work for a plain check (`npx gaugeline <preview>`). Without t
 preview exits 2 ("could not run"), never 1, so the job fails for the right reason. See
 [A preview behind a password](/docs/plan-check#a-preview-behind-a-password).
 
+## The 30-day cutover watch
+
+[`examples/workflows/cutover-watch.yml`](https://github.com/alvinwquach/gaugeline/blob/main/examples/workflows/cutover-watch.yml)
+runs `gaugeline plan --watch` once a day after a migration and is red only when something new
+drifts (see [After cutover, the 30-day watch](/docs/plan-check#after-cutover-the-30-day-watch)):
+
+```yaml title=.github/workflows/cutover-watch.yml
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      # checkout and setup-node, then:
+      - uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: .gaugeline/plan-state.json
+          key: gaugeline-watch-${{ github.run_id }}
+          restore-keys: gaugeline-watch-
+      - run: npx --yes gaugeline plan plan.csv --base https://yoursite.com --watch 2026-11-01 --notify-on any
+        env:
+          GAUGELINE_SLACK_WEBHOOK: ${{ secrets.GAUGELINE_SLACK_WEBHOOK }}
+      - uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        if: always() && hashFiles('.gaugeline/plan-state.json') != ''
+        with:
+          path: .gaugeline/plan-state.json
+          key: gaugeline-watch-${{ github.run_id }}
+```
+
+- The state lives in the Actions cache. Each save has its own key (the run id), and `restore-keys`
+  takes the newest by prefix, so two overlapping runs don't overwrite each other. A cache entry
+  can be evicted (one not used for a week, or when a repository passes 10 GB); a daily job uses
+  it every day, and an evicted one is a new baseline, not an alarm.
+- GitHub turns off scheduled workflows in a repository with no activity for 60 days. A 30-day
+  watch ends before that.
+- The Slack address comes from the secrets context; no address or token is written in the file.
+
 ## Docker
 
 ```sh title=Terminal

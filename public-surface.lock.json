@@ -51,6 +51,7 @@
       "allow-private",
       "annotate",
       "base",
+      "discord",
       "force",
       "help",
       "ignore",
@@ -58,14 +59,18 @@
       "legacy-review",
       "live",
       "nav",
+      "notify-on",
       "plan-only",
       "printed",
       "progress",
       "quiet",
       "rank",
       "sheet",
+      "slack",
       "verbose",
-      "version"
+      "version",
+      "watch",
+      "webhook"
     ],
     "printed": [
       "allow-private",

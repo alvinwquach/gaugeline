@@ -254,7 +254,8 @@ export const planRedirectChecks = REDIRECT_CHECK_IDS.map((id) =>
     area: "Launch day",
     title: REDIRECT_TITLES[id],
     ...REDIRECT_TEXT[id],
-    run(input) {
+    run(input, ctx) {
+      for (const c of input.redirects?.couldNotCheck ?? []) ctx.couldNotCheck?.(c.url, c.reason);
       return (input.redirects?.findings ?? []).filter((f) => f.checkId === id);
     },
   }),

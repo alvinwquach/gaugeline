@@ -1,0 +1,6 @@
+{
+  "/old-shop": {
+    "status": 302,
+    "location": "/shop"
+  }
+}
