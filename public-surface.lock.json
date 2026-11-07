@@ -54,6 +54,13 @@
       "version",
       "webhook"
     ],
+    "open": [
+      "help",
+      "no-open",
+      "quiet",
+      "verbose",
+      "version"
+    ],
     "plan": [
       "all",
       "allow-private",
