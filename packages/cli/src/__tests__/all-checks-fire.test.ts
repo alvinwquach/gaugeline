@@ -89,6 +89,10 @@ const NEEDS_LIVE_STORES = new Set([
   // Needs an https certificate near expiry; the fixture servers are plain http. Confirmed
   // in-process over a local https server with a 5-day certificate (dns/__tests__/cutover.test.ts).
   "certificate-expiring",
+  // Need a Next.js page answering RSC: 1; confirmed in-process on the rsc-app fixture
+  // (verify/__tests__/recheck.test.ts) and end to end by gaugeline verify (verify.test.ts).
+  "rsc-served-as-page",
+  "rsc-vary-missing",
 ]);
 
 async function findingsOf(name: string): Promise<string[]> {

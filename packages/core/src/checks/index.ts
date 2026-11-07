@@ -95,6 +95,8 @@ import { priceChanged } from "./price-changed.js";
 import { quotableFactsDisagree } from "./quotable-facts-disagree.js";
 import { redirectChain } from "./redirect-chain.js";
 import { robotsBlock } from "./robots-block.js";
+import { rscServedAsPage } from "./rsc-served-as-page.js";
+import { rscVaryMissing } from "./rsc-vary-missing.js";
 import { schemaBreadcrumbMismatch } from "./schema-breadcrumb-mismatch.js";
 import { schemaBreadcrumbStart } from "./schema-breadcrumb-start.js";
 import { schemaDanglingRef } from "./schema-dangling-ref.js";
@@ -214,6 +216,8 @@ export const PAGE_CHECKS = [
   quotableFactsDisagree,
   redirectChain,
   robotsBlock,
+  rscServedAsPage,
+  rscVaryMissing,
   schemaBreadcrumbMismatch,
   schemaBreadcrumbStart,
   schemaDanglingRef,

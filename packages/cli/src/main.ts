@@ -712,8 +712,10 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       };
     case "verify":
       return {
-        outcome: (await runVerify(args, io, deps.cwd ?? process.cwd())).outcome,
-        ci: false,
+        outcome: (
+          await runVerify(args, io, { cwd: deps.cwd ?? process.cwd(), fetcher: deps.fetcher })
+        ).outcome,
+        ci: args.ci,
       };
     case "cutover":
       return {

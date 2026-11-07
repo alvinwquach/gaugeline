@@ -300,6 +300,9 @@ describe("flag table: e2e", () => {
       mkdirSync(join(scratch, "no-images"), { recursive: true });
       const snapshotOnly = f.commands.length === 1 && f.commands[0] === "snapshot";
       const cutoverOnly = f.commands.length === 1 && f.commands[0] === "cutover";
+      const verifyOnly = f.commands.length === 1 && f.commands[0] === "verify";
+      const crawl = join(scratch, "crawl-export.csv");
+      writeFileSync(crawl, "Address\nhttps://fernkiln.invalid/?_rsc=1\n");
       // A saved snapshot of a name that never resolves (.invalid): cutover reads it again.
       const before = join(scratch, "before.json");
       writeFileSync(
@@ -317,6 +320,7 @@ describe("flag table: e2e", () => {
         !printedOnly &&
         !snapshotOnly &&
         !cutoverOnly &&
+        !verifyOnly &&
         !flagsFor(FLAGS, "check").includes(f) &&
         !flagsFor(FLAGS, "launch").includes(f);
       // A string flag needs a value: the one it accepts.
@@ -348,27 +352,29 @@ describe("flag table: e2e", () => {
           ? ["snapshot", "fernkiln.invalid", `--${f.name}`, join(scratch, "snapshot.json")]
           : cutoverOnly
             ? ["cutover", `--${f.name}`, before]
-            : printedOnly
-              ? [
-                  "printed",
-                  register,
-                  "--allow-private",
-                  `--${f.name}`,
-                  ...(f.name === "decode" ? [join(scratch, "no-images")] : value),
-                ]
-              : digestOnly
+            : verifyOnly
+              ? ["verify", crawl, `--${f.name}`, "0"]
+              : printedOnly
                 ? [
-                    "digest",
-                    ...(f.name === "runs" ? [] : ["--runs", runs]),
+                    "printed",
+                    register,
+                    "--allow-private",
                     `--${f.name}`,
-                    ...value,
+                    ...(f.name === "decode" ? [join(scratch, "no-images")] : value),
                   ]
-                : [
-                    ...(flagsFor(FLAGS, "check").includes(f) ? [] : ["launch"]),
-                    `${site.origin}/`,
-                    `--${f.name}`,
-                    ...value,
-                  ];
+                : digestOnly
+                  ? [
+                      "digest",
+                      ...(f.name === "runs" ? [] : ["--runs", runs]),
+                      `--${f.name}`,
+                      ...value,
+                    ]
+                  : [
+                      ...(flagsFor(FLAGS, "check").includes(f) ? [] : ["launch"]),
+                      `${site.origin}/`,
+                      `--${f.name}`,
+                      ...value,
+                    ];
       const r = await runBin(args, {}, { cwd: scratch });
       expect(r.stderr, f.name).not.toContain("Unknown option");
       expect([0, 1], f.name).toContain(r.status);

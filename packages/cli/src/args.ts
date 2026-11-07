@@ -97,7 +97,15 @@ export type ParsedArgs =
       quiet: boolean;
     }
   | { kind: "cutover"; before: string; allowPrivate: boolean; verbose: boolean; quiet: boolean }
-  | { kind: "verify"; file: string; verbose: boolean; quiet: boolean }
+  | {
+      kind: "verify";
+      file: string;
+      limit: number;
+      ci: boolean;
+      allowPrivate: boolean;
+      verbose: boolean;
+      quiet: boolean;
+    }
   | {
       kind: "digest";
       runs: string;
@@ -327,7 +335,23 @@ export function parseCliArgs(
         hint: "Export the audit's URLs as CSV from your crawler (an Address or URL column).",
         verbose,
       };
-    return { kind: "verify", file: positionals[0] ?? "", verbose, quiet: values.quiet === true };
+    const limitText = typeof values.limit === "string" ? values.limit.trim() : "40";
+    if (!/^\d+$/.test(limitText))
+      return {
+        kind: "error",
+        message: `--limit takes a whole number of pages, not "${limitText}".`,
+        hint: "For example --limit 40, or --limit 0 to classify the rows only.",
+        verbose,
+      };
+    return {
+      kind: "verify",
+      file: positionals[0] ?? "",
+      limit: Number(limitText),
+      ci: values.ci === true,
+      allowPrivate: values["allow-private"] === true,
+      verbose,
+      quiet: values.quiet === true,
+    };
   }
   if (command === "cutover") {
     if (typeof values.before !== "string" || values.before === "" || positionals.length > 0)

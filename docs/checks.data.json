@@ -390,6 +390,26 @@
     "tech": "robots.txt: User-agent: * with Disallow: / and no Allow that overrides it"
   },
   {
+    "id": "rsc-served-as-page",
+    "severity": "high",
+    "area": "Search & sharing",
+    "title": "The page address returns app data, not a page",
+    "what": "A normal request to the page returns the framework's data format (text/x-component), or HTML with no readable words while the prefetch request returns the page's data.",
+    "why": "Search engines and visitors without JavaScript get nothing to read: the page can drop out of search while every check that loads it in a browser looks fine.",
+    "fix": "Serve HTML to requests without the RSC header. On Next.js this is usually a custom server, middleware or CDN rule that answers every request with the RSC response, or a page that renders only on the client.",
+    "tech": "React framework pages only (Next.js signals in the response). One extra GET of the same address with RSC: 1, the only header added, sent on same-origin hops only. 401, 403, 404, 429 and 5xx are could not check"
+  },
+  {
+    "id": "rsc-vary-missing",
+    "severity": "high",
+    "area": "Search & sharing",
+    "title": "One address serves a page and app data, and caches aren't told",
+    "what": "The same address returns HTML to a normal request and text/x-component to a request with RSC: 1, and neither response lists RSC in its Vary header.",
+    "why": "A shared cache (a CDN, a proxy) then keys both on the address alone and can hand the data format to a visitor or a search engine: an outage that returns 200.",
+    "fix": "Send Vary: RSC (Next.js sends RSC, Next-Router-State-Tree, Next-Router-Prefetch) on both responses, and make sure the CDN keeps it in its cache key. If the origin already sends it, look at the CDN's header and cache-key settings.",
+    "tech": "React framework pages only. Vary tokens from both responses, compared in lower case; Vary: * counts as covering RSC. A CDN header in either response adds a note that the CDN may be stripping Vary"
+  },
+  {
     "id": "schema-id-drift",
     "severity": "high",
     "area": "Search & sharing",

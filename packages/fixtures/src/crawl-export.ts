@@ -3,7 +3,6 @@
  * under one audit issue, "Orphan URLs", of which 4,061 are Next.js prefetch payloads (?_rsc=) for
  * 40 pages. Generated, not committed: the same text every time, so the docs can quote its summary.
  */
-const HOST = "https://fernkiln.example";
 const POTS = [
   "celadon-tea-bowl",
   "speckled-mug",
@@ -38,7 +37,9 @@ export const CRAWL_EXPORT_PAGES: readonly string[] = [
 /** A short, fixed hex string per row: what a build hash looks like, without a random source. */
 const hash = (i: number) => ((i * 2654435761) >>> 0).toString(16).padStart(8, "0").slice(0, 5);
 
-export function crawlExport(): string {
+/** The export, its addresses on `origin` (default the invented https://fernkiln.example). */
+export function crawlExport(origin = "https://fernkiln.example"): string {
+  const HOST = origin;
   const rows: [string, string, string][] = [];
   const pages = CRAWL_EXPORT_PAGES;
   // 4,061 prefetch payloads, spread over the 40 pages.
@@ -65,7 +66,8 @@ export function crawlExport(): string {
   // 34 ordinary page rows, some spelt with an upper-case host or a trailing slash.
   for (let i = 0; i < 34; i++) {
     const page = pages[i] ?? "/";
-    const spelt = i % 5 === 1 ? `https://FERNKILN.example${page}/` : `${HOST}${page}`;
+    const spelt =
+      i % 5 === 1 ? `${HOST.replace(/fernkiln/, "FERNKILN")}${page}/` : `${HOST}${page}`;
     rows.push([spelt, "text/html; charset=utf-8", "200"]);
   }
   // Interleave by a fixed stride, as a crawler's export order would mix them.
