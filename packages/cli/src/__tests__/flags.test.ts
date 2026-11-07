@@ -298,9 +298,25 @@ describe("flag table: e2e", () => {
       const register = join(scratch, "printed.csv");
       writeFileSync(register, `url,where\n${site.origin}/,flags test\n`);
       mkdirSync(join(scratch, "no-images"), { recursive: true });
+      const snapshotOnly = f.commands.length === 1 && f.commands[0] === "snapshot";
+      const cutoverOnly = f.commands.length === 1 && f.commands[0] === "cutover";
+      // A saved snapshot of a name that never resolves (.invalid): cutover reads it again.
+      const before = join(scratch, "before.json");
+      writeFileSync(
+        before,
+        JSON.stringify({
+          schema: 1,
+          domain: "fernkiln.invalid",
+          takenAt: "2026-11-01T00:00:00.000Z",
+          records: { a: [], aaaa: [], mx: [], spf: [], dmarc: [], dkim: {}, failed: [] },
+          hosts: { bare: { status: 200 }, www: { status: 200 } },
+        }),
+      );
       const digestOnly =
         !planOnly &&
         !printedOnly &&
+        !snapshotOnly &&
+        !cutoverOnly &&
         !flagsFor(FLAGS, "check").includes(f) &&
         !flagsFor(FLAGS, "launch").includes(f);
       // A string flag needs a value: the one it accepts.
@@ -328,22 +344,31 @@ describe("flag table: e2e", () => {
                 ? [register]
                 : value),
           ]
-        : printedOnly
-          ? [
-              "printed",
-              register,
-              "--allow-private",
-              `--${f.name}`,
-              ...(f.name === "decode" ? [join(scratch, "no-images")] : value),
-            ]
-          : digestOnly
-            ? ["digest", ...(f.name === "runs" ? [] : ["--runs", runs]), `--${f.name}`, ...value]
-            : [
-                ...(flagsFor(FLAGS, "check").includes(f) ? [] : ["launch"]),
-                `${site.origin}/`,
-                `--${f.name}`,
-                ...value,
-              ];
+        : snapshotOnly
+          ? ["snapshot", "fernkiln.invalid", `--${f.name}`, join(scratch, "snapshot.json")]
+          : cutoverOnly
+            ? ["cutover", `--${f.name}`, before]
+            : printedOnly
+              ? [
+                  "printed",
+                  register,
+                  "--allow-private",
+                  `--${f.name}`,
+                  ...(f.name === "decode" ? [join(scratch, "no-images")] : value),
+                ]
+              : digestOnly
+                ? [
+                    "digest",
+                    ...(f.name === "runs" ? [] : ["--runs", runs]),
+                    `--${f.name}`,
+                    ...value,
+                  ]
+                : [
+                    ...(flagsFor(FLAGS, "check").includes(f) ? [] : ["launch"]),
+                    `${site.origin}/`,
+                    `--${f.name}`,
+                    ...value,
+                  ];
       const r = await runBin(args, {}, { cwd: scratch });
       expect(r.stderr, f.name).not.toContain("Unknown option");
       expect([0, 1], f.name).toContain(r.status);

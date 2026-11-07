@@ -1,7 +1,16 @@
 import { FLAGS, renderHelp } from "./flags.js";
 
 /** Every command the CLI registers. "" is the root command (gaugeline <address>). */
-export const COMMANDS = ["", "launch", "view", "digest", "plan", "printed"] as const;
+export const COMMANDS = [
+  "",
+  "launch",
+  "view",
+  "digest",
+  "plan",
+  "printed",
+  "snapshot",
+  "cutover",
+] as const;
 export type Command = (typeof COMMANDS)[number];
 
 /**
@@ -45,6 +54,23 @@ export const HELP: Record<string, string> = {
       "lands where it should. Columns: url, where, printedOn, expectedDestination.",
     ].join("\n"),
     footer: "Exit codes: 0 every address lands, 1 one needs fixing, 2 could not check",
+  }),
+  snapshot: renderHelp(FLAGS, "snapshot", {
+    usage: "gaugeline snapshot <domain> [options]",
+    summary: [
+      "Before cutover: record the domain's address, MX, SPF, DKIM and DMARC records,",
+      "its certificate's names and expiry, and how the bare domain and www answer.",
+      "DKIM selectors come from gaugeline.cutover.json. Lookups only.",
+    ].join("\n"),
+    footer: "Exit codes: 0 written, 2 could not read the domain or write the file",
+  }),
+  cutover: renderHelp(FLAGS, "cutover", {
+    usage: "gaugeline cutover --before <snapshot.json> [options]",
+    summary: [
+      "After cutover: read the same domain again and report what changed. A mail or",
+      "SPF change is fix first unless gaugeline.cutover.json lists it as expected.",
+    ].join("\n"),
+    footer: "Exit codes: 0 nothing to fix first, 1 something to fix first, 2 could not check",
   }),
   digest: renderHelp(FLAGS, "digest", {
     usage: "gaugeline digest --runs <folder> [options]",
