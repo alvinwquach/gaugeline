@@ -87,6 +87,8 @@ import { formatTerminal } from "./reporter.js";
 import { runCutover } from "./cutover.js";
 import { runSnapshot } from "./snapshot.js";
 import { runVerify } from "./verify.js";
+import { formatRunAll, runAll, runAllExit } from "./run-all.js";
+import { readSites, selectSites, SITES_FILE } from "./sites.js";
 import { appendStepSummary, planStepSummary } from "./step-summary.js";
 import {
   readAccess,
@@ -752,6 +754,41 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         }),
         ci: false,
       };
+    case "run-all": {
+      const cwd = deps.cwd ?? process.cwd();
+      const picked = selectSites(readSites(cwd), {
+        all: args.all,
+        names: args.sites,
+        ...(args.tag !== undefined ? { tag: args.tag } : {}),
+      });
+      if (picked.length === 0) {
+        io.stderr.write(
+          `No site in ${SITES_FILE} has the tag "${args.tag ?? ""}": nothing to check.\n`,
+        );
+        return { outcome: ran, ci: false };
+      }
+      if (!args.quiet)
+        io.stderr.write(
+          `Checking ${picked.length} site${picked.length === 1 ? "" : "s"}${args.parallel > 1 ? `, up to ${args.parallel} at once` : ""}\n`,
+        );
+      const rows = await runAll(picked, {
+        runsDir: join(cwd, "runs"),
+        env: io.env ?? {},
+        ...(io.now ? { now: io.now } : deps.now ? { now: deps.now } : {}),
+        parallel: args.parallel,
+        allowPrivate: args.allowPrivate,
+        runOne: (argv, siteIo, siteCwd) => main(argv, siteIo, { ...deps, cwd: siteCwd }),
+      });
+      io.stdout.write(`${formatRunAll(rows)}\n`);
+      const code = runAllExit(rows);
+      return {
+        outcome:
+          code === 2
+            ? { kind: "ran", highFindings: 0, drift: false, incomplete: true }
+            : { kind: "ran", highFindings: code === 1 ? 1 : 0, drift: false },
+        ci: true,
+      };
+    }
     case "verify":
       return {
         outcome: (

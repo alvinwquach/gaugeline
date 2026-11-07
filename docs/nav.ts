@@ -103,4 +103,5 @@ export const UNLISTED: NavPage[] = [
   { slug: "guides/navigation", title: "Navigation and footer: what changed" },
   { slug: "guides/page-snapshots", title: "Page snapshots: what each page lost" },
   { slug: "guides/cutover", title: "Cutover: what changed on the day" },
+  { slug: "guides/many-sites", title: "Many sites from one file" },
 ];

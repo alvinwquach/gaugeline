@@ -249,7 +249,7 @@ between the markers; CI fails when it differs from the flag table.
 | `--force`                 | Let --annotate replace a file that already exists                                                  |                      | 0.2.0 |
 | `--progress <value>`      | With --base, say what was fixed and what is new since the last run (state file optional)           |                      | 0.2.0 |
 | `--watch <value>`         | With --base on production: the 30-day watch from this cutover date (YYYY-MM-DD)                    |                      | 0.2.0 |
-| `--all`                   | With --progress, list the findings still open, not only how many                                   |                      | 0.2.0 |
+| `--all`                   | plan --progress: list the findings still open; run: check every site in gaugeline.sites.json       |                      | 0.2.0 |
 | `--live <value>`          | List pages in this crawl, sitemap, Search Console export or list that the plan misses              |                      | 0.2.0 |
 | `--nav <value>`           | Check the menu tabs (all headed Main category, or these, comma separated) against the pages        |                      | 0.2.0 |
 | `--rank <value>`          | With --live, sort the missing pages by clicks from this Search Console or rank export              |                      | 0.2.0 |
@@ -257,6 +257,9 @@ between the markers; CI fails when it differs from the flag table.
 | `--printed <value>`       | With --base, add the printed register's addresses to the 301 map                                   |                      | 0.2.0 |
 | `--decode <value>`        | Read the QR code in these PNG images (or a folder) and add new ones to the register                |                      | 0.2.0 |
 | `--tags <value>`          | Query parameters that must reach the destination, as name prefixes (default utm_)                  |                      | 0.2.0 |
+| `--site <value>`          | Check this site from gaugeline.sites.json, by name (repeatable)                                    |                      | 0.2.0 |
+| `--tag <value>`           | Check the sites in gaugeline.sites.json with this tag, such as client                              |                      | 0.2.0 |
+| `--parallel <value>`      | Check this many sites at once (default 1); sites on one host never overlap                         |                      | 0.2.0 |
 | `--limit <value>`         | Re-check this many of the export's pages (default 40; 0 only classifies the rows)                  |                      | 0.2.0 |
 | `--out <value>`           | Where to write the snapshot (default before.json)                                                  |                      | 0.2.0 |
 | `--before <value>`        | The snapshot taken before cutover, written by gaugeline snapshot                                   |                      | 0.2.0 |

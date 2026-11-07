@@ -554,3 +554,10 @@ export {
   viewPage,
 } from "./verify/recheck.js";
 export type { CrawlerView, PageToCheck, RecheckResult, Unread } from "./verify/recheck.js";
+export {
+  ORIGIN_SECRETS,
+  siteEntrySchema,
+  siteEnv,
+  sitesFileSchema,
+} from "./config/sites-schema.js";
+export type { SiteEntry, SitesFile } from "./config/sites-schema.js";
