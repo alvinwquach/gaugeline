@@ -519,3 +519,27 @@ export type { ContentNow, PagesConfig } from "./snapshot/compare.js";
 export { readNow } from "./snapshot/now.js";
 export { WATCH_DAYS, newSince, watchDay, watchLine, watchSummary } from "./plan/watch.js";
 export type { WatchDay } from "./plan/watch.js";
+export {
+  classify,
+  createCrawlReader,
+  createSummariser,
+  detectColumns,
+  formatSummary,
+  NoAddressColumnError,
+  pageKey as crawlPageKey,
+  readCrawlExport,
+  ROW_KINDS,
+  summarise,
+  summariseStream,
+} from "./verify/classify.js";
+export type {
+  Classified,
+  CrawlColumns,
+  CrawlExport,
+  CrawlRow,
+  CrawlSummary,
+  Framework,
+  RowKind,
+} from "./verify/classify.js";
+export { createCsvStream } from "./verify/csv-stream.js";
+export type { CsvRecord, CsvStream } from "./verify/csv-stream.js";
