@@ -474,5 +474,19 @@ export { destinationKey, navRulesSchema, readRegions } from "./nav/read-regions.
 export type { NavEntry, NavRegion, NavRules, PageNav } from "./nav/read-regions.js";
 export { COMPARED, diffNav, inboundLinks, orphans } from "./nav/graph.js";
 export type { NavChange, NavChangeKind } from "./nav/graph.js";
+export { buildContentSnapshot, contentKey } from "./snapshot/page-snapshot.js";
+export type { ContentSnapshot } from "./snapshot/page-snapshot.js";
+export { mainContent } from "./snapshot/main-content.js";
+export type { MainContent } from "./snapshot/main-content.js";
+export {
+  contentGains,
+  LOST_SHARE,
+  lostContent,
+  lostItems,
+  lostTypes,
+  pagesConfigSchema,
+} from "./snapshot/compare.js";
+export type { ContentNow, PagesConfig } from "./snapshot/compare.js";
+export { readNow } from "./snapshot/now.js";
 export { WATCH_DAYS, newSince, watchDay, watchLine, watchSummary } from "./plan/watch.js";
 export type { WatchDay } from "./plan/watch.js";

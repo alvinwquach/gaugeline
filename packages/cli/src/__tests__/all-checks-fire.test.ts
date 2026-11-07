@@ -80,6 +80,12 @@ const NEEDS_LIVE_STORES = new Set([
   "form-destination-changed",
   // A menu compared with the last run's: confirmed in-process (nav.test.ts, nav-before then nav-after).
   "nav-changed",
+  // A page compared with its own last-run snapshot: confirmed in-process (snapshot.test.ts,
+  // snap-before then snap-after) and end to end (page-snapshots.test.ts).
+  "page-gone",
+  "page-lost-content",
+  "page-lost-items",
+  "page-lost-structured-data",
 ]);
 
 async function findingsOf(name: string): Promise<string[]> {
