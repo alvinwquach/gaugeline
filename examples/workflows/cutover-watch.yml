@@ -1,0 +1,49 @@
+# An example: copy it to .github/workflows/ in the repository that holds your migration plan.
+#
+# For 30 days after cutover it re-checks production against the plan once a day and speaks up only
+# when something new drifts (a 301 that became a 302, a page that went missing). Known drift exits
+# 0, so the job is red only on news. After day 30 the command stops itself and makes no request.
+#
+# Set CUTOVER to the cutover date, SITE to production and PLAN to the plan file in this repository.
+# A Slack message is sent only when the secret GAUGELINE_SLACK_WEBHOOK is set.
+#
+# The day's state (.gaugeline/plan-state.json) is kept in the Actions cache. A cache that was
+# evicted is a calm new baseline, not an alarm: the command says so.
+name: Gaugeline cutover watch
+
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    env:
+      CUTOVER: "2026-11-01"
+      SITE: https://yoursite.example
+      PLAN: plan.csv
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 22
+      # The newest saved state: each save has its own key (the run id), restore takes the latest.
+      - uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: .gaugeline/plan-state.json
+          key: gaugeline-watch-${{ github.run_id }}
+          restore-keys: gaugeline-watch-
+      - name: Check production against the plan
+        env:
+          GAUGELINE_SLACK_WEBHOOK: ${{ secrets.GAUGELINE_SLACK_WEBHOOK }}
+        run: npx --yes gaugeline plan "$PLAN" --base "$SITE" --watch "$CUTOVER" --notify-on any
+      # Saved even when the day found new drift (exit 1), so tomorrow compares with today.
+      - uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        if: always() && hashFiles('.gaugeline/plan-state.json') != ''
+        with:
+          path: .gaugeline/plan-state.json
+          key: gaugeline-watch-${{ github.run_id }}

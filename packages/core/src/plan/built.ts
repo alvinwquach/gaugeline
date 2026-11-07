@@ -227,6 +227,15 @@ export async function checkBuilt(
       });
       continue;
     }
+    // A server error says nothing about the page: could not check, never title or H1 drift.
+    if (last && last.status >= 500) {
+      couldNotCheck.push({
+        url,
+        reason: `answered ${last.status}`,
+        lines: group.map((r) => r.line),
+      });
+      continue;
+    }
     if (last?.status === 404 || last?.status === 410) {
       out.push(
         finding(

@@ -36,6 +36,8 @@ const SAMPLE_VALUES: Record<string, string> = {
   "legacy-review": "review.csv",
   progress: "plan-state.json",
   tags: "utm_,ref",
+  // Today is day 1 of the watch, whenever the test runs.
+  watch: new Date().toISOString().slice(0, 10),
   live: `${fileURLToPath(new URL("../../../fixtures/plans/live/list.txt", import.meta.url))}`,
   ignore: "/tag/*",
   nav: "Footer",
@@ -313,7 +315,10 @@ describe("flag table: e2e", () => {
             // --progress and --all compare runs against a preview: they need --base.
             // --rank joins traffic numbers to --live's list: it needs --live.
             ...(f.name === "rank" ? ["--live", SAMPLE_VALUES.live ?? ""] : []),
-            ...(f.name === "progress" || f.name === "all" || f.name === "printed"
+            ...(f.name === "progress" ||
+            f.name === "all" ||
+            f.name === "printed" ||
+            f.name === "watch"
               ? ["--base", `${site.origin}/`, "--allow-private"]
               : []),
             `--${f.name}`,

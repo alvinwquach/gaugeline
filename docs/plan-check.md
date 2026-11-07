@@ -574,6 +574,46 @@ Footer: 5 items in 2 categories
 12 to look at, 4 to fix first.
 ```
 
+### After cutover, the 30-day watch
+
+The redirects are the part nobody verifies until after cutover, and they keep breaking for weeks
+afterwards. `--watch <cutover date>` turns the plan check into a daily watch of production:
+
+```bash
+npx gaugeline plan sitemap.csv --base https://yoursite.com --watch 2026-11-01
+```
+
+- The first line says which day it is: "Day 9 of 30 since cutover", counted in UTC from the
+  cutover date (day 1).
+- It implies `--progress`: the state is kept in `.gaugeline/plan-state.json` beside the plan. The
+  first run (no state) is the baseline, reports everything and exits by the usual rule.
+- After that, only findings that weren't there the day before are shown. **Known drift exits 0**,
+  so the job is red only on news; the count of known findings is printed every day, and fixed ones
+  are named.
+- After day 30 it prints "The 30-day watch is over" and exits 0 without making a request, so a
+  forgotten workflow doesn't request the site for years.
+- The 301 map runs every day: a 301 that turned into a 302, or into a chain, is the drift this is
+  for. The cost stays bounded: one request per planned path and one hop list per old address.
+- A day when production answers 5xx is could not check (exit 2) and saves nothing, so the next day
+  compares with the last good one. A missing state file on a later day (a CI cache that was cleared)
+  is a calm new baseline, said so in plain words. If the plan changed since the baseline, the day
+  line says so.
+- `--slack`, `--discord`, `--webhook` (or their `GAUGELINE_*` variables) and `--notify-on` send
+  what the run shows: with `--watch`, only what is new.
+
+Against the invented Northgate Outfitters production site (`packages/fixtures/sites/cutover-site`,
+two findings left open on purpose), the second day prints:
+
+```text title=Output
+Day 9 of 30 since cutover
+Read 10 pages from plan.csv.
+Columns: URL from "URL", page from "Page", title tag from "Title Tag", H1 from "H1", legacy URL from "Legacy URL".
+
+No new drift. 2 known findings still open.
+```
+
+A scheduled workflow that runs it daily is in [Use it in CI](/docs/ci#the-30-day-cutover-watch).
+
 ### Sending the result back to whoever owns the spreadsheet
 
 Each plan finding covers a group of rows (three rows on one address is one decision, so it is one
