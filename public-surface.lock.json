@@ -19,6 +19,14 @@
       "version",
       "webhook"
     ],
+    "cutover": [
+      "allow-private",
+      "before",
+      "help",
+      "quiet",
+      "verbose",
+      "version"
+    ],
     "digest": [
       "email",
       "help",
@@ -80,6 +88,14 @@
       "tags",
       "verbose",
       "version"
+    ],
+    "snapshot": [
+      "allow-private",
+      "help",
+      "out",
+      "quiet",
+      "verbose",
+      "version"
     ]
   },
   "checkIds": [
@@ -93,6 +109,7 @@
     "broken-links",
     "canonical-elsewhere",
     "canonical-missing",
+    "certificate-expiring",
     "dataset-private-types",
     "dataset-public",
     "drafts-live",
@@ -210,6 +227,7 @@
     "broken-links": "high",
     "canonical-elsewhere": "high",
     "canonical-missing": "low",
+    "certificate-expiring": "high",
     "dataset-private-types": "high",
     "dataset-public": "low",
     "drafts-live": "high",

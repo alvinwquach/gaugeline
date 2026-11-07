@@ -50,6 +50,16 @@
     "tech": "<link rel=\"canonical\"> on the page points at another URL"
   },
   {
+    "id": "certificate-expiring",
+    "severity": "high",
+    "area": "Security & email",
+    "title": "The site's certificate expires soon",
+    "what": "The https certificate the site presented expires in under 21 days (fix soon) or under 7 (fix first), or has expired.",
+    "why": "When it lapses, every browser shows a full-page security warning instead of the site, and most visitors leave.",
+    "fix": "Renew it, or find why automatic renewal stopped (a DNS change at cutover often breaks the renewal check). Domain registration expiry is a separate date: check it at your registrar.",
+    "tech": "Read from the TLS connection of the page's own GET: no extra request. Days left = whole days until notAfter, by the run's clock. Plain http, or a certificate that failed verification, gives nothing here. Domain registration expiry needs registrar access and is not checked"
+  },
+  {
     "id": "dataset-private-types",
     "severity": "high",
     "area": "Security & email",
@@ -558,6 +568,26 @@
     "why": "People scanned a code for one thing and got another, or a page they have to wait through.",
     "fix": "Point the printed address's redirect at the expected page, and make a short link redirect with a 301 rather than show its own page.",
     "tech": "The trail's final address against expectedDestination (host without www, path without trailing slash). A 200 with a meta refresh or a location assignment and no redirect is an interstitial"
+  },
+  {
+    "id": "cutover-canonical-host",
+    "severity": "high",
+    "area": "Launch day",
+    "title": "The bare domain and www don't settle on one address",
+    "what": "Of the bare domain and www, exactly one should answer 200 and the other redirect to it permanently (301 or 308). After cutover, both answer, neither does, or the redirect is temporary.",
+    "why": "Two live copies split links and ranking between them; a missing one is a dead address for everyone who types it; a temporary redirect tells search engines to keep the old one.",
+    "fix": "Pick one (most sites use the bare domain or www, either is fine) and redirect the other to it with a 301. Most hosts have a primary-domain setting for this.",
+    "tech": "GET https://<domain>/ and https://www.<domain>/ through the fetcher, first hop each. Also reported when how either answers changed since the snapshot, with both values"
+  },
+  {
+    "id": "cutover-mail-changed",
+    "severity": "high",
+    "area": "Security & email",
+    "title": "The domain's mail records changed at cutover",
+    "what": "Against the snapshot taken before cutover, the domain's MX records (where its mail is delivered) or its SPF record (who may send as it) are different.",
+    "why": "A new host's DNS template often replaces the mail records: mail then bounces or goes to an old server, and receipts and confirmations land in spam, with nothing on the site to show it.",
+    "fix": "Put the old MX and SPF values back unless the move was meant. If it was, list mx or spf under expectedChanges in gaugeline.cutover.json with the reason.",
+    "tech": "gaugeline cutover --before <file>. MX and TXT (v=spf1) at the domain, compared as sets, so order is not a change. A lookup that failed in either run is could not check, never a change"
   },
   {
     "id": "app-smart-banner-mismatch",
@@ -1168,6 +1198,26 @@
     "why": "Scans of that table tent or flyer can't be counted: the campaign looks like it did nothing.",
     "fix": "Pass the query string on in the redirect.",
     "tech": "Parameters on the printed URL whose names start with a tag prefix (utm_ by default) and are missing from the final address"
+  },
+  {
+    "id": "cutover-certificate-changed",
+    "severity": "medium",
+    "area": "Security & email",
+    "title": "The certificate no longer covers a name it did",
+    "what": "The https certificate after cutover lacks a name the one before covered (www, a subdomain), or there is no certificate where there was one.",
+    "why": "Visitors on the name that dropped off see a security warning instead of the site.",
+    "fix": "Add the missing name to the new host's certificate (most hosts add www as a separate domain).",
+    "tech": "Names from subjectAltName, a wildcard covering one label. A new issuer or a renewed date alone is not a change"
+  },
+  {
+    "id": "cutover-records-changed",
+    "severity": "medium",
+    "area": "Security & email",
+    "title": "The domain's DNS records changed at cutover",
+    "what": "Against the snapshot taken before cutover, the domain's DMARC record, a DKIM key (for the selectors in gaugeline.cutover.json) or its address records (A, AAAA) are different.",
+    "why": "A lost DKIM key or DMARC record breaks mail authentication quietly; new address records are the cutover itself, worth confirming they point where the new host says.",
+    "fix": "Check each value against what the new host and your mail provider publish. List a change that was meant under expectedChanges in gaugeline.cutover.json.",
+    "tech": "TXT at _dmarc.<domain> (v=DMARC1), TXT at <selector>._domainkey.<domain>, A and AAAA at the domain; sets compared. A lookup that failed in either run is could not check"
   },
   {
     "id": "ai-crawlers-blocked",

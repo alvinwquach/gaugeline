@@ -84,6 +84,8 @@ import { createLogger } from "./logger.js";
 import { runDigest } from "./digest.js";
 import { formatLegacyTable, formatPlanSummary } from "./plan.js";
 import { formatTerminal } from "./reporter.js";
+import { runCutover } from "./cutover.js";
+import { runSnapshot } from "./snapshot.js";
 import {
   readAccess,
   readFacts,
@@ -699,6 +701,23 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         ci: true,
       };
     }
+    case "snapshot":
+      return {
+        outcome: await runSnapshot(args, io, {
+          ...deps,
+          ...(deps.now ? {} : io.now ? { now: io.now } : {}),
+        }),
+        ci: false,
+      };
+    case "cutover":
+      return {
+        outcome: await runCutover(
+          args,
+          { ...io, color: useColor(io.stdout, io.env ?? {}) },
+          { ...deps, ...(deps.now ? {} : io.now ? { now: io.now } : {}) },
+        ),
+        ci: true,
+      };
     case "digest": {
       await runDigest(
         {

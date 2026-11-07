@@ -6,7 +6,15 @@ import { FLAGS, nearestFlag, resolveFlags, toParseArgsOptions, type FlagDef } fr
 export const USAGE_LINE = "gaugeline <address> [options]";
 export const COMMAND = "check";
 /** Subcommands, by their first word on the command line. "check" is the default. */
-export const SUBCOMMANDS = ["launch", "view", "digest", "plan", "printed"] as const;
+export const SUBCOMMANDS = [
+  "launch",
+  "view",
+  "digest",
+  "plan",
+  "printed",
+  "snapshot",
+  "cutover",
+] as const;
 export type CliCommand = "check" | (typeof SUBCOMMANDS)[number];
 
 /** The root command's help, from help.ts. */
@@ -80,6 +88,15 @@ export type ParsedArgs =
       quiet: boolean;
     }
   | {
+      kind: "snapshot";
+      domain: string;
+      out: string;
+      allowPrivate: boolean;
+      verbose: boolean;
+      quiet: boolean;
+    }
+  | { kind: "cutover"; before: string; allowPrivate: boolean; verbose: boolean; quiet: boolean }
+  | {
       kind: "digest";
       runs: string;
       timeZone?: string;
@@ -132,7 +149,11 @@ export function parseCliArgs(
             ? "plan"
             : argv[0] === "printed"
               ? "printed"
-              : COMMAND;
+              : argv[0] === "snapshot"
+                ? "snapshot"
+                : argv[0] === "cutover"
+                  ? "cutover"
+                  : COMMAND;
   const given = command === COMMAND ? argv : argv.slice(1);
   // --annotate and --progress take an optional file name: alone, or before another flag, the default.
   const rest = given.map((a, i) =>
@@ -270,6 +291,42 @@ export function parseCliArgs(
       file: positionals[0] ?? "",
       decode: [...decodeValues, ...positionals.slice(1)],
       ...(tags && tags.length > 0 ? { tags } : {}),
+      allowPrivate: values["allow-private"] === true,
+      verbose,
+      quiet: values.quiet === true,
+    };
+  }
+  if (command === "snapshot") {
+    const domain = (positionals[0] ?? "").trim();
+    if (positionals.length !== 1 || !/^[a-z0-9.-]+\.[a-z0-9-]+$/i.test(domain.replace(/\.$/, "")))
+      return {
+        kind: "error",
+        message:
+          "gaugeline snapshot needs one domain: gaugeline snapshot example.com --out before.json",
+        hint: "Give the bare domain, without https:// or a path.",
+        verbose,
+      };
+    return {
+      kind: "snapshot",
+      domain,
+      out: typeof values.out === "string" && values.out !== "" ? values.out : "before.json",
+      allowPrivate: values["allow-private"] === true,
+      verbose,
+      quiet: values.quiet === true,
+    };
+  }
+  if (command === "cutover") {
+    if (typeof values.before !== "string" || values.before === "" || positionals.length > 0)
+      return {
+        kind: "error",
+        message:
+          "gaugeline cutover needs the snapshot taken before: gaugeline cutover --before before.json",
+        hint: "Take one first with gaugeline snapshot example.com --out before.json.",
+        verbose,
+      };
+    return {
+      kind: "cutover",
+      before: values.before,
       allowPrivate: values["allow-private"] === true,
       verbose,
       quiet: values.quiet === true,

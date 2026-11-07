@@ -86,6 +86,9 @@ const NEEDS_LIVE_STORES = new Set([
   "page-lost-content",
   "page-lost-items",
   "page-lost-structured-data",
+  // Needs an https certificate near expiry; the fixture servers are plain http. Confirmed
+  // in-process over a local https server with a 5-day certificate (dns/__tests__/cutover.test.ts).
+  "certificate-expiring",
 ]);
 
 async function findingsOf(name: string): Promise<string[]> {

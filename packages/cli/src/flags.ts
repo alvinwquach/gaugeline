@@ -54,7 +54,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     description:
       "Allow addresses on this computer or a private network, such as 127.0.0.1 or 192.168.x.x",
     since: "0.1.0",
-    commands: ["check", "launch", "plan", "printed"],
+    commands: ["check", "launch", "plan", "printed", "snapshot", "cutover"],
   },
   {
     name: "dns",
@@ -236,6 +236,20 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
       "Query parameters that must reach the destination, as name prefixes (default utm_)",
     since: "0.2.0",
     commands: ["printed"],
+  },
+  {
+    name: "out",
+    type: "string",
+    description: "Where to write the snapshot (default before.json)",
+    since: "0.2.0",
+    commands: ["snapshot"],
+  },
+  {
+    name: "before",
+    type: "string",
+    description: "The snapshot taken before cutover, written by gaugeline snapshot",
+    since: "0.2.0",
+    commands: ["cutover"],
   },
   {
     name: "runs",

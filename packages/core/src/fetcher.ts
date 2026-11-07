@@ -2,6 +2,7 @@ import { isIP } from "node:net";
 import { Readable } from "node:stream";
 import { createGunzip } from "node:zlib";
 import { blockedRange } from "./addresses.js";
+import type { Certificate } from "./dns/certificate.js";
 import { decodeBody } from "./charset.js";
 import { NetworkError, errorCodes } from "./errors.js";
 import { LIMITS } from "./limits.js";
@@ -33,6 +34,8 @@ export interface Hop {
   bytes?: number;
   /** Set on the first hop when https did not answer and http was used instead. */
   fallbackFrom?: string;
+  /** Over https: the certificate this hop's server presented. */
+  certificate?: Certificate;
 }
 
 export type FetchErrorReason =
@@ -136,6 +139,8 @@ export interface FetcherOptions {
   allowPrivate?: boolean;
   /** How host names become addresses. Defaults to the system resolver; tests inject one. */
   resolver?: Resolver;
+  /** Over https, trust only this certificate authority (PEM). Verification stays on. */
+  ca?: string;
   /** Replace the network, e.g. with a recorded cassette. hosts/allowPrivate/resolver then do nothing. */
   transport?: Transport;
   /**
@@ -254,6 +259,8 @@ export interface NetworkTransportOptions {
   resolver?: Resolver;
   /** Called once a request has passed the address check and is about to be sent. */
   onSend?: () => void;
+  /** Over https, trust only this certificate authority (PEM). */
+  ca?: string;
 }
 
 /**
@@ -309,7 +316,7 @@ export function createNetworkTransport(options: NetworkTransportOptions = {}): T
     const target = route(url);
     const pinned = await checkedAddress(url, target, target !== url);
     options.onSend?.();
-    return send(target, { ...req, pinned });
+    return send(target, { ...req, pinned, ...(options.ca ? { ca: options.ca } : {}) });
   };
 }
 
@@ -332,6 +339,7 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
         ...(options.hosts ? { hosts: options.hosts } : {}),
         ...(options.allowPrivate ? { allowPrivate: true } : {}),
         ...(options.resolver ? { resolver: options.resolver } : {}),
+        ...(options.ca ? { ca: options.ca } : {}),
         onSend: () => {
           requests += 1;
         },
@@ -367,7 +375,13 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
         const d = describeNetworkFailure(url, err, timeoutMs);
         throw new FetchError(d.reason, d.message, url, [], err, d.hint);
       }
-      const hop: Hop = { url, status: res.status, headers: res.headers, ms: 0 };
+      const hop: Hop = {
+        url,
+        status: res.status,
+        headers: res.headers,
+        ms: 0,
+        ...(res.certificate ? { certificate: res.certificate } : {}),
+      };
       const location = REDIRECTS.has(res.status) ? (res.headers.location ?? null) : null;
       if (location !== null || method === "HEAD") {
         res.body.destroy();

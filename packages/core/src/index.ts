@@ -432,6 +432,35 @@ export type {
   PrintedVerdict,
 } from "./printed/check.js";
 export { PRINTED_CHECKS, createPrintedRegistry } from "./printed/checks.js";
+export {
+  CUTOVER_ONLY_CHECKS,
+  changed as cutoverChanged,
+  createCutoverRegistry,
+} from "./checks/cutover.js";
+export type { CutoverCheckInput } from "./checks/cutover.js";
+export { expiryFinding } from "./checks/certificate-expiring.js";
+export {
+  certificateOf,
+  covers as certificateCovers,
+  daysLeft,
+  EXPIRY_DAYS,
+  SOON_DAYS,
+} from "./dns/certificate.js";
+export type { Certificate } from "./dns/certificate.js";
+export { isSpfRecord, parseDmarc, parseSpf, readDomainRecords } from "./dns/records.js";
+export type { DomainRecords, Spf } from "./dns/records.js";
+export {
+  CUTOVER_RECORDS,
+  cutoverConfigSchema,
+  takeCutoverSnapshot,
+} from "./dns/cutover-snapshot.js";
+export type {
+  CutoverConfig,
+  CutoverRecord,
+  CutoverSnapshot,
+  CutoverSnapshotOptions,
+  HostBehaviour,
+} from "./dns/cutover-snapshot.js";
 export type { PrintedCheckInput } from "./printed/checks.js";
 export {
   checkCoverage,
