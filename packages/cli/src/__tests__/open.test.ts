@@ -40,9 +40,21 @@ const release = (s: Server) => new Promise<void>((r) => s.close(() => r()));
 function open(env: Record<string, string> = {}) {
   const home = scratch("home");
   const cwd = scratch("cwd");
+  // Its own temp folder too: the shared one fills with other test files' folders meanwhile.
+  const tmp = scratch("tmp");
   const child = spawn(process.execPath, [bin, "open", "--no-open"], {
     cwd,
-    env: { ...process.env, HOME: home, USERPROFILE: home, CI: "", NO_COLOR: "1", ...env },
+    env: {
+      ...process.env,
+      HOME: home,
+      USERPROFILE: home,
+      TMPDIR: tmp,
+      TMP: tmp,
+      TEMP: tmp,
+      CI: "",
+      NO_COLOR: "1",
+      ...env,
+    },
   });
   let out = "";
   let err = "";
@@ -62,7 +74,7 @@ function open(env: Record<string, string> = {}) {
       reject(new Error(`exited before printing an address: ${err}`));
     });
   });
-  return { child, url, exited, home, cwd, out: () => out, err: () => err };
+  return { child, url, exited, home, cwd, tmp, out: () => out, err: () => err };
 }
 
 /** Every file under a folder, with its mtime. */
@@ -82,7 +94,6 @@ describe("gaugeline open: e2e (the built bin)", () => {
     "prints the address, answers it, and Ctrl+C exits 0 leaving nothing behind",
     async () => {
       const started = Date.now();
-      const tmpBefore = new Set(readdirSync(tmpdir()));
       const run = open({ DEBUG: "*" });
       const url = await run.url;
       expect(url).toMatch(/^http:\/\/localhost:\d+\/\?s=[A-Za-z0-9_-]{43}$/);
@@ -94,13 +105,10 @@ describe("gaugeline open: e2e (the built bin)", () => {
       expect(run.out().split(key).length - 1).toBe(1);
       expect(run.err()).not.toContain(key);
       expect(run.out()).toContain("It's only reachable from this computer. Press Ctrl+C to stop.");
-      // Nothing saved: no file in the working folder or the home folder, none new in the temp folder.
+      // Nothing saved: no file in the working folder, the temp folder or (newer than the start) home.
       expect(files(run.cwd)).toEqual([]);
       expect(files(run.home).filter((f) => f.mtime >= started)).toEqual([]);
-      const tmpAfter = readdirSync(tmpdir()).filter(
-        (n) => !tmpBefore.has(n) && !run.home.endsWith(n) && !run.cwd.endsWith(n),
-      );
-      expect(tmpAfter.filter((n) => !n.startsWith("gaugeline-open-"))).toEqual([]);
+      expect(readdirSync(run.tmp)).toEqual([]);
     },
   );
 
