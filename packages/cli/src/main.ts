@@ -769,28 +769,29 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           `The app could not start: ${e.code ? `${e.code} ` : ""}${e.message.replace(/\?s=[^\s&]+/g, "")}`,
         );
       }
+      // Ctrl+C or SIGTERM closes the listener and any open connection, then the run ends 0. The
+      // handlers are in place before the link is printed, so a signal sent the moment it appears
+      // is caught, and they stay for the rest of the process, so a second signal changes nothing.
+      // In-process callers (tests) stop it with deps.stop instead, and no handler is added.
+      let stopping = false;
+      let stopped!: () => void;
+      const done = new Promise<void>((resolve) => (stopped = resolve));
+      const stop = () => {
+        if (stopping) return;
+        stopping = true;
+        void app.close().then(() => stopped());
+      };
+      if (deps.stop) deps.stop.addEventListener("abort", stop, { once: true });
+      else {
+        process.on("SIGINT", stop);
+        process.on("SIGTERM", stop);
+      }
       io.stdout.write(
         `Gaugeline is running at ${app.url}\nIt's only reachable from this computer. Press Ctrl+C to stop.\n`,
       );
       const env = io.env ?? {};
       if (!args.noOpen && !isCiEnv(env)) (deps.open ?? openInBrowser)(app.url);
-      // Ctrl+C or SIGTERM closes the listener and any open connection, then the run ends 0. A
-      // second signal while it closes changes nothing.
-      await new Promise<void>((resolve) => {
-        let stopping = false;
-        const stop = () => {
-          if (stopping) return;
-          stopping = true;
-          void app.close().then(() => {
-            process.off("SIGINT", stop);
-            process.off("SIGTERM", stop);
-            resolve();
-          });
-        };
-        process.on("SIGINT", stop);
-        process.on("SIGTERM", stop);
-        deps.stop?.addEventListener("abort", stop, { once: true });
-      });
+      await done;
       return { outcome: ran, ci: false };
     }
     case "run-all": {

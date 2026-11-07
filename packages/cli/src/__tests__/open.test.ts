@@ -116,6 +116,28 @@ describe("gaugeline open: e2e (the built bin)", () => {
     },
   );
 
+  it.skipIf(!POSIX)(
+    "Ctrl+C the instant the link appears still exits 0 (handlers are in place first)",
+    async () => {
+      const codes: (number | string | null)[] = [];
+      for (let i = 0; i < 5; i++) {
+        const child = spawn(process.execPath, [bin, "open", "--no-open"], {
+          cwd: scratch("race"),
+          env: { ...process.env, CI: "", NO_COLOR: "1" },
+        });
+        codes.push(
+          await new Promise((resolve) => {
+            child.stdout.on("data", (d: Buffer) => {
+              if (d.toString().includes("running at")) child.kill("SIGINT");
+            });
+            child.on("exit", (code, signal) => resolve(code ?? signal));
+          }),
+        );
+      }
+      expect(codes).toEqual([0, 0, 0, 0, 0]);
+    },
+  );
+
   it("4817 held by another program: stdout shows 4818 and that address answers", async () => {
     const held = await hold(4817).catch(() => undefined);
     const run = open();
