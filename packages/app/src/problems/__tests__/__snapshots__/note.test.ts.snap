@@ -1,0 +1,21 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`buildNote > matches the snapshot for a high finding 1`] = `
+"Links on this page go nowhere
+
+Page: https://shop.example/menu
+
+Why it matters:
+Visitors who click hit a dead end, and search engines take broken links as a sign the site is neglected.
+
+How to fix it:
+Point each link at the page's current address, or remove it. When a page moved, add a 301 redirect from the old address.
+
+Technical detail:
+a sampled same-site a[href] ends in 4xx or 5xx. 401, 403, 429 and 503 with Retry-After are refusals: listed as could not check, never broken. A 200 page that says "not found" (a soft 404) is out of scope
+
+Evidence:
+https://shop.example/gone returned 404
+
+Check: broken-links"
+`;
