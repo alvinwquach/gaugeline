@@ -1,0 +1,265 @@
+import {
+  LEVELS,
+  type Counts,
+  type Result,
+  type RunDetail,
+  type RunSummary,
+  type WatchEvent,
+} from "./types";
+
+/** The result version this app reads. Another version is refused with a sentence, never guessed at. */
+export const RESULT_SCHEMA = 2;
+
+/** A refusal with a sentence the page can show as it is. */
+export class ApiError extends Error {
+  constructor(
+    readonly status: number,
+    message: string,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
+const isObject = (v: unknown): v is Record<string, unknown> =>
+  typeof v === "object" && v !== null && !Array.isArray(v);
+const isStrings = (v: unknown): v is string[] =>
+  Array.isArray(v) && v.every((x) => typeof x === "string");
+
+/** One request to the app's own server. Same origin: the browser sends the session cookie. */
+async function call(path: string, init?: RequestInit): Promise<unknown> {
+  let res: Response;
+  try {
+    res = await fetch(path, init);
+  } catch {
+    throw new ApiError(
+      0,
+      "The app couldn't reach Gaugeline on this computer. Is gaugeline open still running?",
+    );
+  }
+  let body: unknown;
+  try {
+    body = await res.json();
+  } catch {
+    if (res.ok) throw new ApiError(res.status, "Gaugeline's answer wasn't JSON.");
+    throw new ApiError(res.status, `Gaugeline answered ${res.status} with no message.`);
+  }
+  if (!res.ok) {
+    const sentence = isObject(body) && typeof body.error === "string" ? body.error : undefined;
+    throw new ApiError(res.status, sentence ?? `Gaugeline answered ${res.status} with no message.`);
+  }
+  return body;
+}
+
+/** POST /api/check. A 400 (or 413, 415, 429) comes back as an ApiError carrying the server's sentence. */
+export async function startCheck(url: string): Promise<{ id: string }> {
+  const body = await call("/api/check", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ url }),
+  });
+  if (!isObject(body) || typeof body.id !== "string")
+    throw new ApiError(202, "Gaugeline didn't say which run it started.");
+  return { id: body.id };
+}
+
+function readCounts(v: unknown): Counts | undefined {
+  if (!isObject(v)) return undefined;
+  const { high, medium, low } = v;
+  if (typeof high !== "number" || typeof medium !== "number" || typeof low !== "number")
+    return undefined;
+  return { high, medium, low };
+}
+
+function readSummary(v: unknown): RunSummary {
+  if (
+    !isObject(v) ||
+    typeof v.id !== "string" ||
+    typeof v.url !== "string" ||
+    typeof v.startedAt !== "string" ||
+    (v.state !== "running" && v.state !== "done" && v.state !== "failed")
+  )
+    throw new ApiError(200, "Gaugeline sent a run the app can't read.");
+  const counts = readCounts(v.counts);
+  return {
+    id: v.id,
+    url: v.url,
+    state: v.state,
+    startedAt: v.startedAt,
+    ...(counts ? { counts } : {}),
+  };
+}
+
+/**
+ * The versioned JSON from `gaugeline --json`, checked just enough to be drawn: the version, the
+ * lists and the fields the views read. Anything else in it is ignored.
+ */
+export function readResult(v: unknown): Result {
+  if (!isObject(v)) throw new Error("The result isn't an object.");
+  if (v.schema !== RESULT_SCHEMA)
+    throw new Error(
+      `This app reads result schema ${RESULT_SCHEMA}; this result is schema ${String(v.schema)}.`,
+    );
+  if (typeof v.url !== "string" || typeof v.startedAt !== "string")
+    throw new Error("The result has no address or start time.");
+  if (!Array.isArray(v.findings)) throw new Error("The result has no findings list.");
+  const findings = v.findings.map((f: unknown) => {
+    if (
+      !isObject(f) ||
+      typeof f.checkId !== "string" ||
+      typeof f.title !== "string" ||
+      typeof f.evidence !== "string" ||
+      typeof f.url !== "string" ||
+      !LEVELS.some((l) => l === f.severity)
+    )
+      throw new Error("The result has a finding the app can't read.");
+    return {
+      checkId: f.checkId,
+      severity: f.severity as Result["findings"][number]["severity"],
+      title: f.title,
+      evidence: f.evidence,
+      url: f.url,
+    };
+  });
+  if (!isStrings(v.passed)) throw new Error("The result has no list of passed checks.");
+  if (!isStrings(v.failed)) throw new Error("The result has no list of failed checks.");
+  if (!Array.isArray(v.couldNotCheck)) throw new Error("The result has no could-not-check list.");
+  const couldNotCheck = v.couldNotCheck.map((c: unknown) => {
+    if (
+      !isObject(c) ||
+      typeof c.id !== "string" ||
+      typeof c.reason !== "string" ||
+      typeof c.url !== "string"
+    )
+      throw new Error("The result has a could-not-check entry the app can't read.");
+    return { id: c.id, reason: c.reason, url: c.url };
+  });
+  if (!isObject(v.sampled)) throw new Error("The result has no sampled counts.");
+  const sampled: Result["sampled"] = {};
+  for (const [kind, s] of Object.entries(v.sampled)) {
+    if (
+      !isObject(s) ||
+      typeof s.seen !== "number" ||
+      typeof s.taken !== "number" ||
+      typeof s.limit !== "number"
+    )
+      throw new Error("The result has sampled counts the app can't read.");
+    sampled[kind] = { seen: s.seen, taken: s.taken, limit: s.limit };
+  }
+  return {
+    schema: RESULT_SCHEMA,
+    url: v.url,
+    startedAt: v.startedAt,
+    findings,
+    passed: v.passed,
+    failed: v.failed,
+    couldNotCheck,
+    sampled,
+  };
+}
+
+/** GET /api/runs: every run in this session, oldest first. */
+export async function listRuns(): Promise<RunSummary[]> {
+  const body = await call("/api/runs");
+  if (!Array.isArray(body)) throw new ApiError(200, "Gaugeline's list of runs wasn't a list.");
+  return body.map(readSummary);
+}
+
+/** GET /api/runs/:id: the run, with its result once it is done or its reason once it failed. */
+export async function getRun(id: string): Promise<RunDetail> {
+  const body = await call(`/api/runs/${encodeURIComponent(id)}`);
+  const summary = readSummary(body);
+  const raw = body as Record<string, unknown>;
+  return {
+    ...summary,
+    ...(raw.result !== undefined ? { result: readResult(raw.result) } : {}),
+    ...(typeof raw.reason === "string" ? { reason: raw.reason } : {}),
+  };
+}
+
+function data(e: Event): Record<string, unknown> | undefined {
+  try {
+    const v: unknown = JSON.parse((e as MessageEvent<string>).data);
+    return isObject(v) ? v : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Follow one run's event stream. Steps, then done or failed (the stream is closed after either).
+ * When the connection drops, the run is read again: if it ended, that is reported as a "sync"; if
+ * it is still going, the stream is opened again. The server replays every event from the start,
+ * which the store drops by event id.
+ */
+export function watchRun(
+  id: string,
+  onEvent: (e: WatchEvent) => void,
+  opts: { retryMs?: number } = {},
+): () => void {
+  const retryMs = opts.retryMs ?? 1000;
+  let stopped = false;
+  let source: EventSource | undefined;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let attempts = 0;
+
+  const open = () => {
+    if (stopped) return;
+    const es = new EventSource(`/api/runs/${encodeURIComponent(id)}/events`);
+    source = es;
+    const eventId = (e: Event) => Number((e as MessageEvent).lastEventId) || 0;
+    const live = () => !stopped && source === es;
+    es.addEventListener("step", (e) => {
+      const d = data(e);
+      if (live() && typeof d?.text === "string")
+        onEvent({ kind: "step", id: eventId(e), text: d.text });
+    });
+    es.addEventListener("done", (e) => {
+      const counts = readCounts(data(e)?.counts);
+      if (!live()) return;
+      es.close();
+      if (counts) onEvent({ kind: "done", id: eventId(e), counts });
+      else recover();
+    });
+    es.addEventListener("failed", (e) => {
+      const d = data(e);
+      if (!live()) return;
+      es.close();
+      onEvent({
+        kind: "failed",
+        id: eventId(e),
+        reason: typeof d?.reason === "string" ? d.reason : "The check could not run.",
+      });
+    });
+    es.onerror = () => {
+      if (!live()) return;
+      // The browser would reconnect by itself; this closes it so the run is read first.
+      es.close();
+      recover();
+    };
+  };
+
+  const recover = () => {
+    getRun(id).then(
+      (run) => {
+        if (stopped) return;
+        attempts = 0;
+        onEvent({ kind: "sync", run });
+        if (run.state === "running") timer = setTimeout(open, retryMs);
+      },
+      (err: unknown) => {
+        // A run the server no longer has, or an app that can't be reached for good: stop asking.
+        if (stopped || (err instanceof ApiError && err.status !== 0)) return;
+        attempts += 1;
+        if (attempts < 5) timer = setTimeout(recover, retryMs);
+      },
+    );
+  };
+
+  open();
+  return () => {
+    stopped = true;
+    clearTimeout(timer);
+    source?.close();
+  };
+}
