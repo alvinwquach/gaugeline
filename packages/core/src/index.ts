@@ -584,3 +584,7 @@ export {
 export type { LiveResult, LiveRow } from "./tools/check-redirects.js";
 export { classifyAddress, createAddressPolicy, isTarget } from "./net/address-policy.js";
 export type { AddressClass } from "./net/address-policy.js";
+export { REQUEST_KINDS, requestRows } from "./request-log.js";
+export type { RequestKind, RequestRow } from "./request-log.js";
+export { pageData } from "./run-view.js";
+export type { PageData, StructuredBlock } from "./run-view.js";

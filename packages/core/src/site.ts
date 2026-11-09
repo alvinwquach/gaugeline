@@ -39,6 +39,8 @@ import { frameworkLinks, lazyLinkSample, linkCandidates } from "./links.js";
 import type { RunExpectations } from "./model.js";
 import { lazySiteContext } from "./site-context.js";
 import { buildSnapshot, type PageSnapshot } from "./snapshot.js";
+import { inKind, kinded, requestRows, type RequestRow } from "./request-log.js";
+import { pageData, type PageData } from "./run-view.js";
 
 export interface SiteCheckOptions {
   /** What the person typed: a bare domain or a full address. */
@@ -96,6 +98,10 @@ export interface SiteCheck {
   contents?: Record<string, ContentSnapshot>;
   /** With --since last: gains since the last run (new pages, sections, items), and the expected changes. Information, never findings. */
   contentNotes?: string[];
+  /** Every address this check requested, by kind and then in the order asked (the app's Pages checked view). */
+  requests?: RequestRow[];
+  /** What the page declares, as read without JavaScript (the app's Search data view). */
+  page: PageData;
 }
 
 /**
@@ -107,17 +113,22 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
   const sink = opts.onProgress ?? (() => undefined);
   const budget = opts.budget ?? createBudget();
   sink({ step: "load-page" });
-  const snapshot = buildSnapshot(await opts.fetcher.getSite(opts.address));
+  // A fetcher kept across checks has history already: only what this check asks for is reported.
+  const before = opts.fetcher.history?.().length ?? 0;
+  const snapshot = buildSnapshot(await inKind("page", () => opts.fetcher.getSite(opts.address)));
   sink({ step: "robots-sitemap" });
   // The same candidates the link checks sample: same-site http(s), no #fragment of this page.
   const sameSite = dedupeUrls(linkCandidates(snapshot).map((l) => l.url));
   budget.take("frameworkAddresses", frameworkLinks(snapshot));
   sink({ step: "links", count: Math.min(sameSite.length, budget.remaining("links")) });
   sink({ step: "scripts" });
-  const images = lazyImageSample({ page: snapshot, fetcher: opts.fetcher, budget });
+  const images = kinded(
+    "image",
+    lazyImageSample({ page: snapshot, fetcher: opts.fetcher, budget }),
+  );
   const site = lazySiteContext({ page: snapshot, fetcher: opts.fetcher, budget });
   const registry = opts.registry ?? createPageRegistry();
-  const pages = lazyPages({ page: snapshot, fetcher: opts.fetcher, budget });
+  const pages = kinded("extra-page", lazyPages({ page: snapshot, fetcher: opts.fetcher, budget }));
   const saved = opts.previous?.pages;
   const contentNow = saved
     ? lazyContentNow({
@@ -151,13 +162,13 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
       fetcher: opts.fetcher,
       budget,
       site,
-      links: lazyLinkSample({ page: snapshot, fetcher: opts.fetcher, budget }),
+      links: kinded("link", lazyLinkSample({ page: snapshot, fetcher: opts.fetcher, budget })),
       apps: lazyAppLookups({ page: snapshot, fetcher: opts.fetcher, budget }),
       images,
       calendars: lazyCalendars({ page: snapshot, fetcher: opts.fetcher, budget }),
       ...(opts.now ? { now: opts.now } : {}),
       pages,
-      scripts: lazyScripts({ page: snapshot, fetcher: opts.fetcher, budget }),
+      scripts: kinded("script", lazyScripts({ page: snapshot, fetcher: opts.fetcher, budget })),
       datasets: lazyDatasets({ page: snapshot, fetcher: opts.fetcher, budget }),
       languages: lazyLanguageGroup({
         page: snapshot,
@@ -207,10 +218,13 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
     opts.baselineRequested && pageOutcome.kind !== "refused"
       ? await savedContents(await pages(), contentNow, saved, opts.pagesConfig)
       : undefined;
+  const history = opts.fetcher.history?.();
   return {
     snapshot,
     result,
     budget,
+    page: pageData(snapshot),
+    ...(history ? { requests: requestRows(history.slice(before)) } : {}),
     ...(analysis ? { tags: summarise(analysis) } : {}),
     ...(content ? { contents: content.contents, contentNotes: content.notes } : {}),
   };

@@ -207,6 +207,33 @@ describe("app API: integration (fixture sites, real sockets)", () => {
     }
   });
 
+  it("GET /api/runs/:id: beside the result, every address the check requested and what the page declares", async () => {
+    const site = await startFixture("pages-search");
+    const c = await client(5390);
+    try {
+      const started = await c.call("POST", "/api/check", { url: site.origin });
+      const id = String(started.json().id);
+      const run = await c.finished(id);
+      const checked = run.checked as {
+        requests: { url: string; kind: string; method: string; status: number | null }[];
+        page: { title: string; blocks: { ok: boolean }[] };
+      };
+      // One row for each request the fixture saw, and nothing else.
+      expect(checked.requests).toHaveLength(site.total);
+      expect(checked.requests.filter((r) => r.kind === "image")).toHaveLength(2);
+      expect(checked.page.title).toBe("Larkspur Pottery Studio");
+      expect(checked.page.blocks.map((b) => b.ok)).toEqual([true, true, false]);
+      // The result is the versioned --json object: the extra data is not in it.
+      expect(Object.keys(run.result as object)).not.toContain("requests");
+      expect(Object.keys(run.result as object)).not.toContain("page");
+      // The list of runs stays small.
+      const list = (await c.call("GET", "/api/runs")).body;
+      expect(list).not.toContain("requests");
+    } finally {
+      await close(c.app, site);
+    }
+  });
+
   it("a site that redirects to the app's own address: the hop is refused, the app gets no request from its fetcher", async () => {
     const c = await client(5310);
     const site = await stub((res) =>

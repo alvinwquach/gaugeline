@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useReducer } from "react";
 import { getRun, listRuns, startCheck, watchRun } from "./api";
-import type { Counts, Result, RunDetail, RunStatus, RunSummary, StreamEvent } from "./types";
+import type {
+  Checked,
+  Counts,
+  Result,
+  RunDetail,
+  RunStatus,
+  RunSummary,
+  StreamEvent,
+} from "./types";
 
 export interface Step {
   id: number;
@@ -18,6 +26,8 @@ export interface RunState {
   /** The highest event id applied, so a replayed event is not shown twice. */
   lastEventId: number;
   result?: Result;
+  /** The addresses the check requested and what the page declares, when the server sent them. */
+  checked?: Checked;
   reason?: string;
   /** Why the result could not be read (a version this app doesn't know, or a lost connection). */
   loadError?: string;
@@ -128,6 +138,7 @@ export function reducer(s: Session, a: Action): Session {
           state: a.run.state,
           ...(a.run.counts ? { counts: a.run.counts } : {}),
           ...(a.run.result ? { result: a.run.result } : {}),
+          ...(a.run.checked ? { checked: a.run.checked } : {}),
           ...(a.run.reason !== undefined ? { reason: a.run.reason } : {}),
         };
       });

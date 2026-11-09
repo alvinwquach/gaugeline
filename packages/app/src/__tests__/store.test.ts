@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { initialSession, reducer, type Session } from "../store";
 import type { RunSummary } from "../types";
-import { doneRun, finding, result } from "./helpers";
+import { checkedOf, doneRun, finding, result } from "./helpers";
 
 const row = (id: string, state: RunSummary["state"] = "done"): RunSummary => ({
   id,
@@ -108,6 +108,16 @@ describe("the session reducer", () => {
     s = reducer(s, { type: "detail", run: { ...row("a", "running") } });
     expect(s.runs.get("a")?.state).toBe("done");
     expect(s.runs.get("a")?.result).toBe(r);
+  });
+
+  it("detail: keeps the addresses and page data that come with the result", () => {
+    const r = result();
+    const checked = checkedOf();
+    const s = reducer(reducer(initialSession, { type: "listed", runs: [row("a", "running")] }), {
+      type: "detail",
+      run: { ...doneRun("a", "https://shop.example/", r), checked },
+    });
+    expect(s.runs.get("a")?.checked).toBe(checked);
   });
 
   it("detail-failed: records why the result could not be read", () => {
