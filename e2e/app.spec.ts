@@ -74,3 +74,60 @@ test("a page on another origin can't start a check, even with credentials", asyn
   const runs = await page.evaluate(async () => (await fetch("/api/runs")).json());
   expect(runs).toEqual([]);
 });
+
+test("the page loads with zero console errors, zero CSP violations and no request to another host", async ({
+  page,
+}) => {
+  const problems: string[] = [];
+  const hosts = new Set<string>();
+  page.on("console", (m) => {
+    if (m.type() === "error" || m.type() === "warning")
+      problems.push(`console ${m.type()}: ${m.text()}`);
+  });
+  page.on("pageerror", (e) => problems.push(`page error: ${e.message}`));
+  page.on("request", (r) => hosts.add(new URL(r.url()).host));
+  // Reported by the browser itself, from before the page's first script runs.
+  await page.addInitScript(() => {
+    (window as unknown as { violations: string[] }).violations = [];
+    document.addEventListener("securitypolicyviolation", (e) =>
+      (window as unknown as { violations: string[] }).violations.push(
+        `${e.violatedDirective} ${e.blockedURI}`,
+      ),
+    );
+  });
+  await page.goto(link);
+  await expect(page.getByRole("heading", { name: "Gaugeline" })).toBeVisible();
+  await expect(page.getByText("Gaugeline is running on this computer")).toBeVisible();
+  const violations = await page.evaluate(
+    () => (window as unknown as { violations: string[] }).violations,
+  );
+  expect(violations).toEqual([]);
+  expect(problems).toEqual([]);
+  expect([...hosts]).toEqual([new URL(link).host]);
+});
+
+test("the policy is live: a script or style the page did not ship is refused", async ({ page }) => {
+  await page.addInitScript(() => {
+    (window as unknown as { violations: string[] }).violations = [];
+    document.addEventListener("securitypolicyviolation", (e) =>
+      (window as unknown as { violations: string[] }).violations.push(e.violatedDirective),
+    );
+  });
+  await page.goto(link);
+  await expect(page.getByText("Gaugeline is running on this computer")).toBeVisible();
+  const ran = await page.evaluate(async () => {
+    const script = document.createElement("script");
+    script.textContent = "window.injected = true";
+    document.body.append(script);
+    const style = document.createElement("style");
+    style.textContent = "h1 { color: red }";
+    document.head.append(style);
+    await new Promise((r) => setTimeout(r, 100));
+    return {
+      injected: (window as unknown as { injected?: boolean }).injected === true,
+      violations: (window as unknown as { violations: string[] }).violations,
+    };
+  });
+  expect(ran.injected).toBe(false);
+  expect(ran.violations).toEqual(expect.arrayContaining(["script-src-elem", "style-src-elem"]));
+});

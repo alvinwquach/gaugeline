@@ -6,6 +6,7 @@ import { createSession, sessionCookie, setSessionCookie } from "./session.js";
 import type { FetcherOptions } from "@gaugeline/core";
 import { route } from "./routes.js";
 import { createRunner } from "./runs.js";
+import { applySecurityHeaders, ClientMissingError, loadClient, serveClient } from "./static.js";
 import { createStore, type Run, type RunEvent, type Store } from "./store.js";
 
 /** The only address the app listens on: this computer. Never 0.0.0.0, never "::", never omitted. */
@@ -63,6 +64,12 @@ export interface RunningApp {
 
 export interface StartOptions {
   port?: number;
+  /**
+   * The built client: the folder holding client-manifest.json and the files it lists (the CLI passes
+   * its own dist/client). Read and verified before the port is taken. Required: an app with no
+   * client would answer 404 to everything, so leaving it out is ClientMissingError.
+   */
+  clientDir?: string;
   /** The address to check first, given on the command line: started like POST /api/check. */
   address?: string;
   signal?: AbortSignal;
@@ -76,9 +83,6 @@ export interface StartOptions {
   maxRuns?: number;
 }
 
-const PLACEHOLDER =
-  '<!doctype html><html lang="en"><meta charset="utf-8"><title>Gaugeline</title><p>Gaugeline is running on this computer. The app itself arrives in a later version.</p></html>\n';
-
 /** The Host header, or undefined when it is missing or was sent more than once. */
 function hostOf(req: IncomingMessage): string | undefined {
   let count = 0;
@@ -89,6 +93,9 @@ function hostOf(req: IncomingMessage): string | undefined {
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? undefined : v);
 
 export async function startApp(opts: StartOptions = {}): Promise<RunningApp> {
+  // Before anything listens: a missing or damaged client is a start-up error, not a blank page.
+  if (opts.clientDir === undefined) throw new ClientMissingError("(no folder given)");
+  const client = loadClient(opts.clientDir);
   const key = createKey();
   const session = createSession(key);
   const sockets = new Set<Socket>();
@@ -121,7 +128,13 @@ export async function startApp(opts: StartOptions = {}): Promise<RunningApp> {
       port,
     );
     if (!verdict.ok) return refuse(res, verdict.reason);
-    const url = new URL(req.url ?? "/", "http://localhost");
+    // "//index.html" is a path here, not the host "index.html": a request target that starts with a
+    // slash is joined to the base as text, so a client path is only ever a key that exists or a 404.
+    const target = req.url ?? "/";
+    const url = new URL(
+      target.startsWith("/") ? `http://localhost${target}` : target,
+      "http://localhost",
+    );
     // The link: its key, once, becomes the session cookie, and a 303 takes the key out of the
     // address bar. A spent or wrong key is refused like a missing one.
     if (url.searchParams.has("s")) {
@@ -143,15 +156,12 @@ export async function startApp(opts: StartOptions = {}): Promise<RunningApp> {
     if (!session.isValid(sessionCookie(one(req.headers.cookie)))) return refuse(res, "session");
     accepted++;
     if (await route(req, res, { store, runner })) return;
-    if ((req.method === "GET" || req.method === "HEAD") && url.pathname === "/") {
-      res
-        .writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" })
-        .end(PLACEHOLDER);
-      return;
-    }
-    res.writeHead(404, { "content-type": "text/plain; charset=utf-8" }).end("Not found.\n");
+    // The client, from the Map. An /api/ path that the routes did not answer never gets here.
+    serveClient(client, req, res, url.pathname);
   };
   const server = createServer((req, res) => {
+    // The one place the security headers are set: before any route, refusal or error can answer.
+    applySecurityHeaders(res);
     handle(req, res).catch(() => {
       if (!res.headersSent) res.writeHead(500, { "content-type": "text/plain; charset=utf-8" });
       res.end("Something went wrong in the app.\n");

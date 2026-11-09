@@ -57,6 +57,49 @@ Security problems go through [SECURITY.md](SECURITY.md), and everyone follows th
 
 - `packages/core` is the check engine. It never imports the CLI and never calls `process.exit`.
 - `packages/cli` is the `gaugeline` command. It parses arguments, calls core and picks the exit code.
+- `packages/app-server` is the local server behind `gaugeline open`. Bundled into the CLI.
+- `packages/app` is the browser client (Vite, React, TypeScript). Its build is embedded in the CLI package.
+
+## The app: how it is built and embedded
+
+`gaugeline open` serves a web app from the `gaugeline` package itself, so `npx gaugeline open` needs
+no second download. The pieces:
+
+1. `packages/app` builds with Vite to `packages/app/dist`: hashed file names (`assets/index-<hash>.js`),
+   relative base, no source maps.
+2. `pnpm build` builds the app first, then core and the CLI (tsup empties `packages/cli/dist`), and
+   last runs `scripts/embed-client.mjs`. It copies the app's build to `packages/cli/dist/client`
+   and writes `client-manifest.json` there: `[{ path, type, bytes, gzipBytes, sha256 }]`, sorted by path.
+   Building only the CLI (`pnpm --filter gaugeline build`) leaves no client, and `gaugeline open` then
+   says "the app was not built into this package" and exits 2. Run `pnpm build`.
+3. At start, `packages/app-server/src/static.ts` reads every file in the manifest into a `Map` keyed by
+   URL path, checks each against its `sha256`, and refuses to start if one differs. A request is
+   answered by `map.get(pathname)`: a request path is never joined to a folder. `/` is never cached;
+   hashed files are cached for a year; the `sha256` is the ETag.
+4. Every response carries a strict Content-Security-Policy (no inline script, no inline style, no
+   eval, nothing from another origin), `X-Content-Type-Options`, `Referrer-Policy` and
+   `Cross-Origin-Resource-Policy`. The client must work under it: use classes, not `style=`.
+
+### Reading the size report
+
+`pnpm build` ends with a report, and `node scripts/embed-client.mjs --check` prints it again for what
+is already embedded (and fails if a file differs from the manifest):
+
+```text
+file                          bytes      gzip
+assets/index-DbjD4VMN.js     219779     67832
+index.html                      448       284
+assets/style-BZk3Igmj.css       305       205
+total gzip 66.7 KB of 300.0 KB (no single file over 200.0 KB)
+```
+
+Sizes are gzipped, level 9. The budget is 300 KB for the whole client and 200 KB for any one file;
+over it the script exits 1 and prints the three largest files. The budget exists to keep the cost of
+shipping the app to people who only use the terminal visible. To bring a build back under it, look
+at the largest file first: a new dependency is usually why. A new library for the app is a
+"Dependency notes" line in the pull request, pinned exactly, and a `devDependency` of
+`packages/app` (the CLI keeps no runtime dependency). Anything the client bundles that has its own
+licence goes into `packages/cli/THIRD_PARTY_LICENSES.md`.
 
 ## Branches and pull requests
 
