@@ -1,0 +1,5 @@
+{
+  "/moved": { "status": 301, "location": "/moved-again" },
+  "/moved-again": { "status": 302, "location": "/about" },
+  "/busy": { "status": 500, "body": "Something went wrong" }
+}

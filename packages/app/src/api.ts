@@ -1,6 +1,10 @@
 import {
   LEVELS,
+  REQUEST_KINDS,
+  type Checked,
   type Counts,
+  type RequestRow,
+  type StructuredBlock,
   type Result,
   type RunDetail,
   type RunSummary,
@@ -158,6 +162,82 @@ export function readResult(v: unknown): Result {
   };
 }
 
+const isString = (v: unknown): v is string => typeof v === "string";
+const isCount = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v) && v >= 0;
+
+function readRequest(v: unknown): RequestRow | undefined {
+  if (
+    !isObject(v) ||
+    !isString(v.url) ||
+    !REQUEST_KINDS.some((k) => k === v.kind) ||
+    (v.method !== "GET" && v.method !== "HEAD") ||
+    !(v.status === null || isCount(v.status)) ||
+    !isCount(v.ms) ||
+    (v.location !== undefined && !isString(v.location)) ||
+    (v.error !== undefined &&
+      v.error !== "timeout" &&
+      v.error !== "private-address-refused" &&
+      v.error !== "no-answer")
+  )
+    return undefined;
+  return {
+    url: v.url,
+    kind: v.kind as RequestRow["kind"],
+    method: v.method,
+    status: v.status,
+    ...(v.error ? { error: v.error } : {}),
+    ms: v.ms,
+    ...(v.location !== undefined ? { location: v.location } : {}),
+  };
+}
+
+function readBlock(v: unknown): StructuredBlock | undefined {
+  if (!isObject(v)) return undefined;
+  if (v.ok === true && "value" in v) return { ok: true, value: v.value };
+  if (v.ok === false && isString(v.raw) && isString(v.error))
+    return { ok: false, raw: v.raw, error: v.error };
+  return undefined;
+}
+
+/**
+ * What the server sends beside the result for the Pages checked and Search data views, checked just
+ * enough to be drawn. Anything that isn't the shape is dropped as a whole: those views then say the
+ * run has no list, and the rest of the app is unaffected.
+ */
+export function readChecked(v: unknown): Checked | undefined {
+  if (!isObject(v) || !isObject(v.page)) return undefined;
+  const p = v.page;
+  if (
+    !isString(p.url) ||
+    (p.title !== undefined && !isString(p.title)) ||
+    (p.canonical !== undefined && !isString(p.canonical)) ||
+    !isCount(p.words) ||
+    !isString(p.firstWords) ||
+    !Array.isArray(p.blocks)
+  )
+    return undefined;
+  const blocks = p.blocks.map(readBlock);
+  if (blocks.some((b) => b === undefined)) return undefined;
+  let requests: RequestRow[] | undefined;
+  if (v.requests !== undefined) {
+    if (!Array.isArray(v.requests)) return undefined;
+    const rows = v.requests.map(readRequest);
+    if (rows.some((r) => r === undefined)) return undefined;
+    requests = rows as RequestRow[];
+  }
+  return {
+    ...(requests ? { requests } : {}),
+    page: {
+      url: p.url,
+      ...(p.title !== undefined ? { title: p.title } : {}),
+      ...(p.canonical !== undefined ? { canonical: p.canonical } : {}),
+      words: p.words,
+      firstWords: p.firstWords,
+      blocks: blocks as StructuredBlock[],
+    },
+  };
+}
+
 /** GET /api/runs: every run in this session, oldest first. */
 export async function listRuns(): Promise<RunSummary[]> {
   const body = await call("/api/runs");
@@ -173,6 +253,7 @@ export async function getRun(id: string): Promise<RunDetail> {
   return {
     ...summary,
     ...(raw.result !== undefined ? { result: readResult(raw.result) } : {}),
+    ...(readChecked(raw.checked) ? { checked: readChecked(raw.checked) as Checked } : {}),
     ...(typeof raw.reason === "string" ? { reason: raw.reason } : {}),
   };
 }

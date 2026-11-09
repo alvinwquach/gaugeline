@@ -30,6 +30,15 @@ export interface PageSnapshot {
   /** Parsed JSON-LD blocks; an array in one script tag becomes several blocks. */
   jsonLd: unknown[];
   jsonLdErrors: string[];
+  /**
+   * Every JSON-LD script tag in document order, as written: the parsed value, or for one that did
+   * not parse its text and the parser's message. For the app's Search data view.
+   */
+  jsonLdBlocks?: ({ ok: true; value: unknown } | { ok: false; raw: string; error: string })[];
+  /** The href of the first canonical link as written, trimmed: "" when the link has none. */
+  canonicalAttr?: string;
+  /** The first 200 words counted in `wordCount`, joined by single spaces. */
+  firstWords?: string;
   og: Record<string, string>;
   scripts: string[];
   /** link rel="alternate" hreflang entries, in document order. */
@@ -108,7 +117,8 @@ function isHiddenStyle(style: string | undefined): boolean {
   );
 }
 
-function countWords($: CheerioAPI, state: { stega: boolean }, chrome = false): number {
+/** The words `wordCount` counts, in order. */
+function readableWords($: CheerioAPI, state: { stega: boolean }, chrome = false): string[] {
   // htmlparser2 does not invent a <body>, so a fragment is wrapped to make find() see top-level tags.
   const copy =
     $("body").length > 0 ? $("body").clone() : $("<div></div>").append($.root().contents().clone());
@@ -125,8 +135,11 @@ function countWords($: CheerioAPI, state: { stega: boolean }, chrome = false): n
     $(el).prepend(" ").append(" ");
   });
   const text = clean(copy.text(), state);
-  return text === "" ? 0 : text.split(" ").filter((w) => /[\p{L}\p{N}]/u.test(w)).length;
+  return text === "" ? [] : text.split(" ").filter((w) => /[\p{L}\p{N}]/u.test(w));
 }
+
+/** How many words a visitor can read without JavaScript. */
+const FIRST_WORDS = 200;
 
 export function buildSnapshot(hops: Hop[]): PageSnapshot {
   const first = hops[0];
@@ -204,15 +217,22 @@ export function buildSnapshot(hops: Hop[]): PageSnapshot {
 
   const jsonLd: unknown[] = [];
   const jsonLdErrors: string[] = [];
+  const jsonLdBlocks: NonNullable<PageSnapshot["jsonLdBlocks"]> = [];
   $("script[type]").each((i, el) => {
     const type = ($(el).attr("type") ?? "").toLowerCase().split(";")[0]?.trim();
     if (type !== "application/ld+json") return;
     const raw = $(el).text().trim();
     try {
       const parsed: unknown = JSON.parse(raw);
+      jsonLdBlocks.push({ ok: true, value: parsed });
       if (Array.isArray(parsed)) jsonLd.push(...(parsed as unknown[]));
       else jsonLd.push(parsed);
     } catch (err) {
+      jsonLdBlocks.push({
+        ok: false,
+        raw,
+        error: err instanceof Error ? err.message : String(err),
+      });
       jsonLdErrors.push(
         `JSON-LD block ${i + 1}: ${err instanceof Error ? err.message : String(err)}`,
       );
@@ -320,8 +340,14 @@ export function buildSnapshot(hops: Hop[]): PageSnapshot {
     if (id) ids.add(id);
   });
 
-  const wordCount = countWords($, state);
-  const contentWordCount = countWords($, state, true);
+  const readable = readableWords($, state);
+  const wordCount = readable.length;
+  const contentWordCount = readableWords($, state, true).length;
+  const canonicalLink = $("link[rel]")
+    .filter((_, el) => ($(el).attr("rel") ?? "").toLowerCase().split(/\s+/).includes("canonical"))
+    .first();
+  const canonicalAttr =
+    canonicalLink.length > 0 ? ($(canonicalLink).attr("href") ?? "").trim() : undefined;
   const title = titleText === "" && $("title").length === 0 ? undefined : clean(titleText, state);
 
   return {
@@ -338,6 +364,9 @@ export function buildSnapshot(hops: Hop[]): PageSnapshot {
     images,
     jsonLd,
     jsonLdErrors,
+    jsonLdBlocks,
+    ...(canonicalAttr === undefined ? {} : { canonicalAttr }),
+    firstWords: readable.slice(0, FIRST_WORDS).join(" "),
     og,
     scripts,
     ...(appBanner ? { appleItunesApp: appBanner } : {}),

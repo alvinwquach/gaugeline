@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { Result } from "@gaugeline/core";
+import type { PageData, RequestRow, Result } from "@gaugeline/core";
 
 /** What a run streams: a step's text, then done with the counts, or failed with the reason. */
 export type RunEvent =
@@ -21,6 +21,11 @@ export interface Run {
   counts?: Counts;
   /** When done: the same versioned JSON `gaugeline <address> --json` prints. */
   result?: Result;
+  /**
+   * When done: every address the check requested and what the page declares, for the Pages
+   * checked and Search data views. Beside the result, not in it: the result's shape is versioned.
+   */
+  checked?: { requests?: RequestRow[]; page: PageData };
   reason?: string;
   /** Every event so far, so a late subscriber (or one sending Last-Event-ID) gets a replay. */
   events: RunEvent[];
