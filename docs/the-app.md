@@ -22,6 +22,58 @@ The address you enter can be on your own computer or network (`localhost:3000`, 
 at `192.168.1.20`), the way your own terminal can reach it. Where its pages point is another
 matter: a redirect or a link to some other private address is not followed.
 
+## Check a page
+
+Type an address in the box at the top and press Enter. If the address isn't one Gaugeline can read,
+the reason appears next to the box, in a sentence, and what you typed stays so you can fix it. The
+box is cleared only once the check has started.
+
+![The app after two checks: the sidebar lists both pages, and the Overview of the second shows how many problems it has at each level, the three to start with, and what looked right.](/img/app-overview.png)
+
+- **The sidebar** lists every page you have checked this session, oldest first, each with its
+  address, whether it is still checking, done or could not run, and how many problems it has at
+  each level. The page you check next is opened for you. Select any other to look at it again: its
+  results are already in the app, so nothing is requested from the site a second time.
+- **Progress** appears while a check runs, one line at a time, the same lines a terminal check
+  prints. Screen readers announce each as it arrives.
+- **The address bar** keeps your place. It reads `#/<run>/<view>`, so reloading the page, or going
+  back, returns to the same page and view. If the run it names is gone (you restarted
+  `gaugeline open`), the app opens the newest one instead.
+
+The Overview is the first view. It shows how many problems there are at each of the three levels
+(Fix this first, Fix soon, Worth knowing; see [Reading the report](/docs/reading-the-report)), the three to start with,
+every check that passed, and how much of the site was read. A page with nothing to fix still lists
+what was checked. Everything that comes from the page you checked, its title, an address, a line of
+evidence, is shown as plain text, so a page can't put markup in the app.
+
+The same page checked from the terminal finds the same things: the Overview starts with the first three, and the sidebar counts the rest by level.
+
+<!-- fixture: images -->
+
+```sh title=Terminal
+$ npx gaugeline shop.example
+```
+
+```text title=Output
+✗ Some images on this page don't load
+    <img src="./missing.png"> returned 404
+! Images are requested at an enormous width
+    1 image is offered at 3840 pixels or wider: /hero.jpg (3840w)
+! Some images are very large files
+    ./heavy.jpg is 879 KB (Content-Length 900,000)
+! Images still load from an old WordPress site
+    1 image loads from ./: ./old-sign.jpg
+· Some images have no alt attribute
+    2 images have no alt: ./swatch-0.png, ./swatch-1.png
+· Images use older, heavier file formats
+    16 of 20 sampled images are JPEG, PNG or GIF only: ./heavy.jpg, ./old-sign.jpg, ./divider.png and 13 more
+? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
+    Mail records are read from DNS only with --dns. Rerun with --dns to check them.
+
+Checked 20 of 41 images.
+6 to look at, 1 to fix first.
+```
+
 ## Works offline
 
 The app is part of the `gaugeline` package. Installing or running it with `npx` downloads the app
