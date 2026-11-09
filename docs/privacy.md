@@ -82,6 +82,108 @@ Checked 20 of 41 images.
 Each check that passed also prints a `✓ <id>` line, left out above. The output is asserted by
 `packages/cli/src/__tests__/images.test.ts`.
 
+### Saving the requests (--save-requests)
+
+By default a run keeps what it asked for in memory and writes only the report. `--save-requests <file>`
+also writes the request log and the page's data to one JSON file you name, so you can see exactly
+which addresses a check requested and what the page declared. It is off unless you pass it, and it
+is a separate file: the `--json` result is the same with or without it.
+
+**The file may contain page content (the page's title and first 200 readable words, and its
+structured data), so do not commit it or share it.** Keep it out of your repository: add its name
+to `.gitignore`. Gaugeline's own `.gitignore` lists `gaugeline-requests.json`.
+
+<!-- fixture: quick-start -->
+
+```sh title=Terminal
+$ npx gaugeline shop.example --save-requests gaugeline-requests.json
+```
+
+```text title=Output
+✗ This page tells Google to show a different page
+    <link rel="canonical" href="https://shop.example/tools"> on https://shop.example/ (differs by path)
+? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
+    Mail records are read from DNS only with --dns. Rerun with --dns to check them.
+
+1 to look at, 1 to fix first.
+```
+
+The passed-check lines are left out above. On stderr, after the results, it says where the file went:
+
+```text
+Request log written to gaugeline-requests.json. It may contain page content: do not commit it.
+```
+
+What is in the file:
+
+- `schemaVersion`, `generatedBy`, a `notice` that says what is in it, the address that was checked and
+  when.
+- `requests`: one row for every address the check requested, with its kind (`page`, `link`,
+  `image`, `sitemap`, `feed`, `script`, `extra-page` or `other`), the method (`GET` or `HEAD`), the
+  status or the reason there was none, how long it took in milliseconds and, for a redirect, where it
+  pointed.
+- `page`: the address the page ended at, its title and canonical, how many words a visitor can read
+  without JavaScript, the first 200 of them, and each structured data block (parsed, or as raw text
+  with the parser's message when it did not parse).
+- `truncation`: what was cut, if anything (see below).
+
+It holds no request or response headers and no page bodies beyond that. A row looks like this:
+
+```json
+{
+  "url": "https://shop.example/tools",
+  "kind": "sitemap",
+  "method": "HEAD",
+  "status": 200,
+  "ms": 14
+}
+```
+
+**Redaction.** Every string in the file goes through the same `redact()` as findings, reports and
+error messages: key-shaped text (Stripe, AWS, GitHub, Slack, Google and similar keys, JSON Web
+Tokens, `Bearer` and `Basic` values) and the values of secret-looking query parameters (`token`,
+`access_token`, `api_key`, `apikey`, `key`, `secret`, `password`, `sig`, `signature`, `auth`) become
+`[redacted]`. The cut for the size limit is made after redaction, so a cut cannot leave the front of
+a key behind.
+
+**Size limit.** A page keeps at most 256 KB (262,144 bytes of UTF-8) of text across its title,
+canonical, first words and structured data together (`MAX_SAVED_PAGE_BYTES`), and the file lists at
+most 1,000 requests (`MAX_SAVED_REQUESTS`). When something is cut the file says so itself: `page.truncated`
+names the fields that were cut, a structured data block that was cut has `"truncated": true`,
+`page.blocksOmitted` counts blocks left out, and `truncation` at the top has `truncated: true`, the
+limits, how many requests were made and saved, and a sentence for each cut. A structured data block
+that does not fit whole is kept as its first part, as raw text. The two limits are constants in
+`@gaugeline/core`; there is no flag to raise them.
+
+**Where it works.** The page check (`gaugeline <address>`) and `gaugeline launch` accept it.
+`gaugeline plan`, `open`, `view`, `digest`, `printed`, `snapshot`, `cutover`, `verify` and `run` do
+not: they stop with exit code 2 and one sentence saying which commands do.
+
+**Where it is written, and when it can fail.**
+
+- The file is claimed before the first request. If the path is a folder, its folder does not exist
+  or it cannot be written, Gaugeline stops with exit code 2 and one sentence, and nothing has been
+  requested.
+- A file that is already there is replaced, whole, when the check finishes. If the check cannot run
+  (the site does not answer), a file this run created is removed again and an existing file is left
+  as it was.
+- Writing the file never changes the exit code, with one exception: if it cannot be written (above, or
+  the disk fills up before the end), the exit code is 2.
+- A new file is created readable by its owner only (mode 0600) on macOS and Linux. Windows does not
+  use these modes: the file has the permissions of the folder it is in, so choose a folder only you can
+  read. An existing file keeps the permissions it had.
+- Nothing is sent anywhere. The file is never uploaded, and no other command reads it.
+
+**How the file will change.** It has its own version, `schemaVersion`, which has nothing to do with
+the `schema` number of `--json`. Its shape is published as a JSON Schema,
+[`packages/core/schema/requests.v1.json`](https://github.com/alvinwquach/gaugeline/blob/main/packages/core/schema/requests.v1.json)
+(draft 2020-12), generated from the code and checked in CI (`pnpm schema:check`) the way the result's
+is. A published file is never edited in place: CI fails any change to the shape, adding a field included,
+unless it comes with a new `schemaVersion` and a new schema file (`requests.v2.json`). The old file
+stays in the package so a script can pin to it. Version 1 allows no unknown keys, so a script that
+validates against it will notice if a later version adds one. What a version-2 file would change is
+named in the changelog, and the changeset for it follows the semver rules in STABILITY.md.
+
 ### The app (gaugeline open)
 
 `gaugeline open` starts a server on 127.0.0.1 only, so nothing else on your network can reach it.

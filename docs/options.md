@@ -45,36 +45,40 @@ Usage: gaugeline <address> [options]
 Check a website the way search engines and visitors see it. Read-only.
 
 Options:
-      --ci                    Exit 1 when a "Fix this first" finding is found
-                              [CI]
-      --json                  Print the result as JSON on stdout, and nothing
-                              else
-      --no-open               Do not open anything in a browser
-      --allow-private         Allow addresses on this computer or a private
-                              network, such as 127.0.0.1 or 192.168.x.x
-      --dns                   Also read the domain's mail records (SPF and
-                              DMARC) from DNS
-      --since <value>         Compare with this site's last run and save this
-                              one; the only value is last (.gaugeline/last-run/)
-  -i, --interactive           Open a terminal view of the results to move
-                              through, filter and dismiss findings
-      --slack <value>         Send a summary to this Slack incoming webhook (or
-                              set GAUGELINE_SLACK_WEBHOOK)
-      --discord <value>       Send an embed to this Discord webhook (or set
-                              GAUGELINE_DISCORD_WEBHOOK)
-      --webhook <value>       POST the result as JSON to this address (or set
-                              GAUGELINE_WEBHOOK)
-      --email <value>         Email the full report to these addresses through
-                              Resend (or set GAUGELINE_EMAIL)
-      --notify-on <value>     When to send: any (something was found, the
-                              default), high or always
-      --report-url <value>    Link each message to a hosted copy of the report
-                              at this address
-      --quiet                 Print only results and errors
-      --verbose               Show each request, and technical detail when
-                              something goes wrong
-  -h, --help                  Show this help and exit
-  -v, --version               Print the version and exit
+      --ci                       Exit 1 when a "Fix this first" finding is found
+                                 [CI]
+      --json                     Print the result as JSON on stdout, and nothing
+                                 else
+      --no-open                  Do not open anything in a browser
+      --allow-private            Allow addresses on this computer or a private
+                                 network, such as 127.0.0.1 or 192.168.x.x
+      --dns                      Also read the domain's mail records (SPF and
+                                 DMARC) from DNS
+      --since <value>            Compare with this site's last run and save this
+                                 one; the only value is last
+                                 (.gaugeline/last-run/)
+  -i, --interactive              Open a terminal view of the results to move
+                                 through, filter and dismiss findings
+      --slack <value>            Send a summary to this Slack incoming webhook
+                                 (or set GAUGELINE_SLACK_WEBHOOK)
+      --discord <value>          Send an embed to this Discord webhook (or set
+                                 GAUGELINE_DISCORD_WEBHOOK)
+      --webhook <value>          POST the result as JSON to this address (or set
+                                 GAUGELINE_WEBHOOK)
+      --email <value>            Email the full report to these addresses
+                                 through Resend (or set GAUGELINE_EMAIL)
+      --notify-on <value>        When to send: any (something was found, the
+                                 default), high or always
+      --report-url <value>       Link each message to a hosted copy of the
+                                 report at this address
+      --save-requests <value>    Save the requests made and the page's data to
+                                 this JSON file; it may contain page content, so
+                                 do not commit it
+      --quiet                    Print only results and errors
+      --verbose                  Show each request, and technical detail when
+                                 something goes wrong
+  -h, --help                     Show this help and exit
+  -v, --version                  Print the version and exit
 
 Exit codes: 0 ran, 1 --ci with a fix-first finding, 2 could not run
 ```
@@ -190,32 +194,35 @@ Run the launch-day checks: links to preview addresses, the share picture, an
 indexable staging site, noindex and robots.txt. Read-only.
 
 Options:
-      --ci                    Exit 1 when a "Fix this first" finding is found
-                              [CI]
-      --json                  Print the result as JSON on stdout, and nothing
-                              else
-      --no-open               Do not open anything in a browser
-      --allow-private         Allow addresses on this computer or a private
-                              network, such as 127.0.0.1 or 192.168.x.x
-      --dns                   Also read the domain's mail records (SPF and
-                              DMARC) from DNS
-      --slack <value>         Send a summary to this Slack incoming webhook (or
-                              set GAUGELINE_SLACK_WEBHOOK)
-      --discord <value>       Send an embed to this Discord webhook (or set
-                              GAUGELINE_DISCORD_WEBHOOK)
-      --webhook <value>       POST the result as JSON to this address (or set
-                              GAUGELINE_WEBHOOK)
-      --email <value>         Email the full report to these addresses through
-                              Resend (or set GAUGELINE_EMAIL)
-      --notify-on <value>     When to send: any (something was found, the
-                              default), high or always
-      --report-url <value>    Link each message to a hosted copy of the report
-                              at this address
-      --quiet                 Print only results and errors
-      --verbose               Show each request, and technical detail when
-                              something goes wrong
-  -h, --help                  Show this help and exit
-  -v, --version               Print the version and exit
+      --ci                       Exit 1 when a "Fix this first" finding is found
+                                 [CI]
+      --json                     Print the result as JSON on stdout, and nothing
+                                 else
+      --no-open                  Do not open anything in a browser
+      --allow-private            Allow addresses on this computer or a private
+                                 network, such as 127.0.0.1 or 192.168.x.x
+      --dns                      Also read the domain's mail records (SPF and
+                                 DMARC) from DNS
+      --slack <value>            Send a summary to this Slack incoming webhook
+                                 (or set GAUGELINE_SLACK_WEBHOOK)
+      --discord <value>          Send an embed to this Discord webhook (or set
+                                 GAUGELINE_DISCORD_WEBHOOK)
+      --webhook <value>          POST the result as JSON to this address (or set
+                                 GAUGELINE_WEBHOOK)
+      --email <value>            Email the full report to these addresses
+                                 through Resend (or set GAUGELINE_EMAIL)
+      --notify-on <value>        When to send: any (something was found, the
+                                 default), high or always
+      --report-url <value>       Link each message to a hosted copy of the
+                                 report at this address
+      --save-requests <value>    Save the requests made and the page's data to
+                                 this JSON file; it may contain page content, so
+                                 do not commit it
+      --quiet                    Print only results and errors
+      --verbose                  Show each request, and technical detail when
+                                 something goes wrong
+  -h, --help                     Show this help and exit
+  -v, --version                  Print the version and exit
 
 Exit codes: 0 ran, 1 --ci with a fix-first finding, 2 could not run
 ```
@@ -227,50 +234,51 @@ between the markers; CI fails when it differs from the flag table.
 
 <!-- flags:start -->
 
-| Flag                      | Does                                                                                               | Environment variable | Since |
-| ------------------------- | -------------------------------------------------------------------------------------------------- | -------------------- | ----- |
-| `--ci`                    | Exit 1 when a "Fix this first" finding is found                                                    | `CI`                 | 0.1.0 |
-| `--json`                  | Print the result as JSON on stdout, and nothing else                                               |                      | 0.1.0 |
-| `--no-open`               | Do not open anything in a browser                                                                  |                      | 0.1.0 |
-| `--allow-private`         | Allow addresses on this computer or a private network, such as 127.0.0.1 or 192.168.x.x            |                      | 0.1.0 |
-| `--dns`                   | Also read the domain's mail records (SPF and DMARC) from DNS                                       |                      | 0.2.0 |
-| `--since <value>`         | Compare with this site's last run and save this one; the only value is last (.gaugeline/last-run/) |                      | 0.2.0 |
-| `-i`, `--interactive`     | Open a terminal view of the results to move through, filter and dismiss findings                   |                      | 0.2.0 |
-| `--slack <value>`         | Send a summary to this Slack incoming webhook (or set GAUGELINE_SLACK_WEBHOOK)                     |                      | 0.2.0 |
-| `--discord <value>`       | Send an embed to this Discord webhook (or set GAUGELINE_DISCORD_WEBHOOK)                           |                      | 0.2.0 |
-| `--webhook <value>`       | POST the result as JSON to this address (or set GAUGELINE_WEBHOOK)                                 |                      | 0.2.0 |
-| `--email <value>`         | Email the full report to these addresses through Resend (or set GAUGELINE_EMAIL)                   |                      | 0.2.0 |
-| `--plan-only`             | Check the plan on its own, before anything is built (no requests)                                  |                      | 0.2.0 |
-| `--sheet <value>`         | Read this tab of a workbook instead of the one with a URL column                                   |                      | 0.2.0 |
-| `--legacy-from <value>`   | Read old addresses from this notes column when the plan has no Legacy URL column (repeatable)      |                      | 0.2.0 |
-| `--legacy-review <value>` | Write the old addresses read with --legacy-from to this CSV file, for review                       |                      | 0.2.0 |
-| `--base <value>`          | Check the plan against the site built at this address, such as a preview                           |                      | 0.2.0 |
-| `--annotate <value>`      | Write a copy of the plan with a Gaugeline column saying what is wrong on each row                  |                      | 0.2.0 |
-| `--force`                 | Let --annotate replace a file that already exists                                                  |                      | 0.2.0 |
-| `--progress <value>`      | With --base, say what was fixed and what is new since the last run (state file optional)           |                      | 0.2.0 |
-| `--watch <value>`         | With --base on production: the 30-day watch from this cutover date (YYYY-MM-DD)                    |                      | 0.2.0 |
-| `--all`                   | plan --progress: list the findings still open; run: check every site in gaugeline.sites.json       |                      | 0.2.0 |
-| `--live <value>`          | List pages in this crawl, sitemap, Search Console export or list that the plan misses              |                      | 0.2.0 |
-| `--nav <value>`           | Check the menu tabs (all headed Main category, or these, comma separated) against the pages        |                      | 0.2.0 |
-| `--rank <value>`          | With --live, sort the missing pages by clicks from this Search Console or rank export              |                      | 0.2.0 |
-| `--ignore <value>`        | With --live, leave out paths matching this glob, such as /tag/* (repeatable)                       |                      | 0.2.0 |
-| `--printed <value>`       | With --base, add the printed register's addresses to the 301 map                                   |                      | 0.2.0 |
-| `--decode <value>`        | Read the QR code in these PNG images (or a folder) and add new ones to the register                |                      | 0.2.0 |
-| `--tags <value>`          | Query parameters that must reach the destination, as name prefixes (default utm_)                  |                      | 0.2.0 |
-| `--site <value>`          | Check this site from gaugeline.sites.json, by name (repeatable)                                    |                      | 0.2.0 |
-| `--tag <value>`           | Check the sites in gaugeline.sites.json with this tag, such as client                              |                      | 0.2.0 |
-| `--parallel <value>`      | Check this many sites at once (default 1); sites on one host never overlap                         |                      | 0.2.0 |
-| `--limit <value>`         | Re-check this many of the export's pages (default 40; 0 only classifies the rows)                  |                      | 0.2.0 |
-| `--out <value>`           | Where to write the snapshot (default before.json)                                                  |                      | 0.2.0 |
-| `--before <value>`        | The snapshot taken before cutover, written by gaugeline snapshot                                   |                      | 0.2.0 |
-| `--runs <value>`          | The folder of saved runs (each one saved with --json) to read                                      |                      | 0.2.0 |
-| `--time-zone <value>`     | The time zone for dates and ages, such as America/Los_Angeles (default UTC)                        |                      | 0.2.0 |
-| `--notify-on <value>`     | When to send: any (something was found, the default), high or always                               |                      | 0.2.0 |
-| `--report-url <value>`    | Link each message to a hosted copy of the report at this address                                   |                      | 0.2.0 |
-| `--quiet`                 | Print only results and errors                                                                      |                      | 0.1.0 |
-| `--verbose`               | Show each request, and technical detail when something goes wrong                                  |                      | 0.1.0 |
-| `-h`, `--help`            | Show this help and exit                                                                            |                      | 0.1.0 |
-| `-v`, `--version`         | Print the version and exit                                                                         |                      | 0.1.0 |
+| Flag                      | Does                                                                                                           | Environment variable | Since |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------- | -------------------- | ----- |
+| `--ci`                    | Exit 1 when a "Fix this first" finding is found                                                                | `CI`                 | 0.1.0 |
+| `--json`                  | Print the result as JSON on stdout, and nothing else                                                           |                      | 0.1.0 |
+| `--no-open`               | Do not open anything in a browser                                                                              |                      | 0.1.0 |
+| `--allow-private`         | Allow addresses on this computer or a private network, such as 127.0.0.1 or 192.168.x.x                        |                      | 0.1.0 |
+| `--dns`                   | Also read the domain's mail records (SPF and DMARC) from DNS                                                   |                      | 0.2.0 |
+| `--since <value>`         | Compare with this site's last run and save this one; the only value is last (.gaugeline/last-run/)             |                      | 0.2.0 |
+| `-i`, `--interactive`     | Open a terminal view of the results to move through, filter and dismiss findings                               |                      | 0.2.0 |
+| `--slack <value>`         | Send a summary to this Slack incoming webhook (or set GAUGELINE_SLACK_WEBHOOK)                                 |                      | 0.2.0 |
+| `--discord <value>`       | Send an embed to this Discord webhook (or set GAUGELINE_DISCORD_WEBHOOK)                                       |                      | 0.2.0 |
+| `--webhook <value>`       | POST the result as JSON to this address (or set GAUGELINE_WEBHOOK)                                             |                      | 0.2.0 |
+| `--email <value>`         | Email the full report to these addresses through Resend (or set GAUGELINE_EMAIL)                               |                      | 0.2.0 |
+| `--plan-only`             | Check the plan on its own, before anything is built (no requests)                                              |                      | 0.2.0 |
+| `--sheet <value>`         | Read this tab of a workbook instead of the one with a URL column                                               |                      | 0.2.0 |
+| `--legacy-from <value>`   | Read old addresses from this notes column when the plan has no Legacy URL column (repeatable)                  |                      | 0.2.0 |
+| `--legacy-review <value>` | Write the old addresses read with --legacy-from to this CSV file, for review                                   |                      | 0.2.0 |
+| `--base <value>`          | Check the plan against the site built at this address, such as a preview                                       |                      | 0.2.0 |
+| `--annotate <value>`      | Write a copy of the plan with a Gaugeline column saying what is wrong on each row                              |                      | 0.2.0 |
+| `--force`                 | Let --annotate replace a file that already exists                                                              |                      | 0.2.0 |
+| `--progress <value>`      | With --base, say what was fixed and what is new since the last run (state file optional)                       |                      | 0.2.0 |
+| `--watch <value>`         | With --base on production: the 30-day watch from this cutover date (YYYY-MM-DD)                                |                      | 0.2.0 |
+| `--all`                   | plan --progress: list the findings still open; run: check every site in gaugeline.sites.json                   |                      | 0.2.0 |
+| `--live <value>`          | List pages in this crawl, sitemap, Search Console export or list that the plan misses                          |                      | 0.2.0 |
+| `--nav <value>`           | Check the menu tabs (all headed Main category, or these, comma separated) against the pages                    |                      | 0.2.0 |
+| `--rank <value>`          | With --live, sort the missing pages by clicks from this Search Console or rank export                          |                      | 0.2.0 |
+| `--ignore <value>`        | With --live, leave out paths matching this glob, such as /tag/* (repeatable)                                   |                      | 0.2.0 |
+| `--printed <value>`       | With --base, add the printed register's addresses to the 301 map                                               |                      | 0.2.0 |
+| `--decode <value>`        | Read the QR code in these PNG images (or a folder) and add new ones to the register                            |                      | 0.2.0 |
+| `--tags <value>`          | Query parameters that must reach the destination, as name prefixes (default utm_)                              |                      | 0.2.0 |
+| `--site <value>`          | Check this site from gaugeline.sites.json, by name (repeatable)                                                |                      | 0.2.0 |
+| `--tag <value>`           | Check the sites in gaugeline.sites.json with this tag, such as client                                          |                      | 0.2.0 |
+| `--parallel <value>`      | Check this many sites at once (default 1); sites on one host never overlap                                     |                      | 0.2.0 |
+| `--limit <value>`         | Re-check this many of the export's pages (default 40; 0 only classifies the rows)                              |                      | 0.2.0 |
+| `--out <value>`           | Where to write the snapshot (default before.json)                                                              |                      | 0.2.0 |
+| `--before <value>`        | The snapshot taken before cutover, written by gaugeline snapshot                                               |                      | 0.2.0 |
+| `--runs <value>`          | The folder of saved runs (each one saved with --json) to read                                                  |                      | 0.2.0 |
+| `--time-zone <value>`     | The time zone for dates and ages, such as America/Los_Angeles (default UTC)                                    |                      | 0.2.0 |
+| `--notify-on <value>`     | When to send: any (something was found, the default), high or always                                           |                      | 0.2.0 |
+| `--report-url <value>`    | Link each message to a hosted copy of the report at this address                                               |                      | 0.2.0 |
+| `--save-requests <value>` | Save the requests made and the page's data to this JSON file; it may contain page content, so do not commit it |                      | 0.2.0 |
+| `--quiet`                 | Print only results and errors                                                                                  |                      | 0.1.0 |
+| `--verbose`               | Show each request, and technical detail when something goes wrong                                              |                      | 0.1.0 |
+| `-h`, `--help`            | Show this help and exit                                                                                        |                      | 0.1.0 |
+| `-v`, `--version`         | Print the version and exit                                                                                     |                      | 0.1.0 |
 
 <!-- flags:end -->
 
@@ -314,3 +322,12 @@ that scripts can validate against:
 - The `schema` number only changes with a new file. Published files (`result.v1.json`,
   `result.v2.json`) are never edited in place; a new
   shape ships as `result.v2.json` and the old file stays in the package so consumers can pin.
+
+### Saving the requests
+
+`--save-requests <file>` writes the addresses a check requested and the page's data to a separate JSON
+file. It is off by default, and `--json` is the same with or without it (schema 2). It works with the
+page check (`gaugeline <address>`) and `gaugeline launch`; every other command refuses it with exit
+code 2. The file may contain page content, so do not commit it. What is in it, how it is redacted and
+cut to a size limit, when it can fail and how its own versioned schema will change are on
+[Privacy and safety](privacy.md#saving-the-requests-save-requests).

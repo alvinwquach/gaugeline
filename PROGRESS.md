@@ -88,6 +88,36 @@ merged once CI is green on Node 22 and 24 (18.17, 20 and 22 until S00).
 - **License**: `LICENSE` is MIT, "Copyright (c) 2026 Gaugeline contributors", matching the `license`
   field set since G01. Confirm the licence and the copyright holder.
 
+## Decisions
+
+- **2026-11-09, schema 3 refused.** `--json` stays at schemaVersion 2. Data the app needs beyond the result (the request log and page data) is exposed only beside the result in the app's API, and to users through the opt-in `--save-requests <file>`, a separate versioned file.
+
+## Standing orders (owner, 2026-11-09; they replace earlier stop points)
+
+- Build every branch of the spec in order, through phase 08, including the hosted phase (07) and every
+  agent branch. Do not start the "Expansion roadmap" section.
+- No fallback timers and no waiting between steps: when a background build finishes, check CI, merge when
+  every check is green (fix failures on the branch first), and start the next branch.
+- Anything that needs accounts or keys is built against environment variables, a local Postgres and
+  recorded responses. Never create accounts, use live keys, deploy or publish.
+- N09 and N17 no longer stop the loop: build them. List them, with every branch the spec marks "model Opus",
+  in "Built on Sonnet, review" below (one line each: id, branch, PR, what a reviewer should look at hardest).
+- Schema 3 is refused: `--json` stays at schemaVersion 2 (see Decisions).
+- Method that works: one fresh agent per branch with `scratchpad/brief.md` (the orchestrator's brief: spec
+  entry, rules, gotchas), plain `git push origin <branch>:claude/relaxed-brown-7yxex4` after syncing that branch
+  with main by a content-neutral merge (`git merge -s ours origin/claude/relaxed-brown-7yxex4` on top of
+  origin/main); force pushes are refused by the permission classifier. Check CI by subscribing to the PR.
+- When context gets long: finish the current branch, update this file with the exact next branch, end the loop.
+- When the last branch merges: prepare the release PR (do not publish), then write `docs/why-gaugeline.md`
+  (for every feature, check and agent that shipped: one plain-English paragraph on who would use it and why,
+  the real problem it prevents, and which tool people use today instead and why this is better or
+  complementary; grouped by audience: agency, business owner, marketer, content editor, developer, matching the
+  landing page). Then reply with a summary and the publish commands.
+
+## Built on Sonnet, review
+
+None yet. Branches the spec marks "model Opus" that were built on Sonnet from G23 onward are listed here.
+
 ## Branches
 
 | Id | Branch | Status | PR | Tests | Notes / left undone |
@@ -188,6 +218,7 @@ merged once CI is green on Node 22 and 24 (18.17, 20 and 22 until S00).
 | G22 | `04/app-views` | merged | https://github.com/alvinwquach/gaugeline/pull/100 | 1722 vitest + 27 Playwright on Node 22 and 24 | packages/app: api.ts (fetch + EventSource, recovers a dropped stream by re-reading the run), store.ts (one reducer over Map<string, RunState>), views.ts registry (array; later views append), route.ts (hash `#/<run>/<view>`), Shell, Sidebar, AddressForm, views/Overview. Generated check-titles.ts (gen:checks) is bundled so the Overview shows titles, not ids. Client 76.7 KB gzip of 300 KB. Dev deps: jsdom, Testing Library, @axe-core/playwright. Built by a subagent whose force push was refused, so the commit was pushed as a plain fast-forward. |
 | G22a | `04/app-problems-view` | merged | https://github.com/alvinwquach/gaugeline/pull/101 | 1779 vitest on Node 22 and 24, 32 Playwright (5 new in e2e/problems.spec.ts) | packages/app: problems/filter.ts (filterFindings generic over the item, Set<Level> + Set<string>, empty = all; facetCounts: all three levels, areas only where present in report order), problems/note.ts (buildNote: title, Page, Why, Fix, Technical detail, Evidence, Check; empty sections left out whole), views/Problems.tsx (grouped by level, aria-pressed filters, one open finding at a time, technical line mounted only on request, copy via navigator.clipboard.writeText with a selected read-only textarea on missing/rejected/throwing clipboard, aria-live status). route.ts: optional third hash part, `#/<run>/problems/<index>` = place in the result; filters reset per run (key), not in the hash. gen:checks now writes CHECK_TEXT (what/why/fix/tech) into check-titles.ts as ASCII escapes; client 106.8 KB gzip of 300. docs/the-app.md Problems section + app-problems.png; the note in the page is checked against buildNote (docs-note.test.ts). e2e file is e2e/problems.spec.ts (where shell.spec.ts lives), not packages/app/e2e. |
 | G22b | `04/app-pages-and-search-data` | merged | https://github.com/alvinwquach/gaugeline/pull/102 | 1890 vitest on Node 22 and 24, 36 Playwright (4 new in e2e/pages-search.spec.ts) | The result JSON (schema 2, hash-locked in versions.json) has no requests or page data, so nothing was added to it: the fetcher keeps `history()` (every hop and refusal; kind from an AsyncLocalStorage set by `kinded()` around each sampler in site.ts / `inKind` in site-context.ts), `checkSite` returns `requests` and `page` (run-view.ts: title/canonical absent vs empty, first 200 words, JSON-LD blocks in order with raw text and parser message for a bad one; snapshot gains jsonLdBlocks, canonicalAttr, firstWords), and the app server sends them as `checked` beside `result` in GET /api/runs/:id. A schema 3 that moves them into the JSON is the owner's call (see the PR). packages/app: pages/rows.ts (toRows, answerFor, isProblem, footerLines), search/tree.ts (toTree depth cap 24, node cap 2000; blockTitle), views/PagesChecked.tsx (real table, addresses as text in code, never links), views/SearchData.tsx (disclosure tree, levels 1 to 3 open), views/RunNotice.tsx, readChecked in api.ts. Kinds: page, link, image, sitemap, feed, script, extra-page, other (rows equal the server's request count). Fixture `pages-search`; docs/the-app.md blocks are checked by scripts/__tests__/docs-the-app.test.ts. Client 110.1 KB gzip. |
+| (owner) | `04/save-requests` | merged | https://github.com/alvinwquach/gaugeline/pull/103 | 1936 vitest on Node 24, 1935 + 1 load-flaky open.test SIGINT case on Node 22 (passes alone) | Owner-requested, not in the spec: no schema 3, `--json` stays at 2. Opt-in `--save-requests <file>` (page check and launch only; other commands exit 2 with one sentence) writes the G22b request log and page data to a separate file: core `requests-file.ts` (zod schema, `REQUESTS_FILE_SCHEMA_VERSION` 1, `MAX_SAVED_PAGE_BYTES` 256 KB UTF-8 across title/canonical/first words/blocks, `MAX_SAVED_REQUESTS` 1000, truncation noted in the file), schema `schema/requests.v1.json` + `requests-versions.json` checked by `schema:check` (`build-schema.ts` loops over both kinds). Redaction: `redact()` over every string by an object walk (not over serialised JSON), cut after redaction. CLI `save-requests.ts` claims the file with `wx` mode 0600 before the first request (folder/unwritable: exit 2), removes a placeholder it created if the check fails, late write failure exit 2. Docs: privacy.md section (tested example), options.md, STABILITY.md; `.gitignore` has `gaugeline-requests.json`. No Windows/macOS run locally (0600 test is POSIX-only). |
 | G22c | `04/app-leaks-and-access` | todo | | | Leaks and access view |
 | G22d | `04/app-download-and-demo` | todo | | | Download the report and a demo mode |
 | G22e | `04/app-ads-view` | todo | | | Ads in the app (open --ads) |

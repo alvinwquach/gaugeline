@@ -586,5 +586,15 @@ export { classifyAddress, createAddressPolicy, isTarget } from "./net/address-po
 export type { AddressClass } from "./net/address-policy.js";
 export { REQUEST_KINDS, requestRows } from "./request-log.js";
 export type { RequestKind, RequestRow } from "./request-log.js";
+export {
+  MAX_SAVED_PAGE_BYTES,
+  MAX_SAVED_REQUESTS,
+  REQUESTS_FILE_NOTICE,
+  REQUESTS_FILE_SCHEMA_VERSION,
+  buildRequestsFile,
+  parseRequestsFile,
+  requestsFileSchema,
+} from "./requests-file.js";
+export type { RequestsFile, RequestsFileCaps } from "./requests-file.js";
 export { pageData } from "./run-view.js";
 export type { PageData, StructuredBlock } from "./run-view.js";
