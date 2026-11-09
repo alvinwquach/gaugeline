@@ -88,6 +88,7 @@ describe("runner: unit", () => {
       "feed-oversized",
       "form-destination-changed",
       "form-provider-changed",
+      "hidden-ai-directive",
       "hidden-in-sitemap",
       "hidden-indexable",
       "hidden-linked",
@@ -106,6 +107,7 @@ describe("runner: unit", () => {
       "images-heavy",
       "images-legacy-format",
       "images-legacy-wp",
+      "invisible-unicode-tags",
       "jsonld-404",
       "jsonld-invalid",
       "lang-attr-mismatch",
@@ -172,6 +174,7 @@ describe("runner: unit", () => {
       "temp-host-links",
       "thin-html",
       "viewport",
+      "zero-width-in-text",
     ]);
     for (const c of PAGE_CHECKS) expect(c.what && c.why && c.fix && c.tech).toBeTruthy();
   });
@@ -237,6 +240,7 @@ describe("runner: edge cases", () => {
       "feed-oversized",
       "form-destination-changed",
       "form-provider-changed",
+      "hidden-ai-directive",
       "hidden-in-sitemap",
       "hidden-indexable",
       "hidden-linked",
@@ -254,6 +258,7 @@ describe("runner: edge cases", () => {
       "images-heavy",
       "images-legacy-format",
       "images-legacy-wp",
+      "invisible-unicode-tags",
       "jsonld-404",
       "jsonld-invalid",
       "lang-attr-mismatch",
@@ -316,6 +321,7 @@ describe("runner: edge cases", () => {
       "tel-format",
       "temp-host-canonical",
       "temp-host-links",
+      "zero-width-in-text",
     ]);
   });
 });

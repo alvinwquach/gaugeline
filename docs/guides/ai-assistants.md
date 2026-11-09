@@ -63,3 +63,5 @@ These checks run from version 0.1.0; see [Quick start](../quick-start.md). Each 
 
 `/robots.txt` and `/llms.txt`, once each, and at most 10 of the links in llms.txt (the first 10 in
 the file). See [Security](../security.md#how-much-a-run-requests).
+
+See also [hidden text aimed at AI assistants](hidden-text.md): the opposite problem, text planted on your page to steer an assistant.

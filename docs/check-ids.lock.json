@@ -37,6 +37,7 @@
   "feed-oversized",
   "form-destination-changed",
   "form-provider-changed",
+  "hidden-ai-directive",
   "hidden-in-sitemap",
   "hidden-indexable",
   "hidden-linked",
@@ -55,6 +56,7 @@
   "images-heavy",
   "images-legacy-format",
   "images-legacy-wp",
+  "invisible-unicode-tags",
   "jsonld-404",
   "jsonld-invalid",
   "lang-attr-mismatch",
@@ -148,5 +150,6 @@
   "temp-host-canonical",
   "temp-host-links",
   "thin-html",
-  "viewport"
+  "viewport",
+  "zero-width-in-text"
 ]
