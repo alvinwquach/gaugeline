@@ -12,7 +12,7 @@ function get(
   headers: Record<string, string> = {},
 ): Promise<{ status: number; body: string; cookie?: string }> {
   return new Promise((resolve, reject) => {
-    // Both address families, as a browser tries them: on Node 18.17 localhost may resolve to ::1
+    // Both address families, as a browser tries them: on some Node versions localhost may resolve to ::1
     // first, and the app answers on 127.0.0.1 only.
     const opts = { agent: agent ?? false, autoSelectFamily: true, headers } as Parameters<
       typeof httpRequest

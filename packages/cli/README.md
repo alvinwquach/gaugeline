@@ -8,7 +8,7 @@ requests addresses on your own computer or network unless you pass `--allow-priv
 npx gaugeline example.com
 ```
 
-Requires Node.js 18.17 or newer.
+Requires Node.js 22 or newer.
 
 ## Usage
 
