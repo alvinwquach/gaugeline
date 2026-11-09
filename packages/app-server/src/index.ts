@@ -17,3 +17,15 @@ export { createRunner } from "./runs.js";
 export type { Runner, RunnerOptions } from "./runs.js";
 export { createStore, StoreFull } from "./store.js";
 export type { Counts, Run, RunEvent, Store } from "./store.js";
+export {
+  applySecurityHeaders,
+  ClientIntegrityError,
+  ClientMissingError,
+  CONTENT_SECURITY_POLICY,
+  contentTypeFor,
+  loadClient,
+  MANIFEST_FILE,
+  securityHeaders,
+  serveClient,
+} from "./static.js";
+export type { Asset, Client } from "./static.js";
