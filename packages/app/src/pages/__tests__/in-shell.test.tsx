@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Shell } from "../../Shell";
@@ -51,12 +51,12 @@ describe("Pages checked and Search data in the shell", () => {
     render(<Shell />);
     await user.click(await screen.findByRole("link", { name: "Pages checked" }));
     expect(await screen.findByRole("heading", { level: 1, name: "Pages checked" })).toBeTruthy();
-    expect(window.location.hash).toBe("#/a/pages");
+    await waitFor(() => expect(window.location.hash).toBe("#/a/pages"));
     expect(await screen.findByRole("table")).toBeTruthy();
     expect(screen.getByText(/Showing 2 of 2 addresses/)).toBeTruthy();
     await user.click(screen.getByRole("link", { name: "Search data" }));
     expect(await screen.findByRole("heading", { level: 1, name: "Search data" })).toBeTruthy();
-    expect(window.location.hash).toBe("#/a/search");
+    await waitFor(() => expect(window.location.hash).toBe("#/a/search"));
     expect(screen.getByText("Larkspur Pottery Studio", { selector: "dd span" })).toBeTruthy();
   });
 
