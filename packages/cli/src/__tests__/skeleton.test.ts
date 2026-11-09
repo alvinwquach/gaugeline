@@ -123,9 +123,20 @@ describe("walking skeleton: integration (the packed tarball)", () => {
 });
 
 const bash = process.platform !== "win32";
+/**
+ * The parent environment without the npm_config_* variables that pnpm sets for its scripts.
+ * npm 11 (Node 24) warns on stderr about the ones it does not know, and the smoke script runs
+ * npx in a clean directory, so it should not inherit them anyway.
+ */
+function cleanParentEnv(): NodeJS.ProcessEnv {
+  return Object.fromEntries(
+    Object.entries(process.env).filter(([key]) => !key.toLowerCase().startsWith("npm_config_")),
+  );
+}
+
 function smoke(env: Record<string, string>, version = "0.0.2") {
   return exec("bash", [join(repoRoot, "scripts/smoke-published.sh"), version], {
-    env: { ...process.env, CI: "", SMOKE_RUNNER: "local", SMOKE_RETRY_SECONDS: "0", ...env },
+    env: { ...cleanParentEnv(), CI: "", SMOKE_RUNNER: "local", SMOKE_RETRY_SECONDS: "0", ...env },
   }).then(
     (r) => ({ code: 0, ...r }),
     (e: { code: number; stdout: string; stderr: string }) => ({
