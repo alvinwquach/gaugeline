@@ -141,9 +141,17 @@ describe("gaugeline open: e2e (the built bin)", () => {
     async () => {
       const run = open();
       await run.url;
+      const ended = new Promise<{ code: number | null; signal: NodeJS.Signals | null }>((resolve) =>
+        run.child.on("exit", (code, signal) => resolve({ code, signal })),
+      );
       run.child.kill("SIGINT");
       run.child.kill("SIGINT");
-      expect(await run.exited).toBe(0);
+      // The first signal starts the shutdown and the handler stays for the second. If the shutdown is
+      // fast enough that the second one arrives while Node is already tearing down, after it has put
+      // the default action back, the process ends by that signal instead: any program does. Either
+      // way it ends at once, without an error.
+      const { code, signal } = await ended;
+      expect(code === 0 || (code === null && signal === "SIGINT")).toBe(true);
       expect(run.err()).not.toMatch(/Error|at .+:\d+:\d+/);
     },
   );

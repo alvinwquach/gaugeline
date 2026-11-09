@@ -113,7 +113,6 @@ merged once CI is green on Node 22 and 24 (18.17, 20 and 22 until S00).
   the real problem it prevents, and which tool people use today instead and why this is better or
   complementary; grouped by audience: agency, business owner, marketer, content editor, developer, matching the
   landing page). Then reply with a summary and the publish commands.
-- Known flake: `packages/cli/src/__tests__/open.test.ts` "second Ctrl+C" can fail under load on Linux; it passes alone.
 
 ## Built on Sonnet, review
 
