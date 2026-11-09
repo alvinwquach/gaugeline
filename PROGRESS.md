@@ -92,6 +92,33 @@ merged once CI is green on Node 22 and 24 (18.17, 20 and 22 until S00).
 
 - **2026-11-09, schema 3 refused.** `--json` stays at schemaVersion 2. Data the app needs beyond the result (the request log and page data) is exposed only beside the result in the app's API, and to users through the opt-in `--save-requests <file>`, a separate versioned file.
 
+## Standing orders (owner, 2026-11-09; they replace earlier stop points)
+
+- Build every branch of the spec in order, through phase 08, including the hosted phase (07) and every
+  agent branch. Do not start the "Expansion roadmap" section.
+- No fallback timers and no waiting between steps: when a background build finishes, check CI, merge when
+  every check is green (fix failures on the branch first), and start the next branch.
+- Anything that needs accounts or keys is built against environment variables, a local Postgres and
+  recorded responses. Never create accounts, use live keys, deploy or publish.
+- N09 and N17 no longer stop the loop: build them. List them, with every branch the spec marks "model Opus",
+  in "Built on Sonnet, review" below (one line each: id, branch, PR, what a reviewer should look at hardest).
+- Schema 3 is refused: `--json` stays at schemaVersion 2 (see Decisions).
+- Method that works: one fresh agent per branch with `scratchpad/brief.md` (the orchestrator's brief: spec
+  entry, rules, gotchas), plain `git push origin <branch>:claude/relaxed-brown-7yxex4` after syncing that branch
+  with main by a content-neutral merge (`git merge -s ours origin/claude/relaxed-brown-7yxex4` on top of
+  origin/main); force pushes are refused by the permission classifier. Check CI by subscribing to the PR.
+- When context gets long: finish the current branch, update this file with the exact next branch, end the loop.
+- When the last branch merges: prepare the release PR (do not publish), then write `docs/why-gaugeline.md`
+  (for every feature, check and agent that shipped: one plain-English paragraph on who would use it and why,
+  the real problem it prevents, and which tool people use today instead and why this is better or
+  complementary; grouped by audience: agency, business owner, marketer, content editor, developer, matching the
+  landing page). Then reply with a summary and the publish commands.
+- Known flake: `packages/cli/src/__tests__/open.test.ts` "second Ctrl+C" can fail under load on Linux; it passes alone.
+
+## Built on Sonnet, review
+
+None yet. Branches the spec marks "model Opus" that were built on Sonnet from G23 onward are listed here.
+
 ## Branches
 
 | Id | Branch | Status | PR | Tests | Notes / left undone |
