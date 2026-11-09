@@ -212,7 +212,8 @@ test("a hash that names a run that is gone falls back to the newest run", async 
   await page.goto(`${origin}/#/no-such-run/overview`);
   await page.reload();
   await expect(sidebar(page).getByRole("link", { current: "page" })).toContainText(clean.origin);
-  expect(new URL(page.url()).hash).not.toContain("no-such-run");
+  // The app corrects the address a moment after it shows the newest run, so wait for it.
+  await expect.poll(() => new URL(page.url()).hash).not.toContain("no-such-run");
 });
 
 test("a page title that is markup is shown as text and opens no dialog", async ({ page }) => {
