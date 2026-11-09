@@ -88,6 +88,10 @@ merged once CI is green on Node 22 and 24 (18.17, 20 and 22 until S00).
 - **License**: `LICENSE` is MIT, "Copyright (c) 2026 Gaugeline contributors", matching the `license`
   field set since G01. Confirm the licence and the copyright holder.
 
+## Decisions
+
+- **2026-11-09, schema 3 refused.** `--json` stays at schemaVersion 2. Data the app needs beyond the result (the request log and page data) is exposed only beside the result in the app's API, and to users through the opt-in `--save-requests <file>`, a separate versioned file.
+
 ## Branches
 
 | Id | Branch | Status | PR | Tests | Notes / left undone |

@@ -39,6 +39,8 @@ export interface RunFlags {
   notify: { slack?: string; discord?: string; webhook?: string; email?: string };
   notifyOn: "any" | "high" | "always";
   reportUrl?: string;
+  /** --save-requests: where to write the request log and page data (a separate file, never the result). */
+  saveRequests?: string;
   ci: boolean;
   json: boolean;
   noOpen: boolean;
@@ -140,6 +142,12 @@ export function describeParseError(
   const text = err instanceof Error ? err.message : String(err);
   const flag = /'(-[^' ]+)/.exec(text)?.[1] ?? "";
   if (code === "ERR_PARSE_ARGS_UNKNOWN_OPTION") {
+    // A known flag on a command that does not take it: say which commands do.
+    if (flag.split("=")[0] === "--save-requests")
+      return {
+        message: `--save-requests only works with the page check (gaugeline <address>) and gaugeline launch, not with gaugeline ${command}.`,
+        hint: "Run it on one address: gaugeline example.com --save-requests requests.json.",
+      };
     const near = nearestFlag(flag, flags, command);
     return {
       message: `Unknown option ${flag}.${near ? ` Did you mean --${near}?` : ""}`,
@@ -238,6 +246,14 @@ export function parseCliArgs(
     };
   }
   if (values.version === true) return { kind: "version", verbose };
+  if (typeof values["save-requests"] === "string" && values["save-requests"].trim() === "") {
+    return {
+      kind: "error",
+      message: "--save-requests needs a file name.",
+      hint: "For example: gaugeline example.com --save-requests requests.json.",
+      verbose,
+    };
+  }
 
   const positionals = parsed.positionals.map((p) => p.trim()).filter((p) => p !== "");
   if (command === "plan") {
@@ -506,6 +522,9 @@ export function parseCliArgs(
     notifyOn,
     ...(typeof values["report-url"] === "string" ? { reportUrl: values["report-url"] } : {}),
     ...(values.since === "last" ? { since: "last" as const } : {}),
+    ...(typeof values["save-requests"] === "string"
+      ? { saveRequests: values["save-requests"] }
+      : {}),
     address: address.url.href,
     input,
     deprecatedUsed,

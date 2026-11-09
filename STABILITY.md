@@ -9,6 +9,8 @@ what will not change without a major version, and what can change at any time.
 - **Exit codes**: 0 (ran), 1 (`--ci` and a "Fix this first" finding), 2 (could not run).
 - **The `--json` shape**, identified by its schema number (`"schema": 2`, published as
   `packages/core/schema/result.v2.json`).
+- **The `--save-requests` file shape**, identified by its own `schemaVersion` (`1`, published as
+  `packages/core/schema/requests.v1.json`). It changes independently of the `--json` shape.
 - **Check ids**, such as `canonical-elsewhere`. An id that has shipped is never reused for a
   different rule (`docs/check-ids.lock.json`).
 - **Environment variable names**, such as `CI`, `NO_COLOR` and later `GAUGELINE_SLACK_WEBHOOK`.

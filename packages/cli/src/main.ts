@@ -1,5 +1,6 @@
 import {
   ConfigError,
+  buildRequestsFile,
   buildResult,
   DEPRECATED,
   checkSite,
@@ -109,6 +110,7 @@ import {
   readNavRules,
   readPagesConfig,
 } from "./schema-config.js";
+import { reserveRequestsFile } from "./save-requests.js";
 import { skeletonOnly } from "./skeleton.js";
 import { readLastRun, statePath, writeLastRun } from "./state.js";
 import { defaultPlanStatePath, readPlanStateFile, writePlanStateFile } from "./plan-state.js";
@@ -993,14 +995,13 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       const registeredIds = new Set(registry.all().map((c) => c.id));
       const dnsSkipped =
         !launch && !args.dns ? EMAIL_PRESET.filter((id) => registeredIds.has(id)) : [];
-      const {
-        snapshot,
-        result,
-        budget,
-        tags: tagSummary,
-        contents,
-        contentNotes,
-      } = await checkSite({
+      // --save-requests: the file is claimed before the first request, so a path that cannot be
+      // written is exit 2 now and not after a whole check.
+      const requestsTarget =
+        args.saveRequests === undefined
+          ? undefined
+          : reserveRequestsFile(args.saveRequests, resolve(cwd, args.saveRequests));
+      const checking = checkSite({
         address: args.input,
         fetcher,
         registry,
@@ -1024,6 +1025,38 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         ...(access ? { access } : {}),
         ...(dns ? { dns } : {}),
       });
+      const {
+        snapshot,
+        result,
+        budget,
+        tags: tagSummary,
+        contents,
+        contentNotes,
+        requests: requestLog,
+        page: pageDeclared,
+      } = await (requestsTarget ? requestsTarget.guard(checking) : checking);
+      // The request log and page data go to their own file and nowhere else: not into the result,
+      // the report or stdout. A failed write is exit 2 at the end, after everything else has run.
+      let saveFailure: ConfigError | undefined;
+      if (requestsTarget && args.saveRequests !== undefined) {
+        try {
+          const file = buildRequestsFile({
+            url: snapshot.requestedUrl,
+            startedAt,
+            version: deps.version ?? VERSION,
+            requests: requestLog ?? [],
+            page: pageDeclared,
+          });
+          requestsTarget.write(`${JSON.stringify(file, null, 2)}\n`);
+          if (!args.quiet)
+            io.stderr.write(
+              `Request log written to ${args.saveRequests}. It may contain page content: do not commit it.${file.truncation.truncated ? " Some of it was cut to the size limit; the file says what." : ""}\n`,
+            );
+        } catch (err) {
+          if (!(err instanceof ConfigError)) throw err;
+          saveFailure = err;
+        }
+      }
       // Findings dismissed with a reason (gaugeline.ignore.json, written by the view's d key).
       const ignored = readIgnore(cwd);
       if (ignored.length > 0) {
@@ -1172,6 +1205,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         io.stdout.write(
           highFindings === 0 ? "Ready to launch\n" : `Not yet: ${highFindings} to fix first\n`,
         );
+      if (saveFailure) throw saveFailure;
       return { outcome: { kind: "ran", highFindings, drift: false }, ci };
     }
   }
