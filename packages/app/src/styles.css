@@ -74,7 +74,8 @@ code {
 /* Visible focus on everything that takes it. */
 a:focus-visible,
 button:focus-visible,
-input:focus-visible {
+input:focus-visible,
+textarea:focus-visible {
   outline: 3px solid var(--focus);
   outline-offset: 2px;
 }
@@ -351,6 +352,155 @@ main {
   border-radius: 0.5rem;
   background: var(--panel);
   overflow-wrap: anywhere;
+}
+
+/* Problems */
+.filters {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0.5rem 0 0;
+}
+.filter-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.filter-label {
+  min-width: 4.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+.filter,
+.detail .actions button,
+.link-button {
+  padding: 0.375rem 0.75rem;
+  font: inherit;
+  font-size: 0.9375rem;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--muted);
+  border-radius: 0.375rem;
+  cursor: pointer;
+}
+.filter[aria-pressed="true"] {
+  font-weight: 700;
+  color: #ffffff;
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+}
+.link-button {
+  align-self: flex-start;
+  border-color: transparent;
+  color: var(--accent);
+  text-decoration: underline;
+}
+h2.count {
+  margin-top: 1.25rem;
+}
+.problem-group {
+  margin: 1rem 0;
+}
+.problem-group > h3 {
+  margin-bottom: 0.5rem;
+}
+.problems {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.problem {
+  margin: 0 0 0.5rem;
+  padding: 0.5rem 0.75rem 0.25rem;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--line);
+  border-radius: 0.375rem;
+  background: var(--panel);
+}
+.problem.level-high {
+  border-left-color: var(--high);
+}
+.problem.level-medium {
+  border-left-color: var(--medium);
+}
+.problem.level-low {
+  border-left-color: var(--low);
+}
+.problem h4 {
+  margin: 0;
+  font-size: 1rem;
+}
+.finding-toggle {
+  width: 100%;
+  padding: 0.125rem 0;
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  color: var(--text);
+  background: none;
+  border: 0;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.finding-toggle::before {
+  content: "\25B8  ";
+}
+.finding-toggle[aria-expanded="true"]::before {
+  content: "\25BE  ";
+}
+.problem .meta {
+  margin: 0 0 0.25rem;
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
+}
+.area-tag {
+  padding: 0 0.375rem;
+  border: 1px solid var(--line);
+  border-radius: 0.25rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.detail {
+  margin: 0.5rem 0 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--line);
+}
+.detail h5 {
+  margin: 0.75rem 0 0;
+  font-size: 0.9375rem;
+}
+.detail p {
+  overflow-wrap: anywhere;
+}
+.detail .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.75rem 0 0.5rem;
+}
+.tech {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.875rem;
+  white-space: pre-wrap;
+}
+.copy-status {
+  min-height: 1.5rem;
+  margin: 0.25rem 0;
+  font-weight: 600;
+}
+.note-box {
+  display: block;
+  width: 100%;
+  margin: 0.25rem 0 0.5rem;
+  padding: 0.5rem;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.875rem;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--muted);
+  border-radius: 0.375rem;
 }
 
 /* Narrow windows: the sidebar sits above the view. */
