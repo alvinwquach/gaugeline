@@ -160,6 +160,16 @@
     "tech": "With --since last only: the same form key (id, else name, else position) now posts to a host in a different provider row of the frozen table; position keys can swap and read as a change"
   },
   {
+    "id": "hidden-ai-directive",
+    "severity": "high",
+    "area": "Security & email",
+    "title": "Hidden text on the page gives orders to AI assistants",
+    "what": "Text that visitors can't see, or a comment in the page's code, speaks to an AI assistant (for example 'ignore previous instructions').",
+    "why": "It is one of the commonest signs a site has been tampered with. Assistants and crawlers read text that visitors never see, so whoever planted it can steer what they say about your business.",
+    "fix": "Find where the text comes from (a plugin, a theme file, a content field or an injected script) and remove it. Then find out how it got there, and change the passwords and keys that could have put it there.",
+    "tech": "text under hidden, aria-hidden, display:none, visibility:hidden, font-size:0, opacity:0, an off-screen left or top, text coloured as its own background, noscript, or an HTML comment, containing a phrase from data/ai-directives.json"
+  },
+  {
     "id": "hidden-in-sitemap",
     "severity": "high",
     "area": "Launch day",
@@ -228,6 +238,16 @@
     "why": "Visitors see an empty box or a broken-image icon where a product photo or a diagram should be.",
     "fix": "Upload the image again, or point the img at its current address. For /_next/image, check the file named by url= exists.",
     "tech": "a sampled same-site img src answers 4xx or 5xx (images on other hosts are not requested); a refusal (401, 403, 429, 503 with Retry-After) is listed as could not check"
+  },
+  {
+    "id": "invisible-unicode-tags",
+    "severity": "high",
+    "area": "Security & email",
+    "title": "The page carries text in invisible characters",
+    "what": "Characters from the Unicode tag block are in the page's text. They show nothing on screen but each one stands for a letter.",
+    "why": "They have no ordinary use on a web page, and AI assistants can read the message they spell. Seeing them is a sign of tampering or of text pasted in from somewhere untrusted.",
+    "fix": "Delete them from the field or file they came from, then check who and what can edit that content.",
+    "tech": "code points U+E0000 to U+E007F in a text node or comment, other than the England, Scotland and Wales flag emoji (U+1F3F4, tag letters, U+E007F)"
   },
   {
     "id": "jsonld-404",
@@ -1458,6 +1478,16 @@
     "why": "If a search engine finds the temporary address, nothing tells it the real page is on your domain, and the preview can show up in results.",
     "fix": "Add <link rel=\"canonical\" href=\"https://yourdomain/...\"> to every page, so each preview points at the real address.",
     "tech": "The final address's host ends in .vercel.app, .netlify.app or .pages.dev and the HTML has no link rel=canonical"
+  },
+  {
+    "id": "zero-width-in-text",
+    "severity": "low",
+    "area": "Security & email",
+    "title": "Invisible characters sit inside words on the page",
+    "what": "Zero-width characters are inside words in the page's visible text.",
+    "why": "A word with a hidden character in it no longer matches itself: search can't find it, and copy-pasted or tampered text can carry marks nobody meant to publish.",
+    "fix": "Remove them from the source text: retype the word, or paste it as plain text.",
+    "tech": "U+200B to U+200D, U+2060 to U+2064, U+180E or U+FEFF between two Latin, Cyrillic, Greek or digit characters in visible text; emoji joiners, Persian non-joiners and zero-width marks at the end of a text (content source maps) are not counted"
   },
   {
     "id": "plan-redirect-drops-query",

@@ -160,6 +160,7 @@
     "feed-oversized",
     "form-destination-changed",
     "form-provider-changed",
+    "hidden-ai-directive",
     "hidden-in-sitemap",
     "hidden-indexable",
     "hidden-linked",
@@ -178,6 +179,7 @@
     "images-heavy",
     "images-legacy-format",
     "images-legacy-wp",
+    "invisible-unicode-tags",
     "jsonld-404",
     "jsonld-invalid",
     "lang-attr-mismatch",
@@ -243,7 +245,8 @@
     "temp-host-canonical",
     "temp-host-links",
     "thin-html",
-    "viewport"
+    "viewport",
+    "zero-width-in-text"
   ],
   "severities": {
     "access-public-read": "high",
@@ -280,6 +283,7 @@
     "feed-oversized": "medium",
     "form-destination-changed": "medium",
     "form-provider-changed": "high",
+    "hidden-ai-directive": "high",
     "hidden-in-sitemap": "high",
     "hidden-indexable": "high",
     "hidden-linked": "high",
@@ -298,6 +302,7 @@
     "images-heavy": "medium",
     "images-legacy-format": "low",
     "images-legacy-wp": "medium",
+    "invisible-unicode-tags": "high",
     "jsonld-404": "high",
     "jsonld-invalid": "high",
     "lang-attr-mismatch": "low",
@@ -363,7 +368,8 @@
     "temp-host-canonical": "low",
     "temp-host-links": "high",
     "thin-html": "high",
-    "viewport": "medium"
+    "viewport": "medium",
+    "zero-width-in-text": "low"
   },
   "envVars": [
     "CI",

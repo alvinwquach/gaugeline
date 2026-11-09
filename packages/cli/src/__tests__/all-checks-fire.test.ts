@@ -42,6 +42,7 @@ const FIXTURES = [
   "tag-rules",
   "nav-events",
   "nav-after",
+  "tampered",
 ];
 
 /**

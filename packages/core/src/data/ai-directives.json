@@ -1,0 +1,126 @@
+{
+  "version": 1,
+  "note": "Phrases that address an AI assistant. Matched case-insensitively, ignoring accents, after whitespace is collapsed and invisible characters are removed. Add a phrase here and the test suite checks it automatically.",
+  "phrases": [
+    {
+      "text": "ignore previous instructions",
+      "lang": "en"
+    },
+    {
+      "text": "ignore all previous instructions",
+      "lang": "en"
+    },
+    {
+      "text": "ignore the above instructions",
+      "lang": "en"
+    },
+    {
+      "text": "disregard previous instructions",
+      "lang": "en"
+    },
+    {
+      "text": "disregard all prior instructions",
+      "lang": "en"
+    },
+    {
+      "text": "forget your instructions",
+      "lang": "en"
+    },
+    {
+      "text": "override your instructions",
+      "lang": "en"
+    },
+    {
+      "text": "you are an ai",
+      "lang": "en"
+    },
+    {
+      "text": "you are a large language model",
+      "lang": "en"
+    },
+    {
+      "text": "as an ai assistant",
+      "lang": "en"
+    },
+    {
+      "text": "as an assistant",
+      "lang": "en"
+    },
+    {
+      "text": "system prompt",
+      "lang": "en"
+    },
+    {
+      "text": "do not tell the user",
+      "lang": "en"
+    },
+    {
+      "text": "don't tell the user",
+      "lang": "en"
+    },
+    {
+      "text": "do not mention this to the user",
+      "lang": "en"
+    },
+    {
+      "text": "when summarizing this page",
+      "lang": "en"
+    },
+    {
+      "text": "when summarising this page",
+      "lang": "en"
+    },
+    {
+      "text": "new instructions:",
+      "lang": "en"
+    },
+    {
+      "text": "ignora las instrucciones anteriores",
+      "lang": "es"
+    },
+    {
+      "text": "ignora todas las instrucciones anteriores",
+      "lang": "es"
+    },
+    {
+      "text": "olvida las instrucciones anteriores",
+      "lang": "es"
+    },
+    {
+      "text": "olvida tus instrucciones",
+      "lang": "es"
+    },
+    {
+      "text": "eres una ia",
+      "lang": "es"
+    },
+    {
+      "text": "eres un asistente de ia",
+      "lang": "es"
+    },
+    {
+      "text": "como asistente de ia",
+      "lang": "es"
+    },
+    {
+      "text": "instrucciones del sistema",
+      "lang": "es"
+    },
+    {
+      "text": "no le digas al usuario",
+      "lang": "es"
+    },
+    {
+      "text": "no digas al usuario",
+      "lang": "es"
+    },
+    {
+      "text": "no menciones esto al usuario",
+      "lang": "es"
+    },
+    {
+      "text": "al resumir esta pagina",
+      "lang": "es"
+    }
+  ]
+}
