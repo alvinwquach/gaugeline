@@ -4,14 +4,15 @@ import {
   cpSync,
   existsSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
 import { request as httpRequest } from "node:http";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join, resolve } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { defaultClientDir } from "../client-dir.js";
@@ -22,6 +23,7 @@ const cliDir = fileURLToPath(new URL("../../", import.meta.url));
 const distClient = join(cliDir, "dist/client");
 const preload = fileURLToPath(new URL("./helpers/record-connections.cjs", import.meta.url));
 const shell = process.platform === "win32";
+const POSIX = process.platform !== "win32";
 
 const dirs: string[] = [];
 const scratch = (name: string) => {
@@ -30,7 +32,8 @@ const scratch = (name: string) => {
   return d;
 };
 afterAll(() => {
-  for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true });
+  for (const d of dirs.splice(0))
+    rmSync(d, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 });
 
 /** The parent environment without the npm_config_* variables pnpm sets (npm 11 warns on them). */
@@ -113,21 +116,25 @@ function get(
 
 describe("embedded client: the CLI's folder", () => {
   it("defaultClientDir: the folder beside the bundle, else the build's own, else beside (so the error names it)", () => {
+    // Real absolute paths for this OS (a drive letter on Windows), turned into file URLs.
+    const root = resolve(tmpdir(), "gaugeline-client-dir");
+    const url = (...parts: string[]) => pathToFileURL(resolve(root, ...parts)).href;
+    const same = (got: string, want: string) => expect(resolve(got)).toBe(resolve(want));
     const only =
       (...present: string[]) =>
       (p: string) =>
-        present.some((x) => p.replace(/\\/g, "/").endsWith(x));
-    expect(
-      defaultClientDir("file:///pkg/dist/index.js", only("/pkg/dist/client/")).replace(/\\/g, "/"),
-    ).toMatch(/\/pkg\/dist\/client\/$/);
-    expect(
-      defaultClientDir(
-        "file:///repo/packages/cli/src/client-dir.ts",
-        only("/repo/packages/cli/dist/client/"),
-      ).replace(/\\/g, "/"),
-    ).toMatch(/\/repo\/packages\/cli\/dist\/client\/$/);
-    expect(defaultClientDir("file:///pkg/dist/index.js", () => false).replace(/\\/g, "/")).toMatch(
-      /\/pkg\/dist\/client\/$/,
+        present.some((x) => resolve(p) === resolve(x));
+    const beside = resolve(root, "pkg", "dist", "client");
+    same(defaultClientDir(url("pkg", "dist", "index.js"), only(beside)), beside);
+    const fromSource = resolve(root, "repo", "packages", "cli", "dist", "client");
+    same(
+      defaultClientDir(url("repo", "packages", "cli", "src", "client-dir.ts"), only(fromSource)),
+      fromSource,
+    );
+    // Neither exists: the folder beside the bundle, so the error can name it.
+    same(
+      defaultClientDir(url("pkg", "dist", "index.js"), () => false),
+      beside,
     );
   });
 
@@ -195,16 +202,9 @@ describe("embedded client: e2e (the packed tarball, no registry)", () => {
       shell,
       env: cleanEnv(),
     });
-    const tarball = join(
-      pack,
-      (
-        await exec("node", [
-          "-e",
-          "console.log(require('fs').readdirSync(process.argv[1]).find(f => f.endsWith('.tgz')))",
-          pack,
-        ])
-      ).stdout.trim(),
-    );
+    const name = readdirSync(pack).find((f) => f.endsWith(".tgz")) ?? "";
+    expect(name).not.toBe("");
+    const tarball = join(pack, name);
     installed = scratch("install");
     // The registry is a closed port: the tarball has no dependencies, so nothing may be fetched.
     await exec(
@@ -255,8 +255,15 @@ describe("embedded client: e2e (the packed tarball, no registry)", () => {
       expect(html).not.toMatch(/https?:\/\//);
       expect(page.headers["content-security-policy"]).toContain("default-src 'none'");
     } finally {
-      run.child.kill("SIGINT");
-      expect(await run.exited).toBe(0);
+      if (POSIX) {
+        // Ctrl+C: a clean stop, exit 0.
+        run.child.kill("SIGINT");
+        expect(await run.exited).toBe(0);
+      } else {
+        // On Windows kill("SIGINT") terminates the process and the exit code is null: just end it.
+        run.child.kill();
+        await run.exited;
+      }
     }
     // The app itself opened no connection (the recorder logs every outbound socket).
     expect(existsSync(log) ? readFileSync(log, "utf8") : "").toBe("");
