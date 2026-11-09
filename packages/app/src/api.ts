@@ -3,6 +3,9 @@ import {
   REQUEST_KINDS,
   type Checked,
   type Counts,
+  type DatasetView,
+  type LeaksView,
+  type ScriptView,
   type RequestRow,
   type StructuredBlock,
   type Result,
@@ -199,6 +202,65 @@ function readBlock(v: unknown): StructuredBlock | undefined {
   return undefined;
 }
 
+function readStrings(v: unknown): string[] | undefined {
+  return Array.isArray(v) && v.every(isString) ? v : undefined;
+}
+
+function readDataset(v: unknown): DatasetView | undefined {
+  if (
+    !isObject(v) ||
+    !isString(v.projectId) ||
+    !isString(v.dataset) ||
+    (v.state !== "public" && v.state !== "private" && v.state !== "unknown") ||
+    (v.count !== undefined && !isCount(v.count))
+  )
+    return undefined;
+  const types = v.types === undefined ? [] : readStrings(v.types);
+  if (!types) return undefined;
+  // Only these fields are copied, so a field the server should not have sent never goes further.
+  return {
+    projectId: v.projectId,
+    dataset: v.dataset,
+    state: v.state,
+    ...(v.count !== undefined ? { count: v.count as number } : {}),
+    ...(v.types !== undefined ? { types } : {}),
+  };
+}
+
+function readScript(v: unknown): ScriptView | undefined {
+  if (
+    !isObject(v) ||
+    !isString(v.url) ||
+    !isString(v.where) ||
+    !(v.status === null || isCount(v.status)) ||
+    typeof v.truncated !== "boolean"
+  )
+    return undefined;
+  return { url: v.url, where: v.where, status: v.status as number | null, truncated: v.truncated };
+}
+
+/** The lists the Leaks & access view is made from; anything that isn't the shape is dropped as a whole. */
+function readLeaks(v: unknown): LeaksView | undefined {
+  if (!isObject(v)) return undefined;
+  const previews = readStrings(v.previews);
+  if (!previews) return undefined;
+  let datasets: DatasetView[] | undefined;
+  if (v.datasets !== undefined) {
+    if (!Array.isArray(v.datasets)) return undefined;
+    const read = v.datasets.map(readDataset);
+    if (read.some((d) => d === undefined)) return undefined;
+    datasets = read as DatasetView[];
+  }
+  let scripts: ScriptView[] | undefined;
+  if (v.scripts !== undefined) {
+    if (!Array.isArray(v.scripts)) return undefined;
+    const read = v.scripts.map(readScript);
+    if (read.some((s) => s === undefined)) return undefined;
+    scripts = read as ScriptView[];
+  }
+  return { ...(datasets ? { datasets } : {}), ...(scripts ? { scripts } : {}), previews };
+}
+
 /**
  * What the server sends beside the result for the Pages checked and Search data views, checked just
  * enough to be drawn. Anything that isn't the shape is dropped as a whole: those views then say the
@@ -225,8 +287,10 @@ export function readChecked(v: unknown): Checked | undefined {
     if (rows.some((r) => r === undefined)) return undefined;
     requests = rows as RequestRow[];
   }
+  const leaks = v.leaks === undefined ? undefined : readLeaks(v.leaks);
   return {
     ...(requests ? { requests } : {}),
+    ...(leaks ? { leaks } : {}),
     page: {
       url: p.url,
       ...(p.title !== undefined ? { title: p.title } : {}),

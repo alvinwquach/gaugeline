@@ -239,6 +239,70 @@ Block 3: Could not be read
   { "@type": "LocalBusiness", "name": "Larkspur Pottery Studio",
 ```
 
+## Leaks & access
+
+Leaks & access gathers what the checks already found about three things that go wrong when a site
+is handed over: a Sanity dataset anyone can read, a secret key shipped to every visitor in the
+site's JavaScript, and a staging or preview copy that answers publicly. It runs no check of its
+own and asks the site for nothing: it shows what the run read, and links each finding to
+[Problems](#problems).
+
+![The Leaks & access view for an invented wine bar: the Sanity project and dataset and that it is public, the six type names it holds, a table of the JavaScript files scanned with two masked keys in one of them, and the staging and preview addresses found.](/img/app-leaks.png)
+
+Say a freelancer built the wine bar's site on Sanity, Next.js and Vercel last spring, and the owner
+asks "is anything of mine out in the open?" before the new menu goes live. This is what the four
+panels say for that site:
+
+```text title=Leaks & access
+Sanity dataset
+  Project mo7h1an7, dataset production: Public (it answers questions without a token)
+
+Types it holds
+  187 documents in 6 types
+    event
+    menu
+    page
+    post
+    venue
+    wineList
+
+JavaScript scanned for keys
+  /assets/vendor.js       Nothing found
+  /assets/app.js          Stripe secret key sk_liv…00; Stripe secret key rk_liv…d0
+  /assets/old-booking.js  Not scanned. Could not be read (status 404).
+  2 of up to 15 JavaScript files scanned
+
+Staging copies
+  https://moth-lantern-git-menu-studio.vercel.app/menu  Linked from the page. Gaugeline did not request it.
+  https://staging.moth-lantern.example/  Answers publicly, and does not ask search engines to stay away.
+```
+
+- **Sanity dataset.** Whether the dataset the page's images come from is public or private, with the
+  project id and dataset name as they appear in the image address. A page that does not use
+  Sanity says so in one line. A dataset that could not be read says that, and is never shown as
+  private.
+- **Types it holds.** Only for a public dataset: how many documents it has and the names of their
+  types, in a list that scrolls inside its panel when there are many. The check asks one
+  question, so the count is for the whole dataset, not for each type. There is no way to open a
+  document from here, and none is ever downloaded: it is only the number of documents and the
+  names of their types. See [Privacy](/docs/privacy#sanity-datasets).
+- **JavaScript scanned for keys.** One row for each file the check scanned, up to the published
+  limit of 15 (see [Security](/docs/security#how-much-a-run-requests)), with Nothing found or the
+  kind of key. A key is shown as the check emits it, its first 6 and last 2 characters, and the
+  whole value never reaches the app: it is cut down before the result exists. To find the key,
+  open the file the row names and search for those characters. A file that could not be read says
+  so instead of Nothing found, and a file longer than the read limit says only its start was read.
+  The footer states the sample ("2 of up to 15 JavaScript files scanned"), and says how many more
+  files on the page were not scanned when there are more than 15.
+- **Staging copies.** Each staging or preview address found, and whether it answers publicly: the
+  links on the page to a temporary address (`vercel.app`, `netlify.app`, `pages.dev`), which are
+  not requested, and the one request the check makes to `staging.` followed by your domain.
+- **Every finding is linked.** A panel with a matching finding links to it in Problems.
+- **A check that did not run** says why, in the words of the result (a page that refused the
+  request, for example), and never shows an all clear for something that was not checked.
+- Everything shown is text from the page, including a type name that looks like markup. An
+  address here is never a link.
+
 ## Works offline
 
 The app is part of the `gaugeline` package. Installing or running it with `npx` downloads the app

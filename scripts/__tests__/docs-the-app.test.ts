@@ -1,9 +1,17 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { checkSite, createFetcher } from "../../packages/core/src/index.js";
+import { Readable } from "node:stream";
+import {
+  buildResult,
+  checkSite,
+  createFetcher,
+  createNetworkTransport,
+  type Transport,
+} from "../../packages/core/src/index.js";
+import type { Checked, Result } from "../../packages/app/src/types.js";
 import { withFixture } from "../../packages/fixtures/src/index.js";
-import { pagesCheckedText, searchDataText } from "../lib/the-app-docs.js";
+import { leaksAccessText, pagesCheckedText, searchDataText } from "../lib/the-app-docs.js";
 
 const page = readFileSync(
   fileURLToPath(new URL("../../docs/the-app.md", import.meta.url)),
@@ -38,5 +46,50 @@ describe("the Pages checked and Search data examples in docs/the-app.md", () => 
       writeFileSync(process.env.GAUGELINE_PRINT, `${real.pages}\n\n=====\n\n${real.search}\n`);
     expect(block("Pages checked rows")).toBe(real.pages);
     expect(stableErrors(block("Search data"))).toBe(stableErrors(real.search));
+  });
+});
+
+describe("the Leaks & access example in docs/the-app.md", () => {
+  it("shows what the app lists for the leaks-access fixture", async () => {
+    const text = await withFixture("leaks-access", async (site) => {
+      // The wine bar's Sanity dataset is public, with six types; the fixture never serves it.
+      const local = createNetworkTransport({ hosts: site.hosts, allowPrivate: true });
+      const transport: Transport = (url, req) =>
+        url.hostname.endsWith(".api.sanity.io")
+          ? Promise.resolve({
+              status: 200,
+              headers: { "content-type": "application/json" },
+              body: Readable.from([
+                Buffer.from(
+                  JSON.stringify({
+                    result: {
+                      count: 187,
+                      types: ["event", "menu", "page", "post", "venue", "wineList"],
+                    },
+                  }),
+                ),
+              ]),
+            })
+          : local(url, req);
+      const run = await checkSite({ address: site.origin, fetcher: createFetcher({ transport }) });
+      const result = buildResult({
+        url: run.snapshot.requestedUrl,
+        startedAt: new Date("2026-11-09T10:00:00.000Z"),
+        findings: run.result.findings,
+        passed: run.result.passed,
+        failed: run.result.failed.map((f) => f.id),
+        couldNotCheck: run.result.couldNotCheck,
+        sampled: run.result.sampled,
+      }) as unknown as Result;
+      const checked = {
+        ...(run.requests ? { requests: run.requests } : {}),
+        page: run.page,
+        leaks: run.leaks,
+      } as unknown as Checked;
+      return leaksAccessText(result, checked);
+    });
+    if (process.env.GAUGELINE_PRINT_LEAKS)
+      writeFileSync(process.env.GAUGELINE_PRINT_LEAKS, `${text}\n`);
+    expect(block("Leaks & access")).toBe(text);
   });
 });

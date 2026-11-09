@@ -32,7 +32,7 @@ export function createRunner(store: Store, opts: RunnerOptions = {}) {
     const startedAt = new Date(r.startedAt);
     try {
       const fetcher = createFetcher({ ...opts.fetcher, target: r.url, semaphore });
-      const { snapshot, result, requests, page } = await checkSite({
+      const { snapshot, result, requests, page, leaks } = await checkSite({
         address: r.url,
         fetcher,
         registry,
@@ -54,8 +54,8 @@ export function createRunner(store: Store, opts: RunnerOptions = {}) {
       });
       const counts: Counts = { high: 0, medium: 0, low: 0 };
       for (const f of result.findings) counts[f.severity]++;
-      // What the Pages checked and Search data views show. Not part of the versioned result.
-      r.checked = { ...(requests ? { requests } : {}), page };
+      // What the Pages checked, Search data and Leaks & access views show. Not part of the versioned result.
+      r.checked = { ...(requests ? { requests } : {}), page, leaks };
       r.counts = counts;
       r.state = "done";
       store.emit(r, { event: "done", data: { counts } });

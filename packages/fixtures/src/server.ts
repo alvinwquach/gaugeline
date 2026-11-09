@@ -86,6 +86,7 @@ const TEXT_EXTS: ReadonlySet<string> = new Set([".html", ".xml", ".txt", ".js"])
 export const PLANTED: Readonly<Record<string, string>> = Object.freeze({
   "stripe-secret": ["sk", "live", "GaugelineFixtureNotAKey00"].join("_"),
   "stripe-publishable": ["pk", "live", "GaugelineFixturePublic000"].join("_"),
+  "stripe-restricted": ["rk", "live", "GaugelineFixtureRestricted0"].join("_"),
 });
 
 /** Replace {{planted:<name>}} with the invented value of that name. */

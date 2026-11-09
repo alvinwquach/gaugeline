@@ -34,7 +34,7 @@ const run = {
 
 describe("Pages checked and Search data in the shell", () => {
   it("are registered after Problems, and the navigation names them", async () => {
-    expect(VIEWS.map((v) => v.id)).toEqual(["overview", "problems", "pages", "search"]);
+    expect(VIEWS.map((v) => v.id)).toEqual(["overview", "problems", "pages", "search", "leaks"]);
     installApi([run]);
     render(<Shell />);
     const nav = await screen.findByRole("navigation", { name: "Views" });
@@ -42,7 +42,7 @@ describe("Pages checked and Search data in the shell", () => {
       within(nav)
         .getAllByRole("link")
         .map((l) => l.textContent),
-    ).toEqual(["Overview", "Problems", "Pages checked", "Search data"]);
+    ).toEqual(["Overview", "Problems", "Pages checked", "Search data", "Leaks & access"]);
   });
 
   it("each opens from the navigation, with the run it names in the address", async () => {
