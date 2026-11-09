@@ -34,6 +34,7 @@ import { feedInvalid } from "./feed-invalid.js";
 import { feedOversized } from "./feed-oversized.js";
 import { formDestinationChanged } from "./form-destination-changed.js";
 import { formProviderChanged } from "./form-provider-changed.js";
+import { hiddenAiDirective } from "./hidden-ai-directive.js";
 import { hiddenInSitemap } from "./hidden-in-sitemap.js";
 import { hiddenIndexable } from "./hidden-indexable.js";
 import { hiddenLinked } from "./hidden-linked.js";
@@ -52,6 +53,7 @@ import { imagesBroken } from "./images-broken.js";
 import { imagesHeavy } from "./images-heavy.js";
 import { imagesLegacyFormat } from "./images-legacy-format.js";
 import { imagesLegacyWp } from "./images-legacy-wp.js";
+import { invisibleUnicodeTags } from "./invisible-unicode-tags.js";
 import { jsonld404 } from "./jsonld-404.js";
 import { jsonldInvalid } from "./jsonld-invalid.js";
 import { langAttrMismatch } from "./lang-attr-mismatch.js";
@@ -64,10 +66,10 @@ import { linksWrapped } from "./links-wrapped.js";
 import { llmsTxtBrokenLinks } from "./llms-txt-broken-links.js";
 import { llmsTxtStaleFacts } from "./llms-txt-stale-facts.js";
 import { mockContentLive } from "./mock-content-live.js";
-import { navHomeLinks } from "./nav-home-links.js";
-import { navLabelDrift } from "./nav-label-drift.js";
 import { navChanged } from "./nav-changed.js";
 import { navFooter } from "./nav-footer.js";
+import { navHomeLinks } from "./nav-home-links.js";
+import { navLabelDrift } from "./nav-label-drift.js";
 import { navOrphans } from "./nav-orphans.js";
 import { navParity } from "./nav-parity.js";
 import { nextDraftPublic } from "./next-draft-public.js";
@@ -118,6 +120,7 @@ import { tempHostCanonical } from "./temp-host-canonical.js";
 import { tempHostLinks } from "./temp-host-links.js";
 import { thinHtml } from "./thin-html.js";
 import { viewport } from "./viewport.js";
+import { zeroWidthInText } from "./zero-width-in-text.js";
 
 /** Page checks in registration order (sorted by id): within a severity, findings follow this order. */
 export const PAGE_CHECKS = [
@@ -155,6 +158,7 @@ export const PAGE_CHECKS = [
   feedOversized,
   formDestinationChanged,
   formProviderChanged,
+  hiddenAiDirective,
   hiddenInSitemap,
   hiddenIndexable,
   hiddenLinked,
@@ -173,6 +177,7 @@ export const PAGE_CHECKS = [
   imagesHeavy,
   imagesLegacyFormat,
   imagesLegacyWp,
+  invisibleUnicodeTags,
   jsonld404,
   jsonldInvalid,
   langAttrMismatch,
@@ -239,6 +244,7 @@ export const PAGE_CHECKS = [
   tempHostLinks,
   thinHtml,
   viewport,
+  zeroWidthInText,
 ] as const;
 // checks:end
 
