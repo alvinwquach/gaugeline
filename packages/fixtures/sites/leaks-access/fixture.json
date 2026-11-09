@@ -1,0 +1,6 @@
+{
+  "hosts": [
+    "moth-lantern.test",
+    "staging.moth-lantern.test"
+  ]
+}

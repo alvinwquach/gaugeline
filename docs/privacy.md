@@ -193,6 +193,12 @@ that session) and taken out of the address bar. Requests from other websites are
 they claim. The app saves nothing: no file is written in your
 working folder or your home folder, and Ctrl+C leaves nothing behind.
 
+The app's Leaks & access view shows counts and type names only: how many documents a public Sanity
+dataset has and the names of their types, never a document, and no way to open one. A key found in
+JavaScript is shown cut down to its first 6 and last 2 characters, as the check emits it, and the
+whole value never reaches the app. Showing the view asks nobody for anything: it uses what the
+run already read.
+
 ### Private addresses
 
 The address you type is trusted, private or not (with `--allow-private` on the command line, always

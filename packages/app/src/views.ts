@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
 import type { RunState } from "./store";
+import { LeaksAccess } from "./views/LeaksAccess";
 import { Overview } from "./views/Overview";
 import { PagesChecked } from "./views/PagesChecked";
 import { Problems } from "./views/Problems";
@@ -20,4 +21,5 @@ export const VIEWS: readonly View[] = [
   { id: "problems", label: "Problems", component: Problems },
   { id: "pages", label: "Pages checked", component: PagesChecked },
   { id: "search", label: "Search data", component: SearchData },
+  { id: "leaks", label: "Leaks & access", component: LeaksAccess },
 ];

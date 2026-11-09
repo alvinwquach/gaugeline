@@ -657,3 +657,62 @@ h2.count {
   background: var(--panel);
   border-radius: 0.5rem;
 }
+
+/* Leaks & access */
+.leaks-panel {
+  margin-top: 1.5rem;
+}
+.facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.25rem 1rem;
+  margin: 0.5rem 0 1rem;
+}
+.facts dt {
+  font-weight: 600;
+}
+.facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.facts .is-open {
+  font-weight: 600;
+  color: var(--medium);
+}
+.finding-link {
+  margin-left: 0.5rem;
+  white-space: nowrap;
+}
+.type-list {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0.5rem 0.75rem;
+  max-height: 16rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  background: var(--panel);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+  gap: 0 1rem;
+}
+.type-list li {
+  overflow-wrap: anywhere;
+  padding: 0.125rem 0;
+}
+.leaks-table {
+  min-width: 0;
+  table-layout: auto;
+}
+.leaks-table th[scope="row"] {
+  width: 40%;
+}
+.leaks-table .keys {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.leaks-table .keys li + li {
+  margin-top: 0.25rem;
+}
