@@ -115,7 +115,7 @@ describe("plan gate: integration (the example workflow)", () => {
         "actions/setup-node",
         undefined,
       ]);
-      expect(job.steps[1]?.with?.["node-version"]).toBe(20);
+      expect(job.steps[1]?.with?.["node-version"]).toBe(24);
     }
   });
 

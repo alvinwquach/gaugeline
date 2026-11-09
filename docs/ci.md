@@ -58,13 +58,13 @@ jobs:
     if: github.event_name != 'deployment_status'
     runs-on: ubuntu-latest
     steps:
-      # checkout and setup-node (Node 20), then:
+      # checkout and setup-node (Node 24), then:
       - run: npx --yes gaugeline plan docs/sitemap-plan.csv --plan-only
   plan-against-preview:
     if: github.event_name == 'deployment_status' && github.event.deployment_status.state == 'success'
     runs-on: ubuntu-latest
     steps:
-      # checkout and setup-node (Node 20), then:
+      # checkout and setup-node (Node 24), then:
       - run: npx --yes gaugeline plan docs/sitemap-plan.csv --base "$TARGET_URL"
         env:
           TARGET_URL: ${{ github.event.deployment_status.target_url }}

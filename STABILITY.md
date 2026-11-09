@@ -16,6 +16,13 @@ what will not change without a major version, and what can change at any time.
 `public-surface.lock.json` is this list, derived from the code. CI fails when it changes without the
 right changeset (`pnpm surface`).
 
+## Supported Node versions
+
+Gaugeline needs Node 22 or newer, and CI runs the whole suite on Node 22 and 24 on Linux, Windows and
+macOS. Support ends with the Node release itself: when a Node version reaches end of life, the next
+Gaugeline minor drops it and says so in the changelog. Under an older Node the command prints one
+line and exits 2.
+
 ## Not public
 
 - Terminal wording and layout.

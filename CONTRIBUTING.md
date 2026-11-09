@@ -2,7 +2,7 @@
 
 ## Set up
 
-You need Node.js 18.17 or newer and pnpm.
+You need Node.js 22 or newer and pnpm.
 
 ```bash
 pnpm install
@@ -69,7 +69,7 @@ Security problems go through [SECURITY.md](SECURITY.md), and everyone follows th
    - **Architecture notes**: what was chosen, what it was chosen over, and what it costs.
    - **Tests**: what was added, and the counts.
 4. Write the tests first: unit, integration, end-to-end, then edge cases.
-   A change is done when they pass on Node 18.17, 20 and 22 in CI.
+   A change is done when they pass on Node 22 and 24 in CI.
 5. A user-facing change ships its docs page and a changeset file in the same pull request.
 
 ## Exit codes
