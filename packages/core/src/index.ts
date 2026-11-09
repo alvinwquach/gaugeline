@@ -596,5 +596,7 @@ export {
   requestsFileSchema,
 } from "./requests-file.js";
 export type { RequestsFile, RequestsFileCaps } from "./requests-file.js";
+export { leaksView, MAX_PREVIEWS } from "./leaks-view.js";
+export type { DatasetView, LeaksView, ScriptView } from "./leaks-view.js";
 export { pageData } from "./run-view.js";
 export type { PageData, StructuredBlock } from "./run-view.js";

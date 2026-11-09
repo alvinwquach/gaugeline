@@ -86,7 +86,7 @@ describe("loading the session", () => {
     installApi([runA, runB]);
     render(<Shell />);
     await waitFor(() => expect(sidebarLinks()[1]?.getAttribute("aria-current")).toBe("page"));
-    expect(window.location.hash).toBe("#/b/overview");
+    await waitFor(() => expect(window.location.hash).toBe("#/b/overview"));
     expect(await screen.findByText("A medium one")).toBeTruthy();
   });
 
@@ -96,7 +96,7 @@ describe("loading the session", () => {
     render(<Shell />);
     expect(await screen.findAllByText("A high one")).toHaveLength(2);
     expect(sidebarLinks()[0]?.getAttribute("aria-current")).toBe("page");
-    expect(window.location.hash).toBe("#/a/overview");
+    await waitFor(() => expect(window.location.hash).toBe("#/a/overview"));
   });
 
   it("falls back to the newest run when the hash names one that is gone", async () => {
@@ -104,7 +104,7 @@ describe("loading the session", () => {
     installApi([runA, runB]);
     render(<Shell />);
     await waitFor(() => expect(sidebarLinks()[1]?.getAttribute("aria-current")).toBe("page"));
-    expect(window.location.hash).toBe("#/b/overview");
+    await waitFor(() => expect(window.location.hash).toBe("#/b/overview"));
   });
 
   it("shows the empty state, with the form, when the session has no runs", async () => {
@@ -121,7 +121,7 @@ describe("loading the session", () => {
     installApi([runA]);
     render(<Shell />);
     await screen.findByRole("heading", { level: 1, name: "Overview" });
-    expect(window.location.hash).toBe("#/a/overview");
+    await waitFor(() => expect(window.location.hash).toBe("#/a/overview"));
   });
 
   it("follows the back button: a hash change selects that run", async () => {
@@ -180,7 +180,7 @@ describe("starting a check", () => {
     expect(api.calls).toContain("POST /api/check");
     expect(sidebarLinks()[1]?.getAttribute("aria-current")).toBe("page");
     expect(sidebarLinks()[1]?.textContent).toContain("Checking");
-    expect(window.location.hash).toBe("#/new-1/overview");
+    await waitFor(() => expect(window.location.hash).toBe("#/new-1/overview"));
     expect(field.value).toBe("");
 
     // Only the active run is watched.

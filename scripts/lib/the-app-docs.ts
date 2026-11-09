@@ -1,5 +1,7 @@
 import { blockTitle, toTree, type Node } from "../../packages/app/src/search/tree.js";
+import { toLeaksModel } from "../../packages/app/src/leaks/model.js";
 import { toRows } from "../../packages/app/src/pages/rows.js";
+import type { Checked, Result } from "../../packages/app/src/types.js";
 import type { PageData } from "../../packages/core/src/run-view.js";
 import type { RequestRow } from "../../packages/core/src/request-log.js";
 
@@ -69,4 +71,60 @@ export function searchDataText(page: PageData, origin: string): string {
     }
   });
   return lines.join("\n");
+}
+
+/** The fixture's logical host and scheme, shown as a site on the .example domain. */
+const showLeaks = (text: string) =>
+  text.replaceAll("http://", "https://").replaceAll("moth-lantern.test", "moth-lantern.example");
+
+/**
+ * The four panels of the Leaks & access view as text, made from the model the view uses (toLeaksModel),
+ * so the page and the app cannot drift apart. The fixture's host is shown as moth-lantern.example.
+ */
+export function leaksAccessText(result: Result, checked: Checked): string {
+  const m = toLeaksModel(result, checked);
+  const lines: string[] = ["Sanity dataset"];
+  const open = m.dataset.datasets.filter((d) => d.visibility === "public");
+  if (!m.dataset.availability.ran) lines.push(`  Not checked: ${m.dataset.availability.reason}`);
+  else if (m.dataset.datasets.length === 0) lines.push("  This page does not use Sanity.");
+  for (const d of m.dataset.datasets)
+    lines.push(
+      `  Project ${d.projectId}, dataset ${d.dataset}: ${
+        d.visibility === "public"
+          ? "Public (it answers questions without a token)"
+          : d.visibility === "private"
+            ? "Private (it asked for a token)"
+            : "Could not be read"
+      }`,
+    );
+  if (open.length > 0) {
+    lines.push("", "Types it holds");
+    for (const d of open)
+      lines.push(
+        `  ${d.documentCount} documents in ${d.types.length} types`,
+        ...d.types.map((t) => `    ${t}`),
+      );
+  }
+  lines.push("", "JavaScript scanned for keys");
+  if (!m.scripts.availability.ran) lines.push(`  Not checked: ${m.scripts.availability.reason}`);
+  else {
+    const width = Math.max(0, ...m.scripts.rows.map((r) => r.address.length));
+    for (const r of m.scripts.rows)
+      lines.push(
+        `  ${r.address.padEnd(width)}  ${
+          r.keys.length > 0
+            ? r.keys.map((k) => `${k.kind} ${k.masked}`).join("; ")
+            : r.state === "scanned"
+              ? "Nothing found"
+              : `Not scanned. ${r.note ?? ""}`.trim()
+        }`,
+      );
+    lines.push(`  ${m.scripts.scanned} of up to ${m.scripts.limit} JavaScript files scanned`);
+  }
+  lines.push("", "Staging copies");
+  if (!m.staging.availability.ran) lines.push(`  Not checked: ${m.staging.availability.reason}`);
+  else if (m.staging.rows.length === 0)
+    lines.push("  No preview links were found, and no staging address answers publicly.");
+  for (const r of m.staging.rows) lines.push(`  ${r.address}  ${r.answer}`);
+  return showLeaks(lines.join("\n"));
 }

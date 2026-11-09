@@ -86,10 +86,38 @@ export interface PageData {
   blocks: StructuredBlock[];
 }
 
-/** What the server sends beside the result for the Pages checked and Search data views. */
+/** One Sanity dataset the page's images name. A public one carries its type names and document count, never a document. */
+export interface DatasetView {
+  projectId: string;
+  dataset: string;
+  state: "public" | "private" | "unknown";
+  count?: number;
+  types?: string[];
+}
+
+/** One same-site JavaScript file the scan asked for. */
+export interface ScriptView {
+  url: string;
+  /** The address as a finding names it: a path on the page's own site, else the full address. */
+  where: string;
+  status: number | null;
+  truncated: boolean;
+}
+
+/** What the key, dataset and preview checks read, for the Leaks & access view. */
+export interface LeaksView {
+  /** Absent: no check read the datasets. Empty: the page names no Sanity dataset. */
+  datasets?: DatasetView[];
+  /** Absent: no check scanned JavaScript. */
+  scripts?: ScriptView[];
+  previews: string[];
+}
+
+/** What the server sends beside the result for the Pages checked, Search data and Leaks & access views. */
 export interface Checked {
   requests?: RequestRow[];
   page: PageData;
+  leaks?: LeaksView;
 }
 
 export type RunStatus = "running" | "done" | "failed";

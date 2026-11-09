@@ -47,17 +47,17 @@ describe("Problems in the shell", () => {
     render(<Shell />);
     await user.click(await screen.findByRole("link", { name: "Problems" }));
     expect(await screen.findByRole("heading", { level: 1, name: "Problems" })).toBeTruthy();
-    expect(window.location.hash).toBe("#/a/problems");
+    await waitFor(() => expect(window.location.hash).toBe("#/a/problems"));
     await user.click(screen.getByRole("button", { name: "A high one" }));
     // The second finding in the result, whatever order the list shows it in.
-    expect(window.location.hash).toBe("#/a/problems/1");
+    await waitFor(() => expect(window.location.hash).toBe("#/a/problems/1"));
     cleanup();
 
     // A reload: the same address, a fresh app.
     render(<Shell />);
     const row = await screen.findByRole("button", { name: "A high one" });
     expect(row.getAttribute("aria-expanded")).toBe("true");
-    expect(window.location.hash).toBe("#/a/problems/1");
+    await waitFor(() => expect(window.location.hash).toBe("#/a/problems/1"));
   });
 
   it("selecting another run in the sidebar keeps the view and starts the filters over", async () => {

@@ -155,6 +155,51 @@ describe("readChecked and getRun: the addresses and the page's data", () => {
   });
 });
 
+describe("readChecked: what the Leaks & access view reads", () => {
+  const leaks = {
+    datasets: [
+      { projectId: "ab12cd34", dataset: "production", state: "public", count: 4, types: ["page"] },
+      { projectId: "ab12cd34", dataset: "blog", state: "private" },
+    ],
+    scripts: [{ url: "https://shop.example/a.js", where: "/a.js", status: 200, truncated: false }],
+    previews: ["https://shop-git-main.vercel.app/"],
+  };
+
+  it("keeps the datasets, the scripts and the previews", () => {
+    expect(readChecked({ ...checkedOf(), leaks })?.leaks).toEqual(leaks);
+  });
+
+  it("keeps only the fields it knows: an extra field on a dataset, such as a document, is dropped", () => {
+    const withExtra = {
+      ...leaks,
+      datasets: [{ ...leaks.datasets[0], documents: [{ _id: "x" }], body: "text" }],
+      scripts: [{ ...leaks.scripts[0], text: "const a = 1" }],
+    };
+    const read = readChecked({ ...checkedOf(), leaks: withExtra })?.leaks;
+    expect(JSON.stringify(read)).not.toMatch(/documents|body|const a/);
+  });
+
+  it("a server that sends none has none, and the rest is still read", () => {
+    const read = readChecked(checkedOf());
+    expect(read?.leaks).toBeUndefined();
+    expect(read?.page.title).toBe("Larkspur Pottery Studio");
+  });
+
+  it.each([
+    [
+      "a state that is not one of three",
+      { ...leaks, datasets: [{ ...leaks.datasets[0], state: "x" }] },
+    ],
+    ["types that are not text", { ...leaks, datasets: [{ ...leaks.datasets[0], types: [1] }] }],
+    ["a script with no address", { ...leaks, scripts: [{ ...leaks.scripts[0], url: 1 }] }],
+    ["previews that are not a list", { ...leaks, previews: "x" }],
+  ])("%s drops the leaks and keeps the page", (_name, bad) => {
+    const read = readChecked({ ...checkedOf(), leaks: bad });
+    expect(read?.leaks).toBeUndefined();
+    expect(read?.page.title).toBe("Larkspur Pottery Studio");
+  });
+});
+
 describe("watchRun", () => {
   beforeEach(() => installEventSource());
 

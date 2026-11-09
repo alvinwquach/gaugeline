@@ -40,6 +40,7 @@ import type { RunExpectations } from "./model.js";
 import { lazySiteContext } from "./site-context.js";
 import { buildSnapshot, type PageSnapshot } from "./snapshot.js";
 import { inKind, kinded, requestRows, type RequestRow } from "./request-log.js";
+import { leaksView, remembered, type LeaksView } from "./leaks-view.js";
 import { pageData, type PageData } from "./run-view.js";
 
 export interface SiteCheckOptions {
@@ -102,6 +103,8 @@ export interface SiteCheck {
   requests?: RequestRow[];
   /** What the page declares, as read without JavaScript (the app's Search data view). */
   page: PageData;
+  /** What the dataset, key and preview checks read (the app's Leaks & access view). */
+  leaks: LeaksView;
 }
 
 /**
@@ -157,6 +160,11 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
     pageOutcome.kind === "refused" ? wanted.filter((id) => !NO_PAGE_CHECKS.includes(id)) : [];
   const only =
     pageOutcome.kind === "refused" ? wanted.filter((id) => NO_PAGE_CHECKS.includes(id)) : opts.only;
+  // Kept so the app can show what the key and dataset checks read; nothing is asked a second time.
+  const scripts = remembered(
+    kinded("script", lazyScripts({ page: snapshot, fetcher: opts.fetcher, budget })),
+  );
+  const datasets = remembered(lazyDatasets({ page: snapshot, fetcher: opts.fetcher, budget }));
   const result = await runChecks(snapshot, registry, {
     ctx: {
       fetcher: opts.fetcher,
@@ -168,8 +176,8 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
       calendars: lazyCalendars({ page: snapshot, fetcher: opts.fetcher, budget }),
       ...(opts.now ? { now: opts.now } : {}),
       pages,
-      scripts: kinded("script", lazyScripts({ page: snapshot, fetcher: opts.fetcher, budget })),
-      datasets: lazyDatasets({ page: snapshot, fetcher: opts.fetcher, budget }),
+      scripts,
+      datasets,
       languages: lazyLanguageGroup({
         page: snapshot,
         fetcher: opts.fetcher,
@@ -219,11 +227,17 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
       ? await savedContents(await pages(), contentNow, saved, opts.pagesConfig)
       : undefined;
   const history = opts.fetcher.history?.();
+  const [datasetReads, scriptReads] = await Promise.all([datasets.peek(), scripts.peek()]);
   return {
     snapshot,
     result,
     budget,
     page: pageData(snapshot),
+    leaks: leaksView({
+      page: snapshot,
+      ...(datasetReads ? { datasets: datasetReads } : {}),
+      ...(scriptReads ? { scripts: scriptReads } : {}),
+    }),
     ...(history ? { requests: requestRows(history.slice(before)) } : {}),
     ...(analysis ? { tags: summarise(analysis) } : {}),
     ...(content ? { contents: content.contents, contentNotes: content.notes } : {}),
