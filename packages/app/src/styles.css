@@ -2,13 +2,366 @@
 :root {
   color-scheme: light dark;
   font-family: system-ui, sans-serif;
+  --bg: #ffffff;
+  --panel: #f6f7f9;
+  --text: #101828;
+  --muted: #475467;
+  --line: #d0d5dd;
+  --accent: #1d4ed8;
+  --high: #b42318;
+  --medium: #93370d;
+  --low: #475467;
+  --focus: #1d4ed8;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1419;
+    --panel: #182029;
+    --text: #f2f4f7;
+    --muted: #b6bfcb;
+    --line: #3b4654;
+    --accent: #84adff;
+    --high: #ffa198;
+    --medium: #fdb022;
+    --low: #b6bfcb;
+    --focus: #84adff;
+  }
+}
+* {
+  box-sizing: border-box;
 }
 body {
   margin: 0;
-}
-.shell {
-  max-width: 40rem;
-  margin: 4rem auto;
-  padding: 0 1rem;
+  background: var(--bg);
+  color: var(--text);
   line-height: 1.5;
+}
+h1 {
+  font-size: 1.5rem;
+  margin: 0 0 0.25rem;
+}
+h2 {
+  font-size: 1.125rem;
+  margin: 2rem 0 0.5rem;
+}
+h3 {
+  font-size: 1rem;
+  margin: 0;
+}
+p {
+  margin: 0.25rem 0 0.75rem;
+}
+a {
+  color: var(--accent);
+}
+code {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+}
+.muted {
+  color: var(--muted);
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Visible focus on everything that takes it. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* The frame */
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+.app-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.5rem 1.5rem;
+  padding: 1rem 1rem 0.75rem;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+}
+.brand {
+  margin: 0;
+  padding-top: 1.5rem;
+  font-weight: 700;
+  font-size: 1.125rem;
+}
+.app-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+.content {
+  flex: 1;
+  min-width: 0;
+}
+main {
+  max-width: 52rem;
+  padding: 1.25rem 1.5rem 3rem;
+}
+
+/* The address form */
+.address-form {
+  flex: 1;
+  min-width: 18rem;
+  max-width: 40rem;
+}
+.address-form label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.address-row {
+  display: flex;
+  gap: 0.5rem;
+}
+.address-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.5rem 0.625rem;
+  font: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--muted);
+  border-radius: 0.375rem;
+}
+.address-row input[aria-invalid="true"] {
+  border-color: var(--high);
+}
+.address-row button {
+  padding: 0.5rem 1rem;
+  font: inherit;
+  font-weight: 600;
+  color: #ffffff;
+  background: #1d4ed8;
+  border: 1px solid #1d4ed8;
+  border-radius: 0.375rem;
+  cursor: pointer;
+}
+.address-row button:disabled {
+  background: #475467;
+  border-color: #475467;
+  cursor: progress;
+}
+.field-error {
+  margin: 0.375rem 0 0;
+  color: var(--high);
+  font-weight: 600;
+}
+
+/* The sidebar */
+.sidebar {
+  flex: 0 0 18rem;
+  max-width: 18rem;
+  border-right: 1px solid var(--line);
+  background: var(--panel);
+}
+.sidebar ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.sidebar-empty {
+  margin: 0;
+  padding: 1rem;
+  color: var(--muted);
+}
+.run-link {
+  display: block;
+  padding: 0.625rem 1rem;
+  color: var(--text);
+  text-decoration: none;
+  border-bottom: 1px solid var(--line);
+  border-left: 4px solid transparent;
+}
+.run-link:hover {
+  background: var(--bg);
+}
+.run-link[aria-current="page"] {
+  background: var(--bg);
+  border-left-color: var(--accent);
+}
+/* Cut short on screen; the text itself is whole, so a screen reader reads all of it. */
+.run-url {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.run-state {
+  display: block;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+.run-state.state-failed {
+  color: var(--high);
+}
+.run-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.125rem 0.625rem;
+  margin-top: 0.125rem;
+  font-size: 0.8125rem;
+}
+.chip {
+  white-space: nowrap;
+}
+.chip.level-high,
+.level-high .level-count {
+  color: var(--high);
+}
+.chip.level-medium,
+.level-medium .level-count {
+  color: var(--medium);
+}
+.chip.level-low,
+.level-low .level-count {
+  color: var(--low);
+}
+
+/* View navigation */
+.views {
+  border-bottom: 1px solid var(--line);
+  padding: 0 1.5rem;
+}
+.views ul {
+  display: flex;
+  gap: 1.25rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.views a {
+  display: block;
+  padding: 0.625rem 0;
+  color: var(--text);
+  text-decoration: none;
+  border-bottom: 3px solid transparent;
+}
+.views a[aria-current="page"] {
+  font-weight: 700;
+  border-bottom-color: var(--accent);
+}
+
+/* Overview */
+.subject {
+  margin: 0 0 1rem;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.levels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.level {
+  min-width: 9rem;
+  padding: 0.625rem 0.875rem;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  background: var(--panel);
+}
+.level-count {
+  display: block;
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.level-label {
+  font-size: 0.9375rem;
+}
+.all-clear {
+  margin-top: 1.5rem;
+  font-weight: 600;
+}
+.start {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.start-item {
+  margin: 0 0 0.875rem;
+  padding: 0.25rem 0 0.25rem 0.875rem;
+  border-left: 4px solid var(--line);
+}
+.start-item.level-high {
+  border-left-color: var(--high);
+}
+.start-item.level-medium {
+  border-left-color: var(--medium);
+}
+.start-item.level-low {
+  border-left-color: var(--low);
+}
+.start-item .meta {
+  margin: 0.125rem 0;
+  font-size: 0.9375rem;
+}
+.where,
+.evidence {
+  overflow-wrap: anywhere;
+}
+.where {
+  color: var(--muted);
+}
+.evidence {
+  margin: 0.125rem 0 0;
+  color: var(--muted);
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.875rem;
+  white-space: pre-wrap;
+}
+.area {
+  margin: 0.75rem 0;
+}
+.area h3 {
+  font-size: 0.9375rem;
+  color: var(--muted);
+}
+.ok {
+  margin: 0.25rem 0;
+  padding-left: 1.25rem;
+}
+.steps {
+  margin: 0;
+  padding-left: 1.25rem;
+  min-height: 1.5rem;
+}
+.notice {
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  background: var(--panel);
+  overflow-wrap: anywhere;
+}
+
+/* Narrow windows: the sidebar sits above the view. */
+@media (max-width: 52rem) {
+  .app-body {
+    flex-direction: column;
+  }
+  .sidebar {
+    flex: none;
+    max-width: none;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
 }

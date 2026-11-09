@@ -57,14 +57,14 @@ test("the printed link ends at / with no key in the address bar, and a reload st
   await page.goto(link);
   expect(new URL(page.url()).search).toBe("");
   expect(new URL(page.url()).pathname).toBe("/");
-  await expect(page.getByText("Gaugeline is running on this computer")).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Check a page" })).toBeVisible();
   await page.reload();
-  await expect(page.getByText("Gaugeline is running on this computer")).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Check a page" })).toBeVisible();
 });
 
 test("a page on another origin can't start a check, even with credentials", async ({ page }) => {
   await page.goto(link);
-  await expect(page.getByText("Gaugeline is running on this computer")).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Check a page" })).toBeVisible();
   const port = new URL(link).port;
   await page.goto(`${otherOrigin}/?port=${port}`);
   await expect(page).toHaveTitle(/failed|answered/);
@@ -96,8 +96,7 @@ test("the page loads with zero console errors, zero CSP violations and no reques
     );
   });
   await page.goto(link);
-  await expect(page.getByRole("heading", { name: "Gaugeline" })).toBeVisible();
-  await expect(page.getByText("Gaugeline is running on this computer")).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Check a page" })).toBeVisible();
   const violations = await page.evaluate(
     () => (window as unknown as { violations: string[] }).violations,
   );
@@ -114,7 +113,7 @@ test("the policy is live: a script or style the page did not ship is refused", a
     );
   });
   await page.goto(link);
-  await expect(page.getByText("Gaugeline is running on this computer")).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Check a page" })).toBeVisible();
   const ran = await page.evaluate(async () => {
     const script = document.createElement("script");
     script.textContent = "window.injected = true";
