@@ -5,7 +5,7 @@
   "type": "module",
   "license": "MIT",
   "engines": {
-    "node": ">=18.17"
+    "node": ">=22"
   },
   "bin": {
     "gaugeline": "./dist/index.js"

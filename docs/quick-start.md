@@ -1,6 +1,6 @@
 # Quick start
 
-Check any website in about a minute. You need Node.js 18.17 or newer, and nothing else.
+Check any website in about a minute. You need Node.js 22 or newer, and nothing else.
 
 ## Run a check
 
@@ -39,7 +39,7 @@ Every finding has a plain-English title for whoever owns the site, and a grey te
 
 What the code in this repository does today. The sections above describe the product as published on the site.
 
-Gaugeline needs Node.js 18.17 or newer.
+Gaugeline needs Node.js 22 or newer.
 
 ```bash
 npx gaugeline example.com
