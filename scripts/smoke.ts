@@ -10,6 +10,10 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { withFixture } from "../packages/fixtures/src/index.js";
 
+// 1 MiB, unchanged by G21c. The embedded client adds about 68 KB (its own budget is 300 KB gzipped, see
+// scripts/embed-client.mjs); the tarball was 435 KB before and is 502 KB now, so even a client at its
+// full budget fits under this line. If a future change needs the line moved, that is a decision for
+// the pull request that needs it.
 export const SIZE_BUDGET_BYTES = 1024 * 1024;
 const ALLOWED = /^package\/(dist\/.+|README\.md|LICENSE|THIRD_PARTY_LICENSES\.md|package\.json)$/;
 
@@ -36,6 +40,9 @@ try {
   for (const required of [
     "package/package.json",
     "package/dist/index.js",
+    // The app is embedded (G21c): its page and the manifest that vouches for every file.
+    "package/dist/client/index.html",
+    "package/dist/client/client-manifest.json",
     "package/README.md",
     "package/LICENSE",
     // Bundled code under another licence (jsQR, Apache-2.0) ships with its licence text.

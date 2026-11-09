@@ -87,7 +87,13 @@ import { formatTerminal } from "./reporter.js";
 import { runCutover } from "./cutover.js";
 import { runSnapshot } from "./snapshot.js";
 import { runVerify } from "./verify.js";
-import { PortRangeError, startApp, type RunningApp } from "@gaugeline/app-server";
+import {
+  ClientIntegrityError,
+  ClientMissingError,
+  PortRangeError,
+  startApp,
+  type RunningApp,
+} from "@gaugeline/app-server";
 import { formatRunAll, runAll, runAllExit } from "./run-all.js";
 import { readSites, selectSites, SITES_FILE } from "./sites.js";
 import { appendStepSummary, planStepSummary } from "./step-summary.js";
@@ -106,6 +112,7 @@ import {
 import { skeletonOnly } from "./skeleton.js";
 import { readLastRun, statePath, writeLastRun } from "./state.js";
 import { defaultPlanStatePath, readPlanStateFile, writePlanStateFile } from "./plan-state.js";
+import { defaultClientDir } from "./client-dir.js";
 import { openInBrowser } from "./open.js";
 import { addIgnore, applyIgnore, IGNORE_FILE, readIgnore } from "./ignore.js";
 import { canShowView, runView, type ViewIo } from "./tui/app.js";
@@ -174,6 +181,8 @@ export interface Deps {
   emailEndpoint?: string;
   /** gaugeline open stops when this aborts, as it does on Ctrl+C. For tests that run it in-process. */
   stop?: AbortSignal;
+  /** `gaugeline open`: the built app's folder (tests); by default dist/client beside the CLI. */
+  clientDir?: string;
 }
 
 export interface RunReport {
@@ -762,6 +771,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       let app: RunningApp;
       try {
         app = await startApp({
+          clientDir: deps.clientDir ?? defaultClientDir(),
           ...(args.address
             ? {
                 address: args.address,
@@ -776,6 +786,9 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         });
       } catch (err) {
         if (err instanceof PortRangeError) throw new ConfigError(err.message);
+        // A package without its app, or with files that differ from its manifest: one line, exit 2.
+        if (err instanceof ClientMissingError || err instanceof ClientIntegrityError)
+          throw new ConfigError(`Gaugeline cannot open the app: ${err.message}`);
         const e = err as NodeJS.ErrnoException;
         throw new ConfigError(
           `The app could not start: ${e.code ? `${e.code} ` : ""}${e.message.replace(/\?s=[^\s&]+/g, "")}`,

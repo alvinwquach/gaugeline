@@ -22,6 +22,14 @@ The address you enter can be on your own computer or network (`localhost:3000`, 
 at `192.168.1.20`), the way your own terminal can reach it. Where its pages point is another
 matter: a redirect or a link to some other private address is not followed.
 
+## Works offline
+
+The app is part of the `gaugeline` package. Installing or running it with `npx` downloads the app
+with it, and `gaugeline open` makes no download of its own: once the package is on your computer, the
+app opens with no internet connection (checking a site still needs to reach that site). The page
+loads nothing from any other address, and the browser is told to refuse it if it tries: scripts,
+styles, fonts and requests may only come from the app itself.
+
 ## What's in it
 
 | View                                   | Shows                                                                                                           |
@@ -44,6 +52,9 @@ matter: a redirect or a link to some other private address is not followed.
   drive it: the app answers only to `localhost` and `127.0.0.1` on its own port (which also stops a
   hostile name that resolves to your computer), and refuses any other Origin and any cross-site
   request.
+- The app's files are checked against a list of hashes when it starts. If one differs, or the app
+  is missing from the package, `gaugeline open` stops with exit code 2 and a one-line message, and
+  reinstalling fixes it.
 - Press Ctrl+C and it's gone: the port is closed, open connections end, and nothing is saved.
 
 ::: info

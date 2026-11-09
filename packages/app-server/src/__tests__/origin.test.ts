@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { allowedHosts, checkRequest, REFUSAL_TEXT } from "../origin.js";
 import { createSession, sessionCookie } from "../session.js";
 import { startApp, type RunningApp } from "../server.js";
+import { testClientDir } from "./helpers/client.js";
 
 const P = 4817;
 
@@ -101,7 +102,7 @@ function raw(
 async function opened(
   port: number,
 ): Promise<{ app: RunningApp; cookie: string; host: string; set: string }> {
-  const app = await startApp({ port });
+  const app = await startApp({ clientDir: testClientDir(), port });
   const host = `localhost:${app.port}`;
   const path = new URL(app.url).search;
   const r = await raw(app.port, [`GET /${path} HTTP/1.1`, `Host: ${host}`, "Sec-Fetch-Site: none"]);

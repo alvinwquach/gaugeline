@@ -4,6 +4,7 @@ import { networkInterfaces } from "node:os";
 import { describe, expect, it } from "vitest";
 import { createKey, keyMatches } from "../key.js";
 import { APP_HOST, pickPort, PortRangeError, startApp } from "../server.js";
+import { testClientDir } from "./helpers/client.js";
 
 /** A GET as a browser would send it: to the printed address, localhost included. */
 function get(
@@ -94,7 +95,7 @@ describe("app server: unit", () => {
 
 describe("app server: integration (real sockets)", () => {
   it("no s: 403. A wrong s: 403. The right s: 303 with the session, then 200, at the printed address", async () => {
-    const app = await startApp({ port: 4900 });
+    const app = await startApp({ clientDir: testClientDir(), port: 4900 });
     try {
       const base = `http://localhost:${app.port}/`;
       expect((await get(base)).status).toBe(403);
@@ -115,7 +116,7 @@ describe("app server: integration (real sockets)", () => {
   });
 
   it("server.address().address is exactly 127.0.0.1", async () => {
-    const app = await startApp({ port: 4910 });
+    const app = await startApp({ clientDir: testClientDir(), port: 4910 });
     try {
       expect(app.host).toBe("127.0.0.1");
       expect(app.host).toBe(APP_HOST);
@@ -130,7 +131,7 @@ describe("app server: integration (real sockets)", () => {
   it.skipIf(!lan)(
     "a connection to this machine's LAN address on the same port is refused",
     async () => {
-      const app = await startApp({ port: 4920 });
+      const app = await startApp({ clientDir: testClientDir(), port: 4920 });
       try {
         const err = await new Promise<NodeJS.ErrnoException | undefined>((resolve) => {
           const c = connect({ host: lan as string, port: app.port }, () => {
@@ -147,7 +148,7 @@ describe("app server: integration (real sockets)", () => {
   );
 
   it("close() resolves with a keep-alive connection open, and the port binds again straight after", async () => {
-    const app = await startApp({ port: 4930 });
+    const app = await startApp({ clientDir: testClientDir(), port: 4930 });
     const agent = new Agent({ keepAlive: true });
     expect((await get(app.url, agent)).status).toBe(303);
     await app.close();
@@ -159,7 +160,7 @@ describe("app server: integration (real sockets)", () => {
   it("4817 held by another process: the next free port, and that address answers", async () => {
     const held = await hold(4940);
     try {
-      const app = await startApp({ port: 4940 });
+      const app = await startApp({ clientDir: testClientDir(), port: 4940 });
       try {
         expect(app.port).toBe(4941);
         expect(app.url).toMatch(/^http:\/\/localhost:4941\/\?s=[A-Za-z0-9_-]{43}$/);
@@ -177,8 +178,12 @@ describe("app server: edge cases", () => {
   it("ten busy ports reject with a message naming the range", async () => {
     const held = await Promise.all(Array.from({ length: 10 }, (_, i) => hold(4950 + i)));
     try {
-      await expect(startApp({ port: 4950 })).rejects.toBeInstanceOf(PortRangeError);
-      await expect(startApp({ port: 4950 })).rejects.toThrow("Ports 4950 to 4959 are all in use");
+      await expect(startApp({ clientDir: testClientDir(), port: 4950 })).rejects.toBeInstanceOf(
+        PortRangeError,
+      );
+      await expect(startApp({ clientDir: testClientDir(), port: 4950 })).rejects.toThrow(
+        "Ports 4950 to 4959 are all in use",
+      );
     } finally {
       await Promise.all(held.map(release));
     }
@@ -197,7 +202,7 @@ describe("app server: edge cases", () => {
 
   it("an aborted signal closes it, and a second close is the same promise", async () => {
     const ac = new AbortController();
-    const app = await startApp({ port: 4970, signal: ac.signal });
+    const app = await startApp({ clientDir: testClientDir(), port: 4970, signal: ac.signal });
     ac.abort();
     await app.close();
     await expect(app.close()).resolves.toBeUndefined();

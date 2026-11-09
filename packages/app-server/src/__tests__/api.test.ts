@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import type { BodyError } from "../body.js";
 import { parseCheckBody } from "../body.js";
 import { startApp } from "../server.js";
+import { testClientDir } from "./helpers/client.js";
 import { createStore, StoreFull } from "../store.js";
 
 /** One raw HTTP/1.1 request: headers exactly as given, the body optional, the reply parsed. */
@@ -39,7 +40,7 @@ function raw(
 
 /** The app, with its link opened: a client holding the session, as the browser would. */
 async function client(port: number, opts: Parameters<typeof startApp>[0] = {}) {
-  const app = await startApp({ port, ...opts });
+  const app = await startApp({ clientDir: testClientDir(), port, ...opts });
   const host = `localhost:${app.port}`;
   const link = await raw(app.port, [`GET /${new URL(app.url).search} HTTP/1.1`, `Host: ${host}`]);
   const cookie = /^set-cookie: ([^;]+)/im.exec(link.head)?.[1] ?? "";
