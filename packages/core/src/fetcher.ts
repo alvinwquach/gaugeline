@@ -11,6 +11,12 @@ import { normaliseUrl } from "./normalise.js";
 import type { RequestInfo } from "./progress.js";
 import { Semaphore } from "./semaphore.js";
 import {
+  currentKind,
+  type RequestError,
+  type RequestKind,
+  type RequestRecord,
+} from "./request-log.js";
+import {
   send,
   systemResolver,
   type ResolvedAddress,
@@ -178,6 +184,11 @@ export interface Fetcher {
    */
   getSite(address: string, opts?: GetOptions): Promise<Hop[]>;
   readonly stats: { readonly requests: number; readonly maxInFlight: number };
+  /**
+   * Every request this fetcher sent or refused to send, in the order the answers came back: the
+   * address, its kind, the status, the time. For the app's "Pages checked" view. Absent on a stand-in.
+   */
+  history?(): readonly RequestRecord[];
 }
 
 export const DEFAULT_USER_AGENT = "Gaugeline/0.1 (read-only site check)";
@@ -398,14 +409,49 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
   /** In-flight promises, so two checks asking at the same moment share one request. */
   const memo = new Map<string, Promise<Hop[]>>();
 
+  const history: RequestRecord[] = [];
+  let chains = 0;
+
+  /** Where a redirect points, as an absolute address; undefined when it does not make one. */
+  function resolveLocation(from: string, location: string | null): string | undefined {
+    if (location === null) return undefined;
+    try {
+      return new URL(location.trim(), from).href;
+    } catch {
+      return undefined;
+    }
+  }
+
+  function errorOf(err: unknown): RequestError {
+    if (err instanceof FetchError) {
+      if (err.reason === "timeout") return "timeout";
+      if (err.reason === "private-address-refused" || err.reason === "blocked-address")
+        return "private-address-refused";
+    }
+    return "no-answer";
+  }
+
   async function requestOnce(
     url: string,
     method: "GET" | "HEAD",
     headers: Record<string, string>,
+    at: { kind: RequestKind; chain: number; hop: number },
   ): Promise<{ hop: Hop; location: string | null }> {
     assertReadOnly(method);
     return gate.run(async () => {
       const started = performance.now();
+      const note = (r: Pick<RequestRecord, "status" | "error" | "location">) =>
+        history.push({
+          url,
+          kind: at.kind,
+          method,
+          status: r.status,
+          ...(r.error ? { error: r.error } : {}),
+          ms: Math.round(performance.now() - started),
+          ...(r.location ? { location: r.location } : {}),
+          chain: at.chain,
+          hop: at.hop,
+        });
       let res;
       const target = new URL(url);
       try {
@@ -421,9 +467,14 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
           status: "error",
           ms: Math.round(performance.now() - started),
         });
-        if (err instanceof FetchError) throw err;
+        if (err instanceof FetchError) {
+          note({ status: null, error: errorOf(err) });
+          throw err;
+        }
         const d = describeNetworkFailure(url, err, timeoutMs);
-        throw new FetchError(d.reason, d.message, url, [], err, d.hint);
+        const failure = new FetchError(d.reason, d.message, url, [], err, d.hint);
+        note({ status: null, error: errorOf(failure) });
+        throw failure;
       }
       const hop: Hop = {
         url,
@@ -446,6 +497,7 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
           hop.bytes = bytes;
           if (truncated) hop.truncated = true;
         } catch (err) {
+          note({ status: null, error: "timeout" });
           throw new FetchError(
             "timeout",
             `${hostOf(url)} did not finish sending the page within ${timeoutMs / 1000} seconds.`,
@@ -457,11 +509,13 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
       }
       hop.ms = Math.round(performance.now() - started);
       options.onRequest?.({ method, url, status: hop.status, ms: hop.ms });
+      note({ status: hop.status, location: resolveLocation(url, location) });
       return { hop, location };
     });
   }
 
-  async function follow(start: string, opts: GetOptions): Promise<Hop[]> {
+  async function follow(start: string, opts: GetOptions, kind: RequestKind): Promise<Hop[]> {
+    const chain = chains++;
     const method = opts.method ?? "GET";
     assertReadOnly(method);
     const hops: Hop[] = [];
@@ -474,7 +528,7 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
       const headers =
         opts.headersSameOrigin && new URL(current).origin !== origin ? {} : (opts.headers ?? {});
       try {
-        step = await requestOnce(current, method, headers);
+        step = await requestOnce(current, method, headers, { kind, chain, hop: hops.length });
       } catch (err) {
         // A redirect to a non-public address off the target: recorded as a hop that was not
         // requested, and the trail ends there.
@@ -524,7 +578,7 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
     const key = `${method} ${normal}${opts.headers ? ` ${JSON.stringify(Object.entries(opts.headers).sort())}` : ""}${opts.headersSameOrigin ? " same-origin" : ""}`;
     let pending = memo.get(key);
     if (!pending) {
-      pending = follow(normal, opts);
+      pending = follow(normal, opts, currentKind());
       memo.set(key, pending);
     }
     return pending;
@@ -554,6 +608,7 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
   return {
     get,
     getSite,
+    history: () => history,
     stats: {
       get requests() {
         return requests;

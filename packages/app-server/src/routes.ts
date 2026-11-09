@@ -31,6 +31,7 @@ function view(r: Run, full: boolean) {
     startedAt: r.startedAt,
     ...(r.counts ? { counts: r.counts } : {}),
     ...(full && r.result ? { result: r.result } : {}),
+    ...(full && r.checked ? { checked: r.checked } : {}),
     ...(full && r.reason ? { reason: r.reason } : {}),
   };
 }

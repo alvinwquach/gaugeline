@@ -1,5 +1,5 @@
 import { vi } from "vitest";
-import type { Counts, Finding, Result, RunDetail } from "../types";
+import type { Checked, Counts, Finding, RequestRow, Result, RunDetail } from "../types";
 
 /** A finding with invented content; override what a test cares about. */
 export function finding(over: Partial<Finding> = {}): Finding {
@@ -23,6 +23,34 @@ export function result(over: Partial<Result> = {}): Result {
     failed: [],
     couldNotCheck: [],
     sampled: {},
+    ...over,
+  };
+}
+
+/** A request with invented content; override what a test cares about. */
+export function request(over: Partial<RequestRow> = {}): RequestRow {
+  return {
+    url: "https://shop.example/",
+    kind: "page",
+    method: "GET",
+    status: 200,
+    ms: 12,
+    ...over,
+  };
+}
+
+/** What the page declares, with invented content. */
+export function checkedOf(over: Partial<Checked> = {}): Checked {
+  return {
+    requests: [request()],
+    page: {
+      url: "https://shop.example/",
+      title: "Larkspur Pottery Studio",
+      canonical: "https://shop.example/",
+      words: 3,
+      firstWords: "Mugs bowls planters",
+      blocks: [],
+    },
     ...over,
   };
 }

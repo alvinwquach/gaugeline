@@ -1,7 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ApiError, getRun, listRuns, readResult, startCheck, watchRun } from "../api";
+import { ApiError, getRun, listRuns, readChecked, readResult, startCheck, watchRun } from "../api";
 import type { WatchEvent } from "../types";
-import { FakeEventSource, doneRun, finding, installEventSource, reply, result } from "./helpers";
+import {
+  FakeEventSource,
+  checkedOf,
+  doneRun,
+  finding,
+  installEventSource,
+  reply,
+  request,
+  result,
+} from "./helpers";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -96,6 +105,53 @@ describe("readResult", () => {
     expect(() => readResult(null)).toThrow();
     expect(() => readResult({ ...result(), findings: "x" })).toThrow(/findings/);
     expect(() => readResult({ ...result(), schema: 1 })).toThrow(/schema 1/);
+  });
+});
+
+describe("readChecked and getRun: the addresses and the page's data", () => {
+  it("getRun carries them beside the result", async () => {
+    const checked = checkedOf({
+      requests: [request({ status: 301, location: "https://shop.example/b" })],
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        reply(200, { ...doneRun("a", "https://shop.example/", result()), checked }),
+      ),
+    );
+    expect((await getRun("a")).checked).toEqual(checked);
+  });
+
+  it("a run from a server that sends none has none", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => reply(200, doneRun("a", "https://shop.example/", result()))),
+    );
+    expect((await getRun("a")).checked).toBeUndefined();
+  });
+
+  it("keeps the shape it knows and drops the rest", () => {
+    const c = readChecked({ ...checkedOf(), extra: 1, requests: [{ ...request(), extra: 1 }] });
+    expect(c).toEqual(checkedOf());
+  });
+
+  it.each([
+    ["not an object", 7],
+    ["a request with an unknown kind", { ...checkedOf(), requests: [{ ...request(), kind: "x" }] }],
+    ["a status that is text", { ...checkedOf(), requests: [{ ...request(), status: "200" }] }],
+    ["no page", { requests: [] }],
+    [
+      "a block that is neither",
+      { ...checkedOf(), page: { ...checkedOf().page, blocks: [{ ok: 1 }] } },
+    ],
+    ["words that are text", { ...checkedOf(), page: { ...checkedOf().page, words: "3" } }],
+  ])("%s is not read", (_name, value) => {
+    expect(readChecked(value)).toBeUndefined();
+  });
+
+  it("a page without a list of requests is read, with none", () => {
+    const { requests: _r, ...rest } = checkedOf();
+    expect(readChecked(rest)?.requests).toBeUndefined();
   });
 });
 

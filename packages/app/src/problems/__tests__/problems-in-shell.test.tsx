@@ -29,13 +29,14 @@ const run = doneRun(
 
 describe("Problems in the shell", () => {
   it("is in the view registry after Overview, and the navigation shows it", async () => {
-    expect(VIEWS.map((v) => v.id)).toEqual(["overview", "problems"]);
+    expect(VIEWS.slice(0, 2).map((v) => v.id)).toEqual(["overview", "problems"]);
     installApi([run]);
     render(<Shell />);
     const nav = await screen.findByRole("navigation", { name: "Views" });
     expect(
       within(nav)
         .getAllByRole("link")
+        .slice(0, 2)
         .map((l) => l.textContent),
     ).toEqual(["Overview", "Problems"]);
   });

@@ -124,6 +124,121 @@ Check: images-broken
 A section with nothing in it, such as the evidence for a finding that has none, is left out whole.
 The evidence is the page's own words, copied as they are.
 
+## Pages checked
+
+Pages checked lists every address the check requested, and what each one answered, so you can
+verify a finding with your own eyes: the page itself, each step of a redirect, the links, images,
+sitemap pages, feeds and JavaScript files it sampled, and the few other pages and files it read
+along the way (`robots.txt`, the sitemap, `llms.txt`).
+
+![The Pages checked view: a table of every address the check requested, one row each, with its kind, how it was asked for, what it answered and how long that took. Rows that did not end in a 2xx are marked, and a footer says how much of each kind was read.](/img/app-pages.png)
+
+- **One row for each request.** Rows are grouped by kind, in the order Page, Link, Image, Sitemap page, Feed,
+  JavaScript file, Other page and Other, and within a kind in the order they were requested. A
+  redirect is not tucked under its first address: each step is a row, and every row that moved
+  says where to, so you read the chain from top to bottom. The Request column says whether the
+  check asked with GET or HEAD (Gaugeline never sends anything else).
+- **The answer** is a short phrase for the status: Loaded (any 2xx), Moved to an address, Not found
+  (404 and 410), Server error (5xx), Refused (401, 403 and 429: the site said no, which is not the
+  same as broken), or No answer when the site did not reply in time. An address that would have led
+  to a private or local address you did not type is Not followed (private address), and nothing is
+  sent to it.
+- **Only problems** hides every row that ended in a 2xx. What is left is a redirect, an error or
+  no answer. The count above the table follows ("Showing 3 of 21 addresses"). A redirect is
+  listed because it is not a 2xx; it is often fine.
+- **The footer** states how much was read against the limits that are published on
+  [Security](/docs/security#how-much-a-run-requests), for example "24 of up to 30 same-site links (52 found)".
+  Other addresses have no limit; they are the few files every site has and anything else a check
+  asked for.
+- **Addresses are text, not links.** They come from the page you checked, which may be broken or
+  hostile, so no address here can be clicked: copy one to open it. An address that starts with
+  `javascript:` or contains markup is shown as it is.
+
+This is the table for a small pottery studio, as the app lists it (the time of each request is in
+the app and left out here, because it is different every run):
+
+```text title=Pages checked rows
+Page             GET   https://studio.example/                 Loaded
+Link             HEAD  https://studio.example/moved            Moved to https://studio.example/moved-again
+Link             HEAD  https://studio.example/moved-again      Moved to https://studio.example/about
+Link             HEAD  https://studio.example/about            Loaded
+Link             HEAD  https://studio.example/gone             Not found
+Link             HEAD  https://studio.example/busy             Server error
+Image            HEAD  https://studio.example/img/mug.png      Loaded
+Image            HEAD  https://studio.example/img/missing.png  Not found
+Sitemap page     HEAD  https://studio.example/                 Loaded
+Sitemap page     HEAD  https://studio.example/about            Loaded
+Sitemap page     HEAD  https://studio.example/shop             Loaded
+Feed             GET   https://studio.example/feed.xml         Loaded
+JavaScript file  GET   https://studio.example/app.js           Loaded
+Other page       GET   https://studio.example/about            Loaded
+Other page       GET   https://studio.example/shop             Loaded
+Other page       GET   https://studio.example/moved            Moved to https://studio.example/moved-again
+Other page       GET   https://studio.example/moved-again      Moved to https://studio.example/about
+Other page       GET   https://studio.example/about            Loaded
+Other page       GET   https://studio.example/gone             Not found
+Other            GET   https://studio.example/llms.txt         Not found
+Other            GET   https://studio.example/robots.txt       Loaded
+Other            GET   https://studio.example/sitemap.xml      Loaded
+```
+
+The rows are what the check really requested: for this site, the server behind it saw exactly
+that many requests. The page links to `/moved`, which goes to `/moved-again` and then to `/about`,
+so it is three rows, two of them "Moved to".
+
+## Search data
+
+Search data shows what the page declares to a search engine, as read without running any
+JavaScript, the way a crawler first receives it.
+
+![The Search data view: the title and canonical, the number of readable words and the first of them, and each structured data block as a tree of types and fields, with one block that could not be read shown as plain text with the parser's message.](/img/app-search-data.png)
+
+- **Title and canonical.** A page with none says Not set; one that has the tag with nothing in it
+  says Empty. They are different problems.
+- **Readable words** counts the words a visitor can read before any JavaScript runs, and the page
+  shows the first 200 of them in order. A page with none says so, and points to
+  "Google sees an almost empty page" in [Problems](#problems).
+- **Structured data** lists each block in the order it appears, as a tree of types and fields you
+  can open and close: "Product, offers, price" without the braces. The first three levels start
+  open and anything deeper starts closed, so a large block stays readable. A block that could not
+  be parsed is shown as its raw text, with the parser's message.
+- Everything shown is text from the page, including a value that looks like markup. Nothing here
+  is requested again: it is what the check already read.
+
+For the same studio:
+
+```text title=Search data
+Title: Larkspur Pottery Studio
+Canonical: https://studio.example/
+Readable words: 57
+First 8 of them: About the studio Shop Classes Gift cards Waiting
+
+Block 1: Product
+  @context: https://schema.org
+  @type: Product
+  name: Speckled mug
+  offers: Offer
+    @type: Offer
+    price: 24.00
+    priceCurrency: USD
+
+Block 2: Organization, WebSite
+  @context: https://schema.org
+  @graph
+    0: Organization
+      @type: Organization
+      @id: https://studio.example/#org
+      name: Larkspur Pottery Studio
+    1: WebSite
+      @type: WebSite
+      @id: https://studio.example/#site
+      name: Larkspur Pottery
+
+Block 3: Could not be read
+  Expected double-quoted property name in JSON at position 62 (line 1 column 63)
+  { "@type": "LocalBusiness", "name": "Larkspur Pottery Studio",
+```
+
 ## Works offline
 
 The app is part of the `gaugeline` package. Installing or running it with `npx` downloads the app
@@ -134,14 +249,14 @@ styles, fonts and requests may only come from the app itself.
 
 ## What's in it
 
-| View                                   | Shows                                                                                                           |
-| -------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| Overview                               | Counts by urgency, where to start, what looked right, and how much was checked                                  |
-| Problems                               | Every finding, filterable. Open one for why it matters, how to fix it, and a copy-ready note for your developer |
-| Pages checked                          | Every address the check tested, and what it answered                                                            |
-| Search data                            | The title, canonical, readable words and structured data the page declares                                      |
-| Leaks & access                         | Whether the Sanity dataset is public, which types it holds, JavaScript scanned for keys, and staging copies     |
-| Page cost, Automatic messages, Content | Need your Sanity login. Coming in version 0.2                                                                   |
+| View                                   | Shows                                                                                                                                        |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| Overview                               | Counts by urgency, where to start, what looked right, and how much was checked                                                               |
+| Problems                               | Every finding, filterable. Open one for why it matters, how to fix it, and a copy-ready note for your developer                              |
+| Pages checked                          | Every address the check tested, and what it answered: the page, each redirect step, links, images, sitemap pages, feeds and JavaScript files |
+| Search data                            | The title, canonical, readable words and structured data the page declares, as read without JavaScript                                       |
+| Leaks & access                         | Whether the Sanity dataset is public, which types it holds, JavaScript scanned for keys, and staging copies                                  |
+| Page cost, Automatic messages, Content | Need your Sanity login. Coming in version 0.2                                                                                                |
 
 ## Private to your computer
 

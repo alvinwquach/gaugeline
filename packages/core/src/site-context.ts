@@ -6,6 +6,7 @@ import { parseLlmsTxt, type LlmsFile } from "./llms.js";
 import { parseRobots, type RobotsFile } from "./robots.js";
 import { isFrameworkUrl } from "./next/framework-urls.js";
 import { dedupeUrls } from "./sample.js";
+import { inKind } from "./request-log.js";
 import type { PageSnapshot } from "./snapshot.js";
 
 /** One advertised feed, as read. itemLinks are kept for G12c, which compares feeds by them. */
@@ -290,7 +291,7 @@ export async function buildSiteContext({
   const feedsRead = Promise.all(
     budget
       .take("feeds", dedupeUrls(page.feeds.map((f) => f.href)))
-      .map((u) => readFeed(fetcher, u)),
+      .map((u) => inKind("feed", () => readFeed(fetcher, u))),
   );
   const llmsUrl = `${origin}/llms.txt`;
   const llmsRead = readRootText(fetcher, llmsUrl);
@@ -307,7 +308,9 @@ export async function buildSiteContext({
   budget.take("frameworkAddresses", urls.filter(isFrameworkUrl));
   const pageUrls = urls.filter((u) => !isFrameworkUrl(u));
   const sampled = budget.take("sitemapPages", pageUrls);
-  const sitemapSample = await Promise.all(sampled.map((u) => probe(u, fetcher)));
+  const sitemapSample = await Promise.all(
+    sampled.map((u) => inKind("sitemap", () => probe(u, fetcher))),
+  );
   return {
     robotsUrl,
     robots,
