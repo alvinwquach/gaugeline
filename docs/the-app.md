@@ -74,6 +74,56 @@ Checked 20 of 41 images.
 6 to look at, 1 to fix first.
 ```
 
+## Problems
+
+The Problems view lists every finding of the page you have open, grouped as Fix this first, Fix
+soon and Worth knowing, in the order of the result.
+
+![The Problems view with one finding open: the plain-English text for what was found, why it matters and how to fix it, the evidence from the page, and the technical detail one click away.](/img/app-problems.png)
+
+- **Filters** sit above the list: one row for urgency and one for area (Search & sharing, Visitors,
+  and the rest of the areas in [Reading the report](/docs/reading-the-report)). They are toggle
+  buttons with the number of findings next to each. Choose none and you see everything. Choose
+  two urgencies and you see either; choose an urgency and an area and you see only what is both.
+  An area with no findings in this page's check is not offered. Switching to another page starts
+  the filters over.
+- **Open a finding** with a click, or Enter or Space on the keyboard. It shows what was found, why it
+  matters and how to fix it, in plain English, then the evidence from the page. One finding is open
+  at a time, and it is kept in the address bar (`#/<run>/problems/<number>`), so reloading returns
+  to it.
+- **Show technical detail** reveals the one line a developer wants: what the check looked at and what counted as a
+  problem. It is closed until you press it.
+- **Copy note for your developer** puts a plain-text note on the clipboard and says so. If your
+  browser will not let a page use the clipboard, the note is shown in a box, already selected, with
+  a line telling you to copy it by hand.
+- **Nothing to fix** says so, and points to the Overview for what was checked and what looked right.
+
+The note always includes the technical line, and has no formatting, so it reads the same in email,
+Slack, Jira or a text message. This is the note for the broken image above:
+
+```text title=Copied note
+Some images on this page don't load
+
+Page: https://shop.example/img/missing.png
+
+Why it matters:
+Visitors see an empty box or a broken-image icon where a product photo or a diagram should be.
+
+How to fix it:
+Upload the image again, or point the img at its current address. For /_next/image, check the file named by url= exists.
+
+Technical detail:
+a sampled same-site img src answers 4xx or 5xx (images on other hosts are not requested); a refusal (401, 403, 429, 503 with Retry-After) is listed as could not check
+
+Evidence:
+<img src="/img/missing.png"> returned 404
+
+Check: images-broken
+```
+
+A section with nothing in it, such as the evidence for a finding that has none, is left out whole.
+The evidence is the page's own words, copied as they are.
+
 ## Works offline
 
 The app is part of the `gaugeline` package. Installing or running it with `npx` downloads the app
