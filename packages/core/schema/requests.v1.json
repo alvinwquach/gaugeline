@@ -1,0 +1,241 @@
+{
+  "$id": "https://gaugeline.dev/schema/requests.v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "generatedBy": {
+      "type": "string"
+    },
+    "notice": {
+      "type": "string"
+    },
+    "page": {
+      "additionalProperties": false,
+      "properties": {
+        "blocks": {
+          "items": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "ok": {
+                    "const": true,
+                    "type": "boolean"
+                  },
+                  "value": {}
+                },
+                "required": [
+                  "ok",
+                  "value"
+                ],
+                "type": "object"
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "error": {
+                    "type": "string"
+                  },
+                  "ok": {
+                    "const": false,
+                    "type": "boolean"
+                  },
+                  "raw": {
+                    "type": "string"
+                  },
+                  "truncated": {
+                    "const": true,
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "error",
+                  "ok",
+                  "raw"
+                ],
+                "type": "object"
+              }
+            ]
+          },
+          "type": "array"
+        },
+        "blocksOmitted": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "canonical": {
+          "type": "string"
+        },
+        "firstWords": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "truncated": {
+          "items": {
+            "enum": [
+              "title",
+              "canonical",
+              "firstWords",
+              "blocks"
+            ],
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "url": {
+          "type": "string"
+        },
+        "words": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "blocks",
+        "blocksOmitted",
+        "firstWords",
+        "truncated",
+        "url",
+        "words"
+      ],
+      "type": "object"
+    },
+    "requests": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "enum": [
+              "timeout",
+              "private-address-refused",
+              "no-answer"
+            ],
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "page",
+              "link",
+              "image",
+              "sitemap",
+              "feed",
+              "script",
+              "extra-page",
+              "other"
+            ],
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "method": {
+            "enum": [
+              "GET",
+              "HEAD"
+            ],
+            "type": "string"
+          },
+          "ms": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "method",
+          "ms",
+          "status",
+          "url"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "schemaVersion": {
+      "const": 1,
+      "type": "number"
+    },
+    "startedAt": {
+      "format": "date-time",
+      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+      "type": "string"
+    },
+    "truncation": {
+      "additionalProperties": false,
+      "properties": {
+        "maxPageBytes": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "maxRequests": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "notes": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "requestsSaved": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "requestsTotal": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "truncated": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "maxPageBytes",
+        "maxRequests",
+        "notes",
+        "requestsSaved",
+        "requestsTotal",
+        "truncated"
+      ],
+      "type": "object"
+    },
+    "url": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "generatedBy",
+    "notice",
+    "page",
+    "requests",
+    "schemaVersion",
+    "startedAt",
+    "truncation",
+    "url"
+  ],
+  "title": "Gaugeline saved requests file v1",
+  "type": "object"
+}

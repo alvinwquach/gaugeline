@@ -26,3 +26,10 @@ Current schema number: `1` (`RESULT_SCHEMA_VERSION` in `@gaugeline/core`). The f
   "url": "https://shop.example/"
 }
 ```
+
+## Not in this file
+
+The request log and the page's data are not part of `--json`. With `--save-requests <file>` they are
+written to a separate file with its own `schemaVersion` and its own schema,
+`packages/core/schema/requests.v1.json`; see
+[Privacy and safety](../privacy.md#saving-the-requests-save-requests).

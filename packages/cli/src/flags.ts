@@ -311,6 +311,14 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     commands: ["check", "launch"],
   },
   {
+    name: "save-requests",
+    type: "string",
+    description:
+      "Save the requests made and the page's data to this JSON file; it may contain page content, so do not commit it",
+    since: "0.2.0",
+    commands: ["check", "launch"],
+  },
+  {
     name: "quiet",
     type: "boolean",
     description: "Print only results and errors",
