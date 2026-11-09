@@ -114,9 +114,52 @@ merged once CI is green on Node 22 and 24 (18.17, 20 and 22 until S00).
   complementary; grouped by audience: agency, business owner, marketer, content editor, developer, matching the
   landing page). Then reply with a summary and the publish commands.
 
+### Build order (owner, 9 Nov 2026, "Who Gaugeline is for, and the freelancer build order")
+
+Audience: freelancers and small agencies who build on Sanity, Next.js and Vercel for small businesses (bars,
+pop-ups, clinics, shops, coaches). Every example in docs and README comes from that work. "For everyone" is out.
+The todo rows below follow this order and override spec order where they differ:
+
+1. Finish phase 04 in spec order (R-01, the docs requirements, closes it). 2. Phase 05 in spec order.
+3. F-01 renewals and expiry, F-02 ownership and handoff report, F-03 hosting cost watch, F-04 new-client audit
+   pack, then E-18 migration completeness and E-14 trackers on sensitive pages (promoted from the expansion
+   roadmap: build them as written there, with full tests, docs and a changeset).
+4. Every CMS: C-00 the content adapter interface (replaces G38), then C-01 WordPress, C-02 Strapi, C-03 TinaCMS,
+   C-04 Webflow, C-05 Wix, C-06 Framer, C-07 Contentful, C-08 Storyblok, C-09 Payload, C-10 Ghost, C-11 Drupal,
+   C-12 hosted builders without a content API.
+5. F-05 published but not live, F-06 backups and restore readiness, F-07 `gaugeline init`, F-08 the agent skill.
+6. Phase 06 in spec order (N17 directly before G31, the MCP server).
+7. Phase 07 in this order: G34, G35, G36, X63, X64, G37, X66, X67, X70, X71, X72, X69, X75, X68.
+8. Phase 08 in spec order, skipping G38 (done as C-00). The rest of the expansion roadmap stays unstarted.
+
+### Adapter rules (every C-branch; they go in CONTRIBUTING and in the contract tests)
+
+- Read only. Each C-branch starts by listing, with links, the platform's documented read endpoints and how to make
+  the most limited key. If the platform has no read-only key type, docs/integrations/<cms>.md says so in its first
+  paragraph and recommends the narrowest option (a dedicated low-role user, a scoped key). Gaugeline only ever
+  builds GET requests (or GraphQL queries, never mutations) for these.
+- Fingerprints, never content: adapters return ids, types, slugs/URLs, published and updated times, counts, and
+  hashes of configured fields. Reports show field names and the mismatch, not the client's text.
+- Recorded responses only in tests (G07a), invented fixtures, no real client data.
+- Anything the platform doesn't expose is could-not-check with the reason, never scraped from the admin UI.
+
+### Docs and changelog requirements (every release from now on)
+
+- Every check page shows "Since vX", generated from the check registry's history.
+- Every breaking change ships a migration guide page, and a test fails if a breaking changeset has none. The
+  first migration guide is Node 22 and newer (S00).
+- The docs site publishes an RSS/Atom feed of the changelog.
+- Every new branch's docs page includes one example from freelancer client work (invented fixtures, real kinds
+  of business).
+- Every branch still ships its docs page and changelog entry in the same pull request.
+- Context handoff: when context reaches 85%, finish the current branch, write the handoff (the exact next
+  branch) at the top of this file and tell the owner.
+
 ## Built on Sonnet, review
 
 None yet. Branches the spec marks "model Opus" that were built on Sonnet from G23 onward are listed here.
+
+- C-00 `c/adapter-interface` (spec marks Opus; will be built on Sonnet): pending. A reviewer should look hardest at the Sanity port having no behaviour change and at the contract suite never building a non-GET request.
 
 ## Branches
 
@@ -223,6 +266,7 @@ None yet. Branches the spec marks "model Opus" that were built on Sonnet from G2
 | G22d | `04/app-download-and-demo` | todo | | | Download the report and a demo mode |
 | G22e | `04/app-ads-view` | todo | | | Ads in the app (open --ads) |
 | G22f | `04/app-sanity-placeholders` | todo | | | Placeholders for the Sanity views |
+| R-01 | `docs/release-requirements` | todo | | | Docs requirements from the 9 Nov spec update (owner-requested; no spec entry): a Since vX badge on every check page generated from the registry history, a migration guide page for every breaking changeset with a test that fails without one (the first is Node 22 and newer, from S00), and an RSS/Atom feed of the changelog on the docs site (Sonnet) |
 | G23 | `05/products-and-prices` | todo | | | The connector interface |
 | N15 | `05/listings` | todo | | | Listings off the site: Google Business Profile, Apple, Yelp and social bios  [new: from your projects] [P2] |
 | G23a | `05/connector-sanity` | todo | | | Sanity connector: products, counts and types |
@@ -262,28 +306,52 @@ None yet. Branches the spec marks "model Opus" that were built on Sonnet from G2
 | G28 | `05/work-order-brief` | todo | | | The work order (brief) |
 | G28a | `05/brief-formatter-api` | todo | | | brief as a reusable formatter |
 | N14 | `05/email-templates` | todo | | | Transactional emails: the emails customers get pass the same checks  [new: from your projects] [P2] |
+| F-01 | `f/renewals` | todo | | | Renewals and expiry: domain, certificate and subscription renewals before they lapse (freelancer branch; Sonnet, effort high) |
+| F-02 | `f/handoff` | todo | | | Ownership and handoff report: who owns what for a client's site (freelancer branch; Sonnet, effort high) |
+| F-03 | `f/cost-watch` | todo | | | Hosting cost watch: usage against plan limits before the bill surprises a client (freelancer branch; Sonnet, effort high) |
+| F-04 | `f/audit-pack` | todo | | | New-client audit pack, built on the work order (G28, G28a) (freelancer branch; Sonnet, effort medium) |
+| E-18 | `09/migration-completeness` | todo | | | Migration completeness: every item of the old site exists on the new one, redirects in one hop, keeps title, canonical and structured data type (promoted from the expansion roadmap; build as written there; Sonnet) |
+| E-14 | `09/sensitive-trackers` | todo | | | Trackers on sensitive pages: inventory tracker IDs and scripts on pages with forms or sensitive paths; report, never judge legality (promoted from the expansion roadmap; Sonnet) |
+| C-00 | `c/adapter-interface` | todo | | | The content adapter interface (replaces G38): ContentAdapter extracted from the Sanity code (G23a, G27), Sanity ported with no behaviour change, a shared contract test suite, `adapters:` in config. Spec marks model Opus: build on Sonnet and list under Built on Sonnet, review |
+| C-01 | `c/wordpress` | todo | | | WordPress adapter on ContentAdapter: docs/integrations/wordpress.md with a freelancer example, the contract suite plus the extra checks in the spec table (Sonnet, effort high) |
+| C-02 | `c/strapi` | todo | | | Strapi adapter on ContentAdapter: docs/integrations/strapi.md with a freelancer example, the contract suite plus the extra checks in the spec table (Sonnet, effort high) |
+| C-03 | `c/tina` | todo | | | TinaCMS adapter on ContentAdapter: docs/integrations/tina.md with a freelancer example, the contract suite plus the extra checks in the spec table (Sonnet, effort high) |
+| C-04 | `c/webflow` | todo | | | Webflow adapter on ContentAdapter: docs/integrations/webflow.md with a freelancer example, the contract suite plus the extra checks in the spec table (Sonnet, effort high) |
+| C-05 | `c/wix` | todo | | | Wix adapter on ContentAdapter: docs/integrations/wix.md with a freelancer example, the contract suite plus the extra checks in the spec table (Sonnet, effort high) |
+| C-06 | `c/framer` | todo | | | Framer adapter on ContentAdapter: docs/integrations/framer.md with a freelancer example, the contract suite plus the extra checks in the spec table (Sonnet, effort high) |
+| C-07 | `c/contentful` | todo | | | Contentful adapter on ContentAdapter: docs/integrations/contentful.md with a freelancer example, the contract suite plus the extra checks in the spec table (Sonnet, effort high) |
+| C-08 | `c/storyblok` | todo | | | Storyblok adapter on ContentAdapter: docs/integrations/storyblok.md with a freelancer example, the contract suite plus the extra checks in the spec table (Sonnet, effort high) |
+| C-09 | `c/payload` | todo | | | Payload adapter on ContentAdapter: docs/integrations/payload.md with a freelancer example, the contract suite plus the extra checks in the spec table (Sonnet, effort high) |
+| C-10 | `c/ghost` | todo | | | Ghost adapter on ContentAdapter: docs/integrations/ghost.md with a freelancer example, the contract suite plus the extra checks in the spec table (Sonnet, effort high) |
+| C-11 | `c/drupal` | todo | | | Drupal adapter on ContentAdapter: docs/integrations/drupal.md with a freelancer example, the contract suite plus the extra checks in the spec table (Sonnet, effort high) |
+| C-12 | `c/builders` | todo | | | Squarespace and other builders without a content API adapter on ContentAdapter: docs/integrations/builders.md with a freelancer example, the contract suite plus the extra checks in the spec table (Sonnet, effort high) |
+| F-05 | `f/published-not-live` | todo | | | Published but not live: published-not-live, live-page-missing, unpublished-still-live for every adapter with published() (needs C-00 and Sanity) |
+| F-06 | `f/backups` | todo | | | Backups and restore readiness: gaugeline backups <site>, read status only (Supabase, Sanity, a configured export folder) |
+| F-07 | `f/init` | todo | | | gaugeline init <site>: detect the stack from public signals and write a starting config with evidence comments (needs C-00 and the adapters) |
+| F-08 | `f/agent-skill` | todo | | | The Gaugeline agent skill: skills/gaugeline/SKILL.md with a finding table generated from the registry (needs N17) |
 | G29 | `06/config-baseline-suppress` | todo | | | Config, defineCheck, baseline and expiring suppressions |
 | G30 | `06/sarif-junit-action-docker` | todo | | | SARIF, JUnit, a GitHub Action and a Docker image |
 | X51 | `feat/51-vercel-check` | todo | | | Vercel deployment check  [from guide 2] [P3] |
+| N17 | `06/injection-safety` | todo | | | Injection safety: page text that reaches agents, reports and notifications. Must merge before G31 (the MCP server). Spec marks model Opus: build on Sonnet and list under Built on Sonnet, review |
 | G31 | `06/mcp-server` | todo | | | The MCP server |
 | G32 | `06/sanity-publish-gate` | todo | | | The Sanity publish gate |
 | G33 | `06/playwright-helper` | todo | | | The Playwright helper |
 | G34 | `07/hosted-schema-rls` | todo | | | Schema, row-level security and append-only decisions |
 | G35 | `07/runs-api-upload` | todo | | | The runs API and uploading from the CLI |
 | G36 | `07/nightly-queue-worker` | todo | | | Nightly runs: pg_cron, a queue and a worker |
-| G37 | `07/drafts-inbox-approvals` | todo | | | The drafts inbox and approve-then-act |
 | X63 | `feat/63-dashboard` | todo | | | Sign in, and the dashboard  [from guide 2] [P4] |
 | X64 | `feat/64-morning-email` | todo | | | The morning email  [from guide 2] [P4] |
+| G37 | `07/drafts-inbox-approvals` | todo | | | The drafts inbox and approve-then-act |
 | X66 | `feat/66-agencies` | todo | | | Agencies: many sites, clients who can look, and the weekly update  [from guide 2] [P4] |
 | X67 | `feat/67-notifications` | todo | | | Findings where the team already looks: Slack, GitHub and Sentry  [from guide 2] [P4] |
-| X68 | `feat/68-billing` | todo | | | Paying for hosted  [from guide 2] [P4] |
-| X69 | `feat/69-chat-approvals` | todo | | | Approve where you already talk: Slack, Discord and Teams  [from guide 2] [P4] |
-| X75 | `feat/75-mailbox-drafts` | todo | | | Drafts in your own mailbox: Gmail and Outlook  [from guide 2] [P4] |
 | X70 | `feat/70-fix-pull-request` | todo | | | Fix proposals: a pull request for what lives in code  [from guide 2] [P4] |
 | X71 | `feat/71-fix-cms-draft` | todo | | | Fix proposals: a draft in the content system  [from guide 2] [P4] |
 | X72 | `feat/72-fix-record` | todo | | | Fix proposals: one field on one record, and the re-check  [from guide 2] [P4] |
-| G38 | `08/content-adapter-interface` | todo | | | A content adapter interface, with one second CMS |
+| X69 | `feat/69-chat-approvals` | todo | | | Approve where you already talk: Slack, Discord and Teams  [from guide 2] [P4] |
+| X75 | `feat/75-mailbox-drafts` | todo | | | Drafts in your own mailbox: Gmail and Outlook  [from guide 2] [P4] |
+| X68 | `feat/68-billing` | todo | | | Paying for hosted  [from guide 2] [P4] |
 | G39 | `08/adr-rendered-checks` | todo | | | Decision record: rendered checks in a container |
 | N16 | `08/rendered-a11y-tools` | todo | | | After rendered checks: accessibility basics and tools that compute  [new: from your projects] [P5] |
 | G40 | `08/adr-later-work` | todo | | | Decision record: listings, creator platforms, self-hosting |
 | X54 | `feat/54-desktop` | todo | | | A desktop app, if someone needs one  [from guide 2] [P5] |
+| G38 | `08/content-adapter-interface` | superseded | | | A content adapter interface, with one second CMS (done as C-00; skip) |
