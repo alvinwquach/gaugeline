@@ -437,6 +437,10 @@ GET https://<project>.api.sanity.io/v2021-10-21/data/query/<dataset>?query=*[_ty
 
 The answer is the id, the slug and the title of each document: nothing else is requested. Gaugeline keeps them in memory only long enough to group them and keeps the groups. A finding prints the type, the shared slug or title, and the ids of the documents that share it. That is text an editor wrote, escaped before it is printed, and it appears only when two documents share it. The token goes in a header and never in the address. Without `--dupes` none of this is requested. What the findings mean: [Checking your queries](/docs/query-check#the-same-thing-twice).
 
+### Mutations (gaugeline query --mutations)
+
+`--mutations` reads the writes in your code and compares them with a schema file on your disk. It sends nothing: no request is made for a mutation, none could be (the code that reads them cannot import an HTTP client, and a test fails the build if it does), and it needs no `SANITY_PROJECT_ID`, no token and no network. The schema file and your source files are read from disk and stay there. A finding prints the file and line of a write and the names of the fields it writes, escaped. It never prints a value from your code. What the findings mean: [Checking your queries](/docs/query-check#mutations-checked-without-running-them); the proof: [What it can and can't write](/docs/writes#the-promise-test).
+
 ### Email records
 
 The email record checks run only when you pass `--dns`: without it, a run makes HTTP requests

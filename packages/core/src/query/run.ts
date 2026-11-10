@@ -1,4 +1,5 @@
-import { createQueryRegistry } from "../checks/query-counts.js";
+import { createQueryRegistry, type QueryInput } from "../checks/query-counts.js";
+import { createMutationsRegistry } from "../checks/query-mutations.js";
 import { ConnectorRateLimitedError, ConnectorRefusedError } from "../connectors/http.js";
 import { createSanityRead } from "../connectors/sanity.js";
 import type { Env } from "../connectors/types.js";
@@ -8,6 +9,7 @@ import { buildResult, type Result } from "../result.js";
 import { runChecks } from "../run.js";
 import { fetchCounts, type TypeCounts } from "./counts.js";
 import { findDupes, type DupeGroup } from "./dupes.js";
+import type { MutationShape, SchemaShape } from "./mutations.js";
 import type { QueryShape } from "./shape.js";
 
 export interface QueryCompareOptions {
@@ -18,6 +20,8 @@ export interface QueryCompareOptions {
   now: Date;
   /** --dupes: also ask for the id, slug and title of each document and report documents that share one. */
   dupes?: boolean;
+  /** --mutations: the writes read from the code and the schema to compare them with. Nothing about them is sent. */
+  mutations?: { shapes: readonly MutationShape[]; schema: SchemaShape };
 }
 
 export interface QueryCompareRun {
@@ -75,8 +79,13 @@ export async function compareQueries(options: QueryCompareOptions): Promise<Quer
     throw unreadable(err);
   }
   const checked = await runChecks(
-    { shapes, counts, ...(dupes ? { dupes } : {}) },
-    createQueryRegistry({ dupes: dupes !== undefined }),
+    {
+      shapes,
+      counts,
+      ...(dupes ? { dupes } : {}),
+      ...(options.mutations ? { mutations: options.mutations } : {}),
+    },
+    createQueryRegistry({ dupes: dupes !== undefined, mutations: options.mutations !== undefined }),
   );
   const types = counts.size;
   return {
@@ -91,6 +100,31 @@ export async function compareQueries(options: QueryCompareOptions): Promise<Quer
       failed: checked.failed.map((f) => f.id),
       couldNotCheck: checked.couldNotCheck,
       sampled: { "query-types": { seen: types, taken: types, limit: types } },
+    }),
+  };
+}
+
+/**
+ * `gaugeline query --mutations` with no SANITY_PROJECT_ID: the five mutation checks over the writes
+ * read from the code, and nothing else. No request of any kind is made, and none could be: this
+ * path never touches the fetcher.
+ */
+export async function checkMutationsOnly(options: {
+  mutations: { shapes: readonly MutationShape[]; schema: SchemaShape };
+  now: Date;
+}): Promise<QueryCompareRun> {
+  const input: QueryInput = { shapes: [], counts: new Map(), mutations: options.mutations };
+  const checked = await runChecks(input, createMutationsRegistry());
+  return {
+    counts: new Map(),
+    notices: [],
+    result: buildResult({
+      url: "query",
+      startedAt: options.now,
+      findings: checked.findings,
+      passed: checked.passed,
+      failed: checked.failed.map((f) => f.id),
+      couldNotCheck: checked.couldNotCheck,
     }),
   };
 }

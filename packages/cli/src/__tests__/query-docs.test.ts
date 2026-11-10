@@ -15,6 +15,7 @@ const page = readFileSync(
   "utf8",
 ).replace(/\r\n/g, "\n");
 const repo = fileURLToPath(new URL("../../../fixtures/repo-groq/", import.meta.url));
+const writes = fileURLToPath(new URL("../../../fixtures/repo-mutations/", import.meta.url));
 
 function fences(): Array<{ info: string; body: string }> {
   const out: Array<{ info: string; body: string }> = [];
@@ -33,9 +34,10 @@ function examples(): Array<{ command: string; env: Record<string, string>; expec
   const out: Array<{ command: string; env: Record<string, string>; expected: string }> = [];
   all.forEach((f, i) => {
     const next = all[i + 1];
-    const m = /^\$ (SANITY_PROJECT_ID=([a-z0-9]+) )?npx gaugeline (query \S+(?: --dupes)?)$/.exec(
-      f.body,
-    );
+    const m =
+      /^\$ (SANITY_PROJECT_ID=([a-z0-9]+) )?npx gaugeline (query \S+(?: --dupes| --mutations)?)$/.exec(
+        f.body,
+      );
     if (!/title=Terminal/.test(f.info) || !m) return;
     if (!next || !/title="?Output/.test(next.info)) return;
     out.push({
@@ -52,6 +54,7 @@ describe("docs/query-check.md: the command it shows", () => {
     expect(examples().map((e) => e.command)).toEqual([
       "query ./src/app",
       "query ./src/app",
+      "query ./app --mutations",
       "query ./src/app/menu --dupes",
     ]);
   });
@@ -68,13 +71,15 @@ describe("docs/query-check.md: the command it shows", () => {
           env: e.env,
         },
         {
-          cwd: repo,
+          // The mutations example runs in the invented studio repository, whose schema.json is the default.
+          cwd: e.command.includes("--mutations") ? writes : repo,
           now: () => new Date("2026-11-10T12:00:00Z"),
           fetcher: { transport: sanityCountsTransport(COPPERHILL_COUNTS), timeoutMs: 5000 },
         },
       );
       expect(code, e.command).toBe(EXIT.ok);
       if (e.env.SANITY_PROJECT_ID) expect(err.join(""), e.command).toBe("");
+      else if (e.command.includes("--mutations")) expect(err.join(""), e.command).toBe("");
       else expect(err.join(""), e.command).toContain("SANITY_PROJECT_ID is not set");
       expect(out.join("").trimEnd(), e.command).toBe(e.expected);
     }
@@ -88,6 +93,23 @@ describe("docs/query-check.md: the command it shows", () => {
       "Viewer role",
       "ten at most",
       "never in the address",
+    ])
+      expect(page, word).toContain(word);
+  });
+
+  it("the mutations section names the five findings, the schema file, and the promise", () => {
+    for (const word of [
+      "mutation-undeclared-field",
+      "mutation-missing-required",
+      "mutation-ref-as-string",
+      "mutation-no-drafts",
+      "mutation-shared-field",
+      "npx sanity schema extract",
+      "--schema",
+      "./schema.json",
+      "cannot import the fetcher",
+      "It never sends them.",
+      "Larkspur Yoga Studio",
     ])
       expect(page, word).toContain(word);
   });

@@ -148,6 +148,22 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     commands: ["query"],
   },
   {
+    name: "mutations",
+    type: "boolean",
+    description:
+      "With query: check the writes in your code against the schema (parsed, never sent)",
+    since: "0.2.0",
+    commands: ["query"],
+  },
+  {
+    name: "schema",
+    type: "string",
+    description:
+      "With query --mutations: the schema file from sanity schema extract (default ./schema.json)",
+    since: "0.2.0",
+    commands: ["query"],
+  },
+  {
     name: "webhooks",
     type: "boolean",
     description: "Read Stripe's webhook endpoints and the events that were never delivered",

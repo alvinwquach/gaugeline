@@ -1044,7 +1044,25 @@ export {
 export type { FetchCountsOptions, TypeCounts } from "./query/counts.js";
 export { DUPE_TITLES, dupeFindings, dupesQuery, findDupes } from "./query/dupes.js";
 export type { DupeGroup } from "./query/dupes.js";
-export { compareQueries } from "./query/run.js";
+export {
+  MUTATION_TITLES,
+  checkMutations,
+  extractMutations,
+  readMutations,
+  readSchema,
+  readSchemaFile,
+} from "./query/mutations.js";
+export type {
+  MutationExtraction,
+  MutationExtractOptions,
+  MutationKind,
+  MutationShape,
+  MutationUnreadable,
+  SchemaField,
+  SchemaShape,
+  ValueKind,
+} from "./query/mutations.js";
+export { checkMutationsOnly, compareQueries } from "./query/run.js";
 export type { QueryCompareOptions, QueryCompareRun } from "./query/run.js";
 export {
   QUERY_CHECKS,
@@ -1055,6 +1073,15 @@ export {
   queryTypeEmpty,
 } from "./checks/query-counts.js";
 export type { QueryInput } from "./checks/query-counts.js";
+export {
+  MUTATION_CHECKS,
+  createMutationsRegistry,
+  mutationNoDrafts,
+  mutationMissingRequired,
+  mutationRefAsString,
+  mutationSharedField,
+  mutationUndeclaredField,
+} from "./checks/query-mutations.js";
 export {
   QUERY_DUPE_CHECKS,
   createDupesRegistry,
