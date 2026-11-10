@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta property="og:image" content="{{origin}}/og.png">
+  <title>Harbour Physio | Book a first appointment</title>
+  <link rel="canonical" href="/">
+  <meta name="description" content="Book a first appointment at an invented three-room physiotherapy clinic.">
+  <script>
+    piAId = '100001'; piCId = '2000'; piHostname = 'pi.pardot.com';
+    (function () {
+      function async_load() {
+        var s = document.createElement('script'); s.type = 'text/javascript';
+        s.src = ('https:' == document.location.protocol ? 'https://pi' : 'http://cdn') + '.pardot.com/pd.js';
+        var c = document.getElementsByTagName('script')[0]; c.parentNode.insertBefore(s, c);
+      }
+      if (window.attachEvent) { window.attachEvent('onload', async_load); }
+      else { window.addEventListener('load', async_load, false); }
+    })();
+  </script>
+</head>
+<body>
+  <header><h1>Harbour Physio</h1></header>
+  <main id="main">
+    <p>Harbour Physio is an invented clinic used only in Gaugeline's tests. It has three treatment rooms, a small gym for rehabilitation and a front desk that answers the phone from eight until six. Every name, price and address on this page is made up, and no real business is described here. Book a first appointment below, ask for a call back, or sign up for the monthly newsletter about training after an injury.</p>
+    <p><a href="mailto:reception@harbour-physio.example">Talk to a physio</a></p>
+    <h2>Ask for a call back</h2>
+    <form action="https://webto.salesforce.com/servlet/servlet.WebToLead?encoding=UTF-8" method="POST">
+      <input type="hidden" name="oid" value="00Dxx0000000000">
+      <input type="hidden" name="retURL" value="https://harbour-physio.example/thanks">
+      <label>Email <input name="email" type="email"></label>
+      <button type="submit">Call me</button>
+    </form>
+    <h2>Book a sports injury assessment</h2>
+    <iframe src="https://go.pardot.com/l/100001/2026-02-03/xk2m" title="Sports injury assessment form" width="500" height="480"></iframe>
+    <h2>Monthly newsletter</h2>
+    <form action="https://forms.hubspot.com/uploads/form/v2/1234567/newsletter" method="POST">
+      <label>Email <input name="email" type="email"></label>
+      <button type="submit">Subscribe</button>
+    </form>
+  </main>
+  <footer><p>Harbour Physio, an invented business for tests.</p></footer>
+</body>
+</html>
