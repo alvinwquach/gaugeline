@@ -1,4 +1,5 @@
-import { readFileSync } from "node:fs";
+import { copyFileSync, mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Readable } from "node:stream";
 import { fileURLToPath } from "node:url";
@@ -171,6 +172,66 @@ describe("docs/query-check.md: the command it shows", () => {
       ".mjs",
       ".gitignore",
       "npx -p gaugeline -p typescript",
+    ])
+      expect(page, word).toContain(word);
+  });
+});
+
+describe("docs/query-check.md: the route it scaffolds", () => {
+  const COMMAND =
+    '$ SANITY_PROJECT_ID=northfield npx gaugeline query --page --type resource --out "./src/app/resource/[slug]"';
+
+  it("the command it shows writes the files it shows, and prints the output it shows", async () => {
+    const all = fences();
+    const at = all.findIndex((f) => f.body === COMMAND);
+    expect(at, "the example command is on the page").toBeGreaterThanOrEqual(0);
+    expect(all[at + 1]?.info).toMatch(/title="?Output/);
+    const dir = realpathSync(mkdtempSync(join(tmpdir(), "gaugeline-docs-page-")));
+    try {
+      copyFileSync(join(gql, "schema.json"), join(dir, "schema.json"));
+      const out: string[] = [];
+      const err: string[] = [];
+      const code = await main(
+        ["query", "--page", "--type", "resource", "--out", "./src/app/resource/[slug]"],
+        {
+          stdout: { write: (s) => out.push(s) },
+          stderr: { write: (s) => err.push(s) },
+          env: { SANITY_PROJECT_ID: "northfield", SANITY_DATASET: "production" },
+        },
+        {
+          cwd: dir,
+          now: () => new Date("2026-11-10T12:00:00Z"),
+          fetcher: { transport: sanityCountsTransport(NORTHFIELD_CONTENT), timeoutMs: 5000 },
+        },
+      );
+      expect(code).toBe(EXIT.ok);
+      expect(err.join("")).toBe("");
+      expect(out.join("").trimEnd()).toBe(all[at + 1]?.body);
+      for (const name of ["queries.ts", "types.ts", "page.tsx"]) {
+        const shown = all.filter((f) =>
+          new RegExp(`title="?${name.replace(".", "\\.")}"?(\\s|$)`).test(f.info),
+        );
+        expect(shown, name).toHaveLength(1);
+        expect(
+          readFileSync(join(dir, "src", "app", "resource", "[slug]", name), "utf8").trimEnd(),
+        ).toBe(shown[0]?.body);
+      }
+    } finally {
+      rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+    }
+  });
+
+  it("the page says what it assumes and how the files are written", () => {
+    for (const word of [
+      "metadataBase",
+      "@/sanity/lib/client",
+      "`params` is a promise",
+      "It never overwrites.",
+      "All three files or none.",
+      "`--force` replaces those three files, and never a folder or a link",
+      "Every path is printed.",
+      "runs no git command",
+      "Northfield Coaching",
     ])
       expect(page, word).toContain(word);
   });

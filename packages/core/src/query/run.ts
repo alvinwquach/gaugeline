@@ -223,14 +223,24 @@ export interface SuggestRun {
   notices: string[];
 }
 
+/** The shape of a type's published documents, and where it was read from. */
+export interface ShapeRun {
+  shape: ContentShape;
+  /** The dataset that was read. */
+  dataset: string;
+  /** Plain-language lines for stderr: the dataset that was assumed. Never a key. */
+  notices: string[];
+}
+
 /**
- * `gaugeline query --suggest --type <name>`: take the type's field names and kinds from the schema
- * file, count how many of the newest published documents have each field (count queries, one GET,
- * drafts left out), and write a query from the result. Plain rules, no model: the same schema and
- * counts give the same text. No document and no value is ever requested. A private dataset with no token, a token Sanity refuses or an unreadable dataset is a
- * ConfigError (exit 2), and so is a type name that is not one.
+ * Take a type's field names and kinds from the schema file and count how many of the newest
+ * published documents have each field (count queries, one GET, drafts left out): the shape that
+ * `--suggest` writes a query from and `--page` writes a route from. No document and no value is
+ * ever requested. A private dataset with no token, a token Sanity refuses or an unreadable
+ * dataset is a ConfigError (exit 2), and so is a type name that is not one. A type with no
+ * published documents comes back with `sampled` 0.
  */
-export async function suggestForType(options: SuggestOptions): Promise<SuggestRun> {
+export async function readShapeForType(options: SuggestOptions): Promise<ShapeRun> {
   const notices: string[] = [];
   let read;
   try {
@@ -250,10 +260,20 @@ export async function suggestForType(options: SuggestOptions): Promise<SuggestRu
   } catch (err) {
     throw err instanceof ConfigError ? err : unreadable(err);
   }
+  return { shape, dataset: read.dataset, notices };
+}
+
+/**
+ * `gaugeline query --suggest --type <name>`: take the type's field names and kinds from the schema
+ * file, count how many of the newest published documents have each field (count queries, one GET,
+ * drafts left out), and write a query from the result. Plain rules, no model: the same schema and
+ * counts give the same text. No document and no value is ever requested. A private dataset with no token, a token Sanity refuses or an unreadable dataset is a
+ * ConfigError (exit 2), and so is a type name that is not one.
+ */
+export async function suggestForType(options: SuggestOptions): Promise<SuggestRun> {
+  const run = await readShapeForType(options);
   return {
-    shape,
-    dataset: read.dataset,
-    ...(shape.sampled === 0 ? {} : { query: suggestQuery(shape) }),
-    notices,
+    ...run,
+    ...(run.shape.sampled === 0 ? {} : { query: suggestQuery(run.shape) }),
   };
 }

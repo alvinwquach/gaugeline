@@ -266,7 +266,8 @@ between the markers; CI fails when it differs from the flag table.
 | `--mutations`             | With query: check the writes in your code against the schema (parsed, never sent)                              |                      | 0.2.0 |
 | `--graphql`               | With query: check the GraphQL in your code against the schema (an endpoint may follow; Sanity's when none)     |                      | 0.2.0 |
 | `--suggest`               | With query: write a GROQ query for a type from the schema and document counts (needs --type)                   |                      | 0.2.0 |
-| `--type <value>`          | With query --suggest: the document type to write the query for, as in your schema                              |                      | 0.2.0 |
+| `--page`                  | With query: write a route (queries, types, page) from the schema and counts into --out (needs --type)          |                      | 0.2.0 |
+| `--type <value>`          | With query --suggest or --page: the document type to write the query or the route for, as in your schema       |                      | 0.2.0 |
 | `--schema <value>`        | With query: the schema file (sanity schema extract; SDL or introspection JSON for --graphql)                   |                      | 0.2.0 |
 | `--webhooks`              | Read Stripe's webhook endpoints and the events that were never delivered                                       |                      | 0.2.0 |
 | `-i`, `--interactive`     | Open a terminal view of the results to move through, filter and dismiss findings                               |                      | 0.2.0 |
@@ -280,7 +281,7 @@ between the markers; CI fails when it differs from the flag table.
 | `--legacy-review <value>` | Write the old addresses read with --legacy-from to this CSV file, for review                                   |                      | 0.2.0 |
 | `--base <value>`          | Check the plan against the site built at this address, such as a preview                                       |                      | 0.2.0 |
 | `--annotate <value>`      | Write a copy of the plan with a Gaugeline column saying what is wrong on each row                              |                      | 0.2.0 |
-| `--force`                 | Let --annotate replace a file that already exists                                                              |                      | 0.2.0 |
+| `--force`                 | Let --annotate (plan) or --page (query) replace files that already exist, never a folder or a link             |                      | 0.2.0 |
 | `--progress <value>`      | With --base, say what was fixed and what is new since the last run (state file optional)                       |                      | 0.2.0 |
 | `--watch <value>`         | With --base on production: the 30-day watch from this cutover date (YYYY-MM-DD)                                |                      | 0.2.0 |
 | `--all`                   | plan --progress: list the findings still open; run: check every site in gaugeline.sites.json                   |                      | 0.2.0 |
@@ -295,7 +296,7 @@ between the markers; CI fails when it differs from the flag table.
 | `--tag <value>`           | Check the sites in gaugeline.sites.json with this tag, such as client                                          |                      | 0.2.0 |
 | `--parallel <value>`      | Check this many sites at once (default 1); sites on one host never overlap                                     |                      | 0.2.0 |
 | `--limit <value>`         | Re-check this many of the export's pages (default 40; 0 only classifies the rows)                              |                      | 0.2.0 |
-| `--out <value>`           | Where to write the snapshot (default before.json)                                                              |                      | 0.2.0 |
+| `--out <value>`           | snapshot: the file to write (default before.json). query --page: the folder to write into                      |                      | 0.2.0 |
 | `--before <value>`        | The snapshot taken before cutover, written by gaugeline snapshot                                               |                      | 0.2.0 |
 | `--runs <value>`          | The folder of saved runs (each one saved with --json) to read                                                  |                      | 0.2.0 |
 | `--time-zone <value>`     | The time zone for dates and ages, such as America/Los_Angeles (default UTC)                                    |                      | 0.2.0 |

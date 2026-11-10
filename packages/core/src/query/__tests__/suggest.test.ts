@@ -13,7 +13,7 @@ import { createSanityRead } from "../../connectors/sanity.js";
 import { createFetcher, type Transport } from "../../fetcher.js";
 import { readContentShape, type ContentShape, type FieldShape } from "../content-shape.js";
 import { parseSchemaExtract, readSchemaFileFull, type SchemaFile } from "../mutations.js";
-import { suggestQuery } from "../suggest.js";
+import { projection, suggestQuery } from "../suggest.js";
 
 const f = (
   name: string,
@@ -61,6 +61,38 @@ const shaped = (fields: FieldShape[], sampled = 12): ContentShape => ({
   type: "resource",
   sampled,
   fields,
+});
+
+describe("projection: the entries the route scaffold shares with suggestQuery", () => {
+  it("gives the entries by field name, and the same text suggestQuery prints", () => {
+    const { entries, comments } = projection(RESOURCE);
+    expect(entries.map((e) => e.name)).toEqual(RESOURCE.fields.map((x) => x.name));
+    expect(comments).toEqual([
+      "// publishedAt is present on 50% of the sample",
+      "// gatedFile is present on 33% of the sample",
+    ]);
+    expect(entries.map((e) => `  ${e.text}`).join(",\n")).toContain('  "slug": slug.current,');
+  });
+
+  it("imageSize adds the asset's width and height to an image, and keeps a field of that name out of the way", () => {
+    const sized = projection(
+      shaped([
+        f("photo", "image", 12, { instances: 12, of: [f("width", "number", 12)] }),
+        f("gallery", "array", 12, { item: "image", instances: 5 }),
+      ]),
+      { imageSize: true },
+    ).entries.map((e) => e.text);
+    expect(sized[0]).toBe(
+      'photo{ "url": asset->url, "alt": coalesce(alt, ""), "width": asset->metadata.dimensions.width, "height": asset->metadata.dimensions.height }',
+    );
+    expect(sized[1]).toContain('gallery[]{ "url": asset->url');
+    expect(sized[1]).toContain('"height": asset->metadata.dimensions.height');
+    // Without it nothing changes, and a field called width is an ordinary field.
+    const plain = projection(
+      shaped([f("photo", "image", 12, { instances: 12, of: [f("width", "number", 12)] })]),
+    ).entries[0]?.text;
+    expect(plain).toBe('photo{ "url": asset->url, "alt": coalesce(alt, ""), width }');
+  });
 });
 
 describe("suggestQuery: unit", () => {
