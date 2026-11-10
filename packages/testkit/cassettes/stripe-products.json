@@ -1,0 +1,25 @@
+{
+  "interactions": [
+    {
+      "method": "GET",
+      "url": "https://api.stripe.com/v1/products?limit=100",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": "{\"object\":\"list\",\"url\":\"/v1/products\",\"has_more\":false,\"data\":[{\"id\":\"prod_PopTamalBox\",\"object\":\"product\",\"active\":true,\"created\":1767225600,\"default_price\":\"price_TamalBox4800\",\"description\":null,\"livemode\":true,\"metadata\":{\"sanityId\":\"tamal-box\"},\"name\":\"Tamal box (a dozen)\",\"type\":\"service\",\"updated\":1767225600},{\"id\":\"prod_PopSalsa\",\"object\":\"product\",\"active\":true,\"created\":1767225600,\"default_price\":\"price_Salsa900\",\"description\":null,\"livemode\":true,\"metadata\":{},\"name\":\"Salsa roja jar\",\"type\":\"service\",\"updated\":1767225600},{\"id\":\"prod_PopSupper\",\"object\":\"product\",\"active\":true,\"created\":1767225600,\"default_price\":null,\"description\":null,\"livemode\":true,\"metadata\":{},\"name\":\"Supper club seat\",\"type\":\"service\",\"updated\":1767225600},{\"id\":\"prod_PopWinter\",\"object\":\"product\",\"active\":false,\"created\":1767225600,\"default_price\":\"price_Winter500\",\"description\":null,\"livemode\":true,\"metadata\":{},\"name\":\"Winter menu card (retired)\",\"type\":\"service\",\"updated\":1767225600},{\"id\":\"prod_PopFlight\",\"object\":\"product\",\"active\":true,\"created\":1767225600,\"default_price\":\"price_FlightTiers\",\"description\":null,\"livemode\":true,\"metadata\":{},\"name\":\"Tasting flight, per guest\",\"type\":\"service\",\"updated\":1767225600}]}"
+    },
+    {
+      "method": "GET",
+      "url": "https://api.stripe.com/v1/prices?limit=100",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": "{\"object\":\"list\",\"url\":\"/v1/prices\",\"has_more\":false,\"data\":[{\"id\":\"price_SupperLate\",\"object\":\"price\",\"active\":true,\"billing_scheme\":\"per_unit\",\"created\":1767225600,\"currency\":\"usd\",\"livemode\":true,\"metadata\":{},\"product\":\"prod_PopSupper\",\"type\":\"one_time\",\"unit_amount\":8500,\"unit_amount_decimal\":\"8500\"},{\"id\":\"price_TamalBox4800\",\"object\":\"price\",\"active\":true,\"billing_scheme\":\"per_unit\",\"created\":1767225600,\"currency\":\"usd\",\"livemode\":true,\"metadata\":{},\"product\":\"prod_PopTamalBox\",\"type\":\"one_time\",\"unit_amount\":4800,\"unit_amount_decimal\":\"4800\"},{\"id\":\"price_SupperStd\",\"object\":\"price\",\"active\":true,\"billing_scheme\":\"per_unit\",\"created\":1767225600,\"currency\":\"usd\",\"livemode\":true,\"metadata\":{},\"product\":\"prod_PopSupper\",\"type\":\"one_time\",\"unit_amount\":7500,\"unit_amount_decimal\":\"7500\"},{\"id\":\"price_Salsa900\",\"object\":\"price\",\"active\":true,\"billing_scheme\":\"per_unit\",\"created\":1767225600,\"currency\":\"usd\",\"livemode\":true,\"metadata\":{},\"product\":\"prod_PopSalsa\",\"type\":\"one_time\",\"unit_amount\":900,\"unit_amount_decimal\":\"900\"},{\"id\":\"price_FlightTiers\",\"object\":\"price\",\"active\":true,\"billing_scheme\":\"tiered\",\"created\":1767225600,\"currency\":\"usd\",\"livemode\":true,\"metadata\":{},\"product\":\"prod_PopFlight\",\"type\":\"one_time\",\"unit_amount\":null,\"unit_amount_decimal\":null},{\"id\":\"price_Winter500\",\"object\":\"price\",\"active\":false,\"billing_scheme\":\"per_unit\",\"created\":1767225600,\"currency\":\"usd\",\"livemode\":true,\"metadata\":{},\"product\":\"prod_PopWinter\",\"type\":\"one_time\",\"unit_amount\":500,\"unit_amount_decimal\":\"500\"},{\"id\":\"price_TamalBox4200\",\"object\":\"price\",\"active\":false,\"billing_scheme\":\"per_unit\",\"created\":1767225600,\"currency\":\"usd\",\"livemode\":true,\"metadata\":{},\"product\":\"prod_PopTamalBox\",\"type\":\"one_time\",\"unit_amount\":4200,\"unit_amount_decimal\":\"4200\"},{\"id\":\"price_SupperEarly\",\"object\":\"price\",\"active\":false,\"billing_scheme\":\"per_unit\",\"created\":1767225600,\"currency\":\"usd\",\"livemode\":true,\"metadata\":{},\"product\":\"prod_PopSupper\",\"type\":\"one_time\",\"unit_amount\":6000,\"unit_amount_decimal\":\"6000\"}]}"
+    }
+  ],
+  "name": "stripe-products",
+  "recordedAt": "2026-11-10T00:00:00.000Z",
+  "version": 1
+}

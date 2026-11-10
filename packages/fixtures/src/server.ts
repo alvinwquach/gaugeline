@@ -87,6 +87,8 @@ export const PLANTED: Readonly<Record<string, string>> = Object.freeze({
   "stripe-secret": ["sk", "live", "GaugelineFixtureNotAKey00"].join("_"),
   "stripe-publishable": ["pk", "live", "GaugelineFixturePublic000"].join("_"),
   "stripe-restricted": ["rk", "live", "GaugelineFixtureRestricted0"].join("_"),
+  "stripe-publishable-test": ["pk", "test", "GaugelineFixtureTestPublic00"].join("_"),
+  "stripe-publishable-test-shop": ["pk", "test", "GaugelineFixtureTestShop0K7"].join("_"),
 });
 
 /** Replace {{planted:<name>}} with the invented value of that name. */

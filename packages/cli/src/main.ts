@@ -40,6 +40,7 @@ import {
   RESEND_KEY_ENV,
   resolveAccess,
   freezeEnv,
+  guardStripeKey,
   databaseEnvVars,
   referenceProblems,
   freshnessReferenceProblems,
@@ -974,6 +975,10 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         const name = key.startsWith("env:") ? key.slice(4) : undefined;
         if (name && (env[name] ?? "") !== "") deprecate(key, d, warn);
       }
+      // A Stripe secret key is refused here, before anything is read or requested: the ConfigError
+      // is exit 2, and no message names the key. A key that is allowed still gets a plain notice.
+      for (const notice of guardStripeKey(env, { allowSecretKey: args.allowSecretKey }))
+        if (!args.quiet) io.stderr.write(`${notice}\n`);
       const startedAt = (io.now ?? (() => new Date()))();
       // --since last: read the stored run before checking, replace it after. Without it, nothing
       // is read or written.

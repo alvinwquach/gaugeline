@@ -78,10 +78,9 @@ describe("launch: unit", () => {
       "staging-indexable",
       "noindex",
       "robots-block",
+      "stripe-test-mode",
     ])
       expect(ids.has(id) && LAUNCH_PRESET.includes(id), id).toBe(true);
-    // The test-key check arrives in a later phase: named, not registered yet.
-    expect(LAUNCH_PRESET).toContain("stripe-test-mode");
     expect(EMAIL_PRESET.every((id) => ids.has(id))).toBe(true);
   });
 });

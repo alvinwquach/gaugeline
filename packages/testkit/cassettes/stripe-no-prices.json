@@ -1,0 +1,25 @@
+{
+  "interactions": [
+    {
+      "method": "GET",
+      "url": "https://api.stripe.com/v1/products?limit=100",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": "{\"object\":\"list\",\"url\":\"/v1/products\",\"has_more\":false,\"data\":[{\"id\":\"prod_PopTamalBox\",\"object\":\"product\",\"active\":true,\"created\":1767225600,\"default_price\":\"price_TamalBox4800\",\"description\":null,\"livemode\":true,\"metadata\":{\"sanityId\":\"tamal-box\"},\"name\":\"Tamal box (a dozen)\",\"type\":\"service\",\"updated\":1767225600},{\"id\":\"prod_PopSalsa\",\"object\":\"product\",\"active\":true,\"created\":1767225600,\"default_price\":\"price_Salsa900\",\"description\":null,\"livemode\":true,\"metadata\":{},\"name\":\"Salsa roja jar\",\"type\":\"service\",\"updated\":1767225600}]}"
+    },
+    {
+      "method": "GET",
+      "url": "https://api.stripe.com/v1/prices?limit=100",
+      "status": 403,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": "{\"error\":{\"type\":\"invalid_request_error\",\"message\":\"The provided key does not have the required permissions for this endpoint on this account. Having the price read permission would allow this request to continue.\"}}"
+    }
+  ],
+  "name": "stripe-no-prices",
+  "recordedAt": "2026-11-10T00:00:00.000Z",
+  "version": 1
+}

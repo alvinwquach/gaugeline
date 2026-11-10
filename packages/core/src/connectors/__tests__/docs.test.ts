@@ -6,6 +6,7 @@ import { startServer, type FixtureServer } from "../../__tests__/helpers/server.
 import { connectorGet } from "../http.js";
 import { runConnectors } from "../run.js";
 import { sanityConnector } from "../sanity.js";
+import { guardStripeKey, stripeConnector } from "../stripe.js";
 import { useCassette } from "../../../../testkit/src/index.js";
 import { fake, testKey } from "./fake.js";
 
@@ -84,5 +85,65 @@ describe("docs/products-and-prices.md: Reading Sanity", () => {
       createFetcher({ transport }),
     );
     expect(privateDocs).toContain(`> ${run.notices[0]?.message}`);
+  });
+});
+
+describe("docs/products-and-prices.md: Reading Stripe", () => {
+  const block = (title: string) =>
+    new RegExp(`\`\`\`json title=${title}\n([\\s\\S]*?)\n\`\`\``).exec(page)?.[1];
+  // Built at run time: GitHub push protection rejects key-shaped literals.
+  const key = ["rk", "live", "ExampleKitchen0123456789"].join("_");
+
+  it("the Stripe products block is what the connector returns for the pop-up kitchen's account", async () => {
+    const run = await runConnectors(
+      [stripeConnector],
+      { STRIPE_API_KEY: key },
+      createFetcher({ transport: useCassette("stripe-products", { mode: "replay" }) }),
+    );
+    expect(run.notices).toEqual([]);
+    const shown = (run.data.get("stripe") as Array<{ id: string }>).filter((p) =>
+      ["prod_PopTamalBox", "prod_PopFlight"].includes(p.id),
+    );
+    expect(block("Stripe products")).toBe(JSON.stringify(shown, null, 2));
+  });
+
+  it("the page's tamal box price is the archived one, and checkout charges the default price", async () => {
+    const fixture = readFileSync(
+      fileURLToPath(
+        new URL("../../../../fixtures/sites/stripe-test-mode/index.html", import.meta.url),
+      ),
+      "utf8",
+    );
+    const products = await stripeConnector.read(
+      { STRIPE_API_KEY: key },
+      createFetcher({ transport: useCassette("stripe-products", { mode: "replay" }) }),
+    );
+    const box = products.find((p) => p.id === "prod_PopTamalBox");
+    const charged = box?.prices.find((p) => p.id === box.defaultPriceId);
+    const archived = box?.prices.find((p) => !p.active);
+    expect(fixture).toContain("$42.00");
+    expect(charged?.unitAmount).toBe(4800);
+    expect(archived?.unitAmount).toBe(4200);
+  });
+
+  it("the Stripe notices block is what a key without the Prices permission gets", async () => {
+    const run = await runConnectors(
+      [stripeConnector],
+      { STRIPE_API_KEY: key },
+      createFetcher({ transport: useCassette("stripe-no-prices", { mode: "replay" }) }),
+    );
+    expect(block("Stripe notices")).toBe(JSON.stringify(run.notices, null, 2));
+    expect(JSON.stringify(run.notices)).not.toContain(key);
+  });
+
+  it("the refusal quoted for a secret key is the one the connector throws", () => {
+    const secret = ["sk", "live", "ExampleKitchen0123456789"].join("_");
+    let thrown: { message: string; hint?: string } | undefined;
+    try {
+      guardStripeKey({ STRIPE_API_KEY: secret }, { allowSecretKey: false });
+    } catch (err) {
+      thrown = err as { message: string; hint?: string };
+    }
+    expect(page).toContain(`${thrown?.message}\nTry: ${thrown?.hint}`);
   });
 });
