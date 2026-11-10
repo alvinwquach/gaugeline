@@ -3,7 +3,7 @@ import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { decodeBody } from "../charset.js";
 import type { Hop } from "../fetcher.js";
-import { buildSnapshot, jsonLdNodes } from "../snapshot.js";
+import { INLINE_SCRIPT_MAX, buildSnapshot, jsonLdNodes } from "../snapshot.js";
 
 const URL0 = "https://shop.example/menu/";
 function page(body: string, extra: Partial<Hop> = {}): Hop[] {
@@ -111,8 +111,37 @@ describe("buildSnapshot: unit", () => {
     expect(s.og).toEqual({ "og:title": "Our menu", "og:image": "/i.png" });
     expect(s.scripts).toEqual(["https://shop.example/app.js"]);
     expect(s.forms).toEqual([
-      { action: "https://shop.example/subscribe", method: "post", hiddenFields: ["utm_source"] },
+      {
+        action: "https://shop.example/subscribe",
+        method: "post",
+        hiddenFields: ["utm_source"],
+        position: 2,
+      },
     ]);
+  });
+
+  it("numbers forms, iframes and scripts together in document order, and keeps inline scripts", () => {
+    const s = snap(`<script src="/a.js"></script>
+      <iframe src="//video.example/embed/1"></iframe><iframe></iframe><iframe data-src="/lazy"></iframe>
+      <form action="/go"></form>
+      <script>hbspt.forms.create({});</script>
+      <script type="application/ld+json">{"a":1}</script>
+      <script type="text/template"><form></form></script><script src=""></script><script> </script>`);
+    expect(s.iframes).toEqual([
+      { src: "https://video.example/embed/1", position: 1 },
+      { src: "https://shop.example/lazy", position: 3 },
+    ]);
+    expect(s.forms.map((f) => f.position)).toEqual([4]);
+    expect(s.scriptTags).toEqual([
+      { src: "https://shop.example/a.js", position: 0 },
+      { inline: "hbspt.forms.create({});", position: 5 },
+    ]);
+    expect(s.scripts).toEqual(["https://shop.example/a.js"]);
+  });
+
+  it("keeps only the start of a very long inline script", () => {
+    const s = snap(`<script>${"a".repeat(INLINE_SCRIPT_MAX + 500)}</script>`);
+    expect(s.scriptTags?.[0]?.inline).toHaveLength(INLINE_SCRIPT_MAX);
   });
 
   it("never executes scripts", () => {
