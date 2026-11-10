@@ -30,6 +30,17 @@ header and never in the address. Before any message about a system leaves Gaugel
 error, a `--verbose` line), every key value in it is replaced with `[redacted]`. A variable set to an
 empty string counts as not set.
 
+### Databases
+
+If `gaugeline.sources.json` names a Postgres or Supabase database
+([A database as a source](./connectors/postgres.md)), Gaugeline connects to it with the connection
+string in the environment variable you name, and only when a check asks for one of its named queries.
+It is not a request to the checked site and does not go through the fetcher. It sends one statement
+at a time, a single `SELECT` that passed the statement check, inside a read-only transaction that is
+always rolled back, with a timeout and a cap of 5,000 rows. The connection string, its password and
+any Supabase key are replaced with `[redacted]` in every message, and a Supabase `service_role` key
+is refused without being used. The rows stay on your computer or in your CI.
+
 ### Links on the page
 
 The link checks request at most 30 of the page's same-site links (the same host, with or without

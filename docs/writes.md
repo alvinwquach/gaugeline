@@ -8,13 +8,13 @@ A fair question, asked early by anyone who has handed a tool credentials before:
 
 ## Per protocol
 
-| Protocol            | Read | Create, update, delete | What that means                                                                                                           |
-| ------------------- | ---- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| REST                | yes  | never                  | Issues the reads it is told to and follows a documented cursor. It never sends a method that changes anything.            |
-| GraphQL             | yes  | parsed, never sent     | Introspects the schema and runs queries with a read-only token. Mutations are checked against the schema and reported.    |
-| GROQ (Sanity)       | yes  | parsed, never sent     | Counts and shapes with a viewer token; your mutation code read from the repository the same way.                          |
-| SQL                 | yes  | never                  | SELECT and catalogue reads only: counts, constraints, indexes, row-level security state, migration state. No DDL, no DML. |
-| Webhooks and queues | yes  | never                  | Reads delivery history and queue depth. It never enqueues, replays or retries on your behalf.                             |
+| Protocol            | Read | Create, update, delete | What that means                                                                                                                                                                                                                               |
+| ------------------- | ---- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| REST                | yes  | never                  | Issues the reads it is told to and follows a documented cursor. It never sends a method that changes anything.                                                                                                                                |
+| GraphQL             | yes  | parsed, never sent     | Introspects the schema and runs queries with a read-only token. Mutations are checked against the schema and reported.                                                                                                                        |
+| GROQ (Sanity)       | yes  | parsed, never sent     | Counts and shapes with a viewer token; your mutation code read from the repository the same way.                                                                                                                                              |
+| SQL                 | yes  | never                  | SELECT and catalogue reads only: counts, constraints, indexes, row-level security state, migration state. No DDL, no DML. A configured Postgres or Supabase source is read through a read-only transaction ([how](./connectors/postgres.md)). |
+| Webhooks and queues | yes  | never                  | Reads delivery history and queue depth. It never enqueues, replays or retries on your behalf.                                                                                                                                                 |
 
 ## What it does instead of writing
 
