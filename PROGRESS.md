@@ -321,7 +321,7 @@ None yet. Branches the spec marks "model Opus" that were built on Sonnet from G2
 | F-02 | `f/handoff` | todo | | | Ownership and handoff report: who owns what for a client's site (freelancer branch; Sonnet, effort high) |
 | F-03 | `f/cost-watch` | todo | | | Hosting cost watch: usage against plan limits before the bill surprises a client (freelancer branch; Sonnet, effort high) |
 | F-04 | `f/audit-pack` | todo | | | New-client audit pack, built on the work order (G28, G28a) (freelancer branch; Sonnet, effort medium) |
-| E-18 | `09/migration-completeness` | todo | | | Migration completeness: every item of the old site exists on the new one, redirects in one hop, keeps title, canonical and structured data type (promoted from the expansion roadmap; build as written there; Sonnet) |
+| E-18 | `09/migration-completeness` | todo | | | Migration completeness: every item of the old site exists on the new one, redirects in one hop, keeps title, canonical and structured data type (promoted from the expansion roadmap; build as written there; Sonnet) Spec update 10 Nov: record Firecrawl's crawl endpoint as an optional URL source for the old site, behind the same FIRECRAWL_API_KEY. |
 | E-14 | `09/sensitive-trackers` | todo | | | Trackers on sensitive pages: inventory tracker IDs and scripts on pages with forms or sensitive paths; report, never judge legality (promoted from the expansion roadmap; Sonnet) |
 | C-00 | `c/adapter-interface` | todo | | | The content adapter interface (replaces G38): ContentAdapter extracted from the Sanity code (G23a, G27), Sanity ported with no behaviour change, a shared contract test suite, `adapters:` in config. Spec marks model Opus: build on Sonnet and list under Built on Sonnet, review |
 | C-01 | `c/wordpress` | todo | | | WordPress adapter on ContentAdapter: docs/integrations/wordpress.md with a freelancer example, the contract suite plus the extra checks in the spec table (Sonnet, effort high) |
@@ -361,7 +361,7 @@ None yet. Branches the spec marks "model Opus" that were built on Sonnet from G2
 | X69 | `feat/69-chat-approvals` | todo | | | Approve where you already talk: Slack, Discord and Teams  [from guide 2] [P4] |
 | X75 | `feat/75-mailbox-drafts` | todo | | | Drafts in your own mailbox: Gmail and Outlook  [from guide 2] [P4] |
 | X68 | `feat/68-billing` | todo | | | Paying for hosted  [from guide 2] [P4] |
-| G39 | `08/adr-rendered-checks` | todo | | | Decision record: rendered checks in a container |
+| G39 | `08/adr-rendered-checks` | todo | | | Decision record: rendered checks in a container Spec update 10 Nov: also covers an opt-in Firecrawl renderer (`--renderer firecrawl`, the user's own FIRECRAWL_API_KEY; always maxAge 0; capped by `--max-rendered-pages`; self-hosted Firecrawl is AGPL, so Gaugeline only calls its API). Phase 08: nothing to do before then. |
 | N16 | `08/rendered-a11y-tools` | todo | | | After rendered checks: accessibility basics and tools that compute  [new: from your projects] [P5] |
 | G40 | `08/adr-later-work` | todo | | | Decision record: listings, creator platforms, self-hosting |
 | X54 | `feat/54-desktop` | todo | | | A desktop app, if someone needs one  [from guide 2] [P5] |
