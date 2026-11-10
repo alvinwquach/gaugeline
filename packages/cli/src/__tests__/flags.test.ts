@@ -363,9 +363,12 @@ describe("flag table: e2e", () => {
       // so it proves the built bin accepts the flag for that command, with no key and no request.
       const deliveryOnly = f.commands.length === 1 && f.commands[0] === "delivery";
       const platformOnly = f.commands.length === 1 && f.commands[0] === "platform";
+      // query --dupes reads a dataset (SANITY_PROJECT_ID), so it is proved the same way, with --help.
+      const queryOnly = f.commands.length === 1 && f.commands[0] === "query";
       const digestOnly =
         !deliveryOnly &&
         !platformOnly &&
+        !queryOnly &&
         !planOnly &&
         !printedOnly &&
         !snapshotOnly &&
@@ -401,8 +404,12 @@ describe("flag table: e2e", () => {
           ]
         : snapshotOnly
           ? ["snapshot", "fernkiln.invalid", `--${f.name}`, join(scratch, "snapshot.json")]
-          : deliveryOnly || platformOnly
-            ? [deliveryOnly ? "delivery" : "platform", `--${f.name}`, "--help"]
+          : deliveryOnly || platformOnly || queryOnly
+            ? [
+                deliveryOnly ? "delivery" : platformOnly ? "platform" : "query",
+                `--${f.name}`,
+                "--help",
+              ]
             : cutoverOnly
               ? ["cutover", `--${f.name}`, before]
               : assertOnly

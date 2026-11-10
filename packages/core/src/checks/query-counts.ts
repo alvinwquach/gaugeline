@@ -1,12 +1,16 @@
 import { CheckRegistry, defineCheck, type Check } from "../model.js";
 import { TITLES, compareWithCounts, type TypeCounts } from "../query/counts.js";
+import type { DupeGroup } from "../query/dupes.js";
 import type { QueryShape } from "../query/shape.js";
+import { QUERY_DUPE_CHECKS } from "./query-dupes.js";
 
 /** What the query checks read: the queries found in a repository, and what the dataset holds. */
 export interface QueryInput {
   shapes: readonly QueryShape[];
   /** What the dataset holds, by type. A type with no entry gets only the drafts finding. */
   counts: ReadonlyMap<string, TypeCounts>;
+  /** The documents that share a slug or a title (--dupes). Absent: the dupe checks are not run. */
+  dupes?: readonly DupeGroup[];
 }
 
 const only = (id: string, input: QueryInput) =>
@@ -63,7 +67,7 @@ export const queryNoDraftsFilter = defineCheck<QueryInput>({
   run: (input) => only("query-no-drafts-filter", input),
 });
 
-/** The checks `gaugeline query` runs. They read a QueryInput, not a page. */
+/** The checks `gaugeline query` always runs (the two it adds with --dupes are QUERY_DUPE_CHECKS). They read a QueryInput, not a page. */
 export const QUERY_CHECKS: readonly Check<QueryInput>[] = [
   queryFieldAbsent,
   queryTypeEmpty,
@@ -71,8 +75,9 @@ export const QUERY_CHECKS: readonly Check<QueryInput>[] = [
   queryNoDraftsFilter,
 ];
 
-export function createQueryRegistry(): CheckRegistry {
+export function createQueryRegistry(options: { dupes?: boolean } = {}): CheckRegistry {
   const registry = new CheckRegistry();
   for (const c of QUERY_CHECKS) registry.register(c);
+  if (options.dupes === true) for (const c of QUERY_DUPE_CHECKS) registry.register(c);
   return registry;
 }

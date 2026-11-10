@@ -427,6 +427,16 @@ GET https://<project>.api.sanity.io/v2021-10-21/data/query/<dataset>?query={"tot
 
 The answer is whole numbers: how many documents of the type exist and how many have each field. No document, no field value and no sample is read. A token (`SANITY_TOKEN`, only for a private dataset) goes in a header and never in the address. A type with many fields is sent in two or more parts when the address would be too long, and stderr says so. What a finding prints is the type, the field's name, the file and line, and two numbers. Without `SANITY_PROJECT_ID` nothing is requested. What the findings mean: [Checking your queries](/docs/query-check#what-it-reports).
 
+### Duplicate documents (gaugeline query --dupes)
+
+`--dupes` is the one option of `gaugeline query` that reads more than counts. It needs `SANITY_PROJECT_ID` and sends one more `GET` for each document type your queries name, published content only:
+
+```text
+GET https://<project>.api.sanity.io/v2021-10-21/data/query/<dataset>?query=*[_type == "menuItem"]{_id,"slug":slug.current,title}&perspective=published
+```
+
+The answer is the id, the slug and the title of each document: nothing else is requested. Gaugeline keeps them in memory only long enough to group them and keeps the groups. A finding prints the type, the shared slug or title, and the ids of the documents that share it. That is text an editor wrote, escaped before it is printed, and it appears only when two documents share it. The token goes in a header and never in the address. Without `--dupes` none of this is requested. What the findings mean: [Checking your queries](/docs/query-check#the-same-thing-twice).
+
 ### Email records
 
 The email record checks run only when you pass `--dns`: without it, a run makes HTTP requests

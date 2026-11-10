@@ -9,7 +9,7 @@ $ SANITY_PROJECT_ID=abc123 SANITY_TOKEN=… npx gaugeline query ./src
 ```
 
 ::: info What works today
-`gaugeline query <folder>` reads the GROQ in your repository and lists each query with its file and line. With `SANITY_PROJECT_ID` set it also asks your dataset how many documents of each type exist and how many have each field, and reports the four findings under [What it reports](#what-it-reports). Without it the command makes no request and needs no token. Duplicates, mutations, GraphQL and suggested queries, which the rest of this page describes, are built branch by branch on top of this, and each part says so when it ships.
+`gaugeline query <folder>` reads the GROQ in your repository and lists each query with its file and line. With `SANITY_PROJECT_ID` set it also asks your dataset how many documents of each type exist and how many have each field, and reports the four findings under [What it reports](#what-it-reports). Without it the command makes no request and needs no token. With `--dupes` it also names documents that share a slug or a title. Mutations, GraphQL and suggested queries, which the rest of this page describes, are built branch by branch on top of this, and each part says so when it ships.
 :::
 
 ## What the command reads
@@ -234,18 +234,58 @@ It is not a page builder. There's no design in it, no layout opinions, and no co
 
 ## The same thing, twice
 
-Duplicates are the other half of one source of truth: two documents that mean the same thing, at two addresses.
+Duplicates are the other half of one source of truth: two documents that mean the same thing, at two addresses. `--dupes` asks your dataset for the id, the slug and the title of every published document of the types your queries read, and names the ones that share a slug or a title.
 
-```sh title=Terminal untested="Converted with a fixture in this page's own branch."
-$ npx gaugeline query ./src --dupes
-
-✕ 2 resource documents share the slug “claim-denials”
-  only one can own the address. res-1, res-2
-! 2 resource documents are called “MIPS guide”
-  different addresses, same thing. res-3, res-4
+```sh title=Terminal untested="Needs a Sanity project, and the docs runner points every example at a fixture website. packages/cli/src/__tests__/query-docs.test.ts runs this command in the invented bakery repository against an invented dataset and compares the output with the block below."
+$ SANITY_PROJECT_ID=cprhl1b4 npx gaugeline query ./src/app/menu --dupes
 ```
 
-A shared slug is a bug: one of them can't be reached. A shared title usually means content was duplicated rather than moved, which splits your search results between two pages.
+```text title=Output
+menuItem  ./src/app/menu/[slug]/page.tsx:3
+  fields: name, description, allergens[]->name, photo.asset->url
+  drafts: not left out by the filter
+  params: $slug
+
+1 shape from 1 query.
+
+Counted the published documents of 1 type in the dataset: one request each, counts only.
+
+Read the ids, slugs and titles of the published documents of 1 type to look for duplicates: one request each. A title or slug is shown only when two documents share it.
+
+✗ 2 menuItem documents share the slug “sourdough-loaf”
+    Only one can own the address. menu-sourdough, menu-sourdough-old
+! A query does not leave drafts out
+    ./src/app/menu/[slug]/page.tsx:3  The menuItem query's filter does not leave drafts out. That is safe when the client asks for the published perspective, and leaks unpublished content if anything runs it with drafts.
+! 2 menuItem documents are called “Seeded rye”
+    Different addresses, same thing. menu-rye, menu-rye-copy
+· A field your query asks for is missing on some documents
+    ./src/app/menu/[slug]/page.tsx:3  allergens is missing on 28 of 40 documents. Fine if it is optional; a bug if the template assumes it.
+✓ query-field-absent
+✓ query-type-empty
+
+4 to look at, 1 to fix first.
+```
+
+Copperhill Bakery's freelancer copied the sourdough loaf to make a seasonal version and renamed it, and the copy kept the loaf's address. Two documents now claim `/menu/sourdough-loaf`, and the menu page can show only one of them. The rye loaf was copied the same way, with a new address and the same name, so a search for "seeded rye" finds two pages.
+
+| Finding                                                                   | Level          | What it usually means                                                                             |
+| ------------------------------------------------------------------------- | -------------- | ------------------------------------------------------------------------------------------------- |
+| `query-dupe-slug`: 2 `menuItem` documents share the slug `sourdough-loaf` | Fix this first | One of them cannot be reached. Delete the copy or give it its own slug.                           |
+| `query-dupe-title`: 2 `menuItem` documents are called `Seeded rye`        | Fix soon       | Content was duplicated and not moved, which splits search results. It can also be two real pages. |
+
+### How the matching works
+
+- **A shared slug is a bug.** Slugs are compared exactly: `Sourdough-Loaf` and `sourdough-loaf` are two addresses. A shared title is a warning, because it can be two real pages. Titles are compared after trimming the spaces round them and ignoring case, so `Seeded rye` and `seeded Rye` are the same title.
+- **Within one type.** A page and a post that both use the slug `about` are two addresses, so they are not reported. Only the types your queries read are looked at.
+- **Published documents only.** A draft and the document it will become are one document, not a pair.
+- **Documents with no slug, or no title, are left out of that part.** A type that has no slug field at all gives title findings only, and no error. Documents without a title are not reported either.
+- **Reported once.** Documents that share both a slug and a title appear as the slug finding only.
+- **The ids are the evidence**, sorted, ten at most and then `and 4 more`. Open them in the Studio by id.
+- **Near matches are missed on purpose.** `Seeded rye` and `Seeded rye loaf` are two titles. The check is a plain rule, the same input gives the same findings, and nothing guesses.
+
+### What `--dupes` reads
+
+It is the one `query` option that reads more than counts. For each document type your queries name, one `GET` asks for exactly three things about each published document: its `_id`, its `slug.current` and its `title`. Nothing else is requested: no body, no image, no field you did not name. The token goes in a header, never in the address. The documents are grouped in memory and only the groups are kept, and the report shows a slug or a title only when two documents share it, never one that is unique. A title is text an editor wrote, so `--dupes` is the one option whose output shows editor-written text, and it is off unless you ask. It needs `SANITY_PROJECT_ID`, and a private dataset needs a token with the Viewer role: see [Private datasets](/docs/private-datasets#what-gaugeline-query-dupes-reads). A type with so many documents that the answer is larger than 5 MB stops the command with exit 2 and says so.
 
 ## Before a restructure
 

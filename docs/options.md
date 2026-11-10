@@ -262,6 +262,7 @@ between the markers; CI fails when it differs from the flag table.
 | `--since <value>`         | Page check: compare with the last run (the only value is last). delivery: the window to read, such as 7d       |                      | 0.2.0 |
 | `--paid`                  | Count the orders paid in Stripe in the window; with --sent, compare them with the emails                       |                      | 0.2.0 |
 | `--sent`                  | Count the emails Resend says it sent in the window; with --paid, compare them with the orders                  |                      | 0.2.0 |
+| `--dupes`                 | With query: name documents that share a slug or a title (reads each one's id, slug and title)                  |                      | 0.2.0 |
 | `--webhooks`              | Read Stripe's webhook endpoints and the events that were never delivered                                       |                      | 0.2.0 |
 | `-i`, `--interactive`     | Open a terminal view of the results to move through, filter and dismiss findings                               |                      | 0.2.0 |
 | `--slack <value>`         | Send a summary to this Slack incoming webhook (or set GAUGELINE_SLACK_WEBHOOK)                                 |                      | 0.2.0 |
@@ -389,6 +390,8 @@ npx gaugeline query ./src
 ```
 
 With `SANITY_PROJECT_ID` set (and `SANITY_DATASET`, `production` when unset, and `SANITY_TOKEN` with the Viewer role for a private dataset) it also asks the dataset for counts, one `GET` for each document type, and reports a field no document has (`query-field-absent`), a type with no documents (`query-type-empty`), a field some documents lack (`query-field-partial`) and a query whose filter leaves drafts out (`query-no-drafts-filter`). Counts only: no document is ever read. Without `SANITY_PROJECT_ID` it makes no request, needs no token and says so on stderr.
+
+With `--dupes` (it needs `SANITY_PROJECT_ID`) it asks one more `GET` for each document type, for the `_id`, `slug.current` and `title` of each published document and nothing else, and reports documents of one type that share a slug (`query-dupe-slug`, "Fix this first") or a title (`query-dupe-title`, "Fix soon"), naming their ids. It is the one option whose output shows text your editors wrote, and it shows a slug or a title only when two documents share it. What it reads: [The same thing, twice](query-check.md#the-same-thing-twice).
 
 It takes `--json` (the schema 2 result and nothing else; it needs `SANITY_PROJECT_ID`) and `--ci` (exit 1 for a "Fix this first" finding). It exits 0 when it read the folder and 2 when the folder does not exist, TypeScript is not installed beside it (`npx -p gaugeline -p typescript gaugeline query ./src` brings it) or the dataset could not be read: a private dataset with no token names `SANITY_TOKEN` and the Viewer role. What it reads and what it lists as unreadable: [Checking your queries](query-check.md#what-the-command-reads); what it counts: [What it reports](query-check.md#what-it-reports).
 

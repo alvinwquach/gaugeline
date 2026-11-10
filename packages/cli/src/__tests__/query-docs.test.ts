@@ -33,7 +33,9 @@ function examples(): Array<{ command: string; env: Record<string, string>; expec
   const out: Array<{ command: string; env: Record<string, string>; expected: string }> = [];
   all.forEach((f, i) => {
     const next = all[i + 1];
-    const m = /^\$ (SANITY_PROJECT_ID=([a-z0-9]+) )?npx gaugeline (query \S+)$/.exec(f.body);
+    const m = /^\$ (SANITY_PROJECT_ID=([a-z0-9]+) )?npx gaugeline (query \S+(?: --dupes)?)$/.exec(
+      f.body,
+    );
     if (!/title=Terminal/.test(f.info) || !m) return;
     if (!next || !/title="?Output/.test(next.info)) return;
     out.push({
@@ -47,7 +49,11 @@ function examples(): Array<{ command: string; env: Record<string, string>; expec
 
 describe("docs/query-check.md: the command it shows", () => {
   it("has the example it describes", () => {
-    expect(examples().map((e) => e.command)).toEqual(["query ./src/app", "query ./src/app"]);
+    expect(examples().map((e) => e.command)).toEqual([
+      "query ./src/app",
+      "query ./src/app",
+      "query ./src/app/menu --dupes",
+    ]);
   });
 
   it("prints what the page says", async () => {
@@ -72,6 +78,18 @@ describe("docs/query-check.md: the command it shows", () => {
       else expect(err.join(""), e.command).toContain("SANITY_PROJECT_ID is not set");
       expect(out.join("").trimEnd(), e.command).toBe(e.expected);
     }
+  });
+
+  it("the duplicates example names the ids, and what --dupes reads", () => {
+    for (const word of [
+      "query-dupe-slug",
+      "query-dupe-title",
+      "`_id`, its `slug.current` and its `title`",
+      "Viewer role",
+      "ten at most",
+      "never in the address",
+    ])
+      expect(page, word).toContain(word);
   });
 
   it("the page names the three reasons a query is unreadable, and what it reads", () => {
