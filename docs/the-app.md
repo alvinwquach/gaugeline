@@ -357,7 +357,37 @@ views, and download a report, before you point Gaugeline at a client's site.
 - **Everything else is the same.** The one-time key, the session cookie and the checks on where a
   request comes from all apply as they do in a normal session.
 - `--demo` takes no address, and can't be combined with another way of starting: `gaugeline open
---demo shop.example` stops with exit code 2.
+--demo shop.example` and `gaugeline open --demo --ads ads-export.csv` each stop with exit code 2.
+
+## Ads
+
+`gaugeline open --ads ads-export.csv` starts the app with one run, made from an export of your ads
+instead of from an address. It adds an **Ads** view, and the run appears in the sidebar under the
+file's name, never its folder. The view leads with how much of the spend went to pages with
+problems, out of the total, and below it lists each landing page with its ads, its spend and what
+was found. Each finding opens in [Problems](#problems), where it can be copied as a note.
+
+![The Ads view for a tapas bar's autumn campaign: $1,150.74 of $3,155.24 went to pages with problems, and a table of four landing pages with their ads, spend and findings, the page that does not load first.](/img/app-ads.png)
+
+[Ad landing pages](/docs/ad-landing-pages#in-the-app) has a worked example for a tapas bar and says
+how each row is worked out. What matters for the app:
+
+- **The file is read once, at the start, from the path you typed.** There is no upload box and no
+  address that accepts a path, so a web page can't make the app read a file. To look at another export,
+  stop the app and run the command again.
+- **A file that can't be used stops it before it starts.** A missing or unreadable file, or one with
+  no link column or no amount-spent column, exits with code 2 and the ads command's message.
+- **`--ads` takes no address**, and can't be combined with `--demo`.
+- **Money is shown from whole cents.** Amounts are added as whole numbers of the currency's smallest
+  unit and formatted for your language at the end. An export that mixes currencies gets one summary and
+  one table for each currency, and amounts in different ones are never added together.
+- **Download the report** appears only when the ads command makes a report for the run.
+
+::: warning Not in this version yet
+Reading an export and checking its pages is the ads command, which is built after the app. Until it
+ships, `gaugeline open --ads` says so and exits with code 2. The view, and everything above, is built
+and tested against results from a stand-in for that command.
+:::
 
 ## Works offline
 
@@ -376,6 +406,7 @@ styles, fonts and requests may only come from the app itself.
 | Pages checked                          | Every address the check tested, and what it answered: the page, each redirect step, links, images, sitemap pages, feeds and JavaScript files |
 | Search data                            | The title, canonical, readable words and structured data the page declares, as read without JavaScript                                       |
 | Leaks & access                         | Whether the Sanity dataset is public, which types it holds, JavaScript scanned for keys, and staging copies                                  |
+| Ads                                    | With `gaugeline open --ads`: the landing pages of an ads export, the spend that went to pages with problems, and each page's findings        |
 | Page cost, Automatic messages, Content | Need your Sanity login. Coming in version 0.2                                                                                                |
 
 ## Private to your computer

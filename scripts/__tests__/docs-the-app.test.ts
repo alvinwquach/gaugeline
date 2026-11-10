@@ -11,7 +11,8 @@ import {
 } from "../../packages/core/src/index.js";
 import type { Checked, Result } from "../../packages/app/src/types.js";
 import { withFixture } from "../../packages/fixtures/src/index.js";
-import { leaksAccessText, pagesCheckedText, searchDataText } from "../lib/the-app-docs.js";
+import { adsText, leaksAccessText, pagesCheckedText, searchDataText } from "../lib/the-app-docs.js";
+import { TAPAS_ADS, tapasResult } from "../lib/ads-example.js";
 
 const page = readFileSync(
   fileURLToPath(new URL("../../docs/the-app.md", import.meta.url)),
@@ -108,5 +109,21 @@ describe("the tavern example in docs/the-app.md", () => {
       .join("\n");
     expect(text).toContain("Trivia Night");
     expect(block("Example tavern run")).toBe(text);
+  });
+});
+
+describe("the Ads example in docs/ad-landing-pages.md", () => {
+  it("shows what the app lists for the tapas bar's export, from the model the view uses", () => {
+    const adsPage = readFileSync(
+      fileURLToPath(new URL("../../docs/ad-landing-pages.md", import.meta.url)),
+      "utf8",
+    ).replace(/\r\n/g, "\n");
+    const shown = new RegExp("```text title=Ads in the app\\n([\\s\\S]*?)\\n```").exec(
+      adsPage,
+    )?.[1];
+    const text = adsText(tapasResult(), TAPAS_ADS);
+    if (process.env.GAUGELINE_PRINT_ADS)
+      writeFileSync(process.env.GAUGELINE_PRINT_ADS, `${text}\n`);
+    expect(shown).toBe(text);
   });
 });

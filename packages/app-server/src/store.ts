@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { LeaksView, PageData, RequestRow, Result, RunResult } from "@gaugeline/core";
+import type { AdsData } from "./ads.js";
 
 /** What a run streams: a step's text, then done with the counts, or failed with the reason. */
 export type RunEvent =
@@ -13,9 +14,14 @@ export interface Counts {
   low: number;
 }
 
+/** What a run is of: a page checked from an address, or an ads export read from a file. */
+export type RunKind = "page" | "ads";
+
 export interface Run {
   id: string;
+  /** The address that was typed. For an ads run, the file's base name and never its folder. */
   url: string;
+  kind: RunKind;
   state: "running" | "done" | "failed";
   startedAt: string;
   counts?: Counts;
@@ -26,6 +32,11 @@ export interface Run {
    * dataset and preview checks read, for the Pages checked, Search data and Leaks & access views. Beside the result, not in it: the result's shape is versioned.
    */
   checked?: { requests?: RequestRow[]; page: PageData; leaks: LeaksView };
+  /**
+   * An ads run, when done: each landing page's ads and spend (integers in minor units). The API sends
+   * it in `checked`, beside the result, so the result's schema stays as it is.
+   */
+  ads?: AdsData;
   /**
    * When done: what the report download is made from, the same inputs the CLI gives renderReport
    * (the run's own result, which has no DNS entries added, and the address the page ended at).
@@ -54,7 +65,7 @@ export class StoreFull extends Error {
 export function createStore({ max = 50 }: { max?: number } = {}) {
   const runs = new Map<string, Run>();
   return {
-    add(url: string, now: Date = new Date()): Run {
+    add(url: string, now: Date = new Date(), kind: RunKind = "page"): Run {
       if (runs.size >= max) {
         const oldest = [...runs.values()].find((r) => r.state !== "running");
         if (!oldest) throw new StoreFull(max);
@@ -63,6 +74,7 @@ export function createStore({ max = 50 }: { max?: number } = {}) {
       const run: Run = {
         id: randomUUID(),
         url,
+        kind,
         state: "running",
         startedAt: now.toISOString(),
         events: [],

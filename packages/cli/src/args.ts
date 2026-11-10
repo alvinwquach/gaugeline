@@ -107,6 +107,8 @@ export type ParsedArgs =
       noOpen: boolean;
       /** gaugeline open --demo: example results, no fetcher, no address. */
       demo: boolean;
+      /** gaugeline open --ads <file>: the export to read, from the command line only. */
+      ads?: string;
       verbose: boolean;
       quiet: boolean;
     }
@@ -385,11 +387,38 @@ export function parseCliArgs(
         hint: "Run gaugeline open --demo on its own, or gaugeline open yoursite.com to check a real page.",
         verbose,
       };
+    const ads = values.ads;
+    if (ads !== undefined && (typeof ads !== "string" || ads.trim() === ""))
+      return {
+        kind: "error",
+        message: "--ads needs the ads export file: gaugeline open --ads ads-export.csv.",
+        hint: "Export your ads from Meta Ads Manager or Google Ads as CSV and keep the link and amount-spent columns.",
+        verbose,
+      };
+    // Two ways to fill the app that cannot both be: the demo shows example results about invented
+    // sites, and an export is the person's own file.
+    if (ads !== undefined && values.demo === true)
+      return {
+        kind: "error",
+        message:
+          "gaugeline open --demo and --ads cannot be used together: the demo shows example results, and --ads shows your own export.",
+        hint: "Run gaugeline open --demo on its own, or gaugeline open --ads ads-export.csv.",
+        verbose,
+      };
+    if (ads !== undefined && positionals.length > 0)
+      return {
+        kind: "error",
+        message:
+          "gaugeline open --ads takes no address: it shows the landing pages in the export, and checks nothing else.",
+        hint: "Run gaugeline open --ads ads-export.csv on its own, or gaugeline open yoursite.com to check one page.",
+        verbose,
+      };
     return {
       kind: "open",
       ...(positionals[0] ? { address: positionals[0] } : {}),
       noOpen: values["no-open"] === true,
       demo: values.demo === true,
+      ...(typeof ads === "string" ? { ads } : {}),
       verbose,
       quiet: values.quiet === true,
     };
