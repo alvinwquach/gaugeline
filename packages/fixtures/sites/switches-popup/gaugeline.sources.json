@@ -1,0 +1,12 @@
+{
+  "sources": {
+    "db": {
+      "type": "supabase",
+      "env": "MARIGOLD_SUPABASE_DB_URL",
+      "queries": {
+        "eightySixed": "select name from menu_items where available = false order by name",
+        "tonightRemaining": "select 100 - coalesce(sum(quantity), 0) as value from pre_order_lines where night = current_date"
+      }
+    }
+  }
+}

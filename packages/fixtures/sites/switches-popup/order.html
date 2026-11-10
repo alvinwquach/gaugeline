@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pre-order | Marigold Tamales</title>
+<link rel="canonical" href="https://marigold.example/order">
+<meta property="og:image" content="https://marigold.example/og.png">
+</head>
+<body>
+<header><nav><a href="/">Marigold Tamales</a> <a href="/menu">Menu</a></nav></header>
+<main>
+<h1>Pre-order for tonight</h1>
+<p>Pre-orders are open. Pick up at the side window from 5pm.</p>
+<form action="/api/pre-order" method="post">
+<label>Name <input name="name"></label>
+<label>Tamales <input name="count" type="number"></label>
+<button>Place pre-order</button>
+</form>
+</main>
+</body>
+</html>

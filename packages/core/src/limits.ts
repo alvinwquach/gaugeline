@@ -31,6 +31,8 @@ export const LIMITS = Object.freeze({
   accessTables: 20,
   /** Addresses in hidden sections asked for their status and robots directives. */
   hiddenPages: 5,
+  /** Pages named in gaugeline.switches.json (the order page, the menu, the QR page), read with GET. */
+  statePages: 16,
   /** Conventional Next.js draft and preview routes asked once each, with no secret. */
   draftRoutes: 4,
   /** Framework addresses (/_next/, ?_rsc=) found and ignored: never requested, so the limit is 0. */
@@ -59,6 +61,7 @@ export type BudgetKind =
   | "sanityDatasets"
   | "accessTables"
   | "hiddenPages"
+  | "statePages"
   | "draftRoutes"
   | "frameworkAddresses"
   | "structuredDataAddresses";
@@ -80,6 +83,7 @@ export const BUDGET_KINDS = [
   "sanityDatasets",
   "accessTables",
   "hiddenPages",
+  "statePages",
   "draftRoutes",
   "frameworkAddresses",
   "structuredDataAddresses",
@@ -144,6 +148,7 @@ const NOUNS: Record<BudgetKind, [singular: string, plural: string]> = {
   sanityDatasets: ["Sanity dataset", "Sanity datasets"],
   accessTables: ["database table", "database tables"],
   hiddenPages: ["hidden page", "hidden pages"],
+  statePages: ["switch page", "switch pages"],
   draftRoutes: ["draft route", "draft routes"],
   frameworkAddresses: ["framework address", "framework addresses"],
   structuredDataAddresses: ["address in structured data", "addresses in structured data"],

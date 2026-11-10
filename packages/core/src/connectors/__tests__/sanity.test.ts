@@ -6,6 +6,8 @@ import { ConnectorRateLimitedError, ConnectorRefusedError } from "../http.js";
 import { runConnectors } from "../run.js";
 import {
   DEFAULT_PRODUCTS_QUERY,
+  fieldQuery,
+  readField,
   SANITY_ENV_VARS,
   parseProducts,
   productsUrl,
@@ -609,5 +611,67 @@ describe("read only", () => {
     );
     expect(seen.length).toBeGreaterThanOrEqual(5);
     expect(new Set(seen.map((s) => s.method))).toEqual(new Set(["GET"]));
+  });
+});
+
+describe("one field of a published document (switches): unit", () => {
+  it("builds a GROQ query for the first published document of a type", () => {
+    expect(fieldQuery("siteSettings", ["features", "preOrders"])).toBe(
+      '*[_type == "siteSettings"][0].features.preOrders',
+    );
+  });
+
+  it("refuses a type or field name that could add to the query", () => {
+    expect(() => fieldQuery('x"] || true //', ["a"])).toThrow(/not a Sanity document type name/);
+    expect(() => fieldQuery("siteSettings", ['a"]'])).toThrow(/plain field names/);
+    expect(() => fieldQuery("siteSettings", ["a b"])).toThrow(/plain field names/);
+    expect(() => fieldQuery("siteSettings", [])).toThrow(/plain field names/);
+    expect(() => fieldQuery("siteSettings", ["a", "b[0]"])).toThrow(/plain field names/);
+  });
+});
+
+describe("one field of a published document (switches): recorded answers", () => {
+  const read = (seen: Seen[] = []) => {
+    const replay = useCassette("sanity-switches", { mode: "replay" });
+    const transport: Transport = (url, req) => {
+      seen.push({ method: req.method, url: url.href, headers: req.headers });
+      return replay(url, req);
+    };
+    return createFetcher({ transport, timeoutMs: 5000 });
+  };
+  const env: Env = { SANITY_PROJECT_ID: "mar1gold", SANITY_DATASET: "production" };
+
+  it("returns the value, or null when the document or field is missing, with one GET asking for published content", async () => {
+    const seen: Seen[] = [];
+    const fetcher = read(seen);
+    expect(await readField(env, fetcher, "siteSettings", ["features", "preOrders"])).toBe(false);
+    expect(await readField(env, fetcher, "siteSettings", ["eightySixed"])).toEqual([
+      "Pozole rojo",
+      "Tamales de rajas",
+    ]);
+    expect(await readField(env, fetcher, "noSuchType", ["x"])).toBeNull();
+    expect(seen.map((s) => s.method)).toEqual(["GET", "GET", "GET"]);
+    expect(seen[0]?.url).toContain("perspective=published");
+  });
+
+  it("sends the token in a header, never in the address, and a refusal says what key is needed", async () => {
+    const seen: Seen[] = [];
+    await expect(
+      readField(
+        { SANITY_PROJECT_ID: "pr1v4te0", SANITY_TOKEN: TOKEN },
+        read(seen),
+        "siteSettings",
+        ["features", "preOrders"],
+      ),
+    ).rejects.toBeInstanceOf(ConnectorRefusedError);
+    expect(seen[0]?.headers.authorization).toBe(`Bearer ${TOKEN}`);
+    expect(seen[0]?.url).not.toContain(TOKEN);
+  });
+
+  it("a bad query (HTTP 400) is explained without pointing at the products query variable", async () => {
+    const fetcher = serving(() => ({ status: 400, body: "{}" }));
+    await expect(readField(env, fetcher, "siteSettings", ["x"])).rejects.toThrow(
+      /document type and field names/,
+    );
   });
 });

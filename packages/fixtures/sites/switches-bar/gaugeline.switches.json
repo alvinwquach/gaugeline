@@ -1,0 +1,11 @@
+{
+  "availability": [
+    {
+      "id": "eighty-six",
+      "source": "db:eightySixed",
+      "items": "name",
+      "mustNotAppearOn": ["/menu", "/tonight"],
+      "alsoIn": "menu-jsonld"
+    }
+  ]
+}

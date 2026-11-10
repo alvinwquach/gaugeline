@@ -2,6 +2,7 @@ import {
   ASSERTION_CHECKS,
   EMAIL_PRESET,
   LISTING_CHECKS,
+  SWITCH_CHECKS,
   createPageRegistry,
 } from "../../packages/core/src/index.js";
 import { spawnSync } from "node:child_process";
@@ -164,7 +165,9 @@ describe("docs examples: integration", () => {
               // Not run without a gaugeline.listings.json: neither passed nor failed.
               !LISTING_CHECKS.includes(id) &&
               // Likewise without data assertions in gaugeline.sources.json.
-              !ASSERTION_CHECKS.includes(id),
+              !ASSERTION_CHECKS.includes(id) &&
+              // And without gaugeline.switches.json.
+              !SWITCH_CHECKS.includes(id),
           ),
         startedAt: "2020-02-02T02:02:02.000Z",
         url: "https://shop.example/",

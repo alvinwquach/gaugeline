@@ -50,6 +50,16 @@
     "tech": "<link rel=\"canonical\"> on the page points at another URL"
   },
   {
+    "id": "capacity-zero-not-sold-out",
+    "severity": "high",
+    "area": "Sales & prices",
+    "title": "Nothing is left, but the page still looks open for orders",
+    "what": "Your remaining capacity (dishes for tonight, seats, tickets) is zero, and the order page does not say it is sold out.",
+    "why": "Customers keep ordering or paying for something you cannot make. Each one is a refund, an apology and a bad review.",
+    "fix": "Show the sold-out message from the same number that counts what is left, and remove the order button when it reaches zero. If the evidence says a cache served the page, purge it after the count changes.",
+    "tech": "for each capacity rule in gaugeline.switches.json, the remaining count is read from its source (a published Sanity field or a one-row query through the read-only database source); when it is zero or below, each whenZero.pageSays page must say its phrase (case-insensitive, accents and spacing ignored, per language where given) in the page as sent without JavaScript; the evidence says whether the page still has a form; a page that answers 404, a source or a page that cannot be read is could not check (the link checks report dead pages); the evidence adds the Age and Cache-Control headers when a cache served the page"
+  },
+  {
     "id": "certificate-expiring",
     "severity": "high",
     "area": "Security & email",
@@ -258,6 +268,16 @@
     "why": "They have no ordinary use on a web page, and AI assistants can read the message they spell. Seeing them is a sign of tampering or of text pasted in from somewhere untrusted.",
     "fix": "Delete them from the field or file they came from, then check who and what can edit that content.",
     "tech": "code points U+E0000 to U+E007F in a text node or comment, other than the England, Scotland and Wales flag emoji (U+1F3F4, tag letters, U+E007F)"
+  },
+  {
+    "id": "item-unavailable-shown",
+    "severity": "high",
+    "area": "Sales & prices",
+    "title": "An item that is sold out or off the menu is still listed",
+    "what": "An item your database or CMS marks as unavailable (86'd, sold out, off the menu) is still on a page that lists items, or in the page's Menu structured data.",
+    "why": "Customers order or plan around something you cannot serve, and search results and assistants repeat it from the structured data long after the page is fixed.",
+    "fix": "Build the menu pages and the Menu structured data from the same list that holds the availability, so an item that is off cannot be rendered. If the evidence says a cache served the page, purge it.",
+    "tech": "for each availability rule in gaugeline.switches.json, the unavailable item names are read from the source (a Sanity list of names or one column of a query through the read-only database source) and looked for in the text of each mustNotAppearOn page, as sent without JavaScript and with hidden elements left out: an item is found when its words stand on their own in a row, ignoring case, accents and plural endings, at the start of a line or after punctuation (so Tamal is not found in Tamal de rajas); with alsoIn menu-jsonld the names of MenuItem nodes in the structured data of those pages and of the page checked are compared the same way; the evidence gives both spellings when they differ and adds the Age and Cache-Control headers when a cache served the page; an unreadable source or page is could not check (one that answers 404 lists nothing)"
   },
   {
     "id": "jsonld-404",
@@ -528,6 +548,16 @@
     "why": "They are invisible to you but not to everyone else: search results, share previews and copied text carry them, and they can break string comparisons and structured data.",
     "fix": "Turn stega encoding off for production builds (in Sanity, set stega: false outside preview) and strip it from fields that end up in metadata.",
     "tech": "a code point in U+E0000 to U+E007F, or 4 or more zero-width characters in a row, in the title, meta content or JSON-LD strings"
+  },
+  {
+    "id": "switch-off-still-linked",
+    "severity": "high",
+    "area": "Sales & prices",
+    "title": "A switch is off but the site still links to what it controls",
+    "what": "You turned a feature off (pre-orders, online ordering, bookings), and a page still has a link to the page that feature runs on.",
+    "why": "Visitors click the link, land on a page that no longer works or takes orders you cannot fill, and call or leave. A cached or hard-coded link is the usual cause: the menu and the header were built before the switch was flipped.",
+    "fix": "Make every link to the controlled page depend on the same switch (in Sanity or the database), or remove the link. If the evidence says the answer came from a cache, purge the cache after the switch changes.",
+    "tech": "for each switch in gaugeline.switches.json whose state is off, the checked page, the other pages the run read and every page named in the file are searched for same-site links whose path is a whenOff.noLinksTo path or sits under it (/order covers /order/checkout, not /order-history); the state comes from its source (a published Sanity field or a one-row query through the read-only database source); a source that cannot be read, or gives a value that is not on or off, is could not check, and so is a page that cannot be read (one that answers 404 has no links); the evidence adds the Age and Cache-Control headers when a cache served the page"
   },
   {
     "id": "temp-host-links",
@@ -1148,6 +1178,16 @@
     "why": "Search engines see two descriptions of one thing, which can disagree, and may pick the wrong one or ignore both.",
     "fix": "Keep one: usually the JSON-LD, and remove the itemscope and itemtype attributes from the theme or plugin that adds microdata.",
     "tech": "a schema.org @type in JSON-LD is also a microdata itemtype"
+  },
+  {
+    "id": "switch-page-wrong",
+    "severity": "medium",
+    "area": "Sales & prices",
+    "title": "A page does not say what it should for the current switch",
+    "what": "You said what a page must tell visitors while a feature is on or off (\"order at the bar\" while pre-orders are off), and the page does not say it.",
+    "why": "A visitor who reaches the page learns nothing: no explanation, no other way to order. They are left guessing whether the site is broken.",
+    "fix": "Show the message from the same switch that turns the feature off, so the two cannot disagree. If the evidence says a cache served the page, purge it after the switch changes.",
+    "tech": "for each switch in gaugeline.switches.json, the page text for the current state (whenOff.pageSays while off, whenOn.pageSays while on) is read from the page as sent, without JavaScript, with hidden elements left out; the phrase is matched case-insensitively and ignoring accents, spacing and punctuation, in the page's own language when the phrase is given per language (a bilingual site's other-language pages are read through gaugeline.languages.json); a page that answers 404, a source or a page that cannot be read is could not check (the link checks report dead pages); the evidence adds the Age and Cache-Control headers when a cache served the page"
   },
   {
     "id": "tags-dead-rules",

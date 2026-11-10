@@ -13,6 +13,10 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "app-link-dead": ["The app this page links to isn't in the store", "Visitors"],
   "broken-links": ["Links on this page go nowhere", "Visitors"],
   "canonical-elsewhere": ["This page tells Google to show a different page", "Search & sharing"],
+  "capacity-zero-not-sold-out": [
+    "Nothing is left, but the page still looks open for orders",
+    "Sales & prices",
+  ],
   "certificate-expiring": ["The site's certificate expires soon", "Security & email"],
   "data-assertion-failed": ["A data assertion found rows that should not exist", "Visitors"],
   "dataset-private-types": [
@@ -40,6 +44,10 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "ics-floating-time": ["Your calendar shows the wrong hour on some phones", "Visitors"],
   "images-broken": ["Some images on this page don't load", "Visitors"],
   "invisible-unicode-tags": ["The page carries text in invisible characters", "Security & email"],
+  "item-unavailable-shown": [
+    "An item that is sold out or off the menu is still listed",
+    "Sales & prices",
+  ],
   "jsonld-404": ["Structured data points at pages that don't exist", "Search & sharing"],
   "jsonld-invalid": ["This page's structured data is broken", "Search & sharing"],
   "lang-price-mismatch": ["Prices differ between language versions", "Sales & prices"],
@@ -79,6 +87,10 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "sitemap-dead": ["Your sitemap lists pages that don't exist", "Search & sharing"],
   "staging-indexable": ["Your staging site can be found by search engines", "Launch day"],
   "stega-leak": ["Hidden editing characters leaked onto the live site", "Search & sharing"],
+  "switch-off-still-linked": [
+    "A switch is off but the site still links to what it controls",
+    "Sales & prices",
+  ],
   "temp-host-links": ["Links still point at a temporary address", "Launch day"],
   "thin-html": ["Google sees an almost empty page", "Search & sharing"],
   "plan-404": ["A planned page doesn't exist on the preview", "Launch day"],
@@ -174,6 +186,10 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "sitemap-missing": ["Search engines can't find a list of your pages", "Search & sharing"],
   "sitemap-redirects": ["Your sitemap lists old addresses that redirect", "Search & sharing"],
   "structured-duplicate": ["The same structured data is on this page twice", "Search & sharing"],
+  "switch-page-wrong": [
+    "A page does not say what it should for the current switch",
+    "Sales & prices",
+  ],
   "tags-dead-rules": ["A tracking rule points at something that no longer exists", "Leads"],
   "tags-duplicate": ["Two tags send the same event at the same moment", "Leads"],
   viewport: ["This page isn't set up for phone screens", "Visitors"],
@@ -261,6 +277,12 @@ export const CHECK_TEXT: Readonly<
     "Search engines treat the page as a copy, so it may never appear in results.",
     "Give each page a canonical tag that points at its own address. Shared SEO components are the usual cause.",
     '<link rel="canonical"> on the page points at another URL',
+  ],
+  "capacity-zero-not-sold-out": [
+    "Your remaining capacity (dishes for tonight, seats, tickets) is zero, and the order page does not say it is sold out.",
+    "Customers keep ordering or paying for something you cannot make. Each one is a refund, an apology and a bad review.",
+    "Show the sold-out message from the same number that counts what is left, and remove the order button when it reaches zero. If the evidence says a cache served the page, purge it after the count changes.",
+    "for each capacity rule in gaugeline.switches.json, the remaining count is read from its source (a published Sanity field or a one-row query through the read-only database source); when it is zero or below, each whenZero.pageSays page must say its phrase (case-insensitive, accents and spacing ignored, per language where given) in the page as sent without JavaScript; the evidence says whether the page still has a form; a page that answers 404, a source or a page that cannot be read is could not check (the link checks report dead pages); the evidence adds the Age and Cache-Control headers when a cache served the page",
   ],
   "certificate-expiring": [
     "The https certificate the site presented expires in under 21 days (fix soon) or under 7 (fix first), or has expired.",
@@ -387,6 +409,12 @@ export const CHECK_TEXT: Readonly<
     "They have no ordinary use on a web page, and AI assistants can read the message they spell. Seeing them is a sign of tampering or of text pasted in from somewhere untrusted.",
     "Delete them from the field or file they came from, then check who and what can edit that content.",
     "code points U+E0000 to U+E007F in a text node or comment, other than the England, Scotland and Wales flag emoji (U+1F3F4, tag letters, U+E007F)",
+  ],
+  "item-unavailable-shown": [
+    "An item your database or CMS marks as unavailable (86'd, sold out, off the menu) is still on a page that lists items, or in the page's Menu structured data.",
+    "Customers order or plan around something you cannot serve, and search results and assistants repeat it from the structured data long after the page is fixed.",
+    "Build the menu pages and the Menu structured data from the same list that holds the availability, so an item that is off cannot be rendered. If the evidence says a cache served the page, purge it.",
+    "for each availability rule in gaugeline.switches.json, the unavailable item names are read from the source (a Sanity list of names or one column of a query through the read-only database source) and looked for in the text of each mustNotAppearOn page, as sent without JavaScript and with hidden elements left out: an item is found when its words stand on their own in a row, ignoring case, accents and plural endings, at the start of a line or after punctuation (so Tamal is not found in Tamal de rajas); with alsoIn menu-jsonld the names of MenuItem nodes in the structured data of those pages and of the page checked are compared the same way; the evidence gives both spellings when they differ and adds the Age and Cache-Control headers when a cache served the page; an unreadable source or page is could not check (one that answers 404 lists nothing)",
   ],
   "jsonld-404": [
     "Addresses on the site named in the page's structured data (a product URL, an image, a logo) return an error.",
@@ -549,6 +577,12 @@ export const CHECK_TEXT: Readonly<
     "They are invisible to you but not to everyone else: search results, share previews and copied text carry them, and they can break string comparisons and structured data.",
     "Turn stega encoding off for production builds (in Sanity, set stega: false outside preview) and strip it from fields that end up in metadata.",
     "a code point in U+E0000 to U+E007F, or 4 or more zero-width characters in a row, in the title, meta content or JSON-LD strings",
+  ],
+  "switch-off-still-linked": [
+    "You turned a feature off (pre-orders, online ordering, bookings), and a page still has a link to the page that feature runs on.",
+    "Visitors click the link, land on a page that no longer works or takes orders you cannot fill, and call or leave. A cached or hard-coded link is the usual cause: the menu and the header were built before the switch was flipped.",
+    "Make every link to the controlled page depend on the same switch (in Sanity or the database), or remove the link. If the evidence says the answer came from a cache, purge the cache after the switch changes.",
+    "for each switch in gaugeline.switches.json whose state is off, the checked page, the other pages the run read and every page named in the file are searched for same-site links whose path is a whenOff.noLinksTo path or sits under it (/order covers /order/checkout, not /order-history); the state comes from its source (a published Sanity field or a one-row query through the read-only database source); a source that cannot be read, or gives a value that is not on or off, is could not check, and so is a page that cannot be read (one that answers 404 has no links); the evidence adds the Age and Cache-Control headers when a cache served the page",
   ],
   "temp-host-links": [
     "The page, on your own domain, links to a hosting provider's temporary address (vercel.app, netlify.app or pages.dev).",
@@ -922,6 +956,12 @@ export const CHECK_TEXT: Readonly<
     "Keep one: usually the JSON-LD, and remove the itemscope and itemtype attributes from the theme or plugin that adds microdata.",
     "a schema.org @type in JSON-LD is also a microdata itemtype",
   ],
+  "switch-page-wrong": [
+    'You said what a page must tell visitors while a feature is on or off ("order at the bar" while pre-orders are off), and the page does not say it.',
+    "A visitor who reaches the page learns nothing: no explanation, no other way to order. They are left guessing whether the site is broken.",
+    "Show the message from the same switch that turns the feature off, so the two cannot disagree. If the evidence says a cache served the page, purge it after the switch changes.",
+    "for each switch in gaugeline.switches.json, the page text for the current state (whenOff.pageSays while off, whenOn.pageSays while on) is read from the page as sent, without JavaScript, with hidden elements left out; the phrase is matched case-insensitively and ignoring accents, spacing and punctuation, in the page's own language when the phrase is given per language (a bilingual site's other-language pages are read through gaugeline.languages.json); a page that answers 404, a source or a page that cannot be read is could not check (the link checks report dead pages); the evidence adds the Age and Cache-Control headers when a cache served the page",
+  ],
   "tags-dead-rules": [
     "A Tag Manager trigger waits for a page address, link, form or element that no page on the site has, so its tags never fire.",
     "Tag rules outlive the pages they were written for: a download or form trigger tied to a retired address goes quiet, and the report just shows fewer leads.",
@@ -1209,6 +1249,7 @@ export const SAMPLE_NOUNS: Readonly<Record<string, readonly [one: string, many: 
   sanityDatasets: ["Sanity dataset", "Sanity datasets"],
   accessTables: ["database table", "database tables"],
   hiddenPages: ["hidden page", "hidden pages"],
+  statePages: ["switch page", "switch pages"],
   draftRoutes: ["draft route", "draft routes"],
   frameworkAddresses: ["framework address", "framework addresses"],
   structuredDataAddresses: ["address in structured data", "addresses in structured data"],

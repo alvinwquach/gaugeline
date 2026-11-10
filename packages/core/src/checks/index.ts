@@ -10,6 +10,7 @@ import { blocked } from "./blocked.js";
 import { brokenLinks } from "./broken-links.js";
 import { canonicalElsewhere } from "./canonical-elsewhere.js";
 import { canonicalMissing } from "./canonical-missing.js";
+import { capacityZeroNotSoldOut } from "./capacity-zero-not-sold-out.js";
 import { certificateExpiring } from "./certificate-expiring.js";
 import { dataAssertionFailed } from "./data-assertion-failed.js";
 import { datasetPrivateTypes } from "./dataset-private-types.js";
@@ -55,6 +56,7 @@ import { imagesHeavy } from "./images-heavy.js";
 import { imagesLegacyFormat } from "./images-legacy-format.js";
 import { imagesLegacyWp } from "./images-legacy-wp.js";
 import { invisibleUnicodeTags } from "./invisible-unicode-tags.js";
+import { itemUnavailableShown } from "./item-unavailable-shown.js";
 import { jsonld404 } from "./jsonld-404.js";
 import { jsonldInvalid } from "./jsonld-invalid.js";
 import { langAttrMismatch } from "./lang-attr-mismatch.js";
@@ -120,6 +122,8 @@ import { sitemapRedirects } from "./sitemap-redirects.js";
 import { stagingIndexable } from "./staging-indexable.js";
 import { stegaLeak } from "./stega-leak.js";
 import { structuredDuplicate } from "./structured-duplicate.js";
+import { switchOffStillLinked } from "./switch-off-still-linked.js";
+import { switchPageWrong } from "./switch-page-wrong.js";
 import { tagsDeadRules } from "./tags-dead-rules.js";
 import { tagsDuplicate } from "./tags-duplicate.js";
 import { telFormat } from "./tel-format.js";
@@ -141,6 +145,7 @@ export const PAGE_CHECKS = [
   brokenLinks,
   canonicalElsewhere,
   canonicalMissing,
+  capacityZeroNotSoldOut,
   certificateExpiring,
   dataAssertionFailed,
   datasetPrivateTypes,
@@ -186,6 +191,7 @@ export const PAGE_CHECKS = [
   imagesLegacyFormat,
   imagesLegacyWp,
   invisibleUnicodeTags,
+  itemUnavailableShown,
   jsonld404,
   jsonldInvalid,
   langAttrMismatch,
@@ -251,6 +257,8 @@ export const PAGE_CHECKS = [
   stagingIndexable,
   stegaLeak,
   structuredDuplicate,
+  switchOffStillLinked,
+  switchPageWrong,
   tagsDeadRules,
   tagsDuplicate,
   telFormat,
