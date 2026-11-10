@@ -1,4 +1,4 @@
-import type { DnsReader } from "@gaugeline/core";
+import { CheckRegistry, createPageRegistry, type DnsReader } from "@gaugeline/core";
 import { expectedOutput, startFixture } from "@gaugeline/fixtures";
 import { describe, expect, it } from "vitest";
 import { HELP } from "../help.js";
@@ -40,7 +40,7 @@ function recordingDns(asked: string[]): DnsReader {
   };
 }
 
-async function launch(fixture: string, flags: string[], dns?: DnsReader) {
+async function launch(fixture: string, flags: string[], dns?: DnsReader, registry?: CheckRegistry) {
   const site = await startFixture(fixture);
   try {
     const run = capture();
@@ -48,6 +48,7 @@ async function launch(fixture: string, flags: string[], dns?: DnsReader) {
       version: "0.1.0",
       fetcher: { hosts: site.hosts, resolver: nowhere },
       ...(dns ? { dns } : {}),
+      ...(registry ? { registry } : {}),
     });
     return { code, out: run.out(), err: run.err() };
   } finally {
@@ -79,12 +80,24 @@ describe("gaugeline launch: e2e (CLI, version 0.1.0)", () => {
     expect(r.out).toContain("no TXT record starting v=DMARC1 at _dmarc.fernwood.test");
   });
 
-  it("a preset id from a later phase is missing: the command still runs and says which check was skipped", async () => {
+  it("the Stripe test-key check is part of the launch preset and passes on a clean site", async () => {
     const r = await launch("launch-clean", []);
     expect(r.code).toBe(0);
-    expect(r.err).toContain("stripe-test-mode: not available in this version\n");
+    expect(r.err).not.toContain("not available in this version");
+    expect(r.out).toMatch(/✓ stripe-test-mode\n/);
+    expect(r.out).toMatch(/✓ temp-host-links\n/);
     // Only the launch preset ran: no page check outside it reports.
     expect(r.out).not.toMatch(/✓ (canonical-missing|thin-html|viewport)\n/);
+  });
+
+  it("a preset id with no registered check is skipped: the command still runs and says which one", async () => {
+    const registry = new CheckRegistry();
+    for (const c of createPageRegistry().all())
+      if (c.id !== "stripe-test-mode") registry.register(c);
+    const r = await launch("launch-clean", [], undefined, registry);
+    expect(r.code).toBe(0);
+    expect(r.err).toContain("stripe-test-mode: not available in this version\n");
+    expect(r.out).not.toMatch(/stripe-test-mode/);
     expect(r.out).toMatch(/✓ temp-host-links\n/);
   });
 

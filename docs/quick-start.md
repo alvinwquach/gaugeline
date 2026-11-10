@@ -111,7 +111,8 @@ cutover:
 - a share picture that doesn't load;
 - a staging site search engines can index;
 - `noindex`;
-- a robots.txt that blocks the site.
+- a robots.txt that blocks the site;
+- a Stripe test key (`pk_test_`) on a live address ([`stripe-test-mode`](products-and-prices.md#a-live-site-on-a-test-key)).
 
 ```bash
 npx gaugeline launch yoursite.com --dns
@@ -120,8 +121,8 @@ npx gaugeline launch yoursite.com --dns
 `--dns` adds the mail records a DNS change would break (SPF and DMARC). Without it the launch check
 makes HTTP requests only. The last line says `Ready to launch` when nothing is "Fix this first",
 and `Not yet: N to fix first` otherwise. With `--ci`, a fix-first finding exits 1, as for the
-normal check. A check this version doesn't have yet is skipped with one line on stderr, for
-example `stripe-test-mode: not available in this version`.
+normal check. A check in the preset that this version doesn't have is skipped with one line on
+stderr: `<check id>: not available in this version`.
 
 Against the invented `launch-preview` fixture, a pottery school with one link left on its preview
 address, version 0.1.0 prints:

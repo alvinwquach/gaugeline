@@ -24,7 +24,11 @@ export interface Connector<T> {
    */
   secretEnvVars?: string[];
   configured(env: Env): boolean;
-  read(env: Env, fetcher: Fetcher): Promise<T[]>;
+  /**
+   * `note` adds a plain-language "advice" notice from inside the read (a page cap that was hit, a
+   * key that works but should be swapped). It is optional to call and optional to accept.
+   */
+  read(env: Env, fetcher: Fetcher, note?: (message: string) => void): Promise<T[]>;
   /**
    * Plain-language advice the runner adds as "advice" notices after the read, whether it worked or
    * not (an assumed default, a key with more power than it needs). It may make GET requests; if it

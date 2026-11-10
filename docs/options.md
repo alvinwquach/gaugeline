@@ -54,6 +54,8 @@ Options:
       --no-open                  Do not open anything in a browser
       --allow-private            Allow addresses on this computer or a private
                                  network, such as 127.0.0.1 or 192.168.x.x
+      --allow-secret-key         Use a Stripe secret key, with a notice, instead
+                                 of refusing it; a restricted key is safer
       --dns                      Also read the domain's mail records (SPF and
                                  DMARC) from DNS
       --since <value>            Compare with this site's last run and save this
@@ -203,6 +205,8 @@ Options:
       --no-open                  Do not open anything in a browser
       --allow-private            Allow addresses on this computer or a private
                                  network, such as 127.0.0.1 or 192.168.x.x
+      --allow-secret-key         Use a Stripe secret key, with a notice, instead
+                                 of refusing it; a restricted key is safer
       --dns                      Also read the domain's mail records (SPF and
                                  DMARC) from DNS
       --slack <value>            Send a summary to this Slack incoming webhook
@@ -244,6 +248,7 @@ between the markers; CI fails when it differs from the flag table.
 | `--demo`                  | Start the app with example results about invented sites; no address is checked and nothing is requested        |                      | 0.2.0 |
 | `--ads <value>`           | Start the app with an ads export read from this file (a Meta Ads Manager or Google Ads CSV)                    |                      | 0.2.0 |
 | `--allow-private`         | Allow addresses on this computer or a private network, such as 127.0.0.1 or 192.168.x.x                        |                      | 0.1.0 |
+| `--allow-secret-key`      | Use a Stripe secret key, with a notice, instead of refusing it; a restricted key is safer                      |                      | 0.2.0 |
 | `--dns`                   | Also read the domain's mail records (SPF and DMARC) from DNS                                                   |                      | 0.2.0 |
 | `--since <value>`         | Compare with this site's last run and save this one; the only value is last (.gaugeline/last-run/)             |                      | 0.2.0 |
 | `-i`, `--interactive`     | Open a terminal view of the results to move through, filter and dismiss findings                               |                      | 0.2.0 |

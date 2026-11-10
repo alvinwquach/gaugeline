@@ -560,6 +560,16 @@
     "tech": "a code point in U+E0000 to U+E007F, or 4 or more zero-width characters in a row, in the title, meta content or JSON-LD strings"
   },
   {
+    "id": "stripe-test-mode",
+    "severity": "high",
+    "area": "Sales & prices",
+    "title": "This live site is using Stripe's test key",
+    "what": "The page, or a script on the same site, carries a Stripe test publishable key (it starts pk_test_) and the page is not on a hosting provider's preview address.",
+    "why": "A checkout built on a test key looks like it works and takes no real money: every order a customer places goes nowhere, and no card is charged.",
+    "fix": "In Stripe, switch to live mode, copy the live publishable key (pk_live_) and put it where the site reads its key, then redeploy and place one small real order to be sure.",
+    "tech": "The page's HTML and the same-site scripts already read by the leak check are searched for pk_test_ followed by at least 16 letters or digits, not inside a longer word; no new request is sent; pages on vercel.app, netlify.app and pages.dev are skipped"
+  },
+  {
     "id": "switch-off-still-linked",
     "severity": "high",
     "area": "Sales & prices",

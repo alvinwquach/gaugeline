@@ -9,6 +9,7 @@
     ],
     "check": [
       "allow-private",
+      "allow-secret-key",
       "ci",
       "discord",
       "dns",
@@ -47,6 +48,7 @@
     ],
     "launch": [
       "allow-private",
+      "allow-secret-key",
       "ci",
       "discord",
       "dns",
@@ -262,6 +264,7 @@
     "sitemap-redirects",
     "staging-indexable",
     "stega-leak",
+    "stripe-test-mode",
     "structured-duplicate",
     "switch-off-still-linked",
     "switch-page-wrong",
@@ -400,6 +403,7 @@
     "sitemap-redirects": "medium",
     "staging-indexable": "high",
     "stega-leak": "high",
+    "stripe-test-mode": "high",
     "structured-duplicate": "medium",
     "switch-off-still-linked": "high",
     "switch-page-wrong": "medium",

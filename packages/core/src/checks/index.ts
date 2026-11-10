@@ -125,6 +125,7 @@ import { sitemapMissing } from "./sitemap-missing.js";
 import { sitemapRedirects } from "./sitemap-redirects.js";
 import { stagingIndexable } from "./staging-indexable.js";
 import { stegaLeak } from "./stega-leak.js";
+import { stripeTestMode } from "./stripe-test-mode.js";
 import { structuredDuplicate } from "./structured-duplicate.js";
 import { switchOffStillLinked } from "./switch-off-still-linked.js";
 import { switchPageWrong } from "./switch-page-wrong.js";
@@ -264,6 +265,7 @@ export const PAGE_CHECKS = [
   sitemapRedirects,
   stagingIndexable,
   stegaLeak,
+  stripeTestMode,
   structuredDuplicate,
   switchOffStillLinked,
   switchPageWrong,

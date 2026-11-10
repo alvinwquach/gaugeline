@@ -23,6 +23,24 @@ export {
 } from "./sanity.js";
 export type { SanityConnector, SanityProduct } from "./sanity.js";
 export {
+  STRIPE_API_KEY,
+  STRIPE_ENV_VARS,
+  STRIPE_MAX_PAGES,
+  STRIPE_PAGE_SIZE,
+  buildProducts as buildStripeProducts,
+  classifyStripeKey,
+  createStripeConnector,
+  findTestPublishableKeys,
+  guardStripeKey,
+  stripeConnector,
+} from "./stripe.js";
+export type {
+  StripeConnectorOptions,
+  StripeKeyKind,
+  StripePrice,
+  StripeProduct,
+} from "./stripe.js";
+export {
   DEFAULT_DENIED_FUNCTIONS,
   DEFAULT_POSTGRES_ENV,
   DEFAULT_SUPABASE_ENV,

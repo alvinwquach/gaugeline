@@ -32,6 +32,8 @@ export interface RunFlags {
   command: CliCommand;
   /** launch --dns: add the email record checks. */
   dns: boolean;
+  /** --allow-secret-key: use a Stripe secret key (with a notice) instead of refusing it. */
+  allowSecretKey: boolean;
   /** --since last: compare with the stored last run and replace it. */
   since?: "last";
   /** -i, --interactive: open the terminal view after the run. */
@@ -595,6 +597,7 @@ export function parseCliArgs(
     kind: "run",
     command,
     dns: values.dns === true,
+    allowSecretKey: values["allow-secret-key"] === true,
     interactive: values.interactive === true,
     notify: {
       ...(typeof values.slack === "string" ? { slack: values.slack } : {}),

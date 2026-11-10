@@ -73,6 +73,14 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     commands: ["check", "launch", "plan", "printed", "snapshot", "cutover", "verify", "run"],
   },
   {
+    name: "allow-secret-key",
+    type: "boolean",
+    description:
+      "Use a Stripe secret key, with a notice, instead of refusing it; a restricted key is safer",
+    since: "0.2.0",
+    commands: ["check", "launch"],
+  },
+  {
     name: "dns",
     type: "boolean",
     description: "Also read the domain's mail records (SPF and DMARC) from DNS",
