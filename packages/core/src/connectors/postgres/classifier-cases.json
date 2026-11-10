@@ -1,0 +1,786 @@
+{
+  "about": "Shared test cases for the read-only SQL classifier. Gaugeline's classifier (packages/core/src/connectors/postgres/classify.ts) and LocalQuery's copy must agree on every verdict. expect is \"allow\" (one read) or \"refuse\" (anything else). family says why, for people; only the verdict is the contract. Add a case here whenever either copy finds a gap, then fix both.",
+  "version": 1,
+  "cases": [
+    {
+      "id": "select-basic",
+      "sql": "select name from menu_items where is_86 = true",
+      "expect": "allow",
+      "family": "read"
+    },
+    {
+      "id": "select-upper-case",
+      "sql": "SELECT COUNT(*) FROM Bookings WHERE party_size >= 8",
+      "expect": "allow",
+      "family": "read"
+    },
+    {
+      "id": "select-trailing-semicolon",
+      "sql": "select 1;",
+      "expect": "allow",
+      "family": "read"
+    },
+    {
+      "id": "select-trailing-semicolon-and-comment",
+      "sql": "select 1; -- done",
+      "expect": "allow",
+      "family": "read"
+    },
+    {
+      "id": "select-line-comment-after",
+      "sql": "select 1 -- why not delete from t",
+      "expect": "allow",
+      "family": "read"
+    },
+    {
+      "id": "select-newlines",
+      "sql": "select\n  id,\n  name\nfrom\n  menu_items\n",
+      "expect": "allow",
+      "family": "read"
+    },
+    {
+      "id": "with-select",
+      "sql": "with r as (select id from bookings) select count(*) from r",
+      "expect": "allow",
+      "family": "read"
+    },
+    {
+      "id": "with-recursive",
+      "sql": "with recursive n(i) as (select 1 union all select i + 1 from n where i < 5) select i from n",
+      "expect": "allow",
+      "family": "read"
+    },
+    {
+      "id": "keywords-inside-string",
+      "sql": "select 'delete from t; drop table x' as s",
+      "expect": "allow",
+      "family": "read"
+    },
+    {
+      "id": "keywords-inside-block-comment",
+      "sql": "select 1 /* update t set a = 1; delete from t; */",
+      "expect": "allow",
+      "family": "read"
+    },
+    {
+      "id": "nested-block-comment",
+      "sql": "select 1 /* a /* b */ still a comment; delete from t */",
+      "expect": "allow",
+      "family": "read"
+    },
+    {
+      "id": "quoted-identifiers-named-like-keywords",
+      "sql": "select \"update\", \"delete\", \"into\" from \"insert\"",
+      "expect": "allow",
+      "family": "read"
+    },
+    {
+      "id": "dollar-quoted-string",
+      "sql": "select $$; drop table x; --$$ as s",
+      "expect": "allow",
+      "family": "read"
+    },
+    {
+      "id": "dollar-quoted-with-tag",
+      "sql": "select $tag$ it's ; and \" $tag$ as s",
+      "expect": "allow",
+      "family": "read"
+    },
+    {
+      "id": "dollar-quote-other-tag-inside",
+      "sql": "select $a$ x $b$; delete from t; $a$",
+      "expect": "allow",
+      "family": "read"
+    },
+    {
+      "id": "escape-string-escaped-quote",
+      "sql": "select E'it\\'s; delete from t; --' as s",
+      "expect": "allow",
+      "family": "read"
+    },
+    {
+      "id": "plain-string-doubled-quote",
+      "sql": "select 'it''s; delete from t' as s",
+      "expect": "allow",
+      "family": "read"
+    },
+    {
+      "id": "qualified-column-named-like-keyword",
+      "sql": "select t.update, t.delete from bookings t",
+      "expect": "allow",
+      "family": "read"
+    },
+    {
+      "id": "case-expression",
+      "sql": "select case when is_86 then 'out' else 'in' end from menu_items",
+      "expect": "allow",
+      "family": "read"
+    },
+    {
+      "id": "fetch-first",
+      "sql": "select id from bookings order by id fetch first 10 rows only",
+      "expect": "allow",
+      "family": "read"
+    },
+    {
+      "id": "jsonb-operators",
+      "sql": "select data->>'name' from events where data @> '{\"a\":1}'",
+      "expect": "allow",
+      "family": "read"
+    },
+    {
+      "id": "array-cast",
+      "sql": "select '{1,2}'::int[] as a",
+      "expect": "allow",
+      "family": "read"
+    },
+    {
+      "id": "generate-series",
+      "sql": "select * from generate_series(1, 10)",
+      "expect": "allow",
+      "family": "read"
+    },
+    {
+      "id": "current-setting-read",
+      "sql": "select current_setting('server_version')",
+      "expect": "allow",
+      "family": "read"
+    },
+    {
+      "id": "aggregate-filter",
+      "sql": "select count(*) filter (where party_size > 6) from bookings",
+      "expect": "allow",
+      "family": "read"
+    },
+    {
+      "id": "non-ascii-identifier",
+      "sql": "select \"na\u00efve\" from t",
+      "expect": "allow",
+      "family": "read"
+    },
+    {
+      "id": "for-inside-string",
+      "sql": "select 'for update' as s",
+      "expect": "allow",
+      "family": "read"
+    },
+    {
+      "id": "extract-from",
+      "sql": "select extract(year from created_at) from bookings",
+      "expect": "allow",
+      "family": "read"
+    },
+    {
+      "id": "insert",
+      "sql": "insert into bookings (name) values ('x')",
+      "expect": "refuse",
+      "family": "write"
+    },
+    {
+      "id": "update",
+      "sql": "update bookings set name = 'x'",
+      "expect": "refuse",
+      "family": "write"
+    },
+    {
+      "id": "delete",
+      "sql": "delete from bookings",
+      "expect": "refuse",
+      "family": "write"
+    },
+    {
+      "id": "merge",
+      "sql": "merge into bookings b using other o on b.id = o.id when matched then delete",
+      "expect": "refuse",
+      "family": "write"
+    },
+    {
+      "id": "truncate",
+      "sql": "truncate bookings",
+      "expect": "refuse",
+      "family": "write"
+    },
+    {
+      "id": "drop-table",
+      "sql": "drop table bookings",
+      "expect": "refuse",
+      "family": "statement"
+    },
+    {
+      "id": "create-table",
+      "sql": "create table t (id int)",
+      "expect": "refuse",
+      "family": "statement"
+    },
+    {
+      "id": "create-table-as",
+      "sql": "create table t as select 1",
+      "expect": "refuse",
+      "family": "statement"
+    },
+    {
+      "id": "alter",
+      "sql": "alter table bookings add column x int",
+      "expect": "refuse",
+      "family": "statement"
+    },
+    {
+      "id": "grant",
+      "sql": "grant all on bookings to public",
+      "expect": "refuse",
+      "family": "statement"
+    },
+    {
+      "id": "copy-to-program",
+      "sql": "copy bookings to program 'cat'",
+      "expect": "refuse",
+      "family": "statement"
+    },
+    {
+      "id": "copy-from",
+      "sql": "copy bookings from stdin",
+      "expect": "refuse",
+      "family": "statement"
+    },
+    {
+      "id": "call",
+      "sql": "call do_things()",
+      "expect": "refuse",
+      "family": "statement"
+    },
+    {
+      "id": "do-block",
+      "sql": "do $$ begin delete from bookings; end $$",
+      "expect": "refuse",
+      "family": "statement"
+    },
+    {
+      "id": "explain",
+      "sql": "explain select 1",
+      "expect": "refuse",
+      "family": "statement"
+    },
+    {
+      "id": "explain-analyze-delete",
+      "sql": "explain analyze delete from bookings",
+      "expect": "refuse",
+      "family": "statement"
+    },
+    {
+      "id": "set-role",
+      "sql": "set role postgres",
+      "expect": "refuse",
+      "family": "statement"
+    },
+    {
+      "id": "begin",
+      "sql": "begin",
+      "expect": "refuse",
+      "family": "statement"
+    },
+    {
+      "id": "commit",
+      "sql": "commit",
+      "expect": "refuse",
+      "family": "statement"
+    },
+    {
+      "id": "rollback",
+      "sql": "rollback",
+      "expect": "refuse",
+      "family": "statement"
+    },
+    {
+      "id": "values",
+      "sql": "values (1)",
+      "expect": "refuse",
+      "family": "statement"
+    },
+    {
+      "id": "table-shorthand",
+      "sql": "table bookings",
+      "expect": "refuse",
+      "family": "statement"
+    },
+    {
+      "id": "lock",
+      "sql": "lock table bookings",
+      "expect": "refuse",
+      "family": "statement"
+    },
+    {
+      "id": "vacuum",
+      "sql": "vacuum bookings",
+      "expect": "refuse",
+      "family": "statement"
+    },
+    {
+      "id": "listen",
+      "sql": "listen events",
+      "expect": "refuse",
+      "family": "statement"
+    },
+    {
+      "id": "notify",
+      "sql": "notify events",
+      "expect": "refuse",
+      "family": "statement"
+    },
+    {
+      "id": "prepare",
+      "sql": "prepare p as select 1",
+      "expect": "refuse",
+      "family": "statement"
+    },
+    {
+      "id": "execute",
+      "sql": "execute p",
+      "expect": "refuse",
+      "family": "statement"
+    },
+    {
+      "id": "empty",
+      "sql": "",
+      "expect": "refuse",
+      "family": "empty"
+    },
+    {
+      "id": "only-whitespace",
+      "sql": " \n\t ",
+      "expect": "refuse",
+      "family": "empty"
+    },
+    {
+      "id": "only-comment",
+      "sql": "-- nothing here",
+      "expect": "refuse",
+      "family": "empty"
+    },
+    {
+      "id": "only-semicolon",
+      "sql": ";",
+      "expect": "refuse",
+      "family": "empty"
+    },
+    {
+      "id": "cte-delete",
+      "sql": "with d as (delete from bookings returning *) select * from d",
+      "expect": "refuse",
+      "family": "write"
+    },
+    {
+      "id": "cte-insert",
+      "sql": "with i as (insert into bookings (name) values ('x') returning *) select * from i",
+      "expect": "refuse",
+      "family": "write"
+    },
+    {
+      "id": "cte-update",
+      "sql": "with u as (update bookings set name = 'x' returning *) select * from u",
+      "expect": "refuse",
+      "family": "write"
+    },
+    {
+      "id": "cte-merge",
+      "sql": "with m as (merge into bookings b using other o on b.id = o.id when matched then delete returning b.id) select * from m",
+      "expect": "refuse",
+      "family": "write"
+    },
+    {
+      "id": "cte-then-insert",
+      "sql": "with d as (select 1) insert into bookings select * from d",
+      "expect": "refuse",
+      "family": "write"
+    },
+    {
+      "id": "cte-mixed-case",
+      "sql": "WITH x AS (DeLeTe FROM bookings RETURNING 1) SELECT 1",
+      "expect": "refuse",
+      "family": "write"
+    },
+    {
+      "id": "cte-comment-obfuscated",
+      "sql": "with x as (/**/delete/**/ from bookings returning 1) select 1",
+      "expect": "refuse",
+      "family": "write"
+    },
+    {
+      "id": "select-into",
+      "sql": "select * into newt from bookings",
+      "expect": "refuse",
+      "family": "into"
+    },
+    {
+      "id": "select-into-temp",
+      "sql": "select 1 into temp x",
+      "expect": "refuse",
+      "family": "into"
+    },
+    {
+      "id": "for-update",
+      "sql": "select * from bookings for update",
+      "expect": "refuse",
+      "family": "locking"
+    },
+    {
+      "id": "for-share",
+      "sql": "select * from bookings for share",
+      "expect": "refuse",
+      "family": "locking"
+    },
+    {
+      "id": "for-no-key-update",
+      "sql": "select * from bookings for no key update",
+      "expect": "refuse",
+      "family": "locking"
+    },
+    {
+      "id": "for-key-share",
+      "sql": "select * from bookings for key share",
+      "expect": "refuse",
+      "family": "locking"
+    },
+    {
+      "id": "for-update-skip-locked",
+      "sql": "select * from bookings for update skip locked",
+      "expect": "refuse",
+      "family": "locking"
+    },
+    {
+      "id": "for-update-of-nowait",
+      "sql": "select * from bookings b for update of b nowait",
+      "expect": "refuse",
+      "family": "locking"
+    },
+    {
+      "id": "for-update-newline",
+      "sql": "select * from bookings for\n  update",
+      "expect": "refuse",
+      "family": "locking"
+    },
+    {
+      "id": "for-update-comment",
+      "sql": "select * from bookings for/**/update",
+      "expect": "refuse",
+      "family": "locking"
+    },
+    {
+      "id": "two-selects",
+      "sql": "select 1; select 2",
+      "expect": "refuse",
+      "family": "multiple"
+    },
+    {
+      "id": "select-then-delete",
+      "sql": "select 1; delete from bookings",
+      "expect": "refuse",
+      "family": "multiple"
+    },
+    {
+      "id": "double-semicolon",
+      "sql": "select 1;;",
+      "expect": "refuse",
+      "family": "multiple"
+    },
+    {
+      "id": "semicolon-then-comment-then-delete",
+      "sql": "select 1; -- x\ndelete from bookings",
+      "expect": "refuse",
+      "family": "multiple"
+    },
+    {
+      "id": "comment-hides-nothing",
+      "sql": "select 1 /**/;/**/ delete from bookings",
+      "expect": "refuse",
+      "family": "multiple"
+    },
+    {
+      "id": "line-comment-then-semicolon",
+      "sql": "select 1 --\n;delete from bookings",
+      "expect": "refuse",
+      "family": "multiple"
+    },
+    {
+      "id": "backslash-in-plain-string",
+      "sql": "select '\\'; delete from bookings; --'",
+      "expect": "refuse",
+      "family": "multiple"
+    },
+    {
+      "id": "nbsp-after-semicolon",
+      "sql": "select 1;\u00a0delete from bookings",
+      "expect": "refuse",
+      "family": "multiple"
+    },
+    {
+      "id": "mixed-case-smuggle",
+      "sql": "SeLeCt 1; DeLeTe from bookings",
+      "expect": "refuse",
+      "family": "multiple"
+    },
+    {
+      "id": "dollar-quote-closes-early",
+      "sql": "select $a$ x $a$; delete from bookings; $a$",
+      "expect": "refuse",
+      "family": "multiple"
+    },
+    {
+      "id": "string-then-semicolon",
+      "sql": "select 'a'; delete from bookings --'",
+      "expect": "refuse",
+      "family": "multiple"
+    },
+    {
+      "id": "dollar-string-then-drop",
+      "sql": "select $$a$$; drop table bookings",
+      "expect": "refuse",
+      "family": "multiple"
+    },
+    {
+      "id": "semicolon-at-start",
+      "sql": "; select 1",
+      "expect": "refuse",
+      "family": "multiple"
+    },
+    {
+      "id": "comment-then-delete",
+      "sql": "/*x*/ delete from bookings",
+      "expect": "refuse",
+      "family": "statement"
+    },
+    {
+      "id": "split-keyword-by-comment",
+      "sql": "sel/**/ect 1",
+      "expect": "refuse",
+      "family": "statement"
+    },
+    {
+      "id": "split-delete-by-comment",
+      "sql": "del/**/ete from bookings",
+      "expect": "refuse",
+      "family": "statement"
+    },
+    {
+      "id": "nbsp-glues-keyword",
+      "sql": "delete\u00a0from bookings",
+      "expect": "refuse",
+      "family": "statement"
+    },
+    {
+      "id": "nbsp-inside-select",
+      "sql": "select\u00a01",
+      "expect": "refuse",
+      "family": "statement"
+    },
+    {
+      "id": "leading-paren",
+      "sql": "(select 1)",
+      "expect": "refuse",
+      "family": "statement"
+    },
+    {
+      "id": "unterminated-block-comment",
+      "sql": "select 1 /* ; delete from bookings",
+      "expect": "refuse",
+      "family": "syntax"
+    },
+    {
+      "id": "unterminated-string",
+      "sql": "select 'abc",
+      "expect": "refuse",
+      "family": "syntax"
+    },
+    {
+      "id": "unterminated-quoted-identifier",
+      "sql": "select \"abc",
+      "expect": "refuse",
+      "family": "syntax"
+    },
+    {
+      "id": "unterminated-dollar-quote",
+      "sql": "select $$ abc",
+      "expect": "refuse",
+      "family": "syntax"
+    },
+    {
+      "id": "nul-byte",
+      "sql": "select 1\u0000",
+      "expect": "refuse",
+      "family": "syntax"
+    },
+    {
+      "id": "parameter",
+      "sql": "select $1",
+      "expect": "refuse",
+      "family": "syntax"
+    },
+    {
+      "id": "unicode-escape-identifier",
+      "sql": "select U&\"set\\005fconfig\"('a','b',false)",
+      "expect": "refuse",
+      "family": "syntax"
+    },
+    {
+      "id": "unicode-escape-string",
+      "sql": "select U&'d\\0061t\\+000061'",
+      "expect": "refuse",
+      "family": "syntax"
+    },
+    {
+      "id": "pg-terminate-backend",
+      "sql": "select pg_terminate_backend(123)",
+      "expect": "refuse",
+      "family": "function"
+    },
+    {
+      "id": "pg-cancel-backend",
+      "sql": "select pg_cancel_backend(123)",
+      "expect": "refuse",
+      "family": "function"
+    },
+    {
+      "id": "set-config",
+      "sql": "select set_config('role', 'postgres', false)",
+      "expect": "refuse",
+      "family": "function"
+    },
+    {
+      "id": "set-config-schema-qualified",
+      "sql": "select pg_catalog.set_config('role', 'postgres', false)",
+      "expect": "refuse",
+      "family": "function"
+    },
+    {
+      "id": "set-config-quoted",
+      "sql": "select \"set_config\"('role', 'postgres', false)",
+      "expect": "refuse",
+      "family": "function"
+    },
+    {
+      "id": "set-config-comment-before-paren",
+      "sql": "select SET_CONFIG/**/('a', 'b', true)",
+      "expect": "refuse",
+      "family": "function"
+    },
+    {
+      "id": "set-config-spaced-qualified",
+      "sql": "select pg_catalog . pg_terminate_backend (1)",
+      "expect": "refuse",
+      "family": "function"
+    },
+    {
+      "id": "lo-import",
+      "sql": "select lo_import('/etc/passwd')",
+      "expect": "refuse",
+      "family": "function"
+    },
+    {
+      "id": "lo-export",
+      "sql": "select lo_export(1234, '/tmp/x')",
+      "expect": "refuse",
+      "family": "function"
+    },
+    {
+      "id": "lo-from-bytea",
+      "sql": "select lo_from_bytea(0, 'x')",
+      "expect": "refuse",
+      "family": "function"
+    },
+    {
+      "id": "pg-read-file",
+      "sql": "select pg_read_file('/etc/passwd')",
+      "expect": "refuse",
+      "family": "function"
+    },
+    {
+      "id": "pg-ls-dir",
+      "sql": "select pg_ls_dir('/')",
+      "expect": "refuse",
+      "family": "function"
+    },
+    {
+      "id": "pg-sleep",
+      "sql": "select pg_sleep(60)",
+      "expect": "refuse",
+      "family": "function"
+    },
+    {
+      "id": "dblink",
+      "sql": "select * from dblink('host=x', 'select 1') as t(a int)",
+      "expect": "refuse",
+      "family": "function"
+    },
+    {
+      "id": "dblink-exec",
+      "sql": "select dblink_exec('host=x', 'delete from t')",
+      "expect": "refuse",
+      "family": "function"
+    },
+    {
+      "id": "nextval",
+      "sql": "select nextval('bookings_id_seq')",
+      "expect": "refuse",
+      "family": "function"
+    },
+    {
+      "id": "setval",
+      "sql": "select setval('bookings_id_seq', 1)",
+      "expect": "refuse",
+      "family": "function"
+    },
+    {
+      "id": "pg-notify",
+      "sql": "select pg_notify('events', 'x')",
+      "expect": "refuse",
+      "family": "function"
+    },
+    {
+      "id": "query-to-xml",
+      "sql": "select query_to_xml('delete from bookings', true, false, '')",
+      "expect": "refuse",
+      "family": "function"
+    },
+    {
+      "id": "pg-advisory-lock",
+      "sql": "select pg_advisory_lock(1)",
+      "expect": "refuse",
+      "family": "function"
+    },
+    {
+      "id": "pg-reload-conf",
+      "sql": "select pg_reload_conf()",
+      "expect": "refuse",
+      "family": "function"
+    },
+    {
+      "id": "pg-rotate-logfile",
+      "sql": "select pg_rotate_logfile()",
+      "expect": "refuse",
+      "family": "function"
+    },
+    {
+      "id": "pg-create-restore-point",
+      "sql": "select pg_create_restore_point('x')",
+      "expect": "refuse",
+      "family": "function"
+    },
+    {
+      "id": "ts-stat",
+      "sql": "select * from ts_stat('delete from bookings')",
+      "expect": "refuse",
+      "family": "function"
+    },
+    {
+      "id": "function-in-subquery",
+      "sql": "select id from bookings where id = (select nextval('s'))",
+      "expect": "refuse",
+      "family": "function"
+    },
+    {
+      "id": "function-in-cte",
+      "sql": "with x as (select pg_terminate_backend(1)) select * from x",
+      "expect": "refuse",
+      "family": "function"
+    }
+  ]
+}

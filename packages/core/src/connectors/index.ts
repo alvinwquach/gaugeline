@@ -20,3 +20,30 @@ export {
   typeCounts as sanityTypeCounts,
 } from "./sanity.js";
 export type { SanityConnector, SanityProduct } from "./sanity.js";
+export {
+  DEFAULT_DENIED_FUNCTIONS,
+  DEFAULT_POSTGRES_ENV,
+  DEFAULT_SUPABASE_ENV,
+  DEFAULT_SUPABASE_KEY_ENV,
+  DatabaseError,
+  MAX_ROWS as DATABASE_MAX_ROWS,
+  checkSupabaseKey,
+  classifyStatement,
+  databaseConnector,
+  databaseEnvVars,
+  factsFromResult,
+  lazyDatabases,
+  readDatabases,
+  sourcesConfigSchema,
+} from "./postgres/index.js";
+export type {
+  DatabaseConnector,
+  DatabaseQueryResult,
+  DatabasesRead,
+  DatabasesSettings,
+  FactMapping,
+  RefusalReason,
+  SourceConfig,
+  SourcesConfig,
+  Verdict,
+} from "./postgres/index.js";
