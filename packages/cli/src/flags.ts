@@ -32,7 +32,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     description: 'Exit 1 when a "Fix this first" finding is found',
     env: "CI",
     since: "0.1.0",
-    commands: ["check", "launch", "verify"],
+    commands: ["check", "launch", "verify", "tags"],
   },
   {
     name: "json",
@@ -70,7 +70,18 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     description:
       "Allow addresses on this computer or a private network, such as 127.0.0.1 or 192.168.x.x",
     since: "0.1.0",
-    commands: ["check", "launch", "plan", "printed", "snapshot", "cutover", "verify", "run"],
+    commands: [
+      "check",
+      "launch",
+      "plan",
+      "printed",
+      "snapshot",
+      "cutover",
+      "verify",
+      "run",
+      "ads",
+      "tags",
+    ],
   },
   {
     name: "allow-secret-key",

@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import { readAdsExport } from "@gaugeline/core";
 import { describe, expect, it } from "vitest";
 import { EXIT, main } from "../main.js";
+import { tapasSite } from "./helpers/ads-site.js";
 
 /**
  * docs/ad-landing-pages.md shows `npx gaugeline ads meta.csv` and what it prints. The docs runner
@@ -50,7 +51,7 @@ describe("docs/ad-landing-pages.md", () => {
       const code = await main(
         argv,
         { stdout: { write: (s) => out.push(s) }, stderr: { write: (s) => err.push(s) } },
-        { cwd: ADS },
+        { cwd: ADS, fetcher: { transport: tapasSite } },
       );
       expect(code).toBe(EXIT.ok);
       expect(`${err.join("")}${out.join("")}`.trimEnd()).toBe(e.expected);

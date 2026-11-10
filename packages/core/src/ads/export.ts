@@ -1,6 +1,7 @@
 import { ConfigError } from "../errors.js";
 import { normaliseHeader, parseCsv } from "../plan/columns.js";
 import { formatMoney, toMinor } from "../products/money.js";
+import { isCampaignKey } from "./tags.js";
 
 /**
  * Reading an ads export (Meta Ads Manager or Google Ads) and grouping its ads by the page they send
@@ -306,9 +307,6 @@ export function readAdsExport(csvText: string): AdsExport {
   };
 }
 
-/** utm_ anything, gclid and fbclid: the tags a campaign adds to a link. */
-const CAMPAIGN_KEY = /^(utm_.*|gclid|fbclid)$/i;
-
 /**
  * The destination key of a link, and the campaign tags taken out of it. The key is the link with
  * every utm_*, gclid and fbclid removed, the fragment removed, any user name and password removed, the
@@ -333,7 +331,7 @@ export function adDestinationKey(link: string): { key: string; tags: Record<stri
   const tags: Record<string, string> = {};
   const kept: [string, string][] = [];
   for (const [k, v] of u.searchParams) {
-    if (CAMPAIGN_KEY.test(k)) tags[k.toLowerCase()] ??= v;
+    if (isCampaignKey(k)) tags[k.toLowerCase()] ??= v;
     else kept.push([k, v]);
   }
   kept.sort((a, b) =>

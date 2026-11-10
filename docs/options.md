@@ -16,6 +16,8 @@ Every flag the CLI accepts.
 | `--slack`, `--discord`, `--email`, `--webhook` | Send the results somewhere. See [Send results anywhere](/docs/notifications)                                                                   |
 | `--notify-on`, `--report-url`                  | Control when messages are sent, and link to a hosted report                                                                                    |
 
+Two commands read ad links. `gaugeline ads <export.csv>` takes `--json` and `--allow-private`, and `gaugeline tags <link>` follows one link through its redirects and takes `--ci` and `--allow-private`; see [Ad landing pages](/docs/ad-landing-pages#campaign-tags-are-lost).
+
 ## Exit codes
 
 | Code | Meaning                                                                       |

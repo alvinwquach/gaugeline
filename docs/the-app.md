@@ -384,10 +384,10 @@ how each row is worked out. What matters for the app:
 - **Download the report** appears only when the ads command makes a report for the run.
 
 ::: warning Findings come with the checks
-`gaugeline open --ads` reads the export and groups its ads by landing page, so the view lists every
-page with its ads and spend. The checks on those pages (a page that does not load, campaign tags
-lost, sold out, placeholder text) arrive after it, one at a time. Until then the findings column is
-empty and the summary says no spend went to pages with problems, which means none was looked for.
+`gaugeline open --ads` reads the export, groups its ads by landing page and asks each page once for the
+one check that exists so far: whether the campaign tags survive the redirects. The other checks (a page
+that does not load, sold out, placeholder text) arrive after it, one at a time. Until then the findings
+column lists tag losses only, and a page with nothing listed has had that check, not all of them.
 :::
 
 ## Coming in version 0.2
