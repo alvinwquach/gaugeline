@@ -34,7 +34,16 @@ const run = {
 
 describe("Pages checked and Search data in the shell", () => {
   it("are registered after Problems, and the navigation names them", async () => {
-    expect(VIEWS.map((v) => v.id)).toEqual(["overview", "problems", "pages", "search", "leaks"]);
+    expect(VIEWS.map((v) => v.id)).toEqual([
+      "overview",
+      "problems",
+      "pages",
+      "search",
+      "leaks",
+      "pageCost",
+      "automaticMessages",
+      "content",
+    ]);
     installApi([run]);
     render(<Shell />);
     const nav = await screen.findByRole("navigation", { name: "Views" });

@@ -1,3 +1,6 @@
+import { FEATURES, isOff } from "../../packages/app/src/features.js";
+import { VIEWS } from "../../packages/app/src/views.js";
+import { WILL_SHOW } from "../../packages/app/src/views/ComingSoon.js";
 import { blockTitle, toTree, type Node } from "../../packages/app/src/search/tree.js";
 import { formatMoney } from "../../packages/app/src/ads/money.js";
 import { toAdsModel } from "../../packages/app/src/ads/model.js";
@@ -165,4 +168,17 @@ export function adsText(result: Result, data: AdsData): string {
       ].join("\n");
     })
     .join("\n\n");
+}
+
+/**
+ * The views of a page run as the navigation lists them, a view that is switched off with its note,
+ * and the sentence its placeholder panel shows. Made from VIEWS and FEATURES, the code the app uses.
+ */
+export function viewListText(): string {
+  const width = Math.max(...VIEWS.map((v) => v.label.length));
+  return VIEWS.map((v) =>
+    isOff(v)
+      ? `${v.label.padEnd(width)}  Disabled. ${FEATURES[v.feature].note}\n${" ".repeat(width + 2)}${WILL_SHOW[v.feature]}`
+      : v.label,
+  ).join("\n");
 }

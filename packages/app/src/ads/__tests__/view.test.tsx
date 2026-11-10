@@ -240,8 +240,17 @@ describe("Ads in the shell", () => {
   );
   const pageRun = doneRun("page-1", "https://tapas-bar.example/", result({ findings: [] }));
 
-  it("the Ads view exists only for an ads run; page runs keep their five views", () => {
-    expect(VIEWS.map((v) => v.id)).toEqual(["overview", "problems", "pages", "search", "leaks"]);
+  it("the Ads view exists only for an ads run; page runs keep their five views and the three still to come", () => {
+    expect(VIEWS.map((v) => v.id)).toEqual([
+      "overview",
+      "problems",
+      "pages",
+      "search",
+      "leaks",
+      "pageCost",
+      "automaticMessages",
+      "content",
+    ]);
     expect(ADS_VIEWS.map((v) => v.id)).toEqual(["ads", "problems"]);
     expect(viewsFor({ kind: "ads" })).toBe(ADS_VIEWS);
     expect(viewsFor({ kind: "page" })).toBe(VIEWS);

@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { AddressForm } from "./AddressForm";
 import { readSession, reportPath, type AppSession } from "./api";
-import { formatHash, useRoute } from "./route";
+import { useRoute } from "./route";
 import { Sidebar } from "./Sidebar";
 import { useRuns } from "./store";
+import { ViewNav } from "./ViewNav";
+import { ViewPanel } from "./ViewPanel";
 import { viewsFor } from "./views";
 
 /** The id of the last run in the Map: the newest, since the Map is in the server's order. */
@@ -75,7 +77,6 @@ export function Shell() {
   }, [activeId, route.runId, route.viewId, view, go]);
 
   const active = activeId === null ? undefined : runs.get(activeId);
-  const View = view?.component;
 
   return (
     <div className="app">
@@ -93,20 +94,7 @@ export function Shell() {
         <div className="content">
           {active ? (
             <div className="run-bar">
-              <nav className="views" aria-label="Views">
-                <ul>
-                  {viewsFor(active).map((v) => (
-                    <li key={v.id}>
-                      <a
-                        href={formatHash(active.id, v.id)}
-                        aria-current={v.id === view?.id ? "page" : undefined}
-                      >
-                        {v.label}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </nav>
+              <ViewNav views={viewsFor(active)} runId={active.id} currentId={view?.id} />
               {/* A plain link to a file the server builds: no script, no Blob, no object URL. */}
               {active.state === "done" &&
               active.result &&
@@ -122,8 +110,8 @@ export function Shell() {
             </div>
           ) : null}
           <main id="main">
-            {active && View ? (
-              <View run={active} />
+            {active && view ? (
+              <ViewPanel view={view} run={active} />
             ) : (
               <Empty loaded={loaded} listError={listError} />
             )}
