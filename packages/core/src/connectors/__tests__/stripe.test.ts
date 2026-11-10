@@ -533,3 +533,78 @@ describe("promise: read only, key nowhere", () => {
     expect(JSON.stringify(run)).not.toContain(RK);
   });
 });
+
+describe("subscription prices", () => {
+  const rawProduct = { id: "prod_a", name: "Pro", active: true };
+  const rawPrice = (extra: Record<string, unknown>) => ({
+    id: "price_a",
+    product: "prod_a",
+    currency: "usd",
+    unit_amount: 4900,
+    active: true,
+    ...extra,
+  });
+  const priceOf = (extra: Record<string, unknown>) =>
+    buildProducts([rawProduct], [rawPrice(extra)])[0]?.prices[0];
+
+  it("keeps the interval, the count and the trial of a recurring price", () => {
+    expect(
+      priceOf({ recurring: { interval: "month", interval_count: 3, trial_period_days: 7 } })
+        ?.recurring,
+    ).toEqual({ interval: "month", intervalCount: 3, trialPeriodDays: 7 });
+  });
+
+  it("defaults the count to 1 and the trial to null", () => {
+    expect(priceOf({ recurring: { interval: "year" } })?.recurring).toEqual({
+      interval: "year",
+      intervalCount: 1,
+      trialPeriodDays: null,
+    });
+    expect(
+      priceOf({ recurring: { interval: "week", interval_count: 0, trial_period_days: -1 } })
+        ?.recurring,
+    ).toEqual({ interval: "week", intervalCount: 1, trialPeriodDays: null });
+  });
+
+  it("a price without a recurring object, or with an unknown interval, has none", () => {
+    expect(priceOf({})).not.toHaveProperty("recurring");
+    expect(priceOf({ recurring: null })).not.toHaveProperty("recurring");
+    expect(priceOf({ recurring: { interval: "fortnight" } })).not.toHaveProperty("recurring");
+  });
+
+  it("keeps tax_behavior only when it says inclusive or exclusive", () => {
+    expect(priceOf({ tax_behavior: "exclusive" })?.taxBehavior).toBe("exclusive");
+    expect(priceOf({ tax_behavior: "inclusive" })?.taxBehavior).toBe("inclusive");
+    expect(priceOf({ tax_behavior: "unspecified" })).not.toHaveProperty("taxBehavior");
+  });
+
+  it("keeps the fixed amounts of currency_options, lower-cased", () => {
+    expect(
+      priceOf({ currency_options: { EUR: { unit_amount: 4500 }, gbp: { unit_amount: null } } })
+        ?.currencyOptions,
+    ).toEqual({ eur: 4500 });
+    expect(priceOf({ currency_options: {} })).not.toHaveProperty("currencyOptions");
+  });
+
+  it("reads the recorded studio: three subscription products, a yearly price and an archived one", async () => {
+    const seen: Seen[] = [];
+    const products = await stripeConnector.read(ENV, recorded("stripe-plans-harbor", seen));
+    expect(seen.map((s) => s.method)).toEqual(["GET", "GET"]);
+    const prices = products.flatMap((p) => p.prices);
+    expect(
+      prices.map((p) => [p.id, p.recurring?.interval, p.recurring?.trialPeriodDays, p.active]),
+    ).toEqual([
+      ["price_HarborFound4900", "month", 7, true],
+      ["price_HarborFound49000", "year", 7, true],
+      ["price_HarborMoment12900", "year", null, true],
+      ["price_HarborElite24900", "month", null, false],
+      ["price_HarborElite29900", "month", null, true],
+    ]);
+  });
+
+  it("one-time prices keep the shape they had", async () => {
+    const products = await stripeConnector.read(ENV, recorded("stripe-products"));
+    for (const p of products.flatMap((x) => x.prices))
+      expect(Object.keys(p).sort()).toEqual(["active", "currency", "id", "unitAmount"]);
+  });
+});
