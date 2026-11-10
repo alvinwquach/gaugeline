@@ -389,6 +389,46 @@ ships, `gaugeline open --ads` says so and exits with code 2. The view, and every
 and tested against results from a stand-in for that command.
 :::
 
+## Coming in version 0.2
+
+Three more views are listed after Leaks & access: **Page cost**, **Automatic messages** and
+**Content**. They need your Sanity login, which arrives in version 0.2, so today each one is switched
+off. They are listed anyway so the app agrees with this page, and so you can see what is coming.
+
+Say you built a physiotherapy clinic's site on Sanity, Next.js and Vercel, and the receptionist asks
+why the booking page feels slow and whether anything goes out by itself when she publishes a new
+timetable. This is the navigation for a clinic's page run, as the app lists it, and what each of the
+three views will show when it arrives:
+
+![The demo opened on Page cost: the navigation lists Overview, Problems, Pages checked, Search data and Leaks & access as links, then Page cost, Automatic messages and Content in muted text, each with "Needs your Sanity login. Coming in version 0.2." under it. The panel below says the same and one sentence about what Page cost will show.](/img/app-coming-soon.png)
+
+```text title=Views
+Overview
+Problems
+Pages checked
+Search data
+Leaks & access
+Page cost           Disabled. Needs your Sanity login. Coming in version 0.2.
+                    Page cost will show what each page asks Sanity for, compared with what it shows.
+Automatic messages  Disabled. Needs your Sanity login. Coming in version 0.2.
+                    Automatic messages will show things Sanity does by itself when you publish.
+Content             Disabled. Needs your Sanity login. Coming in version 0.2.
+                    Content will show everything on your site as a table, with the pages each item appears on.
+```
+
+- **A switched-off view is a button you can still reach with the keyboard.** Tab stops on it and a
+  screen reader says its name, then why it is off. Pressing it, with the mouse, Enter or Space,
+  does nothing: there is nothing behind it yet.
+- **Its address still opens a panel.** `#/<run>/pageCost`, `#/<run>/automaticMessages` and
+  `#/<run>/content` show the view's name, the note and the sentence above. There is no table, no
+  number and no example, because the app shows real results or says what is coming.
+- **Nothing is requested.** The panels make no request to Sanity or to your site, and nothing in
+  the app can switch a view on: not a setting, not the address, not an environment variable. They
+  turn on in version 0.2 when the release switches them on.
+- **The demo and `--ads` runs.** `npx gaugeline open --demo` lists the same three, switched off:
+  example results never turn them on. An ads run (`gaugeline open --ads`) has its own two views
+  and lists none of them.
+
 ## Works offline
 
 The app is part of the `gaugeline` package. Installing or running it with `npx` downloads the app
@@ -407,7 +447,7 @@ styles, fonts and requests may only come from the app itself.
 | Search data                            | The title, canonical, readable words and structured data the page declares, as read without JavaScript                                       |
 | Leaks & access                         | Whether the Sanity dataset is public, which types it holds, JavaScript scanned for keys, and staging copies                                  |
 | Ads                                    | With `gaugeline open --ads`: the landing pages of an ads export, the spend that went to pages with problems, and each page's findings        |
-| Page cost, Automatic messages, Content | Need your Sanity login. Coming in version 0.2                                                                                                |
+| Page cost, Automatic messages, Content | Needs your Sanity login. Coming in version 0.2.                                                                                              |
 
 ## Private to your computer
 
