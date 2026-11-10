@@ -1,0 +1,25 @@
+{
+  "interactions": [
+    {
+      "body": "{\"objects\":[{\"type\":\"ITEM\",\"id\":\"SQHOODIE0000000000000001\",\"updated_at\":\"2026-11-01T17:00:00.000Z\",\"version\":1731000000000,\"is_deleted\":false,\"present_at_all_locations\":true,\"item_data\":{\"name\":\"Training hoodie\",\"description_html\":\"<p>Invented copy.</p>\",\"product_type\":\"REGULAR\",\"variations\":[{\"type\":\"ITEM_VARIATION\",\"id\":\"SQHOODIES000000000000001\",\"updated_at\":\"2026-11-01T17:00:00.000Z\",\"version\":1731000000000,\"is_deleted\":false,\"present_at_all_locations\":true,\"item_variation_data\":{\"item_id\":\"SQHOODIE0000000000000001\",\"name\":\"S\",\"sku\":\"RL-HOOD-S\",\"ordinal\":1,\"pricing_type\":\"FIXED_PRICING\",\"price_money\":{\"amount\":5400,\"currency\":\"USD\"},\"track_inventory\":true,\"sellable\":true,\"stockable\":true}},{\"type\":\"ITEM_VARIATION\",\"id\":\"SQHOODIEM000000000000001\",\"updated_at\":\"2026-11-01T17:00:00.000Z\",\"version\":1731000000000,\"is_deleted\":false,\"present_at_all_locations\":true,\"item_variation_data\":{\"item_id\":\"SQHOODIE0000000000000001\",\"name\":\"M\",\"sku\":\"RL-HOOD-M\",\"ordinal\":1,\"pricing_type\":\"FIXED_PRICING\",\"price_money\":{\"amount\":5400,\"currency\":\"USD\"},\"track_inventory\":true,\"sellable\":true,\"stockable\":true}},{\"type\":\"ITEM_VARIATION\",\"id\":\"SQHOODIEL000000000000001\",\"updated_at\":\"2026-11-01T17:00:00.000Z\",\"version\":1731000000000,\"is_deleted\":false,\"present_at_all_locations\":true,\"item_variation_data\":{\"item_id\":\"SQHOODIE0000000000000001\",\"name\":\"L\",\"sku\":\"RL-HOOD-L\",\"ordinal\":1,\"pricing_type\":\"FIXED_PRICING\",\"price_money\":{\"amount\":5850,\"currency\":\"USD\"},\"track_inventory\":true,\"sellable\":true,\"stockable\":true}}]}},{\"type\":\"ITEM\",\"id\":\"SQPASS00000000000000001\",\"updated_at\":\"2026-11-01T17:00:00.000Z\",\"version\":1731000000000,\"is_deleted\":false,\"present_at_all_locations\":true,\"item_data\":{\"name\":\"Month pass\",\"description_html\":\"<p>Invented copy.</p>\",\"product_type\":\"REGULAR\",\"variations\":[{\"type\":\"ITEM_VARIATION\",\"id\":\"SQPASSV0000000000000001\",\"updated_at\":\"2026-11-01T17:00:00.000Z\",\"version\":1731000000000,\"is_deleted\":false,\"present_at_all_locations\":true,\"item_variation_data\":{\"item_id\":\"SQPASS00000000000000001\",\"name\":\"Regular\",\"sku\":\"RL-PASS-1M\",\"ordinal\":1,\"pricing_type\":\"FIXED_PRICING\",\"price_money\":{\"amount\":12000,\"currency\":\"USD\"},\"track_inventory\":true,\"sellable\":true,\"stockable\":true}}]}}],\"cursor\":\"SQcursorPage2Ridgeline0001\"}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://connect.squareup.com/v2/catalog/list?types=ITEM"
+    },
+    {
+      "body": "{\"objects\":[{\"type\":\"ITEM\",\"id\":\"SQINTRO0000000000000001\",\"updated_at\":\"2026-11-01T17:00:00.000Z\",\"version\":1731000000000,\"is_deleted\":false,\"present_at_all_locations\":true,\"item_data\":{\"name\":\"Intro session\",\"description_html\":\"<p>Invented copy.</p>\",\"product_type\":\"REGULAR\",\"variations\":[{\"type\":\"ITEM_VARIATION\",\"id\":\"SQINTROV000000000000001\",\"updated_at\":\"2026-11-01T17:00:00.000Z\",\"version\":1731000000000,\"is_deleted\":false,\"present_at_all_locations\":true,\"item_variation_data\":{\"item_id\":\"SQINTRO0000000000000001\",\"name\":\"Regular\",\"sku\":\"RL-INTRO\",\"ordinal\":1,\"pricing_type\":\"FIXED_PRICING\",\"price_money\":{\"amount\":0,\"currency\":\"USD\"},\"track_inventory\":true,\"sellable\":true,\"stockable\":true}}]}},{\"type\":\"ITEM\",\"id\":\"SQWINTER000000000000001\",\"updated_at\":\"2026-11-01T17:00:00.000Z\",\"version\":1731000000000,\"is_deleted\":false,\"present_at_all_locations\":true,\"item_data\":{\"name\":\"Winter challenge\",\"description_html\":\"<p>Invented copy.</p>\",\"product_type\":\"REGULAR\",\"variations\":[{\"type\":\"ITEM_VARIATION\",\"id\":\"SQWINTERV00000000000001\",\"updated_at\":\"2026-11-01T17:00:00.000Z\",\"version\":1731000000000,\"is_deleted\":false,\"present_at_all_locations\":true,\"item_variation_data\":{\"item_id\":\"SQWINTER000000000000001\",\"name\":\"Regular\",\"sku\":\"RL-WINTER\",\"ordinal\":1,\"pricing_type\":\"FIXED_PRICING\",\"price_money\":{\"amount\":3500,\"currency\":\"USD\"},\"track_inventory\":true,\"sellable\":true,\"stockable\":true}}],\"is_archived\":true}}]}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://connect.squareup.com/v2/catalog/list?types=ITEM&cursor=SQcursorPage2Ridgeline0001"
+    }
+  ],
+  "name": "square-shop",
+  "recordedAt": "2026-11-10T00:00:00.000Z",
+  "version": 1
+}
