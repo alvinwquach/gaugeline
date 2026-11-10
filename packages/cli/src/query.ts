@@ -22,6 +22,7 @@ import { runGraphql } from "./query-graphql.js";
 import { runPage } from "./query-page.js";
 import { schemaPath } from "./query-schema.js";
 import { runSuggest } from "./query-suggest.js";
+import { runUnused } from "./query-unused.js";
 import { formatTerminal } from "./reporter.js";
 
 /** Why each kind of unreadable query was left alone, in a sentence a person can act on. */
@@ -138,6 +139,7 @@ export async function runQuery(
     graphql?: { endpoint?: string };
     suggest?: { type: string };
     page?: { type: string; out: string; force: boolean };
+    unused?: boolean;
     schema?: string;
     allowPrivate?: boolean;
     quiet?: boolean;
@@ -155,6 +157,16 @@ export async function runQuery(
       },
       io,
       { cwd: deps.cwd, ...(deps.fetcher ? { fetcher: deps.fetcher } : {}) },
+    );
+  if (args.unused === true)
+    return runUnused(
+      { dir: args.dir, ...(args.json === undefined ? {} : { json: args.json }) },
+      io,
+      {
+        cwd: deps.cwd,
+        ...(deps.now ? { now: deps.now } : {}),
+        ...(deps.color === undefined ? {} : { color: deps.color }),
+      },
     );
   if (args.suggest !== undefined)
     return runSuggest(

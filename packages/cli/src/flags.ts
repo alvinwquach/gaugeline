@@ -181,6 +181,14 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     commands: ["query"],
   },
   {
+    name: "unused",
+    type: "boolean",
+    description:
+      "With query: list fields your queries fetch that no code reads, GROQ and GraphQL (source only, no request)",
+    since: "0.2.0",
+    commands: ["query"],
+  },
+  {
     name: "type",
     type: "string",
     description:

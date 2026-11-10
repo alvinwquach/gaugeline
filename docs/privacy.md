@@ -437,6 +437,10 @@ GET https://<project>.api.sanity.io/v2021-10-21/data/query/<dataset>?query=*[_ty
 
 The answer is the id, the slug and the title of each document: nothing else is requested. Gaugeline keeps them in memory only long enough to group them and keeps the groups. A finding prints the type, the shared slug or title, and the ids of the documents that share it. That is text an editor wrote, escaped before it is printed, and it appears only when two documents share it. The token goes in a header and never in the address. Without `--dupes` none of this is requested. What the findings mean: [Checking your queries](/docs/query-check#the-same-thing-twice).
 
+### Unused fields (gaugeline query --unused)
+
+`--unused` makes no request. It reads the `.ts`, `.tsx`, `.js`, `.jsx` and `.mjs` files (and `.graphql` and `.gql` files) of the folder you give it, and the files they import, with the TypeScript compiler, and it never reads anything inside `node_modules`. It needs no `SANITY_PROJECT_ID` and no token, and it does not read an environment variable: its code is not given the environment. A field's name, a file and a line are all that reach the output; no document, no value and no key does. What the output means: [Fields fetched but never rendered](/docs/query-check#fields-fetched-but-never-rendered).
+
 ### Written queries (gaugeline query --suggest)
 
 `--suggest --type <name>` reads the field names and kinds of the type from your schema file on disk (`sanity schema extract`, or `--schema <file>`) and asks your dataset how many of the newest 50 published documents have each field. It needs `SANITY_PROJECT_ID` and sends one `GET`, published content only, with a count for each field (more only if the address would be too long, each for fewer fields):

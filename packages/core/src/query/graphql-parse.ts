@@ -12,8 +12,10 @@
 /** A field in a selection set. `selections` is absent for a field that has none (a value). */
 export interface GqlField {
   kind: "field";
-  /** The field's own name; an alias is read past. */
+  /** The field's own name. */
   name: string;
+  /** The alias, when the field has one (`headline: title`): the name the code that reads the result sees. */
+  alias?: string;
   line: number;
   selections?: GqlSelection[];
 }
@@ -293,13 +295,20 @@ function selection(r: Reader): GqlSelection {
     };
   }
   let name = r.name();
+  let alias: string | undefined;
   if (r.isPunct(":")) {
     r.next();
+    alias = name.value;
     name = r.name();
   }
   if (r.isPunct("(")) r.skipBalanced("(", ")");
   r.directives();
-  const field: GqlField = { kind: "field", name: name.value, line: name.line };
+  const field: GqlField = {
+    kind: "field",
+    name: name.value,
+    ...(alias === undefined ? {} : { alias }),
+    line: name.line,
+  };
   if (r.isPunct("{")) field.selections = selectionSet(r);
   return field;
 }
