@@ -99,6 +99,23 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     commands: ["check", "launch"],
   },
   {
+    name: "owner-consent",
+    type: "boolean",
+    description:
+      "Run the probing checks, which ask routes for what they protect with no login; only on sites you may test",
+    since: "0.2.0",
+    commands: ["check"],
+  },
+  {
+    name: "routes",
+    type: "string",
+    description:
+      "With --owner-consent, find download routes in route files matching this glob (repeatable)",
+    since: "0.2.0",
+    commands: ["check"],
+    multiple: true,
+  },
+  {
     name: "since",
     type: "string",
     description:

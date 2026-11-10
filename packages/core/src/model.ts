@@ -215,6 +215,14 @@ export interface CheckContext {
   freshness?: Freshness;
   /** Values the run was told to expect (for example the app's name). Until the config file, API only. */
   expect?: RunExpectations;
+  /**
+   * The site's owner agreed to probing checks (--owner-consent, or gaugeline.consent.json): checks
+   * that ask a gated route for what it protects with no credentials. Absent or false: they ask
+   * nothing and say so.
+   */
+  ownerConsent?: boolean;
+  /** Paths of the site's repository route files (--routes), for the download route probe. Names only: no file is read. */
+  routeFiles?: readonly string[];
 }
 
 export interface Check<Input> {

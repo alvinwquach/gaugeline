@@ -58,11 +58,17 @@ Each run samples a fixed amount and never more. The numbers live in one frozen o
 | Hidden-section pages asked       | 5       |
 | Pages in switches and freshness  | 16      |
 | Next.js draft routes asked       | 4       |
+| Download routes asked (consent)  | 10      |
 | Framework addresses requested    | 0       |
 | Addresses inside structured data | 12      |
 | Requests at the same time        | 5       |
 | Redirect hops followed           | 10      |
 | Body read per response           | 5 MB    |
+| Body read per download route     | 1 KB    |
 
 Samples are the first ones in document order, so the same page gives the same sample every run.
 There are no flags to raise these limits: they are a promise to the site being checked.
+
+Download routes are the one thing asked with no login, so they are asked only with `--owner-consent`
+(or a `gaugeline.consent.json`), on sites you own or have permission to test. What the probe sends and
+reads is under [Download routes](privacy.md#download-routes-a-probing-check) on the privacy page.

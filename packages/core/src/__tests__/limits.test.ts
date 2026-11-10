@@ -45,6 +45,8 @@ describe("LIMITS and Budget: unit", () => {
       hiddenPages: 5,
       statePages: 16,
       draftRoutes: 4,
+      downloadRoutes: 10,
+      downloadPeekBytes: 1024,
       frameworkAddresses: 0,
       scripts: 15,
       structuredDataAddresses: 12,

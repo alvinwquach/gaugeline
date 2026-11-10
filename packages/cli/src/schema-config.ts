@@ -3,6 +3,7 @@ import { dirname, join, resolve } from "node:path";
 import {
   ConfigError,
   accessConfigSchema,
+  consentConfigSchema,
   cutoverConfigSchema,
   eventsConfigSchema,
   factsConfigSchema,
@@ -20,6 +21,7 @@ import {
   schemaRulesSchema,
   tagsConfigSchema,
   type AccessConfig,
+  type ConsentConfig,
   type CutoverConfig,
   type EventsConfig,
   type FactsConfig,
@@ -68,6 +70,8 @@ export const NAV_CONFIG_FILE = "gaugeline.nav.json";
 export const PAGES_CONFIG_FILE = "gaugeline.pages.json";
 /** The DKIM selectors to read and the changes meant at cutover, likewise (snapshot, cutover). */
 export const CUTOVER_CONFIG_FILE = "gaugeline.cutover.json";
+/** The owner's agreement to the probing checks, who gave it and when: the same as --owner-consent. */
+export const CONSENT_CONFIG_FILE = "gaugeline.consent.json";
 /** Where the Tag Manager container export is, likewise. The export is a file: no account is used. */
 export const TAGS_CONFIG_FILE = "gaugeline.tags.json";
 
@@ -204,6 +208,10 @@ export function readNavRules(dir: string): NavRules | undefined {
 
 export function readCutoverConfig(dir: string): CutoverConfig | undefined {
   return readJsonConfig(dir, CUTOVER_CONFIG_FILE, cutoverConfigSchema, "the cutover settings");
+}
+
+export function readConsent(dir: string): ConsentConfig | undefined {
+  return readJsonConfig(dir, CONSENT_CONFIG_FILE, consentConfigSchema, "the probing checks");
 }
 
 export function readPagesConfig(dir: string): PagesConfig | undefined {

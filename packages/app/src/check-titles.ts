@@ -36,6 +36,7 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "facts-payment-link": ["A payment link goes nowhere", "Sales & prices"],
   "feed-broken": ["The feed this page advertises is broken", "Search & sharing"],
   "form-provider-changed": ["A form now sends to a different service", "Leads"],
+  "gated-download-open": ["A download meant for customers is handed to anyone", "Sales & prices"],
   "hidden-ai-directive": [
     "Hidden text on the page gives orders to AI assistants",
     "Security & email",
@@ -426,6 +427,12 @@ export const CHECK_TEXT: Readonly<
     "Leads go somewhere nobody is watching, or to an account you don't control, from the moment it changed.",
     "Check who changed the form's action; point it back at your service, or update your follow-up to the new one.",
     "With --since last only: the same form key (id, else name, else position) now posts to a host in a different provider row of the frozen table; position keys can swap and read as a change",
+  ],
+  "gated-download-open": [
+    "A download route returns its file to a request with no session and no purchase.",
+    "A route that protects a paid file should refuse, or send the visitor to sign in. If it returns the file, everyone who has the address gets it for free, and the address is easy to find in the page, in a search engine or in a customer's email.",
+    "Check the purchase inside the route before it answers, then hand back a short-lived signed link instead of the file itself. A route with no session should answer 401, 403 or a redirect to sign in.",
+    "probing check, off without --owner-consent: one anonymous GET per route (no cookie, no Authorization, no Referer, no compression), the status and headers, then at most 1,024 bytes of the body and the connection is closed; the route is a same-site link whose path contains download, file, deliver or export or sits under /api/, or a route file given with --routes (app/**/route.ts, pages/api/**) whose path says the same; a dynamic segment is asked only for an address seen in a link and ids are never guessed; at most 10 routes, in sorted order, the rest named; a finding is status 200 with a file content type or Content-Disposition attachment and first bytes that are not HTML (%PDF, PK, ID3 and a few other signatures are read); 401, 403, 404, a redirect to a sign-in address and a 200 HTML page pass; a redirect elsewhere is followed one hop; the body and the query string are never stored, logged or printed",
   ],
   "hidden-ai-directive": [
     "Text that visitors can't see, or a comment in the page's code, speaks to an AI assistant (for example 'ignore previous instructions').",
@@ -1526,6 +1533,7 @@ export const SAMPLE_NOUNS: Readonly<Record<string, readonly [one: string, many: 
   hiddenPages: ["hidden page", "hidden pages"],
   statePages: ["switch page", "switch pages"],
   draftRoutes: ["draft route", "draft routes"],
+  downloadRoutes: ["download route", "download routes"],
   frameworkAddresses: ["framework address", "framework addresses"],
   structuredDataAddresses: ["address in structured data", "addresses in structured data"],
 };

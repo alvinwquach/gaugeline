@@ -6,6 +6,7 @@ import {
   CRM_CHECKS,
   SWITCH_CHECKS,
   createPageRegistry,
+  PROBING_CHECKS,
 } from "../../packages/core/src/index.js";
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -173,7 +174,9 @@ describe("docs examples: integration", () => {
               // And without gaugeline.switches.json.
               !SWITCH_CHECKS.includes(id) &&
               // And without gaugeline.freshness.json.
-              !FRESHNESS_CHECKS.includes(id),
+              !FRESHNESS_CHECKS.includes(id) &&
+              // And without --owner-consent (the probing checks).
+              !PROBING_CHECKS.includes(id),
           ),
         startedAt: "2020-02-02T02:02:02.000Z",
         url: "https://shop.example/",

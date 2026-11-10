@@ -34,6 +34,10 @@ export interface RunFlags {
   command: CliCommand;
   /** launch --dns: add the email record checks. */
   dns: boolean;
+  /** --owner-consent: run the probing checks (they ask gated routes for what they protect, with no login). */
+  ownerConsent: boolean;
+  /** --routes: globs over the repository's route files, for the download route probe. */
+  routes: string[];
   /** --allow-secret-key: use a Stripe secret key (with a notice) instead of refusing it. */
   allowSecretKey: boolean;
   /** --since last: compare with the stored last run and replace it. */
@@ -657,6 +661,12 @@ export function parseCliArgs(
     kind: "run",
     command,
     dns: values.dns === true,
+    ownerConsent: values["owner-consent"] === true,
+    routes: Array.isArray(values.routes)
+      ? values.routes
+      : typeof values.routes === "string"
+        ? [values.routes]
+        : [],
     allowSecretKey: values["allow-secret-key"] === true,
     interactive: values.interactive === true,
     notify: {

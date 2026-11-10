@@ -66,12 +66,61 @@ The day the taproom sells a ticketed tasting pack as a PDF from the same place, 
 
 ## A download route that hands the file to anyone
 
-Gaugeline asks your download route for the file with no session and no purchase. A route that protects something should redirect to a login or refuse. If it returns the file, everyone with the address gets it.
+A customer download usually goes through a route on your own site: `/api/download/7-day-plan` checks that the visitor bought the plan, then hands back the PDF. If the route forgets the check, or the check has a gap, everyone with the address gets the file. Gaugeline asks the route for the file with no session and no purchase. A route that protects something should refuse, or send the visitor to sign in. If it returns the file, that is the finding.
+
+The check is `gated-download-open` (Fix this first). It is a **probing** check: it asks a route that should be protected for what it protects, with no login. It is off unless you pass `--owner-consent` or add a `gaugeline.consent.json` ([how](options.md#probing-checks-owner-consent-and-routes)). **Run it only on sites you own or have permission to test.**
+
+### Example: a coach's members page
+
+Tideline Coaching's members page links to three download routes: the 7-day plan, a members guide and the beach class notes. The plan's route forgot its purchase check. The others do their job: one redirects a visitor with no session to `/login`, the other answers 401.
+
+<!-- fixture: gated-downloads -->
+
+```sh title=Terminal
+$ npx gaugeline tideline-coaching.example --owner-consent
+```
 
 ```text title=Output
-✕ A download meant for customers is handed to anyone
-  /api/download/7-day-plan → 200 application/pdf
+✗ A download meant for customers is handed to anyone
+    /api/download/7-day-plan -> 200 application/pdf. Asked with no session and no purchase, the route handed over the file.
+· Links on this page go through a redirect
+    /api/download/members-guide (302) ends at /login?next=/api/download/members-guide
+? broken-links could not be checked: refused automated readers (401) (/api/download/class-notes)
+? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
+    Mail records are read from DNS only with --dns. Rerun with --dns to check them.
+
+2 to look at, 1 to fix first.
 ```
+
+The first finding is the one to fix: `/api/download/7-day-plan -> 200 application/pdf` says the route answered 200 with a PDF to a request that had no session. The other lines are other checks looking at the same links, left in so the output is the real one: the members guide link goes through a redirect (to the login page, which is what a gate does), and the link check lists the class notes as a link it was refused (401), which is what a gate does.
+
+### How it finds the routes
+
+- **From the links on the page.** A same-site link whose path contains `download`, `file`, `deliver` or `export`, or sits under `/api/`. A link straight to a file, such as `/files/menu.pdf`, is a static file and not a route: the checks in the first section cover files that are served as files. A link that carries its own signature and expiry is a signed link, not a gate, and is not asked.
+- **From your repository, with `--routes <glob>`.** Run Gaugeline from the repository's folder, for example `--routes "app/api/**/route.ts"`. Each route file name becomes the address it serves: `app/api/download/[id]/route.ts` becomes `/api/download/[id]`, and `pages/api/export.ts` becomes `/api/export`. Only file names are read, never the files. A route whose path does not say download, file, deliver or export is never asked. This list is proposed, like the keywords for links.
+- **A dynamic segment is asked only for an address a link gave.** `[id]` is asked for `/api/download/7-day-plan` because the page links to it. If no link gives it a concrete address, it is listed as not asked, and Gaugeline never guesses or counts through ids.
+- **At most 10 routes per run**, the first ten in sorted order, so the same page gives the same ten every run. The others are named as skipped, so a route that was not tested is never silently a pass.
+
+### What it sends and reads
+
+One anonymous `GET` per route: no cookie, no `Authorization` header, no `Referer`, and not a protected preview's secret. It reads the status and the headers, then at most 1,024 bytes of the body, and closes the connection. The file is never downloaded, stored, logged or printed, and the query string of the address is never printed. The full list is on [Privacy and safety](privacy.md#download-routes-a-probing-check).
+
+### What counts as handing the file over
+
+| The route answered                                                            | Result                                                                                                                           |
+| ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| 200, a file content type or `Content-Disposition: attachment`, and file bytes | **Finding.** The bytes are read: `%PDF`, `PK`, `ID3` and a few more.                                                             |
+| 200 `text/html`, or any 200 whose first bytes are HTML ("please sign in")     | Pass. The bytes win over the header: an `application/octet-stream` page is a page.                                               |
+| 401, 403, 404 or another refusal                                              | Pass.                                                                                                                            |
+| A redirect to a login or sign-in address                                      | Pass. The login page is not asked for.                                                                                           |
+| A redirect anywhere else, such as a signed storage address                    | Followed one hop. If that hands over the file, it is a finding, and it says the signed link was issued without a purchase check. |
+| 429, a server error, no answer, or a second redirect                          | Could not check, with the reason. Never a pass.                                                                                  |
+
+A route that streams an HTML error after a prefix that looks like a file could be misread, and the signature check makes that unlikely. The 1 KB limit, the cap of 10 routes, the path keywords and the `--routes` glob are proposed, not taken from any vendor's page.
+
+### The fix
+
+Check the purchase in the route, then hand back a short-lived signed link. A route that cannot tell who is asking should answer 401 or redirect to sign in, never return the file.
 
 ## Nothing on the page can be linked to buy
 
