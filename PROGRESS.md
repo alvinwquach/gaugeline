@@ -6,12 +6,14 @@ merged once CI is green on Node 22 and 24 (18.17, 20 and 22 until S00).
 
 ## Handoff
 
-- Last merged branch: G22d (`04/app-download-and-demo`, PR #106). In flight: G22e (`04/app-ads-view`), whose PR is open.
-- NEXT branch: G22f, `04/app-sanity-placeholders` ("Placeholders for the Sanity views"), the first `todo` row after G22e in the table below.
-- G22e built the Ads view and `open --ads` against a stand-in for the ads command: G24 (`05/ad-landing-pages`) has not merged. When it does, set `adsEngine` in `packages/cli/src/ads-engine.ts` to adapt its functions to `AdsEngine`; nothing else changes.
-- Resume with `git checkout main && git pull`.
-- Use the newest spec file under /root/.claude/uploads/ (the owner re-uploads it).
-- The standing orders and the "Method that works" paragraph are in this file.
+Written by the orchestrating session when its context ran long (10 Nov 2026). Resume from this file alone.
+
+- Last merged branch: G22e (`04/app-ads-view`, PR #107). Nothing is in flight; `main` is green.
+- NEXT branch: G22f, `04/app-sanity-placeholders` ("Placeholders for the Sanity views"), then R-01 (`docs/release-requirements`: Since vX badges, the migration-guide test starting with Node 22+, the RSS/Atom changelog feed), then phase 05 (G23, N15, G23a, N09, ...) and the rest in table order. The table is in the owner's build order; G38 is superseded by C-00.
+- Resume with `git checkout main && git pull`; use the newest spec file under /root/.claude/uploads/ (the owner re-uploads it); the standing orders, adapter rules and "Method that works" are in this file. Per branch: sync the work branch (`git checkout -B claude/relaxed-brown-7yxex4 origin/main`, then `git merge -s ours origin/claude/relaxed-brown-7yxex4`, then a plain push), one fresh agent per branch with a brief, subscribe to the PR, merge when every check is green, fix CI failures on the branch first.
+- Open questions for the owner (nothing blocks the build): (1) `open --ads` exits 2 until G24 merges: acceptable in a release, or hold the release until G24? (2) `--save-requests`: confirm the 1000-request cap and the 0600/Windows wording. (3) Opus-marked branches built on Sonnet are listed in "Built on Sonnet, review" (C-00 is pending there).
+- CI lessons (all in the agent brief): wait for state that effects write (hash, aria-current) with waitFor; hold test runs open with a fixture `delayMs`, not speed; run the whole `pnpm test` (including scripts/) on Node 22 and 24; the Windows runner is slow, so whole-repo checks need explicit test timeouts; a root vitest.config.ts change is exercised by scripts/__tests__/new-check.test.ts in a repo copy.
+- At the end of the build: prepare the release PR (do not publish), write docs/why-gaugeline.md (see Standing orders), reply with a summary and the publish commands.
 
 ## How to resume
 
