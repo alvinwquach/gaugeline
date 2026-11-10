@@ -1,0 +1,21 @@
+{
+  "note": "Invented. The first answer says 14,400 of 15,000 API requests are used (96%): the run stops there.",
+  "server": "https://api.salesforce.com/platform/mcp/v1/platform/sobject-reads",
+  "now": "2026-11-10T18:00:00Z",
+  "exchanges": [
+    {
+      "method": "initialize",
+      "apiUsage": "14400/15000",
+      "result": {
+        "protocolVersion": "2025-06-18",
+        "capabilities": {
+          "tools": {}
+        },
+        "serverInfo": {
+          "name": "sobject-reads",
+          "version": "1.0.0"
+        }
+      }
+    }
+  ]
+}

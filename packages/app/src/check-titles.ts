@@ -20,6 +20,7 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "certificate-expiring": ["The site's certificate expires soon", "Security & email"],
   "crm-insecure": ["A form sends details over an insecure connection", "Leads"],
   "crm-no-tracking": ["Leads from this form arrive without where they came from", "Leads"],
+  "crm-went-quiet": ["Leads have stopped arriving", "Leads"],
   "data-assertion-failed": ["A data assertion found rows that should not exist", "Visitors"],
   "data-stale": ["The numbers on this page are older than they should be", "Visitors"],
   "dataset-private-types": [
@@ -130,7 +131,9 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "cutover-canonical-host": ["The bare domain and www don't settle on one address", "Launch day"],
   "cutover-mail-changed": ["The domain's mail records changed at cutover", "Security & email"],
   "app-smart-banner-mismatch": ["The iPhone app banner promotes a different app", "Visitors"],
+  "crm-field-names": ["A form sends fields the CRM doesn't have", "Leads"],
   "crm-late-tracking": ["Tracking starts after the form loads", "Leads"],
+  "crm-lead-source": ["New leads are arriving without a source", "Leads"],
   "crm-no-campaign-fields": ["A form has nowhere to put campaign details", "Leads"],
   "data-behind-source": ["The page is behind the data it is built from", "Visitors"],
   "email-dmarc-missing": ["Your domain has no DMARC policy", "Security & email"],
@@ -342,6 +345,12 @@ export const CHECK_TEXT: Readonly<
     "The service can't connect a new lead to the ad, email or search that brought them.",
     "Add the service's tracking code to every page that has its form (for Pardot: Account Engagement Settings, Domain Management, Tracking Code Generator).",
     "A form or iframe of Pardot, HubSpot or Marketo in the HTML, and no script of that service's tracking code anywhere in it (pi.pardot.com/pd.js or piAId, js.hs-scripts.com or _hsq, munchkin.js or Munchkin.init); Web-to-Lead, Formstack and Typeform have no tracking script and are skipped; a form drawn by JavaScript is could-not-check; code a tag manager adds at run time is not seen",
+  ],
+  "crm-went-quiet": [
+    "The CRM was getting new leads every few days, and none has been created for several days, while the form is still on the page.",
+    "A form can load, accept the visitor's details and thank them while the lead goes nowhere: a changed field, an expired integration user, a full queue. Nobody sees it until the phone stays quiet.",
+    "Submit the form yourself with a test lead (your own, in a sandbox if you have one), see whether it reaches the CRM, and check the form's connection to Salesforce and the integration user's access.",
+    "Through Salesforce's read-only MCP server (soqlQuery on Lead: COUNT and MAX(CreatedDate) since 14 days ago, or four times quietDays if longer): no lead created for quietDays whole days (default 3) after at least 5 in the lookback, on a page that has a form or embed from Pardot, Web-to-Lead, HubSpot, Formstack, Marketo or Typeform; a page with no recognised form, or too few leads to call it quiet, is could-not-check",
   ],
   "data-assertion-failed": [
     "A query you wrote in gaugeline.sources.json to return nothing returned rows: two bookings in one slot, a paid order with no matching payment, a product with no price id.",
@@ -805,11 +814,23 @@ export const CHECK_TEXT: Readonly<
     "Set app-id in the apple-itunes-app meta tag to the same id as the App Store link.",
     '<meta name="apple-itunes-app" content="app-id=..."> differs from every apps.apple.com/.../id<digits> link on the page',
   ],
+  "crm-field-names": [
+    "A Web-to-Lead form on the page submits field names that are not fields on the Lead object in Salesforce.",
+    "Salesforce drops what it can't place. The visitor typed it, the form said thanks, and the CRM never got it.",
+    "Add the field to Lead in Salesforce and use its name in the form, or remove the input from the form.",
+    "The names of every input, select and textarea in each Web-to-Lead form in the HTML (hidden or visible; buttons and files excluded) against the field names and labels of Lead from Salesforce's read-only MCP server (getObjectSchema); Web-to-Lead's own names (first_name, zip, lead_source) are matched to their Lead fields; routing, anti-spam and utm_* names are skipped; custom fields sent by id (00N...) can't be compared and are counted; a form in an iframe or drawn by script is could-not-check",
+  ],
   "crm-late-tracking": [
     "The service's tracking code comes after its form in the page, or waits for the page to finish loading while the form is an iframe that loads first.",
     "Salesforce documents that this can lose first-touch tracking, the referring site and UTM parameters.",
     "Load the tracking script directly in the page head, before the form, not from a window load handler.",
     'Position of the tracking script after the form in document order (counted over every form, iframe and script element), or inline tracking code started by addEventListener("load"), attachEvent("onload") or window.onload while the form is an iframe; no timing is measured, and code a tag manager moves at run time is not seen',
+  ],
+  "crm-lead-source": [
+    "Many of the leads created in your CRM since the last run have an empty lead source or campaign field.",
+    "A lead with no source can't be tied to the ad, email or search that brought it, so the campaign that worked looks the same as the one that didn't.",
+    "Make the form send the source: add hidden utm_source and utm_campaign fields, map them to the CRM's lead source or campaign field, and fill the existing records that have none.",
+    "Through Salesforce's read-only MCP server (soqlQuery on Lead, newest 200 created since the last run or windowDays ago): leads whose LeadSource, or each field named in sourceFields in gaugeline.crm.json, is null or blank; flagged at 2 or more leads and 10% or more of the sample; evidence is the counts, the field names and up to five record ids, never a name or an email",
   ],
   "crm-no-campaign-fields": [
     "A form posts leads straight to Pardot, Web-to-Lead, HubSpot or Marketo with no hidden campaign fields.",

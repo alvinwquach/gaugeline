@@ -115,9 +115,22 @@ describe("buildSnapshot: unit", () => {
         action: "https://shop.example/subscribe",
         method: "post",
         hiddenFields: ["utm_source"],
+        fieldNames: ["utm_source", "email"],
         position: 2,
       },
     ]);
+  });
+
+  it("lists the name of every field a form submits, once, and leaves out buttons and files", () => {
+    const s = snap(`<form action="/x">
+      <input type="hidden" name="oid" value="secret-looking"><input name="email" value="a@b.invalid">
+      <input type="radio" name="plan" value="a"><input type="radio" name="plan" value="b">
+      <select name="when"><option>x</option></select><textarea name="note">typed text</textarea>
+      <input type="submit" name="go"><input type="button" name="b"><input type="image" name="i"><input type="reset" name="r"><input type="file" name="upload">
+      <input value="no name"><input name="">
+    </form>`);
+    expect(s.forms[0]?.fieldNames).toEqual(["oid", "email", "plan", "when", "note"]);
+    expect(JSON.stringify(s.forms)).not.toContain("typed text");
   });
 
   it("numbers forms, iframes and scripts together in document order, and keeps inline scripts", () => {

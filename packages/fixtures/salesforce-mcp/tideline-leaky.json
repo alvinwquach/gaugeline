@@ -1,0 +1,310 @@
+{
+  "note": "Invented. A server that returns names, emails, phones and a free-text note beside the ids. 10 leads, 4 with an empty Lead Source.",
+  "server": "https://api.salesforce.com/platform/mcp/v1/platform/sobject-reads",
+  "now": "2026-11-10T18:00:00Z",
+  "exchanges": [
+    {
+      "method": "initialize",
+      "apiUsage": "212/15000",
+      "result": {
+        "protocolVersion": "2025-06-18",
+        "capabilities": {
+          "tools": {}
+        },
+        "serverInfo": {
+          "name": "sobject-reads",
+          "version": "1.0.0"
+        }
+      }
+    },
+    {
+      "method": "notifications/initialized"
+    },
+    {
+      "method": "tools/list",
+      "result": {
+        "tools": [
+          {
+            "name": "getObjectSchema",
+            "description": "Invented description for getObjectSchema."
+          },
+          {
+            "name": "soqlQuery",
+            "description": "Invented description for soqlQuery."
+          },
+          {
+            "name": "find",
+            "description": "Invented description for find."
+          },
+          {
+            "name": "getUserInfo",
+            "description": "Invented description for getUserInfo."
+          },
+          {
+            "name": "listRecentSobjectRecords",
+            "description": "Invented description for listRecentSobjectRecords."
+          },
+          {
+            "name": "getRelatedRecords",
+            "description": "Invented description for getRelatedRecords."
+          }
+        ]
+      }
+    },
+    {
+      "method": "tools/call",
+      "tool": "getObjectSchema",
+      "result": {
+        "isError": false,
+        "text": {
+          "name": "Lead",
+          "fields": [
+            {
+              "name": "Id",
+              "label": "Lead ID",
+              "custom": false,
+              "type": "string"
+            },
+            {
+              "name": "FirstName",
+              "label": "First Name",
+              "custom": false,
+              "type": "string"
+            },
+            {
+              "name": "LastName",
+              "label": "Last Name",
+              "custom": false,
+              "type": "string"
+            },
+            {
+              "name": "Company",
+              "label": "Company",
+              "custom": false,
+              "type": "string"
+            },
+            {
+              "name": "Email",
+              "label": "Email",
+              "custom": false,
+              "type": "string"
+            },
+            {
+              "name": "Phone",
+              "label": "Phone",
+              "custom": false,
+              "type": "string"
+            },
+            {
+              "name": "Status",
+              "label": "Lead Status",
+              "custom": false,
+              "type": "string"
+            },
+            {
+              "name": "LeadSource",
+              "label": "Lead Source",
+              "custom": false,
+              "type": "string"
+            },
+            {
+              "name": "Rating",
+              "label": "Rating",
+              "custom": false,
+              "type": "string"
+            },
+            {
+              "name": "Industry",
+              "label": "Industry",
+              "custom": false,
+              "type": "string"
+            },
+            {
+              "name": "CreatedDate",
+              "label": "Created Date",
+              "custom": false,
+              "type": "string"
+            },
+            {
+              "name": "OwnerId",
+              "label": "Owner ID",
+              "custom": false,
+              "type": "string"
+            },
+            {
+              "name": "Preferred_Session__c",
+              "label": "Preferred session",
+              "custom": true,
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "method": "tools/call",
+      "tool": "soqlQuery",
+      "queryIncludes": "SELECT Id, LeadSource FROM Lead",
+      "result": {
+        "isError": false,
+        "text": {
+          "totalSize": 10,
+          "done": true,
+          "records": [
+            {
+              "attributes": {
+                "type": "Lead",
+                "url": "/services/data/v62.0/sobjects/Lead/00Q5e00000Tx001"
+              },
+              "Id": "00Q5e00000Tx001",
+              "LeadSource": null,
+              "FirstName": "Rowan",
+              "LastName": "Ellery",
+              "Email": "lead0@tideline-invented.example",
+              "Phone": "(217) 555-0100",
+              "Description": "Asked about Saturday sessions for a knee rehab plan"
+            },
+            {
+              "attributes": {
+                "type": "Lead",
+                "url": "/services/data/v62.0/sobjects/Lead/00Q5e00000Tx002"
+              },
+              "Id": "00Q5e00000Tx002",
+              "LeadSource": "",
+              "FirstName": "Ines",
+              "LastName": "Okafor",
+              "Email": "lead1@tideline-invented.example",
+              "Phone": "(217) 555-0101",
+              "Description": "Asked about Saturday sessions for a knee rehab plan"
+            },
+            {
+              "attributes": {
+                "type": "Lead",
+                "url": "/services/data/v62.0/sobjects/Lead/00Q5e00000Tx003"
+              },
+              "Id": "00Q5e00000Tx003",
+              "LeadSource": null,
+              "FirstName": "Tobias",
+              "LastName": "Lindqvist",
+              "Email": "lead2@tideline-invented.example",
+              "Phone": "(217) 555-0102",
+              "Description": "Asked about Saturday sessions for a knee rehab plan"
+            },
+            {
+              "attributes": {
+                "type": "Lead",
+                "url": "/services/data/v62.0/sobjects/Lead/00Q5e00000Tx004"
+              },
+              "Id": "00Q5e00000Tx004",
+              "LeadSource": "",
+              "FirstName": "Mara",
+              "LastName": "Vance",
+              "Email": "lead3@tideline-invented.example",
+              "Phone": "(217) 555-0103",
+              "Description": "Asked about Saturday sessions for a knee rehab plan"
+            },
+            {
+              "attributes": {
+                "type": "Lead",
+                "url": "/services/data/v62.0/sobjects/Lead/00Q5e00000Tx005"
+              },
+              "Id": "00Q5e00000Tx005",
+              "LeadSource": "Web",
+              "FirstName": "Rowan",
+              "LastName": "Ellery",
+              "Email": "lead4@tideline-invented.example",
+              "Phone": "(217) 555-0104",
+              "Description": "Asked about Saturday sessions for a knee rehab plan"
+            },
+            {
+              "attributes": {
+                "type": "Lead",
+                "url": "/services/data/v62.0/sobjects/Lead/00Q5e00000Tx006"
+              },
+              "Id": "00Q5e00000Tx006",
+              "LeadSource": "Google Ads",
+              "FirstName": "Ines",
+              "LastName": "Okafor",
+              "Email": "lead5@tideline-invented.example",
+              "Phone": "(217) 555-0105",
+              "Description": "Asked about Saturday sessions for a knee rehab plan"
+            },
+            {
+              "attributes": {
+                "type": "Lead",
+                "url": "/services/data/v62.0/sobjects/Lead/00Q5e00000Tx007"
+              },
+              "Id": "00Q5e00000Tx007",
+              "LeadSource": "Instagram",
+              "FirstName": "Tobias",
+              "LastName": "Lindqvist",
+              "Email": "lead6@tideline-invented.example",
+              "Phone": "(217) 555-0106",
+              "Description": "Asked about Saturday sessions for a knee rehab plan"
+            },
+            {
+              "attributes": {
+                "type": "Lead",
+                "url": "/services/data/v62.0/sobjects/Lead/00Q5e00000Tx008"
+              },
+              "Id": "00Q5e00000Tx008",
+              "LeadSource": "Referral",
+              "FirstName": "Mara",
+              "LastName": "Vance",
+              "Email": "lead7@tideline-invented.example",
+              "Phone": "(217) 555-0107",
+              "Description": "Asked about Saturday sessions for a knee rehab plan"
+            },
+            {
+              "attributes": {
+                "type": "Lead",
+                "url": "/services/data/v62.0/sobjects/Lead/00Q5e00000Tx009"
+              },
+              "Id": "00Q5e00000Tx009",
+              "LeadSource": "Phone Inquiry",
+              "FirstName": "Rowan",
+              "LastName": "Ellery",
+              "Email": "lead8@tideline-invented.example",
+              "Phone": "(217) 555-0108",
+              "Description": "Asked about Saturday sessions for a knee rehab plan"
+            },
+            {
+              "attributes": {
+                "type": "Lead",
+                "url": "/services/data/v62.0/sobjects/Lead/00Q5e00000Tx010"
+              },
+              "Id": "00Q5e00000Tx010",
+              "LeadSource": "Web",
+              "FirstName": "Ines",
+              "LastName": "Okafor",
+              "Email": "lead9@tideline-invented.example",
+              "Phone": "(217) 555-0109",
+              "Description": "Asked about Saturday sessions for a knee rehab plan"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "method": "tools/call",
+      "tool": "soqlQuery",
+      "queryIncludes": "COUNT(Id)",
+      "result": {
+        "isError": false,
+        "text": {
+          "totalSize": 1,
+          "done": true,
+          "records": [
+            {
+              "attributes": {
+                "type": "AggregateResult"
+              },
+              "n": 22,
+              "newest": "2026-11-10T11:02:31.000+0000"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
