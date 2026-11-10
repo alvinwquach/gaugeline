@@ -38,6 +38,47 @@ Gaugeline can tell you two systems disagree. It can't tell you which one is righ
 Keys stay on your computer, are only read from environment variables, and are never printed or saved. If one system can't be reached, the rest of the check still runs.
 :::
 
+## How keys are handled
+
+- A key is read from the environment variable named in the table above, and from nowhere else. There is no config file entry, no flag and no prompt that accepts one, so a key cannot end up in a file you commit or a command you paste into a chat.
+- A variable that is not set, or is set to an empty string, means that system is left out. That is a notice in the run, never an error, and nothing is requested from it.
+- Every request to a system is a `GET` with the key in an `Authorization` header, never in the address. A redirect to a different site is followed without the header.
+- Everything Gaugeline prints about a system (a notice, an error, a `--verbose` line) first has every key value replaced by `[redacted]`, including the percent-encoded and JSON-escaped forms and longer keys that contain a shorter one.
+- If one system can't be reached or refuses the key, the others are still read and the site check still runs. The run says which system gave no answer and why.
+
+## In this version: the connector interface
+
+The three systems above are read through one small interface, `Connector`. This version ships the interface, the runner and the key handling, with no real system behind it yet: the Sanity, Stripe and Printful readers arrive next, each as a connector, so nothing is requested from them today.
+
+A connector has an `id`, the names of the variables it needs (`envVars`), a `configured` test and a `read` that returns a list. `runConnectors` reads every configured connector at the same time and returns two things: `data`, the rows by connector id, and `notices`, one for every system that gave none.
+
+| Notice kind      | When                                                                                          |
+| ---------------- | --------------------------------------------------------------------------------------------- |
+| `not-configured` | A variable is missing or empty. Nothing was requested.                                        |
+| `refused`        | The system answered 401 or 403: it knows the key and will not let it read.                    |
+| `unreachable`    | No answer in time, an answer the connector could not use, or any other failure while reading. |
+
+### Example: a pop-up kitchen with prices in three systems
+
+Ember Supper Club is a pop-up kitchen. Its tasting box is priced on the Sanity website, in Stripe checkout and in Printful (for the printed apron that comes with it). The freelancer who runs the site has set the Sanity variables, pasted a Stripe key that turns out to be for the wrong account, and not yet created a Printful token. With the three stand-in connectors (one answering as Sanity, one as a Stripe that answers 401, one with a missing token), `runConnectors` returns data for Sanity only and these notices:
+
+```json title=Notices
+[
+  {
+    "connector": "stripe",
+    "kind": "refused",
+    "message": "stripe refused the key (HTTP 401). Check it is the right key and that it can read."
+  },
+  {
+    "connector": "printful",
+    "kind": "not-configured",
+    "message": "printful is not set up, so it was left out. Set PRINTFUL_API_TOKEN to include it."
+  }
+]
+```
+
+The Stripe key is not in the message, although the stand-in's server echoed it back in its error. The output is asserted by `packages/core/src/connectors/__tests__/docs.test.ts`.
+
 ## In this version: the free price agreement check
 
 `npx gaugeline-free price <product-url>` reads three prices for one product page, all as whole

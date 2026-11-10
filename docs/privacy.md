@@ -21,6 +21,15 @@ browser would:
 - At most five requests at a time, with the user agent `Gaugeline/0.1 (read-only site check)`.
 - Each address once per run.
 
+### Keys
+
+Some features read a system you own, such as your Sanity dataset, Stripe account or Printful store (see
+[Products and prices](./products-and-prices.md)). Their keys are read from environment variables only:
+no config file, flag or prompt accepts one. Those requests are `GET` only, with the key in a request
+header and never in the address. Before any message about a system leaves Gaugeline (a notice, an
+error, a `--verbose` line), every key value in it is replaced with `[redacted]`. A variable set to an
+empty string counts as not set.
+
 ### Links on the page
 
 The link checks request at most 30 of the page's same-site links (the same host, with or without
