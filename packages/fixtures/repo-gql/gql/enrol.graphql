@@ -1,0 +1,10 @@
+# Written for an enrolment service Northfield may add later; nothing here is ever sent.
+mutation EnrolInProgramme($programme: ID!, $email: String!) {
+  enrol(programme: $programme, email: $email) {
+    id
+  }
+}
+
+subscription SeatsLeft($programme: ID!) {
+  seatsLeft(programme: $programme)
+}

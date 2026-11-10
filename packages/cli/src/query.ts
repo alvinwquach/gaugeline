@@ -19,6 +19,7 @@ import {
 } from "@gaugeline/core";
 import { stat } from "node:fs/promises";
 import { resolve } from "node:path";
+import { runGraphql } from "./query-graphql.js";
 import { formatTerminal } from "./reporter.js";
 
 /** Why each kind of unreadable query was left alone, in a sentence a person can act on. */
@@ -28,6 +29,7 @@ const WHY: Record<Unreadable["reason"], string> = {
   "parse-error":
     "could not be parsed: the file has a syntax error, or the string is not valid GROQ",
   "no-type-filter": "no _type filter, so there is no document type to attribute it to",
+  "unknown-fragment": "spreads a fragment that no file that was read defines",
 };
 
 /** Why each write that could not be read was left alone. */
@@ -147,12 +149,27 @@ export async function runQuery(
     json?: boolean;
     dupes?: boolean;
     mutations?: boolean;
+    graphql?: { endpoint?: string };
     schema?: string;
+    allowPrivate?: boolean;
     quiet?: boolean;
   },
   io: Out,
   deps: Deps,
 ): Promise<Outcome> {
+  if (args.graphql !== undefined)
+    return runGraphql(
+      {
+        dir: args.dir,
+        graphql: args.graphql,
+        ...(args.json === undefined ? {} : { json: args.json }),
+        ...(args.schema === undefined ? {} : { schema: args.schema }),
+        ...(args.allowPrivate === undefined ? {} : { allowPrivate: args.allowPrivate }),
+        ...(args.quiet === undefined ? {} : { quiet: args.quiet }),
+      },
+      io,
+      deps,
+    );
   const asks = (io.env?.[SANITY_PROJECT_ID] ?? "").trim() !== "";
   if (args.json && !asks && args.mutations !== true)
     throw new ConfigError(
@@ -202,7 +219,10 @@ export async function runQuery(
       ? await compareQueries({
           shapes: queries,
           env: freezeEnv(io.env ?? {}, [SANITY_PROJECT_ID, SANITY_DATASET, SANITY_TOKEN]),
-          fetcher: createFetcher(deps.fetcher),
+          fetcher: createFetcher({
+            ...deps.fetcher,
+            ...(args.allowPrivate === true ? { allowPrivate: true } : {}),
+          }),
           now,
           dupes: args.dupes === true,
           ...(mutations ? { mutations } : {}),

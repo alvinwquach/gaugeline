@@ -36,3 +36,5 @@ export type {
   FakeSanityType,
   SeenSanityRequest,
 } from "./sanity-counts.js";
+export { startGraphqlServer } from "./graphql-server.js";
+export type { GraphqlServer, GraphqlServerOptions, SeenGraphqlRequest } from "./graphql-server.js";

@@ -1,0 +1,69 @@
+schema {
+  query: RootQuery
+}
+
+interface Document {
+  _id: ID
+  _type: String
+  _createdAt: DateTime
+  _updatedAt: DateTime
+  _rev: String
+}
+
+type Slug {
+  _type: String
+  current: String
+}
+
+type Section {
+  _type: String
+  heading: String
+  body: String
+}
+
+type Coach implements Document {
+  _id: ID
+  _type: String
+  _createdAt: DateTime
+  _updatedAt: DateTime
+  _rev: String
+  name: String
+  bio: String
+}
+
+type Resource implements Document {
+  _id: ID
+  _type: String
+  _createdAt: DateTime
+  _updatedAt: DateTime
+  _rev: String
+  title: String
+  slug: Slug
+  summary: String
+  level: String
+  coach: Coach
+  sections: [Section]
+}
+
+type Event implements Document {
+  _id: ID
+  _type: String
+  _createdAt: DateTime
+  _updatedAt: DateTime
+  _rev: String
+  title: String
+  startsAt: DateTime
+  venue: String
+}
+
+type RootQuery {
+  Resource(id: ID!): Resource
+  Coach(id: ID!): Coach
+  Event(id: ID!): Event
+  allResource(limit: Int, offset: Int): [Resource!]!
+  allCoach(limit: Int, offset: Int): [Coach!]!
+  allEvent(limit: Int, offset: Int): [Event!]!
+  allDocument(limit: Int, offset: Int): [Document!]!
+}
+
+scalar DateTime

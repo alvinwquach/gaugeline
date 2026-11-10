@@ -61,6 +61,7 @@
   "form-provider-changed",
   "forms-many-providers",
   "gated-download-open",
+  "graphql-field-not-in-schema",
   "hidden-ai-directive",
   "hidden-in-sitemap",
   "hidden-indexable",

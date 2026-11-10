@@ -9,7 +9,7 @@ $ SANITY_PROJECT_ID=abc123 SANITY_TOKEN=… npx gaugeline query ./src
 ```
 
 ::: info What works today
-`gaugeline query <folder>` reads the GROQ in your repository and lists each query with its file and line. With `SANITY_PROJECT_ID` set it also asks your dataset how many documents of each type exist and how many have each field, and reports the four findings under [What it reports](#what-it-reports). Without it the command makes no request and needs no token. With `--dupes` it also names documents that share a slug or a title, and with `--mutations` it reads the writes in your code and checks their shapes against your schema file without sending any of them. GraphQL and suggested queries, which the rest of this page describes, are built branch by branch on top of this, and each part says so when it ships.
+`gaugeline query <folder>` reads the GROQ in your repository and lists each query with its file and line. With `SANITY_PROJECT_ID` set it also asks your dataset how many documents of each type exist and how many have each field, and reports the four findings under [What it reports](#what-it-reports). Without it the command makes no request and needs no token. With `--dupes` it also names documents that share a slug or a title, and with `--mutations` it reads the writes in your code and checks their shapes against your schema file without sending any of them. With `--graphql` it checks your GraphQL against the schema and the content instead. Suggested queries, which the rest of this page describes, are built branch by branch on top of this, and each part says so when it ships.
 :::
 
 ## What the command reads
@@ -179,17 +179,69 @@ It describes what your content has today, not what your page needs. Read it, del
 
 ## GraphQL, the same way
 
-If your project exposes Sanity's GraphQL API, or any other endpoint, the same command checks it. It reads your `.graphql` files and `gql` tags, introspects the schema, and reports fields that don't exist — then checks the same document types against the content, which introspection alone can't do.
+If the site reads its content over GraphQL, `--graphql` checks that instead of GROQ. Sanity can serve a GraphQL API generated from your schema, and any other GraphQL endpoint works too. The command reads your `.graphql` and `.gql` files and your `gql` tags, asks the endpoint for its schema, and reports fields that don't exist. For a Sanity endpoint it then counts the same document types in the dataset, which introspection alone can't do: a schema says a field may exist, and only a count says it does.
 
-```sh title=Terminal untested="Converted with a fixture in this page's own branch."
-$ npx gaugeline query ./src --graphql            # Sanity's GraphQL API for this project
-$ npx gaugeline query ./src --graphql https://…  # or any endpoint
+Northfield Coaching is a one-coach business with a free resource library, built by a freelancer on Sanity and Next.js. Someone renamed `author` to `coach` in the Studio, and the query for the library page still asks for `author`. The summary field exists in the schema, and nobody has filled it in on any resource.
+
+```sh title=Terminal untested="Needs a folder of source files and a GraphQL endpoint, and the docs runner points every example at a fixture website. packages/cli/src/__tests__/query-docs.test.ts runs the same command in the invented Northfield repository (packages/fixtures/repo-gql), against recorded answers, and compares the output with the block below."
+$ SANITY_PROJECT_ID=northfield npx gaugeline query . --graphql
 ```
 
 ```text title=Output
-GraphQL  https://abc123.api.sanity.io/v1/graphql/production/default
-✕ author isn't in the schema
-  allResource.author · gql/resources.graphql:1
+GraphQL  https://northfield.api.sanity.io/v1/graphql/production/default
+Read 3 queries and 1 fragment in 5 files: 17 fields checked against the schema.
+Found 1 mutation and 1 subscription. They were parsed and counted, and never sent.
+
+Could not read 1 document:
+  src/lib/dynamic.ts:5  concatenated: built from something other than a gql template (an interpolated string or call), so it cannot be read from the file
+
+Counted the published documents of 2 types in the dataset: one request each, counts only.
+
+✗ author isn't in the schema
+    allResource.author · gql/resources.graphql:1
+✗ nickname isn't in the schema
+    Resource.coach.nickname · src/lib/fragments.ts:4
+✗ A field your query asks for is on no document
+    src/lib/queries.ts:5  summary doesn't exist on any resource: 0 of 9 documents have it. The field was probably renamed, so what shows it renders empty.
+✓ query-type-empty
+✓ query-field-partial
+✓ query-no-drafts-filter
+
+3 to look at, 3 to fix first.
+```
+
+The first line is the endpoint that was asked, so you can see which API the result is about. The first two findings come from the schema (`graphql-field-not-in-schema`, "Fix this first"): `author` and `nickname` are not fields of `Resource` and `Coach`. The third comes from the content: `summary` is in the schema, and no published resource has it.
+
+- **No endpoint.** `--graphql` on its own asks Sanity's GraphQL API for your project, `https://<projectId>.api.sanity.io/v1/graphql/<dataset>/default`, built from `SANITY_PROJECT_ID` and `SANITY_DATASET` (`production` when unset). `--graphql https://example.com/graphql` asks that address instead.
+- **How it asks.** The schema is one `GET` with the introspection query in the address, which is how GraphQL over HTTP sends a query that way, through the same fetcher as everything else Gaugeline requests. It never sends a `POST`. A token goes in an `Authorization` header and never in the address: `SANITY_TOKEN` for Sanity's own address and `GRAPHQL_TOKEN` for any other, so your Sanity token is never offered to a server that isn't Sanity's.
+- **If the endpoint won't answer a GET.** Some servers take `POST` only, and some turn introspection off. The command stops with exit code 2 and says so, and it does not try another way. Give it the schema as a file instead: `--schema ./schema.graphql` takes an SDL file or the JSON that an introspection query returned, and asks no endpoint at all.
+- **What it reads.** `.graphql` and `.gql` files, and `gql` and `graphql` tagged templates in `.ts`, `.tsx`, `.js`, `.jsx` and `.mjs` files, under the same skips as for GROQ. A fragment is resolved by name across files, and one interpolated into a template (`${COACH_FIELDS}`) is resolved when it is a `gql` template too. A template built from a string or a call, a document that doesn't parse and a fragment nobody defines are listed under "Could not read", with the file and line. A fragment no query uses is still checked, on the type it names.
+- **What it finds.** A field that isn't on the type it is asked on, with the path from the query and the file and line the query or fragment starts on. A field on an interface or a union counts as there when the interface has it or any type it can be has it. A field whose parent was already reported is not reported again, and a type the schema doesn't have is left alone, because there is nothing to compare with. Arguments, variables and nullability are not checked.
+- **The content step.** For a Sanity endpoint, a root field that returns a document type (`allResource`, `Resource(id: ...)`) is counted in the dataset like a GROQ query: the type is the GraphQL type's name with a small first letter (`BlogPost` is `blogPost`), a reference reads as `coach->name` and a list of objects as `sections[].heading`, so the count lands on the field itself. The three count findings under [What it reports](#what-it-reports) apply. A query that leaves drafts out is not reported, because the API serves published documents. With `--schema` and no endpoint it runs when `SANITY_PROJECT_ID` is set. For any other endpoint it is skipped, and the output says so.
+- **Mutations and subscriptions.** They are parsed, counted and never sent. The line under the endpoint says how many were found, and none of their text reaches a request: the introspection query is a constant. The checks are for queries, so their fields aren't compared with the schema.
+
+`--graphql` is its own run: it can't be combined with `--dupes` or `--mutations`, and it needs the same TypeScript as the rest of the command.
+
+```sh title=Terminal untested="Needs a folder of source files and a schema file. packages/cli/src/__tests__/query-docs.test.ts runs the same command in the invented Northfield repository and compares the output with the block below."
+$ npx gaugeline query . --graphql --schema ./schema.graphql
+```
+
+```text title=Output
+GraphQL  schema from ./schema.graphql
+Read 3 queries and 1 fragment in 5 files: 17 fields checked against the schema.
+Found 1 mutation and 1 subscription. They were parsed and counted, and never sent.
+
+Could not read 1 document:
+  src/lib/dynamic.ts:5  concatenated: built from something other than a gql template (an interpolated string or call), so it cannot be read from the file
+
+SANITY_PROJECT_ID is not set, so the queries were not compared with your content. Set it (and SANITY_TOKEN, with the Viewer role, for a private dataset) to count the documents.
+
+✗ author isn't in the schema
+    allResource.author · gql/resources.graphql:1
+✗ nickname isn't in the schema
+    Resource.coach.nickname · src/lib/fragments.ts:4
+
+2 to look at, 2 to fix first.
 ```
 
 ## Mutations, checked without running them

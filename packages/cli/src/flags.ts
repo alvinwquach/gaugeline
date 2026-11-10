@@ -81,6 +81,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
       "run",
       "ads",
       "tags",
+      "query",
     ],
   },
   {
@@ -156,10 +157,18 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     commands: ["query"],
   },
   {
+    name: "graphql",
+    type: "boolean",
+    description:
+      "With query: check the GraphQL in your code against the schema (an endpoint may follow; Sanity's when none)",
+    since: "0.2.0",
+    commands: ["query"],
+  },
+  {
     name: "schema",
     type: "string",
     description:
-      "With query --mutations: the schema file from sanity schema extract (default ./schema.json)",
+      "With query: the schema file (sanity schema extract for --mutations; SDL or introspection JSON for --graphql)",
     since: "0.2.0",
     commands: ["query"],
   },
