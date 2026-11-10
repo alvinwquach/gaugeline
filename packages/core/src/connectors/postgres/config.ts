@@ -1,4 +1,5 @@
 import * as z from "zod";
+import { classifyStatement } from "./classify.js";
 
 /** Rows kept per query, at most. Larger results are cut here with a notice. */
 export const MAX_ROWS = 5000;
@@ -57,31 +58,131 @@ export const sourceSchema = z.strictObject({
   maxRows: z.number().int().min(1).max(MAX_ROWS).optional(),
   /** More functions to refuse, added to the built-in list. A trailing * means "starts with". */
   denyFunctions: z.array(functionName).max(50).optional(),
+  /** Named queries. A source that only runs data assertions needs none. */
   queries: z
     .record(
       z.string().regex(/^[A-Za-z][A-Za-z0-9_]{0,63}$/, "must be a plain name like eightySixed"),
       queryEntry,
     )
-    .refine((q) => Object.keys(q).length > 0, "name at least one query")
-    .refine((q) => Object.keys(q).length <= 50, "at most 50 queries per source"),
+    .refine((q) => Object.keys(q).length <= 50, "at most 50 queries per source")
+    .default({}),
 });
+
+const ASSERTION_ID = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
+
+/** The most evidence columns one assertion may list, and the most assertions one file may hold. */
+export const MAX_EVIDENCE_COLUMNS = 10;
+export const MAX_ASSERTIONS = 100;
+
+/**
+ * A data assertion: a SELECT that should return no rows. Any row is a problem, and `evidence` is the
+ * allow-list of columns a finding may print: a column that is not named here never leaves the
+ * database, so a finding cannot show an email or a phone number unless the file says so.
+ */
+export const assertionSchema = z.strictObject({
+  id: z
+    .string()
+    .max(64)
+    .regex(
+      ASSERTION_ID,
+      "must be lower-case words joined by hyphens, like no-overlapping-bookings",
+    ),
+  severity: z.enum(["high", "medium", "low"]),
+  /** What is wrong, in a sentence for the person who owns the business. It is the finding's title. */
+  title: z.string().trim().min(1).max(140),
+  sql,
+  /** The result columns a finding may show. The query names them with `as`. */
+  evidence: z
+    .array(z.string().regex(/^[A-Za-z_][A-Za-z0-9_]{0,62}$/, "must be a plain column name"))
+    .min(1, "name at least one evidence column")
+    .max(MAX_EVIDENCE_COLUMNS)
+    .refine((c) => new Set(c).size === c.length, "list each evidence column once"),
+  /** The source to run it on. Optional when the file has one source. */
+  source: z.string().optional(),
+});
+
+export type Assertion = z.infer<typeof assertionSchema>;
 
 /**
  * gaugeline.sources.json: where a site's truth lives besides the site. Only names and SQL live in
  * this file; connection strings and keys are environment variables, named here and never written.
  */
-export const sourcesConfigSchema = z.strictObject({
-  sources: z
-    .record(
-      z.string().regex(/^[a-z][a-z0-9_-]{0,31}$/, "must be a short lower-case name like db"),
-      sourceSchema,
-    )
-    .refine((s) => Object.keys(s).length > 0, "name at least one source")
-    .refine((s) => Object.keys(s).length <= 5, "at most 5 sources"),
-});
+export const sourcesConfigSchema = z
+  .strictObject({
+    sources: z
+      .record(
+        z.string().regex(/^[a-z][a-z0-9_-]{0,31}$/, "must be a short lower-case name like db"),
+        sourceSchema,
+      )
+      .refine((s) => Object.keys(s).length > 0, "name at least one source")
+      .refine((s) => Object.keys(s).length <= 5, "at most 5 sources"),
+    /** SELECTs that must return no rows (N10). Each runs through the same read-only layers as a query. */
+    assertions: z.array(assertionSchema).max(MAX_ASSERTIONS).optional(),
+  })
+  .superRefine((config, ctx) => {
+    const names = Object.keys(config.sources);
+    const used = new Set<string>();
+    const ids = new Set<string>();
+    (config.assertions ?? []).forEach((a, i) => {
+      if (ids.has(a.id))
+        ctx.addIssue({
+          code: "custom",
+          path: ["assertions", i, "id"],
+          message: `"${a.id}" is used by two assertions; each id must be different`,
+        });
+      ids.add(a.id);
+      const name = a.source ?? (names.length === 1 ? names[0] : undefined);
+      if (name === undefined) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["assertions", i, "source"],
+          message: `assertion "${a.id}": more than one source is set up, so say which source it runs on`,
+        });
+        return;
+      }
+      const source = config.sources[name];
+      if (source === undefined) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["assertions", i, "source"],
+          message: `assertion "${a.id}" names the source "${name}", which is not in sources`,
+        });
+        return;
+      }
+      used.add(name);
+      // The first read-only layer, at the door: an assertion that is not one plain read is a config
+      // error that stops the run, and it is never sent to any database.
+      const verdict = classifyStatement(a.sql, {
+        ...(source.denyFunctions ? { denyFunctions: source.denyFunctions } : {}),
+      });
+      if (!verdict.ok)
+        ctx.addIssue({
+          code: "custom",
+          path: ["assertions", i, "sql"],
+          message: `assertion "${a.id}" is not a read and was not run. ${verdict.message}`,
+        });
+    });
+    for (const [name, source] of Object.entries(config.sources))
+      if (Object.keys(source.queries).length === 0 && !used.has(name))
+        ctx.addIssue({
+          code: "custom",
+          path: ["sources", name, "queries"],
+          message: "name at least one query or assertion",
+        });
+  });
 
 export type SourceConfig = z.infer<typeof sourceSchema>;
 export type SourcesConfig = z.infer<typeof sourcesConfigSchema>;
+
+/** The name of the source an assertion runs on: its own `source`, else the file's only source. */
+export function assertionSourceName(
+  config: SourcesConfig,
+  assertion: Assertion,
+): string | undefined {
+  if (assertion.source !== undefined) return assertion.source;
+  const names = Object.keys(config.sources);
+  return names.length === 1 ? names[0] : undefined;
+}
 
 /** The variable holding a source's connection string. */
 export function connectionVar(source: SourceConfig): string {

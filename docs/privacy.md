@@ -34,12 +34,15 @@ empty string counts as not set.
 
 If `gaugeline.sources.json` names a Postgres or Supabase database
 ([A database as a source](./connectors/postgres.md)), Gaugeline connects to it with the connection
-string in the environment variable you name, and only when a check asks for one of its named queries.
+string in the environment variable you name, and only when a check asks for one of its named queries
+or runs one of its [data assertions](./guides/data-assertions.md).
 It is not a request to the checked site and does not go through the fetcher. It sends one statement
 at a time, a single `SELECT` that passed the statement check, inside a read-only transaction that is
 always rolled back, with a timeout and a cap of 5,000 rows. The connection string, its password and
 any Supabase key are replaced with `[redacted]` in every message, and a Supabase `service_role` key
-is refused without being used. The rows stay on your computer or in your CI.
+is refused without being used. The rows stay on your computer or in your CI. A data assertion that fails prints its row count and
+only the columns its `evidence` list names, for the first 20 rows; every other column is dropped as
+soon as it is read.
 
 ### Links on the page
 

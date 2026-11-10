@@ -14,6 +14,7 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "broken-links": ["Links on this page go nowhere", "Visitors"],
   "canonical-elsewhere": ["This page tells Google to show a different page", "Search & sharing"],
   "certificate-expiring": ["The site's certificate expires soon", "Security & email"],
+  "data-assertion-failed": ["A data assertion found rows that should not exist", "Visitors"],
   "dataset-private-types": [
     "Private-looking content is in a public Sanity dataset",
     "Security & email",
@@ -266,6 +267,12 @@ export const CHECK_TEXT: Readonly<
     "When it lapses, every browser shows a full-page security warning instead of the site, and most visitors leave.",
     "Renew it, or find why automatic renewal stopped (a DNS change at cutover often breaks the renewal check). Domain registration expiry is a separate date: check it at your registrar.",
     "Read from the TLS connection of the page's own GET: no extra request. Days left = whole days until notAfter, by the run's clock. Plain http, or a certificate that failed verification, gives nothing here. Domain registration expiry needs registrar access and is not checked",
+  ],
+  "data-assertion-failed": [
+    "A query you wrote in gaugeline.sources.json to return nothing returned rows: two bookings in one slot, a paid order with no matching payment, a product with no price id.",
+    "These are the problems a customer finds before you do. No page looks wrong yet, so a check of the page cannot see them, but the next person to book, pay or order runs into one.",
+    "Read the rows in the evidence and correct them in the database, or fix the code that wrote them, then run again. If the rule itself is wrong, change the assertion's query.",
+    "each assertion is one SELECT that should return no rows, run through the read-only database connector (a statement classifier, BEGIN READ ONLY with a statement timeout and a 5,000 row cap, and the database role); any row is a finding with the assertion's own severity and title, and the evidence is its id, the row count and the allow-listed evidence columns of the first 20 rows; a query that could not run (database down, timeout, wrong evidence column) is could not check, never a pass",
   ],
   "dataset-private-types": [
     "The Sanity dataset your images come from answers without a token, and it has document types that sound like people's details: orders, inquiries, customers, bookings.",

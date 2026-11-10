@@ -35,3 +35,10 @@ export const LISTING_CHECKS: readonly string[] = Object.freeze([
   "listing-special-hours-missing",
   "listing-website-wrong",
 ]);
+
+/**
+ * The data assertion check: it runs the SELECTs in gaugeline.sources.json that must return no rows,
+ * and only when the file has some. Without them it is not run (so not passed either), unless a
+ * caller asked for it by id.
+ */
+export const ASSERTION_CHECKS: readonly string[] = Object.freeze(["data-assertion-failed"]);

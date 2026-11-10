@@ -42,6 +42,7 @@ import {
   freezeEnv,
   databaseEnvVars,
   LISTING_ENV_VARS,
+  type AssertionsRead,
   type CheckRegistry,
   type DnsReader,
   type FetcherOptions,
@@ -91,6 +92,7 @@ import { formatTerminal } from "./reporter.js";
 import { runCutover } from "./cutover.js";
 import { runSnapshot } from "./snapshot.js";
 import { runVerify } from "./verify.js";
+import { runAssert } from "./assert.js";
 import {
   ClientIntegrityError,
   ClientMissingError,
@@ -110,6 +112,7 @@ import {
   readFacts,
   readListingsConfig,
   readSourcesConfig,
+  SOURCES_CONFIG_FILE,
   readAppleExport,
   readHidden,
   readLanguageRules,
@@ -890,6 +893,11 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         ci: true,
       };
     }
+    case "assert":
+      return {
+        outcome: await runAssert(args, io, { cwd: deps.cwd ?? process.cwd() }),
+        ci: true,
+      };
     case "verify":
       return {
         outcome: (
@@ -995,8 +1003,23 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         : undefined;
       // Connection strings and keys are copied from the environment here and read by the database connectors only.
       const sourcesConfig = readSourcesConfig(deps.cwd ?? process.cwd());
+      // A data assertion that turns out to be wrong (an evidence column its query does not return) is
+      // found while the run is going; it is exit 2 at the end, after everything else has run.
+      const assertionProblems: ConfigError[] = [];
       const databases = sourcesConfig
-        ? { config: sourcesConfig, env: freezeEnv(io.env ?? {}, databaseEnvVars(sourcesConfig)) }
+        ? {
+            config: sourcesConfig,
+            env: freezeEnv(io.env ?? {}, databaseEnvVars(sourcesConfig)),
+            onAssertions: (read: AssertionsRead) => {
+              const bad = read.results.find((r) => r.status === "config-error");
+              if (bad)
+                assertionProblems.push(
+                  new ConfigError(bad.message ?? `The assertion "${bad.id}" is wrong.`, {
+                    hint: `Fix it in ${SOURCES_CONFIG_FILE} (see docs/guides/data-assertions).`,
+                  }),
+                );
+            },
+          }
         : undefined;
       const accessConfig = readAccess(deps.cwd ?? process.cwd());
       // Keys are read from the environment here and go only into request headers.
@@ -1256,6 +1279,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           highFindings === 0 ? "Ready to launch\n" : `Not yet: ${highFindings} to fix first\n`,
         );
       if (saveFailure) throw saveFailure;
+      if (assertionProblems[0]) throw assertionProblems[0];
       return { outcome: { kind: "ran", highFindings, drift: false }, ci };
     }
   }

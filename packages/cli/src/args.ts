@@ -17,6 +17,7 @@ export const SUBCOMMANDS = [
   "verify",
   "run",
   "open",
+  "assert",
 ] as const;
 export type CliCommand = "check" | (typeof SUBCOMMANDS)[number];
 
@@ -132,6 +133,15 @@ export type ParsedArgs =
       quiet: boolean;
     }
   | {
+      kind: "assert";
+      /** gaugeline assert --list: print the assertions and run none. */
+      list: boolean;
+      /** gaugeline assert <id>: the one assertion to run. */
+      id?: string;
+      verbose: boolean;
+      quiet: boolean;
+    }
+  | {
       kind: "digest";
       runs: string;
       timeZone?: string;
@@ -200,7 +210,9 @@ export function parseCliArgs(
                       ? "run"
                       : argv[0] === "open"
                         ? "open"
-                        : COMMAND;
+                        : argv[0] === "assert"
+                          ? "assert"
+                          : COMMAND;
   const given = command === COMMAND ? argv : argv.slice(1);
   // --annotate and --progress take an optional file name: alone, or before another flag, the default.
   const rest = given.map((a, i) =>
@@ -482,6 +494,30 @@ export function parseCliArgs(
       limit: Number(limitText),
       ci: values.ci === true,
       allowPrivate: values["allow-private"] === true,
+      verbose,
+      quiet: values.quiet === true,
+    };
+  }
+  if (command === "assert") {
+    const list = values.list === true;
+    if (
+      positionals.length > 1 ||
+      (list && positionals.length > 0) ||
+      (!list && positionals.length === 0)
+    )
+      return {
+        kind: "error",
+        message:
+          list || positionals.length > 1
+            ? "gaugeline assert takes one assertion id, or --list on its own."
+            : "gaugeline assert needs an assertion id: gaugeline assert no-overlapping-bookings",
+        hint: "Run gaugeline assert --list to see the assertions in gaugeline.sources.json.",
+        verbose,
+      };
+    return {
+      kind: "assert",
+      list,
+      ...(positionals[0] ? { id: positionals[0] } : {}),
       verbose,
       quiet: values.quiet === true,
     };

@@ -26,7 +26,7 @@ export const blocked = defineCheck<PageSnapshot>({
   },
 });
 
-/** Checks that need no page: they read robots.txt or DNS, so they still run when the page is refused. */
+/** Checks that need no page: they read robots.txt, DNS or a database, so they still run when the page is refused. */
 export const NO_PAGE_CHECKS: readonly string[] = Object.freeze([
   "blocked",
   "robots-block",
@@ -35,6 +35,7 @@ export const NO_PAGE_CHECKS: readonly string[] = Object.freeze([
   "email-spf-multiple",
   "email-dmarc-missing",
   "email-dmarc-none",
+  "data-assertion-failed",
 ]);
 
 export { describeRefusal };

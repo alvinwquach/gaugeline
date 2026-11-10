@@ -14,6 +14,7 @@
   "cutover-certificate-changed",
   "cutover-mail-changed",
   "cutover-records-changed",
+  "data-assertion-failed",
   "dataset-private-types",
   "dataset-public",
   "drafts-live",

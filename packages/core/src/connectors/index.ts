@@ -27,6 +27,7 @@ export {
   DEFAULT_SUPABASE_KEY_ENV,
   DatabaseError,
   MAX_ROWS as DATABASE_MAX_ROWS,
+  assertionSchema,
   checkSupabaseKey,
   classifyStatement,
   databaseConnector,
@@ -37,6 +38,7 @@ export {
   sourcesConfigSchema,
 } from "./postgres/index.js";
 export type {
+  Assertion,
   DatabaseConnector,
   DatabaseQueryResult,
   DatabasesRead,
