@@ -4,12 +4,12 @@ GROQ, GraphQL and the mutations you ship — checked against the content that ac
 
 Sanity's TypeGen compares your queries with your schema at build time, which catches a field you spelled wrong. It can't tell you that the field exists in the schema and is empty on every document you've ever published. That gap is where restructures go wrong.
 
-```sh title=Terminal untested="Converted with a fixture in this page's own branch."
+```sh title=Terminal untested="Needs a Sanity project and a folder of source files. packages/cli/src/__tests__/query-docs.test.ts runs the same command against an invented dataset and compares the output with the block under What it reports."
 $ SANITY_PROJECT_ID=abc123 SANITY_TOKEN=… npx gaugeline query ./src
 ```
 
 ::: info What works today
-`gaugeline query <folder>` reads the GROQ in your repository and lists each query with its file and line. It needs no token and makes no request. The comparison with your content that the rest of this page describes (counts, duplicates, mutations, GraphQL, suggested queries) is built branch by branch on top of it, and each part says so when it ships.
+`gaugeline query <folder>` reads the GROQ in your repository and lists each query with its file and line. With `SANITY_PROJECT_ID` set it also asks your dataset how many documents of each type exist and how many have each field, and reports the four findings under [What it reports](#what-it-reports). Without it the command makes no request and needs no token. Duplicates, mutations, GraphQL and suggested queries, which the rest of this page describes, are built branch by branch on top of this, and each part says so when it ships.
 :::
 
 ## What the command reads
@@ -68,18 +68,80 @@ A query is never skipped without a word and never guessed. These are listed unde
 The command reads your code with the TypeScript compiler, which is about 9 MB, so Gaugeline does not carry it for the checks that never need it. In a project that has it (any Next.js project written in TypeScript does), run `npx gaugeline query ./src`. Anywhere else, run `npx -p gaugeline -p typescript gaugeline query ./src`. Without it the command stops with exit code 2 and says this.
 :::
 
-It exits 0 when it read the folder, with or without unreadable queries, and 2 when the folder does not exist or TypeScript is missing.
+It exits 0 when it read the folder, with or without unreadable queries, and 2 when the folder does not exist, TypeScript is missing or (with `SANITY_PROJECT_ID` set) the dataset could not be read. With `--ci` it exits 1 when a "Fix this first" finding is reported.
 
 ## What it reports
 
-| Finding                                      | What it usually means                                                                |
-| -------------------------------------------- | ------------------------------------------------------------------------------------ |
-| `author` doesn't exist on any resource       | The field was renamed. The page renders empty every time.                            |
-| Nothing of type `topic` exists               | The type was renamed, or the content hasn't been created yet. Those pages are blank. |
-| `gatedFile` is missing on 28 of 40 documents | Fine if it's optional. A bug if the template assumes it.                             |
-| A query that doesn't exclude drafts          | Safe with the published perspective; a leak if anything runs it with drafts.         |
+Set `SANITY_PROJECT_ID` (and `SANITY_DATASET`, `production` if you leave it out, and `SANITY_TOKEN` for a private dataset) and the command compares what your queries ask for with what the dataset holds.
 
-Every line carries the file and line number. The check asks the dataset for counts only, never content.
+```sh title=Terminal untested="Needs a Sanity project, and the docs runner points every example at a fixture website. packages/cli/src/__tests__/query-docs.test.ts runs this command in the invented bakery repository against an invented dataset (nine pop-ups, forty menu items) and compares the output with the block below."
+$ SANITY_PROJECT_ID=cprhl1b4 npx gaugeline query ./src/app
+```
+
+```text title=Output
+order  ./src/app/api/orders/route.ts:4
+  fields: _id, total, lines[].item->name
+  drafts: left out by the filter
+  params: $email
+
+popup  ./src/app/events/page.tsx:3
+  fields: title, date, venue->name, venue->address.city
+  drafts: not left out by the filter
+  params: $after, $venue
+
+menuItem  ./src/app/menu/[slug]/page.tsx:3
+  fields: name, description, allergens[]->name, photo.asset->url
+  drafts: not left out by the filter
+  params: $slug
+
+page  ./src/app/page.tsx:3
+  fields: title, sections[]._type, sections[].heading, sections[].image.asset->url
+  drafts: not left out by the filter
+  params: none
+
+Could not read 1 query:
+  ./src/app/search/page.tsx:5  concatenated: built at run time (a template with an interpolation, strings joined with +, or a variable), so it cannot be read from the file
+
+4 shapes from 4 queries; 1 could not be read.
+
+Counted the published documents of 4 types in the dataset: one request each, counts only.
+
+✗ A field your query asks for is on no document
+    ./src/app/events/page.tsx:3  date doesn't exist on any popup: 0 of 9 documents have it. The field was probably renamed, so what shows it renders empty.
+! A query does not leave drafts out
+    ./src/app/events/page.tsx:3  The popup query's filter does not leave drafts out. That is safe when the client asks for the published perspective, and leaks unpublished content if anything runs it with drafts.
+! A query does not leave drafts out
+    ./src/app/menu/[slug]/page.tsx:3  The menuItem query's filter does not leave drafts out. That is safe when the client asks for the published perspective, and leaks unpublished content if anything runs it with drafts.
+! A query does not leave drafts out
+    ./src/app/page.tsx:3  The page query's filter does not leave drafts out. That is safe when the client asks for the published perspective, and leaks unpublished content if anything runs it with drafts.
+· A field your query asks for is missing on some documents
+    ./src/app/menu/[slug]/page.tsx:3  allergens is missing on 28 of 40 documents. Fine if it is optional; a bug if the template assumes it.
+✓ query-type-empty
+
+5 to look at, 1 to fix first.
+```
+
+A `✓` line is a check that found nothing (no type is empty here). Copperhill Bakery's freelancer renamed the pop-up's `date` field to `startsAt` in the Studio a month ago. The page still asks for `date`, TypeGen is satisfied because the schema has no opinion about a query string, and the events page has been showing no dates since. That is the first finding. The same dataset shows the other three kinds.
+
+| Finding                                                             | Level          | What it usually means                                                                |
+| ------------------------------------------------------------------- | -------------- | ------------------------------------------------------------------------------------ |
+| `query-field-absent`: `author` doesn't exist on any resource        | Fix this first | The field was renamed. The page renders empty every time.                            |
+| `query-type-empty`: nothing of type `topic` exists                  | Fix this first | The type was renamed, or the content hasn't been created yet. Those pages are blank. |
+| `query-field-partial`: `gatedFile` is missing on 28 of 40 documents | Worth knowing  | Fine if it's optional. A bug if the template assumes it.                             |
+| `query-no-drafts-filter`: a query that doesn't exclude drafts       | Fix soon       | Safe with the published perspective; a leak if anything runs it with drafts.         |
+
+Every line carries the file and line number the query starts on. A field that two queries read is reported once for each query, each with its own file and line. A type with no documents is reported once, and its fields are not reported as well, because none of them can exist.
+
+### How the counting works
+
+- **One request for each document type**, not one for each field. A repository with 8 types and 90 field uses makes 8 requests. Each is a `GET` of Sanity's query address for published documents only, asking for `count(*[_type == "popup"])` and one `count(*[_type == "popup" && defined(date)])` for each field. The fetcher allows 5 requests at a time.
+- **Counts only, never content.** The answer is a list of whole numbers. Gaugeline never asks for a document, a field's value or a sample, because a check that fetched one document to look at its keys would be reading your content with a token.
+- **A reference is counted at the reference field.** `venue->name` counts `venue`, not the venue's name, because the venue is another document. An array of objects is counted the same way: `sections[].heading` counts `sections`. `_id`, `_type`, `_rev`, `_createdAt` and `_updatedAt` are on every document and are not counted.
+- **A wide type is sent in two halves** when its query would be too long for a `GET` (about 8,000 characters, which is around 60 to 80 fields). That takes two or more requests for that one type, and the run says so on stderr.
+- **Names are quoted.** A field called `gated-file`, or one named after a GROQ word such as `in` or `match`, is written as `["gated-file"]` in the count query.
+- **A private dataset needs a token.** Without `SANITY_TOKEN` Sanity refuses, and the command stops with exit 2 and one message that names `SANITY_TOKEN` and the Viewer role. Make the token under API in sanity.io/manage with the Viewer role; see [Private datasets](/docs/private-datasets). With `SANITY_DATASET` unset the dataset `production` is used, and stderr says so.
+
+`--json` prints the usual result (schema 2), with each finding's `source` holding the file and line, and the number of types counted under `sampled`. It needs `SANITY_PROJECT_ID`. What is sent, and what is kept: [Privacy and safety](/docs/privacy#sanity-datasets).
 
 ## Writing the query in the first place
 

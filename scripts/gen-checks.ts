@@ -16,6 +16,7 @@ import {
   PRESENCE_CHECKS,
   PRICE_CHECKS,
   PRINTED_CHECKS,
+  QUERY_CHECKS,
   RECEIPT_CHECKS,
   WEBHOOK_CHECKS,
   SUBSCRIPTION_CHECKS,
@@ -56,6 +57,7 @@ for (const c of DUPLICATE_CHECKS) registry.register(c);
 for (const c of PRESENCE_CHECKS) registry.register(c);
 for (const c of PRICE_CHECKS) registry.register(c);
 for (const c of SUBSCRIPTION_CHECKS) registry.register(c);
+for (const c of QUERY_CHECKS) registry.register(c);
 for (const c of RECEIPT_CHECKS) registry.register(c);
 for (const c of WEBHOOK_CHECKS) registry.register(c);
 for (const c of CUTOVER_ONLY_CHECKS) registry.register(c);

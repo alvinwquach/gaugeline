@@ -130,6 +130,8 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "Sales & prices",
   ],
   "plan-price-mismatch": ["A plan's price on the page differs from checkout", "Sales & prices"],
+  "query-field-absent": ["A field your query asks for is on no document", "Visitors"],
+  "query-type-empty": ["A document type your query asks for has no documents", "Visitors"],
   "delivery-receipt-missing": ["Orders were paid and no receipt went out", "Sales & prices"],
   "webhook-failing": ["A webhook endpoint is not receiving its events", "Sales & prices"],
   "cutover-canonical-host": ["The bare domain and www don't settle on one address", "Launch day"],
@@ -248,6 +250,7 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "printful-price": ["Fulfillment lists a different price", "Sales & prices"],
   "stripe-no-price": ["No default price in checkout", "Sales & prices"],
   "plan-trial-mismatch": ["A plan's free trial differs from checkout", "Sales & prices"],
+  "query-no-drafts-filter": ["A query does not leave drafts out", "Security & email"],
   "webhook-disabled": ["A webhook endpoint is switched off", "Sales & prices"],
   "cutover-certificate-changed": [
     "The certificate no longer covers a name it did",
@@ -295,6 +298,7 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "A subscription price in checkout has no plan on the page",
     "Sales & prices",
   ],
+  "query-field-partial": ["A field your query asks for is missing on some documents", "Visitors"],
 };
 export const CHECK_TEXT: Readonly<
   Record<string, readonly [what: string, why: string, fix: string, tech: string]>
@@ -815,6 +819,18 @@ export const CHECK_TEXT: Readonly<
     "Decide which price you mean, then change the other so they agree. If the difference is tax, say on the page whether the price includes it.",
     "the first amount written with a currency next to the plan's name, as a whole number of minor units, against unit_amount of the matched price (or its currency_options entry when the page's currency is one of them); a currency that is not one of the price's is a notice, never converted; a plan showing an introductory price or discount is skipped unless introAmount names it; the page's 'tax included' or 'plus tax' against tax_behavior when both say; the evidence shows both amounts and never says which is right",
   ],
+  "query-field-absent": [
+    "A query in your code asks for a field of a document type, and no published document of that type has it.",
+    "The field was renamed or never filled in, and the page that asks for it renders empty every time. The schema still declares it, so a type check passes and nobody sees the gap until a customer does.",
+    "Open the file and line named, then find what the field is called in your content now (the Studio shows it) and change the query, or fill the field in. Ask Gaugeline again to confirm.",
+    "one GET of the query endpoint for each document type (perspective=published, so drafts are never counted), asking for count(*[_type == T]) and count(*[_type == T && defined(path)]) for each distinct field path, held in a Map from type to a Map from path to an integer; a reference or an array of objects is counted at the field itself (topic, not topic->title); the answer is integers, so no document and no field value is read; a path whose count is 0 while the type's total is above 0",
+  ],
+  "query-type-empty": [
+    "A query in your code asks for a document type, and the dataset has no published documents of it.",
+    "Either the type was renamed or the content has not been created yet. Every page built from the query is blank, and its fields are not reported separately because none of them can exist.",
+    "Check the type's name in the Studio against the one in the query, or publish the documents. A document that is only a draft does not count.",
+    "one GET of the query endpoint for each document type (perspective=published, so drafts are never counted), asking for count(*[_type == T]) and count(*[_type == T && defined(path)]) for each distinct field path, held in a Map from type to a Map from path to an integer; a reference or an array of objects is counted at the field itself (topic, not topic->title); the answer is integers, so no document and no field value is read; count(*[_type == T]) is 0",
+  ],
   "delivery-receipt-missing": [
     "More orders were paid in Stripe than the mail provider has sent emails for, in the same window.",
     "A customer who paid and got nothing has no receipt, no download link and no booking confirmation, and does not know whether the payment worked. Your application's log says the send succeeded, because it records the attempt; the mail provider records what it accepted and sent.",
@@ -1307,6 +1323,12 @@ export const CHECK_TEXT: Readonly<
     "Make the page and the Stripe price agree on the trial's length, or take the promise off the page.",
     "a trial of N days, weeks or months written next to the plan's name (7-day free trial, prueba gratis de 7 dias) against recurring.trial_period_days of the matched price (a month is 28 to 31 days); a trial set when checkout is created (subscription_data) is not visible on the price, so confirm there before changing the page",
   ],
+  "query-no-drafts-filter": [
+    "The filter of a query in your code does not leave drafts out.",
+    "With the published perspective in the client that is safe. If anything runs the query with drafts included (preview mode, a token with the wrong perspective), unpublished content reaches a visitor.",
+    'Add !(_id in path("drafts.**")) to the filter, or make sure the client always asks for the published perspective. Gaugeline cannot see the client, only the query.',
+    'read from the repository with no request: the query\'s filter is parsed and does not require !(_id in path("drafts.**")) (or match "drafts.*") in an && chain',
+  ],
   "webhook-disabled": [
     "A Stripe webhook endpoint has the status disabled.",
     "Stripe sends a disabled endpoint nothing. If your site still depends on it, payments are made and the site is not told.",
@@ -1534,6 +1556,12 @@ export const CHECK_TEXT: Readonly<
     "A price that is live in Stripe but never shown is either a plan you forgot to put on the site, or an old price that can still be bought from an old link.",
     "Add the plan to the page, or archive the price in Stripe if it should no longer be sold.",
     "for each Stripe product in gaugeline.plans.json products (active), its prices with active true and a recurring object that no plan on the page was matched to; one finding per product listing up to three prices; a product that is archived, or not among the products that were read, says nothing here",
+  ],
+  "query-field-partial": [
+    "A query asks for a field that some published documents of the type have and others do not.",
+    "Fine when the field is optional. When the page assumes it is there (a link built from it, an image with no fallback), the documents without it break or show a gap.",
+    "If the field is optional, make the template cope with it missing. If it is not, fill it in on the documents listed by their count, or mark it required in the schema.",
+    "one GET of the query endpoint for each document type (perspective=published, so drafts are never counted), asking for count(*[_type == T]) and count(*[_type == T && defined(path)]) for each distinct field path, held in a Map from type to a Map from path to an integer; a reference or an array of objects is counted at the field itself (topic, not topic->title); the answer is integers, so no document and no field value is read; a path whose count is above 0 and below the type's total",
   ],
 };
 export const SAMPLE_NOUNS: Readonly<Record<string, readonly [one: string, many: string]>> = {

@@ -382,13 +382,15 @@ delivery](delivery.md#paid-and-the-receipt-never-went-out). What they send:
 
 ### The query command
 
-`gaugeline query <folder>` reads the GROQ in a repository instead of checking a site. It takes one folder, has no options of its own, and reads files only: it makes no request, needs no token and sends nothing. For every query it finds (`groq` tagged templates and `defineQuery()` calls in `.ts`, `.tsx`, `.js`, `.jsx` and `.mjs` files) it prints the document type, the fields the query reads, whether its filter leaves drafts out, its parameters, and the file and line it starts on. A query built at run time, a file that does not parse and a query with no `_type` filter are listed as unreadable, never skipped.
+`gaugeline query <folder>` reads the GROQ in a repository instead of checking a site. It takes one folder and reads files. For every query it finds (`groq` tagged templates and `defineQuery()` calls in `.ts`, `.tsx`, `.js`, `.jsx` and `.mjs` files) it prints the document type, the fields the query reads, whether its filter leaves drafts out, its parameters, and the file and line it starts on. A query built at run time, a file that does not parse and a query with no `_type` filter are listed as unreadable, never skipped.
 
 ```sh
 npx gaugeline query ./src
 ```
 
-It exits 0 when it read the folder and 2 when the folder does not exist or TypeScript is not installed beside it (`npx -p gaugeline -p typescript gaugeline query ./src` brings it). What it reads and what it lists as unreadable: [Checking your queries](query-check.md#what-the-command-reads).
+With `SANITY_PROJECT_ID` set (and `SANITY_DATASET`, `production` when unset, and `SANITY_TOKEN` with the Viewer role for a private dataset) it also asks the dataset for counts, one `GET` for each document type, and reports a field no document has (`query-field-absent`), a type with no documents (`query-type-empty`), a field some documents lack (`query-field-partial`) and a query whose filter leaves drafts out (`query-no-drafts-filter`). Counts only: no document is ever read. Without `SANITY_PROJECT_ID` it makes no request, needs no token and says so on stderr.
+
+It takes `--json` (the schema 2 result and nothing else; it needs `SANITY_PROJECT_ID`) and `--ci` (exit 1 for a "Fix this first" finding). It exits 0 when it read the folder and 2 when the folder does not exist, TypeScript is not installed beside it (`npx -p gaugeline -p typescript gaugeline query ./src` brings it) or the dataset could not be read: a private dataset with no token names `SANITY_TOKEN` and the Viewer role. What it reads and what it lists as unreadable: [Checking your queries](query-check.md#what-the-command-reads); what it counts: [What it reports](query-check.md#what-it-reports).
 
 ### Probing checks (--owner-consent and --routes)
 

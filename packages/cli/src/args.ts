@@ -166,6 +166,8 @@ export type ParsedArgs =
       kind: "query";
       /** gaugeline query <dir>: the folder to read, as typed. */
       dir: string;
+      json: boolean;
+      ci: boolean;
       verbose: boolean;
       quiet: boolean;
     }
@@ -608,10 +610,17 @@ export function parseCliArgs(
       return {
         kind: "error",
         message: "gaugeline query needs one folder: gaugeline query ./src",
-        hint: "Give the folder that holds your source files. It reads GROQ from them and makes no request.",
+        hint: "Give the folder that holds your source files. It reads GROQ from them; with SANITY_PROJECT_ID set it also counts the documents in your dataset.",
         verbose,
       };
-    return { kind: "query", dir: positionals[0] ?? "", verbose, quiet: values.quiet === true };
+    return {
+      kind: "query",
+      dir: positionals[0] ?? "",
+      json: values.json === true,
+      ci: values.ci === true,
+      verbose,
+      quiet: values.quiet === true,
+    };
   }
   if (command === "delivery") {
     const paid = values.paid === true;

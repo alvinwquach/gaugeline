@@ -1033,3 +1033,31 @@ export { extractGroq } from "./query/extract.js";
 export type { ExtractOptions, GroqExtraction } from "./query/extract.js";
 export { readGroq } from "./query/shape.js";
 export type { FieldUse, QueryShape, SourceRef, Unreadable } from "./query/shape.js";
+export {
+  TITLES as QUERY_TITLES,
+  buildCountQuery,
+  compareWithCounts,
+  countedPath,
+  countedPaths,
+  fetchCounts,
+} from "./query/counts.js";
+export type { FetchCountsOptions, TypeCounts } from "./query/counts.js";
+export { compareQueries } from "./query/run.js";
+export type { QueryCompareOptions, QueryCompareRun } from "./query/run.js";
+export {
+  QUERY_CHECKS,
+  createQueryRegistry,
+  queryFieldAbsent,
+  queryFieldPartial,
+  queryNoDraftsFilter,
+  queryTypeEmpty,
+} from "./checks/query-counts.js";
+export type { QueryInput } from "./checks/query-counts.js";
+export {
+  QueryTooLongError,
+  SANITY_DATASET,
+  SANITY_PROJECT_ID,
+  SANITY_TOKEN,
+  createSanityRead,
+} from "./connectors/sanity.js";
+export type { SanityRead } from "./connectors/sanity.js";

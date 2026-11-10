@@ -936,8 +936,13 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       };
     case "query":
       return {
-        outcome: await runQuery(args, io, { cwd: deps.cwd ?? process.cwd() }),
-        ci: false,
+        outcome: await runQuery(args, io, {
+          cwd: deps.cwd ?? process.cwd(),
+          now: (deps.now ?? io.now ?? (() => new Date()))(),
+          ...(deps.fetcher ? { fetcher: deps.fetcher } : {}),
+          color: useColor(io.stdout, io.env ?? {}),
+        }),
+        ci: args.ci,
       };
     case "delivery":
       return {

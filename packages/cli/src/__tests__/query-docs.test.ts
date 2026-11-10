@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { COPPERHILL_COUNTS, sanityCountsTransport } from "@gaugeline/testkit";
 import { EXIT, main } from "../main.js";
 
 /**
@@ -23,22 +24,30 @@ function fences(): Array<{ info: string; body: string }> {
   return out;
 }
 
-/** Each `$ npx gaugeline query <folder>` block (no environment variables) with the Output block after it. */
-function examples(): Array<{ command: string; expected: string }> {
+/**
+ * Each `$ [SANITY_PROJECT_ID=...] npx gaugeline query <folder>` block with the Output block after
+ * it. An example with a project id is run against the invented Copperhill dataset.
+ */
+function examples(): Array<{ command: string; env: Record<string, string>; expected: string }> {
   const all = fences();
-  const out: Array<{ command: string; expected: string }> = [];
+  const out: Array<{ command: string; env: Record<string, string>; expected: string }> = [];
   all.forEach((f, i) => {
     const next = all[i + 1];
-    if (!/title=Terminal/.test(f.info) || !/^\$ npx gaugeline query \S+$/.test(f.body)) return;
+    const m = /^\$ (SANITY_PROJECT_ID=([a-z0-9]+) )?npx gaugeline (query \S+)$/.exec(f.body);
+    if (!/title=Terminal/.test(f.info) || !m) return;
     if (!next || !/title="?Output/.test(next.info)) return;
-    out.push({ command: f.body.replace(/^\$ npx gaugeline /, ""), expected: next.body });
+    out.push({
+      command: m[3] ?? "",
+      env: m[2] ? { SANITY_PROJECT_ID: m[2], SANITY_DATASET: "production" } : {},
+      expected: next.body,
+    });
   });
   return out;
 }
 
 describe("docs/query-check.md: the command it shows", () => {
   it("has the example it describes", () => {
-    expect(examples().map((e) => e.command)).toEqual(["query ./src/app"]);
+    expect(examples().map((e) => e.command)).toEqual(["query ./src/app", "query ./src/app"]);
   });
 
   it("prints what the page says", async () => {
@@ -47,11 +56,20 @@ describe("docs/query-check.md: the command it shows", () => {
       const err: string[] = [];
       const code = await main(
         e.command.split(/\s+/),
-        { stdout: { write: (s) => out.push(s) }, stderr: { write: (s) => err.push(s) }, env: {} },
-        { cwd: repo },
+        {
+          stdout: { write: (s) => out.push(s) },
+          stderr: { write: (s) => err.push(s) },
+          env: e.env,
+        },
+        {
+          cwd: repo,
+          now: () => new Date("2026-11-10T12:00:00Z"),
+          fetcher: { transport: sanityCountsTransport(COPPERHILL_COUNTS), timeoutMs: 5000 },
+        },
       );
       expect(code, e.command).toBe(EXIT.ok);
-      expect(err.join(""), e.command).toBe("");
+      if (e.env.SANITY_PROJECT_ID) expect(err.join(""), e.command).toBe("");
+      else expect(err.join(""), e.command).toContain("SANITY_PROJECT_ID is not set");
       expect(out.join("").trimEnd(), e.command).toBe(e.expected);
     }
   });

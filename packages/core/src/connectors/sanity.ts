@@ -107,6 +107,14 @@ const PRODUCTS_HINTS: AskHints = {
     "Sanity could not run the query (HTTP 400). If you set GAUGELINE_PRODUCTS_QUERY, check it is valid GROQ.",
 };
 
+/** The address of a query is longer than a GET can carry. Thrown before anything is sent. */
+export class QueryTooLongError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "QueryTooLongError";
+  }
+}
+
 /** One GROQ query, one GET. Returns the `result` of the answer. */
 async function ask(
   env: Env,
@@ -116,7 +124,7 @@ async function ask(
 ): Promise<unknown> {
   const s = settings(env);
   const url = productsUrl(s.projectId, s.dataset, query);
-  if (url.length > MAX_URL) throw new Error(hints.tooLong);
+  if (url.length > MAX_URL) throw new QueryTooLongError(hints.tooLong);
   let body: string;
   try {
     const hop = await connectorGet(fetcher, url, {
@@ -213,7 +221,11 @@ function guarded<A extends unknown[], R>(
     try {
       return await fn(env, ...rest);
     } catch (err) {
-      if (err instanceof ConnectorRefusedError || err instanceof ConnectorRateLimitedError)
+      if (
+        err instanceof ConnectorRefusedError ||
+        err instanceof ConnectorRateLimitedError ||
+        err instanceof QueryTooLongError
+      )
         throw err;
       const redact = createRedactor(env, [SANITY_TOKEN]);
       const text = err instanceof Error ? err.message : String(err);
@@ -287,6 +299,38 @@ export const readField = guarded(
   (env: Env, fetcher: Fetcher, type: string, fields: readonly string[]): Promise<unknown> =>
     ask(env, fetcher, fieldQuery(type, fields), FIELD_HINTS),
 );
+
+const COUNT_HINTS: AskHints = {
+  tooLong: "The count query is too long to send as a GET.",
+  badQuery:
+    "Sanity could not run the count query (HTTP 400). Check the document type and field names in the source.",
+};
+
+/** What `gaugeline query` asks Sanity with: one GROQ query in, its `result` out, one GET. */
+export interface SanityRead {
+  query(groq: string): Promise<unknown>;
+  /** The dataset the queries go to, and whether SANITY_DATASET was unset so "production" was assumed. */
+  readonly dataset: string;
+  readonly datasetAssumed: boolean;
+}
+
+/**
+ * A reader for GROQ queries over the published documents of the configured dataset, for the query
+ * check's counts. GET only, drafts left out, the token (optional for a public dataset) in an
+ * Authorization header and never in the address. A query whose address is too long throws
+ * QueryTooLongError before any request is made. Every message has the token blanked.
+ */
+export function createSanityRead(env: Env, fetcher: Fetcher): SanityRead {
+  const s = settings(env);
+  const run = guarded((e: Env, groq: string): Promise<unknown> =>
+    ask(e, fetcher, groq, COUNT_HINTS),
+  );
+  return {
+    query: (groq) => run(env, groq),
+    dataset: s.dataset,
+    datasetAssumed: s.datasetAssumed,
+  };
+}
 
 /**
  * Anything worth changing about how Sanity is set up, in plain words: the dataset that was assumed,
