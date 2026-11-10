@@ -39,9 +39,20 @@ $ npx gaugeline compare staging production --schema
 
 The tests are `packages/core/src/query/__tests__/mutations.test.ts` and `packages/cli/src/__tests__/query-mutations.test.ts`. The cost is that `--mutations` cannot fetch your schema itself, so you give it a schema file.
 
-## The one exception: --fix
+## Local files it writes
 
-One flag writes, and only ever to your own repository: changes that are unambiguous and local to your files — an absolute share image, a missing width and height, alt text copied from the CMS. It edits files and opens a branch. It never touches a live system, a dataset or a payment provider.
+"Read-only" on this page is a promise about systems: REST, GraphQL, GROQ, SQL, webhooks and queues are read and never changed. It is not a promise that nothing is ever written to your own computer. Two commands put files into your own repository, and the boundary is the same for both: they write local files only, and never touch a live system, a dataset or a payment provider.
+
+| Command                  | What it writes                                           | Where                                                              |
+| ------------------------ | -------------------------------------------------------- | ------------------------------------------------------------------ |
+| `--fix`                  | Edits to files that already exist, on a branch           | Your repository                                                    |
+| `gaugeline query --page` | Three new files: `queries.ts`, `types.ts` and `page.tsx` | The folder `--out` names, inside the folder you ran the command in |
+
+The reports a check saves (`--save-requests`, `snapshot --out`, `plan --annotate`, `digest`) are files about a check, written where you name them, and none of them changes your code.
+
+### --fix
+
+One flag edits files that are already there, and only ever in your own repository: changes that are unambiguous and local to your files — an absolute share image, a missing width and height, alt text copied from the CMS. It edits files and opens a branch. It never touches a live system, a dataset or a payment provider.
 
 ```sh title=Terminal untested="Converted with a fixture in this page's own branch."
 $ npx gaugeline yoursite.com --fix --branch fix/share-images
@@ -50,3 +61,14 @@ $ npx gaugeline yoursite.com --fix --branch fix/share-images
 ::: info
 If a change is ambiguous, it stays a finding. The rule is that anything requiring judgement is drafted for a person, never applied.
 :::
+
+### --page
+
+`gaugeline query --page --type resource --out "./src/app/resource/[slug]"` writes a starting route into a folder you name, from the shape of your published documents ([how it's written](query-check.md#starting-a-page-from-your-content)). It sends nothing to your dataset: the only requests are the `GET` counts that `--suggest` sends. The boundary is stated in code and proved by a test:
+
+- **Inside the folder you ran it from.** `--out` is required. `../elsewhere`, an absolute path to another folder and a link that points out of the project are refused with exit 2 before anything is written.
+- **Nothing is overwritten.** If any of the three files exists, nothing is written. `--force` replaces those three files, never a folder or a link, and leaves every other file in the folder alone.
+- **All three files or none.** Every target is checked before the first write, and a write that fails part-way takes back what it wrote.
+- **Every path is printed**, and nothing is created unless you pass `--page`. No git command is run.
+
+The test (`packages/cli/src/__tests__/page.e2e.test.ts`) records every request, which are `GET` counts and nothing else, and records every file-system call, which writes only under `--out`.

@@ -19,6 +19,7 @@ import {
 } from "@gaugeline/core";
 import { resolve } from "node:path";
 import { runGraphql } from "./query-graphql.js";
+import { runPage } from "./query-page.js";
 import { schemaPath } from "./query-schema.js";
 import { runSuggest } from "./query-suggest.js";
 import { formatTerminal } from "./reporter.js";
@@ -136,6 +137,7 @@ export async function runQuery(
     mutations?: boolean;
     graphql?: { endpoint?: string };
     suggest?: { type: string };
+    page?: { type: string; out: string; force: boolean };
     schema?: string;
     allowPrivate?: boolean;
     quiet?: boolean;
@@ -143,6 +145,17 @@ export async function runQuery(
   io: Out,
   deps: Deps,
 ): Promise<Outcome> {
+  if (args.page !== undefined)
+    return runPage(
+      {
+        page: args.page,
+        ...(args.schema === undefined ? {} : { schema: args.schema }),
+        ...(args.allowPrivate === undefined ? {} : { allowPrivate: args.allowPrivate }),
+        ...(args.quiet === undefined ? {} : { quiet: args.quiet }),
+      },
+      io,
+      { cwd: deps.cwd, ...(deps.fetcher ? { fetcher: deps.fetcher } : {}) },
+    );
   if (args.suggest !== undefined)
     return runSuggest(
       {

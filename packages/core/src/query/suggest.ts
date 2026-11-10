@@ -4,9 +4,15 @@ import type { ContentShape, FieldKind, FieldShape } from "./content-shape.js";
 /** What a dereferenced reference asks for. The referenced type is never read, so this is the same for every reference. */
 const REFERENCE = '{ _id, title, "slug": slug.current }';
 const IMAGE_FIXED = ['"url": asset->url', '"alt": coalesce(alt, "")'];
+/** What an image also carries when the page needs its size: the asset's own dimensions (the image's `metadata.dimensions`). */
+const IMAGE_SIZE = [
+  '"width": asset->metadata.dimensions.width',
+  '"height": asset->metadata.dimensions.height',
+];
 const FILE_FIXED = ['"url": asset->url', '"name": asset->originalFilename', '"size": asset->size'];
 /** Names the printer writes itself inside an image or file, so a field of that name is not written twice. */
 const IMAGE_OWN = new Set(["url", "alt"]);
+const IMAGE_OWN_SIZED = new Set([...IMAGE_OWN, "width", "height"]);
 const FILE_OWN = new Set(["url", "name", "size", "alt"]);
 /** A block of fields longer than this is written over several lines. */
 const WIDTH = 80;
@@ -54,6 +60,17 @@ function block(prefix: string, inner: readonly string[], inline = false): string
   return `${prefix}{\n${inner.map(indent).join(",\n")}\n}`;
 }
 
+/** How a query is written. `imageSize` adds the width and height of each image, for a page that has to set them. */
+export interface ProjectionOptions {
+  imageSize?: boolean;
+}
+
+/** One entry of a projection, and the field it was written for. */
+export interface ProjectionEntry {
+  name: string;
+  text: string;
+}
+
 /** What is being compared with, in the comment on an optional nested field. */
 interface Scope {
   of: number;
@@ -66,9 +83,10 @@ function entries(
   scope: Scope,
   parent: string,
   comments: string[],
+  options: ProjectionOptions,
   skip: ReadonlySet<string> = new Set(),
-): string[] {
-  const out: string[] = [];
+): ProjectionEntry[] {
+  const out: ProjectionEntry[] = [];
   for (const f of fields) {
     if (skip.has(f.name)) continue;
     if (f.present === 0) {
@@ -77,12 +95,21 @@ function entries(
       );
       continue;
     }
-    out.push(entry(f, scope, parent === "" ? f.name : `${parent}.${f.name}`, comments));
+    out.push({
+      name: f.name,
+      text: entry(f, scope, parent === "" ? f.name : `${parent}.${f.name}`, comments, options),
+    });
   }
   return out;
 }
 
-function entry(f: FieldShape, scope: Scope, path: string, comments: string[]): string {
+function entry(
+  f: FieldShape,
+  scope: Scope,
+  path: string,
+  comments: string[],
+  options: ProjectionOptions,
+): string {
   const a = access(f.name);
   const optional = f.present < scope.of;
   if (optional)
@@ -97,7 +124,9 @@ function entry(f: FieldShape, scope: Scope, path: string, comments: string[]): s
   const objectScope = inside(`the documents that have ${path}`);
   const itemScope = inside(`the ${path} items`);
   const extras = (own: ReadonlySet<string>, s: Scope): string[] =>
-    entries(f.of ?? [], s, path, comments, own);
+    entries(f.of ?? [], s, path, comments, options, own).map((e) => e.text);
+  const imageFixed = options.imageSize === true ? [...IMAGE_FIXED, ...IMAGE_SIZE] : IMAGE_FIXED;
+  const imageOwn = options.imageSize === true ? IMAGE_OWN_SIZED : IMAGE_OWN;
   switch (f.kind) {
     case "string":
       return optional ? alias(`coalesce(${a}, "")`) : named(a);
@@ -113,8 +142,8 @@ function entry(f: FieldShape, scope: Scope, path: string, comments: string[]): s
       return named(`${a}->${REFERENCE}`);
     case "image":
     case "file": {
-      const more = extras(f.kind === "image" ? IMAGE_OWN : FILE_OWN, objectScope);
-      const fixed = f.kind === "image" ? IMAGE_FIXED : FILE_FIXED;
+      const more = extras(f.kind === "image" ? imageOwn : FILE_OWN, objectScope);
+      const fixed = f.kind === "image" ? imageFixed : FILE_FIXED;
       return named(block(a, [...fixed, ...more], more.length === 0));
     }
     case "object": {
@@ -125,8 +154,8 @@ function entry(f: FieldShape, scope: Scope, path: string, comments: string[]): s
       let expr = `${a}[]`;
       if (f.item === "reference") expr = `${a}[]->${REFERENCE}`;
       else if (f.item === "image" || f.item === "file") {
-        const more = extras(f.item === "image" ? IMAGE_OWN : FILE_OWN, itemScope);
-        const fixed = f.item === "image" ? IMAGE_FIXED : FILE_FIXED;
+        const more = extras(f.item === "image" ? imageOwn : FILE_OWN, itemScope);
+        const fixed = f.item === "image" ? imageFixed : FILE_FIXED;
         expr = block(`${a}[]`, [...fixed, ...more], more.length === 0);
       } else if (f.item === "object") {
         const inner = extras(new Set(), itemScope);
@@ -135,6 +164,33 @@ function entry(f: FieldShape, scope: Scope, path: string, comments: string[]): s
       return optional ? alias(`coalesce(${expr}, [])`) : named(expr);
     }
   }
+}
+
+/**
+ * The entries of a projection for a shape, and the comments that go with them, by the rules
+ * `suggestQuery` documents. `_id` is not among them. Shared with the route scaffold, which writes
+ * three queries from the same entries.
+ */
+export function projection(
+  shape: ContentShape,
+  options: ProjectionOptions = {},
+): { entries: ProjectionEntry[]; comments: string[] } {
+  if (!TYPE_NAME.test(shape.type))
+    throw new Error(`${JSON.stringify(shape.type)} is not a Sanity document type name.`);
+  if (shape.sampled === 0) throw new Error(`Nothing of type ${shape.type} exists.`);
+  const comments: string[] = [];
+  const found = entries(
+    shape.fields,
+    { of: shape.sampled, label: "the sample" },
+    "",
+    comments,
+    options,
+  );
+  if (shape.skipped !== undefined && shape.skipped > 0)
+    comments.push(
+      `// ${shape.skipped} ${shape.skipped === 1 ? "field" : "fields"} with names that cannot be written plainly ${shape.skipped === 1 ? "was" : "were"} left out`,
+    );
+  return { entries: found, comments };
 }
 
 /**
@@ -149,21 +205,13 @@ function entry(f: FieldShape, scope: Scope, path: string, comments: string[]): s
  * value: the shape holds none.
  */
 export function suggestQuery(shape: ContentShape): string {
-  if (!TYPE_NAME.test(shape.type))
-    throw new Error(`${JSON.stringify(shape.type)} is not a Sanity document type name.`);
-  if (shape.sampled === 0) throw new Error(`Nothing of type ${shape.type} exists.`);
-  const comments: string[] = [];
-  const fields = entries(shape.fields, { of: shape.sampled, label: "the sample" }, "", comments);
-  if (shape.skipped !== undefined && shape.skipped > 0)
-    comments.push(
-      `// ${shape.skipped} ${shape.skipped === 1 ? "field" : "fields"} with names that cannot be written plainly ${shape.skipped === 1 ? "was" : "were"} left out`,
-    );
+  const { entries: fields, comments } = projection(shape);
   const documents = `${shape.sampled} published ${shape.sampled === 1 ? "document" : "documents"}`;
   return [
     `// ${shape.type}, written from ${documents}`,
     ...comments,
     `*[_type == ${JSON.stringify(shape.type)} && !(_id in path("drafts.**"))] | order(_updatedAt desc) {`,
-    ["_id", ...fields].map(indent).join(",\n"),
+    ["_id", ...fields.map((e) => e.text)].map(indent).join(",\n"),
     "}",
   ].join("\n");
 }

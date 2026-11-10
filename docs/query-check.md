@@ -9,7 +9,7 @@ $ SANITY_PROJECT_ID=abc123 SANITY_TOKEN=… npx gaugeline query ./src
 ```
 
 ::: info What works today
-`gaugeline query <folder>` reads the GROQ in your repository and lists each query with its file and line. With `SANITY_PROJECT_ID` set it also asks your dataset how many documents of each type exist and how many have each field, and reports the four findings under [What it reports](#what-it-reports). Without it the command makes no request and needs no token. With `--dupes` it also names documents that share a slug or a title, and with `--mutations` it reads the writes in your code and checks their shapes against your schema file without sending any of them. With `--graphql` it checks your GraphQL against the schema and the content instead. Suggested queries, which the rest of this page describes, are built branch by branch on top of this, and each part says so when it ships.
+`gaugeline query <folder>` reads the GROQ in your repository and lists each query with its file and line. With `SANITY_PROJECT_ID` set it also asks your dataset how many documents of each type exist and how many have each field, and reports the four findings under [What it reports](#what-it-reports). Without it the command makes no request and needs no token. With `--dupes` it also names documents that share a slug or a title, and with `--mutations` it reads the writes in your code and checks their shapes against your schema file without sending any of them. With `--graphql` it checks your GraphQL against the schema and the content instead. With `--suggest` it writes a starting query from the content, and with `--page` it writes a starting route (queries, types and page) into a folder of your project.
 :::
 
 ## What the command reads
@@ -331,12 +331,19 @@ It reads them. It never sends them. Nothing here writes to your dataset, and a m
 
 ## Starting a page from your content
 
-The same shape that writes a query can scaffold the route around it. The point isn't saving keystrokes: it's that the generated page already satisfies the checks people fail most.
+The same shape that writes a query can scaffold the route around it. The point isn't saving keystrokes: it's that the generated page already satisfies the checks people fail most, an image that carries its alt text and its size, a canonical address and share tags.
 
-```sh title=Terminal untested="Converted with a fixture in this page's own branch."
-$ npx gaugeline query --page --type resource --out "./src/app/resource/[slug]"
+Northfield Coaching keeps its free resource library in Sanity and its site in Next.js, and the freelancer building the resource page runs this from the root of the project, with the schema file `sanity schema extract` wrote beside it:
 
+```sh title=Terminal untested="Needs a project folder with a schema file, a dataset, and a folder to write to, and the docs runner points every example at a fixture website. packages/cli/src/__tests__/query-docs.test.ts runs the same command in a temporary copy of the invented Northfield repository (packages/fixtures/repo-gql) against an invented dataset of twelve published resources, and compares the output and the three files below with what it writes."
+$ SANITY_PROJECT_ID=northfield npx gaugeline query --page --type resource --out "./src/app/resource/[slug]"
+```
+
+```text title=Output
 Wrote 3 files to ./src/app/resource/[slug] from 12 published resource documents
+  ./src/app/resource/[slug]/queries.ts
+  ./src/app/resource/[slug]/types.ts
+  ./src/app/resource/[slug]/page.tsx
 ```
 
 | File         | What's in it                                                                                                                                                                                |
@@ -345,11 +352,189 @@ Wrote 3 files to ./src/app/resource/[slug] from 12 published resource documents
 | `types.ts`   | A TypeScript interface. Fields missing on some documents are optional, so the compiler makes you guard them.                                                                                |
 | `page.tsx`   | `generateStaticParams`, `generateMetadata` with the canonical and share tags, an image carrying the editor's alt text with width and height set, references linked, Portable Text rendered. |
 
+`queries.ts` for the twelve resources:
+
+```ts title=queries.ts
+import groq from "groq";
+
+// Written by gaugeline query --page from 12 published resource documents.
+// publishedAt is present on 50% of the sample
+// gatedFile is present on 33% of the sample
+
+// Every published document, newest first, with what a list shows.
+export const resourceListQuery = groq`*[_type == "resource" && !(_id in path("drafts.**"))] | order(_updatedAt desc) {
+  _id,
+  title,
+  "slug": slug.current,
+  summary,
+  heroImage{ "url": asset->url, "alt": coalesce(alt, ""), "width": asset->metadata.dimensions.width, "height": asset->metadata.dimensions.height }
+}`;
+
+// The address of every published document, for generateStaticParams.
+export const resourceSlugsQuery = groq`*[_type == "resource" && !(_id in path("drafts.**")) && defined(slug.current)].slug.current`;
+
+// One document by its address, with every field.
+export const resourceQuery = groq`*[_type == "resource" && !(_id in path("drafts.**")) && slug.current == $slug][0] {
+  _id,
+  title,
+  "slug": slug.current,
+  summary,
+  topic->{ _id, title, "slug": slug.current },
+  body,
+  heroImage{ "url": asset->url, "alt": coalesce(alt, ""), "width": asset->metadata.dimensions.width, "height": asset->metadata.dimensions.height },
+  tags[],
+  "publishedAt": coalesce(publishedAt, ""),
+  gatedFile{ "url": asset->url, "name": asset->originalFilename, "size": asset->size }
+}`;
+```
+
+`types.ts`: `publishedAt` is on 6 of the 12 documents, so it is optional; `title` is on all 12, so it is not.
+
+```ts title=types.ts
+import type { PortableTextBlock } from "@portabletext/react";
+
+// Written by gaugeline query --page from 12 published resource documents.
+// A field with a ? is missing on some of them, so the compiler makes you guard it.
+export interface Resource {
+  _id: string;
+  title: string;
+  slug: string;
+  summary: string;
+  topic: { _id: string; title: string | null; slug: string | null } | null;
+  body: PortableTextBlock[];
+  heroImage: {
+    url: string | null;
+    alt: string;
+    width: number | null;
+    height: number | null;
+  } | null;
+  tags: string[];
+  publishedAt?: string; // on 6 of the 12 documents
+  gatedFile?: { url: string | null; name: string | null; size: number | null } | null; // on 4 of the 12 documents
+}
+
+export type ResourceListItem = Pick<Resource, "_id" | "title" | "slug" | "summary" | "heroImage">;
+```
+
+::: details page.tsx
+
+```tsx title=page.tsx
+import type { Metadata } from "next";
+import Image from "next/image";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { PortableText } from "@portabletext/react";
+import { client } from "@/sanity/lib/client";
+import { resourceQuery, resourceSlugsQuery } from "./queries";
+import type { Resource } from "./types";
+
+// Written by gaugeline query --page from 12 published resource documents.
+// The canonical and share addresses below are paths, and Next.js resolves them against
+// metadataBase: set it in your root layout (app/layout.tsx), or the build stops and says so.
+// BASE_PATH is where this folder is served on your site; change it if it is not /resource.
+const BASE_PATH = "/resource";
+
+type Props = { params: Promise<{ slug: string }> };
+
+export async function generateStaticParams() {
+  const slugs = await client.fetch<string[]>(resourceSlugsQuery);
+  return slugs.map((slug) => ({ slug }));
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params;
+  const doc = await client.fetch<Resource | null>(resourceQuery, { slug });
+  if (!doc) return {};
+  const title = doc.title;
+  const description = doc.summary;
+  const path = `${BASE_PATH}/${slug}`;
+  const image = doc.heroImage;
+  const images = image?.url
+    ? [
+        {
+          url: image.url,
+          alt: image.alt,
+          width: image.width ?? undefined,
+          height: image.height ?? undefined,
+        },
+      ]
+    : undefined;
+  return {
+    title,
+    description,
+    alternates: { canonical: path },
+    openGraph: { type: "article", url: path, title, description, images },
+    twitter: { card: images ? "summary_large_image" : "summary", title, description, images },
+  };
+}
+
+export default async function ResourcePage({ params }: Props) {
+  const { slug } = await params;
+  const doc = await client.fetch<Resource | null>(resourceQuery, { slug });
+  if (!doc) notFound();
+  return (
+    <article>
+      <h1>{doc.title}</h1>
+      <p>{doc.summary}</p>
+      {doc.topic?.slug ? (
+        <p>
+          <Link href={`/topic/${doc.topic.slug}`}>{doc.topic.title ?? doc.topic.slug}</Link>
+        </p>
+      ) : null}
+      <PortableText value={doc.body} />
+      {doc.heroImage?.url && doc.heroImage.width && doc.heroImage.height ? (
+        <Image
+          src={doc.heroImage.url}
+          alt={doc.heroImage.alt}
+          width={doc.heroImage.width}
+          height={doc.heroImage.height}
+        />
+      ) : null}
+      <ul>
+        {doc.tags.map((item, i) => (
+          <li key={`${i}-${item}`}>{item}</li>
+        ))}
+      </ul>
+      {doc.publishedAt ? <p>{doc.publishedAt}</p> : null}
+      {doc.gatedFile?.url ? (
+        <p>
+          <a href={doc.gatedFile.url}>{doc.gatedFile.name ?? "Download"}</a>
+        </p>
+      ) : null}
+    </article>
+  );
+}
+```
+
+:::
+
 ::: info
 Useful when building from scratch, and more useful during a restructure: generate against the migrated content and the scaffold reflects what actually arrived, including the fields that came over empty.
 :::
 
 It is not a page builder. There's no design in it, no layout opinions, and no component library. Treat it as the wiring: delete the fields this page doesn't render, then check the result with `npx gaugeline yoursite.com/resource/<slug>`.
+
+### What the page assumes
+
+The files are templates filled from the shape, with no model involved, so the same shape gives the same files. They assume things about your project, and say so in the file where it matters:
+
+- **Next.js 15 or newer with the App Router.** `params` is a promise there, so the page awaits it. `generateStaticParams` and `generateMetadata` are the [Next.js functions](https://nextjs.org/docs/app/api-reference/functions/generate-static-params) of those names.
+- **`groq`, `@portabletext/react` and a Sanity client at `@/sanity/lib/client`**, which is where `sanity init` puts it for a Next.js project. Install the two packages (`npm install groq @portabletext/react`) or change the imports. The client only needs a `fetch(query, params)` method.
+- **`metadataBase` set in your root layout.** The canonical and share addresses are paths (`/resource/<slug>`), and Next.js builds the full address from `metadataBase`; without it the build stops and says so, which is better than a canonical that is wrong. `BASE_PATH` at the top of `page.tsx` is where the folder is served: change it if the folder is not named after the type.
+- **The folder is named `[slug]`.** The page reads `params.slug`. A folder with another name is used as you gave it, and a note on stderr says what to rename.
+- **A slug field makes the address.** `slug` if the type has one, else the first slug field, else the document id (and a comment says so).
+- **Image size comes from the asset.** The detail query asks for `asset->metadata.dimensions`, and the image is shown only when it has a url, a width and a height, with the editor's alt text, or an empty one when none was written.
+- **References link to `/<field name>/<slug>`**, because the type a reference points at is not read. Change the path to where those pages live.
+
+### How the files are written
+
+- **Local files only.** `--page` writes into a folder you name, inside the folder you ran it from. It sends nothing to your dataset, runs no git command, and writes nowhere else: see [What it can and can't write](/docs/writes#local-files-it-writes).
+- **`--out` is required**, and must be the current folder or one inside it. `../elsewhere`, an absolute path to another folder, and a link inside the project that points out of it are refused with exit 2 and nothing written. The folder is created when it is missing.
+- **It never overwrites.** If any of the three files already exists, nothing is written, and the message names the files. `--force` replaces those three files, and never a folder or a link of that name; any other file in the folder is left alone.
+- **All three files or none.** Every target is checked before the first write. If a write fails part-way (a read-only folder, a full disk), the files already written are removed, a file `--force` replaced is put back, and the folders this run created are removed, so the folder is as it was.
+- **Every path is printed.** The first line says how many files and how many documents the shape was read from (at most the newest 50); the lines after it are the paths.
+- **What it reads is what `--suggest` reads.** Field names and kinds from the schema file, counts from your dataset, one `GET`, no document. A type with no published documents or one the schema doesn't declare is exit 2, and creates nothing, not even the folder. `--page` without `--type` or without `--out` is exit 2 and prints the usage.
+- **It describes today's content.** The gaps in [What it can't see](#what-it-can-t-see) apply to the files too. A field that exists only in old documents is not in them, and the list query asks for the title, the address, the description and the first image, not every field.
 
 ## The same thing, twice
 
