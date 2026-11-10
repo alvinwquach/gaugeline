@@ -1,0 +1,7 @@
+{
+  "timeZone": "America/Chicago",
+  "google": { "location": "locations/1234567890123456789" },
+  "yelp": { "businessId": "the-buck-tavern-fairmont-heights" },
+  "apple": { "csv": "apple-business-connect.csv" },
+  "bios": [{ "name": "Instagram", "url": "https://links.example/bucktavern" }]
+}

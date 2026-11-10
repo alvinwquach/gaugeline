@@ -177,7 +177,7 @@ export { PRIVATE_TYPE_WORDS, isPrivateType } from "./checks/leaks/private-types.
 export { SANITY_QUERY, readDataset, sanityQueryUrl, sanityRefs } from "./sanity.js";
 export type { DatasetRead, SanityRef } from "./sanity.js";
 export { readScripts } from "./scripts.js";
-export { EMAIL_PRESET, LAUNCH_PRESET } from "./presets.js";
+export { EMAIL_PRESET, LAUNCH_PRESET, LISTING_CHECKS } from "./presets.js";
 export {
   CHANNELS,
   EMAIL_ENV,
@@ -601,6 +601,7 @@ export type { DatasetView, LeaksView, ScriptView } from "./leaks-view.js";
 export { pageData } from "./run-view.js";
 export type { PageData, StructuredBlock } from "./run-view.js";
 export {
+  ConnectorRateLimitedError,
   ConnectorRefusedError,
   REDACTED,
   connectorGet,
@@ -618,3 +619,16 @@ export type {
   Env,
   RunConnectorsOptions,
 } from "./connectors/index.js";
+export { listingsConfigSchema } from "./listings/config.js";
+export type { ListingsConfig } from "./listings/config.js";
+export {
+  LISTING_ENV_VARS,
+  lazyListings,
+  listingConnectors,
+  readListings,
+} from "./listings/read.js";
+export type { ListingsRead, ListingsSettings } from "./listings/read.js";
+export type { Listing, ListingSource, ListingStatus, SpecialDay } from "./listings/types.js";
+export { listingsFromAppleCsv } from "./listings/sources/apple.js";
+export { listingFromBusinessProfile, listingFromPlace } from "./listings/sources/google.js";
+export { listingFromYelp } from "./listings/sources/yelp.js";

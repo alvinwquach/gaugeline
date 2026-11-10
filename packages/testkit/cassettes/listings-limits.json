@@ -1,0 +1,36 @@
+{
+  "interactions": [
+    {
+      "body": "{\"error\": {\"code\": 403, \"message\": \"Invented answer for Gaugeline's tests: the token cannot read this location.\", \"status\": \"PERMISSION_DENIED\"}}",
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "method": "GET",
+      "status": 403,
+      "url": "https://mybusinessbusinessinformation.googleapis.com/v1/locations/1234567890123456789?readMask=title%2CphoneNumbers%2CstorefrontAddress%2CwebsiteUri%2CregularHours%2CspecialHours%2CopenInfo%2Cmetadata"
+    },
+    {
+      "body": "{\"error\": {\"code\": 429, \"message\": \"Invented answer for Gaugeline's tests: quota exceeded.\", \"status\": \"RESOURCE_EXHAUSTED\"}}",
+      "headers": {
+        "content-type": "application/json; charset=utf-8",
+        "retry-after": "120"
+      },
+      "method": "GET",
+      "status": 429,
+      "url": "https://places.googleapis.com/v1/places/ChIJexampleBuckTavern01"
+    },
+    {
+      "body": "{\"error\": {\"code\": \"ACCESS_LIMIT_REACHED\", \"description\": \"Invented answer for Gaugeline's tests: the daily limit was reached.\"}}",
+      "headers": {
+        "content-type": "application/json; charset=utf-8",
+        "ratelimit-resettime": "2026-11-11T08:00:00+00:00"
+      },
+      "method": "GET",
+      "status": 429,
+      "url": "https://api.yelp.com/v3/businesses/the-buck-tavern-fairmont-heights"
+    }
+  ],
+  "name": "listings-limits",
+  "recordedAt": "2026-11-10T00:00:00.000Z",
+  "version": 1
+}

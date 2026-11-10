@@ -280,6 +280,46 @@
     "tech": "Product or Offer price in JSON-LD (then the configured priceSelector; never free text) differs for one sku across versions; \"$12\", \"12 USD\" and \"$12.00\" are equal"
   },
   {
+    "id": "listing-hours-mismatch",
+    "severity": "high",
+    "area": "Search & sharing",
+    "title": "A listing shows different opening hours",
+    "what": "On at least one day, the hours on your Google, Yelp or Apple listing are not the hours on your site.",
+    "why": "People decide where to go from the hours in the search result. A listing that says you close at 10 when you stay open until 2 loses the late crowd, and one that says you open early sends people to a locked door.",
+    "fix": "Make the hours the same in the listing's own dashboard and on the site. Decide which one is right first, then fix the other.",
+    "tech": "both sides become seven lists of intervals in the venue's local time (a close after midnight belongs to the day it opens, split shifts stay split) and each day the site states is compared; a day the site does not mention is not; a day missing from a listing that gave hours is closed; the site's hours are the hours fact in gaugeline.facts.json, else LocalBusiness openingHours or openingHoursSpecification"
+  },
+  {
+    "id": "listing-name-mismatch",
+    "severity": "high",
+    "area": "Search & sharing",
+    "title": "A listing still uses your old business name",
+    "what": "The name on your Google, Yelp or Apple listing is not the name your site uses.",
+    "why": "Most people find a bar or a clinic through the listing, not the website. If it still shows a name you retired, they search for the wrong thing and doubt that the place is the one they want.",
+    "fix": "Change the name in the listing's own dashboard (Google Business Profile, Yelp for Business, Apple Business Connect) to the one on your site, or fix the site if the listing is right.",
+    "tech": "the listing's name, normalised (case, accents, punctuation and a leading or trailing \"The\" ignored), is neither equal to the site's name nor the site's name with words around it; the site's name is the text fact \"name\" in gaugeline.facts.json, else the LocalBusiness name in structured data; permanently closed listings are not compared"
+  },
+  {
+    "id": "listing-phone-mismatch",
+    "severity": "high",
+    "area": "Search & sharing",
+    "title": "A listing shows a different phone number",
+    "what": "The phone number on your Google, Yelp or Apple listing is not the one on your site.",
+    "why": "The phone number on the listing is the one people tap from the search result. A wrong one sends bookings and orders to a dead line or a stranger.",
+    "fix": "Update the phone number in the listing's own dashboard, or on the site if the listing is the right one.",
+    "tech": "the digits of the listing's phone number (a leading +1 or 1 on a North American number ignored) differ from the digits of the site's: the phone fact in gaugeline.facts.json, else the LocalBusiness telephone in structured data; numbers that are not 7 to 15 digits are not compared"
+  },
+  {
+    "id": "listing-website-wrong",
+    "severity": "high",
+    "area": "Search & sharing",
+    "title": "A listing links to the wrong place",
+    "what": "The website link on a listing, or in a social bio, leads to an old domain, to a page that no longer works, or through a long chain of redirects.",
+    "why": "The website button on the listing is how a guest reaches the menu and the booking form. When it points at an old domain that lapses, or a page you deleted, every one of those visits ends in an error.",
+    "fix": "Set the listing's website to your site's current address, in the listing's own dashboard or in the bio.",
+    "tech": "the link is opened with GET (at most 8 distinct links, one request each): it is wrong when it cannot be opened, answers 400 or above, is on a different host from the checked site (www ignored) even if it redirects there, or takes 3 redirects or more; a link-in-bio page is right when it lands on the site or links to it; Yelp does not return a website, so it is not compared"
+  },
+  {
     "id": "mock-content-live",
     "severity": "high",
     "area": "Visitors",
@@ -818,6 +858,26 @@
     "why": "Visitors can't see where the link goes before they click, the redirect adds a delay, and if the shortener expires or is blocked the link breaks.",
     "fix": "Link straight to the destination. Social icons in the footer are a common place for these.",
     "tech": "a[href] on bit.ly, t.co, lnkd.in, buff.ly, ow.ly, tinyurl.com, goo.gl, rebrand.ly, is.gd, cutt.ly, shorturl.at, tiny.cc (or a subdomain), or a /redirect, /out or /go path with a url= style parameter holding an http(s) address; footer links count too"
+  },
+  {
+    "id": "listing-address-mismatch",
+    "severity": "medium",
+    "area": "Search & sharing",
+    "title": "A listing shows a different address",
+    "what": "The street number or ZIP code on your Google, Yelp or Apple listing is not the one on your site.",
+    "why": "Maps sends people to the address on the listing. After a move, or with a typo, guests arrive at the wrong door.",
+    "fix": "Correct the address in the listing's own dashboard, or on the site if the listing is the right one.",
+    "tech": "the house number and the 5-digit ZIP code are read from both addresses and each one both sides state must be equal; street names are not compared; the site's address is the text fact \"address\" in gaugeline.facts.json, else the LocalBusiness address in structured data"
+  },
+  {
+    "id": "listing-special-hours-missing",
+    "severity": "medium",
+    "area": "Search & sharing",
+    "title": "A listing doesn't know about a holiday closure",
+    "what": "Your site announces a day you are closed, such as Thanksgiving or Christmas, and a listing still shows its normal hours for that day.",
+    "why": "People check the listing on the day. If it says you open at 4 on a day you are shut, they come anyway.",
+    "fix": "Add the closure to the listing's special hours in its own dashboard (Google Business Profile: Special hours; Yelp for Business: Holiday hours).",
+    "tech": "closures on the site are dates in LocalBusiness openingHoursSpecification (validFrom and validThrough, opens and closes both 00:00) and dates or fixed US holidays within 40 characters of the word \"closed\" in the pages read, from today in the venue's time zone up to 60 days ahead; a listing is missing one when its special hours (Google Business Profile, Yelp) do not mark that date closed; sources that give no special hours (Google Maps, Apple) are reported as could not check"
   },
   {
     "id": "llms-txt-broken-links",

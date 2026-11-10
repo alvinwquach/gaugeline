@@ -18,6 +18,7 @@ import type { TagAnalysis } from "./tags/analyse.js";
 import type { TagContainer } from "./tags/read-container.js";
 import type { RunSnapshot } from "./run-snapshot.js";
 import type { DatasetRead } from "./sanity.js";
+import type { ListingsRead } from "./listings/read.js";
 import type { ScriptRead } from "./scripts.js";
 import type { PageSnapshot } from "./snapshot.js";
 import type { ImageSample } from "./checks/images/refs.js";
@@ -168,6 +169,12 @@ export interface CheckContext {
   dns?: DnsReader;
   /** The page's App Store and Google Play apps, looked up once on first use. */
   apps?: () => Promise<AppLookup[]>;
+  /**
+   * The business listings named in gaugeline.listings.json (Google, Yelp, Apple, social bios), read
+   * once on first use. Absent when no listing is configured: the listing checks then say they could
+   * not check, never that they passed.
+   */
+  listings?: () => Promise<ListingsRead>;
   /** Values the run was told to expect (for example the app's name). Until the config file, API only. */
   expect?: RunExpectations;
 }
