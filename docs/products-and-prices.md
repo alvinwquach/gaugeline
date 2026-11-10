@@ -117,6 +117,7 @@ Stripe is read with two lists, both `GET`: the products, then the prices, 100 at
 
 What is asked:
 
+- **Two read endpoints, and only these:** `GET /v1/products` ([list products](https://docs.stripe.com/api/products/list)) and `GET /v1/prices` ([list prices](https://docs.stripe.com/api/prices/list)). The narrowest key that can call them is a restricted key with Read on Products and Prices ([below](#create-the-narrowest-key)).
 - **Both lists, archived included.** Products and prices are requested without an `active` filter, so an archived product or price comes back with `active: false`. That is data: a page that still sells an archived product is a finding for the checks that arrive next.
 - **The documented cursor.** Each list follows `has_more` by asking again with `starting_after` set to the last id, until Stripe says there is no more. At most 50 pages of 100 are read per list; if the cap is reached, the run says so in one notice and keeps what it read. A page that is empty while `has_more` is true, or the same page twice, stops the list with a notice instead of looping.
 - **What is kept.** Per product: `id`, `name`, `active`, `metadata` (text values only), `defaultPriceId` and its `prices`. Per price: `id`, `unitAmount`, `currency` and `active`. A price with no fixed amount (tiered or metered pricing) keeps `unitAmount: null`; it is never turned into 0. A product with no default price has `defaultPriceId: null` and still lists every price it has. Descriptions, images and customer data are not kept.
