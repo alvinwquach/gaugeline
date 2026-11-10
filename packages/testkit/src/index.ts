@@ -37,5 +37,6 @@ export type {
   SeenSanityRequest,
 } from "./sanity-counts.js";
 export { CONTENT_MARKER, NORTHFIELD_CONTENT, northfieldResources } from "./sanity-content.js";
+export { FENNEL_MEALS, MEALS_MARKER, mealsContent } from "./sanity-meals.js";
 export { startGraphqlServer } from "./graphql-server.js";
 export type { GraphqlServer, GraphqlServerOptions, SeenGraphqlRequest } from "./graphql-server.js";
