@@ -14,6 +14,14 @@ Most checks need no credentials at all: they read the page the way any visitor d
 Create a token with the Viewer role, not Editor or Deploy Studio. Gaugeline never writes, so a token that can write is a risk you don't need to take.
 :::
 
+## What the run says without a token
+
+The products check reads Sanity with `SANITY_PROJECT_ID` alone and adds `SANITY_TOKEN` when you have one. When the dataset is private and there is no token, Sanity answers 401 and the run says:
+
+> sanity refused the key (HTTP 401). This dataset is private. A private dataset needs a read-only token with the Viewer role: create one under API in sanity.io/manage and set SANITY_TOKEN.
+
+Nothing from Sanity is compared that run (Stripe and Printful are still read, and the site check still runs), and the products check reports that it could not check, never that it passed. If a token is set and Sanity still refuses it, the message says the token was not accepted and repeats the Viewer role. If the token can write, it is used and the run adds one notice asking you to swap it for a Viewer token. Details are in [Products and prices](/docs/products-and-prices#reading-sanity).
+
 ## Where the token lives
 
 - Read from the environment when the command runs. Never written to disk, never printed in output or reports.

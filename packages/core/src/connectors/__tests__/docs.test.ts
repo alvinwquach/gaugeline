@@ -5,6 +5,8 @@ import { createFetcher } from "../../fetcher.js";
 import { startServer, type FixtureServer } from "../../__tests__/helpers/server.js";
 import { connectorGet } from "../http.js";
 import { runConnectors } from "../run.js";
+import { sanityConnector } from "../sanity.js";
+import { useCassette } from "../../../../testkit/src/index.js";
 import { fake, testKey } from "./fake.js";
 
 const page = readFileSync(
@@ -53,5 +55,34 @@ describe("docs/products-and-prices.md: the pop-up kitchen example", () => {
     const shown = /```json title=Notices\n([\s\S]*?)\n```/.exec(page)?.[1];
     expect(shown).toBe(JSON.stringify(run.notices, null, 2));
     expect(JSON.stringify(run.notices)).not.toContain(stripeKey);
+  });
+});
+
+describe("docs/products-and-prices.md: Reading Sanity", () => {
+  it("the Products and Advice blocks are what the Sanity connector returns for the pop-up kitchen's public dataset", async () => {
+    const transport = useCassette("sanity-products", { mode: "replay" });
+    const run = await runConnectors(
+      [sanityConnector],
+      { SANITY_PROJECT_ID: "ember8kc" },
+      createFetcher({ transport }),
+    );
+    const block = (title: string) =>
+      new RegExp(`\`\`\`json title=${title}\n([\\s\\S]*?)\n\`\`\``).exec(page)?.[1];
+    expect(block("Products")).toBe(JSON.stringify(run.data.get("sanity"), null, 2));
+    expect(block("Advice")).toBe(JSON.stringify(run.notices, null, 2));
+  });
+
+  it("the no-token message quoted in docs/private-datasets.md is the one the run prints", async () => {
+    const privateDocs = readFileSync(
+      fileURLToPath(new URL("../../../../../docs/private-datasets.md", import.meta.url)),
+      "utf8",
+    ).replace(/\r\n/g, "\n");
+    const transport = useCassette("sanity-products", { mode: "replay" });
+    const run = await runConnectors(
+      [sanityConnector],
+      { SANITY_PROJECT_ID: "pr1v4te0", SANITY_DATASET: "production" },
+      createFetcher({ transport }),
+    );
+    expect(privateDocs).toContain(`> ${run.notices[0]?.message}`);
   });
 });

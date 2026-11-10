@@ -605,11 +605,18 @@ export {
   ConnectorRefusedError,
   REDACTED,
   connectorGet,
+  DEFAULT_DATASET,
+  DEFAULT_PRODUCTS_QUERY,
+  SANITY_ENV_VARS,
   createRedactor,
   freezeEnv,
   isConfigured,
   missingVars,
+  parseProducts,
+  productsUrl,
   runConnectors,
+  sanityConnector,
+  sanityTypeCounts,
 } from "./connectors/index.js";
 export type {
   Connector,
@@ -618,7 +625,10 @@ export type {
   ConnectorRun,
   Env,
   RunConnectorsOptions,
+  SanityConnector,
+  SanityProduct,
 } from "./connectors/index.js";
+export { toMinor } from "./products/money.js";
 export { listingsConfigSchema } from "./listings/config.js";
 export type { ListingsConfig } from "./listings/config.js";
 export {

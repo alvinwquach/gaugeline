@@ -3,10 +3,13 @@ import type { Fetcher, Hop } from "../fetcher.js";
 /** The system answered 401 or 403: it knows the key and will not let it read this. */
 export class ConnectorRefusedError extends Error {
   readonly status: number;
-  constructor(status: number) {
-    super(`The system refused the key (HTTP ${status}).`);
+  /** What to do about it, in the connector's own terms. Absent for the generic refusal. */
+  readonly hint: string | undefined;
+  constructor(status: number, hint?: string) {
+    super(`The system refused the key (HTTP ${status}).${hint ? ` ${hint}` : ""}`);
     this.name = "ConnectorRefusedError";
     this.status = status;
+    this.hint = hint;
   }
 }
 
