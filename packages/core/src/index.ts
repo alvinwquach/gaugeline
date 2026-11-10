@@ -804,6 +804,24 @@ export {
 } from "./checks/prices.js";
 export type { PriceCheckId, PriceCheckInput } from "./checks/prices.js";
 export {
+  PRESENCE_CHECKS,
+  PRESENCE_CHECK_IDS,
+  createPresenceRegistry,
+  presenceInput,
+  printfulMissing,
+  printfulOrphan,
+  printfulUnsynced,
+  stripeArchived,
+  stripeMissing,
+  stripeOrphan,
+  summarisePresence,
+} from "./checks/product-presence.js";
+export type {
+  PresenceCheckId,
+  ProductPresenceInput,
+  ProductSystemsRead,
+} from "./checks/product-presence.js";
+export {
   SUBSCRIPTION_CHECKS,
   SUBSCRIPTION_CHECK_IDS,
   createSubscriptionRegistry,

@@ -42,7 +42,7 @@ const HOW: Readonly<Record<Tier, string>> = {
 };
 
 /** "matched by SKU", or "" for a group built by hand with no tier. */
-const matchedBy = (tier: Tier | undefined): string =>
+export const matchedBy = (tier: Tier | undefined): string =>
   tier === undefined ? "" : `matched by ${HOW[tier]}`;
 
 /** The most products or variants a finding lists before it counts the rest. */

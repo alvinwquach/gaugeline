@@ -1,0 +1,61 @@
+{
+  "interactions": [
+    {
+      "method": "GET",
+      "url": "https://api.printful.com/store/products?offset=0&limit=100",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": "{\"code\":200,\"result\":[{\"id\":7001,\"name\":\"Lowtide logo tee\",\"variants\":2,\"synced\":2,\"thumbnail_url\":\"https://files.example/thumbs/7001.png\",\"is_ignored\":false,\"external_id\":\"lowtide-tee\"},{\"id\":7002,\"name\":\"Lowtide hoodie\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/7002.png\",\"is_ignored\":false,\"external_id\":\"lowtide-hoodie\"},{\"id\":7003,\"name\":\"Lowtide tote\",\"variants\":2,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/7003.png\",\"is_ignored\":false,\"external_id\":\"lowtide-tote\"},{\"id\":7004,\"name\":\"Lowtide swell poster\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/7004.png\",\"is_ignored\":false,\"external_id\":\"lowtide-poster\"},{\"id\":7005,\"name\":\"Sample sticker sheet\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/7005.png\",\"is_ignored\":false}],\"paging\":{\"total\":5,\"offset\":0,\"limit\":100}}"
+    },
+    {
+      "method": "GET",
+      "url": "https://api.printful.com/store/products/7001",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":7001,\"name\":\"Lowtide logo tee\",\"variants\":2,\"synced\":2,\"thumbnail_url\":\"https://files.example/thumbs/7001.png\",\"is_ignored\":false,\"external_id\":\"lowtide-tee\"},\"sync_variants\":[{\"id\":70011,\"external_id\":\"ext-70011\",\"sync_product_id\":7001,\"name\":\"Lowtide logo tee / M\",\"synced\":true,\"variant_id\":1,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"32.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"LT-TEE-M\"},{\"id\":70012,\"external_id\":\"ext-70012\",\"sync_product_id\":7001,\"name\":\"Lowtide logo tee / L\",\"synced\":true,\"variant_id\":2,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"32.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"LT-TEE-L\"}]}}"
+    },
+    {
+      "method": "GET",
+      "url": "https://api.printful.com/store/products/7002",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":7002,\"name\":\"Lowtide hoodie\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/7002.png\",\"is_ignored\":false,\"external_id\":\"lowtide-hoodie\"},\"sync_variants\":[{\"id\":70021,\"external_id\":\"ext-70021\",\"sync_product_id\":7002,\"name\":\"Lowtide hoodie / M\",\"synced\":true,\"variant_id\":1,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"58.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"LT-HOOD-M\"}]}}"
+    },
+    {
+      "method": "GET",
+      "url": "https://api.printful.com/store/products/7003",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":7003,\"name\":\"Lowtide tote\",\"variants\":2,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/7003.png\",\"is_ignored\":false,\"external_id\":\"lowtide-tote\"},\"sync_variants\":[{\"id\":70031,\"external_id\":\"ext-70031\",\"sync_product_id\":7003,\"name\":\"Lowtide tote / Natural\",\"synced\":true,\"variant_id\":1,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"24.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"LT-TOTE-N\"},{\"id\":70032,\"external_id\":\"ext-70032\",\"sync_product_id\":7003,\"name\":\"Lowtide tote / Black\",\"synced\":false,\"variant_id\":2,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"24.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"LT-TOTE-B\"}]}}"
+    },
+    {
+      "method": "GET",
+      "url": "https://api.printful.com/store/products/7004",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":7004,\"name\":\"Lowtide swell poster\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/7004.png\",\"is_ignored\":false,\"external_id\":\"lowtide-poster\"},\"sync_variants\":[{\"id\":70041,\"external_id\":\"ext-70041\",\"sync_product_id\":7004,\"name\":\"Lowtide swell poster / 18x24\",\"synced\":true,\"variant_id\":1,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"28.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"LT-POST-18\"}]}}"
+    },
+    {
+      "method": "GET",
+      "url": "https://api.printful.com/store/products/7005",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":7005,\"name\":\"Sample sticker sheet\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/7005.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":70051,\"external_id\":\"ext-70051\",\"sync_product_id\":7005,\"name\":\"Sample sticker sheet / A5\",\"synced\":true,\"variant_id\":1,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"4.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"LT-STICK-A5\"}]}}"
+    }
+  ],
+  "name": "printful-presence-surf",
+  "recordedAt": "2026-11-10T00:00:00.000Z",
+  "version": 1
+}
