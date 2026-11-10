@@ -1,9 +1,10 @@
-import { CheckRegistry, defineCheck, type Check } from "../model.js";
+import { CheckRegistry, defineCheck, type Check, type Finding } from "../model.js";
 import { TITLES, compareWithCounts, type TypeCounts } from "../query/counts.js";
 import type { DupeGroup } from "../query/dupes.js";
 import type { QueryShape } from "../query/shape.js";
 import type { MutationShape, SchemaShape } from "../query/mutations.js";
 import type { GqlFieldUse, GqlSchema } from "../query/graphql.js";
+import type { CouldNotFollow } from "../query/unused.js";
 import { GRAPHQL_CHECKS } from "./query-graphql.js";
 import { MUTATION_CHECKS } from "./query-mutations.js";
 import { QUERY_DUPE_CHECKS } from "./query-dupes.js";
@@ -19,6 +20,8 @@ export interface QueryInput {
   mutations?: { shapes: readonly MutationShape[]; schema: SchemaShape };
   /** The GraphQL fields found in the code and the schema they are compared with (--graphql). Absent: the GraphQL check is not run. */
   graphql?: { uses: readonly GqlFieldUse[]; schema: GqlSchema };
+  /** What the unused-field analysis found (--unused). Absent: the unused-field check is not run. */
+  unused?: { findings: readonly Finding[]; couldNotFollow: readonly CouldNotFollow[] };
 }
 
 const only = (id: string, input: QueryInput) =>

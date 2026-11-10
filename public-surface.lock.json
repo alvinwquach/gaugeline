@@ -157,6 +157,7 @@
       "schema",
       "suggest",
       "type",
+      "unused",
       "verbose",
       "version"
     ],

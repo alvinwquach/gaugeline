@@ -1091,8 +1091,22 @@ export type {
   GraphqlExtractOptions,
   GraphqlExtraction,
 } from "./query/graphql.js";
+export { analyseUnused, findUnusedFields } from "./query/unused.js";
+export type {
+  CouldNotFollow,
+  FetchedField,
+  UnusedAnalysis,
+  UnusedOptions,
+} from "./query/unused.js";
+export {
+  QUERY_UNUSED_CHECKS,
+  UNUSED_TITLE,
+  createUnusedRegistry,
+  queryFieldUnused,
+} from "./checks/query-unused.js";
 export {
   checkMutationsOnly,
+  checkUnusedOnly,
   compareGraphql,
   compareQueries,
   readShapeForType,

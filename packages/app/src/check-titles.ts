@@ -260,6 +260,7 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "plan-trial-mismatch": ["A plan's free trial differs from checkout", "Sales & prices"],
   "query-no-drafts-filter": ["A query does not leave drafts out", "Security & email"],
   "query-dupe-title": ["Two documents share a title", "Search & sharing"],
+  "query-field-unused": ["A query fetches a field the code never reads", "Visitors"],
   "mutation-no-drafts": ["A write edits published content directly", "Security & email"],
   "mutation-shared-field": ["Two routes write the same field", "Visitors"],
   "webhook-disabled": ["A webhook endpoint is switched off", "Sales & prices"],
@@ -1375,6 +1376,12 @@ export const CHECK_TEXT: Readonly<
     "Different addresses, same name: usually content that was duplicated and not moved, which splits search results between two pages. It can also be two real pages that need different names.",
     "Open the documents named by their ids. If one is a copy, delete it and redirect its address; if both are real, rename one so a visitor can tell them apart.",
     'one GET of the query endpoint for each document type (perspective=published, so drafts are never read), projecting only _id, "slug": slug.current and title; one pass puts each id into a Map from the slug as it is, or from the trimmed and lower-cased title, to the ids that have it, and a bucket with more than one id is a group; documents with no slug or no title are left out of that key, a draft id is skipped, and types are grouped apart; a title shared by two or more ids of one type that do not all share one slug',
+  ],
+  "query-field-unused": [
+    "A query in your code asks for a field, and nothing that receives the result ever reads it.",
+    "Every field you ask for is data your visitors download and your server waits for, and nobody sees it. Over a few months a query collects fields from pages that changed, and the page gets slower for content it never shows.",
+    "Open the file and line named and take the field out of the query, unless something Gaugeline cannot read (a script, another repository) uses it. A query listed as could not follow was left alone on purpose: its result goes somewhere Gaugeline cannot read, so none of its fields were reported.",
+    'read from the repository with no request and no key: each groq template, defineQuery call and gql template is read into a tree of the fields it returns, named by alias ("slug": slug.current is slug), and the TypeScript compiler\'s symbols follow the result through variables, await, destructuring, props passed to components, map callbacks, returns and spreads into JSX props; a field counts as read when a property access or a destructuring reads its alias on a value that came from the query, held in a Map from query to the Set of aliases read, so unused is the aliases projected minus the aliases read; _id, _type, _key and _rev are never reported; a query whose result escapes (JSON.stringify, a function from a package, a field read by a name only known at run time) is listed as could not follow and none of its fields is reported',
   ],
   "mutation-no-drafts": [
     "A patch, createOrReplace or delete in your code has no drafts handling: its id is not a drafts. id.",
