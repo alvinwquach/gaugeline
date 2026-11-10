@@ -799,6 +799,24 @@ export {
   spendByCurrency,
 } from "./ads/export.js";
 export type { AdRow, AdsExport, CurrencySpend, Destination } from "./ads/export.js";
+export { checkAdLandingPages } from "./ads/check.js";
+export type { AdsCheckOutcome } from "./ads/check.js";
+export {
+  CAMPAIGN_KEYS,
+  PROBE_TAGS,
+  campaignTags,
+  describeTrail,
+  isCampaignKey,
+  tagSurvival,
+  withCampaignTags,
+} from "./ads/tags.js";
+export type { TagLoss, TagProbe, TagSurvival, TrailText } from "./ads/tags.js";
+export {
+  CAMPAIGN_CHECKS,
+  campaignFieldsLost,
+  createCampaignRegistry,
+} from "./checks/campaign-fields-lost.js";
+export type { CampaignTagsInput } from "./checks/campaign-fields-lost.js";
 export { formatMoney, minorExponent, toMinor } from "./products/money.js";
 export type { Money } from "./products/money.js";
 export {

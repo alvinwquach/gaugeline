@@ -19,6 +19,7 @@ export const SUBCOMMANDS = [
   "open",
   "assert",
   "ads",
+  "tags",
 ] as const;
 export type CliCommand = "check" | (typeof SUBCOMMANDS)[number];
 
@@ -140,6 +141,16 @@ export type ParsedArgs =
       /** gaugeline ads <export.csv>: the Meta or Google Ads export to read. */
       file: string;
       json: boolean;
+      allowPrivate: boolean;
+      verbose: boolean;
+      quiet: boolean;
+    }
+  | {
+      kind: "tags";
+      /** gaugeline tags <link>: the ad link to follow, as typed. */
+      address: string;
+      ci: boolean;
+      allowPrivate: boolean;
       verbose: boolean;
       quiet: boolean;
     }
@@ -225,7 +236,9 @@ export function parseCliArgs(
                           ? "assert"
                           : argv[0] === "ads"
                             ? "ads"
-                            : COMMAND;
+                            : argv[0] === "tags"
+                              ? "tags"
+                              : COMMAND;
   const given = command === COMMAND ? argv : argv.slice(1);
   // --annotate and --progress take an optional file name: alone, or before another flag, the default.
   const rest = given.map((a, i) =>
@@ -511,6 +524,23 @@ export function parseCliArgs(
       quiet: values.quiet === true,
     };
   }
+  if (command === "tags") {
+    if (positionals.length !== 1)
+      return {
+        kind: "error",
+        message: "gaugeline tags needs one link: gaugeline tags 'shop.example/go?utm_source=x'",
+        hint: "Paste the link an ad sends people to, in quotes if it has a ? or & in it.",
+        verbose,
+      };
+    return {
+      kind: "tags",
+      address: positionals[0] ?? "",
+      ci: values.ci === true,
+      allowPrivate: values["allow-private"] === true,
+      verbose,
+      quiet: values.quiet === true,
+    };
+  }
   if (command === "ads") {
     if (positionals.length !== 1)
       return {
@@ -523,6 +553,7 @@ export function parseCliArgs(
       kind: "ads",
       file: positionals[0] ?? "",
       json: values.json === true,
+      allowPrivate: values["allow-private"] === true,
       verbose,
       quiet: values.quiet === true,
     };

@@ -15,6 +15,7 @@ export const COMMANDS = [
   "open",
   "assert",
   "ads",
+  "tags",
 ] as const;
 export type Command = (typeof COMMANDS)[number];
 
@@ -111,10 +112,23 @@ export const HELP: Record<string, string> = {
     summary: [
       "Read a Meta Ads Manager or Google Ads export (a link column and an",
       "amount-spent column) and group its ads by the page they send people to: one",
-      "line for each page with its number of ads and the spend, highest first.",
-      "Makes no request.",
+      "line for each page with its number of ads and the spend, highest first. Then",
+      "ask each page once, with one ad's campaign tags, and name the redirect that",
+      "drops them. Requests are GET only, five at a time.",
     ].join("\n"),
     footer: "Exit codes: 0 read, 2 the export could not be read or lacks a needed column",
+  }),
+  tags: renderHelp(FLAGS, "tags", {
+    usage: "gaugeline tags <link> [options]",
+    summary: [
+      "Follow an ad link through every redirect and say whether its campaign tags",
+      "(utm_*, gclid, fbclid) are still there when the page loads: one line for each",
+      "hop, then one verdict. A link with no tags is followed with utm_source=",
+      "gaugeline-check and gclid=test. It follows redirects only: it does not run the",
+      "page's JavaScript, so a script that rewrites the address after load is out of",
+      "scope.",
+    ].join("\n"),
+    footer: "Exit codes: 0 ran, 1 --ci with tags lost, 2 could not follow the link",
   }),
   assert: renderHelp(FLAGS, "assert", {
     usage: "gaugeline assert <id> | --list [options]",

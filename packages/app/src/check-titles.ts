@@ -112,6 +112,7 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "plan-duplicate-address": ["Two rows in the plan share one address", "Launch day"],
   "printed-dead": ["A printed address doesn't land on a page", "Launch day"],
   "printed-wrong-destination": ["A printed address lands somewhere it shouldn't", "Launch day"],
+  "campaign-fields-lost": ["Campaign tags are lost", "Visitors"],
   "printful-unsynced": ["A fulfillment product has variants that cannot be made", "Sales & prices"],
   "stripe-archived": ["A website product is archived in checkout", "Sales & prices"],
   "stripe-missing": ["A website product is missing from checkout", "Sales & prices"],
@@ -705,6 +706,12 @@ export const CHECK_TEXT: Readonly<
     "People scanned a code for one thing and got another, or a page they have to wait through.",
     "Point the printed address's redirect at the expected page, and make a short link redirect with a 301 rather than show its own page.",
     "The trail's final address against expectedDestination (host without www, path without trailing slash). A 200 with a meta refresh or a location assignment and no redirect is an interstitial",
+  ],
+  "campaign-fields-lost": [
+    "A redirect between the ad and its landing page drops utm_source, utm_campaign, gclid or fbclid.",
+    "The visit arrives with no sign of the ad that paid for it, so the report credits nobody, the campaign looks like it did nothing and the money is spent without a way to learn from it.",
+    "Make the redirect pass the query string on, or point the ad straight at the final address.",
+    "Per landing page, one GET of the destination with one ad's own campaign keys (utm_*, gclid, fbclid) or, when none of its ads has any, utm_source=gaugeline-check and gclid=test; the keys on the first address against the last, values compared after URL decoding and order ignored; the first redirect whose Location no longer carries a lost key is named with its status; a key moved into the fragment counts as lost; a trail that stopped early without a loss is could-not-check",
   ],
   "printful-unsynced": [
     "A Printful product matched to a product on your website has a variant that is not synced.",

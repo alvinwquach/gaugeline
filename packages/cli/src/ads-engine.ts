@@ -1,6 +1,7 @@
 import type { AdsEngine } from "@gaugeline/app-server";
 import {
   buildResult,
+  checkAdLandingPages,
   groupByDestination,
   readAdsExport,
   spendByCurrency,
@@ -19,8 +20,9 @@ export interface ParsedAds {
  * this one engine, so the app shows exactly what the command prints and has no second reader.
  *
  * Reading and grouping an export is packages/core (readAdsExport, groupByDestination). The checks
- * on the pages it names arrive in G24a and G24b; until then the result has no findings and no
- * request is sent. When they land they go in `check`, and `read`, the app and the CLI are unchanged.
+ * on the pages it names (checkAdLandingPages) ask each landing page once through the run's fetcher.
+ * G24a puts the campaign tag check there; G24b adds its checks beside it, and `read`, the app and
+ * the command are unchanged.
  */
 export const adsEngine: AdsEngine<ParsedAds> = {
   read(csvText) {
@@ -34,17 +36,20 @@ export const adsEngine: AdsEngine<ParsedAds> = {
       `Read ${rows.length} ${rows.length === 1 ? "ad" : "ads"} that go to ${pages} landing ${pages === 1 ? "page" : "pages"}`,
     );
     for (const w of warnings) ctx.onProgress(w);
-    return Promise.resolve({
+    ctx.onProgress(
+      `Following the campaign tags through ${pages} landing ${pages === 1 ? "page" : "pages"}`,
+    );
+    return checkAdLandingPages(parsed.groups, { fetcher: ctx.fetcher }).then((checked) => ({
       result: buildResult({
         url: "ads-export",
         startedAt: ctx.now,
-        findings: [],
-        passed: [],
-        failed: [],
-        couldNotCheck: [],
+        findings: checked.findings,
+        passed: checked.passed,
+        failed: checked.failed,
+        couldNotCheck: checked.couldNotCheck,
         sampled: {},
       }),
       ads: { currencies: spendByCurrency(parsed.groups) },
-    });
+    }));
   },
 };
