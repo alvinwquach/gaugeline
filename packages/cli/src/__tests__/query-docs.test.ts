@@ -92,11 +92,12 @@ describe("docs/query-check.md: the command it shows", () => {
         },
         {
           // The mutations example runs in the invented studio repository, whose schema.json is the default.
-          cwd: e.command.includes("--graphql")
-            ? gql
-            : e.command.includes("--mutations")
-              ? writes
-              : repo,
+          cwd:
+            e.command.includes("--graphql") || e.command.includes("--suggest")
+              ? gql
+              : e.command.includes("--mutations")
+                ? writes
+                : repo,
           now: () => new Date("2026-11-10T12:00:00Z"),
           fetcher: {
             transport: e.command.includes("--graphql")
@@ -109,9 +110,7 @@ describe("docs/query-check.md: the command it shows", () => {
         },
       );
       expect(code, e.command).toBe(EXIT.ok);
-      if (e.command.includes("--suggest"))
-        expect(err.join(""), e.command).toContain("Read the newest 12 published documents");
-      else if (e.env.SANITY_PROJECT_ID) expect(err.join(""), e.command).toBe("");
+      if (e.env.SANITY_PROJECT_ID) expect(err.join(""), e.command).toBe("");
       else if (e.command.includes("--mutations") || e.command.includes("--graphql"))
         expect(err.join(""), e.command).toBe("");
       else expect(err.join(""), e.command).toContain("SANITY_PROJECT_ID is not set");

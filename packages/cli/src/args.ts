@@ -176,7 +176,7 @@ export type ParsedArgs =
       graphql?: { endpoint?: string };
       /** --suggest --type <name>: write a GROQ query from the published documents of that type. */
       suggest?: { type: string };
-      /** --schema: the schema file for --mutations (default ./schema.json), or for --graphql (SDL or introspection JSON). */
+      /** --schema: the schema file for --mutations or --suggest (default ./schema.json), or for --graphql (SDL or introspection JSON). */
       schema?: string;
       /** --allow-private: an endpoint on this computer or a private network may be asked. */
       allowPrivate: boolean;
@@ -644,17 +644,11 @@ export function parseCliArgs(
           hint: "Give the folder of your site's source, as for the other query checks.",
           verbose,
         };
-      if (
-        graphql ||
-        values.dupes === true ||
-        values.mutations === true ||
-        values.json === true ||
-        typeof values.schema === "string"
-      )
+      if (graphql || values.dupes === true || values.mutations === true || values.json === true)
         return {
           kind: "error",
           message:
-            "--suggest is its own run: it cannot be combined with --graphql, --dupes, --mutations, --schema or --json.",
+            "--suggest is its own run: it cannot be combined with --graphql, --dupes, --mutations or --json.",
           hint: "It prints a query as text. Run the other checks separately: gaugeline query ./src, then gaugeline query ./src --suggest --type resource.",
           verbose,
         };
@@ -666,6 +660,7 @@ export function parseCliArgs(
         dupes: false,
         mutations: false,
         suggest: { type },
+        ...(typeof values.schema === "string" ? { schema: values.schema } : {}),
         allowPrivate: values["allow-private"] === true,
         verbose,
         quiet: values.quiet === true,

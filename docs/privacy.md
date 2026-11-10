@@ -439,13 +439,13 @@ The answer is the id, the slug and the title of each document: nothing else is r
 
 ### Written queries (gaugeline query --suggest)
 
-`--suggest --type <name>` is the one option of `gaugeline query` that has to receive your documents, and it says so on stderr. It needs `SANITY_PROJECT_ID` and sends one `GET` (more only if the answer is too long, each for fewer documents), published content only, for the newest 50 documents of one type:
+`--suggest --type <name>` reads the field names and kinds of the type from your schema file on disk (`sanity schema extract`, or `--schema <file>`) and asks your dataset how many of the newest 50 published documents have each field. It needs `SANITY_PROJECT_ID` and sends one `GET`, published content only, with a count for each field (more only if the address would be too long, each for fewer fields):
 
 ```text
-GET https://<project>.api.sanity.io/v2021-10-21/data/query/<dataset>?query=*[_type == "resource" && !(_id in path("drafts.**"))] | order(_updatedAt desc)[0...50]&perspective=published
+GET https://<project>.api.sanity.io/v2021-10-21/data/query/<dataset>?query={"total":count((*[_type == "resource" && !(_id in path("drafts.**"))] | order(_updatedAt desc)[0...50])),"p1":count((...)[defined(title)]),...}&perspective=published
 ```
 
-GROQ has no function that lists the field names of a document, so the only way to learn them is to receive the documents. Gaugeline reduces each one as it arrives to the names of its fields, the kind of each value (string, number, slug, reference, image, file, array, object, Portable Text) and counts, and keeps only that. A value is never stored, logged, printed or put in a report or a finding, and a test seeds a dataset with marker strings and fails if one appears in the output or the request log. The documents are in memory for the length of the reduction. A token goes in a header and never in the address, and the type name is checked against a plain pattern before it goes into the query. If you would rather your documents never reach the machine, don't use `--suggest`: every other option of `gaugeline query` reads counts only. What the output means: [Writing the query in the first place](/docs/query-check#writing-the-query-in-the-first-place).
+The answer is whole numbers: how many documents were counted, and how many of them have each field. No document, no field value and no sample is requested, so none reaches your computer, a log, a report or the output; a test seeds a dataset with marker strings and fails if one appears in the output, a request or an answer. The query is built from the schema file, so a field name from it is checked against Sanity's own pattern before it goes into the query, and the type name is checked too. A token (`SANITY_TOKEN`, only for a private dataset) goes in a header and never in the address. What the output means: [Writing the query in the first place](/docs/query-check#writing-the-query-in-the-first-place).
 
 ### Mutations (gaugeline query --mutations)
 

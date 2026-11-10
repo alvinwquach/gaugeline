@@ -1051,12 +1051,14 @@ export {
   readMutations,
   readSchema,
   readSchemaFile,
+  readSchemaFileFull,
 } from "./query/mutations.js";
 export type {
   MutationExtraction,
   MutationExtractOptions,
   MutationKind,
   MutationShape,
+  SchemaFile,
   MutationUnreadable,
   SchemaField,
   SchemaShape,

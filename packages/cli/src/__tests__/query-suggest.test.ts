@@ -1,4 +1,4 @@
-import { mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -14,7 +14,7 @@ import { describe, expect, it } from "vitest";
 import { parseCliArgs } from "../args.js";
 import { EXIT, main } from "../main.js";
 
-const repo = fileURLToPath(new URL("../../../fixtures/repo-groq/", import.meta.url));
+const repo = fileURLToPath(new URL("../../../fixtures/repo-gql/", import.meta.url));
 const ENV = { SANITY_PROJECT_ID: "northfield", SANITY_DATASET: "production" };
 
 const EXPECTED = [
@@ -37,6 +37,14 @@ const EXPECTED = [
   "// Delete what the page does not use: every field you ask for is data you pay to fetch and render.",
 ].join("\n");
 
+const A = (value: unknown, optional = false) => ({ type: "objectAttribute", value, optional });
+const STR = { type: "string" };
+const doc = (name: string, attributes: Record<string, unknown>) => ({
+  type: "document",
+  name,
+  attributes: { _id: A(STR), _type: A({ type: "string", value: name }), ...attributes },
+});
+
 async function suggest(
   argv: string[],
   options: {
@@ -44,10 +52,34 @@ async function suggest(
     spec?: FakeSanity;
     seen?: SeenSanityRequest[];
     cwd?: string;
+    /** A schema extract to write to a folder of its own as schema.json, and run in. */
+    schema?: unknown[];
   } = {},
 ) {
+  const dir =
+    options.schema === undefined ? undefined : mkdtempSync(join(tmpdir(), "gaugeline-suggest-"));
+  if (dir !== undefined) writeFileSync(join(dir, "schema.json"), JSON.stringify(options.schema));
   const out: string[] = [];
   const err: string[] = [];
+  try {
+    return await run(argv, options, dir ?? options.cwd ?? repo, out, err);
+  } finally {
+    if (dir !== undefined)
+      rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+  }
+}
+
+async function run(
+  argv: string[],
+  options: {
+    env?: Record<string, string | undefined>;
+    spec?: FakeSanity;
+    seen?: SeenSanityRequest[];
+  },
+  cwd: string,
+  out: string[],
+  err: string[],
+) {
   const code = await main(
     ["query", ...argv],
     {
@@ -56,7 +88,7 @@ async function suggest(
       env: options.env ?? ENV,
     },
     {
-      cwd: options.cwd ?? repo,
+      cwd,
       now: () => new Date("2026-11-10T12:00:00Z"),
       fetcher: {
         transport: sanityCountsTransport(options.spec ?? NORTHFIELD_CONTENT, options.seen ?? []),
@@ -103,13 +135,11 @@ describe("gaugeline query --suggest: unit (arguments)", () => {
 });
 
 describe("gaugeline query --suggest: e2e (CLI)", () => {
-  it("prints the query for fixtures/repo-groq and the dataset's resources, exit 0", async () => {
+  it("prints the query for fixtures/repo-gql's schema and the dataset's resources, exit 0", async () => {
     const r = await suggest([".", "--suggest", "--type", "resource"]);
     expect(r.code).toBe(EXIT.ok);
     expect(r.out.trimEnd()).toBe(EXPECTED);
-    expect(r.err).toBe(
-      "Read the newest 12 published documents of resource and kept only their field names, kinds and counts.\n",
-    );
+    expect(r.err).toBe("");
   });
 
   it("the query it prints parses with the reader from G27, and reads back as the shape it came from", async () => {
@@ -134,8 +164,9 @@ describe("gaugeline query --suggest: e2e (CLI)", () => {
     const seen: SeenSanityRequest[] = [];
     const r = await suggest([".", "--suggest", "--type", "resource"], { seen });
     expect(seen.map((s) => s.method)).toEqual(["GET"]);
-    expect(seen[0]?.query).toBe(
-      '*[_type == "resource" && !(_id in path("drafts.**"))] | order(_updatedAt desc)[0...50]',
+    // Counts only: one object of count() calls over the newest 50 published documents.
+    expect(seen[0]?.query).toMatch(
+      /^\{"total":count\(\(\*\[_type == "resource" && !\(_id in path\("drafts\.\*\*"\)\)\] \| order\(_updatedAt desc\)\[0\.\.\.50\]\)\)/,
     );
     for (const text of [r.out, r.err, JSON.stringify(seen)])
       expect(text.toLowerCase()).not.toContain(CONTENT_MARKER.toLowerCase());
@@ -145,9 +176,10 @@ describe("gaugeline query --suggest: e2e (CLI)", () => {
     const dir = mkdtempSync(join(tmpdir(), "gaugeline-suggest-"));
     try {
       writeFileSync(join(dir, "page.ts"), "export {};\n");
+      copyFileSync(join(repo, "schema.json"), join(dir, "schema.json"));
       const ran = await suggest([".", "--suggest", "--type", "resource"], { cwd: dir });
       expect(ran.code).toBe(EXIT.ok);
-      expect(readdirSync(dir)).toEqual(["page.ts"]);
+      expect(readdirSync(dir)).toEqual(["page.ts", "schema.json"]);
     } finally {
       rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
     }
@@ -179,6 +211,7 @@ describe("gaugeline query --suggest: edge cases", () => {
 
   it("a type that has only drafts has nothing published", async () => {
     const r = await suggest([".", "--suggest", "--type", "page"], {
+      schema: [doc("page", { title: A(STR) })],
       spec: {
         types: {},
         content: {
@@ -189,6 +222,47 @@ describe("gaugeline query --suggest: edge cases", () => {
     expect(r.code).toBe(EXIT.couldNotRun);
     expect(r.out).toBe("");
     expect(r.err).toContain("Nothing of type page exists");
+  });
+
+  it("a type the schema does not declare is exit 2, names the types it has, and requests nothing", async () => {
+    const seen: SeenSanityRequest[] = [];
+    const r = await suggest([".", "--suggest", "--type", "recipe"], { seen });
+    expect(r.code).toBe(EXIT.couldNotRun);
+    expect(r.out).toBe("");
+    expect(r.err).toContain('no document type named "recipe"');
+    expect(r.err).toContain("resource, topic, coach");
+    expect(seen).toEqual([]);
+  });
+
+  it("with no schema.json it is exit 2, names --schema and `sanity schema extract`, and requests nothing", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "gaugeline-suggest-"));
+    try {
+      const seen: SeenSanityRequest[] = [];
+      const r = await suggest([".", "--suggest", "--type", "resource"], { cwd: dir, seen });
+      expect(r.code).toBe(EXIT.couldNotRun);
+      expect(r.out).toBe("");
+      expect(r.err).toContain("gaugeline query --suggest needs the schema");
+      expect(r.err).toContain("--schema");
+      expect(r.err).toContain("sanity schema extract");
+      expect(seen).toEqual([]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+    }
+  });
+
+  it("--schema names the file, anywhere", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "gaugeline-suggest-"));
+    try {
+      copyFileSync(join(repo, "schema.json"), join(dir, "studio-schema.json"));
+      const r = await suggest(
+        [".", "--suggest", "--type", "resource", "--schema", join(dir, "studio-schema.json")],
+        { cwd: dir },
+      );
+      expect(r.code).toBe(EXIT.ok);
+      expect(r.out.trimEnd()).toBe(EXPECTED);
+    } finally {
+      rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+    }
   });
 
   it("--suggest without --type: usage message, exit 2, nothing requested", async () => {
@@ -203,6 +277,7 @@ describe("gaugeline query --suggest: edge cases", () => {
 
   it("a type with fewer documents than the sample says the real number in the header", async () => {
     const r = await suggest([".", "--suggest", "--type", "post"], {
+      schema: [doc("post", { title: A(STR) })],
       spec: {
         types: {},
         content: {
@@ -217,23 +292,35 @@ describe("gaugeline query --suggest: edge cases", () => {
     });
     expect(r.code).toBe(EXIT.ok);
     expect(r.out.split("\n")[0]).toBe("// post, written from 3 published documents");
-    expect(r.err).toContain("Read the newest 3 published documents of post");
   });
 
-  it("a field that is a string on some documents and an object on others is plain, with a comment naming both kinds", async () => {
+  it("a field the schema lets be a string or an object is plain, with a comment naming both kinds", async () => {
     const r = await suggest([".", "--suggest", "--type", "post"], {
+      schema: [
+        doc("post", {
+          title: A(STR),
+          credit: A({ type: "union", of: [STR, { type: "object", attributes: { name: A(STR) } }] }),
+        }),
+      ],
       spec: {
         types: {},
         content: {
           post: [
-            { _id: "a", _updatedAt: "2026-10-02", title: "x", credit: "text" },
-            { _id: "b", _updatedAt: "2026-10-01", title: "y", credit: { name: "n" } },
+            { _id: "a", _type: "post", _updatedAt: "2026-10-02", title: "x", credit: "text" },
+            {
+              _id: "b",
+              _type: "post",
+              _updatedAt: "2026-10-01",
+              title: "y",
+              credit: { name: "n" },
+            },
           ],
         },
       },
     });
+    expect(r.err).toBe("");
     expect(r.code).toBe(EXIT.ok);
-    expect(r.out).toContain("// credit is a string on some documents and an object on others");
+    expect(r.out).toContain("// credit can be a string or an object (the schema allows both)");
     expect(r.out).toContain("\n  credit\n}");
   });
 

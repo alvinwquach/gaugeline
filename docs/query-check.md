@@ -145,9 +145,9 @@ Every line carries the file and line number the query starts on. A field that tw
 
 ## Writing the query in the first place
 
-The other direction: instead of checking a query you wrote, have it written from the content you have. Northfield Coaching's library page needs a query for its `resource` type, and the freelancer building it would rather start from what the dataset holds than from the Studio schema file. `--suggest --type resource` reads the newest published resources and prints a starting query.
+The other direction: instead of checking a query you wrote, have it written from the content you have. Northfield Coaching's library page needs a query for its `resource` type, and the freelancer building it would rather start from what the dataset holds than from a blank file. `--suggest --type resource` takes the type's fields from your schema, counts how many of the newest published resources have each one, and prints a starting query.
 
-```sh title=Terminal untested="Needs a folder of source files and a dataset, and the docs runner points every example at a fixture website. packages/cli/src/__tests__/query-docs.test.ts runs the same command against the invented Northfield dataset (twelve published resources, recorded answers) and compares the output with the block below."
+```sh title=Terminal untested="Needs a folder of source files, a schema file and a dataset, and the docs runner points every example at a fixture website. packages/cli/src/__tests__/query-docs.test.ts runs the same command in the invented Northfield repository (packages/fixtures/repo-gql, with its schema.json) against an invented dataset of twelve published resources, and compares the output with the block below."
 $ SANITY_PROJECT_ID=northfield npx gaugeline query ./src --suggest --type resource
 ```
 
@@ -181,19 +181,28 @@ It describes what your content has today, not what your page needs. Read it, del
 
 ### How the query is written
 
-- **From a sample, not every document.** It reads the newest 50 published documents of the type, in one `GET`, and says how many it read in the first line (`written from 12 published documents` here, because the type has 12). A type with 40,000 documents would cost many requests to answer what 50 recent ones answer well enough to draft from. The catch is that a field used only on old documents can be missed. If the documents are too long for one answer, the sample is halved until they fit, and the first line says the number that was read.
-- **Plain rules, not a model.** The query is written from the field names, kinds and counts, and the same content gives the same text. Nothing is sent to an AI service.
-- **Field order is `_id`, then the order the fields first appear.** Names that can't be written into a query plainly (a quote or a control character in a field name) are left out, and a comment says how many.
-- **What gets `coalesce`.** A string, number, boolean, slug, array or Portable Text field that is on fewer documents than were read: `""`, `0`, `false` or `[]`. An object, image, file or reference is left to be `null`, because an empty stand-in would hide that it is missing. A field that is on every document gets neither a comment nor a `coalesce`.
-- **A nested field is compared with its parent.** `heroImage` can be on every document while its `alt` is on half: `alt` is always written with `coalesce(alt, "")`, and any other optional field inside an object or an array of objects gets its own comment, counted against the documents that have the object or the items in the array.
-- **A field with two kinds.** If `credit` is a string on some documents and an object on others, it is written plainly with a comment naming both kinds, because no one query shape fits both.
+- **Names and kinds from your schema, counts from your dataset.** The fields of the type, and whether each is a string, a slug, a reference, an image, a file, an array, an object or Portable Text, come from the schema file: `npx sanity schema extract` writes `schema.json`, and `--schema ./path/schema.json` points at another one. Without `--schema` it looks for `./schema.json` where you ran the command, then `schema.json` in the folder you named, as `--mutations` does, and stops with exit 2 if it finds neither. How common each field is comes from count queries over your published documents, the way [the counts above](#how-the-counting-works) work. No document is requested.
+- **From a sample, not every document.** The counts are over the newest 50 published documents of the type, in one `GET`, and the first line says how many that was (`written from 12 published documents` here, because the type has 12). A type with 40,000 documents would cost a lot to answer what 50 recent ones answer well enough to draft from. The catch is that a field used only on old documents can be missed.
+- **Plain rules, not a model.** The query is written from the field names, kinds and counts, and the same schema and counts give the same text. Nothing is sent to an AI service.
+- **Field order is `_id`, then the order your schema declares the fields.** A field whose name can't be written into a query plainly (Sanity's own rule is letters, digits and underscores; a word GROQ reads as something else, such as `in` or `match`, also counts) is left out, and a comment says how many.
+- **A field that is on none of the documents is left out**, with a comment saying so: it is in the schema and nobody has filled it in, so asking for it would only fetch `null`.
+- **What gets `coalesce`.** A string, number, boolean, slug, array or Portable Text field that is on fewer documents than were counted: `""`, `0`, `false` or `[]`. An object, image, file or reference is left to be `null`, because an empty stand-in would hide that it is missing. A field that is on every document gets neither a comment nor a `coalesce`.
+- **A nested field is compared with its parent.** `heroImage` can be on every document while its `alt` is on half: `alt` is always written with `coalesce(alt, "")`, and any other optional field inside an object or an array of objects gets its own comment, counted against the documents that have the object or the items in the array. Nesting is followed three levels down.
+- **A field the schema lets be two kinds.** If `credit` is allowed to be a string or an object, it is written plainly with a comment naming both kinds, because no one query shape fits both.
 - **A reference is dereferenced one level**, as `_id`, `title` and `slug`. Gaugeline doesn't read the referenced documents, so it can't know their fields: change that line to what the page shows.
 - **It prints and writes nothing.** The query goes to the terminal so you read it before you use it. Redirect it (`> query.groq`) if you want a file. The folder you name is checked to exist and is not read.
-- **It needs `SANITY_PROJECT_ID`** (and `SANITY_TOKEN`, with the Viewer role, for a private dataset). A type with no published documents is exit 2 and prints `Nothing of type topic exists`, with no query. `--suggest` without `--type` is exit 2 and prints the usage.
+- **It needs `SANITY_PROJECT_ID`** (and `SANITY_TOKEN`, with the Viewer role, for a private dataset). A type with no published documents is exit 2 and prints `Nothing of type topic exists`, with no query. A type the schema doesn't declare is exit 2 and lists the types it does. `--suggest` without `--type` is exit 2 and prints the usage.
 
-### What it reads, and what it keeps
+### What it can't see
 
-This is the one option of `gaugeline query` that has to look at your documents: GROQ has no function that lists the field names of a document, so the only way to learn the names is to receive the documents. They are held in memory only long enough to count their field names and kinds, and then thrown away. The shape that is kept holds names, kinds (string, number, slug, reference and so on) and counts, never a value, so no value reaches the output, a log, a report or a file. See [Privacy and safety](/docs/privacy#written-queries-gaugeline-query-suggest).
+The schema says what a field is allowed to be, and the counts say how many documents have it. Together they don't say everything the documents hold, and the query is only as current as your schema file.
+
+- A field that exists on old documents but is no longer in the schema is not in the query.
+- A field the schema types one way and some documents hold another way is written as the schema says.
+- Field order follows the schema, not the order a document happens to list its fields.
+- A schema file that is older than the dataset gives an older query: run `npx sanity schema extract` again first.
+
+This is deliberate. GROQ has no function that lists the field names of a document, so the only other way to learn them is to receive the documents, and `--suggest` never asks for one. What it sends: [Privacy and safety](/docs/privacy#written-queries-gaugeline-query-suggest).
 
 ## GraphQL, the same way
 

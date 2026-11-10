@@ -1,4 +1,5 @@
 import { Readable } from "node:stream";
+import { evaluate, parse } from "groq-js";
 import type { Transport, TransportRequest } from "@gaugeline/core";
 
 /**
@@ -31,16 +32,12 @@ export interface FakeSanity {
   /** The documents of each type, for the duplicates query. A type not listed has none. */
   documents?: Record<string, FakeDocument[]>;
   /**
-   * Whole invented documents of each type, for the content-shape query of `--suggest`
-   * (`*[_type == "T" && !(_id in path("drafts.**"))] | order(_updatedAt desc)[0...N]`). A type not
-   * listed has none. The fake sorts by `_updatedAt`, newest first, and takes the first N.
+   * Whole invented documents of each type. Any query that is not one of the fixed shapes below is
+   * run over them with groq-js, the way Sanity would answer it (published documents only when the
+   * request asks for that perspective), so a query the tests send is checked for being GROQ and for
+   * what it counts. Nothing here was recorded from a dataset.
    */
   content?: Record<string, Record<string, unknown>[]>;
-  /**
-   * The most documents one answer can carry: a content-shape query asking for more is answered with
-   * a body larger than the fetcher's cap, the way a real answer of long documents would be.
-   */
-  carryDocuments?: number;
   /** A private dataset: 401 unless the request carries this token (or any token when true). */
   token?: string | true;
 }
@@ -76,18 +73,32 @@ function pathOf(expression: string): string {
 const COUNT =
   /"(total|p\d+)":count\(\*\[_type == ("(?:[^"\\]|\\.)*")(?: && defined\((.*?)\))?\]\)(?=,"p|\}$)/g;
 
-const SHAPE =
-  /^\*\[_type == ("(?:[^"\\]|\\.)*") && !\(_id in path\("drafts\.\*\*"\)\)\] \| order\(_updatedAt desc\)\[0\.\.\.(\d+)\]$/;
-
 const DUPES = /^\*\[_type == ("(?:[^"\\]|\\.)*")\]\{_id,"slug":slug\.current,title\}$/;
+
+/** Answer a GROQ query over the invented documents, as Sanity's query API does: `{ ms, query, result }`. */
+function evaluated(
+  content: Record<string, Record<string, unknown>[]>,
+  url: URL,
+): ReturnType<typeof json> {
+  const query = url.searchParams.get("query") ?? "";
+  const published = url.searchParams.get("perspective") === "published";
+  const dataset = Object.values(content)
+    .flat()
+    .filter((d) => !(published && String(d._id).startsWith("drafts.")));
+  return Promise.resolve()
+    .then(async () => (await evaluate(parse(query), { dataset })).get())
+    .then(
+      (result) => json(200, { ms: 3, query, result }),
+      () => json(400, { error: { description: "unsupported query", type: "queryParseError" } }),
+    );
+}
 
 export function sanityCountsTransport(spec: FakeSanity, seen: SeenSanityRequest[] = []): Transport {
   return (url: URL, req: TransportRequest) => {
     const query = url.searchParams.get("query") ?? "";
     const counts = [...query.matchAll(COUNT)];
     const listed = DUPES.exec(query)?.[1];
-    const shaped = SHAPE.exec(query);
-    const first = listed ?? shaped?.[1] ?? counts[0]?.[2];
+    const first = listed ?? counts[0]?.[2];
     seen.push({
       method: req.method,
       url: url.href,
@@ -100,21 +111,6 @@ export function sanityCountsTransport(spec: FakeSanity, seen: SeenSanityRequest[
       if (sent === undefined || (spec.token !== true && sent !== spec.token))
         return json(401, { error: { description: "Unauthorized", type: "corsOriginError" } });
     }
-    if (shaped !== null) {
-      const take = Number(shaped[2]);
-      // The query itself leaves drafts out, as Sanity would.
-      const docs = (spec.content?.[JSON.parse(shaped[1] ?? '""') as string] ?? [])
-        .filter((d) => !String(d._id).startsWith("drafts."))
-        .sort((a, b) => String(b._updatedAt).localeCompare(String(a._updatedAt)))
-        .slice(0, take);
-      if (spec.carryDocuments !== undefined && take > spec.carryDocuments)
-        return Promise.resolve({
-          status: 200,
-          headers: { "content-type": "application/json" },
-          body: Readable.from([Buffer.alloc(6 * 1024 * 1024, "x")]),
-        });
-      return json(200, { ms: 3, query, result: docs });
-    }
     if (listed !== undefined) {
       const published = url.searchParams.get("perspective") === "published";
       const docs = spec.documents?.[JSON.parse(listed) as string] ?? [];
@@ -123,6 +119,7 @@ export function sanityCountsTransport(spec: FakeSanity, seen: SeenSanityRequest[
         .map((d) => ({ _id: d._id, slug: d.slug ?? null, title: d.title ?? null }));
       return json(200, { ms: 3, query, result: rows });
     }
+    if (counts.length === 0 && spec.content !== undefined) return evaluated(spec.content, url);
     if (counts.length === 0 || !query.startsWith("{") || !query.endsWith("}"))
       return json(400, { error: { description: "unsupported query", type: "queryParseError" } });
     const result: Record<string, number> = {};

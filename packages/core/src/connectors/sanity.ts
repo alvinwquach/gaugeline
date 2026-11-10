@@ -121,14 +121,6 @@ export class QueryTooLongError extends Error {
   }
 }
 
-/** The answer is larger than one request can carry (the fetcher's body cap). Nothing was kept. */
-export class AnswerTooBigError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "AnswerTooBigError";
-  }
-}
-
 /** One GROQ query, one GET. Returns the `result` of the answer. */
 async function ask(
   env: Env,
@@ -145,7 +137,7 @@ async function ask(
       ...(s.token ? { authorization: `Bearer ${s.token}` } : {}),
     });
     if (hop.truncated)
-      throw new AnswerTooBigError(
+      throw new Error(
         hints.tooBig ??
           `The answer is larger than ${LIMITS.bodyBytes / (1024 * 1024)} MB. Narrow GAUGELINE_PRODUCTS_QUERY to the products and the six fields.`,
       );
@@ -239,8 +231,7 @@ function guarded<A extends unknown[], R>(
       if (
         err instanceof ConnectorRefusedError ||
         err instanceof ConnectorRateLimitedError ||
-        err instanceof QueryTooLongError ||
-        err instanceof AnswerTooBigError
+        err instanceof QueryTooLongError
       )
         throw err;
       const redact = createRedactor(env, [SANITY_TOKEN]);

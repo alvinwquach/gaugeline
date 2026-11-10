@@ -168,7 +168,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     name: "suggest",
     type: "boolean",
     description:
-      "With query: write a GROQ query from the published documents of a type (needs --type; prints text, writes no file)",
+      "With query: write a GROQ query for a type from the schema and document counts (needs --type)",
     since: "0.2.0",
     commands: ["query"],
   },
@@ -184,7 +184,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     name: "schema",
     type: "string",
     description:
-      "With query: the schema file (sanity schema extract for --mutations; SDL or introspection JSON for --graphql)",
+      "With query: the schema file (sanity schema extract; SDL or introspection JSON for --graphql)",
     since: "0.2.0",
     commands: ["query"],
   },

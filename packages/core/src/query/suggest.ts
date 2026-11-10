@@ -26,14 +26,19 @@ function percent(present: number, of: number): number {
 
 const article = (k: FieldKind): string => (k === "object" || k === "image" ? `an ${k}` : `a ${k}`);
 
-/** "a string and an object", "a string, a number or an object": the kinds a field was seen as, named. */
-function mixedComment(path: string, kinds: readonly FieldKind[], items: boolean): string {
+/** "a string or an object", "a string, a number or an object": the kinds the schema allows, named. */
+const list = (kinds: readonly FieldKind[]): string => {
   const named = kinds.map(article);
-  if (items)
-    return `// ${path} has items of more than one kind, ${named.slice(0, -1).join(", ")} and ${named[named.length - 1]}, so it is written as ${path}[]`;
-  if (named.length === 2)
-    return `// ${path} is ${named[0]} on some documents and ${named[1]} on others`;
-  return `// ${path} is ${named.slice(0, -1).join(", ")} or ${named[named.length - 1]}, depending on the document`;
+  return named.length === 1
+    ? (named[0] ?? "")
+    : `${named.slice(0, -1).join(", ")} or ${named[named.length - 1]}`;
+};
+
+/** What to say about a field the schema lets be more than one kind, and about an array whose items can be. */
+function mixedComment(path: string, kinds: readonly FieldKind[], items: boolean): string {
+  return items
+    ? `// ${path} has items that can be ${list(kinds)}, so it is written as ${path}[]`
+    : `// ${path} can be ${list(kinds)} (the schema allows ${kinds.length === 2 ? "both" : "each"})`;
 }
 
 const indent = (text: string): string =>
@@ -66,6 +71,12 @@ function entries(
   const out: string[] = [];
   for (const f of fields) {
     if (skip.has(f.name)) continue;
+    if (f.present === 0) {
+      comments.push(
+        `// ${parent === "" ? f.name : `${parent}.${f.name}`} is in the schema and on none of ${scope.label}, so it is left out`,
+      );
+      continue;
+    }
     out.push(entry(f, scope, parent === "" ? f.name : `${parent}.${f.name}`, comments));
   }
   return out;
@@ -128,8 +139,8 @@ function entry(f: FieldShape, scope: Scope, path: string, comments: string[]): s
 
 /**
  * A GROQ query written from the shape of a type's published documents, by rules alone: the same
- * shape gives the same text. Field order is `_id`, then the fields in the order they first
- * appeared. A slug is unwrapped (`slug.current`), a reference dereferenced one level, an image
+ * shape gives the same text. Field order is `_id`, then the fields in the order the schema declares
+ * them. A slug is unwrapped (`slug.current`), a reference dereferenced one level, an image
  * or a file resolved to its address, an array printed as `name[]`. A field that is on fewer
  * documents than were read gets a comment saying how common it is, and a string, number, boolean,
  * slug, array or Portable Text field is wrapped in `coalesce` so the page gets an empty value
