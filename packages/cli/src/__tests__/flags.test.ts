@@ -95,6 +95,7 @@ describe("flag table: unit", () => {
       discord: { type: "string" },
       webhook: { type: "string" },
       email: { type: "string" },
+      base: { type: "string" },
       "notify-on": { type: "string" },
       "report-url": { type: "string" },
       "save-requests": { type: "string" },
@@ -152,8 +153,9 @@ describe("flag table: unit", () => {
         "      --owner-consent            Run the probing checks, which ask routes for",
         "                                 what they protect with no login; only on sites",
         "                                 you may test",
-        "      --routes <value>           With --owner-consent, find download routes in",
-        "                                 route files matching this glob (repeatable)",
+        "      --routes <value>           With --owner-consent: download routes in files",
+        "                                 matching this glob (repeatable); no glob: a",
+        "                                 folder's signed-in routes",
         "      --since <value>            Page check: compare with the last run (the only",
         "                                 value is last). delivery: the window to read,",
         "                                 such as 7d",
@@ -167,6 +169,9 @@ describe("flag table: unit", () => {
         "                                 GAUGELINE_WEBHOOK)",
         "      --email <value>            Email the full report to these addresses",
         "                                 through Resend (or set GAUGELINE_EMAIL)",
+        "      --base <value>             Check the plan against the site built at this",
+        "                                 address, such as a preview; or the site to ask",
+        "                                 for --routes",
         "      --notify-on <value>        When to send: any (something was found, the",
         "                                 default), high or always",
         "      --report-url <value>       Link each message to a hosted copy of the",
@@ -382,72 +387,86 @@ describe("flag table: e2e", () => {
       // A string flag needs a value: the one it accepts.
       const value =
         f.type === "string" ? [f.name === "runs" ? runs : (SAMPLE_VALUES[f.name] ?? "x")] : [];
-      const args = planOnly
-        ? [
-            "plan",
-            // --nav reads menu tabs: a workbook that has them.
-            f.name === "nav" ? `${repoRoot}packages/fixtures/plans/nav-workbook.txt` : plan,
-            ...(f.name === "legacy-review" ? ["--legacy-from", "SEO Notes"] : []),
-            // --progress and --all compare runs against a preview: they need --base.
-            // --rank joins traffic numbers to --live's list: it needs --live.
-            ...(f.name === "rank" ? ["--live", SAMPLE_VALUES.live ?? ""] : []),
-            ...(f.name === "progress" ||
-            f.name === "all" ||
-            f.name === "printed" ||
-            f.name === "watch"
-              ? ["--base", `${site.origin}/`, "--allow-private"]
-              : []),
-            `--${f.name}`,
-            ...(f.name === "base"
-              ? [`${site.origin}/`, "--allow-private"]
-              : f.name === "printed"
-                ? [register]
-                : value),
-          ]
-        : snapshotOnly
-          ? ["snapshot", "fernkiln.invalid", `--${f.name}`, join(scratch, "snapshot.json")]
-          : deliveryOnly || platformOnly || queryOnly
+      // --base on the page check is read only with --routes (no glob), over a folder with an app directory.
+      mkdirSync(join(scratch, "src", "app"), { recursive: true });
+      writeFileSync(join(scratch, "src", "app", "page.tsx"), "export default () => null;\n");
+      const args =
+        f.name === "base"
+          ? [
+              "check",
+              "src",
+              "--routes",
+              `--${f.name}`,
+              `${site.origin}/`,
+              "--owner-consent",
+              "--allow-private",
+            ]
+          : planOnly
             ? [
-                deliveryOnly ? "delivery" : platformOnly ? "platform" : "query",
+                "plan",
+                // --nav reads menu tabs: a workbook that has them.
+                f.name === "nav" ? `${repoRoot}packages/fixtures/plans/nav-workbook.txt` : plan,
+                ...(f.name === "legacy-review" ? ["--legacy-from", "SEO Notes"] : []),
+                // --progress and --all compare runs against a preview: they need --base.
+                // --rank joins traffic numbers to --live's list: it needs --live.
+                ...(f.name === "rank" ? ["--live", SAMPLE_VALUES.live ?? ""] : []),
+                ...(f.name === "progress" ||
+                f.name === "all" ||
+                f.name === "printed" ||
+                f.name === "watch"
+                  ? ["--base", `${site.origin}/`, "--allow-private"]
+                  : []),
                 `--${f.name}`,
-                ...value,
-                "--help",
+                ...(f.name === "base"
+                  ? [`${site.origin}/`, "--allow-private"]
+                  : f.name === "printed"
+                    ? [register]
+                    : value),
               ]
-            : cutoverOnly
-              ? ["cutover", `--${f.name}`, before]
-              : assertOnly
-                ? ["assert", `--${f.name}`]
-                : verifyOnly
-                  ? ["verify", crawl, `--${f.name}`, "0"]
-                  : runOnly
-                    ? f.name === "tag"
-                      ? ["run", "--tag", "nobody"]
-                      : f.name === "site"
-                        ? ["run", "--site", "x", "--allow-private"]
-                        : ["run", "--tag", "nobody", `--${f.name}`, "2"]
-                    : printedOnly
-                      ? [
-                          "printed",
-                          register,
-                          "--allow-private",
-                          `--${f.name}`,
-                          ...(f.name === "decode" ? [join(scratch, "no-images")] : value),
-                        ]
-                      : digestOnly
-                        ? [
-                            "digest",
-                            ...(f.name === "runs" ? [] : ["--runs", runs]),
-                            `--${f.name}`,
-                            ...value,
-                          ]
-                        : [
-                            ...(flagsFor(FLAGS, "check").includes(f) ? [] : ["launch"]),
-                            `${site.origin}/`,
-                            // --routes is read by a probing check: it needs the owner's consent.
-                            ...(f.name === "routes" ? ["--owner-consent"] : []),
-                            `--${f.name}`,
-                            ...value,
-                          ];
+            : snapshotOnly
+              ? ["snapshot", "fernkiln.invalid", `--${f.name}`, join(scratch, "snapshot.json")]
+              : deliveryOnly || platformOnly || queryOnly
+                ? [
+                    deliveryOnly ? "delivery" : platformOnly ? "platform" : "query",
+                    `--${f.name}`,
+                    ...value,
+                    "--help",
+                  ]
+                : cutoverOnly
+                  ? ["cutover", `--${f.name}`, before]
+                  : assertOnly
+                    ? ["assert", `--${f.name}`]
+                    : verifyOnly
+                      ? ["verify", crawl, `--${f.name}`, "0"]
+                      : runOnly
+                        ? f.name === "tag"
+                          ? ["run", "--tag", "nobody"]
+                          : f.name === "site"
+                            ? ["run", "--site", "x", "--allow-private"]
+                            : ["run", "--tag", "nobody", `--${f.name}`, "2"]
+                        : printedOnly
+                          ? [
+                              "printed",
+                              register,
+                              "--allow-private",
+                              `--${f.name}`,
+                              ...(f.name === "decode" ? [join(scratch, "no-images")] : value),
+                            ]
+                          : digestOnly
+                            ? [
+                                "digest",
+                                ...(f.name === "runs" ? [] : ["--runs", runs]),
+                                `--${f.name}`,
+                                ...value,
+                              ]
+                            : [
+                                ...(flagsFor(FLAGS, "check").includes(f) ? [] : ["launch"]),
+                                `${site.origin}/`,
+                                // --routes is read by a probing check: it needs the owner's consent.
+                                ...(f.name === "routes" ? ["--owner-consent"] : []),
+                                `--${f.name}`,
+                                ...value,
+                              ];
       const r = await runBin(args, {}, { cwd: scratch });
       expect(r.stderr, f.name).not.toContain("Unknown option");
       expect([0, 1], f.name).toContain(r.status);
