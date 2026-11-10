@@ -1,0 +1,154 @@
+{
+  "note": "Invented. The allowance runs out during the sample: the query comes back REQUEST_LIMIT_EXCEEDED.",
+  "server": "https://api.salesforce.com/platform/mcp/v1/platform/sobject-reads",
+  "now": "2026-11-10T18:00:00Z",
+  "exchanges": [
+    {
+      "method": "initialize",
+      "apiUsage": "13000/15000",
+      "result": {
+        "protocolVersion": "2025-06-18",
+        "capabilities": {
+          "tools": {}
+        },
+        "serverInfo": {
+          "name": "sobject-reads",
+          "version": "1.0.0"
+        }
+      }
+    },
+    {
+      "method": "notifications/initialized"
+    },
+    {
+      "method": "tools/list",
+      "result": {
+        "tools": [
+          {
+            "name": "getObjectSchema",
+            "description": "Invented description for getObjectSchema."
+          },
+          {
+            "name": "soqlQuery",
+            "description": "Invented description for soqlQuery."
+          },
+          {
+            "name": "find",
+            "description": "Invented description for find."
+          },
+          {
+            "name": "getUserInfo",
+            "description": "Invented description for getUserInfo."
+          },
+          {
+            "name": "listRecentSobjectRecords",
+            "description": "Invented description for listRecentSobjectRecords."
+          },
+          {
+            "name": "getRelatedRecords",
+            "description": "Invented description for getRelatedRecords."
+          }
+        ]
+      }
+    },
+    {
+      "method": "tools/call",
+      "tool": "getObjectSchema",
+      "result": {
+        "isError": false,
+        "text": {
+          "name": "Lead",
+          "fields": [
+            {
+              "name": "Id",
+              "label": "Lead ID",
+              "custom": false,
+              "type": "string"
+            },
+            {
+              "name": "FirstName",
+              "label": "First Name",
+              "custom": false,
+              "type": "string"
+            },
+            {
+              "name": "LastName",
+              "label": "Last Name",
+              "custom": false,
+              "type": "string"
+            },
+            {
+              "name": "Company",
+              "label": "Company",
+              "custom": false,
+              "type": "string"
+            },
+            {
+              "name": "Email",
+              "label": "Email",
+              "custom": false,
+              "type": "string"
+            },
+            {
+              "name": "Phone",
+              "label": "Phone",
+              "custom": false,
+              "type": "string"
+            },
+            {
+              "name": "Status",
+              "label": "Lead Status",
+              "custom": false,
+              "type": "string"
+            },
+            {
+              "name": "LeadSource",
+              "label": "Lead Source",
+              "custom": false,
+              "type": "string"
+            },
+            {
+              "name": "Rating",
+              "label": "Rating",
+              "custom": false,
+              "type": "string"
+            },
+            {
+              "name": "Industry",
+              "label": "Industry",
+              "custom": false,
+              "type": "string"
+            },
+            {
+              "name": "CreatedDate",
+              "label": "Created Date",
+              "custom": false,
+              "type": "string"
+            },
+            {
+              "name": "OwnerId",
+              "label": "Owner ID",
+              "custom": false,
+              "type": "string"
+            },
+            {
+              "name": "Preferred_Session__c",
+              "label": "Preferred session",
+              "custom": true,
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "method": "tools/call",
+      "tool": "soqlQuery",
+      "queryIncludes": "SELECT Id, LeadSource FROM Lead",
+      "result": {
+        "isError": true,
+        "text": "REQUEST_LIMIT_EXCEEDED: TotalRequests Limit exceeded."
+      }
+    }
+  ]
+}

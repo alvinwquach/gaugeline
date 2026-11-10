@@ -19,6 +19,7 @@ import type { TagContainer } from "./tags/read-container.js";
 import type { RunSnapshot } from "./run-snapshot.js";
 import type { DatasetRead } from "./sanity.js";
 import type { ListingsRead } from "./listings/read.js";
+import type { CrmRead } from "./sources/crm-read.js";
 import type { DatabasesRead } from "./connectors/postgres/read.js";
 import type { AssertionsRead } from "./assertions/read.js";
 import type { Freshness } from "./freshness/read.js";
@@ -180,6 +181,12 @@ export interface CheckContext {
    * not check, never that they passed.
    */
   listings?: () => Promise<ListingsRead>;
+  /**
+   * The CRM named in gaugeline.crm.json, read once on first use through its own read-only MCP server:
+   * field names, a sample of recent leads reduced to ids and empty fields, and a lead count. Absent when
+   * none is configured: the lead checks are then not run, or say they could not check if asked for by id.
+   */
+  crm?: () => Promise<CrmRead>;
   /**
    * The named queries in gaugeline.sources.json (Postgres, Supabase), read once on first use, read
    * only. Absent when no source is configured. Data assertions have their own entry below; the

@@ -183,6 +183,7 @@ export {
   LAUNCH_PRESET,
   FRESHNESS_CHECKS,
   LISTING_CHECKS,
+  CRM_CHECKS,
   SWITCH_CHECKS,
 } from "./presets.js";
 export {
@@ -943,6 +944,36 @@ export type {
   System as MatchSystem,
   Tier as MatchTier,
 } from "./products/match.js";
+export {
+  CrmUnavailableError,
+  crmConfigSchema,
+  isBlank as isBlankCrmField,
+  isPersonalField,
+  leadWindowStart,
+  splitFields as splitCrmFields,
+  stripPersonal,
+} from "./sources/crm.js";
+export type {
+  CrmConfig,
+  CrmCount,
+  CrmField,
+  CrmLead,
+  CrmSample,
+  CrmSource,
+} from "./sources/crm.js";
+export { CRM_ENV_VARS, NO_CRM, NO_TRANSPORT, lazyCrm, noCrm, readCrm } from "./sources/crm-read.js";
+export type { CrmRead, CrmSettings } from "./sources/crm-read.js";
+export {
+  MAX_CALLS as CRM_MAX_CALLS,
+  McpHttpError,
+  NotReadOnlyServerError,
+  SALESFORCE_READ_ONLY_SANDBOX_URL,
+  SALESFORCE_READ_ONLY_URL,
+  isReadOnlySalesforceServer,
+  readOnlyServerAddress,
+  salesforceMcpSource,
+} from "./sources/salesforce-mcp.js";
+export type { McpMessage, McpReply, McpTransport } from "./sources/salesforce-mcp.js";
 export { listingsConfigSchema } from "./listings/config.js";
 export type { ListingsConfig } from "./listings/config.js";
 export {

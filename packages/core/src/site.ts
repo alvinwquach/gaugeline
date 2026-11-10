@@ -4,7 +4,13 @@ import { createBudget, sampleCounts, type Budget } from "./limits.js";
 import type { CheckRegistry } from "./model.js";
 import type { ProgressSink } from "./progress.js";
 import { NO_PAGE_CHECKS } from "./checks/blocked.js";
-import { ASSERTION_CHECKS, FRESHNESS_CHECKS, LISTING_CHECKS, SWITCH_CHECKS } from "./presets.js";
+import {
+  ASSERTION_CHECKS,
+  CRM_CHECKS,
+  FRESHNESS_CHECKS,
+  LISTING_CHECKS,
+  SWITCH_CHECKS,
+} from "./presets.js";
 import { classifyHop, describeRefusal } from "./refusal.js";
 import { runChecks, type RunOptions, type RunResult } from "./run.js";
 import { dedupeUrls } from "./sample.js";
@@ -32,6 +38,7 @@ import {
 } from "./snapshot/page-snapshot.js";
 import { lazyDatasets } from "./sanity.js";
 import { lazyListings, noListings, type ListingsSettings } from "./listings/read.js";
+import { lazyCrm, noCrm, type CrmSettings } from "./sources/crm-read.js";
 import { lazyDatabases, type DatabasesSettings } from "./connectors/postgres/read.js";
 import { lazyAssertions, sourcesRedactor } from "./assertions/read.js";
 import { createStatePages } from "./switches/pages.js";
@@ -73,6 +80,8 @@ export interface SiteCheckOptions {
   payments?: PaymentsConfig;
   /** The business listings to compare with the site (gaugeline.listings.json), with their keys already read. */
   listings?: ListingsSettings;
+  /** The CRM to read leads from through its own read-only MCP server (gaugeline.crm.json). */
+  crm?: CrmSettings;
   /** The databases to read named queries from (gaugeline.sources.json), with their variables already copied. */
   databases?: DatabasesSettings;
   /** What the site must show for each switch, 86 list and capacity (gaugeline.switches.json), with its Sanity variables already copied. */
@@ -182,7 +191,11 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
   // And the freshness checks: they run when gaugeline.freshness.json is there.
   const freshnessAsked = FRESHNESS_CHECKS.some((id) => opts.only?.includes(id));
   const freshnessOff = !opts.freshness && !freshnessAsked;
+  // The CRM lead checks likewise: they run when gaugeline.crm.json is there.
+  const crmAsked = CRM_CHECKS.some((id) => opts.only?.includes(id));
+  const crmOff = !opts.crm && !crmAsked;
   const switchedOff = [
+    ...(crmOff ? CRM_CHECKS.filter((id) => registered.has(id)) : []),
     ...(listingsOff ? LISTING_CHECKS.filter((id) => registered.has(id)) : []),
     ...(assertionsOff ? ASSERTION_CHECKS.filter((id) => registered.has(id)) : []),
     ...(switchesOff ? SWITCH_CHECKS.filter((id) => registered.has(id)) : []),
@@ -263,6 +276,16 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
         ? { listings: lazyListings(opts.listings, opts.fetcher) }
         : asked
           ? { listings: () => Promise.resolve(noListings()) }
+          : {}),
+      ...(opts.crm
+        ? {
+            crm: lazyCrm(opts.crm, {
+              now: opts.now ?? (() => new Date()),
+              ...(opts.previous ? { previousTakenAt: opts.previous.takenAt } : {}),
+            }),
+          }
+        : crmAsked
+          ? { crm: () => Promise.resolve(noCrm()) }
           : {}),
       ...(databases ? { databases } : {}),
       ...(opts.switches ? { switches: lazySwitches(opts.switches, sourceDeps) } : {}),

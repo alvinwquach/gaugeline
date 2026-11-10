@@ -1,0 +1,63 @@
+{
+  "note": "Invented. The signed-in user has no Read on Lead: the schema call is refused with INVALID_TYPE.",
+  "server": "https://api.salesforce.com/platform/mcp/v1/platform/sobject-reads",
+  "now": "2026-11-10T18:00:00Z",
+  "exchanges": [
+    {
+      "method": "initialize",
+      "apiUsage": "212/15000",
+      "result": {
+        "protocolVersion": "2025-06-18",
+        "capabilities": {
+          "tools": {}
+        },
+        "serverInfo": {
+          "name": "sobject-reads",
+          "version": "1.0.0"
+        }
+      }
+    },
+    {
+      "method": "notifications/initialized"
+    },
+    {
+      "method": "tools/list",
+      "result": {
+        "tools": [
+          {
+            "name": "getObjectSchema",
+            "description": "Invented description for getObjectSchema."
+          },
+          {
+            "name": "soqlQuery",
+            "description": "Invented description for soqlQuery."
+          },
+          {
+            "name": "find",
+            "description": "Invented description for find."
+          },
+          {
+            "name": "getUserInfo",
+            "description": "Invented description for getUserInfo."
+          },
+          {
+            "name": "listRecentSobjectRecords",
+            "description": "Invented description for listRecentSobjectRecords."
+          },
+          {
+            "name": "getRelatedRecords",
+            "description": "Invented description for getRelatedRecords."
+          }
+        ]
+      }
+    },
+    {
+      "method": "tools/call",
+      "tool": "getObjectSchema",
+      "result": {
+        "isError": true,
+        "text": "INVALID_TYPE: sObject type 'Lead' is not supported."
+      }
+    }
+  ]
+}

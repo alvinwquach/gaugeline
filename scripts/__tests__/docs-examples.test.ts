@@ -3,6 +3,7 @@ import {
   EMAIL_PRESET,
   FRESHNESS_CHECKS,
   LISTING_CHECKS,
+  CRM_CHECKS,
   SWITCH_CHECKS,
   createPageRegistry,
 } from "../../packages/core/src/index.js";
@@ -165,6 +166,8 @@ describe("docs examples: integration", () => {
               !EMAIL_PRESET.includes(id) &&
               // Not run without a gaugeline.listings.json: neither passed nor failed.
               !LISTING_CHECKS.includes(id) &&
+              // Likewise without gaugeline.crm.json.
+              !CRM_CHECKS.includes(id) &&
               // Likewise without data assertions in gaugeline.sources.json.
               !ASSERTION_CHECKS.includes(id) &&
               // And without gaugeline.switches.json.

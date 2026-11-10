@@ -66,3 +66,14 @@ export const FRESHNESS_CHECKS: readonly string[] = Object.freeze([
   "data-behind-source",
   "forecast-for-past-event",
 ]);
+
+/**
+ * The CRM lead checks (X55): they read the lead object through the CRM's own read-only MCP server,
+ * and run only when gaugeline.crm.json is there. Without it they are not run (so not passed either),
+ * unless a caller asked for one by id: that one says it could not check.
+ */
+export const CRM_CHECKS: readonly string[] = Object.freeze([
+  "crm-lead-source",
+  "crm-field-names",
+  "crm-went-quiet",
+]);

@@ -48,6 +48,8 @@ import {
   SANITY_ENV_VARS,
   usesSanity,
   LISTING_ENV_VARS,
+  CRM_ENV_VARS,
+  type McpTransport,
   type AssertionsRead,
   type CheckRegistry,
   type DnsReader,
@@ -119,6 +121,7 @@ import {
   readAccess,
   readFacts,
   readListingsConfig,
+  readCrmConfig,
   readSourcesConfig,
   readSwitchesConfig,
   readFreshnessConfig,
@@ -212,6 +215,15 @@ export interface Deps {
   clientDir?: string;
   /** `gaugeline open --ads`: the ads command. Defaults to the one in this version; tests pass a stand-in. */
   ads?: AdsEngine;
+  /**
+   * How messages reach the CRM's MCP server (gaugeline.crm.json). Given the validated read-only
+   * server address and only the variables the CRM needs. By default there is none: this version
+   * has no connection of its own, and the lead checks say they could not check (see X55 in PROGRESS.md).
+   */
+  crmTransport?: (
+    server: string,
+    env: Readonly<Record<string, string | undefined>>,
+  ) => McpTransport;
 }
 
 export interface RunReport {
@@ -1025,6 +1037,23 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
             })(),
           }
         : undefined;
+      // The CRM lead checks: the file names a read-only Salesforce MCP server (an invalid or write-capable
+      // address is exit 2 here), and the token reaches the transport only, never core.
+      const crmConfig = readCrmConfig(deps.cwd ?? process.cwd());
+      const crm = crmConfig
+        ? {
+            config: crmConfig,
+            ...(deps.crmTransport
+              ? {
+                  transport: deps.crmTransport(
+                    crmConfig.salesforce.server,
+                    freezeEnv(io.env ?? {}, CRM_ENV_VARS),
+                  ),
+                }
+              : {}),
+            clientVersion: deps.version ?? VERSION,
+          }
+        : undefined;
       // Connection strings and keys are copied from the environment here and read by the database connectors only.
       const sourcesConfig = readSourcesConfig(deps.cwd ?? process.cwd());
       // A data assertion that turns out to be wrong (an evidence column its query does not return) is
@@ -1155,6 +1184,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         ...(pagesConfig ? { pagesConfig } : {}),
         ...(access ? { access } : {}),
         ...(listings ? { listings } : {}),
+        ...(crm ? { crm } : {}),
         ...(databases ? { databases } : {}),
         ...(switches ? { switches } : {}),
         ...(freshness ? { freshness } : {}),

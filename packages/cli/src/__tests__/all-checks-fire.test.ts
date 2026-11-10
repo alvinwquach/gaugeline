@@ -66,6 +66,11 @@ const NEEDS_LIVE_STORES = new Set([
   // The configured database project: confirmed in-process against the supabase-access cassette.
   "access-public-read",
   "access-role-scope",
+  // The CRM lead checks read Salesforce through its MCP server and run only with a gaugeline.crm.json;
+  // confirmed in-process against recorded answers (checks/__tests__/crm.test.ts, cli crm.test.ts).
+  "crm-field-names",
+  "crm-lead-source",
+  "crm-went-quiet",
   // Listings: they compare Google, Yelp and Apple listings with the site and run only with a
   // gaugeline.listings.json; confirmed in-process against recorded answers (listings.test.ts,
   // packages/core/src/checks/__tests__/listings.test.ts).

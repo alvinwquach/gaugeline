@@ -90,6 +90,16 @@
     "tech": "A form or iframe of Pardot, HubSpot or Marketo in the HTML, and no script of that service's tracking code anywhere in it (pi.pardot.com/pd.js or piAId, js.hs-scripts.com or _hsq, munchkin.js or Munchkin.init); Web-to-Lead, Formstack and Typeform have no tracking script and are skipped; a form drawn by JavaScript is could-not-check; code a tag manager adds at run time is not seen"
   },
   {
+    "id": "crm-went-quiet",
+    "severity": "high",
+    "area": "Leads",
+    "title": "Leads have stopped arriving",
+    "what": "The CRM was getting new leads every few days, and none has been created for several days, while the form is still on the page.",
+    "why": "A form can load, accept the visitor's details and thank them while the lead goes nowhere: a changed field, an expired integration user, a full queue. Nobody sees it until the phone stays quiet.",
+    "fix": "Submit the form yourself with a test lead (your own, in a sandbox if you have one), see whether it reaches the CRM, and check the form's connection to Salesforce and the integration user's access.",
+    "tech": "Through Salesforce's read-only MCP server (soqlQuery on Lead: COUNT and MAX(CreatedDate) since 14 days ago, or four times quietDays if longer): no lead created for quietDays whole days (default 3) after at least 5 in the lookback, on a page that has a form or embed from Pardot, Web-to-Lead, HubSpot, Formstack, Marketo or Typeform; a page with no recognised form, or too few leads to call it quiet, is could-not-check"
+  },
+  {
     "id": "data-assertion-failed",
     "severity": "high",
     "area": "Visitors",
@@ -860,6 +870,16 @@
     "tech": "<meta name=\"apple-itunes-app\" content=\"app-id=...\"> differs from every apps.apple.com/.../id<digits> link on the page"
   },
   {
+    "id": "crm-field-names",
+    "severity": "medium",
+    "area": "Leads",
+    "title": "A form sends fields the CRM doesn't have",
+    "what": "A Web-to-Lead form on the page submits field names that are not fields on the Lead object in Salesforce.",
+    "why": "Salesforce drops what it can't place. The visitor typed it, the form said thanks, and the CRM never got it.",
+    "fix": "Add the field to Lead in Salesforce and use its name in the form, or remove the input from the form.",
+    "tech": "The names of every input, select and textarea in each Web-to-Lead form in the HTML (hidden or visible; buttons and files excluded) against the field names and labels of Lead from Salesforce's read-only MCP server (getObjectSchema); Web-to-Lead's own names (first_name, zip, lead_source) are matched to their Lead fields; routing, anti-spam and utm_* names are skipped; custom fields sent by id (00N...) can't be compared and are counted; a form in an iframe or drawn by script is could-not-check"
+  },
+  {
     "id": "crm-late-tracking",
     "severity": "medium",
     "area": "Leads",
@@ -868,6 +888,16 @@
     "why": "Salesforce documents that this can lose first-touch tracking, the referring site and UTM parameters.",
     "fix": "Load the tracking script directly in the page head, before the form, not from a window load handler.",
     "tech": "Position of the tracking script after the form in document order (counted over every form, iframe and script element), or inline tracking code started by addEventListener(\"load\"), attachEvent(\"onload\") or window.onload while the form is an iframe; no timing is measured, and code a tag manager moves at run time is not seen"
+  },
+  {
+    "id": "crm-lead-source",
+    "severity": "medium",
+    "area": "Leads",
+    "title": "New leads are arriving without a source",
+    "what": "Many of the leads created in your CRM since the last run have an empty lead source or campaign field.",
+    "why": "A lead with no source can't be tied to the ad, email or search that brought it, so the campaign that worked looks the same as the one that didn't.",
+    "fix": "Make the form send the source: add hidden utm_source and utm_campaign fields, map them to the CRM's lead source or campaign field, and fill the existing records that have none.",
+    "tech": "Through Salesforce's read-only MCP server (soqlQuery on Lead, newest 200 created since the last run or windowDays ago): leads whose LeadSource, or each field named in sourceFields in gaugeline.crm.json, is null or blank; flagged at 2 or more leads and 10% or more of the sample; evidence is the counts, the field names and up to five record ids, never a name or an email"
   },
   {
     "id": "crm-no-campaign-fields",
