@@ -8,10 +8,11 @@ merged once CI is green on Node 22 and 24 (18.17, 20 and 22 until S00).
 
 Written by the orchestrating session when its context ran long (10 Nov 2026). Resume from this file alone.
 
-- Last merged branch: G22f (`04/app-sanity-placeholders`, PR #109), which closed phase 04. In flight: R-01 (`docs/release-requirements`, the docs requirements: Since badges, migration guides, the changelog feed); merge it when every check is green.
-- NEXT branch: G23 (`05/products-and-prices`, the first todo row after R-01), then N15, G23a, N09, ... in table order. The table is in the owner's build order; G38 is superseded by C-00.
-- Resume with `git checkout main && git pull`; use the newest spec file under /root/.claude/uploads/ (the owner re-uploads it); the standing orders, adapter rules and "Method that works" are in this file. Per branch: sync the work branch (`git checkout -B claude/relaxed-brown-7yxex4 origin/main`, then `git merge -s ours origin/claude/relaxed-brown-7yxex4`, then a plain push), one fresh agent per branch with a brief, subscribe to the PR, merge when every check is green, fix CI failures on the branch first.
-- Open questions for the owner (nothing blocks the build): (1) `open --ads` exits 2 until G24 merges: acceptable in a release, or hold the release until G24? (2) `--save-requests`: confirm the 1000-request cap and the 0600/Windows wording. (3) Opus-marked branches built on Sonnet are listed in "Built on Sonnet, review" (C-00 is pending there).
+- Last merged branch: R-01 (`docs/release-requirements`, PR #110). In flight: G23 (`05/products-and-prices`, the connector interface; Opus-marked, built on Sonnet, see "Built on Sonnet, review"); merge it when every check is green.
+- NEXT branch: N15 (`05/listings`, the first todo row after G23), then G23a, N09, ... in table order. The table is in the owner's build order; G38 is superseded by C-00.
+- Resume with `git checkout main && git pull`. Use the newest spec file under /root/.claude/uploads/ (the owner re-uploads it). The standing orders, adapter rules and "Method that works" paragraph are in this file.
+- Per branch: sync the work branch (`git checkout -B claude/relaxed-brown-7yxex4 origin/main`, then `git merge -s ours origin/claude/relaxed-brown-7yxex4`, then a plain push), one fresh agent per branch with a brief, subscribe to the PR, merge when every check is green, fix CI failures on the branch first.
+- Open questions for the owner (nothing blocks the build): (1) `open --ads` exits 2 until G24 merges: acceptable in a release, or hold the release until G24? (2) `--save-requests`: confirm the 1000-request cap and the 0600/Windows wording. (3) Opus-marked branches built on Sonnet are listed in "Built on Sonnet, review" (G23 now, C-00 pending).
 - CI lessons (all in the agent brief): wait for state that effects write (hash, aria-current) with waitFor; hold test runs open with a fixture `delayMs`, not speed; run the whole `pnpm test` (including scripts/) on Node 22 and 24; the Windows runner is slow, so whole-repo checks need explicit test timeouts; a root vitest.config.ts change is exercised by scripts/__tests__/new-check.test.ts in a repo copy.
 - At the end of the build: prepare the release PR (do not publish), write docs/why-gaugeline.md (see Standing orders), reply with a summary and the publish commands.
 
@@ -177,7 +178,9 @@ The todo rows below follow this order and override spec order where they differ:
 
 ## Built on Sonnet, review
 
-None yet. Branches the spec marks "model Opus" that were built on Sonnet from G23 onward are listed here.
+Branches the spec marks "model Opus" that were built on Sonnet from G23 onward are listed here.
+
+- G23 `05/products-and-prices` (spec marks Opus; built on Sonnet), PR #PRNUM: a reviewer should look hardest at key handling (keys only from the environment, sent in an Authorization header to the first origin only, never in a URL), the redactor (createRedactor in packages/core/src/connectors/redact.ts: every spelling of a key, overlapping keys merged, applied to every notice and debug line) and the read-only guarantee (connectors only get the fetcher, whose GET/HEAD allow-list is unchanged; nothing in the interface can send a body).
 
 - C-00 `c/adapter-interface` (spec marks Opus; will be built on Sonnet): pending. A reviewer should look hardest at the Sanity port having no behaviour change and at the contract suite never building a non-GET request.
 
