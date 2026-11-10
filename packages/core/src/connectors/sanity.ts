@@ -98,6 +98,8 @@ const REFUSED_WITH_TOKEN =
 interface AskHints {
   tooLong: string;
   badQuery: string;
+  /** What to say when the answer is larger than one request can carry. Default: the products query's. */
+  tooBig?: string;
 }
 
 const PRODUCTS_HINTS: AskHints = {
@@ -132,7 +134,8 @@ async function ask(
     });
     if (hop.truncated)
       throw new Error(
-        `The answer is larger than ${LIMITS.bodyBytes / (1024 * 1024)} MB. Narrow GAUGELINE_PRODUCTS_QUERY to the products and the six fields.`,
+        hints.tooBig ??
+          `The answer is larger than ${LIMITS.bodyBytes / (1024 * 1024)} MB. Narrow GAUGELINE_PRODUCTS_QUERY to the products and the six fields.`,
       );
     body = hop.body ?? "";
   } catch (err) {
@@ -301,9 +304,10 @@ export const readField = guarded(
 );
 
 const COUNT_HINTS: AskHints = {
-  tooLong: "The count query is too long to send as a GET.",
+  tooLong: "The query is too long to send as a GET.",
   badQuery:
-    "Sanity could not run the count query (HTTP 400). Check the document type and field names in the source.",
+    "Sanity could not run the query (HTTP 400). Check the document type and field names in the source.",
+  tooBig: `The answer is larger than ${LIMITS.bodyBytes / (1024 * 1024)} MB, more than one request can carry. A type with that many documents cannot be read in one GET.`,
 };
 
 /** What `gaugeline query` asks Sanity with: one GROQ query in, its `result` out, one GET. */

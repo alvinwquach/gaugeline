@@ -30,6 +30,16 @@ Nothing from Sanity is compared that run (Stripe and Printful are still read, an
 
 The token needs the Viewer role and nothing more: the command sends only `GET` requests, one for each document type, and the answers are whole numbers (how many documents of a type exist, how many have a field), never a document. A token Sanity does not accept is said differently and repeats the Viewer role. What the counts mean: [Checking your queries](/docs/query-check#what-it-reports).
 
+## What `gaugeline query --dupes` reads
+
+`gaugeline query ./src --dupes` is the one query option that reads more than counts, so what it asks for is listed in full. For each document type your queries name it sends one `GET` of Sanity's query address, published documents only, projecting exactly three things about each document:
+
+```text
+*[_type == "menuItem"]{_id,"slug":slug.current,title}
+```
+
+Nothing else is asked for: no body, no image, no other field. The documents are grouped in memory and only the groups are kept. The report shows a slug or a title only when two documents of one type share it, and it names their ids. The Viewer role is enough: it is a read, which is the same thing the Viewer role is for ("find duplicates" is on its list). Without `SANITY_TOKEN` a private dataset answers 401 and the command stops with the same message as above. What the findings mean: [The same thing, twice](/docs/query-check#the-same-thing-twice).
+
 ## Where the token lives
 
 - Read from the environment when the command runs. Never written to disk, never printed in output or reports.

@@ -58,13 +58,15 @@ interface Deps {
  * document type, the fields it reads, whether the filter leaves drafts out, the parameters, and
  * the file and line the query starts on), then the queries that could not be read and why, then the
  * findings. With SANITY_PROJECT_ID set the dataset is asked for counts, one GET for each type;
- * without it nothing is requested, nothing is compared, and a line on stderr says so.
+ * without it nothing is requested, nothing is compared, and a line on stderr says so. With --dupes
+ * (which needs SANITY_PROJECT_ID) it also asks, one more GET for each type, for the id, slug and
+ * title of each published document, and reports documents that share a slug or a title.
  * Files are shown as they would be typed from where the command ran, in the findings too.
  * Exit 0, 1 with --ci and a fix-first finding, or 2 (a ConfigError) when the folder does not
  * exist, TypeScript is missing or the dataset cannot be read.
  */
 export async function runQuery(
-  args: { dir: string; json?: boolean; quiet?: boolean },
+  args: { dir: string; json?: boolean; dupes?: boolean; quiet?: boolean },
   io: Out,
   deps: Deps,
 ): Promise<Outcome> {
@@ -74,6 +76,13 @@ export async function runQuery(
       "gaugeline query --json prints findings, and they need SANITY_PROJECT_ID.",
       {
         hint: "Set SANITY_PROJECT_ID (and SANITY_TOKEN, with the Viewer role, for a private dataset), or leave --json out to list the queries.",
+      },
+    );
+  if (args.dupes && !asks)
+    throw new ConfigError(
+      "gaugeline query --dupes asks your dataset for each document's id, slug and title, and that needs SANITY_PROJECT_ID.",
+      {
+        hint: "Set SANITY_PROJECT_ID (and SANITY_TOKEN, with the Viewer role, for a private dataset), or leave --dupes out to list the queries.",
       },
     );
   const found = await extractGroq(resolve(deps.cwd, args.dir));
@@ -98,6 +107,7 @@ export async function runQuery(
           env: freezeEnv(io.env ?? {}, [SANITY_PROJECT_ID, SANITY_DATASET, SANITY_TOKEN]),
           fetcher: createFetcher(deps.fetcher),
           now: deps.now ?? new Date(),
+          dupes: args.dupes === true,
         });
   if (args.quiet !== true) {
     if (run) for (const n of run.notices) io.stderr.write(`${n}\n`);
@@ -135,11 +145,16 @@ export async function runQuery(
         (unreadable.length > 0 ? `; ${unreadable.length} could not be read.` : "."),
     );
     if (run) {
-      const { result, counts } = run;
+      const { result, counts, dupes } = run;
       out.push("");
       if (counts && counts.size > 0)
         out.push(
           `Counted the published documents of ${plural(counts.size, "type")} in the dataset: one request each, counts only.`,
+          "",
+        );
+      if (dupes)
+        out.push(
+          `Read the ids, slugs and titles of the published documents of ${plural(counts.size, "type")} to look for duplicates: one request each. A title or slug is shown only when two documents share it.`,
           "",
         );
       out.push(
