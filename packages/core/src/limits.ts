@@ -39,6 +39,10 @@ export const LIMITS = Object.freeze({
   downloadRoutes: 10,
   /** Bytes read from a download route's answer before the connection is closed. */
   downloadPeekBytes: 1024,
+  /** Signed-in routes asked once each with no session by check --routes (a probing check: only with owner consent). */
+  routeProbes: 30,
+  /** Bytes read from a route's answer to tell a sign-in form from a page, then the connection is closed. */
+  routeProbeBytes: 64 * 1024,
   /** Framework addresses (/_next/, ?_rsc=) found and ignored: never requested, so the limit is 0. */
   frameworkAddresses: 0,
   structuredDataAddresses: 12,

@@ -188,6 +188,7 @@
   "quotable-facts-disagree",
   "redirect-chain",
   "robots-block",
+  "route-hidden-not-protected",
   "rsc-served-as-page",
   "rsc-vary-missing",
   "schema-breadcrumb-mismatch",

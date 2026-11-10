@@ -33,6 +33,7 @@ export const NAV: NavGroup[] = [
       { slug: "products-and-prices", title: "Products and prices" },
       { slug: "plan-check", title: "Checking a launch plan" },
       { slug: "delivery", title: "Paid downloads and delivery" },
+      { slug: "protected-routes", title: "Routes that are hidden, not protected" },
       { slug: "query-check", title: "Checking your queries" },
       { slug: "no-developer", title: "When you don't have a developer" },
       { slug: "ad-landing-pages", title: "Ad landing pages" },

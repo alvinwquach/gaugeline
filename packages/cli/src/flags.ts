@@ -111,7 +111,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     name: "routes",
     type: "string",
     description:
-      "With --owner-consent, find download routes in route files matching this glob (repeatable)",
+      "With --owner-consent: download routes in files matching this glob (repeatable); no glob: a folder's signed-in routes",
     since: "0.2.0",
     commands: ["check"],
     multiple: true,
@@ -298,9 +298,10 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
   {
     name: "base",
     type: "string",
-    description: "Check the plan against the site built at this address, such as a preview",
+    description:
+      "Check the plan against the site built at this address, such as a preview; or the site to ask for --routes",
     since: "0.2.0",
-    commands: ["plan"],
+    commands: ["plan", "check"],
   },
   {
     name: "annotate",
