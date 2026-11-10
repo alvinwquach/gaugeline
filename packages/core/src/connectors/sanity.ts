@@ -80,6 +80,10 @@ function settings(env: Env): Settings {
   };
 }
 
+/** The project, dataset and token SANITY_PROJECT_ID, SANITY_DATASET and SANITY_TOKEN name; throws when there is no valid project id. */
+export const sanitySettings: (env: Env) => SanitySettings = settings;
+export type SanitySettings = Settings;
+
 /**
  * The query endpoint's address for a GROQ query, asking for what is published and nothing else, so
  * a draft nobody has published is never compared with checkout. The query travels in the address;

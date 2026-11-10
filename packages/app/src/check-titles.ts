@@ -136,6 +136,10 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "mutation-undeclared-field": ["A write sets a field no document type declares", "Visitors"],
   "mutation-missing-required": ["A create leaves out a field the schema requires", "Visitors"],
   "mutation-ref-as-string": ["A reference is written as a plain string", "Visitors"],
+  "graphql-field-not-in-schema": [
+    "A field your GraphQL query asks for is not in the schema",
+    "Visitors",
+  ],
   "delivery-receipt-missing": ["Orders were paid and no receipt went out", "Sales & prices"],
   "webhook-failing": ["A webhook endpoint is not receiving its events", "Sales & prices"],
   "cutover-canonical-host": ["The bare domain and www don't settle on one address", "Launch day"],
@@ -861,6 +865,12 @@ export const CHECK_TEXT: Readonly<
     "A reference is an object. A string in its place is stored without complaint, but the reference never resolves, so every query that follows it with -> gets nothing.",
     'Write { _type: "reference", _ref: "the document\'s id" } instead of the string.',
     "read from the repository with no request at all: the TypeScript compiler reads client.patch(...).set(...), create, createOrReplace, createIfNotExists, delete, transaction chains and raw mutations arrays into a Map from each written field to the kind of its value (a plain string, an object with _ref, anything else), which is compared with the schema file given by --schema (the output of sanity schema extract); no mutation is sent, and the module cannot import an HTTP client; a string literal written to a field the schema declares as a reference",
+  ],
+  "graphql-field-not-in-schema": [
+    "A GraphQL query in your code asks for a field that the schema does not have on that type.",
+    "The server answers the whole query with an error, or leaves the field out, and the page that asked for it renders empty. It is the usual result of a renamed or removed field: the query still compiles, and nobody sees the gap until a customer does.",
+    "Open the file and line named, and find what the field is called in the schema now (the schema file, or the GraphQL playground) and change the query. Ask Gaugeline again to confirm.",
+    "read from the repository with no request for the documents: .graphql and .gql files and gql tagged templates are read into a field use for each field (its parent type, its path from the operation, its file and line), fragments are resolved by name, and each use is one Map lookup (type name to the Set of its field names) in the schema; the schema is one GET of the endpoint's introspection query with the query in the address (or a file given with --schema); mutations and subscriptions are parsed and counted, and never sent; a field use whose parent type is in the schema and whose name is in neither that type's fields nor, for an interface or a union, the fields of any type it can be",
   ],
   "delivery-receipt-missing": [
     "More orders were paid in Stripe than the mail provider has sent emails for, in the same window.",

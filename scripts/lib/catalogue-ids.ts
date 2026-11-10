@@ -7,6 +7,7 @@ import {
   PRESENCE_CHECKS,
   PRICE_CHECKS,
   PRINTED_CHECKS,
+  GRAPHQL_CHECKS,
   MUTATION_CHECKS,
   QUERY_CHECKS,
   QUERY_DUPE_CHECKS,
@@ -30,6 +31,7 @@ export function CATALOGUE_IDS(): string[] {
   for (const c of QUERY_CHECKS) registry.register(c);
   for (const c of QUERY_DUPE_CHECKS) registry.register(c);
   for (const c of MUTATION_CHECKS) registry.register(c);
+  for (const c of GRAPHQL_CHECKS) registry.register(c);
   for (const c of RECEIPT_CHECKS) registry.register(c);
   for (const c of WEBHOOK_CHECKS) registry.register(c);
   for (const c of CUTOVER_ONLY_CHECKS) registry.register(c);

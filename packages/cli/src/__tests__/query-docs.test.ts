@@ -1,6 +1,9 @@
 import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { Readable } from "node:stream";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import type { Transport } from "@gaugeline/core";
 import { COPPERHILL_COUNTS, sanityCountsTransport } from "@gaugeline/testkit";
 import { EXIT, main } from "../main.js";
 
@@ -16,6 +19,20 @@ const page = readFileSync(
 ).replace(/\r\n/g, "\n");
 const repo = fileURLToPath(new URL("../../../fixtures/repo-groq/", import.meta.url));
 const writes = fileURLToPath(new URL("../../../fixtures/repo-mutations/", import.meta.url));
+const gql = fileURLToPath(new URL("../../../fixtures/repo-gql/", import.meta.url));
+const introspection = readFileSync(join(gql, "sanity-introspection.json"), "utf8");
+
+/** Sanity's two addresses, recorded: the GraphQL one answers the schema, the query one counts. */
+const northfield: Transport = (url, req) =>
+  url.pathname.startsWith("/v1/graphql/")
+    ? Promise.resolve({
+        status: 200,
+        headers: { "content-type": "application/json" },
+        body: Readable.from([Buffer.from(introspection)]),
+      })
+    : sanityCountsTransport({
+        types: { resource: { total: 9, defined: { summary: 0 } }, event: { total: 4 } },
+      })(url, req);
 
 function fences(): Array<{ info: string; body: string }> {
   const out: Array<{ info: string; body: string }> = [];
@@ -35,7 +52,7 @@ function examples(): Array<{ command: string; env: Record<string, string>; expec
   all.forEach((f, i) => {
     const next = all[i + 1];
     const m =
-      /^\$ (SANITY_PROJECT_ID=([a-z0-9]+) )?npx gaugeline (query \S+(?: --dupes| --mutations)?)$/.exec(
+      /^\$ (SANITY_PROJECT_ID=([a-z0-9]+) )?npx gaugeline (query \S+(?: --dupes| --mutations| --graphql(?: --schema \S+)?)?)$/.exec(
         f.body,
       );
     if (!/title=Terminal/.test(f.info) || !m) return;
@@ -54,6 +71,8 @@ describe("docs/query-check.md: the command it shows", () => {
     expect(examples().map((e) => e.command)).toEqual([
       "query ./src/app",
       "query ./src/app",
+      "query . --graphql",
+      "query . --graphql --schema ./schema.graphql",
       "query ./app --mutations",
       "query ./src/app/menu --dupes",
     ]);
@@ -72,14 +91,24 @@ describe("docs/query-check.md: the command it shows", () => {
         },
         {
           // The mutations example runs in the invented studio repository, whose schema.json is the default.
-          cwd: e.command.includes("--mutations") ? writes : repo,
+          cwd: e.command.includes("--graphql")
+            ? gql
+            : e.command.includes("--mutations")
+              ? writes
+              : repo,
           now: () => new Date("2026-11-10T12:00:00Z"),
-          fetcher: { transport: sanityCountsTransport(COPPERHILL_COUNTS), timeoutMs: 5000 },
+          fetcher: {
+            transport: e.command.includes("--graphql")
+              ? northfield
+              : sanityCountsTransport(COPPERHILL_COUNTS),
+            timeoutMs: 5000,
+          },
         },
       );
       expect(code, e.command).toBe(EXIT.ok);
       if (e.env.SANITY_PROJECT_ID) expect(err.join(""), e.command).toBe("");
-      else if (e.command.includes("--mutations")) expect(err.join(""), e.command).toBe("");
+      else if (e.command.includes("--mutations") || e.command.includes("--graphql"))
+        expect(err.join(""), e.command).toBe("");
       else expect(err.join(""), e.command).toContain("SANITY_PROJECT_ID is not set");
       expect(out.join("").trimEnd(), e.command).toBe(e.expected);
     }
@@ -110,6 +139,20 @@ describe("docs/query-check.md: the command it shows", () => {
       "cannot import the fetcher",
       "It never sends them.",
       "Larkspur Yoga Studio",
+    ])
+      expect(page, word).toContain(word);
+  });
+
+  it("the GraphQL section says how it asks, what it reads, and what it never sends", () => {
+    for (const word of [
+      "graphql-field-not-in-schema",
+      "--schema ./schema.graphql",
+      "never sends a `POST`",
+      "GRAPHQL_TOKEN",
+      "SANITY_TOKEN",
+      "parsed, counted and never sent",
+      "Northfield Coaching",
+      "exit code 2",
     ])
       expect(page, word).toContain(word);
   });

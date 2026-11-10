@@ -441,6 +441,16 @@ The answer is the id, the slug and the title of each document: nothing else is r
 
 `--mutations` reads the writes in your code and compares them with a schema file on your disk. It sends nothing: no request is made for a mutation, none could be (the code that reads them cannot import an HTTP client, and a test fails the build if it does), and it needs no `SANITY_PROJECT_ID`, no token and no network. The schema file and your source files are read from disk and stay there. A finding prints the file and line of a write and the names of the fields it writes, escaped. It never prints a value from your code. What the findings mean: [Checking your queries](/docs/query-check#mutations-checked-without-running-them); the proof: [What it can and can't write](/docs/writes#the-promise-test).
 
+### GraphQL (gaugeline query --graphql)
+
+`--graphql` sends one request for the schema, and it is a `GET` with the introspection query in the address, which is how GraphQL over HTTP sends a query that way:
+
+```text
+GET <endpoint>?query=query+IntrospectionQuery{__schema{queryType{name}types{kind+name+fields(includeDeprecated:true){name+type{...TypeRef}}interfaces{name}possibleTypes{name}}}}fragment+TypeRef+on+__Type{...}
+```
+
+The query is a constant: no text from your repository is in it, so a mutation or a subscription in your code is parsed and counted and never reaches a request, and the introspection query does not ask for the mutation or subscription root. Gaugeline never sends a `POST`, so a server that takes `POST` only is answered with exit 2 and the `--schema <file>` option, which reads the schema from your disk and asks nothing. The endpoint is the address you gave, or Sanity's GraphQL address for your project. A token goes in an `Authorization` header and never in the address: `SANITY_TOKEN` to Sanity's own address, and `GRAPHQL_TOKEN` to any other, so a Sanity token is never offered to another server; a token is not sent over plain `http`, except to an address on this computer. The answer is the names of types and fields, which stay in memory and are not printed except as the name of a field your code asks for that the schema lacks. For a Sanity endpoint the same document types are then counted as under Query counts above: one `GET` for each type, counts only. Any other endpoint is not counted, and the output says so. What the findings mean: [Checking your queries](/docs/query-check#graphql-the-same-way).
+
 ### Email records
 
 The email record checks run only when you pass `--dns`: without it, a run makes HTTP requests

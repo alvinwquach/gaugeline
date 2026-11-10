@@ -172,8 +172,12 @@ export type ParsedArgs =
       dupes: boolean;
       /** --mutations: read the writes in the code and check their shapes against the schema. Nothing is sent. */
       mutations: boolean;
-      /** --schema: the schema file for --mutations (default ./schema.json). */
+      /** --graphql: check the GraphQL documents against the schema; `endpoint` is the address that followed it. */
+      graphql?: { endpoint?: string };
+      /** --schema: the schema file for --mutations (default ./schema.json), or for --graphql (SDL or introspection JSON). */
       schema?: string;
+      /** --allow-private: an endpoint on this computer or a private network may be asked. */
+      allowPrivate: boolean;
       verbose: boolean;
       quiet: boolean;
     }
@@ -612,19 +616,42 @@ export function parseCliArgs(
     };
   }
   if (command === "query") {
-    if (positionals.length !== 1)
+    const graphql = values.graphql === true;
+    if (positionals.length !== 1 && !(graphql && positionals.length === 2))
       return {
         kind: "error",
         message: "gaugeline query needs one folder: gaugeline query ./src",
-        hint: "Give the folder that holds your source files. It reads GROQ from them; with SANITY_PROJECT_ID set it also counts the documents in your dataset.",
+        hint: "Give the folder that holds your source files. It reads GROQ from them; with SANITY_PROJECT_ID set it also counts the documents in your dataset. With --graphql an endpoint address may follow.",
         verbose,
       };
-    if (typeof values.schema === "string" && values.mutations !== true)
+    const endpoint = positionals[1];
+    if (endpoint !== undefined && !/^https?:\/\//i.test(endpoint))
+      return {
+        kind: "error",
+        message: `${endpoint} is not an endpoint address: gaugeline query ./src --graphql https://example.com/graphql`,
+        hint: "An endpoint starts with https:// (or http://). Leave it out to ask Sanity's GraphQL API for your project, or use --schema <file>.",
+        verbose,
+      };
+    if (graphql && (values.dupes === true || values.mutations === true))
+      return {
+        kind: "error",
+        message: "--graphql is its own run: it cannot be combined with --dupes or --mutations.",
+        hint: "Run them one at a time: gaugeline query ./src --graphql, then gaugeline query ./src --mutations.",
+        verbose,
+      };
+    if (graphql && endpoint !== undefined && typeof values.schema === "string")
+      return {
+        kind: "error",
+        message: "--graphql takes an endpoint or --schema <file>, not both.",
+        hint: "--schema reads the schema from a file and asks no endpoint. Leave the address out.",
+        verbose,
+      };
+    if (typeof values.schema === "string" && values.mutations !== true && !graphql)
       return {
         kind: "error",
         message:
-          "--schema is for --mutations: gaugeline query ./src --mutations --schema ./schema.json",
-        hint: "--schema names the file that `sanity schema extract` wrote, and only the mutation checks read it.",
+          "--schema is for --mutations or --graphql: gaugeline query ./src --mutations --schema ./schema.json",
+        hint: "--schema names the file that `sanity schema extract` wrote for the mutation checks, or a GraphQL schema (SDL or introspection JSON) for --graphql.",
         verbose,
       };
     return {
@@ -634,7 +661,9 @@ export function parseCliArgs(
       ci: values.ci === true,
       dupes: values.dupes === true,
       mutations: values.mutations === true,
+      ...(graphql ? { graphql: endpoint === undefined ? {} : { endpoint } } : {}),
       ...(typeof values.schema === "string" ? { schema: values.schema } : {}),
+      allowPrivate: values["allow-private"] === true,
       verbose,
       quiet: values.quiet === true,
     };

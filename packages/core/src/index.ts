@@ -1062,8 +1062,35 @@ export type {
   SchemaShape,
   ValueKind,
 } from "./query/mutations.js";
-export { checkMutationsOnly, compareQueries } from "./query/run.js";
-export type { QueryCompareOptions, QueryCompareRun } from "./query/run.js";
+export {
+  GRAPHQL_TITLES,
+  GRAPHQL_TOKEN,
+  INTROSPECTION_QUERY,
+  checkGraphql,
+  defaultGraphqlEndpoint,
+  displayEndpoint,
+  extractGraphql,
+  graphqlShapes,
+  graphqlToken,
+  introspect,
+  isDocumentType,
+  isSanityHost,
+  parseSanityEndpoint,
+  readGraphqlSchemaFile,
+  sanityGraphqlEndpoint,
+  schemaFromIntrospection,
+  schemaFromSdl,
+  schemaFromText,
+} from "./query/graphql.js";
+export type {
+  GqlFieldUse,
+  GqlSchema,
+  GqlStep,
+  GraphqlExtractOptions,
+  GraphqlExtraction,
+} from "./query/graphql.js";
+export { checkMutationsOnly, compareGraphql, compareQueries } from "./query/run.js";
+export type { GraphqlCompareOptions, QueryCompareOptions, QueryCompareRun } from "./query/run.js";
 export {
   QUERY_CHECKS,
   createQueryRegistry,
@@ -1073,6 +1100,11 @@ export {
   queryTypeEmpty,
 } from "./checks/query-counts.js";
 export type { QueryInput } from "./checks/query-counts.js";
+export {
+  GRAPHQL_CHECKS,
+  createGraphqlRegistry,
+  graphqlFieldNotInSchema,
+} from "./checks/query-graphql.js";
 export {
   MUTATION_CHECKS,
   createMutationsRegistry,
