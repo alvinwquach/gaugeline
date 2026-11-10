@@ -18,6 +18,7 @@ export const SUBCOMMANDS = [
   "run",
   "open",
   "assert",
+  "ads",
 ] as const;
 export type CliCommand = "check" | (typeof SUBCOMMANDS)[number];
 
@@ -135,6 +136,14 @@ export type ParsedArgs =
       quiet: boolean;
     }
   | {
+      kind: "ads";
+      /** gaugeline ads <export.csv>: the Meta or Google Ads export to read. */
+      file: string;
+      json: boolean;
+      verbose: boolean;
+      quiet: boolean;
+    }
+  | {
       kind: "assert";
       /** gaugeline assert --list: print the assertions and run none. */
       list: boolean;
@@ -214,7 +223,9 @@ export function parseCliArgs(
                         ? "open"
                         : argv[0] === "assert"
                           ? "assert"
-                          : COMMAND;
+                          : argv[0] === "ads"
+                            ? "ads"
+                            : COMMAND;
   const given = command === COMMAND ? argv : argv.slice(1);
   // --annotate and --progress take an optional file name: alone, or before another flag, the default.
   const rest = given.map((a, i) =>
@@ -496,6 +507,22 @@ export function parseCliArgs(
       limit: Number(limitText),
       ci: values.ci === true,
       allowPrivate: values["allow-private"] === true,
+      verbose,
+      quiet: values.quiet === true,
+    };
+  }
+  if (command === "ads") {
+    if (positionals.length !== 1)
+      return {
+        kind: "error",
+        message: "gaugeline ads needs one ads export: gaugeline ads ads-export.csv",
+        hint: "Export your ads from Meta Ads Manager or Google Ads as CSV and keep the link and amount-spent columns.",
+        verbose,
+      };
+    return {
+      kind: "ads",
+      file: positionals[0] ?? "",
+      json: values.json === true,
       verbose,
       quiet: values.quiet === true,
     };

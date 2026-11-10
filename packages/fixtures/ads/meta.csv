@@ -1,0 +1,13 @@
+Reporting starts,Reporting ends,Ad name,Delivery status,Website URL,Impressions,Link clicks,Cost per result,Amount spent (USD)
+2026-10-01,2026-10-31,Happy hour 1,active,https://tapas-bar.example/happy-hour?utm_source=facebook&utm_medium=paid&utm_campaign=autumn-menu,18400,412,0.73,300.00
+2026-10-01,2026-10-31,Happy hour 2,active,https://tapas-bar.example/happy-hour?utm_source=facebook&utm_medium=paid&utm_campaign=autumn-menu,15200,301,0.83,250.50
+2026-10-01,2026-10-31,Happy hour 3,active,https://tapas-bar.example/happy-hour?utm_source=instagram&utm_medium=paid&utm_campaign=two-for-one,14100,288,0.87,250.00
+2026-10-01,2026-10-31,Happy hour 4,active,https://tapas-bar.example/happy-hour?utm_source=instagram&utm_medium=paid&utm_campaign=two-for-one,9800,190,1.07,204.00
+2026-10-01,2026-10-31,Happy hour 5,active,https://tapas-bar.example/happy-hour?fbclid=IwAR0demo000fixture,8700,160,1.25,200.00
+2026-10-01,2026-10-31,Book a table 1,active,https://tapas-bar.example/book-a-table?utm_source=facebook&utm_medium=paid&utm_campaign=autumn-menu,12100,260,1.54,400.00
+2026-10-01,2026-10-31,Book a table 2,active,https://tapas-bar.example/book-a-table?utm_source=instagram&utm_medium=paid&utm_campaign=autumn-menu,7600,141,1.77,250.00
+2026-10-01,2026-10-31,Book a table 3,paused,https://tapas-bar.example/book-a-table?utm_campaign=friends-night,4300,77,1.95,150.00
+2026-10-01,2026-10-31,Gift cards 1,active,https://tapas-bar.example/gift-cards?utm_source=facebook&utm_medium=paid&utm_campaign=gifts#cards,3100,52,1.45,75.25
+2026-10-01,2026-10-31,Gift cards 2,active,https://tapas-bar.example/gift-cards?utm_source=instagram&utm_medium=paid&utm_campaign=gifts,2400,39,1.29,50.50
+2026-10-01,2026-10-31,Gift cards 3,active,https://tapas-bar.example/gift-cards,1100,20,1.25,25.00
+2026-10-01,2026-10-31,Old menu,active,https://tapas-bar.example/old-menu,21000,150,6.67,999.99

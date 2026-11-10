@@ -383,10 +383,11 @@ how each row is worked out. What matters for the app:
   one table for each currency, and amounts in different ones are never added together.
 - **Download the report** appears only when the ads command makes a report for the run.
 
-::: warning Not in this version yet
-Reading an export and checking its pages is the ads command, which is built after the app. Until it
-ships, `gaugeline open --ads` says so and exits with code 2. The view, and everything above, is built
-and tested against results from a stand-in for that command.
+::: warning Findings come with the checks
+`gaugeline open --ads` reads the export and groups its ads by landing page, so the view lists every
+page with its ads and spend. The checks on those pages (a page that does not load, campaign tags
+lost, sold out, placeholder text) arrive after it, one at a time. Until then the findings column is
+empty and the summary says no spend went to pages with problems, which means none was looked for.
 :::
 
 ## Coming in version 0.2

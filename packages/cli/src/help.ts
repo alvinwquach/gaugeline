@@ -14,6 +14,7 @@ export const COMMANDS = [
   "run",
   "open",
   "assert",
+  "ads",
 ] as const;
 export type Command = (typeof COMMANDS)[number];
 
@@ -104,6 +105,16 @@ export const HELP: Record<string, string> = {
       "resolve each payload to the page it belongs to. Makes no request.",
     ].join("\n"),
     footer: "Exit codes: 0 read, 2 the export has no address column or could not be read",
+  }),
+  ads: renderHelp(FLAGS, "ads", {
+    usage: "gaugeline ads <export.csv> [options]",
+    summary: [
+      "Read a Meta Ads Manager or Google Ads export (a link column and an",
+      "amount-spent column) and group its ads by the page they send people to: one",
+      "line for each page with its number of ads and the spend, highest first.",
+      "Makes no request.",
+    ].join("\n"),
+    footer: "Exit codes: 0 read, 2 the export could not be read or lacks a needed column",
   }),
   assert: renderHelp(FLAGS, "assert", {
     usage: "gaugeline assert <id> | --list [options]",

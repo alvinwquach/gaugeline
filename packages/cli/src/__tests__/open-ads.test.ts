@@ -1,14 +1,19 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { connect } from "node:net";
+import { fileURLToPath } from "node:url";
 import type { AdsEngine, AdsOutcome } from "@gaugeline/app-server";
 import { buildResult } from "@gaugeline/core";
+import { startFixture } from "@gaugeline/fixtures";
 import { afterEach, describe, expect, it } from "vitest";
 import { scratchClientDir } from "../../../app-server/src/__tests__/helpers/client.js";
 import { parseCliArgs } from "../args.js";
 import { FLAGS } from "../flags.js";
 import { EXIT, main } from "../main.js";
 import { runBin } from "./helpers/bin.js";
+
+const ADS = fileURLToPath(new URL("../../../fixtures/ads/", import.meta.url));
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -199,11 +204,133 @@ describe("gaugeline open --ads: starting", () => {
   });
 });
 
-describe("gaugeline open --ads: the built bin", () => {
-  it("says plainly that the ads command is not in this version yet, exits 2 and starts nothing", async () => {
-    const r = await runBin(["open", "--ads", file(), "--no-open"]);
+describe("gaugeline open --ads: the ads command that ships with this version", () => {
+  const FIXED = new Date("2026-11-10T09:00:00Z");
+
+  /** One GET to the app on 127.0.0.1, with the Host and cookie a browser would send. */
+  function get(port: number, path: string, cookie = ""): Promise<{ head: string; body: string }> {
+    return new Promise((resolve, reject) => {
+      const c = connect({ host: "127.0.0.1", port }, () =>
+        c.write(
+          `GET ${path} HTTP/1.1\r\nHost: localhost:${port}\r\n${cookie ? `Cookie: ${cookie}\r\n` : ""}Connection: close\r\n\r\n`,
+        ),
+      );
+      let data = "";
+      c.on("data", (d: Buffer) => (data += d.toString()));
+      c.on("end", () => {
+        const i = data.indexOf("\r\n\r\n");
+        resolve({ head: data.slice(0, i), body: data.slice(i + 4) });
+      });
+      c.on("error", reject);
+    });
+  }
+
+  /** Start `open --ads <file>` in this process with the engine that ships, and call its API. */
+  async function withApp<T>(
+    path: string,
+    use: (api: (path: string) => Promise<unknown>) => Promise<T>,
+  ): Promise<T> {
+    const c = capture();
+    const stop = new AbortController();
+    const done = main(["open", "--ads", path, "--no-open"], c.io, {
+      clientDir: scratchClientDir(),
+      stop: stop.signal,
+      now: () => FIXED,
+    });
+    try {
+      await expect.poll(() => c.out(), { timeout: 10_000 }).toContain("Gaugeline is running at");
+      const link = new URL(/Gaugeline is running at (\S+)/.exec(c.out())?.[1] ?? "");
+      const port = Number(link.port);
+      const first = await get(port, `/${link.search}`);
+      const cookie = /^set-cookie: ([^;]+)/im.exec(first.head)?.[1] ?? "";
+      // The run is added when the server starts and finishes on its own; wait for it to be done.
+      const api = async (p: string) => JSON.parse((await get(port, p, cookie)).body) as unknown;
+      await expect
+        .poll(async () => ((await api("/api/runs")) as { state: string }[])[0]?.state, {
+          timeout: 10_000,
+        })
+        .toBe("done");
+      return await use(api);
+    } finally {
+      stop.abort();
+      expect(await done).toBe(EXIT.ok);
+    }
+  }
+
+  it("lists one run of kind ads whose result deep-equals `gaugeline ads --json`", async () => {
+    const path = join(ADS, "meta.csv");
+    const command = capture();
+    expect(await main(["ads", path, "--json"], command.io, { now: () => FIXED })).toBe(EXIT.ok);
+    const expected: unknown = JSON.parse(command.out());
+
+    await withApp(path, async (api) => {
+      const runs = (await api("/api/runs")) as { id: string; kind: string; url: string }[];
+      expect(runs).toHaveLength(1);
+      expect(runs[0]).toMatchObject({ kind: "ads", url: "meta.csv" });
+      const run = (await api(`/api/runs/${runs[0]?.id}`)) as {
+        result: unknown;
+        checked: { ads: { currencies: { currency: string; destinations: unknown[] }[] } };
+      };
+      expect(run.result).toEqual(expected);
+      // The spend behind the destinations: integers in minor units, summed per page.
+      expect(run.checked.ads.currencies).toEqual([
+        {
+          currency: "USD",
+          destinations: [
+            { url: "https://tapas-bar.example/happy-hour", ads: 5, spend: 120450 },
+            { url: "https://tapas-bar.example/old-menu", ads: 1, spend: 99999 },
+            { url: "https://tapas-bar.example/book-a-table", ads: 3, spend: 80000 },
+            { url: "https://tapas-bar.example/gift-cards", ads: 3, spend: 15075 },
+          ],
+        },
+      ]);
+    });
+  });
+
+  it("12 ads over 4 destinations ask the fixture for at most one page each, only by GET or HEAD", async () => {
+    const site = await startFixture("clean");
+    try {
+      const paths = ["", "about.html", "menu.html", "missing.html"];
+      const path = file(
+        "local-ads.csv",
+        [
+          "Ad name,Website URL,Amount spent (USD)",
+          ...Array.from(
+            { length: 12 },
+            (_, i) => `Ad ${i},${site.origin}/${paths[i % 4]}?utm_campaign=c${i},10.00`,
+          ),
+        ].join("\n"),
+      );
+      await withApp(path, async (api) => {
+        const runs = (await api("/api/runs")) as { id: string }[];
+        const run = (await api(`/api/runs/${runs[0]?.id}`)) as {
+          checked: { ads: { currencies: { destinations: unknown[] }[] } };
+        };
+        expect(run.checked.ads.currencies[0]?.destinations).toHaveLength(4);
+      });
+      // The pages are checked in G24a and G24b, one request per destination. Until then this
+      // version asks for none; the bound holds in both cases, and G24a makes it exactly 4.
+      expect(site.total).toBeLessThanOrEqual(4);
+      expect([...site.methods.keys()].every((m) => m === "GET" || m === "HEAD")).toBe(true);
+    } finally {
+      await site.close();
+    }
+  });
+
+  it("an export with no link column exits 2 with the headers it found, and no server starts", async () => {
+    const c = capture();
+    const code = await main(["open", "--ads", join(ADS, "no-link.csv"), "--no-open"], c.io, {
+      clientDir: scratchClientDir(),
+    });
+    expect(code).toBe(EXIT.couldNotRun);
+    expect(c.err()).toContain("Headers found: Ad name, Impressions, Amount spent (USD).");
+    expect(c.out()).not.toContain("Gaugeline is running");
+  });
+
+  it("the built bin: an export with no spend column exits 2 and prints no link", async () => {
+    const r = await runBin(["open", "--ads", join(ADS, "no-spend.csv"), "--no-open"]);
     expect(r.status).toBe(2);
-    expect(r.stderr).toContain("needs the ads command, which is not part of this version");
+    expect(r.stderr).toContain("The export has no amount-spent column.");
     expect(r.stdout).toBe("");
   });
 });
