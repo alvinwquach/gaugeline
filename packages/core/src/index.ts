@@ -1143,6 +1143,17 @@ export type {
   SuggestOptions,
   SuggestRun,
 } from "./query/run.js";
+export {
+  BASELINE_SCHEMA,
+  diffBaseline,
+  gapKey,
+  gapOf,
+  likelyRenames,
+  parseBaseline,
+  serializeBaseline,
+  toBaseline,
+} from "./query/baseline.js";
+export type { BaselineGap, QueryBaseline } from "./query/baseline.js";
 export { DEFAULT_SAMPLE, MAX_SAMPLE, readContentShape } from "./query/content-shape.js";
 export type { ContentShape, FieldKind, FieldShape } from "./query/content-shape.js";
 export { suggestQuery } from "./query/suggest.js";

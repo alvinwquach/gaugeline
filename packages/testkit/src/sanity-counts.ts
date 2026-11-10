@@ -169,3 +169,14 @@ export const COPPERHILL_COUNTS: FakeSanity = {
     recipe: { total: 6, defined: { publishedAt: 4 } },
   },
 };
+
+/**
+ * The same bakery's dataset the day before the freelancer moved the pop-ups' `date` field to
+ * `startsAt` (docs/query-check.md, "Before a restructure"): every published popup still has `date`.
+ * Everything else is as in COPPERHILL_COUNTS, so the only gaps the move creates are the two queries
+ * that still ask for `date`.
+ */
+export const COPPERHILL_BEFORE_RENAME: FakeSanity = {
+  ...COPPERHILL_COUNTS,
+  types: { ...COPPERHILL_COUNTS.types, popup: { total: 9 } },
+};

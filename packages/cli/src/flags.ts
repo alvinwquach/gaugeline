@@ -207,6 +207,22 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     multiple: true,
   },
   {
+    name: "save",
+    type: "string",
+    description:
+      "With query: save today's gaps (names only) to this file, to compare a later run with",
+    since: "0.2.0",
+    commands: ["query"],
+  },
+  {
+    name: "against",
+    type: "string",
+    description:
+      "With query: list the gaps created since the --save file, and those it closed; --ci fails on a new high one",
+    since: "0.2.0",
+    commands: ["query"],
+  },
+  {
     name: "type",
     type: "string",
     description:
@@ -315,7 +331,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     name: "force",
     type: "boolean",
     description:
-      "Let --annotate (plan) or --page (query) replace files that already exist, never a folder or a link",
+      "Let --annotate (plan), --page or --save (query) replace files that already exist, never a folder or a link",
     since: "0.2.0",
     commands: ["plan", "query"],
   },
