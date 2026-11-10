@@ -140,6 +140,14 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     commands: ["delivery"],
   },
   {
+    name: "dupes",
+    type: "boolean",
+    description:
+      "With query: name documents that share a slug or a title (reads each one's id, slug and title)",
+    since: "0.2.0",
+    commands: ["query"],
+  },
+  {
     name: "webhooks",
     type: "boolean",
     description: "Read Stripe's webhook endpoints and the events that were never delivered",

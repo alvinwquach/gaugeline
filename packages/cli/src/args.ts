@@ -168,6 +168,8 @@ export type ParsedArgs =
       dir: string;
       json: boolean;
       ci: boolean;
+      /** --dupes: also read each published document's id, slug and title and report shared ones. */
+      dupes: boolean;
       verbose: boolean;
       quiet: boolean;
     }
@@ -618,6 +620,7 @@ export function parseCliArgs(
       dir: positionals[0] ?? "",
       json: values.json === true,
       ci: values.ci === true,
+      dupes: values.dupes === true,
       verbose,
       quiet: values.quiet === true,
     };

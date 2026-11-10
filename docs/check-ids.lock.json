@@ -169,6 +169,8 @@
   "printful-orphan",
   "printful-price",
   "printful-unsynced",
+  "query-dupe-slug",
+  "query-dupe-title",
   "query-field-absent",
   "query-field-partial",
   "query-no-drafts-filter",

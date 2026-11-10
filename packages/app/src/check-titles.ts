@@ -132,6 +132,7 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "plan-price-mismatch": ["A plan's price on the page differs from checkout", "Sales & prices"],
   "query-field-absent": ["A field your query asks for is on no document", "Visitors"],
   "query-type-empty": ["A document type your query asks for has no documents", "Visitors"],
+  "query-dupe-slug": ["Two documents share a slug", "Visitors"],
   "delivery-receipt-missing": ["Orders were paid and no receipt went out", "Sales & prices"],
   "webhook-failing": ["A webhook endpoint is not receiving its events", "Sales & prices"],
   "cutover-canonical-host": ["The bare domain and www don't settle on one address", "Launch day"],
@@ -251,6 +252,7 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "stripe-no-price": ["No default price in checkout", "Sales & prices"],
   "plan-trial-mismatch": ["A plan's free trial differs from checkout", "Sales & prices"],
   "query-no-drafts-filter": ["A query does not leave drafts out", "Security & email"],
+  "query-dupe-title": ["Two documents share a title", "Search & sharing"],
   "webhook-disabled": ["A webhook endpoint is switched off", "Sales & prices"],
   "cutover-certificate-changed": [
     "The certificate no longer covers a name it did",
@@ -831,6 +833,12 @@ export const CHECK_TEXT: Readonly<
     "Check the type's name in the Studio against the one in the query, or publish the documents. A document that is only a draft does not count.",
     "one GET of the query endpoint for each document type (perspective=published, so drafts are never counted), asking for count(*[_type == T]) and count(*[_type == T && defined(path)]) for each distinct field path, held in a Map from type to a Map from path to an integer; a reference or an array of objects is counted at the field itself (topic, not topic->title); the answer is integers, so no document and no field value is read; count(*[_type == T]) is 0",
   ],
+  "query-dupe-slug": [
+    "Two or more published documents of one type have the same slug.",
+    "A slug is the address. Only one document can own it, so a page built from the other cannot be reached, or the site shows whichever the query happens to return first.",
+    "Open the documents named by their ids in the Studio. Delete the copy you do not want, or give it its own slug.",
+    'one GET of the query endpoint for each document type (perspective=published, so drafts are never read), projecting only _id, "slug": slug.current and title; one pass puts each id into a Map from the slug as it is, or from the trimmed and lower-cased title, to the ids that have it, and a bucket with more than one id is a group; documents with no slug or no title are left out of that key, a draft id is skipped, and types are grouped apart; a slug shared by two or more ids of one type',
+  ],
   "delivery-receipt-missing": [
     "More orders were paid in Stripe than the mail provider has sent emails for, in the same window.",
     "A customer who paid and got nothing has no receipt, no download link and no booking confirmation, and does not know whether the payment worked. Your application's log says the send succeeded, because it records the attempt; the mail provider records what it accepted and sent.",
@@ -1328,6 +1336,12 @@ export const CHECK_TEXT: Readonly<
     "With the published perspective in the client that is safe. If anything runs the query with drafts included (preview mode, a token with the wrong perspective), unpublished content reaches a visitor.",
     'Add !(_id in path("drafts.**")) to the filter, or make sure the client always asks for the published perspective. Gaugeline cannot see the client, only the query.',
     'read from the repository with no request: the query\'s filter is parsed and does not require !(_id in path("drafts.**")) (or match "drafts.*") in an && chain',
+  ],
+  "query-dupe-title": [
+    "Two or more published documents of one type are called the same thing, ignoring case and spaces around the title.",
+    "Different addresses, same name: usually content that was duplicated and not moved, which splits search results between two pages. It can also be two real pages that need different names.",
+    "Open the documents named by their ids. If one is a copy, delete it and redirect its address; if both are real, rename one so a visitor can tell them apart.",
+    'one GET of the query endpoint for each document type (perspective=published, so drafts are never read), projecting only _id, "slug": slug.current and title; one pass puts each id into a Map from the slug as it is, or from the trimmed and lower-cased title, to the ids that have it, and a bucket with more than one id is a group; documents with no slug or no title are left out of that key, a draft id is skipped, and types are grouped apart; a title shared by two or more ids of one type that do not all share one slug',
   ],
   "webhook-disabled": [
     "A Stripe webhook endpoint has the status disabled.",

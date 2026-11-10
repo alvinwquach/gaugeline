@@ -1042,6 +1042,8 @@ export {
   fetchCounts,
 } from "./query/counts.js";
 export type { FetchCountsOptions, TypeCounts } from "./query/counts.js";
+export { DUPE_TITLES, dupeFindings, dupesQuery, findDupes } from "./query/dupes.js";
+export type { DupeGroup } from "./query/dupes.js";
 export { compareQueries } from "./query/run.js";
 export type { QueryCompareOptions, QueryCompareRun } from "./query/run.js";
 export {
@@ -1053,6 +1055,12 @@ export {
   queryTypeEmpty,
 } from "./checks/query-counts.js";
 export type { QueryInput } from "./checks/query-counts.js";
+export {
+  QUERY_DUPE_CHECKS,
+  createDupesRegistry,
+  queryDupeSlug,
+  queryDupeTitle,
+} from "./checks/query-dupes.js";
 export {
   QueryTooLongError,
   SANITY_DATASET,
