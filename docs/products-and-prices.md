@@ -13,6 +13,8 @@ $ SANITY_PROJECT_ID=abc123 SANITY_TOKEN=… STRIPE_API_KEY=rk_live_… PRINTFUL_
 | Sanity   | `SANITY_PROJECT_ID`, `SANITY_DATASET`, `SANITY_TOKEN` | Read. **A private dataset needs a read-only token** (Viewer role); a public one works without         |
 | Stripe   | `STRIPE_API_KEY`                                      | Read products and prices. **A restricted key only**; a secret key is refused ([how](#reading-stripe)) |
 | Printful | `PRINTFUL_API_TOKEN`, `PRINTFUL_STORE_ID`             | Read store products. **A token that can only view them** ([which](#choose-the-narrowest-token))       |
+| Shopify  | `SHOPIFY_ACCESS_TOKEN`, `SHOPIFY_SHOP_DOMAIN`         | Read products. **The `read_products` scope only** ([how](/docs/sources/shopify))                      |
+| Square   | `SQUARE_ACCESS_TOKEN`                                 | Read the item catalogue. **The `ITEMS_READ` permission only** ([how](/docs/sources/square))           |
 
 <!-- diagram: systems (drawn on the landing page; not reproduced here) -->
 
@@ -361,7 +363,7 @@ Keys stay on your computer, are only read from environment variables, and are ne
 
 ## In this version: the connector interface
 
-The three systems above are read through one small interface, `Connector`. This version ships the interface, the runner, the key handling, the Sanity reader ([above](#reading-sanity)), the Stripe reader ([above](#reading-stripe)) and the Printful reader ([above](#reading-printful)). Nothing in a normal run requests Stripe or Printful yet: the comparisons that use them come with the price checks.
+The three systems above are read through one small interface, `Connector`. This version ships the interface, the runner, the key handling, the Sanity reader ([above](#reading-sanity)), the Stripe reader ([above](#reading-stripe)), the Printful reader ([above](#reading-printful)) and the [Shopify](/docs/sources/shopify) and [Square](/docs/sources/square) readers, which return the same catalogue shape. Nothing in a normal run requests Stripe, Printful, Shopify or Square yet: the comparisons that use them come with the price checks.
 
 A connector has an `id`, the names of the variables it needs (`envVars`), a `configured` test and a `read` that returns a list. It may also list variables it reads when they are set (`optionalEnvVars`), say which of its variables are keys (`secretEnvVars`, so only those are blanked in messages), and give advice (`advise`). `runConnectors` reads every configured connector at the same time and returns two things: `data`, the rows by connector id, and `notices`, one for every system that gave none, and any advice.
 
