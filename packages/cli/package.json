@@ -37,6 +37,14 @@
     "build": "tsup",
     "typecheck": "tsc -p tsconfig.json"
   },
+  "peerDependencies": {
+    "typescript": ">=5.0.0 <7"
+  },
+  "peerDependenciesMeta": {
+    "typescript": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "@gaugeline/app": "workspace:*",
     "@gaugeline/app-server": "workspace:*",

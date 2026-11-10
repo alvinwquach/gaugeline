@@ -380,6 +380,16 @@ What they read, what keys to make, and how the match is made: [Paid downloads an
 delivery](delivery.md#paid-and-the-receipt-never-went-out). What they send:
 [Privacy and safety](privacy.md#orders-emails-and-webhooks-delivery-and-platform).
 
+### The query command
+
+`gaugeline query <folder>` reads the GROQ in a repository instead of checking a site. It takes one folder, has no options of its own, and reads files only: it makes no request, needs no token and sends nothing. For every query it finds (`groq` tagged templates and `defineQuery()` calls in `.ts`, `.tsx`, `.js`, `.jsx` and `.mjs` files) it prints the document type, the fields the query reads, whether its filter leaves drafts out, its parameters, and the file and line it starts on. A query built at run time, a file that does not parse and a query with no `_type` filter are listed as unreadable, never skipped.
+
+```sh
+npx gaugeline query ./src
+```
+
+It exits 0 when it read the folder and 2 when the folder does not exist or TypeScript is not installed beside it (`npx -p gaugeline -p typescript gaugeline query ./src` brings it). What it reads and what it lists as unreadable: [Checking your queries](query-check.md#what-the-command-reads).
+
 ### Probing checks (--owner-consent and --routes)
 
 Most checks read what any visitor can read. A **probing** check asks something that should be protected
