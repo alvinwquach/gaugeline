@@ -45,6 +45,7 @@ const FIXTURES = [
   "tampered",
   "stripe-test-mode",
   "form-checks",
+  "paid-downloads",
 ];
 
 /**

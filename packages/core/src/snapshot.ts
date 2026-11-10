@@ -81,6 +81,18 @@ export interface PageSnapshot {
    * `iframes`, so a form and a tracking script can be put in order. `scripts` keeps the addresses alone.
    */
   scriptTags?: { src?: string; inline?: string; position: number }[];
+  /**
+   * Every button a visitor could press and every link, as written, in document order (at most
+   * BUTTONS_MAX): a, button, input type submit, button or image, any role="button", and any element
+   * with an onclick attribute. Elements that are hidden are left out. For the checkout checks.
+   */
+  buttons?: PageButton[];
+  /**
+   * The text a visitor can read without running JavaScript, on one line (script, style, noscript,
+   * template and hidden elements left out), cut at VISIBLE_TEXT_MAX characters. For checks that look
+   * for something written in the text, such as a price.
+   */
+  visibleText?: string;
   /** Every element id, for #anchor checks. */
   ids: Set<string>;
   /** Visible words without running JavaScript. */
@@ -90,6 +102,31 @@ export interface PageSnapshot {
   /** Sanity stega (zero-width) characters were found in the text and stripped. */
   stega: boolean;
 }
+
+/** One button, or link, as the page writes it. Nothing is resolved: `href` and `action` are the attributes. */
+export interface PageButton {
+  /** The tag: a, button, input (submit, button or image), or "other" for role="button" and onclick. */
+  kind: "a" | "button" | "input" | "other";
+  /** What it says: the text, or for an input its value, then aria-label or title. */
+  text: string;
+  /** a only: the href attribute, trimmed. Absent when the tag has no href. */
+  href?: string;
+  /** button and input: the type, lower case. A button with no type is "submit". */
+  type?: string;
+  /** button and input: the formaction attribute, trimmed. */
+  formAction?: string;
+  /** Set when the element is inside a form: the form's action attribute, trimmed, "" when it has none. */
+  form?: { action: string };
+  /** The element has an onclick attribute. */
+  onclick: boolean;
+}
+
+/** The most buttons kept for one page. */
+export const BUTTONS_MAX = 500;
+/** The most visible text kept for one page. */
+export const VISIBLE_TEXT_MAX = 100_000;
+/** The longest button text kept. */
+const BUTTON_TEXT_MAX = 200;
 
 /** Zero-width characters used by content source maps (stega) and stray BOMs. */
 const STEGA = /(?:\u200B|\u200C|\u200D|\u2060|\u2061|\u2062|\u2063|\u2064|\uFEFF)/g;
@@ -138,8 +175,8 @@ function isHiddenStyle(style: string | undefined): boolean {
   );
 }
 
-/** The words `wordCount` counts, in order. */
-function readableWords($: CheerioAPI, state: { stega: boolean }, chrome = false): string[] {
+/** The text a visitor can read without JavaScript: one line, words separated by single spaces. */
+function readableText($: CheerioAPI, state: { stega: boolean }, chrome = false): string {
   // htmlparser2 does not invent a <body>, so a fragment is wrapped to make find() see top-level tags.
   const copy =
     $("body").length > 0 ? $("body").clone() : $("<div></div>").append($.root().contents().clone());
@@ -155,9 +192,28 @@ function readableWords($: CheerioAPI, state: { stega: boolean }, chrome = false)
   copy.find("*").each((_, el) => {
     $(el).prepend(" ").append(" ");
   });
-  const text = clean(copy.text(), state);
+  return clean(copy.text(), state);
+}
+
+/** The words `wordCount` counts, in order. */
+function wordsOf(text: string): string[] {
   return text === "" ? [] : text.split(" ").filter((w) => /[\p{L}\p{N}]/u.test(w));
 }
+
+/** Is the element, or something around it, hidden from a visitor (hidden, aria-hidden, display:none)? */
+function isHiddenElement($: CheerioAPI, el: Parameters<CheerioAPI>[0]): boolean {
+  const self = $(el);
+  if (self.closest("[hidden], [aria-hidden='true']").length > 0) return true;
+  return (
+    self
+      .parents("[style]")
+      .addBack("[style]")
+      .filter((_, e) => isHiddenStyle($(e).attr("style"))).length > 0
+  );
+}
+
+/** The input types that press a button. */
+const BUTTON_INPUTS: ReadonlySet<string> = new Set(["submit", "button", "image"]);
 
 /** How much of an inline script is kept: enough for an embed call, never a whole bundle. */
 export const INLINE_SCRIPT_MAX = 16_384;
@@ -411,9 +467,42 @@ export function buildSnapshot(hops: Hop[]): PageSnapshot {
     if (id) ids.add(id);
   });
 
-  const readable = readableWords($, state);
+  const buttons: PageButton[] = [];
+  $("a, button, input, [role='button'], [onclick]").each((_, el) => {
+    if (buttons.length >= BUTTONS_MAX) return false;
+    const tag = el.tagName;
+    const self = $(el);
+    const inputType = ($(el).attr("type") ?? "").toLowerCase();
+    if (tag === "input" && !BUTTON_INPUTS.has(inputType)) return;
+    if (isHiddenElement($, el)) return;
+    const kind: PageButton["kind"] =
+      tag === "a" ? "a" : tag === "button" ? "button" : tag === "input" ? "input" : "other";
+    const text =
+      (tag === "input"
+        ? clean(self.attr("value") ?? self.attr("alt") ?? "", state)
+        : clean(self.text(), state)) ||
+      clean(self.attr("aria-label") ?? self.attr("title") ?? "", state);
+    const form = self.closest("form");
+    const formAction = self.attr("formaction")?.trim();
+    const href = self.attr("href")?.trim();
+    buttons.push({
+      kind,
+      text: text.slice(0, BUTTON_TEXT_MAX),
+      ...(kind === "a" && href !== undefined ? { href } : {}),
+      ...(kind === "button" ? { type: self.attr("type")?.trim().toLowerCase() || "submit" } : {}),
+      ...(kind === "input" ? { type: inputType } : {}),
+      ...((kind === "button" || kind === "input") && formAction !== undefined
+        ? { formAction }
+        : {}),
+      ...(form.length > 0 ? { form: { action: (form.attr("action") ?? "").trim() } } : {}),
+      onclick: self.attr("onclick") !== undefined,
+    });
+  });
+
+  const text = readableText($, state);
+  const readable = wordsOf(text);
   const wordCount = readable.length;
-  const contentWordCount = readableWords($, state, true).length;
+  const contentWordCount = wordsOf(readableText($, state, true)).length;
   const canonicalLink = $("link[rel]")
     .filter((_, el) => ($(el).attr("rel") ?? "").toLowerCase().split(/\s+/).includes("canonical"))
     .first();
@@ -452,6 +541,8 @@ export function buildSnapshot(hops: Hop[]): PageSnapshot {
     forms,
     iframes,
     scriptTags,
+    buttons,
+    visibleText: text.slice(0, VISIBLE_TEXT_MAX),
     ids,
     wordCount,
     contentWordCount,

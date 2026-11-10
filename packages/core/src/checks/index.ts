@@ -6,12 +6,14 @@ import { aiCrawlersBlocked } from "./ai-crawlers-blocked.js";
 import { appLinkDead } from "./app-link-dead.js";
 import { appNameMismatch } from "./app-name-mismatch.js";
 import { appSmartBannerMismatch } from "./app-smart-banner-mismatch.js";
+import { assetFilePublic } from "./asset-file-public.js";
 import { blocked } from "./blocked.js";
 import { brokenLinks } from "./broken-links.js";
 import { canonicalElsewhere } from "./canonical-elsewhere.js";
 import { canonicalMissing } from "./canonical-missing.js";
 import { capacityZeroNotSoldOut } from "./capacity-zero-not-sold-out.js";
 import { certificateExpiring } from "./certificate-expiring.js";
+import { checkoutJsOnly } from "./checkout-js-only.js";
 import { crmFieldNames } from "./crm-field-names.js";
 import { crmInsecure } from "./crm-insecure.js";
 import { crmLeadSource } from "./crm-lead-source.js";
@@ -109,6 +111,7 @@ import { pageLostItems } from "./page-lost-items.js";
 import { pageLostStructuredData } from "./page-lost-structured-data.js";
 import { paginationSameContent } from "./pagination-same-content.js";
 import { paginationUnreachable } from "./pagination-unreachable.js";
+import { paidFilePublic } from "./paid-file-public.js";
 import { paymentHandleInconsistent } from "./payment-handle-inconsistent.js";
 import { paymentHandleMismatch } from "./payment-handle-mismatch.js";
 import { paymentHandleUnknown } from "./payment-handle-unknown.js";
@@ -155,12 +158,14 @@ export const PAGE_CHECKS = [
   appLinkDead,
   appNameMismatch,
   appSmartBannerMismatch,
+  assetFilePublic,
   blocked,
   brokenLinks,
   canonicalElsewhere,
   canonicalMissing,
   capacityZeroNotSoldOut,
   certificateExpiring,
+  checkoutJsOnly,
   crmFieldNames,
   crmInsecure,
   crmLateTracking,
@@ -258,6 +263,7 @@ export const PAGE_CHECKS = [
   pageLostStructuredData,
   paginationSameContent,
   paginationUnreachable,
+  paidFilePublic,
   paymentHandleInconsistent,
   paymentHandleMismatch,
   paymentHandleUnknown,
