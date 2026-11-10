@@ -437,6 +437,16 @@ GET https://<project>.api.sanity.io/v2021-10-21/data/query/<dataset>?query=*[_ty
 
 The answer is the id, the slug and the title of each document: nothing else is requested. Gaugeline keeps them in memory only long enough to group them and keeps the groups. A finding prints the type, the shared slug or title, and the ids of the documents that share it. That is text an editor wrote, escaped before it is printed, and it appears only when two documents share it. The token goes in a header and never in the address. Without `--dupes` none of this is requested. What the findings mean: [Checking your queries](/docs/query-check#the-same-thing-twice).
 
+### Generated content (gaugeline query --totals and --refs)
+
+`--totals "type:stated=parts"` and `--refs "type:path"` need `SANITY_PROJECT_ID` and send one `GET` for each rule (ten at most), published content only. The dataset does the comparing, so what comes back is document ids and whole numbers:
+
+```text
+GET https://<project>.api.sanity.io/v2021-10-21/data/query/<dataset>?query={"documents":count(*[_type == "mealPlan"]),"unstated":*[_type == "mealPlan" && !defined(targetCalories)] | order(_id)[0...101]{_id},...,"mismatched":*[_type == "mealPlan" && ... && targetCalories != coalesce(math::sum(days[].meals[]->calories), 0)] | order(_id)[0...101]{_id}}&perspective=published
+```
+
+A totals rule gets the count of documents of the type, the `_id` of those with no stated number, the `_id` of those whose stated number is not the sum of its parts (the filter does the comparing, so neither number is returned), and two counts. A refs rule gets, for each document with a reference to something unpublished, its `_id`, two counts and the ids of the missing targets (the `_ref` of a reference is an id, not content). No stated number, no part, no title or text and no other field is requested. A test seeds a dataset with marker text and fails if the marker, or a stated number, appears in an answer, a request or the output. This is a narrower reading than the first plan for the check, which returned the two numbers of each document; the cost is that a finding does not print them. The rule text is checked field by field and is never pasted into the query as typed. The token goes in a header, never in the address.
+
 ### Unused fields (gaugeline query --unused)
 
 `--unused` makes no request. It reads the `.ts`, `.tsx`, `.js`, `.jsx` and `.mjs` files (and `.graphql` and `.gql` files) of the folder you give it, and the files they import, with the TypeScript compiler, and it never reads anything inside `node_modules`. It needs no `SANITY_PROJECT_ID` and no token, and it does not read an environment variable: its code is not given the environment. A field's name, a file and a line are all that reach the output; no document, no value and no key does. What the output means: [Fields fetched but never rendered](/docs/query-check#fields-fetched-but-never-rendered).

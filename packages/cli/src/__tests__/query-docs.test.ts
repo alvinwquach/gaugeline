@@ -5,7 +5,12 @@ import { Readable } from "node:stream";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import type { Transport } from "@gaugeline/core";
-import { COPPERHILL_COUNTS, NORTHFIELD_CONTENT, sanityCountsTransport } from "@gaugeline/testkit";
+import {
+  COPPERHILL_COUNTS,
+  FENNEL_MEALS,
+  NORTHFIELD_CONTENT,
+  sanityCountsTransport,
+} from "@gaugeline/testkit";
 import { EXIT, main } from "../main.js";
 
 /**
@@ -20,6 +25,7 @@ const page = readFileSync(
 ).replace(/\r\n/g, "\n");
 const repo = fileURLToPath(new URL("../../../fixtures/repo-groq/", import.meta.url));
 const writes = fileURLToPath(new URL("../../../fixtures/repo-mutations/", import.meta.url));
+const meals = fileURLToPath(new URL("../../../fixtures/repo-meals/", import.meta.url));
 const gql = fileURLToPath(new URL("../../../fixtures/repo-gql/", import.meta.url));
 const clinic = fileURLToPath(new URL("../../../fixtures/repo-unused/", import.meta.url));
 const introspection = readFileSync(join(gql, "sanity-introspection.json"), "utf8");
@@ -54,7 +60,7 @@ function examples(): Array<{ command: string; env: Record<string, string>; expec
   all.forEach((f, i) => {
     const next = all[i + 1];
     const m =
-      /^\$ (SANITY_PROJECT_ID=([a-z0-9]+) )?npx gaugeline (query \S+(?: --dupes| --mutations| --unused| --suggest --type \w+| --graphql(?: --schema \S+)?)?)$/.exec(
+      /^\$ (SANITY_PROJECT_ID=([a-z0-9]+) )?npx gaugeline (query \S+(?: --dupes| --mutations| --unused| --suggest --type \w+| --graphql(?: --schema \S+)?| --totals \S+ --refs \S+)?)$/.exec(
         f.body,
       );
     if (!/title=Terminal/.test(f.info) || !m) return;
@@ -79,6 +85,7 @@ describe("docs/query-check.md: the command it shows", () => {
       "query ./app --mutations",
       "query ./src --unused",
       "query ./src/app/menu --dupes",
+      'query ./src --totals "mealPlan:targetCalories=days[].meals[]->calories" --refs "mealPlan:days[].meals"',
     ]);
   });
 
@@ -87,7 +94,8 @@ describe("docs/query-check.md: the command it shows", () => {
       const out: string[] = [];
       const err: string[] = [];
       const code = await main(
-        e.command.split(/\s+/),
+        // The quotes round a rule are the shell's, not the program's.
+        e.command.split(/\s+/).map((a) => a.replace(/^"(.*)"$/, "$1")),
         {
           stdout: { write: (s) => out.push(s) },
           stderr: { write: (s) => err.push(s) },
@@ -98,18 +106,22 @@ describe("docs/query-check.md: the command it shows", () => {
           cwd:
             e.command.includes("--graphql") || e.command.includes("--suggest")
               ? gql
-              : e.command.includes("--mutations")
-                ? writes
-                : e.command.includes("--unused")
-                  ? clinic
-                  : repo,
+              : e.command.includes("--totals")
+                ? meals
+                : e.command.includes("--mutations")
+                  ? writes
+                  : e.command.includes("--unused")
+                    ? clinic
+                    : repo,
           now: () => new Date("2026-11-10T12:00:00Z"),
           fetcher: {
             transport: e.command.includes("--graphql")
               ? northfield
               : e.command.includes("--suggest")
                 ? sanityCountsTransport(NORTHFIELD_CONTENT)
-                : sanityCountsTransport(COPPERHILL_COUNTS),
+                : e.command.includes("--totals")
+                  ? sanityCountsTransport(FENNEL_MEALS)
+                  : sanityCountsTransport(COPPERHILL_COUNTS),
             timeoutMs: 5000,
           },
         },
@@ -119,7 +131,8 @@ describe("docs/query-check.md: the command it shows", () => {
       else if (
         e.command.includes("--mutations") ||
         e.command.includes("--graphql") ||
-        e.command.includes("--unused")
+        e.command.includes("--unused") ||
+        e.command.includes("--totals")
       )
         expect(err.join(""), e.command).toBe("");
       else expect(err.join(""), e.command).toContain("SANITY_PROJECT_ID is not set");
@@ -135,6 +148,23 @@ describe("docs/query-check.md: the command it shows", () => {
       "Viewer role",
       "ten at most",
       "never in the address",
+    ])
+      expect(page, word).toContain(word);
+  });
+
+  it("the generated-content section names the three findings, the rules, and what comes back", () => {
+    for (const word of [
+      "generated-total-mismatch",
+      "generated-ref-unpublished",
+      "generated-total-missing",
+      "--totals",
+      "--refs",
+      "at most 10 rules",
+      "Exact equality",
+      "Store integers",
+      "narrow reading",
+      "Fennel & Rye Meal Prep",
+      "ids and counts",
     ])
       expect(page, word).toContain(word);
   });

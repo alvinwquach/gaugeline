@@ -268,6 +268,8 @@ between the markers; CI fails when it differs from the flag table.
 | `--suggest`               | With query: write a GROQ query for a type from the schema and document counts (needs --type)                   |                      | 0.2.0 |
 | `--page`                  | With query: write a route (queries, types, page) from the schema and counts into --out (needs --type)          |                      | 0.2.0 |
 | `--unused`                | With query: list fields your queries fetch that no code reads, GROQ and GraphQL (source only, no request)      |                      | 0.2.0 |
+| `--totals <value>`        | With query: check a stated number against the sum of its parts, as type:stated=parts (repeatable)              |                      | 0.2.0 |
+| `--refs <value>`          | With query: find documents that link to things nobody published, as type:path (repeatable)                     |                      | 0.2.0 |
 | `--type <value>`          | With query --suggest or --page: the document type to write the query or the route for, as in your schema       |                      | 0.2.0 |
 | `--schema <value>`        | With query: the schema file (sanity schema extract; SDL or introspection JSON for --graphql)                   |                      | 0.2.0 |
 | `--webhooks`              | Read Stripe's webhook endpoints and the events that were never delivered                                       |                      | 0.2.0 |

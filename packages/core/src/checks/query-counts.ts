@@ -22,6 +22,8 @@ export interface QueryInput {
   graphql?: { uses: readonly GqlFieldUse[]; schema: GqlSchema };
   /** What the unused-field analysis found (--unused). Absent: the unused-field check is not run. */
   unused?: { findings: readonly Finding[]; couldNotFollow: readonly CouldNotFollow[] };
+  /** What the --totals and --refs rules found, and the query-type-empty findings of a type with no documents. Absent: the generated-content checks are not run. */
+  generated?: readonly Finding[];
 }
 
 const only = (id: string, input: QueryInput) =>
@@ -51,7 +53,10 @@ export const queryTypeEmpty = defineCheck<QueryInput>({
   why: "Either the type was renamed or the content has not been created yet. Every page built from the query is blank, and its fields are not reported separately because none of them can exist.",
   fix: "Check the type's name in the Studio against the one in the query, or publish the documents. A document that is only a draft does not count.",
   tech: `${TECH}; count(*[_type == T]) is 0`,
-  run: (input) => only("query-type-empty", input),
+  run: (input) => [
+    ...only("query-type-empty", input),
+    ...(input.generated ?? []).filter((f) => f.checkId === "query-type-empty"),
+  ],
 });
 
 export const queryFieldPartial = defineCheck<QueryInput>({
