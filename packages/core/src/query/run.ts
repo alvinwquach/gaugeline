@@ -8,11 +8,13 @@ import { ConfigError } from "../errors.js";
 import type { Fetcher } from "../fetcher.js";
 import { buildResult, type Result } from "../result.js";
 import { runChecks } from "../run.js";
+import { readContentShape, type ContentShape } from "./content-shape.js";
 import { fetchCounts, type TypeCounts } from "./counts.js";
 import { findDupes, type DupeGroup } from "./dupes.js";
 import { graphqlShapes, type GqlFieldUse, type GqlSchema } from "./graphql.js";
-import type { MutationShape, SchemaShape } from "./mutations.js";
+import type { MutationShape, SchemaFile, SchemaShape } from "./mutations.js";
 import type { QueryShape } from "./shape.js";
+import { suggestQuery } from "./suggest.js";
 
 export interface QueryCompareOptions {
   shapes: readonly QueryShape[];
@@ -196,5 +198,62 @@ export async function compareGraphql(
           }
         : {}),
     }),
+  };
+}
+
+export interface SuggestOptions {
+  /** The document type to write a query for. */
+  type: string;
+  /** SANITY_PROJECT_ID, SANITY_DATASET and SANITY_TOKEN. */
+  env: Env;
+  fetcher: Fetcher;
+  /** The schema extract the field names and kinds come from. */
+  schema: SchemaFile;
+  /** How many of the newest published documents the counts are over. Default 50. */
+  sample?: number;
+}
+
+export interface SuggestRun {
+  shape: ContentShape;
+  /** The query, or undefined when the type has no published documents. */
+  query?: string;
+  /** The dataset that was read. */
+  dataset: string;
+  /** Plain-language lines for stderr: the dataset that was assumed. Never a key. */
+  notices: string[];
+}
+
+/**
+ * `gaugeline query --suggest --type <name>`: take the type's field names and kinds from the schema
+ * file, count how many of the newest published documents have each field (count queries, one GET,
+ * drafts left out), and write a query from the result. Plain rules, no model: the same schema and
+ * counts give the same text. No document and no value is ever requested. A private dataset with no token, a token Sanity refuses or an unreadable dataset is a
+ * ConfigError (exit 2), and so is a type name that is not one.
+ */
+export async function suggestForType(options: SuggestOptions): Promise<SuggestRun> {
+  const notices: string[] = [];
+  let read;
+  try {
+    read = createSanityRead(options.env, options.fetcher);
+  } catch (err) {
+    throw new ConfigError(err instanceof Error ? err.message : String(err), {
+      hint: "The settings are SANITY_PROJECT_ID, SANITY_DATASET and SANITY_TOKEN; the steps are in docs/private-datasets.",
+    });
+  }
+  if (read.datasetAssumed)
+    notices.push(
+      `SANITY_DATASET is not set, so the dataset "${read.dataset}" was assumed. Set it if your content lives in another dataset.`,
+    );
+  let shape: ContentShape;
+  try {
+    shape = await readContentShape(options.type, read, options.schema, options.sample);
+  } catch (err) {
+    throw err instanceof ConfigError ? err : unreadable(err);
+  }
+  return {
+    shape,
+    dataset: read.dataset,
+    ...(shape.sampled === 0 ? {} : { query: suggestQuery(shape) }),
+    notices,
   };
 }

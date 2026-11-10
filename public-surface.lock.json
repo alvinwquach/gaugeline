@@ -152,6 +152,8 @@
       "mutations",
       "quiet",
       "schema",
+      "suggest",
+      "type",
       "verbose",
       "version"
     ],

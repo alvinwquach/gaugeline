@@ -12,6 +12,7 @@
   },
   "devDependencies": {
     "@gaugeline/core": "workspace:*",
-    "@gaugeline/fixtures": "workspace:*"
+    "@gaugeline/fixtures": "workspace:*",
+    "groq-js": "2.0.1"
   }
 }

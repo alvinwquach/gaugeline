@@ -17,3 +17,7 @@ mutation or a subscription.
 - `gql/enrol.graphql` holds a mutation and a subscription, which are counted and never sent.
 - `src/lib/dynamic.ts` builds a query from a string and is listed as unreadable.
 - `summary` is in the schema, and the invented dataset behind the tests has no resource with one.
+- `schema.json` is Northfield's Studio schema as `sanity schema extract` writes it (the `resource`,
+  `topic` and `coach` documents, and the `slug` type). It is what `gaugeline query --suggest --type
+resource` takes its field names and kinds from; the counts come from an invented dataset in the
+  tests (`NORTHFIELD_CONTENT` in packages/testkit), twelve published resources.

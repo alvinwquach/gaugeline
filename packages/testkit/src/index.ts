@@ -36,5 +36,6 @@ export type {
   FakeSanityType,
   SeenSanityRequest,
 } from "./sanity-counts.js";
+export { CONTENT_MARKER, NORTHFIELD_CONTENT, northfieldResources } from "./sanity-content.js";
 export { startGraphqlServer } from "./graphql-server.js";
 export type { GraphqlServer, GraphqlServerOptions, SeenGraphqlRequest } from "./graphql-server.js";

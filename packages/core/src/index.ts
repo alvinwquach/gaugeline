@@ -1051,12 +1051,14 @@ export {
   readMutations,
   readSchema,
   readSchemaFile,
+  readSchemaFileFull,
 } from "./query/mutations.js";
 export type {
   MutationExtraction,
   MutationExtractOptions,
   MutationKind,
   MutationShape,
+  SchemaFile,
   MutationUnreadable,
   SchemaField,
   SchemaShape,
@@ -1089,8 +1091,17 @@ export type {
   GraphqlExtractOptions,
   GraphqlExtraction,
 } from "./query/graphql.js";
-export { checkMutationsOnly, compareGraphql, compareQueries } from "./query/run.js";
-export type { GraphqlCompareOptions, QueryCompareOptions, QueryCompareRun } from "./query/run.js";
+export { checkMutationsOnly, compareGraphql, compareQueries, suggestForType } from "./query/run.js";
+export type {
+  GraphqlCompareOptions,
+  QueryCompareOptions,
+  QueryCompareRun,
+  SuggestOptions,
+  SuggestRun,
+} from "./query/run.js";
+export { DEFAULT_SAMPLE, MAX_SAMPLE, readContentShape } from "./query/content-shape.js";
+export type { ContentShape, FieldKind, FieldShape } from "./query/content-shape.js";
+export { suggestQuery } from "./query/suggest.js";
 export {
   QUERY_CHECKS,
   createQueryRegistry,

@@ -174,7 +174,9 @@ export type ParsedArgs =
       mutations: boolean;
       /** --graphql: check the GraphQL documents against the schema; `endpoint` is the address that followed it. */
       graphql?: { endpoint?: string };
-      /** --schema: the schema file for --mutations (default ./schema.json), or for --graphql (SDL or introspection JSON). */
+      /** --suggest --type <name>: write a GROQ query from the published documents of that type. */
+      suggest?: { type: string };
+      /** --schema: the schema file for --mutations or --suggest (default ./schema.json), or for --graphql (SDL or introspection JSON). */
       schema?: string;
       /** --allow-private: an endpoint on this computer or a private network may be asked. */
       allowPrivate: boolean;
@@ -617,6 +619,53 @@ export function parseCliArgs(
   }
   if (command === "query") {
     const graphql = values.graphql === true;
+    const suggest = values.suggest === true;
+    if (typeof values.type === "string" && !suggest)
+      return {
+        kind: "error",
+        message: "--type is for --suggest: gaugeline query ./src --suggest --type resource",
+        hint: "--type names the document type whose published documents the query is written from.",
+        verbose,
+      };
+    if (suggest) {
+      const type = typeof values.type === "string" ? values.type.trim() : "";
+      if (type === "")
+        return {
+          kind: "error",
+          message: "gaugeline query --suggest needs a document type: --suggest --type resource",
+          hint: "--type names the document type to write a query for, as it is in your Studio schema (for example resource, post or product).",
+          verbose,
+        };
+      if (positionals.length !== 1)
+        return {
+          kind: "error",
+          message:
+            "gaugeline query needs one folder: gaugeline query ./src --suggest --type resource",
+          hint: "Give the folder of your site's source, as for the other query checks.",
+          verbose,
+        };
+      if (graphql || values.dupes === true || values.mutations === true || values.json === true)
+        return {
+          kind: "error",
+          message:
+            "--suggest is its own run: it cannot be combined with --graphql, --dupes, --mutations or --json.",
+          hint: "It prints a query as text. Run the other checks separately: gaugeline query ./src, then gaugeline query ./src --suggest --type resource.",
+          verbose,
+        };
+      return {
+        kind: "query",
+        dir: positionals[0] ?? "",
+        json: false,
+        ci: values.ci === true,
+        dupes: false,
+        mutations: false,
+        suggest: { type },
+        ...(typeof values.schema === "string" ? { schema: values.schema } : {}),
+        allowPrivate: values["allow-private"] === true,
+        verbose,
+        quiet: values.quiet === true,
+      };
+    }
     if (positionals.length !== 1 && !(graphql && positionals.length === 2))
       return {
         kind: "error",

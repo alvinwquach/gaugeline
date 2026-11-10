@@ -437,6 +437,16 @@ GET https://<project>.api.sanity.io/v2021-10-21/data/query/<dataset>?query=*[_ty
 
 The answer is the id, the slug and the title of each document: nothing else is requested. Gaugeline keeps them in memory only long enough to group them and keeps the groups. A finding prints the type, the shared slug or title, and the ids of the documents that share it. That is text an editor wrote, escaped before it is printed, and it appears only when two documents share it. The token goes in a header and never in the address. Without `--dupes` none of this is requested. What the findings mean: [Checking your queries](/docs/query-check#the-same-thing-twice).
 
+### Written queries (gaugeline query --suggest)
+
+`--suggest --type <name>` reads the field names and kinds of the type from your schema file on disk (`sanity schema extract`, or `--schema <file>`) and asks your dataset how many of the newest 50 published documents have each field. It needs `SANITY_PROJECT_ID` and sends one `GET`, published content only, with a count for each field (more only if the address would be too long, each for fewer fields):
+
+```text
+GET https://<project>.api.sanity.io/v2021-10-21/data/query/<dataset>?query={"total":count((*[_type == "resource" && !(_id in path("drafts.**"))] | order(_updatedAt desc)[0...50])),"p1":count((...)[defined(title)]),...}&perspective=published
+```
+
+The answer is whole numbers: how many documents were counted, and how many of them have each field. No document, no field value and no sample is requested, so none reaches your computer, a log, a report or the output; a test seeds a dataset with marker strings and fails if one appears in the output, a request or an answer. The query is built from the schema file, so a field name from it is checked against Sanity's own pattern before it goes into the query, and the type name is checked too. A token (`SANITY_TOKEN`, only for a private dataset) goes in a header and never in the address. What the output means: [Writing the query in the first place](/docs/query-check#writing-the-query-in-the-first-place).
+
 ### Mutations (gaugeline query --mutations)
 
 `--mutations` reads the writes in your code and compares them with a schema file on your disk. It sends nothing: no request is made for a mutation, none could be (the code that reads them cannot import an HTTP client, and a test fails the build if it does), and it needs no `SANITY_PROJECT_ID`, no token and no network. The schema file and your source files are read from disk and stay there. A finding prints the file and line of a write and the names of the fields it writes, escaped. It never prints a value from your code. What the findings mean: [Checking your queries](/docs/query-check#mutations-checked-without-running-them); the proof: [What it can and can't write](/docs/writes#the-promise-test).
