@@ -39,7 +39,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     type: "boolean",
     description: "Print the result as JSON on stdout, and nothing else",
     since: "0.1.0",
-    commands: ["check", "launch"],
+    commands: ["check", "launch", "ads"],
   },
   {
     name: "no-open",

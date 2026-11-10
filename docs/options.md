@@ -8,7 +8,7 @@ Every flag the CLI accepts.
 | Flag                                           | Does                                                                                                                                           |
 | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | `--ci`                                         | Exits with code 1 if anything is marked “Fix this first”. Also on when the CI environment variable is set                                      |
-| `--json`                                       | Prints findings as JSON instead of the terminal summary, and skips the report                                                                  |
+| `--json`                                       | Prints findings as JSON instead of the terminal summary, and skips the report. Also with `gaugeline ads`, for the export's result              |
 | `--no-open`                                    | Writes the report without opening a browser                                                                                                    |
 | `--demo`                                       | With `gaugeline open`: starts the app with example results and requests nothing. See [Open the app](/docs/the-app#try-it-with-example-results) |
 | `--ads <file>`                                 | With `gaugeline open`: starts the app with an ads export read from this file. See [Ad landing pages](/docs/ad-landing-pages#in-the-app)        |
