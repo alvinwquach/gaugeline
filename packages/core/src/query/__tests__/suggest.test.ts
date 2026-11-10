@@ -425,7 +425,7 @@ describe("readContentShape: integration (invented Sanity responses)", () => {
             _updatedAt: "2026-10-01T00:00:00Z",
             title: "a",
             'x"] || true //': "b",
-            "bad‮name": "c",
+            "bad\u202Ename": "c",
           },
         ],
       },
