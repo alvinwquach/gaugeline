@@ -23,6 +23,7 @@ import {
   QUERY_GENERATED_CHECKS,
   QUERY_UNUSED_CHECKS,
   RECEIPT_CHECKS,
+  ROUTE_CHECKS,
   WEBHOOK_CHECKS,
   SUBSCRIPTION_CHECKS,
   CUTOVER_ONLY_CHECKS,
@@ -69,6 +70,7 @@ for (const c of QUERY_UNUSED_CHECKS) registry.register(c);
 for (const c of MUTATION_CHECKS) registry.register(c);
 for (const c of GRAPHQL_CHECKS) registry.register(c);
 for (const c of RECEIPT_CHECKS) registry.register(c);
+for (const c of ROUTE_CHECKS) registry.register(c);
 for (const c of WEBHOOK_CHECKS) registry.register(c);
 for (const c of CUTOVER_ONLY_CHECKS) registry.register(c);
 const entries = catalogue(registry);

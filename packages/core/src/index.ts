@@ -1185,3 +1185,26 @@ export {
   createSanityRead,
 } from "./connectors/sanity.js";
 export type { SanityRead } from "./connectors/sanity.js";
+export { discoverRoutes, findAppDir, readRoutes } from "./routes/discover.js";
+export type { RouteDiscovery, RouteEntry } from "./routes/discover.js";
+export {
+  anonymousPageAsk,
+  classifyAnswer,
+  planProbes,
+  probeRouteDetails,
+  probeRoutes,
+  routeAddress,
+  sniffPage,
+} from "./routes/probe.js";
+export type { ProbeResult, RouteAnswer, SkippedRoute } from "./routes/probe.js";
+export { SESSION_HELPERS } from "./routes/scan.js";
+export { checkRoutes } from "./routes/run.js";
+export type { RoutesRun, RoutesRunOptions } from "./routes/run.js";
+export {
+  NO_ROUTES_CONSENT_REASON,
+  ROUTE_CHECKS,
+  ROUTE_TITLE,
+  createRoutesRegistry,
+  routeHiddenNotProtected,
+} from "./checks/route-hidden-not-protected.js";
+export type { RoutesInput } from "./checks/route-hidden-not-protected.js";
