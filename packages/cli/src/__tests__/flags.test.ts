@@ -42,6 +42,7 @@ const SAMPLE_VALUES: Record<string, string> = {
   live: `${fileURLToPath(new URL("../../../fixtures/plans/live/list.txt", import.meta.url))}`,
   ignore: "/tag/*",
   routes: "app/api/**/route.ts",
+  schema: "schema.json",
   nav: "Footer",
   rank: `${fileURLToPath(new URL("../../../fixtures/plans/live/gsc-pages.csv", import.meta.url))}`,
 };
@@ -408,6 +409,7 @@ describe("flag table: e2e", () => {
             ? [
                 deliveryOnly ? "delivery" : platformOnly ? "platform" : "query",
                 `--${f.name}`,
+                ...value,
                 "--help",
               ]
             : cutoverOnly

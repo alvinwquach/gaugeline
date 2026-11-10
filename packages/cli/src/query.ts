@@ -1,17 +1,23 @@
 import {
+  checkMutationsOnly,
   compareQueries,
   ConfigError,
   createFetcher,
   extractGroq,
   freezeEnv,
+  readMutations,
+  readSchemaFile,
   SANITY_DATASET,
   SANITY_PROJECT_ID,
   SANITY_TOKEN,
   type FetcherOptions,
+  type MutationShape,
+  type MutationUnreadable,
   type Outcome,
   type QueryShape,
   type Unreadable,
 } from "@gaugeline/core";
+import { stat } from "node:fs/promises";
 import { resolve } from "node:path";
 import { formatTerminal } from "./reporter.js";
 
@@ -22,6 +28,15 @@ const WHY: Record<Unreadable["reason"], string> = {
   "parse-error":
     "could not be parsed: the file has a syntax error, or the string is not valid GROQ",
   "no-type-filter": "no _type filter, so there is no document type to attribute it to",
+};
+
+/** Why each write that could not be read was left alone. */
+const WHY_WRITE: Record<MutationUnreadable["reason"], string> = {
+  "variable-key":
+    "a field name comes from a variable or an expression, so the field cannot be read from the file",
+  "variable-payload":
+    "the payload is a variable or a call the file does not settle, so its fields cannot be read",
+  "parse-error": "the file has a syntax error, so none of its writes were read",
 };
 
 const plural = (n: number, one: string, many = `${one}s`): string => `${n} ${n === 1 ? one : many}`;
@@ -38,6 +53,64 @@ function shapeLines(q: QueryShape): string[] {
     `  drafts: ${q.excludesDrafts ? "left out by the filter" : "not left out by the filter"}`,
     `  params: ${q.params.length === 0 ? "none" : q.params.map((p) => `$${p}`).join(", ")}`,
   ];
+}
+
+/**
+ * The schema file for --mutations: the one --schema names, else ./schema.json where the command
+ * ran, else schema.json in the folder that is read. Nothing else is looked for and nothing is fetched.
+ */
+async function schemaPath(cwd: string, dir: string, given: string | undefined): Promise<string> {
+  if (given !== undefined) return resolve(cwd, given);
+  const candidates = [resolve(cwd, "schema.json"), resolve(cwd, dir, "schema.json")];
+  for (const c of candidates) if ((await stat(c).catch(() => null))?.isFile()) return c;
+  throw new ConfigError(
+    "gaugeline query --mutations needs the schema, and there is no schema.json in the current folder or in the folder it reads.",
+    {
+      hint: "Write it with `npx sanity schema extract`, then pass it with --schema ./schema.json. Gaugeline makes no request to fetch it.",
+    },
+  );
+}
+
+/** "3 patches, 1 create and 1 transaction", for the line that says what was read. */
+function mutationCounts(shapes: readonly MutationShape[]): string {
+  const by = new Map<string, number>();
+  for (const s of shapes) by.set(s.kind, (by.get(s.kind) ?? 0) + 1);
+  const parts = [...by].map(([k, n]) => plural(n, k, k === "patch" ? "patches" : `${k}s`));
+  return parts.length <= 1
+    ? (parts[0] ?? "nothing")
+    : `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
+}
+
+/** What was read from the writes in the code, and what was left. Says every time that nothing was sent. */
+function mutationLines(
+  writes: readonly MutationShape[],
+  unread: readonly MutationUnreadable[],
+  dir: string,
+): string[] {
+  const lines: string[] = [];
+  if (writes.length === 0)
+    lines.push(
+      `No writes found under ${dir}. It looks for patch, create, createOrReplace, createIfNotExists, delete and transaction calls on a client named like client or sanity, and for raw mutations arrays. Nothing was sent.`,
+    );
+  else {
+    const files = new Set(writes.map((w) => w.source.file)).size;
+    lines.push(
+      `Read ${plural(writes.length, "write")} in ${plural(files, "file")} (${mutationCounts(writes)}) and checked them against the schema. They were parsed, not run: nothing was sent.`,
+    );
+  }
+  const partial = writes.filter((w) => w.partial);
+  if (partial.length > 0)
+    lines.push(
+      "",
+      `Checked on the fields that are visible (a spread or a variable hides the rest):`,
+      ...partial.map((w) => `  ${w.source.file}:${w.source.line}`),
+    );
+  if (unread.length > 0) {
+    lines.push("", `Could not read ${plural(unread.length, "write")}:`);
+    for (const u of unread)
+      lines.push(`  ${u.source.file}:${u.source.line}  ${u.reason}: ${WHY_WRITE[u.reason]}`);
+  }
+  return lines;
 }
 
 interface Out {
@@ -62,20 +135,30 @@ interface Deps {
  * (which needs SANITY_PROJECT_ID) it also asks, one more GET for each type, for the id, slug and
  * title of each published document, and reports documents that share a slug or a title.
  * Files are shown as they would be typed from where the command ran, in the findings too.
+ * With --mutations (it needs no SANITY_PROJECT_ID) it also reads the writes in the code, patches,
+ * creates and transactions, and checks their shapes against the schema file (--schema, default
+ * ./schema.json). The mutations are parsed and never sent: this command builds no request for one.
  * Exit 0, 1 with --ci and a fix-first finding, or 2 (a ConfigError) when the folder does not
  * exist, TypeScript is missing or the dataset cannot be read.
  */
 export async function runQuery(
-  args: { dir: string; json?: boolean; dupes?: boolean; quiet?: boolean },
+  args: {
+    dir: string;
+    json?: boolean;
+    dupes?: boolean;
+    mutations?: boolean;
+    schema?: string;
+    quiet?: boolean;
+  },
   io: Out,
   deps: Deps,
 ): Promise<Outcome> {
   const asks = (io.env?.[SANITY_PROJECT_ID] ?? "").trim() !== "";
-  if (args.json && !asks)
+  if (args.json && !asks && args.mutations !== true)
     throw new ConfigError(
-      "gaugeline query --json prints findings, and they need SANITY_PROJECT_ID.",
+      "gaugeline query --json prints findings, and they need SANITY_PROJECT_ID or --mutations.",
       {
-        hint: "Set SANITY_PROJECT_ID (and SANITY_TOKEN, with the Viewer role, for a private dataset), or leave --json out to list the queries.",
+        hint: "Set SANITY_PROJECT_ID (and SANITY_TOKEN, with the Viewer role, for a private dataset), or add --mutations, or leave --json out to list the queries.",
       },
     );
   if (args.dupes && !asks)
@@ -85,6 +168,11 @@ export async function runQuery(
         hint: "Set SANITY_PROJECT_ID (and SANITY_TOKEN, with the Viewer role, for a private dataset), or leave --dupes out to list the queries.",
       },
     );
+  // The schema is read first: a missing file stops the command before anything else is done.
+  const schema =
+    args.mutations === true
+      ? await readSchemaFile(await schemaPath(deps.cwd, args.dir, args.schema))
+      : undefined;
   const found = await extractGroq(resolve(deps.cwd, args.dir));
   // Windows separators and a trailing slash go; "." prints as nothing, so lines read like paths from here.
   const typed = args.dir.replace(/\\/g, "/").replace(/\/+$/, "");
@@ -97,18 +185,32 @@ export async function runQuery(
   const unreadable = found.unreadable.map(at);
   const sites = new Set(queries.map((q) => `${q.source.file}:${q.source.line}`));
   const total = sites.size + unreadable.length;
+  const written = schema ? await readMutations(resolve(deps.cwd, args.dir)) : undefined;
+  const prefixed = (m: MutationShape): MutationShape => ({
+    ...m,
+    source: { file: shown(prefix, m.source.file), line: m.source.line },
+    ...(m.ops ? { ops: m.ops.map(prefixed) } : {}),
+  });
+  const writes = written?.shapes.map(prefixed) ?? [];
+  const writesUnread = written?.unreadable.map(at) ?? [];
+  const mutations = schema ? { shapes: writes, schema } : undefined;
 
   // Without a project id nothing is asked and nothing is compared: the output is the shapes alone.
+  const now = deps.now ?? new Date();
   const run =
-    total === 0 || !asks
-      ? undefined
-      : await compareQueries({
+    total > 0 && asks
+      ? await compareQueries({
           shapes: queries,
           env: freezeEnv(io.env ?? {}, [SANITY_PROJECT_ID, SANITY_DATASET, SANITY_TOKEN]),
           fetcher: createFetcher(deps.fetcher),
-          now: deps.now ?? new Date(),
+          now,
           dupes: args.dupes === true,
-        });
+          ...(mutations ? { mutations } : {}),
+        })
+      : mutations
+        ? // No request: this path never builds a fetcher.
+          await checkMutationsOnly({ mutations, now })
+        : undefined;
   if (args.quiet !== true) {
     if (run) for (const n of run.notices) io.stderr.write(`${n}\n`);
     else if (total > 0 && !asks)
@@ -127,26 +229,28 @@ export async function runQuery(
   }
 
   const out: string[] = [];
-  if (total === 0) {
+  if (total === 0 && !mutations) {
     out.push(
       `No GROQ queries found under ${args.dir}.`,
       "It looks for groq`...` templates and defineQuery(...) calls in .ts, .tsx, .js, .jsx and .mjs files, and skips node_modules, .next, dist and what .gitignore names.",
     );
   } else {
-    for (const q of queries) out.push(...shapeLines(q), "");
-    if (unreadable.length > 0) {
-      out.push(`Could not read ${plural(unreadable.length, "query", "queries")}:`);
-      for (const u of unreadable)
-        out.push(`  ${u.source.file}:${u.source.line}  ${u.reason}: ${WHY[u.reason]}`);
-      out.push("");
+    if (total > 0) {
+      for (const q of queries) out.push(...shapeLines(q), "");
+      if (unreadable.length > 0) {
+        out.push(`Could not read ${plural(unreadable.length, "query", "queries")}:`);
+        for (const u of unreadable)
+          out.push(`  ${u.source.file}:${u.source.line}  ${u.reason}: ${WHY[u.reason]}`);
+        out.push("");
+      }
+      out.push(
+        `${plural(queries.length, "shape")} from ${plural(sites.size, "query", "queries")}` +
+          (unreadable.length > 0 ? `; ${unreadable.length} could not be read.` : "."),
+      );
     }
-    out.push(
-      `${plural(queries.length, "shape")} from ${plural(sites.size, "query", "queries")}` +
-        (unreadable.length > 0 ? `; ${unreadable.length} could not be read.` : "."),
-    );
     if (run) {
       const { result, counts, dupes } = run;
-      out.push("");
+      if (out.length > 0) out.push("");
       if (counts && counts.size > 0)
         out.push(
           `Counted the published documents of ${plural(counts.size, "type")} in the dataset: one request each, counts only.`,
@@ -157,6 +261,7 @@ export async function runQuery(
           `Read the ids, slugs and titles of the published documents of ${plural(counts.size, "type")} to look for duplicates: one request each. A title or slug is shown only when two documents share it.`,
           "",
         );
+      if (mutations) out.push(...mutationLines(writes, writesUnread, args.dir), "");
       out.push(
         formatTerminal({
           result: {

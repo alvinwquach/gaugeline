@@ -133,6 +133,9 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "query-field-absent": ["A field your query asks for is on no document", "Visitors"],
   "query-type-empty": ["A document type your query asks for has no documents", "Visitors"],
   "query-dupe-slug": ["Two documents share a slug", "Visitors"],
+  "mutation-undeclared-field": ["A write sets a field no document type declares", "Visitors"],
+  "mutation-missing-required": ["A create leaves out a field the schema requires", "Visitors"],
+  "mutation-ref-as-string": ["A reference is written as a plain string", "Visitors"],
   "delivery-receipt-missing": ["Orders were paid and no receipt went out", "Sales & prices"],
   "webhook-failing": ["A webhook endpoint is not receiving its events", "Sales & prices"],
   "cutover-canonical-host": ["The bare domain and www don't settle on one address", "Launch day"],
@@ -253,6 +256,8 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "plan-trial-mismatch": ["A plan's free trial differs from checkout", "Sales & prices"],
   "query-no-drafts-filter": ["A query does not leave drafts out", "Security & email"],
   "query-dupe-title": ["Two documents share a title", "Search & sharing"],
+  "mutation-no-drafts": ["A write edits published content directly", "Security & email"],
+  "mutation-shared-field": ["Two routes write the same field", "Visitors"],
   "webhook-disabled": ["A webhook endpoint is switched off", "Sales & prices"],
   "cutover-certificate-changed": [
     "The certificate no longer covers a name it did",
@@ -839,6 +844,24 @@ export const CHECK_TEXT: Readonly<
     "Open the documents named by their ids in the Studio. Delete the copy you do not want, or give it its own slug.",
     'one GET of the query endpoint for each document type (perspective=published, so drafts are never read), projecting only _id, "slug": slug.current and title; one pass puts each id into a Map from the slug as it is, or from the trimmed and lower-cased title, to the ids that have it, and a bucket with more than one id is a group; documents with no slug or no title are left out of that key, a draft id is skipped, and types are grouped apart; a slug shared by two or more ids of one type',
   ],
+  "mutation-undeclared-field": [
+    "A patch or create in your code writes a field that no document type in the schema declares.",
+    "Sanity stores it anyway, so nothing fails. The Studio shows no field for it, so no editor can see or correct it, and a page that reads the field you meant never gets it. It is the usual result of a renamed field.",
+    "Open the file and line named. Use the name the schema declares, or declare the field in the schema if the write is right.",
+    "read from the repository with no request at all: the TypeScript compiler reads client.patch(...).set(...), create, createOrReplace, createIfNotExists, delete, transaction chains and raw mutations arrays into a Map from each written field to the kind of its value (a plain string, an object with _ref, anything else), which is compared with the schema file given by --schema (the output of sanity schema extract); no mutation is sent, and the module cannot import an HTTP client; a written field (first path segment) that no document type declares",
+  ],
+  "mutation-missing-required": [
+    "A create in your code leaves out a field the schema marks as required.",
+    "Sanity saves the document, and the Studio then shows it as invalid. A page that assumes the field is there breaks on exactly the documents your code made.",
+    "Add the field to the create, or stop marking it required if it is not. A create that spreads another object is not checked for this, because the spread may carry the field.",
+    "read from the repository with no request at all: the TypeScript compiler reads client.patch(...).set(...), create, createOrReplace, createIfNotExists, delete, transaction chains and raw mutations arrays into a Map from each written field to the kind of its value (a plain string, an object with _ref, anything else), which is compared with the schema file given by --schema (the output of sanity schema extract); no mutation is sent, and the module cannot import an HTTP client; a create of a known type, with every key visible, that lacks a required field",
+  ],
+  "mutation-ref-as-string": [
+    "A reference field is given a plain string where an object with a _ref is needed.",
+    "A reference is an object. A string in its place is stored without complaint, but the reference never resolves, so every query that follows it with -> gets nothing.",
+    'Write { _type: "reference", _ref: "the document\'s id" } instead of the string.',
+    "read from the repository with no request at all: the TypeScript compiler reads client.patch(...).set(...), create, createOrReplace, createIfNotExists, delete, transaction chains and raw mutations arrays into a Map from each written field to the kind of its value (a plain string, an object with _ref, anything else), which is compared with the schema file given by --schema (the output of sanity schema extract); no mutation is sent, and the module cannot import an HTTP client; a string literal written to a field the schema declares as a reference",
+  ],
   "delivery-receipt-missing": [
     "More orders were paid in Stripe than the mail provider has sent emails for, in the same window.",
     "A customer who paid and got nothing has no receipt, no download link and no booking confirmation, and does not know whether the payment worked. Your application's log says the send succeeded, because it records the attempt; the mail provider records what it accepted and sent.",
@@ -1342,6 +1365,18 @@ export const CHECK_TEXT: Readonly<
     "Different addresses, same name: usually content that was duplicated and not moved, which splits search results between two pages. It can also be two real pages that need different names.",
     "Open the documents named by their ids. If one is a copy, delete it and redirect its address; if both are real, rename one so a visitor can tell them apart.",
     'one GET of the query endpoint for each document type (perspective=published, so drafts are never read), projecting only _id, "slug": slug.current and title; one pass puts each id into a Map from the slug as it is, or from the trimmed and lower-cased title, to the ids that have it, and a bucket with more than one id is a group; documents with no slug or no title are left out of that key, a draft id is skipped, and types are grouped apart; a title shared by two or more ids of one type that do not all share one slug',
+  ],
+  "mutation-no-drafts": [
+    "A patch, createOrReplace or delete in your code has no drafts handling: its id is not a drafts. id.",
+    "It changes the published document directly. An editor who has unpublished changes in the Studio can lose them, or have them published by the next write.",
+    'Patch the draft (the id with "drafts." in front) and let an editor publish, or leave it as it is if writing straight to the published document is what you want.',
+    "read from the repository with no request at all: the TypeScript compiler reads client.patch(...).set(...), create, createOrReplace, createIfNotExists, delete, transaction chains and raw mutations arrays into a Map from each written field to the kind of its value (a plain string, an object with _ref, anything else), which is compared with the schema file given by --schema (the output of sanity schema extract); no mutation is sent, and the module cannot import an HTTP client; an id that does not start with drafts. and is not built by something named like a draft helper",
+  ],
+  "mutation-shared-field": [
+    "Two or more routes in your code write the same field of the same document type.",
+    "Each route assumes it owns the field. When their rules differ, the last one to run wins, and the value drifts without anyone changing it on purpose.",
+    "Decide which route owns the field and have the others call it, or accept it if they are meant to share it.",
+    "read from the repository with no request at all: the TypeScript compiler reads client.patch(...).set(...), create, createOrReplace, createIfNotExists, delete, transaction chains and raw mutations arrays into a Map from each written field to the kind of its value (a plain string, an object with _ref, anything else), which is compared with the schema file given by --schema (the output of sanity schema extract); no mutation is sent, and the module cannot import an HTTP client; a Map from type.field to the routes that patch or replace it, and an entry with more than one route; a patch of a field that several types declare is not attributed to a type",
   ],
   "webhook-disabled": [
     "A Stripe webhook endpoint has the status disabled.",
