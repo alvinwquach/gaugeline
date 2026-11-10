@@ -791,6 +791,15 @@ export type {
   Moment,
 } from "./freshness/index.js";
 export { toMinor } from "./products/money.js";
+export { TIERS, matchProducts, normaliseName, normaliseSku } from "./products/match.js";
+export type {
+  AmbiguousMatch,
+  MatchEvidence,
+  MatchResult,
+  ProductGroup,
+  System as MatchSystem,
+  Tier as MatchTier,
+} from "./products/match.js";
 export { listingsConfigSchema } from "./listings/config.js";
 export type { ListingsConfig } from "./listings/config.js";
 export {

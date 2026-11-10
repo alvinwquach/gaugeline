@@ -1,0 +1,16 @@
+{
+  "interactions": [
+    {
+      "method": "GET",
+      "url": "https://ridge7st.api.sanity.io/v2021-10-21/data/query/production?query=*%5B_type%20%3D%3D%20%22product%22%5D%7B_id%2C%20name%2C%20price%2C%20sku%2C%20stripeId%2C%20printfulId%7D&perspective=published",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ms\":4,\"query\":\"*[_type == \\\"product\\\"]{_id, name, price, sku, stripeId, printfulId}\",\"result\":[{\"_id\":\"ridgeline-tee\",\"name\":\"Ridgeline logo tee\",\"price\":28,\"sku\":null,\"stripeId\":\"prod_RidgeTee\",\"printfulId\":\"5001\"},{\"_id\":\"ridgeline-hoodie\",\"name\":\"Training hoodie\",\"price\":54,\"sku\":null,\"stripeId\":null,\"printfulId\":null},{\"_id\":\"bottle-steel\",\"name\":\"Steel water bottle\",\"price\":22,\"sku\":null,\"stripeId\":null,\"printfulId\":null},{\"_id\":\"gym-tote\",\"name\":\"Gym tote bag\",\"price\":24.5,\"sku\":\"rl-tote\",\"stripeId\":null,\"printfulId\":null},{\"_id\":\"session-pack\",\"name\":\"Coaching session pack\",\"price\":240,\"sku\":null,\"stripeId\":null,\"printfulId\":null},{\"_id\":\"programme-poster\",\"name\":\"Programme poster\",\"price\":15,\"sku\":null,\"stripeId\":null,\"printfulId\":null}]}"
+    }
+  ],
+  "name": "sanity-match-merch",
+  "recordedAt": "2026-11-10T00:00:00.000Z",
+  "version": 1
+}
