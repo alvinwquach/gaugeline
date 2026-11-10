@@ -57,7 +57,7 @@ It reads the Next.js app directory in the folder you give: `app/` or `src/app/` 
 - Private folders (`_name`), parallel-route slots (`@name`) and intercepting routes (`(.)name`) are not addresses of their own and are left out.
 - The routes are listed in sorted order, so the same folder gives the same list every run.
 
-The files are read as text. Nothing is run, and no package is imported.
+The files are read as text. Nothing is run, and no package is imported. Give the folder first: `--routes` followed by a word takes the word as a glob for the download probe (`--routes "app/api/**/route.ts"`, see [Paid downloads and delivery](delivery.md#a-download-route-that-hands-the-file-to-anyone)), and only `--routes` with no word after it, or with another flag after it, reads the folder's routes.
 
 ## How it decides a route expects a session
 

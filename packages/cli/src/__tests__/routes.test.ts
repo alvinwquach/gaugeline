@@ -330,7 +330,8 @@ describe("gaugeline check --routes: the command line", () => {
     const names = FLAGS.filter((f) => f.commands.includes("check")).map((f) => f.name);
     expect(names).toContain("base");
     expect(HELP[""]).toContain("--base <value>");
-    expect(HELP[""]).toContain("with no glob, ask each signed-in route");
+    expect(HELP[""]).toContain("no glob: a");
+    expect(HELP[""]).toContain("folder's signed-in routes");
     expect(HELP[""]).toContain("gaugeline check <folder> --routes --base <address>");
   });
 });

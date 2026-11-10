@@ -35,7 +35,7 @@ function sizeOf(a: RouteAnswer): string {
 }
 
 const shown = (prefix: string | undefined, file: string): string =>
-  escapeInvisible(prefix ? `${prefix}/${file}` : file, 160);
+  escapeInvisible(prefix ? `${prefix}/${file}` : file, 300);
 
 function addressOf(base: string, path: string): string {
   const url = new URL(base);
