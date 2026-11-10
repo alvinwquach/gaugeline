@@ -1,0 +1,16 @@
+{
+  "interactions": [
+    {
+      "method": "GET",
+      "url": "https://lowtide1.api.sanity.io/v2021-10-21/data/query/production?query=*%5B_type%20%3D%3D%20%22product%22%5D%7B_id%2C%20name%2C%20price%2C%20sku%2C%20stripeId%2C%20printfulId%7D&perspective=published",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ms\":3,\"query\":\"*[_type == \\\"product\\\"]{_id, name, price, sku, stripeId, printfulId}\",\"result\":[{\"_id\":\"lowtide-tee\",\"name\":\"Lowtide logo tee\",\"price\":32,\"sku\":null,\"stripeId\":\"prod_LowTee\",\"printfulId\":\"7001\"},{\"_id\":\"lowtide-hoodie\",\"name\":\"Lowtide hoodie\",\"price\":58,\"sku\":null,\"stripeId\":\"prod_LowHoodie\",\"printfulId\":\"7002\"},{\"_id\":\"lowtide-tote\",\"name\":\"Lowtide tote\",\"price\":24,\"sku\":null,\"stripeId\":\"prod_LowTote\",\"printfulId\":\"7003\"},{\"_id\":\"lowtide-poster\",\"name\":\"Lowtide swell poster\",\"price\":28,\"sku\":null,\"stripeId\":null,\"printfulId\":\"7004\"},{\"_id\":\"wallpaper-pack\",\"name\":\"Beach wallpaper pack\",\"price\":6,\"sku\":null,\"stripeId\":\"prod_LowWallpaper\",\"printfulId\":null}]}"
+    }
+  ],
+  "name": "sanity-presence-surf",
+  "recordedAt": "2026-11-10T00:00:00.000Z",
+  "version": 1
+}

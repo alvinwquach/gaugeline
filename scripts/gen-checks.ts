@@ -10,6 +10,7 @@ import {
   AREAS,
   BUDGET_KINDS,
   PLAN_CHECKS,
+  PRESENCE_CHECKS,
   PRICE_CHECKS,
   PRINTED_CHECKS,
   SUBSCRIPTION_CHECKS,
@@ -44,6 +45,7 @@ const readmes = (
 const registry = createPageRegistry();
 for (const c of PLAN_CHECKS) registry.register(c);
 for (const c of PRINTED_CHECKS) registry.register(c);
+for (const c of PRESENCE_CHECKS) registry.register(c);
 for (const c of PRICE_CHECKS) registry.register(c);
 for (const c of SUBSCRIPTION_CHECKS) registry.register(c);
 for (const c of CUTOVER_ONLY_CHECKS) registry.register(c);
