@@ -18,6 +18,7 @@ export const COMMANDS = [
   "tags",
   "delivery",
   "platform",
+  "query",
 ] as const;
 export type Command = (typeof COMMANDS)[number];
 
@@ -154,6 +155,19 @@ export const HELP: Record<string, string> = {
       "Read only: it never replays, retries or resends an event.",
     ].join("\n"),
     footer: "Exit codes: 0 ran, 1 --ci with a fix-first finding, 2 could not run",
+  }),
+  query: renderHelp(FLAGS, "query", {
+    usage: "gaugeline query <folder> [options]",
+    summary: [
+      "Read the GROQ in a repository's .ts, .tsx, .js, .jsx and .mjs files: groq",
+      "tagged templates and defineQuery() calls. For each query, print the document",
+      "type, the fields it reads, whether its filter leaves drafts out, its",
+      "parameters, and the file and line it starts on. A query built at run time, a",
+      "file that does not parse and a query with no _type filter are listed as",
+      "unreadable. Reads files only: it makes no request. Needs TypeScript installed",
+      "beside it (npx -p gaugeline -p typescript gaugeline query ./src).",
+    ].join("\n"),
+    footer: "Exit codes: 0 read, 2 the folder does not exist or TypeScript is missing",
   }),
   assert: renderHelp(FLAGS, "assert", {
     usage: "gaugeline assert <id> | --list [options]",

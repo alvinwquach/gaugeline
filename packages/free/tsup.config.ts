@@ -7,6 +7,9 @@ export default defineConfig({
   platform: "node",
   // One bundled file, like the gaugeline CLI: the engine (and the CLI's launch command) is inlined.
   noExternal: ["@gaugeline/core"],
+  // The TypeScript compiler (9 MB) is loaded only by `gaugeline query`, from beside the package: an optional
+  // peer dependency, never bundled. It would be most of the tarball and the size budget forbids it.
+  external: ["typescript"],
   dts: false,
   clean: true,
   banner: { js: "#!/usr/bin/env node" },

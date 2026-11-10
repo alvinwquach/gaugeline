@@ -115,6 +115,7 @@ import { adsEngine } from "./ads-engine.js";
 import { runAds } from "./ads.js";
 import { runTags } from "./tags.js";
 import { runDeliveryCommand, runPlatformCommand } from "./delivery.js";
+import { runQuery } from "./query.js";
 import { formatRunAll, runAll, runAllExit } from "./run-all.js";
 import { readSites, selectSites, SITES_FILE } from "./sites.js";
 import { appendStepSummary, planStepSummary } from "./step-summary.js";
@@ -932,6 +933,11 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       return {
         outcome: await runTags(args, io, { ...(deps.fetcher ? { fetcher: deps.fetcher } : {}) }),
         ci: args.ci,
+      };
+    case "query":
+      return {
+        outcome: await runQuery(args, io, { cwd: deps.cwd ?? process.cwd() }),
+        ci: false,
       };
     case "delivery":
       return {

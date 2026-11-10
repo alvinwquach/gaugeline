@@ -22,6 +22,7 @@ export const SUBCOMMANDS = [
   "tags",
   "delivery",
   "platform",
+  "query",
 ] as const;
 export type CliCommand = "check" | (typeof SUBCOMMANDS)[number];
 
@@ -162,6 +163,13 @@ export type ParsedArgs =
       quiet: boolean;
     }
   | {
+      kind: "query";
+      /** gaugeline query <dir>: the folder to read, as typed. */
+      dir: string;
+      verbose: boolean;
+      quiet: boolean;
+    }
+  | {
       kind: "delivery";
       /** --paid: count the orders paid in Stripe. */
       paid: boolean;
@@ -272,7 +280,9 @@ export function parseCliArgs(
                                 ? "delivery"
                                 : argv[0] === "platform"
                                   ? "platform"
-                                  : COMMAND;
+                                  : argv[0] === "query"
+                                    ? "query"
+                                    : COMMAND;
   const given = command === COMMAND ? argv : argv.slice(1);
   // --annotate and --progress take an optional file name: alone, or before another flag, the default.
   const rest = given.map((a, i) =>
@@ -592,6 +602,16 @@ export function parseCliArgs(
       verbose,
       quiet: values.quiet === true,
     };
+  }
+  if (command === "query") {
+    if (positionals.length !== 1)
+      return {
+        kind: "error",
+        message: "gaugeline query needs one folder: gaugeline query ./src",
+        hint: "Give the folder that holds your source files. It reads GROQ from them and makes no request.",
+        verbose,
+      };
+    return { kind: "query", dir: positionals[0] ?? "", verbose, quiet: values.quiet === true };
   }
   if (command === "delivery") {
     const paid = values.paid === true;

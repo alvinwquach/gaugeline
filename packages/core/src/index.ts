@@ -1027,3 +1027,9 @@ export {
   createStripeWebhooksConnector,
   STRIPE_WEBHOOKS_NEEDS,
 } from "./connectors/stripe-webhooks.js";
+
+// Query check (G27): the GROQ in a repository, read into shapes. No request is made.
+export { extractGroq } from "./query/extract.js";
+export type { ExtractOptions, GroqExtraction } from "./query/extract.js";
+export { readGroq } from "./query/shape.js";
+export type { FieldUse, QueryShape, SourceRef, Unreadable } from "./query/shape.js";

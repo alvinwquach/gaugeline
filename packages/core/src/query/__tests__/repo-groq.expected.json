@@ -1,0 +1,480 @@
+{
+  "queries": [
+    {
+      "type": "order",
+      "fields": [
+        {
+          "path": "_id",
+          "deref": false,
+          "source": {
+            "file": "src/app/api/orders/route.ts",
+            "line": 4
+          }
+        },
+        {
+          "path": "total",
+          "deref": false,
+          "source": {
+            "file": "src/app/api/orders/route.ts",
+            "line": 4
+          }
+        },
+        {
+          "path": "lines[].item->name",
+          "deref": true,
+          "source": {
+            "file": "src/app/api/orders/route.ts",
+            "line": 4
+          }
+        }
+      ],
+      "excludesDrafts": true,
+      "params": ["email"],
+      "source": {
+        "file": "src/app/api/orders/route.ts",
+        "line": 4
+      }
+    },
+    {
+      "type": "popup",
+      "fields": [
+        {
+          "path": "title",
+          "deref": false,
+          "source": {
+            "file": "src/app/events/page.tsx",
+            "line": 3
+          }
+        },
+        {
+          "path": "date",
+          "deref": false,
+          "source": {
+            "file": "src/app/events/page.tsx",
+            "line": 3
+          }
+        },
+        {
+          "path": "venue->name",
+          "deref": true,
+          "source": {
+            "file": "src/app/events/page.tsx",
+            "line": 3
+          }
+        },
+        {
+          "path": "venue->address.city",
+          "deref": true,
+          "source": {
+            "file": "src/app/events/page.tsx",
+            "line": 3
+          }
+        }
+      ],
+      "excludesDrafts": false,
+      "params": ["after", "venue"],
+      "source": {
+        "file": "src/app/events/page.tsx",
+        "line": 3
+      }
+    },
+    {
+      "type": "menuItem",
+      "fields": [
+        {
+          "path": "name",
+          "deref": false,
+          "source": {
+            "file": "src/app/menu/[slug]/page.tsx",
+            "line": 3
+          }
+        },
+        {
+          "path": "description",
+          "deref": false,
+          "source": {
+            "file": "src/app/menu/[slug]/page.tsx",
+            "line": 3
+          }
+        },
+        {
+          "path": "allergens[]->name",
+          "deref": true,
+          "source": {
+            "file": "src/app/menu/[slug]/page.tsx",
+            "line": 3
+          }
+        },
+        {
+          "path": "photo.asset->url",
+          "deref": true,
+          "source": {
+            "file": "src/app/menu/[slug]/page.tsx",
+            "line": 3
+          }
+        }
+      ],
+      "excludesDrafts": false,
+      "params": ["slug"],
+      "source": {
+        "file": "src/app/menu/[slug]/page.tsx",
+        "line": 3
+      }
+    },
+    {
+      "type": "page",
+      "fields": [
+        {
+          "path": "title",
+          "deref": false,
+          "source": {
+            "file": "src/app/page.tsx",
+            "line": 3
+          }
+        },
+        {
+          "path": "sections[]._type",
+          "deref": false,
+          "source": {
+            "file": "src/app/page.tsx",
+            "line": 3
+          }
+        },
+        {
+          "path": "sections[].heading",
+          "deref": false,
+          "source": {
+            "file": "src/app/page.tsx",
+            "line": 3
+          }
+        },
+        {
+          "path": "sections[].image.asset->url",
+          "deref": true,
+          "source": {
+            "file": "src/app/page.tsx",
+            "line": 3
+          }
+        }
+      ],
+      "excludesDrafts": false,
+      "params": [],
+      "source": {
+        "file": "src/app/page.tsx",
+        "line": 3
+      }
+    },
+    {
+      "type": "legacyPage",
+      "fields": [
+        {
+          "path": "title",
+          "deref": false,
+          "source": {
+            "file": "src/lib/legacy.js",
+            "line": 4
+          }
+        },
+        {
+          "path": "body",
+          "deref": false,
+          "source": {
+            "file": "src/lib/legacy.js",
+            "line": 4
+          }
+        }
+      ],
+      "excludesDrafts": false,
+      "params": [],
+      "source": {
+        "file": "src/lib/legacy.js",
+        "line": 4
+      }
+    },
+    {
+      "type": "menuItem",
+      "fields": [
+        {
+          "path": "_id",
+          "deref": false,
+          "source": {
+            "file": "src/sanity/queries.ts",
+            "line": 5
+          }
+        },
+        {
+          "path": "name",
+          "deref": false,
+          "source": {
+            "file": "src/sanity/queries.ts",
+            "line": 5
+          }
+        },
+        {
+          "path": "slug.current",
+          "deref": false,
+          "source": {
+            "file": "src/sanity/queries.ts",
+            "line": 5
+          }
+        },
+        {
+          "path": "price",
+          "deref": false,
+          "source": {
+            "file": "src/sanity/queries.ts",
+            "line": 5
+          }
+        },
+        {
+          "path": "category->title",
+          "deref": true,
+          "source": {
+            "file": "src/sanity/queries.ts",
+            "line": 5
+          }
+        },
+        {
+          "path": "category->slug.current",
+          "deref": true,
+          "source": {
+            "file": "src/sanity/queries.ts",
+            "line": 5
+          }
+        }
+      ],
+      "excludesDrafts": true,
+      "params": [],
+      "source": {
+        "file": "src/sanity/queries.ts",
+        "line": 5
+      }
+    },
+    {
+      "type": "siteSettings",
+      "fields": [
+        {
+          "path": "title",
+          "deref": false,
+          "source": {
+            "file": "src/sanity/queries.ts",
+            "line": 13
+          }
+        },
+        {
+          "path": "logo.asset->url",
+          "deref": true,
+          "source": {
+            "file": "src/sanity/queries.ts",
+            "line": 13
+          }
+        },
+        {
+          "path": "contact.phone",
+          "deref": false,
+          "source": {
+            "file": "src/sanity/queries.ts",
+            "line": 13
+          }
+        },
+        {
+          "path": "contact.address.street",
+          "deref": false,
+          "source": {
+            "file": "src/sanity/queries.ts",
+            "line": 13
+          }
+        },
+        {
+          "path": "contact.address.city",
+          "deref": false,
+          "source": {
+            "file": "src/sanity/queries.ts",
+            "line": 13
+          }
+        }
+      ],
+      "excludesDrafts": false,
+      "params": [],
+      "source": {
+        "file": "src/sanity/queries.ts",
+        "line": 13
+      }
+    },
+    {
+      "type": "popup",
+      "fields": [
+        {
+          "path": "title",
+          "deref": false,
+          "source": {
+            "file": "src/sanity/queries.ts",
+            "line": 20
+          }
+        },
+        {
+          "path": "date",
+          "deref": false,
+          "source": {
+            "file": "src/sanity/queries.ts",
+            "line": 20
+          }
+        },
+        {
+          "path": "venue->name",
+          "deref": true,
+          "source": {
+            "file": "src/sanity/queries.ts",
+            "line": 20
+          }
+        }
+      ],
+      "excludesDrafts": false,
+      "params": [],
+      "source": {
+        "file": "src/sanity/queries.ts",
+        "line": 20
+      }
+    },
+    {
+      "type": "post",
+      "fields": [
+        {
+          "path": "title",
+          "deref": false,
+          "source": {
+            "file": "src/sanity/queries.ts",
+            "line": 23
+          }
+        },
+        {
+          "path": "slug.current",
+          "deref": false,
+          "source": {
+            "file": "src/sanity/queries.ts",
+            "line": 23
+          }
+        },
+        {
+          "path": "publishedAt",
+          "deref": false,
+          "source": {
+            "file": "src/sanity/queries.ts",
+            "line": 23
+          }
+        }
+      ],
+      "excludesDrafts": true,
+      "params": [],
+      "source": {
+        "file": "src/sanity/queries.ts",
+        "line": 23
+      }
+    },
+    {
+      "type": "recipe",
+      "fields": [
+        {
+          "path": "title",
+          "deref": false,
+          "source": {
+            "file": "src/sanity/queries.ts",
+            "line": 23
+          }
+        },
+        {
+          "path": "slug.current",
+          "deref": false,
+          "source": {
+            "file": "src/sanity/queries.ts",
+            "line": 23
+          }
+        },
+        {
+          "path": "publishedAt",
+          "deref": false,
+          "source": {
+            "file": "src/sanity/queries.ts",
+            "line": 23
+          }
+        }
+      ],
+      "excludesDrafts": true,
+      "params": [],
+      "source": {
+        "file": "src/sanity/queries.ts",
+        "line": 23
+      }
+    },
+    {
+      "type": "menuItem",
+      "fields": [
+        {
+          "path": "_id",
+          "deref": false,
+          "source": {
+            "file": "src/scripts/export.mjs",
+            "line": 4
+          }
+        },
+        {
+          "path": "_updatedAt",
+          "deref": false,
+          "source": {
+            "file": "src/scripts/export.mjs",
+            "line": 4
+          }
+        }
+      ],
+      "excludesDrafts": false,
+      "params": [],
+      "source": {
+        "file": "src/scripts/export.mjs",
+        "line": 4
+      }
+    },
+    {
+      "type": "popup",
+      "fields": [
+        {
+          "path": "_id",
+          "deref": false,
+          "source": {
+            "file": "src/scripts/export.mjs",
+            "line": 4
+          }
+        },
+        {
+          "path": "_updatedAt",
+          "deref": false,
+          "source": {
+            "file": "src/scripts/export.mjs",
+            "line": 4
+          }
+        }
+      ],
+      "excludesDrafts": false,
+      "params": [],
+      "source": {
+        "file": "src/scripts/export.mjs",
+        "line": 4
+      }
+    }
+  ],
+  "unreadable": [
+    {
+      "reason": "concatenated",
+      "source": {
+        "file": "src/app/search/page.tsx",
+        "line": 5
+      }
+    },
+    {
+      "reason": "concatenated",
+      "source": {
+        "file": "src/lib/filters.ts",
+        "line": 4
+      }
+    }
+  ]
+}
