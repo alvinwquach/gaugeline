@@ -32,14 +32,14 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     description: 'Exit 1 when a "Fix this first" finding is found',
     env: "CI",
     since: "0.1.0",
-    commands: ["check", "launch", "verify", "tags", "ads"],
+    commands: ["check", "launch", "verify", "tags", "ads", "delivery", "platform"],
   },
   {
     name: "json",
     type: "boolean",
     description: "Print the result as JSON on stdout, and nothing else",
     since: "0.1.0",
-    commands: ["check", "launch", "ads"],
+    commands: ["check", "launch", "ads", "delivery", "platform"],
   },
   {
     name: "no-open",
@@ -89,7 +89,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     description:
       "Use a Stripe secret key, with a notice, instead of refusing it; a restricted key is safer",
     since: "0.2.0",
-    commands: ["check", "launch"],
+    commands: ["check", "launch", "delivery", "platform"],
   },
   {
     name: "dns",
@@ -119,9 +119,32 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     name: "since",
     type: "string",
     description:
-      "Compare with this site's last run and save this one; the only value is last (.gaugeline/last-run/)",
+      "Page check: compare with the last run (the only value is last). delivery: the window to read, such as 7d",
     since: "0.2.0",
-    commands: ["check"],
+    commands: ["check", "delivery"],
+  },
+  {
+    name: "paid",
+    type: "boolean",
+    description:
+      "Count the orders paid in Stripe in the window; with --sent, compare them with the emails",
+    since: "0.2.0",
+    commands: ["delivery"],
+  },
+  {
+    name: "sent",
+    type: "boolean",
+    description:
+      "Count the emails Resend says it sent in the window; with --paid, compare them with the orders",
+    since: "0.2.0",
+    commands: ["delivery"],
+  },
+  {
+    name: "webhooks",
+    type: "boolean",
+    description: "Read Stripe's webhook endpoints and the events that were never delivered",
+    since: "0.2.0",
+    commands: ["platform"],
   },
   {
     name: "interactive",

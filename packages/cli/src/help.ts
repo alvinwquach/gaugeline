@@ -16,6 +16,8 @@ export const COMMANDS = [
   "assert",
   "ads",
   "tags",
+  "delivery",
+  "platform",
 ] as const;
 export type Command = (typeof COMMANDS)[number];
 
@@ -131,6 +133,27 @@ export const HELP: Record<string, string> = {
       "scope.",
     ].join("\n"),
     footer: "Exit codes: 0 ran, 1 --ci with tags lost, 2 could not follow the link",
+  }),
+  delivery: renderHelp(FLAGS, "delivery", {
+    usage: "gaugeline delivery --paid --sent [--since 7d] [options]",
+    summary: [
+      "Compare the orders paid in Stripe (STRIPE_API_KEY) with the emails Resend",
+      "says it sent (RESEND_API_KEY) in the same window, and report paid orders with",
+      "no email: counts and UTC days, never an address, a name or an order. Either",
+      "flag alone prints that side's count. Read only: it never sends, resends or",
+      "replays anything.",
+    ].join("\n"),
+    footer: "Exit codes: 0 ran, 1 --ci with a fix-first finding, 2 could not run",
+  }),
+  platform: renderHelp(FLAGS, "platform", {
+    usage: "gaugeline platform --webhooks [options]",
+    summary: [
+      "Read Stripe's webhook endpoints (STRIPE_API_KEY) and the events that were never",
+      "delivered, and report an enabled endpoint with events older than an hour that",
+      "are still waiting, and an endpoint that is disabled: a host, a count and an age.",
+      "Read only: it never replays, retries or resends an event.",
+    ].join("\n"),
+    footer: "Exit codes: 0 ran, 1 --ci with a fix-first finding, 2 could not run",
   }),
   assert: renderHelp(FLAGS, "assert", {
     usage: "gaugeline assert <id> | --list [options]",

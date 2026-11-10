@@ -990,3 +990,40 @@ export type { Listing, ListingSource, ListingStatus, SpecialDay } from "./listin
 export { listingsFromAppleCsv } from "./listings/sources/apple.js";
 export { listingFromBusinessProfile, listingFromPlace } from "./listings/sources/google.js";
 export { listingFromYelp } from "./listings/sources/yelp.js";
+export { reconcile, recipientKey } from "./delivery/reconcile.js";
+export type { PaidOrder, Reconciled, SentEmail } from "./delivery/reconcile.js";
+export { DEFAULT_WINDOW, MAX_WINDOW_DAYS, parseWindow } from "./delivery/window.js";
+export type { Window as DeliveryWindow } from "./delivery/window.js";
+export {
+  STALE_AFTER_SECONDS,
+  STRIPE_EVENT_RETENTION_DAYS,
+  attribute as attributeWebhookEvents,
+  endpointHost,
+  formatAge,
+} from "./delivery/webhooks.js";
+export type { WebhookEndpointState } from "./delivery/webhooks.js";
+export { runDelivery, runWebhooks } from "./delivery/run.js";
+export type { DeliveryOptions, DeliveryRun, WebhooksOptions, WebhooksRun } from "./delivery/run.js";
+export {
+  RECEIPT_CHECKS,
+  WEBHOOK_CHECKS,
+  createReceiptRegistry,
+  createWebhookRegistry,
+  deliveryReceiptMissing,
+  webhookDisabled,
+  webhookFailing,
+} from "./checks/delivery.js";
+export type { ReceiptInput, WebhookInput } from "./checks/delivery.js";
+export { createStripeOrdersConnector, STRIPE_ORDERS_NEEDS } from "./connectors/stripe-orders.js";
+export {
+  RESEND_API_KEY,
+  RESEND_MAX_PAGES,
+  RESEND_PAGE_SIZE,
+  RESEND_RETENTION_DAYS,
+  createResendSentConnector,
+  resendTime,
+} from "./connectors/resend-sent.js";
+export {
+  createStripeWebhooksConnector,
+  STRIPE_WEBHOOKS_NEEDS,
+} from "./connectors/stripe-webhooks.js";

@@ -33,6 +33,7 @@
   "data-stale",
   "dataset-private-types",
   "dataset-public",
+  "delivery-receipt-missing",
   "drafts-live",
   "duplicate-printful",
   "duplicate-sanity",
@@ -201,5 +202,7 @@
   "temp-host-links",
   "thin-html",
   "viewport",
+  "webhook-disabled",
+  "webhook-failing",
   "zero-width-in-text"
 ]

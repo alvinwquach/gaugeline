@@ -130,6 +130,8 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "Sales & prices",
   ],
   "plan-price-mismatch": ["A plan's price on the page differs from checkout", "Sales & prices"],
+  "delivery-receipt-missing": ["Orders were paid and no receipt went out", "Sales & prices"],
+  "webhook-failing": ["A webhook endpoint is not receiving its events", "Sales & prices"],
   "cutover-canonical-host": ["The bare domain and www don't settle on one address", "Launch day"],
   "cutover-mail-changed": ["The domain's mail records changed at cutover", "Security & email"],
   "app-smart-banner-mismatch": ["The iPhone app banner promotes a different app", "Visitors"],
@@ -246,6 +248,7 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "printful-price": ["Fulfillment lists a different price", "Sales & prices"],
   "stripe-no-price": ["No default price in checkout", "Sales & prices"],
   "plan-trial-mismatch": ["A plan's free trial differs from checkout", "Sales & prices"],
+  "webhook-disabled": ["A webhook endpoint is switched off", "Sales & prices"],
   "cutover-certificate-changed": [
     "The certificate no longer covers a name it did",
     "Security & email",
@@ -812,6 +815,18 @@ export const CHECK_TEXT: Readonly<
     "Decide which price you mean, then change the other so they agree. If the difference is tax, say on the page whether the price includes it.",
     "the first amount written with a currency next to the plan's name, as a whole number of minor units, against unit_amount of the matched price (or its currency_options entry when the page's currency is one of them); a currency that is not one of the price's is a notice, never converted; a plan showing an introductory price or discount is skipped unless introAmount names it; the page's 'tax included' or 'plus tax' against tax_behavior when both say; the evidence shows both amounts and never says which is right",
   ],
+  "delivery-receipt-missing": [
+    "More orders were paid in Stripe than the mail provider has sent emails for, in the same window.",
+    "A customer who paid and got nothing has no receipt, no download link and no booking confirmation, and does not know whether the payment worked. Your application's log says the send succeeded, because it records the attempt; the mail provider records what it accepted and sent.",
+    "Open the mail provider's dashboard on the days listed and find the sends that failed or never happened, then fix the code or the sender setup behind them. Send the missing emails yourself from the provider: Gaugeline never resends.",
+    "paid Checkout Sessions (payment_status paid, not refunded in full) and the emails Resend lists as sent (not bounced, failed, cancelled, queued, scheduled or suppressed) in the same window are compared in memory with a Map<string, number> keyed by the SHA-256 of the lower-cased recipient, one count per key (a multiset), dropped when the comparison returns; an order takes one email from its recipient's count, and the orders left over are the finding, so unmatched is never negative and more emails than orders is a pass; matching is by recipient across the window, not by day, so an email sent to a different address than the order's shows as unmatched; the evidence is two counts and UTC days, never an address, a name, an order id or a payload",
+  ],
+  "webhook-failing": [
+    "An enabled Stripe webhook endpoint has events older than an hour that were never delivered.",
+    "Stripe tells your site about a payment through a webhook. If the endpoint is down or answering with an error, the payment happened and your site was never told, so no order is recorded, no file is released and no email is sent.",
+    "Open the endpoint in the Stripe dashboard, read the failed attempts to see what it answered, fix the route (or the host behind it), then let Stripe retry or resend the events from the dashboard. Gaugeline never replays or retries them.",
+    "GET /v1/webhook_endpoints and GET /v1/events with delivery_success=false from the last 30 days; an event counts against an enabled endpoint that takes its type (or *) when it is older than 1 hour and still has pending deliveries, so two endpoints that take the same type are each told about the same event; the evidence is the endpoint's host (never its path, query or secret), the count and the age of the oldest; nothing from an event's payload is read into a result",
+  ],
   "cutover-canonical-host": [
     "Of the bare domain and www, exactly one should answer 200 and the other redirect to it permanently (301 or 308). After cutover, both answer, neither does, or the redirect is temporary.",
     "Two live copies split links and ranking between them; a missing one is a dead address for everyone who types it; a temporary redirect tells search engines to keep the old one.",
@@ -1291,6 +1306,12 @@ export const CHECK_TEXT: Readonly<
     "Someone who signs up for a free trial and is charged today, or who is surprised by a trial that hides when the first bill comes, files a dispute.",
     "Make the page and the Stripe price agree on the trial's length, or take the promise off the page.",
     "a trial of N days, weeks or months written next to the plan's name (7-day free trial, prueba gratis de 7 dias) against recurring.trial_period_days of the matched price (a month is 28 to 31 days); a trial set when checkout is created (subscription_data) is not visible on the price, so confirm there before changing the page",
+  ],
+  "webhook-disabled": [
+    "A Stripe webhook endpoint has the status disabled.",
+    "Stripe sends a disabled endpoint nothing. If your site still depends on it, payments are made and the site is not told.",
+    "If the endpoint is still needed, enable it in the Stripe dashboard (Stripe may have disabled it after days of failures, so read its last attempts first). If it is not, delete it so the list says what is live.",
+    "GET /v1/webhook_endpoints; an endpoint whose status is disabled is a finding, whatever it takes; the evidence is the endpoint's host only",
   ],
   "cutover-certificate-changed": [
     "The https certificate after cutover lacks a name the one before covered (www, a subdomain), or there is no certificate where there was one.",

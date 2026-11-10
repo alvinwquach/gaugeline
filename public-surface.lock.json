@@ -47,6 +47,18 @@
       "verbose",
       "version"
     ],
+    "delivery": [
+      "allow-secret-key",
+      "ci",
+      "help",
+      "json",
+      "paid",
+      "quiet",
+      "sent",
+      "since",
+      "verbose",
+      "version"
+    ],
     "digest": [
       "email",
       "help",
@@ -110,6 +122,16 @@
       "version",
       "watch",
       "webhook"
+    ],
+    "platform": [
+      "allow-secret-key",
+      "ci",
+      "help",
+      "json",
+      "quiet",
+      "verbose",
+      "version",
+      "webhooks"
     ],
     "printed": [
       "allow-private",

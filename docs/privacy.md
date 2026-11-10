@@ -162,6 +162,31 @@ A link that carries its own signature and expiry (a signed link) is not asked, a
 straight to a file such as `/files/menu.pdf`: that is a static file, which the paid file checks
 cover.
 
+### Orders, emails and webhooks (delivery and platform)
+
+`gaugeline delivery --paid --sent` and `gaugeline platform --webhooks` read two accounts you own,
+Stripe and Resend, with keys from `STRIPE_API_KEY` and `RESEND_API_KEY`
+([Paid downloads and delivery](delivery.md#paid-and-the-receipt-never-went-out)). They are the only
+commands that contact `api.stripe.com` and `api.resend.com`, and only when you run them with the key
+set: this is a destination you configured, so [ADR-0003](https://github.com/alvinwquach/gaugeline/blob/main/docs/adr/0003-no-telemetry-nothing-sent.md)
+holds.
+
+What they send: `GET` requests only, through the fetcher, with the key in an `Authorization` header and
+never in an address. They list Checkout Sessions (with the payment intent and charge expanded, to tell
+a refund), the emails Resend lists as sent, Stripe's webhook endpoints and the events with undelivered
+webhooks. They never send, resend, replay, retry or enqueue anything, and no request has a body.
+
+What they read and keep: per order, when it was paid and the address on it; per email, when it was
+sent and its recipients. The subject, the sender, the body, an amount, a name, an order id and an event
+payload are not read into anything. In memory, the addresses are hashed (SHA-256 of the lower-cased
+address) into one `Map` that is dropped when the comparison returns; no address and no hash is
+printed, logged, written to a file or put in `--json`. A webhook endpoint is reduced to its host: its
+path, its query and its signing secret are dropped.
+
+What they print: two counts and UTC days for the comparison, and for a webhook endpoint its host, how
+many events are waiting and the age of the oldest. Every message that mentions a system is passed
+through the redactor that blanks both keys first.
+
 ### Saving the requests (--save-requests)
 
 By default a run keeps what it asked for in memory and writes only the report. `--save-requests <file>`

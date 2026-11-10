@@ -152,3 +152,149 @@ Fix: make the button a link to your checkout or to a Stripe payment link, or a s
 ::: info
 The fix is the same in every case: check the purchase in the route, then hand back a short-lived signed link. Never email the asset address.
 :::
+
+## Paid, and the receipt never went out
+
+The third handover is the email. A customer pays, your site says "thanks", and a receipt with the download link is meant to follow. Your application's log says the send succeeded. That log records the attempt. The mail provider records what it accepted and sent, and that is the record worth comparing with the payments.
+
+`gaugeline delivery --paid --sent` counts the orders paid in Stripe in a window, counts the emails Resend says it sent in the same window, and reports paid orders that have no email behind them. **It prints counts and days, never customer data.** It is read only: it never sends, resends or replays anything.
+
+```sh
+npx gaugeline delivery --paid --sent --since 7d
+```
+
+| Flag            | Does                                                                                                       |
+| --------------- | ---------------------------------------------------------------------------------------------------------- |
+| `--paid`        | Reads the orders paid in Stripe. Needs `STRIPE_API_KEY`.                                                   |
+| `--sent`        | Reads the emails Resend lists as sent. Needs `RESEND_API_KEY`.                                             |
+| `--since <win>` | The window: `7d` (the default), `24h`, or a date such as `2026-11-01` (midnight UTC). Up to 366 days back. |
+| `--json`        | The result as JSON (schema 2) and nothing else. The counts are in `sampled` and in the finding's evidence. |
+| `--ci`          | Exit 1 when the finding is found.                                                                          |
+
+Either flag alone prints that side's count and compares nothing. A window that cannot be read, a key that is missing or refused, or a provider that does not answer is exit 2, with a sentence that names the variable.
+
+### The two keys
+
+Keys come from the environment only: no flag, config file or prompt takes one, and a key never reaches a log, a finding or a report. Every request is a `GET` with the key in an `Authorization` header and never in the address.
+
+- **Stripe: `STRIPE_API_KEY`, a restricted key.** In the Stripe dashboard create a restricted key and set **Checkout Sessions**, **PaymentIntents** and **Charges** to Read, and everything else to None. Checkout Sessions lists the orders; PaymentIntents and Charges are only there so a session refunded in full is not counted as paid. A secret key (`sk_`) is refused with exit 2 unless you pass `--allow-secret-key`, which uses it with a notice. The permission names are from memory and uncited, because Stripe's documentation could not be reached when this was written: if the dashboard names them differently, the 403 message says what the key could not read.
+- **Resend: `RESEND_API_KEY`.** The list of sent emails needs a key with full access; as far as we know Resend has no read-only key type, so this key can also send. Gaugeline only ever lists. Use a key made for this, and revoke it when you stop. This is uncited too.
+
+### Example: a running coach's receipts
+
+Tideline Coaching sells a 7-day plan through Stripe Checkout and sends the receipt and the download link through Resend from a Next.js route. Twelve people paid this week and nine receipts left. The route's log says "sent" every time.
+
+```sh title=Terminal untested="Needs a Stripe account and a Resend account, which a docs runner must not use. packages/cli/src/__tests__/delivery-docs.test.ts runs this command against stand-ins for both (invented clients, no keys) and compares the output with the block below."
+$ npx gaugeline delivery --paid --sent --since 7d
+```
+
+```text title=Output
+Paid orders and sent emails, the last 7 days (2026-11-03 to 2026-11-10 UTC)
+12 paid, 9 sent
+
+2026-11-05  2 paid, 2 sent
+2026-11-06  3 paid, 2 sent
+2026-11-07  1 paid, 1 sent
+2026-11-08  4 paid, 2 sent
+2026-11-09  2 paid, 2 sent
+
+✗ Orders were paid and no receipt went out
+    12 paid, 9 sent in the last 7 days (2026-11-03 to 2026-11-10 UTC): 3 paid orders have no matching email. Paid is above sent on 2026-11-06 (3 paid, 2 sent), 2026-11-08 (4 paid, 2 sent). Orders and emails are matched by recipient, not by day.
+
+1 to look at, 1 to fix first.
+```
+
+The count says there is a problem and the days say where to look: open Resend's dashboard on 6 and 8 November and compare its sends with the orders in Stripe. The three customers are not named on purpose. A list of people who did not get a receipt is personal data in a terminal's scrollback and in a CI log, and the count and the day are enough to find them in the two dashboards you already have.
+
+Either flag alone is a count:
+
+```sh title=Terminal untested="Same as above: packages/cli/src/__tests__/delivery-docs.test.ts runs it against the same stand-ins."
+$ npx gaugeline delivery --paid --since 7d
+```
+
+```text title=Output
+Paid orders, the last 7 days (2026-11-03 to 2026-11-10 UTC)
+12 paid
+```
+
+### What counts
+
+- **Paid.** A Checkout Session whose `payment_status` is `paid`, created inside the window, and not refunded in full. An unpaid session, a free one (`no_payment_required`) and a fully refunded one are not orders. A partial refund is still an order. Sessions are read newest first, 100 a page, up to 50 pages.
+- **Sent.** An email Resend lists, created inside the window, unless its last event says it bounced, failed, was cancelled, is still queued or scheduled, or was suppressed: those did not reach anyone. Opened, clicked and delayed emails count. The list is read 100 a page, up to 50 pages, and only as far back as the window.
+- **Days are UTC days.** An order at 23:59 and its email at 00:01 are on different days and still match: matching ignores the day.
+
+### How the match is made
+
+Each order takes one email addressed to the same recipient. In memory, a `Map` keyed by the SHA-256 of the lower-cased address counts the sent emails for each recipient, and each order takes one from its recipient's count. An order that finds the count at zero is unmatched.
+
+- **One count per key, not a yes or a no.** A customer who bought twice needs two emails. A set of addresses would call the second order delivered because the first one was. Comparing the two totals alone hides an order with no email behind another that had two.
+- **Hashes, not addresses.** The `Map` holds hashes only, lives inside one function call and is dropped when it returns. The result holds two counts, the unmatched count and the days.
+- **More emails than orders is fine.** A resend, or a receipt for an order outside the window, is never a negative number: `unmatched` is the paid orders left without an email, and it stops at zero.
+- **By recipient and window.** An email sent to a different address than the order's (a receipt sent to the account's address and not the payer's) shows as unmatched. So does an order with no address on it.
+
+### The window that could be read
+
+Stripe lists every session. Resend keeps sent emails for a limited time, which depends on the plan; Gaugeline assumes 30 days (proposed, uncited) and says so when the window you asked for reaches further back. When one side cannot be read as far back as you asked, or a page cap cut it short, both sides are cut to the same shorter window and a line on stderr says which:
+
+```text title=stderr
+Only 2026-11-07 to 2026-11-10 could be read on every side asked for, so that is the window compared; you asked for the last 7 days.
+```
+
+An order older than the emails Resend still holds would otherwise look like a receipt that never went out. If your plan keeps fewer days than the default assumes, keep `--since` inside it.
+
+### The check
+
+| Check                                    | Id                         | Level          | When                                                                      |
+| ---------------------------------------- | -------------------------- | -------------- | ------------------------------------------------------------------------- |
+| Orders were paid and no receipt went out | `delivery-receipt-missing` | Fix this first | At least one paid order in the window has no sent email to its recipient. |
+
+The fix is in the mail code, not in Gaugeline: find why those sends failed or never happened (a sender address that is not verified, a catch block that logs and moves on, a queue that dropped the job), fix it, and send the missing receipts from Resend's dashboard. Gaugeline never resends.
+
+## Webhooks that quietly stopped
+
+Stripe tells your site about a payment by calling a webhook endpoint. When the endpoint is down, or answers with an error, the payment happened and your site was never told: no order is recorded, no file is released and no email is sent. Stripe retries for a few days and then stops.
+
+`gaugeline platform --webhooks` reads the webhook endpoints on the Stripe account and the events that were not delivered, and reports two things. It reads delivery history only. **It never replays, retries, resends or enqueues anything** (see the Webhooks and queues row on [What it can and can't write](writes.md)).
+
+```sh
+npx gaugeline platform --webhooks
+```
+
+It needs `STRIPE_API_KEY`, a restricted key with **Webhook Endpoints** and **Events** set to Read and everything else None (from memory, uncited, like the permission names above). The key is handled as on the section before: the environment only, a header and never an address, and never printed. `--json`, `--ci` and `--allow-secret-key` work as they do for `delivery`.
+
+### Example: a taproom's ticket sales
+
+Marlin Street Taproom sells tickets to its tasting nights through Stripe Checkout, and the site's webhook route marks a ticket as sold. Six days ago a deploy broke that route. Stripe's list also still holds an endpoint for the old WordPress site, disabled.
+
+```sh title=Terminal untested="Needs a Stripe account, which a docs runner must not use. packages/cli/src/__tests__/delivery-docs.test.ts runs this command against a stand-in for Stripe (invented endpoints and events, no key) and compares the output with the block below."
+$ npx gaugeline platform --webhooks
+```
+
+```text title=Output
+Stripe webhook endpoints: 2 (1 enabled, 1 disabled)
+Events read: 2026-10-11 to 2026-11-10 UTC (Stripe keeps events for 30 days)
+
+hooks.marlin-street-taproom.example     enabled, 14 events not delivered, the oldest 6 days old
+old-site.marlin-street-taproom.example  disabled
+
+✗ A webhook endpoint is not receiving its events
+    hooks.marlin-street-taproom.example: 14 events older than 1 hour not delivered, the oldest 6 days old.
+! A webhook endpoint is switched off
+    old-site.marlin-street-taproom.example is disabled, so Stripe sends it no events.
+
+2 to look at, 1 to fix first.
+```
+
+Only the host is printed. A webhook address often carries a secret in its path or its query, and that never leaves the Stripe response.
+
+### The checks
+
+| Check                                      | Id                 | Level          | When                                                                                          |
+| ------------------------------------------ | ------------------ | -------------- | --------------------------------------------------------------------------------------------- |
+| A webhook endpoint is not receiving events | `webhook-failing`  | Fix this first | An enabled endpoint has events older than 1 hour that were never delivered. Host, count, age. |
+| A webhook endpoint is switched off         | `webhook-disabled` | Fix soon       | An endpoint's status is disabled.                                                             |
+
+- **An hour is the threshold.** A delivery that is still being retried a few minutes after an event is normal, so an event counts only when it is more than an hour old and still has deliveries pending. The hour is proposed.
+- **Events are read for 30 days.** That is as far back as Stripe keeps them (uncited), and the output states the first day that was read. An endpoint that has been failing for longer shows the last 30 days of it.
+- **An event is counted against every endpoint that takes its type.** Stripe's list says an event is undelivered, not which endpoint it was waiting for. An endpoint that takes everything (`*`) or the event's type is told about it, so two endpoints that take the same type each show it, and the count is an upper bound. A disabled endpoint is given no count: Stripe sends it nothing.
+- **The fix is in Stripe and in your route.** Open the endpoint in the dashboard, read what it answered, fix the route, then let Stripe retry or resend from there. Gaugeline never does.

@@ -20,3 +20,12 @@ export { assertGrouped } from "./grouped.js";
 export { staticSite } from "./static-site.js";
 export { MCP_RECORDINGS_DIR, readMcpRecording, replayMcp } from "./mcp-replay.js";
 export type { McpExchange, McpRecording, McpReplay } from "./mcp-replay.js";
+export { providerTransport } from "./delivery-providers.js";
+export type {
+  FakeEmail,
+  FakeEndpoint,
+  FakeEvent,
+  FakeOrder,
+  FakeProviders,
+  SeenRequest,
+} from "./delivery-providers.js";
