@@ -11,6 +11,7 @@ import {
   MUTATION_CHECKS,
   QUERY_CHECKS,
   QUERY_DUPE_CHECKS,
+  QUERY_GENERATED_CHECKS,
   QUERY_UNUSED_CHECKS,
   RECEIPT_CHECKS,
   WEBHOOK_CHECKS,
@@ -31,6 +32,7 @@ export function CATALOGUE_IDS(): string[] {
   for (const c of SUBSCRIPTION_CHECKS) registry.register(c);
   for (const c of QUERY_CHECKS) registry.register(c);
   for (const c of QUERY_DUPE_CHECKS) registry.register(c);
+  for (const c of QUERY_GENERATED_CHECKS) registry.register(c);
   for (const c of QUERY_UNUSED_CHECKS) registry.register(c);
   for (const c of MUTATION_CHECKS) registry.register(c);
   for (const c of GRAPHQL_CHECKS) registry.register(c);

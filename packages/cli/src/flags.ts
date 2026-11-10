@@ -189,6 +189,24 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     commands: ["query"],
   },
   {
+    name: "totals",
+    type: "string",
+    description:
+      "With query: check a stated number against the sum of its parts, as type:stated=parts (repeatable)",
+    since: "0.2.0",
+    commands: ["query"],
+    multiple: true,
+  },
+  {
+    name: "refs",
+    type: "string",
+    description:
+      "With query: find documents that link to things nobody published, as type:path (repeatable)",
+    since: "0.2.0",
+    commands: ["query"],
+    multiple: true,
+  },
+  {
     name: "type",
     type: "string",
     description:

@@ -180,6 +180,8 @@ export type ParsedArgs =
       page?: { type: string; out: string; force: boolean };
       /** --unused: report the fields the queries fetch and no code reads. Reads source only; no request. */
       unused?: boolean;
+      /** --totals "type:stated=parts" and --refs "type:path", as typed: content that has to add up. Parsed when the command runs. */
+      generated?: { totals: string[]; refs: string[] };
       /** --schema: the schema file for --mutations, --suggest or --page (default ./schema.json), or for --graphql (SDL or introspection JSON). */
       schema?: string;
       /** --allow-private: an endpoint on this computer or a private network may be asked. */
@@ -626,6 +628,20 @@ export function parseCliArgs(
     const suggest = values.suggest === true;
     const page = values.page === true;
     const unused = values.unused === true;
+    const totals = Array.isArray(values.totals) ? values.totals.map(String) : [];
+    const refs = Array.isArray(values.refs) ? values.refs.map(String) : [];
+    const generated = totals.length + refs.length > 0;
+    if (
+      generated &&
+      (suggest || page || unused || graphql || values.dupes === true || values.mutations === true)
+    )
+      return {
+        kind: "error",
+        message:
+          "--totals and --refs are their own run: they cannot be combined with --suggest, --page, --unused, --graphql, --dupes or --mutations.",
+        hint: 'They ask the dataset one question for each rule and print findings. Run the others separately: gaugeline query ./src, then gaugeline query ./src --refs "mealPlan:meals".',
+        verbose,
+      };
     if ((typeof values.out === "string" || values.force === true) && !page)
       return {
         kind: "error",
@@ -729,6 +745,35 @@ export function parseCliArgs(
         mutations: false,
         suggest: { type },
         ...(typeof values.schema === "string" ? { schema: values.schema } : {}),
+        allowPrivate: values["allow-private"] === true,
+        verbose,
+        quiet: values.quiet === true,
+      };
+    }
+    if (generated) {
+      if (positionals.length !== 1)
+        return {
+          kind: "error",
+          message:
+            'gaugeline query needs one folder: gaugeline query ./src --refs "mealPlan:meals"',
+          hint: "Give the folder of your site's source, as for the other query checks.",
+          verbose,
+        };
+      if (typeof values.schema === "string")
+        return {
+          kind: "error",
+          message: "--totals and --refs take no --schema: they ask the dataset and read no file.",
+          hint: "--schema is for --mutations, --suggest, --page and --graphql.",
+          verbose,
+        };
+      return {
+        kind: "query",
+        dir: positionals[0] ?? "",
+        json: values.json === true,
+        ci: values.ci === true,
+        dupes: false,
+        mutations: false,
+        generated: { totals, refs },
         allowPrivate: values["allow-private"] === true,
         verbose,
         quiet: values.quiet === true,
