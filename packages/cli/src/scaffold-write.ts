@@ -125,6 +125,20 @@ export async function inspectScaffold(
 }
 
 /**
+ * The folders `mkdir` will have to make for `folder`, deepest first: `folder` and each parent that is
+ * not there yet. Worked out here, from the same path strings the rest of this file uses, rather than
+ * read from what `mkdir` returns, so cleaning up does not depend on how the platform spells a path.
+ */
+async function missingFolders(fs: ScaffoldFs, folder: string): Promise<string[]> {
+  const missing: string[] = [];
+  for (let dir = folder; (await fs.lstat(dir)) === null; dir = dirname(dir)) {
+    missing.push(dir);
+    if (dirname(dir) === dir) break;
+  }
+  return missing;
+}
+
+/**
  * Write the files into `out`: all of them or none. Every target is checked first (`inspectScaffold`),
  * the folder is created if it is missing, and each file is written with `wx`, which fails if the
  * file appeared meanwhile. If any write fails, the files this run wrote are removed, a file that
@@ -140,9 +154,9 @@ export async function writeScaffold(
   const cwd = opts.cwd ?? process.cwd();
   const { folder, replacing } = await inspectScaffold(files, out, { ...opts, cwd, fs });
   const wrote: string[] = [];
-  let created: string | undefined;
+  const made = await missingFolders(fs, folder);
   try {
-    created = await fs.mkdir(folder);
+    await fs.mkdir(folder);
     for (const file of files) {
       const path = join(folder, file.name);
       await fs.writeFile(path, file.text, replacing.has(path) ? "w" : "wx");
@@ -161,14 +175,13 @@ export async function writeScaffold(
         left.push(path);
       }
     }
-    if (created !== undefined) {
-      for (let dir = folder; inside(created, dir); dir = dirname(dir)) {
-        try {
-          await fs.rmdir(dir);
-        } catch {
-          break;
-        }
-        if (dir === created) break;
+    // Deepest first. One that is already gone (mkdir stopped before it) is skipped; any other
+    // failure stops here and leaves the rest.
+    for (const dir of made) {
+      try {
+        await fs.rmdir(dir);
+      } catch (e) {
+        if (codeOf(e) !== "ENOENT") break;
       }
     }
     const code = codeOf(err);

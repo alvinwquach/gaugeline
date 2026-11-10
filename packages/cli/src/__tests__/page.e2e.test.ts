@@ -460,6 +460,31 @@ describe("gaugeline query --page: all three files or none", () => {
     expect(tree(cwd)).toEqual(["schema.json"]);
   });
 
+  it("the folders are removed whatever way mkdir spells the first one it made", async () => {
+    // Windows can report a created path in another form (a short name, another case) than the one
+    // that was asked for. Cleaning up must not depend on it.
+    const cwd = project();
+    const { fs } = spy((op, _path, n) => (op === "writeFile" && n === 2 ? denied(op) : undefined));
+    const respelled: ScaffoldFs = {
+      ...fs,
+      mkdir: async (path) => {
+        await fs.mkdir(path);
+        return join(tmpdir(), "somewhere", "else");
+      },
+    };
+    const { result } = await runWith(cwd, "app/resource/[slug]", respelled);
+    expect(result).toMatchObject({ message: expect.stringContaining("Nothing was written") });
+    expect(tree(cwd)).toEqual(["schema.json"]);
+  });
+
+  it("a folder that already existed is kept when the write fails", async () => {
+    const cwd = project();
+    mkdirSync(join(cwd, "app"), { recursive: true });
+    const { fs } = spy((op, _path, n) => (op === "writeFile" && n === 2 ? denied(op) : undefined));
+    await runWith(cwd, "app/resource/[slug]", fs);
+    expect(tree(cwd)).toEqual(["app", "schema.json"]);
+  });
+
   it("a folder that cannot be created leaves nothing", async () => {
     const cwd = project();
     const { fs } = spy((op) => (op === "mkdir" ? denied(op) : undefined));
