@@ -20,6 +20,7 @@ import type { RunSnapshot } from "./run-snapshot.js";
 import type { DatasetRead } from "./sanity.js";
 import type { ListingsRead } from "./listings/read.js";
 import type { DatabasesRead } from "./connectors/postgres/read.js";
+import type { AssertionsRead } from "./assertions/read.js";
 import type { ScriptRead } from "./scripts.js";
 import type { PageSnapshot } from "./snapshot.js";
 import type { ImageSample } from "./checks/images/refs.js";
@@ -178,10 +179,15 @@ export interface CheckContext {
   listings?: () => Promise<ListingsRead>;
   /**
    * The named queries in gaugeline.sources.json (Postgres, Supabase), read once on first use, read
-   * only. Absent when no source is configured. No check reads it yet; the data assertions and
-   * switches checks do.
+   * only. Absent when no source is configured. Data assertions have their own entry below; the
+   * switches check reads this one.
    */
   databases?: () => Promise<DatabasesRead>;
+  /**
+   * The data assertions in gaugeline.sources.json (SELECTs that must return no rows), run once on
+   * first use through the same read-only database connector. Absent when none is configured.
+   */
+  assertions?: () => Promise<AssertionsRead>;
   /** Values the run was told to expect (for example the app's name). Until the config file, API only. */
   expect?: RunExpectations;
 }

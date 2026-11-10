@@ -279,6 +279,7 @@ between the markers; CI fails when it differs from the flag table.
 | `--notify-on <value>`     | When to send: any (something was found, the default), high or always                                           |                      | 0.2.0 |
 | `--report-url <value>`    | Link each message to a hosted copy of the report at this address                                               |                      | 0.2.0 |
 | `--save-requests <value>` | Save the requests made and the page's data to this JSON file; it may contain page content, so do not commit it |                      | 0.2.0 |
+| `--list`                  | Print the data assertions in gaugeline.sources.json and run none of them                                       |                      | 0.2.0 |
 | `--quiet`                 | Print only results and errors                                                                                  |                      | 0.1.0 |
 | `--verbose`               | Show each request, and technical detail when something goes wrong                                              |                      | 0.1.0 |
 | `-h`, `--help`            | Show this help and exit                                                                                        |                      | 0.1.0 |

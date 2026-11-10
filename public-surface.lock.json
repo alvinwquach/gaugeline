@@ -1,5 +1,12 @@
 {
   "flags": {
+    "assert": [
+      "help",
+      "list",
+      "quiet",
+      "verbose",
+      "version"
+    ],
     "check": [
       "allow-private",
       "ci",
@@ -141,6 +148,7 @@
     "canonical-elsewhere",
     "canonical-missing",
     "certificate-expiring",
+    "data-assertion-failed",
     "dataset-private-types",
     "dataset-public",
     "drafts-live",
@@ -270,6 +278,7 @@
     "canonical-elsewhere": "high",
     "canonical-missing": "low",
     "certificate-expiring": "high",
+    "data-assertion-failed": "high",
     "dataset-private-types": "high",
     "dataset-public": "low",
     "drafts-live": "high",

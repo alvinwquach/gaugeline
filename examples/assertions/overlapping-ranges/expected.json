@@ -1,0 +1,11 @@
+{
+  "rows": 1,
+  "evidence": [
+    {
+      "booking_id": "1",
+      "clashes_with": "2",
+      "room": "Loft",
+      "starts_at": "2026-12-05T19:00:00.000Z"
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "id": "duplicate-natural-key",
+  "severity": "medium",
+  "title": "The same product is on sale twice",
+  "evidence": ["slug", "copies", "first_id"]
+}
