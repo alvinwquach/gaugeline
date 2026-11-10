@@ -38,17 +38,17 @@ What the code in this repository does today. The sections above describe the pro
 Gaugeline asks for the page the way a crawler does, without running any JavaScript, and parses the
 HTML once into a _snapshot_. Every page check reads that snapshot:
 
-| Field                                                    | What it holds                                                                              |
-| -------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| `requestedUrl`, `finalUrl`, `status`, `hops`             | The address asked for, where it ended up, and every redirect on the way                    |
-| `title`, `canonical` (and every canonical), `metaRobots` | The head tags search engines read                                                          |
-| `headings`                                               | `h1` to `h3`, with their text and id                                                       |
-| `links`, `images`, `scripts`                             | Resolved against the page (and its `<base href>`); links say whether they stay on the site |
-| `jsonLd`, `jsonLdErrors`                                 | Structured data blocks, and any that are not valid JSON                                    |
-| `og`                                                     | Share-preview tags (`og:title`, `og:image`, ...)                                           |
-| `forms`                                                  | Each form's action, method and hidden field names                                          |
-| `ids`                                                    | Every element id on the page, for `#anchor` links                                          |
-| `wordCount`                                              | Words a visitor sees before JavaScript runs                                                |
+| Field                                                    | What it holds                                                                                                                             |
+| -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `requestedUrl`, `finalUrl`, `status`, `hops`             | The address asked for, where it ended up, and every redirect on the way                                                                   |
+| `title`, `canonical` (and every canonical), `metaRobots` | The head tags search engines read                                                                                                         |
+| `headings`                                               | `h1` to `h3`, with their text and id                                                                                                      |
+| `links`, `images`, `scripts`                             | Resolved against the page (and its `<base href>`); links say whether they stay on the site                                                |
+| `jsonLd`, `jsonLdErrors`                                 | Structured data blocks, and any that are not valid JSON                                                                                   |
+| `og`                                                     | Share-preview tags (`og:title`, `og:image`, ...)                                                                                          |
+| `forms`, `iframes`, `scriptTags`                         | Each form's action, method, hidden field names; each iframe address; each script's address or inline start. All carry a document position |
+| `ids`                                                    | Every element id on the page, for `#anchor` links                                                                                         |
+| `wordCount`                                              | Words a visitor sees before JavaScript runs                                                                                               |
 
 Two details matter to the checks:
 

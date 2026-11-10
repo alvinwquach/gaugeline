@@ -837,6 +837,19 @@ export type {
   ProductPage,
   StockRead,
 } from "./ads/landing.js";
+export {
+  FORM_JS_NOTE,
+  FORM_PROVIDER_IDS,
+  PROVIDERS as FORM_PROVIDERS,
+  detectForms,
+  formNotes,
+} from "./forms/providers.js";
+export type {
+  FormProvider,
+  FormProviderId,
+  FormSighting,
+  SightingProvider,
+} from "./forms/providers.js";
 export { formatMoney, minorExponent, toMinor } from "./products/money.js";
 export type { Money } from "./products/money.js";
 export {
