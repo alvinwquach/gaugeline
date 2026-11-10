@@ -3,7 +3,13 @@ import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { decodeBody } from "../charset.js";
 import type { Hop } from "../fetcher.js";
-import { INLINE_SCRIPT_MAX, buildSnapshot, jsonLdNodes } from "../snapshot.js";
+import {
+  BUTTONS_MAX,
+  INLINE_SCRIPT_MAX,
+  VISIBLE_TEXT_MAX,
+  buildSnapshot,
+  jsonLdNodes,
+} from "../snapshot.js";
 
 const URL0 = "https://shop.example/menu/";
 function page(body: string, extra: Partial<Hop> = {}): Hop[] {
@@ -223,6 +229,69 @@ describe("buildSnapshot: edge cases", () => {
     expect(s.wordCount).toBe(0);
     expect(snap("").wordCount).toBe(0);
     expect(buildSnapshot([{ url: URL0, status: 204, headers: {}, ms: 0 }]).wordCount).toBe(0);
+  });
+});
+
+describe("buildSnapshot: buttons and visible text", () => {
+  it("keeps every button and link as written, in order, with the form it sits in", () => {
+    const s = snap(
+      `<a href="#">Top</a><a>Bare</a><button>Pay</button>
+       <form action=" /cart/add "><button type="button">Add</button><input type="submit" value="Checkout"><input type="text" value="no"><button formaction="/x">Go</button></form>
+       <div role="button" onclick="x()">Div</div><span onclick="y()" aria-label="Label only"></span>`,
+    );
+    expect(s.buttons).toEqual([
+      { kind: "a", text: "Top", href: "#", onclick: false },
+      { kind: "a", text: "Bare", onclick: false },
+      { kind: "button", text: "Pay", type: "submit", onclick: false },
+      {
+        kind: "button",
+        text: "Add",
+        type: "button",
+        form: { action: "/cart/add" },
+        onclick: false,
+      },
+      {
+        kind: "input",
+        text: "Checkout",
+        type: "submit",
+        form: { action: "/cart/add" },
+        onclick: false,
+      },
+      {
+        kind: "button",
+        text: "Go",
+        type: "submit",
+        formAction: "/x",
+        form: { action: "/cart/add" },
+        onclick: false,
+      },
+      { kind: "other", text: "Div", onclick: true },
+      { kind: "other", text: "Label only", onclick: true },
+    ]);
+  });
+
+  it("leaves out buttons that are hidden, and stops at the cap", () => {
+    expect(
+      snap(
+        '<button hidden>a</button><div aria-hidden="true"><a href="/x">b</a></div><p style="display: none"><button>c</button></p>',
+      ).buttons,
+    ).toEqual([]);
+    const many = snap("<a href='/x'>x</a>".repeat(BUTTONS_MAX + 20));
+    expect(many.buttons).toHaveLength(BUTTONS_MAX);
+  });
+
+  it("visibleText is what a visitor reads: no scripts, styles, noscript or hidden elements, one line", () => {
+    const s = snap(
+      '<h1>Plan</h1><p>$48</p><script>var x = "$99"</script><style>.a{}</style><noscript>$77</noscript><div hidden>$66</div><p style="display:none">$55</p><p>Two\n  lines</p>',
+    );
+    expect(s.visibleText).toBe("Plan $48 Two lines");
+    expect(s.wordCount).toBe(4);
+  });
+
+  it("visibleText is cut at the cap and stega characters are stripped", () => {
+    const long = snap(`<p>${"word ".repeat(VISIBLE_TEXT_MAX)}</p>`);
+    expect(long.visibleText?.length).toBe(VISIBLE_TEXT_MAX);
+    expect(snap("<p>Buy\u200B now</p>").visibleText).toBe("Buy now");
   });
 });
 
