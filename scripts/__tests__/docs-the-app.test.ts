@@ -11,7 +11,14 @@ import {
 } from "../../packages/core/src/index.js";
 import type { Checked, Result } from "../../packages/app/src/types.js";
 import { withFixture } from "../../packages/fixtures/src/index.js";
-import { adsText, leaksAccessText, pagesCheckedText, searchDataText } from "../lib/the-app-docs.js";
+import { FEATURES } from "../../packages/app/src/features.js";
+import {
+  adsText,
+  leaksAccessText,
+  pagesCheckedText,
+  searchDataText,
+  viewListText,
+} from "../lib/the-app-docs.js";
 import { TAPAS_ADS, tapasResult } from "../lib/ads-example.js";
 
 const page = readFileSync(
@@ -125,5 +132,23 @@ describe("the Ads example in docs/ad-landing-pages.md", () => {
     if (process.env.GAUGELINE_PRINT_ADS)
       writeFileSync(process.env.GAUGELINE_PRINT_ADS, `${text}\n`);
     expect(shown).toBe(text);
+  });
+});
+
+describe("the views still to come in docs/the-app.md", () => {
+  it("lists the navigation as the app does, from VIEWS and FEATURES", () => {
+    const text = viewListText();
+    if (process.env.GAUGELINE_PRINT_VIEWS)
+      writeFileSync(process.env.GAUGELINE_PRINT_VIEWS, `${text}\n`);
+    expect(block("Views")).toBe(text);
+  });
+
+  it("says in the last row of What's in it what the app says under each of the three", () => {
+    const row = page.split("\n").find((l) => l.startsWith("| Page cost"));
+    expect(row).toBeTruthy();
+    for (const feature of Object.values(FEATURES)) {
+      expect(row).toContain(feature.label);
+      expect(row).toContain(feature.note);
+    }
   });
 });

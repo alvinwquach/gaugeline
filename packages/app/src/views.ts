@@ -1,6 +1,8 @@
 import type { ComponentType } from "react";
+import { FEATURES, type FeatureId } from "./features";
 import type { RunState } from "./store";
 import { Ads } from "./views/Ads";
+import { comingSoon } from "./views/ComingSoon";
 import { LeaksAccess } from "./views/LeaksAccess";
 import { Overview } from "./views/Overview";
 import { PagesChecked } from "./views/PagesChecked";
@@ -10,6 +12,8 @@ import { SearchData } from "./views/SearchData";
 export interface View {
   id: string;
   label: string;
+  /** The flag that switches this view on. While it is off the view is listed, disabled, and shows a placeholder. */
+  feature?: FeatureId;
   component: ComponentType<{ run: RunState }>;
 }
 
@@ -23,6 +27,25 @@ export const VIEWS: readonly View[] = [
   { id: "pages", label: "Pages checked", component: PagesChecked },
   { id: "search", label: "Search data", component: SearchData },
   { id: "leaks", label: "Leaks & access", component: LeaksAccess },
+  // These arrive with the Sanity login (version 0.2). Their labels come from the flags they name.
+  {
+    id: "pageCost",
+    label: FEATURES.pageCost.label,
+    feature: "pageCost",
+    component: comingSoon("pageCost"),
+  },
+  {
+    id: "automaticMessages",
+    label: FEATURES.automaticMessages.label,
+    feature: "automaticMessages",
+    component: comingSoon("automaticMessages"),
+  },
+  {
+    id: "content",
+    label: FEATURES.content.label,
+    feature: "content",
+    component: comingSoon("content"),
+  },
 ];
 
 /**
