@@ -8,7 +8,13 @@ import { afterEach, describe, expect, it } from "vitest";
 import { parseCliArgs } from "../args.js";
 import { FLAGS } from "../flags.js";
 import { EXIT, main } from "../main.js";
-import { okSite, recordingSite, tapasSite } from "./helpers/ads-site.js";
+import {
+  autumnSite,
+  fixtureTransport,
+  okSite,
+  recordingSite,
+  tapasSite,
+} from "./helpers/ads-site.js";
 import { runBin } from "./helpers/bin.js";
 
 const ADS = fileURLToPath(new URL("../../../fixtures/ads/", import.meta.url));
@@ -59,7 +65,9 @@ describe("gaugeline ads: arguments", () => {
 
   it("--json is a flag of ads too, in the table the docs and --help are made from", () => {
     expect(FLAGS.find((f) => f.name === "json")?.commands).toContain("ads");
-    expect(parseCliArgs(["ads", "a.csv", "--ci"])).toMatchObject({ kind: "error" });
+    expect(FLAGS.find((f) => f.name === "ci")?.commands).toContain("ads");
+    expect(parseCliArgs(["ads", "a.csv", "--ci"])).toMatchObject({ kind: "ads", ci: true });
+    expect(parseCliArgs(["ads", "a.csv"])).toMatchObject({ kind: "ads", ci: false });
     expect(parseCliArgs(["ads", "a.csv", "--ads", "b.csv"])).toMatchObject({ kind: "error" });
   });
 
@@ -243,7 +251,7 @@ describe("gaugeline ads: e2e", () => {
           ...Array.from(
             { length: 12 },
             (_, i) =>
-              `Ad ${i},${site.origin}/${["", "about.html", "menu.html", "x"][i % 4]}?utm_campaign=c${i},5.00`,
+              `Ad ${i},${site.origin}/${["", "about.html", "menu.html", "robots.txt"][i % 4]}?utm_campaign=c${i},5.00`,
           ),
         ].join("\n"),
       );
@@ -294,7 +302,7 @@ describe("gaugeline ads: e2e", () => {
     expect(quiet.out()).toBe(c.out());
   });
 
-  it("--json carries the finding, and --ci is not a flag of this command", async () => {
+  it("--json carries the finding, and the exit code stays 0 without --ci", async () => {
     const c = capture();
     expect(
       await main(["ads", join(ADS, "meta.csv"), "--json"], c.io, {
@@ -305,17 +313,132 @@ describe("gaugeline ads: e2e", () => {
     expect(result.findings.map((f) => [f.checkId, f.severity, f.url])).toEqual([
       ["campaign-fields-lost", "high", `${SHOP}/gift-cards`],
     ]);
-    expect(result.passed).toEqual([]);
+    // Not the stock check (no Shopify page was read) and not the tags (they were lost).
+    expect(result.passed).toEqual(["ad-dead-page", "placeholder-text"]);
   });
 
-  it("a page that cannot be reached is listed as not checked, with exit 0", async () => {
+  it("a page that cannot be reached: the tags are not checked, and the page does not load", async () => {
     const c = capture();
     const down = () => Promise.reject(new Error("offline"));
     expect(
       await main(["ads", join(ADS, "google.csv")], c.io, { fetcher: { transport: down } }),
     ).toBe(EXIT.ok);
     expect(c.out()).toContain("campaign-fields-lost could not be checked");
-    expect(c.out()).not.toContain("1 to look at");
+    expect(c.out()).toContain("The page doesn't load");
+    expect(c.out()).toContain("went to pages with problems.");
+  });
+});
+
+describe("gaugeline ads: dead pages, sold-out products and the summary", () => {
+  it("meta.csv with the old menu gone: two findings, then one sentence with the spend", async () => {
+    const c = capture();
+    expect(
+      await main(["ads", join(ADS, "meta.csv")], c.io, { fetcher: { transport: autumnSite } }),
+    ).toBe(EXIT.ok);
+    const text = c.out();
+    expect(text).toContain("The page doesn't load");
+    expect(text).toContain(`${SHOP}/old-menu answers 404`);
+    expect(text).toContain("999.99 USD");
+    expect(text).toContain("Campaign tags are lost");
+    expect(text).toContain("2 to look at, 2 to fix first.");
+    // The sentence comes after the findings, last, once.
+    expect(text.trimEnd().split("\n").at(-1)).toBe(
+      "1150.74 USD of 3155.24 USD went to pages with problems.",
+    );
+    expect(text.match(/went to pages with problems/g)).toHaveLength(1);
+  });
+
+  it("a clean export prints its lines and no sentence", async () => {
+    const c = capture();
+    await main(["ads", join(ADS, "meta.csv")], c.io, { fetcher: { transport: okSite } });
+    expect(c.out()).not.toContain("went to pages with problems");
+  });
+
+  it("mixed currencies get one sentence each, never one sum", async () => {
+    const dir = scratch();
+    const path = join(dir, "mixed.csv");
+    writeFileSync(
+      path,
+      [
+        "Ad name,Website URL,Amount spent,Currency",
+        `A,${SHOP}/old-menu,40.00,EUR`,
+        `B,${SHOP}/old-menu,25.00,USD`,
+        `C,${SHOP}/happy-hour,15.00,EUR`,
+      ].join("\n"),
+    );
+    const c = capture();
+    await main(["ads", path], c.io, { fetcher: { transport: autumnSite } });
+    const sentences = c
+      .out()
+      .split("\n")
+      .filter((l) => l.includes("went to pages"));
+    expect(sentences).toEqual([
+      "40.00 EUR of 55.00 EUR went to pages with problems.",
+      "25.00 USD of 25.00 USD went to pages with problems.",
+    ]);
+  });
+
+  it("--json is still the schema 2 result: findings in it, the summary sentence not", async () => {
+    const c = capture();
+    await main(["ads", join(ADS, "meta.csv"), "--json"], c.io, {
+      fetcher: { transport: autumnSite },
+    });
+    const result = parseResult(JSON.parse(c.out()));
+    expect(result.findings.map((f) => [f.checkId, f.url]).sort()).toEqual([
+      ["ad-dead-page", `${SHOP}/old-menu`],
+      ["campaign-fields-lost", `${SHOP}/gift-cards`],
+    ]);
+    expect(c.out()).not.toContain("went to pages with problems");
+  });
+
+  it("e2e: --ci exits 1 when a destination is dead, and 0 when none is", async () => {
+    const dead = capture();
+    expect(
+      await main(["ads", join(ADS, "meta.csv"), "--ci"], dead.io, {
+        fetcher: { transport: autumnSite },
+      }),
+    ).toBe(EXIT.findings);
+    const fine = capture();
+    expect(
+      await main(["ads", join(ADS, "meta.csv"), "--ci"], fine.io, {
+        fetcher: { transport: okSite },
+      }),
+    ).toBe(EXIT.ok);
+    // Without --ci the same findings exit 0, as before.
+    const plain = capture();
+    expect(
+      await main(["ads", join(ADS, "meta.csv")], plain.io, { fetcher: { transport: autumnSite } }),
+    ).toBe(EXIT.ok);
+  });
+
+  it("a sold-out Shopify product, a half-sold one and a 404, from the invented candle shop", async () => {
+    const seen: { method: string; url: string }[] = [];
+    const c = capture();
+    expect(
+      await main(["ads", join(ADS, "shop.csv")], c.io, {
+        fetcher: { transport: fixtureTransport("ad-shop", seen) },
+      }),
+    ).toBe(EXIT.ok);
+    const text = c.out();
+    expect(text).toContain("The advertised product is sold out");
+    expect(text).toContain("The page doesn't load");
+    expect(text).toContain("Lorem ipsum");
+    expect(text).toContain("Some options of the advertised product are sold out");
+    expect(text).toContain("Medium, Extra large");
+    expect(text.trimEnd().split("\n").at(-1)).toBe(
+      "890.00 USD of 1440.00 USD went to pages with problems.",
+    );
+    // Five landing pages are five page requests, plus one stock request for each of the four that are
+    // Shopify product pages and loaded (the 404 is not asked about).
+    const stock = seen.filter((r) => r.url.endsWith(".js"));
+    expect(stock.map((r) => new URL(r.url).pathname).sort()).toEqual([
+      "/products/amber-tin.js",
+      "/products/linen-wick-set.js",
+      "/products/oat-candle.js",
+      "/products/sample-tin.js",
+    ]);
+    expect(seen).toHaveLength(5 + stock.length);
+    expect(new Set(seen.map((r) => r.method))).toEqual(new Set(["GET"]));
   });
 });
 
@@ -328,7 +451,7 @@ describe("gaugeline ads: the built bin", () => {
         path,
         [
           "Ad name,Website URL,Amount spent (USD)",
-          ...["", "about.html", "menu.html", "x"].map(
+          ...["", "about.html", "menu.html", "robots.txt"].map(
             (p, i) => `Ad ${i},${site.origin}/${p}?utm_source=facebook,5.00`,
           ),
         ].join("\n"),

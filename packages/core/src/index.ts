@@ -817,6 +817,26 @@ export {
   createCampaignRegistry,
 } from "./checks/campaign-fields-lost.js";
 export type { CampaignTagsInput } from "./checks/campaign-fields-lost.js";
+export { AD_LANDING_CHECKS, createAdsRegistry } from "./checks/ad-landing.js";
+export { adDeadPage } from "./checks/ad-dead-page.js";
+export type { AdPagesInput } from "./checks/ad-dead-page.js";
+export { adSoldOut } from "./checks/ad-sold-out.js";
+export {
+  classifyLanding,
+  parseAvailability,
+  readStock,
+  shopifyProduct,
+  summarise as summariseAds,
+  summarySentence,
+} from "./ads/landing.js";
+export type {
+  AdsSummary,
+  Availability,
+  DestinationSummary,
+  Landing,
+  ProductPage,
+  StockRead,
+} from "./ads/landing.js";
 export { formatMoney, minorExponent, toMinor } from "./products/money.js";
 export type { Money } from "./products/money.js";
 export {

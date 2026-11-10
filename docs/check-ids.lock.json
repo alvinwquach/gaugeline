@@ -1,6 +1,8 @@
 [
   "access-public-read",
   "access-role-scope",
+  "ad-dead-page",
+  "ad-sold-out",
   "ai-crawlers-blocked",
   "app-link-dead",
   "app-name-mismatch",

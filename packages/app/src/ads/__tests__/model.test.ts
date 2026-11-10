@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { finding, result } from "../../__tests__/helpers";
 import type { AdsData } from "../../types";
-import { toAdsModel } from "../model";
+import { hasProblem, toAdsModel } from "../model";
 
 const BAR = "https://tapas-bar.example";
 
@@ -45,6 +45,26 @@ describe("toAdsModel", () => {
 
   it("problem spend adds the destinations that have a finding, each once however many it has", () => {
     expect(usd?.problemSpend).toBe(99999 + 15075);
+  });
+
+  it("a page with only a low note is listed with it but its spend is not problem spend", () => {
+    const low = toAdsModel(
+      result({
+        findings: [
+          finding({
+            checkId: "ad-sold-out",
+            severity: "low",
+            title: "Some options of the advertised product are sold out",
+            url: `${BAR}/happy-hour`,
+          }),
+        ],
+      }),
+      data,
+    ).currencies[0];
+    expect(low?.problemSpend).toBe(0);
+    expect(low?.destinations.find((d) => d.url === `${BAR}/happy-hour`)?.findings).toHaveLength(1);
+    expect(low?.destinations.map((d) => hasProblem(d))).toEqual([false, false, false, false]);
+    expect(low?.destinations[0]?.url).toBe(`${BAR}/happy-hour`);
   });
 
   it("sorts by the spend on pages with problems, highest first, then total spend, then address", () => {
