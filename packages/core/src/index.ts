@@ -600,3 +600,21 @@ export { leaksView, MAX_PREVIEWS } from "./leaks-view.js";
 export type { DatasetView, LeaksView, ScriptView } from "./leaks-view.js";
 export { pageData } from "./run-view.js";
 export type { PageData, StructuredBlock } from "./run-view.js";
+export {
+  ConnectorRefusedError,
+  REDACTED,
+  connectorGet,
+  createRedactor,
+  freezeEnv,
+  isConfigured,
+  missingVars,
+  runConnectors,
+} from "./connectors/index.js";
+export type {
+  Connector,
+  ConnectorNotice,
+  ConnectorRequest,
+  ConnectorRun,
+  Env,
+  RunConnectorsOptions,
+} from "./connectors/index.js";
