@@ -37,7 +37,7 @@ const pageSays = z
  * document of that type; `db:<query>` (or `db:<source>.<query>` when two sources use one name) is a
  * named query in gaugeline.sources.json.
  */
-const SOURCE =
+export const SOURCE =
   /^(?:sanity:[A-Za-z][A-Za-z0-9_-]{0,63}(?:\.[A-Za-z_][A-Za-z0-9_]{0,63}){1,8}|db:(?:[a-z][a-z0-9_-]{0,31}\.)?[A-Za-z][A-Za-z0-9_]{0,63})$/;
 const source = z
   .string()

@@ -13,6 +13,9 @@ import { canonicalMissing } from "./canonical-missing.js";
 import { capacityZeroNotSoldOut } from "./capacity-zero-not-sold-out.js";
 import { certificateExpiring } from "./certificate-expiring.js";
 import { dataAssertionFailed } from "./data-assertion-failed.js";
+import { dataBehindSource } from "./data-behind-source.js";
+import { dataNoStamp } from "./data-no-stamp.js";
+import { dataStale } from "./data-stale.js";
 import { datasetPrivateTypes } from "./dataset-private-types.js";
 import { datasetPublic } from "./dataset-public.js";
 import { draftsLive } from "./drafts-live.js";
@@ -34,6 +37,7 @@ import { feedBroken } from "./feed-broken.js";
 import { feedDuplicate } from "./feed-duplicate.js";
 import { feedInvalid } from "./feed-invalid.js";
 import { feedOversized } from "./feed-oversized.js";
+import { forecastForPastEvent } from "./forecast-for-past-event.js";
 import { formDestinationChanged } from "./form-destination-changed.js";
 import { formProviderChanged } from "./form-provider-changed.js";
 import { hiddenAiDirective } from "./hidden-ai-directive.js";
@@ -148,6 +152,9 @@ export const PAGE_CHECKS = [
   capacityZeroNotSoldOut,
   certificateExpiring,
   dataAssertionFailed,
+  dataBehindSource,
+  dataNoStamp,
+  dataStale,
   datasetPrivateTypes,
   datasetPublic,
   draftsLive,
@@ -169,6 +176,7 @@ export const PAGE_CHECKS = [
   feedDuplicate,
   feedInvalid,
   feedOversized,
+  forecastForPastEvent,
   formDestinationChanged,
   formProviderChanged,
   hiddenAiDirective,

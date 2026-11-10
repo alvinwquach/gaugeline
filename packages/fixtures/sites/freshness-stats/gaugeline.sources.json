@@ -1,0 +1,13 @@
+{
+  "sources": {
+    "db": {
+      "type": "postgres",
+      "env": "HARBOR_DB_URL",
+      "queries": {
+        "latestPlayerSync": "select max(finished_at) as value from sync_runs where job = 'players'",
+        "latestStandingsSync": "select max(finished_at) as value from sync_runs where job = 'standings'",
+        "playerPpg": "select slug as key, round(points::numeric / games, 1) as value from player_totals"
+      }
+    }
+  }
+}

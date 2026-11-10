@@ -1,6 +1,7 @@
 import {
   ASSERTION_CHECKS,
   EMAIL_PRESET,
+  FRESHNESS_CHECKS,
   LISTING_CHECKS,
   SWITCH_CHECKS,
   createPageRegistry,
@@ -167,7 +168,9 @@ describe("docs examples: integration", () => {
               // Likewise without data assertions in gaugeline.sources.json.
               !ASSERTION_CHECKS.includes(id) &&
               // And without gaugeline.switches.json.
-              !SWITCH_CHECKS.includes(id),
+              !SWITCH_CHECKS.includes(id) &&
+              // And without gaugeline.freshness.json.
+              !FRESHNESS_CHECKS.includes(id),
           ),
         startedAt: "2020-02-02T02:02:02.000Z",
         url: "https://shop.example/",

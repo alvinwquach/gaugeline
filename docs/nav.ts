@@ -109,6 +109,10 @@ export const UNLISTED: NavPage[] = [
     slug: "guides/switches-and-availability",
     title: "Switches, sold out and capacity: does the site agree?",
   },
+  {
+    slug: "guides/data-freshness",
+    title: "Data freshness: are the numbers as recent as they should be?",
+  },
   { slug: "guides/access-rules", title: "Database access rules, tested from outside" },
   { slug: "guides/nextjs", title: "Next.js sites" },
   { slug: "guides/weekly-digest", title: "The weekly digest" },
