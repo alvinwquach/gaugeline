@@ -74,6 +74,19 @@ as described under Databases. The times, the figures and the page text stay on y
 your CI; what a finding prints is escaped, and any key or connection string in it is replaced with
 `[redacted]`. Without the file none of this happens.
 
+### Content model changes
+
+If `gaugeline.model.json` exists, Gaugeline reads the schema file it names from your disk and asks Sanity
+only for numbers and ids. Every question is one `GET` of Sanity's query address for published
+documents, with a token (`SANITY_TOKEN`, only for a private dataset) in a header and never in the
+address, and every answer is a count or a list of document ids (`count(*[_type == "article" &&
+!defined(summary)])`, or the first three ids in id order). No document, title, field value or text a
+client wrote is requested, so none reaches your computer, your CI or a report. Where a listing page
+has entries missing, the page's own public addresses are sent in the query and ids come back. The
+listing and block pages are read like every other page, with `GET` through the fetcher, from the same
+allowance of 16 pages as the switches and freshness files. Without the file none of this happens. See
+[Content model changes on Sanity](./sources/sanity-schema.md).
+
 ### Links on the page
 
 The link checks request at most 30 of the page's same-site links (the same host, with or without

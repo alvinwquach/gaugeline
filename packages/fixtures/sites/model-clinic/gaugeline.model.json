@@ -1,0 +1,21 @@
+{
+  "schema": "schema.json",
+  "previousSchema": "schema.before.json",
+  "listings": [
+    {
+      "name": "News",
+      "page": "/news",
+      "type": "article",
+      "item": "article.card"
+    }
+  ],
+  "dependents": [
+    {
+      "name": "Latest from the clinic",
+      "page": "/",
+      "selector": "#insights li",
+      "type": "article"
+    }
+  ],
+  "idsShownOn": ["/dev/*"]
+}

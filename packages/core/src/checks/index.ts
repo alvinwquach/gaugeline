@@ -91,6 +91,11 @@ import { llmsTxtBrokenLinks } from "./llms-txt-broken-links.js";
 import { llmsTxtStaleFacts } from "./llms-txt-stale-facts.js";
 import { mailtoCta } from "./mailto-cta.js";
 import { mockContentLive } from "./mock-content-live.js";
+import { modelDependents } from "./model-dependents.js";
+import { modelListingCount } from "./model-listing-count.js";
+import { modelMissingRequired } from "./model-missing-required.js";
+import { modelOrphanFields } from "./model-orphan-fields.js";
+import { modelUnexpanded } from "./model-unexpanded.js";
 import { navChanged } from "./nav-changed.js";
 import { navFooter } from "./nav-footer.js";
 import { navHomeLinks } from "./nav-home-links.js";
@@ -244,6 +249,11 @@ export const PAGE_CHECKS = [
   llmsTxtStaleFacts,
   mailtoCta,
   mockContentLive,
+  modelDependents,
+  modelListingCount,
+  modelMissingRequired,
+  modelOrphanFields,
+  modelUnexpanded,
   navChanged,
   navFooter,
   navHomeLinks,

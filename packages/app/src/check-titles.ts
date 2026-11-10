@@ -61,6 +61,12 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "listing-phone-mismatch": ["A listing shows a different phone number", "Search & sharing"],
   "listing-website-wrong": ["A listing links to the wrong place", "Search & sharing"],
   "mock-content-live": ["Test content is on the live site", "Visitors"],
+  "model-listing-count": ["A listing shows fewer entries than are published", "Visitors"],
+  "model-missing-required": [
+    "Published documents are missing a field the schema now requires",
+    "Visitors",
+  ],
+  "model-unexpanded": ["A page shows a raw reference where content should be", "Visitors"],
   "next-draft-public": ["Anyone can switch on draft mode", "Launch day"],
   "next-preview-canonical": [
     "The live site points search engines at a preview deployment",
@@ -196,6 +202,8 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "Search & sharing",
   ],
   "mailto-cta": ["Some buttons open an email instead of a form", "Leads"],
+  "model-dependents": ["A block that shows entries of a type is empty", "Visitors"],
+  "model-orphan-fields": ["Documents still hold a field the schema no longer has", "Visitors"],
   "nav-changed": ["The menu changed since the last run", "Visitors"],
   "nav-footer": ["The footer isn't the same on every page", "Visitors"],
   "nav-home-links": ["Menu items go to the homepage", "Visitors"],
@@ -570,6 +578,24 @@ export const CHECK_TEXT: Readonly<
     "Unlike placeholder copy, a visitor can act on it: buy the test product, email the example address or call the fake number.",
     "Delete or unpublish the test entries in the CMS or shop, and replace sample contact details with real ones.",
     'main content (code and pre ignored) contains "test product", "sample product", "sample post", "sample page", "test post", "hello world!", "john doe", "jane doe", "john smith example", "your name here", "product name here", an @example.com/.org/.net address, or a 555 phone number (English lists)',
+  ],
+  "model-listing-count": [
+    "A listing page you mapped to a document type shows fewer entries, across all its pages of results, than there are published documents of that type (less the ones you said it leaves out).",
+    "A query that drops documents (a filter on a field older documents lack, a reference that does not resolve) leaves the page looking complete: 31 cards instead of 48 is not an error, and nobody counts.",
+    "Open the entries named in the evidence in the Studio and compare them with the listing's query. If the listing leaves some out on purpose, say so with filter in gaugeline.model.json.",
+    "For each listing in gaugeline.model.json: the page is read with GET and its next link (rel=next, or the next selector) is followed, up to 10 pages; entries are the item selector's matches, counted once per address. The published count is count(*[_type == T && (filter)]) over published documents (GET). When fewer are shown, the ids of the published documents whose slug is not on the page come back (up to ten, in id order); titles are never requested. A page that cannot be read, or a listing longer than 10 pages, is could not check",
+  ],
+  "model-missing-required": [
+    "The schema says every document of a type must have a field, and published documents of that type do not have it: the ones written before the field was required.",
+    "Older documents never got the new field, so a page or a query that depends on it shows an empty section, or drops those documents, on pages nobody opened since the change.",
+    "Fix first when the document's page is live. Open the documents named in the evidence in the Studio and fill the field in, or run a one-off migration that sets it; then, if a few are meant to be empty, make the field optional in the schema.",
+    "From the schema file named in gaugeline.model.json (sanity schema extract): each document type's fields, required unless the extract says optional. For each required field one GROQ query over published documents only (perspective=published, GET) returns two numbers and ids: count(*[_type == T && !defined(field)]) and the first three ids in id order. Grouped by type and field. No field value is requested or shown; a field required only on some types is judged on those types. Without a schema file the check is could not check",
+  ],
+  "model-unexpanded": [
+    'A live page shows a Sanity reference id, a type name or "[object Object]" instead of the content it points to, in its text, in an address, or in the data it embeds.',
+    "A query that stopped following a reference (a missing ->) or a template that prints an object instead of a field still returns 200, so the page looks loaded and nobody opens it.",
+    "Follow the reference in the query (author->{name}) or print the field you meant, not the object. A page that shows an id on purpose goes under idsShownOn in gaugeline.model.json.",
+    'Read from the HTML as sent, without JavaScript, on the checked page and the few it links to: visible text (scripts, styles and templates removed) with [object Object], a _ref key with its id or a quoted _type key; links and images whose address holds [object Object]; and JSON the page embeds (__NEXT_DATA__ and application/json scripts) holding an object with _type "reference" and a _ref. An asset reference (image-\u2026, file-\u2026) is how Sanity stores a picture, so it is not reported. At most five places per page; pages under idsShownOn are skipped. The evidence is the page, the piece of it and the id. Nothing is asked of Sanity',
   ],
   "next-draft-public": [
     "A draft or preview route on this Next.js site turns draft mode on for a request that carries no secret.",
@@ -1110,6 +1136,18 @@ export const CHECK_TEXT: Readonly<
     "The enquiry skips your CRM: it lands in one inbox with no campaign details, nobody else sees it, and visitors without an email program set up can't send it at all.",
     "Point the button at a form or a booking page that sends the enquiry to your CRM, and keep the email address as a plain fallback.",
     "a[href] starting mailto: with an address, whose text is a contact call to action (contact, talk, speak, get in touch, email us, book, quote, demo and similar) and not an address itself; one finding per page; the link's styling is not visible to Gaugeline",
+  ],
+  "model-dependents": [
+    'A block on another page (an "insights" strip, a team row) is meant to show entries of a document type, shows none, and entries of that type are published.',
+    "Pages that embed a type break when it changes: a renamed field or a stricter filter empties the block, the page still loads, and it is a page nobody opened.",
+    "Compare the block's query with the type as it is now (renamed fields, a filter on a field older documents lack). If the block is meant to be empty for now, take it out of gaugeline.model.json.",
+    "For each dependent in gaugeline.model.json: the page is read with GET and the entries are the selector's matches. With none, count(*[_type == T && (filter)]) over published documents (GET) says whether there is anything to show; a type with no published documents is not reported. With --since last and a block name, the evidence adds how many entries the saved run listed. A page that cannot be read is could not check",
+  ],
+  "model-orphan-fields": [
+    "Published documents have a value in a field that was removed from the schema: usually a leftover from before a rename, a merge or a clean-up.",
+    "The Studio no longer shows the field, so nobody can see or fix what is in it, but a query or a page may still read it, and the old value can be wrong or private.",
+    "Decide for each field: if a page or query still needs it, put it back in the schema; if it moved to another field, copy the values across and then unset the old one with a one-off migration.",
+    "GROQ cannot list the keys a document has without sending the document, which Gaugeline never does, so the fields looked for are named: the fields of the schema file in previousSchema that the current schema no longer has, and the fields under retired in gaugeline.model.json. For each, count(*[_type == T && defined(field)]) over published documents and the first three ids in id order (GET). A field the current schema still has is never reported. No value is requested or shown. Without a schema file, or with no field named, the check is could not check",
   ],
   "nav-changed": [
     "Against the last run saved with --since last, links in the header or footer menu were added, removed, moved to another parent, renamed or reordered.",

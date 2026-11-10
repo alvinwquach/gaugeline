@@ -101,6 +101,14 @@ const NEEDS_LIVE_STORES = new Set([
   "data-no-stamp",
   "data-behind-source",
   "forecast-for-past-event",
+  // Content model: the checks run only with gaugeline.model.json and ask a Sanity dataset for counts
+  // and ids; confirmed in-process against the invented clinic site and dataset (core
+  // content-model/__tests__/integration.test.ts, cli model.test.ts).
+  "model-missing-required",
+  "model-unexpanded",
+  "model-listing-count",
+  "model-dependents",
+  "model-orphan-fields",
   // Public DNS: the built-bin run resolves nothing; confirmed in-process with a fake reader.
   "email-dmarc-missing",
   "email-dmarc-none",

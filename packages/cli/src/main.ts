@@ -45,6 +45,7 @@ import {
   referenceProblems,
   freshnessReferenceProblems,
   freshnessUsesSanity,
+  readModelSchema,
   SANITY_ENV_VARS,
   usesSanity,
   LISTING_ENV_VARS,
@@ -129,6 +130,7 @@ import {
   CONSENT_CONFIG_FILE,
   readSwitchesConfig,
   readFreshnessConfig,
+  readModelConfig,
   SOURCES_CONFIG_FILE,
   SWITCHES_CONFIG_FILE,
   FRESHNESS_CONFIG_FILE,
@@ -1192,6 +1194,31 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
             ),
           }
         : undefined;
+      // The model checks read the schema file the config names (a named file that is missing or is
+      // not a schema extract stops the run, naming the setting) and ask Sanity for counts and ids.
+      const modelConfig = readModelConfig(deps.cwd ?? process.cwd());
+      const model = modelConfig
+        ? {
+            config: modelConfig,
+            ...(modelConfig.schema
+              ? {
+                  schema: await readModelSchema(
+                    resolve(deps.cwd ?? process.cwd(), modelConfig.schema),
+                    "schema",
+                  ),
+                }
+              : {}),
+            ...(modelConfig.previousSchema
+              ? {
+                  previousSchema: await readModelSchema(
+                    resolve(deps.cwd ?? process.cwd(), modelConfig.previousSchema),
+                    "previousSchema",
+                  ),
+                }
+              : {}),
+            env: freezeEnv(io.env ?? {}, SANITY_ENV_VARS),
+          }
+        : undefined;
       const accessConfig = readAccess(deps.cwd ?? process.cwd());
       // Keys are read from the environment here and go only into request headers.
       const access = accessConfig ? resolveAccess(accessConfig, io.env ?? {}) : undefined;
@@ -1269,6 +1296,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         ...(databases ? { databases } : {}),
         ...(switches ? { switches } : {}),
         ...(freshness ? { freshness } : {}),
+        ...(model ? { model } : {}),
         ...(listingsConfig?.timeZone ? { expect: { timeZone: listingsConfig.timeZone } } : {}),
         ...(dns ? { dns } : {}),
         ...(ownerConsent ? { ownerConsent: true } : {}),
