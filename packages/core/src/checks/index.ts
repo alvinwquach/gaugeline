@@ -11,6 +11,7 @@ import { brokenLinks } from "./broken-links.js";
 import { canonicalElsewhere } from "./canonical-elsewhere.js";
 import { canonicalMissing } from "./canonical-missing.js";
 import { certificateExpiring } from "./certificate-expiring.js";
+import { dataAssertionFailed } from "./data-assertion-failed.js";
 import { datasetPrivateTypes } from "./dataset-private-types.js";
 import { datasetPublic } from "./dataset-public.js";
 import { draftsLive } from "./drafts-live.js";
@@ -141,6 +142,7 @@ export const PAGE_CHECKS = [
   canonicalElsewhere,
   canonicalMissing,
   certificateExpiring,
+  dataAssertionFailed,
   datasetPrivateTypes,
   datasetPublic,
   draftsLive,

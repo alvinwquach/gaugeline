@@ -13,9 +13,10 @@ is built so that a mistake in one safeguard is caught by another. Run it only ag
 own or have permission to read: Gaugeline connects with the connection string you give it and nothing
 else.
 
-Nothing in Gaugeline compares these rows with a page yet. The checks that do (data assertions and the
-switches and capacity check) ship next and read what this page sets up. Today the connector reads,
-caps and maps; `gaugeline.sources.json` is validated on every run, so a typo is caught now.
+The first check that uses it is [data assertions](/docs/guides/data-assertions): a `SELECT` that
+should return no rows, run on every check. The switches and capacity check, which compares the rows
+with the page, ships next. Today the connector reads, caps and maps, and `gaugeline.sources.json` is
+validated on every run, so a typo is caught now.
 
 ## Example: the bar's 86 list and bookings in Supabase
 
@@ -244,14 +245,14 @@ written, so check it against the current API keys and Database pages before rely
 `type` is `postgres` or `supabase`. The names of the variables are the only thing the file says about
 the connection.
 
-| Setting             | Meaning                                                                                | Default                                                  |
-| ------------------- | -------------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| `env`               | The name of the variable that holds the connection string.                             | `GAUGELINE_POSTGRES_URL`, or `GAUGELINE_SUPABASE_DB_URL` |
-| `keyEnv` (supabase) | The name of the variable that holds the anon (or custom role) key, if you set one.     | `GAUGELINE_SUPABASE_KEY`                                 |
-| `timeoutMs`         | How long a query may run before the database stops it (100 to 60,000).                 | 5000                                                     |
-| `maxRows`           | Rows kept per query. It can lower the cap, not raise it.                               | 5000                                                     |
-| `denyFunctions`     | More function names to refuse, added to the built-in list.                             | none                                                     |
-| `queries`           | Named queries: `"name": "select ..."`, or `"name": { "sql": "...", "fact": { ... } }`. | required, at most 50 per source, at most 5 sources       |
+| Setting             | Meaning                                                                                | Default                                                                             |
+| ------------------- | -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `env`               | The name of the variable that holds the connection string.                             | `GAUGELINE_POSTGRES_URL`, or `GAUGELINE_SUPABASE_DB_URL`                            |
+| `keyEnv` (supabase) | The name of the variable that holds the anon (or custom role) key, if you set one.     | `GAUGELINE_SUPABASE_KEY`                                                            |
+| `timeoutMs`         | How long a query may run before the database stops it (100 to 60,000).                 | 5000                                                                                |
+| `maxRows`           | Rows kept per query. It can lower the cap, not raise it.                               | 5000                                                                                |
+| `denyFunctions`     | More function names to refuse, added to the built-in list.                             | none                                                                                |
+| `queries`           | Named queries: `"name": "select ..."`, or `"name": { "sql": "...", "fact": { ... } }`. | at most 50 per source, at most 5 sources (a source with only assertions needs none) |
 
 The connection string is `postgres://user:password@host:5432/database`, with `?sslmode=` if you need
 it. Connections away from this machine use TLS unless the string says `sslmode=disable`; a local

@@ -1,0 +1,6 @@
+{
+  "id": "overlapping-ranges",
+  "severity": "high",
+  "title": "Two private events are booked at the same time",
+  "evidence": ["booking_id", "clashes_with", "room", "starts_at"]
+}

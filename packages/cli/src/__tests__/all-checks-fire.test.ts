@@ -73,6 +73,10 @@ const NEEDS_LIVE_STORES = new Set([
   "listing-phone-mismatch",
   "listing-special-hours-missing",
   "listing-website-wrong",
+  // Data assertions: they run SELECTs in gaugeline.sources.json against a database, and run only
+  // when the file holds assertions; confirmed in-process against a stand-in Postgres
+  // (assert.test.ts) and a real throwaway one (core assertions/__tests__/examples.test.ts).
+  "data-assertion-failed",
   // Public DNS: the built-bin run resolves nothing; confirmed in-process with a fake reader.
   "email-dmarc-missing",
   "email-dmarc-none",

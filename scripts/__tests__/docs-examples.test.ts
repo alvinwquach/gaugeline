@@ -1,4 +1,9 @@
-import { EMAIL_PRESET, LISTING_CHECKS, createPageRegistry } from "../../packages/core/src/index.js";
+import {
+  ASSERTION_CHECKS,
+  EMAIL_PRESET,
+  LISTING_CHECKS,
+  createPageRegistry,
+} from "../../packages/core/src/index.js";
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -157,7 +162,9 @@ describe("docs examples: integration", () => {
               id !== "canonical-elsewhere" &&
               !EMAIL_PRESET.includes(id) &&
               // Not run without a gaugeline.listings.json: neither passed nor failed.
-              !LISTING_CHECKS.includes(id),
+              !LISTING_CHECKS.includes(id) &&
+              // Likewise without data assertions in gaugeline.sources.json.
+              !ASSERTION_CHECKS.includes(id),
           ),
         startedAt: "2020-02-02T02:02:02.000Z",
         url: "https://shop.example/",

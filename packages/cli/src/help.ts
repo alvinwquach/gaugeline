@@ -13,6 +13,7 @@ export const COMMANDS = [
   "verify",
   "run",
   "open",
+  "assert",
 ] as const;
 export type Command = (typeof COMMANDS)[number];
 
@@ -103,6 +104,15 @@ export const HELP: Record<string, string> = {
       "resolve each payload to the page it belongs to. Makes no request.",
     ].join("\n"),
     footer: "Exit codes: 0 read, 2 the export has no address column or could not be read",
+  }),
+  assert: renderHelp(FLAGS, "assert", {
+    usage: "gaugeline assert <id> | --list [options]",
+    summary: [
+      "Run one data assertion from gaugeline.sources.json: a SELECT that should return",
+      "no rows. Any row is a problem, shown with the assertion's evidence columns.",
+      "Read only. --list prints the assertions and runs none of them.",
+    ].join("\n"),
+    footer: "Exit codes: 0 no rows, 1 rows found, 2 could not run or the file is wrong",
   }),
   digest: renderHelp(FLAGS, "digest", {
     usage: "gaugeline digest --runs <folder> [options]",

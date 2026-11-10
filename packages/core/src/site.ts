@@ -4,7 +4,7 @@ import { createBudget, sampleCounts, type Budget } from "./limits.js";
 import type { CheckRegistry } from "./model.js";
 import type { ProgressSink } from "./progress.js";
 import { NO_PAGE_CHECKS } from "./checks/blocked.js";
-import { LISTING_CHECKS } from "./presets.js";
+import { ASSERTION_CHECKS, LISTING_CHECKS } from "./presets.js";
 import { classifyHop, describeRefusal } from "./refusal.js";
 import { runChecks, type RunOptions, type RunResult } from "./run.js";
 import { dedupeUrls } from "./sample.js";
@@ -33,6 +33,7 @@ import {
 import { lazyDatasets } from "./sanity.js";
 import { lazyListings, noListings, type ListingsSettings } from "./listings/read.js";
 import { lazyDatabases, type DatabasesSettings } from "./connectors/postgres/read.js";
+import { lazyAssertions } from "./assertions/read.js";
 import { lazyScripts } from "./scripts.js";
 import type { FactsConfig } from "./facts/types.js";
 import type { PaymentsConfig } from "./payments/types.js";
@@ -165,9 +166,14 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
   const asked = LISTING_CHECKS.some((id) => opts.only?.includes(id));
   const listingsOff = !opts.listings && !asked;
   const registered = new Set(registry.all().map((c) => c.id));
-  const skip = listingsOff
-    ? [...(opts.skip ?? []), ...LISTING_CHECKS.filter((id) => registered.has(id))]
-    : opts.skip;
+  // The data assertion check is the same: it runs when the sources file holds assertions.
+  const assertionsAsked = ASSERTION_CHECKS.some((id) => opts.only?.includes(id));
+  const assertionsOff = !(opts.databases?.config.assertions?.length ?? 0) && !assertionsAsked;
+  const switchedOff = [
+    ...(listingsOff ? LISTING_CHECKS.filter((id) => registered.has(id)) : []),
+    ...(assertionsOff ? ASSERTION_CHECKS.filter((id) => registered.has(id)) : []),
+  ];
+  const skip = switchedOff.length > 0 ? [...(opts.skip ?? []), ...switchedOff] : opts.skip;
   const wanted = registry
     .all()
     .map((c) => c.id)
@@ -231,6 +237,9 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
           ? { listings: () => Promise.resolve(noListings()) }
           : {}),
       ...(opts.databases ? { databases: lazyDatabases(opts.databases, opts.fetcher) } : {}),
+      ...((opts.databases?.config.assertions?.length ?? 0) > 0 && opts.databases
+        ? { assertions: lazyAssertions(opts.databases, opts.fetcher) }
+        : {}),
       imagesIfSampled: () => images.peek(),
       ...(opts.expect ? { expect: opts.expect } : {}),
     },

@@ -335,6 +335,13 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     commands: ["check", "launch"],
   },
   {
+    name: "list",
+    type: "boolean",
+    description: "Print the data assertions in gaugeline.sources.json and run none of them",
+    since: "0.2.0",
+    commands: ["assert"],
+  },
+  {
     name: "quiet",
     type: "boolean",
     description: "Print only results and errors",

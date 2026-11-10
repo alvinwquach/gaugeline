@@ -6,10 +6,11 @@ export {
   DEFAULT_SUPABASE_KEY_ENV,
   DEFAULT_TIMEOUT_MS,
   MAX_ROWS,
+  assertionSchema,
   sourceEnvVars,
   sourcesConfigSchema,
 } from "./config.js";
-export type { FactMapping, SourceConfig, SourcesConfig } from "./config.js";
+export type { Assertion, FactMapping, SourceConfig, SourcesConfig } from "./config.js";
 export { databaseConnector } from "./connector.js";
 export type { DatabaseConnector, DatabaseQueryResult } from "./connector.js";
 export { DatabaseError } from "./failure.js";

@@ -177,7 +177,7 @@ export { PRIVATE_TYPE_WORDS, isPrivateType } from "./checks/leaks/private-types.
 export { SANITY_QUERY, readDataset, sanityQueryUrl, sanityRefs } from "./sanity.js";
 export type { DatasetRead, SanityRef } from "./sanity.js";
 export { readScripts } from "./scripts.js";
-export { EMAIL_PRESET, LAUNCH_PRESET, LISTING_CHECKS } from "./presets.js";
+export { ASSERTION_CHECKS, EMAIL_PRESET, LAUNCH_PRESET, LISTING_CHECKS } from "./presets.js";
 export {
   CHANNELS,
   EMAIL_ENV,
@@ -614,6 +614,7 @@ export {
   DEFAULT_SUPABASE_KEY_ENV,
   DatabaseError,
   SANITY_ENV_VARS,
+  assertionSchema,
   checkSupabaseKey,
   classifyStatement,
   createRedactor,
@@ -633,6 +634,7 @@ export {
   sanityTypeCounts,
 } from "./connectors/index.js";
 export type {
+  Assertion,
   Connector,
   ConnectorNotice,
   ConnectorRequest,
@@ -651,6 +653,22 @@ export type {
   SourcesConfig,
   Verdict,
 } from "./connectors/index.js";
+export {
+  CELL_CHARS,
+  EVIDENCE_ROWS,
+  assertionsOf,
+  cellText,
+  describeAssertion,
+  lazyAssertions,
+  readAssertions,
+} from "./assertions/index.js";
+export type {
+  AssertionResult,
+  AssertionStatus,
+  AssertionsRead,
+  AssertionsSettings,
+  Placed as PlacedAssertion,
+} from "./assertions/index.js";
 export { toMinor } from "./products/money.js";
 export { listingsConfigSchema } from "./listings/config.js";
 export type { ListingsConfig } from "./listings/config.js";

@@ -1,0 +1,6 @@
+{
+  "id": "orphaned-foreign-keys",
+  "severity": "high",
+  "title": "A paid order has no matching payment",
+  "evidence": ["order_id", "total_cents", "placed_at"]
+}

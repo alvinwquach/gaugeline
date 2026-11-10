@@ -331,6 +331,8 @@ describe("flag table: e2e", () => {
       const snapshotOnly = f.commands.length === 1 && f.commands[0] === "snapshot";
       const cutoverOnly = f.commands.length === 1 && f.commands[0] === "cutover";
       const verifyOnly = f.commands.length === 1 && f.commands[0] === "verify";
+      // The scratch folder has no gaugeline.sources.json, so --list says there are none and exits 0.
+      const assertOnly = f.commands.length === 1 && f.commands[0] === "assert";
       const crawl = join(scratch, "crawl-export.csv");
       writeFileSync(crawl, "Address\nhttps://fernkiln.invalid/?_rsc=1\n");
       // A saved snapshot of a name that never resolves (.invalid): cutover reads it again.
@@ -383,35 +385,37 @@ describe("flag table: e2e", () => {
           ? ["snapshot", "fernkiln.invalid", `--${f.name}`, join(scratch, "snapshot.json")]
           : cutoverOnly
             ? ["cutover", `--${f.name}`, before]
-            : verifyOnly
-              ? ["verify", crawl, `--${f.name}`, "0"]
-              : runOnly
-                ? f.name === "tag"
-                  ? ["run", "--tag", "nobody"]
-                  : f.name === "site"
-                    ? ["run", "--site", "x", "--allow-private"]
-                    : ["run", "--tag", "nobody", `--${f.name}`, "2"]
-                : printedOnly
-                  ? [
-                      "printed",
-                      register,
-                      "--allow-private",
-                      `--${f.name}`,
-                      ...(f.name === "decode" ? [join(scratch, "no-images")] : value),
-                    ]
-                  : digestOnly
+            : assertOnly
+              ? ["assert", `--${f.name}`]
+              : verifyOnly
+                ? ["verify", crawl, `--${f.name}`, "0"]
+                : runOnly
+                  ? f.name === "tag"
+                    ? ["run", "--tag", "nobody"]
+                    : f.name === "site"
+                      ? ["run", "--site", "x", "--allow-private"]
+                      : ["run", "--tag", "nobody", `--${f.name}`, "2"]
+                  : printedOnly
                     ? [
-                        "digest",
-                        ...(f.name === "runs" ? [] : ["--runs", runs]),
+                        "printed",
+                        register,
+                        "--allow-private",
                         `--${f.name}`,
-                        ...value,
+                        ...(f.name === "decode" ? [join(scratch, "no-images")] : value),
                       ]
-                    : [
-                        ...(flagsFor(FLAGS, "check").includes(f) ? [] : ["launch"]),
-                        `${site.origin}/`,
-                        `--${f.name}`,
-                        ...value,
-                      ];
+                    : digestOnly
+                      ? [
+                          "digest",
+                          ...(f.name === "runs" ? [] : ["--runs", runs]),
+                          `--${f.name}`,
+                          ...value,
+                        ]
+                      : [
+                          ...(flagsFor(FLAGS, "check").includes(f) ? [] : ["launch"]),
+                          `${site.origin}/`,
+                          `--${f.name}`,
+                          ...value,
+                        ];
       const r = await runBin(args, {}, { cwd: scratch });
       expect(r.stderr, f.name).not.toContain("Unknown option");
       expect([0, 1], f.name).toContain(r.status);
