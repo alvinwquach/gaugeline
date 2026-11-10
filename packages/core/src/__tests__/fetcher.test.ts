@@ -178,6 +178,23 @@ describe("fetcher: integration (real sockets)", () => {
     expect(s.log).toHaveLength(1);
   });
 
+  it("fresh: true asks again and keeps the new answer, for a retry after a refusal it remembers", async () => {
+    let calls = 0;
+    const s = await serve({
+      "/": (_req, res) => {
+        calls++;
+        res.writeHead(calls === 1 ? 429 : 200, { "content-type": "text/plain" }).end("x");
+      },
+    });
+    const f = createFetcher({ allowPrivate: true });
+    expect((await f.get(`${s.origin}/`)).at(-1)?.status).toBe(429);
+    expect((await f.get(`${s.origin}/`)).at(-1)?.status).toBe(429);
+    expect(calls).toBe(1);
+    expect((await f.get(`${s.origin}/`, { fresh: true })).at(-1)?.status).toBe(200);
+    expect((await f.get(`${s.origin}/`)).at(-1)?.status).toBe(200);
+    expect(calls).toBe(2);
+  });
+
   it("https refused, http answers: fallback used and recorded", async () => {
     const s = await serve({ "/": html("plain") });
     const host = `127.0.0.1:${s.port}`;
