@@ -15,11 +15,13 @@ const KEYS = {
   SANITY_TOKEN: ["sk", "popup", "kitchen", "0123456789abcdef"].join("_"),
   STRIPE_API_KEY: ["rk", "live", "popupkitchen0123456789"].join("_"),
   PRINTFUL_API_TOKEN: ["pf", "popupkitchen", "0123456789abcdef"].join("-"),
+  SHOPIFY_ACCESS_TOKEN: ["shp", "at", "popupkitchen0123456789abcdef"].join(""),
+  SQUARE_ACCESS_TOKEN: ["EAAA", "popupkitchen0123456789abcdefghij"].join(""),
 };
 
 /** The promise the docs make (docs/products-and-prices.md): keys are never printed or saved. */
 describe("keys in the environment reach no output: promise test", () => {
-  it("a run with all three keys set: stdout, stderr (--verbose), the JSON result and the HTML report hold none", async () => {
+  it("a run with every key set: stdout, stderr (--verbose), the JSON result and the HTML report hold none", async () => {
     const site = await startFixture("quick-start");
     const cwd = mkdtempSync(join(tmpdir(), "gaugeline-keys-"));
     dirs.push(cwd);

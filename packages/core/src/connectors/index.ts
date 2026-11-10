@@ -39,6 +39,37 @@ export {
   retailToMinor,
 } from "./printful.js";
 export type { PrintfulConnectorOptions, PrintfulProduct, PrintfulVariant } from "./printful.js";
+export type { CatalogueItem, CatalogueVariant } from "./catalogue.js";
+export {
+  DEFAULT_SHOPIFY_API_VERSION,
+  SHOPIFY_ACCESS_TOKEN,
+  SHOPIFY_API_VERSION,
+  SHOPIFY_ENV_VARS,
+  SHOPIFY_MAX_PAGES,
+  SHOPIFY_OPTIONAL_ENV_VARS,
+  SHOPIFY_PAGE_SIZE,
+  SHOPIFY_SHOP_DOMAIN,
+  createShopifyConnector,
+  mapShopifyProduct,
+  mapShopifyVariant,
+  nextPageInfo,
+  shopifyAvailability,
+  shopifyConnector,
+  shopifyHost,
+  shopifyPrice,
+} from "./shopify.js";
+export type { ShopifyConnectorOptions, ShopifyProduct } from "./shopify.js";
+export {
+  SQUARE_ACCESS_TOKEN,
+  SQUARE_ENV_VARS,
+  SQUARE_MAX_PAGES,
+  createSquareConnector,
+  mapSquareItem,
+  mapSquareVariation,
+  squareConnector,
+  squarePrice,
+} from "./square.js";
+export type { SquareConnectorOptions, SquareItem } from "./square.js";
 export {
   STRIPE_API_KEY,
   STRIPE_ENV_VARS,
