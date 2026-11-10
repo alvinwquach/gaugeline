@@ -50,7 +50,7 @@ describe("check-docs: unit", () => {
     expect(extractLinks("[up](../security.md)", "reference/json-schema")).toEqual(["security"]);
   });
 
-  it("the real NAV has the six groups in order and every slug once", () => {
+  it("the real NAV has the six published groups in order, then Migrations, and every slug once", () => {
     expect(NAV.map((g) => g.group)).toEqual([
       "Getting started",
       "The site check",
@@ -58,6 +58,7 @@ describe("check-docs: unit", () => {
       "Sanity plugin",
       "Integrations",
       "Reference",
+      "Migrations",
     ]);
     expect(NAV.filter((g) => g.soon).map((g) => g.group)).toEqual([
       "Sanity plugin",

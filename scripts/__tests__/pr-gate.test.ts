@@ -58,6 +58,24 @@ describe("gate: unit", () => {
       ".changeset/x.md: the summary must be one full sentence of at least 12 characters ending with a full stop.",
     ]);
   });
+  it("a Migration: line after the sentence is metadata: the sentence still has to end with a full stop", () => {
+    const run = (summary: string) =>
+      gate({
+        files: ["docs/migrations/x.md"],
+        changesets: [{ file: ".changeset/x.md", bump: "minor", summary }],
+        labels: [],
+      }).problems;
+    expect(run("BREAKING: Needs Node 22 or newer.\nMigration: node-22")).toEqual([]);
+    expect(run("BREAKING: Needs Node 22 or newer\nMigration: node-22")).toHaveLength(1);
+    expect(run("Migration: node-22")).toHaveLength(1);
+  });
+  it("the generated feed and the since lock do not count as a docs change", () => {
+    const patch2 = { bump: "patch" as const, summary: "Reads the robots header too." };
+    for (const f of ["docs/public/changelog.atom", "docs/check-since.lock.json"])
+      expect(gate({ files: [SRC, f], changesets: [patch2], labels: [] }).problems).toEqual([
+        "This changes what users see but no docs page changed.",
+      ]);
+  });
   it("parses changeset front matter, taking the largest bump", () => {
     expect(
       parseChangeset(

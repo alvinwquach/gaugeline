@@ -53,6 +53,8 @@ jobs:
         run: |
           git fetch --depth=1 origin "${{ github.base_ref || 'main' }}"
           pnpm surface --check --base FETCH_HEAD
+          # A released check's "Since" version never changes (docs/check-since.lock.json).
+          pnpm since --base FETCH_HEAD
 
   docs-examples:
     # Runs every "$ npx gaugeline" example in the docs against its fixture and compares the output.

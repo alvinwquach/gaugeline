@@ -2,4 +2,5 @@
 "gaugeline": minor
 ---
 
-Gaugeline now needs Node 22 or newer.
+BREAKING: Gaugeline now needs Node 22 or newer.
+Migration: node-22

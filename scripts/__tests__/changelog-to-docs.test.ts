@@ -161,6 +161,25 @@ describe("changesets: integration (temp copy of the repo)", () => {
     });
   }, 60_000);
 
+  it("the Node 22 changeset, as written, comes out of a real release linking its migration guide", () => {
+    const dir = tempRepo({ gaugeline: "0.1.0" }, [["gaugeline"]]);
+    addChangeset(
+      dir,
+      "node-22",
+      '---\n"gaugeline": minor\n---\n\nBREAKING: Gaugeline now needs Node 22 or newer.\nMigration: node-22\n',
+    );
+    expect(changeset(dir).status).toBe(0);
+    const log = readFileSync(join(dir, "packages/gaugeline/CHANGELOG.md"), "utf8");
+    const entries = parseChangelog(log);
+    expect(entries[0]?.items).toEqual([
+      "BREAKING: Gaugeline now needs Node 22 or newer. Migration: node-22",
+    ]);
+    const page = renderChangelogPage(entries.map((e) => ({ ...e, date: "2026-12-01" })));
+    expect(page).toContain(
+      "- **Breaking:** Gaugeline now needs Node 22 or newer. [Migration guide](/docs/migrations/node-22)",
+    );
+  }, 60_000);
+
   it("gaugeline and gaugeline-free end on the same version after a bump to only one of them", () => {
     const dir = tempRepo({ gaugeline: "0.1.0", "gaugeline-free": "0.1.0" }, [
       ["gaugeline", "gaugeline-free"],

@@ -40,6 +40,22 @@ branch; this section links to it then. Not yet.
 - Add a changeset with `pnpm changeset` (see "Add a changeset" below).
 - If the PR gate fails, see "Why did pr-gate fail?" below.
 
+## Docs requirements for every release
+
+Tests enforce these, so a pull request cannot skip them. The details are in
+[docs/contributing/migration-guides.md](docs/contributing/migration-guides.md).
+
+- **Since badges.** Every check page shows "Since vX". A new check needs nothing beyond its
+  changeset: until a release stamps it, the page shows the next version from the pending changesets.
+  `pnpm version` writes the real one to `docs/check-since.lock.json`, and a released entry never changes.
+- **Migration guides.** A major bump, or a changeset line starting `BREAKING:`, needs a
+  `Migration: <slug>` line and a page at `docs/migrations/<slug>.md`. A test fails without it.
+- **The feed.** `pnpm docs:changelog` also writes `docs/public/changelog.atom`; CI runs it with
+  `--check`, so commit what it writes.
+- **A freelancer example in every new docs page.** One invented client from the kind of work Gaugeline
+  is for (a clinic's pinned Node version, a bar's ordering page, a pop-up shop's price list), with the
+  real output.
+
 ## The three rules a pull request cannot break
 
 1. **Read-only.** Requests to a checked site are `GET` or `HEAD`, through the fetcher only.

@@ -16,6 +16,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          # The release tags give the changelog its dates, as in the Release pull request.
+          fetch-depth: 0
       - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
@@ -23,6 +26,11 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm docs:check
+      # The changelog feed uses absolute links. DOCS_URL (a repository variable) is the site address;
+      # unset, the feed keeps the address in docs/site.ts.
+      - run: pnpm docs:changelog
+        env:
+          DOCS_URL: ${{ vars.DOCS_URL }}
       - run: pnpm docs:build
       - run: pnpm vitest run --config vitest.docs.config.ts
       - run: pnpm exec playwright install --with-deps chromium
