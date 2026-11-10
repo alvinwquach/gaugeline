@@ -718,6 +718,7 @@ export type {
   StripeConnectorOptions,
   StripeKeyKind,
   StripePrice,
+  StripeRecurring,
   StripeProduct,
   Verdict,
 } from "./connectors/index.js";
@@ -802,6 +803,48 @@ export {
   stripeNoPrice,
 } from "./checks/prices.js";
 export type { PriceCheckId, PriceCheckInput } from "./checks/prices.js";
+export {
+  SUBSCRIPTION_CHECKS,
+  SUBSCRIPTION_CHECK_IDS,
+  createSubscriptionRegistry,
+  planArchived,
+  planIntervalMismatch,
+  planMissingOnPage,
+  planPriceMismatch,
+  planTrialMismatch,
+} from "./checks/plans.js";
+export type { SubscriptionCheckId, SubscriptionCheckInput } from "./checks/plans.js";
+export {
+  MAX_PLANS,
+  PLAN_BLOCK_LINES,
+  PLAN_METADATA_KEY,
+  PLAN_TIERS,
+  describeCadence,
+  findAmounts,
+  matchPlans,
+  parseCadence,
+  parseTaxDisplay,
+  parseTrial,
+  planKey,
+  planPageOf,
+  planPaths,
+  plansConfigSchema,
+  readPagePlans,
+  sameCadence,
+} from "./plans/index.js";
+export type {
+  Cadence,
+  PagePlan,
+  PlanConfig,
+  PlanMatch,
+  PlanMatchResult,
+  PlanPage,
+  PlanTier,
+  PlansConfig,
+  ShownAmount,
+  TaxDisplay,
+  TrialDays,
+} from "./plans/index.js";
 export { TIERS, matchProducts, normaliseName, normaliseSku } from "./products/match.js";
 export type {
   AmbiguousMatch,

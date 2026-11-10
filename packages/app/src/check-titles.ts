@@ -113,6 +113,12 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "printed-dead": ["A printed address doesn't land on a page", "Launch day"],
   "printed-wrong-destination": ["A printed address lands somewhere it shouldn't", "Launch day"],
   "price-mismatch": ["Website price disagrees with checkout", "Sales & prices"],
+  "plan-archived": ["The page sells a plan that is archived in checkout", "Sales & prices"],
+  "plan-interval-mismatch": [
+    "A plan bills on a different schedule than the page says",
+    "Sales & prices",
+  ],
+  "plan-price-mismatch": ["A plan's price on the page differs from checkout", "Sales & prices"],
   "cutover-canonical-host": ["The bare domain and www don't settle on one address", "Launch day"],
   "cutover-mail-changed": ["The domain's mail records changed at cutover", "Security & email"],
   "app-smart-banner-mismatch": ["The iPhone app banner promotes a different app", "Visitors"],
@@ -219,6 +225,7 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "printed-tags-lost": ["A printed address loses its tracking tags", "Launch day"],
   "printful-price": ["Fulfillment lists a different price", "Sales & prices"],
   "stripe-no-price": ["No default price in checkout", "Sales & prices"],
+  "plan-trial-mismatch": ["A plan's free trial differs from checkout", "Sales & prices"],
   "cutover-certificate-changed": [
     "The certificate no longer covers a name it did",
     "Security & email",
@@ -256,6 +263,10 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "plan-keyword-overlap": ["One page's primary keyword is another page's secondary", "Launch day"],
   "printed-chain": ["A printed address takes more than two redirects", "Launch day"],
   "price-stored-twice": ["A price is stored in two systems", "Sales & prices"],
+  "plan-missing-on-page": [
+    "A subscription price in checkout has no plan on the page",
+    "Sales & prices",
+  ],
 };
 export const CHECK_TEXT: Readonly<
   Record<string, readonly [what: string, why: string, fix: string, tech: string]>
@@ -692,6 +703,24 @@ export const CHECK_TEXT: Readonly<
     "Decide which system owns the price, usually checkout, and have the other read from it. Until then, change one of the two so they agree.",
     "the Sanity product's price against the unit_amount of the matched Stripe product's default_price, both whole minor units (Sanity has no currency and takes Stripe's); compared only when the Stripe currency is known; a default price with no fixed amount (tiered or custom pricing), one that was not read, or a Sanity price with no whole reading in that currency is skipped with a notice; a Stripe product with no default price is stripe-no-price, not a mismatch; the evidence carries both amounts and the rule that matched the pair, and never says which is right",
   ],
+  "plan-archived": [
+    "A plan on your page is paired with a Stripe price that has been archived.",
+    "Visitors can pick the plan, but the price behind it can no longer be used to start a subscription: checkout fails, or an old link keeps charging a price you retired.",
+    "Point the page at the plan's current Stripe price, or restore the price in Stripe if it should still be sold. Take the plan off the page if it is gone.",
+    "a plan found on its configured page whose matched Stripe price has active false, matched by the configured price id, then the product's gaugelinePlan metadata, then the product name, as the product matcher does; the plan's other comparisons are skipped, since the archived price is the one cause",
+  ],
+  "plan-interval-mismatch": [
+    "The page says a plan bills one way (per month, say) and the matched Stripe price bills another (yearly, or every 3 months), or is not a subscription price at all.",
+    "A customer who expects 49 a month is charged 588 up front, or the other way round. It is the commonest cause of subscription refunds and chargebacks.",
+    "Change the page's wording or pick the Stripe price that bills on the schedule the page promises. Create the missing price in Stripe if there is none.",
+    "the billing interval written next to the plan's name (per month, /mo, monthly, every 3 months, al mes, mensual, cada 3 meses, and the weekly, yearly and daily forms) against recurring.interval and recurring.interval_count of the matched price; 12 months equals a year and 7 days a week; a card that names two different intervals, or none, is skipped with a notice, not guessed",
+  ],
+  "plan-price-mismatch": [
+    "The price shown for a plan on your page is different from the Stripe price it is paired with, or the page and Stripe disagree about whether tax is included.",
+    "Customers see one price and are charged another, which causes abandoned checkouts, complaints and refunds.",
+    "Decide which price you mean, then change the other so they agree. If the difference is tax, say on the page whether the price includes it.",
+    "the first amount written with a currency next to the plan's name, as a whole number of minor units, against unit_amount of the matched price (or its currency_options entry when the page's currency is one of them); a currency that is not one of the price's is a notice, never converted; a plan showing an introductory price or discount is skipped unless introAmount names it; the page's 'tax included' or 'plus tax' against tax_behavior when both say; the evidence shows both amounts and never says which is right",
+  ],
   "cutover-canonical-host": [
     "Of the bare domain and www, exactly one should answer 200 and the other redirect to it permanently (301 or 308). After cutover, both answer, neither does, or the redirect is temporary.",
     "Two live copies split links and ranking between them; a missing one is a dead address for everyone who types it; a temporary redirect tells search engines to keep the old one.",
@@ -1112,6 +1141,12 @@ export const CHECK_TEXT: Readonly<
     "In Stripe, open the product and set one of its prices as the default, or archive the product if it is no longer sold.",
     "a matched Stripe product with active true and default_price null, whether or not it has other prices; the evidence says how many prices it has; archived products and Stripe products with no Sanity partner are not reported",
   ],
+  "plan-trial-mismatch": [
+    "The page promises a free trial that the matched Stripe price does not give, or Stripe gives a trial the page never mentions.",
+    "Someone who signs up for a free trial and is charged today, or who is surprised by a trial that hides when the first bill comes, files a dispute.",
+    "Make the page and the Stripe price agree on the trial's length, or take the promise off the page.",
+    "a trial of N days, weeks or months written next to the plan's name (7-day free trial, prueba gratis de 7 dias) against recurring.trial_period_days of the matched price (a month is 28 to 31 days); a trial set when checkout is created (subscription_data) is not visible on the price, so confirm there before changing the page",
+  ],
   "cutover-certificate-changed": [
     "The https certificate after cutover lacks a name the one before covered (www, a subdomain), or there is no certificate where there was one.",
     "Visitors on the name that dropped off see a security warning instead of the site.",
@@ -1297,6 +1332,12 @@ export const CHECK_TEXT: Readonly<
     "Two copies that agree today are the cause of next month's mismatch: the next price change has to be made twice, and one of them will be forgotten.",
     "Decide which system owns each price, usually checkout, and have the other read it instead of storing its own copy.",
     "a Sanity product with a price whose matched Stripe product has a default price with a fixed amount, in a known currency, equal to it; one finding per run listing the count and the first five products; products whose prices differ are price-mismatch, not this",
+  ],
+  "plan-missing-on-page": [
+    "A Stripe product you listed as a plan has an active subscription price that no plan on the page stands for.",
+    "A price that is live in Stripe but never shown is either a plan you forgot to put on the site, or an old price that can still be bought from an old link.",
+    "Add the plan to the page, or archive the price in Stripe if it should no longer be sold.",
+    "for each Stripe product in gaugeline.plans.json products (active), its prices with active true and a recurring object that no plan on the page was matched to; one finding per product listing up to three prices; a product that is archived, or not among the products that were read, says nothing here",
   ],
 };
 export const SAMPLE_NOUNS: Readonly<Record<string, readonly [one: string, many: string]>> = {

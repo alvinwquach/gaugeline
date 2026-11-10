@@ -6,12 +6,29 @@ import { ConnectorRateLimitedError, ConnectorRefusedError, connectorGet } from "
 import { createRedactor } from "./redact.js";
 import type { Connector, Env } from "./types.js";
 
-/** One price of a product. `unitAmount` is whole minor units, or null (tiered or metered pricing). */
+/** How often a recurring price bills: Stripe's `recurring.interval` and `interval_count`, and its trial. */
+export interface StripeRecurring {
+  interval: "day" | "week" | "month" | "year";
+  /** Intervals between bills: 3 with "month" is every 3 months. Always 1 or more. */
+  intervalCount: number;
+  /** Stripe's `recurring.trial_period_days`, or null when the price has none. */
+  trialPeriodDays: number | null;
+}
+
+/**
+ * One price of a product. `unitAmount` is whole minor units, or null (tiered or metered pricing).
+ * The last three are present only when Stripe sent them: `recurring` for a subscription price (a
+ * one-time price has none), `taxBehavior` when it is "inclusive" or "exclusive" (not "unspecified"),
+ * and `currencyOptions` (currency to minor units) when the price lists other currencies.
+ */
 export interface StripePrice {
   id: string;
   unitAmount: number | null;
   currency: string;
   active: boolean;
+  recurring?: StripeRecurring;
+  taxBehavior?: "inclusive" | "exclusive";
+  currencyOptions?: Record<string, number>;
 }
 
 /** A product as checkout holds it, with every price it has (archived ones included). */
@@ -125,17 +142,52 @@ function priceOf(raw: unknown): { productId: string; price: StripePrice } {
   if (!isRecord(raw) || typeof raw.id !== "string" || raw.id === "" || productId === null)
     throw new Error("Stripe answered with a price that has no id or no product.");
   const amount = raw.unit_amount;
-  return {
-    productId,
-    price: {
-      id: raw.id,
-      // null stays null: a tiered price is not a free one.
-      unitAmount:
-        typeof amount === "number" && Number.isSafeInteger(amount) && amount >= 0 ? amount : null,
-      currency: typeof raw.currency === "string" ? raw.currency : "",
-      active: raw.active !== false,
-    },
+  const price: StripePrice = {
+    id: raw.id,
+    // null stays null: a tiered price is not a free one.
+    unitAmount: minorOf(amount),
+    currency: typeof raw.currency === "string" ? raw.currency : "",
+    active: raw.active !== false,
   };
+  const recurring = recurringOf(raw.recurring);
+  if (recurring !== undefined) price.recurring = recurring;
+  if (raw.tax_behavior === "inclusive" || raw.tax_behavior === "exclusive")
+    price.taxBehavior = raw.tax_behavior;
+  const options = currencyOptionsOf(raw.currency_options);
+  if (options !== undefined) price.currencyOptions = options;
+  return { productId, price };
+}
+
+function minorOf(v: unknown): number | null {
+  return typeof v === "number" && Number.isSafeInteger(v) && v >= 0 ? v : null;
+}
+
+const INTERVALS: ReadonlySet<string> = new Set(["day", "week", "month", "year"]);
+
+/** A price's `recurring` object. Absent, or without a known interval, is a one-time price. */
+function recurringOf(raw: unknown): StripeRecurring | undefined {
+  if (!isRecord(raw) || typeof raw.interval !== "string" || !INTERVALS.has(raw.interval))
+    return undefined;
+  const count = raw.interval_count;
+  const trial = raw.trial_period_days;
+  return {
+    interval: raw.interval as StripeRecurring["interval"],
+    intervalCount:
+      typeof count === "number" && Number.isSafeInteger(count) && count >= 1 ? count : 1,
+    trialPeriodDays:
+      typeof trial === "number" && Number.isSafeInteger(trial) && trial >= 0 ? trial : null,
+  };
+}
+
+/** `currency_options`: { eur: { unit_amount: 4500 } } as { eur: 4500 }. Only fixed amounts are kept. */
+function currencyOptionsOf(raw: unknown): Record<string, number> | undefined {
+  if (!isRecord(raw)) return undefined;
+  const out: Record<string, number> = {};
+  for (const [currency, option] of Object.entries(raw)) {
+    const amount = isRecord(option) ? minorOf(option.unit_amount) : null;
+    if (amount !== null) out[currency.toLowerCase()] = amount;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
 }
 
 function productOf(raw: unknown, prices: StripePrice[]): StripeProduct {

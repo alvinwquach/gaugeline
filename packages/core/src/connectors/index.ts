@@ -86,6 +86,7 @@ export type {
   StripeConnectorOptions,
   StripeKeyKind,
   StripePrice,
+  StripeRecurring,
   StripeProduct,
 } from "./stripe.js";
 export {

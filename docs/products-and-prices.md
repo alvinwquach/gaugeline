@@ -225,7 +225,7 @@ What is asked:
 - **Two read endpoints, and only these:** `GET /v1/products` ([list products](https://docs.stripe.com/api/products/list)) and `GET /v1/prices` ([list prices](https://docs.stripe.com/api/prices/list)). The narrowest key that can call them is a restricted key with Read on Products and Prices ([below](#create-the-narrowest-key)).
 - **Both lists, archived included.** Products and prices are requested without an `active` filter, so an archived product or price comes back with `active: false`. That is data: a page that still sells an archived product is a finding for the checks that arrive next.
 - **The documented cursor.** Each list follows `has_more` by asking again with `starting_after` set to the last id, until Stripe says there is no more. At most 50 pages of 100 are read per list; if the cap is reached, the run says so in one notice and keeps what it read. A page that is empty while `has_more` is true, or the same page twice, stops the list with a notice instead of looping.
-- **What is kept.** Per product: `id`, `name`, `active`, `metadata` (text values only), `defaultPriceId` and its `prices`. Per price: `id`, `unitAmount`, `currency` and `active`. A price with no fixed amount (tiered or metered pricing) keeps `unitAmount: null`; it is never turned into 0. A product with no default price has `defaultPriceId: null` and still lists every price it has. Descriptions, images and customer data are not kept.
+- **What is kept.** Per product: `id`, `name`, `active`, `metadata` (text values only), `defaultPriceId` and its `prices`. Per price: `id`, `unitAmount`, `currency` and `active`, and, when Stripe sends them, `recurring` (`interval`, `intervalCount` and `trialPeriodDays` of a subscription price), `taxBehavior` (`inclusive` or `exclusive`) and `currencyOptions` (the amounts of a price that lists other currencies). A one-time price has none of those three. A price with no fixed amount (tiered or metered pricing) keeps `unitAmount: null`; it is never turned into 0. A product with no default price has `defaultPriceId: null` and still lists every price it has. Descriptions, images and customer data are not kept.
 - **The key goes in a header.** Every request carries `Authorization: Bearer <key>`, never the address.
 
 ### Which keys are accepted
@@ -527,6 +527,116 @@ That is why a price finding quotes both numbers and stops there. A website that 
 
 ::: info
 Keys stay on your computer, are only read from environment variables, and are never printed or saved. If one system can't be reached, the rest of the check still runs.
+:::
+
+## Subscription plans
+
+One-time prices are compared by the [price checks](#price-checks). A subscription has more to disagree about: how often it bills, whether the first days are free, and which plans exist at all. Five checks compare the plans your page shows with Stripe's recurring prices.
+
+| Check                    | Level          | It fires when                                                                                                 |
+| ------------------------ | -------------- | ------------------------------------------------------------------------------------------------------------- |
+| `plan-price-mismatch`    | Fix this first | The amount on the page differs from the Stripe price, or the page and Stripe disagree about tax               |
+| `plan-interval-mismatch` | Fix this first | The page says per month and Stripe bills yearly, or every 3 months, or the price is not a subscription at all |
+| `plan-archived`          | Fix this first | The page sells a plan whose Stripe price is archived                                                          |
+| `plan-trial-mismatch`    | Fix soon       | The page promises a free trial Stripe does not apply, or Stripe applies one the page never mentions           |
+| `plan-missing-on-page`   | Worth knowing  | An active subscription price of a product you listed has no plan on the page                                  |
+
+### Tell Gaugeline about your plans
+
+The plans are written down in `gaugeline.plans.json`: the name as the page writes it, the page that shows it, and optionally the Stripe price. Names, paths and Stripe ids only; it never holds a key.
+
+```json title=gaugeline.plans.json
+{
+  "plans": [
+    { "name": "Foundation", "page": "/membership" },
+    { "name": "Momentum", "id": "momentum", "page": "/membership" },
+    { "name": "Elite", "page": "/membership", "price": "price_HarborElite24900" }
+  ],
+  "products": ["prod_HarborFoundation"]
+}
+```
+
+| Field         | Needed | What it does                                                                                                                                 |
+| ------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`        | Yes    | The plan's name as the page writes it                                                                                                        |
+| `page`        | Yes    | The path that shows the plan, such as `/membership`                                                                                          |
+| `price`       | No     | The Stripe price this plan charges (`price_...`). The surest way to say which price it is                                                    |
+| `id`          | No     | The plan's id for the `gaugelinePlan` metadata rule below. Defaults to the name as lower-case words joined by hyphens                        |
+| `introAmount` | No     | An introductory amount shown next to the plan ("first month $1"), such as `"1.00"`. It is set aside so the regular price is the one compared |
+| `products`    | No     | Stripe products whose active subscription prices should each be a plan on the page. Without it, `plan-missing-on-page` has nothing to check  |
+
+### Which Stripe price is which plan
+
+The same three rules as [products](#how-products-are-matched), in the same order, because a check and the app must agree on which plan is which. There is no SKU rule: a plan has none.
+
+1. The Stripe price id written as `price` in the file.
+2. A Stripe product whose metadata `gaugelinePlan` equals the plan's `id`.
+3. A Stripe product with the plan's name, ignoring case, accents and punctuation.
+
+The metadata and name rules look only at products that have a subscription price. When the product has several, the price that bills as often as the page says is the plan's, then the one with the page's amount, then the product's default price. A price belongs to one plan only: two plans on one product (monthly and yearly) take its two prices. An active price is chosen before an archived one. `gaugelinePlan` as the metadata key is proposed, not Stripe's.
+
+### What is read from the page
+
+Gaugeline reads the text of the page as sent, with no scripts run. A plan starts at the line that is its name (else the first line containing it) and runs to the next plan's name on that page, at most 8 lines. In that block it reads:
+
+- **The price.** The first amount written with a currency: `$49`, `49 EUR`, `49 €`, `1.299,00 €`. A dollar sign can be any of several currencies, so it meets whichever dollar currency Stripe's price is in. A currency Stripe's price does not have is a notice, never converted.
+- **How often it bills.** English and Spanish: `per month`, `a month`, `/mo`, `monthly`, `every 3 months`, `al mes`, `mensual`, `cada 3 meses`, and the weekly, yearly and daily forms. Twelve months is a year. A card that names two different intervals ("$19 per month, billed annually") is not guessed at: it is a notice.
+- **A free trial.** `7-day free trial`, `14 day trial`, `7 days free`, `prueba gratis de 7 días`, `first month free`. A month is 28 to 31 days.
+- **Tax.** `tax included`, `incl. VAT`, `IVA incluido` against `+ tax`, `plus VAT`, `más IVA`, compared with Stripe's `tax_behavior` when both say. Equal amounts with a different tax display are still a finding, because the customer pays a different total.
+
+What it cannot read is a notice, never a pass: an introductory price or coupon next to the plan (`first month $1`) is not compared unless `introAmount` names it, a card with no price, a plan name that is not on the page, and a price Stripe holds without a fixed amount.
+
+### Example: a yoga studio's memberships
+
+Harbor Street Yoga is a studio with three memberships. Its freelancer built the site on Next.js and Sanity and put the subscriptions in Stripe. The membership page says:
+
+<!-- prettier-ignore -->
+```html title=Membership page
+<!doctype html><html><head><title>Memberships</title></head><body>
+<h1>Memberships</h1>
+<section><h2>Foundation</h2><p>$49 per month</p><p>7-day free trial</p></section>
+<section><h2>Momentum</h2><p>$129 per month</p></section>
+<section><h2>Elite</h2><p>$249 per month</p></section>
+</body></html>
+```
+
+Against the invented recording of the studio's Stripe account (`packages/testkit/cassettes/stripe-plans-harbor.json`) and the file above:
+
+<!-- prettier-ignore -->
+```json title=Plan findings
+{
+  "findings": [
+    {
+      "check": "plan-archived",
+      "level": "high",
+      "page": "https://harbor.example/membership",
+      "evidence": "\"Elite\" is sold on the page ($249, every month), but Stripe's price price_HarborElite24900 (249.00 USD every month) is archived, so checkout cannot charge it (matched by configured price id)."
+    },
+    {
+      "check": "plan-interval-mismatch",
+      "level": "high",
+      "page": "https://harbor.example/membership",
+      "evidence": "\"Momentum\": the page says every month and Stripe's price price_HarborMoment12900 bills every year (matched by product metadata)."
+    },
+    {
+      "check": "plan-missing-on-page",
+      "level": "low",
+      "page": "stripe:prod_HarborFoundation",
+      "evidence": "Stripe product \"Foundation\" (prod_HarborFoundation) has 1 active subscription price that no plan on the page stands for: price_HarborFound49000 (490.00 USD every year)."
+    }
+  ],
+  "notices": []
+}
+```
+
+- **Elite** is still sold at $249, but that price was archived when the studio moved to $299. The file names the old price, so `plan-archived` fires and the other comparisons for it are skipped: one cause, one finding.
+- **Momentum** says per month, and its Stripe price is $129 billed every year. The amount agrees; the interval does not, and a customer would be charged $129 up front for what the page calls a monthly plan.
+- **Foundation** agrees on the amount, the month and the 7-day trial, so it passes. Its yearly price of $490 has no plan on the page, which `plan-missing-on-page` reports because the product is listed in `products`.
+
+Gaugeline never says which one is right. A trial can also be set when checkout is created (`subscription_data.trial_period_days`) and not on the price, which Gaugeline cannot see: confirm there before changing the page. The output is asserted by `packages/core/src/plans/__tests__/plans-docs.test.ts`.
+
+::: info
+The five checks are built and tested against recorded responses, but `gaugeline open` does not run them yet: no command reads `gaugeline.plans.json` in this version. The Stripe list does not include `currency_options` unless it is asked for, so a price in several currencies is compared in its main currency unless Stripe sent more.
 :::
 
 ## How keys are handled
