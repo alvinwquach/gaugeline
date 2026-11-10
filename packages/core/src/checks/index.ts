@@ -12,6 +12,10 @@ import { canonicalElsewhere } from "./canonical-elsewhere.js";
 import { canonicalMissing } from "./canonical-missing.js";
 import { capacityZeroNotSoldOut } from "./capacity-zero-not-sold-out.js";
 import { certificateExpiring } from "./certificate-expiring.js";
+import { crmInsecure } from "./crm-insecure.js";
+import { crmLateTracking } from "./crm-late-tracking.js";
+import { crmNoCampaignFields } from "./crm-no-campaign-fields.js";
+import { crmNoTracking } from "./crm-no-tracking.js";
 import { dataAssertionFailed } from "./data-assertion-failed.js";
 import { dataBehindSource } from "./data-behind-source.js";
 import { dataNoStamp } from "./data-no-stamp.js";
@@ -40,6 +44,7 @@ import { feedOversized } from "./feed-oversized.js";
 import { forecastForPastEvent } from "./forecast-for-past-event.js";
 import { formDestinationChanged } from "./form-destination-changed.js";
 import { formProviderChanged } from "./form-provider-changed.js";
+import { formsManyProviders } from "./forms-many-providers.js";
 import { hiddenAiDirective } from "./hidden-ai-directive.js";
 import { hiddenInSitemap } from "./hidden-in-sitemap.js";
 import { hiddenIndexable } from "./hidden-indexable.js";
@@ -78,6 +83,7 @@ import { listingSpecialHoursMissing } from "./listing-special-hours-missing.js";
 import { listingWebsiteWrong } from "./listing-website-wrong.js";
 import { llmsTxtBrokenLinks } from "./llms-txt-broken-links.js";
 import { llmsTxtStaleFacts } from "./llms-txt-stale-facts.js";
+import { mailtoCta } from "./mailto-cta.js";
 import { mockContentLive } from "./mock-content-live.js";
 import { navChanged } from "./nav-changed.js";
 import { navFooter } from "./nav-footer.js";
@@ -152,6 +158,10 @@ export const PAGE_CHECKS = [
   canonicalMissing,
   capacityZeroNotSoldOut,
   certificateExpiring,
+  crmInsecure,
+  crmLateTracking,
+  crmNoCampaignFields,
+  crmNoTracking,
   dataAssertionFailed,
   dataBehindSource,
   dataNoStamp,
@@ -180,6 +190,7 @@ export const PAGE_CHECKS = [
   forecastForPastEvent,
   formDestinationChanged,
   formProviderChanged,
+  formsManyProviders,
   hiddenAiDirective,
   hiddenInSitemap,
   hiddenIndexable,
@@ -218,6 +229,7 @@ export const PAGE_CHECKS = [
   listingWebsiteWrong,
   llmsTxtBrokenLinks,
   llmsTxtStaleFacts,
+  mailtoCta,
   mockContentLive,
   navChanged,
   navFooter,

@@ -70,6 +70,26 @@
     "tech": "Read from the TLS connection of the page's own GET: no extra request. Days left = whole days until notAfter, by the run's clock. Plain http, or a certificate that failed verification, gives nothing here. Domain registration expiry needs registrar access and is not checked"
   },
   {
+    "id": "crm-insecure",
+    "severity": "high",
+    "area": "Leads",
+    "title": "A form sends details over an insecure connection",
+    "what": "A form, its iframe, its embed script or its tracking script loads over plain http on an https page.",
+    "why": "Browsers may block it on a secure page, and what people type isn't encrypted.",
+    "fix": "Use https for the form, the tracker domain and the tracking script (pd.js for Pardot).",
+    "tech": "http:// in a form action, a recognised iframe src, an embed script src or a tracking script src on an https page; the code inside an inline script is not read"
+  },
+  {
+    "id": "crm-no-tracking",
+    "severity": "high",
+    "area": "Leads",
+    "title": "Leads from this form arrive without where they came from",
+    "what": "A form from Pardot, HubSpot or Marketo is on the page, but that service's tracking code is not.",
+    "why": "The service can't connect a new lead to the ad, email or search that brought them.",
+    "fix": "Add the service's tracking code to every page that has its form (for Pardot: Account Engagement Settings, Domain Management, Tracking Code Generator).",
+    "tech": "A form or iframe of Pardot, HubSpot or Marketo in the HTML, and no script of that service's tracking code anywhere in it (pi.pardot.com/pd.js or piAId, js.hs-scripts.com or _hsq, munchkin.js or Munchkin.init); Web-to-Lead, Formstack and Typeform have no tracking script and are skipped; a form drawn by JavaScript is could-not-check; code a tag manager adds at run time is not seen"
+  },
+  {
     "id": "data-assertion-failed",
     "severity": "high",
     "area": "Visitors",
@@ -840,6 +860,26 @@
     "tech": "<meta name=\"apple-itunes-app\" content=\"app-id=...\"> differs from every apps.apple.com/.../id<digits> link on the page"
   },
   {
+    "id": "crm-late-tracking",
+    "severity": "medium",
+    "area": "Leads",
+    "title": "Tracking starts after the form loads",
+    "what": "The service's tracking code comes after its form in the page, or waits for the page to finish loading while the form is an iframe that loads first.",
+    "why": "Salesforce documents that this can lose first-touch tracking, the referring site and UTM parameters.",
+    "fix": "Load the tracking script directly in the page head, before the form, not from a window load handler.",
+    "tech": "Position of the tracking script after the form in document order (counted over every form, iframe and script element), or inline tracking code started by addEventListener(\"load\"), attachEvent(\"onload\") or window.onload while the form is an iframe; no timing is measured, and code a tag manager moves at run time is not seen"
+  },
+  {
+    "id": "crm-no-campaign-fields",
+    "severity": "medium",
+    "area": "Leads",
+    "title": "A form has nowhere to put campaign details",
+    "what": "A form posts leads straight to Pardot, Web-to-Lead, HubSpot or Marketo with no hidden campaign fields.",
+    "why": "Every lead arrives with its campaign, source and ad click blank.",
+    "fix": "Add hidden utm_source, utm_medium, utm_campaign and gclid fields, fill them from the address, and map them in the form handler.",
+    "tech": "A form element posting to Pardot, Web-to-Lead, HubSpot or Marketo with no hidden input named utm_*, gclid, a lead source or that service's default mapped field; a visible input does not count; an iframe is another document and is could-not-check"
+  },
+  {
     "id": "data-behind-source",
     "severity": "medium",
     "area": "Visitors",
@@ -1078,6 +1118,16 @@
     "why": "Assistants quote llms.txt directly. An old number or old hours there is what someone hears when they ask if you're open tonight.",
     "fix": "Update llms.txt to match the structured data (or the other way round, whichever is wrong). Generate both from one source if you can.",
     "tech": "hours, telephone or address in /llms.txt differ from the page's LocalBusiness JSON-LD"
+  },
+  {
+    "id": "mailto-cta",
+    "severity": "medium",
+    "area": "Leads",
+    "title": "Some buttons open an email instead of a form",
+    "what": "A contact button (\"Talk to an expert\", \"Get a quote\") opens one person's email program instead of a form.",
+    "why": "The enquiry skips your CRM: it lands in one inbox with no campaign details, nobody else sees it, and visitors without an email program set up can't send it at all.",
+    "fix": "Point the button at a form or a booking page that sends the enquiry to your CRM, and keep the email address as a plain fallback.",
+    "tech": "a[href] starting mailto: with an address, whose text is a contact call to action (contact, talk, speak, get in touch, email us, book, quote, demo and similar) and not an address itself; one finding per page; the link's styling is not visible to Gaugeline"
   },
   {
     "id": "nav-changed",
@@ -1658,6 +1708,16 @@
     "why": "A comparison of a new menu is only real if every link reports where it sits: identical values merge the two links into one row.",
     "fix": "Add the parent menu (or another value that tells them apart) to the event both links send.",
     "tech": "Links that passed events-fire, grouped by destination: two with different parent menus whose events carry the same values for the plan's parameters. Needs a rendered read (G39): until then it is could not check"
+  },
+  {
+    "id": "forms-many-providers",
+    "severity": "low",
+    "area": "Leads",
+    "title": "Several form services on one page",
+    "what": "Forms or form scripts from more than one service (for example HubSpot and Typeform) are on the same page.",
+    "why": "Leads from one page end up in different places, and each service needs its own tracking, consent and follow-up.",
+    "fix": "Check that each form is meant to be there, and move the page to one service if you can.",
+    "tech": "Sightings of more than one of Pardot, Web-to-Lead, HubSpot, Formstack, Marketo and Typeform on one page (form action, iframe src, embed script); the tracking code alone is not a sighting"
   },
   {
     "id": "hidden-past-launch",

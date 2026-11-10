@@ -44,6 +44,7 @@ const FIXTURES = [
   "nav-after",
   "tampered",
   "stripe-test-mode",
+  "form-checks",
 ];
 
 /**
@@ -108,6 +109,9 @@ const NEEDS_LIVE_STORES = new Set([
   "price-changed",
   "form-provider-changed",
   "form-destination-changed",
+  // Needs an https page with an http form, iframe or script on it; the fixture servers are plain
+  // http, so nothing on them is mixed content. Confirmed in-process (core checks/__tests__/forms.test.ts).
+  "crm-insecure",
   // A menu compared with the last run's: confirmed in-process (nav.test.ts, nav-before then nav-after).
   "nav-changed",
   // A page compared with its own last-run snapshot: confirmed in-process (snapshot.test.ts,
