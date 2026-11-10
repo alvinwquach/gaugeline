@@ -804,6 +804,18 @@ export {
 } from "./checks/prices.js";
 export type { PriceCheckId, PriceCheckInput } from "./checks/prices.js";
 export {
+  DUPLICATE_CHECKS,
+  DUPLICATE_CHECK_IDS,
+  DUPLICATE_LIST_MAX,
+  createDuplicatesRegistry,
+  duplicatePrintful,
+  duplicateSanity,
+  duplicateStripe,
+  duplicatesInput,
+  findDuplicates,
+} from "./checks/product-duplicates.js";
+export type { DuplicateCheckId, ProductDuplicatesInput } from "./checks/product-duplicates.js";
+export {
   PRESENCE_CHECKS,
   PRESENCE_CHECK_IDS,
   createPresenceRegistry,
