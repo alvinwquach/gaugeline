@@ -1,0 +1,439 @@
+{
+  "interactions": [
+    {
+      "body": "{\"code\":200,\"result\":[{\"id\":9001,\"external_id\":\"pop-001\",\"name\":\"Pop-up item 1\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9001.png\",\"is_ignored\":false},{\"id\":9002,\"external_id\":\"pop-002\",\"name\":\"Pop-up item 2\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9002.png\",\"is_ignored\":false},{\"id\":9003,\"external_id\":\"pop-003\",\"name\":\"Pop-up item 3\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9003.png\",\"is_ignored\":false},{\"id\":9004,\"external_id\":\"pop-004\",\"name\":\"Pop-up item 4\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9004.png\",\"is_ignored\":false},{\"id\":9005,\"external_id\":\"pop-005\",\"name\":\"Pop-up item 5\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9005.png\",\"is_ignored\":false},{\"id\":9006,\"external_id\":\"pop-006\",\"name\":\"Pop-up item 6\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9006.png\",\"is_ignored\":false},{\"id\":9007,\"external_id\":\"pop-007\",\"name\":\"Pop-up item 7\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9007.png\",\"is_ignored\":false},{\"id\":9008,\"external_id\":\"pop-008\",\"name\":\"Pop-up item 8\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9008.png\",\"is_ignored\":false},{\"id\":9009,\"external_id\":\"pop-009\",\"name\":\"Pop-up item 9\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9009.png\",\"is_ignored\":false},{\"id\":9010,\"external_id\":\"pop-010\",\"name\":\"Pop-up item 10\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9010.png\",\"is_ignored\":false},{\"id\":9011,\"external_id\":\"pop-011\",\"name\":\"Pop-up item 11\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9011.png\",\"is_ignored\":false},{\"id\":9012,\"external_id\":\"pop-012\",\"name\":\"Pop-up item 12\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9012.png\",\"is_ignored\":false},{\"id\":9013,\"external_id\":\"pop-013\",\"name\":\"Pop-up item 13\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9013.png\",\"is_ignored\":false},{\"id\":9014,\"external_id\":\"pop-014\",\"name\":\"Pop-up item 14\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9014.png\",\"is_ignored\":false},{\"id\":9015,\"external_id\":\"pop-015\",\"name\":\"Pop-up item 15\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9015.png\",\"is_ignored\":false},{\"id\":9016,\"external_id\":\"pop-016\",\"name\":\"Pop-up item 16\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9016.png\",\"is_ignored\":false},{\"id\":9017,\"external_id\":\"pop-017\",\"name\":\"Pop-up item 17\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9017.png\",\"is_ignored\":false},{\"id\":9018,\"external_id\":\"pop-018\",\"name\":\"Pop-up item 18\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9018.png\",\"is_ignored\":false},{\"id\":9019,\"external_id\":\"pop-019\",\"name\":\"Pop-up item 19\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9019.png\",\"is_ignored\":false},{\"id\":9020,\"external_id\":\"pop-020\",\"name\":\"Pop-up item 20\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9020.png\",\"is_ignored\":false}],\"paging\":{\"total\":45,\"offset\":0,\"limit\":20}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products?offset=0&limit=100"
+    },
+    {
+      "body": "{\"code\":200,\"result\":[{\"id\":9021,\"external_id\":\"pop-021\",\"name\":\"Pop-up item 21\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9021.png\",\"is_ignored\":false},{\"id\":9022,\"external_id\":\"pop-022\",\"name\":\"Pop-up item 22\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9022.png\",\"is_ignored\":false},{\"id\":9023,\"external_id\":\"pop-023\",\"name\":\"Pop-up item 23\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9023.png\",\"is_ignored\":false},{\"id\":9024,\"external_id\":\"pop-024\",\"name\":\"Pop-up item 24\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9024.png\",\"is_ignored\":false},{\"id\":9025,\"external_id\":\"pop-025\",\"name\":\"Pop-up item 25\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9025.png\",\"is_ignored\":false},{\"id\":9026,\"external_id\":\"pop-026\",\"name\":\"Pop-up item 26\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9026.png\",\"is_ignored\":false},{\"id\":9027,\"external_id\":\"pop-027\",\"name\":\"Pop-up item 27\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9027.png\",\"is_ignored\":false},{\"id\":9028,\"external_id\":\"pop-028\",\"name\":\"Pop-up item 28\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9028.png\",\"is_ignored\":false},{\"id\":9029,\"external_id\":\"pop-029\",\"name\":\"Pop-up item 29\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9029.png\",\"is_ignored\":false},{\"id\":9030,\"external_id\":\"pop-030\",\"name\":\"Pop-up item 30\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9030.png\",\"is_ignored\":false},{\"id\":9031,\"external_id\":\"pop-031\",\"name\":\"Pop-up item 31\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9031.png\",\"is_ignored\":false},{\"id\":9032,\"external_id\":\"pop-032\",\"name\":\"Pop-up item 32\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9032.png\",\"is_ignored\":false},{\"id\":9033,\"external_id\":\"pop-033\",\"name\":\"Pop-up item 33\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9033.png\",\"is_ignored\":false},{\"id\":9034,\"external_id\":\"pop-034\",\"name\":\"Pop-up item 34\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9034.png\",\"is_ignored\":false},{\"id\":9035,\"external_id\":\"pop-035\",\"name\":\"Pop-up item 35\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9035.png\",\"is_ignored\":false},{\"id\":9036,\"external_id\":\"pop-036\",\"name\":\"Pop-up item 36\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9036.png\",\"is_ignored\":false},{\"id\":9037,\"external_id\":\"pop-037\",\"name\":\"Pop-up item 37\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9037.png\",\"is_ignored\":false},{\"id\":9038,\"external_id\":\"pop-038\",\"name\":\"Pop-up item 38\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9038.png\",\"is_ignored\":false},{\"id\":9039,\"external_id\":\"pop-039\",\"name\":\"Pop-up item 39\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9039.png\",\"is_ignored\":false},{\"id\":9040,\"external_id\":\"pop-040\",\"name\":\"Pop-up item 40\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9040.png\",\"is_ignored\":false}],\"paging\":{\"total\":45,\"offset\":20,\"limit\":20}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products?offset=20&limit=100"
+    },
+    {
+      "body": "{\"code\":200,\"result\":[{\"id\":9041,\"external_id\":\"pop-041\",\"name\":\"Pop-up item 41\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9041.png\",\"is_ignored\":false},{\"id\":9042,\"external_id\":\"pop-042\",\"name\":\"Pop-up item 42\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9042.png\",\"is_ignored\":false},{\"id\":9043,\"external_id\":\"pop-043\",\"name\":\"Pop-up item 43\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9043.png\",\"is_ignored\":false},{\"id\":9044,\"external_id\":\"pop-044\",\"name\":\"Pop-up item 44\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9044.png\",\"is_ignored\":false},{\"id\":9045,\"external_id\":\"pop-045\",\"name\":\"Pop-up item 45\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9045.png\",\"is_ignored\":false}],\"paging\":{\"total\":45,\"offset\":40,\"limit\":20}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products?offset=40&limit=100"
+    },
+    {
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":9001,\"external_id\":\"pop-001\",\"name\":\"Pop-up item 1\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9001.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":90011,\"external_id\":\"ext-90011\",\"sync_product_id\":9001,\"name\":\"Pop-up item 1 / one size\",\"synced\":true,\"variant_id\":4011,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"12.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"POP-9001\"}]}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products/9001"
+    },
+    {
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":9002,\"external_id\":\"pop-002\",\"name\":\"Pop-up item 2\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9002.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":90021,\"external_id\":\"ext-90021\",\"sync_product_id\":9002,\"name\":\"Pop-up item 2 / one size\",\"synced\":true,\"variant_id\":4021,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"12.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"POP-9002\"}]}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products/9002"
+    },
+    {
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":9003,\"external_id\":\"pop-003\",\"name\":\"Pop-up item 3\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9003.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":90031,\"external_id\":\"ext-90031\",\"sync_product_id\":9003,\"name\":\"Pop-up item 3 / one size\",\"synced\":true,\"variant_id\":4031,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"12.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"POP-9003\"}]}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products/9003"
+    },
+    {
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":9004,\"external_id\":\"pop-004\",\"name\":\"Pop-up item 4\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9004.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":90041,\"external_id\":\"ext-90041\",\"sync_product_id\":9004,\"name\":\"Pop-up item 4 / one size\",\"synced\":true,\"variant_id\":4041,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"12.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"POP-9004\"}]}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products/9004"
+    },
+    {
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":9005,\"external_id\":\"pop-005\",\"name\":\"Pop-up item 5\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9005.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":90051,\"external_id\":\"ext-90051\",\"sync_product_id\":9005,\"name\":\"Pop-up item 5 / one size\",\"synced\":true,\"variant_id\":4051,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"12.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"POP-9005\"}]}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products/9005"
+    },
+    {
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":9006,\"external_id\":\"pop-006\",\"name\":\"Pop-up item 6\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9006.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":90061,\"external_id\":\"ext-90061\",\"sync_product_id\":9006,\"name\":\"Pop-up item 6 / one size\",\"synced\":true,\"variant_id\":4061,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"12.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"POP-9006\"}]}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products/9006"
+    },
+    {
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":9007,\"external_id\":\"pop-007\",\"name\":\"Pop-up item 7\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9007.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":90071,\"external_id\":\"ext-90071\",\"sync_product_id\":9007,\"name\":\"Pop-up item 7 / one size\",\"synced\":true,\"variant_id\":4071,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"12.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"POP-9007\"}]}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products/9007"
+    },
+    {
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":9008,\"external_id\":\"pop-008\",\"name\":\"Pop-up item 8\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9008.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":90081,\"external_id\":\"ext-90081\",\"sync_product_id\":9008,\"name\":\"Pop-up item 8 / one size\",\"synced\":true,\"variant_id\":4081,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"12.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"POP-9008\"}]}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products/9008"
+    },
+    {
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":9009,\"external_id\":\"pop-009\",\"name\":\"Pop-up item 9\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9009.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":90091,\"external_id\":\"ext-90091\",\"sync_product_id\":9009,\"name\":\"Pop-up item 9 / one size\",\"synced\":true,\"variant_id\":4091,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"12.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"POP-9009\"}]}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products/9009"
+    },
+    {
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":9010,\"external_id\":\"pop-010\",\"name\":\"Pop-up item 10\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9010.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":90101,\"external_id\":\"ext-90101\",\"sync_product_id\":9010,\"name\":\"Pop-up item 10 / one size\",\"synced\":true,\"variant_id\":4001,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"12.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"POP-9010\"}]}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products/9010"
+    },
+    {
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":9011,\"external_id\":\"pop-011\",\"name\":\"Pop-up item 11\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9011.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":90111,\"external_id\":\"ext-90111\",\"sync_product_id\":9011,\"name\":\"Pop-up item 11 / one size\",\"synced\":true,\"variant_id\":4011,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"12.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"POP-9011\"}]}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products/9011"
+    },
+    {
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":9012,\"external_id\":\"pop-012\",\"name\":\"Pop-up item 12\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9012.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":90121,\"external_id\":\"ext-90121\",\"sync_product_id\":9012,\"name\":\"Pop-up item 12 / one size\",\"synced\":true,\"variant_id\":4021,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"12.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"POP-9012\"}]}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products/9012"
+    },
+    {
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":9013,\"external_id\":\"pop-013\",\"name\":\"Pop-up item 13\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9013.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":90131,\"external_id\":\"ext-90131\",\"sync_product_id\":9013,\"name\":\"Pop-up item 13 / one size\",\"synced\":true,\"variant_id\":4031,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"12.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"POP-9013\"}]}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products/9013"
+    },
+    {
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":9014,\"external_id\":\"pop-014\",\"name\":\"Pop-up item 14\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9014.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":90141,\"external_id\":\"ext-90141\",\"sync_product_id\":9014,\"name\":\"Pop-up item 14 / one size\",\"synced\":true,\"variant_id\":4041,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"12.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"POP-9014\"}]}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products/9014"
+    },
+    {
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":9015,\"external_id\":\"pop-015\",\"name\":\"Pop-up item 15\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9015.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":90151,\"external_id\":\"ext-90151\",\"sync_product_id\":9015,\"name\":\"Pop-up item 15 / one size\",\"synced\":true,\"variant_id\":4051,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"12.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"POP-9015\"}]}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products/9015"
+    },
+    {
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":9016,\"external_id\":\"pop-016\",\"name\":\"Pop-up item 16\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9016.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":90161,\"external_id\":\"ext-90161\",\"sync_product_id\":9016,\"name\":\"Pop-up item 16 / one size\",\"synced\":true,\"variant_id\":4061,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"12.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"POP-9016\"}]}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products/9016"
+    },
+    {
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":9017,\"external_id\":\"pop-017\",\"name\":\"Pop-up item 17\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9017.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":90171,\"external_id\":\"ext-90171\",\"sync_product_id\":9017,\"name\":\"Pop-up item 17 / one size\",\"synced\":true,\"variant_id\":4071,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"12.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"POP-9017\"}]}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products/9017"
+    },
+    {
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":9018,\"external_id\":\"pop-018\",\"name\":\"Pop-up item 18\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9018.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":90181,\"external_id\":\"ext-90181\",\"sync_product_id\":9018,\"name\":\"Pop-up item 18 / one size\",\"synced\":true,\"variant_id\":4081,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"12.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"POP-9018\"}]}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products/9018"
+    },
+    {
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":9019,\"external_id\":\"pop-019\",\"name\":\"Pop-up item 19\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9019.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":90191,\"external_id\":\"ext-90191\",\"sync_product_id\":9019,\"name\":\"Pop-up item 19 / one size\",\"synced\":true,\"variant_id\":4091,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"12.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"POP-9019\"}]}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products/9019"
+    },
+    {
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":9020,\"external_id\":\"pop-020\",\"name\":\"Pop-up item 20\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9020.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":90201,\"external_id\":\"ext-90201\",\"sync_product_id\":9020,\"name\":\"Pop-up item 20 / one size\",\"synced\":true,\"variant_id\":4001,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"12.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"POP-9020\"}]}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products/9020"
+    },
+    {
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":9021,\"external_id\":\"pop-021\",\"name\":\"Pop-up item 21\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9021.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":90211,\"external_id\":\"ext-90211\",\"sync_product_id\":9021,\"name\":\"Pop-up item 21 / one size\",\"synced\":true,\"variant_id\":4011,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"12.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"POP-9021\"}]}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products/9021"
+    },
+    {
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":9022,\"external_id\":\"pop-022\",\"name\":\"Pop-up item 22\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9022.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":90221,\"external_id\":\"ext-90221\",\"sync_product_id\":9022,\"name\":\"Pop-up item 22 / one size\",\"synced\":true,\"variant_id\":4021,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"12.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"POP-9022\"}]}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products/9022"
+    },
+    {
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":9023,\"external_id\":\"pop-023\",\"name\":\"Pop-up item 23\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9023.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":90231,\"external_id\":\"ext-90231\",\"sync_product_id\":9023,\"name\":\"Pop-up item 23 / one size\",\"synced\":true,\"variant_id\":4031,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"12.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"POP-9023\"}]}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products/9023"
+    },
+    {
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":9024,\"external_id\":\"pop-024\",\"name\":\"Pop-up item 24\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9024.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":90241,\"external_id\":\"ext-90241\",\"sync_product_id\":9024,\"name\":\"Pop-up item 24 / one size\",\"synced\":true,\"variant_id\":4041,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"12.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"POP-9024\"}]}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products/9024"
+    },
+    {
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":9025,\"external_id\":\"pop-025\",\"name\":\"Pop-up item 25\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9025.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":90251,\"external_id\":\"ext-90251\",\"sync_product_id\":9025,\"name\":\"Pop-up item 25 / one size\",\"synced\":true,\"variant_id\":4051,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"12.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"POP-9025\"}]}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products/9025"
+    },
+    {
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":9026,\"external_id\":\"pop-026\",\"name\":\"Pop-up item 26\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9026.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":90261,\"external_id\":\"ext-90261\",\"sync_product_id\":9026,\"name\":\"Pop-up item 26 / one size\",\"synced\":true,\"variant_id\":4061,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"12.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"POP-9026\"}]}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products/9026"
+    },
+    {
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":9027,\"external_id\":\"pop-027\",\"name\":\"Pop-up item 27\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9027.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":90271,\"external_id\":\"ext-90271\",\"sync_product_id\":9027,\"name\":\"Pop-up item 27 / one size\",\"synced\":true,\"variant_id\":4071,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"12.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"POP-9027\"}]}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products/9027"
+    },
+    {
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":9028,\"external_id\":\"pop-028\",\"name\":\"Pop-up item 28\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9028.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":90281,\"external_id\":\"ext-90281\",\"sync_product_id\":9028,\"name\":\"Pop-up item 28 / one size\",\"synced\":true,\"variant_id\":4081,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"12.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"POP-9028\"}]}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products/9028"
+    },
+    {
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":9029,\"external_id\":\"pop-029\",\"name\":\"Pop-up item 29\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9029.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":90291,\"external_id\":\"ext-90291\",\"sync_product_id\":9029,\"name\":\"Pop-up item 29 / one size\",\"synced\":true,\"variant_id\":4091,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"12.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"POP-9029\"}]}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products/9029"
+    },
+    {
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":9030,\"external_id\":\"pop-030\",\"name\":\"Pop-up item 30\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9030.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":90301,\"external_id\":\"ext-90301\",\"sync_product_id\":9030,\"name\":\"Pop-up item 30 / one size\",\"synced\":true,\"variant_id\":4001,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"12.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"POP-9030\"}]}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products/9030"
+    },
+    {
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":9031,\"external_id\":\"pop-031\",\"name\":\"Pop-up item 31\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9031.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":90311,\"external_id\":\"ext-90311\",\"sync_product_id\":9031,\"name\":\"Pop-up item 31 / one size\",\"synced\":true,\"variant_id\":4011,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"12.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"POP-9031\"}]}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products/9031"
+    },
+    {
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":9032,\"external_id\":\"pop-032\",\"name\":\"Pop-up item 32\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9032.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":90321,\"external_id\":\"ext-90321\",\"sync_product_id\":9032,\"name\":\"Pop-up item 32 / one size\",\"synced\":true,\"variant_id\":4021,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"12.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"POP-9032\"}]}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products/9032"
+    },
+    {
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":9033,\"external_id\":\"pop-033\",\"name\":\"Pop-up item 33\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9033.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":90331,\"external_id\":\"ext-90331\",\"sync_product_id\":9033,\"name\":\"Pop-up item 33 / one size\",\"synced\":true,\"variant_id\":4031,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"12.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"POP-9033\"}]}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products/9033"
+    },
+    {
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":9034,\"external_id\":\"pop-034\",\"name\":\"Pop-up item 34\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9034.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":90341,\"external_id\":\"ext-90341\",\"sync_product_id\":9034,\"name\":\"Pop-up item 34 / one size\",\"synced\":true,\"variant_id\":4041,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"12.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"POP-9034\"}]}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products/9034"
+    },
+    {
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":9035,\"external_id\":\"pop-035\",\"name\":\"Pop-up item 35\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9035.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":90351,\"external_id\":\"ext-90351\",\"sync_product_id\":9035,\"name\":\"Pop-up item 35 / one size\",\"synced\":true,\"variant_id\":4051,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"12.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"POP-9035\"}]}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products/9035"
+    },
+    {
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":9036,\"external_id\":\"pop-036\",\"name\":\"Pop-up item 36\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9036.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":90361,\"external_id\":\"ext-90361\",\"sync_product_id\":9036,\"name\":\"Pop-up item 36 / one size\",\"synced\":true,\"variant_id\":4061,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"12.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"POP-9036\"}]}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products/9036"
+    },
+    {
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":9037,\"external_id\":\"pop-037\",\"name\":\"Pop-up item 37\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9037.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":90371,\"external_id\":\"ext-90371\",\"sync_product_id\":9037,\"name\":\"Pop-up item 37 / one size\",\"synced\":true,\"variant_id\":4071,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"12.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"POP-9037\"}]}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products/9037"
+    },
+    {
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":9038,\"external_id\":\"pop-038\",\"name\":\"Pop-up item 38\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9038.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":90381,\"external_id\":\"ext-90381\",\"sync_product_id\":9038,\"name\":\"Pop-up item 38 / one size\",\"synced\":true,\"variant_id\":4081,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"12.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"POP-9038\"}]}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products/9038"
+    },
+    {
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":9039,\"external_id\":\"pop-039\",\"name\":\"Pop-up item 39\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9039.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":90391,\"external_id\":\"ext-90391\",\"sync_product_id\":9039,\"name\":\"Pop-up item 39 / one size\",\"synced\":true,\"variant_id\":4091,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"12.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"POP-9039\"}]}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products/9039"
+    },
+    {
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":9040,\"external_id\":\"pop-040\",\"name\":\"Pop-up item 40\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9040.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":90401,\"external_id\":\"ext-90401\",\"sync_product_id\":9040,\"name\":\"Pop-up item 40 / one size\",\"synced\":true,\"variant_id\":4001,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"12.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"POP-9040\"}]}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products/9040"
+    },
+    {
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":9041,\"external_id\":\"pop-041\",\"name\":\"Pop-up item 41\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9041.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":90411,\"external_id\":\"ext-90411\",\"sync_product_id\":9041,\"name\":\"Pop-up item 41 / one size\",\"synced\":true,\"variant_id\":4011,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"12.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"POP-9041\"}]}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products/9041"
+    },
+    {
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":9042,\"external_id\":\"pop-042\",\"name\":\"Pop-up item 42\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9042.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":90421,\"external_id\":\"ext-90421\",\"sync_product_id\":9042,\"name\":\"Pop-up item 42 / one size\",\"synced\":true,\"variant_id\":4021,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"12.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"POP-9042\"}]}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products/9042"
+    },
+    {
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":9043,\"external_id\":\"pop-043\",\"name\":\"Pop-up item 43\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9043.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":90431,\"external_id\":\"ext-90431\",\"sync_product_id\":9043,\"name\":\"Pop-up item 43 / one size\",\"synced\":true,\"variant_id\":4031,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"12.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"POP-9043\"}]}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products/9043"
+    },
+    {
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":9044,\"external_id\":\"pop-044\",\"name\":\"Pop-up item 44\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9044.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":90441,\"external_id\":\"ext-90441\",\"sync_product_id\":9044,\"name\":\"Pop-up item 44 / one size\",\"synced\":true,\"variant_id\":4041,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"12.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"POP-9044\"}]}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products/9044"
+    },
+    {
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":9045,\"external_id\":\"pop-045\",\"name\":\"Pop-up item 45\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/9045.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":90451,\"external_id\":\"ext-90451\",\"sync_product_id\":9045,\"name\":\"Pop-up item 45 / one size\",\"synced\":true,\"variant_id\":4051,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"12.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"POP-9045\"}]}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products/9045"
+    }
+  ],
+  "name": "printful-large",
+  "recordedAt": "2026-11-10T00:00:00.000Z",
+  "version": 1
+}
