@@ -9,6 +9,7 @@ import {
   CRM_CHECKS,
   FRESHNESS_CHECKS,
   LISTING_CHECKS,
+  MODEL_CHECKS,
   PROBING_CHECKS,
   SWITCH_CHECKS,
 } from "./presets.js";
@@ -45,6 +46,7 @@ import { lazyAssertions, sourcesRedactor } from "./assertions/read.js";
 import { createStatePages } from "./switches/pages.js";
 import { lazySwitches, type SwitchesSettings } from "./switches/read.js";
 import { createFreshness, type FreshnessSettings } from "./freshness/read.js";
+import { createContentModel, type ModelSettings } from "./content-model/read.js";
 import { lazyScripts } from "./scripts.js";
 import type { FactsConfig } from "./facts/types.js";
 import type { PaymentsConfig } from "./payments/types.js";
@@ -89,6 +91,8 @@ export interface SiteCheckOptions {
   switches?: SwitchesSettings;
   /** How recent the numbers on a page should be (gaugeline.freshness.json), with its Sanity variables already copied. */
   freshness?: FreshnessSettings;
+  /** The content model (gaugeline.model.json): the schema it names, read, and its Sanity variables already copied. */
+  model?: ModelSettings;
   /** The database project to read as each role, with its keys already read from the environment. */
   access?: AccessSettings;
   /** Public DNS for the email record checks. Without one, they find nothing and nothing is resolved. */
@@ -202,6 +206,9 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
   // The probing checks ask gated routes for what they protect, so they run only with consent.
   const probingAsked = PROBING_CHECKS.some((id) => opts.only?.includes(id));
   const probingOff = opts.ownerConsent !== true && !probingAsked;
+  // And the content model checks: they run when gaugeline.model.json is there.
+  const modelAsked = MODEL_CHECKS.some((id) => opts.only?.includes(id));
+  const modelOff = !opts.model && !modelAsked;
   const switchedOff = [
     ...(probingOff ? PROBING_CHECKS.filter((id) => registered.has(id)) : []),
     ...(crmOff ? CRM_CHECKS.filter((id) => registered.has(id)) : []),
@@ -209,6 +216,7 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
     ...(assertionsOff ? ASSERTION_CHECKS.filter((id) => registered.has(id)) : []),
     ...(switchesOff ? SWITCH_CHECKS.filter((id) => registered.has(id)) : []),
     ...(freshnessOff ? FRESHNESS_CHECKS.filter((id) => registered.has(id)) : []),
+    ...(modelOff ? MODEL_CHECKS.filter((id) => registered.has(id)) : []),
   ];
   const skip = switchedOff.length > 0 ? [...(opts.skip ?? []), ...switchedOff] : opts.skip;
   const wanted = registry
@@ -299,9 +307,10 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
       ...(databases ? { databases } : {}),
       ...(opts.switches ? { switches: lazySwitches(opts.switches, sourceDeps) } : {}),
       ...(opts.freshness ? { freshness: createFreshness(opts.freshness, sourceDeps) } : {}),
-      // The switches file and the freshness file name pages the run reads itself, once each, from
-      // one shared allowance.
-      ...(opts.switches || opts.freshness
+      ...(opts.model ? { model: createContentModel(opts.model, opts.fetcher) } : {}),
+      // The switches, freshness and model files name pages the run reads itself (a listing and its
+      // pages of results, a block's page), once each, from one shared allowance.
+      ...(opts.switches || opts.freshness || opts.model
         ? {
             statePages: createStatePages({
               fetcher: opts.fetcher,

@@ -85,3 +85,16 @@ export const CRM_CHECKS: readonly string[] = Object.freeze([
  * did not ask.
  */
 export const PROBING_CHECKS: readonly string[] = Object.freeze(["gated-download-open"]);
+
+/**
+ * The content model checks: they compare a Sanity schema, its documents and the pages built from
+ * them, and run only when gaugeline.model.json is there. Without it they are not run (so not passed
+ * either), unless a caller asked for one by id: that one says it could not check.
+ */
+export const MODEL_CHECKS: readonly string[] = Object.freeze([
+  "model-missing-required",
+  "model-unexpanded",
+  "model-listing-count",
+  "model-dependents",
+  "model-orphan-fields",
+]);

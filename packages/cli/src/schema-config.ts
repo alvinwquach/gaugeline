@@ -15,6 +15,7 @@ import {
   sourcesConfigSchema,
   switchesConfigSchema,
   freshnessConfigSchema,
+  modelConfigSchema,
   pagesConfigSchema,
   paymentsConfigSchema,
   readContainer,
@@ -33,6 +34,7 @@ import {
   type SourcesConfig,
   type SwitchesConfig,
   type FreshnessConfig,
+  type ModelConfig,
   type PagesConfig,
   type PaymentsConfig,
   type SchemaRules,
@@ -60,6 +62,8 @@ export const SOURCES_CONFIG_FILE = "gaugeline.sources.json";
 export const SWITCHES_CONFIG_FILE = "gaugeline.switches.json";
 /** How recent the numbers on a page should be (a sync that stopped, a prediction for a past game), likewise. Paths, selectors, durations and source names only. */
 export const FRESHNESS_CONFIG_FILE = "gaugeline.freshness.json";
+/** The content model: the schema file, which listings and blocks are built from which types, likewise (model-* checks). Paths, selectors, type and field names only. */
+export const MODEL_CONFIG_FILE = "gaugeline.model.json";
 /** Sections hidden until launch, likewise. */
 export const HIDDEN_CONFIG_FILE = "gaugeline.hidden.json";
 /** The tracking plan: which clicks must push which event, likewise. */
@@ -141,6 +145,10 @@ export function readSwitchesConfig(dir: string): SwitchesConfig | undefined {
 
 export function readFreshnessConfig(dir: string): FreshnessConfig | undefined {
   return readJsonConfig(dir, FRESHNESS_CONFIG_FILE, freshnessConfigSchema, "data freshness checks");
+}
+
+export function readModelConfig(dir: string): ModelConfig | undefined {
+  return readJsonConfig(dir, MODEL_CONFIG_FILE, modelConfigSchema, "content model checks");
 }
 
 /** Largest Apple Business Connect export read: a few hundred locations is well under it. */

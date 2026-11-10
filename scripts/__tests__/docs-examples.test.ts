@@ -2,6 +2,7 @@ import {
   ASSERTION_CHECKS,
   EMAIL_PRESET,
   FRESHNESS_CHECKS,
+  MODEL_CHECKS,
   LISTING_CHECKS,
   CRM_CHECKS,
   SWITCH_CHECKS,
@@ -175,6 +176,8 @@ describe("docs examples: integration", () => {
               !SWITCH_CHECKS.includes(id) &&
               // And without gaugeline.freshness.json.
               !FRESHNESS_CHECKS.includes(id) &&
+              // And without gaugeline.model.json.
+              !MODEL_CHECKS.includes(id) &&
               // And without --owner-consent (the probing checks).
               !PROBING_CHECKS.includes(id),
           ),
