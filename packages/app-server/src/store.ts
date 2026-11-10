@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { LeaksView, PageData, RequestRow, Result } from "@gaugeline/core";
+import type { LeaksView, PageData, RequestRow, Result, RunResult } from "@gaugeline/core";
 
 /** What a run streams: a step's text, then done with the counts, or failed with the reason. */
 export type RunEvent =
@@ -26,6 +26,12 @@ export interface Run {
    * dataset and preview checks read, for the Pages checked, Search data and Leaks & access views. Beside the result, not in it: the result's shape is versioned.
    */
   checked?: { requests?: RequestRow[]; page: PageData; leaks: LeaksView };
+  /**
+   * When done: what the report download is made from, the same inputs the CLI gives renderReport
+   * (the run's own result, which has no DNS entries added, and the address the page ended at).
+   * Kept as data, not as text: the HTML is rendered when it is asked for.
+   */
+  report?: { result: RunResult; url: string };
   reason?: string;
   /** Every event so far, so a late subscriber (or one sending Last-Event-ID) gets a replay. */
   events: RunEvent[];

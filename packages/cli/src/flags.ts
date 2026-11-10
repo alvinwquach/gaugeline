@@ -49,6 +49,14 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     commands: ["check", "launch", "open"],
   },
   {
+    name: "demo",
+    type: "boolean",
+    description:
+      "Start the app with example results about invented sites; no address is checked and nothing is requested",
+    since: "0.2.0",
+    commands: ["open"],
+  },
+  {
     name: "allow-private",
     type: "boolean",
     description:

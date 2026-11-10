@@ -6,6 +6,7 @@ import {
   EMAIL_PRESET,
   progressText,
   Semaphore,
+  type CheckRegistry,
   type FetcherOptions,
 } from "@gaugeline/core";
 import type { Counts, Run, Store } from "./store.js";
@@ -15,6 +16,8 @@ export interface RunnerOptions {
   fetcher?: FetcherOptions;
   /** The run's clock (tests). */
   now?: () => Date;
+  /** The checks to run, and the text the report names them with. Default: every page check. */
+  registry?: CheckRegistry;
 }
 
 /**
@@ -24,7 +27,7 @@ export interface RunnerOptions {
  */
 export function createRunner(store: Store, opts: RunnerOptions = {}) {
   const semaphore = new Semaphore(5);
-  const registry = createPageRegistry();
+  const registry = opts.registry ?? createPageRegistry();
   const ids = new Set(registry.all().map((c) => c.id));
   // As the CLI without --dns: the mail record checks are listed as not run, never resolved.
   const dnsSkipped = EMAIL_PRESET.filter((id) => ids.has(id));
@@ -56,6 +59,7 @@ export function createRunner(store: Store, opts: RunnerOptions = {}) {
       for (const f of result.findings) counts[f.severity]++;
       // What the Pages checked, Search data and Leaks & access views show. Not part of the versioned result.
       r.checked = { ...(requests ? { requests } : {}), page, leaks };
+      r.report = { result, url: snapshot.finalUrl };
       r.counts = counts;
       r.state = "done";
       store.emit(r, { event: "done", data: { counts } });

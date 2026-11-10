@@ -91,6 +91,7 @@ import { runVerify } from "./verify.js";
 import {
   ClientIntegrityError,
   ClientMissingError,
+  DemoError,
   PortRangeError,
   startApp,
   type RunningApp,
@@ -774,6 +775,10 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       try {
         app = await startApp({
           clientDir: deps.clientDir ?? defaultClientDir(),
+          version: deps.version ?? VERSION,
+          // The demo makes no fetcher at all (startApp makes none without a runner), so a fetcher
+          // passed in by a test is not given to it either.
+          ...(args.demo ? { demo: true } : {}),
           ...(args.address
             ? {
                 address: args.address,
@@ -783,10 +788,12 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
                 },
               }
             : {}),
-          ...(deps.fetcher ? { fetcher: deps.fetcher } : {}),
+          ...(deps.fetcher && !args.demo ? { fetcher: deps.fetcher } : {}),
           ...(deps.now ? { now: deps.now } : {}),
         });
       } catch (err) {
+        if (err instanceof DemoError)
+          throw new ConfigError(`Gaugeline cannot start the demo: ${err.message}`);
         if (err instanceof PortRangeError) throw new ConfigError(err.message);
         // A package without its app, or with files that differ from its manifest: one line, exit 2.
         if (err instanceof ClientMissingError || err instanceof ClientIntegrityError)
@@ -817,7 +824,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       if (app.firstRun) await Promise.race([app.firstRun, done]);
       if (!stopping) {
         io.stdout.write(
-          `${app.firstRun ? "\n" : ""}Gaugeline is running at ${app.url}\nIt's only reachable from this computer. Press Ctrl+C to stop.\n`,
+          `${app.firstRun ? "\n" : ""}Gaugeline is running at ${app.url}\nIt's only reachable from this computer. Press Ctrl+C to stop.\n${args.demo ? "This is the demo: example results about invented sites. Nothing is checked and nothing is requested.\n" : ""}`,
         );
         const env = io.env ?? {};
         if (!args.noOpen && !isCiEnv(env)) (deps.open ?? openInBrowser)(app.url);

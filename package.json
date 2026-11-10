@@ -9,6 +9,7 @@
   "scripts": {
     "build": "pnpm -r build && node scripts/embed-client.mjs",
     "embed:client": "node scripts/embed-client.mjs",
+    "demo:build": "tsx scripts/build-demo.ts",
     "test": "vitest run",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",

@@ -58,6 +58,23 @@ async function call(path: string, init?: RequestInit): Promise<unknown> {
   return body;
 }
 
+/** What the app is running as: the demo (example results, no checks) or a normal session. */
+export interface AppSession {
+  demo: boolean;
+  version: string;
+}
+
+/** GET /api/session. Anything that isn't the shape is an error, and the app then behaves as a normal session. */
+export async function readSession(): Promise<AppSession> {
+  const body = await call("/api/session");
+  if (!isObject(body) || typeof body.demo !== "boolean" || typeof body.version !== "string")
+    throw new ApiError(200, "Gaugeline didn't say what kind of session this is.");
+  return { demo: body.demo, version: body.version };
+}
+
+/** Where a finished run's report is downloaded from: the same file `gaugeline <address>` writes. */
+export const reportPath = (runId: string) => `/api/runs/${encodeURIComponent(runId)}/report`;
+
 /** POST /api/check. A 400 (or 413, 415, 429) comes back as an ApiError carrying the server's sentence. */
 export async function startCheck(url: string): Promise<{ id: string }> {
   const body = await call("/api/check", {

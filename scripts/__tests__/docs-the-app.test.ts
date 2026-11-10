@@ -93,3 +93,20 @@ describe("the Leaks & access example in docs/the-app.md", () => {
     expect(block("Leaks & access")).toBe(text);
   });
 });
+
+describe("the tavern example in docs/the-app.md", () => {
+  it("lists what the demo's first run found, in the report's order", () => {
+    const demo = JSON.parse(
+      readFileSync(
+        fileURLToPath(new URL("../../packages/app-server/demo/results.json", import.meta.url)),
+        "utf8",
+      ),
+    ) as { runs: { result: Result }[] };
+    const mark = { high: "\u2717", medium: "!", low: "\u00b7" } as const;
+    const text = (demo.runs[0]?.result.findings ?? [])
+      .map((f) => `${mark[f.severity]} ${f.title}\n    ${f.evidence}`)
+      .join("\n");
+    expect(text).toContain("Trivia Night");
+    expect(block("Example tavern run")).toBe(text);
+  });
+});
