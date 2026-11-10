@@ -43,6 +43,7 @@ describe("LIMITS and Budget: unit", () => {
       sanityDatasets: 2,
       accessTables: 20,
       hiddenPages: 5,
+      statePages: 16,
       draftRoutes: 4,
       frameworkAddresses: 0,
       scripts: 15,

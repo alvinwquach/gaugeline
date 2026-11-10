@@ -41,6 +41,9 @@ import {
   resolveAccess,
   freezeEnv,
   databaseEnvVars,
+  referenceProblems,
+  SANITY_ENV_VARS,
+  usesSanity,
   LISTING_ENV_VARS,
   type AssertionsRead,
   type CheckRegistry,
@@ -112,7 +115,9 @@ import {
   readFacts,
   readListingsConfig,
   readSourcesConfig,
+  readSwitchesConfig,
   SOURCES_CONFIG_FILE,
+  SWITCHES_CONFIG_FILE,
   readAppleExport,
   readHidden,
   readLanguageRules,
@@ -1021,6 +1026,22 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
             },
           }
         : undefined;
+      // The switch checks read Sanity (its variables are copied here) and the named queries above.
+      // A db: source that names no query in the sources file is the owner's to fix before anything runs.
+      const switchesConfig = readSwitchesConfig(deps.cwd ?? process.cwd());
+      if (switchesConfig) {
+        const problems = referenceProblems(switchesConfig, sourcesConfig);
+        if (problems.length > 0)
+          throw new ConfigError(`${SWITCHES_CONFIG_FILE}: ${problems[0] ?? "a source is wrong"}.`, {
+            hint: `Name the query in ${SOURCES_CONFIG_FILE} (see docs/guides/switches-and-availability).`,
+          });
+      }
+      const switches = switchesConfig
+        ? {
+            config: switchesConfig,
+            env: freezeEnv(io.env ?? {}, usesSanity(switchesConfig) ? SANITY_ENV_VARS : []),
+          }
+        : undefined;
       const accessConfig = readAccess(deps.cwd ?? process.cwd());
       // Keys are read from the environment here and go only into request headers.
       const access = accessConfig ? resolveAccess(accessConfig, io.env ?? {}) : undefined;
@@ -1095,6 +1116,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         ...(access ? { access } : {}),
         ...(listings ? { listings } : {}),
         ...(databases ? { databases } : {}),
+        ...(switches ? { switches } : {}),
         ...(listingsConfig?.timeZone ? { expect: { timeZone: listingsConfig.timeZone } } : {}),
         ...(dns ? { dns } : {}),
       });

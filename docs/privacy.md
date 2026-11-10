@@ -35,7 +35,8 @@ empty string counts as not set.
 If `gaugeline.sources.json` names a Postgres or Supabase database
 ([A database as a source](./connectors/postgres.md)), Gaugeline connects to it with the connection
 string in the environment variable you name, and only when a check asks for one of its named queries
-or runs one of its [data assertions](./guides/data-assertions.md).
+or runs one of its [data assertions](./guides/data-assertions.md), or when `gaugeline.switches.json`
+names one of its queries ([Switches, sold out and capacity](./guides/switches-and-availability.md)).
 It is not a request to the checked site and does not go through the fetcher. It sends one statement
 at a time, a single `SELECT` that passed the statement check, inside a read-only transaction that is
 always rolled back, with a timeout and a cap of 5,000 rows. The connection string, its password and
@@ -43,6 +44,17 @@ any Supabase key are replaced with `[redacted]` in every message, and a Supabase
 is refused without being used. The rows stay on your computer or in your CI. A data assertion that fails prints its row count and
 only the columns its `evidence` list names, for the first 20 rows; every other column is dropped as
 soon as it is read.
+
+### Switches, the 86 list and capacity
+
+If `gaugeline.switches.json` exists, Gaugeline reads the state it names from where you change it, and
+the pages it names from the site. A `sanity:` source is one field of the first published document of a
+type: one `GET` of Sanity's query address, published content only, with a token (`SANITY_TOKEN`, only
+for a private dataset) in a header and never in the address. A `db:` source is a named query, read as
+described under Databases. The pages are fetched with `GET` through the same fetcher as every other
+page, at most 16 different pages named in the file, each once. The state, the pages and the item names
+stay on your computer or in your CI; what a finding prints is escaped, and any key or connection string
+in it is replaced with `[redacted]`. Without the file none of this happens.
 
 ### Links on the page
 

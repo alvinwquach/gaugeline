@@ -177,7 +177,13 @@ export { PRIVATE_TYPE_WORDS, isPrivateType } from "./checks/leaks/private-types.
 export { SANITY_QUERY, readDataset, sanityQueryUrl, sanityRefs } from "./sanity.js";
 export type { DatasetRead, SanityRef } from "./sanity.js";
 export { readScripts } from "./scripts.js";
-export { ASSERTION_CHECKS, EMAIL_PRESET, LAUNCH_PRESET, LISTING_CHECKS } from "./presets.js";
+export {
+  ASSERTION_CHECKS,
+  EMAIL_PRESET,
+  LAUNCH_PRESET,
+  LISTING_CHECKS,
+  SWITCH_CHECKS,
+} from "./presets.js";
 export {
   CHANNELS,
   EMAIL_ENV,
@@ -669,6 +675,34 @@ export type {
   AssertionsSettings,
   Placed as PlacedAssertion,
 } from "./assertions/index.js";
+export {
+  MAX_STATE_PAGES,
+  cacheNote,
+  capacityValue,
+  createStatePages,
+  lazySwitches,
+  parseSourceRef,
+  readSwitches,
+  referenceProblems,
+  resolveQuery,
+  scopePaths,
+  switchValue,
+  switchesConfigSchema,
+  usesSanity,
+} from "./switches/index.js";
+export type {
+  AvailabilityResult,
+  CapacityResult,
+  StatePage,
+  StatePages,
+  SwitchDatabases,
+  SwitchResult,
+  SwitchesConfig,
+  SwitchesDeps,
+  SwitchesRead,
+  SwitchesSettings,
+} from "./switches/index.js";
+export { sourcesRedactor } from "./assertions/index.js";
 export { toMinor } from "./products/money.js";
 export { listingsConfigSchema } from "./listings/config.js";
 export type { ListingsConfig } from "./listings/config.js";

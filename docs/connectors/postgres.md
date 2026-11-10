@@ -13,10 +13,10 @@ is built so that a mistake in one safeguard is caught by another. Run it only ag
 own or have permission to read: Gaugeline connects with the connection string you give it and nothing
 else.
 
-The first check that uses it is [data assertions](/docs/guides/data-assertions): a `SELECT` that
-should return no rows, run on every check. The switches and capacity check, which compares the rows
-with the page, ships next. Today the connector reads, caps and maps, and `gaugeline.sources.json` is
-validated on every run, so a typo is caught now.
+Two checks use it. [Data assertions](/docs/guides/data-assertions) are `SELECT`s that should return
+no rows, run on every check. [Switches, sold out and capacity](/docs/guides/switches-and-availability)
+compare a page with a named query: the bar's 86 list against the menu, the number of dishes left
+against the order page. `gaugeline.sources.json` is validated on every run, so a typo is caught now.
 
 ## Example: the bar's 86 list and bookings in Supabase
 

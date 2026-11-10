@@ -47,7 +47,7 @@ const base = (p: Placed): Omit<AssertionResult, "status" | "message"> => ({
  * its connection string's password (as written and as decoded) and key. Cells, notices and
  * messages all pass through it.
  */
-function runRedactor(config: SourcesConfig, env: Env): (text: string) => string {
+export function sourcesRedactor(config: SourcesConfig, env: Env): (text: string) => string {
   const steps = [createRedactor(env, sourceEnvVars(config))];
   for (const source of Object.values(config.sources)) {
     const raw = env[connectionVar(source)] ?? "";
@@ -79,7 +79,7 @@ export async function readAssertions(
 ): Promise<AssertionsRead> {
   const { config, env } = settings;
   const placed = assertionsOf(config, options.only);
-  const redact = runRedactor(config, env);
+  const redact = sourcesRedactor(config, env);
   const results: Array<AssertionResult | undefined> = placed.map(() => undefined);
 
   // Layer 1 again, even though the schema ran it: this function is reachable with a config that was

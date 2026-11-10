@@ -11,6 +11,7 @@ import {
   languageRulesSchema,
   listingsConfigSchema,
   sourcesConfigSchema,
+  switchesConfigSchema,
   pagesConfigSchema,
   paymentsConfigSchema,
   readContainer,
@@ -25,6 +26,7 @@ import {
   type LanguageRules,
   type ListingsConfig,
   type SourcesConfig,
+  type SwitchesConfig,
   type PagesConfig,
   type PaymentsConfig,
   type SchemaRules,
@@ -46,6 +48,8 @@ export const ACCESS_CONFIG_FILE = "gaugeline.access.json";
 export const LISTINGS_CONFIG_FILE = "gaugeline.listings.json";
 /** The databases to read named queries from (Postgres, Supabase), likewise. Connection strings stay in the environment. */
 export const SOURCES_CONFIG_FILE = "gaugeline.sources.json";
+/** What the site must show for each switch, 86 list and capacity (pre-orders off, an item 86'd, sold out), likewise. Names, paths and phrases only. */
+export const SWITCHES_CONFIG_FILE = "gaugeline.switches.json";
 /** Sections hidden until launch, likewise. */
 export const HIDDEN_CONFIG_FILE = "gaugeline.hidden.json";
 /** The tracking plan: which clicks must push which event, likewise. */
@@ -113,6 +117,10 @@ export function readListingsConfig(dir: string): ListingsConfig | undefined {
 
 export function readSourcesConfig(dir: string): SourcesConfig | undefined {
   return readJsonConfig(dir, SOURCES_CONFIG_FILE, sourcesConfigSchema, "database sources");
+}
+
+export function readSwitchesConfig(dir: string): SwitchesConfig | undefined {
+  return readJsonConfig(dir, SWITCHES_CONFIG_FILE, switchesConfigSchema, "switch checks");
 }
 
 /** Largest Apple Business Connect export read: a few hundred locations is well under it. */

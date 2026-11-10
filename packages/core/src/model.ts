@@ -21,6 +21,8 @@ import type { DatasetRead } from "./sanity.js";
 import type { ListingsRead } from "./listings/read.js";
 import type { DatabasesRead } from "./connectors/postgres/read.js";
 import type { AssertionsRead } from "./assertions/read.js";
+import type { StatePages } from "./switches/pages.js";
+import type { SwitchesRead } from "./switches/types.js";
 import type { ScriptRead } from "./scripts.js";
 import type { PageSnapshot } from "./snapshot.js";
 import type { ImageSample } from "./checks/images/refs.js";
@@ -188,6 +190,13 @@ export interface CheckContext {
    * first use through the same read-only database connector. Absent when none is configured.
    */
   assertions?: () => Promise<AssertionsRead>;
+  /**
+   * The switches, 86 list and capacity in gaugeline.switches.json, each read from its source once on
+   * first use. Absent when the file is not there: the switch checks then say they could not check.
+   */
+  switches?: () => Promise<SwitchesRead>;
+  /** The pages gaugeline.switches.json names, each read once with GET on first use. */
+  statePages?: StatePages;
   /** Values the run was told to expect (for example the app's name). Until the config file, API only. */
   expect?: RunExpectations;
 }

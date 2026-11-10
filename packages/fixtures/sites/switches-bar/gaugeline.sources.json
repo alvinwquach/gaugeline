@@ -1,0 +1,11 @@
+{
+  "sources": {
+    "db": {
+      "type": "supabase",
+      "env": "LANTERN_SUPABASE_DB_URL",
+      "queries": {
+        "eightySixed": "select name from kitchen_items where eighty_sixed order by name"
+      }
+    }
+  }
+}

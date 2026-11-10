@@ -4,7 +4,7 @@ import { createBudget, sampleCounts, type Budget } from "./limits.js";
 import type { CheckRegistry } from "./model.js";
 import type { ProgressSink } from "./progress.js";
 import { NO_PAGE_CHECKS } from "./checks/blocked.js";
-import { ASSERTION_CHECKS, LISTING_CHECKS } from "./presets.js";
+import { ASSERTION_CHECKS, LISTING_CHECKS, SWITCH_CHECKS } from "./presets.js";
 import { classifyHop, describeRefusal } from "./refusal.js";
 import { runChecks, type RunOptions, type RunResult } from "./run.js";
 import { dedupeUrls } from "./sample.js";
@@ -33,7 +33,9 @@ import {
 import { lazyDatasets } from "./sanity.js";
 import { lazyListings, noListings, type ListingsSettings } from "./listings/read.js";
 import { lazyDatabases, type DatabasesSettings } from "./connectors/postgres/read.js";
-import { lazyAssertions } from "./assertions/read.js";
+import { lazyAssertions, sourcesRedactor } from "./assertions/read.js";
+import { createStatePages } from "./switches/pages.js";
+import { lazySwitches, type SwitchesSettings } from "./switches/read.js";
 import { lazyScripts } from "./scripts.js";
 import type { FactsConfig } from "./facts/types.js";
 import type { PaymentsConfig } from "./payments/types.js";
@@ -72,6 +74,8 @@ export interface SiteCheckOptions {
   listings?: ListingsSettings;
   /** The databases to read named queries from (gaugeline.sources.json), with their variables already copied. */
   databases?: DatabasesSettings;
+  /** What the site must show for each switch, 86 list and capacity (gaugeline.switches.json), with its Sanity variables already copied. */
+  switches?: SwitchesSettings;
   /** The database project to read as each role, with its keys already read from the environment. */
   access?: AccessSettings;
   /** Public DNS for the email record checks. Without one, they find nothing and nothing is resolved. */
@@ -169,9 +173,13 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
   // The data assertion check is the same: it runs when the sources file holds assertions.
   const assertionsAsked = ASSERTION_CHECKS.some((id) => opts.only?.includes(id));
   const assertionsOff = !(opts.databases?.config.assertions?.length ?? 0) && !assertionsAsked;
+  // The switch checks likewise: they run when gaugeline.switches.json is there.
+  const switchesAsked = SWITCH_CHECKS.some((id) => opts.only?.includes(id));
+  const switchesOff = !opts.switches && !switchesAsked;
   const switchedOff = [
     ...(listingsOff ? LISTING_CHECKS.filter((id) => registered.has(id)) : []),
     ...(assertionsOff ? ASSERTION_CHECKS.filter((id) => registered.has(id)) : []),
+    ...(switchesOff ? SWITCH_CHECKS.filter((id) => registered.has(id)) : []),
   ];
   const skip = switchedOff.length > 0 ? [...(opts.skip ?? []), ...switchedOff] : opts.skip;
   const wanted = registry
@@ -187,6 +195,8 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
     kinded("script", lazyScripts({ page: snapshot, fetcher: opts.fetcher, budget })),
   );
   const datasets = remembered(lazyDatasets({ page: snapshot, fetcher: opts.fetcher, budget }));
+  // One read of the named queries, shared by the checks that read databases and the switch checks.
+  const databases = opts.databases ? lazyDatabases(opts.databases, opts.fetcher) : undefined;
   const result = await runChecks(snapshot, registry, {
     ctx: {
       fetcher: opts.fetcher,
@@ -236,7 +246,25 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
         : asked
           ? { listings: () => Promise.resolve(noListings()) }
           : {}),
-      ...(opts.databases ? { databases: lazyDatabases(opts.databases, opts.fetcher) } : {}),
+      ...(databases ? { databases } : {}),
+      ...(opts.switches
+        ? {
+            switches: lazySwitches(opts.switches, {
+              fetcher: opts.fetcher,
+              redact: opts.databases
+                ? sourcesRedactor(opts.databases.config, opts.databases.env)
+                : (text: string) => text,
+              ...(opts.databases && databases
+                ? { databases: { config: opts.databases.config, read: databases } }
+                : {}),
+            }),
+            statePages: createStatePages({
+              fetcher: opts.fetcher,
+              budget,
+              known: [snapshot],
+            }),
+          }
+        : {}),
       ...((opts.databases?.config.assertions?.length ?? 0) > 0 && opts.databases
         ? { assertions: lazyAssertions(opts.databases, opts.fetcher) }
         : {}),

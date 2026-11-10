@@ -14,8 +14,10 @@ export {
   DEFAULT_DATASET,
   DEFAULT_PRODUCTS_QUERY,
   SANITY_ENV_VARS,
+  fieldQuery,
   parseProducts,
   productsUrl,
+  readField as readSanityField,
   sanityConnector,
   typeCounts as sanityTypeCounts,
 } from "./sanity.js";

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://lantern.example/sitemap.xml

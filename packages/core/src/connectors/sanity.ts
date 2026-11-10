@@ -94,14 +94,29 @@ const REFUSED_NO_TOKEN =
 const REFUSED_WITH_TOKEN =
   "Sanity did not accept SANITY_TOKEN. A private dataset needs a read-only token with the Viewer role; check it belongs to this project and has that role.";
 
+/** What to tell a person whose query Sanity could not run or whose address was too long. */
+interface AskHints {
+  tooLong: string;
+  badQuery: string;
+}
+
+const PRODUCTS_HINTS: AskHints = {
+  tooLong:
+    "The query is too long to send as a GET. Shorten GAUGELINE_PRODUCTS_QUERY (a projection of the six fields is enough).",
+  badQuery:
+    "Sanity could not run the query (HTTP 400). If you set GAUGELINE_PRODUCTS_QUERY, check it is valid GROQ.",
+};
+
 /** One GROQ query, one GET. Returns the `result` of the answer. */
-async function ask(env: Env, fetcher: Fetcher, query: string): Promise<unknown> {
+async function ask(
+  env: Env,
+  fetcher: Fetcher,
+  query: string,
+  hints: AskHints = PRODUCTS_HINTS,
+): Promise<unknown> {
   const s = settings(env);
   const url = productsUrl(s.projectId, s.dataset, query);
-  if (url.length > MAX_URL)
-    throw new Error(
-      "The query is too long to send as a GET. Shorten GAUGELINE_PRODUCTS_QUERY (a projection of the six fields is enough).",
-    );
+  if (url.length > MAX_URL) throw new Error(hints.tooLong);
   let body: string;
   try {
     const hop = await connectorGet(fetcher, url, {
@@ -116,10 +131,7 @@ async function ask(env: Env, fetcher: Fetcher, query: string): Promise<unknown> 
     if (err instanceof ConnectorRefusedError)
       throw new ConnectorRefusedError(err.status, s.token ? REFUSED_WITH_TOKEN : REFUSED_NO_TOKEN);
     const status = /HTTP (\d{3})/.exec(err instanceof Error ? err.message : "")?.[1];
-    if (status === "400")
-      throw new Error(
-        "Sanity could not run the query (HTTP 400). If you set GAUGELINE_PRODUCTS_QUERY, check it is valid GROQ.",
-      );
+    if (status === "400") throw new Error(hints.badQuery);
     throw err;
   }
   let parsed: unknown;
@@ -244,6 +256,36 @@ export const typeCounts = guarded(
     }
     return counts;
   },
+);
+
+const TYPE_NAME = /^[A-Za-z][A-Za-z0-9_-]{0,63}$/;
+const FIELD_NAME = /^[A-Za-z_][A-Za-z0-9_]{0,63}$/;
+
+const FIELD_HINTS: AskHints = {
+  tooLong: "The query is too long to send as a GET. Use a shorter field path.",
+  badQuery:
+    "Sanity could not run the query (HTTP 400). Check the document type and field names in the source.",
+};
+
+/**
+ * The GROQ query for one field of the published document of a type: `*[_type == "siteSettings"][0].features.preOrders`.
+ * Names are checked against a plain-identifier pattern first, so a name from a config file can
+ * never add anything to the query.
+ */
+export function fieldQuery(type: string, fields: readonly string[]): string {
+  if (!TYPE_NAME.test(type)) throw new Error(`"${type}" is not a Sanity document type name.`);
+  if (fields.length === 0 || !fields.every((f) => FIELD_NAME.test(f)))
+    throw new Error("The field path must be plain field names joined by dots.");
+  return `*[_type == ${JSON.stringify(type)}][0].${fields.join(".")}`;
+}
+
+/**
+ * One field of the first published document of a type, as Sanity returns it: a value, a list, or
+ * null when there is no such document or the field is not set. One GET; drafts are left out.
+ */
+export const readField = guarded(
+  (env: Env, fetcher: Fetcher, type: string, fields: readonly string[]): Promise<unknown> =>
+    ask(env, fetcher, fieldQuery(type, fields), FIELD_HINTS),
 );
 
 /**
