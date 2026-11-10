@@ -30,6 +30,17 @@ export interface FakeSanity {
   types: Record<string, FakeSanityType>;
   /** The documents of each type, for the duplicates query. A type not listed has none. */
   documents?: Record<string, FakeDocument[]>;
+  /**
+   * Whole invented documents of each type, for the content-shape query of `--suggest`
+   * (`*[_type == "T" && !(_id in path("drafts.**"))] | order(_updatedAt desc)[0...N]`). A type not
+   * listed has none. The fake sorts by `_updatedAt`, newest first, and takes the first N.
+   */
+  content?: Record<string, Record<string, unknown>[]>;
+  /**
+   * The most documents one answer can carry: a content-shape query asking for more is answered with
+   * a body larger than the fetcher's cap, the way a real answer of long documents would be.
+   */
+  carryDocuments?: number;
   /** A private dataset: 401 unless the request carries this token (or any token when true). */
   token?: string | true;
 }
@@ -65,6 +76,9 @@ function pathOf(expression: string): string {
 const COUNT =
   /"(total|p\d+)":count\(\*\[_type == ("(?:[^"\\]|\\.)*")(?: && defined\((.*?)\))?\]\)(?=,"p|\}$)/g;
 
+const SHAPE =
+  /^\*\[_type == ("(?:[^"\\]|\\.)*") && !\(_id in path\("drafts\.\*\*"\)\)\] \| order\(_updatedAt desc\)\[0\.\.\.(\d+)\]$/;
+
 const DUPES = /^\*\[_type == ("(?:[^"\\]|\\.)*")\]\{_id,"slug":slug\.current,title\}$/;
 
 export function sanityCountsTransport(spec: FakeSanity, seen: SeenSanityRequest[] = []): Transport {
@@ -72,7 +86,8 @@ export function sanityCountsTransport(spec: FakeSanity, seen: SeenSanityRequest[
     const query = url.searchParams.get("query") ?? "";
     const counts = [...query.matchAll(COUNT)];
     const listed = DUPES.exec(query)?.[1];
-    const first = listed ?? counts[0]?.[2];
+    const shaped = SHAPE.exec(query);
+    const first = listed ?? shaped?.[1] ?? counts[0]?.[2];
     seen.push({
       method: req.method,
       url: url.href,
@@ -84,6 +99,21 @@ export function sanityCountsTransport(spec: FakeSanity, seen: SeenSanityRequest[
       const sent = /^Bearer (.+)$/.exec(req.headers.authorization ?? "")?.[1];
       if (sent === undefined || (spec.token !== true && sent !== spec.token))
         return json(401, { error: { description: "Unauthorized", type: "corsOriginError" } });
+    }
+    if (shaped !== null) {
+      const take = Number(shaped[2]);
+      // The query itself leaves drafts out, as Sanity would.
+      const docs = (spec.content?.[JSON.parse(shaped[1] ?? '""') as string] ?? [])
+        .filter((d) => !String(d._id).startsWith("drafts."))
+        .sort((a, b) => String(b._updatedAt).localeCompare(String(a._updatedAt)))
+        .slice(0, take);
+      if (spec.carryDocuments !== undefined && take > spec.carryDocuments)
+        return Promise.resolve({
+          status: 200,
+          headers: { "content-type": "application/json" },
+          body: Readable.from([Buffer.alloc(6 * 1024 * 1024, "x")]),
+        });
+      return json(200, { ms: 3, query, result: docs });
     }
     if (listed !== undefined) {
       const published = url.searchParams.get("perspective") === "published";

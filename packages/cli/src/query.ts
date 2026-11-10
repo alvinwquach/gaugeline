@@ -20,6 +20,7 @@ import {
 import { stat } from "node:fs/promises";
 import { resolve } from "node:path";
 import { runGraphql } from "./query-graphql.js";
+import { runSuggest } from "./query-suggest.js";
 import { formatTerminal } from "./reporter.js";
 
 /** Why each kind of unreadable query was left alone, in a sentence a person can act on. */
@@ -150,6 +151,7 @@ export async function runQuery(
     dupes?: boolean;
     mutations?: boolean;
     graphql?: { endpoint?: string };
+    suggest?: { type: string };
     schema?: string;
     allowPrivate?: boolean;
     quiet?: boolean;
@@ -157,6 +159,17 @@ export async function runQuery(
   io: Out,
   deps: Deps,
 ): Promise<Outcome> {
+  if (args.suggest !== undefined)
+    return runSuggest(
+      {
+        dir: args.dir,
+        suggest: args.suggest,
+        ...(args.allowPrivate === undefined ? {} : { allowPrivate: args.allowPrivate }),
+        ...(args.quiet === undefined ? {} : { quiet: args.quiet }),
+      },
+      io,
+      { cwd: deps.cwd, ...(deps.fetcher ? { fetcher: deps.fetcher } : {}) },
+    );
   if (args.graphql !== undefined)
     return runGraphql(
       {

@@ -4,7 +4,7 @@ import { Readable } from "node:stream";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import type { Transport } from "@gaugeline/core";
-import { COPPERHILL_COUNTS, sanityCountsTransport } from "@gaugeline/testkit";
+import { COPPERHILL_COUNTS, NORTHFIELD_CONTENT, sanityCountsTransport } from "@gaugeline/testkit";
 import { EXIT, main } from "../main.js";
 
 /**
@@ -52,7 +52,7 @@ function examples(): Array<{ command: string; env: Record<string, string>; expec
   all.forEach((f, i) => {
     const next = all[i + 1];
     const m =
-      /^\$ (SANITY_PROJECT_ID=([a-z0-9]+) )?npx gaugeline (query \S+(?: --dupes| --mutations| --graphql(?: --schema \S+)?)?)$/.exec(
+      /^\$ (SANITY_PROJECT_ID=([a-z0-9]+) )?npx gaugeline (query \S+(?: --dupes| --mutations| --suggest --type \w+| --graphql(?: --schema \S+)?)?)$/.exec(
         f.body,
       );
     if (!/title=Terminal/.test(f.info) || !m) return;
@@ -71,6 +71,7 @@ describe("docs/query-check.md: the command it shows", () => {
     expect(examples().map((e) => e.command)).toEqual([
       "query ./src/app",
       "query ./src/app",
+      "query ./src --suggest --type resource",
       "query . --graphql",
       "query . --graphql --schema ./schema.graphql",
       "query ./app --mutations",
@@ -100,13 +101,17 @@ describe("docs/query-check.md: the command it shows", () => {
           fetcher: {
             transport: e.command.includes("--graphql")
               ? northfield
-              : sanityCountsTransport(COPPERHILL_COUNTS),
+              : e.command.includes("--suggest")
+                ? sanityCountsTransport(NORTHFIELD_CONTENT)
+                : sanityCountsTransport(COPPERHILL_COUNTS),
             timeoutMs: 5000,
           },
         },
       );
       expect(code, e.command).toBe(EXIT.ok);
-      if (e.env.SANITY_PROJECT_ID) expect(err.join(""), e.command).toBe("");
+      if (e.command.includes("--suggest"))
+        expect(err.join(""), e.command).toContain("Read the newest 12 published documents");
+      else if (e.env.SANITY_PROJECT_ID) expect(err.join(""), e.command).toBe("");
       else if (e.command.includes("--mutations") || e.command.includes("--graphql"))
         expect(err.join(""), e.command).toBe("");
       else expect(err.join(""), e.command).toContain("SANITY_PROJECT_ID is not set");

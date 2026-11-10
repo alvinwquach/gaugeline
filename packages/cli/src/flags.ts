@@ -165,6 +165,22 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     commands: ["query"],
   },
   {
+    name: "suggest",
+    type: "boolean",
+    description:
+      "With query: write a GROQ query from the published documents of a type (needs --type; prints text, writes no file)",
+    since: "0.2.0",
+    commands: ["query"],
+  },
+  {
+    name: "type",
+    type: "string",
+    description:
+      "With query --suggest: the document type to write the query for, as in your schema",
+    since: "0.2.0",
+    commands: ["query"],
+  },
+  {
     name: "schema",
     type: "string",
     description:
