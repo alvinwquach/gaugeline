@@ -10,7 +10,9 @@ import {
   buildManifest,
   checkBudget,
   contentType,
+  DEMO_SOURCE,
   embed,
+  entryFor,
   FILE_GZIP_BUDGET,
   TOTAL_GZIP_BUDGET,
   verify,
@@ -146,10 +148,31 @@ describe("embed-client: integration (the script)", () => {
     expect(first.status).toBe(0);
     expect(first.out).toContain("total gzip");
     expect(verify(out).problems).toEqual([]);
+    // The client's files, and the example results beside them, in path order.
+    const demo = readFileSync(DEMO_SOURCE);
     expect(JSON.parse(readFileSync(join(out, "client-manifest.json"), "utf8"))).toEqual(
-      buildManifest(app),
+      [...buildManifest(app), entryFor("demo/results.json", demo)].sort((a, b) =>
+        a.path < b.path ? -1 : 1,
+      ),
     );
+    expect(readFileSync(join(out, "demo/results.json")).equals(demo)).toBe(true);
     expect(run(["--check", "--out", out]).status).toBe(0);
+  });
+
+  it("the example results are copied from --demo, listed in the manifest and counted in the budget", () => {
+    const dir = scratch();
+    const file = join(dir, "results.json");
+    // Random bytes do not compress: over the 200 KB limit for one file on their own.
+    writeFileSync(file, randomBytes(201 * 1024).toString("base64"));
+    const r = run(["--app", fakeApp(), "--out", join(scratch(), "client"), "--demo", file]);
+    expect(r.status).toBe(1);
+    expect(r.err).toMatch(/demo\/results\.json is \d+ bytes gzipped, over the 204800-byte limit/);
+    const small = join(dir, "small.json");
+    writeFileSync(small, '{"demo":1}\n');
+    const out = join(scratch(), "client");
+    expect(run(["--app", fakeApp(), "--out", out, "--demo", small]).status).toBe(0);
+    expect(readFileSync(join(out, "demo/results.json"), "utf8")).toBe('{"demo":1}\n');
+    expect(verify(out).entries.map((e) => e.path)).toContain("demo/results.json");
   });
 
   it("an old embedded folder is replaced, not merged", () => {

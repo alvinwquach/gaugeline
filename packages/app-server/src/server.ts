@@ -3,7 +3,8 @@ import type { AddressInfo, Socket } from "node:net";
 import { createKey } from "./key.js";
 import { checkRequest, REFUSAL_TEXT } from "./origin.js";
 import { createSession, sessionCookie, setSessionCookie } from "./session.js";
-import type { FetcherOptions } from "@gaugeline/core";
+import { createPageRegistry, type FetcherOptions } from "@gaugeline/core";
+import { DEMO_PATH, DemoError, fillDemo, parseDemo } from "./demo.js";
 import { route } from "./routes.js";
 import { createRunner } from "./runs.js";
 import { applySecurityHeaders, ClientMissingError, loadClient, serveClient } from "./static.js";
@@ -81,6 +82,13 @@ export interface StartOptions {
   onFirstStep?: (text: string) => void;
   /** Most runs kept in the session (default 50). */
   maxRuns?: number;
+  /** The version shown by GET /api/session and written into every downloaded report. */
+  version?: string;
+  /**
+   * The demo: the session starts with the example results from the client folder, no fetcher or
+   * runner is made, and a check is refused with 409. With an address it is a usage error.
+   */
+  demo?: boolean;
 }
 
 /** The Host header, or undefined when it is missing or was sent more than once. */
@@ -96,14 +104,33 @@ export async function startApp(opts: StartOptions = {}): Promise<RunningApp> {
   // Before anything listens: a missing or damaged client is a start-up error, not a blank page.
   if (opts.clientDir === undefined) throw new ClientMissingError("(no folder given)");
   const client = loadClient(opts.clientDir);
+  // The example results travel in the client folder (so they are hashed like the rest), but they
+  // are data for the store and are never served as a file.
+  const demoFile = client.get(`/${DEMO_PATH}`);
+  client.delete(`/${DEMO_PATH}`);
+  if (opts.demo && opts.address !== undefined)
+    throw new DemoError("The demo takes no address: it shows example results and checks nothing.");
+  if (opts.demo && !demoFile)
+    throw new DemoError(
+      "The example results are not in this package (no demo/results.json). Reinstall gaugeline, or in a source checkout run pnpm build.",
+    );
+  const demoRuns = opts.demo && demoFile ? parseDemo(demoFile.body.toString("utf8")) : undefined;
   const key = createKey();
   const session = createSession(key);
   const sockets = new Set<Socket>();
   const store = createStore({ ...(opts.maxRuns ? { max: opts.maxRuns } : {}) });
-  const runner = createRunner(store, {
-    ...(opts.fetcher ? { fetcher: opts.fetcher } : {}),
-    ...(opts.now ? { now: opts.now } : {}),
-  });
+  const registry = createPageRegistry();
+  const version = opts.version ?? "0.0.0";
+  // The demo has no runner: with no fetcher made anywhere in the process, "it requests nothing" is
+  // a fact about the code and not a promise about its behaviour.
+  const runner = demoRuns
+    ? undefined
+    : createRunner(store, {
+        ...(opts.fetcher ? { fetcher: opts.fetcher } : {}),
+        ...(opts.now ? { now: opts.now } : {}),
+        registry,
+      });
+  if (demoRuns) fillDemo(store, demoRuns);
   let port = 0;
   let accepted = 0;
   const refuse = (res: ServerResponse, why: keyof typeof REFUSAL_TEXT) =>
@@ -155,7 +182,16 @@ export async function startApp(opts: StartOptions = {}): Promise<RunningApp> {
     }
     if (!session.isValid(sessionCookie(one(req.headers.cookie)))) return refuse(res, "session");
     accepted++;
-    if (await route(req, res, { store, runner })) return;
+    if (
+      await route(req, res, {
+        store,
+        ...(runner ? { runner } : {}),
+        registry,
+        version,
+        demo: demoRuns !== undefined,
+      })
+    )
+      return;
     // The client, from the Map. An /api/ path that the routes did not answer never gets here.
     serveClient(client, req, res, url.pathname);
   };
@@ -199,7 +235,7 @@ export async function startApp(opts: StartOptions = {}): Promise<RunningApp> {
   const host = (server.address() as AddressInfo).address;
   // The address from the command line starts the first run the way POST /api/check does.
   let firstRun: Promise<Run> | undefined;
-  if (opts.address !== undefined) {
+  if (opts.address !== undefined && runner) {
     const { run, finished } = runner.start(opts.address);
     const print = (e: RunEvent) => {
       if (e.event === "step") opts.onFirstStep?.(e.data.text);

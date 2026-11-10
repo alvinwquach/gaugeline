@@ -4,7 +4,14 @@ import { useId, useState, type FormEvent } from "react";
  * The address to check. A server refusal (a 400 with its sentence) is shown next to the field and
  * what was typed stays; the field is cleared only when the check has started.
  */
-export function AddressForm({ onSubmit }: { onSubmit: (url: string) => Promise<void> }) {
+export function AddressForm({
+  onSubmit,
+  disabled = false,
+}: {
+  onSubmit: (url: string) => Promise<void>;
+  /** The demo checks nothing: the field and the button are there, switched off. */
+  disabled?: boolean;
+}) {
   const [value, setValue] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [posting, setPosting] = useState(false);
@@ -13,7 +20,7 @@ export function AddressForm({ onSubmit }: { onSubmit: (url: string) => Promise<v
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (posting) return;
+    if (posting || disabled) return;
     const url = value.trim();
     if (url === "") {
       setError("Enter an address, such as yoursite.com.");
@@ -43,6 +50,7 @@ export function AddressForm({ onSubmit }: { onSubmit: (url: string) => Promise<v
           spellCheck={false}
           placeholder="yoursite.com"
           value={value}
+          disabled={disabled}
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? errorId : undefined}
           onChange={(e) => {
@@ -50,7 +58,7 @@ export function AddressForm({ onSubmit }: { onSubmit: (url: string) => Promise<v
             setError(null);
           }}
         />
-        <button type="submit" disabled={posting} aria-busy={posting ? true : undefined}>
+        <button type="submit" disabled={posting || disabled} aria-busy={posting ? true : undefined}>
           {posting ? "Checking..." : "Check"}
         </button>
       </div>

@@ -294,6 +294,14 @@ describe("flag table: e2e", () => {
     // --since writes its state file into the working directory: use a throwaway one.
     const scratch = mkdtempSync(join(tmpdir(), "gaugeline-flags-"));
     for (const f of FLAGS) {
+      // gaugeline open never ends by itself: with --help it prints its usage and exits 0, which
+      // still shows the bin accepts the flag for that command.
+      if (f.commands.length === 1 && f.commands[0] === "open") {
+        const r = await runBin(["open", "--help", `--${f.name}`], {}, { cwd: scratch });
+        expect(r.stderr, f.name).not.toContain("Unknown option");
+        expect(r.status, f.name).toBe(0);
+        continue;
+      }
       // Each flag is given to a command that accepts it: launch-only flags to gaugeline launch,
       // digest-only flags to gaugeline digest over the fixture's saved runs.
       const runs = `${repoRoot}packages/fixtures/runs/digest-week`;

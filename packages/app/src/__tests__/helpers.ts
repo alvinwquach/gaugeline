@@ -143,6 +143,8 @@ export interface FakeApi {
   calls: string[];
   /** What POST /api/check does. Default: add a running run and answer 202. */
   onCheck: (url: string) => Response | Promise<Response>;
+  /** What GET /api/session answers (not listed in `calls`). Default: a normal session. */
+  session: { demo: boolean; version: string } | "fails";
 }
 
 /** Stub fetch with the server's four routes, over `api.runs`. */
@@ -151,6 +153,7 @@ export function installApi(initial: RunDetail[] = []): FakeApi {
   const api: FakeApi = {
     runs: initial,
     calls: [],
+    session: { demo: false, version: "0.0.0" },
     onCheck(url) {
       n += 1;
       const run: RunDetail = {
@@ -167,6 +170,10 @@ export function installApi(initial: RunDetail[] = []): FakeApi {
     "fetch",
     vi.fn(async (input: string, init?: RequestInit) => {
       const method = init?.method ?? "GET";
+      if (input === "/api/session")
+        return api.session === "fails"
+          ? reply(500, { error: "Something went wrong." })
+          : reply(200, api.session);
       api.calls.push(`${method} ${input}`);
       if (input === "/api/check") {
         const body = JSON.parse(String(init?.body)) as { url: string };

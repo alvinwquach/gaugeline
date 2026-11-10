@@ -1,5 +1,8 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import type { CheckRegistry } from "@gaugeline/core";
 import { BodyError, parseCheckBody, readBody } from "./body.js";
+import { DEMO_SENTENCE } from "./demo.js";
+import { renderRunReport, reportHeaders } from "./report.js";
 import type { Runner } from "./runs.js";
 import { StoreFull, type Run, type RunEvent, type Store } from "./store.js";
 
@@ -65,19 +68,50 @@ function stream(req: IncomingMessage, res: ServerResponse, r: Run) {
   res.on("close", () => r.listeners.delete(listener));
 }
 
-/** The four routes, behind the rules from G21 and G21a. False when the path isn't the API's. */
+/** What the routes need. In demo mode there is no runner: nothing can be checked. */
+export interface RouteContext {
+  store: Store;
+  /** Absent in demo mode, where no fetcher is ever made. */
+  runner?: Runner;
+  registry: CheckRegistry;
+  version: string;
+  demo: boolean;
+}
+
+/** The report as a file: the same text the CLI writes, as a download and never as a page. */
+function sendReport(res: ServerResponse, r: Run, ctx: RouteContext) {
+  if (r.state === "running")
+    return json(res, 409, {
+      error: "This check is still running. The report is ready when it has finished.",
+    });
+  const html = renderRunReport(r, ctx.registry, ctx.version);
+  if (html === undefined)
+    return json(res, 409, { error: "This check did not finish, so there is no report." });
+  const body = Buffer.from(html);
+  res.writeHead(200, { ...reportHeaders(), "content-length": String(body.length) }).end(body);
+}
+
+/** The routes, behind the rules from G21 and G21a. False when the path isn't the API's. */
 export async function route(
   req: IncomingMessage,
   res: ServerResponse,
-  ctx: { store: Store; runner: Runner },
+  ctx: RouteContext,
 ): Promise<boolean> {
   const path = new URL(req.url ?? "/", "http://localhost").pathname;
   if (!path.startsWith("/api/")) return false;
   const method = req.method ?? "GET";
+  if (path === "/api/session") {
+    if (method !== "GET") return (notAllowed(res, "GET"), true);
+    json(res, 200, { demo: ctx.demo, version: ctx.version });
+    return true;
+  }
   if (path === "/api/check") {
     if (method !== "POST") return (notAllowed(res, "POST"), true);
     try {
-      const { url } = parseCheckBody(req.headers["content-type"], await readBody(req));
+      const text = await readBody(req);
+      // The demo checks nothing: it has no runner, so whatever was asked, the answer is the same.
+      if (ctx.demo || !ctx.runner) return (json(res, 409, { error: DEMO_SENTENCE }), true);
+      const { url } = parseCheckBody(req.headers["content-type"], text);
       const { run } = ctx.runner.start(url);
       json(res, 202, { id: run.id });
     } catch (err) {
@@ -104,13 +138,14 @@ export async function route(
     );
     return true;
   }
-  const m = /^\/api\/runs\/([^/]+)(\/events)?$/.exec(path);
+  const m = /^\/api\/runs\/([^/]+)(\/events|\/report)?$/.exec(path);
   if (m) {
     if (method !== "GET") return (notAllowed(res, "GET"), true);
     const r = ctx.store.get(decodeURIComponent(m[1] ?? ""));
     if (!r)
       return (json(res, 404, { error: "There is no run with that id in this session." }), true);
-    if (m[2]) stream(req, res, r);
+    if (m[2] === "/events") stream(req, res, r);
+    else if (m[2] === "/report") sendReport(res, r, ctx);
     else json(res, 200, view(r, true));
     return true;
   }

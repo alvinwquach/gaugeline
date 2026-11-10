@@ -57,6 +57,7 @@
       "webhook"
     ],
     "open": [
+      "demo",
       "help",
       "no-open",
       "quiet",
