@@ -1091,7 +1091,13 @@ export type {
   GraphqlExtractOptions,
   GraphqlExtraction,
 } from "./query/graphql.js";
-export { checkMutationsOnly, compareGraphql, compareQueries, suggestForType } from "./query/run.js";
+export {
+  checkMutationsOnly,
+  compareGraphql,
+  compareQueries,
+  readShapeForType,
+  suggestForType,
+} from "./query/run.js";
 export type {
   GraphqlCompareOptions,
   QueryCompareOptions,
@@ -1102,6 +1108,8 @@ export type {
 export { DEFAULT_SAMPLE, MAX_SAMPLE, readContentShape } from "./query/content-shape.js";
 export type { ContentShape, FieldKind, FieldShape } from "./query/content-shape.js";
 export { suggestQuery } from "./query/suggest.js";
+export { scaffoldRoute } from "./query/scaffold.js";
+export type { GeneratedFile } from "./query/scaffold.js";
 export {
   QUERY_CHECKS,
   createQueryRegistry,

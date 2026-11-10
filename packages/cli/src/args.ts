@@ -176,7 +176,9 @@ export type ParsedArgs =
       graphql?: { endpoint?: string };
       /** --suggest --type <name>: write a GROQ query from the published documents of that type. */
       suggest?: { type: string };
-      /** --schema: the schema file for --mutations or --suggest (default ./schema.json), or for --graphql (SDL or introspection JSON). */
+      /** --page --type <name> --out <folder>: write queries.ts, types.ts and page.tsx for that type into a folder in your project. */
+      page?: { type: string; out: string; force: boolean };
+      /** --schema: the schema file for --mutations, --suggest or --page (default ./schema.json), or for --graphql (SDL or introspection JSON). */
       schema?: string;
       /** --allow-private: an endpoint on this computer or a private network may be asked. */
       allowPrivate: boolean;
@@ -620,13 +622,69 @@ export function parseCliArgs(
   if (command === "query") {
     const graphql = values.graphql === true;
     const suggest = values.suggest === true;
-    if (typeof values.type === "string" && !suggest)
+    const page = values.page === true;
+    if ((typeof values.out === "string" || values.force === true) && !page)
       return {
         kind: "error",
-        message: "--type is for --suggest: gaugeline query ./src --suggest --type resource",
-        hint: "--type names the document type whose published documents the query is written from.",
+        message:
+          "--out and --force are for --page: gaugeline query --page --type resource --out ./src/app/resource/[slug]",
+        hint: "--page writes three files into the folder --out names; --force lets it replace files that are already there.",
         verbose,
       };
+    if (typeof values.type === "string" && !suggest && !page)
+      return {
+        kind: "error",
+        message:
+          "--type is for --suggest and --page: gaugeline query ./src --suggest --type resource",
+        hint: "--type names the document type whose published documents the query or the route is written from.",
+        verbose,
+      };
+    if (page) {
+      const type = typeof values.type === "string" ? values.type.trim() : "";
+      const out = typeof values.out === "string" ? values.out : "";
+      const usage = 'gaugeline query --page --type resource --out "./src/app/resource/[slug]"';
+      if (type === "" || out.trim() === "")
+        return {
+          kind: "error",
+          message: `gaugeline query --page needs a document type and a folder: ${usage}`,
+          hint: "--type names the document type, as it is in your Studio schema; --out names the folder the three files are written into, inside this one.",
+          verbose,
+        };
+      if (positionals.length > 0)
+        return {
+          kind: "error",
+          message: `gaugeline query --page takes no folder to read: it writes where --out says. ${usage}`,
+          hint: "Run it from the root of your project; --out is relative to where you run it.",
+          verbose,
+        };
+      if (
+        suggest ||
+        graphql ||
+        values.dupes === true ||
+        values.mutations === true ||
+        values.json === true
+      )
+        return {
+          kind: "error",
+          message:
+            "--page is its own run: it cannot be combined with --suggest, --graphql, --dupes, --mutations or --json.",
+          hint: "It writes files and prints the paths it wrote. Run the other checks separately.",
+          verbose,
+        };
+      return {
+        kind: "query",
+        dir: "",
+        json: false,
+        ci: values.ci === true,
+        dupes: false,
+        mutations: false,
+        page: { type, out, force: values.force === true },
+        ...(typeof values.schema === "string" ? { schema: values.schema } : {}),
+        allowPrivate: values["allow-private"] === true,
+        verbose,
+        quiet: values.quiet === true,
+      };
+    }
     if (suggest) {
       const type = typeof values.type === "string" ? values.type.trim() : "";
       if (type === "")
