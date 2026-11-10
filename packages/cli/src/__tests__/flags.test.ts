@@ -41,6 +41,7 @@ const SAMPLE_VALUES: Record<string, string> = {
   watch: new Date().toISOString().slice(0, 10),
   live: `${fileURLToPath(new URL("../../../fixtures/plans/live/list.txt", import.meta.url))}`,
   ignore: "/tag/*",
+  routes: "app/api/**/route.ts",
   nav: "Footer",
   rank: `${fileURLToPath(new URL("../../../fixtures/plans/live/gsc-pages.csv", import.meta.url))}`,
 };
@@ -85,6 +86,8 @@ describe("flag table: unit", () => {
       "allow-private": { type: "boolean" },
       "allow-secret-key": { type: "boolean" },
       dns: { type: "boolean" },
+      "owner-consent": { type: "boolean" },
+      routes: { type: "string", multiple: true },
       since: { type: "string" },
       interactive: { type: "boolean", short: "i" },
       slack: { type: "string" },
@@ -145,6 +148,11 @@ describe("flag table: unit", () => {
         "                                 of refusing it; a restricted key is safer",
         "      --dns                      Also read the domain's mail records (SPF and",
         "                                 DMARC) from DNS",
+        "      --owner-consent            Run the probing checks, which ask routes for",
+        "                                 what they protect with no login; only on sites",
+        "                                 you may test",
+        "      --routes <value>           With --owner-consent, find download routes in",
+        "                                 route files matching this glob (repeatable)",
         "      --since <value>            Compare with this site's last run and save this",
         "                                 one; the only value is last",
         "                                 (.gaugeline/last-run/)",
@@ -416,6 +424,8 @@ describe("flag table: e2e", () => {
                       : [
                           ...(flagsFor(FLAGS, "check").includes(f) ? [] : ["launch"]),
                           `${site.origin}/`,
+                          // --routes is read by a probing check: it needs the owner's consent.
+                          ...(f.name === "routes" ? ["--owner-consent"] : []),
                           `--${f.name}`,
                           ...value,
                         ];

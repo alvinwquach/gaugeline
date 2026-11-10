@@ -21,6 +21,11 @@ browser would:
 - At most five requests at a time, with the user agent `Gaugeline/0.1 (read-only site check)`.
 - Each address once per run.
 
+The one exception to "public pages" is a **probing** check, which asks a route that should be
+protected for what it protects, with no login (the download route check, below). It is off unless you
+pass `--owner-consent` or add a `gaugeline.consent.json`, and it is for sites you own or have
+permission to test.
+
 ### Keys
 
 Some features read a system you own, such as your Sanity dataset, Stripe account or Printful store (see
@@ -129,6 +134,33 @@ Checked 20 of 41 images.
 
 Each check that passed also prints a `✓ <id>` line, left out above. The output is asserted by
 `packages/cli/src/__tests__/images.test.ts`.
+
+### Download routes (a probing check)
+
+With `--owner-consent` (or a `gaugeline.consent.json`), the `gated-download-open` check asks each
+download route of the site for its file as a visitor with no session and no purchase would, and
+reports the routes that hand it over ([Paid downloads and delivery](delivery.md#a-download-route-that-hands-the-file-to-anyone)).
+**Run it only on sites you own or have permission to test.** Without consent nothing is asked.
+
+What it sends, per route:
+
+- One `GET`. No cookie, no `Authorization` header, no `Referer`, and not the secret of a protected
+  preview, even when one is set for the page. The headers are the user agent and
+  `Accept-Encoding: identity`, so what is read is the start of the file itself.
+- Never a `POST`, never a form, never a login, never an id it was not shown. A dynamic route is asked
+  only for an address a link on your page gave.
+- At most 10 routes per run, in sorted order, so the same page gives the same ten every run. The rest
+  are named as not asked.
+
+What it reads: the status, the headers, and at most 1,024 bytes of the body, after which the
+connection is closed. Those bytes are compared with a short table of file signatures (`%PDF`, `PK`,
+`ID3` and a few more) and then thrown away: the file's content is never stored, logged, printed or put
+in a report, and neither is the query string of the address. A redirect to a sign-in address is not
+followed; a redirect anywhere else is followed one hop.
+
+A link that carries its own signature and expiry (a signed link) is not asked, and neither is a link
+straight to a file such as `/files/menu.pdf`: that is a static file, which the paid file checks
+cover.
 
 ### Saving the requests (--save-requests)
 

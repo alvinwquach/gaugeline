@@ -35,6 +35,10 @@ export const LIMITS = Object.freeze({
   statePages: 16,
   /** Conventional Next.js draft and preview routes asked once each, with no secret. */
   draftRoutes: 4,
+  /** Download routes asked once each with no session, 1,024 bytes read (a probing check: only with owner consent). */
+  downloadRoutes: 10,
+  /** Bytes read from a download route's answer before the connection is closed. */
+  downloadPeekBytes: 1024,
   /** Framework addresses (/_next/, ?_rsc=) found and ignored: never requested, so the limit is 0. */
   frameworkAddresses: 0,
   structuredDataAddresses: 12,
@@ -63,6 +67,7 @@ export type BudgetKind =
   | "hiddenPages"
   | "statePages"
   | "draftRoutes"
+  | "downloadRoutes"
   | "frameworkAddresses"
   | "structuredDataAddresses";
 
@@ -85,6 +90,7 @@ export const BUDGET_KINDS = [
   "hiddenPages",
   "statePages",
   "draftRoutes",
+  "downloadRoutes",
   "frameworkAddresses",
   "structuredDataAddresses",
 ] as const satisfies readonly BudgetKind[];
@@ -150,6 +156,7 @@ const NOUNS: Record<BudgetKind, [singular: string, plural: string]> = {
   hiddenPages: ["hidden page", "hidden pages"],
   statePages: ["switch page", "switch pages"],
   draftRoutes: ["draft route", "draft routes"],
+  downloadRoutes: ["download route", "download routes"],
   frameworkAddresses: ["framework address", "framework addresses"],
   structuredDataAddresses: ["address in structured data", "addresses in structured data"],
 };

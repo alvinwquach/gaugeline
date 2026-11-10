@@ -9,6 +9,7 @@ import {
   CRM_CHECKS,
   FRESHNESS_CHECKS,
   LISTING_CHECKS,
+  PROBING_CHECKS,
   SWITCH_CHECKS,
 } from "./presets.js";
 import { classifyHop, describeRefusal } from "./refusal.js";
@@ -108,6 +109,10 @@ export interface SiteCheckOptions {
   baselineRequested?: boolean;
   /** Pages whose loss was intended (gaugeline.pages.json). */
   pagesConfig?: PagesConfig;
+  /** The owner agreed to probing checks (--owner-consent or gaugeline.consent.json). Without it they do not run. */
+  ownerConsent?: boolean;
+  /** Paths of the repository's route files (--routes), for the download route probe. Names only. */
+  routeFiles?: readonly string[];
 }
 
 export interface SiteCheck {
@@ -194,7 +199,11 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
   // The CRM lead checks likewise: they run when gaugeline.crm.json is there.
   const crmAsked = CRM_CHECKS.some((id) => opts.only?.includes(id));
   const crmOff = !opts.crm && !crmAsked;
+  // The probing checks ask gated routes for what they protect, so they run only with consent.
+  const probingAsked = PROBING_CHECKS.some((id) => opts.only?.includes(id));
+  const probingOff = opts.ownerConsent !== true && !probingAsked;
   const switchedOff = [
+    ...(probingOff ? PROBING_CHECKS.filter((id) => registered.has(id)) : []),
     ...(crmOff ? CRM_CHECKS.filter((id) => registered.has(id)) : []),
     ...(listingsOff ? LISTING_CHECKS.filter((id) => registered.has(id)) : []),
     ...(assertionsOff ? ASSERTION_CHECKS.filter((id) => registered.has(id)) : []),
@@ -306,6 +315,8 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
         : {}),
       imagesIfSampled: () => images.peek(),
       ...(opts.expect ? { expect: opts.expect } : {}),
+      ...(opts.ownerConsent ? { ownerConsent: true } : {}),
+      ...(opts.routeFiles ? { routeFiles: opts.routeFiles } : {}),
     },
     onProgress: sink,
     ...(only ? { only } : {}),

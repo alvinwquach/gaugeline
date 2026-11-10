@@ -104,6 +104,7 @@ describe("runner: unit", () => {
       "form-destination-changed",
       "form-provider-changed",
       "forms-many-providers",
+      "gated-download-open",
       "hidden-ai-directive",
       "hidden-in-sitemap",
       "hidden-indexable",

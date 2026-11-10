@@ -220,6 +220,16 @@
     "tech": "With --since last only: the same form key (id, else name, else position) now posts to a host in a different provider row of the frozen table; position keys can swap and read as a change"
   },
   {
+    "id": "gated-download-open",
+    "severity": "high",
+    "area": "Sales & prices",
+    "title": "A download meant for customers is handed to anyone",
+    "what": "A download route returns its file to a request with no session and no purchase.",
+    "why": "A route that protects a paid file should refuse, or send the visitor to sign in. If it returns the file, everyone who has the address gets it for free, and the address is easy to find in the page, in a search engine or in a customer's email.",
+    "fix": "Check the purchase inside the route before it answers, then hand back a short-lived signed link instead of the file itself. A route with no session should answer 401, 403 or a redirect to sign in.",
+    "tech": "probing check, off without --owner-consent: one anonymous GET per route (no cookie, no Authorization, no Referer, no compression), the status and headers, then at most 1,024 bytes of the body and the connection is closed; the route is a same-site link whose path contains download, file, deliver or export or sits under /api/, or a route file given with --routes (app/**/route.ts, pages/api/**) whose path says the same; a dynamic segment is asked only for an address seen in a link and ids are never guessed; at most 10 routes, in sorted order, the rest named; a finding is status 200 with a file content type or Content-Disposition attachment and first bytes that are not HTML (%PDF, PK, ID3 and a few other signatures are read); 401, 403, 404, a redirect to a sign-in address and a 200 HTML page pass; a redirect elsewhere is followed one hop; the body and the query string are never stored, logged or printed"
+  },
+  {
     "id": "hidden-ai-directive",
     "severity": "high",
     "area": "Security & email",
