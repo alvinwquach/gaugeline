@@ -18,6 +18,8 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "Sales & prices",
   ],
   "certificate-expiring": ["The site's certificate expires soon", "Security & email"],
+  "crm-insecure": ["A form sends details over an insecure connection", "Leads"],
+  "crm-no-tracking": ["Leads from this form arrive without where they came from", "Leads"],
   "data-assertion-failed": ["A data assertion found rows that should not exist", "Visitors"],
   "data-stale": ["The numbers on this page are older than they should be", "Visitors"],
   "dataset-private-types": [
@@ -128,6 +130,8 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "cutover-canonical-host": ["The bare domain and www don't settle on one address", "Launch day"],
   "cutover-mail-changed": ["The domain's mail records changed at cutover", "Security & email"],
   "app-smart-banner-mismatch": ["The iPhone app banner promotes a different app", "Visitors"],
+  "crm-late-tracking": ["Tracking starts after the form loads", "Leads"],
+  "crm-no-campaign-fields": ["A form has nowhere to put campaign details", "Leads"],
   "data-behind-source": ["The page is behind the data it is built from", "Visitors"],
   "email-dmarc-missing": ["Your domain has no DMARC policy", "Security & email"],
   "email-spf-multiple": ["Your domain has two SPF records, which cancels both", "Security & email"],
@@ -164,6 +168,7 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "Your llms.txt gives assistants an old phone number, address or hours",
     "Search & sharing",
   ],
+  "mailto-cta": ["Some buttons open an email instead of a form", "Leads"],
   "nav-changed": ["The menu changed since the last run", "Visitors"],
   "nav-footer": ["The footer isn't the same on every page", "Visitors"],
   "nav-home-links": ["Menu items go to the homepage", "Visitors"],
@@ -249,6 +254,7 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "email-dmarc-none": ["Your DMARC policy only watches", "Security & email"],
   "event-missing-fields": ["Some events are missing details search engines need", "Visitors"],
   "events-distinct": ["Two menu links report the same click", "Leads"],
+  "forms-many-providers": ["Several form services on one page", "Leads"],
   "hidden-past-launch": ["A hidden section is past its launch date", "Launch day"],
   "hreflang-bad-code": ["Some language codes are not valid", "Search & sharing"],
   "images-alt-missing": ["Some images have no alt attribute", "Visitors"],
@@ -324,6 +330,18 @@ export const CHECK_TEXT: Readonly<
     "When it lapses, every browser shows a full-page security warning instead of the site, and most visitors leave.",
     "Renew it, or find why automatic renewal stopped (a DNS change at cutover often breaks the renewal check). Domain registration expiry is a separate date: check it at your registrar.",
     "Read from the TLS connection of the page's own GET: no extra request. Days left = whole days until notAfter, by the run's clock. Plain http, or a certificate that failed verification, gives nothing here. Domain registration expiry needs registrar access and is not checked",
+  ],
+  "crm-insecure": [
+    "A form, its iframe, its embed script or its tracking script loads over plain http on an https page.",
+    "Browsers may block it on a secure page, and what people type isn't encrypted.",
+    "Use https for the form, the tracker domain and the tracking script (pd.js for Pardot).",
+    "http:// in a form action, a recognised iframe src, an embed script src or a tracking script src on an https page; the code inside an inline script is not read",
+  ],
+  "crm-no-tracking": [
+    "A form from Pardot, HubSpot or Marketo is on the page, but that service's tracking code is not.",
+    "The service can't connect a new lead to the ad, email or search that brought them.",
+    "Add the service's tracking code to every page that has its form (for Pardot: Account Engagement Settings, Domain Management, Tracking Code Generator).",
+    "A form or iframe of Pardot, HubSpot or Marketo in the HTML, and no script of that service's tracking code anywhere in it (pi.pardot.com/pd.js or piAId, js.hs-scripts.com or _hsq, munchkin.js or Munchkin.init); Web-to-Lead, Formstack and Typeform have no tracking script and are skipped; a form drawn by JavaScript is could-not-check; code a tag manager adds at run time is not seen",
   ],
   "data-assertion-failed": [
     "A query you wrote in gaugeline.sources.json to return nothing returned rows: two bookings in one slot, a paid order with no matching payment, a product with no price id.",
@@ -787,6 +805,18 @@ export const CHECK_TEXT: Readonly<
     "Set app-id in the apple-itunes-app meta tag to the same id as the App Store link.",
     '<meta name="apple-itunes-app" content="app-id=..."> differs from every apps.apple.com/.../id<digits> link on the page',
   ],
+  "crm-late-tracking": [
+    "The service's tracking code comes after its form in the page, or waits for the page to finish loading while the form is an iframe that loads first.",
+    "Salesforce documents that this can lose first-touch tracking, the referring site and UTM parameters.",
+    "Load the tracking script directly in the page head, before the form, not from a window load handler.",
+    'Position of the tracking script after the form in document order (counted over every form, iframe and script element), or inline tracking code started by addEventListener("load"), attachEvent("onload") or window.onload while the form is an iframe; no timing is measured, and code a tag manager moves at run time is not seen',
+  ],
+  "crm-no-campaign-fields": [
+    "A form posts leads straight to Pardot, Web-to-Lead, HubSpot or Marketo with no hidden campaign fields.",
+    "Every lead arrives with its campaign, source and ad click blank.",
+    "Add hidden utm_source, utm_medium, utm_campaign and gclid fields, fill them from the address, and map them in the form handler.",
+    "A form element posting to Pardot, Web-to-Lead, HubSpot or Marketo with no hidden input named utm_*, gclid, a lead source or that service's default mapped field; a visible input does not count; an iframe is another document and is could-not-check",
+  ],
   "data-behind-source": [
     "The source (your database or CMS) has newer data than the page shows, or a figure on the page differs from the same figure in the source.",
     "The sync works but the visitor does not see it: a cache or a revalidation setting is serving an old copy, so fixing the sync would change nothing.",
@@ -930,6 +960,12 @@ export const CHECK_TEXT: Readonly<
     "Assistants quote llms.txt directly. An old number or old hours there is what someone hears when they ask if you're open tonight.",
     "Update llms.txt to match the structured data (or the other way round, whichever is wrong). Generate both from one source if you can.",
     "hours, telephone or address in /llms.txt differ from the page's LocalBusiness JSON-LD",
+  ],
+  "mailto-cta": [
+    'A contact button ("Talk to an expert", "Get a quote") opens one person\'s email program instead of a form.',
+    "The enquiry skips your CRM: it lands in one inbox with no campaign details, nobody else sees it, and visitors without an email program set up can't send it at all.",
+    "Point the button at a form or a booking page that sends the enquiry to your CRM, and keep the email address as a plain fallback.",
+    "a[href] starting mailto: with an address, whose text is a contact call to action (contact, talk, speak, get in touch, email us, book, quote, demo and similar) and not an address itself; one finding per page; the link's styling is not visible to Gaugeline",
   ],
   "nav-changed": [
     "Against the last run saved with --since last, links in the header or footer menu were added, removed, moved to another parent, renamed or reordered.",
@@ -1278,6 +1314,12 @@ export const CHECK_TEXT: Readonly<
     "A comparison of a new menu is only real if every link reports where it sits: identical values merge the two links into one row.",
     "Add the parent menu (or another value that tells them apart) to the event both links send.",
     "Links that passed events-fire, grouped by destination: two with different parent menus whose events carry the same values for the plan's parameters. Needs a rendered read (G39): until then it is could not check",
+  ],
+  "forms-many-providers": [
+    "Forms or form scripts from more than one service (for example HubSpot and Typeform) are on the same page.",
+    "Leads from one page end up in different places, and each service needs its own tracking, consent and follow-up.",
+    "Check that each form is meant to be there, and move the page to one service if you can.",
+    "Sightings of more than one of Pardot, Web-to-Lead, HubSpot, Formstack, Marketo and Typeform on one page (form action, iframe src, embed script); the tracking code alone is not a sighting",
   ],
   "hidden-past-launch": [
     "Today is after the launch date set for a hidden section, and gaugeline.hidden.json still lists it as hidden.",
