@@ -59,7 +59,18 @@ export interface PageSnapshot {
   appleItunesApp?: string;
   /** Feeds the page advertises (link rel="alternate" with an RSS or Atom type), in document order. */
   feeds: { href: string; type: string; title?: string }[];
-  forms: { action?: string; method?: string; hiddenFields: string[] }[];
+  forms: { action?: string; method?: string; hiddenFields: string[]; position: number }[];
+  /**
+   * Every iframe with an address (its src, or data-src when it loads lazily), in document order.
+   * `position` is the element's index among every form, iframe and script element in the document.
+   */
+  iframes?: { src: string; position: number }[];
+  /**
+   * Every script element in document order: its address, or for an inline script the start of its
+   * body (JavaScript types only, cut at INLINE_SCRIPT_MAX characters). `position` is counted as for
+   * `iframes`, so a form and a tracking script can be put in order. `scripts` keeps the addresses alone.
+   */
+  scriptTags?: { src?: string; inline?: string; position: number }[];
   /** Every element id, for #anchor checks. */
   ids: Set<string>;
   /** Visible words without running JavaScript. */
@@ -137,6 +148,20 @@ function readableWords($: CheerioAPI, state: { stega: boolean }, chrome = false)
   const text = clean(copy.text(), state);
   return text === "" ? [] : text.split(" ").filter((w) => /[\p{L}\p{N}]/u.test(w));
 }
+
+/** How much of an inline script is kept: enough for an embed call, never a whole bundle. */
+export const INLINE_SCRIPT_MAX = 16_384;
+
+/** The script types a browser runs as JavaScript (an absent type is JavaScript). */
+const JS_TYPES: ReadonlySet<string> = new Set([
+  "",
+  "text/javascript",
+  "application/javascript",
+  "application/x-javascript",
+  "text/ecmascript",
+  "application/ecmascript",
+  "module",
+]);
 
 /** How many words a visitor can read without JavaScript. */
 const FIRST_WORDS = 200;
@@ -321,17 +346,39 @@ export function buildSnapshot(hops: Hop[]): PageSnapshot {
     feeds.push({ href, type, ...(title ? { title: clean(title, state) } : {}) });
   });
 
+  // One pass over every form, iframe and script, so `position` is the element's index in document order.
   const forms: PageSnapshot["forms"] = [];
-  $("form").each((_, el) => {
-    const action = resolve($(el).attr("action"), base);
-    const method = $(el).attr("method")?.toLowerCase();
-    const hiddenFields = $(el)
-      .find("input")
-      .filter((_, input) => ($(input).attr("type") ?? "").toLowerCase() === "hidden")
-      .map((_, input) => $(input).attr("name") ?? "")
-      .get()
-      .filter((n) => n !== "");
-    forms.push({ ...(action ? { action } : {}), ...(method ? { method } : {}), hiddenFields });
+  const iframes: NonNullable<PageSnapshot["iframes"]> = [];
+  const scriptTags: NonNullable<PageSnapshot["scriptTags"]> = [];
+  $("form, iframe, script").each((position, el) => {
+    if (el.tagName === "form") {
+      const action = resolve($(el).attr("action"), base);
+      const method = $(el).attr("method")?.toLowerCase();
+      const hiddenFields = $(el)
+        .find("input")
+        .filter((_, input) => ($(input).attr("type") ?? "").toLowerCase() === "hidden")
+        .map((_, input) => $(input).attr("name") ?? "")
+        .get()
+        .filter((n) => n !== "");
+      forms.push({
+        ...(action ? { action } : {}),
+        ...(method ? { method } : {}),
+        hiddenFields,
+        position,
+      });
+    } else if (el.tagName === "iframe") {
+      const src = resolve($(el).attr("src") ?? $(el).attr("data-src"), base);
+      if (src !== undefined) iframes.push({ src, position });
+    } else {
+      const src = resolve($(el).attr("src"), base);
+      if (src !== undefined) {
+        scriptTags.push({ src, position });
+        return;
+      }
+      const type = ($(el).attr("type") ?? "").toLowerCase().split(";")[0]?.trim() ?? "";
+      const inline = $(el).text().slice(0, INLINE_SCRIPT_MAX);
+      if (JS_TYPES.has(type) && inline.trim() !== "") scriptTags.push({ inline, position });
+    }
   });
 
   const ids = new Set<string>();
@@ -379,6 +426,8 @@ export function buildSnapshot(hops: Hop[]): PageSnapshot {
     rawText: { ...($("title").length > 0 ? { title: titleText } : {}), meta: rawMeta },
     feeds,
     forms,
+    iframes,
+    scriptTags,
     ids,
     wordCount,
     contentWordCount,
