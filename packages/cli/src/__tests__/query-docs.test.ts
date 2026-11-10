@@ -21,6 +21,7 @@ const page = readFileSync(
 const repo = fileURLToPath(new URL("../../../fixtures/repo-groq/", import.meta.url));
 const writes = fileURLToPath(new URL("../../../fixtures/repo-mutations/", import.meta.url));
 const gql = fileURLToPath(new URL("../../../fixtures/repo-gql/", import.meta.url));
+const clinic = fileURLToPath(new URL("../../../fixtures/repo-unused/", import.meta.url));
 const introspection = readFileSync(join(gql, "sanity-introspection.json"), "utf8");
 
 /** Sanity's two addresses, recorded: the GraphQL one answers the schema, the query one counts. */
@@ -53,7 +54,7 @@ function examples(): Array<{ command: string; env: Record<string, string>; expec
   all.forEach((f, i) => {
     const next = all[i + 1];
     const m =
-      /^\$ (SANITY_PROJECT_ID=([a-z0-9]+) )?npx gaugeline (query \S+(?: --dupes| --mutations| --suggest --type \w+| --graphql(?: --schema \S+)?)?)$/.exec(
+      /^\$ (SANITY_PROJECT_ID=([a-z0-9]+) )?npx gaugeline (query \S+(?: --dupes| --mutations| --unused| --suggest --type \w+| --graphql(?: --schema \S+)?)?)$/.exec(
         f.body,
       );
     if (!/title=Terminal/.test(f.info) || !m) return;
@@ -76,6 +77,7 @@ describe("docs/query-check.md: the command it shows", () => {
       "query . --graphql",
       "query . --graphql --schema ./schema.graphql",
       "query ./app --mutations",
+      "query ./src --unused",
       "query ./src/app/menu --dupes",
     ]);
   });
@@ -98,7 +100,9 @@ describe("docs/query-check.md: the command it shows", () => {
               ? gql
               : e.command.includes("--mutations")
                 ? writes
-                : repo,
+                : e.command.includes("--unused")
+                  ? clinic
+                  : repo,
           now: () => new Date("2026-11-10T12:00:00Z"),
           fetcher: {
             transport: e.command.includes("--graphql")
@@ -112,7 +116,11 @@ describe("docs/query-check.md: the command it shows", () => {
       );
       expect(code, e.command).toBe(EXIT.ok);
       if (e.env.SANITY_PROJECT_ID) expect(err.join(""), e.command).toBe("");
-      else if (e.command.includes("--mutations") || e.command.includes("--graphql"))
+      else if (
+        e.command.includes("--mutations") ||
+        e.command.includes("--graphql") ||
+        e.command.includes("--unused")
+      )
         expect(err.join(""), e.command).toBe("");
       else expect(err.join(""), e.command).toContain("SANITY_PROJECT_ID is not set");
       expect(out.join("").trimEnd(), e.command).toBe(e.expected);
@@ -158,6 +166,21 @@ describe("docs/query-check.md: the command it shows", () => {
       "parsed, counted and never sent",
       "Northfield Coaching",
       "exit code 2",
+    ])
+      expect(page, word).toContain(word);
+  });
+
+  it("the unused-fields section says what it reads, what it will not report, and the promise", () => {
+    for (const word of [
+      "query-field-unused",
+      "could not follow",
+      "`_id`, `_type`, `_key` and `_rev`",
+      "no environment variable is read at all",
+      "JSON.stringify",
+      "`generateMetadata`",
+      "cannot import the fetcher",
+      "Marlow Physiotherapy",
+      "--unused",
     ])
       expect(page, word).toContain(word);
   });

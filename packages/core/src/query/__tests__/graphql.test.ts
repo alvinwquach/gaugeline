@@ -102,8 +102,9 @@ describe("the GraphQL reader", () => {
     expect(q).toMatchObject({ operation: "query", name: "Q", line: 2 });
     const root = q.selections[0];
     if (root?.kind !== "field") throw new Error("not a field");
-    // An alias is read past: the field is what the schema calls it.
-    expect(root).toMatchObject({ name: "allResource", line: 3 });
+    // The field is what the schema calls it; the alias is kept for the code that reads the result.
+    expect(root).toMatchObject({ name: "allResource", alias: "alias", line: 3 });
+    expect(root.selections?.[0]).not.toHaveProperty("alias");
     expect(root.selections?.map((s) => s.kind)).toEqual(["field", "spread", "inline", "inline"]);
     expect(defs[1]).toMatchObject({
       kind: "fragment",

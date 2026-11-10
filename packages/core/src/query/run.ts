@@ -1,6 +1,7 @@
 import { createQueryRegistry, type QueryInput } from "../checks/query-counts.js";
 import { createGraphqlRegistry } from "../checks/query-graphql.js";
 import { createMutationsRegistry } from "../checks/query-mutations.js";
+import { createUnusedRegistry } from "../checks/query-unused.js";
 import { ConnectorRateLimitedError, ConnectorRefusedError } from "../connectors/http.js";
 import { createSanityRead } from "../connectors/sanity.js";
 import type { Env } from "../connectors/types.js";
@@ -15,6 +16,7 @@ import { graphqlShapes, type GqlFieldUse, type GqlSchema } from "./graphql.js";
 import type { MutationShape, SchemaFile, SchemaShape } from "./mutations.js";
 import type { QueryShape } from "./shape.js";
 import { suggestQuery } from "./suggest.js";
+import type { UnusedAnalysis } from "./unused.js";
 
 export interface QueryCompareOptions {
   shapes: readonly QueryShape[];
@@ -119,6 +121,39 @@ export async function checkMutationsOnly(options: {
 }): Promise<QueryCompareRun> {
   const input: QueryInput = { shapes: [], counts: new Map(), mutations: options.mutations };
   const checked = await runChecks(input, createMutationsRegistry());
+  return {
+    counts: new Map(),
+    notices: [],
+    result: buildResult({
+      url: "query",
+      startedAt: options.now,
+      findings: checked.findings,
+      passed: checked.passed,
+      failed: checked.failed.map((f) => f.id),
+      couldNotCheck: checked.couldNotCheck,
+    }),
+  };
+}
+
+/**
+ * `gaugeline query --unused`: the unused-field check over what the analysis of the repository found.
+ * No request of any kind is made, and none could be: this path never touches the fetcher or the
+ * environment. A query that could not be followed is recorded under the check as could-not-check,
+ * with its file and line, and none of its fields is reported.
+ */
+export async function checkUnusedOnly(options: {
+  analysis: Pick<UnusedAnalysis, "findings" | "couldNotFollow">;
+  now: Date;
+}): Promise<QueryCompareRun> {
+  const input: QueryInput = {
+    shapes: [],
+    counts: new Map(),
+    unused: {
+      findings: options.analysis.findings,
+      couldNotFollow: options.analysis.couldNotFollow,
+    },
+  };
+  const checked = await runChecks(input, createUnusedRegistry());
   return {
     counts: new Map(),
     notices: [],

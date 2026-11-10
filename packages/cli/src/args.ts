@@ -178,6 +178,8 @@ export type ParsedArgs =
       suggest?: { type: string };
       /** --page --type <name> --out <folder>: write queries.ts, types.ts and page.tsx for that type into a folder in your project. */
       page?: { type: string; out: string; force: boolean };
+      /** --unused: report the fields the queries fetch and no code reads. Reads source only; no request. */
+      unused?: boolean;
       /** --schema: the schema file for --mutations, --suggest or --page (default ./schema.json), or for --graphql (SDL or introspection JSON). */
       schema?: string;
       /** --allow-private: an endpoint on this computer or a private network may be asked. */
@@ -623,6 +625,7 @@ export function parseCliArgs(
     const graphql = values.graphql === true;
     const suggest = values.suggest === true;
     const page = values.page === true;
+    const unused = values.unused === true;
     if ((typeof values.out === "string" || values.force === true) && !page)
       return {
         kind: "error",
@@ -659,6 +662,7 @@ export function parseCliArgs(
         };
       if (
         suggest ||
+        unused ||
         graphql ||
         values.dupes === true ||
         values.mutations === true ||
@@ -667,7 +671,7 @@ export function parseCliArgs(
         return {
           kind: "error",
           message:
-            "--page is its own run: it cannot be combined with --suggest, --graphql, --dupes, --mutations or --json.",
+            "--page is its own run: it cannot be combined with --suggest, --unused, --graphql, --dupes, --mutations or --json.",
           hint: "It writes files and prints the paths it wrote. Run the other checks separately.",
           verbose,
         };
@@ -702,11 +706,17 @@ export function parseCliArgs(
           hint: "Give the folder of your site's source, as for the other query checks.",
           verbose,
         };
-      if (graphql || values.dupes === true || values.mutations === true || values.json === true)
+      if (
+        unused ||
+        graphql ||
+        values.dupes === true ||
+        values.mutations === true ||
+        values.json === true
+      )
         return {
           kind: "error",
           message:
-            "--suggest is its own run: it cannot be combined with --graphql, --dupes, --mutations or --json.",
+            "--suggest is its own run: it cannot be combined with --unused, --graphql, --dupes, --mutations or --json.",
           hint: "It prints a query as text. Run the other checks separately: gaugeline query ./src, then gaugeline query ./src --suggest --type resource.",
           verbose,
         };
@@ -719,6 +729,42 @@ export function parseCliArgs(
         mutations: false,
         suggest: { type },
         ...(typeof values.schema === "string" ? { schema: values.schema } : {}),
+        allowPrivate: values["allow-private"] === true,
+        verbose,
+        quiet: values.quiet === true,
+      };
+    }
+    if (unused) {
+      if (positionals.length !== 1)
+        return {
+          kind: "error",
+          message: "gaugeline query needs one folder: gaugeline query ./src --unused",
+          hint: "Give the folder of your site's source, as for the other query checks.",
+          verbose,
+        };
+      if (graphql || values.dupes === true || values.mutations === true)
+        return {
+          kind: "error",
+          message:
+            "--unused is its own run: it cannot be combined with --graphql, --dupes or --mutations.",
+          hint: "It reads your source for both GROQ and GraphQL and asks nothing. Run the others separately: gaugeline query ./src, then gaugeline query ./src --unused.",
+          verbose,
+        };
+      if (typeof values.schema === "string")
+        return {
+          kind: "error",
+          message: "--unused takes no --schema: it reads your source files and nothing else.",
+          hint: "--schema is for --mutations and --graphql.",
+          verbose,
+        };
+      return {
+        kind: "query",
+        dir: positionals[0] ?? "",
+        json: values.json === true,
+        ci: values.ci === true,
+        dupes: false,
+        mutations: false,
+        unused: true,
         allowPrivate: values["allow-private"] === true,
         verbose,
         quiet: values.quiet === true,

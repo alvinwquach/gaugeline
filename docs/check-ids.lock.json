@@ -179,6 +179,7 @@
   "query-dupe-title",
   "query-field-absent",
   "query-field-partial",
+  "query-field-unused",
   "query-no-drafts-filter",
   "query-type-empty",
   "quotable-facts-disagree",

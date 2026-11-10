@@ -9,7 +9,7 @@ $ SANITY_PROJECT_ID=abc123 SANITY_TOKEN=… npx gaugeline query ./src
 ```
 
 ::: info What works today
-`gaugeline query <folder>` reads the GROQ in your repository and lists each query with its file and line. With `SANITY_PROJECT_ID` set it also asks your dataset how many documents of each type exist and how many have each field, and reports the four findings under [What it reports](#what-it-reports). Without it the command makes no request and needs no token. With `--dupes` it also names documents that share a slug or a title, and with `--mutations` it reads the writes in your code and checks their shapes against your schema file without sending any of them. With `--graphql` it checks your GraphQL against the schema and the content instead. With `--suggest` it writes a starting query from the content, and with `--page` it writes a starting route (queries, types and page) into a folder of your project.
+`gaugeline query <folder>` reads the GROQ in your repository and lists each query with its file and line. With `SANITY_PROJECT_ID` set it also asks your dataset how many documents of each type exist and how many have each field, and reports the four findings under [What it reports](#what-it-reports). Without it the command makes no request and needs no token. With `--dupes` it also names documents that share a slug or a title, and with `--mutations` it reads the writes in your code and checks their shapes against your schema file without sending any of them. With `--graphql` it checks your GraphQL against the schema and the content instead. With `--suggest` it writes a starting query from the content, and with `--page` it writes a starting route (queries, types and page) into a folder of your project. With `--unused` it reads your source alone, with no request and no key, and lists the fields your queries fetch that no code reads.
 :::
 
 ## What the command reads
@@ -327,6 +327,62 @@ Every finding carries the file and line of the write. `--json` prints them in th
 
 ::: info
 It reads them. It never sends them. Nothing here writes to your dataset, and a mutation check that executed would break that promise. The module that reads mutations (`packages/core/src/query/mutations.ts`) cannot import the fetcher, the Sanity reader or an HTTP client, and a test fails the build if it ever does. Another test runs the command with `fetch`, `node:http`, `node:https` and `node:net` replaced by functions that throw, and with a transport that fails the test if it is called at all. See [What it can and can't write](/docs/writes#the-promise-test) for the same answer across REST, GraphQL, SQL and queues.
+:::
+
+## Fields fetched but never rendered
+
+Every field a query asks for is data your visitors download and your server waits for. Pages change, a design drops the summary under each treatment, and the query keeps asking for it for years. `--unused` finds those fields. It reads your repository and nothing else: no `SANITY_PROJECT_ID`, no token, no request, and no environment variable is read at all.
+
+```sh title=Terminal untested="Needs a folder of source files, and the docs runner points every example at a fixture website. packages/cli/src/__tests__/query-docs.test.ts runs the same command in an invented repository (packages/fixtures/repo-unused) and compares the output with the block below."
+$ npx gaugeline query ./src --unused
+```
+
+```text title=Output
+Read 6 queries in 12 files and followed 5 results through the code. Nothing was sent, and no key or environment variable was read.
+
+Could not follow 1 query (none of their fields are reported):
+  ./src/lib/queries.ts:45  its result is passed to JSON.stringify, which Gaugeline cannot read into (./src/app/api/search-index/route.ts:6)
+
+! summary is fetched and never used
+    summary · ./src/lib/queries.ts:3
+! practitioner.bio is fetched and never used
+    practitioner.bio · ./src/lib/queries.ts:13
+! instagram is fetched and never used
+    instagram · ./src/lib/queries.ts:23
+! qualifications is fetched and never used
+    qualifications · ./src/lib/queries.ts:32
+
+4 to look at, none to fix first.
+```
+
+That is Marlow Physiotherapy's site, a small clinic's Next.js project on Sanity. The treatments list asks for a `summary` under every treatment and the card never shows it. The treatment page asks for the practitioner's whole `bio` and shows only the name and photo. The footer asks for the clinic's Instagram handle after the design dropped the link, and the team page asks for each practitioner's qualifications that nobody put on the page. Each of those is a field the Studio editors keep filling in and no visitor ever sees.
+
+| Finding                                                            | Level         | What it usually means                                                                                     |
+| ------------------------------------------------------------------ | ------------- | --------------------------------------------------------------------------------------------------------- |
+| `query-field-unused`: `summary` is fetched and never used          | Fix soon      | The design changed and the query did not. Take the field out, or put it back on the page.                 |
+| `query-field-unused`: `practitioner.bio` is fetched and never used | Fix soon      | The whole object is asked for and part of it is read. This is the one that makes a payload quietly large. |
+| A query under **Could not follow**                                 | Not a finding | Gaugeline gave up on that query's result on purpose, and says where it went.                              |
+
+The finding is on the query, with its file and line, and the field's path from the top of the result. `--json` prints them in the usual result (schema 2) with each finding's `source`, and a query it could not follow is under `couldNotCheck` with its file and line. `--ci` exits 0: an unused field is worth knowing, not worth failing a build for.
+
+### How it decides a field is read
+
+A field counts as read when a property access or a destructuring reads its name on a value that came from that query. It follows the result with the TypeScript compiler's symbols, so a read is tied to the query it came from and not to every `title` in the project:
+
+- **Where the result goes.** The variable it is assigned to, `await`, `.then`, destructuring, `map`, `filter`, `find` and `for...of`, props passed to a component (and on to the component's children, in other files, through your `@/` paths), spreads into props, `Promise.all`, and a function that returns the result to the code that calls it. A field read only inside `generateMetadata` is read.
+- **The name the code sees.** `"slug": slug.current` is read as `slug`, and a field written `headline: title` in GraphQL is read as `headline`. A path that is not an alias in the result does not count as reading it.
+- **GraphQL.** A field selected in a fragment is a field of every query that spreads the fragment, and it is read where the component that owns the fragment reads it.
+- **Nested objects.** `practitioner->{ name, bio, photo }` reports `practitioner.bio` when the object is read and `bio` is not. An object handed whole to something Gaugeline cannot open (an image component from a package, `urlFor(image)`) counts as read, with everything in it.
+- **Not reported.** `_id`, `_type`, `_key` and `_rev` are never reported: they are the document's own, and a query carries them for the code that is not yours to read.
+
+### When it says "could not follow"
+
+A false "never used" sends someone to delete a field the page needs, so when a query's own result goes somewhere Gaugeline cannot read, it reports the query as **could not follow** and none of its fields. That is: the result passed whole to `JSON.stringify`, spread into a component or function from a package, handed to a function it cannot find the code of, stored in `useState`, returned from an exported function that nothing in the folder calls, or a field read by a name only known at run time (`item[key]`). A query built from a template with a `${...}`, one that is not valid GROQ, one nothing in the folder fetches, one in a `.graphql` file (a bundler loads those, so the code that reads them cannot be told apart) and every query in a folder where a file does not parse are listed the same way, each with its reason.
+
+The cost is the findings it does not make: a codebase that passes data around loosely gets few. The fix is usually to read the result where it arrives, which also makes the page easier to follow.
+
+::: info
+It reads your files and nothing else. The modules that do this (`packages/core/src/query/unused.ts`, `unused-flow.ts` and `unused-trees.ts`) cannot import the fetcher, a connector, an HTTP client or the environment, and a test fails the build if they ever do. Another test runs the analysis with `fetch` replaced by a function that throws and with `SANITY_TOKEN` unset. TypeScript has to be installed beside Gaugeline, as for the other `gaugeline query` options. See [Privacy and safety](/docs/privacy#unused-fields-gaugeline-query-unused).
 :::
 
 ## Starting a page from your content
