@@ -182,6 +182,7 @@ export {
   EMAIL_PRESET,
   LAUNCH_PRESET,
   FRESHNESS_CHECKS,
+  MODEL_CHECKS,
   LISTING_CHECKS,
   CRM_CHECKS,
   PROBING_CHECKS,
@@ -770,6 +771,29 @@ export type {
   SwitchesSettings,
 } from "./switches/index.js";
 export { sourcesRedactor } from "./assertions/index.js";
+export {
+  MAX_LISTING_PAGES,
+  MAX_MODEL_RULES,
+  filterProblem,
+  modelConfigSchema,
+  pathMatches,
+} from "./content-model/config.js";
+export type { ModelConfig, ModelDependent, ModelListing } from "./content-model/config.js";
+export { createContentModel } from "./content-model/read.js";
+export type { ContentModel, ModelSettings } from "./content-model/read.js";
+export { findRawRefs } from "./content-model/raw-refs.js";
+export type { RawRef, RawRefKind } from "./content-model/raw-refs.js";
+export { readListing } from "./content-model/listing.js";
+export type { ListingRead } from "./content-model/listing.js";
+export {
+  countType,
+  idsNotIn,
+  modelOf,
+  orphanCandidates,
+  readModelSchema,
+  tallyFields,
+} from "./sources/sanity-schema.js";
+export type { FieldTallies, MissingIds, Tally, TypeModel } from "./sources/sanity-schema.js";
 export {
   MAX_FORECAST_ITEMS,
   MAX_SPOT_CHECKS,

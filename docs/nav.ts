@@ -108,6 +108,7 @@ export const UNLISTED: NavPage[] = [
   { slug: "sources/shopify", title: "Shopify as a price source" },
   { slug: "sources/square", title: "Square as a price source" },
   { slug: "sources/salesforce-mcp", title: "Salesforce leads through its own MCP server" },
+  { slug: "sources/sanity-schema", title: "Content model changes on Sanity" },
   { slug: "guides/data-assertions", title: "Data assertions: a SELECT that should return nothing" },
   {
     slug: "guides/switches-and-availability",

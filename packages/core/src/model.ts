@@ -23,6 +23,7 @@ import type { CrmRead } from "./sources/crm-read.js";
 import type { DatabasesRead } from "./connectors/postgres/read.js";
 import type { AssertionsRead } from "./assertions/read.js";
 import type { Freshness } from "./freshness/read.js";
+import type { ContentModel } from "./content-model/read.js";
 import type { StatePages } from "./switches/pages.js";
 import type { SwitchesRead } from "./switches/types.js";
 import type { ScriptRead } from "./scripts.js";
@@ -213,6 +214,12 @@ export interface CheckContext {
    * sources it names. Absent when the file is not there: the freshness checks then say they could not check.
    */
   freshness?: Freshness;
+  /**
+   * The content model (gaugeline.model.json): the schema file it names and a way to ask the Sanity
+   * dataset for counts and ids. Absent when the file is not there: the model checks then say they
+   * could not check.
+   */
+  model?: ContentModel;
   /** Values the run was told to expect (for example the app's name). Until the config file, API only. */
   expect?: RunExpectations;
   /**
