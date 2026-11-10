@@ -2,6 +2,8 @@ import { CheckRegistry, defineCheck, type Check } from "../model.js";
 import { TITLES, compareWithCounts, type TypeCounts } from "../query/counts.js";
 import type { DupeGroup } from "../query/dupes.js";
 import type { QueryShape } from "../query/shape.js";
+import type { MutationShape, SchemaShape } from "../query/mutations.js";
+import { MUTATION_CHECKS } from "./query-mutations.js";
 import { QUERY_DUPE_CHECKS } from "./query-dupes.js";
 
 /** What the query checks read: the queries found in a repository, and what the dataset holds. */
@@ -11,6 +13,8 @@ export interface QueryInput {
   counts: ReadonlyMap<string, TypeCounts>;
   /** The documents that share a slug or a title (--dupes). Absent: the dupe checks are not run. */
   dupes?: readonly DupeGroup[];
+  /** The writes found in the code and the schema they are compared with (--mutations). Absent: the mutation checks are not run. */
+  mutations?: { shapes: readonly MutationShape[]; schema: SchemaShape };
 }
 
 const only = (id: string, input: QueryInput) =>
@@ -75,9 +79,12 @@ export const QUERY_CHECKS: readonly Check<QueryInput>[] = [
   queryNoDraftsFilter,
 ];
 
-export function createQueryRegistry(options: { dupes?: boolean } = {}): CheckRegistry {
+export function createQueryRegistry(
+  options: { dupes?: boolean; mutations?: boolean } = {},
+): CheckRegistry {
   const registry = new CheckRegistry();
   for (const c of QUERY_CHECKS) registry.register(c);
   if (options.dupes === true) for (const c of QUERY_DUPE_CHECKS) registry.register(c);
+  if (options.mutations === true) for (const c of MUTATION_CHECKS) registry.register(c);
   return registry;
 }

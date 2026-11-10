@@ -170,6 +170,10 @@ export type ParsedArgs =
       ci: boolean;
       /** --dupes: also read each published document's id, slug and title and report shared ones. */
       dupes: boolean;
+      /** --mutations: read the writes in the code and check their shapes against the schema. Nothing is sent. */
+      mutations: boolean;
+      /** --schema: the schema file for --mutations (default ./schema.json). */
+      schema?: string;
       verbose: boolean;
       quiet: boolean;
     }
@@ -615,12 +619,22 @@ export function parseCliArgs(
         hint: "Give the folder that holds your source files. It reads GROQ from them; with SANITY_PROJECT_ID set it also counts the documents in your dataset.",
         verbose,
       };
+    if (typeof values.schema === "string" && values.mutations !== true)
+      return {
+        kind: "error",
+        message:
+          "--schema is for --mutations: gaugeline query ./src --mutations --schema ./schema.json",
+        hint: "--schema names the file that `sanity schema extract` wrote, and only the mutation checks read it.",
+        verbose,
+      };
     return {
       kind: "query",
       dir: positionals[0] ?? "",
       json: values.json === true,
       ci: values.ci === true,
       dupes: values.dupes === true,
+      mutations: values.mutations === true,
+      ...(typeof values.schema === "string" ? { schema: values.schema } : {}),
       verbose,
       quiet: values.quiet === true,
     };

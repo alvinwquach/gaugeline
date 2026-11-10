@@ -9,7 +9,7 @@ $ SANITY_PROJECT_ID=abc123 SANITY_TOKEN=… npx gaugeline query ./src
 ```
 
 ::: info What works today
-`gaugeline query <folder>` reads the GROQ in your repository and lists each query with its file and line. With `SANITY_PROJECT_ID` set it also asks your dataset how many documents of each type exist and how many have each field, and reports the four findings under [What it reports](#what-it-reports). Without it the command makes no request and needs no token. With `--dupes` it also names documents that share a slug or a title. Mutations, GraphQL and suggested queries, which the rest of this page describes, are built branch by branch on top of this, and each part says so when it ships.
+`gaugeline query <folder>` reads the GROQ in your repository and lists each query with its file and line. With `SANITY_PROJECT_ID` set it also asks your dataset how many documents of each type exist and how many have each field, and reports the four findings under [What it reports](#what-it-reports). Without it the command makes no request and needs no token. With `--dupes` it also names documents that share a slug or a title, and with `--mutations` it reads the writes in your code and checks their shapes against your schema file without sending any of them. GraphQL and suggested queries, which the rest of this page describes, are built branch by branch on top of this, and each part says so when it ships.
 :::
 
 ## What the command reads
@@ -194,20 +194,60 @@ GraphQL  https://abc123.api.sanity.io/v1/graphql/production/default
 
 ## Mutations, checked without running them
 
-A mutation is a write, and Gaugeline never writes. What it can do is read the mutations in your code — patches, creates, transactions, and the ones inside your webhook routes — and check their shapes against the schema and the content.
+A mutation is a write, and Gaugeline never writes. What it can do is read the writes in your code (patches, creates, transactions, and the ones inside your webhook routes) and check their shapes against your schema. `--mutations` does that. It needs no `SANITY_PROJECT_ID`, no token and no network, because nothing here asks your dataset anything.
 
-- A patch that sets a field no document type declares
-- A create missing a field the schema marks required
-- A reference written as a plain string instead of a _ref
-- A mutation with no drafts handling, so it edits published content directly
-- Two routes writing the same field, which is where drift starts
+The schema comes from a file you write once: `npx sanity schema extract` makes `schema.json`, and `--schema ./path/schema.json` points at another one. Without `--schema` it looks for `./schema.json` where you ran the command, then `schema.json` in the folder it reads. If it finds neither the command stops with exit code 2 and says so. It does not fetch the schema itself: a request is the thing this command promises not to make.
 
-```sh title=Terminal untested="Converted with a fixture in this page's own branch."
-$ npx gaugeline query ./src --mutations
+```sh title=Terminal untested="Needs a folder of source files and a schema file, and the docs runner points every example at a fixture website. packages/cli/src/__tests__/query-docs.test.ts runs this command in the invented studio repository (packages/fixtures/repo-mutations) and compares the output with the block below."
+$ npx gaugeline query ./app --mutations
 ```
 
+```text title=Output
+Read 5 writes in 5 files (1 transaction, 3 patches and 1 create) and checked them against the schema. They were parsed, not run: nothing was sent.
+
+Checked on the fields that are visible (a spread or a variable hides the rest):
+  ./app/api/webhooks/sanity/route.ts:11
+
+Could not read 1 write:
+  ./app/api/webhooks/sanity/route.ts:12  variable-key: a field name comes from a variable or an expression, so the field cannot be read from the file
+
+✗ A write sets a field no document type declares
+    ./app/api/classes/[id]/status/route.ts:6  This patch writes cancelledBy, and no document type in the schema declares it. Sanity stores it anyway, but the Studio shows no field for it and nothing the schema validates will see it.
+✗ A create leaves out a field the schema requires
+    ./app/api/classes/route.ts:6  This create of classSession leaves out startsAt, which the schema marks required. The document is saved, and the Studio shows it as invalid.
+✗ A reference is written as a plain string
+    ./app/api/classes/route.ts:6  instructor is a reference, and this create gives it a plain string. A reference is an object: { _type: "reference", _ref: "the document's id" }.
+! A write edits published content directly
+    ./app/api/classes/[id]/status/route.ts:6  This patch has no drafts handling: its id is not a drafts. id, so it changes the published document directly and an editor's unpublished edits can be lost or published.
+! Two routes write the same field
+    classSession.status is written by 2 routes: ./app/api/classes/[id]/status/route.ts:6, ./app/api/cron/reopen/route.ts:7. If they disagree about its value the last write wins, which is where drift starts. Fine if they are meant to share it.
+
+5 to look at, 3 to fix first.
+```
+
+That is Larkspur Yoga Studio's site, built by a freelancer: a Next.js app on Sanity with four route handlers and a webhook that write to the dataset. The booking form creates a class and gives the instructor as a plain id, with no start time. The front desk's cancel button and the morning cron both write `status`, and the cancel button also writes a field called `cancelledBy` that the schema has never heard of. Every one of those is accepted by Sanity without an error, which is why they are found by reading and not by running.
+
+| Finding                                                                       | Level          | What it usually means                                                                            |
+| ----------------------------------------------------------------------------- | -------------- | ------------------------------------------------------------------------------------------------ |
+| `mutation-undeclared-field`: a patch sets `cancelledBy`, which no type has    | Fix this first | A renamed field, or a typo. The data is stored and the Studio never shows it.                    |
+| `mutation-missing-required`: a create of `classSession` leaves out `startsAt` | Fix this first | The document is saved and the Studio marks it invalid. A page that needs the field breaks on it. |
+| `mutation-ref-as-string`: `instructor` is given a string                      | Fix this first | The reference never resolves, so every `->` that follows it gets nothing.                        |
+| `mutation-no-drafts`: a patch with no drafts handling                         | Fix soon       | An editor's unpublished changes can be lost, or published by the next write.                     |
+| `mutation-shared-field`: two routes write `classSession.status`               | Fix soon       | Each assumes it owns the field. Fine when they are meant to share it.                            |
+
+Every finding carries the file and line of the write. `--json` prints them in the usual result (schema 2) with each finding's `source`, and `--ci` exits 1 when a "Fix this first" one is reported. With `SANITY_PROJECT_ID` set as well, the counts and the mutation findings come in one report.
+
+### What it reads
+
+- **Where.** Every `.ts`, `.tsx`, `.js`, `.jsx` and `.mjs` file under the folder, the same files and the same skips as for queries. Route handlers (`app/**/route.ts`, `pages/api/**`) are named by their address, so "two routes" means two addresses; a write outside a route is named by its file.
+- **Which calls.** `patch(...)` with `set`, `setIfMissing`, `unset`, `inc`, `dec`, `append`, `prepend` and `insert`; `create`, `createOrReplace`, `createIfNotExists` and `delete`; `transaction()` chains, also kept in a variable (`const tx = client.transaction()`), with the builder form `patch(id, (p) => p.set(...))`; and raw mutations arrays (`client.mutate([...])`, or a `mutations` key in a request body). The receiver has to be named like `client` or `sanity`, so `stripe.customers.create` and `Object.create` are not mistaken for writes.
+- **Drafts.** A write handles drafts when its id starts `drafts.` (a string, a template, or `"drafts." + id`) or comes from something named like a draft helper (`getDraftId(id)`). A `create` makes a new document, so it is not checked for this.
+- **Which type a patch is for.** A patch does not say. A field that exactly one type declares is attributed to that type for `mutation-shared-field`; a field that several types declare is not compared, because the answer would be a guess. A create is checked against the `_type` it names.
+- **Required and references.** From the schema file: an attribute is required unless it says `optional: true`, and a reference is an object that dereferences. A create that spreads another object (`...base`) is checked on the keys that can be seen and listed as partly read; it is never reported as missing a field the spread may carry.
+- **A write built from a variable is never guessed.** A field name that comes from a variable, or a payload that is a variable the file does not settle, is listed under "Could not read" with its file and line. A `const` object in the same file is read through, because the file settles it.
+
 ::: info
-It reads them. It never sends them. Nothing here writes to your dataset, and a mutation check that executed would break that promise — see [What it can and can't write](/docs/writes) for the same answer across REST, GraphQL, SQL and queues.
+It reads them. It never sends them. Nothing here writes to your dataset, and a mutation check that executed would break that promise. The module that reads mutations (`packages/core/src/query/mutations.ts`) cannot import the fetcher, the Sanity reader or an HTTP client, and a test fails the build if it ever does. Another test runs the command with `fetch`, `node:http`, `node:https` and `node:net` replaced by functions that throw, and with a transport that fails the test if it is called at all. See [What it can and can't write](/docs/writes#the-promise-test) for the same answer across REST, GraphQL, SQL and queues.
 :::
 
 ## Starting a page from your content

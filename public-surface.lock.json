@@ -147,7 +147,9 @@
       "dupes",
       "help",
       "json",
+      "mutations",
       "quiet",
+      "schema",
       "verbose",
       "version"
     ],
