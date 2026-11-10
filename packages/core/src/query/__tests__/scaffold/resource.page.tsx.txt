@@ -1,0 +1,85 @@
+import type { Metadata } from "next";
+import Image from "next/image";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { PortableText } from "@portabletext/react";
+import { client } from "@/sanity/lib/client";
+import { resourceQuery, resourceSlugsQuery } from "./queries";
+import type { Resource } from "./types";
+
+// Written by gaugeline query --page from 12 published resource documents.
+// The canonical and share addresses below are paths, and Next.js resolves them against
+// metadataBase: set it in your root layout (app/layout.tsx), or the build stops and says so.
+// BASE_PATH is where this folder is served on your site; change it if it is not /resource.
+const BASE_PATH = "/resource";
+
+type Props = { params: Promise<{ slug: string }> };
+
+export async function generateStaticParams() {
+  const slugs = await client.fetch<string[]>(resourceSlugsQuery);
+  return slugs.map((slug) => ({ slug }));
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params;
+  const doc = await client.fetch<Resource | null>(resourceQuery, { slug });
+  if (!doc) return {};
+  const title = doc.title;
+  const description = doc.summary;
+  const path = `${BASE_PATH}/${slug}`;
+  const image = doc.heroImage;
+  const images = image?.url
+    ? [
+        {
+          url: image.url,
+          alt: image.alt,
+          width: image.width ?? undefined,
+          height: image.height ?? undefined,
+        },
+      ]
+    : undefined;
+  return {
+    title,
+    description,
+    alternates: { canonical: path },
+    openGraph: { type: "article", url: path, title, description, images },
+    twitter: { card: images ? "summary_large_image" : "summary", title, description, images },
+  };
+}
+
+export default async function ResourcePage({ params }: Props) {
+  const { slug } = await params;
+  const doc = await client.fetch<Resource | null>(resourceQuery, { slug });
+  if (!doc) notFound();
+  return (
+    <article>
+      <h1>{doc.title}</h1>
+      <p>{doc.summary}</p>
+      {doc.topic?.slug ? (
+        <p>
+          <Link href={`/topic/${doc.topic.slug}`}>{doc.topic.title ?? doc.topic.slug}</Link>
+        </p>
+      ) : null}
+      <PortableText value={doc.body} />
+      {doc.heroImage?.url && doc.heroImage.width && doc.heroImage.height ? (
+        <Image
+          src={doc.heroImage.url}
+          alt={doc.heroImage.alt}
+          width={doc.heroImage.width}
+          height={doc.heroImage.height}
+        />
+      ) : null}
+      <ul>
+        {doc.tags.map((item, i) => (
+          <li key={`${i}-${item}`}>{item}</li>
+        ))}
+      </ul>
+      {doc.publishedAt ? <p>{doc.publishedAt}</p> : null}
+      {doc.gatedFile?.url ? (
+        <p>
+          <a href={doc.gatedFile.url}>{doc.gatedFile.name ?? "Download"}</a>
+        </p>
+      ) : null}
+    </article>
+  );
+}

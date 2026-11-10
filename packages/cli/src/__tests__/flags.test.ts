@@ -340,7 +340,8 @@ describe("flag table: e2e", () => {
       const register = join(scratch, "printed.csv");
       writeFileSync(register, `url,where\n${site.origin}/,flags test\n`);
       mkdirSync(join(scratch, "no-images"), { recursive: true });
-      const snapshotOnly = f.commands.length === 1 && f.commands[0] === "snapshot";
+      // --out is also query --page's folder: the flag is proved on snapshot, its first command, as --force is on plan.
+      const snapshotOnly = f.commands[0] === "snapshot" && !f.commands.includes("check");
       const cutoverOnly = f.commands.length === 1 && f.commands[0] === "cutover";
       const verifyOnly = f.commands.length === 1 && f.commands[0] === "verify";
       // The scratch folder has no gaugeline.sources.json, so --list says there are none and exits 0.

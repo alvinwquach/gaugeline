@@ -1,0 +1,31 @@
+import groq from "groq";
+
+// Written by gaugeline query --page from 12 published resource documents.
+// publishedAt is present on 50% of the sample
+// gatedFile is present on 33% of the sample
+
+// Every published document, newest first, with what a list shows.
+export const resourceListQuery = groq`*[_type == "resource" && !(_id in path("drafts.**"))] | order(_updatedAt desc) {
+  _id,
+  title,
+  "slug": slug.current,
+  summary,
+  heroImage{ "url": asset->url, "alt": coalesce(alt, ""), "width": asset->metadata.dimensions.width, "height": asset->metadata.dimensions.height }
+}`;
+
+// The address of every published document, for generateStaticParams.
+export const resourceSlugsQuery = groq`*[_type == "resource" && !(_id in path("drafts.**")) && defined(slug.current)].slug.current`;
+
+// One document by its address, with every field.
+export const resourceQuery = groq`*[_type == "resource" && !(_id in path("drafts.**")) && slug.current == $slug][0] {
+  _id,
+  title,
+  "slug": slug.current,
+  summary,
+  topic->{ _id, title, "slug": slug.current },
+  body,
+  heroImage{ "url": asset->url, "alt": coalesce(alt, ""), "width": asset->metadata.dimensions.width, "height": asset->metadata.dimensions.height },
+  tags[],
+  "publishedAt": coalesce(publishedAt, ""),
+  gatedFile{ "url": asset->url, "name": asset->originalFilename, "size": asset->size }
+}`;
