@@ -128,6 +128,9 @@ describe("loading the session", () => {
     installApi([runA, runB]);
     render(<Shell />);
     await waitFor(() => expect(sidebarLinks()[1]?.getAttribute("aria-current")).toBe("page"));
+    // The app writes the newest run into the address a moment after it selects it. Changing the address
+    // before that write would be overwritten by it, so wait for it first.
+    await waitFor(() => expect(window.location.hash).toBe("#/b/overview"));
     act(() => {
       window.location.hash = "#/a/overview";
     });
