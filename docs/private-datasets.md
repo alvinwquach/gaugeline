@@ -22,6 +22,14 @@ The products check reads Sanity with `SANITY_PROJECT_ID` alone and adds `SANITY_
 
 Nothing from Sanity is compared that run (Stripe and Printful are still read, and the site check still runs), and the products check reports that it could not check, never that it passed. If a token is set and Sanity still refuses it, the message says the token was not accepted and repeats the Viewer role. If the token can write, it is used and the run adds one notice asking you to swap it for a Viewer token. Details are in [Products and prices](/docs/products-and-prices#reading-sanity).
 
+## What `gaugeline query` says without a token
+
+`gaugeline query ./src` counts the documents your queries ask for when `SANITY_PROJECT_ID` is set. On a private dataset with no token Sanity answers 401, nothing is compared, and the command stops with exit 2 and one message:
+
+> Sanity refused the request (HTTP 401). This dataset is private. A private dataset needs a read-only token with the Viewer role: create one under API in sanity.io/manage and set SANITY_TOKEN.
+
+The token needs the Viewer role and nothing more: the command sends only `GET` requests, one for each document type, and the answers are whole numbers (how many documents of a type exist, how many have a field), never a document. A token Sanity does not accept is said differently and repeats the Viewer role. What the counts mean: [Checking your queries](/docs/query-check#what-it-reports).
+
 ## Where the token lives
 
 - Read from the environment when the command runs. Never written to disk, never printed in output or reports.

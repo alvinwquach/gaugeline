@@ -38,9 +38,13 @@ describe("gaugeline query: unit", () => {
       expect(parseCliArgs(argv)).toMatchObject({ kind: "error" });
   });
 
-  it("has --help, and none of the page check's flags", () => {
+  it("has --help, takes --ci and --json, and none of the page check's other flags", () => {
     expect(parseCliArgs(["query", "--help"])).toMatchObject({ kind: "help" });
-    expect(parseCliArgs(["query", "./src", "--ci"])).toMatchObject({ kind: "error" });
+    expect(parseCliArgs(["query", "./src", "--ci", "--json"])).toMatchObject({
+      kind: "query",
+      ci: true,
+      json: true,
+    });
     expect(parseCliArgs(["query", "./src", "--allow-private"])).toMatchObject({ kind: "error" });
   });
 });
@@ -49,7 +53,8 @@ describe("gaugeline query: e2e (CLI)", () => {
   it("prints 12 shapes for fixtures/repo-groq and names both unreadable files with their lines", async () => {
     const r = await query(["."], { cwd: repo });
     expect(r.code).toBe(EXIT.ok);
-    expect(r.err).toBe("");
+    // With no SANITY_PROJECT_ID nothing is compared, and one line on stderr says so.
+    expect(r.err).toContain("SANITY_PROJECT_ID is not set");
     // One block of four lines for each shape: the header is the type, then the file and line.
     expect(r.out.split("\n").filter((l) => /^\S+ {2}src\/.+:\d+$/.test(l))).toHaveLength(12);
     expect(r.out).toContain("Could not read 2 queries:");
@@ -114,7 +119,7 @@ describe("gaugeline query: e2e (CLI)", () => {
     const r = await runBin(["query", "."], {}, { cwd: repo });
     expect(r.status).toBe(0);
     expect(r.stdout).toContain("12 shapes from 10 queries; 2 could not be read.");
-    expect(r.stderr).toBe("");
+    expect(r.stderr).toContain("SANITY_PROJECT_ID is not set");
     const missing = await runBin(["query", join(repo, "nowhere")]);
     expect(missing.status).toBe(2);
   });

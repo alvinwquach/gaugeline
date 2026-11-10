@@ -417,6 +417,16 @@ That is the number of documents and the names of their types: never a document's
 request at all, skip `dataset-public` and `dataset-private-types`. What the answers mean:
 [Private datasets](/docs/private-datasets).
 
+### Query counts (gaugeline query)
+
+`gaugeline query <folder>` reads files and, only when `SANITY_PROJECT_ID` is set, asks your dataset for counts. One `GET` of Sanity's query address for each document type your queries name, published content only:
+
+```text
+GET https://<project>.api.sanity.io/v2021-10-21/data/query/<dataset>?query={"total":count(*[_type == "popup"]),"p0":count(*[_type == "popup" && defined(date)]),...}&perspective=published
+```
+
+The answer is whole numbers: how many documents of the type exist and how many have each field. No document, no field value and no sample is read. A token (`SANITY_TOKEN`, only for a private dataset) goes in a header and never in the address. A type with many fields is sent in two or more parts when the address would be too long, and stderr says so. What a finding prints is the type, the field's name, the file and line, and two numbers. Without `SANITY_PROJECT_ID` nothing is requested. What the findings mean: [Checking your queries](/docs/query-check#what-it-reports).
+
 ### Email records
 
 The email record checks run only when you pass `--dns`: without it, a run makes HTTP requests
