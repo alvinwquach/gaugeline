@@ -20,6 +20,8 @@ export const SUBCOMMANDS = [
   "assert",
   "ads",
   "tags",
+  "delivery",
+  "platform",
 ] as const;
 export type CliCommand = "check" | (typeof SUBCOMMANDS)[number];
 
@@ -160,6 +162,29 @@ export type ParsedArgs =
       quiet: boolean;
     }
   | {
+      kind: "delivery";
+      /** --paid: count the orders paid in Stripe. */
+      paid: boolean;
+      /** --sent: count the emails Resend sent. */
+      sent: boolean;
+      /** --since, as typed: 7d, 24h or a date. Checked when the command runs, with the clock. */
+      since?: string;
+      allowSecretKey: boolean;
+      json: boolean;
+      ci: boolean;
+      verbose: boolean;
+      quiet: boolean;
+    }
+  | {
+      kind: "platform";
+      webhooks: boolean;
+      allowSecretKey: boolean;
+      json: boolean;
+      ci: boolean;
+      verbose: boolean;
+      quiet: boolean;
+    }
+  | {
       kind: "assert";
       /** gaugeline assert --list: print the assertions and run none. */
       list: boolean;
@@ -243,7 +268,11 @@ export function parseCliArgs(
                             ? "ads"
                             : argv[0] === "tags"
                               ? "tags"
-                              : COMMAND;
+                              : argv[0] === "delivery"
+                                ? "delivery"
+                                : argv[0] === "platform"
+                                  ? "platform"
+                                  : COMMAND;
   const given = command === COMMAND ? argv : argv.slice(1);
   // --annotate and --progress take an optional file name: alone, or before another flag, the default.
   const rest = given.map((a, i) =>
@@ -290,7 +319,7 @@ export function parseCliArgs(
       verbose,
     };
   }
-  if (values.since !== undefined && values.since !== "last") {
+  if (command !== "delivery" && values.since !== undefined && values.since !== "last") {
     return {
       kind: "error",
       message: `--since accepts only last in this version, not "${String(values.since)}".`,
@@ -560,6 +589,59 @@ export function parseCliArgs(
       json: values.json === true,
       ci: values.ci === true,
       allowPrivate: values["allow-private"] === true,
+      verbose,
+      quiet: values.quiet === true,
+    };
+  }
+  if (command === "delivery") {
+    const paid = values.paid === true;
+    const sent = values.sent === true;
+    if (positionals.length > 0 || (!paid && !sent))
+      return {
+        kind: "error",
+        message:
+          positionals.length > 0
+            ? "gaugeline delivery takes no address: it reads your Stripe and Resend accounts."
+            : "gaugeline delivery needs --paid, --sent or both: gaugeline delivery --paid --sent",
+        hint: "Set STRIPE_API_KEY and RESEND_API_KEY in the environment; the steps are in docs/delivery.",
+        verbose,
+      };
+    if (typeof values.since === "string" && values.since.trim() === "")
+      return {
+        kind: "error",
+        message: "--since needs a window such as 7d, 24h or 2026-11-01.",
+        hint: "For example: gaugeline delivery --paid --sent --since 7d.",
+        verbose,
+      };
+    return {
+      kind: "delivery",
+      paid,
+      sent,
+      ...(typeof values.since === "string" ? { since: values.since } : {}),
+      allowSecretKey: values["allow-secret-key"] === true,
+      json: values.json === true,
+      ci: values.ci === true,
+      verbose,
+      quiet: values.quiet === true,
+    };
+  }
+  if (command === "platform") {
+    if (positionals.length > 0 || values.webhooks !== true)
+      return {
+        kind: "error",
+        message:
+          positionals.length > 0
+            ? "gaugeline platform takes no address: it reads your Stripe account."
+            : "gaugeline platform needs --webhooks: gaugeline platform --webhooks",
+        hint: "Set STRIPE_API_KEY in the environment; the steps are in docs/delivery.",
+        verbose,
+      };
+    return {
+      kind: "platform",
+      webhooks: true,
+      allowSecretKey: values["allow-secret-key"] === true,
+      json: values.json === true,
+      ci: values.ci === true,
       verbose,
       quiet: values.quiet === true,
     };

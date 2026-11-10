@@ -153,9 +153,9 @@ describe("flag table: unit", () => {
         "                                 you may test",
         "      --routes <value>           With --owner-consent, find download routes in",
         "                                 route files matching this glob (repeatable)",
-        "      --since <value>            Compare with this site's last run and save this",
-        "                                 one; the only value is last",
-        "                                 (.gaugeline/last-run/)",
+        "      --since <value>            Page check: compare with the last run (the only",
+        "                                 value is last). delivery: the window to read,",
+        "                                 such as 7d",
         "  -i, --interactive              Open a terminal view of the results to move",
         "                                 through, filter and dismiss findings",
         "      --slack <value>            Send a summary to this Slack incoming webhook",
@@ -358,7 +358,14 @@ describe("flag table: e2e", () => {
           hosts: { bare: { status: 200 }, www: { status: 200 } },
         }),
       );
+      // delivery and platform read an account with a key from the environment, so a run with the flag
+      // alone would stop for the missing key (exit 2). --help parses every flag first and then stops,
+      // so it proves the built bin accepts the flag for that command, with no key and no request.
+      const deliveryOnly = f.commands.length === 1 && f.commands[0] === "delivery";
+      const platformOnly = f.commands.length === 1 && f.commands[0] === "platform";
       const digestOnly =
+        !deliveryOnly &&
+        !platformOnly &&
         !planOnly &&
         !printedOnly &&
         !snapshotOnly &&
@@ -394,41 +401,43 @@ describe("flag table: e2e", () => {
           ]
         : snapshotOnly
           ? ["snapshot", "fernkiln.invalid", `--${f.name}`, join(scratch, "snapshot.json")]
-          : cutoverOnly
-            ? ["cutover", `--${f.name}`, before]
-            : assertOnly
-              ? ["assert", `--${f.name}`]
-              : verifyOnly
-                ? ["verify", crawl, `--${f.name}`, "0"]
-                : runOnly
-                  ? f.name === "tag"
-                    ? ["run", "--tag", "nobody"]
-                    : f.name === "site"
-                      ? ["run", "--site", "x", "--allow-private"]
-                      : ["run", "--tag", "nobody", `--${f.name}`, "2"]
-                  : printedOnly
-                    ? [
-                        "printed",
-                        register,
-                        "--allow-private",
-                        `--${f.name}`,
-                        ...(f.name === "decode" ? [join(scratch, "no-images")] : value),
-                      ]
-                    : digestOnly
+          : deliveryOnly || platformOnly
+            ? [deliveryOnly ? "delivery" : "platform", `--${f.name}`, "--help"]
+            : cutoverOnly
+              ? ["cutover", `--${f.name}`, before]
+              : assertOnly
+                ? ["assert", `--${f.name}`]
+                : verifyOnly
+                  ? ["verify", crawl, `--${f.name}`, "0"]
+                  : runOnly
+                    ? f.name === "tag"
+                      ? ["run", "--tag", "nobody"]
+                      : f.name === "site"
+                        ? ["run", "--site", "x", "--allow-private"]
+                        : ["run", "--tag", "nobody", `--${f.name}`, "2"]
+                    : printedOnly
                       ? [
-                          "digest",
-                          ...(f.name === "runs" ? [] : ["--runs", runs]),
+                          "printed",
+                          register,
+                          "--allow-private",
                           `--${f.name}`,
-                          ...value,
+                          ...(f.name === "decode" ? [join(scratch, "no-images")] : value),
                         ]
-                      : [
-                          ...(flagsFor(FLAGS, "check").includes(f) ? [] : ["launch"]),
-                          `${site.origin}/`,
-                          // --routes is read by a probing check: it needs the owner's consent.
-                          ...(f.name === "routes" ? ["--owner-consent"] : []),
-                          `--${f.name}`,
-                          ...value,
-                        ];
+                      : digestOnly
+                        ? [
+                            "digest",
+                            ...(f.name === "runs" ? [] : ["--runs", runs]),
+                            `--${f.name}`,
+                            ...value,
+                          ]
+                        : [
+                            ...(flagsFor(FLAGS, "check").includes(f) ? [] : ["launch"]),
+                            `${site.origin}/`,
+                            // --routes is read by a probing check: it needs the owner's consent.
+                            ...(f.name === "routes" ? ["--owner-consent"] : []),
+                            `--${f.name}`,
+                            ...value,
+                          ];
       const r = await runBin(args, {}, { cwd: scratch });
       expect(r.stderr, f.name).not.toContain("Unknown option");
       expect([0, 1], f.name).toContain(r.status);
