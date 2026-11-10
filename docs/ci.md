@@ -71,6 +71,22 @@ jobs:
           GAUGELINE_VERCEL_BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
 ```
 
+## Content a script or a model wrote
+
+A pipeline that writes content (a weekly meal plan, a batch of product descriptions) can state a total that its parts do not add up to, or link to a document nobody published. `gaugeline query` checks both from the repository's workflow: each rule is one read-only request to your Sanity dataset, and only ids and counts come back (see [Content that has to add up](/docs/query-check#content-that-has-to-add-up)).
+
+```yaml title=.github/workflows/content.yml
+- run: >
+    npx --yes gaugeline query ./src --ci
+    --totals "mealPlan:targetCalories=days[].meals[]->calories"
+    --refs "mealPlan:days[].meals"
+  env:
+    SANITY_PROJECT_ID: ${{ vars.SANITY_PROJECT_ID }}
+    SANITY_DATASET: production
+```
+
+The job exits 1 when a plan states a number its meals do not add up to, or links to a meal that was never published. A private dataset also needs `SANITY_TOKEN`, a read-only token with the Viewer role, in the secrets context (see [Private datasets](/docs/private-datasets)).
+
 ## The 30-day cutover watch
 
 [`examples/workflows/cutover-watch.yml`](https://github.com/alvinwquach/gaugeline/blob/main/examples/workflows/cutover-watch.yml)

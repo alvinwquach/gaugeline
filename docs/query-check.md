@@ -9,7 +9,7 @@ $ SANITY_PROJECT_ID=abc123 SANITY_TOKEN=… npx gaugeline query ./src
 ```
 
 ::: info What works today
-`gaugeline query <folder>` reads the GROQ in your repository and lists each query with its file and line. With `SANITY_PROJECT_ID` set it also asks your dataset how many documents of each type exist and how many have each field, and reports the four findings under [What it reports](#what-it-reports). Without it the command makes no request and needs no token. With `--dupes` it also names documents that share a slug or a title, and with `--mutations` it reads the writes in your code and checks their shapes against your schema file without sending any of them. With `--graphql` it checks your GraphQL against the schema and the content instead. With `--suggest` it writes a starting query from the content, and with `--page` it writes a starting route (queries, types and page) into a folder of your project. With `--unused` it reads your source alone, with no request and no key, and lists the fields your queries fetch that no code reads.
+`gaugeline query <folder>` reads the GROQ in your repository and lists each query with its file and line. With `SANITY_PROJECT_ID` set it also asks your dataset how many documents of each type exist and how many have each field, and reports the four findings under [What it reports](#what-it-reports). Without it the command makes no request and needs no token. With `--dupes` it also names documents that share a slug or a title, and with `--mutations` it reads the writes in your code and checks their shapes against your schema file without sending any of them. With `--graphql` it checks your GraphQL against the schema and the content instead. With `--suggest` it writes a starting query from the content, and with `--page` it writes a starting route (queries, types and page) into a folder of your project. With `--unused` it reads your source alone, with no request and no key, and lists the fields your queries fetch that no code reads. With `--totals` and `--refs` it checks content that software wrote: a stated number against the sum of its parts, and links to documents nobody published, one request for each rule that returns ids and counts only.
 :::
 
 ## What the command reads
@@ -646,6 +646,71 @@ Copperhill Bakery's freelancer copied the sourdough loaf to make a seasonal vers
 ### What `--dupes` reads
 
 It is the one `query` option that reads more than counts. For each document type your queries name, one `GET` asks for exactly three things about each published document: its `_id`, its `slug.current` and its `title`. Nothing else is requested: no body, no image, no field you did not name. The token goes in a header, never in the address. The documents are grouped in memory and only the groups are kept, and the report shows a slug or a title only when two documents share it, never one that is unique. A title is text an editor wrote, so `--dupes` is the one option whose output shows editor-written text, and it is off unless you ask. It needs `SANITY_PROJECT_ID`, and a private dataset needs a token with the Viewer role: see [Private datasets](/docs/private-datasets#what-gaugeline-query-dupes-reads). A type with so many documents that the answer is larger than 5 MB stops the command with exit 2 and says so.
+
+## Content that has to add up
+
+Some content is written by software: a script that builds each week's meal plan, a model that drafts product copy, an import from a supplier's spreadsheet. Software states a number next to the things it adds up and does not check its own sum, and it creates links to documents that nobody published. Two flags check for exactly that. Both ask your dataset, one request for each rule.
+
+Fennel & Rye Meal Prep sells weekly meal plans. A script writes each `mealPlan` with a `targetCalories` and the days' meals as references to `meal` documents. The two rules are the same two lines you would put in a CI workflow:
+
+```sh title=Terminal untested="Needs a Sanity project, and the docs runner points every example at a fixture website. packages/cli/src/__tests__/query-docs.test.ts runs this command in an invented repository (packages/fixtures/repo-meals) against an invented dataset and compares the output with the block below."
+$ SANITY_PROJECT_ID=fennel1 npx gaugeline query ./src --totals "mealPlan:targetCalories=days[].meals[]->calories" --refs "mealPlan:days[].meals"
+```
+
+```text title=Output
+Asked the dataset about 1 --totals rule and 1 --refs rule: one request each, published documents only. The dataset did the comparing and sent back ids and counts, so no stated number, part or other field was read.
+
+✗ A stated total is not the sum of its parts
+    mealPlan plan-heavy-week: targetCalories does not equal the sum of days[].meals[]->calories.
+✗ A stated total is not the sum of its parts
+    mealPlan plan-lean-week: targetCalories does not equal the sum of days[].meals[]->calories.
+✗ A document links to something that was never published
+    mealPlan plan-lean-week: 2 of 5 references at days[].meals point to documents that were never published: meal-tofu-bowl, meal-miso-ramen.
+✗ A document links to something that was never published
+    mealPlan plan-gap-week: 1 of 3 references at days[].meals point to documents that were never published: meal-tofu-bowl.
+· A document has no stated total
+    mealPlan plan-open-week: no stated total, so targetCalories was not compared with the sum of days[].meals[]->calories.
+✓ query-type-empty
+
+5 to look at, 4 to fix first.
+```
+
+`plan-lean-week` says 2,400 calories and its meals add up to 1,830: two of its five meals were never published (`meal-tofu-bowl` does not exist, and `meal-miso-ramen` exists only as a draft), so they add nothing to the sum. One unpublished meal usually produces both findings, and they are printed together under the document, so the second one is the reason for the first. `plan-heavy-week` has every meal published and still does not add up: that one is the script's arithmetic. `plan-gap-week` adds up, but links to a meal that does not exist. `plan-open-week` has no target, so nothing was promised; it is reported as a note, never as a mismatch.
+
+| Finding                                                                           | Level          | What it usually means                                                                                            |
+| --------------------------------------------------------------------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `generated-total-mismatch`: `plan-lean-week` does not add up                      | Fix this first | The page promises a number its parts cannot deliver. Open the document by its id and decide which side is wrong. |
+| `generated-ref-unpublished`: 2 of 5 references point to documents never published | Fix this first | A page built from the links shows a gap or a short total. Publish the documents named, or remove the links.      |
+| `generated-total-missing`: `plan-open-week` has no stated total                   | Worth knowing  | The script skipped the field, or it was renamed. Nothing was compared.                                           |
+
+With `--ci` the command exits 1 on the first two, so a pipeline that writes plans fails its own build when a plan does not add up.
+
+### The rules
+
+```text
+--totals "type:stated=parts"     --totals "mealPlan:targetCalories=days[].meals[]->calories"
+--refs   "type:path"             --refs   "mealPlan:days[].meals"
+```
+
+- **`type`** is the document type, as it is in your Studio schema.
+- **`stated`** is the field that holds the number the content promises. It may be a dotted path (`totals.gross`).
+- **`parts`** is a GROQ path that ends in a number: `days[].meals[]->calories` follows each day's meals to the meal document and takes its `calories`. It may use `.`, `[]` and `->`, and nothing else. A part that does not resolve (the meal was never published) is null and adds nothing to the sum.
+- **`path`** (for `--refs`) leads to an array of references: `meals`, or `days[].meals` when the references are inside objects in an array. A reference to a document that exists only as a draft counts as unpublished, because a visitor's query asks for what is published.
+- Both flags may repeat, at most 10 rules in a run (the two flags together), and a rule given twice is asked once. A rule that does not parse is exit 2 and says which character it went wrong at: `an "=" is missing between the stated field and its parts (character 40)`. Field names are letters, digits and underscores; a quote, a space or a GROQ keyword in one is refused, because the rule ends up inside a query and is never pasted into it as it was typed.
+- The folder after `query` has to exist, as for the other query options, and is not read.
+
+### How the comparison is made
+
+- **The dataset does the sum.** Each totals rule is one `GET`, and the comparison is a filter in the query itself (`stated != math::sum(parts)`), so what comes back is the ids of the documents that failed it, and counts. Neither number is sent to your computer. Each refs rule is one `GET` too: for each document it counts the references at the path and those that point at a published document, and returns the id, the two counts and the ids of the missing targets (a reference's `_ref` is an id).
+- **That is a narrow reading of "counts, never content", and it costs something.** The first plan for this check returned two numbers for each document, so a finding could say "promised 2,400 and contained 1,830". This build does not: a stated total is a value a client wrote, and the rule for `gaugeline query` is that no field value reaches your machine. So the finding names the document and says the sum is wrong, and you open it by its id in the Studio to see the numbers. The cost is that Gaugeline cannot say which part is wrong, only that the sum is, and the references finding fills part of that gap by naming the missing targets.
+- **Exact equality.** The two numbers are compared exactly, with no tolerance: the same input gives the same findings. Money is whole numbers in minor units (cents, pence), and those add up exactly. Decimals do not: `0.1` and `0.2` are not `0.3` in floating point, so a total of `0.3` over those two parts is reported as a mismatch. Store integers.
+- **No stated total is not a mismatch.** A document with no value at the stated field is reported once, as a note, and is not compared.
+- **Text where a number should be stops the run.** If the stated field, or a part, is text or an object on any document of the type, the rule cannot be compared. The command exits 2 and names the path (`the parts path days[].meals[]->title ends in something that is not a number on 5 mealPlan documents`), and no finding is printed from that rule: a path that stops one field early is a mistake in the rule, and a comparison would be wrong.
+- **No documents of the type** gives the same `query-type-empty` finding as the counts above, and no totals output.
+- **At most 100 documents are named for each rule**, in id order, and the last finding says when there are more.
+- **Published documents only.** A draft is never compared, so a plan whose draft is wrong is not reported until it is published.
+- **A weak reference to a missing document is reported too.** If your schema allows it on purpose, the refs rule is the wrong one to run on that field.
+- **Anything this cannot express waits for the config file.** A total with a tolerance, a rule for each type in a file, a rule that compares two fields: they need more than a string on a command line.
 
 ## Before a restructure
 
