@@ -8,6 +8,68 @@ Sanity's TypeGen compares your queries with your schema at build time, which cat
 $ SANITY_PROJECT_ID=abc123 SANITY_TOKEN=… npx gaugeline query ./src
 ```
 
+::: info What works today
+`gaugeline query <folder>` reads the GROQ in your repository and lists each query with its file and line. It needs no token and makes no request. The comparison with your content that the rest of this page describes (counts, duplicates, mutations, GraphQL, suggested queries) is built branch by branch on top of it, and each part says so when it ships.
+:::
+
+## What the command reads
+
+```sh title=Terminal untested="Needs a folder of source files, and the docs runner points every example at a fixture website. packages/cli/src/__tests__/query-docs.test.ts runs this command in a fixture repository (an invented bakery site) and compares the output with the block below."
+$ npx gaugeline query ./src/app
+```
+
+```text title=Output
+order  ./src/app/api/orders/route.ts:4
+  fields: _id, total, lines[].item->name
+  drafts: left out by the filter
+  params: $email
+
+popup  ./src/app/events/page.tsx:3
+  fields: title, date, venue->name, venue->address.city
+  drafts: not left out by the filter
+  params: $after, $venue
+
+menuItem  ./src/app/menu/[slug]/page.tsx:3
+  fields: name, description, allergens[]->name, photo.asset->url
+  drafts: not left out by the filter
+  params: $slug
+
+page  ./src/app/page.tsx:3
+  fields: title, sections[]._type, sections[].heading, sections[].image.asset->url
+  drafts: not left out by the filter
+  params: none
+
+Could not read 1 query:
+  ./src/app/search/page.tsx:5  concatenated: built at run time (a template with an interpolation, strings joined with +, or a variable), so it cannot be read from the file
+
+4 shapes from 4 queries; 1 could not be read.
+```
+
+That is Copperhill Bakery's pop-up site: a Next.js app on Sanity, built by a freelancer for a bakery that sells at markets. The order lookup, the events page, a menu item page and the home page each ask Sanity for a document type, and the search page builds its query from what a visitor typed.
+
+- **Where it looks.** Every `.ts`, `.tsx`, `.js`, `.jsx` and `.mjs` file under the folder. It skips `node_modules`, `.next`, `dist`, `.git` and whatever your `.gitignore` names (a `.gitignore` in a subfolder counts below that folder), and it does not follow links.
+- **What it finds.** `groq` tagged templates and `defineQuery("...")` calls, by reading the code with the TypeScript compiler, not by searching for text. A query you export from one file and import in another is found where it is written.
+- **One block for each document type.** A query that filters on two types, such as `_type in ["post", "recipe"]`, gives two blocks that share a file and line. The line is the one the query's opening quote is on.
+- **Fields.** The paths the projections read, as they are in the document: `"slug": slug.current` is `slug.current`, whatever it is renamed to. `topic->{ title }` is `topic->title`, and a `->` in a path means it crosses a reference. Nested objects keep the whole path (`contact.address.city`), and an array of objects is written `sections[].heading`. A `...` spread of an array reads the array itself. The filter and the `order()` are not fields: only what the query returns.
+- **Drafts.** `left out by the filter` means every document must pass `!(_id in path("drafts.**"))` (or the same with `match`). A query that leaves drafts out some other way, such as the published perspective in the client, shows `not left out by the filter`, because the query itself does not say.
+- **Parameters.** The `$names` the query takes.
+
+### What it lists as unreadable
+
+A query is never skipped without a word and never guessed. These are listed under "Could not read", with the file and line.
+
+| Reason           | What it means                                                                                                                            | What to do                                                                                                         |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `concatenated`   | The query is built when the code runs: a template with an interpolation, strings joined with `+`, or a variable passed to `defineQuery`. | Fine to leave. To have it read, write the whole query as one literal and pass the changing part as a `$parameter`. |
+| `parse-error`    | The file does not parse as TypeScript or JavaScript (the line is the first error), or the string is not valid GROQ.                      | Fix the file or the query; the same error stops your build or your page.                                           |
+| `no-type-filter` | The query parsed but nothing in it filters on `_type`, such as `*[_id == $id][0]`, so there is no document type to attribute it to.      | Fine for a lookup by id. Add a `_type` filter if you want it checked against that type.                            |
+
+::: info Needs TypeScript beside it
+The command reads your code with the TypeScript compiler, which is about 9 MB, so Gaugeline does not carry it for the checks that never need it. In a project that has it (any Next.js project written in TypeScript does), run `npx gaugeline query ./src`. Anywhere else, run `npx -p gaugeline -p typescript gaugeline query ./src`. Without it the command stops with exit code 2 and says this.
+:::
+
+It exits 0 when it read the folder, with or without unreadable queries, and 2 when the folder does not exist or TypeScript is missing.
+
 ## What it reports
 
 | Finding                                      | What it usually means                                                                |

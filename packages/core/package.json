@@ -28,8 +28,10 @@
   "dependencies": {
     "cheerio": "1.2.0",
     "fflate": "0.8.2",
+    "groq-js": "2.0.1",
     "htmlparser2": "9.1.0",
     "jsqr": "1.4.0",
+    "typescript": "5.9.3",
     "zod": "4.6.7"
   },
   "devDependencies": {
