@@ -16,8 +16,21 @@ export interface Connector<T> {
   id: string;
   /** Every environment variable this connector needs. It is configured when all are non-empty. */
   envVars: string[];
+  /** Variables read when set but never required (a token a public dataset does not need, a setting). */
+  optionalEnvVars?: string[];
+  /**
+   * Which variables hold keys, so the redactor blanks only those. Defaults to `envVars`; a connector
+   * with plain settings among its variables (a dataset name, a unit) lists just its keys here.
+   */
+  secretEnvVars?: string[];
   configured(env: Env): boolean;
   read(env: Env, fetcher: Fetcher): Promise<T[]>;
+  /**
+   * Plain-language advice the runner adds as "advice" notices after the read, whether it worked or
+   * not (an assumed default, a key with more power than it needs). It may make GET requests; if it
+   * throws, there is no advice and nothing else changes.
+   */
+  advise?(env: Env, fetcher: Fetcher): Promise<string[]>;
 }
 
 /**
@@ -25,10 +38,11 @@ export interface Connector<T> {
  * - not-configured: a variable is missing or empty, so nothing was requested.
  * - unreachable: it did not answer, answered with something unusable, or the read failed.
  * - refused: it answered, and said the key is not allowed to read this (401 or 403).
+ * - advice: the read may have worked; this is something worth changing (never a failure).
  */
 export interface ConnectorNotice {
   connector: string;
-  kind: "not-configured" | "unreachable" | "refused";
+  kind: "not-configured" | "unreachable" | "refused" | "advice";
   message: string;
 }
 

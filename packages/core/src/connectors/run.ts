@@ -12,7 +12,9 @@ export interface RunConnectorsOptions {
 /** Longest a notice message gets, measured after redaction so a cut can never expose half a key. */
 const MAX_MESSAGE = 300;
 
-type Outcome = { ok: true; id: string; rows: unknown[] } | { ok: false; notice: ConnectorNotice };
+type Outcome = (
+  { ok: true; id: string; rows: unknown[] } | { ok: false; notice: ConnectorNotice }
+) & { advice?: ConnectorNotice[] };
 
 /**
  * Read every configured connector at the same time. A connector that is not configured is skipped
@@ -31,7 +33,9 @@ export async function runConnectors(
     if (seen.has(c.id)) throw new TypeError(`Two connectors are called "${c.id}".`);
     seen.add(c.id);
   }
-  const redact = createRedactor(env, [...new Set(connectors.flatMap((c) => c.envVars))]);
+  const redact = createRedactor(env, [
+    ...new Set(connectors.flatMap((c) => c.secretEnvVars ?? c.envVars)),
+  ]);
   const say = (line: string): void => options.debug?.(redact(line));
   const notice = (connector: string, kind: ConnectorNotice["kind"], message: string): Outcome => ({
     ok: false,
@@ -50,23 +54,41 @@ export async function runConnectors(
         );
       }
       say(`connector ${c.id}: reading`);
+      const advise = async (): Promise<ConnectorNotice[]> => {
+        try {
+          const lines = (await c.advise?.(env, fetcher)) ?? [];
+          return lines.map((l) => ({
+            connector: c.id,
+            kind: "advice" as const,
+            message: redact(l).slice(0, MAX_MESSAGE),
+          }));
+        } catch {
+          return [];
+        }
+      };
+      const done = async (out: Outcome): Promise<Outcome> => {
+        const advice = await advise();
+        return advice.length > 0 ? { ...out, advice } : out;
+      };
       try {
         const rows: unknown = await c.read(env, fetcher);
         if (!Array.isArray(rows)) {
-          return notice(c.id, "unreachable", `${c.id} returned something other than a list.`);
+          return done(notice(c.id, "unreachable", `${c.id} returned something other than a list.`));
         }
         say(`connector ${c.id}: ${rows.length} rows`);
-        return { ok: true, id: c.id, rows };
+        return done({ ok: true, id: c.id, rows });
       } catch (err) {
         const text = err instanceof Error ? err.message : String(err);
         say(`connector ${c.id}: failed (${text})`);
-        return err instanceof ConnectorRefusedError
-          ? notice(
-              c.id,
-              "refused",
-              `${c.id} refused the key (HTTP ${err.status}). Check it is the right key and that it can read.`,
-            )
-          : notice(c.id, "unreachable", `${c.id} could not be read. ${text}`);
+        return done(
+          err instanceof ConnectorRefusedError
+            ? notice(
+                c.id,
+                "refused",
+                `${c.id} refused the key (HTTP ${err.status}). ${err.hint ?? "Check it is the right key and that it can read."}`,
+              )
+            : notice(c.id, "unreachable", `${c.id} could not be read. ${text}`),
+        );
       }
     }),
   );
@@ -86,6 +108,7 @@ export async function runConnectors(
           );
     if (out.ok) data.set(out.id, out.rows);
     else notices.push(out.notice);
+    if (out.advice) notices.push(...out.advice);
   });
   return { data, notices };
 }
