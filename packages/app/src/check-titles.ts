@@ -112,6 +112,7 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "plan-duplicate-address": ["Two rows in the plan share one address", "Launch day"],
   "printed-dead": ["A printed address doesn't land on a page", "Launch day"],
   "printed-wrong-destination": ["A printed address lands somewhere it shouldn't", "Launch day"],
+  "price-mismatch": ["Website price disagrees with checkout", "Sales & prices"],
   "cutover-canonical-host": ["The bare domain and www don't settle on one address", "Launch day"],
   "cutover-mail-changed": ["The domain's mail records changed at cutover", "Security & email"],
   "app-smart-banner-mismatch": ["The iPhone app banner promotes a different app", "Visitors"],
@@ -216,6 +217,8 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "plan-legacy-unresolved": ["Some old addresses in the plan's notes aren't settled", "Launch day"],
   "printed-to-home": ["A printed link to a page now lands on the home page", "Launch day"],
   "printed-tags-lost": ["A printed address loses its tracking tags", "Launch day"],
+  "printful-price": ["Fulfillment lists a different price", "Sales & prices"],
+  "stripe-no-price": ["No default price in checkout", "Sales & prices"],
   "cutover-certificate-changed": [
     "The certificate no longer covers a name it did",
     "Security & email",
@@ -252,6 +255,7 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   ],
   "plan-keyword-overlap": ["One page's primary keyword is another page's secondary", "Launch day"],
   "printed-chain": ["A printed address takes more than two redirects", "Launch day"],
+  "price-stored-twice": ["A price is stored in two systems", "Sales & prices"],
 };
 export const CHECK_TEXT: Readonly<
   Record<string, readonly [what: string, why: string, fix: string, tech: string]>
@@ -682,6 +686,12 @@ export const CHECK_TEXT: Readonly<
     "Point the printed address's redirect at the expected page, and make a short link redirect with a 301 rather than show its own page.",
     "The trail's final address against expectedDestination (host without www, path without trailing slash). A 200 with a meta refresh or a location assignment and no redirect is an interstitial",
   ],
+  "price-mismatch": [
+    "The price on your website (Sanity) is different from the price Stripe charges for the same product.",
+    "Customers see one price and pay another, which causes abandoned carts, complaints and refunds.",
+    "Decide which system owns the price, usually checkout, and have the other read from it. Until then, change one of the two so they agree.",
+    "the Sanity product's price against the unit_amount of the matched Stripe product's default_price, both whole minor units (Sanity has no currency and takes Stripe's); compared only when the Stripe currency is known; a default price with no fixed amount (tiered or custom pricing), one that was not read, or a Sanity price with no whole reading in that currency is skipped with a notice; a Stripe product with no default price is stripe-no-price, not a mismatch; the evidence carries both amounts and the rule that matched the pair, and never says which is right",
+  ],
   "cutover-canonical-host": [
     "Of the bare domain and www, exactly one should answer 200 and the other redirect to it permanently (301 or 308). After cutover, both answer, neither does, or the redirect is temporary.",
     "Two live copies split links and ranking between them; a missing one is a dead address for everyone who types it; a temporary redirect tells search engines to keep the old one.",
@@ -1090,6 +1100,18 @@ export const CHECK_TEXT: Readonly<
     "Pass the query string on in the redirect.",
     "Parameters on the printed URL whose names start with a tag prefix (utm_ by default) and are missing from the final address",
   ],
+  "printful-price": [
+    "A synced Printful variant's retail price is different from the price Stripe charges for the product.",
+    "Anything that reads Printful's price (a storefront sync, an invoice, a packing slip) shows customers a different number from the one they paid.",
+    "Decide which price you mean, then change the other so the two agree, or have Printful's retail price follow checkout.",
+    "each synced sync_variants.retail_price of the matched Printful product against the unit_amount of the matched Stripe product's default price, both whole minor units; compared only when the variant's currency is known and equal to Stripe's (a different currency is a notice, never converted); a variant with no retail price, or a Stripe default price with no fixed amount, is skipped with a notice; one finding per product listing up to three differing variants and both match rules",
+  ],
+  "stripe-no-price": [
+    "An active Stripe product that is matched to a product on your website has no default price.",
+    "Anything that asks Stripe for the product's price (a payment link, a checkout session, a price comparison) finds nothing, and the product cannot be bought or compared.",
+    "In Stripe, open the product and set one of its prices as the default, or archive the product if it is no longer sold.",
+    "a matched Stripe product with active true and default_price null, whether or not it has other prices; the evidence says how many prices it has; archived products and Stripe products with no Sanity partner are not reported",
+  ],
   "cutover-certificate-changed": [
     "The https certificate after cutover lacks a name the one before covered (www, a subdomain), or there is no certificate where there was one.",
     "Visitors on the name that dropped off see a security warning instead of the site.",
@@ -1269,6 +1291,12 @@ export const CHECK_TEXT: Readonly<
     "Every hop is a wait on a phone, often on a weak signal, and one broken hop breaks the code.",
     "Redirect the printed address straight to its page.",
     "More than two 3xx in the trail; the trail is in the evidence",
+  ],
+  "price-stored-twice": [
+    "The same price is saved on the Sanity product and on the matched Stripe product, and the two agree today.",
+    "Two copies that agree today are the cause of next month's mismatch: the next price change has to be made twice, and one of them will be forgotten.",
+    "Decide which system owns each price, usually checkout, and have the other read it instead of storing its own copy.",
+    "a Sanity product with a price whose matched Stripe product has a default price with a fixed amount, in a known currency, equal to it; one finding per run listing the count and the first five products; products whose prices differ are price-mismatch, not this",
   ],
 };
 export const SAMPLE_NOUNS: Readonly<Record<string, readonly [one: string, many: string]>> = {

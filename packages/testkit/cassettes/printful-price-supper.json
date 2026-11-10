@@ -1,0 +1,43 @@
+{
+  "interactions": [
+    {
+      "method": "GET",
+      "url": "https://api.printful.com/store/products?offset=0&limit=100",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": "{\"code\":200,\"result\":[{\"id\":6001,\"external_id\":\"supper-apron\",\"name\":\"Supper apron\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/6001.png\",\"is_ignored\":false},{\"id\":6002,\"name\":\"Ember tote bag\",\"variants\":2,\"synced\":2,\"thumbnail_url\":\"https://files.example/thumbs/6002.png\",\"is_ignored\":false},{\"id\":6003,\"external_id\":\"sticker-pack\",\"name\":\"Sticker pack\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/6003.png\",\"is_ignored\":false}],\"paging\":{\"total\":3,\"offset\":0,\"limit\":100}}"
+    },
+    {
+      "method": "GET",
+      "url": "https://api.printful.com/store/products/6001",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":6001,\"external_id\":\"supper-apron\",\"name\":\"Supper apron\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/6001.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":60011,\"external_id\":\"ext-60011\",\"sync_product_id\":6001,\"name\":\"Supper apron / One size\",\"synced\":true,\"variant_id\":11,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"52.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"EM-APRON\"}]}}"
+    },
+    {
+      "method": "GET",
+      "url": "https://api.printful.com/store/products/6002",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":6002,\"name\":\"Ember tote bag\",\"variants\":2,\"synced\":2,\"thumbnail_url\":\"https://files.example/thumbs/6002.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":60021,\"external_id\":\"ext-60021\",\"sync_product_id\":6002,\"name\":\"Ember tote bag / Natural\",\"synced\":true,\"variant_id\":21,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"24.50\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"EM-TOTE-N\"},{\"id\":60022,\"external_id\":\"ext-60022\",\"sync_product_id\":6002,\"name\":\"Ember tote bag / Black\",\"synced\":true,\"variant_id\":22,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"29.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"EM-TOTE-B\"}]}}"
+    },
+    {
+      "method": "GET",
+      "url": "https://api.printful.com/store/products/6003",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":6003,\"external_id\":\"sticker-pack\",\"name\":\"Sticker pack\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/6003.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":60031,\"external_id\":\"ext-60031\",\"sync_product_id\":6003,\"name\":\"Sticker pack / Set of 5\",\"synced\":true,\"variant_id\":31,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"6.00\",\"currency\":\"EUR\",\"is_ignored\":false,\"sku\":\"EM-STICK\"}]}}"
+    }
+  ],
+  "name": "printful-price-supper",
+  "recordedAt": "2026-11-10T00:00:00.000Z",
+  "version": 1
+}

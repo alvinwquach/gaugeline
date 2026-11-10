@@ -120,6 +120,18 @@ describe("retailToMinor: unit", () => {
     expect(retailToMinor(24.5)).toBe(2450);
   });
 
+  it("a variant's currency sets the places: 500 yen is 500 and 1.250 dinars is 1250", () => {
+    expect(retailToMinor("500", "JPY")).toBe(500);
+    expect(retailToMinor("500.5", "JPY")).toBeNull();
+    expect(retailToMinor("1.250", "KWD")).toBe(1250);
+    expect(mapPrintfulVariant({ id: 1, retail_price: "500.00", currency: "JPY" }).retailPrice).toBe(
+      500,
+    );
+    expect(mapPrintfulVariant({ id: 2, retail_price: "48.00", currency: "USD" }).retailPrice).toBe(
+      4800,
+    );
+  });
+
   it("anything that is not a plain price is null, never a guess", () => {
     for (const bad of [undefined, null, "  ", "free", "-1", "24.999", "1e3", {}, [], true, NaN])
       expect(retailToMinor(bad), String(bad)).toBeNull();
