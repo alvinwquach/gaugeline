@@ -25,12 +25,115 @@ $ SANITY_PROJECT_ID=abc123 SANITY_TOKEN=… STRIPE_API_KEY=rk_live_… PRINTFUL_
 
 ## How products are matched
 
-1. By the Stripe or Printful ID saved on the Sanity product, if there is one.
-2. By a sanityId in the Stripe product's metadata, or the Printful product's external ID.
-3. By SKU.
-4. By name, ignoring case and punctuation.
+Sanity (your website) is the anchor. For each Sanity product, in the order Sanity lists them, Gaugeline looks for its partner in Stripe and, separately, in Printful. It tries four rules in this order and stops at the first one that finds a product:
+
+1. By the Stripe or Printful ID saved on the Sanity product (`stripeId`, `printfulId`), if there is one.
+2. By a `sanityId` in the Stripe product's metadata, or the Printful product's external ID, equal to the Sanity `_id`.
+3. By SKU: the Sanity `sku` against a `sku` in the Stripe product's metadata, or against any variant SKU of the Printful product. Case and surrounding spaces are ignored. An empty SKU never matches anything.
+4. By name, ignoring case, accents and punctuation.
+
+Each match records which rule made it, and the two fields that agreed, so a finding can say "matched by SKU" instead of asking you to trust a score. A match by name is the weakest: it is a guess that two products with the same name are one product, and later checks say so when they report on it.
+
+| Rule        | Sanity says                 | The other system says                        | Why they pair                    |
+| ----------- | --------------------------- | -------------------------------------------- | -------------------------------- |
+| Saved ID    | `stripeId: "prod_PopTamal"` | A Stripe product with the ID `prod_PopTamal` | You saved the ID, so it is exact |
+| Metadata ID | `_id: "tamal-box"`          | Stripe metadata `sanityId: "tamal-box"`      | The other side points back       |
+| SKU         | `sku: "LO-TAMAL-12"`        | Stripe metadata `sku: "lo-tamal-12"`         | Same SKU, case ignored           |
+| Name        | `name: "Tamal box"`         | A product named `TAMAL BOX!`                 | Same letters and digits          |
+
+Some things to know when the match is not what you expected:
+
+- **Names are compared as letters and digits.** "Tee", "tee!", " TEE " and "Tée" are the same; "Tee 2" is not. "Blue Tee" and "Tee, blue" are not the same either: Gaugeline does not guess at word order or spelling. The two stay unmatched and are listed as leftovers, so the miss is visible rather than hidden. A name made only of emoji or punctuation never matches by name.
+- **One partner per product.** Once a Stripe or Printful product is paired it cannot be paired again. If two Sanity products have the same name and Stripe has one product by that name, the first Sanity product in order gets it and the second is reported as ambiguous.
+- **Two products with one key.** If two Stripe products carry the same SKU, the first in the order Stripe listed them is used and the second is left unmatched. The match says which other products shared the key, and a later check reports the duplicate.
+- **Ambiguous is not a guess.** Whenever the rules could not point at one product, the result lists it under `ambiguous` with the rule and the IDs involved. Nothing is scored or merged: a product matched to A is never also joined to something that matches A.
+- **Stripe has no SKU field on a product**, so Gaugeline reads a metadata entry named `sku` (any capitalisation). That choice is proposed, not Stripe's: if you keep SKUs somewhere else, save the Stripe ID on the Sanity product instead.
+- **Sanity is not set up?** There are no matches: every Stripe and Printful product is listed as unmatched.
 
 Your products live under a different type or field names? Set `GAUGELINE_PRODUCTS_QUERY` to a GROQ query that returns `_id`, `name`, `price`, `sku`, `stripeId` and `printfulId`. If your prices are stored in cents, set `GAUGELINE_SANITY_PRICE_UNIT=cents`.
+
+### Example: a coach's merch, matched across all three
+
+Ridgeline Strength Coaching sells a logo tee, a training hoodie, a steel water bottle and a gym tote, a pack of coaching sessions and a programme poster. Its freelancer built the site on Next.js and Sanity, with checkout in Stripe and merch fulfilment in Printful, and set up the three over a year, so each product was linked a different way. Against invented recordings of the three systems (`packages/testkit/cassettes/sanity-match-merch.json`, `stripe-match-merch.json` and `printful-merch.json`), the matcher pairs them like this:
+
+<!-- prettier-ignore -->
+```json title=Match result
+{
+  "groups": [
+    {
+      "sanity": "ridgeline-tee",
+      "stripe": {
+        "id": "prod_RidgeTee",
+        "tier": "saved-id"
+      },
+      "printful": {
+        "id": "5001",
+        "tier": "saved-id"
+      }
+    },
+    {
+      "sanity": "ridgeline-hoodie",
+      "stripe": {
+        "id": "prod_RidgeHoodie",
+        "tier": "metadata-id"
+      },
+      "printful": {
+        "id": "5002",
+        "tier": "metadata-id"
+      }
+    },
+    {
+      "sanity": "bottle-steel",
+      "stripe": {
+        "id": "prod_RidgeBottle",
+        "tier": "name"
+      },
+      "printful": {
+        "id": "5003",
+        "tier": "name"
+      }
+    },
+    {
+      "sanity": "gym-tote",
+      "stripe": {
+        "id": "prod_RidgeTote",
+        "tier": "sku"
+      },
+      "printful": {
+        "id": "5004",
+        "tier": "sku"
+      }
+    },
+    {
+      "sanity": "session-pack",
+      "stripe": {
+        "id": "prod_RidgePack",
+        "tier": "metadata-id"
+      },
+      "printful": null
+    },
+    {
+      "sanity": "programme-poster",
+      "stripe": null,
+      "printful": null
+    }
+  ],
+  "unmatchedStripe": [
+    "prod_RidgeVoucher"
+  ],
+  "unmatchedPrintful": [
+    "5005"
+  ],
+  "ambiguous": []
+}
+```
+
+- The **tee** has both IDs saved in Sanity, so both pairs are exact (`saved-id`).
+- The **hoodie** is found from the other side: Stripe's metadata and Printful's external ID both say `ridgeline-hoodie`.
+- The **tote** has no saved IDs, but its SKU `rl-tote` equals Printful's `RL-TOTE` and Stripe's `sku` metadata, case aside.
+- The **water bottle** has nothing but a name. "Steel water bottle" matches "Steel Water Bottle!" in Stripe and in Printful, so both pairs are `name`, the weakest rule, and are said to be low confidence when a later check reports on them.
+- The **session pack** is not sold through Printful, which is fine: it has no Printful partner and nothing is reported against it here.
+- The **programme poster** has no partner anywhere. Printful holds a draft called "Programme poster (draft)", and because the names differ it is listed as unmatched rather than guessed; so is the **gift voucher** that exists only in Stripe. A leftover is not a finding by itself; checks for missing and orphaned products read these lists.
 
 ## Reading Sanity
 
