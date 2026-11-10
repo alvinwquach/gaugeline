@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <id>urn:gaugeline:changelog</id>
+  <title>Gaugeline changelog</title>
+  <subtitle>What changed in each release, and the migration guide for every breaking change.</subtitle>
+  <updated>2026-09-23T00:00:00Z</updated>
+  <author><name>Gaugeline</name></author>
+  <link rel="self" type="application/atom+xml" href="https://gaugeline.dev/changelog.atom"/>
+  <link rel="alternate" type="text/html" href="https://gaugeline.dev/docs/changelog"/>
+  <entry>
+    <id>urn:gaugeline:changelog:0.1.1</id>
+    <title>0.1.1: Launches, delivery and generated content</title>
+    <link rel="alternate" type="text/html" href="https://gaugeline.dev/docs/changelog#release-0-1-1"/>
+    <updated>2026-09-23T00:00:00Z</updated>
+    <published>2026-09-23T00:00:00Z</published>
+    <content type="html">&lt;ul&gt;&lt;li&gt;gaugeline plan: check a built site against the sitemap plan — duplicate addresses, slugs that misspell their own heading, pages competing for one keyword, title and heading drift, the 301 map, and live pages with no destination.&lt;/li&gt;&lt;li&gt;Paid downloads: a file people pay for on a public asset address, and a download route that hands the file to anyone with no session.&lt;/li&gt;&lt;li&gt;Generated content: --totals compares a stated number with the sum of its parts, and --refs finds documents linking to things nobody published.&lt;/li&gt;&lt;li&gt;Pagination a crawler can follow, and pages where later pages return the same content as the first.&lt;/li&gt;&lt;li&gt;Unpublished work reaching the live page: draft ids in the payload, or a drafts perspective shipped to the browser.&lt;/li&gt;&lt;li&gt;Page weight, split into HTML, scripts and images, so you know which one to fix.&lt;/li&gt;&lt;li&gt;Fields fetched but never used, in GROQ and in GraphQL.&lt;/li&gt;&lt;li&gt;A price stored in two systems, flagged before they disagree.&lt;/li&gt;&lt;/ul&gt;</content>
+  </entry>
+</feed>

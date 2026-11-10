@@ -1,11 +1,15 @@
 /**
- * packages/cli/CHANGELOG.md -> docs/changelog.data.json and docs/changelog.md.
- *   pnpm docs:changelog            write both
+ * packages/cli/CHANGELOG.md -> docs/changelog.data.json, docs/changelog.md and the Atom feed
+ * docs/public/changelog.atom (absolute links use the docs address: DOCS_URL, else docs/site.ts).
+ *   pnpm docs:changelog            write all three
  *   pnpm docs:changelog --check    compare only; exit 1 on a difference
  */
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { docsSiteUrl } from "../docs/site.js";
+import { renderAtom } from "./lib/atom.js";
+import { listMigrations } from "./lib/migrations.js";
 import {
   mergeEntries,
   parseChangelog,
@@ -42,7 +46,8 @@ const generated: ChangelogEntry[] = existsSync(changelogPath)
 const entries = mergeEntries(generated, backfill);
 const files: Record<string, string> = {
   "docs/changelog.data.json": `${JSON.stringify(entries, null, 2)}\n`,
-  "docs/changelog.md": renderChangelogPage(entries),
+  "docs/changelog.md": renderChangelogPage(entries, { migrations: listMigrations(root) }),
+  "docs/public/changelog.atom": renderAtom(entries, { site: docsSiteUrl(process.env) }),
 };
 if (process.argv.includes("--check")) {
   const stale = Object.entries(files).filter(
@@ -58,5 +63,7 @@ if (process.argv.includes("--check")) {
   }
 } else {
   for (const [f, text] of Object.entries(files)) writeFileSync(`${root}${f}`, text);
-  process.stdout.write("docs:changelog: wrote docs/changelog.data.json and docs/changelog.md\n");
+  process.stdout.write(
+    "docs:changelog: wrote docs/changelog.data.json, docs/changelog.md and docs/public/changelog.atom\n",
+  );
 }

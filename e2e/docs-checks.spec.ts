@@ -51,3 +51,26 @@ test.describe("with JavaScript disabled", () => {
     await expect(page.locator("details.check")).toHaveCount(CHECK_COUNT);
   });
 });
+
+test("a released check shows Since v0.1.0 and the badge is in the heading row and the details", async ({
+  page,
+}) => {
+  await page.goto("/docs/checks?id=canonical-elsewhere");
+  const check = page.locator("details#canonical-elsewhere");
+  await expect(check.locator("summary .since")).toHaveText("Since v0.1.0");
+  await expect(check.locator("summary .since")).toHaveAttribute("data-released", "true");
+  await expect(check.getByText("Since v0.1.0").last()).toBeVisible();
+});
+
+test("every check has a Since badge, and an unreleased one says it is the next version", async ({
+  page,
+}) => {
+  await page.goto("/docs/checks");
+  await expect(page.locator("details.check .since")).toHaveCount(CHECK_COUNT);
+  const pending = page.locator('details.check .since[data-released="false"]');
+  // Once a release has stamped every check there is no unreleased one to look at.
+  test.skip((await pending.count()) === 0, "every check is released");
+  const unreleased = pending.first();
+  await expect(unreleased).toContainText("(next)");
+  await expect(unreleased).toHaveAttribute("title", /Not released yet/);
+});

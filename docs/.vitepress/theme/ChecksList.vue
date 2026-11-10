@@ -13,6 +13,17 @@ interface Entry {
   tech: string;
 }
 
+/** Set at build time by docs/.vitepress/config.ts: released checks' versions and the next version. */
+declare const __CHECK_SINCE__: { lock: Record<string, string>; next: string };
+
+/** "Since vX": the release that first shipped the check, or the next version while it is unreleased. */
+function since(id: string): { version: string; released: boolean } {
+  const own = __CHECK_SINCE__.lock[id];
+  return own === undefined
+    ? { version: __CHECK_SINCE__.next, released: false }
+    : { version: own, released: true };
+}
+
 const LEVEL: Record<Entry["severity"], string> = {
   high: "Fix this first",
   medium: "Fix soon",
@@ -73,6 +84,18 @@ onMounted(async () => {
       <summary>
         <span :class="['level', c.severity]">{{ LEVEL[c.severity] }}</span>
         {{ c.title }} <code>{{ c.id }}</code>
+        <span
+          class="since"
+          :data-since="since(c.id).version"
+          :data-released="since(c.id).released"
+          :title="
+            since(c.id).released
+              ? 'The first release that had this check.'
+              : 'Not released yet: this is the next version.'
+          "
+          >Since v{{ since(c.id).version
+          }}<template v-if="!since(c.id).released"> (next)</template></span
+        >
       </summary>
       <p><strong>What it catches:</strong> {{ c.what }}</p>
       <p><strong>Why it matters:</strong> {{ c.why }}</p>
@@ -80,7 +103,10 @@ onMounted(async () => {
       <p>
         <strong>Technical line:</strong> <code>{{ c.tech }}</code>
       </p>
-      <p class="area">Area: {{ c.area }}</p>
+      <p class="area">
+        Area: {{ c.area }} · Since v{{ since(c.id).version
+        }}<template v-if="!since(c.id).released"> (next release)</template>
+      </p>
     </details>
   </div>
 </template>
@@ -114,6 +140,18 @@ onMounted(async () => {
   background: var(--vp-c-warning-soft);
 }
 .level.low {
+  background: var(--vp-c-default-soft);
+}
+.since {
+  font-size: 0.8em;
+  font-weight: 400;
+  margin-left: 0.5em;
+  padding: 0 0.4em;
+  border-radius: 4px;
+  background: var(--vp-c-brand-soft);
+  white-space: nowrap;
+}
+.since[data-released="false"] {
   background: var(--vp-c-default-soft);
 }
 .checks-unknown {

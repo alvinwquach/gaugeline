@@ -8,8 +8,8 @@ merged once CI is green on Node 22 and 24 (18.17, 20 and 22 until S00).
 
 Written by the orchestrating session when its context ran long (10 Nov 2026). Resume from this file alone.
 
-- Last merged branch: G22e (`04/app-ads-view`, PR #107; #108 was a test fix). In flight: G22f (`04/app-sanity-placeholders`, PR #109), the last phase-04 app branch; merge it when every check is green.
-- NEXT branch: R-01 (`docs/release-requirements`: Since vX badges, the migration-guide test starting with Node 22+, the RSS/Atom changelog feed), then phase 05 (G23, N15, G23a, N09, ...) and the rest in table order. The table is in the owner's build order; G38 is superseded by C-00.
+- Last merged branch: G22f (`04/app-sanity-placeholders`, PR #109), which closed phase 04. In flight: R-01 (`docs/release-requirements`, the docs requirements: Since badges, migration guides, the changelog feed); merge it when every check is green.
+- NEXT branch: G23 (`05/products-and-prices`, the first todo row after R-01), then N15, G23a, N09, ... in table order. The table is in the owner's build order; G38 is superseded by C-00.
 - Resume with `git checkout main && git pull`; use the newest spec file under /root/.claude/uploads/ (the owner re-uploads it); the standing orders, adapter rules and "Method that works" are in this file. Per branch: sync the work branch (`git checkout -B claude/relaxed-brown-7yxex4 origin/main`, then `git merge -s ours origin/claude/relaxed-brown-7yxex4`, then a plain push), one fresh agent per branch with a brief, subscribe to the PR, merge when every check is green, fix CI failures on the branch first.
 - Open questions for the owner (nothing blocks the build): (1) `open --ads` exits 2 until G24 merges: acceptable in a release, or hold the release until G24? (2) `--save-requests`: confirm the 1000-request cap and the 0600/Windows wording. (3) Opus-marked branches built on Sonnet are listed in "Built on Sonnet, review" (C-00 is pending there).
 - CI lessons (all in the agent brief): wait for state that effects write (hash, aria-current) with waitFor; hold test runs open with a fixture `delayMs`, not speed; run the whole `pnpm test` (including scripts/) on Node 22 and 24; the Windows runner is slow, so whole-repo checks need explicit test timeouts; a root vitest.config.ts change is exercised by scripts/__tests__/new-check.test.ts in a repo copy.
@@ -58,6 +58,11 @@ Written by the orchestrating session when its context ran long (10 Nov 2026). Re
   generated table (a flag description) breaks the Docs build.
 - GitHub push protection rejects key-shaped strings (a planted `sk_live_...` in a test): build them
   at run time with concatenation, as `model.test.ts` does.
+- Release docs (R-01): a breaking change (major bump, or a changeset line starting `BREAKING:`) needs a
+  `Migration: <slug>` line and `docs/migrations/<slug>.md` (a test fails without it; add the page to the
+  Migrations group in docs/nav.ts). A new check needs nothing for "Since": the checks page shows the next
+  version until `pnpm version` stamps it in `docs/check-since.lock.json`. `pnpm docs:changelog` also writes
+  `docs/public/changelog.atom`; commit it. See docs/contributing/migration-guides.md.
 - Things that need the owner's accounts are built against env vars or recorded responses and left
   switched off. They are listed under "Owner actions" below.
 
@@ -96,6 +101,10 @@ Written by the orchestrating session when its context ran long (10 Nov 2026). Re
   Make the `pr-body` check required in branch protection. Until then on-merge does nothing.
 - **gaugeline-free (G14b)**: publish needs the `gaugeline-free` npm name and the same `NPM_TOKEN`;
   the changesets fixed group versions it with `gaugeline`.
+- **Docs address (R-01)**: the changelog feed (`docs/public/changelog.atom`) needs absolute links. It uses
+  `https://gaugeline.dev` (the host in the JSON Schema ids) from `docs/site.ts`, or the repository variable
+  `DOCS_URL` when set (the Docs workflow regenerates the feed with it). Confirm the address. Also: the
+  hand-backfilled 0.1.1 is the only dated release, so the feed has one entry until 0.2.0 is tagged.
 - **License**: `LICENSE` is MIT, "Copyright (c) 2026 Gaugeline contributors", matching the `license`
   field set since G01. Confirm the licence and the copyright holder.
 
