@@ -6,7 +6,13 @@ import {
   extractGroq,
   freezeEnv,
   readMutations,
+  queryFieldAbsent,
+  queryFieldPartial,
+  queryNoDraftsFilter,
+  queryTypeEmpty,
   readSchemaFile,
+  serializeBaseline,
+  toBaseline,
   SANITY_DATASET,
   SANITY_PROJECT_ID,
   SANITY_TOKEN,
@@ -14,14 +20,17 @@ import {
   type MutationShape,
   type MutationUnreadable,
   type Outcome,
+  type QueryBaseline,
   type QueryShape,
   type Unreadable,
 } from "@gaugeline/core";
 import { resolve } from "node:path";
+import { compare, readBaselineFile, withCwdFiles } from "./query-baseline.js";
 import { runGenerated } from "./query-generated.js";
 import { runGraphql } from "./query-graphql.js";
 import { runPage } from "./query-page.js";
 import { schemaPath } from "./query-schema.js";
+import { inspectBaselineFile, writeBaselineFile, type ScaffoldFs } from "./scaffold-write.js";
 import { runSuggest } from "./query-suggest.js";
 import { runUnused } from "./query-unused.js";
 import { formatTerminal } from "./reporter.js";
@@ -114,6 +123,8 @@ interface Deps {
   now?: Date;
   fetcher?: FetcherOptions;
   color?: boolean;
+  /** Tests: the file system the baseline is written with. */
+  fs?: ScaffoldFs;
 }
 
 /**
@@ -128,6 +139,10 @@ interface Deps {
  * With --mutations (it needs no SANITY_PROJECT_ID) it also reads the writes in the code, patches,
  * creates and transactions, and checks their shapes against the schema file (--schema, default
  * ./schema.json). The mutations are parsed and never sent: this command builds no request for one.
+ * With --save <file> (after the run) the gaps it found are written to a baseline file of names only,
+ * through the safe writer in scaffold-write.ts; with --against <file> the run prints only what a
+ * change created and closed since that file was saved (a Set of keys, see core's baseline.ts), and
+ * with --ci exits 1 only for a created gap that is high. Both need SANITY_PROJECT_ID or --mutations.
  * Exit 0, 1 with --ci and a fix-first finding, or 2 (a ConfigError) when the folder does not
  * exist, TypeScript is missing or the dataset cannot be read.
  */
@@ -142,6 +157,8 @@ export async function runQuery(
     page?: { type: string; out: string; force: boolean };
     unused?: boolean;
     generated?: { totals: readonly string[]; refs: readonly string[] };
+    save?: { file: string; force: boolean };
+    against?: { file: string };
     schema?: string;
     allowPrivate?: boolean;
     quiet?: boolean;
@@ -222,6 +239,25 @@ export async function runQuery(
         hint: "Set SANITY_PROJECT_ID (and SANITY_TOKEN, with the Viewer role, for a private dataset), or leave --dupes out to list the queries.",
       },
     );
+  const baselineFlag =
+    args.save !== undefined ? "--save" : args.against !== undefined ? "--against" : "";
+  if (baselineFlag !== "" && !asks && args.mutations !== true)
+    throw new ConfigError(
+      `gaugeline query ${baselineFlag} keeps the gaps your queries have against your content, and they need SANITY_PROJECT_ID or --mutations.`,
+      {
+        hint: "Set SANITY_PROJECT_ID (and SANITY_TOKEN, with the Viewer role, for a private dataset), or add --mutations to keep the gaps in your writes.",
+      },
+    );
+  // The baseline is read, or its target checked, before anything is asked or read.
+  const before: QueryBaseline | undefined = args.against
+    ? await readBaselineFile(deps.cwd, args.against.file)
+    : undefined;
+  if (args.save)
+    await inspectBaselineFile(args.save.file, {
+      force: args.save.force,
+      cwd: deps.cwd,
+      ...(deps.fs ? { fs: deps.fs } : {}),
+    });
   // The schema is read first: a missing file stops the command before anything else is done.
   const schema =
     args.mutations === true
@@ -284,6 +320,41 @@ export async function runQuery(
     io.stdout.write(`${JSON.stringify(run.result, null, 2)}\n`);
     return outcome;
   }
+  const kept = withCwdFiles(deps.cwd, run?.result.findings ?? []);
+  if (before !== undefined && args.against) {
+    // The checks this run made: one that found nothing is in `passed`, one that found something has a finding.
+    const ran = new Set([
+      ...(run?.result.passed ?? []),
+      ...kept.map((f) => f.checkId),
+      ...(run?.result.couldNotCheck.map((c) => c.id) ?? []),
+      // No query found at all: the query checks ran and found nothing, so what was saved is closed.
+      ...(run === undefined && asks
+        ? [queryFieldAbsent, queryTypeEmpty, queryFieldPartial, queryNoDraftsFilter].map(
+            (c) => c.id,
+          )
+        : []),
+    ]);
+    const compared = compare({ name: args.against.file, before, findings: kept, ran });
+    io.stdout.write(`${compared.lines.join("\n")}\n`);
+    return { kind: "ran", highFindings: compared.createdHigh, drift: false };
+  }
+  let saved: string | undefined;
+  if (args.save) {
+    if (total === 0 && !mutations)
+      throw new ConfigError(
+        `No GROQ queries were found under ${args.dir}, so there is nothing to save as a baseline.`,
+        {
+          hint: "Check the folder: it reads groq`...` templates and defineQuery(...) calls in .ts, .tsx, .js, .jsx and .mjs files.",
+        },
+      );
+    const baseline = toBaseline(kept, now);
+    await writeBaselineFile(args.save.file, serializeBaseline(baseline), {
+      force: args.save.force,
+      cwd: deps.cwd,
+      ...(deps.fs ? { fs: deps.fs } : {}),
+    });
+    saved = `Saved the baseline to ${args.save.file}: ${plural(baseline.gaps.length, "gap")}. It holds check ids, type names, field names and file paths, and no token and no content. Make the change, then run: gaugeline query ${args.dir} --against ${args.save.file}`;
+  }
 
   const out: string[] = [];
   if (total === 0 && !mutations) {
@@ -334,6 +405,7 @@ export async function runQuery(
       );
     }
   }
+  if (saved !== undefined) out.push("", saved);
   io.stdout.write(`${out.join("\n")}\n`);
   return outcome;
 }

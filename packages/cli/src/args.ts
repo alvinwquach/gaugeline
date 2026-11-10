@@ -180,6 +180,10 @@ export type ParsedArgs =
       page?: { type: string; out: string; force: boolean };
       /** --unused: report the fields the queries fetch and no code reads. Reads source only; no request. */
       unused?: boolean;
+      /** --save <file>: write today's gaps to a baseline file after the run; `force` replaces a file that exists. */
+      save?: { file: string; force: boolean };
+      /** --against <file>: list the gaps created since that baseline, and the ones it closed. */
+      against?: { file: string };
       /** --totals "type:stated=parts" and --refs "type:path", as typed: content that has to add up. Parsed when the command runs. */
       generated?: { totals: string[]; refs: string[] };
       /** --schema: the schema file for --mutations, --suggest or --page (default ./schema.json), or for --graphql (SDL or introspection JSON). */
@@ -646,6 +650,52 @@ export function parseCliArgs(
     const totals = Array.isArray(values.totals) ? values.totals.map(String) : [];
     const refs = Array.isArray(values.refs) ? values.refs.map(String) : [];
     const generated = totals.length + refs.length > 0;
+    const save = typeof values.save === "string";
+    const against = typeof values.against === "string";
+    if (save && against)
+      return {
+        kind: "error",
+        message: "--save and --against cannot be used together.",
+        hint: "Save the baseline in one run (gaugeline query ./src --save before.json), make the change, then compare in another (gaugeline query ./src --against before.json).",
+        verbose,
+      };
+    if (save || against) {
+      const flag = save ? "--save" : "--against";
+      const file = String(save ? values.save : values.against).trim();
+      if (file === "")
+        return {
+          kind: "error",
+          message: `${flag} needs the name of a file: gaugeline query ./src ${flag} before.json`,
+          hint: "The file holds check ids, type names, field names and file paths, and is made by --save.",
+          verbose,
+        };
+      const others = [
+        ["--graphql", graphql],
+        ["--suggest", suggest],
+        ["--page", page],
+        ["--unused", unused],
+        ["--dupes", values.dupes === true],
+        ["--json", values.json === true],
+        ["--totals", totals.length > 0],
+        ["--refs", refs.length > 0],
+      ]
+        .filter(([, given]) => given === true)
+        .map(([name]) => String(name));
+      if (others.length > 0)
+        return {
+          kind: "error",
+          message: `${flag} works on the plain query run (with --mutations): it cannot be combined with ${others.join(", ")}.`,
+          hint: "A baseline keeps the gaps your code has against your content, so a later run can show only the new ones. Run the others separately.",
+          verbose,
+        };
+      if (against && values.force === true)
+        return {
+          kind: "error",
+          message: "--force is for --page and --save: --against only reads the file.",
+          hint: "--force lets --save replace a baseline that already exists.",
+          verbose,
+        };
+    }
     if (
       generated &&
       (suggest || page || unused || graphql || values.dupes === true || values.mutations === true)
@@ -657,12 +707,20 @@ export function parseCliArgs(
         hint: 'They ask the dataset one question for each rule and print findings. Run the others separately: gaugeline query ./src, then gaugeline query ./src --refs "mealPlan:meals".',
         verbose,
       };
-    if ((typeof values.out === "string" || values.force === true) && !page)
+    if (typeof values.out === "string" && !page)
       return {
         kind: "error",
         message:
-          "--out and --force are for --page: gaugeline query --page --type resource --out ./src/app/resource/[slug]",
+          "--out is for --page: gaugeline query --page --type resource --out ./src/app/resource/[slug]",
         hint: "--page writes three files into the folder --out names; --force lets it replace files that are already there.",
+        verbose,
+      };
+    if (values.force === true && !page && !save)
+      return {
+        kind: "error",
+        message:
+          "--force is for --page and --save: gaugeline query --page --type resource --out ./src/app/resource/[slug]",
+        hint: "--page and --save write files; --force lets them replace a file that is already there.",
         verbose,
       };
     if (typeof values.type === "string" && !suggest && !page)
@@ -875,6 +933,8 @@ export function parseCliArgs(
       dupes: values.dupes === true,
       mutations: values.mutations === true,
       ...(graphql ? { graphql: endpoint === undefined ? {} : { endpoint } } : {}),
+      ...(save ? { save: { file: String(values.save).trim(), force: values.force === true } } : {}),
+      ...(against ? { against: { file: String(values.against).trim() } } : {}),
       ...(typeof values.schema === "string" ? { schema: values.schema } : {}),
       allowPrivate: values["allow-private"] === true,
       verbose,

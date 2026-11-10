@@ -144,6 +144,7 @@
       "version"
     ],
     "query": [
+      "against",
       "allow-private",
       "ci",
       "dupes",
@@ -156,6 +157,7 @@
       "page",
       "quiet",
       "refs",
+      "save",
       "schema",
       "suggest",
       "totals",
