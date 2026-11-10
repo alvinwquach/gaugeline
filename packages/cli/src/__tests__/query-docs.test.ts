@@ -1,4 +1,4 @@
-import { copyFileSync, mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
+import { copyFileSync, cpSync, mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Readable } from "node:stream";
@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import type { Transport } from "@gaugeline/core";
 import {
+  COPPERHILL_BEFORE_RENAME,
   COPPERHILL_COUNTS,
   FENNEL_MEALS,
   NORTHFIELD_CONTENT,
@@ -285,6 +286,87 @@ describe("docs/query-check.md: the route it scaffolds", () => {
       "Every path is printed.",
       "runs no git command",
       "Northfield Coaching",
+    ])
+      expect(page, word).toContain(word);
+  });
+});
+
+describe("docs/query-check.md: before a restructure", () => {
+  const SAVE = "$ SANITY_PROJECT_ID=cprhl1b4 npx gaugeline query ./src --save before.json";
+  const AGAINST = "$ SANITY_PROJECT_ID=cprhl1b4 npx gaugeline query ./src --against before.json";
+
+  async function run(cwd: string, argv: string[], dataset: typeof COPPERHILL_COUNTS) {
+    const out: string[] = [];
+    const err: string[] = [];
+    const code = await main(
+      argv,
+      {
+        stdout: { write: (s) => out.push(s) },
+        stderr: { write: (s) => err.push(s) },
+        env: { SANITY_PROJECT_ID: "cprhl1b4", SANITY_DATASET: "production" },
+      },
+      {
+        cwd,
+        now: () => new Date("2026-11-10T12:00:00Z"),
+        fetcher: { transport: sanityCountsTransport(dataset), timeoutMs: 5000 },
+      },
+    );
+    return { code, out: out.join("").trimEnd(), err: err.join("") };
+  }
+
+  it("the three steps print what the page says, and the file holds what the page shows", async () => {
+    const all = fences();
+    const save = all.findIndex((f) => f.body === SAVE);
+    const against = all.findIndex((f) => f.body === AGAINST);
+    expect(save, "the --save example is on the page").toBeGreaterThanOrEqual(0);
+    expect(against, "the --against example is on the page").toBeGreaterThanOrEqual(0);
+    expect(all[save + 1]?.info).toMatch(/title="?Output/);
+    expect(all[against + 1]?.info).toMatch(/title="?Output/);
+    const dir = realpathSync(mkdtempSync(join(tmpdir(), "gaugeline-docs-baseline-")));
+    try {
+      cpSync(repo, dir, { recursive: true });
+      const first = await run(
+        dir,
+        ["query", "./src", "--save", "before.json"],
+        COPPERHILL_BEFORE_RENAME,
+      );
+      expect(first.code).toBe(EXIT.ok);
+      expect(first.out.endsWith(all[save + 1]?.body ?? "<missing>")).toBe(true);
+      const third = await run(
+        dir,
+        ["query", "./src", "--against", "before.json"],
+        COPPERHILL_COUNTS,
+      );
+      expect(third.code).toBe(EXIT.ok);
+      expect(third.out).toBe(all[against + 1]?.body);
+      const shown = all.find((f) => /title="?before\.json/.test(f.info));
+      expect(shown, "the file is shown on the page").toBeDefined();
+      const saved = JSON.parse(readFileSync(join(dir, "before.json"), "utf8")) as {
+        gaps: unknown[];
+      };
+      expect(JSON.parse(shown?.body ?? "null")).toEqual({
+        ...saved,
+        gaps: saved.gaps.slice(0, 1),
+      });
+    } finally {
+      rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+    }
+  });
+
+  it("the page names the flags, the file, what is left out of the key, and the refusals", () => {
+    for (const word of [
+      "--save before.json",
+      "--against before.json",
+      "Closed by this change",
+      "Names, and nothing else",
+      "no line number and no count",
+      "two identical gaps in one file count as one",
+      "Looks like a renamed file",
+      "`--force`",
+      "A baseline of a different schema number is refused",
+      "exit 2",
+      "--ci",
+      "Copperhill Bakery",
     ])
       expect(page, word).toContain(word);
   });
