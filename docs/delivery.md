@@ -8,6 +8,62 @@ A digital product has three handovers: the payment, the file, and the email. Eac
 
 Asset stores are world-readable by design. That's fine for a brochure and a problem the day the file is something a customer bought. If a page sells something and links straight to an asset URL, it's flagged.
 
+Two checks look at the same link. They read the page's HTML only, and they never request the file: the link on the page is the evidence. Fetching a file that is already public proves nothing more, and it would put a customer's paid product on the machine running the check.
+
+| Check                 | Id                  | Level          | When                                                                                         |
+| --------------------- | ------------------- | -------------- | -------------------------------------------------------------------------------------------- |
+| A paid file is public | `paid-file-public`  | Fix this first | The page shows a price and links straight to a file on a public asset store.                 |
+| A file is public      | `asset-file-public` | Worth knowing  | The page links to such a file and shows no price, or the link says terms, privacy or policy. |
+
+- **What counts as a file.** A link to a `pdf`, `zip`, `epub`, `mp3`, `mp4`, `docx` or `xlsx` on a public asset store: Sanity's file CDN (`cdn.sanity.io/files/...`), Amazon S3, Google Cloud Storage and Firebase Storage, Azure blob storage, Cloudflare R2 (`*.r2.dev`), DigitalOcean Spaces, Backblaze B2, Supabase public storage, Cloudinary uploads, Vercel Blob, UploadThing and Uploadcare. Images are left out, and so is a file on your own domain: that is a download route, which the next section looks at. The list of file types and stores is proposed, not taken from any one vendor's page.
+- **What counts as a price.** A currency symbol or code next to a number in the text a visitor can read ("$48", "48 USD", or a pound, euro or rupee sign before or after a number), or an Offer with a price above zero in the page's structured data. A phone number, a year and "$0" are not prices.
+- **What is printed.** The file's host and path, and the words of the link. The query string is dropped, because it may carry a signature.
+- **A signed address passes.** A link with both a signature and an expiry (CloudFront's `Expires` and `Signature`, S3's `X-Amz-Expires` and `X-Amz-Signature`, Google's `X-Goog-Expires` and `X-Goog-Signature`, Azure's `se` and `sig`) is not a world-readable address, so it is not flagged. Gaugeline doesn't read the clock: it can't tell you the expiry has passed.
+- **Terms and policies are low.** A price on the page and a `terms.pdf` in the footer of every page is normal. When the link's words are terms, privacy or policy, the finding is `asset-file-public`, not `paid-file-public`.
+- **A sample next to a price is still flagged.** The finding shows the link's words, so you can tell a free sample from the product in a second.
+
+### Example: a running coach's plan
+
+Tideline Coaching is a one-person business on a Sanity and Next.js site. The home page sells a 7-day plan for $48. The "Download" link points at the PDF in Sanity's file CDN, the footer links the terms of sale from the same CDN, and "Buy now" is a div that a script turns into a checkout (more on that below). Each check that passed also prints a line, left out here.
+
+<!-- fixture: paid-downloads -->
+
+```sh title=Terminal
+$ npx gaugeline tideline-coaching.example
+```
+
+```text title=Output
+✗ A file people pay for is on a public address
+    "Download the 7-day plan (PDF)" links to cdn.sanity.io/files/k3x9q2/production/7e1c5a0b9d3f4a6b8c2d-7-day-plan.pdf, a public asset address, and the page shows a price.
+! Nothing on the page can be linked to buy
+    The page shows a price and 1 buy button, and none can be linked to: "Buy now" (an element with a click handler).
+· A downloadable file is on a public asset address
+    Links to a downloadable file on a public asset address: "Terms of sale" (cdn.sanity.io/files/k3x9q2/production/c0ffee01234567890abc-terms-of-sale.pdf).
+? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
+    Mail records are read from DNS only with --dns. Rerun with --dns to check them.
+
+3 to look at, 1 to fix first.
+```
+
+The plan is on a public address: anyone who has it can read it from the page's source without paying. The terms PDF is also public and that is fine, so it is a note. Fix: serve the plan from a route that checks the purchase and hands back a short-lived signed link (the callout at the end of this page).
+
+### Example: a taproom's menu
+
+Marlin Street Taproom has a press page with its brochure and a food menu as PDFs in the CDN, and no prices on the page. That is one note listing both files, and nothing to fix today:
+
+<!-- prettier-ignore -->
+```html title=Press page
+<h1>Press</h1>
+<a href="https://cdn.sanity.io/files/m7t2d9/production/5b1e9c3d70a4f2e86c10-taproom-brochure.pdf">Download our brochure</a>
+<a href="https://cdn.sanity.io/files/m7t2d9/production/e04a7d12b9c35f60a8d1-food-menu.pdf?dl=menu.pdf">Food menu</a>
+```
+
+```text title=Press page findings
+asset-file-public: Links to downloadable files on public asset addresses: "Download our brochure" (cdn.sanity.io/files/m7t2d9/production/5b1e9c3d70a4f2e86c10-taproom-brochure.pdf), "Food menu" (cdn.sanity.io/files/m7t2d9/production/e04a7d12b9c35f60a8d1-food-menu.pdf).
+```
+
+The day the taproom sells a ticketed tasting pack as a PDF from the same place, the same page would be `paid-file-public`. The test `packages/core/src/checks/__tests__/paid-files-docs.test.ts` builds the page above and asserts these lines.
+
 ## A download route that hands the file to anyone
 
 Gaugeline asks your download route for the file with no session and no purchase. A route that protects something should redirect to a login or refuse. If it returns the file, everyone with the address gets it.
@@ -20,6 +76,29 @@ Gaugeline asks your download route for the file with no session and no purchase.
 ## Nothing on the page can be linked to buy
 
 A price and a button with no address behind it means nobody can share a link to the purchase, search engines see no offer, and a script failure turns the page into a brochure.
+
+The check is `checkout-js-only` (Fix soon). It fires when a page shows a price and has at least one buy button, and none of its buy buttons can be linked to:
+
+- **A buy button** is a button or a link whose words are buy, add to cart (or bag, basket), checkout, get it, purchase or download now. The words are English, and a text over 60 characters is a paragraph, not a button.
+- **It can be linked to** when it is an anchor with an address, or a submit button inside a form with an action. An anchor with `href="#"`, an empty `href` or a `javascript:` address counts as no address. A `div` or `span` with a click handler, a `role="button"` element and a button outside a form never can.
+- **One is enough.** If any buy button on the page is linkable, or the page links to a hosted payment page (a Stripe payment link, a Square link, PayPal.me) anywhere, there is something to link to and nothing is flagged.
+- **Without running scripts.** Gaugeline reads the page as a crawler gets it. A buy button drawn by JavaScript after the page loads isn't in the HTML, so it isn't seen, and that page isn't flagged either.
+
+### Example: a beach class booking
+
+Tideline Coaching also sells places in a Saturday beach class for $15. The "Add to cart" on the class page is a styled `div` that a script wires up to a checkout:
+
+```html title=Class page
+<h2>Beach class</h2>
+<p>Saturday at low tide, six places. $15 a place.</p>
+<div class="btn" onclick="openCheckout('beach-class')">Add to cart</div>
+```
+
+```text title=Class page findings
+checkout-js-only: The page shows a price and 1 buy button, and none can be linked to: "Add to cart" (an element with a click handler).
+```
+
+Fix: make the button a link to your checkout or to a Stripe payment link, or a submit button in a form that posts to your cart, and let the script improve it from there. The test `packages/core/src/checks/__tests__/paid-files-docs.test.ts` builds the page above and asserts this line.
 
 ::: info
 The fix is the same in every case: check the purchase in the route, then hand back a short-lived signed link. Never email the asset address.

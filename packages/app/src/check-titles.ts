@@ -70,6 +70,7 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "page-lost-content": ["A page lost content since the last run", "Visitors"],
   "pagination-same-content": ["Page 2 of this list shows page 1 again", "Search & sharing"],
   "pagination-unreachable": ["Page 2 of this list has no address", "Search & sharing"],
+  "paid-file-public": ["A file people pay for is on a public address", "Sales & prices"],
   "payment-handle-mismatch": ["A payment handle differs from yours", "Sales & prices"],
   "payment-handle-unknown": ["A payment detail you didn't set is on the site", "Sales & prices"],
   "payment-link-dead": ["A payment link no longer works", "Sales & prices"],
@@ -131,6 +132,7 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "cutover-canonical-host": ["The bare domain and www don't settle on one address", "Launch day"],
   "cutover-mail-changed": ["The domain's mail records changed at cutover", "Security & email"],
   "app-smart-banner-mismatch": ["The iPhone app banner promotes a different app", "Visitors"],
+  "checkout-js-only": ["Nothing on the page can be linked to buy", "Sales & prices"],
   "crm-field-names": ["A form sends fields the CRM doesn't have", "Leads"],
   "crm-late-tracking": ["Tracking starts after the form loads", "Leads"],
   "crm-lead-source": ["New leads are arriving without a source", "Leads"],
@@ -250,6 +252,7 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "cutover-records-changed": ["The domain's DNS records changed at cutover", "Security & email"],
   "ai-crawlers-blocked": ["Some AI assistants can't read your site", "Search & sharing"],
   "app-name-mismatch": ["The store lists the app under a different name", "Visitors"],
+  "asset-file-public": ["A downloadable file is on a public asset address", "Sales & prices"],
   blocked: ["The site wouldn't let Gaugeline read the page", "Search & sharing"],
   "canonical-missing": ["The page doesn't say which address is the real one", "Search & sharing"],
   "data-no-stamp": ["A page of changing numbers does not say when they were updated", "Visitors"],
@@ -574,6 +577,12 @@ export const CHECK_TEXT: Readonly<
     'Give the control a real link (<a href="/blog?page=2">) and add <link rel="next">, keeping the JavaScript on top if you like.',
     "Read from the HTML as sent: no link rel=next, no a[rel=next], and no same-site link differing from this address only by ?page=N or /page/N, while a button, [role=button] or href-less a says Next or Load more, or a pagination element shows 2. Infinite scroll with no control at all can't be seen and isn't reported",
   ],
+  "paid-file-public": [
+    "A page that shows a price links straight to a file (pdf, zip, epub, mp3, mp4, docx or xlsx) on a public asset store.",
+    "Asset stores are world-readable by design. Anyone who has the address, or finds it in the page's source or a search engine, can download the file without paying.",
+    "Check the purchase in your own download route, then hand back a short-lived signed link. Never put the asset address in the page or in an email.",
+    "a[href] to a file with a sold file type (pdf, zip, epub, mp3, mp4, docx, xlsx) on a public asset store host (Sanity file CDN, S3, Google Cloud Storage, Azure blob, R2, Supabase public, Cloudinary and similar) on a page with a price (a currency next to a number in the visible text, or an Offer price in the structured data); the file is never requested; the query string is not printed; a signed address with an expiry is a pass; a link whose text is terms, privacy or policy is asset-file-public instead",
+  ],
   "payment-handle-mismatch": [
     "A page shows a Zelle, Cash App, Venmo or PayPal handle that is not the one you set for that service.",
     "Customers who copy it send their money to someone else, and nobody finds out until you ask where the money went.",
@@ -813,6 +822,12 @@ export const CHECK_TEXT: Readonly<
     "Safari shows the banner at the top of the page on iPhone, so visitors install whichever app it names, which here is not the one the page links to.",
     "Set app-id in the apple-itunes-app meta tag to the same id as the App Store link.",
     '<meta name="apple-itunes-app" content="app-id=..."> differs from every apps.apple.com/.../id<digits> link on the page',
+  ],
+  "checkout-js-only": [
+    "A page shows a price and a buy button, but no button is a link with an address or a submit button in a form with an action.",
+    "Nobody can share a link to the purchase, search engines see no offer, and if the script fails the page is a brochure.",
+    "Make the buy button a link to your checkout or payment link, or a submit button in a form that posts to your cart, and let the script improve it from there.",
+    "a price (a currency next to a number in the visible text, or an Offer price in the structured data) and at least one button or link whose text matches buy, add to cart, checkout, get it, purchase or download now; none is an a[href] with an address (not empty, #, javascript:, mailto: or tel:) or a submit button in a form with an action or its own formaction; a link to a hosted payment page (Stripe, Square, PayPal.me) anywhere on the page is a pass; the page is read as sent, so a button drawn by a script is not seen",
   ],
   "crm-field-names": [
     "A Web-to-Lead form on the page submits field names that are not fields on the Lead object in Salesforce.",
@@ -1293,6 +1308,12 @@ export const CHECK_TEXT: Readonly<
     "A renamed or replaced app can mean the link points at an old listing, or at someone else's app.",
     "Check the link points at the right listing. If the app was renamed on purpose, update the expected name.",
     'the store\'s app name differs from the expected app name (case, punctuation and a leading "The" ignored); only runs when an expected name is set',
+  ],
+  "asset-file-public": [
+    "A page links to a file (pdf, zip, epub, mp3, mp4, docx or xlsx) on a public asset store and shows no price, or the link is a terms, privacy or policy page.",
+    "That is fine for a brochure or a menu. It becomes a problem the day the file is something a customer bought, because anyone with the address can open it.",
+    "If the file is free, nothing to do. If it will ever be sold, serve it from a download route that checks the purchase and hands back a short-lived signed link.",
+    "a[href] to a file with a sold file type on a public asset store host, on a page with no price, or whose link text is terms, privacy or policy; one finding per page; the file is never requested; the query string is not printed; a signed address with an expiry is a pass",
   ],
   blocked: [
     "The page answered with a refusal (401, 403, 429, 503 with Retry-After) or a bot-challenge page instead of its content.",
