@@ -10,3 +10,13 @@ export { REDACTED, createRedactor } from "./redact.js";
 export { runConnectors } from "./run.js";
 export type { RunConnectorsOptions } from "./run.js";
 export type { Connector, ConnectorNotice, ConnectorRun, Env } from "./types.js";
+export {
+  DEFAULT_DATASET,
+  DEFAULT_PRODUCTS_QUERY,
+  SANITY_ENV_VARS,
+  parseProducts,
+  productsUrl,
+  sanityConnector,
+  typeCounts as sanityTypeCounts,
+} from "./sanity.js";
+export type { SanityConnector, SanityProduct } from "./sanity.js";

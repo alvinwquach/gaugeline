@@ -444,3 +444,70 @@ describe("core stays out of process state", () => {
     expect(e.message).toBe("The system refused the key (HTTP 403).");
   });
 });
+
+describe("advice, secret variables and refusal hints (added with the Sanity connector)", () => {
+  const key = testKey("advice");
+
+  it("advice becomes an advice notice after the read's own, redacted, and a failing advise gives none", async () => {
+    const withAdvice: Connector<number> = {
+      ...fake("a", ["A_KEY"], async () => [1]),
+      advise: async () => [`use a narrower key than ${key}`],
+    };
+    const throwing: Connector<number> = {
+      ...fake("b", ["B_KEY"], async () => [2]),
+      advise: async () => {
+        throw new Error(`boom ${key}`);
+      },
+    };
+    const run = await runConnectors(
+      [withAdvice, throwing],
+      { A_KEY: key, B_KEY: "other" },
+      createFetcher({ allowPrivate: true }),
+    );
+    expect([...run.data.keys()]).toEqual(["a", "b"]);
+    expect(run.notices).toEqual([
+      { connector: "a", kind: "advice", message: "use a narrower key than [redacted]" },
+    ]);
+  });
+
+  it("advice is not asked of a connector that is not configured", async () => {
+    let asked = false;
+    const c: Connector<number> = {
+      ...fake("a", ["A_KEY"], async () => [1]),
+      advise: async () => {
+        asked = true;
+        return ["x"];
+      },
+    };
+    const run = await runConnectors([c], {}, createFetcher({ allowPrivate: true }));
+    expect(asked).toBe(false);
+    expect(run.notices.map((n) => n.kind)).toEqual(["not-configured"]);
+  });
+
+  it("only the variables a connector lists as secret are redacted from its messages", async () => {
+    const c: Connector<number> = {
+      ...fake("a", ["A_PROJECT"], async () => {
+        throw new Error(`dataset production, key ${key}`);
+      }),
+      optionalEnvVars: ["A_DATASET", "A_KEY"],
+      secretEnvVars: ["A_KEY"],
+    };
+    const run = await runConnectors(
+      [c],
+      { A_PROJECT: "ember", A_DATASET: "production", A_KEY: key },
+      createFetcher({ allowPrivate: true }),
+    );
+    expect(run.notices[0]?.message).toBe("a could not be read. dataset production, key [redacted]");
+  });
+
+  it("a refusal's hint replaces the generic advice in the notice", async () => {
+    const c = fake("a", ["A_KEY"], async () => {
+      throw new ConnectorRefusedError(401, "Use a Viewer token.");
+    });
+    const run = await runConnectors([c], { A_KEY: key }, createFetcher({ allowPrivate: true }));
+    expect(run.notices[0]?.message).toBe("a refused the key (HTTP 401). Use a Viewer token.");
+    expect(new ConnectorRefusedError(401, "Use a Viewer token.").message).toBe(
+      "The system refused the key (HTTP 401). Use a Viewer token.",
+    );
+  });
+});

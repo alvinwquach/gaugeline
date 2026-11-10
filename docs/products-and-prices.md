@@ -8,11 +8,11 @@ The same product usually lives in three places: Sanity (your website), Stripe (c
 $ SANITY_PROJECT_ID=abc123 SANITY_TOKEN=… STRIPE_API_KEY=rk_live_… PRINTFUL_API_TOKEN=… npx gaugeline open yoursite.com
 ```
 
-| System   | Variable                                              | Use a key that can only                                                         |
-| -------- | ----------------------------------------------------- | ------------------------------------------------------------------------------- |
-| Sanity   | `SANITY_PROJECT_ID`, `SANITY_DATASET`, `SANITY_TOKEN` | Read. **A private dataset needs a read-only token**; a public one works without |
-| Stripe   | `STRIPE_API_KEY`                                      | Read products and prices. Create a restricted key; never use your secret key    |
-| Printful | `PRINTFUL_API_TOKEN`, `PRINTFUL_STORE_ID`             | Read store products                                                             |
+| System   | Variable                                              | Use a key that can only                                                                       |
+| -------- | ----------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Sanity   | `SANITY_PROJECT_ID`, `SANITY_DATASET`, `SANITY_TOKEN` | Read. **A private dataset needs a read-only token** (Viewer role); a public one works without |
+| Stripe   | `STRIPE_API_KEY`                                      | Read products and prices. Create a restricted key; never use your secret key                  |
+| Printful | `PRINTFUL_API_TOKEN`, `PRINTFUL_STORE_ID`             | Read store products                                                                           |
 
 <!-- diagram: systems (drawn on the landing page; not reproduced here) -->
 
@@ -29,6 +29,83 @@ $ SANITY_PROJECT_ID=abc123 SANITY_TOKEN=… STRIPE_API_KEY=rk_live_… PRINTFUL_
 4. By name, ignoring case and punctuation.
 
 Your products live under a different type or field names? Set `GAUGELINE_PRODUCTS_QUERY` to a GROQ query that returns `_id`, `name`, `price`, `sku`, `stripeId` and `printfulId`. If your prices are stored in cents, set `GAUGELINE_SANITY_PRICE_UNIT=cents`.
+
+## Reading Sanity
+
+Sanity is read through the query endpoint of the project, with one `GET` for the products and, when asked, two small ones for a count per document type. Nothing is ever written.
+
+| Variable                      | Needed | What it does                                                                                         |
+| ----------------------------- | ------ | ---------------------------------------------------------------------------------------------------- |
+| `SANITY_PROJECT_ID`           | Yes    | The project, as shown in sanity.io/manage. It is the only variable Sanity needs to be read           |
+| `SANITY_DATASET`              | No     | The dataset. When it is not set, `production` is assumed and the run says so                         |
+| `SANITY_TOKEN`                | No     | A token with the **Viewer** role. A public dataset works without one; a private one does not         |
+| `GAUGELINE_PRODUCTS_QUERY`    | No     | A GROQ query that replaces the default one (below)                                                   |
+| `GAUGELINE_SANITY_PRICE_UNIT` | No     | `cents` when your prices are already whole minor units. Anything else, or nothing, means major units |
+
+What is asked:
+
+- **Published documents only.** Every request carries `perspective=published`, so a draft price nobody has published is never compared with checkout. The cost is that you cannot use this to preview a change before publishing.
+- **The default query** reads every document of type `product` and returns `_id`, `name`, `price`, `sku`, `stripeId` and `printfulId`.
+- **A custom query** (`GAUGELINE_PRODUCTS_QUERY`) must return a list of objects with `_id` and `name` on every row. `price`, `sku`, `stripeId` and `printfulId` may be left out. GROQ projections rename fields for you: `*[_type == "menuItem"]{_id, "name": title, "price": priceGbp}`. A row without `_id` or `name` is refused, and the message names the field and how many rows lack it. The query travels in the address of a `GET`, so keep it under about 8,000 characters.
+- **Prices** are whole numbers of minor units. In major units (the default), `48` and `"48.00"` are 4800 and `19.99` is 1999: the text of the price is split at the point, never multiplied. A product with no price, a price that is not a plain amount (`"free"`, `48.123`) or a negative one has the price `null` and is still returned. With `GAUGELINE_SANITY_PRICE_UNIT=cents`, `48` stays 48, and a value that is not a whole number of cents is `null`.
+- **Counts of types.** `typeCounts` returns how many published documents each `_type` has, nothing from inside a document. It asks for the type names, then for one count per name.
+- **Zero products and no token** can mean an empty dataset or a private one that answers an empty list. If you expected products, set `SANITY_TOKEN`.
+
+### What a private dataset needs
+
+When Sanity answers 401 or 403, the run says that a private dataset needs a read-only token with the Viewer role (see [Private datasets](/docs/private-datasets)), and the other systems are still read. A token that can write is used as it is, with one notice recommending the Viewer role. The role is read with one `GET` of the token's own user; only the role names are kept, and an answer that cannot be read gives no notice.
+
+### Example: a pop-up kitchen's menu in Sanity
+
+Ember Supper Club is a pop-up kitchen. Its freelancer keeps the menu items in Sanity and set only `SANITY_PROJECT_ID`, because the dataset is public and still called `production`. The site shows each item's price; Gaugeline reads the same items from Sanity so it can compare them with the page. Against an invented recording of the project (`packages/testkit/cassettes/sanity-products.json`), one run of the Sanity connector returns these products and this notice:
+
+```json title=Products
+[
+  {
+    "_id": "tasting-box",
+    "name": "Tasting box for two",
+    "price": 4500,
+    "sku": "EMB-TASTE",
+    "stripeId": "prod_EmberTasting1"
+  },
+  {
+    "_id": "supper-ticket",
+    "name": "Supper club ticket",
+    "price": 4800,
+    "sku": "EMB-SUPPER",
+    "stripeId": "prod_EmberSupper02"
+  },
+  {
+    "_id": "hot-sauce",
+    "name": "Ember hot sauce",
+    "price": 1999,
+    "sku": "EMB-SAUCE"
+  },
+  {
+    "_id": "apron",
+    "name": "Ember apron",
+    "price": null,
+    "printfulId": "pf-apron-7"
+  },
+  {
+    "_id": "gift-card",
+    "name": "Gift card",
+    "price": 0
+  }
+]
+```
+
+```json title=Advice
+[
+  {
+    "connector": "sanity",
+    "kind": "advice",
+    "message": "SANITY_DATASET is not set, so the dataset \"production\" was assumed. Set it if your products live in another dataset."
+  }
+]
+```
+
+The tasting box is stored as `45`, the supper ticket as the text `"48.00"` and the hot sauce as `19.99`; all three come out as whole cents. The apron has no price in Sanity, so its price is `null` and it is never reported as a mismatch. Both outputs are asserted by `packages/core/src/connectors/__tests__/docs.test.ts`.
 
 ## What it can't decide for you
 
@@ -48,15 +125,16 @@ Keys stay on your computer, are only read from environment variables, and are ne
 
 ## In this version: the connector interface
 
-The three systems above are read through one small interface, `Connector`. This version ships the interface, the runner and the key handling, with no real system behind it yet: the Sanity, Stripe and Printful readers arrive next, each as a connector, so nothing is requested from them today.
+The three systems above are read through one small interface, `Connector`. This version ships the interface, the runner, the key handling and the Sanity reader ([below](#reading-sanity)). The Stripe and Printful readers arrive next, each as a connector, so nothing is requested from them today.
 
-A connector has an `id`, the names of the variables it needs (`envVars`), a `configured` test and a `read` that returns a list. `runConnectors` reads every configured connector at the same time and returns two things: `data`, the rows by connector id, and `notices`, one for every system that gave none.
+A connector has an `id`, the names of the variables it needs (`envVars`), a `configured` test and a `read` that returns a list. It may also list variables it reads when they are set (`optionalEnvVars`), say which of its variables are keys (`secretEnvVars`, so only those are blanked in messages), and give advice (`advise`). `runConnectors` reads every configured connector at the same time and returns two things: `data`, the rows by connector id, and `notices`, one for every system that gave none, and any advice.
 
-| Notice kind      | When                                                                                          |
-| ---------------- | --------------------------------------------------------------------------------------------- |
-| `not-configured` | A variable is missing or empty. Nothing was requested.                                        |
-| `refused`        | The system answered 401 or 403: it knows the key and will not let it read.                    |
-| `unreachable`    | No answer in time, an answer the connector could not use, or any other failure while reading. |
+| Notice kind      | When                                                                                                         |
+| ---------------- | ------------------------------------------------------------------------------------------------------------ |
+| `not-configured` | A variable is missing or empty. Nothing was requested.                                                       |
+| `refused`        | The system answered 401 or 403: it knows the key and will not let it read.                                   |
+| `unreachable`    | No answer in time, an answer the connector could not use, or any other failure while reading.                |
+| `advice`         | The read may have worked. Something is worth changing: an assumed default, a key that can do more than read. |
 
 ### Example: a pop-up kitchen with prices in three systems
 
