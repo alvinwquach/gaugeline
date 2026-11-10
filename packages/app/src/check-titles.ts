@@ -88,6 +88,7 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "sitemap-dead": ["Your sitemap lists pages that don't exist", "Search & sharing"],
   "staging-indexable": ["Your staging site can be found by search engines", "Launch day"],
   "stega-leak": ["Hidden editing characters leaked onto the live site", "Search & sharing"],
+  "stripe-test-mode": ["This live site is using Stripe's test key", "Sales & prices"],
   "switch-off-still-linked": [
     "A switch is off but the site still links to what it controls",
     "Sales & prices",
@@ -590,6 +591,12 @@ export const CHECK_TEXT: Readonly<
     "They are invisible to you but not to everyone else: search results, share previews and copied text carry them, and they can break string comparisons and structured data.",
     "Turn stega encoding off for production builds (in Sanity, set stega: false outside preview) and strip it from fields that end up in metadata.",
     "a code point in U+E0000 to U+E007F, or 4 or more zero-width characters in a row, in the title, meta content or JSON-LD strings",
+  ],
+  "stripe-test-mode": [
+    "The page, or a script on the same site, carries a Stripe test publishable key (it starts pk_test_) and the page is not on a hosting provider's preview address.",
+    "A checkout built on a test key looks like it works and takes no real money: every order a customer places goes nowhere, and no card is charged.",
+    "In Stripe, switch to live mode, copy the live publishable key (pk_live_) and put it where the site reads its key, then redeploy and place one small real order to be sure.",
+    "The page's HTML and the same-site scripts already read by the leak check are searched for pk_test_ followed by at least 16 letters or digits, not inside a longer word; no new request is sent; pages on vercel.app, netlify.app and pages.dev are skipped",
   ],
   "switch-off-still-linked": [
     "You turned a feature off (pre-orders, online ordering, bookings), and a page still has a link to the page that feature runs on.",

@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta property="og:image" content="{{origin}}/og.png">
+<title>La Olla Pop-Up · Tamales on Saturdays</title>
+<meta name="description" content="An invented pop-up kitchen, for Gaugeline's Stripe test-mode check.">
+<link rel="canonical" href="{{origin}}/">
+<script src="https://js.stripe.com/v3/" defer></script>
+<script src="/checkout.js" defer></script>
+</head>
+<body>
+<header><nav><a href="/">La Olla Pop-Up</a></nav></header>
+<main>
+<h1>La Olla Pop-Up</h1>
+<p>An invented pop-up kitchen for Gaugeline's tests: tamales out of a borrowed bakery every Saturday
+morning, sold by the box and picked up between nine and noon. The kitchen is a rented counter at the
+back of a bakery on Elm Street, so the menu changes with what the bakery's ovens are doing that week,
+and the first box of the day is always the one with the red salsa.</p>
+<h2>Tamal box</h2>
+<p>A dozen tamales, two salsas and a jar of pickled onions. <strong>$42.00</strong></p>
+<p><button id="buy" type="button">Order the tamal box</button></p>
+</main>
+<footer><p>La Olla Pop-Up, an invented kitchen.</p></footer>
+<script>
+  // The mistake this fixture is about: the checkout was built against Stripe's test mode.
+  window.stripeKey = "{{planted:stripe-publishable-test}}";
+</script>
+</body>
+</html>

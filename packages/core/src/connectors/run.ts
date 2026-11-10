@@ -54,16 +54,22 @@ export async function runConnectors(
         );
       }
       say(`connector ${c.id}: reading`);
+      // Notes from inside the read come first, then the connector's own advice after it.
+      const notes: string[] = [];
       const advise = async (): Promise<ConnectorNotice[]> => {
         try {
-          const lines = (await c.advise?.(env, fetcher)) ?? [];
+          const lines = [...notes, ...((await c.advise?.(env, fetcher)) ?? [])];
           return lines.map((l) => ({
             connector: c.id,
             kind: "advice" as const,
             message: redact(l).slice(0, MAX_MESSAGE),
           }));
         } catch {
-          return [];
+          return notes.map((l) => ({
+            connector: c.id,
+            kind: "advice" as const,
+            message: redact(l).slice(0, MAX_MESSAGE),
+          }));
         }
       };
       const done = async (out: Outcome): Promise<Outcome> => {
@@ -71,7 +77,7 @@ export async function runConnectors(
         return advice.length > 0 ? { ...out, advice } : out;
       };
       try {
-        const rows: unknown = await c.read(env, fetcher);
+        const rows: unknown = await c.read(env, fetcher, (m) => void notes.push(m));
         if (!Array.isArray(rows)) {
           return done(notice(c.id, "unreachable", `${c.id} returned something other than a list.`));
         }

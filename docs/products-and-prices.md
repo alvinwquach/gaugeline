@@ -8,11 +8,11 @@ The same product usually lives in three places: Sanity (your website), Stripe (c
 $ SANITY_PROJECT_ID=abc123 SANITY_TOKEN=… STRIPE_API_KEY=rk_live_… PRINTFUL_API_TOKEN=… npx gaugeline open yoursite.com
 ```
 
-| System   | Variable                                              | Use a key that can only                                                                       |
-| -------- | ----------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| Sanity   | `SANITY_PROJECT_ID`, `SANITY_DATASET`, `SANITY_TOKEN` | Read. **A private dataset needs a read-only token** (Viewer role); a public one works without |
-| Stripe   | `STRIPE_API_KEY`                                      | Read products and prices. Create a restricted key; never use your secret key                  |
-| Printful | `PRINTFUL_API_TOKEN`, `PRINTFUL_STORE_ID`             | Read store products                                                                           |
+| System   | Variable                                              | Use a key that can only                                                                               |
+| -------- | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Sanity   | `SANITY_PROJECT_ID`, `SANITY_DATASET`, `SANITY_TOKEN` | Read. **A private dataset needs a read-only token** (Viewer role); a public one works without         |
+| Stripe   | `STRIPE_API_KEY`                                      | Read products and prices. **A restricted key only**; a secret key is refused ([how](#reading-stripe)) |
+| Printful | `PRINTFUL_API_TOKEN`, `PRINTFUL_STORE_ID`             | Read store products                                                                                   |
 
 <!-- diagram: systems (drawn on the landing page; not reproduced here) -->
 
@@ -107,6 +107,139 @@ Ember Supper Club is a pop-up kitchen. Its freelancer keeps the menu items in Sa
 
 The tasting box is stored as `45`, the supper ticket as the text `"48.00"` and the hot sauce as `19.99`; all three come out as whole cents. The apron has no price in Sanity, so its price is `null` and it is never reported as a mismatch. Both outputs are asserted by `packages/core/src/connectors/__tests__/docs.test.ts`.
 
+## Reading Stripe
+
+Stripe is read with two lists, both `GET`: the products, then the prices, 100 at a time. Nothing is ever written, and Gaugeline never asks Stripe for a price one product at a time: it joins the two lists in memory, so a store with 250 products costs about six requests.
+
+| Variable         | Needed | What it does                                                                                                  |
+| ---------------- | ------ | ------------------------------------------------------------------------------------------------------------- |
+| `STRIPE_API_KEY` | Yes    | A **restricted** key (it starts `rk_live_` or `rk_test_`) that can read products and prices, and nothing else |
+
+What is asked:
+
+- **Both lists, archived included.** Products and prices are requested without an `active` filter, so an archived product or price comes back with `active: false`. That is data: a page that still sells an archived product is a finding for the checks that arrive next.
+- **The documented cursor.** Each list follows `has_more` by asking again with `starting_after` set to the last id, until Stripe says there is no more. At most 50 pages of 100 are read per list; if the cap is reached, the run says so in one notice and keeps what it read. A page that is empty while `has_more` is true, or the same page twice, stops the list with a notice instead of looping.
+- **What is kept.** Per product: `id`, `name`, `active`, `metadata` (text values only), `defaultPriceId` and its `prices`. Per price: `id`, `unitAmount`, `currency` and `active`. A price with no fixed amount (tiered or metered pricing) keeps `unitAmount: null`; it is never turned into 0. A product with no default price has `defaultPriceId: null` and still lists every price it has. Descriptions, images and customer data are not kept.
+- **The key goes in a header.** Every request carries `Authorization: Bearer <key>`, never the address.
+
+### Which keys are accepted
+
+| Key starts with           | What happens                                                                                                                       |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `rk_live_`, `rk_test_`    | Used. This is the key to create.                                                                                                   |
+| `sk_live_` (or any `sk_`) | **Refused before anything is requested.** Gaugeline exits 2 and says to create a restricted key that can read products and prices. |
+| `sk_test_`                | Used, with one notice: a test-mode secret key can only touch test data, but a restricted key is the better habit.                  |
+| Anything else             | Used as it is, with one notice that it does not look like a restricted key. Stripe will say if it does not accept it.              |
+
+A secret key can do everything on your Stripe account, including moving money. Gaugeline only reads, but a key that can do more than read is one leak away from a worse day, so the default is to refuse it and say what to make instead. If you have read that and still want to use one, `--allow-secret-key` turns the refusal into a notice. The key is never printed in the message, the report or the JSON.
+
+```text title=Output
+STRIPE_API_KEY is a Stripe secret key, which can do far more than read. Create a restricted key that can read products and prices, set STRIPE_API_KEY to it and run again.
+Try: The steps are in docs/products-and-prices. To use the secret key anyway, pass --allow-secret-key.
+```
+
+### Create the narrowest key
+
+Read-only on Products and Prices, and nothing else:
+
+1. In the Stripe Dashboard, open Developers, then API keys, then **Create restricted key**.
+2. Name it something you will recognise, such as `Gaugeline (read only)`.
+3. Under the core resources, set **Products** to **Read** and **Prices** to **Read**. Leave every other permission at **None**.
+4. Create the key and copy it. Stripe shows it once. It starts `rk_live_` (or `rk_test_` in test mode).
+5. Put it in the environment, not in a file: `STRIPE_API_KEY=rk_live_… npx gaugeline open yoursite.com`.
+
+The menu names in these steps are from memory: Stripe's documentation was not reachable when this page was written, so they are uncited. Check them against [Stripe's page on API keys](https://docs.stripe.com/keys).
+
+If the key is missing a permission, Stripe answers 403 and the run names the one to add (below). If Stripe does not accept the key at all (401), the run says to check it is a restricted key from the right account.
+
+### Example: a pop-up kitchen's tamal box
+
+La Olla Pop-Up is a pop-up kitchen. Its freelancer built the site on Next.js and Sanity, with checkout in Stripe. The site says the tamal box costs **$42.00**. The freelancer created a restricted key with Read on Products and Prices only and set `STRIPE_API_KEY`. Against an invented recording of the account (`packages/testkit/cassettes/stripe-products.json`), the Stripe connector returns these two of the five products:
+
+```json title=Stripe products
+[
+  {
+    "id": "prod_PopTamalBox",
+    "name": "Tamal box (a dozen)",
+    "active": true,
+    "metadata": {
+      "sanityId": "tamal-box"
+    },
+    "defaultPriceId": "price_TamalBox4800",
+    "prices": [
+      {
+        "id": "price_TamalBox4800",
+        "unitAmount": 4800,
+        "currency": "usd",
+        "active": true
+      },
+      {
+        "id": "price_TamalBox4200",
+        "unitAmount": 4200,
+        "currency": "usd",
+        "active": false
+      }
+    ]
+  },
+  {
+    "id": "prod_PopFlight",
+    "name": "Tasting flight, per guest",
+    "active": true,
+    "metadata": {},
+    "defaultPriceId": "price_FlightTiers",
+    "prices": [
+      {
+        "id": "price_FlightTiers",
+        "unitAmount": null,
+        "currency": "usd",
+        "active": true
+      }
+    ]
+  }
+]
+```
+
+Checkout charges 4800 cents, $48.00, for the tamal box. The $42.00 on the page is the old price, still in Stripe as an archived one: the price went up in Stripe and the page was never updated, so customers see one number and pay another. This version reads both sides; the price checks that compare them arrive in a later release. The tasting flight has a tiered price, so its amount is `null` and no mismatch can be made of it. The supper club seat (not shown) has no default price and three prices, so its `defaultPriceId` is `null` and all three are listed.
+
+The same account with a key that can read products but not prices stops at the prices, and the run says which permission to add:
+
+```json title=Stripe notices
+[
+  {
+    "connector": "stripe",
+    "kind": "refused",
+    "message": "stripe refused the key (HTTP 403). STRIPE_API_KEY cannot read Prices. In Stripe, edit the restricted key and set Prices to Read; nothing else is needed."
+  }
+]
+```
+
+Both outputs are asserted by `packages/core/src/connectors/__tests__/docs.test.ts`.
+
+### A live site on a test key
+
+The check `stripe-test-mode` needs no key at all. It looks in the page and in the same-site scripts the run already read for a Stripe test publishable key (`pk_test_`) and reports it on any address that is not a hosting provider's preview (`vercel.app`, `netlify.app`, `pages.dev`), where a test key is expected. It sends no request of its own, and the key is shown by its first six and last two characters only. A checkout built on a test key looks fine and takes no real money.
+
+Against the invented `stripe-test-mode` fixture, La Olla Pop-Up's site as it was handed over (a test key in the page, another in the checkout script), version 0.1.0 prints:
+
+<!-- fixture: stripe-test-mode -->
+
+```sh title=Terminal
+$ npx gaugeline shop.example
+```
+
+```text title=Output
+✗ This live site is using Stripe's test key
+    Stripe test key pk_tes…00 in the HTML of /
+✗ This live site is using Stripe's test key
+    Stripe test key pk_tes…K7 in /checkout.js
+? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
+    Mail records are read from DNS only with --dns. Rerun with --dns to check them.
+
+2 to look at, 2 to fix first.
+```
+
+Each check that passed also prints a `✓ <id>` line, left out above. The output is asserted by `pnpm docs:examples` in CI. To fix it, switch Stripe to live mode, put the live publishable key (`pk_live_`) where the site reads its key, redeploy, and place one small real order.
+
 ## What it can't decide for you
 
 Gaugeline can tell you two systems disagree. It can't tell you which one is right. Decide which system owns each fact, usually checkout for prices, and have the others read from it.
@@ -125,7 +258,7 @@ Keys stay on your computer, are only read from environment variables, and are ne
 
 ## In this version: the connector interface
 
-The three systems above are read through one small interface, `Connector`. This version ships the interface, the runner, the key handling and the Sanity reader ([below](#reading-sanity)). The Stripe and Printful readers arrive next, each as a connector, so nothing is requested from them today.
+The three systems above are read through one small interface, `Connector`. This version ships the interface, the runner, the key handling, the Sanity reader ([above](#reading-sanity)) and the Stripe reader ([above](#reading-stripe)). The Printful reader arrives next, as a connector too. Nothing in a normal run requests Stripe yet: the comparisons that use it come with the price checks.
 
 A connector has an `id`, the names of the variables it needs (`envVars`), a `configured` test and a `read` that returns a list. It may also list variables it reads when they are set (`optionalEnvVars`), say which of its variables are keys (`secretEnvVars`, so only those are blanked in messages), and give advice (`advise`). `runConnectors` reads every configured connector at the same time and returns two things: `data`, the rows by connector id, and `notices`, one for every system that gave none, and any advice.
 

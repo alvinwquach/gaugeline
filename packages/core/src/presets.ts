@@ -10,7 +10,7 @@ export const LAUNCH_PRESET: readonly string[] = Object.freeze([
   "staging-indexable",
   "noindex",
   "robots-block",
-  // A Stripe test key on the live site (G23): skipped until that check ships.
+  // A Stripe test key on the live site (G23b).
   "stripe-test-mode",
 ]);
 

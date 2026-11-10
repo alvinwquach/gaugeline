@@ -43,6 +43,7 @@ const FIXTURES = [
   "nav-events",
   "nav-after",
   "tampered",
+  "stripe-test-mode",
 ];
 
 /**
