@@ -51,8 +51,11 @@ export async function sourceRoot(dir: string): Promise<string> {
   return root;
 }
 
-/** The .ts, .tsx, .js, .jsx and .mjs files under `dir`, as paths relative to it, in order. */
-export async function walk(dir: string): Promise<string[]> {
+/** The .ts, .tsx, .js, .jsx and .mjs files under `dir` (or the files with `extensions`), as paths relative to it, in order. */
+export async function walk(
+  dir: string,
+  extensions: ReadonlySet<string> = EXTENSIONS,
+): Promise<string[]> {
   const found: string[] = [];
   const visit = async (rel: string, ignores: readonly IgnoreFile[]): Promise<void> => {
     const here = rel === "" ? dir : join(dir, rel);
@@ -72,7 +75,7 @@ export async function walk(dir: string): Promise<string[]> {
       if (entry.isDirectory()) {
         if (SKIPPED.has(entry.name) || isIgnored(levels, path, true)) continue;
         await visit(path, levels);
-      } else if (entry.isFile() && EXTENSIONS.has(extname(entry.name).toLowerCase())) {
+      } else if (entry.isFile() && extensions.has(extname(entry.name).toLowerCase())) {
         if (!isIgnored(levels, path, false)) found.push(path);
       }
     }

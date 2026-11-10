@@ -143,8 +143,10 @@
       "version"
     ],
     "query": [
+      "allow-private",
       "ci",
       "dupes",
+      "graphql",
       "help",
       "json",
       "mutations",

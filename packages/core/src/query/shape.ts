@@ -33,8 +33,9 @@ export interface Unreadable {
    * concatenated: built from a template with a `${...}`, a `+`, or anything that is not one literal.
    * parse-error: a file that does not parse as TypeScript, or a string that is not valid GROQ.
    * no-type-filter: it parsed, but nothing in it filters on `_type`, so there is no type to attribute.
+   * unknown-fragment: a GraphQL document spreads a fragment that no file that was read defines.
    */
-  reason: "concatenated" | "parse-error" | "no-type-filter";
+  reason: "concatenated" | "parse-error" | "no-type-filter" | "unknown-fragment";
   source: SourceRef;
 }
 

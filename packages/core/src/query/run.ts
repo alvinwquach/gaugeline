@@ -1,4 +1,5 @@
 import { createQueryRegistry, type QueryInput } from "../checks/query-counts.js";
+import { createGraphqlRegistry } from "../checks/query-graphql.js";
 import { createMutationsRegistry } from "../checks/query-mutations.js";
 import { ConnectorRateLimitedError, ConnectorRefusedError } from "../connectors/http.js";
 import { createSanityRead } from "../connectors/sanity.js";
@@ -9,6 +10,7 @@ import { buildResult, type Result } from "../result.js";
 import { runChecks } from "../run.js";
 import { fetchCounts, type TypeCounts } from "./counts.js";
 import { findDupes, type DupeGroup } from "./dupes.js";
+import { graphqlShapes, type GqlFieldUse, type GqlSchema } from "./graphql.js";
 import type { MutationShape, SchemaShape } from "./mutations.js";
 import type { QueryShape } from "./shape.js";
 
@@ -125,6 +127,74 @@ export async function checkMutationsOnly(options: {
       passed: checked.passed,
       failed: checked.failed.map((f) => f.id),
       couldNotCheck: checked.couldNotCheck,
+    }),
+  };
+}
+
+export interface GraphqlCompareOptions {
+  uses: readonly GqlFieldUse[];
+  schema: GqlSchema;
+  /**
+   * Present when the documents are to be compared with the content too: SANITY_PROJECT_ID,
+   * SANITY_DATASET and SANITY_TOKEN, and the fetcher the counts go through. Absent: only the
+   * schema is checked, and no request is made here.
+   */
+  sanity?: { env: Env; fetcher: Fetcher };
+  now: Date;
+}
+
+/**
+ * `gaugeline query --graphql`: the field check over the documents and the schema, and then, when
+ * `sanity` is given, the same document types counted in the dataset (one request per type, counts
+ * only) and the three count checks over them. The schema says a field may exist; only a count says
+ * it does. The document types are the ones the schema marks as Sanity documents; a schema with
+ * none has nothing to count, and `types` says so (0) without a request.
+ */
+export async function compareGraphql(
+  options: GraphqlCompareOptions,
+): Promise<QueryCompareRun & { types: number }> {
+  const { uses, schema, sanity, now } = options;
+  const shapes = sanity ? graphqlShapes(uses, schema) : [];
+  const notices: string[] = [];
+  let counts = new Map<string, TypeCounts>();
+  if (sanity && shapes.length > 0) {
+    let read;
+    try {
+      read = createSanityRead(sanity.env, sanity.fetcher);
+    } catch (err) {
+      throw new ConfigError(err instanceof Error ? err.message : String(err), {
+        hint: "The settings are SANITY_PROJECT_ID, SANITY_DATASET and SANITY_TOKEN; the steps are in docs/private-datasets.",
+      });
+    }
+    try {
+      counts = await fetchCounts(shapes, read, { log: (m) => notices.push(m) });
+    } catch (err) {
+      throw unreadable(err);
+    }
+  }
+  const counted = counts.size > 0;
+  const checked = await runChecks(
+    { shapes, counts, graphql: { uses, schema } },
+    counted ? createQueryRegistry({ graphql: true }) : createGraphqlRegistry(),
+  );
+  return {
+    counts,
+    notices,
+    types: counts.size,
+    result: buildResult({
+      url: "query",
+      startedAt: now,
+      findings: checked.findings,
+      passed: checked.passed,
+      failed: checked.failed.map((f) => f.id),
+      couldNotCheck: checked.couldNotCheck,
+      ...(counted
+        ? {
+            sampled: {
+              "query-types": { seen: counts.size, taken: counts.size, limit: counts.size },
+            },
+          }
+        : {}),
     }),
   };
 }

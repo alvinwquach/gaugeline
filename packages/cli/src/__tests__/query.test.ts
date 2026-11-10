@@ -45,7 +45,9 @@ describe("gaugeline query: unit", () => {
       ci: true,
       json: true,
     });
-    expect(parseCliArgs(["query", "./src", "--allow-private"])).toMatchObject({ kind: "error" });
+    // --allow-private is for a GraphQL endpoint on this computer (--graphql); the page check's other flags are not.
+    expect(parseCliArgs(["query", "./src", "--dns"])).toMatchObject({ kind: "error" });
+    expect(parseCliArgs(["query", "./src", "--no-open"])).toMatchObject({ kind: "error" });
   });
 });
 

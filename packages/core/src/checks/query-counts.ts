@@ -3,6 +3,8 @@ import { TITLES, compareWithCounts, type TypeCounts } from "../query/counts.js";
 import type { DupeGroup } from "../query/dupes.js";
 import type { QueryShape } from "../query/shape.js";
 import type { MutationShape, SchemaShape } from "../query/mutations.js";
+import type { GqlFieldUse, GqlSchema } from "../query/graphql.js";
+import { GRAPHQL_CHECKS } from "./query-graphql.js";
 import { MUTATION_CHECKS } from "./query-mutations.js";
 import { QUERY_DUPE_CHECKS } from "./query-dupes.js";
 
@@ -15,6 +17,8 @@ export interface QueryInput {
   dupes?: readonly DupeGroup[];
   /** The writes found in the code and the schema they are compared with (--mutations). Absent: the mutation checks are not run. */
   mutations?: { shapes: readonly MutationShape[]; schema: SchemaShape };
+  /** The GraphQL fields found in the code and the schema they are compared with (--graphql). Absent: the GraphQL check is not run. */
+  graphql?: { uses: readonly GqlFieldUse[]; schema: GqlSchema };
 }
 
 const only = (id: string, input: QueryInput) =>
@@ -80,9 +84,11 @@ export const QUERY_CHECKS: readonly Check<QueryInput>[] = [
 ];
 
 export function createQueryRegistry(
-  options: { dupes?: boolean; mutations?: boolean } = {},
+  options: { dupes?: boolean; mutations?: boolean; graphql?: boolean } = {},
 ): CheckRegistry {
   const registry = new CheckRegistry();
+  // The schema check comes first: it says what cannot be asked at all, before what the content lacks.
+  if (options.graphql === true) for (const c of GRAPHQL_CHECKS) registry.register(c);
   for (const c of QUERY_CHECKS) registry.register(c);
   if (options.dupes === true) for (const c of QUERY_DUPE_CHECKS) registry.register(c);
   if (options.mutations === true) for (const c of MUTATION_CHECKS) registry.register(c);
