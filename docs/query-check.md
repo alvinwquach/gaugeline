@@ -9,7 +9,7 @@ $ SANITY_PROJECT_ID=abc123 SANITY_TOKEN=… npx gaugeline query ./src
 ```
 
 ::: info What works today
-`gaugeline query <folder>` reads the GROQ in your repository and lists each query with its file and line. With `SANITY_PROJECT_ID` set it also asks your dataset how many documents of each type exist and how many have each field, and reports the four findings under [What it reports](#what-it-reports). Without it the command makes no request and needs no token. With `--dupes` it also names documents that share a slug or a title, and with `--mutations` it reads the writes in your code and checks their shapes against your schema file without sending any of them. With `--graphql` it checks your GraphQL against the schema and the content instead. With `--suggest` it writes a starting query from the content, and with `--page` it writes a starting route (queries, types and page) into a folder of your project. With `--unused` it reads your source alone, with no request and no key, and lists the fields your queries fetch that no code reads. With `--totals` and `--refs` it checks content that software wrote: a stated number against the sum of its parts, and links to documents nobody published, one request for each rule that returns ids and counts only.
+`gaugeline query <folder>` reads the GROQ in your repository and lists each query with its file and line. With `SANITY_PROJECT_ID` set it also asks your dataset how many documents of each type exist and how many have each field, and reports the four findings under [What it reports](#what-it-reports). Without it the command makes no request and needs no token. With `--dupes` it also names documents that share a slug or a title, and with `--mutations` it reads the writes in your code and checks their shapes against your schema file without sending any of them. With `--graphql` it checks your GraphQL against the schema and the content instead. With `--suggest` it writes a starting query from the content, and with `--page` it writes a starting route (queries, types and page) into a folder of your project. With `--unused` it reads your source alone, with no request and no key, and lists the fields your queries fetch that no code reads. With `--totals` and `--refs` it checks content that software wrote: a stated number against the sum of its parts, and links to documents nobody published, one request for each rule that returns ids and counts only. With `--save` and `--against` you keep today's findings and, after a restructure, list only the gaps the change created, with the files to edit ([Before a restructure](#before-a-restructure)).
 :::
 
 ## What the command reads
@@ -714,9 +714,82 @@ With `--ci` the command exits 1 on the first two, so a pipeline that writes plan
 
 ## Before a restructure
 
-1. Run it on the current code to get today's baseline.
-2. Make the schema or template change.
-3. Run it again: new gaps are the work the restructure created, listed with the files that need editing.
+A restructure is a schema change, a template change or a content migration: a field is renamed, a type is split, content moves from one document to another. Nothing complains. The pages that still read the old shape render empty, and the report you would like to read is the one that lists only what the change broke. The three steps:
+
+1. Run it on the current code and keep what it found: `--save before.json`.
+2. Make the change.
+3. Run it again with `--against before.json`. New gaps are the work the restructure created, listed with the files that need editing.
+
+Copperhill Bakery's freelancer is about to move the pop-ups' `date` field to `startsAt` in the Studio, with a migration. Step one, today, with the code as it is:
+
+```sh title=Terminal untested="Needs a Sanity project and a folder of source files, and the docs runner points every example at a fixture website. packages/cli/src/__tests__/query-docs.test.ts runs the three steps in a copy of the invented bakery repository, against an invented dataset before the move and another after it, and compares the end of the output with the block below."
+$ SANITY_PROJECT_ID=cprhl1b4 npx gaugeline query ./src --save before.json
+```
+
+```text title="Output (the end of it: the usual findings come first)"
+11 to look at, 1 to fix first.
+
+Saved the baseline to before.json: 11 gaps. It holds check ids, type names, field names and file paths, and no token and no content. Make the change, then run: gaugeline query ./src --against before.json
+```
+
+Eleven gaps are already there: the drafts filters, `legacyPage` with no documents, and two fields that some documents lack. They are old news, and they are not what this change is about. Step two is the change itself. After the migration, step three:
+
+```sh title=Terminal untested="Needs a Sanity project and a folder of source files, and the docs runner points every example at a fixture website. packages/cli/src/__tests__/query-docs.test.ts runs this command after the invented move and compares the output with the block below."
+$ SANITY_PROJECT_ID=cprhl1b4 npx gaugeline query ./src --against before.json
+```
+
+```text title=Output
+Compared with before.json, saved 2026-11-10T12:00:00.000Z.
+
+Created by this change: 2 gaps in 2 files. These are the files to edit.
+
+src/app/events/page.tsx
+  line 3  ✗ date doesn't exist on any popup: 0 of 9 documents have it. The field was probably renamed, so what shows it renders empty.
+src/sanity/queries.ts
+  line 20  ✗ date doesn't exist on any popup: 0 of 9 documents have it. The field was probably renamed, so what shows it renders empty.
+
+Closed by this change: none.
+
+11 gaps were already there and are not listed.
+```
+
+Two files still ask for `date`, so those two are the edit list. When the queries say `startsAt`, the gaps close, and the same command says so under "Closed by this change". The 11 that were there before are one line, not a list.
+
+- **Save once, from main.** The baseline is today's state of the code you are about to change. Save it before you branch, or from the branch point, not from a half-finished change.
+- **Run both steps from the same folder.** The paths in the file are from where you ran the command, written with `/` on every system, so `./src`, `src` and an absolute path to the same folder find the same gaps. A different starting folder gives different paths.
+- **`--ci` fails only on what the change created.** With `--against` it exits 1 when a created gap is "Fix this first", and 0 otherwise. A high gap that was already in the baseline does not fail the run. How to wire that into a pull request: [Use it in CI](/docs/ci#failing-only-on-gaps-a-pull-request-created).
+- **`--save` and `--against` work with `--mutations`** and need `SANITY_PROJECT_ID` or `--mutations`: without either there is no finding to keep. They are not for `--graphql`, `--dupes`, `--unused`, `--totals`, `--refs` or `--json`, and they cannot be used together.
+- **A baseline of a different schema number is refused**, with exit 2 and a message that names the file. So is a file that is not a baseline, or one that was edited by hand. Save a new one.
+- **Nothing is replaced by accident.** `--save` writes one file, inside the folder you ran it from, and refuses with exit 2 if the file exists, unless you add `--force`. The folders it needs are made, every path is printed, and a write that fails leaves nothing behind ([what it can write](/docs/writes#save)).
+
+### What the file holds
+
+Names, and nothing else: the check id, the document type, the field path, the file path, a key made of those four, the schema number and the time it was saved. No token, no document, no field value, no line number and no count. It is sorted by key, so two saves of the same state are the same file and a change shows up as a few lines in `git diff`.
+
+```json title=before.json (the first gap of the example)
+{
+  "schema": 1,
+  "createdAt": "2026-11-10T12:00:00.000Z",
+  "gaps": [
+    {
+      "checkId": "query-field-partial",
+      "field": "allergens",
+      "file": "src/app/menu/[slug]/page.tsx",
+      "key": "query-field-partial|menuItem|allergens|src/app/menu/[slug]/page.tsx",
+      "type": "menuItem"
+    }
+  ]
+}
+```
+
+### How a gap is told from another
+
+A gap is the same gap when its check, its type, its field and its file are the same. Two things are left out on purpose.
+
+- **The line.** A restructure moves code, and a gap whose line changed is not new. Move a query down the file, add a comment above it, reformat it: nothing is created.
+- **The counts.** "Missing on 28 of 40" that becomes "29 of 41" is the same gap. One that goes from "missing on some" to "missing on every document" is a different check, `query-field-absent` where it was `query-field-partial`, so it is listed as created, and the old one as closed.
+
+The cost: two identical gaps in one file count as one. If `date` is read by two queries in `events/page.tsx` and you fix one, the gap is still there, and it is not reported as closed until you fix both. And a gap in a file that was renamed shows as closed in the old name and created in the new one. When every gap of one file turns up in exactly one other file, the output says so: `Looks like a renamed file, so its gaps show as closed and created: src/app/events/page.tsx is now src/app/events/index.tsx.`
 
 - **If you own the site:** This one's for your developer, but it's the check that stops a redesign quietly emptying pages.
 - **If you run marketing:** If a section of the site renders blank after a rebuild, this is what finds it.

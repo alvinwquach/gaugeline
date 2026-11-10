@@ -41,12 +41,13 @@ The tests are `packages/core/src/query/__tests__/mutations.test.ts` and `package
 
 ## Local files it writes
 
-"Read-only" on this page is a promise about systems: REST, GraphQL, GROQ, SQL, webhooks and queues are read and never changed. It is not a promise that nothing is ever written to your own computer. Two commands put files into your own repository, and the boundary is the same for both: they write local files only, and never touch a live system, a dataset or a payment provider.
+"Read-only" on this page is a promise about systems: REST, GraphQL, GROQ, SQL, webhooks and queues are read and never changed. It is not a promise that nothing is ever written to your own computer. Three commands put files into your own repository, and the boundary is the same for all of them: they write local files only, and never touch a live system, a dataset or a payment provider.
 
-| Command                  | What it writes                                           | Where                                                              |
-| ------------------------ | -------------------------------------------------------- | ------------------------------------------------------------------ |
-| `--fix`                  | Edits to files that already exist, on a branch           | Your repository                                                    |
-| `gaugeline query --page` | Three new files: `queries.ts`, `types.ts` and `page.tsx` | The folder `--out` names, inside the folder you ran the command in |
+| Command                  | What it writes                                                      | Where                                                              |
+| ------------------------ | ------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `--fix`                  | Edits to files that already exist, on a branch                      | Your repository                                                    |
+| `gaugeline query --page` | Three new files: `queries.ts`, `types.ts` and `page.tsx`            | The folder `--out` names, inside the folder you ran the command in |
+| `gaugeline query --save` | One baseline file of names: check ids, types, fields and file paths | The file `--save` names, inside the folder you ran the command in  |
 
 The reports a check saves (`--save-requests`, `snapshot --out`, `plan --annotate`, `digest`) are files about a check, written where you name them, and none of them changes your code.
 
@@ -72,3 +73,14 @@ If a change is ambiguous, it stays a finding. The rule is that anything requirin
 - **Every path is printed**, and nothing is created unless you pass `--page`. No git command is run.
 
 The test (`packages/cli/src/__tests__/page.e2e.test.ts`) records every request, which are `GET` counts and nothing else, and records every file-system call, which writes only under `--out`.
+
+### --save
+
+`gaugeline query ./src --save before.json` keeps today's gaps so that a later run can show only the ones a restructure created ([how it works](query-check.md#before-a-restructure)). It asks the same `GET` counts as the plain run and nothing more. The file holds check ids, document types, field names and file paths, and never a token, a document or a field value. The writer is the one `--page` uses (`packages/cli/src/scaffold-write.ts`), and the boundary is the same:
+
+- **Inside the folder you ran it from.** `../elsewhere.json`, an absolute path to another folder and a link that points out of the project are refused with exit 2 before anything is asked or written.
+- **Nothing is overwritten.** If the file exists, nothing is written. `--force` replaces that file, never a folder or a link.
+- **One file or none.** The target is checked before the first request, the folders it needs are made, and a write that fails removes what it made.
+- **The path is printed**, and nothing is created unless you pass `--save`. `--against` only reads.
+
+The test (`packages/cli/src/__tests__/query-baseline.test.ts`) fails if the file holds the token or any id, slug or title of a seeded dataset, and checks that a failed write leaves the folder as it was.
