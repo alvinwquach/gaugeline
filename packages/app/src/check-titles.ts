@@ -42,6 +42,10 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "jsonld-404": ["Structured data points at pages that don't exist", "Search & sharing"],
   "jsonld-invalid": ["This page's structured data is broken", "Search & sharing"],
   "lang-price-mismatch": ["Prices differ between language versions", "Sales & prices"],
+  "listing-hours-mismatch": ["A listing shows different opening hours", "Search & sharing"],
+  "listing-name-mismatch": ["A listing still uses your old business name", "Search & sharing"],
+  "listing-phone-mismatch": ["A listing shows a different phone number", "Search & sharing"],
+  "listing-website-wrong": ["A listing links to the wrong place", "Search & sharing"],
   "mock-content-live": ["Test content is on the live site", "Visitors"],
   "next-draft-public": ["Anyone can switch on draft mode", "Launch day"],
   "next-preview-canonical": [
@@ -114,6 +118,11 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "images-legacy-wp": ["Images still load from an old WordPress site", "Visitors"],
   "lang-twin-missing": ["A language version of this page is missing", "Visitors"],
   "links-wrapped": ["Some links go through a link shortener", "Visitors"],
+  "listing-address-mismatch": ["A listing shows a different address", "Search & sharing"],
+  "listing-special-hours-missing": [
+    "A listing doesn't know about a holiday closure",
+    "Search & sharing",
+  ],
   "llms-txt-broken-links": [
     "Your llms.txt sends assistants to pages that don't work",
     "Search & sharing",
@@ -389,6 +398,30 @@ export const CHECK_TEXT: Readonly<
     "Customers see one price and pay another, or compare the two versions and stop trusting either.",
     "Update the price on every version, ideally from one product record. A version that was copied and translated keeps last month's price.",
     'Product or Offer price in JSON-LD (then the configured priceSelector; never free text) differs for one sku across versions; "$12", "12 USD" and "$12.00" are equal',
+  ],
+  "listing-hours-mismatch": [
+    "On at least one day, the hours on your Google, Yelp or Apple listing are not the hours on your site.",
+    "People decide where to go from the hours in the search result. A listing that says you close at 10 when you stay open until 2 loses the late crowd, and one that says you open early sends people to a locked door.",
+    "Make the hours the same in the listing's own dashboard and on the site. Decide which one is right first, then fix the other.",
+    "both sides become seven lists of intervals in the venue's local time (a close after midnight belongs to the day it opens, split shifts stay split) and each day the site states is compared; a day the site does not mention is not; a day missing from a listing that gave hours is closed; the site's hours are the hours fact in gaugeline.facts.json, else LocalBusiness openingHours or openingHoursSpecification",
+  ],
+  "listing-name-mismatch": [
+    "The name on your Google, Yelp or Apple listing is not the name your site uses.",
+    "Most people find a bar or a clinic through the listing, not the website. If it still shows a name you retired, they search for the wrong thing and doubt that the place is the one they want.",
+    "Change the name in the listing's own dashboard (Google Business Profile, Yelp for Business, Apple Business Connect) to the one on your site, or fix the site if the listing is right.",
+    "the listing's name, normalised (case, accents, punctuation and a leading or trailing \"The\" ignored), is neither equal to the site's name nor the site's name with words around it; the site's name is the text fact \"name\" in gaugeline.facts.json, else the LocalBusiness name in structured data; permanently closed listings are not compared",
+  ],
+  "listing-phone-mismatch": [
+    "The phone number on your Google, Yelp or Apple listing is not the one on your site.",
+    "The phone number on the listing is the one people tap from the search result. A wrong one sends bookings and orders to a dead line or a stranger.",
+    "Update the phone number in the listing's own dashboard, or on the site if the listing is the right one.",
+    "the digits of the listing's phone number (a leading +1 or 1 on a North American number ignored) differ from the digits of the site's: the phone fact in gaugeline.facts.json, else the LocalBusiness telephone in structured data; numbers that are not 7 to 15 digits are not compared",
+  ],
+  "listing-website-wrong": [
+    "The website link on a listing, or in a social bio, leads to an old domain, to a page that no longer works, or through a long chain of redirects.",
+    "The website button on the listing is how a guest reaches the menu and the booking form. When it points at an old domain that lapses, or a page you deleted, every one of those visits ends in an error.",
+    "Set the listing's website to your site's current address, in the listing's own dashboard or in the bio.",
+    "the link is opened with GET (at most 8 distinct links, one request each): it is wrong when it cannot be opened, answers 400 or above, is on a different host from the checked site (www ignored) even if it redirects there, or takes 3 redirects or more; a link-in-bio page is right when it lands on the site or links to it; Yelp does not return a website, so it is not compared",
   ],
   "mock-content-live": [
     "The page's main content shows test or sample content: a test product, a sample post, John Doe, an example.com email address or a 555 phone number.",
@@ -713,6 +746,18 @@ export const CHECK_TEXT: Readonly<
     "Visitors can't see where the link goes before they click, the redirect adds a delay, and if the shortener expires or is blocked the link breaks.",
     "Link straight to the destination. Social icons in the footer are a common place for these.",
     "a[href] on bit.ly, t.co, lnkd.in, buff.ly, ow.ly, tinyurl.com, goo.gl, rebrand.ly, is.gd, cutt.ly, shorturl.at, tiny.cc (or a subdomain), or a /redirect, /out or /go path with a url= style parameter holding an http(s) address; footer links count too",
+  ],
+  "listing-address-mismatch": [
+    "The street number or ZIP code on your Google, Yelp or Apple listing is not the one on your site.",
+    "Maps sends people to the address on the listing. After a move, or with a typo, guests arrive at the wrong door.",
+    "Correct the address in the listing's own dashboard, or on the site if the listing is the right one.",
+    'the house number and the 5-digit ZIP code are read from both addresses and each one both sides state must be equal; street names are not compared; the site\'s address is the text fact "address" in gaugeline.facts.json, else the LocalBusiness address in structured data',
+  ],
+  "listing-special-hours-missing": [
+    "Your site announces a day you are closed, such as Thanksgiving or Christmas, and a listing still shows its normal hours for that day.",
+    "People check the listing on the day. If it says you open at 4 on a day you are shut, they come anyway.",
+    "Add the closure to the listing's special hours in its own dashboard (Google Business Profile: Special hours; Yelp for Business: Holiday hours).",
+    'closures on the site are dates in LocalBusiness openingHoursSpecification (validFrom and validThrough, opens and closes both 00:00) and dates or fixed US holidays within 40 characters of the word "closed" in the pages read, from today in the venue\'s time zone up to 60 days ahead; a listing is missing one when its special hours (Google Business Profile, Yelp) do not mark that date closed; sources that give no special hours (Google Maps, Apple) are reported as could not check',
   ],
   "llms-txt-broken-links": [
     "Links in /llms.txt return an error (4xx or 5xx) or redirect to a different site.",

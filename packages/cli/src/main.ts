@@ -39,6 +39,8 @@ import {
   ONBOARDING_FROM,
   RESEND_KEY_ENV,
   resolveAccess,
+  freezeEnv,
+  LISTING_ENV_VARS,
   type CheckRegistry,
   type DnsReader,
   type FetcherOptions,
@@ -105,6 +107,8 @@ import { appendStepSummary, planStepSummary } from "./step-summary.js";
 import {
   readAccess,
   readFacts,
+  readListingsConfig,
+  readAppleExport,
   readHidden,
   readLanguageRules,
   readPayments,
@@ -975,6 +979,18 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       const events = readEvents(deps.cwd ?? process.cwd());
       const navRules = readNavRules(deps.cwd ?? process.cwd());
       const pagesConfig = readPagesConfig(deps.cwd ?? process.cwd());
+      const listingsConfig = readListingsConfig(deps.cwd ?? process.cwd());
+      // The listing keys are copied from the environment here and read by the listing connectors only.
+      const listings = listingsConfig
+        ? {
+            config: listingsConfig,
+            env: freezeEnv(io.env ?? {}, LISTING_ENV_VARS),
+            ...((): { appleCsv?: string } => {
+              const appleCsv = readAppleExport(deps.cwd ?? process.cwd(), listingsConfig);
+              return appleCsv === undefined ? {} : { appleCsv };
+            })(),
+          }
+        : undefined;
       const accessConfig = readAccess(deps.cwd ?? process.cwd());
       // Keys are read from the environment here and go only into request headers.
       const access = accessConfig ? resolveAccess(accessConfig, io.env ?? {}) : undefined;
@@ -1047,6 +1063,8 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         ...(args.since === "last" ? { baselineRequested: true } : {}),
         ...(pagesConfig ? { pagesConfig } : {}),
         ...(access ? { access } : {}),
+        ...(listings ? { listings } : {}),
+        ...(listingsConfig?.timeZone ? { expect: { timeZone: listingsConfig.timeZone } } : {}),
         ...(dns ? { dns } : {}),
       });
       const {
