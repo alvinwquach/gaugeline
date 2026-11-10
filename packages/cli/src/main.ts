@@ -111,6 +111,7 @@ import {
 } from "@gaugeline/app-server";
 import { adsEngine } from "./ads-engine.js";
 import { runAds } from "./ads.js";
+import { runTags } from "./tags.js";
 import { formatRunAll, runAll, runAllExit } from "./run-all.js";
 import { readSites, selectSites, SITES_FILE } from "./sites.js";
 import { appendStepSummary, planStepSummary } from "./step-summary.js";
@@ -903,8 +904,14 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           cwd: deps.cwd ?? process.cwd(),
           now: (deps.now ?? io.now ?? (() => new Date()))(),
           ...(deps.fetcher ? { fetcher: deps.fetcher } : {}),
+          color: useColor(io.stdout, io.env ?? {}),
         }),
         ci: false,
+      };
+    case "tags":
+      return {
+        outcome: await runTags(args, io, { ...(deps.fetcher ? { fetcher: deps.fetcher } : {}) }),
+        ci: args.ci,
       };
     case "assert":
       return {

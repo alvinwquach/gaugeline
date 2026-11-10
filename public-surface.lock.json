@@ -1,6 +1,7 @@
 {
   "flags": {
     "ads": [
+      "allow-private",
       "help",
       "json",
       "quiet",
@@ -131,6 +132,14 @@
       "allow-private",
       "help",
       "out",
+      "quiet",
+      "verbose",
+      "version"
+    ],
+    "tags": [
+      "allow-private",
+      "ci",
+      "help",
       "quiet",
       "verbose",
       "version"

@@ -4,13 +4,14 @@ import { join } from "node:path";
 import { connect } from "node:net";
 import { fileURLToPath } from "node:url";
 import type { AdsEngine, AdsOutcome } from "@gaugeline/app-server";
-import { buildResult } from "@gaugeline/core";
+import { buildResult, type FetcherOptions } from "@gaugeline/core";
 import { startFixture } from "@gaugeline/fixtures";
 import { afterEach, describe, expect, it } from "vitest";
 import { scratchClientDir } from "../../../app-server/src/__tests__/helpers/client.js";
 import { parseCliArgs } from "../args.js";
 import { FLAGS } from "../flags.js";
 import { EXIT, main } from "../main.js";
+import { okSite, tapasSite } from "./helpers/ads-site.js";
 import { runBin } from "./helpers/bin.js";
 
 const ADS = fileURLToPath(new URL("../../../fixtures/ads/", import.meta.url));
@@ -229,6 +230,7 @@ describe("gaugeline open --ads: the ads command that ships with this version", (
   async function withApp<T>(
     path: string,
     use: (api: (path: string) => Promise<unknown>) => Promise<T>,
+    fetcher: FetcherOptions = { transport: okSite },
   ): Promise<T> {
     const c = capture();
     const stop = new AbortController();
@@ -236,6 +238,7 @@ describe("gaugeline open --ads: the ads command that ships with this version", (
       clientDir: scratchClientDir(),
       stop: stop.signal,
       now: () => FIXED,
+      fetcher,
     });
     try {
       await expect.poll(() => c.out(), { timeout: 10_000 }).toContain("Gaugeline is running at");
@@ -260,34 +263,45 @@ describe("gaugeline open --ads: the ads command that ships with this version", (
   it("lists one run of kind ads whose result deep-equals `gaugeline ads --json`", async () => {
     const path = join(ADS, "meta.csv");
     const command = capture();
-    expect(await main(["ads", path, "--json"], command.io, { now: () => FIXED })).toBe(EXIT.ok);
-    const expected: unknown = JSON.parse(command.out());
+    expect(
+      await main(["ads", path, "--json"], command.io, {
+        now: () => FIXED,
+        fetcher: { transport: tapasSite },
+      }),
+    ).toBe(EXIT.ok);
+    const expected = JSON.parse(command.out()) as { findings: { checkId: string }[] };
+    // The gift cards page drops the tags: the app and the command report the same finding.
+    expect(expected.findings.map((f) => f.checkId)).toEqual(["campaign-fields-lost"]);
 
-    await withApp(path, async (api) => {
-      const runs = (await api("/api/runs")) as { id: string; kind: string; url: string }[];
-      expect(runs).toHaveLength(1);
-      expect(runs[0]).toMatchObject({ kind: "ads", url: "meta.csv" });
-      const run = (await api(`/api/runs/${runs[0]?.id}`)) as {
-        result: unknown;
-        checked: { ads: { currencies: { currency: string; destinations: unknown[] }[] } };
-      };
-      expect(run.result).toEqual(expected);
-      // The spend behind the destinations: integers in minor units, summed per page.
-      expect(run.checked.ads.currencies).toEqual([
-        {
-          currency: "USD",
-          destinations: [
-            { url: "https://tapas-bar.example/happy-hour", ads: 5, spend: 120450 },
-            { url: "https://tapas-bar.example/old-menu", ads: 1, spend: 99999 },
-            { url: "https://tapas-bar.example/book-a-table", ads: 3, spend: 80000 },
-            { url: "https://tapas-bar.example/gift-cards", ads: 3, spend: 15075 },
-          ],
-        },
-      ]);
-    });
+    await withApp(
+      path,
+      async (api) => {
+        const runs = (await api("/api/runs")) as { id: string; kind: string; url: string }[];
+        expect(runs).toHaveLength(1);
+        expect(runs[0]).toMatchObject({ kind: "ads", url: "meta.csv" });
+        const run = (await api(`/api/runs/${runs[0]?.id}`)) as {
+          result: unknown;
+          checked: { ads: { currencies: { currency: string; destinations: unknown[] }[] } };
+        };
+        expect(run.result).toEqual(expected);
+        // The spend behind the destinations: integers in minor units, summed per page.
+        expect(run.checked.ads.currencies).toEqual([
+          {
+            currency: "USD",
+            destinations: [
+              { url: "https://tapas-bar.example/happy-hour", ads: 5, spend: 120450 },
+              { url: "https://tapas-bar.example/old-menu", ads: 1, spend: 99999 },
+              { url: "https://tapas-bar.example/book-a-table", ads: 3, spend: 80000 },
+              { url: "https://tapas-bar.example/gift-cards", ads: 3, spend: 15075 },
+            ],
+          },
+        ]);
+      },
+      { transport: tapasSite },
+    );
   });
 
-  it("12 ads over 4 destinations ask the fixture for at most one page each, only by GET or HEAD", async () => {
+  it("12 ads over 4 destinations ask the fixture for exactly 4 first requests, only by GET or HEAD", async () => {
     const site = await startFixture("clean");
     try {
       const paths = ["", "about.html", "menu.html", "missing.html"];
@@ -301,17 +315,23 @@ describe("gaugeline open --ads: the ads command that ships with this version", (
           ),
         ].join("\n"),
       );
-      await withApp(path, async (api) => {
-        const runs = (await api("/api/runs")) as { id: string }[];
-        const run = (await api(`/api/runs/${runs[0]?.id}`)) as {
-          checked: { ads: { currencies: { destinations: unknown[] }[] } };
-        };
-        expect(run.checked.ads.currencies[0]?.destinations).toHaveLength(4);
-      });
-      // The pages are checked in G24a and G24b, one request per destination. Until then this
-      // version asks for none; the bound holds in both cases, and G24a makes it exactly 4.
-      expect(site.total).toBeLessThanOrEqual(4);
+      await withApp(
+        path,
+        async (api) => {
+          const runs = (await api("/api/runs")) as { id: string }[];
+          const run = (await api(`/api/runs/${runs[0]?.id}`)) as {
+            checked: { ads: { currencies: { destinations: unknown[] }[] } };
+          };
+          expect(run.checked.ads.currencies[0]?.destinations).toHaveLength(4);
+        },
+        // The fixture is on this computer, which the app's fetcher refuses unless a test allows it.
+        { allowPrivate: true },
+      );
+      // One request per destination (the fixture's pages do not redirect), by GET or HEAD only, and
+      // the app's five-request limit holds.
+      expect(site.total).toBe(4);
       expect([...site.methods.keys()].every((m) => m === "GET" || m === "HEAD")).toBe(true);
+      expect(site.maxConcurrent).toBeLessThanOrEqual(5);
     } finally {
       await site.close();
     }
