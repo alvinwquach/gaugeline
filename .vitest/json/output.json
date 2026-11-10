@@ -1,0 +1,910 @@
+{
+  "numTotalTestSuites": 21,
+  "numPassedTestSuites": 21,
+  "numFailedTestSuites": 0,
+  "numPendingTestSuites": 0,
+  "numTotalTests": 75,
+  "numPassedTests": 75,
+  "numFailedTests": 0,
+  "numPendingTests": 0,
+  "numTodoTests": 0,
+  "snapshot": {
+    "added": 0,
+    "failure": false,
+    "filesAdded": 0,
+    "filesRemoved": 0,
+    "filesRemovedList": [],
+    "filesUnmatched": 0,
+    "filesUpdated": 0,
+    "matched": 0,
+    "total": 0,
+    "unchecked": 0,
+    "uncheckedKeysByFile": [],
+    "unmatched": 0,
+    "updated": 0,
+    "didUpdate": false
+  },
+  "startTime": 1794272557461,
+  "success": true,
+  "testResults": [
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["loadAdsFile: the file is read once, from the path the person typed"],
+          "fullName": "loadAdsFile: the file is read once, from the path the person typed hands the text to the engine once and names the run by the file's base name",
+          "status": "passed",
+          "title": "hands the text to the engine once and names the run by the file's base name",
+          "duration": 4.3103419999999915,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["loadAdsFile: the file is read once, from the path the person typed"],
+          "fullName": "loadAdsFile: the file is read once, from the path the person typed a path with spaces and a non-ASCII name works, and the name is the base name only",
+          "status": "passed",
+          "title": "a path with spaces and a non-ASCII name works, and the name is the base name only",
+          "duration": 1.502563999999893,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["loadAdsFile: the file is read once, from the path the person typed"],
+          "fullName": "loadAdsFile: the file is read once, from the path the person typed is not read again: changing the file afterwards changes nothing",
+          "status": "passed",
+          "title": "is not read again: changing the file afterwards changes nothing",
+          "duration": 1.8727019999998902,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["loadAdsFile: the file is read once, from the path the person typed"],
+          "fullName": "loadAdsFile: the file is read once, from the path the person typed a missing file, a folder and an unreadable path each say so in one sentence",
+          "status": "passed",
+          "title": "a missing file, a folder and an unreadable path each say so in one sentence",
+          "duration": 1.7598430000000462,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["loadAdsFile: the file is read once, from the path the person typed"],
+          "fullName": "loadAdsFile: the file is read once, from the path the person typed a file without the columns is the engine's message, unchanged",
+          "status": "passed",
+          "title": "a file without the columns is the engine's message, unchanged",
+          "duration": 1.119372999999996,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["loadAdsFile: the file is read once, from the path the person typed"],
+          "fullName": "loadAdsFile: the file is read once, from the path the person typed reads a UTF-16 export (Google Ads' Excel CSV) as text",
+          "status": "passed",
+          "title": "reads a UTF-16 export (Google Ads' Excel CSV) as text",
+          "duration": 0.8206330000000435,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["startApp with an ads export"],
+          "fullName": "startApp with an ads export lists one run of kind ads under the file's base name, with the result and the spend",
+          "status": "passed",
+          "title": "lists one run of kind ads under the file's base name, with the result and the spend",
+          "duration": 23.488902000000053,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["startApp with an ads export"],
+          "fullName": "startApp with an ads export progress is on the same event stream as a page check: steps, then done",
+          "status": "passed",
+          "title": "progress is on the same event stream as a page check: steps, then done",
+          "duration": 6012.693788,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["startApp with an ads export"],
+          "fullName": "startApp with an ads export the report download works when the engine gives a report, and says so when it does not",
+          "status": "passed",
+          "title": "the report download works when the engine gives a report, and says so when it does not",
+          "duration": 13.898822999999538,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["startApp with an ads export"],
+          "fullName": "startApp with an ads export a run that fails says why, and the app still answers",
+          "status": "passed",
+          "title": "a run that fails says why, and the app still answers",
+          "duration": 3.280149999999594,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["startApp with an ads export"],
+          "fullName": "startApp with an ads export spend that is not a whole number of cents fails the run rather than showing a float",
+          "status": "passed",
+          "title": "spend that is not a whole number of cents fails the run rather than showing a float",
+          "duration": 2.8476279999995313,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["startApp with an ads export"],
+          "fullName": "startApp with an ads export an unusable file stops the start: no port is taken, and the message is the engine's",
+          "status": "passed",
+          "title": "an unusable file stops the start: no port is taken, and the message is the engine's",
+          "duration": 1.9650259999998525,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["startApp with an ads export"],
+          "fullName": "startApp with an ads export with the demo or with an address it is refused before anything starts",
+          "status": "passed",
+          "title": "with the demo or with an address it is refused before anything starts",
+          "duration": 1.2746130000004996,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["no route takes a file, a path or an upload"],
+          "fullName": "no route takes a file, a path or an upload POST /api/check with { \"ads\": \"/etc/passwd\" } is a 400 from the body validation",
+          "status": "passed",
+          "title": "POST /api/check with { \"ads\": \"/etc/passwd\" } is a 400 from the body validation",
+          "duration": 4.14363400000002,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["no route takes a file, a path or an upload"],
+          "fullName": "no route takes a file, a path or an upload there is no ads route: whatever the method or body, the API has no such address",
+          "status": "passed",
+          "title": "there is no ads route: whatever the method or body, the API has no such address",
+          "duration": 10.90005100000053,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["the requests an ads run makes"],
+          "fullName": "the requests an ads run makes one request per destination, and only GET or HEAD",
+          "status": "passed",
+          "title": "one request per destination, and only GET or HEAD",
+          "duration": 10.585782000000108,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["the requests an ads run makes"],
+          "fullName": "the requests an ads run makes 2,000 ads over 300 destinations: five requests at most are in flight",
+          "status": "passed",
+          "title": "2,000 ads over 300 destinations: five requests at most are in flight",
+          "duration": 233.7139929999994,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["the requests an ads run makes"],
+          "fullName": "the requests an ads run makes a destination on a private address is refused, as for any check",
+          "status": "passed",
+          "title": "a destination on a private address is refused, as for any check",
+          "duration": 3.513369999999668,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["the requests an ads run makes"],
+          "fullName": "the requests an ads run makes promise: nothing of the export's contents is in any request that leaves, and the names are only in answers from 127.0.0.1",
+          "status": "passed",
+          "title": "promise: nothing of the export's contents is in any request that leaves, and the names are only in answers from 127.0.0.1",
+          "duration": 2.2781050000003233,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        }
+      ],
+      "startTime": 1794272558521,
+      "endTime": 1794272564857.278,
+      "status": "passed",
+      "message": "",
+      "name": "/home/user/gaugeline/packages/app-server/src/__tests__/ads.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["gaugeline open --ads: arguments"],
+          "fullName": "gaugeline open --ads: arguments --ads <file> is the export to read, with no address",
+          "status": "passed",
+          "title": "--ads <file> is the export to read, with no address",
+          "duration": 9.438023000000157,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["gaugeline open --ads: arguments"],
+          "fullName": "gaugeline open --ads: arguments is a flag of open alone, in the table the docs and --help are made from",
+          "status": "passed",
+          "title": "is a flag of open alone, in the table the docs and --help are made from",
+          "duration": 1.3986710000001494,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["gaugeline open --ads: arguments"],
+          "fullName": "gaugeline open --ads: arguments no file name, or an empty one, is a usage error that names the fix",
+          "status": "passed",
+          "title": "no file name, or an empty one, is a usage error that names the fix",
+          "duration": 0.7868679999999131,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["gaugeline open --ads: arguments"],
+          "fullName": "gaugeline open --ads: arguments --demo with --ads is its own usage error, exit 2, and starts nothing",
+          "status": "passed",
+          "title": "--demo with --ads is its own usage error, exit 2, and starts nothing",
+          "duration": 3.187740000000076,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["gaugeline open --ads: arguments"],
+          "fullName": "gaugeline open --ads: arguments --ads with an address is a usage error",
+          "status": "passed",
+          "title": "--ads with an address is a usage error",
+          "duration": 1.063073999999915,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["gaugeline open --ads: arguments"],
+          "fullName": "gaugeline open --ads: arguments --help for open lists it",
+          "status": "passed",
+          "title": "--help for open lists it",
+          "duration": 0.2548309999999674,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["gaugeline open --ads: starting"],
+          "fullName": "gaugeline open --ads: starting reads the file once, before the app starts, runs it, and stops on request",
+          "status": "passed",
+          "title": "reads the file once, before the app starts, runs it, and stops on request",
+          "duration": 59.368709999999965,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["gaugeline open --ads: starting"],
+          "fullName": "gaugeline open --ads: starting a path with spaces and a non-ASCII name works, and the folder is never printed",
+          "status": "passed",
+          "title": "a path with spaces and a non-ASCII name works, and the folder is never printed",
+          "duration": 54.06270499999982,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["gaugeline open --ads: starting"],
+          "fullName": "gaugeline open --ads: starting a missing file exits 2 with one sentence, before any server starts",
+          "status": "passed",
+          "title": "a missing file exits 2 with one sentence, before any server starts",
+          "duration": 2.4229149999998754,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["gaugeline open --ads: starting"],
+          "fullName": "gaugeline open --ads: starting an export with no spend column exits 2 with the ads command's message and starts no server",
+          "status": "passed",
+          "title": "an export with no spend column exits 2 with the ads command's message and starts no server",
+          "duration": 1.5882199999998647,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["gaugeline open --ads: the built bin"],
+          "fullName": "gaugeline open --ads: the built bin says plainly that the ads command is not in this version yet, exits 2 and starts nothing",
+          "status": "passed",
+          "title": "says plainly that the ads command is not in this version yet, exits 2 and starts nothing",
+          "duration": 140.84732699999995,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        }
+      ],
+      "startTime": 1794272558607,
+      "endTime": 1794272558881.8474,
+      "status": "passed",
+      "message": "",
+      "name": "/home/user/gaugeline/packages/cli/src/__tests__/open-ads.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["toAdsModel"],
+          "fullName": "toAdsModel 12 ads over 4 destinations: totals are exact integers",
+          "status": "passed",
+          "title": "12 ads over 4 destinations: totals are exact integers",
+          "duration": 1.806888999999984,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["toAdsModel"],
+          "fullName": "toAdsModel problem spend adds the destinations that have a finding, each once however many it has",
+          "status": "passed",
+          "title": "problem spend adds the destinations that have a finding, each once however many it has",
+          "duration": 0.2199849999999799,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["toAdsModel"],
+          "fullName": "toAdsModel sorts by the spend on pages with problems, highest first, then total spend, then address",
+          "status": "passed",
+          "title": "sorts by the spend on pages with problems, highest first, then total spend, then address",
+          "duration": 0.507680999999991,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["toAdsModel"],
+          "fullName": "toAdsModel each row carries references into the result's findings, by index",
+          "status": "passed",
+          "title": "each row carries references into the result's findings, by index",
+          "duration": 0.3216160000000059,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["toAdsModel"],
+          "fullName": "toAdsModel equal spend breaks on the address, so the order never depends on the input order",
+          "status": "passed",
+          "title": "equal spend breaks on the address, so the order never depends on the input order",
+          "duration": 0.29048899999997957,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["toAdsModel"],
+          "fullName": "toAdsModel every destination healthy: no problem spend, and the rows are all still there",
+          "status": "passed",
+          "title": "every destination healthy: no problem spend, and the rows are all still there",
+          "duration": 0.2457239999999956,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["toAdsModel"],
+          "fullName": "toAdsModel does not change its input",
+          "status": "passed",
+          "title": "does not change its input",
+          "duration": 0.18049900000002594,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["toAdsModel"],
+          "fullName": "toAdsModel a finding about an address that is not a destination is kept, not dropped",
+          "status": "passed",
+          "title": "a finding about an address that is not a destination is kept, not dropped",
+          "duration": 0.17993200000000797,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["toAdsModel with mixed currencies"],
+          "fullName": "toAdsModel with mixed currencies keeps a total for each currency and never adds them",
+          "status": "passed",
+          "title": "keeps a total for each currency and never adds them",
+          "duration": 0.48358000000001766,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["toAdsModel with mixed currencies"],
+          "fullName": "toAdsModel with mixed currencies the same finding is on the page's row in each currency",
+          "status": "passed",
+          "title": "the same finding is on the page's row in each currency",
+          "duration": 0.19642600000000243,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["toAdsModel with a sum past the safe integers"],
+          "fullName": "toAdsModel with a sum past the safe integers refuses to show a total it cannot hold exactly",
+          "status": "passed",
+          "title": "refuses to show a total it cannot hold exactly",
+          "duration": 0.6769590000000107,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        }
+      ],
+      "startTime": 1794272559275,
+      "endTime": 1794272559280.677,
+      "status": "passed",
+      "message": "",
+      "name": "/home/user/gaugeline/packages/app/src/ads/__tests__/model.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["formatMoney: from the minor-unit integer and the currency"],
+          "fullName": "formatMoney: from the minor-unit integer and the currency 0, 5, 1999 and 123456789 in USD",
+          "status": "passed",
+          "title": "0, 5, 1999 and 123456789 in USD",
+          "duration": 13.460313999999983,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["formatMoney: from the minor-unit integer and the currency"],
+          "fullName": "formatMoney: from the minor-unit integer and the currency the same amounts in EUR",
+          "status": "passed",
+          "title": "the same amounts in EUR",
+          "duration": 0.5749079999999935,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["formatMoney: from the minor-unit integer and the currency"],
+          "fullName": "formatMoney: from the minor-unit integer and the currency JPY has no decimals: its minor unit is the yen",
+          "status": "passed",
+          "title": "JPY has no decimals: its minor unit is the yen",
+          "duration": 0.6198530000000062,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["formatMoney: from the minor-unit integer and the currency"],
+          "fullName": "formatMoney: from the minor-unit integer and the currency follows the reader's locale for separators",
+          "status": "passed",
+          "title": "follows the reader's locale for separators",
+          "duration": 0.3570349999999962,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["formatMoney: from the minor-unit integer and the currency"],
+          "fullName": "formatMoney: from the minor-unit integer and the currency a currency with three decimals (KWD) keeps them",
+          "status": "passed",
+          "title": "a currency with three decimals (KWD) keeps them",
+          "duration": 0.6650080000000003,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["formatMoney: from the minor-unit integer and the currency"],
+          "fullName": "formatMoney: from the minor-unit integer and the currency builds the amount as text from the integer, so no division happens",
+          "status": "passed",
+          "title": "builds the amount as text from the integer, so no division happens",
+          "duration": 0.36851799999999457,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["formatMoney: from the minor-unit integer and the currency"],
+          "fullName": "formatMoney: from the minor-unit integer and the currency no currency, or one Intl does not know, shows the number with two decimals and no symbol",
+          "status": "passed",
+          "title": "no currency, or one Intl does not know, shows the number with two decimals and no symbol",
+          "duration": 0.5246160000000089,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["formatMoney: from the minor-unit integer and the currency"],
+          "fullName": "formatMoney: from the minor-unit integer and the currency a negative amount (a refund line in an export) keeps its sign",
+          "status": "passed",
+          "title": "a negative amount (a refund line in an export) keeps its sign",
+          "duration": 0.23096499999999764,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["formatMoney: from the minor-unit integer and the currency"],
+          "fullName": "formatMoney: from the minor-unit integer and the currency refuses an amount that is not a safe integer rather than showing a guess",
+          "status": "passed",
+          "title": "refuses an amount that is not a safe integer rather than showing a guess",
+          "duration": 1.193604999999991,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        }
+      ],
+      "startTime": 1794272559069,
+      "endTime": 1794272559087.1936,
+      "status": "passed",
+      "message": "",
+      "name": "/home/user/gaugeline/packages/app/src/ads/__tests__/money.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["readAds: the destinations in an ads run's checked field"],
+          "fullName": "readAds: the destinations in an ads run's checked field reads the shape the server sends",
+          "status": "passed",
+          "title": "reads the shape the server sends",
+          "duration": 2.108897000000013,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["readAds: the destinations in an ads run's checked field"],
+          "fullName": "readAds: the destinations in an ads run's checked field is nothing for a page run's checked field",
+          "status": "passed",
+          "title": "is nothing for a page run's checked field",
+          "duration": 0.39884100000000444,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["readAds: the destinations in an ads run's checked field"],
+          "fullName": "readAds: the destinations in an ads run's checked field spend that is not a whole number of minor units drops the whole list",
+          "status": "passed",
+          "title": "spend that is not a whole number of minor units drops the whole list",
+          "duration": 0.3307620000000213,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["readAds: the destinations in an ads run's checked field"],
+          "fullName": "readAds: the destinations in an ads run's checked field a malformed destination, currency or list drops the whole list",
+          "status": "passed",
+          "title": "a malformed destination, currency or list drops the whole list",
+          "duration": 0.30228699999997843,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        }
+      ],
+      "startTime": 1794272559481,
+      "endTime": 1794272559484.3022,
+      "status": "passed",
+      "message": "",
+      "name": "/home/user/gaugeline/packages/app/src/ads/__tests__/read.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["Ads: the summary and the table"],
+          "fullName": "Ads: the summary and the table leads with the spend that went to pages with problems, out of the total",
+          "status": "passed",
+          "title": "leads with the spend that went to pages with problems, out of the total",
+          "duration": 140.390264,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["Ads: the summary and the table"],
+          "fullName": "Ads: the summary and the table lists one row for each page: address, ads, spend, findings, the worst page first",
+          "status": "passed",
+          "title": "lists one row for each page: address, ads, spend, findings, the worst page first",
+          "duration": 65.41712500000006,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["Ads: the summary and the table"],
+          "fullName": "Ads: the summary and the table a finding opens in Problems, on that finding",
+          "status": "passed",
+          "title": "a finding opens in Problems, on that finding",
+          "duration": 17.723423999999795,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["Ads: the summary and the table"],
+          "fullName": "Ads: the summary and the table an address is text, never a link",
+          "status": "passed",
+          "title": "an address is text, never a link",
+          "duration": 20.75641500000006,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["Ads: the summary and the table"],
+          "fullName": "Ads: the summary and the table the filter shows only pages with problems and says how many",
+          "status": "passed",
+          "title": "the filter shows only pages with problems and says how many",
+          "duration": 80.93820099999994,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["Ads: the summary and the table"],
+          "fullName": "Ads: the summary and the table values from the export are text: markup in an address or a title is not parsed",
+          "status": "passed",
+          "title": "values from the export are text: markup in an address or a title is not parsed",
+          "duration": 9.296425,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["Ads: edge cases"],
+          "fullName": "Ads: edge cases every page healthy: says no spend went to pages with problems, and still lists them",
+          "status": "passed",
+          "title": "every page healthy: says no spend went to pages with problems, and still lists them",
+          "duration": 25.622562000000016,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["Ads: edge cases"],
+          "fullName": "Ads: edge cases every page healthy: the filter says no page has a problem",
+          "status": "passed",
+          "title": "every page healthy: the filter says no page has a problem",
+          "duration": 17.49809500000015,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["Ads: edge cases"],
+          "fullName": "Ads: edge cases mixed currencies: one section for each, each total in its own currency, never added",
+          "status": "passed",
+          "title": "mixed currencies: one section for each, each total in its own currency, never added",
+          "duration": 16.16015100000004,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["Ads: edge cases"],
+          "fullName": "Ads: edge cases a currency the export does not name is shown as a plain number",
+          "status": "passed",
+          "title": "a currency the export does not name is shown as a plain number",
+          "duration": 4.248353999999836,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["Ads: edge cases"],
+          "fullName": "Ads: edge cases 2,000 ads over 300 destinations: every row is drawn",
+          "status": "passed",
+          "title": "2,000 ads over 300 destinations: every row is drawn",
+          "duration": 934.333114,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["Ads: edge cases"],
+          "fullName": "Ads: edge cases a finding about an address that is not a landing page is pointed to, not lost",
+          "status": "passed",
+          "title": "a finding about an address that is not a landing page is pointed to, not lost",
+          "duration": 8.03445899999997,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["Ads: edge cases"],
+          "fullName": "Ads: edge cases an export with no ads that link anywhere says so",
+          "status": "passed",
+          "title": "an export with no ads that link anywhere says so",
+          "duration": 1.4446360000001732,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["Ads: edge cases"],
+          "fullName": "Ads: edge cases while it runs, after a failure, and with no destinations kept, it says which",
+          "status": "passed",
+          "title": "while it runs, after a failure, and with no destinations kept, it says which",
+          "duration": 2.416891000000305,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["Ads in the shell"],
+          "fullName": "Ads in the shell the Ads view exists only for an ads run; page runs keep their five views",
+          "status": "passed",
+          "title": "the Ads view exists only for an ads run; page runs keep their five views",
+          "duration": 0.4238399999999274,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["Ads in the shell"],
+          "fullName": "Ads in the shell an ads run opens on Ads, appears in the sidebar under the file's name, and has no Overview link",
+          "status": "passed",
+          "title": "an ads run opens on Ads, appears in the sidebar under the file's name, and has no Overview link",
+          "duration": 34.52558599999975,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["Ads in the shell"],
+          "fullName": "Ads in the shell a session with only page runs shows no Ads link",
+          "status": "passed",
+          "title": "a session with only page runs shows no Ads link",
+          "duration": 21.65637599999991,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["Ads in the shell"],
+          "fullName": "Ads in the shell opening a finding from the table lands in Problems on that finding",
+          "status": "passed",
+          "title": "opening a finding from the table lands in Problems on that finding",
+          "duration": 62.42938700000013,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["Ads in the shell"],
+          "fullName": "Ads in the shell the sidebar link to an ads run goes to a view it has",
+          "status": "passed",
+          "title": "the sidebar link to an ads run goes to a view it has",
+          "duration": 37.81182800000033,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["Ads in the shell"],
+          "fullName": "Ads in the shell an address that names the Ads view for a page run opens that run's first view",
+          "status": "passed",
+          "title": "an address that names the Ads view for a page run opens that run's first view",
+          "duration": 16.032310999999936,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["Ads in the shell"],
+          "fullName": "Ads in the shell the download is hidden for an ads run with no report, and offered when the server has one",
+          "status": "passed",
+          "title": "the download is hidden for an ads run with no report, and offered when the server has one",
+          "duration": 56.559663999999884,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        }
+      ],
+      "startTime": 1794272558316,
+      "endTime": 1794272559890.5596,
+      "status": "passed",
+      "message": "",
+      "name": "/home/user/gaugeline/packages/app/src/ads/__tests__/view.test.tsx"
+    }
+  ]
+}

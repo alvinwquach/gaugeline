@@ -94,8 +94,11 @@ import {
   DemoError,
   PortRangeError,
   startApp,
+  AdsInputError,
+  type AdsEngine,
   type RunningApp,
 } from "@gaugeline/app-server";
+import { adsEngine } from "./ads-engine.js";
 import { formatRunAll, runAll, runAllExit } from "./run-all.js";
 import { readSites, selectSites, SITES_FILE } from "./sites.js";
 import { appendStepSummary, planStepSummary } from "./step-summary.js";
@@ -186,6 +189,8 @@ export interface Deps {
   stop?: AbortSignal;
   /** `gaugeline open`: the built app's folder (tests); by default dist/client beside the CLI. */
   clientDir?: string;
+  /** `gaugeline open --ads`: the ads command. Defaults to the one in this version; tests pass a stand-in. */
+  ads?: AdsEngine;
 }
 
 export interface RunReport {
@@ -770,6 +775,14 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         ci: false,
       };
     case "open": {
+      const engine = deps.ads ?? adsEngine;
+      if (args.ads !== undefined && !engine)
+        throw new ConfigError(
+          "gaugeline open --ads needs the ads command, which is not part of this version of Gaugeline yet.",
+          {
+            hint: "Update Gaugeline when it is released, or check one page with gaugeline open yoursite.com.",
+          },
+        );
       // The key is printed once, here, and nowhere else: not in stderr, not in an error.
       let app: RunningApp;
       try {
@@ -779,10 +792,13 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           // The demo makes no fetcher at all (startApp makes none without a runner), so a fetcher
           // passed in by a test is not given to it either.
           ...(args.demo ? { demo: true } : {}),
-          ...(args.address
+          // Read once, here, before the port is taken: the path is never kept.
+          ...(args.ads !== undefined && engine ? { ads: { file: args.ads, engine } } : {}),
+          ...(args.address ? { address: args.address } : {}),
+          // The first check's progress (an address's, or the export's), in the terminal's own
+          // words, before the link.
+          ...(args.address || args.ads !== undefined
             ? {
-                address: args.address,
-                // The first check's progress, in the terminal's own words, before the link.
                 onFirstStep: (text: string) => {
                   if (!args.quiet) io.stdout.write(` ${text}\n`);
                 },
@@ -795,6 +811,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         if (err instanceof DemoError)
           throw new ConfigError(`Gaugeline cannot start the demo: ${err.message}`);
         if (err instanceof PortRangeError) throw new ConfigError(err.message);
+        if (err instanceof AdsInputError) throw new ConfigError(err.message);
         // A package without its app, or with files that differ from its manifest: one line, exit 2.
         if (err instanceof ClientMissingError || err instanceof ClientIntegrityError)
           throw new ConfigError(`Gaugeline cannot open the app: ${err.message}`);

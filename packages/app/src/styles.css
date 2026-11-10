@@ -750,3 +750,49 @@ h2.count {
 .leaks-table .keys li + li {
   margin-top: 0.25rem;
 }
+
+/* Ads view */
+.ads-section + .ads-section {
+  margin-top: 2rem;
+}
+.ads-summary {
+  font-size: 1.125rem;
+  margin: 0.5rem 0 1rem;
+}
+.ads-table {
+  width: 100%;
+  min-width: 36rem;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+}
+.ads-table caption {
+  caption-side: top;
+  padding: 0 0 0.5rem;
+  text-align: left;
+  font-weight: 600;
+}
+.ads-table th,
+.ads-table td {
+  padding: 0.375rem 0.5rem;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+.ads-table thead th {
+  background: var(--panel);
+  font-size: 0.875rem;
+}
+.ads-table tbody th {
+  font-weight: 400;
+}
+.ads-table .num {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.ads-findings {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}

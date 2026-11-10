@@ -297,7 +297,9 @@ describe("flag table: e2e", () => {
       // gaugeline open never ends by itself: with --help it prints its usage and exits 0, which
       // still shows the bin accepts the flag for that command.
       if (f.commands.length === 1 && f.commands[0] === "open") {
-        const r = await runBin(["open", "--help", `--${f.name}`], {}, { cwd: scratch });
+        // A flag that takes a value (open --ads) is given one.
+        const given = f.type === "string" ? [`--${f.name}`, "value"] : [`--${f.name}`];
+        const r = await runBin(["open", "--help", ...given], {}, { cwd: scratch });
         expect(r.stderr, f.name).not.toContain("Unknown option");
         expect(r.status, f.name).toBe(0);
         continue;

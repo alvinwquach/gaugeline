@@ -1,8 +1,15 @@
 import { formatHash } from "./route";
 import type { RunState } from "./store";
 import { LEVELS, LEVEL_LABEL } from "./types";
+import { viewsFor } from "./views";
 
 const STATE_TEXT = { running: "Checking", done: "Done", failed: "Could not run" } as const;
+
+/** The open view's id if this run has it (an ads run has no Overview), else the run's first view. */
+const viewFor = (run: RunState, viewId: string): string => {
+  const own = viewsFor(run);
+  return own.some((v) => v.id === viewId) ? viewId : (own[0]?.id ?? viewId);
+};
 
 /**
  * Every page checked this session, oldest first (the order of the Map, which is the server's order).
@@ -26,7 +33,7 @@ export function Sidebar({
           {[...runs.values()].map((run) => (
             <li key={run.id}>
               <a
-                href={formatHash(run.id, viewId)}
+                href={formatHash(run.id, viewFor(run, viewId))}
                 aria-current={run.id === activeId ? "page" : undefined}
                 className="run-link"
               >

@@ -30,11 +30,15 @@ function view(r: Run, full: boolean) {
   return {
     id: r.id,
     url: r.url,
+    kind: r.kind,
     state: r.state,
     startedAt: r.startedAt,
     ...(r.counts ? { counts: r.counts } : {}),
+    // The app hides the download unless there is a report behind it (an ads run may have none).
+    ...(r.kind === "ads" && r.report ? { hasReport: true } : {}),
     ...(full && r.result ? { result: r.result } : {}),
-    ...(full && r.checked ? { checked: r.checked } : {}),
+    ...(full && r.kind === "ads" && r.ads ? { checked: { ads: r.ads } } : {}),
+    ...(full && r.kind === "page" && r.checked ? { checked: r.checked } : {}),
     ...(full && r.reason ? { reason: r.reason } : {}),
   };
 }
@@ -85,6 +89,8 @@ function sendReport(res: ServerResponse, r: Run, ctx: RouteContext) {
       error: "This check is still running. The report is ready when it has finished.",
     });
   const html = renderRunReport(r, ctx.registry, ctx.version);
+  if (html === undefined && r.kind === "ads" && r.state === "done")
+    return json(res, 404, { error: "An ads check has no report to download." });
   if (html === undefined)
     return json(res, 409, { error: "This check did not finish, so there is no report." });
   const body = Buffer.from(html);

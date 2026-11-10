@@ -120,12 +120,39 @@ export interface Checked {
   leaks?: LeaksView;
 }
 
+/** One landing page of an ads export: how many ads send people there, and what they cost. */
+export interface AdsDestination {
+  url: string;
+  ads: number;
+  /** An integer in minor units of the currency (cents), never a float. */
+  spend: number;
+}
+
+/**
+ * The spend of one currency. An export that mixes currencies has one of these for each, and the
+ * app never adds across them. `currency` is an ISO 4217 code, or null when the export names none.
+ */
+export interface AdsCurrency {
+  currency: string | null;
+  destinations: AdsDestination[];
+}
+
+/** What the server sends beside an ads run's result, in the API's `checked` field. */
+export interface AdsData {
+  currencies: AdsCurrency[];
+}
+
 export type RunStatus = "running" | "done" | "failed";
+
+/** What a run is of: one page checked from an address, or an ads export read from a file. */
+export type RunKind = "page" | "ads";
 
 /** One row of GET /api/runs. */
 export interface RunSummary {
   id: string;
   url: string;
+  /** Absent in an answer from a server that does not say: a page run. */
+  kind?: RunKind;
   state: RunStatus;
   startedAt: string;
   counts?: Counts;
@@ -135,6 +162,10 @@ export interface RunSummary {
 export interface RunDetail extends RunSummary {
   result?: Result;
   checked?: Checked;
+  /** An ads run: the destinations and their spend. */
+  ads?: AdsData;
+  /** An ads run: there is a report to download. */
+  hasReport?: boolean;
   reason?: string;
 }
 

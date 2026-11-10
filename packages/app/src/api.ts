@@ -1,5 +1,7 @@
 import {
   LEVELS,
+  type AdsData,
+  type AdsDestination,
   REQUEST_KINDS,
   type Checked,
   type Counts,
@@ -108,6 +110,7 @@ function readSummary(v: unknown): RunSummary {
   return {
     id: v.id,
     url: v.url,
+    ...(v.kind === "ads" ? { kind: "ads" as const } : {}),
     state: v.state,
     startedAt: v.startedAt,
     ...(counts ? { counts } : {}),
@@ -319,6 +322,36 @@ export function readChecked(v: unknown): Checked | undefined {
   };
 }
 
+function readDestination(v: unknown): AdsDestination | undefined {
+  if (!isObject(v) || !isString(v.url) || !isCount(v.ads) || !Number.isInteger(v.ads))
+    return undefined;
+  // Spend is a whole number of minor units, never a float: anything else is not drawn.
+  if (typeof v.spend !== "number" || !Number.isSafeInteger(v.spend) || v.spend < 0)
+    return undefined;
+  return { url: v.url, ads: v.ads, spend: v.spend };
+}
+
+/**
+ * The destinations and their spend, from an ads run's `checked` field. Anything that isn't the
+ * shape is dropped as a whole, and the Ads view then says it has no list.
+ */
+export function readAds(v: unknown): AdsData | undefined {
+  if (!isObject(v) || !isObject(v.ads) || !Array.isArray(v.ads.currencies)) return undefined;
+  const currencies: AdsData["currencies"] = [];
+  for (const c of v.ads.currencies) {
+    if (
+      !isObject(c) ||
+      !(c.currency === null || isString(c.currency)) ||
+      !Array.isArray(c.destinations)
+    )
+      return undefined;
+    const read = c.destinations.map(readDestination);
+    if (read.some((d) => d === undefined)) return undefined;
+    currencies.push({ currency: c.currency, destinations: read as AdsDestination[] });
+  }
+  return { currencies };
+}
+
 /** GET /api/runs: every run in this session, oldest first. */
 export async function listRuns(): Promise<RunSummary[]> {
   const body = await call("/api/runs");
@@ -335,6 +368,8 @@ export async function getRun(id: string): Promise<RunDetail> {
     ...summary,
     ...(raw.result !== undefined ? { result: readResult(raw.result) } : {}),
     ...(readChecked(raw.checked) ? { checked: readChecked(raw.checked) as Checked } : {}),
+    ...(readAds(raw.checked) ? { ads: readAds(raw.checked) as AdsData } : {}),
+    ...(raw.hasReport === true ? { hasReport: true } : {}),
     ...(typeof raw.reason === "string" ? { reason: raw.reason } : {}),
   };
 }

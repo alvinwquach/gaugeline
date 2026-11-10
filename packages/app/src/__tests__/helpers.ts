@@ -1,5 +1,5 @@
 import { vi } from "vitest";
-import type { Checked, Counts, Finding, RequestRow, Result, RunDetail } from "../types";
+import type { AdsData, Checked, Counts, Finding, RequestRow, Result, RunDetail } from "../types";
 
 /** A finding with invented content; override what a test cares about. */
 export function finding(over: Partial<Finding> = {}): Finding {
@@ -73,6 +73,18 @@ export function doneRun(id: string, url: string, r: Result): RunDetail {
   };
 }
 
+/** A finished ads run as GET /api/runs/:id answers it (the wire shape): the file's name, the result and the destinations. */
+export function adsRun(
+  id: string,
+  name: string,
+  r: Result,
+  ads: AdsData,
+  over: Partial<RunDetail> = {},
+): RunDetail {
+  // As the server sends it: the destinations are in `checked`, which the client reads into `ads`.
+  return { ...doneRun(id, name, r), kind: "ads", checked: { ads } as unknown as Checked, ...over };
+}
+
 /** One answer for the fetch stub: JSON with a status. */
 export function reply(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -128,6 +140,7 @@ export function runState(over: Partial<RunState> = {}): RunState {
   return {
     id: "run-1",
     url: "https://shop.example/",
+    kind: "page",
     state: "done",
     startedAt: "2026-11-09T10:00:00.000Z",
     steps: [],

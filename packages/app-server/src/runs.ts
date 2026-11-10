@@ -9,6 +9,7 @@ import {
   type CheckRegistry,
   type FetcherOptions,
 } from "@gaugeline/core";
+import { startAdsRun, type AdsInput } from "./ads.js";
 import type { Counts, Run, Store } from "./store.js";
 
 export interface RunnerOptions {
@@ -75,6 +76,14 @@ export function createRunner(store: Store, opts: RunnerOptions = {}) {
     start(url: string): { run: Run; finished: Promise<void> } {
       const r = store.add(url, opts.now?.() ?? new Date());
       return { run: r, finished: run(r) };
+    },
+    /** Add a run of kind "ads" for an export that was read at start, sharing this runner's five-request limit. */
+    startAds(input: AdsInput): { run: Run; finished: Promise<void> } {
+      return startAdsRun(input, store, {
+        ...(opts.fetcher ? { fetcher: opts.fetcher } : {}),
+        semaphore,
+        ...(opts.now ? { now: opts.now } : {}),
+      });
     },
   };
 }
