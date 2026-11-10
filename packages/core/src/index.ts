@@ -1105,14 +1105,38 @@ export {
   queryFieldUnused,
 } from "./checks/query-unused.js";
 export {
+  GENERATED_TITLES,
+  MAX_DOCUMENTS,
+  MAX_RULES,
+  MAX_RULE_LENGTH,
+  RuleError,
+  checkRefs,
+  checkTotals,
+  groupByDocument,
+  parseRefsRule,
+  parseTotalsRule,
+  refsQuery,
+  totalsQuery,
+} from "./query/generated.js";
+export type { RefsRule, TotalsRule } from "./query/generated.js";
+export {
+  QUERY_GENERATED_CHECKS,
+  createGeneratedRegistry,
+  generatedRefUnpublished,
+  generatedTotalMismatch,
+  generatedTotalMissing,
+} from "./checks/query-generated.js";
+export {
   checkMutationsOnly,
   checkUnusedOnly,
+  compareGenerated,
   compareGraphql,
   compareQueries,
   readShapeForType,
   suggestForType,
 } from "./query/run.js";
 export type {
+  GeneratedCompareOptions,
   GraphqlCompareOptions,
   QueryCompareOptions,
   QueryCompareRun,

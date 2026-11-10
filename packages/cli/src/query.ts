@@ -18,6 +18,7 @@ import {
   type Unreadable,
 } from "@gaugeline/core";
 import { resolve } from "node:path";
+import { runGenerated } from "./query-generated.js";
 import { runGraphql } from "./query-graphql.js";
 import { runPage } from "./query-page.js";
 import { schemaPath } from "./query-schema.js";
@@ -140,6 +141,7 @@ export async function runQuery(
     suggest?: { type: string };
     page?: { type: string; out: string; force: boolean };
     unused?: boolean;
+    generated?: { totals: readonly string[]; refs: readonly string[] };
     schema?: string;
     allowPrivate?: boolean;
     quiet?: boolean;
@@ -157,6 +159,18 @@ export async function runQuery(
       },
       io,
       { cwd: deps.cwd, ...(deps.fetcher ? { fetcher: deps.fetcher } : {}) },
+    );
+  if (args.generated !== undefined)
+    return runGenerated(
+      {
+        dir: args.dir,
+        generated: args.generated,
+        ...(args.json === undefined ? {} : { json: args.json }),
+        ...(args.allowPrivate === undefined ? {} : { allowPrivate: args.allowPrivate }),
+        ...(args.quiet === undefined ? {} : { quiet: args.quiet }),
+      },
+      io,
+      deps,
     );
   if (args.unused === true)
     return runUnused(

@@ -1,4 +1,5 @@
 import { createQueryRegistry, type QueryInput } from "../checks/query-counts.js";
+import { createGeneratedRegistry } from "../checks/query-generated.js";
 import { createGraphqlRegistry } from "../checks/query-graphql.js";
 import { createMutationsRegistry } from "../checks/query-mutations.js";
 import { createUnusedRegistry } from "../checks/query-unused.js";
@@ -7,11 +8,20 @@ import { createSanityRead } from "../connectors/sanity.js";
 import type { Env } from "../connectors/types.js";
 import { ConfigError } from "../errors.js";
 import type { Fetcher } from "../fetcher.js";
+import type { Finding } from "../model.js";
 import { buildResult, type Result } from "../result.js";
 import { runChecks } from "../run.js";
 import { readContentShape, type ContentShape } from "./content-shape.js";
 import { fetchCounts, type TypeCounts } from "./counts.js";
 import { findDupes, type DupeGroup } from "./dupes.js";
+import {
+  MAX_RULES,
+  checkRefs,
+  checkTotals,
+  groupByDocument,
+  type RefsRule,
+  type TotalsRule,
+} from "./generated.js";
 import { graphqlShapes, type GqlFieldUse, type GqlSchema } from "./graphql.js";
 import type { MutationShape, SchemaFile, SchemaShape } from "./mutations.js";
 import type { QueryShape } from "./shape.js";
@@ -161,6 +171,71 @@ export async function checkUnusedOnly(options: {
       url: "query",
       startedAt: options.now,
       findings: checked.findings,
+      passed: checked.passed,
+      failed: checked.failed.map((f) => f.id),
+      couldNotCheck: checked.couldNotCheck,
+    }),
+  };
+}
+
+export interface GeneratedCompareOptions {
+  totals: readonly TotalsRule[];
+  refs: readonly RefsRule[];
+  /** SANITY_PROJECT_ID, SANITY_DATASET and SANITY_TOKEN. */
+  env: Env;
+  fetcher: Fetcher;
+  now: Date;
+}
+
+/**
+ * `gaugeline query --totals` and `--refs`: one GET for each rule (at most ten rules, the two flags
+ * together), in the order the rules were given, totals first. What comes back is ids and whole
+ * numbers, never a stated number or any other field, so nothing of a document reaches the machine.
+ * The findings are grouped by document: a plan whose total is short because a meal was never
+ * published prints both findings together. A rule the dataset cannot answer (a stated field or a
+ * part that is not a number) is a ConfigError naming it, exit 2, and so is an unreadable dataset.
+ */
+export async function compareGenerated(
+  options: GeneratedCompareOptions,
+): Promise<QueryCompareRun & { requests: number }> {
+  const { totals, refs, env, fetcher, now } = options;
+  if (totals.length + refs.length > MAX_RULES)
+    throw new ConfigError(
+      `${totals.length + refs.length} rules were given, and a run takes at most ${MAX_RULES} (--totals and --refs together).`,
+      { hint: "Run the rest in a second command." },
+    );
+  const notices: string[] = [];
+  let read;
+  try {
+    read = createSanityRead(env, fetcher);
+  } catch (err) {
+    throw new ConfigError(err instanceof Error ? err.message : String(err), {
+      hint: "The settings are SANITY_PROJECT_ID, SANITY_DATASET and SANITY_TOKEN; the steps are in docs/private-datasets.",
+    });
+  }
+  if (read.datasetAssumed)
+    notices.push(
+      `SANITY_DATASET is not set, so the dataset "${read.dataset}" was assumed. Set it if your content lives in another dataset.`,
+    );
+  const found: Finding[] = [];
+  try {
+    for (const rule of totals) found.push(...(await checkTotals(rule, read)));
+    for (const rule of refs) found.push(...(await checkRefs(rule, read)));
+  } catch (err) {
+    throw err instanceof ConfigError ? err : unreadable(err);
+  }
+  const checked = await runChecks(
+    { shapes: [], counts: new Map(), generated: found },
+    createGeneratedRegistry(),
+  );
+  return {
+    counts: new Map(),
+    notices,
+    requests: totals.length + refs.length,
+    result: buildResult({
+      url: "query",
+      startedAt: now,
+      findings: groupByDocument(checked.findings),
       passed: checked.passed,
       failed: checked.failed.map((f) => f.id),
       couldNotCheck: checked.couldNotCheck,

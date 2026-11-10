@@ -133,6 +133,11 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "query-field-absent": ["A field your query asks for is on no document", "Visitors"],
   "query-type-empty": ["A document type your query asks for has no documents", "Visitors"],
   "query-dupe-slug": ["Two documents share a slug", "Visitors"],
+  "generated-total-mismatch": ["A stated total is not the sum of its parts", "Visitors"],
+  "generated-ref-unpublished": [
+    "A document links to something that was never published",
+    "Visitors",
+  ],
   "mutation-undeclared-field": ["A write sets a field no document type declares", "Visitors"],
   "mutation-missing-required": ["A create leaves out a field the schema requires", "Visitors"],
   "mutation-ref-as-string": ["A reference is written as a plain string", "Visitors"],
@@ -311,6 +316,7 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "Sales & prices",
   ],
   "query-field-partial": ["A field your query asks for is missing on some documents", "Visitors"],
+  "generated-total-missing": ["A document has no stated total", "Visitors"],
 };
 export const CHECK_TEXT: Readonly<
   Record<string, readonly [what: string, why: string, fix: string, tech: string]>
@@ -848,6 +854,18 @@ export const CHECK_TEXT: Readonly<
     "A slug is the address. Only one document can own it, so a page built from the other cannot be reached, or the site shows whichever the query happens to return first.",
     "Open the documents named by their ids in the Studio. Delete the copy you do not want, or give it its own slug.",
     'one GET of the query endpoint for each document type (perspective=published, so drafts are never read), projecting only _id, "slug": slug.current and title; one pass puts each id into a Map from the slug as it is, or from the trimmed and lower-cased title, to the ids that have it, and a bucket with more than one id is a group; documents with no slug or no title are left out of that key, a draft id is skipped, and types are grouped apart; a slug shared by two or more ids of one type',
+  ],
+  "generated-total-mismatch": [
+    "A document states a number, a total, and the parts it is made of add up to a different one.",
+    "Content written by a pipeline or a model states a total next to its parts and does not check its own sums. The page then promises a number the parts cannot deliver (a meal plan that says 2,400 calories and contains 1,830), and the customer notices before you do.",
+    "Open the document by its id in the Studio and decide which side is wrong: the stated number or a part. If a part is missing because something it links to is not published, the references finding for the same document says which. Fix the pipeline's arithmetic if it keeps happening.",
+    "one GET of the query endpoint for each rule (perspective=published, so drafts are never read); the filter does the comparing, so only ids and whole numbers come back, never a stated number, a part or any other field: the type's document count, the _id of the documents that have no stated number, and the _id of those where stated != coalesce(math::sum(parts), 0); a part that does not dereference is null and math::sum skips it; exact equality on the numbers, and the stated field or a part that is not a number on some document is exit 2 and nothing is reported; stated != the sum of the parts path",
+  ],
+  "generated-ref-unpublished": [
+    "A document links to other documents, and some of them are not published: they do not exist, or exist only as a draft.",
+    "A reference to an unpublished document resolves to nothing, so a page built from it shows a gap, or a total that is short. Pipelines create the links and the documents separately and do not check that both were published.",
+    "Publish the documents named by their ids, or remove the links to them. If the links are meant to be weak, this is expected and the rule is the wrong one.",
+    "one GET of the query endpoint for each rule (perspective=published, so a draft target counts as missing); for each document of the type, the references at the path are counted, and so are those where defined(@->_id); a document where the two differ comes back as its _id, both counts and the _ref of the missing targets (ids), ten at most; nothing else of the document is projected; an item that has no _ref is not a reference and is not counted",
   ],
   "mutation-undeclared-field": [
     "A patch or create in your code writes a field that no document type in the schema declares.",
@@ -1628,6 +1646,12 @@ export const CHECK_TEXT: Readonly<
     "Fine when the field is optional. When the page assumes it is there (a link built from it, an image with no fallback), the documents without it break or show a gap.",
     "If the field is optional, make the template cope with it missing. If it is not, fill it in on the documents listed by their count, or mark it required in the schema.",
     "one GET of the query endpoint for each document type (perspective=published, so drafts are never counted), asking for count(*[_type == T]) and count(*[_type == T && defined(path)]) for each distinct field path, held in a Map from type to a Map from path to an integer; a reference or an array of objects is counted at the field itself (topic, not topic->title); the answer is integers, so no document and no field value is read; a path whose count is above 0 and below the type's total",
+  ],
+  "generated-total-missing": [
+    "A document of the type has no stated total at the field the rule names, so there is nothing to compare its parts with.",
+    "Either the pipeline skipped the field or the field was renamed. It is not a mismatch, because nothing was promised, but a page that prints the total prints a blank.",
+    "Open the document by its id and fill the stated field in, or check the field name in the rule against your schema.",
+    "one GET of the query endpoint for each rule (perspective=published, so drafts are never read); the filter does the comparing, so only ids and whole numbers come back, never a stated number, a part or any other field: the type's document count, the _id of the documents that have no stated number, and the _id of those where stated != coalesce(math::sum(parts), 0); a part that does not dereference is null and math::sum skips it; exact equality on the numbers, and the stated field or a part that is not a number on some document is exit 2 and nothing is reported; !defined(stated)",
   ],
 };
 export const SAMPLE_NOUNS: Readonly<Record<string, readonly [one: string, many: string]>> = {
