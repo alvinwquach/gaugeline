@@ -275,7 +275,7 @@ pass and never a finding, because a state nobody could read is not a state:
 ## Limits
 
 A run reads at most **16** different pages named in the file (the checked page does not count: it is
-already read), each once with `GET`. Each Sanity field is read once per run with one `GET`, and the
+already read; the [freshness file](/docs/guides/data-freshness) draws from the same 16), each once with `GET`. Each Sanity field is read once per run with one `GET`, and the
 named queries share the one read-only database connection the other checks use. There are no flags to
 raise the limit: it is a promise to the site being checked. The checks are not run at all unless
 `gaugeline.switches.json` exists, so a site without one is never asked for these pages.

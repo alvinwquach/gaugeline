@@ -36,7 +36,9 @@ If `gaugeline.sources.json` names a Postgres or Supabase database
 ([A database as a source](./connectors/postgres.md)), Gaugeline connects to it with the connection
 string in the environment variable you name, and only when a check asks for one of its named queries
 or runs one of its [data assertions](./guides/data-assertions.md), or when `gaugeline.switches.json`
-names one of its queries ([Switches, sold out and capacity](./guides/switches-and-availability.md)).
+or `gaugeline.freshness.json` names one of its queries
+([Switches, sold out and capacity](./guides/switches-and-availability.md),
+[Data freshness](./guides/data-freshness.md)).
 It is not a request to the checked site and does not go through the fetcher. It sends one statement
 at a time, a single `SELECT` that passed the statement check, inside a read-only transaction that is
 always rolled back, with a timeout and a cap of 5,000 rows. The connection string, its password and
@@ -55,6 +57,17 @@ described under Databases. The pages are fetched with `GET` through the same fet
 page, at most 16 different pages named in the file, each once. The state, the pages and the item names
 stay on your computer or in your CI; what a finding prints is escaped, and any key or connection string
 in it is replaced with `[redacted]`. Without the file none of this happens.
+
+### Data freshness
+
+If `gaugeline.freshness.json` exists, Gaugeline reads the pages it names outright, from the same
+allowance of 16 pages as the switches file, each once with `GET`, and looks at the pages the run reads
+anyway for the ones its patterns match. It reads the newest sync time or a figure from where you keep
+it: a `sanity:` source is one field of the first published document of a type (one `GET`, published
+content only, a token in a header and never in the address), and a `db:` source is a named query, read
+as described under Databases. The times, the figures and the page text stay on your computer or in
+your CI; what a finding prints is escaped, and any key or connection string in it is replaced with
+`[redacted]`. Without the file none of this happens.
 
 ### Links on the page
 

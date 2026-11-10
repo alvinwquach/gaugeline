@@ -54,3 +54,15 @@ export const SWITCH_CHECKS: readonly string[] = Object.freeze([
   "item-unavailable-shown",
   "capacity-zero-not-sold-out",
 ]);
+
+/**
+ * The data freshness checks: they compare the numbers and dates on a page with the limits in
+ * gaugeline.freshness.json, and run only when that file is there. Without it they are not run (so
+ * not passed either), unless a caller asked for one by id: that one says it could not check.
+ */
+export const FRESHNESS_CHECKS: readonly string[] = Object.freeze([
+  "data-stale",
+  "data-no-stamp",
+  "data-behind-source",
+  "forecast-for-past-event",
+]);

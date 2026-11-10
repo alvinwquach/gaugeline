@@ -1,0 +1,37 @@
+{
+  "timeZone": "America/New_York",
+  "freshness": [
+    {
+      "id": "player-pages",
+      "page": "/players/*",
+      "stamp": { "selector": "time.updated" },
+      "maxAge": "6h",
+      "activeWhen": { "months": [10, 11, 12, 1, 2, 3, 4, 5, 6] },
+      "source": "db:latestPlayerSync",
+      "maxLag": "1h",
+      "spot": [
+        { "name": "points per game", "selector": ".ppg", "source": "db:playerPpg", "tolerance": 0.1 }
+      ]
+    },
+    {
+      "id": "standings",
+      "page": "/standings",
+      "stamp": { "selector": "time.updated" },
+      "maxAge": "1d",
+      "activeWhen": { "months": [10, 11, 12, 1, 2, 3, 4, 5, 6] },
+      "source": "db:latestStandingsSync",
+      "maxLag": "1h"
+    },
+    {
+      "id": "team-pages",
+      "page": "/teams/*",
+      "stamp": { "selector": "time.updated", "jsonld": "dateModified" },
+      "maxAge": "1d"
+    },
+    {
+      "id": "picks",
+      "page": "/predictions",
+      "forecast": { "item": ".pick", "date": "time", "settled": ".final" }
+    }
+  ]
+}

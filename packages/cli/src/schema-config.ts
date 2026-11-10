@@ -12,6 +12,7 @@ import {
   listingsConfigSchema,
   sourcesConfigSchema,
   switchesConfigSchema,
+  freshnessConfigSchema,
   pagesConfigSchema,
   paymentsConfigSchema,
   readContainer,
@@ -27,6 +28,7 @@ import {
   type ListingsConfig,
   type SourcesConfig,
   type SwitchesConfig,
+  type FreshnessConfig,
   type PagesConfig,
   type PaymentsConfig,
   type SchemaRules,
@@ -50,6 +52,8 @@ export const LISTINGS_CONFIG_FILE = "gaugeline.listings.json";
 export const SOURCES_CONFIG_FILE = "gaugeline.sources.json";
 /** What the site must show for each switch, 86 list and capacity (pre-orders off, an item 86'd, sold out), likewise. Names, paths and phrases only. */
 export const SWITCHES_CONFIG_FILE = "gaugeline.switches.json";
+/** How recent the numbers on a page should be (a sync that stopped, a prediction for a past game), likewise. Paths, selectors, durations and source names only. */
+export const FRESHNESS_CONFIG_FILE = "gaugeline.freshness.json";
 /** Sections hidden until launch, likewise. */
 export const HIDDEN_CONFIG_FILE = "gaugeline.hidden.json";
 /** The tracking plan: which clicks must push which event, likewise. */
@@ -121,6 +125,10 @@ export function readSourcesConfig(dir: string): SourcesConfig | undefined {
 
 export function readSwitchesConfig(dir: string): SwitchesConfig | undefined {
   return readJsonConfig(dir, SWITCHES_CONFIG_FILE, switchesConfigSchema, "switch checks");
+}
+
+export function readFreshnessConfig(dir: string): FreshnessConfig | undefined {
+  return readJsonConfig(dir, FRESHNESS_CONFIG_FILE, freshnessConfigSchema, "data freshness checks");
 }
 
 /** Largest Apple Business Connect export read: a few hundred locations is well under it. */

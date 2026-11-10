@@ -19,6 +19,7 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   ],
   "certificate-expiring": ["The site's certificate expires soon", "Security & email"],
   "data-assertion-failed": ["A data assertion found rows that should not exist", "Visitors"],
+  "data-stale": ["The numbers on this page are older than they should be", "Visitors"],
   "dataset-private-types": [
     "Private-looking content is in a public Sanity dataset",
     "Security & email",
@@ -113,6 +114,7 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "cutover-canonical-host": ["The bare domain and www don't settle on one address", "Launch day"],
   "cutover-mail-changed": ["The domain's mail records changed at cutover", "Security & email"],
   "app-smart-banner-mismatch": ["The iPhone app banner promotes a different app", "Visitors"],
+  "data-behind-source": ["The page is behind the data it is built from", "Visitors"],
   "email-dmarc-missing": ["Your domain has no DMARC policy", "Security & email"],
   "email-spf-multiple": ["Your domain has two SPF records, which cancels both", "Security & email"],
   "event-location-mismatch": ["An event at your venue lists a different address", "Visitors"],
@@ -121,6 +123,10 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "feed-duplicate": ["Two of your feeds serve the same posts", "Search & sharing"],
   "feed-invalid": ["The feed this page advertises is not a feed", "Search & sharing"],
   "feed-oversized": ["The feed this page advertises is too large", "Search & sharing"],
+  "forecast-for-past-event": [
+    "The page still shows a prediction for something that already happened",
+    "Visitors",
+  ],
   "form-destination-changed": ["A form now posts to a different address", "Leads"],
   "hreflang-not-reciprocal": ["A language version doesn't link back", "Search & sharing"],
   "html-heavy": ["Most of this page's HTML is a data payload", "Visitors"],
@@ -218,6 +224,7 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "app-name-mismatch": ["The store lists the app under a different name", "Visitors"],
   blocked: ["The site wouldn't let Gaugeline read the page", "Search & sharing"],
   "canonical-missing": ["The page doesn't say which address is the real one", "Search & sharing"],
+  "data-no-stamp": ["A page of changing numbers does not say when they were updated", "Visitors"],
   "dataset-public": ["Your Sanity content can be read by anyone", "Security & email"],
   "email-dmarc-none": ["Your DMARC policy only watches", "Security & email"],
   "event-missing-fields": ["Some events are missing details search engines need", "Visitors"],
@@ -295,6 +302,12 @@ export const CHECK_TEXT: Readonly<
     "These are the problems a customer finds before you do. No page looks wrong yet, so a check of the page cannot see them, but the next person to book, pay or order runs into one.",
     "Read the rows in the evidence and correct them in the database, or fix the code that wrote them, then run again. If the rule itself is wrong, change the assertion's query.",
     "each assertion is one SELECT that should return no rows, run through the read-only database connector (a statement classifier, BEGIN READ ONLY with a statement timeout and a 5,000 row cap, and the database role); any row is a finding with the assertion's own severity and title, and the evidence is its id, the row count and the allow-listed evidence columns of the first 20 rows; a query that could not run (database down, timeout, wrong evidence column) is could not check, never a pass",
+  ],
+  "data-stale": [
+    "The page says when its data was last updated, and that time is older than the limit you set for it while the data is expected to move.",
+    "A sync that stopped fails quietly: the page keeps showing last week's numbers, and nobody notices until a visitor or a customer does.",
+    "Find out why the sync stopped (the evidence says whether the source is just as old), or why the page is not rebuilt after it runs. Then check the stamp itself is generated from the data, not typed or built once.",
+    "for each rule with a stamp in gaugeline.freshness.json, the stamp is read from the page as sent, without JavaScript (the selector's datetime, content or named attribute, else its text; else the structured data property) in the stamp's own time zone, else the file's timeZone; it is older than maxAge only when it is older at every instant the stamp could mean (a date alone is a whole day, a time with no zone and no timeZone could be any zone, 3 hours ago is a span of an hour); the rule is checked only in the months of activeWhen, in the site's time zone, and a rule that is not active is listed as could not check, not passed; when the rule also has a source and the page is behind it by more than maxLag, data-behind-source reports that cause instead, so each cause has one finding; a stamp that cannot be read or is undecided is could not check; the evidence adds the Age and Cache-Control headers when a cache served the page",
   ],
   "dataset-private-types": [
     "The Sanity dataset your images come from answers without a token, and it has document types that sound like people's details: orders, inquiries, customers, bookings.",
@@ -680,6 +693,12 @@ export const CHECK_TEXT: Readonly<
     "Set app-id in the apple-itunes-app meta tag to the same id as the App Store link.",
     '<meta name="apple-itunes-app" content="app-id=..."> differs from every apps.apple.com/.../id<digits> link on the page',
   ],
+  "data-behind-source": [
+    "The source (your database or CMS) has newer data than the page shows, or a figure on the page differs from the same figure in the source.",
+    "The sync works but the visitor does not see it: a cache or a revalidation setting is serving an old copy, so fixing the sync would change nothing.",
+    "Look at how the page is rebuilt after the data changes: its revalidate time, an on-demand revalidation that the sync should call, or a CDN that keeps the old copy. The evidence shows the Age header when a cache served it.",
+    "for each rule with a source and maxLag in gaugeline.freshness.json, the newest time is read from the source (a one-row query or a Sanity field) and compared with the page's stamp: reported only when the page is older than the source by more than maxLag at every instant the stamp could mean; for each spot check (up to five per rule) the figure at the selector is compared with the source's figure for the page (a one-row query, or the row whose key column is the last part of the page's address) with exact decimal arithmetic and the tolerance given (an amount or a percentage of the source's figure); an unreadable source, stamp or figure is could not check; the evidence adds the Age and Cache-Control headers when a cache served the page",
+  ],
   "email-dmarc-missing": [
     "There is no DMARC record at _dmarc.<your domain>, so receiving servers have no instruction for mail that fails SPF or DKIM.",
     "Mail pretending to be from you is delivered like any other, and large mail providers increasingly expect a DMARC record from anyone who sends.",
@@ -727,6 +746,12 @@ export const CHECK_TEXT: Readonly<
     "Feed readers and aggregators time out or truncate large feeds, and frameworks such as Next.js do not cache responses over 2 MB, so every request rebuilds it.",
     "Limit the feed to recent items (20 to 50 is typical) and put a summary in each item instead of the full post.",
     "the feed response is larger than 2 MB (2,097,152 bytes)",
+  ],
+  "forecast-for-past-event": [
+    "A page lists a prediction, a pick or a preview whose event date is already past, and it does not show the result.",
+    "A prediction for a finished game or a past night looks careless at best, and misleads at worst: visitors act on it and the page loses their trust the next time.",
+    "Remove the item or switch it to the result when the event ends. Generate the list from the schedule so an event leaves it by itself, and rebuild or revalidate the page after the result is in.",
+    "for each rule with a forecast in gaugeline.freshness.json that is active, each item matching forecast.item (up to 200 per page) has its date read from forecast.date inside it, its own datetime or named attribute, or a time element with a datetime inside it, or the page's Event structured data with the property named in forecast.jsonld; the event is past when it is past at every instant the date could mean (a date alone is over when the whole day is, in the site's time zone; a time is over after forecast.lasts, 3h by default); an item that contains forecast.settled already shows its result and is skipped; no items, a date that cannot be read or an item with no date is could not check; the evidence adds the Age and Cache-Control headers when a cache served the page",
   ],
   "form-destination-changed": [
     "A form still uses the same service, but posts to a different host than last run.",
@@ -1093,6 +1118,12 @@ export const CHECK_TEXT: Readonly<
     "Copies of the page with tracking parameters can be treated as separate pages.",
     "Add a self-referencing canonical tag.",
     'no <link rel="canonical">',
+  ],
+  "data-no-stamp": [
+    "A page under one of your freshness rules shows no update time at all, in the place you named or in its structured data.",
+    "Without a stamp nobody can tell fresh numbers from stale ones, and neither can Gaugeline: a sync can stop and the page gives no sign.",
+    "Print the time the data was last updated on the page, from the same record the numbers come from (a time element with a datetime attribute, or dateModified in the structured data), then point the rule at it.",
+    "for each rule with a stamp in gaugeline.freshness.json that is active (in the months of activeWhen, in the site's time zone), the page as sent without JavaScript has no element matching the selector with a datetime, content, named attribute or text, and no property of that name in its structured data; a stamp that is there but cannot be read is not reported here (data-stale lists it as could not check); a rule that is not active is listed as could not check, not passed",
   ],
   "dataset-public": [
     "The Sanity dataset your images come from answers queries without a token.",

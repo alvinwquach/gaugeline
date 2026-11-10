@@ -4,7 +4,7 @@ import { createBudget, sampleCounts, type Budget } from "./limits.js";
 import type { CheckRegistry } from "./model.js";
 import type { ProgressSink } from "./progress.js";
 import { NO_PAGE_CHECKS } from "./checks/blocked.js";
-import { ASSERTION_CHECKS, LISTING_CHECKS, SWITCH_CHECKS } from "./presets.js";
+import { ASSERTION_CHECKS, FRESHNESS_CHECKS, LISTING_CHECKS, SWITCH_CHECKS } from "./presets.js";
 import { classifyHop, describeRefusal } from "./refusal.js";
 import { runChecks, type RunOptions, type RunResult } from "./run.js";
 import { dedupeUrls } from "./sample.js";
@@ -36,6 +36,7 @@ import { lazyDatabases, type DatabasesSettings } from "./connectors/postgres/rea
 import { lazyAssertions, sourcesRedactor } from "./assertions/read.js";
 import { createStatePages } from "./switches/pages.js";
 import { lazySwitches, type SwitchesSettings } from "./switches/read.js";
+import { createFreshness, type FreshnessSettings } from "./freshness/read.js";
 import { lazyScripts } from "./scripts.js";
 import type { FactsConfig } from "./facts/types.js";
 import type { PaymentsConfig } from "./payments/types.js";
@@ -76,6 +77,8 @@ export interface SiteCheckOptions {
   databases?: DatabasesSettings;
   /** What the site must show for each switch, 86 list and capacity (gaugeline.switches.json), with its Sanity variables already copied. */
   switches?: SwitchesSettings;
+  /** How recent the numbers on a page should be (gaugeline.freshness.json), with its Sanity variables already copied. */
+  freshness?: FreshnessSettings;
   /** The database project to read as each role, with its keys already read from the environment. */
   access?: AccessSettings;
   /** Public DNS for the email record checks. Without one, they find nothing and nothing is resolved. */
@@ -176,10 +179,14 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
   // The switch checks likewise: they run when gaugeline.switches.json is there.
   const switchesAsked = SWITCH_CHECKS.some((id) => opts.only?.includes(id));
   const switchesOff = !opts.switches && !switchesAsked;
+  // And the freshness checks: they run when gaugeline.freshness.json is there.
+  const freshnessAsked = FRESHNESS_CHECKS.some((id) => opts.only?.includes(id));
+  const freshnessOff = !opts.freshness && !freshnessAsked;
   const switchedOff = [
     ...(listingsOff ? LISTING_CHECKS.filter((id) => registered.has(id)) : []),
     ...(assertionsOff ? ASSERTION_CHECKS.filter((id) => registered.has(id)) : []),
     ...(switchesOff ? SWITCH_CHECKS.filter((id) => registered.has(id)) : []),
+    ...(freshnessOff ? FRESHNESS_CHECKS.filter((id) => registered.has(id)) : []),
   ];
   const skip = switchedOff.length > 0 ? [...(opts.skip ?? []), ...switchedOff] : opts.skip;
   const wanted = registry
@@ -197,6 +204,17 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
   const datasets = remembered(lazyDatasets({ page: snapshot, fetcher: opts.fetcher, budget }));
   // One read of the named queries, shared by the checks that read databases and the switch checks.
   const databases = opts.databases ? lazyDatabases(opts.databases, opts.fetcher) : undefined;
+  // What the readers of a rule's source (a Sanity field, a named query) share: the fetcher, the
+  // databases above, and the redactor that blanks every key and connection string.
+  const sourceDeps = {
+    fetcher: opts.fetcher,
+    redact: opts.databases
+      ? sourcesRedactor(opts.databases.config, opts.databases.env)
+      : (text: string) => text,
+    ...(opts.databases && databases
+      ? { databases: { config: opts.databases.config, read: databases } }
+      : {}),
+  };
   const result = await runChecks(snapshot, registry, {
     ctx: {
       fetcher: opts.fetcher,
@@ -247,17 +265,12 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
           ? { listings: () => Promise.resolve(noListings()) }
           : {}),
       ...(databases ? { databases } : {}),
-      ...(opts.switches
+      ...(opts.switches ? { switches: lazySwitches(opts.switches, sourceDeps) } : {}),
+      ...(opts.freshness ? { freshness: createFreshness(opts.freshness, sourceDeps) } : {}),
+      // The switches file and the freshness file name pages the run reads itself, once each, from
+      // one shared allowance.
+      ...(opts.switches || opts.freshness
         ? {
-            switches: lazySwitches(opts.switches, {
-              fetcher: opts.fetcher,
-              redact: opts.databases
-                ? sourcesRedactor(opts.databases.config, opts.databases.env)
-                : (text: string) => text,
-              ...(opts.databases && databases
-                ? { databases: { config: opts.databases.config, read: databases } }
-                : {}),
-            }),
             statePages: createStatePages({
               fetcher: opts.fetcher,
               budget,

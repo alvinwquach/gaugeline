@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://harbor.example/</loc></url>
+  <url><loc>https://harbor.example/players/jane-example</loc></url>
+  <url><loc>https://harbor.example/players/sam-sample</loc></url>
+  <url><loc>https://harbor.example/teams/hawks</loc></url>
+  <url><loc>https://harbor.example/standings</loc></url>
+  <url><loc>https://harbor.example/predictions</loc></url>
+</urlset>
