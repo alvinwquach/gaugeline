@@ -12,10 +12,13 @@ import { canonicalElsewhere } from "./canonical-elsewhere.js";
 import { canonicalMissing } from "./canonical-missing.js";
 import { capacityZeroNotSoldOut } from "./capacity-zero-not-sold-out.js";
 import { certificateExpiring } from "./certificate-expiring.js";
+import { crmFieldNames } from "./crm-field-names.js";
 import { crmInsecure } from "./crm-insecure.js";
+import { crmLeadSource } from "./crm-lead-source.js";
 import { crmLateTracking } from "./crm-late-tracking.js";
 import { crmNoCampaignFields } from "./crm-no-campaign-fields.js";
 import { crmNoTracking } from "./crm-no-tracking.js";
+import { crmWentQuiet } from "./crm-went-quiet.js";
 import { dataAssertionFailed } from "./data-assertion-failed.js";
 import { dataBehindSource } from "./data-behind-source.js";
 import { dataNoStamp } from "./data-no-stamp.js";
@@ -158,10 +161,13 @@ export const PAGE_CHECKS = [
   canonicalMissing,
   capacityZeroNotSoldOut,
   certificateExpiring,
+  crmFieldNames,
   crmInsecure,
   crmLateTracking,
+  crmLeadSource,
   crmNoCampaignFields,
   crmNoTracking,
+  crmWentQuiet,
   dataAssertionFailed,
   dataBehindSource,
   dataNoStamp,

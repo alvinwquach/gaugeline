@@ -59,7 +59,17 @@ export interface PageSnapshot {
   appleItunesApp?: string;
   /** Feeds the page advertises (link rel="alternate" with an RSS or Atom type), in document order. */
   feeds: { href: string; type: string; title?: string }[];
-  forms: { action?: string; method?: string; hiddenFields: string[]; position: number }[];
+  forms: {
+    action?: string;
+    method?: string;
+    hiddenFields: string[];
+    /**
+     * The name of every field the form submits (hidden, visible, select, textarea), once each, in
+     * document order. Buttons, images, resets and file inputs are left out. Names only, never values.
+     */
+    fieldNames?: string[];
+    position: number;
+  }[];
   /**
    * Every iframe with an address (its src, or data-src when it loads lazily), in document order.
    * `position` is the element's index among every form, iframe and script element in the document.
@@ -360,10 +370,24 @@ export function buildSnapshot(hops: Hop[]): PageSnapshot {
         .map((_, input) => $(input).attr("name") ?? "")
         .get()
         .filter((n) => n !== "");
+      const fieldNames = [
+        ...new Set(
+          $(el)
+            .find("input, select, textarea")
+            .filter((_, field) => {
+              const type = ($(field).attr("type") ?? "").toLowerCase();
+              return !["submit", "button", "image", "reset", "file"].includes(type);
+            })
+            .map((_, field) => $(field).attr("name") ?? "")
+            .get()
+            .filter((n) => n !== ""),
+        ),
+      ];
       forms.push({
         ...(action ? { action } : {}),
         ...(method ? { method } : {}),
         hiddenFields,
+        fieldNames,
         position,
       });
     } else if (el.tagName === "iframe") {

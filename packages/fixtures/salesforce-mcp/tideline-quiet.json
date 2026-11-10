@@ -1,0 +1,228 @@
+{
+  "note": "Invented. 31 leads in the last 14 days, and none since 5 Nov 2026 (5 days before the run). Also 6 leads this week, all with a source.",
+  "server": "https://api.salesforce.com/platform/mcp/v1/platform/sobject-reads",
+  "now": "2026-11-10T18:00:00Z",
+  "exchanges": [
+    {
+      "method": "initialize",
+      "apiUsage": "212/15000",
+      "result": {
+        "protocolVersion": "2025-06-18",
+        "capabilities": {
+          "tools": {}
+        },
+        "serverInfo": {
+          "name": "sobject-reads",
+          "version": "1.0.0"
+        }
+      }
+    },
+    {
+      "method": "notifications/initialized"
+    },
+    {
+      "method": "tools/list",
+      "result": {
+        "tools": [
+          {
+            "name": "getObjectSchema",
+            "description": "Invented description for getObjectSchema."
+          },
+          {
+            "name": "soqlQuery",
+            "description": "Invented description for soqlQuery."
+          },
+          {
+            "name": "find",
+            "description": "Invented description for find."
+          },
+          {
+            "name": "getUserInfo",
+            "description": "Invented description for getUserInfo."
+          },
+          {
+            "name": "listRecentSobjectRecords",
+            "description": "Invented description for listRecentSobjectRecords."
+          },
+          {
+            "name": "getRelatedRecords",
+            "description": "Invented description for getRelatedRecords."
+          }
+        ]
+      }
+    },
+    {
+      "method": "tools/call",
+      "tool": "getObjectSchema",
+      "result": {
+        "isError": false,
+        "text": {
+          "name": "Lead",
+          "fields": [
+            {
+              "name": "Id",
+              "label": "Lead ID",
+              "custom": false,
+              "type": "string"
+            },
+            {
+              "name": "FirstName",
+              "label": "First Name",
+              "custom": false,
+              "type": "string"
+            },
+            {
+              "name": "LastName",
+              "label": "Last Name",
+              "custom": false,
+              "type": "string"
+            },
+            {
+              "name": "Company",
+              "label": "Company",
+              "custom": false,
+              "type": "string"
+            },
+            {
+              "name": "Email",
+              "label": "Email",
+              "custom": false,
+              "type": "string"
+            },
+            {
+              "name": "Phone",
+              "label": "Phone",
+              "custom": false,
+              "type": "string"
+            },
+            {
+              "name": "Status",
+              "label": "Lead Status",
+              "custom": false,
+              "type": "string"
+            },
+            {
+              "name": "LeadSource",
+              "label": "Lead Source",
+              "custom": false,
+              "type": "string"
+            },
+            {
+              "name": "Rating",
+              "label": "Rating",
+              "custom": false,
+              "type": "string"
+            },
+            {
+              "name": "Industry",
+              "label": "Industry",
+              "custom": false,
+              "type": "string"
+            },
+            {
+              "name": "CreatedDate",
+              "label": "Created Date",
+              "custom": false,
+              "type": "string"
+            },
+            {
+              "name": "OwnerId",
+              "label": "Owner ID",
+              "custom": false,
+              "type": "string"
+            },
+            {
+              "name": "Preferred_Session__c",
+              "label": "Preferred session",
+              "custom": true,
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "method": "tools/call",
+      "tool": "soqlQuery",
+      "queryIncludes": "SELECT Id, LeadSource FROM Lead",
+      "result": {
+        "isError": false,
+        "text": {
+          "totalSize": 6,
+          "done": true,
+          "records": [
+            {
+              "attributes": {
+                "type": "Lead",
+                "url": "/services/data/v62.0/sobjects/Lead/00Q5e00000Tx001"
+              },
+              "Id": "00Q5e00000Tx001",
+              "LeadSource": "Google Ads"
+            },
+            {
+              "attributes": {
+                "type": "Lead",
+                "url": "/services/data/v62.0/sobjects/Lead/00Q5e00000Tx002"
+              },
+              "Id": "00Q5e00000Tx002",
+              "LeadSource": "Instagram"
+            },
+            {
+              "attributes": {
+                "type": "Lead",
+                "url": "/services/data/v62.0/sobjects/Lead/00Q5e00000Tx003"
+              },
+              "Id": "00Q5e00000Tx003",
+              "LeadSource": "Referral"
+            },
+            {
+              "attributes": {
+                "type": "Lead",
+                "url": "/services/data/v62.0/sobjects/Lead/00Q5e00000Tx004"
+              },
+              "Id": "00Q5e00000Tx004",
+              "LeadSource": "Phone Inquiry"
+            },
+            {
+              "attributes": {
+                "type": "Lead",
+                "url": "/services/data/v62.0/sobjects/Lead/00Q5e00000Tx005"
+              },
+              "Id": "00Q5e00000Tx005",
+              "LeadSource": "Web"
+            },
+            {
+              "attributes": {
+                "type": "Lead",
+                "url": "/services/data/v62.0/sobjects/Lead/00Q5e00000Tx006"
+              },
+              "Id": "00Q5e00000Tx006",
+              "LeadSource": "Google Ads"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "method": "tools/call",
+      "tool": "soqlQuery",
+      "queryIncludes": "COUNT(Id)",
+      "result": {
+        "isError": false,
+        "text": {
+          "totalSize": 1,
+          "done": true,
+          "records": [
+            {
+              "attributes": {
+                "type": "AggregateResult"
+              },
+              "n": 31,
+              "newest": "2026-11-05T14:30:12.000+0000"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -10,6 +10,7 @@ import {
   navRulesSchema,
   languageRulesSchema,
   listingsConfigSchema,
+  crmConfigSchema,
   sourcesConfigSchema,
   switchesConfigSchema,
   freshnessConfigSchema,
@@ -26,6 +27,7 @@ import {
   type NavRules,
   type LanguageRules,
   type ListingsConfig,
+  type CrmConfig,
   type SourcesConfig,
   type SwitchesConfig,
   type FreshnessConfig,
@@ -48,6 +50,8 @@ export const PAYMENTS_CONFIG_FILE = "gaugeline.payments.json";
 export const ACCESS_CONFIG_FILE = "gaugeline.access.json";
 /** The business listings to compare with the site (Google, Yelp, Apple, bio links), likewise. Keys stay in the environment. */
 export const LISTINGS_CONFIG_FILE = "gaugeline.listings.json";
+/** The CRM to read leads from through its own read-only MCP server (Salesforce), likewise. The access token stays in the environment. */
+export const CRM_CONFIG_FILE = "gaugeline.crm.json";
 /** The databases to read named queries from (Postgres, Supabase), likewise. Connection strings stay in the environment. */
 export const SOURCES_CONFIG_FILE = "gaugeline.sources.json";
 /** What the site must show for each switch, 86 list and capacity (pre-orders off, an item 86'd, sold out), likewise. Names, paths and phrases only. */
@@ -117,6 +121,10 @@ export function readAccess(dir: string): AccessConfig | undefined {
 
 export function readListingsConfig(dir: string): ListingsConfig | undefined {
   return readJsonConfig(dir, LISTINGS_CONFIG_FILE, listingsConfigSchema, "listing checks");
+}
+
+export function readCrmConfig(dir: string): CrmConfig | undefined {
+  return readJsonConfig(dir, CRM_CONFIG_FILE, crmConfigSchema, "the CRM lead checks");
 }
 
 export function readSourcesConfig(dir: string): SourcesConfig | undefined {

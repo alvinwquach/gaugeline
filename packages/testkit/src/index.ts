@@ -18,3 +18,5 @@ export type { Interaction, Scrubber } from "./scrub.js";
 export { KEY_PATTERNS } from "@gaugeline/core";
 export { assertGrouped } from "./grouped.js";
 export { staticSite } from "./static-site.js";
+export { MCP_RECORDINGS_DIR, readMcpRecording, replayMcp } from "./mcp-replay.js";
+export type { McpExchange, McpRecording, McpReplay } from "./mcp-replay.js";
