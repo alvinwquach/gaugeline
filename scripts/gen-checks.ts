@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 import {
   AREAS,
   BUDGET_KINDS,
+  DUPLICATE_CHECKS,
   PLAN_CHECKS,
   PRESENCE_CHECKS,
   PRICE_CHECKS,
@@ -45,6 +46,7 @@ const readmes = (
 const registry = createPageRegistry();
 for (const c of PLAN_CHECKS) registry.register(c);
 for (const c of PRINTED_CHECKS) registry.register(c);
+for (const c of DUPLICATE_CHECKS) registry.register(c);
 for (const c of PRESENCE_CHECKS) registry.register(c);
 for (const c of PRICE_CHECKS) registry.register(c);
 for (const c of SUBSCRIPTION_CHECKS) registry.register(c);

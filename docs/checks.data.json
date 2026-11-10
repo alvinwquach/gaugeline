@@ -1460,6 +1460,36 @@
     "tech": "Parameters on the printed URL whose names start with a tag prefix (utm_ by default) and are missing from the final address"
   },
   {
+    "id": "duplicate-printful",
+    "severity": "medium",
+    "area": "Sales & prices",
+    "title": "The same product is in Printful more than once",
+    "what": "Two or more Printful products have the same name, or the same external id.",
+    "why": "An order for the product can be made from either copy, with different designs or prices, and the shop only knows one of them.",
+    "fix": "Keep one product, delete the rest in Printful and point the website at the one you keep. Gaugeline does not choose which.",
+    "tech": "Printful store products grouped by normaliseName, then by external id (trimmed, exact), each in one pass into a Map; a product in a name group and an external id group is listed once, in the name group; one finding per group with every copy's id, up to 10 and then a count; a blank external id or a name that normalises to nothing is never a group; runs only when Printful returned data"
+  },
+  {
+    "id": "duplicate-sanity",
+    "severity": "medium",
+    "area": "Sales & prices",
+    "title": "The same product is on the website more than once",
+    "what": "Two or more published Sanity products have the same name, or the same non-empty SKU.",
+    "why": "The shop has the same product twice, so a price, a photo or a stock figure can be right on one copy and wrong on the other, and a link to checkout may be saved on only one of them.",
+    "fix": "Keep one product, unpublish or delete the rest in Sanity and point the website at the one you keep. Gaugeline does not choose which.",
+    "tech": "published Sanity products grouped by normaliseName, then by SKU (trimmed, lower-case), each in one pass into a Map; a product in a name group and a SKU group is listed once, in the name group; one finding per group with every copy's _id, up to 10 and then a count; an empty SKU or a name that normalises to nothing is never a group; runs only when Sanity returned data"
+  },
+  {
+    "id": "duplicate-stripe",
+    "severity": "medium",
+    "area": "Sales & prices",
+    "title": "The same product is in Stripe more than once",
+    "what": "Two or more active Stripe products have the same name once case, spacing and punctuation are ignored.",
+    "why": "Until one record is the real one, nothing can say what checkout should charge: the copies may carry different prices, and the website may point at any of them.",
+    "fix": "Keep one, archive the rest in Stripe and point the website at the one you keep. Gaugeline does not choose which.",
+    "tech": "active Stripe products grouped by normaliseName in one pass into a Map; one finding per group listing every copy with its id and default price, up to 10 and then a count; archived products are not counted as copies and are named in the finding when their group also has active ones; names that normalise to an empty string are never grouped; runs only when Stripe returned data"
+  },
+  {
     "id": "printful-price",
     "severity": "medium",
     "area": "Sales & prices",

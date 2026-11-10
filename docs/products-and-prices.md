@@ -23,6 +23,71 @@ $ SANITY_PROJECT_ID=abc123 SANITY_TOKEN=… STRIPE_API_KEY=rk_live_… PRINTFUL_
 - **If you edit content:** You'll see which product is wrong and where, in plain words.
 - **If you build the site:** Read-only keys, matched by saved IDs first, then SKU, then name. Set GAUGELINE_PRODUCTS_QUERY for a custom schema.
 
+## Duplicates inside one system
+
+Before anything is compared, Gaugeline looks for the same product stored twice inside one system. This is where the tool started: a week spent deduplicating products that lived in the CMS, the checkout and the supplier under three slightly different names. Until one record is the real one, nothing can say what checkout should charge, and the matcher ([below](#how-products-are-matched)) assumes one record per product on each side, so duplicates are reported first and on the raw lists, not on what the matcher paired.
+
+| Check                | Level    | It fires when                                                         |
+| -------------------- | -------- | --------------------------------------------------------------------- |
+| `duplicate-stripe`   | Fix soon | Two or more **active** Stripe products share a name                   |
+| `duplicate-sanity`   | Fix soon | Two or more published Sanity products share a name or a non-empty SKU |
+| `duplicate-printful` | Fix soon | Two or more Printful products share a name or an external id          |
+
+How they decide:
+
+- **A name counts once case, spacing and punctuation are ignored.** "Classic Tee" and "classic-tee" are one name; "Tee" and "Tees" are two. There is no fuzzy matching: the same input always gives the same findings, and a typo in a copy's name is a missed duplicate, not a guess for you to review.
+- **One finding per product, not per pair.** Three copies are one finding that lists every copy with its id; Stripe copies also show their default price, so you can see when copies charge different amounts. A finding lists at most 10 copies and counts the rest.
+- **Archived Stripe products are not copies.** One active and one archived product with a name is no finding. When a group of active copies also has archived siblings, the finding names them so you can see they are not counted.
+- **A copy is listed once.** A product that shares a name with one record and a SKU with another is reported in the name group; the SKU finding lists only the copies not listed yet and says where the other one is.
+- **A blank key never groups.** An empty SKU, a missing external id or a name made only of emoji or punctuation is not shared with anything.
+- **Gaugeline does not choose.** Each finding says to keep one, archive the rest and point the website at the one you keep. Which one is real depends on which is linked, ordered and priced right, and only you know that.
+- **One name in three systems is fine.** The same tee called "Classic Tee" in Sanity, "classic-tee" in Stripe and "CLASSIC TEE" in Printful is one product in three places, and none of these checks looks across systems.
+
+A check runs only when its system returned data, so a Stripe that refused the key never makes a duplicate or hides one.
+
+### Example: a pop-up bakery's shop
+
+Marigold Bakehouse sells loaves for pick-up, a canvas tote, a gift card and aprons from a Next.js site on Sanity, with checkout in Stripe and the aprons printed by Printful. Over a year the tote was copied in the CMS (once with a new name and an old SKU), the gift card was created again in Stripe at a different price, and the apron went into Printful twice under one external id. Against invented records of the three systems (`packages/core/src/products/__tests__/duplicate-store.ts`), the three checks return:
+
+<!-- prettier-ignore -->
+```json title=Duplicate findings
+{
+  "findings": [
+    {
+      "check": "duplicate-printful",
+      "level": "medium",
+      "product": "printful:8201",
+      "evidence": "2 products in Printful share the external id \"mb-apron\": 8201 \"Marigold apron\"; 8202 \"Bakehouse apron, navy\". Keep one, archive the rest and point the website at the one you keep."
+    },
+    {
+      "check": "duplicate-sanity",
+      "level": "medium",
+      "product": "sanity:mb-tote",
+      "evidence": "2 products in Sanity share the name \"Marigold tote\": mb-tote \"Marigold tote\"; mb-tote-old \"Marigold Tote!\". Keep one, archive the rest and point the website at the one you keep."
+    },
+    {
+      "check": "duplicate-sanity",
+      "level": "medium",
+      "product": "sanity:mb-tote-2",
+      "evidence": "1 more product in Sanity shares the SKU \"MB-TOTE-OLD\": mb-tote-2 \"Bakehouse canvas bag\". The SKU is also on mb-tote-old (reported under its name). Keep one, archive the rest and point the website at the one you keep."
+    },
+    {
+      "check": "duplicate-stripe",
+      "level": "medium",
+      "product": "stripe:prod_MbGift25",
+      "evidence": "2 active products in Stripe share the name \"Gift card\": prod_MbGift25 \"Gift card\" (default price 25.00 USD); prod_MbGift50 \"gift card\" (default price 50.00 USD). The copies charge different prices: 25.00 USD, 50.00 USD. 1 archived product with the same name is not counted: prod_MbGiftOld. Keep one, archive the rest and point the website at the one you keep."
+    }
+  ]
+}
+```
+
+- The **tote** is two Sanity products with one name, and a third with the second one's SKU. The third is listed in its own finding because it has not been listed yet, and the finding says where the other one is.
+- The **gift card** exists twice and active in Stripe at 25.00 and 50.00 USD, so checkout may charge either. The archived third copy is named and not counted.
+- The **apron** is in Printful twice under different names but one external id.
+- The **sourdough loaf** is in Sanity and Stripe once each and is not mentioned: one product in two systems is not a duplicate.
+
+The output is asserted by `packages/core/src/products/__tests__/duplicates-docs.test.ts`.
+
 ## How products are matched
 
 Sanity (your website) is the anchor. For each Sanity product, in the order Sanity lists them, Gaugeline looks for its partner in Stripe and, separately, in Printful. It tries four rules in this order and stops at the first one that finds a product:
