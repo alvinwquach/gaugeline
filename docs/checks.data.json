@@ -710,6 +710,16 @@
     "tech": "The trail's final address against expectedDestination (host without www, path without trailing slash). A 200 with a meta refresh or a location assignment and no redirect is an interstitial"
   },
   {
+    "id": "price-mismatch",
+    "severity": "high",
+    "area": "Sales & prices",
+    "title": "Website price disagrees with checkout",
+    "what": "The price on your website (Sanity) is different from the price Stripe charges for the same product.",
+    "why": "Customers see one price and pay another, which causes abandoned carts, complaints and refunds.",
+    "fix": "Decide which system owns the price, usually checkout, and have the other read from it. Until then, change one of the two so they agree.",
+    "tech": "the Sanity product's price against the unit_amount of the matched Stripe product's default_price, both whole minor units (Sanity has no currency and takes Stripe's); compared only when the Stripe currency is known; a default price with no fixed amount (tiered or custom pricing), one that was not read, or a Sanity price with no whole reading in that currency is skipped with a notice; a Stripe product with no default price is stripe-no-price, not a mismatch; the evidence carries both amounts and the rule that matched the pair, and never says which is right"
+  },
+  {
     "id": "cutover-canonical-host",
     "severity": "high",
     "area": "Launch day",
@@ -1390,6 +1400,26 @@
     "tech": "Parameters on the printed URL whose names start with a tag prefix (utm_ by default) and are missing from the final address"
   },
   {
+    "id": "printful-price",
+    "severity": "medium",
+    "area": "Sales & prices",
+    "title": "Fulfillment lists a different price",
+    "what": "A synced Printful variant's retail price is different from the price Stripe charges for the product.",
+    "why": "Anything that reads Printful's price (a storefront sync, an invoice, a packing slip) shows customers a different number from the one they paid.",
+    "fix": "Decide which price you mean, then change the other so the two agree, or have Printful's retail price follow checkout.",
+    "tech": "each synced sync_variants.retail_price of the matched Printful product against the unit_amount of the matched Stripe product's default price, both whole minor units; compared only when the variant's currency is known and equal to Stripe's (a different currency is a notice, never converted); a variant with no retail price, or a Stripe default price with no fixed amount, is skipped with a notice; one finding per product listing up to three differing variants and both match rules"
+  },
+  {
+    "id": "stripe-no-price",
+    "severity": "medium",
+    "area": "Sales & prices",
+    "title": "No default price in checkout",
+    "what": "An active Stripe product that is matched to a product on your website has no default price.",
+    "why": "Anything that asks Stripe for the product's price (a payment link, a checkout session, a price comparison) finds nothing, and the product cannot be bought or compared.",
+    "fix": "In Stripe, open the product and set one of its prices as the default, or archive the product if it is no longer sold.",
+    "tech": "a matched Stripe product with active true and default_price null, whether or not it has other prices; the evidence says how many prices it has; archived products and Stripe products with no Sanity partner are not reported"
+  },
+  {
     "id": "cutover-certificate-changed",
     "severity": "medium",
     "area": "Security & email",
@@ -1688,5 +1718,15 @@
     "why": "Every hop is a wait on a phone, often on a weak signal, and one broken hop breaks the code.",
     "fix": "Redirect the printed address straight to its page.",
     "tech": "More than two 3xx in the trail; the trail is in the evidence"
+  },
+  {
+    "id": "price-stored-twice",
+    "severity": "low",
+    "area": "Sales & prices",
+    "title": "A price is stored in two systems",
+    "what": "The same price is saved on the Sanity product and on the matched Stripe product, and the two agree today.",
+    "why": "Two copies that agree today are the cause of next month's mismatch: the next price change has to be made twice, and one of them will be forgotten.",
+    "fix": "Decide which system owns each price, usually checkout, and have the other read it instead of storing its own copy.",
+    "tech": "a Sanity product with a price whose matched Stripe product has a default price with a fixed amount, in a known currency, equal to it; one finding per run listing the count and the first five products; products whose prices differ are price-mismatch, not this"
   }
 ]

@@ -1,0 +1,25 @@
+{
+  "interactions": [
+    {
+      "method": "GET",
+      "url": "https://api.stripe.com/v1/products?limit=100",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": "{\"object\":\"list\",\"url\":\"/v1/products\",\"has_more\":false,\"data\":[{\"id\":\"prod_EmberApron\",\"object\":\"product\",\"active\":true,\"created\":1767225600,\"default_price\":\"price_EmberApron5200\",\"description\":null,\"livemode\":true,\"metadata\":{},\"name\":\"Supper apron\",\"type\":\"service\",\"updated\":1767225600},{\"id\":\"prod_EmberSauce\",\"object\":\"product\",\"active\":true,\"created\":1767225600,\"default_price\":\"price_EmberSauce1200\",\"description\":null,\"livemode\":true,\"metadata\":{},\"name\":\"House hot sauce\",\"type\":\"service\",\"updated\":1767225600},{\"id\":\"prod_EmberTote\",\"object\":\"product\",\"active\":true,\"created\":1767225600,\"default_price\":\"price_EmberTote2450\",\"description\":null,\"livemode\":true,\"metadata\":{},\"name\":\"Ember tote bag\",\"type\":\"service\",\"updated\":1767225600},{\"id\":\"prod_EmberStickers\",\"object\":\"product\",\"active\":true,\"created\":1767225600,\"default_price\":\"price_EmberStickers600\",\"description\":null,\"livemode\":true,\"metadata\":{},\"name\":\"Sticker pack\",\"type\":\"service\",\"updated\":1767225600},{\"id\":\"prod_EmberBox\",\"object\":\"product\",\"active\":true,\"created\":1767225600,\"default_price\":null,\"description\":null,\"livemode\":true,\"metadata\":{},\"name\":\"Tasting box\",\"type\":\"service\",\"updated\":1767225600},{\"id\":\"prod_EmberGift\",\"object\":\"product\",\"active\":true,\"created\":1767225600,\"default_price\":\"price_EmberGift0\",\"description\":null,\"livemode\":true,\"metadata\":{},\"name\":\"Gift card\",\"type\":\"service\",\"updated\":1767225600}]}"
+    },
+    {
+      "method": "GET",
+      "url": "https://api.stripe.com/v1/prices?limit=100",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": "{\"object\":\"list\",\"url\":\"/v1/prices\",\"has_more\":false,\"data\":[{\"id\":\"price_EmberApron5200\",\"object\":\"price\",\"active\":true,\"billing_scheme\":\"per_unit\",\"created\":1767225600,\"currency\":\"usd\",\"livemode\":true,\"product\":\"prod_EmberApron\",\"type\":\"one_time\",\"unit_amount\":5200},{\"id\":\"price_EmberSauce1200\",\"object\":\"price\",\"active\":true,\"billing_scheme\":\"per_unit\",\"created\":1767225600,\"currency\":\"usd\",\"livemode\":true,\"product\":\"prod_EmberSauce\",\"type\":\"one_time\",\"unit_amount\":1200},{\"id\":\"price_EmberTote2450\",\"object\":\"price\",\"active\":true,\"billing_scheme\":\"per_unit\",\"created\":1767225600,\"currency\":\"usd\",\"livemode\":true,\"product\":\"prod_EmberTote\",\"type\":\"one_time\",\"unit_amount\":2450},{\"id\":\"price_EmberStickers600\",\"object\":\"price\",\"active\":true,\"billing_scheme\":\"per_unit\",\"created\":1767225600,\"currency\":\"usd\",\"livemode\":true,\"product\":\"prod_EmberStickers\",\"type\":\"one_time\",\"unit_amount\":600},{\"id\":\"price_EmberBox4500\",\"object\":\"price\",\"active\":true,\"billing_scheme\":\"per_unit\",\"created\":1767225600,\"currency\":\"usd\",\"livemode\":true,\"product\":\"prod_EmberBox\",\"type\":\"one_time\",\"unit_amount\":4500},{\"id\":\"price_EmberBox5500\",\"object\":\"price\",\"active\":true,\"billing_scheme\":\"per_unit\",\"created\":1767225600,\"currency\":\"usd\",\"livemode\":true,\"product\":\"prod_EmberBox\",\"type\":\"one_time\",\"unit_amount\":5500},{\"id\":\"price_EmberGift0\",\"object\":\"price\",\"active\":true,\"billing_scheme\":\"per_unit\",\"created\":1767225600,\"currency\":\"usd\",\"livemode\":true,\"product\":\"prod_EmberGift\",\"type\":\"one_time\",\"unit_amount\":0}]}"
+    }
+  ],
+  "name": "stripe-price-supper",
+  "recordedAt": "2026-11-10T00:00:00.000Z",
+  "version": 1
+}

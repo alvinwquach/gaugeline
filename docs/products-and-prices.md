@@ -448,9 +448,82 @@ If the freelancer had typed the wrong store number, Printful would refuse it and
 
 Both outputs, and the prices in this example, are asserted by `packages/core/src/connectors/__tests__/docs.test.ts`.
 
+## Price checks
+
+Four checks compare the price on your website, in Stripe and in Printful. They read the products the matcher paired ([above](#how-products-are-matched)), so every finding says how its pair was made: "matched by SKU", "matched by name".
+
+| Check                | Level          | It fires when                                                                                                          |
+| -------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `price-mismatch`     | Fix this first | The Sanity price is different from the amount of the Stripe product's default price                                    |
+| `printful-price`     | Fix soon       | A synced Printful variant's retail price is different from the Stripe default price                                    |
+| `stripe-no-price`    | Fix soon       | An active Stripe product that is matched to a website product has no default price                                     |
+| `price-stored-twice` | Worth knowing  | The website and Stripe each store a price for the same product, and the two agree today. One finding for the whole run |
+
+How they compare:
+
+- **Whole numbers, never decimals.** A price is read from its text, split at the point and built into a whole number of the currency's smallest unit: "48" and "48.00" are both 4800. Nothing is multiplied, because 19.99 times 100 is 1998.9999999999998 in floating point and the whole test is whether 4800 equals 4800.
+- **Currencies are compared, never converted.** Stripe's price has a currency; Sanity has none, so it takes Stripe's. A Printful variant priced in a different currency from Stripe is not a finding: the run lists a notice naming both currencies and moves on.
+- **Not every currency has two decimals.** Yen and won have none, and the Bahraini and Kuwaiti dinar have three, so 500 yen is 500 and "1.250" dinars is 1250. Every other currency is read with two places, and a price with more places than its currency allows ("48.123" dollars) is not a price and is skipped. The list of exceptions is small and lives in one place, `packages/core/src/products/money.ts`; a currency that is missing from it is read with two places. If your Sanity prices are already in minor units, set `GAUGELINE_SANITY_PRICE_UNIT=cents`.
+- **A price with no fixed amount is skipped with a notice.** Tiered, metered and custom pricing in Stripe has no single number to compare. So does a Printful variant with no retail price, and a Stripe product whose default price was not among the prices that were read.
+- **Free is a price.** A Sanity price of 0 against a Stripe price of 0 is equal. A Sanity product with no price at all is not compared.
+- **A product with prices but no default price is one finding, not two.** `stripe-no-price` reports it; `price-mismatch` has no default to compare with and stays quiet.
+- **Each finding carries both numbers, both system names and the rule that matched the pair.** Gaugeline never says which one is right.
+
+### Example: a pop-up kitchen's shop
+
+Ember Supper Club is a pop-up kitchen that sells a printed apron, a hot sauce, a tote bag, a sticker pack, a tasting box and gift cards from a Next.js site on Sanity. Its freelancer put checkout in Stripe and the merch in Printful. Against invented recordings of the three systems (`packages/testkit/cassettes/sanity-price-supper.json`, `stripe-price-supper.json` and `printful-price-supper.json`), the four checks return:
+
+<!-- prettier-ignore -->
+```json title=Price findings
+{
+  "findings": [
+    {
+      "check": "price-mismatch",
+      "level": "high",
+      "product": "sanity:supper-apron",
+      "evidence": "\"Supper apron\": Sanity says 48.00 USD and Stripe's default price (price_EmberApron5200) says 52.00 USD (matched by saved id)."
+    },
+    {
+      "check": "printful-price",
+      "level": "medium",
+      "product": "sanity:ember-tote",
+      "evidence": "\"Ember tote bag\": 1 of 2 synced Printful variants has a retail price that differs from Stripe's default price (24.50 USD): EM-TOTE-B at 29.00 USD (Stripe matched by saved id, Printful matched by name)."
+    },
+    {
+      "check": "stripe-no-price",
+      "level": "medium",
+      "product": "sanity:tasting-box",
+      "evidence": "\"Tasting box\" is active in Stripe (prod_EmberBox) but has no default price, although it has 2 prices, so checkout has nothing to charge by default (matched by saved id)."
+    },
+    {
+      "check": "price-stored-twice",
+      "level": "low",
+      "product": "sanity:hot-sauce",
+      "evidence": "4 products store their price in both Sanity and Stripe, and the two agree today: House hot sauce, Ember tote bag, Sticker pack, Gift card. Choose one system to hold each price and have the other read it."
+    }
+  ],
+  "notices": [
+    {
+      "check": "printful-price",
+      "reason": "\"Sticker pack\": Printful prices this product in EUR and Stripe in USD, so those prices were not compared. Gaugeline never converts between currencies."
+    }
+  ]
+}
+```
+
+- The **apron** is $48 on the website and $52 in Stripe. Printful sells it at $52, which agrees with Stripe, so the only finding for it is `price-mismatch`. It does not say that the website is the one to change: that is for the owner to decide.
+- The **tote bag** is the same in Sanity and Stripe, but one colour is $29.00 in Printful against $24.50. Printful's partner was found by name, and the finding says so.
+- The **tasting box** has two prices in Stripe and neither is marked as the default, so there is nothing for checkout to charge by default.
+- The **sticker pack** is in dollars in Stripe and euros in Printful. That is a notice, not a finding: Gaugeline does not convert.
+- The **hot sauce**, **tote bag**, **sticker pack** and **gift card** (free, 0 against 0) store the same price twice. That is one low finding for all four, not four.
+
+The output is asserted by `packages/core/src/products/__tests__/price-docs.test.ts`.
+
 ## What it can't decide for you
 
 Gaugeline can tell you two systems disagree. It can't tell you which one is right. Decide which system owns each fact, usually checkout for prices, and have the others read from it.
+
+That is why a price finding quotes both numbers and stops there. A website that says $48 while Stripe charges $52 might be a price that went up and a page nobody updated, or a discount that was typed into the wrong place, and only the person who runs the business knows which. Two copies of a price that agree today (`price-stored-twice`) are the reason the next change will leave one of them behind, so the fix that lasts is one owner and one place to change it, not a second reminder to keep both in step.
 
 ::: info
 Keys stay on your computer, are only read from environment variables, and are never printed or saved. If one system can't be reached, the rest of the check still runs.
@@ -466,7 +539,7 @@ Keys stay on your computer, are only read from environment variables, and are ne
 
 ## In this version: the connector interface
 
-The three systems above are read through one small interface, `Connector`. This version ships the interface, the runner, the key handling, the Sanity reader ([above](#reading-sanity)), the Stripe reader ([above](#reading-stripe)), the Printful reader ([above](#reading-printful)) and the [Shopify](/docs/sources/shopify) and [Square](/docs/sources/square) readers, which return the same catalogue shape. Nothing in a normal run requests Stripe, Printful, Shopify or Square yet: the comparisons that use them come with the price checks.
+The three systems above are read through one small interface, `Connector`. This version ships the interface, the runner, the key handling, the Sanity reader ([above](#reading-sanity)), the Stripe reader ([above](#reading-stripe)), the Printful reader ([above](#reading-printful)) and the [Shopify](/docs/sources/shopify) and [Square](/docs/sources/square) readers, which return the same catalogue shape. Nothing in a normal run requests Stripe, Printful, Shopify or Square yet. The [price checks](#price-checks) are in the library and in the checks reference; feeding them from a run of `gaugeline open` comes in a later version.
 
 A connector has an `id`, the names of the variables it needs (`envVars`), a `configured` test and a `read` that returns a list. It may also list variables it reads when they are set (`optionalEnvVars`), say which of its variables are keys (`secretEnvVars`, so only those are blanked in messages), and give advice (`advise`). `runConnectors` reads every configured connector at the same time and returns two things: `data`, the rows by connector id, and `notices`, one for every system that gave none, and any advice.
 

@@ -790,7 +790,18 @@ export type {
   Freshness,
   Moment,
 } from "./freshness/index.js";
-export { toMinor } from "./products/money.js";
+export { formatMoney, minorExponent, toMinor } from "./products/money.js";
+export type { Money } from "./products/money.js";
+export {
+  PRICE_CHECKS,
+  PRICE_CHECK_IDS,
+  createPriceRegistry,
+  priceMismatch,
+  priceStoredTwice,
+  printfulPrice,
+  stripeNoPrice,
+} from "./checks/prices.js";
+export type { PriceCheckId, PriceCheckInput } from "./checks/prices.js";
 export { TIERS, matchProducts, normaliseName, normaliseSku } from "./products/match.js";
 export type {
   AmbiguousMatch,

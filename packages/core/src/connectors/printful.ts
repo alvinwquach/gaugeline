@@ -63,14 +63,15 @@ function idText(v: unknown): string | null {
 
 /**
  * Printful's retail price ("24.50", "24.5") as whole minor units. Printful sends a decimal string;
- * the text is split at the point (toMinor), never multiplied. An empty or missing price, or one that
- * is not a plain amount, is null: no price, not a free one.
+ * the text is split at the point (toMinor), never multiplied, with the places of the variant's
+ * currency (two when it is not given). An empty or missing price, or one that is not a plain amount,
+ * is null: no price, not a free one.
  */
-export function retailToMinor(value: unknown): number | null {
+export function retailToMinor(value: unknown, currency?: string): number | null {
   if (typeof value !== "string" && typeof value !== "number") return null;
   if (typeof value === "string" && value.trim() === "") return null;
   try {
-    return toMinor(value);
+    return toMinor(value, currency);
   } catch {
     return null;
   }
@@ -82,13 +83,14 @@ export function mapPrintfulVariant(raw: unknown): PrintfulVariant {
   if (!isRecord(raw) || id === null)
     throw new Error("Printful answered with a variant that has no id.");
   const sku = typeof raw.sku === "string" && raw.sku.trim() !== "" ? raw.sku.trim() : undefined;
+  const currency = typeof raw.currency === "string" ? raw.currency : "";
   return {
     id,
     ...(sku === undefined ? {} : { sku }),
     // Only an explicit false is "not synced": a field that is missing must not invent a problem.
     synced: raw.synced !== false,
-    retailPrice: retailToMinor(raw.retail_price),
-    currency: typeof raw.currency === "string" ? raw.currency : "",
+    retailPrice: retailToMinor(raw.retail_price, currency),
+    currency,
   };
 }
 
