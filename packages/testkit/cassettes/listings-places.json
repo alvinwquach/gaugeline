@@ -1,0 +1,16 @@
+{
+  "interactions": [
+    {
+      "body": "{\"id\": \"ChIJexampleBuckTavern01\", \"displayName\": {\"text\": \"The BUCK Tavern\", \"languageCode\": \"en\"}, \"formattedAddress\": \"412 Alder Street, Fairmont Heights, IL 62999, USA\", \"nationalPhoneNumber\": \"(217) 555-0142\", \"internationalPhoneNumber\": \"+1 217-555-0142\", \"websiteUri\": \"https://bucktavern.example/\", \"businessStatus\": \"OPERATIONAL\", \"googleMapsUri\": \"https://maps.google.example/place/the-buck-tavern\", \"regularOpeningHours\": {\"periods\": [{\"open\": {\"day\": 1, \"hour\": 16, \"minute\": 0}, \"close\": {\"day\": 2, \"hour\": 1, \"minute\": 0}}, {\"open\": {\"day\": 2, \"hour\": 16, \"minute\": 0}, \"close\": {\"day\": 3, \"hour\": 1, \"minute\": 0}}, {\"open\": {\"day\": 3, \"hour\": 16, \"minute\": 0}, \"close\": {\"day\": 4, \"hour\": 1, \"minute\": 0}}, {\"open\": {\"day\": 4, \"hour\": 16, \"minute\": 0}, \"close\": {\"day\": 5, \"hour\": 1, \"minute\": 0}}, {\"open\": {\"day\": 5, \"hour\": 16, \"minute\": 0}, \"close\": {\"day\": 6, \"hour\": 2, \"minute\": 0}}, {\"open\": {\"day\": 6, \"hour\": 16, \"minute\": 0}, \"close\": {\"day\": 0, \"hour\": 2, \"minute\": 0}}, {\"open\": {\"day\": 0, \"hour\": 12, \"minute\": 0}, \"close\": {\"day\": 0, \"hour\": 22, \"minute\": 0}}]}}",
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://places.googleapis.com/v1/places/ChIJexampleBuckTavern01"
+    }
+  ],
+  "name": "listings-places",
+  "recordedAt": "2026-11-10T00:00:00.000Z",
+  "version": 1
+}

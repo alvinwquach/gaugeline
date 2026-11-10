@@ -40,6 +40,11 @@ function pageText(page: PageSnapshot, selector?: string): PageText {
   return result;
 }
 
+/** The text a visitor reads on the page, as sent without JavaScript, on one line. */
+export function visibleText(page: PageSnapshot): string {
+  return pageText(page).text;
+}
+
 const PHONE = /(?:\+?1[\s.-]?)?\(?\b\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}\b/g;
 
 function escape(s: string): string {

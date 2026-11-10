@@ -1,0 +1,54 @@
+{
+  "interactions": [
+    {
+      "body": "{\"name\": \"locations/1234567890123456789\", \"title\": \"Buckhorn Tavern\", \"phoneNumbers\": {\"primaryPhone\": \"(217) 555-0142\"}, \"storefrontAddress\": {\"regionCode\": \"US\", \"postalCode\": \"62999\", \"administrativeArea\": \"IL\", \"locality\": \"Fairmont Heights\", \"addressLines\": [\"412 Alder Street\"]}, \"websiteUri\": \"https://buckhorn-tavern.example/\", \"regularHours\": {\"periods\": [{\"openDay\": \"MONDAY\", \"openTime\": {\"hours\": 16}, \"closeDay\": \"TUESDAY\", \"closeTime\": {\"hours\": 1}}, {\"openDay\": \"TUESDAY\", \"openTime\": {\"hours\": 16}, \"closeDay\": \"WEDNESDAY\", \"closeTime\": {\"hours\": 1}}, {\"openDay\": \"WEDNESDAY\", \"openTime\": {\"hours\": 16}, \"closeDay\": \"THURSDAY\", \"closeTime\": {\"hours\": 1}}, {\"openDay\": \"THURSDAY\", \"openTime\": {\"hours\": 16}, \"closeDay\": \"FRIDAY\", \"closeTime\": {\"hours\": 1}}, {\"openDay\": \"FRIDAY\", \"openTime\": {\"hours\": 16}, \"closeDay\": \"SATURDAY\", \"closeTime\": {\"hours\": 1}}, {\"openDay\": \"SATURDAY\", \"openTime\": {\"hours\": 16}, \"closeDay\": \"SUNDAY\", \"closeTime\": {\"hours\": 1}}, {\"openDay\": \"SUNDAY\", \"openTime\": {\"hours\": 12}, \"closeDay\": \"SUNDAY\", \"closeTime\": {\"hours\": 22}}]}, \"specialHours\": {\"specialHourPeriods\": [{\"startDate\": {\"year\": 2026, \"month\": 12, \"day\": 25}, \"closed\": true}]}, \"openInfo\": {\"status\": \"OPEN\"}, \"metadata\": {\"hasVoiceOfMerchant\": true, \"mapsUri\": \"https://maps.google.example/place/buckhorn-tavern\"}}",
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://mybusinessbusinessinformation.googleapis.com/v1/locations/1234567890123456789?readMask=title%2CphoneNumbers%2CstorefrontAddress%2CwebsiteUri%2CregularHours%2CspecialHours%2CopenInfo%2Cmetadata"
+    },
+    {
+      "body": "{\"id\": \"x1y2z3\", \"alias\": \"the-buck-tavern-fairmont-heights\", \"name\": \"The BUCK Tavern\", \"is_claimed\": true, \"is_closed\": false, \"url\": \"https://www.yelp.example/biz/the-buck-tavern-fairmont-heights?adjust_creative=invented\", \"phone\": \"+12175550163\", \"display_phone\": \"(217) 555-0163\", \"location\": {\"address1\": \"412 Alder Street\", \"city\": \"Fairmont Heights\", \"zip_code\": \"62999\", \"state\": \"IL\", \"display_address\": [\"412 Alder Street\", \"Fairmont Heights, IL 62999\"]}, \"hours\": [{\"open\": [{\"is_overnight\": true, \"start\": \"1600\", \"end\": \"0100\", \"day\": 0}, {\"is_overnight\": true, \"start\": \"1600\", \"end\": \"0100\", \"day\": 1}, {\"is_overnight\": true, \"start\": \"1600\", \"end\": \"0100\", \"day\": 2}, {\"is_overnight\": true, \"start\": \"1600\", \"end\": \"0100\", \"day\": 3}, {\"is_overnight\": true, \"start\": \"1600\", \"end\": \"0200\", \"day\": 4}, {\"is_overnight\": true, \"start\": \"1600\", \"end\": \"0200\", \"day\": 5}, {\"is_overnight\": false, \"start\": \"1200\", \"end\": \"2100\", \"day\": 6}], \"hours_type\": \"REGULAR\", \"is_open_now\": false}], \"special_hours\": [{\"date\": \"2026-11-26\", \"is_closed\": true, \"start\": null, \"end\": null, \"is_overnight\": null}, {\"date\": \"2026-12-25\", \"is_closed\": true, \"start\": null, \"end\": null, \"is_overnight\": null}]}",
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.yelp.com/v3/businesses/the-buck-tavern-fairmont-heights"
+    },
+    {
+      "body": "",
+      "headers": {
+        "content-type": "text/html",
+        "location": "https://bucktavern.example/"
+      },
+      "method": "GET",
+      "status": 301,
+      "url": "https://buckhorn-tavern.example/"
+    },
+    {
+      "body": "",
+      "headers": {
+        "content-type": "text/html",
+        "location": "https://bucktavern.example/"
+      },
+      "method": "GET",
+      "status": 301,
+      "url": "https://www.bucktavern.example/"
+    },
+    {
+      "body": "<!doctype html><html><head><title>Invented link page</title></head><body><h1>The BUCK Tavern</h1><p><a href=\"https://buckhorn-tavern.example/menu\">Menu</a> <a href=\"https://links.example/about\">About</a></p></body></html>",
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://links.example/bucktavern"
+    }
+  ],
+  "name": "listings-bucktavern",
+  "recordedAt": "2026-11-10T00:00:00.000Z",
+  "version": 1
+}

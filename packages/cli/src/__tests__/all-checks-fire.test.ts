@@ -64,6 +64,15 @@ const NEEDS_LIVE_STORES = new Set([
   // The configured database project: confirmed in-process against the supabase-access cassette.
   "access-public-read",
   "access-role-scope",
+  // Listings: they compare Google, Yelp and Apple listings with the site and run only with a
+  // gaugeline.listings.json; confirmed in-process against recorded answers (listings.test.ts,
+  // packages/core/src/checks/__tests__/listings.test.ts).
+  "listing-address-mismatch",
+  "listing-hours-mismatch",
+  "listing-name-mismatch",
+  "listing-phone-mismatch",
+  "listing-special-hours-missing",
+  "listing-website-wrong",
   // Public DNS: the built-bin run resolves nothing; confirmed in-process with a fake reader.
   "email-dmarc-missing",
   "email-dmarc-none",

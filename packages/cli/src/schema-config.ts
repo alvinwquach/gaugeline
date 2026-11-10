@@ -9,6 +9,7 @@ import {
   hiddenConfigSchema,
   navRulesSchema,
   languageRulesSchema,
+  listingsConfigSchema,
   pagesConfigSchema,
   paymentsConfigSchema,
   readContainer,
@@ -21,6 +22,7 @@ import {
   type HiddenConfig,
   type NavRules,
   type LanguageRules,
+  type ListingsConfig,
   type PagesConfig,
   type PaymentsConfig,
   type SchemaRules,
@@ -38,6 +40,8 @@ export const FACTS_CONFIG_FILE = "gaugeline.facts.json";
 export const PAYMENTS_CONFIG_FILE = "gaugeline.payments.json";
 /** The database project and roles to test its access rules as, likewise. Keys stay in the environment. */
 export const ACCESS_CONFIG_FILE = "gaugeline.access.json";
+/** The business listings to compare with the site (Google, Yelp, Apple, bio links), likewise. Keys stay in the environment. */
+export const LISTINGS_CONFIG_FILE = "gaugeline.listings.json";
 /** Sections hidden until launch, likewise. */
 export const HIDDEN_CONFIG_FILE = "gaugeline.hidden.json";
 /** The tracking plan: which clicks must push which event, likewise. */
@@ -97,6 +101,39 @@ export function readPayments(dir: string): PaymentsConfig | undefined {
 
 export function readAccess(dir: string): AccessConfig | undefined {
   return readJsonConfig(dir, ACCESS_CONFIG_FILE, accessConfigSchema, "database access checks");
+}
+
+export function readListingsConfig(dir: string): ListingsConfig | undefined {
+  return readJsonConfig(dir, LISTINGS_CONFIG_FILE, listingsConfigSchema, "listing checks");
+}
+
+/** Largest Apple Business Connect export read: a few hundred locations is well under it. */
+const MAX_EXPORT_BYTES = 2_000_000;
+
+/**
+ * The Apple Business Connect export gaugeline.listings.json names (relative to that file), as text.
+ * Apple has no read API for a business's listing, so the owner exports a file and this is it.
+ */
+export function readAppleExport(dir: string, config: ListingsConfig): string | undefined {
+  if (!config.apple) return undefined;
+  const path = resolve(dirname(join(dir, LISTINGS_CONFIG_FILE)), config.apple.csv);
+  try {
+    const text = readFileSync(path, "utf8");
+    if (text.length > MAX_EXPORT_BYTES)
+      throw new ConfigError(
+        `${LISTINGS_CONFIG_FILE}: apple.csv: ${config.apple.csv} is over 2 MB, which is not an export of one business.`,
+      );
+    return text;
+  } catch (err) {
+    if (err instanceof ConfigError) throw err;
+    const code = (err as { code?: string }).code;
+    throw new ConfigError(
+      code === "ENOENT"
+        ? `${LISTINGS_CONFIG_FILE}: apple.csv: ${config.apple.csv} was not found.`
+        : `${LISTINGS_CONFIG_FILE}: apple.csv: ${config.apple.csv} could not be read (${code ?? "an error"}).`,
+      { hint: "Export your locations from Apple Business Connect as a CSV and name that file." },
+    );
+  }
 }
 
 export function readHidden(dir: string): HiddenConfig | undefined {

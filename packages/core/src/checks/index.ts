@@ -63,6 +63,12 @@ import { langUntranslated } from "./lang-untranslated.js";
 import { linksVagueText } from "./links-vague-text.js";
 import { linksViaRedirect } from "./links-via-redirect.js";
 import { linksWrapped } from "./links-wrapped.js";
+import { listingAddressMismatch } from "./listing-address-mismatch.js";
+import { listingHoursMismatch } from "./listing-hours-mismatch.js";
+import { listingNameMismatch } from "./listing-name-mismatch.js";
+import { listingPhoneMismatch } from "./listing-phone-mismatch.js";
+import { listingSpecialHoursMissing } from "./listing-special-hours-missing.js";
+import { listingWebsiteWrong } from "./listing-website-wrong.js";
 import { llmsTxtBrokenLinks } from "./llms-txt-broken-links.js";
 import { llmsTxtStaleFacts } from "./llms-txt-stale-facts.js";
 import { mockContentLive } from "./mock-content-live.js";
@@ -187,6 +193,12 @@ export const PAGE_CHECKS = [
   linksVagueText,
   linksViaRedirect,
   linksWrapped,
+  listingAddressMismatch,
+  listingHoursMismatch,
+  listingNameMismatch,
+  listingPhoneMismatch,
+  listingSpecialHoursMissing,
+  listingWebsiteWrong,
   llmsTxtBrokenLinks,
   llmsTxtStaleFacts,
   mockContentLive,

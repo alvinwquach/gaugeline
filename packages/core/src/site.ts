@@ -4,6 +4,7 @@ import { createBudget, sampleCounts, type Budget } from "./limits.js";
 import type { CheckRegistry } from "./model.js";
 import type { ProgressSink } from "./progress.js";
 import { NO_PAGE_CHECKS } from "./checks/blocked.js";
+import { LISTING_CHECKS } from "./presets.js";
 import { classifyHop, describeRefusal } from "./refusal.js";
 import { runChecks, type RunOptions, type RunResult } from "./run.js";
 import { dedupeUrls } from "./sample.js";
@@ -30,6 +31,7 @@ import {
   type ContentSnapshot,
 } from "./snapshot/page-snapshot.js";
 import { lazyDatasets } from "./sanity.js";
+import { lazyListings, noListings, type ListingsSettings } from "./listings/read.js";
 import { lazyScripts } from "./scripts.js";
 import type { FactsConfig } from "./facts/types.js";
 import type { PaymentsConfig } from "./payments/types.js";
@@ -64,6 +66,8 @@ export interface SiteCheckOptions {
   facts?: FactsConfig;
   /** The business's payment handles and links. */
   payments?: PaymentsConfig;
+  /** The business listings to compare with the site (gaugeline.listings.json), with their keys already read. */
+  listings?: ListingsSettings;
   /** The database project to read as each role, with its keys already read from the environment. */
   access?: AccessSettings;
   /** Public DNS for the email record checks. Without one, they find nothing and nothing is resolved. */
@@ -152,10 +156,19 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
   // The page itself refused: run only the checks that need no page; list the rest as could not
   // check. No retry, no other user agent, no extra headers.
   const pageOutcome = classifyHop(snapshot.hops.at(-1));
+  // The listing checks compare listings with the site, so they run when gaugeline.listings.json
+  // names one. Without it they are not run (so not passed either), unless a caller asked for one by
+  // id: that one says it could not check.
+  const asked = LISTING_CHECKS.some((id) => opts.only?.includes(id));
+  const listingsOff = !opts.listings && !asked;
+  const registered = new Set(registry.all().map((c) => c.id));
+  const skip = listingsOff
+    ? [...(opts.skip ?? []), ...LISTING_CHECKS.filter((id) => registered.has(id))]
+    : opts.skip;
   const wanted = registry
     .all()
     .map((c) => c.id)
-    .filter((id) => (!opts.only || opts.only.includes(id)) && !(opts.skip ?? []).includes(id));
+    .filter((id) => (!opts.only || opts.only.includes(id)) && !(skip ?? []).includes(id));
   const refusedIds =
     pageOutcome.kind === "refused" ? wanted.filter((id) => !NO_PAGE_CHECKS.includes(id)) : [];
   const only =
@@ -209,12 +222,17 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
         ? { access: lazyAccess({ fetcher: opts.fetcher, budget, settings: opts.access }) }
         : {}),
       ...(opts.schemaRules ? { schemaRules: opts.schemaRules } : {}),
+      ...(opts.listings
+        ? { listings: lazyListings(opts.listings, opts.fetcher) }
+        : asked
+          ? { listings: () => Promise.resolve(noListings()) }
+          : {}),
       imagesIfSampled: () => images.peek(),
       ...(opts.expect ? { expect: opts.expect } : {}),
     },
     onProgress: sink,
     ...(only ? { only } : {}),
-    ...(opts.skip ? { skip: opts.skip } : {}),
+    ...(skip ? { skip } : {}),
   });
   if (pageOutcome.kind === "refused") {
     const reason = `the page ${describeRefusal(pageOutcome)}`;

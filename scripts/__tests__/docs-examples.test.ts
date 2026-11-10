@@ -1,4 +1,4 @@
-import { EMAIL_PRESET, createPageRegistry } from "../../packages/core/src/index.js";
+import { EMAIL_PRESET, LISTING_CHECKS, createPageRegistry } from "../../packages/core/src/index.js";
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -152,7 +152,13 @@ describe("docs examples: integration", () => {
         passed: createPageRegistry()
           .all()
           .map((c) => c.id)
-          .filter((id) => id !== "canonical-elsewhere" && !EMAIL_PRESET.includes(id)),
+          .filter(
+            (id) =>
+              id !== "canonical-elsewhere" &&
+              !EMAIL_PRESET.includes(id) &&
+              // Not run without a gaugeline.listings.json: neither passed nor failed.
+              !LISTING_CHECKS.includes(id),
+          ),
         startedAt: "2020-02-02T02:02:02.000Z",
         url: "https://shop.example/",
         schema: 2,

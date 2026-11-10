@@ -17,3 +17,4 @@ export { DEFAULT_SCRUBBERS, SCRUBBED, scrub, scrubBody, scrubText, scrubUrl } fr
 export type { Interaction, Scrubber } from "./scrub.js";
 export { KEY_PATTERNS } from "@gaugeline/core";
 export { assertGrouped } from "./grouped.js";
+export { staticSite } from "./static-site.js";

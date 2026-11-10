@@ -21,3 +21,17 @@ export const EMAIL_PRESET: readonly string[] = Object.freeze([
   "email-dmarc-missing",
   "email-dmarc-none",
 ]);
+
+/**
+ * The listing checks: they compare Google, Yelp and Apple listings and social bio links with the
+ * site, and run only when gaugeline.listings.json names a listing. They are not part of the launch
+ * preset.
+ */
+export const LISTING_CHECKS: readonly string[] = Object.freeze([
+  "listing-address-mismatch",
+  "listing-hours-mismatch",
+  "listing-name-mismatch",
+  "listing-phone-mismatch",
+  "listing-special-hours-missing",
+  "listing-website-wrong",
+]);
