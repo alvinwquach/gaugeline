@@ -123,12 +123,14 @@ import {
   readListingsConfig,
   readCrmConfig,
   readSourcesConfig,
+  CONSENT_CONFIG_FILE,
   readSwitchesConfig,
   readFreshnessConfig,
   SOURCES_CONFIG_FILE,
   SWITCHES_CONFIG_FILE,
   FRESHNESS_CONFIG_FILE,
   readAppleExport,
+  readConsent,
   readHidden,
   readLanguageRules,
   readPayments,
@@ -138,6 +140,7 @@ import {
   readNavRules,
   readPagesConfig,
 } from "./schema-config.js";
+import { listRouteFiles } from "./route-files.js";
 import { reserveRequestsFile } from "./save-requests.js";
 import { skeletonOnly } from "./skeleton.js";
 import { readLastRun, statePath, writeLastRun } from "./state.js";
@@ -595,7 +598,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
             footer = [
               ...progress.fixed.map((k) => {
                 const was = previous?.open[k];
-                return `✓ Fixed: ${was?.title ?? k}${was ? ` (line ${was.line} last time)` : ""}`;
+                return `\u2713 Fixed: ${was?.title ?? k}${was ? ` (line ${was.line} last time)` : ""}`;
               }),
               watchSummary(progress.added.length, progress.still, progress.fixed.length),
             ];
@@ -612,7 +615,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
             footer = [
               ...progress.fixed.map((k) => {
                 const was = previous?.open[k];
-                return `✓ Fixed: ${was?.title ?? k}${was ? ` (line ${was.line} last time)` : ""}`;
+                return `\u2713 Fixed: ${was?.title ?? k}${was ? ` (line ${was.line} last time)` : ""}`;
               }),
               ...(!args.all && progress.still > 0
                 ? [
@@ -1025,6 +1028,27 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       const events = readEvents(deps.cwd ?? process.cwd());
       const navRules = readNavRules(deps.cwd ?? process.cwd());
       const pagesConfig = readPagesConfig(deps.cwd ?? process.cwd());
+      // Probing checks (CLAUDE.md rule 14) ask a route that should be protected for what it protects,
+      // with no login. They are off unless the owner agreed: --owner-consent, or gaugeline.consent.json.
+      const consentFile = readConsent(cwd);
+      const ownerConsent = args.ownerConsent || consentFile !== undefined;
+      if (args.routes.length > 0 && !ownerConsent)
+        throw new ConfigError(
+          "--routes is read by the download route check, which asks your routes for their files with no login, so it runs only with --owner-consent.",
+          {
+            hint: "Add --owner-consent (or a gaugeline.consent.json) on a site you own or have permission to test.",
+          },
+        );
+      // Only the names of the route files are read, never the files.
+      const routeFiles =
+        ownerConsent && args.routes.length > 0 ? listRouteFiles(args.routes, cwd) : undefined;
+      if (ownerConsent && !args.quiet) {
+        io.stderr.write(
+          `Probing checks are on (${args.ownerConsent ? "--owner-consent" : CONSENT_CONFIG_FILE}): gated-download-open asks download routes for their file with no login. Run only on sites you own or have permission to test.\n`,
+        );
+        if (routeFiles && routeFiles.length === 0)
+          io.stderr.write(`--routes matched no files in ${cwd}.\n`);
+      }
       const listingsConfig = readListingsConfig(deps.cwd ?? process.cwd());
       // The listing keys are copied from the environment here and read by the listing connectors only.
       const listings = listingsConfig
@@ -1190,6 +1214,8 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         ...(freshness ? { freshness } : {}),
         ...(listingsConfig?.timeZone ? { expect: { timeZone: listingsConfig.timeZone } } : {}),
         ...(dns ? { dns } : {}),
+        ...(ownerConsent ? { ownerConsent: true } : {}),
+        ...(routeFiles ? { routeFiles } : {}),
       });
       const {
         snapshot,

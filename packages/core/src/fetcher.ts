@@ -39,6 +39,8 @@ export interface Hop {
   truncated?: boolean;
   /** Bytes of body read, after any Content-Encoding and gzip file decoding, before the charset. */
   bytes?: number;
+  /** With GetOptions.peek: what `sniff` made of the first bytes. The bytes themselves are not kept. */
+  peek?: string;
   /** Set on the first hop when https did not answer and http was used instead. */
   fallbackFrom?: string;
   /** Over https: the certificate this hop's server presented. */
@@ -168,8 +170,32 @@ export interface FetcherOptions {
   headersFor?: (url: URL) => Record<string, string> | undefined;
 }
 
+/**
+ * Read only the start of a body: the first `maxBytes`, then the connection is closed. The bytes go
+ * to `sniff` and are dropped; the hop keeps only the label `sniff` returns (Hop.peek), so a file's
+ * content never sits in the run's memory or in a log. For asking whether a route hands a file over
+ * without holding the file.
+ */
+export interface PeekOptions {
+  maxBytes: number;
+  sniff: (bytes: Uint8Array) => string;
+}
+
 export interface GetOptions {
   headers?: Record<string, string>;
+  /**
+   * Send nothing but the user agent and `headers`: not the per-address headers a protected preview
+   * adds (FetcherOptions.headersFor). The fetcher has no cookie jar and sends no Referer, so this
+   * is a visitor with no session. Asked separately from the same address without it.
+   */
+  anonymous?: boolean;
+  /** Read only the first bytes of the body (see PeekOptions). The body of a HEAD or a redirect is never read. */
+  peek?: PeekOptions;
+  /**
+   * Follow at most this many redirects. 0 returns the redirect response itself, without asking where
+   * it points, so the caller decides whether to go there.
+   */
+  maxRedirects?: number;
   method?: "GET" | "HEAD";
   /** Send `headers` only to hops on the first address's origin: a redirect elsewhere gets none. */
   headersSameOrigin?: boolean;
@@ -215,6 +241,35 @@ const REDIRECTS = new Set([301, 302, 303, 307, 308]);
 /** A gzip file (a sitemap.xml.gz) rather than a gzip Content-Encoding: the first two bytes. */
 function isGzipFile(buf: Buffer): boolean {
   return buf.byteLength >= 2 && buf[0] === 0x1f && buf[1] === 0x8b;
+}
+
+/** The first `maxBytes` of a body, then the stream is closed. Bytes that never arrive are not waited for. */
+async function readPeek(
+  body: Readable,
+  peek: PeekOptions,
+): Promise<{ label: string; bytes: number }> {
+  const chunks: Buffer[] = [];
+  let size = 0;
+  try {
+    for await (const chunk of body) {
+      const buf = chunk as Buffer;
+      const room = peek.maxBytes - size;
+      chunks.push(buf.subarray(0, room));
+      size += Math.min(buf.byteLength, room);
+      if (size >= peek.maxBytes) {
+        body.destroy();
+        break;
+      }
+    }
+  } catch (err) {
+    // A body that ends early or fails keeps what arrived; a deadline is the caller's to report.
+    if (isTimeout(err)) throw err;
+  }
+  const buf = Buffer.concat(chunks, size);
+  return {
+    label: peek.sniff(new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength)),
+    bytes: size,
+  };
 }
 
 async function readCapped(
@@ -441,6 +496,7 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
     method: "GET" | "HEAD",
     headers: Record<string, string>,
     at: { kind: RequestKind; chain: number; hop: number },
+    extra: { anonymous?: boolean; peek?: PeekOptions } = {},
   ): Promise<{ hop: Hop; location: string | null }> {
     assertReadOnly(method);
     return gate.run(async () => {
@@ -462,7 +518,11 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
       try {
         res = await transport(target, {
           method,
-          headers: { "user-agent": userAgent, ...headers, ...options.headersFor?.(target) },
+          headers: {
+            "user-agent": userAgent,
+            ...headers,
+            ...(extra.anonymous ? {} : options.headersFor?.(target)),
+          },
           timeoutMs,
         });
       } catch (err) {
@@ -491,6 +551,21 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
       const location = REDIRECTS.has(res.status) ? (res.headers.location ?? null) : null;
       if (location !== null || method === "HEAD") {
         res.body.destroy();
+      } else if (extra.peek) {
+        try {
+          const { label, bytes } = await readPeek(res.body, extra.peek);
+          hop.peek = label;
+          hop.bytes = bytes;
+        } catch (err) {
+          note({ status: null, error: "timeout" });
+          throw new FetchError(
+            "timeout",
+            `${hostOf(url)} did not send the start of the file within ${timeoutMs / 1000} seconds.`,
+            url,
+            [],
+            err,
+          );
+        }
       } else {
         try {
           const { body, truncated, bytes } = await readCapped(
@@ -533,7 +608,16 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
       const headers =
         opts.headersSameOrigin && new URL(current).origin !== origin ? {} : (opts.headers ?? {});
       try {
-        step = await requestOnce(current, method, headers, { kind, chain, hop: hops.length });
+        step = await requestOnce(
+          current,
+          method,
+          headers,
+          { kind, chain, hop: hops.length },
+          {
+            ...(opts.anonymous ? { anonymous: true } : {}),
+            ...(opts.peek ? { peek: opts.peek } : {}),
+          },
+        );
       } catch (err) {
         // A redirect to a non-public address off the target: recorded as a hop that was not
         // requested, and the trail ends there.
@@ -553,6 +637,7 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
       }
       hops.push(step.hop);
       if (step.location === null) return hops;
+      if (opts.maxRedirects !== undefined && hops.length > opts.maxRedirects) return hops;
       const next = new URL(step.location.trim(), current).href;
       if (visited.has(normaliseUrl(next))) {
         throw new FetchError(
@@ -580,7 +665,7 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
     const method = opts.method ?? "GET";
     assertReadOnly(method);
     const normal = normaliseUrl(url);
-    const key = `${method} ${normal}${opts.headers ? ` ${JSON.stringify(Object.entries(opts.headers).sort())}` : ""}${opts.headersSameOrigin ? " same-origin" : ""}`;
+    const key = `${method} ${normal}${opts.headers ? ` ${JSON.stringify(Object.entries(opts.headers).sort())}` : ""}${opts.headersSameOrigin ? " same-origin" : ""}${opts.anonymous ? " anonymous" : ""}${opts.peek ? ` peek:${opts.peek.maxBytes}` : ""}${opts.maxRedirects === undefined ? "" : ` redirects:${opts.maxRedirects}`}`;
     if (opts.fresh) memo.delete(key);
     let pending = memo.get(key);
     if (!pending) {

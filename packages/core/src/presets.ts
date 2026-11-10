@@ -77,3 +77,11 @@ export const CRM_CHECKS: readonly string[] = Object.freeze([
   "crm-field-names",
   "crm-went-quiet",
 ]);
+
+/**
+ * The probing checks (CLAUDE.md rule 14): they ask a gated route for what it protects, with no
+ * credentials. Off by default; on with --owner-consent or gaugeline.consent.json. Without consent
+ * they are not run (so not passed either), unless a caller asked for one by id: that one says it
+ * did not ask.
+ */
+export const PROBING_CHECKS: readonly string[] = Object.freeze(["gated-download-open"]);

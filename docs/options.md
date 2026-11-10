@@ -60,6 +60,11 @@ Options:
                                  of refusing it; a restricted key is safer
       --dns                      Also read the domain's mail records (SPF and
                                  DMARC) from DNS
+      --owner-consent            Run the probing checks, which ask routes for
+                                 what they protect with no login; only on sites
+                                 you may test
+      --routes <value>           With --owner-consent, find download routes in
+                                 route files matching this glob (repeatable)
       --since <value>            Compare with this site's last run and save this
                                  one; the only value is last
                                  (.gaugeline/last-run/)
@@ -252,6 +257,8 @@ between the markers; CI fails when it differs from the flag table.
 | `--allow-private`         | Allow addresses on this computer or a private network, such as 127.0.0.1 or 192.168.x.x                        |                      | 0.1.0 |
 | `--allow-secret-key`      | Use a Stripe secret key, with a notice, instead of refusing it; a restricted key is safer                      |                      | 0.2.0 |
 | `--dns`                   | Also read the domain's mail records (SPF and DMARC) from DNS                                                   |                      | 0.2.0 |
+| `--owner-consent`         | Run the probing checks, which ask routes for what they protect with no login; only on sites you may test       |                      | 0.2.0 |
+| `--routes <value>`        | With --owner-consent, find download routes in route files matching this glob (repeatable)                      |                      | 0.2.0 |
 | `--since <value>`         | Compare with this site's last run and save this one; the only value is last (.gaugeline/last-run/)             |                      | 0.2.0 |
 | `-i`, `--interactive`     | Open a terminal view of the results to move through, filter and dismiss findings                               |                      | 0.2.0 |
 | `--slack <value>`         | Send a summary to this Slack incoming webhook (or set GAUGELINE_SLACK_WEBHOOK)                                 |                      | 0.2.0 |
@@ -343,3 +350,41 @@ page check (`gaugeline <address>`) and `gaugeline launch`; every other command r
 code 2. The file may contain page content, so do not commit it. What is in it, how it is redacted and
 cut to a size limit, when it can fail and how its own versioned schema will change are on
 [Privacy and safety](privacy.md#saving-the-requests-save-requests).
+
+### Probing checks (--owner-consent and --routes)
+
+Most checks read what any visitor can read. A **probing** check asks something that should be protected
+for what it protects, with no login: it is the one kind of request that could be unwelcome on a site
+that is not yours. Probing checks are off by default and run only with `--owner-consent`, or with a
+`gaugeline.consent.json` in the folder you run from. **Run them only on sites you own or have permission
+to test.** Without either, nothing is asked and the check is not listed.
+
+```json title=gaugeline.consent.json
+{
+  "ownerConsent": {
+    "by": "Maya Ortiz, owner of Tideline Coaching",
+    "on": "2026-11-10"
+  }
+}
+```
+
+`by` says who agreed and `on` says when, so a shared repository records it once. A run with consent
+prints one line on stderr saying probing checks are on.
+
+The one probing check today is `gated-download-open`, described in
+[Paid downloads and delivery](delivery.md#a-download-route-that-hands-the-file-to-anyone).
+
+`--routes <glob>` (repeatable) points that check at your repository's route files, so it finds routes
+no page links to. Run Gaugeline from the repository's folder and give a glob such as
+`app/api/**/route.ts` (the app router) or `pages/api/**/*.ts` (the pages router); each matching file
+name is turned into the address it serves (`app/api/download/[id]/route.ts` becomes
+`/api/download/[id]`). Only file names are read: no source file is opened. A route whose path does not
+contain download, file, deliver or export is never asked. A dynamic route is asked only for an address
+a link on the page gave, and ids are never guessed. `--routes` without `--owner-consent` is refused
+with exit 2.
+
+```sh
+npx gaugeline tideline-coaching.example --owner-consent --routes "app/api/**/route.ts" --ci
+```
+
+What the probe sends and reads is on [Privacy and safety](privacy.md#download-routes-a-probing-check).

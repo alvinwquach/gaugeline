@@ -50,6 +50,7 @@ import { forecastForPastEvent } from "./forecast-for-past-event.js";
 import { formDestinationChanged } from "./form-destination-changed.js";
 import { formProviderChanged } from "./form-provider-changed.js";
 import { formsManyProviders } from "./forms-many-providers.js";
+import { gatedDownloadOpen } from "./gated-download-open.js";
 import { hiddenAiDirective } from "./hidden-ai-directive.js";
 import { hiddenInSitemap } from "./hidden-in-sitemap.js";
 import { hiddenIndexable } from "./hidden-indexable.js";
@@ -202,6 +203,7 @@ export const PAGE_CHECKS = [
   formDestinationChanged,
   formProviderChanged,
   formsManyProviders,
+  gatedDownloadOpen,
   hiddenAiDirective,
   hiddenInSitemap,
   hiddenIndexable,

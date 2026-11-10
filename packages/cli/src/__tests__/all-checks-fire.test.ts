@@ -46,6 +46,7 @@ const FIXTURES = [
   "stripe-test-mode",
   "form-checks",
   "paid-downloads",
+  "gated-downloads",
 ];
 
 /**
@@ -163,6 +164,8 @@ async function findingsOf(name: string): Promise<string[]> {
       "gaugeline.tags.json",
       "gaugeline.events.json",
       "gaugeline.nav.json",
+      // The owner's agreement to the probing checks: this fixture's download route is asked.
+      "gaugeline.consent.json",
     ].some((f) => existsSync(`${dir}/${f}`))
       ? dir
       : undefined;

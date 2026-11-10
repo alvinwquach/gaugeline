@@ -184,6 +184,7 @@ export {
   FRESHNESS_CHECKS,
   LISTING_CHECKS,
   CRM_CHECKS,
+  PROBING_CHECKS,
   SWITCH_CHECKS,
 } from "./presets.js";
 export {
@@ -323,6 +324,8 @@ export { NEXT_RENDERED_NOTE, isNextSite, readCache } from "./next/detect.js";
 export type { CacheRead } from "./next/detect.js";
 export { isFrameworkUrl } from "./next/framework-urls.js";
 export { frameworkLinks } from "./links.js";
+export { consentConfigSchema } from "./consent.js";
+export type { ConsentConfig } from "./consent.js";
 export { hiddenConfigSchema, isHidden, matchesGlob, overdue } from "./hidden.js";
 export type { HiddenConfig, HiddenSection } from "./hidden.js";
 export { eventRuleSchema, eventsConfigSchema, REGIONS } from "./events/types.js";
