@@ -141,6 +141,7 @@ export type ParsedArgs =
       /** gaugeline ads <export.csv>: the Meta or Google Ads export to read. */
       file: string;
       json: boolean;
+      ci: boolean;
       allowPrivate: boolean;
       verbose: boolean;
       quiet: boolean;
@@ -553,6 +554,7 @@ export function parseCliArgs(
       kind: "ads",
       file: positionals[0] ?? "",
       json: values.json === true,
+      ci: values.ci === true,
       allowPrivate: values["allow-private"] === true,
       verbose,
       quiet: values.quiet === true,

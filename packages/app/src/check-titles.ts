@@ -113,6 +113,8 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "printed-dead": ["A printed address doesn't land on a page", "Launch day"],
   "printed-wrong-destination": ["A printed address lands somewhere it shouldn't", "Launch day"],
   "campaign-fields-lost": ["Campaign tags are lost", "Visitors"],
+  "ad-dead-page": ["The page doesn't load", "Visitors"],
+  "ad-sold-out": ["The advertised product is sold out", "Sales & prices"],
   "printful-unsynced": ["A fulfillment product has variants that cannot be made", "Sales & prices"],
   "stripe-archived": ["A website product is archived in checkout", "Sales & prices"],
   "stripe-missing": ["A website product is missing from checkout", "Sales & prices"],
@@ -712,6 +714,18 @@ export const CHECK_TEXT: Readonly<
     "The visit arrives with no sign of the ad that paid for it, so the report credits nobody, the campaign looks like it did nothing and the money is spent without a way to learn from it.",
     "Make the redirect pass the query string on, or point the ad straight at the final address.",
     "Per landing page, one GET of the destination with one ad's own campaign keys (utm_*, gclid, fbclid) or, when none of its ads has any, utm_source=gaugeline-check and gclid=test; the keys on the first address against the last, values compared after URL decoding and order ignored; the first redirect whose Location no longer carries a lost key is named with its status; a key moved into the fragment counts as lost; a trail that stopped early without a loss is could-not-check",
+  ],
+  "ad-dead-page": [
+    "An ad sends people to a page that answers 404, 410 or a server error, or that cannot be reached at all.",
+    "Everyone clicking that ad lands on an error, so every click is paid for and nobody can buy, book or call.",
+    "Bring the page back, or redirect its address to the page that replaced it, then check the ad's link. Pause the ad until it works.",
+    "per landing page, the final answer of the one GET the ads command already made (the campaign tag check's): a status of 400 or more, or a request that failed (not found, refused, timeout, TLS, a redirect loop, too many redirects), is a finding; 401, 403, 429 and a bot challenge page, a storefront closed with a password, and an address Gaugeline does not ask for (non-public; see --allow-private) are could-not-check, never dead; a deeper address that redirects to its own site's home page and ends 200 is a low note that the ad no longer lands on a product",
+  ],
+  "ad-sold-out": [
+    "An ad sends people to a Shopify product page where every variant is sold out.",
+    "Each click is paid for by someone who wants to buy and cannot, so the money buys nothing until the product is back.",
+    "Pause the ad or point it at a product that is in stock, and turn it back on when the product returns. If some sizes are out, say so in the ad.",
+    "a landing page is a Shopify product page when its address ends /products/<handle> and its HTML carries Shopify's markers (cdn.shopify.com, window.Shopify, the checkout or digital-wallet meta tags); one GET of /products/<handle>.js on the same host, no key; sold out means every variant says available false (high); some variants out is a low note listing them; an empty variants list, an answer that is not that JSON, a 404, or a variant that does not say is could-not-check (stock could not be read), never sold out; a page that is not on Shopify is not asked",
   ],
   "printful-unsynced": [
     "A Printful product matched to a product on your website has a variant that is not synced.",

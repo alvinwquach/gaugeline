@@ -5,6 +5,7 @@ import {
   groupByDestination,
   readAdsExport,
   spendByCurrency,
+  summariseAds,
   type AdsExport,
   type Destination,
 } from "@gaugeline/core";
@@ -20,9 +21,10 @@ export interface ParsedAds {
  * this one engine, so the app shows exactly what the command prints and has no second reader.
  *
  * Reading and grouping an export is packages/core (readAdsExport, groupByDestination). The checks
- * on the pages it names (checkAdLandingPages) ask each landing page once through the run's fetcher.
- * G24a puts the campaign tag check there; G24b adds its checks beside it, and `read`, the app and
- * the command are unchanged.
+ * on the pages it names (checkAdLandingPages) ask each landing page once through the run's fetcher:
+ * campaign tags (G24a), whether the page loads, Shopify stock and sample text (G24b). The spend that
+ * went to pages with a finding is worked out here from the findings (summariseAds) and travels
+ * beside the result, as the other ads data does, because `--json` stays at schema 2.
  */
 export const adsEngine: AdsEngine<ParsedAds> = {
   read(csvText) {
@@ -36,9 +38,7 @@ export const adsEngine: AdsEngine<ParsedAds> = {
       `Read ${rows.length} ${rows.length === 1 ? "ad" : "ads"} that go to ${pages} landing ${pages === 1 ? "page" : "pages"}`,
     );
     for (const w of warnings) ctx.onProgress(w);
-    ctx.onProgress(
-      `Following the campaign tags through ${pages} landing ${pages === 1 ? "page" : "pages"}`,
-    );
+    ctx.onProgress(`Checking ${pages} landing ${pages === 1 ? "page" : "pages"}`);
     return checkAdLandingPages(parsed.groups, { fetcher: ctx.fetcher }).then((checked) => ({
       result: buildResult({
         url: "ads-export",
@@ -49,7 +49,10 @@ export const adsEngine: AdsEngine<ParsedAds> = {
         couldNotCheck: checked.couldNotCheck,
         sampled: {},
       }),
-      ads: { currencies: spendByCurrency(parsed.groups) },
+      ads: {
+        currencies: spendByCurrency(parsed.groups),
+        summary: summariseAds(parsed.groups, checked.findings),
+      },
     }));
   },
 };

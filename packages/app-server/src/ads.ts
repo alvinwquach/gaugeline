@@ -2,6 +2,7 @@ import { readFileSync, statSync } from "node:fs";
 import { basename } from "node:path";
 import {
   createFetcher,
+  type AdsSummary,
   type Fetcher,
   type FetcherOptions,
   type Result,
@@ -27,6 +28,11 @@ export interface AdsCurrency {
 /** What the app API sends beside an ads run's result, in `checked.ads`. */
 export interface AdsData {
   currencies: AdsCurrency[];
+  /**
+   * The same spend, per currency, with the part that went to pages with a finding and the checks that
+   * named each page (G24b). Beside the result, not in it: `--json` stays at schema 2.
+   */
+  summary?: AdsSummary[];
 }
 
 /** What reading and checking an export gives back. */

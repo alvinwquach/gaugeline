@@ -2,6 +2,7 @@
   "flags": {
     "ads": [
       "allow-private",
+      "ci",
       "help",
       "json",
       "quiet",

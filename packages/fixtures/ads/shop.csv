@@ -1,0 +1,9 @@
+Reporting starts,Reporting ends,Ad name,Delivery status,Website URL,Impressions,Link clicks,Cost per result,Amount spent (USD)
+2026-10-01,2026-10-31,Oat candle 1,active,https://ember-oak.example/products/oat-candle?utm_source=facebook&utm_medium=paid&utm_campaign=autumn,12400,310,0.97,300.00
+2026-10-01,2026-10-31,Oat candle 2,active,https://ember-oak.example/products/oat-candle?utm_source=instagram&utm_medium=paid&utm_campaign=autumn,9800,201,1.24,250.00
+2026-10-01,2026-10-31,Wick set 1,active,https://ember-oak.example/products/linen-wick-set?utm_source=facebook&utm_medium=paid&utm_campaign=autumn,8700,140,1.43,200.00
+2026-10-01,2026-10-31,Wick set 2,active,https://ember-oak.example/products/linen-wick-set?utm_source=instagram&utm_medium=paid&utm_campaign=autumn,5100,96,1.56,150.00
+2026-10-01,2026-10-31,Amber tin 1,active,https://ember-oak.example/products/amber-tin?utm_source=facebook&utm_medium=paid&utm_campaign=autumn,7300,122,1.64,200.00
+2026-10-01,2026-10-31,Retired mug 1,active,https://ember-oak.example/products/retired-mug?utm_source=facebook&utm_medium=paid&utm_campaign=autumn,6900,98,2.04,200.00
+2026-10-01,2026-10-31,Retired mug 2,paused,https://ember-oak.example/products/retired-mug?utm_source=instagram&utm_medium=paid&utm_campaign=autumn,3100,40,2.25,90.00
+2026-10-01,2026-10-31,Sample tin 1,active,https://ember-oak.example/products/sample-tin?utm_source=facebook&utm_medium=paid&utm_campaign=autumn,2200,31,1.61,50.00

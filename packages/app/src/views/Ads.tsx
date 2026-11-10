@@ -1,6 +1,12 @@
 import { useId, useMemo, useState } from "react";
 import { formatMoney } from "../ads/money";
-import { toAdsModel, type CurrencyModel, type DestinationRow, type FindingRef } from "../ads/model";
+import {
+  hasProblem,
+  toAdsModel,
+  type CurrencyModel,
+  type DestinationRow,
+  type FindingRef,
+} from "../ads/model";
 import { formatHash } from "../route";
 import type { RunState } from "../store";
 
@@ -91,7 +97,7 @@ function Section({ run, model, many }: { run: RunState; model: CurrencyModel; ma
   const titleId = useId();
   const code = model.currency;
   const money = (n: number) => formatMoney(n, code, undefined);
-  const problems = model.destinations.filter((d) => d.findings.length > 0);
+  const problems = model.destinations.filter(hasProblem);
   const shown = onlyProblems ? problems : model.destinations;
   const count = `Showing ${shown.length} of ${plural(model.destinations.length, "page", "pages")}`;
   return (
@@ -168,7 +174,7 @@ function RowView({
   money: (n: number) => string;
 }) {
   return (
-    <tr className={row.findings.length > 0 ? "row-problem" : undefined}>
+    <tr className={hasProblem(row) ? "row-problem" : undefined}>
       <th scope="row">
         <code dir="auto">{row.url}</code>
       </th>

@@ -1,5 +1,6 @@
 import {
   CUTOVER_ONLY_CHECKS,
+  AD_LANDING_CHECKS,
   CAMPAIGN_CHECKS,
   DUPLICATE_CHECKS,
   PLAN_CHECKS,
@@ -16,6 +17,7 @@ export function CATALOGUE_IDS(): string[] {
   for (const c of PLAN_CHECKS) registry.register(c);
   for (const c of PRINTED_CHECKS) registry.register(c);
   for (const c of CAMPAIGN_CHECKS) registry.register(c);
+  for (const c of AD_LANDING_CHECKS) registry.register(c);
   for (const c of DUPLICATE_CHECKS) registry.register(c);
   for (const c of PRESENCE_CHECKS) registry.register(c);
   for (const c of PRICE_CHECKS) registry.register(c);
