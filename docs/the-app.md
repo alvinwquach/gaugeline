@@ -303,6 +303,62 @@ Staging copies
 - Everything shown is text from the page, including a type name that looks like markup. An
   address here is never a link.
 
+## Download the report
+
+Above the views, next to their names, **Download the report** saves the page you have open as
+`gaugeline-report.html`: the same one-file report that `npx gaugeline yoursite.com` writes in your
+folder, byte for byte, with its styles inline and nothing loaded from anywhere. It is only offered
+once the check has finished. Save it, attach it to an email, or hand it to the client.
+
+It is a plain link to a file, so it works with the keyboard (Tab, then Enter), a right-click and
+"Save link as", and with scripts switched off. The file name is always `gaugeline-report.html`,
+whatever the page is called, so a page title or address can never end up in it. If the browser opens
+the file instead of saving it, it opens as a page of its own with no scripts and no way to reach the
+app. The app keeps nothing of it: the file is built from the check's result when you ask.
+
+Say you have built a website for a tavern and checked it before the weekend. The report names the
+three things to fix first and the one to look at, with why each matters and how to fix it, and the
+tavern's owner can read it without Gaugeline installed. What the owner would be sent for the
+tavern's example run, in the order of the report:
+
+```text title=Example tavern run
+✗ The page and the calendar disagree about an event
+    "Trivia Night" on 2026-11-12 (America/Los_Angeles): start: the page says 19:00, the calendar says 19:30
+✗ The page still promotes an event that already happened
+    the "next" card "Next up Darts league final, Sunday 1 November, 8 PM" is dated 2026-11-01T20:00:00-07:00
+✗ Your calendar shows the wrong hour on some phones
+    1 of 3 events in /calendar.ics have no time zone: "Darts league" DTSTART:20261119T200000
+· Some events are missing details search engines need
+    "Karaoke" has no eventStatus
+```
+
+## Try it with example results
+
+```sh title=Terminal untested="gaugeline open --demo runs until Ctrl+C: open-demo.test.ts runs the built bin and checks these lines."
+$ npx gaugeline open --demo
+Gaugeline is running at http://localhost:4817/?s=…
+It's only reachable from this computer. Press Ctrl+C to stop.
+This is the demo: example results about invented sites. Nothing is checked and nothing is requested.
+```
+
+`--demo` starts the same app with three finished example checks: the tavern above, a wine bar whose
+Sanity dataset is open to anyone, and a pottery studio with broken links and a broken image. Every
+view works on them, so you can look at the Problems, Pages checked, Search data and Leaks & access
+views, and download a report, before you point Gaugeline at a client's site.
+
+![The demo: a banner reading Example results sits under the address box, which is switched off. The sidebar lists three example checks and the Overview shows the pottery studio's, with Download the report beside the views.](/img/app-demo.png)
+
+- **Nothing is requested from any site.** The results are stored in the package, about invented
+  sites at `shop.example`, `wine-bar.example` and `tavern.example`, and the demo makes no outgoing
+  connection at all. It works with the computer offline.
+- **The address box is switched off.** The banner says why: "This is the demo. Run npx gaugeline
+  open yoursite.com to check a real page." A demo and a real session are never mixed in one list,
+  so a report about an invented site can't be mistaken for one about a client's.
+- **Everything else is the same.** The one-time key, the session cookie and the checks on where a
+  request comes from all apply as they do in a normal session.
+- `--demo` takes no address, and can't be combined with another way of starting: `gaugeline open
+--demo shop.example` stops with exit code 2.
+
 ## Works offline
 
 The app is part of the `gaugeline` package. Installing or running it with `npx` downloads the app
@@ -340,4 +396,5 @@ styles, fonts and requests may only come from the app itself.
 
 ::: info
 Want to see it first? [Open the live demo](https://claude.ai/artifact/MwQmr83pa7xZdkAKvGBcNH) with example results.
+Or run `npx gaugeline open --demo` to open the same example results in the app on your own computer: nothing is requested from any site.
 :::

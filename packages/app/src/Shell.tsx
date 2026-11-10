@@ -1,5 +1,6 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AddressForm } from "./AddressForm";
+import { readSession, reportPath, type AppSession } from "./api";
 import { formatHash, useRoute } from "./route";
 import { Sidebar } from "./Sidebar";
 import { useRuns } from "./store";
@@ -12,6 +13,25 @@ function newest(runs: ReadonlyMap<string, unknown>): string | null {
   return last;
 }
 
+/** Shown under "Example results" in the demo. The server says the same sentence when a check is asked for. */
+const DEMO_SENTENCE = "This is the demo. Run npx gaugeline open yoursite.com to check a real page.";
+
+/** What kind of session this is. Until it is known, or when it cannot be read, it is a normal one. */
+function useAppSession(): AppSession | undefined {
+  const [session, setSession] = useState<AppSession>();
+  useEffect(() => {
+    let live = true;
+    readSession().then(
+      (s) => live && setSession(s),
+      () => undefined,
+    );
+    return () => {
+      live = false;
+    };
+  }, []);
+  return session;
+}
+
 /**
  * The frame: the address form, the pages checked this session, the views and the open view.
  * The open run and view are kept in the address (#/<runId>/<viewId>), so a reload or the back button
@@ -20,6 +40,7 @@ function newest(runs: ReadonlyMap<string, unknown>): string | null {
 export function Shell() {
   const { runs, activeId, loaded, listError, start, select } = useRuns();
   const route = useRoute();
+  const demo = useAppSession()?.demo === true;
   const view = VIEWS.find((v) => v.id === route.viewId) ?? VIEWS[0];
   const runsRef = useRef(runs);
   runsRef.current = runs;
@@ -55,26 +76,43 @@ export function Shell() {
     <div className="app">
       <header className="app-header">
         <p className="brand">Gaugeline</p>
-        <AddressForm onSubmit={start} />
+        <AddressForm onSubmit={start} disabled={demo} />
       </header>
+      {demo ? (
+        <div className="demo-banner" role="note">
+          <strong>Example results</strong> <span>{DEMO_SENTENCE}</span>
+        </div>
+      ) : null}
       <div className="app-body">
         <Sidebar runs={runs} activeId={activeId} viewId={view?.id ?? ""} />
         <div className="content">
           {active ? (
-            <nav className="views" aria-label="Views">
-              <ul>
-                {VIEWS.map((v) => (
-                  <li key={v.id}>
-                    <a
-                      href={formatHash(active.id, v.id)}
-                      aria-current={v.id === view?.id ? "page" : undefined}
-                    >
-                      {v.label}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </nav>
+            <div className="run-bar">
+              <nav className="views" aria-label="Views">
+                <ul>
+                  {VIEWS.map((v) => (
+                    <li key={v.id}>
+                      <a
+                        href={formatHash(active.id, v.id)}
+                        aria-current={v.id === view?.id ? "page" : undefined}
+                      >
+                        {v.label}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </nav>
+              {/* A plain link to a file the server builds: no script, no Blob, no object URL. */}
+              {active.state === "done" && active.result ? (
+                <a
+                  className="download"
+                  href={reportPath(active.id)}
+                  download="gaugeline-report.html"
+                >
+                  Download the report
+                </a>
+              ) : null}
+            </div>
           ) : null}
           <main id="main">
             {active && View ? (

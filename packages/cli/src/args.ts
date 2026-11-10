@@ -101,7 +101,15 @@ export type ParsedArgs =
       quiet: boolean;
     }
   | { kind: "cutover"; before: string; allowPrivate: boolean; verbose: boolean; quiet: boolean }
-  | { kind: "open"; address?: string; noOpen: boolean; verbose: boolean; quiet: boolean }
+  | {
+      kind: "open";
+      address?: string;
+      noOpen: boolean;
+      /** gaugeline open --demo: example results, no fetcher, no address. */
+      demo: boolean;
+      verbose: boolean;
+      quiet: boolean;
+    }
   | {
       kind: "run-all";
       all: boolean;
@@ -368,10 +376,20 @@ export function parseCliArgs(
         hint: "Run gaugeline open on its own, or gaugeline open yoursite.com.",
         verbose,
       };
+    // The demo shows example results and checks nothing, so an address has nothing to do there.
+    if (values.demo === true && positionals.length > 0)
+      return {
+        kind: "error",
+        message:
+          "gaugeline open --demo takes no address: it shows example results and checks nothing.",
+        hint: "Run gaugeline open --demo on its own, or gaugeline open yoursite.com to check a real page.",
+        verbose,
+      };
     return {
       kind: "open",
       ...(positionals[0] ? { address: positionals[0] } : {}),
       noOpen: values["no-open"] === true,
+      demo: values.demo === true,
       verbose,
       quiet: values.quiet === true,
     };

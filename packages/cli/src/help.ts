@@ -81,6 +81,7 @@ export const HELP: Record<string, string> = {
       "Start the app in a browser tab on this computer: it listens on 127.0.0.1 only,",
       "on port 4817 or the next free one, and every request needs the one-time key in",
       "the printed link. Press Ctrl+C to stop; nothing is saved.",
+      "--demo starts with example results about invented sites and checks nothing.",
     ].join("\n"),
     footer: "Exit codes: 0 stopped with Ctrl+C, 2 could not start",
   }),

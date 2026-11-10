@@ -20,6 +20,8 @@ _Red items cost you visitors, sales or security today. Amber weakens the site. G
 
 `gaugeline-report.html` is a single file with no external dependencies. Email it, attach it to a ticket, or send it to a client.
 
+If you work in [the app](/docs/the-app), **Download the report** saves the same file, byte for byte, for the page you have open: the app and the command line use one report, so two people holding "the report" for the same check hold the same file.
+
 ## In this version
 
 What the code in this repository does today. The sections above describe the product as published

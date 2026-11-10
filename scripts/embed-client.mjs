@@ -7,6 +7,9 @@
  *   node scripts/embed-client.mjs --check         check what is already embedded: every file against
  *                                                 the manifest, and the budget. Writes nothing.
  *   --app <dir> and --out <dir> change the two folders (the tests use them).
+ *   --demo <file> is the example results `gaugeline open --demo` starts with. They are copied to
+ *   <out>/demo/results.json and listed in the manifest, so they are hashed, verified at start and
+ *   counted in the budget like every other file. Default packages/app-server/demo/results.json.
  *
  * It runs after every package has been built: the CLI's tsup build empties dist/, so the client is
  * copied in last. The root `pnpm build` does that.
@@ -23,6 +26,9 @@ const root = fileURLToPath(new URL("../", import.meta.url));
 export const TOTAL_GZIP_BUDGET = 300 * 1024;
 export const FILE_GZIP_BUDGET = 200 * 1024;
 export const MANIFEST_FILE = "client-manifest.json";
+/** The example results: made by scripts/build-demo.ts, checked in, copied into the client folder. */
+export const DEMO_SOURCE = join(root, "packages/app-server/demo/results.json");
+export const DEMO_TARGET = "demo/results.json";
 
 /** The same table as packages/app-server/src/static.ts (a test keeps them equal), minus its charset. */
 const TYPES = {
@@ -119,8 +125,11 @@ export function report(entries, budget = checkBudget(entries)) {
   return lines.join("\n");
 }
 
-/** Copy `app` into `out`, write the manifest, and return its entries. `out` is replaced. */
-export function embed(app, out) {
+/**
+ * Copy `app` into `out`, write the manifest, and return its entries. `out` is replaced. `extra` is
+ * more files for the same folder, as [{ from, to }]: the example results.
+ */
+export function embed(app, out, extra = []) {
   if (!existsSync(join(app, "index.html")))
     throw new Error(`${app} has no index.html: run the app's build first (pnpm build)`);
   rmSync(out, { recursive: true, force: true });
@@ -132,6 +141,13 @@ export function embed(app, out) {
     writeFileSync(join(out, path), body);
     entries.push(entryFor(path, body));
   }
+  for (const { from, to } of extra) {
+    const body = readFileSync(from);
+    mkdirSync(dirname(join(out, to)), { recursive: true });
+    writeFileSync(join(out, to), body);
+    entries.push(entryFor(to, body));
+  }
+  entries.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
   writeFileSync(join(out, MANIFEST_FILE), `${JSON.stringify(entries, null, 2)}\n`);
   return entries;
 }
@@ -164,6 +180,7 @@ function main(argv) {
   };
   const app = resolve(flag("--app") ?? join(root, "packages/app/dist"));
   const out = resolve(flag("--out") ?? join(root, "packages/cli/dist/client"));
+  const demo = resolve(flag("--demo") ?? DEMO_SOURCE);
   let entries;
   if (argv.includes("--check")) {
     const checked = verify(out);
@@ -174,7 +191,7 @@ function main(argv) {
     entries = checked.entries;
   } else {
     try {
-      entries = embed(app, out);
+      entries = embed(app, out, [{ from: demo, to: DEMO_TARGET }]);
     } catch (err) {
       process.stderr.write(`embed-client: ${err instanceof Error ? err.message : String(err)}\n`);
       return 1;

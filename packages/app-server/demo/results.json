@@ -1,0 +1,1057 @@
+{
+  "demo": 1,
+  "resultSchema": 2,
+  "runs": [
+    {
+      "startedAt": "2026-11-05T20:00:00.000Z",
+      "result": {
+        "schema": 2,
+        "url": "https://tavern.example/",
+        "startedAt": "2026-11-05T20:00:00.000Z",
+        "findings": [
+          {
+            "checkId": "event-jsonld-mismatch",
+            "severity": "high",
+            "title": "The page and the calendar disagree about an event",
+            "evidence": "\"Trivia Night\" on 2026-11-12 (America/Los_Angeles): start: the page says 19:00, the calendar says 19:30",
+            "url": "https://tavern.example/"
+          },
+          {
+            "checkId": "event-past-upcoming",
+            "severity": "high",
+            "title": "The page still promotes an event that already happened",
+            "evidence": "the \"next\" card \"Next up Darts league final, Sunday 1 November, 8 PM\" is dated 2026-11-01T20:00:00-07:00",
+            "url": "https://tavern.example/"
+          },
+          {
+            "checkId": "ics-floating-time",
+            "severity": "high",
+            "title": "Your calendar shows the wrong hour on some phones",
+            "evidence": "1 of 3 events in /calendar.ics have no time zone: \"Darts league\" DTSTART:20261119T200000",
+            "url": "https://tavern.example/calendar.ics"
+          },
+          {
+            "checkId": "event-missing-fields",
+            "severity": "low",
+            "title": "Some events are missing details search engines need",
+            "evidence": "\"Karaoke\" has no eventStatus",
+            "url": "https://tavern.example/"
+          }
+        ],
+        "passed": [
+          "access-public-read",
+          "access-role-scope",
+          "ai-crawlers-blocked",
+          "app-link-dead",
+          "app-name-mismatch",
+          "app-smart-banner-mismatch",
+          "blocked",
+          "broken-links",
+          "canonical-elsewhere",
+          "canonical-missing",
+          "certificate-expiring",
+          "dataset-private-types",
+          "dataset-public",
+          "drafts-live",
+          "duplicate-title",
+          "event-location-mismatch",
+          "events-distinct",
+          "events-fire",
+          "facts-match",
+          "facts-payment-link",
+          "facts-present",
+          "feed-broken",
+          "feed-duplicate",
+          "feed-invalid",
+          "feed-oversized",
+          "form-destination-changed",
+          "form-provider-changed",
+          "hidden-ai-directive",
+          "hidden-in-sitemap",
+          "hidden-indexable",
+          "hidden-linked",
+          "hidden-past-launch",
+          "host-duplicate",
+          "hreflang-bad-code",
+          "hreflang-not-reciprocal",
+          "html-heavy",
+          "html-huge",
+          "ics-no-vtimezone",
+          "image-width-absurd",
+          "images-alt-empty",
+          "images-alt-missing",
+          "images-broken",
+          "images-heavy",
+          "images-legacy-format",
+          "images-legacy-wp",
+          "invisible-unicode-tags",
+          "jsonld-404",
+          "jsonld-invalid",
+          "lang-attr-mismatch",
+          "lang-price-mismatch",
+          "lang-twin-missing",
+          "lang-untranslated",
+          "links-vague-text",
+          "links-via-redirect",
+          "links-wrapped",
+          "llms-txt-broken-links",
+          "llms-txt-stale-facts",
+          "mock-content-live",
+          "nav-changed",
+          "nav-footer",
+          "nav-home-links",
+          "nav-label-drift",
+          "nav-orphans",
+          "nav-parity",
+          "next-draft-public",
+          "next-preview-canonical",
+          "next-stale-after-publish",
+          "noindex",
+          "og-image-broken",
+          "og-image-missing",
+          "og-image-relative",
+          "og-url-mismatch",
+          "page-gone",
+          "page-heavy",
+          "page-lost-content",
+          "page-lost-items",
+          "page-lost-structured-data",
+          "pagination-same-content",
+          "pagination-unreachable",
+          "payment-handle-inconsistent",
+          "payment-handle-mismatch",
+          "payment-handle-unknown",
+          "payment-link-dead",
+          "placeholder-images",
+          "placeholder-text",
+          "price-changed",
+          "quotable-facts-disagree",
+          "redirect-chain",
+          "robots-block",
+          "rsc-served-as-page",
+          "rsc-vary-missing",
+          "schema-breadcrumb-mismatch",
+          "schema-breadcrumb-start",
+          "schema-dangling-ref",
+          "schema-id-drift",
+          "schema-org-redefined",
+          "schema-template-missing-type",
+          "secret-in-js",
+          "sitemap-dead",
+          "sitemap-host",
+          "sitemap-missing",
+          "sitemap-redirects",
+          "staging-indexable",
+          "stega-leak",
+          "structured-duplicate",
+          "tags-dead-rules",
+          "tags-duplicate",
+          "tel-format",
+          "temp-host-canonical",
+          "temp-host-links",
+          "thin-html",
+          "viewport",
+          "zero-width-in-text"
+        ],
+        "failed": [
+          "email-spf-missing",
+          "email-spf-multiple",
+          "email-dmarc-missing",
+          "email-dmarc-none"
+        ],
+        "couldNotCheck": [],
+        "sampled": {
+          "links": { "seen": 1, "taken": 1, "limit": 30 },
+          "images": { "seen": 1, "taken": 1, "limit": 20 },
+          "sitemapPages": { "seen": 2, "taken": 2, "limit": 25 },
+          "feeds": { "seen": 0, "taken": 0, "limit": 3 },
+          "llmsTxtLinks": { "seen": 0, "taken": 0, "limit": 10 },
+          "appLinks": { "seen": 0, "taken": 0, "limit": 5 },
+          "calendars": { "seen": 1, "taken": 1, "limit": 3 },
+          "pages": { "seen": 1, "taken": 1, "limit": 4 },
+          "languageVersions": { "seen": 0, "taken": 0, "limit": 5 },
+          "paymentLinks": { "seen": 0, "taken": 0, "limit": 5 },
+          "checkoutLinks": { "seen": 0, "taken": 0, "limit": 5 },
+          "scripts": { "seen": 0, "taken": 0, "limit": 15 },
+          "sanityDatasets": { "seen": 0, "taken": 0, "limit": 2 },
+          "accessTables": { "seen": 0, "taken": 0, "limit": 20 },
+          "hiddenPages": { "seen": 0, "taken": 0, "limit": 5 },
+          "draftRoutes": { "seen": 0, "taken": 0, "limit": 4 },
+          "frameworkAddresses": { "seen": 0, "taken": 0, "limit": 0 },
+          "structuredDataAddresses": { "seen": 1, "taken": 1, "limit": 12 }
+        }
+      },
+      "checked": {
+        "requests": [
+          {
+            "kind": "page",
+            "method": "GET",
+            "status": 200,
+            "ms": 18,
+            "url": "https://tavern.example/"
+          },
+          {
+            "kind": "sitemap",
+            "method": "HEAD",
+            "status": 200,
+            "ms": 47,
+            "url": "https://tavern.example/"
+          },
+          {
+            "kind": "sitemap",
+            "method": "HEAD",
+            "status": 200,
+            "ms": 76,
+            "url": "https://tavern.example/calendar"
+          },
+          {
+            "kind": "extra-page",
+            "method": "GET",
+            "status": 200,
+            "ms": 22,
+            "url": "https://tavern.example/calendar"
+          },
+          {
+            "kind": "other",
+            "method": "GET",
+            "status": 404,
+            "ms": 51,
+            "url": "https://tavern.example/llms.txt"
+          },
+          {
+            "kind": "other",
+            "method": "GET",
+            "status": 404,
+            "ms": 80,
+            "url": "https://tavern.example/robots.txt"
+          },
+          {
+            "kind": "other",
+            "method": "GET",
+            "status": 200,
+            "ms": 26,
+            "url": "https://tavern.example/sitemap.xml"
+          },
+          {
+            "kind": "other",
+            "method": "GET",
+            "status": 200,
+            "ms": 55,
+            "url": "https://tavern.example/calendar.ics"
+          },
+          {
+            "kind": "other",
+            "method": "HEAD",
+            "status": 200,
+            "ms": 84,
+            "url": "https://tavern.example/og.png"
+          }
+        ],
+        "page": {
+          "url": "https://tavern.example/",
+          "title": "Copper Kettle Tavern",
+          "canonical": "https://tavern.example/",
+          "words": 91,
+          "firstWords": "Copper Kettle Tavern An invented neighbourhood tavern for Gaugeline's event checks. Trivia every Thursday, karaoke on Saturdays, and a darts league whose nights move around. Nothing here is a real venue, address or telephone number, and the 555-01xx number is reserved for fiction. The kitchen serves until nine, the quiz starts once the tables are full, and the karaoke list opens at half past eight. Teams of up to six for trivia; sign up at the bar. Next up Darts league final, Sunday 1 November, 8 PM See the full calendar",
+          "blocks": [
+            {
+              "ok": true,
+              "value": {
+                "@context": "https://schema.org",
+                "@graph": [
+                  {
+                    "@type": "BarOrPub",
+                    "@id": "https://tavern.example/#venue",
+                    "name": "Copper Kettle Tavern",
+                    "telephone": "+1 503-555-0177",
+                    "address": {
+                      "@type": "PostalAddress",
+                      "streetAddress": "88 Ferrous Lane",
+                      "addressLocality": "Fernvale",
+                      "addressRegion": "OR",
+                      "postalCode": "97999"
+                    }
+                  },
+                  {
+                    "@type": "SocialEvent",
+                    "name": "Trivia Night",
+                    "startDate": "2026-11-12T19:00:00-08:00",
+                    "endDate": "2026-11-12T21:30:00-08:00",
+                    "location": {
+                      "@type": "Place",
+                      "name": "Copper Kettle Tavern",
+                      "address": {
+                        "@type": "PostalAddress",
+                        "streetAddress": "88 Ferrous Lane",
+                        "addressLocality": "Fernvale",
+                        "addressRegion": "OR",
+                        "postalCode": "97999"
+                      }
+                    },
+                    "eventStatus": "https://schema.org/EventScheduled"
+                  },
+                  {
+                    "@type": "MusicEvent",
+                    "name": "Karaoke",
+                    "startDate": "2026-11-14T21:00:00-08:00",
+                    "location": {
+                      "@type": "Place",
+                      "name": "Copper Kettle Tavern",
+                      "address": {
+                        "@type": "PostalAddress",
+                        "streetAddress": "88 Ferrous Lane",
+                        "addressLocality": "Fernvale",
+                        "addressRegion": "OR",
+                        "postalCode": "97999"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "leaks": { "datasets": [], "scripts": [], "previews": [] }
+      },
+      "reportFailed": []
+    },
+    {
+      "startedAt": "2026-11-05T20:05:00.000Z",
+      "result": {
+        "schema": 2,
+        "url": "https://wine-bar.example/",
+        "startedAt": "2026-11-05T20:05:00.000Z",
+        "findings": [
+          {
+            "checkId": "secret-in-js",
+            "severity": "high",
+            "title": "A private key is in your site's JavaScript",
+            "evidence": "Stripe secret key sk_liv…00 in /assets/app.js at byte 375",
+            "url": "https://wine-bar.example/"
+          },
+          {
+            "checkId": "secret-in-js",
+            "severity": "high",
+            "title": "A private key is in your site's JavaScript",
+            "evidence": "Stripe secret key rk_liv…d0 in /assets/app.js at byte 442",
+            "url": "https://wine-bar.example/"
+          },
+          {
+            "checkId": "staging-indexable",
+            "severity": "high",
+            "title": "Your staging site can be found by search engines",
+            "evidence": "http://staging.moth-lantern.test/ answers 200 with no noindex in meta robots or X-Robots-Tag",
+            "url": "https://wine-bar.example/"
+          },
+          {
+            "checkId": "temp-host-links",
+            "severity": "high",
+            "title": "Links still point at a temporary address",
+            "evidence": "1 link to a temporary address: https://moth-lantern-git-menu-studio.vercel.app/menu",
+            "url": "https://wine-bar.example/"
+          },
+          {
+            "checkId": "dataset-public",
+            "severity": "low",
+            "title": "Your Sanity content can be read by anyone",
+            "evidence": "project mo7h1an7, dataset \"production\": 142 documents in 6 types (event, menu, page, post, venue and 1 more) answer without a token",
+            "url": "https://wine-bar.example/"
+          }
+        ],
+        "passed": [
+          "access-public-read",
+          "access-role-scope",
+          "ai-crawlers-blocked",
+          "app-link-dead",
+          "app-name-mismatch",
+          "app-smart-banner-mismatch",
+          "blocked",
+          "broken-links",
+          "canonical-elsewhere",
+          "canonical-missing",
+          "certificate-expiring",
+          "dataset-private-types",
+          "drafts-live",
+          "duplicate-title",
+          "event-jsonld-mismatch",
+          "event-location-mismatch",
+          "event-missing-fields",
+          "event-past-upcoming",
+          "events-distinct",
+          "events-fire",
+          "facts-match",
+          "facts-payment-link",
+          "facts-present",
+          "feed-broken",
+          "feed-duplicate",
+          "feed-invalid",
+          "feed-oversized",
+          "form-destination-changed",
+          "form-provider-changed",
+          "hidden-ai-directive",
+          "hidden-in-sitemap",
+          "hidden-indexable",
+          "hidden-linked",
+          "hidden-past-launch",
+          "host-duplicate",
+          "hreflang-bad-code",
+          "hreflang-not-reciprocal",
+          "html-heavy",
+          "html-huge",
+          "ics-floating-time",
+          "ics-no-vtimezone",
+          "image-width-absurd",
+          "images-alt-empty",
+          "images-alt-missing",
+          "images-broken",
+          "images-heavy",
+          "images-legacy-format",
+          "images-legacy-wp",
+          "invisible-unicode-tags",
+          "jsonld-404",
+          "jsonld-invalid",
+          "lang-attr-mismatch",
+          "lang-price-mismatch",
+          "lang-twin-missing",
+          "lang-untranslated",
+          "links-vague-text",
+          "links-via-redirect",
+          "links-wrapped",
+          "llms-txt-broken-links",
+          "llms-txt-stale-facts",
+          "mock-content-live",
+          "nav-changed",
+          "nav-footer",
+          "nav-home-links",
+          "nav-label-drift",
+          "nav-orphans",
+          "nav-parity",
+          "next-draft-public",
+          "next-preview-canonical",
+          "next-stale-after-publish",
+          "noindex",
+          "og-image-broken",
+          "og-image-missing",
+          "og-image-relative",
+          "og-url-mismatch",
+          "page-gone",
+          "page-heavy",
+          "page-lost-content",
+          "page-lost-items",
+          "page-lost-structured-data",
+          "pagination-same-content",
+          "pagination-unreachable",
+          "payment-handle-inconsistent",
+          "payment-handle-mismatch",
+          "payment-handle-unknown",
+          "payment-link-dead",
+          "placeholder-images",
+          "placeholder-text",
+          "price-changed",
+          "quotable-facts-disagree",
+          "redirect-chain",
+          "robots-block",
+          "rsc-served-as-page",
+          "rsc-vary-missing",
+          "schema-breadcrumb-mismatch",
+          "schema-breadcrumb-start",
+          "schema-dangling-ref",
+          "schema-id-drift",
+          "schema-org-redefined",
+          "schema-template-missing-type",
+          "sitemap-dead",
+          "sitemap-host",
+          "sitemap-missing",
+          "sitemap-redirects",
+          "stega-leak",
+          "structured-duplicate",
+          "tags-dead-rules",
+          "tags-duplicate",
+          "tel-format",
+          "temp-host-canonical",
+          "thin-html",
+          "viewport",
+          "zero-width-in-text"
+        ],
+        "failed": [
+          "email-spf-missing",
+          "email-spf-multiple",
+          "email-dmarc-missing",
+          "email-dmarc-none"
+        ],
+        "couldNotCheck": [],
+        "sampled": {
+          "links": { "seen": 0, "taken": 0, "limit": 30 },
+          "images": { "seen": 1, "taken": 1, "limit": 20 },
+          "sitemapPages": { "seen": 1, "taken": 1, "limit": 25 },
+          "feeds": { "seen": 0, "taken": 0, "limit": 3 },
+          "llmsTxtLinks": { "seen": 0, "taken": 0, "limit": 10 },
+          "appLinks": { "seen": 0, "taken": 0, "limit": 5 },
+          "calendars": { "seen": 0, "taken": 0, "limit": 3 },
+          "pages": { "seen": 0, "taken": 0, "limit": 4 },
+          "languageVersions": { "seen": 0, "taken": 0, "limit": 5 },
+          "paymentLinks": { "seen": 0, "taken": 0, "limit": 5 },
+          "checkoutLinks": { "seen": 0, "taken": 0, "limit": 5 },
+          "scripts": { "seen": 3, "taken": 3, "limit": 15 },
+          "sanityDatasets": { "seen": 1, "taken": 1, "limit": 2 },
+          "accessTables": { "seen": 0, "taken": 0, "limit": 20 },
+          "hiddenPages": { "seen": 0, "taken": 0, "limit": 5 },
+          "draftRoutes": { "seen": 0, "taken": 0, "limit": 4 },
+          "frameworkAddresses": { "seen": 0, "taken": 0, "limit": 0 },
+          "structuredDataAddresses": { "seen": 0, "taken": 0, "limit": 12 }
+        }
+      },
+      "checked": {
+        "requests": [
+          {
+            "kind": "page",
+            "method": "GET",
+            "status": 200,
+            "ms": 18,
+            "url": "https://wine-bar.example/"
+          },
+          {
+            "kind": "sitemap",
+            "method": "HEAD",
+            "status": 200,
+            "ms": 47,
+            "url": "https://wine-bar.example/"
+          },
+          {
+            "kind": "script",
+            "method": "GET",
+            "status": 200,
+            "ms": 76,
+            "url": "https://wine-bar.example/assets/vendor.js"
+          },
+          {
+            "kind": "script",
+            "method": "GET",
+            "status": 200,
+            "ms": 22,
+            "url": "https://wine-bar.example/assets/app.js"
+          },
+          {
+            "kind": "script",
+            "method": "GET",
+            "status": 404,
+            "ms": 51,
+            "url": "https://wine-bar.example/assets/old-booking.js"
+          },
+          {
+            "kind": "other",
+            "method": "GET",
+            "status": 404,
+            "ms": 80,
+            "url": "https://wine-bar.example/llms.txt"
+          },
+          {
+            "kind": "other",
+            "method": "GET",
+            "status": 200,
+            "ms": 26,
+            "url": "https://wine-bar.example/robots.txt"
+          },
+          {
+            "kind": "other",
+            "method": "GET",
+            "status": 200,
+            "ms": 55,
+            "url": "https://wine-bar.example/sitemap.xml"
+          },
+          {
+            "kind": "other",
+            "method": "GET",
+            "status": 200,
+            "ms": 84,
+            "url": "https://mo7h1an7.api.sanity.io/v2021-10-21/data/query/production?query=%7B%22count%22%3A%20count(*)%2C%20%22types%22%3A%20array%3A%3Aunique(*%5B%5D._type)%7D"
+          },
+          {
+            "kind": "other",
+            "method": "GET",
+            "status": null,
+            "error": "no-answer",
+            "ms": 30,
+            "url": "http://www.moth-lantern.test/"
+          },
+          {
+            "kind": "other",
+            "method": "HEAD",
+            "status": 200,
+            "ms": 59,
+            "url": "https://wine-bar.example/og.png"
+          },
+          {
+            "kind": "other",
+            "method": "GET",
+            "status": 200,
+            "ms": 88,
+            "url": "http://staging.moth-lantern.test/"
+          }
+        ],
+        "page": {
+          "url": "https://wine-bar.example/",
+          "title": "Moth & Lantern · Wine bar and bottle shop",
+          "canonical": "https://wine-bar.example/",
+          "words": 67,
+          "firstWords": "Moth Lantern Moth Lantern An invented wine bar for Gaugeline's tests: small plates, natural wines by the glass, and a bottle shop at the back that stays open until the last table leaves. Nothing here is a real business, key or dataset. The new menu is being built on a preview address while the owner signs it off: see the draft menu Moth Lantern, an invented bar.",
+          "blocks": []
+        },
+        "leaks": {
+          "datasets": [
+            {
+              "projectId": "mo7h1an7",
+              "dataset": "production",
+              "state": "public",
+              "count": 142,
+              "types": ["event", "menu", "page", "post", "venue", "wineList"]
+            }
+          ],
+          "scripts": [
+            {
+              "url": "https://wine-bar.example/assets/vendor.js",
+              "where": "/assets/vendor.js",
+              "status": 200,
+              "truncated": false
+            },
+            {
+              "url": "https://wine-bar.example/assets/app.js",
+              "where": "/assets/app.js",
+              "status": 200,
+              "truncated": false
+            },
+            {
+              "url": "https://wine-bar.example/assets/old-booking.js",
+              "where": "/assets/old-booking.js",
+              "status": 404,
+              "truncated": false
+            }
+          ],
+          "previews": ["https://moth-lantern-git-menu-studio.vercel.app/menu"]
+        }
+      },
+      "reportFailed": []
+    },
+    {
+      "startedAt": "2026-11-05T20:10:00.000Z",
+      "result": {
+        "schema": 2,
+        "url": "https://shop.example/",
+        "startedAt": "2026-11-05T20:10:00.000Z",
+        "findings": [
+          {
+            "checkId": "broken-links",
+            "severity": "high",
+            "title": "Links on this page go nowhere",
+            "evidence": "\"Gift cards\" <a href=\"/gone\"> returned 404",
+            "url": "https://shop.example/gone"
+          },
+          {
+            "checkId": "broken-links",
+            "severity": "high",
+            "title": "Links on this page go nowhere",
+            "evidence": "\"Waiting list\" <a href=\"/busy\"> returned 500",
+            "url": "https://shop.example/busy"
+          },
+          {
+            "checkId": "images-broken",
+            "severity": "high",
+            "title": "Some images on this page don't load",
+            "evidence": "<img src=\"/img/missing.png\"> returned 404",
+            "url": "https://shop.example/img/missing.png"
+          },
+          {
+            "checkId": "jsonld-invalid",
+            "severity": "high",
+            "title": "This page's structured data is broken",
+            "evidence": "JSON-LD block 3: Expected double-quoted property name in JSON at position 62 (line 1 column 63)",
+            "url": "https://shop.example/"
+          },
+          {
+            "checkId": "thin-html",
+            "severity": "high",
+            "title": "Google sees an almost empty page",
+            "evidence": "45 words in the server-rendered HTML outside header, nav and footer (fewer than 60)",
+            "url": "https://shop.example/"
+          },
+          {
+            "checkId": "images-legacy-format",
+            "severity": "low",
+            "title": "Images use older, heavier file formats",
+            "evidence": "1 of 2 sampled images are JPEG, PNG or GIF only: /img/mug.png",
+            "url": "https://shop.example/img/mug.png"
+          },
+          {
+            "checkId": "links-via-redirect",
+            "severity": "low",
+            "title": "Links on this page go through a redirect",
+            "evidence": "/moved (301) ends at /about",
+            "url": "https://shop.example/moved"
+          },
+          {
+            "checkId": "og-image-missing",
+            "severity": "low",
+            "title": "Shared links have no picture",
+            "evidence": "no og:image on https://shop.example/",
+            "url": "https://shop.example/"
+          }
+        ],
+        "passed": [
+          "access-public-read",
+          "access-role-scope",
+          "ai-crawlers-blocked",
+          "app-link-dead",
+          "app-name-mismatch",
+          "app-smart-banner-mismatch",
+          "blocked",
+          "canonical-elsewhere",
+          "canonical-missing",
+          "certificate-expiring",
+          "dataset-private-types",
+          "dataset-public",
+          "drafts-live",
+          "duplicate-title",
+          "event-jsonld-mismatch",
+          "event-location-mismatch",
+          "event-missing-fields",
+          "event-past-upcoming",
+          "events-distinct",
+          "events-fire",
+          "facts-match",
+          "facts-payment-link",
+          "facts-present",
+          "feed-broken",
+          "feed-duplicate",
+          "feed-invalid",
+          "feed-oversized",
+          "form-destination-changed",
+          "form-provider-changed",
+          "hidden-ai-directive",
+          "hidden-in-sitemap",
+          "hidden-indexable",
+          "hidden-linked",
+          "hidden-past-launch",
+          "host-duplicate",
+          "hreflang-bad-code",
+          "hreflang-not-reciprocal",
+          "html-heavy",
+          "html-huge",
+          "ics-floating-time",
+          "ics-no-vtimezone",
+          "image-width-absurd",
+          "images-alt-empty",
+          "images-alt-missing",
+          "images-heavy",
+          "images-legacy-wp",
+          "invisible-unicode-tags",
+          "jsonld-404",
+          "lang-attr-mismatch",
+          "lang-price-mismatch",
+          "lang-twin-missing",
+          "lang-untranslated",
+          "links-vague-text",
+          "links-wrapped",
+          "llms-txt-broken-links",
+          "llms-txt-stale-facts",
+          "mock-content-live",
+          "nav-changed",
+          "nav-footer",
+          "nav-home-links",
+          "nav-label-drift",
+          "nav-orphans",
+          "nav-parity",
+          "next-draft-public",
+          "next-preview-canonical",
+          "next-stale-after-publish",
+          "noindex",
+          "og-image-broken",
+          "og-image-relative",
+          "og-url-mismatch",
+          "page-gone",
+          "page-heavy",
+          "page-lost-content",
+          "page-lost-items",
+          "page-lost-structured-data",
+          "pagination-same-content",
+          "pagination-unreachable",
+          "payment-handle-inconsistent",
+          "payment-handle-mismatch",
+          "payment-handle-unknown",
+          "payment-link-dead",
+          "placeholder-images",
+          "placeholder-text",
+          "price-changed",
+          "quotable-facts-disagree",
+          "redirect-chain",
+          "robots-block",
+          "rsc-served-as-page",
+          "rsc-vary-missing",
+          "schema-breadcrumb-mismatch",
+          "schema-breadcrumb-start",
+          "schema-dangling-ref",
+          "schema-id-drift",
+          "schema-org-redefined",
+          "schema-template-missing-type",
+          "secret-in-js",
+          "sitemap-dead",
+          "sitemap-host",
+          "sitemap-missing",
+          "sitemap-redirects",
+          "staging-indexable",
+          "stega-leak",
+          "structured-duplicate",
+          "tags-dead-rules",
+          "tags-duplicate",
+          "tel-format",
+          "temp-host-canonical",
+          "temp-host-links",
+          "viewport",
+          "zero-width-in-text"
+        ],
+        "failed": [
+          "email-spf-missing",
+          "email-spf-multiple",
+          "email-dmarc-missing",
+          "email-dmarc-none"
+        ],
+        "couldNotCheck": [],
+        "sampled": {
+          "links": { "seen": 5, "taken": 5, "limit": 30 },
+          "images": { "seen": 2, "taken": 2, "limit": 20 },
+          "sitemapPages": { "seen": 3, "taken": 3, "limit": 25 },
+          "feeds": { "seen": 1, "taken": 1, "limit": 3 },
+          "llmsTxtLinks": { "seen": 0, "taken": 0, "limit": 10 },
+          "appLinks": { "seen": 0, "taken": 0, "limit": 5 },
+          "calendars": { "seen": 0, "taken": 0, "limit": 3 },
+          "pages": { "seen": 5, "taken": 4, "limit": 4 },
+          "languageVersions": { "seen": 0, "taken": 0, "limit": 5 },
+          "paymentLinks": { "seen": 0, "taken": 0, "limit": 5 },
+          "checkoutLinks": { "seen": 0, "taken": 0, "limit": 5 },
+          "scripts": { "seen": 1, "taken": 1, "limit": 15 },
+          "sanityDatasets": { "seen": 0, "taken": 0, "limit": 2 },
+          "accessTables": { "seen": 0, "taken": 0, "limit": 20 },
+          "hiddenPages": { "seen": 0, "taken": 0, "limit": 5 },
+          "draftRoutes": { "seen": 0, "taken": 0, "limit": 4 },
+          "frameworkAddresses": { "seen": 0, "taken": 0, "limit": 0 },
+          "structuredDataAddresses": { "seen": 1, "taken": 1, "limit": 12 }
+        }
+      },
+      "checked": {
+        "requests": [
+          {
+            "kind": "page",
+            "method": "GET",
+            "status": 200,
+            "ms": 18,
+            "url": "https://shop.example/"
+          },
+          {
+            "kind": "link",
+            "method": "HEAD",
+            "status": 301,
+            "ms": 47,
+            "url": "https://shop.example/moved",
+            "location": "https://shop.example/moved-again"
+          },
+          {
+            "kind": "link",
+            "method": "HEAD",
+            "status": 302,
+            "ms": 76,
+            "url": "https://shop.example/moved-again",
+            "location": "https://shop.example/about"
+          },
+          {
+            "kind": "link",
+            "method": "HEAD",
+            "status": 200,
+            "ms": 22,
+            "url": "https://shop.example/about"
+          },
+          {
+            "kind": "link",
+            "method": "HEAD",
+            "status": 404,
+            "ms": 51,
+            "url": "https://shop.example/gone"
+          },
+          {
+            "kind": "link",
+            "method": "HEAD",
+            "status": 500,
+            "ms": 80,
+            "url": "https://shop.example/busy"
+          },
+          {
+            "kind": "image",
+            "method": "HEAD",
+            "status": 200,
+            "ms": 26,
+            "url": "https://shop.example/img/mug.png"
+          },
+          {
+            "kind": "image",
+            "method": "HEAD",
+            "status": 404,
+            "ms": 55,
+            "url": "https://shop.example/img/missing.png"
+          },
+          {
+            "kind": "sitemap",
+            "method": "HEAD",
+            "status": 200,
+            "ms": 84,
+            "url": "https://shop.example/"
+          },
+          {
+            "kind": "sitemap",
+            "method": "HEAD",
+            "status": 200,
+            "ms": 30,
+            "url": "https://shop.example/about"
+          },
+          {
+            "kind": "sitemap",
+            "method": "HEAD",
+            "status": 200,
+            "ms": 59,
+            "url": "https://shop.example/shop"
+          },
+          {
+            "kind": "feed",
+            "method": "GET",
+            "status": 200,
+            "ms": 88,
+            "url": "https://shop.example/feed.xml"
+          },
+          {
+            "kind": "script",
+            "method": "GET",
+            "status": 200,
+            "ms": 34,
+            "url": "https://shop.example/app.js"
+          },
+          {
+            "kind": "extra-page",
+            "method": "GET",
+            "status": 200,
+            "ms": 63,
+            "url": "https://shop.example/about"
+          },
+          {
+            "kind": "extra-page",
+            "method": "GET",
+            "status": 200,
+            "ms": 92,
+            "url": "https://shop.example/shop"
+          },
+          {
+            "kind": "extra-page",
+            "method": "GET",
+            "status": 301,
+            "ms": 38,
+            "url": "https://shop.example/moved",
+            "location": "https://shop.example/moved-again"
+          },
+          {
+            "kind": "extra-page",
+            "method": "GET",
+            "status": 302,
+            "ms": 67,
+            "url": "https://shop.example/moved-again",
+            "location": "https://shop.example/about"
+          },
+          {
+            "kind": "extra-page",
+            "method": "GET",
+            "status": 200,
+            "ms": 96,
+            "url": "https://shop.example/about"
+          },
+          {
+            "kind": "extra-page",
+            "method": "GET",
+            "status": 404,
+            "ms": 42,
+            "url": "https://shop.example/gone"
+          },
+          {
+            "kind": "other",
+            "method": "GET",
+            "status": 404,
+            "ms": 71,
+            "url": "https://shop.example/llms.txt"
+          },
+          {
+            "kind": "other",
+            "method": "GET",
+            "status": 200,
+            "ms": 100,
+            "url": "https://shop.example/robots.txt"
+          },
+          {
+            "kind": "other",
+            "method": "GET",
+            "status": 200,
+            "ms": 46,
+            "url": "https://shop.example/sitemap.xml"
+          }
+        ],
+        "page": {
+          "url": "https://shop.example/",
+          "title": "Larkspur Pottery Studio",
+          "canonical": "https://shop.example/",
+          "words": 57,
+          "firstWords": "About the studio Shop Classes Gift cards Waiting list Larkspur Pottery Studio An invented pottery studio for Gaugeline's fixture tests. Mugs, bowls and planters are thrown by hand on Tuesday and Thursday, glazed on Friday, and fired over the weekend, so a new batch is ready for collection every Monday morning. Open the chat About the studio",
+          "blocks": [
+            {
+              "ok": true,
+              "value": {
+                "@context": "https://schema.org",
+                "@type": "Product",
+                "name": "Speckled mug",
+                "offers": { "@type": "Offer", "price": "24.00", "priceCurrency": "USD" }
+              }
+            },
+            {
+              "ok": true,
+              "value": {
+                "@context": "https://schema.org",
+                "@graph": [
+                  {
+                    "@type": "Organization",
+                    "@id": "https://shop.example/#org",
+                    "name": "Larkspur Pottery Studio"
+                  },
+                  {
+                    "@type": "WebSite",
+                    "@id": "https://shop.example/#site",
+                    "name": "Larkspur Pottery"
+                  }
+                ]
+              }
+            },
+            {
+              "ok": false,
+              "raw": "{ \"@type\": \"LocalBusiness\", \"name\": \"Larkspur Pottery Studio\",",
+              "error": "Expected double-quoted property name in JSON at position 62 (line 1 column 63)"
+            }
+          ]
+        },
+        "leaks": {
+          "datasets": [],
+          "scripts": [
+            {
+              "url": "https://shop.example/app.js",
+              "where": "/app.js",
+              "status": 200,
+              "truncated": false
+            }
+          ],
+          "previews": []
+        }
+      },
+      "reportFailed": []
+    }
+  ]
+}
