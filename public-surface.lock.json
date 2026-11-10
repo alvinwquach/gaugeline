@@ -57,6 +57,7 @@
       "webhook"
     ],
     "open": [
+      "ads",
       "demo",
       "help",
       "no-open",

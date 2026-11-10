@@ -57,6 +57,14 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     commands: ["open"],
   },
   {
+    name: "ads",
+    type: "string",
+    description:
+      "Start the app with an ads export read from this file (a Meta Ads Manager or Google Ads CSV)",
+    since: "0.2.0",
+    commands: ["open"],
+  },
+  {
     name: "allow-private",
     type: "boolean",
     description:

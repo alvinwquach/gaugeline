@@ -11,6 +11,7 @@ Every flag the CLI accepts.
 | `--json`                                       | Prints findings as JSON instead of the terminal summary, and skips the report                                                                  |
 | `--no-open`                                    | Writes the report without opening a browser                                                                                                    |
 | `--demo`                                       | With `gaugeline open`: starts the app with example results and requests nothing. See [Open the app](/docs/the-app#try-it-with-example-results) |
+| `--ads <file>`                                 | With `gaugeline open`: starts the app with an ads export read from this file. See [Ad landing pages](/docs/ad-landing-pages#in-the-app)        |
 | `--help`                                       | Shows usage                                                                                                                                    |
 | `--slack`, `--discord`, `--email`, `--webhook` | Send the results somewhere. See [Send results anywhere](/docs/notifications)                                                                   |
 | `--notify-on`, `--report-url`                  | Control when messages are sent, and link to a hosted report                                                                                    |
@@ -241,6 +242,7 @@ between the markers; CI fails when it differs from the flag table.
 | `--json`                  | Print the result as JSON on stdout, and nothing else                                                           |                      | 0.1.0 |
 | `--no-open`               | Do not open anything in a browser                                                                              |                      | 0.1.0 |
 | `--demo`                  | Start the app with example results about invented sites; no address is checked and nothing is requested        |                      | 0.2.0 |
+| `--ads <value>`           | Start the app with an ads export read from this file (a Meta Ads Manager or Google Ads CSV)                    |                      | 0.2.0 |
 | `--allow-private`         | Allow addresses on this computer or a private network, such as 127.0.0.1 or 192.168.x.x                        |                      | 0.1.0 |
 | `--dns`                   | Also read the domain's mail records (SPF and DMARC) from DNS                                                   |                      | 0.2.0 |
 | `--since <value>`         | Compare with this site's last run and save this one; the only value is last (.gaugeline/last-run/)             |                      | 0.2.0 |

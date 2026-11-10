@@ -4,7 +4,7 @@ import { readSession, reportPath, type AppSession } from "./api";
 import { formatHash, useRoute } from "./route";
 import { Sidebar } from "./Sidebar";
 import { useRuns } from "./store";
-import { VIEWS } from "./views";
+import { viewsFor } from "./views";
 
 /** The id of the last run in the Map: the newest, since the Map is in the server's order. */
 function newest(runs: ReadonlyMap<string, unknown>): string | null {
@@ -41,7 +41,10 @@ export function Shell() {
   const { runs, activeId, loaded, listError, start, select } = useRuns();
   const route = useRoute();
   const demo = useAppSession()?.demo === true;
-  const view = VIEWS.find((v) => v.id === route.viewId) ?? VIEWS[0];
+  // The views belong to the run: an ads run has the Ads view, a page run does not.
+  const runForViews = route.runId === null ? undefined : runs.get(route.runId);
+  const views = viewsFor(runForViews ?? (activeId === null ? undefined : runs.get(activeId)));
+  const view = views.find((v) => v.id === route.viewId) ?? views[0];
   const runsRef = useRef(runs);
   runsRef.current = runs;
   const { go } = route;
@@ -59,7 +62,9 @@ export function Shell() {
   useEffect(() => {
     if (activeId === null || !view || activeId === route.runId) return;
     const namesAnotherRun = route.runId !== null && runsRef.current.has(route.runId);
-    go(activeId, view.id, !namesAnotherRun);
+    // The view of the same name if the new run has one (an ads run and a page run share Problems).
+    const own = viewsFor(runsRef.current.get(activeId));
+    go(activeId, (own.find((v) => v.id === view.id) ?? own[0] ?? view).id, !namesAnotherRun);
     // Only a change of the open run writes the address; the back button changes the address first.
   }, [activeId]);
 
@@ -90,7 +95,7 @@ export function Shell() {
             <div className="run-bar">
               <nav className="views" aria-label="Views">
                 <ul>
-                  {VIEWS.map((v) => (
+                  {viewsFor(active).map((v) => (
                     <li key={v.id}>
                       <a
                         href={formatHash(active.id, v.id)}
@@ -103,7 +108,9 @@ export function Shell() {
                 </ul>
               </nav>
               {/* A plain link to a file the server builds: no script, no Blob, no object URL. */}
-              {active.state === "done" && active.result ? (
+              {active.state === "done" &&
+              active.result &&
+              (active.kind !== "ads" || active.hasReport) ? (
                 <a
                   className="download"
                   href={reportPath(active.id)}

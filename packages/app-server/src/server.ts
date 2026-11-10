@@ -4,6 +4,7 @@ import { createKey } from "./key.js";
 import { checkRequest, REFUSAL_TEXT } from "./origin.js";
 import { createSession, sessionCookie, setSessionCookie } from "./session.js";
 import { createPageRegistry, type FetcherOptions } from "@gaugeline/core";
+import { loadAdsFile, type AdsEngine, type AdsInput } from "./ads.js";
 import { DEMO_PATH, DemoError, fillDemo, parseDemo } from "./demo.js";
 import { route } from "./routes.js";
 import { createRunner } from "./runs.js";
@@ -89,6 +90,12 @@ export interface StartOptions {
    * runner is made, and a check is refused with 409. With an address it is a usage error.
    */
   demo?: boolean;
+  /**
+   * An ads export to show (gaugeline open --ads): the file is read once, here, before the port is
+   * taken, and its run starts as soon as the app is listening. The path is never kept and no route
+   * accepts one. A file that cannot be used is an AdsInputError. Not with an address or the demo.
+   */
+  ads?: { file: string; engine: AdsEngine };
 }
 
 /** The Host header, or undefined when it is missing or was sent more than once. */
@@ -114,6 +121,16 @@ export async function startApp(opts: StartOptions = {}): Promise<RunningApp> {
     throw new DemoError(
       "The example results are not in this package (no demo/results.json). Reinstall gaugeline, or in a source checkout run pnpm build.",
     );
+  if (opts.demo && opts.ads)
+    throw new DemoError(
+      "The demo takes no ads export: it shows example results and checks nothing.",
+    );
+  if (opts.ads && opts.address !== undefined)
+    throw new DemoError("An ads export and an address cannot be opened together.");
+  // Before the port is taken: an unusable export is a start-up error, not an app with nothing in it.
+  const adsInput: AdsInput | undefined = opts.ads
+    ? loadAdsFile(opts.ads.file, opts.ads.engine)
+    : undefined;
   const demoRuns = opts.demo && demoFile ? parseDemo(demoFile.body.toString("utf8")) : undefined;
   const key = createKey();
   const session = createSession(key);
@@ -235,8 +252,16 @@ export async function startApp(opts: StartOptions = {}): Promise<RunningApp> {
   const host = (server.address() as AddressInfo).address;
   // The address from the command line starts the first run the way POST /api/check does.
   let firstRun: Promise<Run> | undefined;
-  if (opts.address !== undefined && runner) {
-    const { run, finished } = runner.start(opts.address);
+  // The address, or the ads export, given on the command line: the first run.
+  const first = !runner
+    ? undefined
+    : adsInput
+      ? runner.startAds(adsInput)
+      : opts.address !== undefined
+        ? runner.start(opts.address)
+        : undefined;
+  if (first) {
+    const { run, finished } = first;
     const print = (e: RunEvent) => {
       if (e.event === "step") opts.onFirstStep?.(e.data.text);
     };

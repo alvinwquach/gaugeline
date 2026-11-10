@@ -1,7 +1,9 @@
 import { blockTitle, toTree, type Node } from "../../packages/app/src/search/tree.js";
+import { formatMoney } from "../../packages/app/src/ads/money.js";
+import { toAdsModel } from "../../packages/app/src/ads/model.js";
 import { toLeaksModel } from "../../packages/app/src/leaks/model.js";
 import { toRows } from "../../packages/app/src/pages/rows.js";
-import type { Checked, Result } from "../../packages/app/src/types.js";
+import type { AdsData, Checked, Result } from "../../packages/app/src/types.js";
 import type { PageData } from "../../packages/core/src/run-view.js";
 import type { RequestRow } from "../../packages/core/src/request-log.js";
 
@@ -127,4 +129,40 @@ export function leaksAccessText(result: Result, checked: Checked): string {
     lines.push("  No preview links were found, and no staging address answers publicly.");
   for (const r of m.staging.rows) lines.push(`  ${r.address}  ${r.answer}`);
   return showLeaks(lines.join("\n"));
+}
+
+/**
+ * The Ads view as text, made from the model the view uses (toAdsModel) and its money formatter, in
+ * the English (United States) the docs are written in: the summary line, then one row for each
+ * landing page with its ads, its spend and what was found. One block for each currency.
+ */
+export function adsText(result: Result, data: AdsData): string {
+  const model = toAdsModel(result, data);
+  return model.currencies
+    .map((c) => {
+      const money = (n: number) => formatMoney(n, c.currency, "en-US");
+      const summary =
+        c.problemSpend > 0
+          ? `${money(c.problemSpend)} of ${money(c.totalSpend)} went to pages with problems.`
+          : `No spend went to pages with problems. All ${money(c.totalSpend)} went to pages that looked right.`;
+      const rows = [["Landing page", "Ads", "Spend", "Findings"]].concat(
+        c.destinations.map((d) => [
+          d.url,
+          String(d.ads),
+          money(d.spend),
+          d.findings.length > 0 ? d.findings.map((f) => f.title).join("; ") : "None",
+        ]),
+      );
+      const wide = (i: number) => Math.max(...rows.map((r) => (r[i] ?? "").length));
+      const [w0, w1, w2] = [wide(0), wide(1), wide(2)];
+      return [
+        summary,
+        "",
+        ...rows.map(
+          (r) =>
+            `${(r[0] ?? "").padEnd(w0)}  ${(r[1] ?? "").padStart(w1)}  ${(r[2] ?? "").padStart(w2)}  ${r[3]}`,
+        ),
+      ].join("\n");
+    })
+    .join("\n\n");
 }

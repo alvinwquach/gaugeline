@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useReducer } from "react";
 import { getRun, listRuns, startCheck, watchRun } from "./api";
 import type {
+  AdsData,
   Checked,
   Counts,
   Result,
   RunDetail,
+  RunKind,
   RunStatus,
   RunSummary,
   StreamEvent,
@@ -19,6 +21,8 @@ export interface Step {
 export interface RunState {
   id: string;
   url: string;
+  /** What the run is of. A page run when the server does not say. */
+  kind: RunKind;
   state: RunStatus;
   startedAt: string;
   counts?: Counts;
@@ -28,6 +32,10 @@ export interface RunState {
   result?: Result;
   /** The addresses the check requested and what the page declares, when the server sent them. */
   checked?: Checked;
+  /** An ads run: the destinations and their spend. */
+  ads?: AdsData;
+  /** An ads run: the server has a report to download. */
+  hasReport?: boolean;
   reason?: string;
   /** Why the result could not be read (a version this app doesn't know, or a lost connection). */
   loadError?: string;
@@ -58,6 +66,7 @@ export const initialSession: Session = { runs: new Map(), activeId: null, loaded
 const fresh = (r: RunSummary): RunState => ({
   id: r.id,
   url: r.url,
+  kind: r.kind ?? "page",
   state: r.state,
   startedAt: r.startedAt,
   ...(r.counts ? { counts: r.counts } : {}),
@@ -139,6 +148,8 @@ export function reducer(s: Session, a: Action): Session {
           ...(a.run.counts ? { counts: a.run.counts } : {}),
           ...(a.run.result ? { result: a.run.result } : {}),
           ...(a.run.checked ? { checked: a.run.checked } : {}),
+          ...(a.run.ads ? { ads: a.run.ads } : {}),
+          ...(a.run.hasReport ? { hasReport: true } : {}),
           ...(a.run.reason !== undefined ? { reason: a.run.reason } : {}),
         };
       });

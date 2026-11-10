@@ -59,11 +59,10 @@ describe("gaugeline open --demo: argument parsing (unit)", () => {
     expect(c.out()).toBe("");
   });
 
-  it("--demo with --ads is a usage error (exit 2)", async () => {
-    // --ads arrives with G22e; until then it is an unknown option, which is the same exit. When
-    // G22e adds the flag it must refuse the pair with its own sentence, and this test keeps the exit.
+  it("--demo with --ads is a usage error (exit 2) with its own sentence", async () => {
     const c = capture();
-    expect(await main(["open", "--demo", "--ads"], c.io)).toBe(EXIT.couldNotRun);
+    expect(await main(["open", "--demo", "--ads", "ads-export.csv"], c.io)).toBe(EXIT.couldNotRun);
+    expect(c.err()).toContain("--demo and --ads cannot be used together");
     expect(c.out()).toBe("");
   });
 

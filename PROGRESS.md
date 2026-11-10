@@ -4,6 +4,15 @@ Resume from this file alone. The build follows `gaugeline-master-spec.md` (not i
 owner keeps it) branch by branch, in the order below. Each branch is one pull request into `main`,
 merged once CI is green on Node 22 and 24 (18.17, 20 and 22 until S00).
 
+## Handoff
+
+- Last merged branch: G22d (`04/app-download-and-demo`, PR #106). In flight: G22e (`04/app-ads-view`), whose PR is open.
+- NEXT branch: G22f, `04/app-sanity-placeholders` ("Placeholders for the Sanity views"), the first `todo` row after G22e in the table below.
+- G22e built the Ads view and `open --ads` against a stand-in for the ads command: G24 (`05/ad-landing-pages`) has not merged. When it does, set `adsEngine` in `packages/cli/src/ads-engine.ts` to adapt its functions to `AdsEngine`; nothing else changes.
+- Resume with `git checkout main && git pull`.
+- Use the newest spec file under /root/.claude/uploads/ (the owner re-uploads it).
+- The standing orders and the "Method that works" paragraph are in this file.
+
 ## How to resume
 
 1. `git checkout main && git pull`.
