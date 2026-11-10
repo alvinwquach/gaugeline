@@ -10,6 +10,7 @@ import {
   navRulesSchema,
   languageRulesSchema,
   listingsConfigSchema,
+  sourcesConfigSchema,
   pagesConfigSchema,
   paymentsConfigSchema,
   readContainer,
@@ -23,6 +24,7 @@ import {
   type NavRules,
   type LanguageRules,
   type ListingsConfig,
+  type SourcesConfig,
   type PagesConfig,
   type PaymentsConfig,
   type SchemaRules,
@@ -42,6 +44,8 @@ export const PAYMENTS_CONFIG_FILE = "gaugeline.payments.json";
 export const ACCESS_CONFIG_FILE = "gaugeline.access.json";
 /** The business listings to compare with the site (Google, Yelp, Apple, bio links), likewise. Keys stay in the environment. */
 export const LISTINGS_CONFIG_FILE = "gaugeline.listings.json";
+/** The databases to read named queries from (Postgres, Supabase), likewise. Connection strings stay in the environment. */
+export const SOURCES_CONFIG_FILE = "gaugeline.sources.json";
 /** Sections hidden until launch, likewise. */
 export const HIDDEN_CONFIG_FILE = "gaugeline.hidden.json";
 /** The tracking plan: which clicks must push which event, likewise. */
@@ -105,6 +109,10 @@ export function readAccess(dir: string): AccessConfig | undefined {
 
 export function readListingsConfig(dir: string): ListingsConfig | undefined {
   return readJsonConfig(dir, LISTINGS_CONFIG_FILE, listingsConfigSchema, "listing checks");
+}
+
+export function readSourcesConfig(dir: string): SourcesConfig | undefined {
+  return readJsonConfig(dir, SOURCES_CONFIG_FILE, sourcesConfigSchema, "database sources");
 }
 
 /** Largest Apple Business Connect export read: a few hundred locations is well under it. */

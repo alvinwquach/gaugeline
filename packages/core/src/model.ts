@@ -19,6 +19,7 @@ import type { TagContainer } from "./tags/read-container.js";
 import type { RunSnapshot } from "./run-snapshot.js";
 import type { DatasetRead } from "./sanity.js";
 import type { ListingsRead } from "./listings/read.js";
+import type { DatabasesRead } from "./connectors/postgres/read.js";
 import type { ScriptRead } from "./scripts.js";
 import type { PageSnapshot } from "./snapshot.js";
 import type { ImageSample } from "./checks/images/refs.js";
@@ -175,6 +176,12 @@ export interface CheckContext {
    * not check, never that they passed.
    */
   listings?: () => Promise<ListingsRead>;
+  /**
+   * The named queries in gaugeline.sources.json (Postgres, Supabase), read once on first use, read
+   * only. Absent when no source is configured. No check reads it yet; the data assertions and
+   * switches checks do.
+   */
+  databases?: () => Promise<DatabasesRead>;
   /** Values the run was told to expect (for example the app's name). Until the config file, API only. */
   expect?: RunExpectations;
 }

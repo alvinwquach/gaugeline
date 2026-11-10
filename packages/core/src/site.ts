@@ -32,6 +32,7 @@ import {
 } from "./snapshot/page-snapshot.js";
 import { lazyDatasets } from "./sanity.js";
 import { lazyListings, noListings, type ListingsSettings } from "./listings/read.js";
+import { lazyDatabases, type DatabasesSettings } from "./connectors/postgres/read.js";
 import { lazyScripts } from "./scripts.js";
 import type { FactsConfig } from "./facts/types.js";
 import type { PaymentsConfig } from "./payments/types.js";
@@ -68,6 +69,8 @@ export interface SiteCheckOptions {
   payments?: PaymentsConfig;
   /** The business listings to compare with the site (gaugeline.listings.json), with their keys already read. */
   listings?: ListingsSettings;
+  /** The databases to read named queries from (gaugeline.sources.json), with their variables already copied. */
+  databases?: DatabasesSettings;
   /** The database project to read as each role, with its keys already read from the environment. */
   access?: AccessSettings;
   /** Public DNS for the email record checks. Without one, they find nothing and nothing is resolved. */
@@ -227,6 +230,7 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
         : asked
           ? { listings: () => Promise.resolve(noListings()) }
           : {}),
+      ...(opts.databases ? { databases: lazyDatabases(opts.databases, opts.fetcher) } : {}),
       imagesIfSampled: () => images.peek(),
       ...(opts.expect ? { expect: opts.expect } : {}),
     },

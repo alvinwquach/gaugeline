@@ -103,6 +103,7 @@ export const UNLISTED: NavPage[] = [
   { slug: "guides/payments", title: "Payment details everywhere" },
   { slug: "guides/hidden-text", title: "Hidden text aimed at AI assistants" },
   { slug: "connectors/listings", title: "Listings off the site" },
+  { slug: "connectors/postgres", title: "A database as a source: Postgres and Supabase" },
   { slug: "guides/access-rules", title: "Database access rules, tested from outside" },
   { slug: "guides/nextjs", title: "Next.js sites" },
   { slug: "guides/weekly-digest", title: "The weekly digest" },

@@ -40,6 +40,7 @@ import {
   RESEND_KEY_ENV,
   resolveAccess,
   freezeEnv,
+  databaseEnvVars,
   LISTING_ENV_VARS,
   type CheckRegistry,
   type DnsReader,
@@ -108,6 +109,7 @@ import {
   readAccess,
   readFacts,
   readListingsConfig,
+  readSourcesConfig,
   readAppleExport,
   readHidden,
   readLanguageRules,
@@ -991,6 +993,11 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
             })(),
           }
         : undefined;
+      // Connection strings and keys are copied from the environment here and read by the database connectors only.
+      const sourcesConfig = readSourcesConfig(deps.cwd ?? process.cwd());
+      const databases = sourcesConfig
+        ? { config: sourcesConfig, env: freezeEnv(io.env ?? {}, databaseEnvVars(sourcesConfig)) }
+        : undefined;
       const accessConfig = readAccess(deps.cwd ?? process.cwd());
       // Keys are read from the environment here and go only into request headers.
       const access = accessConfig ? resolveAccess(accessConfig, io.env ?? {}) : undefined;
@@ -1064,6 +1071,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         ...(pagesConfig ? { pagesConfig } : {}),
         ...(access ? { access } : {}),
         ...(listings ? { listings } : {}),
+        ...(databases ? { databases } : {}),
         ...(listingsConfig?.timeZone ? { expect: { timeZone: listingsConfig.timeZone } } : {}),
         ...(dns ? { dns } : {}),
       });
