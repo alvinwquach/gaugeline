@@ -3,9 +3,9 @@ import { lstat, mkdir, readFile, realpath, rmdir, unlink, writeFile } from "node
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 
 /**
- * The file system calls `gaugeline query --page` makes, so a test can watch every one and make one
- * fail. This file is the only place the command writes: three files into one folder, and the
- * folders that folder needs.
+ * The file system calls `gaugeline query --page` and `--save` make, so a test can watch every one and
+ * make one fail. This file is the only place the command writes: three files into one folder (--page)
+ * or one baseline file (--save), and the folders they need.
  */
 export interface ScaffoldFs {
   /** What is at the path without following a link, or null when nothing is. */
@@ -189,6 +189,108 @@ export async function writeScaffold(
       left.length === 0
         ? `Could not write to ${JSON.stringify(out)} (${code}). Nothing was written.`
         : `Could not write to ${JSON.stringify(out)} (${code}), and could not remove ${left.length} of the files it had started: ${left.join(", ")}.`,
+      {
+        hint:
+          code === "EEXIST"
+            ? "A file appeared while it was writing. Run the command again."
+            : "Choose a folder you can write to, and check its permissions.",
+        cause: err,
+      },
+    );
+  }
+}
+
+/** What `--save` found at its target, before anything is written. */
+export interface InspectedFile {
+  /** The file, as an absolute path. */
+  path: string;
+  /** The text it has now, when it exists and `force` will replace it. */
+  before: string | undefined;
+}
+
+/**
+ * Everything that can be known about `gaugeline query --save <file>` without writing: the file is the
+ * working folder or inside it (also after links are followed), it is not a folder or a link, and it
+ * does not exist unless `force` is set. Reads and writes nothing.
+ */
+export async function inspectBaselineFile(
+  typed: string,
+  opts: { force: boolean; cwd: string; fs?: ScaffoldFs },
+): Promise<InspectedFile> {
+  const fs = opts.fs ?? nodeFs;
+  const path = resolve(opts.cwd, typed);
+  if (typed.includes("\0") || !inside(resolve(opts.cwd), path) || path === resolve(opts.cwd))
+    throw new ConfigError(
+      `--save ${JSON.stringify(typed)} is not a file inside the folder you ran the command in, so nothing was written.`,
+      {
+        hint: "--save names a file in this folder or one inside it, for example --save before.json. Run the command from the root of your project.",
+      },
+    );
+  const real = await realAncestor(fs, dirname(path));
+  if (!inside(await realAncestor(fs, resolve(opts.cwd)), real))
+    throw new ConfigError(
+      `--save ${JSON.stringify(typed)} reaches outside the folder you ran the command in through a link, so nothing was written.`,
+      { hint: "Name a real file inside your project." },
+    );
+  const parent = await fs.lstat(dirname(path));
+  if (parent !== null && !parent.isDirectory())
+    throw new ConfigError(
+      `${JSON.stringify(dirname(typed))} is not a folder, so ${JSON.stringify(typed)} was not written.`,
+      { hint: "Name a file in a folder that exists, or one that can be made." },
+    );
+  const found = await fs.lstat(path);
+  if (found === null) return { path, before: undefined };
+  if (!found.isFile())
+    throw new ConfigError(
+      `${JSON.stringify(typed)} is a ${found.isSymbolicLink() ? "link" : "folder"}, not a file, so nothing was written.`,
+      { hint: "Choose another name. --force never replaces a folder or a link." },
+    );
+  if (!opts.force)
+    throw new ConfigError(`${JSON.stringify(typed)} already exists, so nothing was written.`, {
+      hint: "Choose another name, or add --force to replace the file.",
+    });
+  return { path, before: await fs.readFile(path) };
+}
+
+/**
+ * Write the baseline: one file, or nothing. The target is checked first (`inspectBaselineFile`), its
+ * folders are made if they are missing, and the file is written with `wx` (`w` when `force` replaces
+ * one), which fails if a file appeared meanwhile. If the write fails, the file is removed or put back
+ * as it was and the folders this run made are removed again. Returns the absolute path it wrote.
+ */
+export async function writeBaselineFile(
+  typed: string,
+  text: string,
+  opts: { force: boolean; cwd?: string; fs?: ScaffoldFs },
+): Promise<string> {
+  const fs = opts.fs ?? nodeFs;
+  const cwd = opts.cwd ?? process.cwd();
+  const { path, before } = await inspectBaselineFile(typed, { ...opts, cwd, fs });
+  const made = await missingFolders(fs, dirname(path));
+  try {
+    await fs.mkdir(dirname(path));
+    await fs.writeFile(path, text, before === undefined ? "wx" : "w");
+    return path;
+  } catch (err) {
+    let left = false;
+    try {
+      if (before === undefined) await fs.unlink(path);
+      else await fs.writeFile(path, before, "w");
+    } catch (e) {
+      if (codeOf(e) !== "ENOENT") left = true;
+    }
+    for (const dir of made) {
+      try {
+        await fs.rmdir(dir);
+      } catch (e) {
+        if (codeOf(e) !== "ENOENT") break;
+      }
+    }
+    const code = codeOf(err);
+    throw new ConfigError(
+      left
+        ? `Could not write ${JSON.stringify(typed)} (${code}), and could not take back what it had started: check the file.`
+        : `Could not write ${JSON.stringify(typed)} (${code}). Nothing was written.`,
       {
         hint:
           code === "EEXIST"

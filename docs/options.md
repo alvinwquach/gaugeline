@@ -277,6 +277,8 @@ between the markers; CI fails when it differs from the flag table.
 | `--unused`                | With query: list fields your queries fetch that no code reads, GROQ and GraphQL (source only, no request)            |                      | 0.2.0 |
 | `--totals <value>`        | With query: check a stated number against the sum of its parts, as type:stated=parts (repeatable)                    |                      | 0.2.0 |
 | `--refs <value>`          | With query: find documents that link to things nobody published, as type:path (repeatable)                           |                      | 0.2.0 |
+| `--save <value>`          | With query: save today's gaps (names only) to this file, to compare a later run with                                 |                      | 0.2.0 |
+| `--against <value>`       | With query: list the gaps created since the --save file, and those it closed; --ci fails on a new high one           |                      | 0.2.0 |
 | `--type <value>`          | With query --suggest or --page: the document type to write the query or the route for, as in your schema             |                      | 0.2.0 |
 | `--schema <value>`        | With query: the schema file (sanity schema extract; SDL or introspection JSON for --graphql)                         |                      | 0.2.0 |
 | `--webhooks`              | Read Stripe's webhook endpoints and the events that were never delivered                                             |                      | 0.2.0 |
@@ -291,7 +293,7 @@ between the markers; CI fails when it differs from the flag table.
 | `--legacy-review <value>` | Write the old addresses read with --legacy-from to this CSV file, for review                                         |                      | 0.2.0 |
 | `--base <value>`          | Check the plan against the site built at this address, such as a preview; or the site to ask for --routes            |                      | 0.2.0 |
 | `--annotate <value>`      | Write a copy of the plan with a Gaugeline column saying what is wrong on each row                                    |                      | 0.2.0 |
-| `--force`                 | Let --annotate (plan) or --page (query) replace files that already exist, never a folder or a link                   |                      | 0.2.0 |
+| `--force`                 | Let --annotate (plan), --page or --save (query) replace files that already exist, never a folder or a link           |                      | 0.2.0 |
 | `--progress <value>`      | With --base, say what was fixed and what is new since the last run (state file optional)                             |                      | 0.2.0 |
 | `--watch <value>`         | With --base on production: the 30-day watch from this cutover date (YYYY-MM-DD)                                      |                      | 0.2.0 |
 | `--all`                   | plan --progress: list the findings still open; run: check every site in gaugeline.sites.json                         |                      | 0.2.0 |

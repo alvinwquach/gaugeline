@@ -87,6 +87,23 @@ A pipeline that writes content (a weekly meal plan, a batch of product descripti
 
 The job exits 1 when a plan states a number its meals do not add up to, or links to a meal that was never published. A private dataset also needs `SANITY_TOKEN`, a read-only token with the Viewer role, in the secrets context (see [Private datasets](/docs/private-datasets)).
 
+## Failing only on gaps a pull request created
+
+A site that has been live for a year has gaps, and a check that fails on all of them is switched off by the second week. `gaugeline query` can fail a pull request only for the gaps that pull request created. Save a baseline on the main branch and commit it (it holds names: check ids, document types, field names and file paths, no token and no content), then compare each pull request with it ([how the baseline works](/docs/query-check#before-a-restructure)):
+
+```yaml title=.github/workflows/queries.yml
+- run: npx --yes gaugeline query ./src --against gaugeline.baseline.json --ci
+  env:
+    SANITY_PROJECT_ID: ${{ vars.SANITY_PROJECT_ID }}
+    SANITY_DATASET: production
+```
+
+```sh title=Terminal untested="Writes a file in your repository and needs a Sanity project. docs/query-check.md runs the same two commands in an invented repository and shows their output."
+$ npx gaugeline query ./src --save gaugeline.baseline.json --force   # on main, when you accept today's gaps
+```
+
+The job exits 1 only when the pull request created a gap that is "Fix this first", for example a query that now asks for a field no document has. A gap that was already in the baseline does not fail it, high or not. It exits 2, and the job fails for the right reason, when the baseline is missing, edited or from a newer Gaugeline. Run it from the same folder you saved from, so the paths match. When a pull request fixes old gaps, save the baseline again so they stay fixed.
+
 ## The 30-day cutover watch
 
 [`examples/workflows/cutover-watch.yml`](https://github.com/alvinwquach/gaugeline/blob/main/examples/workflows/cutover-watch.yml)
