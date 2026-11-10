@@ -316,7 +316,8 @@ describe("gaugeline query --graphql --schema <file>", () => {
       transport: nothing,
     });
     expect(r.code).toBe(EXIT.couldNotRun);
-    expect(r.err).toContain("gql/resources.graphql has no types in it");
+    // The file is named by its resolved path, so the separators are the platform's.
+    expect(r.err).toContain(`${join("gql", "resources.graphql")} has no types in it`);
   });
 });
 
