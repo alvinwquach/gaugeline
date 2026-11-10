@@ -791,6 +791,14 @@ export type {
   Freshness,
   Moment,
 } from "./freshness/index.js";
+export {
+  adDestinationKey,
+  formatDestinationLines,
+  groupByDestination,
+  readAdsExport,
+  spendByCurrency,
+} from "./ads/export.js";
+export type { AdRow, AdsExport, CurrencySpend, Destination } from "./ads/export.js";
 export { formatMoney, minorExponent, toMinor } from "./products/money.js";
 export type { Money } from "./products/money.js";
 export {

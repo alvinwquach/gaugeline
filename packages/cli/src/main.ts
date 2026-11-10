@@ -110,6 +110,7 @@ import {
   type RunningApp,
 } from "@gaugeline/app-server";
 import { adsEngine } from "./ads-engine.js";
+import { runAds } from "./ads.js";
 import { formatRunAll, runAll, runAllExit } from "./run-all.js";
 import { readSites, selectSites, SITES_FILE } from "./sites.js";
 import { appendStepSummary, planStepSummary } from "./step-summary.js";
@@ -795,13 +796,6 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       };
     case "open": {
       const engine = deps.ads ?? adsEngine;
-      if (args.ads !== undefined && !engine)
-        throw new ConfigError(
-          "gaugeline open --ads needs the ads command, which is not part of this version of Gaugeline yet.",
-          {
-            hint: "Update Gaugeline when it is released, or check one page with gaugeline open yoursite.com.",
-          },
-        );
       // The key is printed once, here, and nowhere else: not in stderr, not in an error.
       let app: RunningApp;
       try {
@@ -812,7 +806,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           // passed in by a test is not given to it either.
           ...(args.demo ? { demo: true } : {}),
           // Read once, here, before the port is taken: the path is never kept.
-          ...(args.ads !== undefined && engine ? { ads: { file: args.ads, engine } } : {}),
+          ...(args.ads !== undefined ? { ads: { file: args.ads, engine } } : {}),
           ...(args.address ? { address: args.address } : {}),
           // The first check's progress (an address's, or the export's), in the terminal's own
           // words, before the link.
@@ -903,6 +897,15 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         ci: true,
       };
     }
+    case "ads":
+      return {
+        outcome: await runAds(args, io, {
+          cwd: deps.cwd ?? process.cwd(),
+          now: (deps.now ?? io.now ?? (() => new Date()))(),
+          ...(deps.fetcher ? { fetcher: deps.fetcher } : {}),
+        }),
+        ci: false,
+      };
     case "assert":
       return {
         outcome: await runAssert(args, io, { cwd: deps.cwd ?? process.cwd() }),

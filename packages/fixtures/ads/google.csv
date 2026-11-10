@@ -1,0 +1,9 @@
+Ad report
+"November 1, 2026 - November 9, 2026"
+
+Ad,Final URL,Currency code,Cost,Clicks
+Gift cards - search,https://tapas-bar.example/gift-cards?gclid=Cj0KCQdemo001&utm_source=google&utm_medium=cpc,EUR,25.00,31
+Gift cards - brand,https://tapas-bar.example/gift-cards?gclid=Cj0KCQdemo002&utm_source=google&utm_medium=cpc,EUR,15.00,22
+Book a table - search,https://tapas-bar.example/book-a-table?gclid=Cj0KCQdemo003&utm_source=google&utm_medium=cpc,EUR,60.00,48
+Total: Campaigns,--,EUR,100.00,101
+Total: Account,--,EUR,100.00,101

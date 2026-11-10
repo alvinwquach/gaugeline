@@ -1,5 +1,12 @@
 {
   "flags": {
+    "ads": [
+      "help",
+      "json",
+      "quiet",
+      "verbose",
+      "version"
+    ],
     "assert": [
       "help",
       "list",
