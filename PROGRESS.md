@@ -6,9 +6,10 @@ merged once CI is green on Node 22 and 24 (18.17, 20 and 22 until S00).
 
 ## Handoff
 
-Written by the branch builder of G27j (10 Nov 2026). Resume from this file alone.
+Updated by the orchestrator after the merge of G27j (10 Nov 2026). Resume from this file alone.
 
-- Last merged branch: G27i (`05/routes-hidden-not-protected`, PR #144: `gaugeline check <folder> --routes --base <address> --owner-consent`; `packages/core/src/routes/`, check `route-hidden-not-protected`, docs `docs/protected-routes.md`; open question 31). In flight: G27j (`05/query-restructure-baseline`, PR #145: `gaugeline query <dir> --save before.json` and `--against before.json`; `packages/core/src/query/baseline.ts` has `toBaseline`, `diffBaseline` (a Set of keys: check, type, field, file; no line, no count), `likelyRenames`, `parseBaseline` (schema 1 only); the CLI side is `packages/cli/src/query-baseline.ts` and `query.ts`, written through `inspectBaselineFile` and `writeBaselineFile` in `scaffold-write.ts`; docs `docs/query-check.md` (Before a restructure), `docs/ci.md`; open question 32). G27j is the last branch of the G27 series.
+- Last merged branch: G27j (`05/query-restructure-baseline`, PR #145: `gaugeline query <dir> --save before.json` and `--against before.json`; `packages/core/src/query/baseline.ts` has `toBaseline`, `diffBaseline` (a Set of keys: check, type, field, file; no line, no count), `likelyRenames`, `parseBaseline` (schema 1 only); the CLI side is `packages/cli/src/query-baseline.ts` and `query.ts`, written through `inspectBaselineFile` and `writeBaselineFile` in `scaffold-write.ts`; docs `docs/query-check.md` (Before a restructure), `docs/ci.md`; open question 32). G27j is the last branch of the G27 series.
+- Build order updated by the owner on 10 Nov 2026 (applied in Standing orders and the Branches table): the CMS rows now run C-00, C-13, C-01, C-04, C-06, C-05, C-14, C-15, C-16, C-12, C-02, C-03, C-07 (C-13 to C-16 are new rows); C-08, C-09, C-10, C-11 and X54 moved, not deleted, to "Built when someone asks" and are skipped by the loop; the speed rules are in Standing orders (review sub-agents only on security, credential, payment or SQL-classifier branches; one quarantine with a CI retry of one for a flaky test, with a "fix flaky" row at the end of the phase).
 - NEXT branch: X39 (`feat/39-content-model`, Content model changes on Sanity), the first todo row after G27j in table order, then the todo rows after it (G28 ...). The table is in the owner's build order; G38 is superseded by C-00. Opus-marked branches built on Sonnet go under "Built on Sonnet, review" (G27 to G27i are listed there; G27j is marked Sonnet in the spec, so it is not). `gaugeline query` code lives in `packages/core/src/query/` (`shape.ts`, `extract.ts`, `source.ts`, `counts.ts`, `dupes.ts`, `mutations.ts`, `graphql.ts`, `content-shape.ts`, `suggest.ts`, `generated.ts`, `unused.ts`, `baseline.ts`, `run.ts`); `scaffold-write.ts` is the one file of the query code that writes (`--page` and `--save`). A mutation is never sent (`mutations.ts` may not import the fetcher; `graphql.ts` makes exactly one request, a GET, and a test scans for it).
 - Resume with `git checkout main && git pull`. Use the newest spec file under /root/.claude/uploads/ (the owner re-uploads it). The standing orders, adapter rules and "Method that works" paragraph are in this file.
 - Per branch: sync the work branch (`git checkout -B claude/relaxed-brown-7yxex4 origin/main`, then `git merge -s ours origin/claude/relaxed-brown-7yxex4`, then a plain push), one fresh agent per branch with a brief, subscribe to the PR, merge when every check is green, fix CI failures on the branch first.
@@ -137,6 +138,13 @@ Written by the branch builder of G27j (10 Nov 2026). Resume from this file alone
   recorded responses. Never create accounts, use live keys, deploy or publish.
 - N09 and N17 no longer stop the loop: build them. List them, with every branch the spec marks "model Opus",
   in "Built on Sonnet, review" below (one line each: id, branch, PR, what a reviewer should look at hardest).
+- Speed rules (owner, 10 Nov 2026):
+  - The independent review sub-agent runs only on branches that touch security, credentials, payments or the SQL
+    classifier. Other branches rely on their tests and CI.
+  - A test that fails on one OS runner and passes on rerun is quarantined, not chased: mark it with a retry of one
+    on CI, open a follow-up row "fix flaky <test>" at the end of the current phase, and merge if everything else
+    is green. Never quarantine a test that fails on every runner, and never more than one new quarantine per branch.
+  - Branches marked "built when someone asks" stay unstarted until a user (the owner included) needs one.
 - Schema 3 is refused: `--json` stays at schemaVersion 2 (see Decisions).
 - Method that works: one fresh agent per branch with `scratchpad/brief.md` (the orchestrator's brief: spec
   entry, rules, gotchas), plain `git push origin <branch>:claude/relaxed-brown-7yxex4` after syncing that branch
@@ -161,13 +169,17 @@ The todo rows below follow this order and override spec order where they differ:
    baseline, E-12 vulnerable libraries in served JavaScript and F-09 the advisory check (E-11, E-12, E-14 and
    E-18 are promoted from the expansion roadmap: build them as written there, with full tests, docs and a
    changeset).
-4. Every CMS: C-00 the content adapter interface (replaces G38), then C-01 WordPress, C-02 Strapi, C-03 TinaCMS,
-   C-04 Webflow, C-05 Wix, C-06 Framer, C-07 Contentful, C-08 Storyblok, C-09 Payload, C-10 Ghost, C-11 Drupal,
-   C-12 hosted builders without a content API.
+4. Every CMS, by reach: C-00 the content adapter interface (replaces G38), then C-13 the sitemap and feed adapter
+   (any CMS that publishes a sitemap or feed), then the native adapters freelancers and agencies use most: C-01
+   WordPress (including Elementor-built pages), C-04 Webflow, C-06 Framer, C-05 Wix, then C-14 the generic API
+   adapter with recipes, C-15 the git content adapter, C-16 the adapter generator, then C-12 hosted builders without
+   a content API, C-02 Strapi, C-03 TinaCMS, C-07 Contentful. C-08 Storyblok, C-09 Payload, C-10 Ghost and C-11
+   Drupal ship first as C-14 recipes; a native adapter is built when someone asks (see "Built when someone asks").
 5. F-05 published but not live, F-06 backups and restore readiness, F-07 `gaugeline init`, F-08 the agent skill.
 6. Phase 06 in spec order (N17 directly before G31, the MCP server).
 7. Phase 07 in this order: G34, G35, G36, X63, X64, G37, X66, X67, X70, X71, X72, X69, X75, X68.
-8. Phase 08 in spec order, skipping G38 (done as C-00). The rest of the expansion roadmap stays unstarted.
+8. Phase 08 in spec order, skipping G38 (done as C-00) and X54 the desktop app (built when someone asks). The rest
+   of the expansion roadmap stays unstarted.
 
 ### Adapter rules (every C-branch; they go in CONTRIBUTING and in the contract tests)
 
@@ -227,6 +239,20 @@ Branches the spec marks "model Opus" that were built on Sonnet from G23 onward a
 - G27g `05/query-unused-fields` (spec marks Opus; built on Sonnet), PR #142: a reviewer should look hardest at false "never used" findings, i.e. any place `unused-flow.ts` follows a value and loses it without marking the field read or escaping it (the `flow` switch, array methods, bags for props and object literals, `returned` for functions, how a symbol's declaration is the key of the reference index), at the list of calls that hand the query result back (`DIRECT`, `WRAPPED`, `WRAPPERS`) and at whether one broken file making every query "could not follow" is the right trade.
 - G27h `05/query-totals-refs` (spec marks Opus; built on Sonnet), PR #143: a reviewer should look hardest at whether the dataset's `math::sum` behaves as groq-js does (nulls skipped, any non-number gives null: the exit-2 rule and the shortfall from an unpublished part depend on it, and sanity.io was unreachable to confirm), at the refs query (`(path[])[defined(_ref) && defined(@->_id)]` over a published perspective) and at the privacy decision in open question 30: findings carry ids and counts only, not the two numbers the entry's evidence line asked for.
 - G27i `05/routes-hidden-not-protected` (spec marks Opus; built on Sonnet), PR #144: a reviewer should look hardest at the expectsSession heuristic in `packages/core/src/routes/discover.ts` and `matcher.ts` (a false positive is a high finding on a public page: the root layout is ignored, a middleware must look like a gate and a matcher that covers the home page is not read) and at the request itself in `probe.ts` (one anonymous GET, no cookie or Authorization, no redirect followed, 30 routes and 5 at once, body read to 64 KB and dropped), which is behind `--owner-consent`.
+
+## Built when someone asks
+
+Owner, 10 Nov 2026. These stay unstarted until a user (the owner included) needs one: the loop skips them.
+C-08, C-09, C-10 and C-11 ship first as C-14 recipes; a native adapter is built when someone asks.
+X54 the desktop app is built when someone asks. Nothing here is deleted.
+
+| Id | Branch | Status | PR | Tests | Notes / left undone |
+|---|---|---|---|---|---|
+| C-08 | `c/storyblok` | todo | | | Storyblok adapter on ContentAdapter: docs/integrations/storyblok.md with a freelancer example, the contract suite plus the extra checks in the spec table (Sonnet, effort high) |
+| C-09 | `c/payload` | todo | | | Payload adapter on ContentAdapter: docs/integrations/payload.md with a freelancer example, the contract suite plus the extra checks in the spec table (Sonnet, effort high) |
+| C-10 | `c/ghost` | todo | | | Ghost adapter on ContentAdapter: docs/integrations/ghost.md with a freelancer example, the contract suite plus the extra checks in the spec table (Sonnet, effort high) |
+| C-11 | `c/drupal` | todo | | | Drupal adapter on ContentAdapter: docs/integrations/drupal.md with a freelancer example, the contract suite plus the extra checks in the spec table (Sonnet, effort high) |
+| X54 | `feat/54-desktop` | todo | | | A desktop app, if someone needs one  [from guide 2] [P5] |
 
 ## Branches
 
@@ -383,18 +409,18 @@ Branches the spec marks "model Opus" that were built on Sonnet from G23 onward a
 | E-12 | `09/served-libraries` | todo | | | Passive security part 2: detect library versions in served JavaScript (banner comments, version strings, known file names), compare against a vulnerability data file with sources; minified bundles without a version are could-not-check. Promoted from the expansion roadmap (Sonnet) |
 | F-09 | `f/advisory` | todo | | | The advisory check: `gaugeline advisory <site> <id-or-package>` and an MCP tool; resolves CVE/GHSA ids through the public OSV API (no key; or a package and range given directly), gathers outside-only evidence, gives likely-affected, likely-not-affected or cannot-tell with the evidence lines, and a client-ready Markdown note. Looks only. Needs E-11 and E-12; uses C-01 and F-07 data once they merge (Sonnet, effort high) |
 | C-00 | `c/adapter-interface` | todo | | | The content adapter interface (replaces G38): ContentAdapter extracted from the Sanity code (G23a, G27), Sanity ported with no behaviour change, a shared contract test suite, `adapters:` in config. Spec marks model Opus: build on Sonnet and list under Built on Sonnet, review |
+| C-13 | `c/sitemap-feed` | todo | | | Sitemap and feed adapter on ContentAdapter: published() from sitemap.xml and sitemap indexes, RSS and Atom feeds and JSON Feed with lastmod and published dates; no key; becomes the default adapter when no native one is configured, so published-not-live (F-05), migration completeness (E-18) and orphaned pages work on Squarespace, Shopify, Joomla, Duda, Tilda, GoDaddy, Drupal, Ghost and the rest; the docs page lists which checks need a native adapter (drafts, field counts, members); tests: sitemap index with 3 children, gzip sitemaps, a feed with missing dates, a sitemap with stale lastmod (Sonnet, effort high; spec C-13) |
 | C-01 | `c/wordpress` | todo | | | WordPress adapter on ContentAdapter: docs/integrations/wordpress.md with a freelancer example, the contract suite plus the extra checks in the spec table (Sonnet, effort high) |
+| C-04 | `c/webflow` | todo | | | Webflow adapter on ContentAdapter: docs/integrations/webflow.md with a freelancer example, the contract suite plus the extra checks in the spec table (Sonnet, effort high) |
+| C-06 | `c/framer` | todo | | | Framer adapter on ContentAdapter: docs/integrations/framer.md with a freelancer example, the contract suite plus the extra checks in the spec table (Sonnet, effort high) |
+| C-05 | `c/wix` | todo | | | Wix adapter on ContentAdapter: docs/integrations/wix.md with a freelancer example, the contract suite plus the extra checks in the spec table (Sonnet, effort high) |
+| C-14 | `c/generic-api` | todo | | | Generic API adapter with recipes: one adapter for any headless CMS with a REST or GraphQL read API, driven by a small mapping in config (endpoint, auth header name with the value from an environment variable, pagination style, paths for id, type, slug or URL, updatedAt and the fields to fingerprint); GET and GraphQL queries only; recipes in docs/integrations/recipes/ for Storyblok, Payload, Ghost, Drupal JSON:API, Directus, Prismic, Hygraph, DatoCMS, Builder.io, Kontent.ai and Joomla's web services API, each a mapping file plus one recorded-response test; tests: offset, cursor and page-number pagination, a GraphQL recipe, an auth failure is could-not-check, a recipe with a wrong path fails config validation (exit 2) (spec marks it Opus: build it on Sonnet and list it under "Built on Sonnet, review"; spec C-14) |
+| C-15 | `c/git-content` | todo | | | Git content adapter: reads content kept in the repo (Markdown and MDX with front matter, JSON and YAML collections) for Decap CMS, Keystatic, Front Matter, Hugo, Jekyll, Eleventy, Astro content collections and Nuxt Content (shares code with C-03 TinaCMS); configured content folders and a slug or permalink pattern resolve URLs; published state from front matter (draft: true, publishDate); local path or GitHub read only; tests: an Astro collection, a Hugo site with drafts, a Jekyll permalink pattern (Sonnet, effort high; spec C-15) |
+| C-16 | `c/adapter-generator` | todo | | | Adapter generator: `pnpm new:adapter <name>` (like K07's check generator) scaffolds a native adapter, its docs page, a recorded-response fixture and the contract-suite entry; CONTRIBUTING gains "writing an adapter" and "writing a recipe"; test: the generated adapter passes the contract suite unchanged with its fixture (Sonnet, effort medium; spec C-16) |
+| C-12 | `c/builders` | todo | | | Squarespace and other builders without a content API adapter on ContentAdapter: docs/integrations/builders.md with a freelancer example, the contract suite plus the extra checks in the spec table (Sonnet, effort high) |
 | C-02 | `c/strapi` | todo | | | Strapi adapter on ContentAdapter: docs/integrations/strapi.md with a freelancer example, the contract suite plus the extra checks in the spec table (Sonnet, effort high) |
 | C-03 | `c/tina` | todo | | | TinaCMS adapter on ContentAdapter: docs/integrations/tina.md with a freelancer example, the contract suite plus the extra checks in the spec table (Sonnet, effort high) |
-| C-04 | `c/webflow` | todo | | | Webflow adapter on ContentAdapter: docs/integrations/webflow.md with a freelancer example, the contract suite plus the extra checks in the spec table (Sonnet, effort high) |
-| C-05 | `c/wix` | todo | | | Wix adapter on ContentAdapter: docs/integrations/wix.md with a freelancer example, the contract suite plus the extra checks in the spec table (Sonnet, effort high) |
-| C-06 | `c/framer` | todo | | | Framer adapter on ContentAdapter: docs/integrations/framer.md with a freelancer example, the contract suite plus the extra checks in the spec table (Sonnet, effort high) |
 | C-07 | `c/contentful` | todo | | | Contentful adapter on ContentAdapter: docs/integrations/contentful.md with a freelancer example, the contract suite plus the extra checks in the spec table (Sonnet, effort high) |
-| C-08 | `c/storyblok` | todo | | | Storyblok adapter on ContentAdapter: docs/integrations/storyblok.md with a freelancer example, the contract suite plus the extra checks in the spec table (Sonnet, effort high) |
-| C-09 | `c/payload` | todo | | | Payload adapter on ContentAdapter: docs/integrations/payload.md with a freelancer example, the contract suite plus the extra checks in the spec table (Sonnet, effort high) |
-| C-10 | `c/ghost` | todo | | | Ghost adapter on ContentAdapter: docs/integrations/ghost.md with a freelancer example, the contract suite plus the extra checks in the spec table (Sonnet, effort high) |
-| C-11 | `c/drupal` | todo | | | Drupal adapter on ContentAdapter: docs/integrations/drupal.md with a freelancer example, the contract suite plus the extra checks in the spec table (Sonnet, effort high) |
-| C-12 | `c/builders` | todo | | | Squarespace and other builders without a content API adapter on ContentAdapter: docs/integrations/builders.md with a freelancer example, the contract suite plus the extra checks in the spec table (Sonnet, effort high) |
 | F-05 | `f/published-not-live` | todo | | | Published but not live: published-not-live, live-page-missing, unpublished-still-live for every adapter with published() (needs C-00 and Sanity) |
 | F-06 | `f/backups` | todo | | | Backups and restore readiness: gaugeline backups <site>, read status only (Supabase, Sanity, a configured export folder) |
 | F-07 | `f/init` | todo | | | gaugeline init <site>: detect the stack from public signals and write a starting config with evidence comments (needs C-00 and the adapters) |
@@ -423,5 +449,4 @@ Branches the spec marks "model Opus" that were built on Sonnet from G23 onward a
 | G39 | `08/adr-rendered-checks` | todo | | | Decision record: rendered checks in a container Spec update 10 Nov: also covers an opt-in Firecrawl renderer (`--renderer firecrawl`, the user's own FIRECRAWL_API_KEY; always maxAge 0; capped by `--max-rendered-pages`; self-hosted Firecrawl is AGPL, so Gaugeline only calls its API). Phase 08: nothing to do before then. |
 | N16 | `08/rendered-a11y-tools` | todo | | | After rendered checks: accessibility basics and tools that compute  [new: from your projects] [P5] |
 | G40 | `08/adr-later-work` | todo | | | Decision record: listings, creator platforms, self-hosting |
-| X54 | `feat/54-desktop` | todo | | | A desktop app, if someone needs one  [from guide 2] [P5] |
 | G38 | `08/content-adapter-interface` | superseded | | | A content adapter interface, with one second CMS (done as C-00; skip) |
