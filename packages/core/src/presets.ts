@@ -42,3 +42,15 @@ export const LISTING_CHECKS: readonly string[] = Object.freeze([
  * caller asked for it by id.
  */
 export const ASSERTION_CHECKS: readonly string[] = Object.freeze(["data-assertion-failed"]);
+
+/**
+ * The switch, availability and capacity checks: they compare the site with the state in
+ * gaugeline.switches.json, and run only when that file is there. Without it they are not run (so not
+ * passed either), unless a caller asked for one by id: that one says it could not check.
+ */
+export const SWITCH_CHECKS: readonly string[] = Object.freeze([
+  "switch-off-still-linked",
+  "switch-page-wrong",
+  "item-unavailable-shown",
+  "capacity-zero-not-sold-out",
+]);

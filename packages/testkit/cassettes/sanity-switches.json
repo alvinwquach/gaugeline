@@ -1,0 +1,142 @@
+{
+  "interactions": [
+    {
+      "body": "{\"ms\":4,\"query\":\"*[_type == \\\"siteSettings\\\"][0].features.preOrders\",\"result\":false}",
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://mar1gold.api.sanity.io/v2021-10-21/data/query/production?query=*%5B_type%20%3D%3D%20%22siteSettings%22%5D%5B0%5D.features.preOrders&perspective=published"
+    },
+    {
+      "body": "{\"ms\":4,\"query\":\"*[_type == \\\"siteSettings\\\"][0].features.walkUps\",\"result\":true}",
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://mar1gold.api.sanity.io/v2021-10-21/data/query/production?query=*%5B_type%20%3D%3D%20%22siteSettings%22%5D%5B0%5D.features.walkUps&perspective=published"
+    },
+    {
+      "body": "{\"ms\":4,\"query\":\"*[_type == \\\"siteSettings\\\"][0].features.closedFlag\",\"result\":\"Closed\"}",
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://mar1gold.api.sanity.io/v2021-10-21/data/query/production?query=*%5B_type%20%3D%3D%20%22siteSettings%22%5D%5B0%5D.features.closedFlag&perspective=published"
+    },
+    {
+      "body": "{\"ms\":4,\"query\":\"*[_type == \\\"siteSettings\\\"][0].features.notSet\",\"result\":null}",
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://mar1gold.api.sanity.io/v2021-10-21/data/query/production?query=*%5B_type%20%3D%3D%20%22siteSettings%22%5D%5B0%5D.features.notSet&perspective=published"
+    },
+    {
+      "body": "{\"ms\":4,\"query\":\"*[_type == \\\"siteSettings\\\"][0].features.note\",\"result\":\"maybe later\"}",
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://mar1gold.api.sanity.io/v2021-10-21/data/query/production?query=*%5B_type%20%3D%3D%20%22siteSettings%22%5D%5B0%5D.features.note&perspective=published"
+    },
+    {
+      "body": "{\"ms\":4,\"query\":\"*[_type == \\\"siteSettings\\\"][0].eightySixed\",\"result\":[\"Pozole rojo\",\"Tamales de rajas\"]}",
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://mar1gold.api.sanity.io/v2021-10-21/data/query/production?query=*%5B_type%20%3D%3D%20%22siteSettings%22%5D%5B0%5D.eightySixed&perspective=published"
+    },
+    {
+      "body": "{\"ms\":4,\"query\":\"*[_type == \\\"siteSettings\\\"][0].emptyList\",\"result\":null}",
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://mar1gold.api.sanity.io/v2021-10-21/data/query/production?query=*%5B_type%20%3D%3D%20%22siteSettings%22%5D%5B0%5D.emptyList&perspective=published"
+    },
+    {
+      "body": "{\"ms\":4,\"query\":\"*[_type == \\\"siteSettings\\\"][0]._id\",\"result\":\"siteSettings\"}",
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://mar1gold.api.sanity.io/v2021-10-21/data/query/production?query=*%5B_type%20%3D%3D%20%22siteSettings%22%5D%5B0%5D._id&perspective=published"
+    },
+    {
+      "body": "{\"ms\":4,\"query\":\"*[_type == \\\"siteSettings\\\"][0].capacity.remaining\",\"result\":0}",
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://mar1gold.api.sanity.io/v2021-10-21/data/query/production?query=*%5B_type%20%3D%3D%20%22siteSettings%22%5D%5B0%5D.capacity.remaining&perspective=published"
+    },
+    {
+      "body": "{\"ms\":4,\"query\":\"*[_type == \\\"siteSettings\\\"][0].capacity.left\",\"result\":38}",
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://mar1gold.api.sanity.io/v2021-10-21/data/query/production?query=*%5B_type%20%3D%3D%20%22siteSettings%22%5D%5B0%5D.capacity.left&perspective=published"
+    },
+    {
+      "body": "{\"ms\":4,\"query\":\"*[_type == \\\"siteSettings\\\"][0].capacity.bad\",\"result\":\"plenty\"}",
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://mar1gold.api.sanity.io/v2021-10-21/data/query/production?query=*%5B_type%20%3D%3D%20%22siteSettings%22%5D%5B0%5D.capacity.bad&perspective=published"
+    },
+    {
+      "body": "{\"ms\":4,\"query\":\"*[_type == \\\"noSuchType\\\"][0].x\",\"result\":null}",
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://mar1gold.api.sanity.io/v2021-10-21/data/query/production?query=*%5B_type%20%3D%3D%20%22noSuchType%22%5D%5B0%5D.x&perspective=published"
+    },
+    {
+      "body": "{\"ms\":4,\"query\":\"*[_type == \\\"noSuchType\\\"][0]._id\",\"result\":null}",
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://mar1gold.api.sanity.io/v2021-10-21/data/query/production?query=*%5B_type%20%3D%3D%20%22noSuchType%22%5D%5B0%5D._id&perspective=published"
+    },
+    {
+      "body": "{\"ms\":4,\"query\":\"*[_type == \\\"siteSettings\\\"][0].notAList\",\"result\":\"Pozole rojo\"}",
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://mar1gold.api.sanity.io/v2021-10-21/data/query/production?query=*%5B_type%20%3D%3D%20%22siteSettings%22%5D%5B0%5D.notAList&perspective=published"
+    },
+    {
+      "body": "{\"error\":{\"description\":\"Insufficient permissions; permission \\\"read\\\" required\",\"type\":\"insufficientPermissionsError\"}}",
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "method": "GET",
+      "status": 401,
+      "url": "https://pr1v4te0.api.sanity.io/v2021-10-21/data/query/production?query=*%5B_type%20%3D%3D%20%22siteSettings%22%5D%5B0%5D.features.preOrders&perspective=published"
+    }
+  ],
+  "name": "sanity-switches",
+  "recordedAt": "2026-11-10T00:00:00.000Z",
+  "version": 1
+}

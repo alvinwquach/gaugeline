@@ -77,6 +77,14 @@ const NEEDS_LIVE_STORES = new Set([
   // when the file holds assertions; confirmed in-process against a stand-in Postgres
   // (assert.test.ts) and a real throwaway one (core assertions/__tests__/examples.test.ts).
   "data-assertion-failed",
+  // Switches, the 86 list and capacity: they compare the site with Sanity and a database named in
+  // gaugeline.switches.json, and run only when the file is there; confirmed in-process against a
+  // recorded Sanity answer and a stand-in Postgres (core switches/__tests__/integration.test.ts,
+  // cli switches.test.ts).
+  "switch-off-still-linked",
+  "switch-page-wrong",
+  "item-unavailable-shown",
+  "capacity-zero-not-sold-out",
   // Public DNS: the built-bin run resolves nothing; confirmed in-process with a fake reader.
   "email-dmarc-missing",
   "email-dmarc-none",
