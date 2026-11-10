@@ -47,6 +47,8 @@ describe("LIMITS and Budget: unit", () => {
       draftRoutes: 4,
       downloadRoutes: 10,
       downloadPeekBytes: 1024,
+      routeProbes: 30,
+      routeProbeBytes: 65536,
       frameworkAddresses: 0,
       scripts: 15,
       structuredDataAddresses: 12,

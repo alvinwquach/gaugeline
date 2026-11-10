@@ -162,6 +162,34 @@ A link that carries its own signature and expiry (a signed link) is not asked, a
 straight to a file such as `/files/menu.pdf`: that is a static file, which the paid file checks
 cover.
 
+### Signed-in routes (a probing check)
+
+`gaugeline check <folder> --routes --base <address>` has two parts. The first reads your repository: the
+route files of a Next.js app folder and the middleware file beside it, as text, on your computer. Nothing
+is run and nothing is sent anywhere. The second asks the running site at `--base`, and only with
+`--owner-consent` (or a `gaugeline.consent.json`): each route your code treats as signed-in only is asked
+for its page as a visitor with no session would. **Run it only on sites you own or have permission to
+test.** Without consent nothing is asked.
+
+What it sends, per route:
+
+- One `GET`. No cookie, no `Authorization` header, no `Referer`, no query string, and not the secret of a
+  protected preview. The headers are the user agent, `Accept` and `Accept-Encoding: identity`. There is no
+  option to send a session, a cookie or a token, and an address with a user name or a password in it is
+  refused.
+- Never a `POST`, never a form, never a login, never an id it was not given. A route with a dynamic
+  segment is not asked.
+- Redirects are not followed, so a sign-in page is not requested.
+- At most 30 routes per run, in sorted order, and at most 5 requests at a time. The rest are named as
+  not probed.
+
+What it reads: the status, a few headers (the redirect target and the content length), and at most 64 KB
+of the body, which is searched for a sign-in form (a password field) and thrown away. A page is never
+stored, logged, printed or put in a report, and neither is a redirect target's query string. What a
+finding shows is the route's path, the status, the size of the page and the name of your own route file.
+
+How it finds the routes and what it can't see: [Routes that are hidden, not protected](protected-routes.md).
+
 ### Orders, emails and webhooks (delivery and platform)
 
 `gaugeline delivery --paid --sent` and `gaugeline platform --webhooks` read two accounts you own,

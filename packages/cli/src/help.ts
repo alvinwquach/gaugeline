@@ -29,7 +29,12 @@ export type Command = (typeof COMMANDS)[number];
 export const HELP: Record<string, string> = {
   "": renderHelp(FLAGS, "check", {
     usage: "gaugeline <address> [options]",
-    summary: "Check a website the way search engines and visitors see it. Read-only.",
+    summary: [
+      "Check a website the way search engines and visitors see it. Read-only.",
+      "gaugeline check <folder> --routes --base <address> --owner-consent reads the",
+      "Next.js routes in a folder and asks the running site for each signed-in one with",
+      "no session (a probing check: only on sites you own or have permission to test).",
+    ].join("\n"),
     footer: "Exit codes: 0 ran, 1 --ci with a fix-first finding, 2 could not run",
   }),
   launch: renderHelp(FLAGS, "launch", {

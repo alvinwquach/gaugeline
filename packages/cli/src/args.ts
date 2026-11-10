@@ -229,6 +229,19 @@ export type ParsedArgs =
       verbose: boolean;
       quiet: boolean;
     }
+  | {
+      kind: "routes";
+      /** gaugeline check <folder> --routes: the folder with the Next.js app directory, as typed. */
+      dir: string;
+      /** --base, as an address (a bare domain is https). */
+      base: string;
+      ownerConsent: boolean;
+      allowPrivate: boolean;
+      json: boolean;
+      ci: boolean;
+      verbose: boolean;
+      quiet: boolean;
+    }
   | ({ kind: "run"; address: string; input: string; deprecatedUsed: FlagDef[] } & RunFlags)
   | { kind: "error"; message: string; hint?: string; verbose: boolean };
 
@@ -303,10 +316,12 @@ export function parseCliArgs(
                                   : argv[0] === "query"
                                     ? "query"
                                     : COMMAND;
-  const given = command === COMMAND ? argv : argv.slice(1);
-  // --annotate and --progress take an optional file name: alone, or before another flag, the default.
+  // "check" is the default command, and may be written out: gaugeline check ./src --routes --base ...
+  const given = command === COMMAND ? (argv[0] === "check" ? argv.slice(1) : argv) : argv.slice(1);
+  // --annotate, --progress, --nav and --routes take an optional value: alone, or before another
+  // flag, the empty one (--routes with no glob reads the folder's routes, see the routes mode below).
   const rest = given.map((a, i) =>
-    (a === "--annotate" || a === "--progress" || a === "--nav") &&
+    (a === "--annotate" || a === "--progress" || a === "--nav" || a === "--routes") &&
     (given[i + 1] === undefined || given[i + 1]?.startsWith("-"))
       ? `${a}=`
       : a,
@@ -991,6 +1006,68 @@ export function parseCliArgs(
       };
     return { kind: "view", file: positionals[0] ?? "", verbose };
   }
+  // gaugeline check <folder> --routes --base <address>: --routes with no glob reads the folder's
+  // Next.js routes and asks the running site for each signed-in one. With a glob it keeps its
+  // earlier meaning (route files for the download probe, run against the address given).
+  const routeValues = Array.isArray(values.routes)
+    ? values.routes
+    : typeof values.routes === "string"
+      ? [values.routes]
+      : [];
+  if (command === COMMAND && routeValues.some((r) => r === "")) {
+    if (routeValues.some((r) => r !== ""))
+      return {
+        kind: "error",
+        message:
+          "--routes is given both with and without a glob. Use --routes alone to read a folder's routes, or --routes <glob> to find download routes.",
+        hint: UNKNOWN_FLAG_HINT,
+        verbose,
+      };
+    if (typeof values.base !== "string" || values.base.trim() === "")
+      return {
+        kind: "error",
+        message:
+          "gaugeline check <folder> --routes needs the address of the running site to ask: --base https://example.com",
+        hint: "For example: gaugeline check ./src --routes --base https://example.com --owner-consent",
+        verbose,
+      };
+    if (positionals.length !== 1)
+      return {
+        kind: "error",
+        message:
+          positionals.length === 0
+            ? "gaugeline check --routes needs the folder with your Next.js app directory: gaugeline check ./src --routes --base https://example.com"
+            : `Expected one folder, got ${positionals.length}: ${positionals.join(", ")}.`,
+        hint: "The folder holds app/ (or src/app/): for example ./src or the project folder.",
+        verbose,
+      };
+    const base = parseAddress(values.base.trim());
+    if (!base.ok)
+      return {
+        kind: "error",
+        message: `--base: ${base.reason}`,
+        hint: "Type the running site's address like https://example.com or http://127.0.0.1:3000.",
+        verbose,
+      };
+    return {
+      kind: "routes",
+      dir: positionals[0] ?? "",
+      base: base.url.href,
+      ownerConsent: values["owner-consent"] === true,
+      allowPrivate: values["allow-private"] === true,
+      json: values.json === true,
+      ci: values.ci === true,
+      verbose,
+      quiet: values.quiet === true,
+    };
+  }
+  if (typeof values.base === "string" && command === COMMAND)
+    return {
+      kind: "error",
+      message: "--base is read by gaugeline plan, and by gaugeline check <folder> --routes.",
+      hint: "Add --routes (with no glob) to ask a running site for the routes in a folder.",
+      verbose,
+    };
   if (positionals.length === 0) {
     return { kind: "error", message: "No address given.", hint: USAGE_HINT, verbose };
   }

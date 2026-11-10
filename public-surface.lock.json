@@ -19,6 +19,7 @@
     "check": [
       "allow-private",
       "allow-secret-key",
+      "base",
       "ci",
       "discord",
       "dns",

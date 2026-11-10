@@ -1,0 +1,9 @@
+{
+  "/appointments": { "status": 302, "location": "/login?next=/appointments" },
+  "/account/payments": { "status": 401 },
+  "/account/invoices": {
+    "status": 200,
+    "headers": { "content-type": "text/html; charset=utf-8" },
+    "body": "<!doctype html><title>Invoices</title><h1>Hello there: your invoices</h1><p>Invented list for the Fernbank Physio fixture.</p>\n"
+  }
+}

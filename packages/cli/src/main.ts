@@ -116,6 +116,7 @@ import { runAds } from "./ads.js";
 import { runTags } from "./tags.js";
 import { runDeliveryCommand, runPlatformCommand } from "./delivery.js";
 import { runQuery } from "./query.js";
+import { runRoutes } from "./routes.js";
 import { formatRunAll, runAll, runAllExit } from "./run-all.js";
 import { readSites, selectSites, SITES_FILE } from "./sites.js";
 import { appendStepSummary, planStepSummary } from "./step-summary.js";
@@ -1026,6 +1027,25 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
     }
     case "error":
       throw new ConfigError(args.message, args.hint === undefined ? {} : { hint: args.hint });
+    case "routes": {
+      // A probing check (CLAUDE.md rule 14): off unless the owner agreed.
+      const cwd = deps.cwd ?? process.cwd();
+      const consent = args.ownerConsent
+        ? "--owner-consent"
+        : readConsent(cwd) !== undefined
+          ? CONSENT_CONFIG_FILE
+          : undefined;
+      return {
+        outcome: await runRoutes(args, io, {
+          cwd,
+          now: (deps.now ?? io.now ?? (() => new Date()))(),
+          ...(deps.fetcher ? { fetcher: deps.fetcher } : {}),
+          color: useColor(io.stdout, io.env ?? {}),
+          ...(consent === undefined ? {} : { consent }),
+        }),
+        ci: args.ci,
+      };
+    }
     case "run": {
       const env = io.env ?? {};
       const ci = args.ci;

@@ -146,6 +146,10 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "Visitors",
   ],
   "delivery-receipt-missing": ["Orders were paid and no receipt went out", "Sales & prices"],
+  "route-hidden-not-protected": [
+    "A page that should need a session is handed to anyone",
+    "Security & email",
+  ],
   "webhook-failing": ["A webhook endpoint is not receiving its events", "Sales & prices"],
   "cutover-canonical-host": ["The bare domain and www don't settle on one address", "Launch day"],
   "cutover-mail-changed": ["The domain's mail records changed at cutover", "Security & email"],
@@ -896,6 +900,12 @@ export const CHECK_TEXT: Readonly<
     "A customer who paid and got nothing has no receipt, no download link and no booking confirmation, and does not know whether the payment worked. Your application's log says the send succeeded, because it records the attempt; the mail provider records what it accepted and sent.",
     "Open the mail provider's dashboard on the days listed and find the sends that failed or never happened, then fix the code or the sender setup behind them. Send the missing emails yourself from the provider: Gaugeline never resends.",
     "paid Checkout Sessions (payment_status paid, not refunded in full) and the emails Resend lists as sent (not bounced, failed, cancelled, queued, scheduled or suppressed) in the same window are compared in memory with a Map<string, number> keyed by the SHA-256 of the lower-cased recipient, one count per key (a multiset), dropped when the comparison returns; an order takes one email from its recipient's count, and the orders left over are the finding, so unmatched is never negative and more emails than orders is a pass; matching is by recipient across the window, not by day, so an email sent to a different address than the order's shows as unmatched; the evidence is two counts and UTC days, never an address, a name, an order id or a payload",
+  ],
+  "route-hidden-not-protected": [
+    "A route your code treats as signed-in only returns its page when asked with no session.",
+    "A route that is missing from the navigation is not a protected route. If the page answers a stranger, anyone who guesses or finds the address (a search engine, a shared link, a guess at /account) can read what a signed-in customer would see: invoices, bookings, names.",
+    "Check the session inside the page or the route handler, before it renders or reads anything, and answer 401, 403 or a redirect to sign in when there is none. A middleware matcher that does not list the route does not protect it, so add the route to the matcher or check in the page itself.",
+    "probing check, off without --owner-consent: discoverRoutes reads the Next.js app directory (every page and route file is a path, route groups in parentheses are dropped, a bracketed segment is dynamic); a route expects a session when a middleware that looks like a gate has a matcher covering it, or its own file or a layout above it calls auth, getServerSession, cookies or currentUser (the root layout aside); only routes that expect a session and are not dynamic are asked, at most 30, in sorted order, at most 5 at once, each with one anonymous GET (no cookie, no Authorization, no Referer, no query string, redirects not followed); the body is read up to 65,536 bytes to tell a sign-in form (a password field) from a page and is never kept; 401 and 403 are refused, 404 is not found, a redirect to another address is a redirect to sign in, 200 without a sign-in form is handed over (high, or low when the body is empty), anything else is could not check; the routes held in an array in path order and the answers in a Map from path to answer, since answers arrive out of order",
   ],
   "webhook-failing": [
     "An enabled Stripe webhook endpoint has events older than an hour that were never delivered.",
