@@ -142,6 +142,12 @@ beforeAll(() => {
     join(temp, "packages/core/node_modules"),
     "junction",
   );
+  // The testkit's fake Sanity runs queries with groq-js, which is installed in its own node_modules.
+  symlinkSync(
+    join(repoRoot, "packages/testkit/node_modules"),
+    join(temp, "packages/testkit/node_modules"),
+    "junction",
+  );
 }, 60_000);
 afterAll(() => rmSync(temp, { recursive: true, force: true }));
 const node = (args: string[], cwd = temp) =>

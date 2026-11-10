@@ -78,6 +78,15 @@ export interface SchemaField {
   reference: boolean;
 }
 
+/** What a schema extract holds: the document types, and the named type declarations (slug, shared objects) they refer to. */
+export interface SchemaFile {
+  documents: SchemaShape;
+  /** Type declaration name to its type node, as the extract wrote it. */
+  declarations: Map<string, unknown>;
+  /** Document type to each field's type node, as the extract wrote it: what `--suggest` reads the kinds from. */
+  nodes: Map<string, Map<string, unknown>>;
+}
+
 /** Document type to the fields it declares (system fields such as `_id` are left out). */
 export type SchemaShape = Map<string, Map<string, SchemaField>>;
 
@@ -117,6 +126,11 @@ function isReference(value: unknown): boolean {
  * declarations (shared object types) are skipped: only documents are written to.
  */
 export function readSchema(text: string, where = "schema.json"): SchemaShape {
+  return parseSchemaExtract(text, where).documents;
+}
+
+/** The same read as readSchema, and the named type declarations too. */
+export function parseSchemaExtract(text: string, where = "schema.json"): SchemaFile {
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);
@@ -134,32 +148,47 @@ export function readSchema(text: string, where = "schema.json"): SchemaShape {
   };
   if (!Array.isArray(parsed)) return bad();
   const schema: SchemaShape = new Map();
+  const declarations = new Map<string, unknown>();
+  const nodes = new Map<string, Map<string, unknown>>();
   for (const item of parsed) {
     if (!isRecord(item) || typeof item.type !== "string") return bad();
+    if (item.type === "type" && typeof item.name === "string")
+      declarations.set(item.name, item.value);
     if (item.type !== "document") continue;
     if (typeof item.name !== "string" || !isRecord(item.attributes)) return bad();
     const fields = new Map<string, SchemaField>();
+    const values = new Map<string, unknown>();
     for (const [name, attr] of Object.entries(item.attributes)) {
       if (name.startsWith("_") || !isRecord(attr)) continue;
       fields.set(name, { required: attr.optional !== true, reference: isReference(attr.value) });
+      values.set(name, attr.value);
     }
     schema.set(item.name, fields);
+    nodes.set(item.name, values);
   }
-  return schema;
+  return { documents: schema, declarations, nodes };
 }
 
-/** The schema file at `path`. A file that is not there is a ConfigError that names --schema. */
-export async function readSchemaFile(path: string): Promise<SchemaShape> {
+/** The schema file at `path`, with its type declarations. `what` names what needs it, in the message. */
+export async function readSchemaFileFull(
+  path: string,
+  what = "Checking mutations",
+): Promise<SchemaFile> {
   let text: string;
   try {
     text = await readFile(path, "utf8");
   } catch (cause) {
     throw new ConfigError(`The schema file ${path} could not be read. Point --schema at it.`, {
-      hint: `Checking mutations needs the schema. ${SCHEMA_HINT} Gaugeline makes no request to fetch it.`,
+      hint: `${what} needs the schema. ${SCHEMA_HINT} Gaugeline makes no request to fetch it.`,
       cause,
     });
   }
-  return readSchema(withoutBom(text), path);
+  return parseSchemaExtract(withoutBom(text), path);
+}
+
+/** The schema file at `path`. A file that is not there is a ConfigError that names --schema. */
+export async function readSchemaFile(path: string): Promise<SchemaShape> {
+  return (await readSchemaFileFull(path)).documents;
 }
 
 // ---------------------------------------------------------------------------------------------

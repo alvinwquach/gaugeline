@@ -277,7 +277,8 @@ export const typeCounts = guarded(
   },
 );
 
-const TYPE_NAME = /^[A-Za-z][A-Za-z0-9_-]{0,63}$/;
+/** What a document type is called: a letter, then letters, digits, underscores and hyphens. */
+export const TYPE_NAME = /^[A-Za-z][A-Za-z0-9_-]{0,63}$/;
 const FIELD_NAME = /^[A-Za-z_][A-Za-z0-9_]{0,63}$/;
 
 const FIELD_HINTS: AskHints = {

@@ -1,4 +1,5 @@
 import { Readable } from "node:stream";
+import { evaluate, parse } from "groq-js";
 import type { Transport, TransportRequest } from "@gaugeline/core";
 
 /**
@@ -30,6 +31,13 @@ export interface FakeSanity {
   types: Record<string, FakeSanityType>;
   /** The documents of each type, for the duplicates query. A type not listed has none. */
   documents?: Record<string, FakeDocument[]>;
+  /**
+   * Whole invented documents of each type. Any query that is not one of the fixed shapes below is
+   * run over them with groq-js, the way Sanity would answer it (published documents only when the
+   * request asks for that perspective), so a query the tests send is checked for being GROQ and for
+   * what it counts. Nothing here was recorded from a dataset.
+   */
+  content?: Record<string, Record<string, unknown>[]>;
   /** A private dataset: 401 unless the request carries this token (or any token when true). */
   token?: string | true;
 }
@@ -67,6 +75,24 @@ const COUNT =
 
 const DUPES = /^\*\[_type == ("(?:[^"\\]|\\.)*")\]\{_id,"slug":slug\.current,title\}$/;
 
+/** Answer a GROQ query over the invented documents, as Sanity's query API does: `{ ms, query, result }`. */
+function evaluated(
+  content: Record<string, Record<string, unknown>[]>,
+  url: URL,
+): ReturnType<typeof json> {
+  const query = url.searchParams.get("query") ?? "";
+  const published = url.searchParams.get("perspective") === "published";
+  const dataset = Object.values(content)
+    .flat()
+    .filter((d) => !(published && String(d._id).startsWith("drafts.")));
+  return Promise.resolve()
+    .then(async () => (await evaluate(parse(query), { dataset })).get())
+    .then(
+      (result) => json(200, { ms: 3, query, result }),
+      () => json(400, { error: { description: "unsupported query", type: "queryParseError" } }),
+    );
+}
+
 export function sanityCountsTransport(spec: FakeSanity, seen: SeenSanityRequest[] = []): Transport {
   return (url: URL, req: TransportRequest) => {
     const query = url.searchParams.get("query") ?? "";
@@ -93,6 +119,7 @@ export function sanityCountsTransport(spec: FakeSanity, seen: SeenSanityRequest[
         .map((d) => ({ _id: d._id, slug: d.slug ?? null, title: d.title ?? null }));
       return json(200, { ms: 3, query, result: rows });
     }
+    if (counts.length === 0 && spec.content !== undefined) return evaluated(spec.content, url);
     if (counts.length === 0 || !query.startsWith("{") || !query.endsWith("}"))
       return json(400, { error: { description: "unsupported query", type: "queryParseError" } });
     const result: Record<string, number> = {};

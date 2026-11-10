@@ -265,7 +265,9 @@ between the markers; CI fails when it differs from the flag table.
 | `--dupes`                 | With query: name documents that share a slug or a title (reads each one's id, slug and title)                  |                      | 0.2.0 |
 | `--mutations`             | With query: check the writes in your code against the schema (parsed, never sent)                              |                      | 0.2.0 |
 | `--graphql`               | With query: check the GraphQL in your code against the schema (an endpoint may follow; Sanity's when none)     |                      | 0.2.0 |
-| `--schema <value>`        | With query: the schema file (sanity schema extract for --mutations; SDL or introspection JSON for --graphql)   |                      | 0.2.0 |
+| `--suggest`               | With query: write a GROQ query for a type from the schema and document counts (needs --type)                   |                      | 0.2.0 |
+| `--type <value>`          | With query --suggest: the document type to write the query for, as in your schema                              |                      | 0.2.0 |
+| `--schema <value>`        | With query: the schema file (sanity schema extract; SDL or introspection JSON for --graphql)                   |                      | 0.2.0 |
 | `--webhooks`              | Read Stripe's webhook endpoints and the events that were never delivered                                       |                      | 0.2.0 |
 | `-i`, `--interactive`     | Open a terminal view of the results to move through, filter and dismiss findings                               |                      | 0.2.0 |
 | `--slack <value>`         | Send a summary to this Slack incoming webhook (or set GAUGELINE_SLACK_WEBHOOK)                                 |                      | 0.2.0 |
