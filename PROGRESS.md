@@ -143,8 +143,10 @@ The todo rows below follow this order and override spec order where they differ:
 
 1. Finish phase 04 in spec order (R-01, the docs requirements, closes it). 2. Phase 05 in spec order.
 3. F-01 renewals and expiry, F-02 ownership and handoff report, F-03 hosting cost watch, F-04 new-client audit
-   pack, then E-18 migration completeness and E-14 trackers on sensitive pages (promoted from the expansion
-   roadmap: build them as written there, with full tests, docs and a changeset).
+   pack, then E-18 migration completeness and E-14 trackers on sensitive pages, then E-11 script and header
+   baseline, E-12 vulnerable libraries in served JavaScript and F-09 the advisory check (E-11, E-12, E-14 and
+   E-18 are promoted from the expansion roadmap: build them as written there, with full tests, docs and a
+   changeset).
 4. Every CMS: C-00 the content adapter interface (replaces G38), then C-01 WordPress, C-02 Strapi, C-03 TinaCMS,
    C-04 Webflow, C-05 Wix, C-06 Framer, C-07 Contentful, C-08 Storyblok, C-09 Payload, C-10 Ghost, C-11 Drupal,
    C-12 hosted builders without a content API.
@@ -335,6 +337,9 @@ Branches the spec marks "model Opus" that were built on Sonnet from G23 onward a
 | F-04 | `f/audit-pack` | todo | | | New-client audit pack, built on the work order (G28, G28a) (freelancer branch; Sonnet, effort medium) |
 | E-18 | `09/migration-completeness` | todo | | | Migration completeness: every item of the old site exists on the new one, redirects in one hop, keeps title, canonical and structured data type (promoted from the expansion roadmap; build as written there; Sonnet) Spec update 10 Nov: record Firecrawl's crawl endpoint as an optional URL source for the old site, behind the same FIRECRAWL_API_KEY. |
 | E-14 | `09/sensitive-trackers` | todo | | | Trackers on sensitive pages: inventory tracker IDs and scripts on pages with forms or sensitive paths; report, never judge legality (promoted from the expansion roadmap; Sonnet) |
+| E-11 | `09/script-baseline` | todo | | | Passive security part 1: inventory every third-party script (host, path, SRI), Content-Security-Policy contents and security headers; diff between runs and flag a new script or a loosened header; flag known-bad hosts from a data file (polyfill.io first). Promoted from the expansion roadmap; build as written there (Sonnet) |
+| E-12 | `09/served-libraries` | todo | | | Passive security part 2: detect library versions in served JavaScript (banner comments, version strings, known file names), compare against a vulnerability data file with sources; minified bundles without a version are could-not-check. Promoted from the expansion roadmap (Sonnet) |
+| F-09 | `f/advisory` | todo | | | The advisory check: `gaugeline advisory <site> <id-or-package>` and an MCP tool; resolves CVE/GHSA ids through the public OSV API (no key; or a package and range given directly), gathers outside-only evidence, gives likely-affected, likely-not-affected or cannot-tell with the evidence lines, and a client-ready Markdown note. Looks only. Needs E-11 and E-12; uses C-01 and F-07 data once they merge (Sonnet, effort high) |
 | C-00 | `c/adapter-interface` | todo | | | The content adapter interface (replaces G38): ContentAdapter extracted from the Sanity code (G23a, G27), Sanity ported with no behaviour change, a shared contract test suite, `adapters:` in config. Spec marks model Opus: build on Sonnet and list under Built on Sonnet, review |
 | C-01 | `c/wordpress` | todo | | | WordPress adapter on ContentAdapter: docs/integrations/wordpress.md with a freelancer example, the contract suite plus the extra checks in the spec table (Sonnet, effort high) |
 | C-02 | `c/strapi` | todo | | | Strapi adapter on ContentAdapter: docs/integrations/strapi.md with a freelancer example, the contract suite plus the extra checks in the spec table (Sonnet, effort high) |
