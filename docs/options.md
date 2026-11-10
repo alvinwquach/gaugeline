@@ -65,9 +65,9 @@ Options:
                                  you may test
       --routes <value>           With --owner-consent, find download routes in
                                  route files matching this glob (repeatable)
-      --since <value>            Compare with this site's last run and save this
-                                 one; the only value is last
-                                 (.gaugeline/last-run/)
+      --since <value>            Page check: compare with the last run (the only
+                                 value is last). delivery: the window to read,
+                                 such as 7d
   -i, --interactive              Open a terminal view of the results to move
                                  through, filter and dismiss findings
       --slack <value>            Send a summary to this Slack incoming webhook
@@ -259,7 +259,10 @@ between the markers; CI fails when it differs from the flag table.
 | `--dns`                   | Also read the domain's mail records (SPF and DMARC) from DNS                                                   |                      | 0.2.0 |
 | `--owner-consent`         | Run the probing checks, which ask routes for what they protect with no login; only on sites you may test       |                      | 0.2.0 |
 | `--routes <value>`        | With --owner-consent, find download routes in route files matching this glob (repeatable)                      |                      | 0.2.0 |
-| `--since <value>`         | Compare with this site's last run and save this one; the only value is last (.gaugeline/last-run/)             |                      | 0.2.0 |
+| `--since <value>`         | Page check: compare with the last run (the only value is last). delivery: the window to read, such as 7d       |                      | 0.2.0 |
+| `--paid`                  | Count the orders paid in Stripe in the window; with --sent, compare them with the emails                       |                      | 0.2.0 |
+| `--sent`                  | Count the emails Resend says it sent in the window; with --paid, compare them with the orders                  |                      | 0.2.0 |
+| `--webhooks`              | Read Stripe's webhook endpoints and the events that were never delivered                                       |                      | 0.2.0 |
 | `-i`, `--interactive`     | Open a terminal view of the results to move through, filter and dismiss findings                               |                      | 0.2.0 |
 | `--slack <value>`         | Send a summary to this Slack incoming webhook (or set GAUGELINE_SLACK_WEBHOOK)                                 |                      | 0.2.0 |
 | `--discord <value>`       | Send an embed to this Discord webhook (or set GAUGELINE_DISCORD_WEBHOOK)                                       |                      | 0.2.0 |
@@ -350,6 +353,32 @@ page check (`gaugeline <address>`) and `gaugeline launch`; every other command r
 code 2. The file may contain page content, so do not commit it. What is in it, how it is redacted and
 cut to a size limit, when it can fail and how its own versioned schema will change are on
 [Privacy and safety](privacy.md#saving-the-requests-save-requests).
+
+### The delivery and platform commands
+
+Two commands read accounts you own instead of a site. Neither takes an address, and both are read only:
+every request is a `GET`, the keys come from the environment and never reach a log, a finding or a
+report, and what is printed is counts, hosts and days, never a name, an address, an order or a payload.
+
+```sh
+npx gaugeline delivery --paid --sent --since 7d
+npx gaugeline platform --webhooks
+```
+
+- `gaugeline delivery --paid --sent [--since 7d]` counts the orders paid in Stripe (`STRIPE_API_KEY`)
+  and the emails Resend says it sent (`RESEND_API_KEY`) in the window, and reports paid orders with no
+  email (`delivery-receipt-missing`). Either flag alone prints that side's count. `--since` takes `7d`
+  (the default), `24h` or a date such as `2026-11-01`, and anything else is exit 2. The page check's
+  `--since last` is a different use of the same flag and is only for the page check.
+- `gaugeline platform --webhooks` reads Stripe's webhook endpoints and the events that were never
+  delivered, and reports an enabled endpoint with events older than an hour still waiting
+  (`webhook-failing`) and a disabled endpoint (`webhook-disabled`).
+- Both take `--json` (the schema 2 result and nothing else), `--ci` (exit 1 for a "Fix this first"
+  finding) and `--allow-secret-key`. A missing or refused key is exit 2 and names the variable.
+
+What they read, what keys to make, and how the match is made: [Paid downloads and
+delivery](delivery.md#paid-and-the-receipt-never-went-out). What they send:
+[Privacy and safety](privacy.md#orders-emails-and-webhooks-delivery-and-platform).
 
 ### Probing checks (--owner-consent and --routes)
 

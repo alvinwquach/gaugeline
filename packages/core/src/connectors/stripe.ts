@@ -83,7 +83,8 @@ export function findTestPublishableKeys(text: string): string[] {
   return [...new Set([...text.matchAll(TEST_PUBLISHABLE)].map((m) => m[0]))];
 }
 
-const CREATE_RESTRICTED = "Create a restricted key that can read products and prices";
+/** What a restricted key has to be able to read, for the message that refuses a secret key. */
+const DEFAULT_NEEDS = "products and prices";
 
 /**
  * Decide what to do with STRIPE_API_KEY before anything is requested. Returns the notices to show
@@ -91,7 +92,10 @@ const CREATE_RESTRICTED = "Create a restricted key that can read products and pr
  * ConfigError (the CLI exits 2) unless `allowSecretKey` turns the refusal into a notice. No
  * message here contains any part of the key.
  */
-export function guardStripeKey(env: Env, options: { allowSecretKey: boolean }): string[] {
+export function guardStripeKey(
+  env: Env,
+  options: { allowSecretKey: boolean; needs?: string; steps?: string },
+): string[] {
   const key = env[STRIPE_API_KEY];
   if (typeof key !== "string" || key.trim() === "") return [];
   switch (classifyStripeKey(key)) {
@@ -99,7 +103,7 @@ export function guardStripeKey(env: Env, options: { allowSecretKey: boolean }): 
       return [];
     case "secret-test":
       return [
-        `${STRIPE_API_KEY} is a Stripe test-mode secret key. It is used, because it can only touch test data, but a restricted key that can read products and prices is the better habit.`,
+        `${STRIPE_API_KEY} is a Stripe test-mode secret key. It is used, because it can only touch test data, but a restricted key that can read ${options.needs ?? DEFAULT_NEEDS} is the better habit.`,
       ];
     case "secret-live":
       return refuseSecret(options);
@@ -111,15 +115,20 @@ export function guardStripeKey(env: Env, options: { allowSecretKey: boolean }): 
   }
 }
 
-function refuseSecret(options: { allowSecretKey: boolean }): string[] {
+function refuseSecret(options: {
+  allowSecretKey: boolean;
+  needs?: string;
+  steps?: string;
+}): string[] {
+  const needs = options.needs ?? DEFAULT_NEEDS;
   if (options.allowSecretKey)
     return [
-      `${STRIPE_API_KEY} is a Stripe secret key and --allow-secret-key is set, so it is used. Gaugeline only reads, but a restricted key that can read products and prices is safer: use one and drop the flag.`,
+      `${STRIPE_API_KEY} is a Stripe secret key and --allow-secret-key is set, so it is used. Gaugeline only reads, but a restricted key that can read ${needs} is safer: use one and drop the flag.`,
     ];
   throw new ConfigError(
-    `${STRIPE_API_KEY} is a Stripe secret key, which can do far more than read. ${CREATE_RESTRICTED}, set ${STRIPE_API_KEY} to it and run again.`,
+    `${STRIPE_API_KEY} is a Stripe secret key, which can do far more than read. Create a restricted key that can read ${needs}, set ${STRIPE_API_KEY} to it and run again.`,
     {
-      hint: "The steps are in docs/products-and-prices. To use the secret key anyway, pass --allow-secret-key.",
+      hint: `The steps are in ${options.steps ?? "docs/products-and-prices"}. To use the secret key anyway, pass --allow-secret-key.`,
     },
   );
 }

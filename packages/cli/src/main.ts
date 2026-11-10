@@ -114,6 +114,7 @@ import {
 import { adsEngine } from "./ads-engine.js";
 import { runAds } from "./ads.js";
 import { runTags } from "./tags.js";
+import { runDeliveryCommand, runPlatformCommand } from "./delivery.js";
 import { formatRunAll, runAll, runAllExit } from "./run-all.js";
 import { readSites, selectSites, SITES_FILE } from "./sites.js";
 import { appendStepSummary, planStepSummary } from "./step-summary.js";
@@ -206,6 +207,10 @@ export interface Deps {
   deprecated?: ReadonlyMap<string, { since: string; removeIn: string; use?: string }>;
   /** The run's clock, for date checks. Tests pass a fixed one. */
   now?: () => Date;
+  /** `gaugeline delivery` and `platform`: how a wait for Retry-After is made. Tests pass one that does not wait. */
+  sleep?: (ms: number) => Promise<void>;
+  /** `gaugeline delivery`: how many days Resend is taken to keep sent emails. Tests pass a short one. */
+  retentionDays?: number;
   /** Where gaugeline.schema.json is looked for. Defaults to the current directory. */
   cwd?: string;
   /** Opens the written report. Defaults to the system browser; tests pass a fake. */
@@ -926,6 +931,27 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
     case "tags":
       return {
         outcome: await runTags(args, io, { ...(deps.fetcher ? { fetcher: deps.fetcher } : {}) }),
+        ci: args.ci,
+      };
+    case "delivery":
+      return {
+        outcome: await runDeliveryCommand(args, io, {
+          now: (deps.now ?? io.now ?? (() => new Date()))(),
+          ...(deps.fetcher ? { fetcher: deps.fetcher } : {}),
+          color: useColor(io.stdout, io.env ?? {}),
+          ...(deps.sleep ? { sleep: deps.sleep } : {}),
+          ...(deps.retentionDays ? { retentionDays: deps.retentionDays } : {}),
+        }),
+        ci: args.ci,
+      };
+    case "platform":
+      return {
+        outcome: await runPlatformCommand(args, io, {
+          now: (deps.now ?? io.now ?? (() => new Date()))(),
+          ...(deps.fetcher ? { fetcher: deps.fetcher } : {}),
+          color: useColor(io.stdout, io.env ?? {}),
+          ...(deps.sleep ? { sleep: deps.sleep } : {}),
+        }),
         ci: args.ci,
       };
     case "assert":
