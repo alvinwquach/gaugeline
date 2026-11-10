@@ -112,6 +112,9 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "plan-duplicate-address": ["Two rows in the plan share one address", "Launch day"],
   "printed-dead": ["A printed address doesn't land on a page", "Launch day"],
   "printed-wrong-destination": ["A printed address lands somewhere it shouldn't", "Launch day"],
+  "printful-unsynced": ["A fulfillment product has variants that cannot be made", "Sales & prices"],
+  "stripe-archived": ["A website product is archived in checkout", "Sales & prices"],
+  "stripe-missing": ["A website product is missing from checkout", "Sales & prices"],
   "price-mismatch": ["Website price disagrees with checkout", "Sales & prices"],
   "plan-archived": ["The page sells a plan that is archived in checkout", "Sales & prices"],
   "plan-interval-mismatch": [
@@ -262,6 +265,9 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   ],
   "plan-keyword-overlap": ["One page's primary keyword is another page's secondary", "Launch day"],
   "printed-chain": ["A printed address takes more than two redirects", "Launch day"],
+  "printful-missing": ["On the website, not in fulfillment", "Sales & prices"],
+  "printful-orphan": ["In fulfillment, not on the website", "Sales & prices"],
+  "stripe-orphan": ["In checkout, not on the website", "Sales & prices"],
   "price-stored-twice": ["A price is stored in two systems", "Sales & prices"],
   "plan-missing-on-page": [
     "A subscription price in checkout has no plan on the page",
@@ -696,6 +702,24 @@ export const CHECK_TEXT: Readonly<
     "People scanned a code for one thing and got another, or a page they have to wait through.",
     "Point the printed address's redirect at the expected page, and make a short link redirect with a 301 rather than show its own page.",
     "The trail's final address against expectedDestination (host without www, path without trailing slash). A 200 with a meta refresh or a location assignment and no redirect is an interstitial",
+  ],
+  "printful-unsynced": [
+    "A Printful product matched to a product on your website has a variant that is not synced.",
+    "Printful cannot make an order for a variant whose design is not matched to a printable item, so a customer can pay for something that is never printed.",
+    "In Printful, open the product and finish syncing the variants listed, or remove them from the store and from the website.",
+    "a matched Printful product with at least one sync_variants entry whose synced is false; runs when Printful returned data; the variants are listed by SKU, or by id when there is none, at most 10 and then a count of the rest; an unmatched Printful product is not reported here; with Sanity not read it is reported from the Printful list alone",
+  ],
+  "stripe-archived": [
+    "The Stripe product matched to a product on your website is archived.",
+    "Stripe will not sell an archived product, so the page invites a purchase that checkout turns down.",
+    "Unarchive the product in Stripe if it is still on sale, or take it off the website if it is not.",
+    "a matched Stripe product with active false; runs when Stripe returned data; an archived Stripe product that nothing matches is not reported (it is not an orphan either); with Sanity not read it is reported from the Stripe list alone; one finding per product with its name and the Sanity and Stripe ids",
+  ],
+  "stripe-missing": [
+    "A product published on your website has no matching product in Stripe.",
+    "A product people can see but checkout does not know cannot be bought: the button fails, or the order never reaches you. That is lost money from the first visitor.",
+    "Create the product in Stripe, or save its Stripe id on the website product so the two are linked. If it is not for sale, unpublish it.",
+    "a published Sanity product that matchProducts paired with no Stripe product; runs only when both Sanity and Stripe returned data, so a Stripe that was not configured, refused the key or did not answer never makes a product missing; a Stripe that answered with no products at all makes every product missing, and the evidence says so; one finding per product with its name and ids",
   ],
   "price-mismatch": [
     "The price on your website (Sanity) is different from the price Stripe charges for the same product.",
@@ -1326,6 +1350,24 @@ export const CHECK_TEXT: Readonly<
     "Every hop is a wait on a phone, often on a weak signal, and one broken hop breaks the code.",
     "Redirect the printed address straight to its page.",
     "More than two 3xx in the trail; the trail is in the evidence",
+  ],
+  "printful-missing": [
+    "A product on your website has no matching product in Printful.",
+    "For something you print, nobody will make the order. For a ticket, a download or a service, that is expected and nothing needs fixing.",
+    "If the product should be printed, create it in Printful or save its Printful id on the website product. Otherwise leave it.",
+    "a published Sanity product that matchProducts paired with no Printful product; runs only when both Sanity and Printful returned data; low because most shops sell some products that are not printed; one finding per product with its name and id",
+  ],
+  "printful-orphan": [
+    "A Printful product is not linked to any product on your website.",
+    "It is probably a sample, a draft or a product that was taken off the website. It can still be ordered through Printful's own store.",
+    "Delete it in Printful if it is a leftover, or save its id on the website product it belongs to.",
+    "a Printful product in matchProducts' unmatchedPrintful; runs only when both Sanity and Printful returned data; one finding per product with its name and id",
+  ],
+  "stripe-orphan": [
+    "An active Stripe product is not linked to any product on your website.",
+    "It may be a payment link or an invoice item on purpose. If it is a leftover, it clutters reports and someone may sell it by mistake.",
+    "If it is meant to exist, leave it. If not, archive it in Stripe, or save its id on the website product it belongs to.",
+    "an active Stripe product in matchProducts' unmatchedStripe; archived ones are skipped; runs only when both Sanity and Stripe returned data, because with no website products read every Stripe product would be unmatched; one finding per product with its name and id",
   ],
   "price-stored-twice": [
     "The same price is saved on the Sanity product and on the matched Stripe product, and the two agree today.",

@@ -133,7 +133,7 @@ Ridgeline Strength Coaching sells a logo tee, a training hoodie, a steel water b
 - The **tote** has no saved IDs, but its SKU `rl-tote` equals Printful's `RL-TOTE` and Stripe's `sku` metadata, case aside.
 - The **water bottle** has nothing but a name. "Steel water bottle" matches "Steel Water Bottle!" in Stripe and in Printful, so both pairs are `name`, the weakest rule, and are said to be low confidence when a later check reports on them.
 - The **session pack** is not sold through Printful, which is fine: it has no Printful partner and nothing is reported against it here.
-- The **programme poster** has no partner anywhere. Printful holds a draft called "Programme poster (draft)", and because the names differ it is listed as unmatched rather than guessed; so is the **gift voucher** that exists only in Stripe. A leftover is not a finding by itself; checks for missing and orphaned products read these lists.
+- The **programme poster** has no partner anywhere. Printful holds a draft called "Programme poster (draft)", and because the names differ it is listed as unmatched rather than guessed; so is the **gift voucher** that exists only in Stripe. A leftover is not a finding by itself; the [missing, archived and orphaned product checks](#missing-archived-and-orphaned-products) read these lists.
 
 ## Reading Sanity
 
@@ -529,6 +529,121 @@ That is why a price finding quotes both numbers and stops there. A website that 
 Keys stay on your computer, are only read from environment variables, and are never printed or saved. If one system can't be reached, the rest of the check still runs.
 :::
 
+## Missing, archived and orphaned products
+
+Six checks look for products that exist in one system and not another, or exist and still cannot be sold or printed. They read what the matcher paired and left over ([above](#how-products-are-matched)); they make no request of their own.
+
+| Check               | Level          | It fires when                                                                                     |
+| ------------------- | -------------- | ------------------------------------------------------------------------------------------------- |
+| `stripe-missing`    | Fix this first | A product on the website has no product in Stripe, so checkout cannot sell it                     |
+| `stripe-archived`   | Fix this first | The Stripe product matched to a website product is archived                                       |
+| `printful-unsynced` | Fix this first | A matched Printful product has a variant that is not synced, so an order for it cannot be made    |
+| `stripe-orphan`     | Worth knowing  | An active Stripe product that no website product points to                                        |
+| `printful-missing`  | Worth knowing  | A website product has no product in Printful. This is expected for a digital product or a service |
+| `printful-orphan`   | Worth knowing  | A Printful product that no website product points to                                              |
+
+Why the levels differ: a published product nobody can buy is lost money today, so the three that hurt a customer are high. A leftover in Stripe may be a payment link on purpose, and a leftover in Printful is usually a sample, so the orphans and the missing Printful product are low.
+
+How they decide:
+
+- **One finding per product**, with its name and the ids from each system that has it (the Sanity `_id`, the Stripe `prod_` id, the Printful id). Nothing about customers, orders or prices is read or printed.
+- **The same order every time.** Findings follow the order Sanity lists its products, so two runs print the same list. Leftovers follow the order their own system listed them.
+- **An archived Stripe product that nothing matches is not an orphan.** It is archived on purpose or by accident, but it cannot be sold either way, and it is not on the website, so nothing is reported.
+- **A product can have one finding per system.** A tote that is archived in Stripe and has an unsynced variant in Printful gets `stripe-archived` and `printful-unsynced`.
+- **Unsynced variants are listed by SKU**, or by id when Printful has no SKU for them, at most 10; the rest are counted ("and 4 more").
+- **A new Stripe account is not a failed one.** If Stripe answered with no products at all, every website product is missing from checkout, and the finding says "Stripe returned zero products".
+
+### When one system is not connected
+
+A check runs only when the systems it needs returned data. A system that is not set up, refused its key or did not answer is not the same as a system with nothing in it, so Gaugeline never reports a product as missing because a connector failed. The run's notice says why the system gave nothing, and the other checks carry on.
+
+| What gave no data | What stops                                                                                          | What still runs                                                           |
+| ----------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Stripe            | `stripe-missing`, `stripe-archived`, `stripe-orphan`                                                | `printful-missing`, `printful-orphan`, `printful-unsynced`                |
+| Printful          | `printful-missing`, `printful-orphan`, `printful-unsynced`                                          | `stripe-missing`, `stripe-archived`, `stripe-orphan`                      |
+| Sanity            | `stripe-missing`, `stripe-orphan`, `printful-missing`, `printful-orphan` (nothing could be matched) | `stripe-archived` and `printful-unsynced`, on every product that was read |
+
+With no Sanity products, nothing is paired, so `stripe-archived` and `printful-unsynced` look at every Stripe and Printful product that was read and name it by its own id.
+
+### Example: a surf club's merch shop
+
+Lowtide Surf Club sells a logo tee, a hoodie, a tote, a swell poster and a downloadable wallpaper pack from a Next.js site on Sanity, with checkout in Stripe and the merch in Printful. Its freelancer linked each product by its saved id, then the club changed things on its own: the hoodie was archived in Stripe, the poster never got a Stripe product, one tote colour lost its design in Printful, and a surf lesson voucher and a sample sticker sheet were created in Stripe and Printful with no page. Against invented recordings of the three systems (`packages/testkit/cassettes/sanity-presence-surf.json`, `stripe-presence-surf.json` and `printful-presence-surf.json`), the six checks return:
+
+<!-- prettier-ignore -->
+```json title=Presence findings
+{
+  "findings": [
+    {
+      "check": "printful-unsynced",
+      "level": "high",
+      "product": "sanity:lowtide-tote",
+      "evidence": "\"Lowtide tote\" (Sanity lowtide-tote, Printful 7003): 1 of 2 variants is not synced, so an order for it cannot be made: LT-TOTE-B (matched by saved id)."
+    },
+    {
+      "check": "stripe-archived",
+      "level": "high",
+      "product": "sanity:lowtide-hoodie",
+      "evidence": "\"Lowtide hoodie\" (Sanity lowtide-hoodie, Stripe prod_LowHoodie) is archived in Stripe, so checkout will not sell it while the website still lists it (matched by saved id)."
+    },
+    {
+      "check": "stripe-missing",
+      "level": "high",
+      "product": "sanity:lowtide-poster",
+      "evidence": "\"Lowtide swell poster\" (Sanity lowtide-poster) is on the website but has no product in Stripe, so checkout cannot sell it."
+    },
+    {
+      "check": "printful-missing",
+      "level": "low",
+      "product": "sanity:wallpaper-pack",
+      "evidence": "\"Beach wallpaper pack\" (Sanity wallpaper-pack) has no product in Printful. That is expected for a digital product or anything you do not print; if this one should be printed, link it."
+    },
+    {
+      "check": "printful-orphan",
+      "level": "low",
+      "product": "printful:7005",
+      "evidence": "\"Sample sticker sheet\" (Printful 7005) is in Printful but no product on the website points to it. It may be a sample or a draft; if it is not, remove it or link it."
+    },
+    {
+      "check": "stripe-orphan",
+      "level": "low",
+      "product": "stripe:prod_LowVoucher",
+      "evidence": "\"Surf lesson voucher\" (Stripe prod_LowVoucher) is active in Stripe but no product on the website points to it. It may be a payment link on purpose; if it is not, archive it."
+    }
+  ],
+  "summary": [
+    "Sanity returned 5 products.",
+    "Stripe returned 6 products.",
+    "Printful returned 5 products."
+  ]
+}
+```
+
+- The **tote**'s second colour is not synced in Printful, so an order for it cannot be made.
+- The **hoodie** is archived in Stripe, though the website still lists it.
+- The **poster** has no Stripe product at all, so there is nothing for checkout to sell.
+- The **wallpaper pack** is digital and has no Printful product, which is expected. It is a low finding so nobody has to wonder whether it was missed.
+- The **voucher** and the **sample sheet** are leftovers in Stripe and in Printful. The archived "Lowtide tee 2024 print" in Stripe is not listed: it is archived and nothing links it.
+
+If Printful is down on the day of the run (it answers with an error, say), the Printful checks do not run and the three Stripe findings stay exactly as above:
+
+<!-- prettier-ignore -->
+```json title=Presence findings with Printful unreachable
+{
+  "checks": [
+    "stripe-archived",
+    "stripe-missing",
+    "stripe-orphan"
+  ],
+  "summary": [
+    "Sanity returned 5 products.",
+    "Stripe returned 6 products.",
+    "Printful was not read."
+  ]
+}
+```
+
+The outputs are asserted by `packages/core/src/products/__tests__/presence-docs.test.ts`.
+
 ## Subscription plans
 
 One-time prices are compared by the [price checks](#price-checks). A subscription has more to disagree about: how often it bills, whether the first days are free, and which plans exist at all. Five checks compare the plans your page shows with Stripe's recurring prices.
@@ -649,7 +764,7 @@ The five checks are built and tested against recorded responses, but `gaugeline 
 
 ## In this version: the connector interface
 
-The three systems above are read through one small interface, `Connector`. This version ships the interface, the runner, the key handling, the Sanity reader ([above](#reading-sanity)), the Stripe reader ([above](#reading-stripe)), the Printful reader ([above](#reading-printful)) and the [Shopify](/docs/sources/shopify) and [Square](/docs/sources/square) readers, which return the same catalogue shape. Nothing in a normal run requests Stripe, Printful, Shopify or Square yet. The [price checks](#price-checks) are in the library and in the checks reference; feeding them from a run of `gaugeline open` comes in a later version.
+The three systems above are read through one small interface, `Connector`. This version ships the interface, the runner, the key handling, the Sanity reader ([above](#reading-sanity)), the Stripe reader ([above](#reading-stripe)), the Printful reader ([above](#reading-printful)) and the [Shopify](/docs/sources/shopify) and [Square](/docs/sources/square) readers, which return the same catalogue shape. Nothing in a normal run requests Stripe, Printful, Shopify or Square yet. The [price checks](#price-checks) and the [presence checks](#missing-archived-and-orphaned-products) are in the library and in the checks reference; feeding them from a run of `gaugeline open` comes in a later version.
 
 A connector has an `id`, the names of the variables it needs (`envVars`), a `configured` test and a `read` that returns a list. It may also list variables it reads when they are set (`optionalEnvVars`), say which of its variables are keys (`secretEnvVars`, so only those are blanked in messages), and give advice (`advise`). `runConnectors` reads every configured connector at the same time and returns two things: `data`, the rows by connector id, and `notices`, one for every system that gave none, and any advice.
 
