@@ -45,16 +45,22 @@ export class ConnectorStatusError extends Error {
 /** "in 120 seconds" from a Retry-After in seconds, "after <date>" from a date or a reset time. */
 export function describeRetry(headers: Record<string, string>): string | undefined {
   const after = (headers["retry-after"] ?? "").trim();
-  if (/^\d{1,6}$/.test(after)) return `in ${after} second${after === "1" ? "" : "s"}`;
+  const seconds = retryAfterSeconds(headers);
+  if (seconds !== undefined) return `in ${seconds} second${seconds === 1 ? "" : "s"}`;
+  // Anything else made of digits and points is a malformed number of seconds, never a date.
+  if (/^[\d.]+$/.test(after)) return undefined;
   const stamp = after !== "" ? after : (headers["ratelimit-resettime"] ?? "").trim();
   const ms = Date.parse(stamp);
   return Number.isNaN(ms) ? undefined : `after ${new Date(ms).toISOString().replace(".000Z", "Z")}`;
 }
 
-/** Retry-After as whole seconds, or undefined (absent, a date, or anything else). */
+/**
+ * Retry-After as whole seconds, or undefined (absent, a date, or anything else). A decimal such as
+ * "2.0" (Shopify sends one) is seconds too, rounded up so a wait is never too short.
+ */
 export function retryAfterSeconds(headers: Record<string, string>): number | undefined {
   const after = (headers["retry-after"] ?? "").trim();
-  return /^\d{1,6}$/.test(after) ? Number(after) : undefined;
+  return /^\d{1,6}(?:\.\d{1,3})?$/.test(after) ? Math.ceil(Number(after)) : undefined;
 }
 
 export interface ConnectorRequest {

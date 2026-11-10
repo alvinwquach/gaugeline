@@ -1,0 +1,45 @@
+{
+  "interactions": [
+    {
+      "body": "{\"access_scopes\":[{\"handle\":\"read_products\"}]}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://ridgeline-coaching.myshopify.com/admin/oauth/access_scopes.json"
+    },
+    {
+      "body": "{\"shop\":{\"currency\":\"USD\"}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://ridgeline-coaching.myshopify.com/admin/api/2025-07/shop.json?fields=currency"
+    },
+    {
+      "body": "{\"products\":[{\"id\":7001,\"title\":\"Training hoodie\",\"handle\":\"training-hoodie\",\"status\":\"active\",\"vendor\":\"Ridgeline\",\"product_type\":\"Merch\",\"tags\":\"\",\"body_html\":\"<p>Invented copy.</p>\",\"variants\":[{\"id\":80011,\"product_id\":7001,\"title\":\"S\",\"price\":\"54.00\",\"sku\":\"RL-HOOD-S\",\"position\":1,\"compare_at_price\":null,\"inventory_policy\":\"deny\",\"inventory_management\":\"shopify\",\"inventory_quantity\":12,\"option1\":\"S\",\"barcode\":\"0000000000000\",\"grams\":500,\"weight\":0.5,\"weight_unit\":\"kg\",\"taxable\":true,\"created_at\":\"2026-01-05T09:00:00-08:00\",\"updated_at\":\"2026-11-01T09:00:00-08:00\"},{\"id\":80012,\"product_id\":7001,\"title\":\"M\",\"price\":\"54.00\",\"sku\":\"RL-HOOD-M\",\"position\":1,\"compare_at_price\":null,\"inventory_policy\":\"deny\",\"inventory_management\":\"shopify\",\"inventory_quantity\":3,\"option1\":\"M\",\"barcode\":\"0000000000000\",\"grams\":500,\"weight\":0.5,\"weight_unit\":\"kg\",\"taxable\":true,\"created_at\":\"2026-01-05T09:00:00-08:00\",\"updated_at\":\"2026-11-01T09:00:00-08:00\"},{\"id\":80013,\"product_id\":7001,\"title\":\"L\",\"price\":\"58.50\",\"sku\":\"RL-HOOD-L\",\"position\":1,\"compare_at_price\":null,\"inventory_policy\":\"deny\",\"inventory_management\":\"shopify\",\"inventory_quantity\":0,\"option1\":\"L\",\"barcode\":\"0000000000000\",\"grams\":500,\"weight\":0.5,\"weight_unit\":\"kg\",\"taxable\":true,\"created_at\":\"2026-01-05T09:00:00-08:00\",\"updated_at\":\"2026-11-01T09:00:00-08:00\"}],\"options\":[{\"name\":\"Size\",\"values\":[\"S\",\"M\",\"L\"]}],\"images\":[]},{\"id\":7002,\"title\":\"Month pass\",\"handle\":\"month-pass\",\"status\":\"active\",\"vendor\":\"Ridgeline\",\"product_type\":\"Merch\",\"tags\":\"\",\"body_html\":\"<p>Invented copy.</p>\",\"variants\":[{\"id\":80021,\"product_id\":7002,\"title\":\"Default Title\",\"price\":\"120.00\",\"sku\":\"RL-PASS-1M\",\"position\":1,\"compare_at_price\":null,\"inventory_policy\":\"deny\",\"inventory_management\":null,\"inventory_quantity\":null,\"option1\":\"Default Title\",\"barcode\":\"0000000000000\",\"grams\":500,\"weight\":0.5,\"weight_unit\":\"kg\",\"taxable\":true,\"created_at\":\"2026-01-05T09:00:00-08:00\",\"updated_at\":\"2026-11-01T09:00:00-08:00\"}],\"options\":[{\"name\":\"Size\",\"values\":[\"Default Title\"]}],\"images\":[]}]}",
+      "headers": {
+        "content-type": "application/json",
+        "link": "<https://ridgeline-coaching.myshopify.com/admin/api/2025-07/products.json?limit=250&fields=id%2Ctitle%2Chandle%2Cstatus%2Cvariants&page_info=eyJsYXN0X2lkIjo3MDAyLCJsYXN0X3ZhbHVlIjoiMTcifQ>; rel=\"next\""
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://ridgeline-coaching.myshopify.com/admin/api/2025-07/products.json?limit=250&fields=id,title,handle,status,variants"
+    },
+    {
+      "body": "{\"products\":[{\"id\":7003,\"title\":\"Intro session\",\"handle\":\"intro-session\",\"status\":\"active\",\"vendor\":\"Ridgeline\",\"product_type\":\"Merch\",\"tags\":\"\",\"body_html\":\"<p>Invented copy.</p>\",\"variants\":[{\"id\":80031,\"product_id\":7003,\"title\":\"Default Title\",\"price\":\"0.00\",\"sku\":\"RL-INTRO\",\"position\":1,\"compare_at_price\":null,\"inventory_policy\":\"continue\",\"inventory_management\":\"shopify\",\"inventory_quantity\":-2,\"option1\":\"Default Title\",\"barcode\":\"0000000000000\",\"grams\":500,\"weight\":0.5,\"weight_unit\":\"kg\",\"taxable\":true,\"created_at\":\"2026-01-05T09:00:00-08:00\",\"updated_at\":\"2026-11-01T09:00:00-08:00\"}],\"options\":[{\"name\":\"Size\",\"values\":[\"Default Title\"]}],\"images\":[]},{\"id\":7004,\"title\":\"Winter challenge\",\"handle\":\"winter-challenge\",\"status\":\"archived\",\"vendor\":\"Ridgeline\",\"product_type\":\"Merch\",\"tags\":\"\",\"body_html\":\"<p>Invented copy.</p>\",\"variants\":[{\"id\":80041,\"product_id\":7004,\"title\":\"Default Title\",\"price\":\"35.00\",\"sku\":\"RL-WINTER\",\"position\":1,\"compare_at_price\":null,\"inventory_policy\":\"deny\",\"inventory_management\":\"shopify\",\"inventory_quantity\":0,\"option1\":\"Default Title\",\"barcode\":\"0000000000000\",\"grams\":500,\"weight\":0.5,\"weight_unit\":\"kg\",\"taxable\":true,\"created_at\":\"2026-01-05T09:00:00-08:00\",\"updated_at\":\"2026-11-01T09:00:00-08:00\"}],\"options\":[{\"name\":\"Size\",\"values\":[\"Default Title\"]}],\"images\":[]}]}",
+      "headers": {
+        "content-type": "application/json",
+        "link": "<https://ridgeline-coaching.myshopify.com/admin/api/2025-07/products.json?limit=250&fields=id%2Ctitle%2Chandle%2Cstatus%2Cvariants&page_info=eyJkaXJlY3Rpb24iOiJwcmV2In0>; rel=\"previous\""
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://ridgeline-coaching.myshopify.com/admin/api/2025-07/products.json?limit=250&page_info=eyJsYXN0X2lkIjo3MDAyLCJsYXN0X3ZhbHVlIjoiMTcifQ&fields=id,title,handle,status,variants"
+    }
+  ],
+  "name": "shopify-shop",
+  "recordedAt": "2026-11-10T00:00:00.000Z",
+  "version": 1
+}
