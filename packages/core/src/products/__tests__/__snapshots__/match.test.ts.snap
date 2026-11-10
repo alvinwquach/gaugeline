@@ -1,0 +1,57 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`matchProducts: the coach's merch across the three recorded systems > groups them as recorded in the snapshot 1`] = `
+{
+  "ambiguous": [],
+  "groups": [
+    {
+      "printful": "5001",
+      "printfulTier": "saved-id",
+      "sanity": "ridgeline-tee",
+      "stripe": "prod_RidgeTee",
+      "stripeTier": "saved-id",
+    },
+    {
+      "printful": "5002",
+      "printfulTier": "metadata-id",
+      "sanity": "ridgeline-hoodie",
+      "stripe": "prod_RidgeHoodie",
+      "stripeTier": "metadata-id",
+    },
+    {
+      "printful": "5003",
+      "printfulTier": "name",
+      "sanity": "bottle-steel",
+      "stripe": "prod_RidgeBottle",
+      "stripeTier": "name",
+    },
+    {
+      "printful": "5004",
+      "printfulTier": "sku",
+      "sanity": "gym-tote",
+      "stripe": "prod_RidgeTote",
+      "stripeTier": "sku",
+    },
+    {
+      "printful": null,
+      "printfulTier": null,
+      "sanity": "session-pack",
+      "stripe": "prod_RidgePack",
+      "stripeTier": "metadata-id",
+    },
+    {
+      "printful": null,
+      "printfulTier": null,
+      "sanity": "programme-poster",
+      "stripe": null,
+      "stripeTier": null,
+    },
+  ],
+  "unmatchedPrintful": [
+    "5005",
+  ],
+  "unmatchedStripe": [
+    "prod_RidgeVoucher",
+  ],
+}
+`;
