@@ -24,7 +24,9 @@ Areas: `search`, `visitors`, `sales`, `leads`, `security`, `launch`. Severities:
 3. **A fixture site** (`packages/fixtures/sites/<id>/`): `index.html` shows the problem,
    `clean.html` does not. See CONTRIBUTING → Adding a fixture site.
 4. **The registration** in `packages/core/src/checks/index.ts`, kept sorted by id.
-5. **A changeset**: a minor bump with "New check: `<title>`."
+5. **A changeset**: a minor bump with "New check: `<title>`." The checks reference then shows "Since" the
+   next version for it; a release stamps the real one (see
+   [Migration guides, Since badges and the feed](/docs/contributing/migration-guides)).
 6. **The id** in `docs/check-ids.lock.json`. Ids are never reused: a retired id is refused.
 
 ## Before you open the pull request

@@ -16,7 +16,12 @@ export interface GateResult {
 }
 
 /** Generated files that do not count as a docs change. */
-const GENERATED_DOCS = new Set(["docs/changelog.data.json", "docs/changelog.md"]);
+const GENERATED_DOCS = new Set([
+  "docs/changelog.data.json",
+  "docs/changelog.md",
+  "docs/public/changelog.atom",
+  "docs/check-since.lock.json",
+]);
 
 export function isSource(path: string): boolean {
   return (
@@ -57,7 +62,12 @@ export function gate(input: GateInput): GateResult {
     problems.push("This changes what users see but no docs page changed.");
   }
   for (const c of input.changesets) {
-    const s = c.summary.trim();
+    // A "Migration: <slug>" line is metadata for the changelog, not part of the sentence.
+    const s = c.summary
+      .split(/\r?\n/)
+      .filter((l) => !/^\s*Migration:/.test(l))
+      .join("\n")
+      .trim();
     if (s.length < 12 || !s.endsWith(".")) {
       problems.push(
         `${c.file ?? "A changeset"}: the summary must be one full sentence of at least 12 characters ending with a full stop.`,

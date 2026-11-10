@@ -74,6 +74,10 @@ export const NAV: NavGroup[] = [
       { slug: "faq", title: "FAQ" },
     ],
   },
+  {
+    group: "Migrations",
+    pages: [{ slug: "migrations/node-22", title: "Node 22 and newer" }],
+  },
 ];
 
 /**
@@ -89,6 +93,7 @@ export const UNLISTED: NavPage[] = [
   { slug: "contributing/docs-first", title: "Docs first" },
   { slug: "contributing/adding-a-check", title: "Adding a check" },
   { slug: "contributing/docs-examples", title: "Tested docs examples" },
+  { slug: "contributing/migration-guides", title: "Migration guides, Since badges and the feed" },
   { slug: "known-findings", title: "Known findings on our own site" },
   { slug: "guides/ai-assistants", title: "How AI assistants read your site" },
   { slug: "guides/events", title: "How Gaugeline reads a venue calendar" },
