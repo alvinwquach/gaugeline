@@ -85,6 +85,13 @@ const NEEDS_LIVE_STORES = new Set([
   "switch-page-wrong",
   "item-unavailable-shown",
   "capacity-zero-not-sold-out",
+  // Data freshness: the checks run only with gaugeline.freshness.json; confirmed in-process against
+  // fixture pages, an injected clock and a stand-in Postgres (core checks/__tests__/freshness.test.ts,
+  // freshness/__tests__/integration.test.ts, cli freshness.test.ts).
+  "data-stale",
+  "data-no-stamp",
+  "data-behind-source",
+  "forecast-for-past-event",
   // Public DNS: the built-bin run resolves nothing; confirmed in-process with a fake reader.
   "email-dmarc-missing",
   "email-dmarc-none",

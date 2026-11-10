@@ -181,6 +181,7 @@ export {
   ASSERTION_CHECKS,
   EMAIL_PRESET,
   LAUNCH_PRESET,
+  FRESHNESS_CHECKS,
   LISTING_CHECKS,
   SWITCH_CHECKS,
 } from "./presets.js";
@@ -703,6 +704,31 @@ export type {
   SwitchesSettings,
 } from "./switches/index.js";
 export { sourcesRedactor } from "./assertions/index.js";
+export {
+  MAX_FORECAST_ITEMS,
+  MAX_SPOT_CHECKS,
+  createFreshness,
+  describeMonths,
+  exactPages,
+  freshnessConfigSchema,
+  freshnessReferenceProblems,
+  freshnessSources,
+  isActive,
+  matchesPage,
+  numberFrom,
+  parseDuration,
+  parseMoment,
+  parseTolerance,
+  usesSanity as freshnessUsesSanity,
+  within,
+} from "./freshness/index.js";
+export type {
+  FreshnessConfig,
+  FreshnessRule,
+  FreshnessSettings,
+  Freshness,
+  Moment,
+} from "./freshness/index.js";
 export { toMinor } from "./products/money.js";
 export { listingsConfigSchema } from "./listings/config.js";
 export type { ListingsConfig } from "./listings/config.js";

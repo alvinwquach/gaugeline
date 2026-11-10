@@ -80,6 +80,16 @@
     "tech": "each assertion is one SELECT that should return no rows, run through the read-only database connector (a statement classifier, BEGIN READ ONLY with a statement timeout and a 5,000 row cap, and the database role); any row is a finding with the assertion's own severity and title, and the evidence is its id, the row count and the allow-listed evidence columns of the first 20 rows; a query that could not run (database down, timeout, wrong evidence column) is could not check, never a pass"
   },
   {
+    "id": "data-stale",
+    "severity": "high",
+    "area": "Visitors",
+    "title": "The numbers on this page are older than they should be",
+    "what": "The page says when its data was last updated, and that time is older than the limit you set for it while the data is expected to move.",
+    "why": "A sync that stopped fails quietly: the page keeps showing last week's numbers, and nobody notices until a visitor or a customer does.",
+    "fix": "Find out why the sync stopped (the evidence says whether the source is just as old), or why the page is not rebuilt after it runs. Then check the stamp itself is generated from the data, not typed or built once.",
+    "tech": "for each rule with a stamp in gaugeline.freshness.json, the stamp is read from the page as sent, without JavaScript (the selector's datetime, content or named attribute, else its text; else the structured data property) in the stamp's own time zone, else the file's timeZone; it is older than maxAge only when it is older at every instant the stamp could mean (a date alone is a whole day, a time with no zone and no timeZone could be any zone, 3 hours ago is a span of an hour); the rule is checked only in the months of activeWhen, in the site's time zone, and a rule that is not active is listed as could not check, not passed; when the rule also has a source and the page is behind it by more than maxLag, data-behind-source reports that cause instead, so each cause has one finding; a stamp that cannot be read or is undecided is could not check; the evidence adds the Age and Cache-Control headers when a cache served the page"
+  },
+  {
     "id": "dataset-private-types",
     "severity": "high",
     "area": "Security & email",
@@ -720,6 +730,16 @@
     "tech": "<meta name=\"apple-itunes-app\" content=\"app-id=...\"> differs from every apps.apple.com/.../id<digits> link on the page"
   },
   {
+    "id": "data-behind-source",
+    "severity": "medium",
+    "area": "Visitors",
+    "title": "The page is behind the data it is built from",
+    "what": "The source (your database or CMS) has newer data than the page shows, or a figure on the page differs from the same figure in the source.",
+    "why": "The sync works but the visitor does not see it: a cache or a revalidation setting is serving an old copy, so fixing the sync would change nothing.",
+    "fix": "Look at how the page is rebuilt after the data changes: its revalidate time, an on-demand revalidation that the sync should call, or a CDN that keeps the old copy. The evidence shows the Age header when a cache served it.",
+    "tech": "for each rule with a source and maxLag in gaugeline.freshness.json, the newest time is read from the source (a one-row query or a Sanity field) and compared with the page's stamp: reported only when the page is older than the source by more than maxLag at every instant the stamp could mean; for each spot check (up to five per rule) the figure at the selector is compared with the source's figure for the page (a one-row query, or the row whose key column is the last part of the page's address) with exact decimal arithmetic and the tolerance given (an amount or a percentage of the source's figure); an unreadable source, stamp or figure is could not check; the evidence adds the Age and Cache-Control headers when a cache served the page"
+  },
+  {
     "id": "email-dmarc-missing",
     "severity": "medium",
     "area": "Security & email",
@@ -798,6 +818,16 @@
     "why": "Feed readers and aggregators time out or truncate large feeds, and frameworks such as Next.js do not cache responses over 2 MB, so every request rebuilds it.",
     "fix": "Limit the feed to recent items (20 to 50 is typical) and put a summary in each item instead of the full post.",
     "tech": "the feed response is larger than 2 MB (2,097,152 bytes)"
+  },
+  {
+    "id": "forecast-for-past-event",
+    "severity": "medium",
+    "area": "Visitors",
+    "title": "The page still shows a prediction for something that already happened",
+    "what": "A page lists a prediction, a pick or a preview whose event date is already past, and it does not show the result.",
+    "why": "A prediction for a finished game or a past night looks careless at best, and misleads at worst: visitors act on it and the page loses their trust the next time.",
+    "fix": "Remove the item or switch it to the result when the event ends. Generate the list from the schedule so an event leaves it by itself, and rebuild or revalidate the page after the result is in.",
+    "tech": "for each rule with a forecast in gaugeline.freshness.json that is active, each item matching forecast.item (up to 200 per page) has its date read from forecast.date inside it, its own datetime or named attribute, or a time element with a datetime inside it, or the page's Event structured data with the property named in forecast.jsonld; the event is past when it is past at every instant the date could mean (a date alone is over when the whole day is, in the site's time zone; a time is over after forecast.lasts, 3h by default); an item that contains forecast.settled already shows its result and is skipped; no items, a date that cannot be read or an item with no date is could not check; the evidence adds the Age and Cache-Control headers when a cache served the page"
   },
   {
     "id": "form-destination-changed",
@@ -1408,6 +1438,16 @@
     "why": "Copies of the page with tracking parameters can be treated as separate pages.",
     "fix": "Add a self-referencing canonical tag.",
     "tech": "no <link rel=\"canonical\">"
+  },
+  {
+    "id": "data-no-stamp",
+    "severity": "low",
+    "area": "Visitors",
+    "title": "A page of changing numbers does not say when they were updated",
+    "what": "A page under one of your freshness rules shows no update time at all, in the place you named or in its structured data.",
+    "why": "Without a stamp nobody can tell fresh numbers from stale ones, and neither can Gaugeline: a sync can stop and the page gives no sign.",
+    "fix": "Print the time the data was last updated on the page, from the same record the numbers come from (a time element with a datetime attribute, or dateModified in the structured data), then point the rule at it.",
+    "tech": "for each rule with a stamp in gaugeline.freshness.json that is active (in the months of activeWhen, in the site's time zone), the page as sent without JavaScript has no element matching the selector with a datetime, content, named attribute or text, and no property of that name in its structured data; a stamp that is there but cannot be read is not reported here (data-stale lists it as could not check); a rule that is not active is listed as could not check, not passed"
   },
   {
     "id": "dataset-public",

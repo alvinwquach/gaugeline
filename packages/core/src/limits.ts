@@ -31,7 +31,7 @@ export const LIMITS = Object.freeze({
   accessTables: 20,
   /** Addresses in hidden sections asked for their status and robots directives. */
   hiddenPages: 5,
-  /** Pages named in gaugeline.switches.json (the order page, the menu, the QR page), read with GET. */
+  /** Pages named in gaugeline.switches.json and gaugeline.freshness.json (the order page, the menu, the stats page), read with GET. */
   statePages: 16,
   /** Conventional Next.js draft and preview routes asked once each, with no secret. */
   draftRoutes: 4,

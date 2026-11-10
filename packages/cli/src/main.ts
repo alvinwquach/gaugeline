@@ -42,6 +42,8 @@ import {
   freezeEnv,
   databaseEnvVars,
   referenceProblems,
+  freshnessReferenceProblems,
+  freshnessUsesSanity,
   SANITY_ENV_VARS,
   usesSanity,
   LISTING_ENV_VARS,
@@ -116,8 +118,10 @@ import {
   readListingsConfig,
   readSourcesConfig,
   readSwitchesConfig,
+  readFreshnessConfig,
   SOURCES_CONFIG_FILE,
   SWITCHES_CONFIG_FILE,
+  FRESHNESS_CONFIG_FILE,
   readAppleExport,
   readHidden,
   readLanguageRules,
@@ -1042,6 +1046,27 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
             env: freezeEnv(io.env ?? {}, usesSanity(switchesConfig) ? SANITY_ENV_VARS : []),
           }
         : undefined;
+      // The freshness checks read the same places (Sanity, the named queries), and the same rule holds.
+      const freshnessConfig = readFreshnessConfig(deps.cwd ?? process.cwd());
+      if (freshnessConfig) {
+        const problems = freshnessReferenceProblems(freshnessConfig, sourcesConfig);
+        if (problems.length > 0)
+          throw new ConfigError(
+            `${FRESHNESS_CONFIG_FILE}: ${problems[0] ?? "a source is wrong"}.`,
+            {
+              hint: `Name the query in ${SOURCES_CONFIG_FILE} (see docs/guides/data-freshness).`,
+            },
+          );
+      }
+      const freshness = freshnessConfig
+        ? {
+            config: freshnessConfig,
+            env: freezeEnv(
+              io.env ?? {},
+              freshnessUsesSanity(freshnessConfig) ? SANITY_ENV_VARS : [],
+            ),
+          }
+        : undefined;
       const accessConfig = readAccess(deps.cwd ?? process.cwd());
       // Keys are read from the environment here and go only into request headers.
       const access = accessConfig ? resolveAccess(accessConfig, io.env ?? {}) : undefined;
@@ -1117,6 +1142,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         ...(listings ? { listings } : {}),
         ...(databases ? { databases } : {}),
         ...(switches ? { switches } : {}),
+        ...(freshness ? { freshness } : {}),
         ...(listingsConfig?.timeZone ? { expect: { timeZone: listingsConfig.timeZone } } : {}),
         ...(dns ? { dns } : {}),
       });

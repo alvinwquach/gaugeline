@@ -56,7 +56,7 @@ Each run samples a fixed amount and never more. The numbers live in one frozen o
 | Sanity datasets asked            | 2       |
 | Database tables counted          | 20      |
 | Hidden-section pages asked       | 5       |
-| Pages named in the switches file | 16      |
+| Pages in switches and freshness  | 16      |
 | Next.js draft routes asked       | 4       |
 | Framework addresses requested    | 0       |
 | Addresses inside structured data | 12      |
