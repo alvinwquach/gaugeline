@@ -173,10 +173,18 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     commands: ["query"],
   },
   {
+    name: "page",
+    type: "boolean",
+    description:
+      "With query: write a route (queries, types, page) from the schema and counts into --out (needs --type)",
+    since: "0.2.0",
+    commands: ["query"],
+  },
+  {
     name: "type",
     type: "string",
     description:
-      "With query --suggest: the document type to write the query for, as in your schema",
+      "With query --suggest or --page: the document type to write the query or the route for, as in your schema",
     since: "0.2.0",
     commands: ["query"],
   },
@@ -279,9 +287,10 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
   {
     name: "force",
     type: "boolean",
-    description: "Let --annotate replace a file that already exists",
+    description:
+      "Let --annotate (plan) or --page (query) replace files that already exist, never a folder or a link",
     since: "0.2.0",
-    commands: ["plan"],
+    commands: ["plan", "query"],
   },
   {
     name: "progress",
@@ -395,9 +404,10 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
   {
     name: "out",
     type: "string",
-    description: "Where to write the snapshot (default before.json)",
+    description:
+      "snapshot: the file to write (default before.json). query --page: the folder to write into",
     since: "0.2.0",
-    commands: ["snapshot"],
+    commands: ["snapshot", "query"],
   },
   {
     name: "before",
