@@ -29,3 +29,5 @@ export type {
   FakeProviders,
   SeenRequest,
 } from "./delivery-providers.js";
+export { COPPERHILL_COUNTS, sanityCountsTransport } from "./sanity-counts.js";
+export type { FakeSanity, FakeSanityType, SeenSanityRequest } from "./sanity-counts.js";
