@@ -16,11 +16,19 @@ export interface DestinationRow {
   findings: FindingRef[];
 }
 
+/**
+ * A page has a problem when a finding of high or medium level names it. A low note (some sizes sold
+ * out, an ad that lands on the home page) is listed on the page and does not count its spend.
+ */
+export function hasProblem(row: Pick<DestinationRow, "findings">): boolean {
+  return row.findings.some((f) => f.severity !== "low");
+}
+
 /** One currency's summary and table. Amounts of different currencies are never in the same one. */
 export interface CurrencyModel {
   currency: string | null;
   totalSpend: number;
-  /** The spend of the destinations that have at least one finding, each counted once. */
+  /** The spend of the destinations that have a problem (hasProblem), each counted once. */
   problemSpend: number;
   destinations: DestinationRow[];
 }
@@ -67,8 +75,8 @@ export function toAdsModel(result: Result, data: AdsData): AdsModel {
       known.add(d.url);
       return { url: d.url, ads: d.ads, spend: d.spend, findings: byUrl.get(d.url) ?? [] };
     });
-    const withProblems = destinations.filter((d) => d.findings.length > 0);
-    const problemOf = (d: DestinationRow) => (d.findings.length > 0 ? d.spend : 0);
+    const withProblems = destinations.filter(hasProblem);
+    const problemOf = (d: DestinationRow) => (hasProblem(d) ? d.spend : 0);
     destinations.sort(
       (a, b) =>
         problemOf(b) - problemOf(a) ||

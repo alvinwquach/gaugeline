@@ -1,4 +1,4 @@
-import type { Hop } from "../fetcher.js";
+import type { FetchErrorReason, Hop } from "../fetcher.js";
 
 /**
  * Do the campaign tags on an ad's link survive the click? The answer is read from the hop list the
@@ -212,6 +212,8 @@ export interface TagProbe {
   hops: Hop[];
   /** Why the trail stopped before its end, in a sentence. */
   error?: string;
+  /** What kind of failure it was, when the fetcher said (a FetchError). */
+  errorReason?: FetchErrorReason;
   ads: number;
   /** The spend behind this page in each currency, minor units. Never added together. */
   spend: { currency: string; amount: number }[];

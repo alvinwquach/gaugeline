@@ -32,7 +32,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     description: 'Exit 1 when a "Fix this first" finding is found',
     env: "CI",
     since: "0.1.0",
-    commands: ["check", "launch", "verify", "tags"],
+    commands: ["check", "launch", "verify", "tags", "ads"],
   },
   {
     name: "json",

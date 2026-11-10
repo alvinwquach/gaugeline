@@ -3,13 +3,15 @@ import { fileURLToPath } from "node:url";
 import { readAdsExport } from "@gaugeline/core";
 import { describe, expect, it } from "vitest";
 import { EXIT, main } from "../main.js";
-import { tapasSite } from "./helpers/ads-site.js";
+import { autumnSite, fixtureTransport } from "./helpers/ads-site.js";
 
 /**
  * docs/ad-landing-pages.md shows `npx gaugeline ads meta.csv` and what it prints. The docs runner
  * (pnpm docs:examples) points every example at a fixture site, and this command reads a file, so
- * this test runs the page's own command in the invented export's folder and compares the page's
- * Output block with what the CLI prints: first the line on stderr, then the lines on stdout.
+ * this test runs the page's own commands in the invented exports' folder and compares each Output
+ * block with what the CLI prints: first the lines on stderr, then the lines on stdout. The tapas
+ * bar's site is a stand-in that redirects the gift cards page and has taken the old menu down; the
+ * candle shop is the ad-shop fixture site, answered without a socket.
  */
 const ADS = fileURLToPath(new URL("../../../fixtures/ads/", import.meta.url));
 const page = readFileSync(
@@ -40,7 +42,10 @@ function examples(): Array<{ command: string; expected: string }> {
 
 describe("docs/ad-landing-pages.md", () => {
   it("has the example it describes", () => {
-    expect(examples().map((e) => e.command)).toEqual(["$ npx gaugeline ads meta.csv"]);
+    expect(examples().map((e) => e.command)).toEqual([
+      "$ npx gaugeline ads meta.csv",
+      "$ npx gaugeline ads shop.csv",
+    ]);
   });
 
   it("prints what the page says", async () => {
@@ -51,7 +56,12 @@ describe("docs/ad-landing-pages.md", () => {
       const code = await main(
         argv,
         { stdout: { write: (s) => out.push(s) }, stderr: { write: (s) => err.push(s) } },
-        { cwd: ADS, fetcher: { transport: tapasSite } },
+        {
+          cwd: ADS,
+          fetcher: {
+            transport: argv[1] === "shop.csv" ? fixtureTransport("ad-shop") : autumnSite,
+          },
+        },
       );
       expect(code).toBe(EXIT.ok);
       expect(`${err.join("")}${out.join("")}`.trimEnd()).toBe(e.expected);

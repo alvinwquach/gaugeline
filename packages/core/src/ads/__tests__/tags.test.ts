@@ -287,7 +287,7 @@ describe("checkAdLandingPages: the fixture site", () => {
       expect(f?.evidence).toContain(key);
     expect(f?.evidence).toContain("hop 1");
     expect(f?.evidence).toContain("10.00 USD");
-    expect(out.passed).toEqual([]);
+    expect(out.passed).not.toContain("campaign-fields-lost");
   });
 
   it("a 302 that keeps utm_* and drops gclid lists gclid only", async () => {
@@ -318,17 +318,19 @@ describe("checkAdLandingPages: the fixture site", () => {
       "ORIGIN/landing?utm_source=facebook",
       "ORIGIN/gone?utm_source=facebook",
     ]);
-    expect(out.findings).toEqual([]);
-    expect(out.passed).toEqual(["campaign-fields-lost"]);
+    // The 404 is the page check's to report (ad-dead-page); the tags themselves are fine.
+    expect(out.findings.map((f) => f.checkId)).toEqual(["ad-dead-page"]);
+    expect(out.passed).toContain("campaign-fields-lost");
     expect(out.probes.map((p) => p.hops.at(-1)?.status)).toEqual([200, 404]);
   });
 
   it("a trail that loops after keeping its tags is not a loss, and is not a pass either", async () => {
     const { out } = await run(["ORIGIN/loop-a?utm_source=facebook"]);
-    expect(out.findings).toEqual([]);
+    // A page that redirects in a loop does not load: that is ad-dead-page's finding.
+    expect(out.findings.map((f) => f.checkId)).toEqual(["ad-dead-page"]);
     expect(out.couldNotCheck).toHaveLength(1);
     expect(out.couldNotCheck[0]).toMatchObject({ id: "campaign-fields-lost" });
-    expect(out.passed).toEqual([]);
+    expect(out.passed).not.toContain("campaign-fields-lost");
   });
 
   it("an export with no tags on a link is tested with Gaugeline's own values, and the finding says so", async () => {
@@ -409,7 +411,8 @@ describe("checkAdLandingPages: the fixture site", () => {
     const out = await checkAdLandingPages(groupByDestination(ads([`${SHOP}/a?utm_source=x`])), {
       fetcher,
     });
-    expect(out.findings).toEqual([]);
+    // The tags could not be followed; that the page is unreachable is ad-dead-page's finding.
+    expect(out.findings.map((f) => f.checkId)).toEqual(["ad-dead-page"]);
     expect(out.passed).toEqual([]);
     expect(out.couldNotCheck).toEqual([
       expect.objectContaining({ id: "campaign-fields-lost", url: `${SHOP}/a` }),

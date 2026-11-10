@@ -16,12 +16,15 @@ $ npx gaugeline open --ads ads-export.csv   # the same, in the app
 
 ## What it checks
 
-| Check                  | What it means                                                                         |
-| ---------------------- | ------------------------------------------------------------------------------------- |
-| The page doesn't load  | Everyone clicking that ad lands on an error.                                          |
-| Campaign tags are lost | A redirect drops `utm_*`, `gclid` or `fbclid`, so the ad looks like it isn't working. |
-| Sold out               | On Shopify, the advertised product can't be bought right now.                         |
-| Theme placeholders     | The landing page still shows sample content.                                          |
+| Check                              | What it means                                                                         |
+| ---------------------------------- | ------------------------------------------------------------------------------------- |
+| The page doesn't load              | Everyone clicking that ad lands on an error.                                          |
+| Campaign tags are lost             | A redirect drops `utm_*`, `gclid` or `fbclid`, so the ad looks like it isn't working. |
+| The advertised product is sold out | On Shopify, the advertised product can't be bought right now.                         |
+| Theme placeholders                 | The landing page still shows sample content.                                          |
+
+Each landing page is asked for once. Shopify product pages cost one more request, for the product's
+stock. Gaugeline reports; it never pauses an ad, edits one or talks to an ads account.
 
 ## Export your ads
 
@@ -42,7 +45,7 @@ $ npx gaugeline ads meta.csv
 
 ```text title=Output
 Read 12 ads that go to 4 landing pages
-Following the campaign tags through 4 landing pages
+Checking 4 landing pages
 https://tapas-bar.example/happy-hour    5 ads  1204.50 USD
 https://tapas-bar.example/old-menu       1 ad   999.99 USD
 https://tapas-bar.example/book-a-table  3 ads   800.00 USD
@@ -50,15 +53,22 @@ https://tapas-bar.example/gift-cards    3 ads   150.75 USD
 
 ✗ Campaign tags are lost
     At hop 1, the 301 from https://tapas-bar.example/gift-cards to https://tapas-bar.example/shop/gift-cards drops utm_source, utm_medium, utm_campaign. 3 ads send people to this page, with 150.75 USD spent on it.
+✗ The page doesn't load
+    https://tapas-bar.example/old-menu answers 404. Everyone clicking an ad that links here lands on an error. 1 ad sends people to this page, with 999.99 USD spent on it.
+✓ placeholder-text
 
-1 to look at, 1 to fix first.
+2 to look at, 2 to fix first.
+
+1150.74 USD of 3155.24 USD went to pages with problems.
 ```
 
-The first two lines go to stderr, so a redirect (`> pages.txt`) keeps the four lines and what was found. Each
+The first two lines go to stderr, so a redirect (`> pages.txt`) keeps the four lines, what was found and the last line. Each
 line is a landing page, the number of ads that send people to it and what was spent on it, highest first
-and then by address. The 12 ads in this invented export go to four pages. Under them is what the checks found,
-with its spend, and nothing at all when they found nothing. Add `--json` for the result as JSON (schema 2).
-Add `--allow-private` to check a site on your own computer or network.
+and then by address. The 12 ads in this invented export go to four pages, and the owner took the old menu down in September. Under them is what the checks found,
+with its spend, and nothing at all when they found nothing. The last line says how much of the spend went to pages
+with problems (see Reading the summary). Add `--json` for the result as JSON (schema 2), `--ci` to exit 1 when
+something is wrong that you should fix first (a page that doesn't load, for one), and `--allow-private` to check
+a site on your own computer or network.
 
 ### Which columns it reads
 
@@ -154,9 +164,109 @@ Exit codes are as for a page check: 0 when it ran, 1 with `--ci` when tags were 
 not be followed. A link with no tags is followed with Gaugeline's own and the first line says so. Add
 `--allow-private` for an address on your own computer.
 
+## The page doesn't load
+
+Say the tapas bar's owner took the old menu page down in September and the ad that sent people to it is
+still running. Everyone who clicks it lands on an error, and the click is paid for.
+
+For each landing page Gaugeline looks at the answer it already got when it followed the redirects:
+
+- **404, 410 or any other 4xx or 5xx at the end of the trail** is a finding, and so is a request that failed
+  (the host does not exist, the connection was refused, the page timed out, the certificate is wrong, the
+  redirects loop or never end). The finding names the address, the status, the number of ads that send people
+  there and what was spent on it.
+- **A site that refuses automated readers** (401, 403, 429, a bot challenge page) is listed as not checked, not as
+  dead: the site may be fine, and Gaugeline cannot tell. The same goes for a store that is closed with a
+  password, and for an address on a private network, which Gaugeline will not ask for unless you add
+  `--allow-private`.
+- **A redirect to the home page** is not a dead page, but the ad no longer lands on what it advertised. Say a
+  retired product's address now redirects to the shop's front page. The page loads, so this is a low note,
+  "The ad no longer lands on a product", and it does not count towards the spend on pages with problems.
+
+To fix it, bring the page back or redirect its address to the page that replaced it, then check the ad's link.
+
+## Sold out
+
+An ad for a product that is out of stock is the cheapest way to lose money: every click is a person who wanted
+to buy. Gaugeline reads stock for **Shopify** product pages, with no key and no store login.
+
+A landing page counts as a Shopify product page when its address ends in `/products/<handle>` (a language folder
+or a collection may come before it) and its HTML carries Shopify's markers. A page under `/products/` on another
+platform is not asked about. For a product page Gaugeline makes one extra GET, to the product's public data at
+`/products/<handle>.js`, the same data the storefront's own pages use.
+
+- **Every variant is unavailable:** a finding, "The advertised product is sold out", with the variants named.
+- **Some variants are unavailable:** a low note listing them ("Medium, Extra large"). The product can still be
+  bought, so the note does not count towards the spend on pages with problems.
+- **The data cannot be read** (the store turned the endpoint off, it answers 404 or a web page, or the product
+  lists no variants): no finding. The check is listed as not checked, "stock could not be read", never as fine.
+
+The endpoint says whether a variant can be bought, not how many are left, so Gaugeline cannot warn that stock is
+low. Say a freelancer built a candle shop on Shopify and the owner runs a Meta campaign for the autumn range:
+
+```sh title=Terminal untested="Reads a file, not a site, so the docs runner cannot point it at a fixture. packages/cli/src/__tests__/ads-docs.test.ts runs this command against packages/fixtures/ads/shop.csv and the invented candle shop in packages/fixtures/sites/ad-shop, and compares the output with the block below."
+$ npx gaugeline ads shop.csv
+```
+
+```text title=Output
+Read 8 ads that go to 5 landing pages
+Checking 5 landing pages
+https://ember-oak.example/products/oat-candle      2 ads  550.00 USD
+https://ember-oak.example/products/linen-wick-set  2 ads  350.00 USD
+https://ember-oak.example/products/retired-mug     2 ads  290.00 USD
+https://ember-oak.example/products/amber-tin        1 ad  200.00 USD
+https://ember-oak.example/products/sample-tin       1 ad   50.00 USD
+
+✗ The page doesn't load
+    https://ember-oak.example/products/retired-mug answers 404. Everyone clicking an ad that links here lands on an error. 2 ads send people to this page, with 290.00 USD spent on it.
+✗ The advertised product is sold out
+    All 2 variants of oat-candle are sold out (Small, Large), so nobody who clicks an ad that links to https://ember-oak.example/products/oat-candle can buy it. 2 ads send people to this page, with 550.00 USD spent on it.
+! The page still has placeholder text
+    1 placeholder: "Lorem ipsum". 1 ad sends people to this page, with 50.00 USD spent on it.
+· Some options of the advertised product are sold out
+    2 of 4 variants of linen-wick-set are sold out: Medium, Extra large. The rest can still be bought. 2 ads send people to this page, with 350.00 USD spent on it.
+✓ campaign-fields-lost
+
+4 to look at, 2 to fix first.
+
+890.00 USD of 1440.00 USD went to pages with problems.
+```
+
+The amber tin has stock and no findings. To fix a sold-out ad, pause it or point it at a product that is in
+stock, and turn it back on when the product returns. Apps like AdStockGuard and Guardified do this for you
+(see the note at the end of this page); Gaugeline only tells you which ad needs it.
+
+## Theme placeholders
+
+A new Shopify, Sanity or Next.js theme often ships with sample text: "Lorem ipsum dolor sit amet", "[Insert
+your headline]", a page called "Untitled". Gaugeline runs the same placeholder check as a page check on the page
+each ad lands on, and the finding adds the number of ads and the spend behind it. It is a "Fix soon" finding
+(medium). There is no second detector: what the page check calls placeholder text is what counts here.
+
 ## Reading the summary
 
 Ads that share a destination are checked once and their spend is added together, so the total tells you how much went to pages with problems.
+
+The last line of the report is one sentence for each currency in the export:
+
+```text
+890.00 USD of 1440.00 USD went to pages with problems.
+```
+
+- **The first amount** is the spend on pages with at least one "Fix this first" or "Fix soon" finding. A page with
+  three problems counts once. A low note (some sizes sold out, an ad that lands on the home page) is listed under
+  the report but its page does not count.
+- **The second amount** is everything the export spent in that currency. Spend is added as whole cents (or yen),
+  never as decimals, so the totals are exact, and an export in two currencies gets two sentences: they are never
+  added together.
+- **A clean export** prints no sentence. The app says that no spend went to pages with problems.
+- **Pages with a problem sort first**, highest spend first, in the app's table and in the summary's data. The
+  summary also holds, for each page, its number of ads, its spend and the ids of the checks that named it. The
+  terminal prints the sentence; the app API carries the data beside the result (`checked.ads.summary`), because
+  `--json` stays the result at schema 2.
+
+The summary is only as good as the spend column: a blank amount counts as 0, so a page with no spend recorded
+never adds to the number.
 
 ## In the app
 
@@ -183,23 +293,18 @@ https://tapas-bar.example/book-a-table    3    $800.00  None
 ```
 
 - **Sorted by spend on pages with problems**, highest first. Pages with nothing wrong follow, by
-  how much was spent on them. **Only pages with problems** hides the rest. When none has a problem
+  how much was spent on them. **Only pages with problems** hides the rest. A page with only a low note
+  (some sizes sold out) is not a page with a problem: its note is listed, its spend is not counted. When none has a problem
   the summary says no spend went to pages with problems, and the table still lists every page.
 - **Each finding opens in Problems**, with why it matters and how to fix it, and can be copied as a
   note: for the old menu, the note to send the freelancer's client is one click.
 - **Nothing is uploaded.** The app reads the file once, from the path you typed, and shows only the
-  file's name. Ad names and amounts stay on your computer: the only requests are one GET or HEAD for each
-  landing page, through the same fetcher as any other check, five at a time at most.
+  file's name. Ad names and amounts stay on your computer: the only requests are one GET for each
+  landing page, and one more for the stock of a Shopify product page, through the same fetcher as any other
+  check, five at a time at most.
 - **Money is exact.** Spend is added as whole cents (or yen) and formatted at the end. If the export
   mixes currencies, each gets its own summary and table; they are never added together.
 - **Download the report** is offered when the ads command makes one for the run, and hidden otherwise.
-
-::: warning Not all four checks are here yet
-Campaign tags are lost is the first of the four checks in the table above. The page doesn't load, sold
-out and theme placeholders arrive after it, one at a time. Until they do, the summary counts only pages
-where tags are lost: a page with nothing listed has had that one check, not all four. The example above is
-what the view shows once they have run, made by the same code as the app.
-:::
 
 ::: info
 Apps like AdStockGuard and Guardified pause ads automatically when stock hits zero. Gaugeline reports; those act. They work well together.

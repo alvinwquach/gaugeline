@@ -906,7 +906,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           ...(deps.fetcher ? { fetcher: deps.fetcher } : {}),
           color: useColor(io.stdout, io.env ?? {}),
         }),
-        ci: false,
+        ci: args.ci,
       };
     case "tags":
       return {

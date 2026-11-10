@@ -1,0 +1,50 @@
+{
+  "/products/oat-candle.js": {
+    "body": "{\"id\":1,\"title\":\"Oat candle\",\"handle\":\"oat-candle\",\"available\":false,\"variants\":[{\"id\":100,\"title\":\"Small\",\"available\":false},{\"id\":101,\"title\":\"Large\",\"available\":false}]}",
+    "headers": {
+      "content-type": "application/json; charset=utf-8"
+    }
+  },
+  "/products/linen-wick-set.js": {
+    "body": "{\"id\":1,\"title\":\"Linen wick set\",\"handle\":\"linen-wick-set\",\"available\":true,\"variants\":[{\"id\":100,\"title\":\"Small\",\"available\":true},{\"id\":101,\"title\":\"Medium\",\"available\":false},{\"id\":102,\"title\":\"Large\",\"available\":true},{\"id\":103,\"title\":\"Extra large\",\"available\":false}]}",
+    "headers": {
+      "content-type": "application/json; charset=utf-8"
+    }
+  },
+  "/products/amber-tin.js": {
+    "body": "{\"id\":1,\"title\":\"Amber tin\",\"handle\":\"amber-tin\",\"available\":true,\"variants\":[{\"id\":100,\"title\":\"Default Title\",\"available\":true}]}",
+    "headers": {
+      "content-type": "application/json; charset=utf-8"
+    }
+  },
+  "/products/sample-tin.js": {
+    "body": "{\"id\":1,\"title\":\"Sample tin\",\"handle\":\"sample-tin\",\"available\":true,\"variants\":[{\"id\":100,\"title\":\"Default Title\",\"available\":true}]}",
+    "headers": {
+      "content-type": "application/json; charset=utf-8"
+    }
+  },
+  "/products/empty-variants.js": {
+    "body": "{\"id\":1,\"title\":\"Empty variants\",\"handle\":\"empty-variants\",\"available\":false,\"variants\":[]}",
+    "headers": {
+      "content-type": "application/json; charset=utf-8"
+    }
+  },
+  "/products/html-endpoint.js": {
+    "body": "<!doctype html><title>Not the endpoint</title><p>Sorry.</p>",
+    "headers": {
+      "content-type": "text/html; charset=utf-8"
+    }
+  },
+  "/products/retired-mug": {
+    "status": 404,
+    "body": "not found"
+  },
+  "/products/old-wick": {
+    "status": 301,
+    "location": "/"
+  },
+  "/products/preview-candle": {
+    "status": 302,
+    "location": "/password"
+  }
+}
