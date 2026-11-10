@@ -1,0 +1,61 @@
+{
+  "interactions": [
+    {
+      "body": "{\"code\":200,\"result\":[{\"id\":5001,\"external_id\":\"ridgeline-tee\",\"name\":\"Ridgeline logo tee\",\"variants\":3,\"synced\":3,\"thumbnail_url\":\"https://files.example/thumbs/5001.png\",\"is_ignored\":false},{\"id\":5002,\"external_id\":\"ridgeline-hoodie\",\"name\":\"Training hoodie\",\"variants\":2,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/5002.png\",\"is_ignored\":false},{\"id\":5003,\"external_id\":\"ridgeline-bottle\",\"name\":\"Steel water bottle\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/5003.png\",\"is_ignored\":false},{\"id\":5004,\"external_id\":\"ridgeline-tote\",\"name\":\"Gym tote bag\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/5004.png\",\"is_ignored\":false},{\"id\":5005,\"name\":\"Programme poster (draft)\",\"variants\":0,\"synced\":0,\"thumbnail_url\":\"https://files.example/thumbs/5005.png\",\"is_ignored\":false}],\"paging\":{\"total\":5,\"offset\":0,\"limit\":100}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products?offset=0&limit=100"
+    },
+    {
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":5001,\"external_id\":\"ridgeline-tee\",\"name\":\"Ridgeline logo tee\",\"variants\":3,\"synced\":3,\"thumbnail_url\":\"https://files.example/thumbs/5001.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":70011,\"external_id\":\"ext-70011\",\"sync_product_id\":5001,\"name\":\"Ridgeline logo tee / S\",\"synced\":true,\"variant_id\":4011,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"28.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"RL-TEE-S\"},{\"id\":70012,\"external_id\":\"ext-70012\",\"sync_product_id\":5001,\"name\":\"Ridgeline logo tee / M\",\"synced\":true,\"variant_id\":4012,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"28.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"RL-TEE-M\"},{\"id\":70013,\"external_id\":\"ext-70013\",\"sync_product_id\":5001,\"name\":\"Ridgeline logo tee / L\",\"synced\":true,\"variant_id\":4013,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"28.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"RL-TEE-L\"}]}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products/5001"
+    },
+    {
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":5002,\"external_id\":\"ridgeline-hoodie\",\"name\":\"Training hoodie\",\"variants\":2,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/5002.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":70021,\"external_id\":\"ext-70021\",\"sync_product_id\":5002,\"name\":\"Training hoodie / M\",\"synced\":true,\"variant_id\":4021,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"54.00\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"RL-HOOD-M\"},{\"id\":70022,\"external_id\":\"ext-70022\",\"sync_product_id\":5002,\"name\":\"Training hoodie / L\",\"synced\":false,\"variant_id\":4022,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"58.50\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"RL-HOOD-L\"}]}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products/5002"
+    },
+    {
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":5003,\"external_id\":\"ridgeline-bottle\",\"name\":\"Steel water bottle\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/5003.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":70031,\"external_id\":\"ext-70031\",\"sync_product_id\":5003,\"name\":\"Steel water bottle\",\"synced\":true,\"variant_id\":4031,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"\"}]}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products/5003"
+    },
+    {
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":5004,\"external_id\":\"ridgeline-tote\",\"name\":\"Gym tote bag\",\"variants\":1,\"synced\":1,\"thumbnail_url\":\"https://files.example/thumbs/5004.png\",\"is_ignored\":false},\"sync_variants\":[{\"id\":70041,\"external_id\":\"ext-70041\",\"sync_product_id\":5004,\"name\":\"Gym tote bag\",\"synced\":true,\"variant_id\":4041,\"main_category_id\":24,\"warehouse_product_variant_id\":null,\"retail_price\":\"24.5\",\"currency\":\"USD\",\"is_ignored\":false,\"sku\":\"RL-TOTE\"}]}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products/5004"
+    },
+    {
+      "body": "{\"code\":200,\"result\":{\"sync_product\":{\"id\":5005,\"name\":\"Programme poster (draft)\",\"variants\":0,\"synced\":0,\"thumbnail_url\":\"https://files.example/thumbs/5005.png\",\"is_ignored\":false},\"sync_variants\":[]}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.printful.com/store/products/5005"
+    }
+  ],
+  "name": "printful-merch",
+  "recordedAt": "2026-11-10T00:00:00.000Z",
+  "version": 1
+}

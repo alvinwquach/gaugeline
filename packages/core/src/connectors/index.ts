@@ -2,8 +2,10 @@ export { freezeEnv, isConfigured, missingVars } from "./env.js";
 export {
   ConnectorRateLimitedError,
   ConnectorRefusedError,
+  ConnectorStatusError,
   connectorGet,
   describeRetry,
+  retryAfterSeconds,
 } from "./http.js";
 export type { ConnectorRequest } from "./http.js";
 export { REDACTED, createRedactor } from "./redact.js";
@@ -22,6 +24,21 @@ export {
   typeCounts as sanityTypeCounts,
 } from "./sanity.js";
 export type { SanityConnector, SanityProduct } from "./sanity.js";
+export {
+  PRINTFUL_API_TOKEN,
+  PRINTFUL_DETAIL_CONCURRENCY,
+  PRINTFUL_ENV_VARS,
+  PRINTFUL_MAX_DETAILS,
+  PRINTFUL_MAX_LIST_PAGES,
+  PRINTFUL_MAX_RETRY_SECONDS,
+  PRINTFUL_PAGE_SIZE,
+  PRINTFUL_STORE_ID,
+  createPrintfulConnector,
+  mapPrintfulVariant,
+  printfulConnector,
+  retailToMinor,
+} from "./printful.js";
+export type { PrintfulConnectorOptions, PrintfulProduct, PrintfulVariant } from "./printful.js";
 export {
   STRIPE_API_KEY,
   STRIPE_ENV_VARS,

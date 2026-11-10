@@ -20,12 +20,25 @@ export class ConnectorRefusedError extends Error {
  */
 export class ConnectorRateLimitedError extends Error {
   readonly retry: string | undefined;
-  constructor(retry: string | undefined) {
+  /** Retry-After as whole seconds, when the system sent it in that form (not as a date). */
+  readonly retrySeconds: number | undefined;
+  constructor(retry: string | undefined, retrySeconds?: number) {
     super(
       `The system asked Gaugeline to slow down (HTTP 429).${retry ? ` Try again ${retry}.` : " It did not say when to try again."}`,
     );
     this.name = "ConnectorRateLimitedError";
     this.retry = retry;
+    this.retrySeconds = retrySeconds;
+  }
+}
+
+/** Any answer that is not a 2xx, 401, 403 or 429. The message names the status and nothing from the body. */
+export class ConnectorStatusError extends Error {
+  readonly status: number;
+  constructor(status: number) {
+    super(`The system answered HTTP ${status}.`);
+    this.name = "ConnectorStatusError";
+    this.status = status;
   }
 }
 
@@ -38,11 +51,19 @@ export function describeRetry(headers: Record<string, string>): string | undefin
   return Number.isNaN(ms) ? undefined : `after ${new Date(ms).toISOString().replace(".000Z", "Z")}`;
 }
 
+/** Retry-After as whole seconds, or undefined (absent, a date, or anything else). */
+export function retryAfterSeconds(headers: Record<string, string>): number | undefined {
+  const after = (headers["retry-after"] ?? "").trim();
+  return /^\d{1,6}$/.test(after) ? Number(after) : undefined;
+}
+
 export interface ConnectorRequest {
   /** The whole Authorization header value, e.g. "Bearer <key>". Sent to the first address's origin only. */
   authorization?: string;
   /** Other headers, such as a vendor's own key header. Sent to the first address's origin only too. */
   headers?: Record<string, string>;
+  /** Ask again even if this address was already asked in this run (a retry; the fetcher remembers answers). */
+  fresh?: boolean;
 }
 
 /**
@@ -66,12 +87,16 @@ export async function connectorGet(
       ...(request.authorization !== undefined ? { authorization: request.authorization } : {}),
     },
     headersSameOrigin: true,
+    ...(request.fresh === true ? { fresh: true } : {}),
   });
   const last = hops.at(-1);
   if (!last) throw new Error("No answer.");
   if (last.status === 401 || last.status === 403) throw new ConnectorRefusedError(last.status);
-  if (last.status === 429) throw new ConnectorRateLimitedError(describeRetry(last.headers));
-  if (last.status < 200 || last.status >= 300)
-    throw new Error(`The system answered HTTP ${last.status}.`);
+  if (last.status === 429)
+    throw new ConnectorRateLimitedError(
+      describeRetry(last.headers),
+      retryAfterSeconds(last.headers),
+    );
+  if (last.status < 200 || last.status >= 300) throw new ConnectorStatusError(last.status);
   return last;
 }

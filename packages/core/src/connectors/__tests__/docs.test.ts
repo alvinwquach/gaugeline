@@ -1,11 +1,13 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { Readable } from "node:stream";
 import { afterEach, describe, expect, it } from "vitest";
-import { createFetcher } from "../../fetcher.js";
+import { createFetcher, type Transport } from "../../fetcher.js";
 import { startServer, type FixtureServer } from "../../__tests__/helpers/server.js";
 import { connectorGet } from "../http.js";
 import { runConnectors } from "../run.js";
 import { sanityConnector } from "../sanity.js";
+import { printfulConnector } from "../printful.js";
 import { guardStripeKey, stripeConnector } from "../stripe.js";
 import { useCassette } from "../../../../testkit/src/index.js";
 import { fake, testKey } from "./fake.js";
@@ -47,7 +49,7 @@ describe("docs/products-and-prices.md: the pop-up kitchen example", () => {
             authorization: `Bearer ${e.STRIPE_API_KEY}`,
           }),
         ]),
-        fake("printful", ["PRINTFUL_API_TOKEN", "PRINTFUL_STORE_ID"], async () => []),
+        printfulConnector,
       ],
       env,
       createFetcher({ allowPrivate: true }),
@@ -145,5 +147,56 @@ describe("docs/products-and-prices.md: Reading Stripe", () => {
       thrown = err as { message: string; hint?: string };
     }
     expect(page).toContain(`${thrown?.message}\nTry: ${thrown?.hint}`);
+  });
+});
+
+describe("docs/products-and-prices.md: Reading Printful", () => {
+  const block = (title: string) =>
+    new RegExp(`\`\`\`json title=${title}\n([\\s\\S]*?)\n\`\`\``).exec(page)?.[1];
+  // Built at run time: GitHub push protection rejects key-shaped literals.
+  const token = ["pf", "ridgeline", "0123456789abcdef"].join("-");
+  const env = { PRINTFUL_API_TOKEN: token, PRINTFUL_STORE_ID: "3141592" };
+
+  it("the Printful products block is what the connector returns for the coach's merch store (the hoodie and the bottle)", async () => {
+    const run = await runConnectors(
+      [printfulConnector],
+      env,
+      createFetcher({ transport: useCassette("printful-merch", { mode: "replay" }) }),
+    );
+    expect(run.notices).toEqual([]);
+    const shown = (run.data.get("printful") as Array<{ id: string }>).filter((p) =>
+      ["5002", "5003"].includes(p.id),
+    );
+    expect(block("Printful products")).toBe(JSON.stringify(shown, null, 2));
+  });
+
+  it("the page's numbers hold: the large hoodie is not synced and costs more than the medium", async () => {
+    const products = await printfulConnector.read(
+      env,
+      createFetcher({ transport: useCassette("printful-merch", { mode: "replay" }) }),
+    );
+    const hoodie = products.find((p) => p.id === "5002");
+    expect(hoodie?.variants.map((v) => [v.sku, v.synced, v.retailPrice])).toEqual([
+      ["RL-HOOD-M", true, 5400],
+      ["RL-HOOD-L", false, 5850],
+    ]);
+    expect(page).toContain("$54.00");
+    expect(page).toContain("$58.50");
+  });
+
+  it("the Printful notices block is what a store number the token cannot see gets", async () => {
+    const transport: Transport = () =>
+      Promise.resolve({
+        status: 403,
+        headers: { "content-type": "application/json" },
+        body: Readable.from([Buffer.from("{}")]),
+      });
+    const run = await runConnectors(
+      [printfulConnector],
+      { ...env, PRINTFUL_STORE_ID: "2718281" },
+      createFetcher({ transport }),
+    );
+    expect(block("Printful notices")).toBe(JSON.stringify(run.notices, null, 2));
+    expect(JSON.stringify(run.notices)).not.toContain(token);
   });
 });

@@ -12,7 +12,7 @@ $ SANITY_PROJECT_ID=abc123 SANITY_TOKEN=… STRIPE_API_KEY=rk_live_… PRINTFUL_
 | -------- | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
 | Sanity   | `SANITY_PROJECT_ID`, `SANITY_DATASET`, `SANITY_TOKEN` | Read. **A private dataset needs a read-only token** (Viewer role); a public one works without         |
 | Stripe   | `STRIPE_API_KEY`                                      | Read products and prices. **A restricted key only**; a secret key is refused ([how](#reading-stripe)) |
-| Printful | `PRINTFUL_API_TOKEN`, `PRINTFUL_STORE_ID`             | Read store products                                                                                   |
+| Printful | `PRINTFUL_API_TOKEN`, `PRINTFUL_STORE_ID`             | Read store products. **A token that can only view them** ([which](#choose-the-narrowest-token))       |
 
 <!-- diagram: systems (drawn on the landing page; not reproduced here) -->
 
@@ -241,6 +241,108 @@ $ npx gaugeline shop.example
 
 Each check that passed also prints a `✓ <id>` line, left out above. The output is asserted by `pnpm docs:examples` in CI. To fix it, switch Stripe to live mode, put the live publishable key (`pk_live_`) where the site reads its key, redeploy, and place one small real order.
 
+## Reading Printful
+
+Printful is read with a list of the store's products, then one request per product for its variants. Every request is a `GET`; nothing is ever written, ordered or synced.
+
+| Variable             | Needed | What it does                                                                                   |
+| -------------------- | ------ | ---------------------------------------------------------------------------------------------- |
+| `PRINTFUL_API_TOKEN` | Yes    | A private token that can only view the store's products ([below](#choose-the-narrowest-token)) |
+| `PRINTFUL_STORE_ID`  | Yes    | The number of the store, such as `1234567`. It is sent as the store header on every request    |
+
+If either variable is missing or empty, Printful is left out with a notice that names the missing one, and the other systems are still read. That is "could not check", never "all fine".
+
+What is asked:
+
+- **Two read endpoints, and only these:** `GET /store/products` (the list) and `GET /store/products/{id}` (one product, with its `sync_variants`). The list has no variants, which is why the second request exists. The endpoint names are from [Printful's API documentation](https://developers.printful.com/docs/), which was not reachable when this page was written, so they are from memory and uncited. Check them there.
+- **The list** is asked with `offset` and `limit=100` and followed until the total it reports is reached or a page comes back empty, so a store whose size changes while it is read cannot loop. If the shop holds back fewer than 100 a page, the offset moves by what came. At most 50 pages are read.
+- **The variants** are fetched five products at a time, at most **200 products per run**. Printful limits how fast it answers, and the number of requests grows with the catalogue, so a fixed budget keeps a run predictable. Past it, the run returns the 200 it read and one notice says how many it skipped. A store of 260 products reads 200 and says it skipped 60.
+- **What is kept.** Per product: `id`, `externalId` (the id your shop gave it, when Printful holds one) and `name`. Per variant: `id`, `sku` (left out when Printful has none, never an empty string), `synced`, `retailPrice` and `currency`. Names of variants, images, files and customer orders are not kept.
+- **Prices** are whole numbers of minor units. Printful sends a decimal string: `"24.50"` and `"24.5"` are both 2450 (the text is split at the point, never multiplied). An empty price, or one that is not a plain amount, is `null`: no price, not a free one.
+- **`synced: false`** is kept as it is. A variant that is not synced has a design that is not matched to a printable item, so an order for it cannot be made. A product with no variants is returned with an empty list.
+- **Headers, not addresses.** Every request carries `Authorization: Bearer <token>` and the store number in the `X-PF-Store-Id` header. Neither is ever in the address.
+
+### What the errors mean
+
+| Printful answers                           | The run says                                                                                                                  |
+| ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| 401                                        | The token is wrong or has been revoked. Create a new one.                                                                     |
+| 403 or 404 on the store                    | The token cannot see that store number. Check `PRINTFUL_STORE_ID` belongs to the store the token was made for.                |
+| 429 with a `Retry-After` of 60 s or less   | Gaugeline waits that long and asks once more. A second 429 gives up with an "unreachable" notice that says when to try again. |
+| 429 with no `Retry-After`, or a longer one | Gives up at once with the same notice. Gaugeline does not guess how long to wait.                                             |
+| A product removed during the run           | It is left out and one notice counts them.                                                                                    |
+
+The 200-request budget and the single retry are proposed, not Printful's rules.
+
+### Choose the narrowest token
+
+Printful tokens are created in the Printful Developer Portal and carry **scopes**, the list of things the token is allowed to do. Gaugeline needs one thing: to view the store's products and their variants. So:
+
+1. Create a private token for the one store you want read, and name it something you will recognise, such as `Gaugeline (read only)`.
+2. Tick the scope that lets the token **view** store (sync) products, and nothing else. Leave every scope that says manage, edit, create or write unticked, and leave orders, files, webhooks and shipping unticked.
+3. Copy the token. Put it in the environment, not in a file: `PRINTFUL_API_TOKEN=… PRINTFUL_STORE_ID=1234567 npx gaugeline open yoursite.com`.
+
+The scope names and where to find them are not stated here: Printful's documentation was not reachable when this page was written, so the exact wording of the scope is uncited. If the portal only offers one scope for store products and it includes managing them, pick it and keep that token for Gaugeline alone, so it can be revoked on its own; Gaugeline will still only send `GET` requests.
+
+### Example: a coach's merch in three places
+
+Ridgeline Strength Coaching sells a logo tee, a training hoodie, a water bottle and a gym tote to clients who train with the coach. The freelancer who built the site on Next.js and Sanity set up checkout in Stripe and fulfilment in Printful. The page says the hoodie costs **$54.00** and Stripe charges $54.00, but a client wrote to say the large hoodie never shipped. The freelancer created a view-only Printful token and set `PRINTFUL_API_TOKEN` and `PRINTFUL_STORE_ID`. Against an invented recording of the store (`packages/testkit/cassettes/printful-merch.json`), the Printful connector returns these two of the five products:
+
+```json title=Printful products
+[
+  {
+    "id": "5002",
+    "externalId": "ridgeline-hoodie",
+    "name": "Training hoodie",
+    "variants": [
+      {
+        "id": "70021",
+        "sku": "RL-HOOD-M",
+        "synced": true,
+        "retailPrice": 5400,
+        "currency": "USD"
+      },
+      {
+        "id": "70022",
+        "sku": "RL-HOOD-L",
+        "synced": false,
+        "retailPrice": 5850,
+        "currency": "USD"
+      }
+    ]
+  },
+  {
+    "id": "5003",
+    "externalId": "ridgeline-bottle",
+    "name": "Steel water bottle",
+    "variants": [
+      {
+        "id": "70031",
+        "synced": true,
+        "retailPrice": null,
+        "currency": "USD"
+      }
+    ]
+  }
+]
+```
+
+The large hoodie is **not synced**: its design was never matched to a printable item, which is why it never shipped. Its retail price in Printful is also $58.50, while the medium (and the page, and Stripe) say $54.00, so a customer who picked large would see one number and, if the order went through, be sent another. This version reads all three systems; the checks that compare them arrive in a later release. The water bottle has an empty retail price in Printful, so its price is `null` and no mismatch can be made of it, and it has no SKU. The programme poster (not shown) is a draft with no variants and comes back with an empty list.
+
+If the freelancer had typed the wrong store number, Printful would refuse it and the run would say so, while Sanity and Stripe are still read:
+
+```json title=Printful notices
+[
+  {
+    "connector": "printful",
+    "kind": "refused",
+    "message": "printful refused the key (HTTP 403). PRINTFUL_API_TOKEN cannot see store 2718281. Check PRINTFUL_STORE_ID is the number of a store this token was made for, and that the token can view store products (the narrowest read-only choice is in docs/products-and-prices)."
+  }
+]
+```
+
+Both outputs, and the prices in this example, are asserted by `packages/core/src/connectors/__tests__/docs.test.ts`.
+
 ## What it can't decide for you
 
 Gaugeline can tell you two systems disagree. It can't tell you which one is right. Decide which system owns each fact, usually checkout for prices, and have the others read from it.
@@ -259,7 +361,7 @@ Keys stay on your computer, are only read from environment variables, and are ne
 
 ## In this version: the connector interface
 
-The three systems above are read through one small interface, `Connector`. This version ships the interface, the runner, the key handling, the Sanity reader ([above](#reading-sanity)) and the Stripe reader ([above](#reading-stripe)). The Printful reader arrives next, as a connector too. Nothing in a normal run requests Stripe yet: the comparisons that use it come with the price checks.
+The three systems above are read through one small interface, `Connector`. This version ships the interface, the runner, the key handling, the Sanity reader ([above](#reading-sanity)), the Stripe reader ([above](#reading-stripe)) and the Printful reader ([above](#reading-printful)). Nothing in a normal run requests Stripe or Printful yet: the comparisons that use them come with the price checks.
 
 A connector has an `id`, the names of the variables it needs (`envVars`), a `configured` test and a `read` that returns a list. It may also list variables it reads when they are set (`optionalEnvVars`), say which of its variables are keys (`secretEnvVars`, so only those are blanked in messages), and give advice (`advise`). `runConnectors` reads every configured connector at the same time and returns two things: `data`, the rows by connector id, and `notices`, one for every system that gave none, and any advice.
 

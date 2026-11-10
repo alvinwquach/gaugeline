@@ -173,6 +173,11 @@ export interface GetOptions {
   method?: "GET" | "HEAD";
   /** Send `headers` only to hops on the first address's origin: a redirect elsewhere gets none. */
   headersSameOrigin?: boolean;
+  /**
+   * Ask again even though this address was already asked in this run, and keep the new answer. For a
+   * retry after "slow down": without it the fetcher would hand back the same refusal it remembers.
+   */
+  fresh?: boolean;
 }
 
 export interface Fetcher {
@@ -576,6 +581,7 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
     assertReadOnly(method);
     const normal = normaliseUrl(url);
     const key = `${method} ${normal}${opts.headers ? ` ${JSON.stringify(Object.entries(opts.headers).sort())}` : ""}${opts.headersSameOrigin ? " same-origin" : ""}`;
+    if (opts.fresh) memo.delete(key);
     let pending = memo.get(key);
     if (!pending) {
       pending = follow(normal, opts, currentKind());
