@@ -69,8 +69,14 @@ export interface AdapterEntry {
     pageReader?: true;
     /** The platform names its fields with hyphens. */
     hyphenFields?: true;
-    /** Reads content kept in a repository: takes `path` or `github`, and `folders`; `urls` is replaced by each folder's `permalink`. */
-    contentFolders?: true;
+    /** Takes `expectPrivate`: the owner says the platform's public API is meant to be private (Umbraco's Delivery API). */
+    expectPrivate?: true;
+    /**
+     * Reads content kept in a repository: takes `path` or `github`, and `folders`; `urls` is replaced by each folder's
+     * `permalink`. `true`: `folders` is required. "from-config": the platform's own config file names the folders (TinaCMS),
+     * so `folders` is optional and, when given, names folders by hand.
+     */
+    contentFolders?: true | "from-config";
   };
   /** The row in docs/integrations/index.md: what key it asks for and what it reads (Markdown, one line). */
   docs: { key: string; reads: string };

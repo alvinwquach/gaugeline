@@ -268,6 +268,8 @@
   "token-expires-soon",
   "tracker-in-tag-manager",
   "tracker-on-sensitive-page",
+  "umbraco-delivery-api-public",
+  "umbraco-node-no-page",
   "unpublished-still-live",
   "usage-jump",
   "viewport",
