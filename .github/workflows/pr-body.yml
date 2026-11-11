@@ -4,7 +4,7 @@ name: PR body
 # (make "pr-body" a required check in the branch protection rules).
 on:
   pull_request:
-    types: [opened, edited, synchronize, reopened]
+    types: [opened, edited, synchronize, reopened, ready_for_review]
 
 permissions:
   contents: read
@@ -16,6 +16,8 @@ concurrency:
 
 jobs:
   pr-body:
+    # A draft pull request runs no CI; marking it ready starts it (ready_for_review). Other events are unaffected.
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

@@ -47,7 +47,6 @@ const WIX_QUERY_PATH = "/wix-data/v2/items/query";
  */
 export const WIX_QUERY_ALLOW = registerQueryAllow({
   id: "wix-data-query",
-  method: "POST",
   host: WIX_HOST,
   path: WIX_QUERY_PATH,
   body: { kind: "json-query", keys: ["dataCollectionId", "query"] },

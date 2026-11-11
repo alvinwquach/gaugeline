@@ -186,11 +186,22 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "A published Contentful entry has no page on the live site",
     "Launch day",
   ],
+  "squarespace-price-differs": [
+    "A Squarespace product page shows a price the store does not have",
+    "Sales & prices",
+  ],
   "strapi-entry-no-page": ["A published Strapi entry has no page on the live site", "Launch day"],
   "strapi-drafts-public": [
     "Strapi lists unpublished entries to visitors with no token",
     "Security & email",
   ],
+  "umbraco-node-no-page": ["A published Umbraco node has no page on the live site", "Launch day"],
+  "umbraco-delivery-api-public": [
+    "The Umbraco Delivery API answers visitors with no key",
+    "Security & email",
+  ],
+  "hubspot-page-404": ["A page published in HubSpot answers 404 on the live domain", "Launch day"],
+  "hubspot-form-deleted": ["A page embeds a HubSpot form that has been deleted", "Launch day"],
   "app-smart-banner-mismatch": ["The iPhone app banner promotes a different app", "Visitors"],
   "checkout-js-only": ["Nothing on the page can be linked to buy", "Sales & prices"],
   "crm-field-names": ["A form sends fields the CRM doesn't have", "Leads"],
@@ -371,6 +382,11 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "Search & sharing",
   ],
   "webflow-item-staged": ["Work saved in the Webflow CMS is not on the live site", "Launch day"],
+  "squarespace-stock-differs": [
+    "A Squarespace product page and its stock disagree",
+    "Sales & prices",
+  ],
+  "hubspot-hubdb-drift": ["A HubDB row differs from the page that shows it", "Visitors"],
   "ai-crawlers-blocked": ["Some AI assistants can't read your site", "Search & sharing"],
   "app-name-mismatch": ["The store lists the app under a different name", "Visitors"],
   "asset-file-public": ["A downloadable file is on a public asset address", "Sales & prices"],
@@ -802,10 +818,10 @@ export const CHECK_TEXT: Readonly<
     "a script src whose host, or a parent domain of it, is in data/known-bad-script-hosts.json. The list names its source for every host. Nothing is requested: the address is read from the page",
   ],
   "secret-in-js": [
-    "A secret key (a Stripe secret or restricted key, a Sanity token, a Contentful preview token, or a long random value named like a secret) is in JavaScript the site sends to every visitor.",
+    "A secret key (a Stripe secret or restricted key, a Sanity token, a Contentful or Contentstack preview token, or a long random value named like a secret) is in JavaScript the site sends to every visitor.",
     "Anyone can read it in their browser and use it as you: take payments, read customer data or change your content.",
     "Revoke the key in the provider's dashboard now, make a new one, and keep it on the server: never in code the browser loads.",
-    "Inline scripts and up to 15 same-site script files (GET, first 5 MB each) matched against the detectors in checks/leaks/detectors.ts; publishable keys (pk_) are ignored; a Contentful preview token is a 43-character value named like a token or key next to the preview.contentful.com host, and a finding for it names the kind and the place only, with no character of the token; a 43-character Contentful delivery token (a value in a place that names Contentful or createClient, and not the Preview API) is public by design and is never reported; the other values are redacted to their first 6 and last 2 characters before a finding exists; names are capped at 40 characters each side of the word token or key, so a hostile file is scanned in linear time",
+    'Inline scripts and up to 15 same-site script files (GET, first 5 MB each) matched against the detectors in checks/leaks/detectors.ts; publishable keys (pk_) are ignored; a Contentful preview token is a 43-character value named like a token or key next to the preview.contentful.com host, and a finding for it names the kind and the place only, with no character of the token; a Contentstack preview token is a value of "cs" and hex named like a token or key, and either "preview" is in its name in a file that names Contentstack or the Live Preview host (preview.contentstack.com) is in the same object; it is reported the same way, with no character of it; a Contentstack delivery token is public by design and is never reported; a 43-character Contentful delivery token (a value in a place that names Contentful or createClient, and not the Preview API) is public by design and is never reported; the other values are redacted to their first 6 and last 2 characters before a finding exists; names are capped at 40 characters each side of the word token or key, so a hostile file is scanned in linear time',
   ],
   "sitemap-dead": [
     "Pages listed in the sitemap return an error (4xx or 5xx).",
@@ -1119,6 +1135,12 @@ export const CHECK_TEXT: Readonly<
     "Check the site was rebuilt after the entry was published (a webhook from Contentful to your host can fail quietly) and that the address pattern in gaugeline.adapters.json matches the route. If the entry should not be public, unpublish it in Contentful.",
     "GET /spaces/{space}/environments/{env}/content_types and /entries?content_type=... on cdn.contentful.com (Content Delivery API, delivery token in an Authorization header) for each content type, then one GET of the live address from the `urls` pattern (redirects followed). A final 404 or 410 is the finding; any other answer that is not a 2xx is could-not-check for that page. A content type with published entries and no pattern, and an entry whose slug the pattern cannot use, are could-not-check by name and are not asked.",
   ],
+  "squarespace-price-differs": [
+    "The price in a product page's product data (or the one price it shows) is not one of the prices the Squarespace Commerce API gives that product's variants.",
+    "Shoppers see one price and the store charges another, and search engines show the page's price in results. Gaugeline can tell you the two disagree, not which is right.",
+    "Open the product in Squarespace and check each variant's price and any sale. If the page is wrong, publish it again or clear a cache in front of the site; if the store is wrong, change the variant price. A page that copies prices by hand should read them from the product.",
+    "GET /1.0/commerce/products (cursor pages, at most 400 pages and 10000 products; the next page is asked for by the cursor the answer returns, never by an address it gives), then one GET of each visible product's page (its path from the API, or the `urls` pattern; at most 300 pages a run). The API side is each variant's price in minor units (the sale price while it is on sale), parsed from the decimal text without a float. The page side is the Product offers (with several Product data blocks, only the one whose address or SKU is this product's; offers in more than one currency are could-not-check)' price, lowPrice and highPrice in its JSON-LD (or the one visible price when there is none, with a struck-through old price left out), also in minor units. Every page price must be one of the variants' prices; a \"From\" price must be the lowest. Compared only in a currency with two decimal places and only when both sides name the same one (a page in another currency is could-not-check, never converted); a product with a variant whose price could not be read, a page with no price, or a page that does not answer is could-not-check. Findings carry both numbers and no text from the page or the product. Integers in minor units: 19.99 times 100 is 1998.9999999999998 as a float",
+  ],
   "strapi-entry-no-page": [
     "Strapi says an entry is published, and the address its page should have answers 404 or 410 on the live site.",
     "Links, the sitemap and search results point at a page that is not there, and the client's announcement leads to an error page.",
@@ -1130,6 +1152,30 @@ export const CHECK_TEXT: Readonly<
     "Unfinished work is public: prices before they are announced, an event before it is confirmed, a draft nobody has approved. Anyone who guesses the route can read it, and search engines or scrapers may already have.",
     "In Strapi's settings, open Users & Permissions, then the Public role, and remove find and findOne from the collection, or give the front end a read-only API token and keep the Public role closed. If the front end previews drafts, send the token from the server, never from the browser.",
     "probing check, off without --owner-consent: this check asks Strapi's public routes for entries that are not published, so it runs only with --owner-consent (or gaugeline.consent.json), on sites you own or have permission to test; per collection named in the settings, with no Authorization header and no cookie: GET /api/{collection} for the published total, GET /api/{collection}?status=draft and GET /api/{collection}?publicationState=preview for the draft total (the second is asked even when the first answers with no extra entries, because a Strapi that ignores a parameter it does not know answers with the published list), all with pagination[pageSize]=1 and fields[0]=updatedAt; when a draft total is larger, the ids of both lists are read (at most 500 each, each list stepped by the page size the answer reports, fields[0]=updatedAt only) and the entries only the draft list has are counted and named by id (Strapi 5 documentId, Strapi 4 id); a collection that answers 401 or 403 to the published list is not shown to visitors, and a 404 is could-not-check (most likely a mistyped name); a collection that refuses the draft list shows no drafts to visitors; one whose draft lists show no extra entries gives no sign of public drafts, which is not proof, since a Strapi that ignores both spellings looks the same as one with nothing unpublished; a finding is a count and ids, never a field; ids are held in a Set to subtract the published list from the draft list; the requests carry no header the fetcher adds per address",
+  ],
+  "umbraco-node-no-page": [
+    "Umbraco says a node is published, and the address its page should have answers 404 or 410 on the live site.",
+    "Links, the sitemap and search results point at a page that is not there, and the client's announcement leads to an error page.",
+    "Check the content type has a template (or the front end builds a route for it), that the node's culture and domain settings match the site being checked, and that a headless front end was rebuilt or revalidated after publishing. If the node should not be public, unpublish it in the Umbraco backoffice.",
+    "GET /umbraco/delivery/api/v2/content?filter=contentType:{alias} for each content type named in the settings (the published list; skip and take step by the number of nodes that came back, and a list is complete only when the position reaches the total it reports), then one GET of the live address: the settings' `urls` pattern when the type has one, else the route.path the API gave the node (redirects followed). A final 404 or 410 is the finding; any other answer that is not a 2xx is could-not-check for that page. A node with no route and no pattern, and a path that is not a plain path (a host, `..`, an escaped slash), are could-not-check by name and are not asked. Ids and paths only: no property is requested beyond those named in `fingerprint`, and none is used for this. A site with several root nodes and no domains may give paths relative to a start item: set `urls` for those types.",
+  ],
+  "umbraco-delivery-api-public": [
+    "gaugeline.adapters.json says the Content Delivery API is meant to be private (expectPrivate: true), and a plain GET of its list route with no key is answered with the list of published nodes.",
+    "Anyone who finds the route can read every published node as data, including nodes that are published but not linked from the site, and can page through the whole content tree. If the API was meant to be private, its protection is off.",
+    "In appsettings.json set Umbraco:CMS:DeliveryApi:PublicAccess to false and keep an ApiKey, then send the key from the server only (never from the browser). If the API is meant to be public (a public API that also has a key, so that preview works, is a normal setup), remove expectPrivate from gaugeline.adapters.json: the key is not touched.",
+    "probing check, off without --owner-consent: this check asks the Delivery API's public route as a visitor with no key, so it runs only with --owner-consent (or gaugeline.consent.json), on sites you own or have permission to test; only when the settings say expectPrivate: true (a key being set says nothing: Umbraco's preview needs the key on a public API too); one GET of /umbraco/delivery/api/v2/content?take=1 with no Api-Key header, no cookie and nothing the fetcher adds per address, fields=properties[] and expand=none; a 200 with a list and a numeric total is the finding (the total is a count, never a node); 401 or 403 is a protected API and 404 is an API that is off or not at that address, both with no finding; a 200 that is not the API's list (a page that answers every path) and any other status are could-not-check; the answer is read as a count and nothing else",
+  ],
+  "hubspot-page-404": [
+    "HubSpot says a site page, landing page or blog post is published on this domain, and the address it gives for it answers 404 or 410 on the live site.",
+    "Links, the sitemap, search results and the client's announcement point at a page that is not there, while the CMS shows it as live.",
+    "In HubSpot, open the page and check its domain, its URL and that it is published to this domain and not only to a staging one; republish it if it was cloned or moved. If it should not be public, unpublish it.",
+    "GET /cms/v3/pages/site-pages, /cms/v3/pages/landing-pages and /cms/v3/blogs/posts (each page of each list, stepped by the cursor the answer gives), keeping the pages whose state is PUBLISHED and whose own url is on the domain being checked (a page on another domain of the same portal is counted and not asked), then one anonymous GET of that address (redirects followed). A final 404 or 410 is the finding; any other answer that is not a 2xx is could-not-check for that page. A page with no usable https address is could-not-check. Ids, slugs and statuses only: no field is read for this.",
+  ],
+  "hubspot-form-deleted": [
+    "A page on the live site embeds a HubSpot form by its id, and HubSpot answers that the form does not exist in this portal.",
+    "The form shows nothing or an error, so enquiries and orders sent through it are lost without anyone seeing a failure.",
+    "Restore the form in HubSpot (Marketing, Forms, recently deleted), or edit the page or its template to embed a form that exists.",
+    "The form ids and portal ids are read as text from the HTML of the published pages already asked for (data-form-id and portalId/formId in an hbspt.forms.create call; nothing is run); only forms of the portal the token belongs to (GET /account-info/v3/details) are asked about, one GET /marketing/v3/forms/{formId} for each different form (at most 50 a run); a 404, or a form marked archived, is the finding. A token without the forms scope, a page that names no portal or more than one, and a form of another portal are could-not-check or not counted, never a pass. Form ids and page paths only.",
   ],
   "app-smart-banner-mismatch": [
     "The page's Smart App Banner (the apple-itunes-app meta tag) names a different app id than the page's App Store link.",
@@ -1778,6 +1824,18 @@ export const CHECK_TEXT: Readonly<
     "The client believes the change is out. Customers see the old price, the old opening hours, or no page for the event they were told about.",
     "In Webflow, review the staged items and publish the site. If an item should not go out yet, set it back to draft so it is not mistaken for finished work.",
     "GET /v2/collections/{id}/items (the staged list) for each collection: isDraft false, isArchived false, and lastPublished absent (staged) or more than 2 seconds earlier than lastUpdated (changed). Drafts and archived items are never reported. Ids, slugs and dates only: no field is used for this.",
+  ],
+  "squarespace-stock-differs": [
+    "A product page offers the product as in stock while the Squarespace Inventory API says every variant is out of stock, or says it is out of stock while the API says a variant can be bought.",
+    "Shoppers order what cannot be shipped, or leave a product that could have sold. Search results show the page's availability.",
+    "Open the product in Squarespace and check each variant's stock. If the page is out of date, publish it again or clear a cache in front of the site.",
+    'GET /1.0/commerce/products and GET /1.0/commerce/inventory (cursor pages; a key without the Inventory permission, or a plan that does not offer it, makes this check could-not-check and leaves the price check as it is), then one GET of each visible product\'s page. The API side: "in" when any variant has a row that is unlimited or has a quantity above 0, "out" when every variant has a row and none can be bought, otherwise unknown (a variant with no row is never read as out of stock). The page side: the Product offers\' availability in its JSON-LD (InStock, OutOfStock, SoldOut ...), or the page\'s one add-to-cart button saying sold out when the product data names no availability (no other button counts); mixed or missing words are unknown. Only "in" against "out", either way round, is a finding; unknown on either side is could-not-check. Findings carry a word and a name, never a quantity or a page\'s text',
+  ],
+  "hubspot-hubdb-drift": [
+    "A published row of a HubDB table has a value in a column you named in gaugeline.adapters.json, and the dynamic page for that row does not show it.",
+    "Visitors see a price, a time or a name that is not the one the client keeps in the table, so what is sold or announced is not what the table says.",
+    "Open the dynamic page's template and check the column it prints, then publish the table again (a table change shows on the page only once the table is published). If the template formats the value differently, name another column or accept the difference.",
+    "GET /cms/v3/hubdb/tables for the published tables, GET /cms/v3/hubdb/tables/{table}/rows for the published rows (stepped by the cursor), and the dynamic page that uses the table (a published page whose dynamicPageHubDbTableId is the table's id); for each row with a path, one anonymous GET of the page's address plus the row's path. Only the columns named under `fingerprint` for `hubdb.<table>` are used: each value is looked for in the words of the page (scripts, styles and tags removed, entities decoded, case ignored; a number as written, with two decimals and with a thousands comma, as a whole number). The values are held only for that comparison; a finding names the table, the row id, the page and the column, never a value. A table with no dynamic page, a row with no path, a row with nothing that can be looked for and a page that was not read are could-not-check.",
   ],
   "ai-crawlers-blocked": [
     "robots.txt stops one or more known AI crawlers from reading the home page. Gaugeline says which, and whether the block names them or comes from a rule for every crawler.",

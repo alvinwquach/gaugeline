@@ -39,6 +39,12 @@ export interface ContractEntry {
    */
   keyRaw?: true;
   /**
+   * For a platform that takes its key in headers other than Authorization (Contentstack's `api_key` and
+   * `access_token`): every request carries exactly these headers (lower-case names), and none carries an
+   * Authorization header. The values must not appear in an address, a result or a message.
+   */
+  keyHeaders?: Readonly<Record<string, string>>;
+  /**
    * The read-only query entries the adapter's own file EXPORTS (ADR-0006), if it sends any: the frozen
    * objects `registerQueryAllow` returned, imported here, not written out again. The suite checks
    * each is registered (the fetcher only sends to a registered id) and well formed, and that every
@@ -218,7 +224,7 @@ export function allowlistProblems(allows: readonly ReadOnlyQueryAllow[]): string
   for (const a of allows) {
     if (ids.has(a.id)) out.push(`${a.id}: the id is used twice`);
     ids.add(a.id);
-    for (const p of allowProblems(a)) out.push(`${a.id}: ${p}`);
+    for (const p of allowProblems(a, { stored: true })) out.push(`${a.id}: ${p}`);
     // The fetcher resolves an id from the registry; an entry written out here instead would be
     // refused at run time, so it must be the very object the adapter's file registered.
     if (resolveQueryAllow(a.id) !== a) out.push(`${a.id}: not the entry the adapter registered`);

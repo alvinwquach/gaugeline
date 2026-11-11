@@ -78,6 +78,7 @@ export type {
   JsonQueryShape,
   QueryBodyShape,
   ReadOnlyQueryAllow,
+  RegisteredQueryAllow,
 } from "./fetch/read-only-query.js";
 export { Semaphore } from "./semaphore.js";
 export { BUDGET_KINDS, LIMITS, createBudget, formatSampleSummary } from "./limits.js";
@@ -1441,7 +1442,13 @@ export type { AuditPackFile } from "./audit/render.js";
 export { MIGRATION_CHECKS, createMigrationRegistry, unreadPages } from "./checks/migration.js";
 export { WEBFLOW_CHECKS, createWebflowRegistry } from "./checks/webflow.js";
 export { CONTENTFUL_CHECKS, createContentfulRegistry } from "./checks/contentful.js";
+export {
+  SQUARESPACE_COMMERCE_CHECKS,
+  createSquarespaceCommerceRegistry,
+} from "./checks/squarespace-commerce.js";
 export { STRAPI_CHECKS, createStrapiRegistry } from "./checks/strapi.js";
+export { UMBRACO_CHECKS, createUmbracoRegistry } from "./checks/umbraco.js";
+export { HUBSPOT_CMS_CHECKS, createHubspotCmsRegistry } from "./checks/hubspot-cms.js";
 export {
   ListBuilder,
   MIGRATION_ITEM_CAP,

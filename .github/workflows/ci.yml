@@ -2,6 +2,7 @@ name: CI
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: [main]
 
@@ -17,6 +18,8 @@ concurrency:
 
 jobs:
   test:
+    # A draft pull request runs no CI; marking it ready starts it (ready_for_review). Other events are unaffected.
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     name: test (node ${{ matrix.node }}, ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
@@ -39,6 +42,8 @@ jobs:
 
   lint:
     # Lint and the generated-file checks run once, on the active LTS.
+    # A draft pull request runs no CI; marking it ready starts it (ready_for_review). Other events are unaffected.
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -56,6 +61,7 @@ jobs:
       - run: pnpm docs:changelog --check
       - run: pnpm gen:checks --check
       - run: pnpm gen:adapters --check
+      - run: pnpm gen:skill --check
       - run: pnpm adr:check
       - run: pnpm community:check
       - name: Public surface (STABILITY.md)
@@ -67,6 +73,8 @@ jobs:
 
   docs-examples:
     # Runs every "$ npx gaugeline" example in the docs against its fixture and compares the output.
+    # A draft pull request runs no CI; marking it ready starts it (ready_for_review). Other events are unaffected.
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -82,6 +90,8 @@ jobs:
 
   pack:
     # The tarball people will npx: contents, size budget, and a run under the oldest supported Node (22).
+    # A draft pull request runs no CI; marking it ready starts it (ready_for_review). Other events are unaffected.
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     name: pack and smoke (node 22)
     runs-on: ubuntu-latest
     timeout-minutes: 15
