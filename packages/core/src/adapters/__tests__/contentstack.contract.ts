@@ -4,41 +4,51 @@ import type { ContractEntry } from "./contract.js";
 import { contentstackTransport, CONTENTSTACK_MARKERS } from "./contentstack-fixture.js";
 
 /**
- * Larkspur Yoga Studio: a small studio on Contentstack, with classes (one a draft), notices and teachers (see
- * contentstack-fixture.ts). TODO(new:adapter) describe the invented site in terms of the platform.
+ * Harbour Lantern Inn: a boutique hotel on Contentstack, with rooms (one never published to the environment),
+ * offers and team members (see contentstack-fixture.ts). The delivery token reads published entries only, so
+ * the draft is never in an answer.
  */
-const CONTENTSTACK_KEY = testKey("contentstack-adapter");
+const TOKEN = testKey("contentstack-delivery");
+const API_KEY = testKey("contentstack-stack");
 
 export const contentstackEntry: ContractEntry = {
   id: "contentstack",
   make: ({ fetcher, sleep }) =>
     createContentstackAdapter({
-      env: { CONTENTSTACK_TOKEN: CONTENTSTACK_KEY },
+      env: {
+        CONTENTSTACK_API_KEY: API_KEY,
+        CONTENTSTACK_DELIVERY_TOKEN: TOKEN,
+        CONTENTSTACK_ENVIRONMENT: "production",
+      },
       fetcher,
       sleep,
     }),
-  transport: () => contentstackTransport(undefined, { token: CONTENTSTACK_KEY }),
-  key: CONTENTSTACK_KEY,
-  secrets: Object.values(CONTENTSTACK_MARKERS),
+  transport: () => contentstackTransport(undefined, { token: TOKEN, apiKey: API_KEY }),
+  key: TOKEN,
+  // The key travels in two headers and never as Authorization.
+  keyHeaders: { access_token: TOKEN, api_key: API_KEY },
+  unknownType: "could-not-check",
+  secrets: [...Object.values(CONTENTSTACK_MARKERS), API_KEY],
   expected: {
     types: [
-      { name: "classes", count: 2 },
-      { name: "notices", count: 1 },
-      { name: "teachers", count: 2 },
+      { name: "offers", count: 1 },
+      { name: "rooms", count: 2 },
+      { name: "team", count: 2 },
     ],
     fields: {
-      type: "classes",
-      counts: { name: 2, summary: 1 },
+      type: "rooms",
+      counts: { title: 2, summary: 1 },
       missing: "subtitle",
     },
     published: {
-      options: { types: ["classes"], fields: { classes: ["name", "summary"] } },
-      ids: ["c-morning", "c-evening"],
+      options: { types: ["rooms"], fields: { rooms: ["title", "summary"] } },
+      ids: ["blt0a1b2c3d4e5f0101", "blt0a1b2c3d4e5f0102"],
     },
-    draftsReachable: true,
+    // A delivery token reads what is published to its environment and nothing else.
+    draftsReachable: false,
   },
-  // The types and the first type's page are answered; the second type's page is the first refused.
-  rateLimit: { options: { types: ["classes", "teachers"] }, succeedFirst: 2, atLeast: 2 },
+  // The content types and the first type's page are answered; the second type's page is the first refused.
+  rateLimit: { options: { types: ["rooms", "team"] }, succeedFirst: 2, atLeast: 2 },
 };
 
 /** The contract suite's entries for this adapter (collected by pnpm gen:adapters). */
