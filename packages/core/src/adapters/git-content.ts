@@ -15,6 +15,7 @@ import {
   expandPermalink,
   namesOf,
   nuxtPath,
+  SLUG,
   type PermalinkValues,
 } from "./git-content-permalink.js";
 import { hasValue, isoOf, kindOf, parseContent, stateOf, valueAt } from "./git-content-parse.js";
@@ -79,9 +80,14 @@ export interface GitContentOptions {
   now?: (() => Date) | undefined;
   /** What a relative `path` is relative to. Default: the working folder. */
   cwd?: string | undefined;
+  /** The site being checked: an https address pattern in the settings is used only for this host. */
+  site?: string | undefined;
   /** Replaces GIT_CONTENT_LIMITS. For tests. */
   limits?: typeof GIT_CONTENT_LIMITS | undefined;
 }
+
+/** An item whose own value stops it being an item: noted as unread with this reason (no text from the file). */
+class ItemUnread extends Error {}
 
 const wait = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
@@ -100,6 +106,13 @@ export function createGitContentAdapter(options: GitContentOptions): GitContentA
   const sleep = options.sleep ?? wait;
   const now = options.now ?? (() => new Date());
   const limits = options.limits ?? GIT_CONTENT_LIMITS;
+  const siteHost = ((): string | undefined => {
+    try {
+      return options.site === undefined ? undefined : new URL(options.site).host;
+    } catch {
+      return undefined;
+    }
+  })();
   const redact = createRedactor(env, [GITHUB_TOKEN_VAR]);
   const folders = settings?.folders ?? {};
   const typeNames = Object.keys(folders).sort();
@@ -169,8 +182,12 @@ export function createGitContentAdapter(options: GitContentOptions): GitContentA
     const inFolder = dir === "" ? file.path : file.path.slice(dir.length + 1);
     const names = namesOf(inFolder);
     const slugField = data.slug;
-    const slug =
-      typeof slugField === "string" && slugField.trim() !== "" ? slugField.trim() : names.title;
+    const slugGiven = typeof slugField === "string" && slugField.trim() !== "";
+    if (slugGiven && !SLUG.test(slugField.trim()))
+      throw new ItemUnread(
+        "has a slug that is not 1 to 128 letters, digits, dots, hyphens, underscores or tildes",
+      );
+    const slug = slugGiven ? slugField.trim() : names.title;
     const date =
       names.date ??
       (publishedAt === undefined
@@ -200,10 +217,12 @@ export function createGitContentAdapter(options: GitContentOptions): GitContentA
       ...(date ? { year: date.year, month: date.month, day: date.day } : {}),
     };
     const setting = folders[type]?.permalink;
-    const url =
+    const made =
       addressFromFrontMatter(data.url, values) ??
       addressFromFrontMatter(data.permalink, values) ??
       (setting === undefined ? "" : expandPermalink(setting, values));
+    // An https address comes only from the owner's own pattern, and only for the site being checked.
+    const url = made.startsWith("https://") && new URL(made).host !== siteHost ? "" : made;
     return {
       id,
       data,
@@ -247,10 +266,32 @@ export function createGitContentAdapter(options: GitContentOptions): GitContentA
       }
       for (const [i, data] of parsed.records.entries()) {
         const state = stateOf(data, nowMs);
+        if (state.invalidDate) {
+          noteUnread({
+            path: file.path,
+            reason:
+              "has a publish or expiry date that is not a date (ISO 8601, such as 2026-03-01)",
+          });
+          continue;
+        }
         if (!state.published) continue;
         // A file is an item with the file's path as its id; a list of records in one file adds the position.
         const id = parsed.list ? `${file.path}#${i}` : file.path;
-        yield itemOf(type, file, data, id, state.publishedAt, state.updatedAt);
+        let item: Item;
+        try {
+          item = itemOf(type, file, data, id, state.publishedAt, state.updatedAt);
+        } catch (err) {
+          // One value that cannot be made into an address (a lone surrogate) is that file's problem, not the run's.
+          noteUnread({
+            path: file.path,
+            reason:
+              err instanceof ItemUnread
+                ? err.message
+                : "has a value that cannot be made into an address",
+          });
+          continue;
+        }
+        yield item;
       }
     }
   }

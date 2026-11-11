@@ -21,7 +21,7 @@ const GIT_CONTENT = "git-content";
 
 /** A folder inside the repository: relative, "/" separators, no ".." or "." part, no spaces or odd characters. */
 const FOLDER =
-  /^(?:\.|(?!\.{1,2}(?:\/|$))[A-Za-z0-9_.@~+-]+(?:\/(?!\.{1,2}(?:\/|$))[A-Za-z0-9_.@~+-]+){0,11})$/;
+  /^(?:\.|[A-Za-z0-9_@~+-][A-Za-z0-9_.@~+-]*(?:\/[A-Za-z0-9_@~+-][A-Za-z0-9_.@~+-]*){0,11})$/;
 
 /**
  * gaugeline.adapters.json, read from the working folder like the other settings files (there is no
@@ -89,7 +89,8 @@ export const adaptersConfigSchema = z.strictObject({
               z.strictObject({
                 dir: z
                   .string()
-                  .regex(FOLDER, "a folder inside the repository, such as src/content/posts"),
+                  .regex(FOLDER, "a folder inside the repository, such as src/content/posts")
+                  .refine((d) => !d.split("/").includes("node_modules"), "not node_modules"),
                 permalink: z
                   .string()
                   .refine(isPermalinkPattern, {

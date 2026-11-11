@@ -20,7 +20,7 @@ There are two sources, and you give exactly one in `gaugeline.adapters.json`.
 
 - Only the folders listed under `folders` are read, and only inside `path`. A `dir` with `..` or an absolute path is refused when the settings are read.
 - A symbolic link is never followed, to a file or to a folder, so a link cannot lead outside the repository. A link is listed as unread with that reason.
-- `node_modules`, `.git` and `_drafts` folders are skipped, and so are files whose names start with `_` (Hugo's `_index.md`, files Astro ignores).
+- Nothing hidden is read: every file or folder whose name starts with `.` (`.git`, `.env`, `.github`), `node_modules` and `_drafts` folders, `package.json`, `package-lock.json`, `pnpm-lock.yaml`, `composer.json` and `tsconfig.json` are skipped, and so are files whose names start with `_` (Hugo's `_index.md`, files Astro ignores). A `dir` that is a dot folder or inside `node_modules` is refused.
 - Files are read whole only up to the bound below, and a front matter block is parsed with the `yaml` library with a limit on aliases.
 
 **`github`**: a repository, with an optional `ref` (a branch, tag or commit; the default branch when left out). Every request is a `GET` to `https://api.github.com` through the same fetcher as every other request.
@@ -30,7 +30,7 @@ There are two sources, and you give exactly one in `gaugeline.adapters.json`.
 | `GET /repos/{owner}/{repo}/git/trees/{ref}?recursive=1` | Contents: read | The list of files and their sizes, once. [docs] https://docs.github.com/en/rest/git/trees#get-a-tree               |
 | `GET /repos/{owner}/{repo}/git/blobs/{sha}`             | Contents: read | One content file, as base64, to read its front matter. [docs] https://docs.github.com/en/rest/git/blobs#get-a-blob |
 
-Each content file is one request, so a folder is capped much lower on GitHub than on disk (see the bounds). For a big repository, clone it and use `path`. A public repository without a token is limited by GitHub to 60 requests an hour, so a token is worth setting even then. A redirect to another origin is followed without the token, and GitHub's answer is checked before anything is used.
+Each content file is one request, so a folder is capped much lower on GitHub than on disk (see the bounds). For a big repository, clone it and use `path`. A public repository without a token is limited by GitHub to 60 requests an hour, so with no token Gaugeline reads at most 50 content files in all and says so when there are more; set the token for up to 300 per folder. When GitHub says the hourly limit is used up (HTTP 403 with `x-ratelimit-remaining: 0`, or 429), the run keeps what it had read, says it is partial and tells you when the limit resets. A redirect to another origin is followed without the token, and GitHub's answer is checked before anything is used.
 
 ### What reaches your computer
 
@@ -50,13 +50,13 @@ For each file the adapter decides whether it is live, and where it lives.
 | `publishDate`, `publishedAt`, `pubDate`, `datePublished` or `date` in the future | Scheduled, not live yet (the first of these that is there) | Hugo, Jekyll, Astro                                   |
 | `expiryDate`, `expirydate` or `unpublishDate` in the past                        | Expired, no longer live                                    | Hugo                                                  |
 
-The run's clock decides "future" and "past". A file with none of these is published. A date with no time zone is read as UTC.
+The run's clock decides "future" and "past". A file with none of these is published. A date with no time zone is read as UTC. Dates are read as ISO 8601 only (`2026-03-01`, `2026-03-01T10:00:00Z`). A publish or expiry date that is there and is not a date (`soon`, `2026-02-31`) leaves it unknown whether the item is live, so it is not published and the file is listed as unread.
 
 **Dates** are the front matter's: `publishedAt` is the first of `publishDate`, `publishedAt`, `pubDate`, `datePublished`, `date`, and `updatedAt` is the first of `lastmod`, `updatedDate`, `updatedAt`, `updated`, `dateModified`, `modified`, `lastUpdated`, or else the published date. A file's modification time is never used: a checkout sets it to the time of the checkout, so it says nothing about the content. An item with no date has none, and a `since` filter keeps it, because it cannot be shown to be older.
 
-**Address**, from the folder's `permalink` pattern, or from the file's own front matter when it gives a plain address (Hugo's `url`, Jekyll's and Eleventy's `permalink`). An address that is a template (written with double curly braces, as Liquid and Nunjucks do) cannot be run without the generator, so the folder's pattern is used for it. Nothing is made up: an item that lacks a value its pattern needs gets no address, and its page is not checked.
+**Address**, from the folder's `permalink` pattern, or from the file's own front matter when it gives a path on this site (Hugo's `url`, Jekyll's and Eleventy's `permalink`). A front matter address must start with a single `/`: one that names another host (`https://...`, `//host`, a backslash) is ignored, so a content file can never point a report at another site. An `https://` address is accepted only in the settings' own `permalink`, and only for the host of the site being checked. An address that is a template (written with double curly braces, as Liquid and Nunjucks do) cannot be run without the generator, so the folder's pattern is used for it. Nothing is made up: an item that lacks a value its pattern needs gets no address, and its page is not checked.
 
-A token is written `{slug}` or, as Hugo and Jekyll write it, `:slug`.
+A `slug` field must be 1 to 128 letters, digits, dots, hyphens, underscores or tildes; a file with another slug, or a value that cannot be made into an address, is listed as unread and the run goes on. A token is written `{slug}` or, as Hugo and Jekyll write it, `:slug`.
 
 | Token            | Value                                                                                                                             |
 | ---------------- | --------------------------------------------------------------------------------------------------------------------------------- |
@@ -252,6 +252,7 @@ A host that asks Gaugeline to slow down (HTTP 429) is waited for once when it sa
 | -------------------------------------------- | ----- |
 | Content files read from one folder on disk   | 5,000 |
 | Content files read from one folder on GitHub | 300   |
+| Content files read from GitHub with no token | 50    |
 | Size of one file                             | 1 MiB |
 | Folders deep under a content folder          | 12    |
 

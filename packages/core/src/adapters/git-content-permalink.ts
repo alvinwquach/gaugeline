@@ -61,7 +61,11 @@ export function isPermalinkPattern(setting: string): boolean {
 /** What a pattern is filled from. A token with no value is left undefined. */
 export type PermalinkValues = Partial<Record<PermalinkToken, string>>;
 
+/** Percent-encodes a value part by part. Throws a URIError for a lone surrogate: a caller that reads files catches it per item. */
 const encodeParts = (value: string): string => value.split("/").map(encodeURIComponent).join("/");
+
+/** A `slug` field: 1 to 128 URL-safe characters, as the other adapters take it. */
+export const SLUG = /^[A-Za-z0-9][A-Za-z0-9._~-]{0,127}$/;
 
 /**
  * The address for a pattern, or "" when a token it needs has no value or the result has a `.` or `..`
@@ -95,8 +99,9 @@ export function expandPermalink(setting: string, values: PermalinkValues): strin
 
 /**
  * An address the front matter itself gives (Hugo's `url`, Jekyll's and Eleventy's `permalink`): used
- * when it is a path or an https address; a template (`{{ ... }}`) cannot be run without the generator,
- * so it is not used and the folder's pattern applies instead.
+ * only when it is a path on this site, starting with a single "/" (never "//", a backslash, a scheme or
+ * a host: front matter is data, and it must not send a report to another site). A template (double
+ * curly braces) cannot be run without the generator, so it is not used and the folder's pattern applies.
  */
 export function addressFromFrontMatter(
   value: unknown,
@@ -105,8 +110,11 @@ export function addressFromFrontMatter(
   if (typeof value !== "string") return undefined;
   const text = value.trim();
   if (text === "" || text.includes("{{") || text.includes("{%")) return undefined;
-  if (!isPermalinkPattern(text) && !JEKYLL_STYLES[text]) return undefined;
-  const out = expandPermalink(text, values);
+  const pattern = patternOf(text);
+  if (!pattern.startsWith("/") || pattern.startsWith("//") || pattern.includes("\\"))
+    return undefined;
+  if (!isPermalinkPattern(pattern)) return undefined;
+  const out = expandPermalink(pattern, values);
   return out === "" ? undefined : out;
 }
 

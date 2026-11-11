@@ -250,7 +250,7 @@ export const gitContentEntry: ContractEntry = {
     draftsReachable: "not-applicable",
   },
   // The tree and the first three files (the draft, the scheduled post, the swap) are answered; the next is refused.
-  rateLimit: { options: { types: ["blog"] }, succeedFirst: 4, atLeast: 1 },
+  rateLimit: { options: { types: ["blog"] }, succeedFirst: 4, atLeast: 1, alsoAs403: true },
 };
 
 export const ENTRIES: readonly ContractEntry[] = [

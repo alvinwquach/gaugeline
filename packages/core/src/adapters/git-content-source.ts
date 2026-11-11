@@ -3,6 +3,7 @@ import { lstat, open, readdir, realpath } from "node:fs/promises";
 import path from "node:path";
 import { getJson, isRecord } from "../connectors/get-json.js";
 import type { Fetcher } from "../fetcher.js";
+import { GITHUB_TOKEN_VAR } from "../renewals/tokens.js";
 import { AdapterCouldNotCheck } from "./types.js";
 import { kindOf } from "./git-content-parse.js";
 
@@ -17,14 +18,17 @@ export const GIT_CONTENT_LIMITS: Readonly<{
   files: number;
   fileBytes: number;
   githubFiles: number;
+  githubFilesAnonymous: number;
   depth: number;
 }> = {
   /** Content files read from one folder. More is could-not-check, never a count of part of it. */
   files: 5000,
   /** One file, in bytes. A bigger one is not read and is listed as unread. */
   fileBytes: 1_048_576,
-  /** Content files read from one folder of a GitHub repository (each is one request). */
+  /** Content files read from one folder of a GitHub repository with a token (each is one request). */
   githubFiles: 300,
+  /** The same with no token: GitHub allows 60 requests an hour, so a run reads at most this many files in all. */
+  githubFilesAnonymous: 50,
   /** Folders deep, under a content folder. */
   depth: 12,
 };
@@ -56,13 +60,34 @@ export interface ContentSource {
   read(file: SourceFile): Promise<string>;
 }
 
-const SKIPPED_DIRS = new Set([".git", "node_modules", "_drafts"]);
+const SKIPPED_DIRS = new Set(["node_modules", "_drafts"]);
+/** Files that are never content, whatever folder is read: a project's own manifests and lock files. */
+const NEVER_CONTENT = new Set([
+  "package.json",
+  "package-lock.json",
+  "pnpm-lock.yaml",
+  "composer.json",
+  "tsconfig.json",
+]);
+/** A part of a path that is never read: a dotfile or dot folder (.git, .env, .github), node_modules. */
+const hidden = (part: string): boolean => part.startsWith(".") || part === "node_modules";
+
+/** Refuses a configured folder that is a dot folder or node_modules, before anything is read. */
+function assertContentDir(dir: string, segments: readonly string[]): void {
+  if (segments.some(hidden))
+    throw new AdapterCouldNotCheck(
+      `The folder "${dir}" is a hidden or dependency folder (.git, a dot folder, node_modules), which is not content.`,
+    );
+}
 const toPosix = (p: string): string => p.split(path.sep).join("/");
 const byPath = (a: SourceFile, b: SourceFile): number =>
   a.path < b.path ? -1 : a.path > b.path ? 1 : 0;
 /** Files whose name starts with "_" are not content in these generators (Hugo's _index.md, Astro's ignored files). */
 const isContentName = (name: string): boolean =>
-  !name.startsWith("_") && kindOf(name) !== undefined;
+  !name.startsWith("_") &&
+  !name.startsWith(".") &&
+  !NEVER_CONTENT.has(name) &&
+  kindOf(name) !== undefined;
 
 const kib = (n: number): string => `${Math.round(n / 1024)} KiB`;
 const tooBig = (n: number): string => `is larger than ${kib(n)}`;
@@ -87,7 +112,7 @@ export function localSource(root: string, limits = GIT_CONTENT_LIMITS): ContentS
   };
   const inside = (base: string, target: string): boolean => {
     const rel = path.relative(base, target);
-    return rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel));
+    return rel === "" || (rel.split(path.sep)[0] !== ".." && !path.isAbsolute(rel));
   };
 
   async function list(dir: string): Promise<Listing> {
@@ -95,6 +120,7 @@ export function localSource(root: string, limits = GIT_CONTENT_LIMITS): ContentS
     const segments = dir.split("/").filter((s) => s !== "" && s !== ".");
     if (segments.some((s) => s === "..") || path.isAbsolute(dir))
       throw new AdapterCouldNotCheck(`The folder "${dir}" is not inside the repository.`);
+    assertContentDir(dir, segments);
     const start = path.join(base, ...segments);
     let startReal: string;
     try {
@@ -118,6 +144,7 @@ export function localSource(root: string, limits = GIT_CONTENT_LIMITS): ContentS
       for (const entry of entries) {
         const child = path.join(abs, entry.name);
         const rel = toPosix(path.relative(base, child));
+        if (entry.name.startsWith(".")) continue;
         if (entry.isSymbolicLink()) {
           unread.push({ path: rel, reason: "is a link, which is never followed" });
         } else if (entry.isDirectory()) {
@@ -153,9 +180,14 @@ export function localSource(root: string, limits = GIT_CONTENT_LIMITS): ContentS
       throw new AdapterCouldNotCheck(
         `"${file.path}" leads outside the repository, so it was not read.`,
       );
-    const handle = await open(abs, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0)).catch(
-      () => undefined,
-    );
+    // Only a plain file is opened, without following a link and without blocking: a pipe swapped in since the listing cannot hang the run.
+    const before = await lstat(abs).catch(() => undefined);
+    if (before === undefined || !before.isFile())
+      throw new FileNotRead("is not a plain file any more");
+    const handle = await open(
+      abs,
+      constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0) | (constants.O_NONBLOCK ?? 0),
+    ).catch(() => undefined);
     if (handle === undefined)
       throw new FileNotRead("could not be opened (it is gone or is a link)");
     try {
@@ -217,10 +249,36 @@ export function githubSource(options: GitHubSourceOptions): ContentSource {
   const token = (options.token ?? "").trim();
   const repoPath = `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}`;
 
+  // GitHub sends its rate limits as 403 (the primary limit with x-ratelimit-remaining: 0, the secondary with
+  // Retry-After) as well as 429. Both are a slow-down, not a refused token: shown to the rest of the code as 429,
+  // with Retry-After worked out from the reset time.
+  const limited: Fetcher = {
+    ...fetcher,
+    get: async (url, opts) => {
+      const hops = await fetcher.get(url, opts);
+      const last = hops.at(-1);
+      if (!last || last.status !== 403) return hops;
+      const h = last.headers;
+      const reset = Number(h["x-ratelimit-reset"]);
+      const primary = h["x-ratelimit-remaining"] === "0" && Number.isFinite(reset);
+      const secondary = (h["retry-after"] ?? "") !== "" || /rate limit/i.test(last.body ?? "");
+      if (!primary && !secondary) return hops;
+      const wait = primary ? Math.max(1, Math.ceil(reset - Date.now() / 1000)) : undefined;
+      return [
+        ...hops.slice(0, -1),
+        {
+          ...last,
+          status: 429,
+          headers: { ...h, ...(wait !== undefined ? { "retry-after": String(wait) } : {}) },
+        },
+      ];
+    },
+  };
+
   const get = async (apiPath: string): Promise<Record<string, unknown>> => {
     const { body } = await getJson(
       {
-        fetcher,
+        fetcher: limited,
         request: {
           ...(token !== "" ? { authorization: `Bearer ${token}` } : {}),
           headers: { accept: "application/vnd.github+json", "x-github-api-version": "2022-11-28" },
@@ -261,8 +319,11 @@ export function githubSource(options: GitHubSourceOptions): ContentSource {
     return tree;
   };
 
+  const listed = new Set<string>();
+
   async function list(dir: string): Promise<Listing> {
     const segments = dir.split("/").filter((s) => s !== "" && s !== ".");
+    assertContentDir(dir, segments);
     const prefix = segments.length === 0 ? "" : `${segments.join("/")}/`;
     const files: SourceFile[] = [];
     const unread: Unread[] = [];
@@ -270,14 +331,24 @@ export function githubSource(options: GitHubSourceOptions): ContentSource {
       if (!entry.path.startsWith(prefix)) continue;
       const parts = entry.path.slice(prefix.length).split("/");
       const name = parts.at(-1) ?? "";
-      if (parts.slice(0, -1).some((p) => SKIPPED_DIRS.has(p)) || !isContentName(name)) continue;
+      if (parts.slice(0, -1).some((p) => hidden(p) || SKIPPED_DIRS.has(p)) || !isContentName(name))
+        continue;
       if (entry.size > limits.fileBytes)
         unread.push({ path: entry.path, reason: `is larger than ${kib(limits.fileBytes)}` });
       else files.push({ path: entry.path, size: entry.size, sha: entry.sha });
     }
-    if (files.length > limits.githubFiles)
+    const cap = token === "" ? limits.githubFilesAnonymous : limits.githubFiles;
+    if (files.length > cap)
       throw new AdapterCouldNotCheck(
-        `The folder "${dir}" has ${files.length} content files, more than the ${limits.githubFiles} Gaugeline reads from GitHub (one request each). Read a local clone with "path" instead.`,
+        token === ""
+          ? `The folder "${dir}" has ${files.length} content files, more than the ${cap} Gaugeline reads from GitHub with no token (GitHub allows 60 requests an hour without one). Set ${GITHUB_TOKEN_VAR}, or read a local clone with "path" instead.`
+          : `The folder "${dir}" has ${files.length} content files, more than the ${cap} Gaugeline reads from GitHub (one request each). Read a local clone with "path" instead.`,
+      );
+    // With no token the budget is for the whole run, not each folder: GitHub counts every request.
+    for (const f of files) if (f.sha !== undefined) listed.add(f.sha);
+    if (token === "" && listed.size > limits.githubFilesAnonymous)
+      throw new AdapterCouldNotCheck(
+        `The folders have more than ${limits.githubFilesAnonymous} content files in all, more than Gaugeline reads from GitHub with no token (GitHub allows 60 requests an hour without one). Set ${GITHUB_TOKEN_VAR}, or read a local clone with "path" instead.`,
       );
     files.sort(byPath);
     return { files, unread };

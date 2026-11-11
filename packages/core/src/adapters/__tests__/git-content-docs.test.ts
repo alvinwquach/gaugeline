@@ -92,6 +92,7 @@ describe("docs/integrations/git-content.md", () => {
     expect(rows(page, "Limit").map((r) => r[1])).toEqual([
       n(GIT_CONTENT_LIMITS.files),
       n(GIT_CONTENT_LIMITS.githubFiles),
+      n(GIT_CONTENT_LIMITS.githubFilesAnonymous),
       "1 MiB",
       n(GIT_CONTENT_LIMITS.depth),
     ]);

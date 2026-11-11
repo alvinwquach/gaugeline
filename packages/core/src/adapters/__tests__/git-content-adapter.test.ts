@@ -366,46 +366,58 @@ describe("front matter and published state: unit", () => {
   });
 });
 
+/** Can this machine make symbolic links (Windows without the privilege cannot)? */
+const CAN_LINK = (() => {
+  const probe = mkdtempSync(path.join(tmpdir(), "gaugeline-link-"));
+  try {
+    symlinkSync(probe, path.join(probe, "l"));
+    return true;
+  } catch {
+    return false;
+  } finally {
+    removeTree(probe);
+  }
+})();
+
 describe("a local folder stays inside the repository: edge cases", () => {
-  it("never follows a link out of the repository, to a file or to a folder", async () => {
-    const outside = realpathSync(mkdtempSync(path.join(tmpdir(), "gaugeline-outside-")));
-    try {
-      writeFileSync(path.join(outside, "secret.md"), "---\ntitle: Outside\n---\n");
-      mkdirSync(path.join(outside, "dir"));
-      writeFileSync(path.join(outside, "dir", "inner.md"), "---\ntitle: Inner\n---\n");
-      writeTree(dir, { "repo/content/ok.md": "---\ntitle: Ok\n---\n" });
+  it.skipIf(!CAN_LINK)(
+    "never follows a link out of the repository, to a file or to a folder",
+    async () => {
+      const outside = realpathSync(mkdtempSync(path.join(tmpdir(), "gaugeline-outside-")));
       try {
+        writeFileSync(path.join(outside, "secret.md"), "---\ntitle: Outside\n---\n");
+        mkdirSync(path.join(outside, "dir"));
+        writeFileSync(path.join(outside, "dir", "inner.md"), "---\ntitle: Inner\n---\n");
+        writeTree(dir, { "repo/content/ok.md": "---\ntitle: Ok\n---\n" });
         symlinkSync(path.join(outside, "secret.md"), path.join(dir, "repo/content/link.md"));
         symlinkSync(path.join(outside, "dir"), path.join(dir, "repo/content/linked-dir"));
         symlinkSync(outside, path.join(dir, "repo/escape"));
-      } catch {
-        return; // links cannot be made here (Windows without the privilege)
+        const make = (folder: string) =>
+          createGitContentAdapter({
+            env: {},
+            fetcher,
+            now: () => NOW,
+            settings: {
+              id: "git-content",
+              path: path.join(dir, "repo"),
+              folders: { c: { dir: folder } },
+            },
+          });
+        const a = make("content");
+        expect((await all(a)).map((d) => d.id)).toEqual(
+          ["repo/content/ok.md"].map((p) => p.replace("repo/", "")),
+        );
+        expect(a.unread().files.map((f) => f.reason)).toEqual([
+          "is a link, which is never followed",
+          "is a link, which is never followed",
+        ]);
+        // A folder that is itself a link out of the repository is could-not-check.
+        await expect(all(make("escape"))).rejects.toThrow(AdapterCouldNotCheck);
+      } finally {
+        removeTree(outside);
       }
-      const make = (folder: string) =>
-        createGitContentAdapter({
-          env: {},
-          fetcher,
-          now: () => NOW,
-          settings: {
-            id: "git-content",
-            path: path.join(dir, "repo"),
-            folders: { c: { dir: folder } },
-          },
-        });
-      const a = make("content");
-      expect((await all(a)).map((d) => d.id)).toEqual(
-        ["repo/content/ok.md"].map((p) => p.replace("repo/", "")),
-      );
-      expect(a.unread().files.map((f) => f.reason)).toEqual([
-        "is a link, which is never followed",
-        "is a link, which is never followed",
-      ]);
-      // A folder that is itself a link out of the repository is could-not-check.
-      await expect(all(make("escape"))).rejects.toThrow(AdapterCouldNotCheck);
-    } finally {
-      removeTree(outside);
-    }
-  });
+    },
+  );
 
   it("a content folder with .. or an absolute path is refused by the settings and by the reader", async () => {
     const entry = (d: string) => ({
@@ -614,10 +626,10 @@ describe("reading from GitHub: integration", () => {
       env: {},
       fetcher: createFetcher({ transport: githubTransport(files), timeoutMs: 5000 }),
       now: () => NOW,
-      limits: { ...GIT_CONTENT_LIMITS, githubFiles: 5 },
+      limits: { ...GIT_CONTENT_LIMITS, githubFiles: 5, githubFilesAnonymous: 5 },
       settings: { id: "git-content", github: { repo: REPO }, folders: ASTRO_FOLDERS },
     });
-    await expect(a.types()).rejects.toThrow(/Read a local clone/);
+    await expect(a.types()).rejects.toThrow(/local clone/);
   });
 });
 
@@ -684,5 +696,182 @@ describe("the settings and the registry: unit", () => {
       settings: { id: "git-content", path: ".", folders: ASTRO_FOLDERS },
     });
     expect((await a.types())[0]).toEqual({ name: "blog", count: 3 });
+  });
+});
+
+describe("review fixes: front matter cannot point off-site, bad values do not abort the run", () => {
+  const blog = { posts: { dir: "c", permalink: "/blog/{slug}/" } };
+
+  it("an address in front matter is a path on this site: https, //host and backslash forms are ignored", async () => {
+    const page = (fm: string, name: string) => [`c/${name}.md`, `---\n${fm}\n---\n`] as const;
+    const files = Object.fromEntries([
+      page("url: https://evil.example/x", "a"),
+      page("permalink: https://:slug", "b"),
+      page("url: //evil.example/x", "c"),
+      page('url: "/\\\\evil.example"', "d"),
+      page("url: /ok/path/", "e"),
+    ]);
+    const docs = await all(local(files, blog));
+    expect(docs.map((d) => d.url)).toEqual([
+      "/blog/a/",
+      "/blog/b/",
+      "/blog/c/",
+      "/blog/d/",
+      "/ok/path/",
+    ]);
+  });
+
+  it("an https pattern in the settings is used only when its host is the site's host", async () => {
+    const files = { "c/tea.md": "---\ntitle: Tea\n---\n" };
+    const make = (host: string, site?: string) => {
+      writeTree(dir, files);
+      return createGitContentAdapter({
+        env: {},
+        fetcher,
+        now: () => NOW,
+        ...(site ? { site } : {}),
+        settings: {
+          id: "git-content",
+          path: dir,
+          folders: { m: { dir: "c", permalink: `https://${host}/menu/{slug}` } },
+        },
+      });
+    };
+    expect((await all(make("shop.example", "https://shop.example")))[0]?.url).toBe(
+      "https://shop.example/menu/tea",
+    );
+    expect((await all(make("other.example", "https://shop.example")))[0]?.url).toBeUndefined();
+    expect((await all(make("shop.example")))[0]?.url).toBeUndefined();
+  });
+
+  it("a lone surrogate in a slug notes that file as unread and the run goes on", async () => {
+    const files = {
+      "c/a.json": JSON.stringify({ title: "A" }).replace("{", '{"slug":"\\ud800",'),
+      "c/b.yaml": 'slug: "\\uD800"\ntitle: B\n',
+      "c/good.md": "---\ntitle: Good\n---\n",
+      "c/long.md": `---\nslug: ${"x".repeat(129)}\n---\n`,
+      "c/spaces.md": "---\nslug: a b\n---\n",
+    };
+    const a = local(files, blog);
+    const docs = await all(a);
+    expect(docs.map((d) => d.id)).toEqual(["c/good.md"]);
+    expect(a.unread().files.map((f) => f.path)).toEqual([
+      "c/a.json",
+      "c/b.yaml",
+      "c/long.md",
+      "c/spaces.md",
+    ]);
+    for (const f of a.unread().files) expect(f.reason).toMatch(/slug/);
+  });
+
+  it("dotfiles, dot folders, lock files and package.json are never content; node_modules is skipped", async () => {
+    const files = {
+      ".secrets.yml": "title: s\n",
+      ".env.json": '{"title":"s"}',
+      ".github/workflows/ci.yml": "name: ci\n",
+      "pnpm-lock.yaml": "lockfileVersion: 9\n",
+      "package-lock.json": "{}",
+      "package.json": '{"name":"x"}',
+      "node_modules/x/y.md": "---\ntitle: X\n---\n",
+      "post.md": "---\ntitle: Post\n---\n",
+    };
+    expect((await all(local(files, { root: { dir: "." } }))).map((d) => d.id)).toEqual(["post.md"]);
+    const remote = createGitContentAdapter({
+      env: {},
+      fetcher: createFetcher({ transport: githubTransport(files), timeoutMs: 5000 }),
+      now: () => NOW,
+      settings: { id: "git-content", github: { repo: REPO }, folders: { root: { dir: "." } } },
+    });
+    expect((await all(remote)).map((d) => d.id)).toEqual(["post.md"]);
+  });
+
+  it("a content folder that is .git, node_modules or starts with a dot is refused", async () => {
+    const entry = (d: string) => ({
+      adapters: [{ id: "git-content", path: ".", folders: { c: { dir: d } } }],
+    });
+    for (const bad of [
+      ".git",
+      ".github/workflows",
+      "a/.hidden",
+      "node_modules/x",
+      "a/node_modules",
+    ])
+      expect(adaptersConfigSchema.safeParse(entry(bad)).success, bad).toBe(false);
+    for (const bad of [".git", "node_modules/x", ".hidden"]) {
+      const a = createGitContentAdapter({
+        env: {},
+        fetcher,
+        settings: { id: "git-content", path: dir, folders: { c: { dir: bad } } },
+      });
+      await expect(a.types()).rejects.toThrow(/not content/);
+    }
+  });
+
+  it("a date that is not a date means the item is not published, and the file is noted", async () => {
+    const files = {
+      "c/soon.md": "---\ntitle: A\npublishDate: soon\n---\n",
+      "c/foo.md": "---\ntitle: B\ndate: Foo 1\n---\n",
+      "c/feb.md": "---\ntitle: C\ndate: 2026-02-31\n---\n",
+      "c/expiry.md": "---\ntitle: D\ndate: 2026-01-01\nexpiryDate: someday\n---\n",
+      "c/ok.md": "---\ntitle: E\ndate: 2026-02-01T10:00:00+02:00\n---\n",
+    };
+    const a = local(files, blog);
+    const docs = await all(a);
+    expect(docs.map((d) => [d.id, d.publishedAt])).toEqual([
+      ["c/ok.md", "2026-02-01T08:00:00.000Z"],
+    ]);
+    expect(a.unread().files.map((f) => f.path)).toEqual([
+      "c/expiry.md",
+      "c/feb.md",
+      "c/foo.md",
+      "c/soon.md",
+    ]);
+    for (const f of a.unread().files) expect(f.reason).toMatch(/date/);
+  });
+
+  it("GitHub's rate limit sent as a 403 is a rate limit with what was read, not a refused token", async () => {
+    const reset = String(Math.floor(Date.now() / 1000) + 3600);
+    let n = 0;
+    const inner = githubTransport(ASTRO_FILES);
+    const transport: Transport = (url, req) => {
+      if (n++ < 4) return inner(url, req);
+      return Promise.resolve({
+        status: 403,
+        headers: {
+          "content-type": "application/json",
+          "x-ratelimit-remaining": "0",
+          "x-ratelimit-reset": reset,
+        },
+        body: Readable.from([Buffer.from('{"message":"API rate limit exceeded"}')]),
+      });
+    };
+    const a = createGitContentAdapter({
+      env: {},
+      fetcher: createFetcher({ transport, timeoutMs: 5000 }),
+      sleep: () => Promise.resolve(),
+      now: () => NOW,
+      settings: { id: "git-content", github: { repo: REPO }, folders: ASTRO_FOLDERS },
+    });
+    const got = await collectPublished(a, { types: ["blog"] });
+    expect(got.partial?.reason).toBe("rate-limited");
+    expect(got.partial?.retry).toMatch(/^in \d+ seconds$/);
+    expect(got.docs.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("without a token, a folder past the anonymous budget is could-not-check before any file is asked for", async () => {
+    const files: Record<string, string> = {};
+    for (let i = 0; i < 51; i++) files[`src/content/blog/p${i}.md`] = "---\ntitle: P\n---\n";
+    const asked: string[] = [];
+    const a = createGitContentAdapter({
+      env: {},
+      fetcher: createFetcher({
+        transport: githubTransport(files, { onRequest: (_m, u) => asked.push(u.pathname) }),
+        timeoutMs: 5000,
+      }),
+      now: () => NOW,
+      settings: { id: "git-content", github: { repo: REPO }, folders: ASTRO_FOLDERS },
+    });
+    await expect(a.types()).rejects.toThrow(/60 requests an hour/);
+    expect(asked.filter((p) => p.includes("/blobs/"))).toEqual([]);
   });
 });

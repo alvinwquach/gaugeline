@@ -129,17 +129,43 @@ export function isoOf(value: unknown): string | undefined {
   if (typeof value !== "string") return undefined;
   const text = value.trim();
   if (text === "") return undefined;
-  const bare = /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?$/.test(text);
-  const ms = Date.parse(bare ? `${text.replace(" ", "T")}Z` : text);
-  return Number.isNaN(ms) ? undefined : new Date(ms).toISOString();
+  // ISO 8601 only: a date, or a date and time with an optional zone. Nothing Date.parse would guess at.
+  const m =
+    /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2})(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?)?$/.exec(
+      text,
+    );
+  if (!m) return undefined;
+  const [, y = "", mo = "", d = "", hh = "00", mi = "00", ss = "00", frac = "", zone] = m;
+  const offset =
+    zone === undefined || zone === "Z" ? "Z" : zone.replace(/^([+-]\d{2})(\d{2})$/, "$1:$2");
+  const ms = Date.parse(`${y}-${mo}-${d}T${hh}:${mi}:${ss}${frac}${offset}`);
+  if (Number.isNaN(ms)) return undefined;
+  // 2026-02-31 is not a day: the calendar date must survive the round trip in the stamp's own zone.
+  const east =
+    offset === "Z"
+      ? 0
+      : (offset.startsWith("-") ? -1 : 1) *
+        (Number(offset.slice(1, 3)) * 60 + Number(offset.slice(4, 6))) *
+        60_000;
+  return new Date(ms + east).toISOString().startsWith(`${y}-${mo}-${d}T`)
+    ? new Date(ms).toISOString()
+    : undefined;
 }
 
-const firstTime = (data: Record<string, unknown>, names: readonly string[]): string | undefined => {
+/** A value front matter holds for a date field that has one: not missing, null or empty. */
+const present = (v: unknown): boolean => !(v === undefined || v === null || v === "");
+
+/** The first date field that is there: its time, or `invalid` when it is there and is not a date. */
+const firstTime = (
+  data: Record<string, unknown>,
+  names: readonly string[],
+): { time?: string; invalid?: true } => {
   for (const name of names) {
+    if (!present(data[name])) continue;
     const t = isoOf(data[name]);
-    if (t !== undefined) return t;
+    return t === undefined ? { invalid: true } : { time: t };
   }
-  return undefined;
+  return {};
 };
 
 /** The front matter names that say when an item was published, in the order they are tried. */
@@ -170,6 +196,8 @@ const isFalse = (v: unknown): boolean =>
 
 export interface ItemState {
   published: boolean;
+  /** A publish or expiry date is there and is not an ISO 8601 date: whether it is live is unknown, so it is not published. */
+  invalidDate?: true;
   publishedAt?: string;
   /** From the updated fields; with none, the published time. Never a file's modification time. */
   updatedAt?: string;
@@ -181,20 +209,25 @@ export interface ItemState {
  * - `published: false` is not published (Jekyll);
  * - `permalink: false` is not written to the site at all (Eleventy);
  * - a publish date after `now` is scheduled, not live (Hugo and Jekyll both leave it out of the build);
- * - an expiry date at or before `now` has expired (Hugo).
+ * - an expiry date at or before `now` has expired (Hugo);
+ * - a publish or expiry date that is not a date leaves it unknown, so it is not published.
  */
 export function stateOf(data: Record<string, unknown>, now: number): ItemState {
-  const publishedAt = firstTime(data, PUBLISHED_FIELDS);
-  const updatedAt = firstTime(data, UPDATED_FIELDS) ?? publishedAt;
-  const expires = firstTime(data, EXPIRY_FIELDS);
+  const pub = firstTime(data, PUBLISHED_FIELDS);
+  const upd = firstTime(data, UPDATED_FIELDS);
+  const exp = firstTime(data, EXPIRY_FIELDS);
+  const publishedAt = pub.time;
+  const updatedAt = upd.time ?? publishedAt;
+  const switchedOff = isTrue(data.draft) || isFalse(data.published) || data.permalink === false;
+  const invalid = pub.invalid === true || exp.invalid === true;
   const live =
-    !isTrue(data.draft) &&
-    !isFalse(data.published) &&
-    data.permalink !== false &&
+    !switchedOff &&
+    !invalid &&
     (publishedAt === undefined || Date.parse(publishedAt) <= now) &&
-    (expires === undefined || Date.parse(expires) > now);
+    (exp.time === undefined || Date.parse(exp.time) > now);
   return {
     published: live,
+    ...(invalid && !switchedOff ? { invalidDate: true as const } : {}),
     ...(publishedAt !== undefined ? { publishedAt } : {}),
     ...(updatedAt !== undefined ? { updatedAt } : {}),
   };
