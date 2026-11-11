@@ -48,6 +48,7 @@ const FIXTURES = [
   "sveltekit-dev",
   "astro-like",
   "sanity-images",
+  "aem-author-links",
   "refusing",
   "tag-rules",
   "nav-events",
