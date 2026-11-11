@@ -46,6 +46,23 @@
       "verbose",
       "version"
     ],
+    "backups": [
+      "allow-private",
+      "ci",
+      "discord",
+      "email",
+      "help",
+      "json",
+      "no-open",
+      "notify-on",
+      "quiet",
+      "report-url",
+      "save-requests",
+      "slack",
+      "verbose",
+      "version",
+      "webhook"
+    ],
     "brief": [
       "allow-private",
       "allow-secret-key",
@@ -64,6 +81,7 @@
     "check": [
       "allow-private",
       "allow-secret-key",
+      "backups",
       "base",
       "ci",
       "cost",
@@ -286,6 +304,7 @@
     "run": [
       "all",
       "allow-private",
+      "backups",
       "cost",
       "help",
       "libraries",

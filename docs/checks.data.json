@@ -1183,6 +1183,32 @@
     "estimateChanges": "Minutes when the address pattern in the settings is wrong. An hour or more when the site does not build pages for new items, or the route is missing."
   },
   {
+    "id": "no-recent-backup",
+    "severity": "high",
+    "area": "Security & email",
+    "title": "No recent backup",
+    "what": "The newest backup the platform lists, or the newest dated export file in the folder you named, is older than the limit (7 days unless you changed it), or there is none.",
+    "why": "When a client's content or database is wiped, the first question is when the last backup was. A backup that stopped weeks ago is as good as none: everything since is lost, and nobody finds out until the day it is needed.",
+    "fix": "Open the platform's backups page (or the job that writes the export), find why the last run did not happen, and run it. Then check the next one runs by itself, and that someone has the access to restore it.",
+    "tech": "Read-only: one GET per platform and a listing of each export folder; nothing triggers a backup or an export. Supabase: GET /v1/projects/{ref}/database/backups on the Management API with SUPABASE_ACCESS_TOKEN (Supabase has no read-only token type: use one that only needs this project). The newest COMPLETED backup, or the latest point-in-time recovery moment, is compared with the injected clock. Sanity: GET /projects/{id}/datasets/{dataset}/backups with SANITY_TOKEN where the plan exposes it. Exports: the files directly in each folder named under \"exports\", never opened; a day in the file name (2026-11-10, 20261110) is the date, else the time the file was last changed, and the finding says which. Limit: \"maxAgeDays\" (default 7). Only with --backups or gaugeline backups; anything a platform does not expose is could-not-check with the reason",
+    "size": "M",
+    "done": "The newest backup of each system is newer than the limit in gaugeline.backups.json (7 days by default), and whoever owns the backup knows where it is and how to restore it.",
+    "estimateChanges": "An hour to find why the backup stopped (a failed job, an expired credential, a plan change) and run it again. More when the restore has never been tried."
+  },
+  {
+    "id": "backups-not-enabled",
+    "severity": "high",
+    "area": "Security & email",
+    "title": "Backups are not enabled",
+    "what": "The platform reports no backups for the project or dataset: daily backups and point-in-time recovery are off, or nothing is listed.",
+    "why": "Nothing can be restored if the data is deleted, overwritten by a bad import or lost to a mistaken migration. Most of the platforms freelancers use keep no copy at all on their cheapest plans.",
+    "fix": "Switch backups on in the platform (a paid plan on some), or schedule an export to a folder or a bucket and list it under exports in gaugeline.backups.json. Then run this again to see the first backup appear.",
+    "tech": "Read-only, from the same GET as no-recent-backup. Supabase: walg_enabled and pitr_enabled both false and no completed backup listed. Sanity: the dataset's backup list is empty (Gaugeline cannot tell from it whether backups are off or none has run yet, and the finding says so). A platform that refuses the token or does not expose backups on the plan is could-not-check, not \"not enabled\". Only with --backups or gaugeline backups",
+    "size": "S",
+    "done": "The platform lists a backup for the project or dataset: daily backups or point-in-time recovery is on and has run at least once.",
+    "estimateChanges": "Minutes to switch it on if the plan has it. If the plan does not, the client decides whether the upgrade or a scheduled export is worth it."
+  },
+  {
     "id": "printful-unsynced",
     "severity": "high",
     "area": "Sales & prices",
@@ -2650,6 +2676,19 @@
     "size": "M",
     "done": "A page for an item that was unpublished or deleted is gone from the site or redirects, and the site's sitemap no longer lists it.",
     "estimateChanges": "Minutes to purge a page and fix its revalidation. An hour when the site never removes pages for deleted items."
+  },
+  {
+    "id": "export-too-small",
+    "severity": "medium",
+    "area": "Security & email",
+    "title": "The latest export is far smaller than the one before",
+    "what": "The newest export file in a folder you named is under half the size of the one before it (or the percent you set).",
+    "why": "A backup job that fails half way still writes a file. A database dump that suddenly shrinks is usually a table that was skipped or a job that ran out of space, and it is only found when someone tries to restore it.",
+    "fix": "Compare what is inside the two exports (the list of tables or files). If the drop is wrong, fix the job and run it again; if it is real, note why.",
+    "tech": "Only folders named under \"exports\" in gaugeline.backups.json. Files are listed, never opened: the size in bytes comes from the folder listing. Per day the biggest file stands for it (a second run does not hide a good export). The latest day's file is compared with the day before it in integers: flagged when its size times 100 is under the previous size times \"shrinkPercent\" (default 50), so a zero-byte latest file is always flagged. A previous export of zero bytes has nothing to shrink from. The day comes from the file name or, failing that, when it was last changed. Only with --backups or gaugeline backups",
+    "size": "S",
+    "done": "The latest export is about the size of the one before it, or the drop is explained (rows deleted on purpose) and the next export confirms it.",
+    "estimateChanges": "Half an hour to open the two files' contents list and see what is missing: a table that failed, a bucket that was skipped, a job that ran out of disk."
   },
   {
     "id": "library-with-advisory",

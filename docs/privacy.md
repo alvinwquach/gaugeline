@@ -311,6 +311,25 @@ name (inside the one you ran from), never over a file without `--force`, all thr
 What it prints: paths, cache header values, usage figures and dates. It never buys, upgrades, renews, logs in
 or changes anything.
 
+### Backups (gaugeline backups)
+
+`gaugeline backups <address>` (and `--backups` on the page check) reads when a client's content and
+database were last backed up ([Backups](guides/backups.md)). Every request is `GET`, through the fetcher.
+
+- **Supabase, only for a project you name and a token you set.** One
+  `GET https://api.supabase.com/v1/projects/<ref>/database/backups`, with the token in a request header to
+  that host only. Read from the answer: whether daily backups and point-in-time recovery are on, and each
+  backup's status and time.
+- **Sanity, only for a token you set.** One
+  `GET https://api.sanity.io/v2021-06-07/projects/<id>/datasets/<name>/backups`, likewise. Read: each
+  backup's time.
+- **An export folder you name.** Nothing is requested. The folder on this computer is listed: each file's
+  name, size and time. A file is never opened or read, a subfolder is not entered, and a link is not followed.
+
+The tokens are never put in an address, a log, a finding or a report. Nothing starts a backup or an export,
+restores anything, logs in or changes anything. File names from your folder are escaped like all text in a
+report.
+
 ### Trackers on sensitive pages (--trackers)
 
 `--trackers` on the page check lists the trackers on pages with a form or a path you list

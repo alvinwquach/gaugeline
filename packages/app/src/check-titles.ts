@@ -147,6 +147,8 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "Visitors",
   ],
   "live-page-missing": ["A published item has no page on the live site", "Visitors"],
+  "no-recent-backup": ["No recent backup", "Security & email"],
+  "backups-not-enabled": ["Backups are not enabled", "Security & email"],
   "printful-unsynced": ["A fulfillment product has variants that cannot be made", "Sales & prices"],
   "stripe-archived": ["A website product is archived in checkout", "Sales & prices"],
   "stripe-missing": ["A website product is missing from checkout", "Sales & prices"],
@@ -329,6 +331,7 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "output-changes-every-request": ["The page's HTML is different on every request", "Visitors"],
   "usage-jump": ["Hosting usage jumped", "Visitors"],
   "unpublished-still-live": ["An unpublished or deleted item still has a live page", "Visitors"],
+  "export-too-small": ["The latest export is far smaller than the one before", "Security & email"],
   "library-with-advisory": [
     "A JavaScript library the site serves has a published advisory",
     "Security & email",
@@ -969,6 +972,18 @@ export const CHECK_TEXT: Readonly<
     "The client published a page and gave out the link. Visitors, and anyone the client sent it to, get a not-found page.",
     "Check the address pattern (urls in gaugeline.adapters.json, or the platform's own) against the site's routes. If the pattern is right, the site did not build the page: trigger the build or revalidation, and look at the webhook that should have done it.",
     "Only with --published. The same read as published-not-live: one GET of the address of each item changed in the last N days; a 404 or 410 on an item that changed more than live.graceMinutes ago is a finding. An address on another site is never asked for. A page that answers anything else than 2xx, 404 or 410 is could-not-check, never a finding",
+  ],
+  "no-recent-backup": [
+    "The newest backup the platform lists, or the newest dated export file in the folder you named, is older than the limit (7 days unless you changed it), or there is none.",
+    "When a client's content or database is wiped, the first question is when the last backup was. A backup that stopped weeks ago is as good as none: everything since is lost, and nobody finds out until the day it is needed.",
+    "Open the platform's backups page (or the job that writes the export), find why the last run did not happen, and run it. Then check the next one runs by itself, and that someone has the access to restore it.",
+    'Read-only: one GET per platform and a listing of each export folder; nothing triggers a backup or an export. Supabase: GET /v1/projects/{ref}/database/backups on the Management API with SUPABASE_ACCESS_TOKEN (Supabase has no read-only token type: use one that only needs this project). The newest COMPLETED backup, or the latest point-in-time recovery moment, is compared with the injected clock. Sanity: GET /projects/{id}/datasets/{dataset}/backups with SANITY_TOKEN where the plan exposes it. Exports: the files directly in each folder named under "exports", never opened; a day in the file name (2026-11-10, 20261110) is the date, else the time the file was last changed, and the finding says which. Limit: "maxAgeDays" (default 7). Only with --backups or gaugeline backups; anything a platform does not expose is could-not-check with the reason',
+  ],
+  "backups-not-enabled": [
+    "The platform reports no backups for the project or dataset: daily backups and point-in-time recovery are off, or nothing is listed.",
+    "Nothing can be restored if the data is deleted, overwritten by a bad import or lost to a mistaken migration. Most of the platforms freelancers use keep no copy at all on their cheapest plans.",
+    "Switch backups on in the platform (a paid plan on some), or schedule an export to a folder or a bucket and list it under exports in gaugeline.backups.json. Then run this again to see the first backup appear.",
+    'Read-only, from the same GET as no-recent-backup. Supabase: walg_enabled and pitr_enabled both false and no completed backup listed. Sanity: the dataset\'s backup list is empty (Gaugeline cannot tell from it whether backups are off or none has run yet, and the finding says so). A platform that refuses the token or does not expose backups on the plan is could-not-check, not "not enabled". Only with --backups or gaugeline backups',
   ],
   "printful-unsynced": [
     "A Printful product matched to a product on your website has a variant that is not synced.",
@@ -1647,6 +1662,12 @@ export const CHECK_TEXT: Readonly<
     "The client took the item down, perhaps because it was wrong, out of date or private, and visitors and search engines can still read it.",
     "Purge or revalidate the page so it answers 404 or redirects, and check that the sitemap is rebuilt when an item is unpublished. If the page is meant to stay, publish the item again.",
     "Only with --published, and only when the run has a list of the whole site (the sitemap and feed adapter, which is the default) and an adapter with urls templates in gaugeline.adapters.json. Every address in the site's own sitemap that fits a template and that no published item resolves to is asked for with one GET, within the page budget; a 2xx answer is a finding. A list of everything published that is cut short (a rate limit, or more than 2000 items) means this is not looked for, and the reason is could-not-check",
+  ],
+  "export-too-small": [
+    "The newest export file in a folder you named is under half the size of the one before it (or the percent you set).",
+    "A backup job that fails half way still writes a file. A database dump that suddenly shrinks is usually a table that was skipped or a job that ran out of space, and it is only found when someone tries to restore it.",
+    "Compare what is inside the two exports (the list of tables or files). If the drop is wrong, fix the job and run it again; if it is real, note why.",
+    'Only folders named under "exports" in gaugeline.backups.json. Files are listed, never opened: the size in bytes comes from the folder listing. Per day the biggest file stands for it (a second run does not hide a good export). The latest day\'s file is compared with the day before it in integers: flagged when its size times 100 is under the previous size times "shrinkPercent" (default 50), so a zero-byte latest file is always flagged. A previous export of zero bytes has nothing to shrink from. The day comes from the file name or, failing that, when it was last changed. Only with --backups or gaugeline backups',
   ],
   "library-with-advisory": [
     "Gaugeline reads the JavaScript files a page loads, finds the version of jQuery, jQuery UI, Lodash, Moment.js, Bootstrap or AngularJS in them, and lists the published advisories that name that version, with the version that fixes each.",

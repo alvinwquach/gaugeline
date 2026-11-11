@@ -506,6 +506,7 @@ between the markers; CI fails when it differs from the flag table.
 | `--trackers`                | Also list the trackers on pages with a form or a path you listed, and what a tag manager holds                       |                      | 0.2.0 |
 | `--libraries`               | Also check the JavaScript files a page loads for libraries with a published advisory                                 |                      | 0.2.0 |
 | `--wordpress`               | Also check a WordPress site's versions against the current releases, and whether it lists its users                  |                      | 0.2.0 |
+| `--backups`                 | Also check when the client's content and database were last backed up (Supabase, Sanity, an export folder)           |                      | 0.2.0 |
 | `--published`               | Also check that content changed in your CMS is live on the site, and that unpublished pages are gone                 |                      | 0.2.0 |
 | `--owner-consent`           | Run the probing checks, which ask routes for what they protect with no login; only on sites you may test             |                      | 0.2.0 |
 | `--routes <value>`          | With --owner-consent: download routes in files matching this glob (repeatable); no glob: a folder's signed-in routes |                      | 0.2.0 |
@@ -740,6 +741,27 @@ run. Settings: `gaugeline.cost.json` (the pages that should be cached, other pag
 lifetime, the Vercel team, the usage window and multiple). What it reads, what key to make and the four
 checks: [Hosting cost](guides/hosting-cost.md). What it sends:
 [Privacy and safety](privacy.md#hosting-cost-gaugeline-cost).
+
+### The backups command
+
+`gaugeline backups <address>` finds out when a client's content and database were last backed up. Where a
+platform documents a read-only way to ask, it reads Supabase's backups and point-in-time recovery (a project
+named in `gaugeline.backups.json` and `SUPABASE_ACCESS_TOKEN`) and Sanity's dataset backups (`SANITY_TOKEN`
+and `SANITY_PROJECT_ID`), and it lists the dated files of any export folder you name. It flags the newest
+backup being older than `maxAgeDays` (7 by default), backups never switched on, and an export far smaller
+than the one before. A platform whose backup status cannot be read becomes a line to check by hand, here and
+on the handoff checklist. It prints each source, then what to fix.
+
+```sh
+npx gaugeline backups marlowe-bar.com
+npx gaugeline backups marlowe-bar.com --ci
+```
+
+It takes `--ci`, `--json` (the schema 2 result and nothing else), `--allow-private`, `--no-open` and the
+notification flags, like the page check. `--backups` adds the same checks to the page check, and
+`gaugeline run --all --backups` to every site of a nightly run. It never starts a backup or an export, and an
+export file is listed, never opened. What it reads, what keys to make and the three checks:
+[Backups](guides/backups.md). What it sends: [Privacy and safety](privacy.md#backups-gaugeline-backups).
 
 ### The trackers option
 
