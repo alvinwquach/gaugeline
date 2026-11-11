@@ -4,7 +4,7 @@ A shop or a bar built years ago on a theme usually still loads the JavaScript th
 jQuery from 2016, a Bootstrap from the theme's last update, a Moment.js a plugin pulled in. Nobody chose
 those versions on purpose, and advisories get published about them long after the site was built.
 `--libraries` reads the script files a page loads, finds which version of a handful of common libraries each
-one is, and lists the published advisories that name that version, with the version that fixes each.
+one is, and lists the advisories in Gaugeline's list that name that version, with the version that fixes each.
 
 Gaugeline reports facts. It says "jQuery 1.12.4 is served; advisory CVE-2020-11023 names versions before
 3.5.0". It does not say the site is vulnerable, or that anyone could attack it: whether an advisory matters
@@ -19,22 +19,29 @@ npx gaugeline shop.example --libraries
 
 ## What it reads
 
-| It reads                     | How                                                                                                          |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| The scripts the page names   | Every `script src` in the page's HTML, on the site or on another host (a CDN), at most 20 for one page       |
-| A banner comment             | The line a build tool leaves at the top of a file: `/*! jQuery v1.12.4 ... */`, `//! version : 2.29.4`       |
-| A version string in the code | A constant such as `jquery:"3.5.1"`, only where the library's own name or license line is in the same file   |
-| The address                  | A file name or CDN path that carries the version: `jquery-3.5.1.min.js`, `/jquery/1.12.4/`, `lodash@4.17.21` |
+| It reads                    | How                                                                                                                                     |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| The scripts the page names  | Every `script src` in the page's HTML, on the site or on another host (a CDN), at most 20 for one page                                  |
+| A banner comment            | The comment a build tool writes at the top of a file, with its own tail: `/*! jQuery JavaScript Library v3.6.0`, `//! version : 2.29.4` |
+| A version in the code       | A shape only that library has, such as `jquery:"3.5.1",constructor:` or the constant a Lodash build assigns to `VERSION`                |
+| The library's own file name | `jquery-3.5.1.min.js`, or `jquery.min.js` in a `/jquery/1.12.4/` or `lodash@4.17.21` folder of a CDN address                            |
 
-The file's own text is trusted before its address. Each file is fetched once, the first 2 MiB of it is
-searched, and nothing but the version string is kept: no script text reaches a finding or a report. A script
-the page does not name is never asked for.
+A version is read only from a whole shape. A sentence in a comment (`Requires Bootstrap v4.0+`), another
+library's constant, a folder that holds other files (`/js/jquery/1.2/slider.js`) and a query string
+(`jquery.min.js?ver=3.5.1`) are never a version, and a version that runs on into more numbers is rejected, not
+cut short. The file's own text is trusted before its address. Each script is read once, at most 2 MiB of it searched,
+and nothing but the version string is kept: no script text reaches a finding or a report. A script the page
+does not name is never asked for, and a script several pages name is reported once, on the first.
+
+The banner and code shapes were written from what the libraries' build tools produce, as remembered, and the
+tests use invented stand-ins that carry only the shape. They have not been compared with real files: that is
+an open item for the owner. When none matches, the version is not guessed.
 
 The libraries recognised today are jQuery, jQuery UI, Lodash, Moment.js, Bootstrap and AngularJS. The
 advisories are in `packages/core/src/data/library-advisories.json`: for each, the affected versions, the
 page that publishes it and a `verified` flag that is false until someone has compared the entry with its
-page. A library or version that is not in the list has no advisory in it, which is not a statement that it
-is safe.
+page. Every entry is unverified in this release, and a finding says so. A library or version that is not in
+the list has no advisory in it, which is not a statement that it is safe.
 
 ## What it cannot see
 
@@ -44,7 +51,8 @@ Where Gaugeline cannot tell, it says so under could-not-check, never as a pass:
   known, the version is not.
 - Minified files with no library name or version in them, counted in one line. A library bundled into
   such a file with its banner removed is not seen.
-- A script that answered an error, could not be reached, or is longer than what is read.
+- A script that answered an error, was refused (a private address) or could not be reached, or is longer
+  than what is read.
 - More than 20 scripts on one page: the rest are counted.
 
 ## Example: a shop on an old theme
@@ -61,7 +69,7 @@ $ npx gaugeline corner-pantry.example --libraries
 
 ```text title=Output
 ! A JavaScript library the site serves has a published advisory
-    jQuery 1.12.4 is served from https://corner-pantry.example/assets/js/jquery.min.js (version read from the file's banner comment). 4 published advisories name versions that include it: CVE-2020-11023 (cross-site scripting through HTML with option elements; fixed in 3.5.0), CVE-2020-11022 (cross-site scripting through htmlPrefilter; fixed in 3.5.0), CVE-2019-11358 (prototype pollution through extend; fixed in 3.4.0), CVE-2015-9251 (cross-site scripting in cross-domain Ajax requests; fixed in 3.0.0)
+    jQuery 1.12.4 is served from https://corner-pantry.example/assets/js/jquery.min.js (version read from the file's banner comment). 4 advisories in Gaugeline's list name versions that include it: CVE-2020-11023 (cross-site scripting through HTML with option elements; fixed in 3.5.0), CVE-2020-11022 (cross-site scripting through htmlPrefilter; fixed in 3.5.0), CVE-2019-11358 (prototype pollution through extend; fixed in 3.4.0), CVE-2015-9251 (cross-site scripting in cross-domain Ajax requests; fixed in 3.0.0). The entries in Gaugeline's list have not been compared with the advisories' own pages in this release
 ? library-with-advisory could not be checked: Bootstrap is served from https://corner-pantry.example/assets/js/bootstrap.min.js, but neither the file nor its address says which version, so it was not compared with the advisories. (/)
 ? library-with-advisory could not be checked: 1 minified JavaScript file carries no library name or version (theme.min.js), so what it contains was not compared with the advisories. (/)
 ? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none

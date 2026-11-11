@@ -12,7 +12,7 @@ const JQUERY_FULL =
 const MOMENT_BANNER =
   "//! moment.js\n//! version : 2.29.4\n//! authors : Tim Wood, Iskren Chernev, Moment.js contributors\n//! license : MIT\n//! momentjs.com\n;(function(){})();";
 const LODASH_MIN =
-  '/** @license Lodash lodash.com/license | Underscore.js 1.8.3 underscorejs.org/LICENSE */\n;(function(){var n={};n.VERSION="4.17.21";})();';
+  '/** @license Lodash lodash.com/license | Underscore.js 1.8.3 underscorejs.org/LICENSE */\n;(function(){var vn="4.17.21";var n={};n.VERSION=vn;})();';
 
 describe("detect: banners and version strings", () => {
   it("reads the jQuery banner of a minified and of a full file", () => {
@@ -94,7 +94,10 @@ describe("detect: banners and version strings", () => {
       )[0],
     ).toMatchObject({ library: "angularjs", version: "1.5.8" });
     expect(
-      detect('var v={full:"1.8.2",major:1,minor:8,dot:2};', "https://shop.example/a.js")[0],
+      detect(
+        'var v={full:"1.8.2",major:1,minor:8,dot:2,codeName:"meteoric-mining"};',
+        "https://shop.example/a.js",
+      )[0],
     ).toMatchObject({
       library: "angularjs",
       version: "1.8.2",

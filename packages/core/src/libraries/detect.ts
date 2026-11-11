@@ -2,7 +2,7 @@ import { LIBRARY_NAMES, type LibraryId } from "./advisories.js";
 import { FINGERPRINTS, urlRules, type Fingerprint } from "./fingerprints.js";
 import { parseVersion } from "./version.js";
 
-/** How much of a file's text is searched: the first 2 MiB of characters. The fetcher's own cap (5 MiB) is above it. */
+/** How much of a file's text is searched: the first 2 MiB of characters (the reader also asks the fetcher to stop at 2 MiB of bytes). */
 export const MAX_SCRIPT_CHARS = 2 * 1024 * 1024;
 
 /**
@@ -47,18 +47,21 @@ function one(f: Fingerprint, text: string, path: string): Detection | undefined 
     evidence: { how, matched },
   });
   for (const rule of f.body) {
-    if (rule.requires && !rule.requires.test(text)) continue;
-    const v = rule.re.exec(text)?.[1];
+    const v = rule.find(text);
     if (valid(v)) return make(v, rule.how, v);
   }
   const rules = RULES.get(f.id);
   if (rules) {
-    for (const re of rules.versioned) {
-      const v = re.exec(path)?.[1];
-      if (valid(v)) return make(v, "file-name", v);
-    }
-    if (rules.bare.test(path))
+    const own = rules.file.exec(path)?.[1];
+    if (valid(own)) return make(own, "file-name", own);
+    if (rules.bare.test(path)) {
+      // The file is the library's own: a version in a folder of its path (a CDN's /jquery/1.12.4/) is its version.
+      for (const re of rules.folders) {
+        const v = re.exec(path)?.[1];
+        if (valid(v)) return make(v, "file-name", v);
+      }
       return make(null, "file-name", path.slice(path.lastIndexOf("/") + 1));
+    }
   }
   if (f.named?.test(text)) return make(null, "name", "");
   return undefined;

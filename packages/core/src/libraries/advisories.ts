@@ -1,5 +1,5 @@
 import list from "../data/library-advisories.json";
-import { compareVersions, parseVersion } from "./version.js";
+import { compareVersions, coreOf, parseVersion } from "./version.js";
 
 /** The libraries Gaugeline recognises: the ids data/library-advisories.json is keyed by. */
 export type LibraryId = "jquery" | "jquery-ui" | "lodash" | "moment" | "bootstrap" | "angularjs";
@@ -67,7 +67,10 @@ export function advisoriesFor(
   if (parseVersion(version) === undefined) return out;
   for (const advisory of advisories) {
     const range = advisory.affects.find((r) => {
-      const atLeast = r.introduced === undefined ? 0 : compareVersions(version, r.introduced);
+      // A pre-release of the first affected version is on that line (4.0.0-beta.3 is a 4.0.0), so it is compared
+      // without its tag; against the fixed version it stays before the fix (3.5.0-beta1 is not 3.5.0).
+      const atLeast =
+        r.introduced === undefined ? 0 : compareVersions(coreOf(version) ?? version, r.introduced);
       const below = r.fixed === null ? -1 : compareVersions(version, r.fixed);
       return atLeast !== undefined && below !== undefined && atLeast >= 0 && below < 0;
     });

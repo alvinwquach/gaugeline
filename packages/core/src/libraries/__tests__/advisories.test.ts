@@ -24,6 +24,13 @@ describe("versions: unit", () => {
     expect(compareVersions("1.12", "1.12.0")).toBe(0);
   });
 
+  it("compares pre-release tags number by number: beta.10 comes after beta.2", () => {
+    expect(compareVersions("4.0.0-beta.2", "4.0.0-beta.10")).toBeLessThan(0);
+    expect(compareVersions("4.0.0-beta10", "4.0.0-beta2")).toBeGreaterThan(0);
+    expect(compareVersions("4.0.0-beta.3", "4.0.0-rc.1")).toBeLessThan(0);
+    expect(compareVersions("4.0.0-beta.3", "4.0.0-beta.3")).toBe(0);
+  });
+
   it("puts a pre-release before its release", () => {
     expect(compareVersions("3.5.0-beta1", "3.5.0")).toBeLessThan(0);
     expect(compareVersions("3.5.0-beta1", "3.4.9")).toBeGreaterThan(0);
@@ -88,6 +95,25 @@ describe("advisoriesFor: unit", () => {
     ]);
     const m = advisoriesFor("jquery", "1.12.4").find((x) => x.advisory.id === "CVE-2015-9251");
     expect(m?.fixedIn).toBe("3.0.0");
+  });
+
+  it("a pre-release of the first affected version is affected (Bootstrap 4.0.0-beta.3 is on the 4.1.2 and 4.3.1 line)", () => {
+    expect(ids("bootstrap", "4.0.0-beta.3")).toEqual([
+      "CVE-2019-8331",
+      "CVE-2018-14042",
+      "CVE-2018-14041",
+      "CVE-2018-14040",
+    ]);
+    expect(advisoriesFor("bootstrap", "4.0.0-beta.3").map((m) => m.fixedIn)).toEqual([
+      "4.3.1",
+      "4.1.2",
+      "4.1.2",
+      "4.1.2",
+    ]);
+  });
+
+  it("a pre-release of a fixed version is still before the fix", () => {
+    expect(ids("jquery", "3.5.0-beta1")).toEqual(["CVE-2020-11023", "CVE-2020-11022"]);
   });
 
   it("includes the introduced version and excludes the fixed one", () => {

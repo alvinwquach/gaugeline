@@ -336,8 +336,9 @@ private, loopback, link-local and metadata addresses unless `--allow-private` is
 
 - **The scripts the page names.** One `GET` per `script src` in the page's own HTML, on the site or on another
   host such as a CDN, at most 20 for one page, never an address the page does not name. Each file is read as
-  text in memory, the first 2 MiB of it is searched for a banner comment, a version string and a file name,
-  and it is dropped. It is never run, and no key or cookie is sent.
+  text in memory, at most 2 MiB of it is searched (for another site's script the fetcher is told to stop there; a file of the
+  site's own is asked for once, as the secret check asks for it) for a banner comment, a
+  version shape and a file name, and it is dropped. It is never run, and no key or cookie is sent.
 - **The advisories.** Read from a file in the package, not from another service: nothing about the site is
   sent to anyone to look them up.
 

@@ -41,8 +41,8 @@ describe("normaliseUrl: unit", () => {
     ["https://example.com/a?b=2&a=1", "https://example.com/a?b=2&a=1"],
     ["https://example.com/a/", "https://example.com/a/"],
     ["https://example.com/a", "https://example.com/a"],
-    ["https://bücher.example/", "https://xn--bcher-kva.example/"],
-    ["https://BÜCHER.example/menü", "https://xn--bcher-kva.example/men%C3%BC"],
+    ["https://b\u00FCcher.example/", "https://xn--bcher-kva.example/"],
+    ["https://B\u00DCCHER.example/men\u00FC", "https://xn--bcher-kva.example/men%C3%BC"],
     ["https://example.com/a b", "https://example.com/a%20b"],
     ["  https://example.com/x \n", "https://example.com/x"],
     ["https://example.com/?", "https://example.com/?"],
@@ -256,6 +256,17 @@ describe("fetcher: edge cases", () => {
     const hops = await createFetcher({ allowPrivate: true }).get(s.origin);
     expect(hops[0]?.body?.length).toBe(5 * 1024 * 1024);
     expect(hops[0]?.truncated).toBe(true);
+  });
+
+  it("maxBytes cuts a body short of the fetcher's own cap and flags it; it cannot raise the cap", async () => {
+    const s = await serve({ "/": html("a".repeat(3000)) });
+    const fetcher = createFetcher({ allowPrivate: true, maxBodyBytes: 2000 });
+    const cut = await fetcher.get(s.origin, { maxBytes: 500 });
+    expect(cut[0]?.body?.length).toBe(500);
+    expect(cut[0]?.truncated).toBe(true);
+    const higher = await fetcher.get(s.origin, { maxBytes: 100_000 });
+    expect(higher[0]?.body?.length).toBe(2000);
+    expect(higher[0]?.truncated).toBe(true);
   });
 
   it("a body under the cap is not flagged", async () => {

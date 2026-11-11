@@ -1,4 +1,4 @@
-import { advisoriesFor } from "../libraries/advisories.js";
+import { advisoriesFor, type AdvisoryMatch } from "../libraries/advisories.js";
 import type { Detection } from "../libraries/detect.js";
 import { LIBRARY_SCRIPT_CAP } from "../libraries/reader.js";
 import type { CheckContext, Finding } from "../model.js";
@@ -30,6 +30,29 @@ const HOW: Record<Detection["evidence"]["how"], string> = {
   name: "the file's license line",
 };
 
+/**
+ * What a finding says: the library and version, where the script is and how the version was read, then the advisories
+ * in Gaugeline's list that name it with their fixed-in versions. While an entry matched has not been compared with
+ * its own page (`verified` is false) the finding says so, in plain words.
+ */
+export function describeFinding(
+  d: Detection,
+  label: string,
+  matches: readonly AdvisoryMatch[],
+): string {
+  const listed = matches
+    .slice(0, LISTED)
+    .map(
+      (m) =>
+        `${m.advisory.id} (${m.advisory.summary}; ${m.fixedIn === null ? "no fixed version listed" : `fixed in ${m.fixedIn}`})`,
+    );
+  const more = matches.length > LISTED ? ` and ${matches.length - LISTED} more` : "";
+  const unverified = matches.some((m) => !m.advisory.verified)
+    ? ". The entries in Gaugeline's list have not been compared with the advisories' own pages in this release"
+    : "";
+  return `${d.name} ${clip(d.version ?? "")} is served from ${label} (version read from ${HOW[d.evidence.how]}). ${matches.length} ${matches.length === 1 ? "advisory in Gaugeline's list names" : "advisories in Gaugeline's list name"} versions that include it: ${listed.join(", ")}${more}${unverified}`;
+}
+
 /** The http and https script addresses a page names, each once, in document order. */
 function scriptUrls(page: PageSnapshot): string[] {
   const seen = new Set<string>();
@@ -49,7 +72,7 @@ export const libraryWithAdvisory = defineCheck<PageSnapshot>({
   what: "Gaugeline reads the JavaScript files a page loads, finds the version of jQuery, jQuery UI, Lodash, Moment.js, Bootstrap or AngularJS in them, and lists the published advisories that name that version, with the version that fixes each.",
   why: "Libraries in an old theme or plugin stay at the version they were installed at, and advisories are published about versions long after. This is a list of facts: which version is served and which advisories name it. Whether an advisory matters for this site depends on how the site uses the library, which Gaugeline cannot see, and it does not say.",
   fix: "Look at where the file comes from: the theme, a plugin, a package in the project or a CDN address. Update it to a version past the fixes the finding lists, or take the library out when nothing uses it, then test the pages that use it. If it is bundled into code you cannot change, tell the client who maintains it.",
-  tech: "Only with --libraries. The script files the page's own HTML names (script src, same site or another, at most 20, each fetched once with GET, never any address the page does not name) are read as text and never run; the first 2 MiB of each is searched. The version comes from a banner comment, a version string in the code or the file name and path of the address (for example /jquery/1.12.4/ or lodash@4.17.21), the file's own text first. It is compared with packages/core/src/data/library-advisories.json: for each advisory, the affected versions and the page that publishes it, with a verified flag that is false until someone has compared the entry with its page. A finding shows the library, its version, the script's address (with no query), and each advisory with its id, a short description and the fixed-in version, never script text beyond the version. A library recognised by name with no version, a script that cannot be read or is longer than what is read, and minified files with no library name or version are could-not-check. A library bundled into one minified file with its banner removed is not seen. The same files give the same findings",
+  tech: "Only with --libraries. The script files the page's own HTML names (script src, same site or another, at most 20, each fetched once with GET, never any address the page does not name) are read as text and never run; at most 2 MiB of each is read and searched, and each script is reported once per run, on the first page that names it. The version comes from a banner comment, a version string in the code or the library's own file name (jquery-3.5.1.min.js, or jquery.min.js under a /jquery/1.12.4/ or lodash@4.17.21 folder; a query string and a folder with other files are never a version), the file's own text first, and only from a whole banner or code shape, never a sentence in a comment. It is compared with packages/core/src/data/library-advisories.json: for each advisory, the affected versions and the page that publishes it, with a verified flag that is false until someone has compared the entry with its page, and a finding says so while it is false. A finding shows the library, its version, the script's address (with no query), and each advisory with its id, a short description and the fixed-in version, never script text beyond the version. A library recognised by name with no version, a script that cannot be read or is longer than what is read, and minified files with no library name or version are could-not-check. A library bundled into one minified file with its banner removed is not seen. The same files give the same findings",
   async run(page, ctx: CheckContext) {
     const libraries = ctx.libraries;
     if (!libraries) return [];
@@ -57,7 +80,9 @@ export const libraryWithAdvisory = defineCheck<PageSnapshot>({
     const out: Finding[] = [];
     const unidentified: string[] = [];
     for (const url of urls.slice(0, LIBRARY_SCRIPT_CAP)) {
-      const read = await libraries.read(url);
+      // A script several pages name (a theme's jQuery) is reported once per run, on the first page.
+      if (!libraries.claim(url)) continue;
+      const read = await libraries.read(url, page.finalUrl);
       const label = labelOf(url);
       if (!read.ok) {
         ctx.couldNotCheck?.(
@@ -82,18 +107,11 @@ export const libraryWithAdvisory = defineCheck<PageSnapshot>({
         }
         const matches = advisoriesFor(d.library, d.version);
         if (matches.length === 0) continue;
-        const listed = matches
-          .slice(0, LISTED)
-          .map(
-            (m) =>
-              `${m.advisory.id} (${m.advisory.summary}; ${m.fixedIn === null ? "no fixed version listed" : `fixed in ${m.fixedIn}`})`,
-          );
-        const more = matches.length > LISTED ? ` and ${matches.length - LISTED} more` : "";
         out.push({
           checkId: "library-with-advisory",
           severity: "medium",
           title: this.title,
-          evidence: `${d.name} ${clip(d.version)} is served from ${label} (version read from ${HOW[d.evidence.how]}). ${matches.length} published ${matches.length === 1 ? "advisory names" : "advisories name"} versions that include it: ${listed.join(", ")}${more}`,
+          evidence: describeFinding(d, label, matches),
           url: clip(page.finalUrl),
         });
       }

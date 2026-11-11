@@ -67,7 +67,7 @@ describe("gaugeline check --libraries: end to end (the invented shop, in memory)
     const r = await run([HOST, "--libraries", "--no-open", "--quiet"], folder());
     expect(r.code).toBe(EXIT.ok);
     expect(r.out).toContain(
-      "jQuery 1.12.4 is served from https://corner-pantry.example/assets/js/jquery.min.js (version read from the file's banner comment). 4 published advisories name versions that include it: CVE-2020-11023",
+      "jQuery 1.12.4 is served from https://corner-pantry.example/assets/js/jquery.min.js (version read from the file's banner comment). 4 advisories in Gaugeline's list name versions that include it: CVE-2020-11023",
     );
     expect(r.out).toContain("fixed in 3.5.0");
     expect(r.out).not.toContain("Moment.js 2.29.4");

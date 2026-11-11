@@ -17,9 +17,39 @@ export function parseVersion(text: string): ParsedVersion | undefined {
   return { parts: [Number(m[1]), Number(m[2]), Number(m[3] ?? 0)], pre: m[4] };
 }
 
+/** The version without its pre-release tag: 4.0.0-beta.3 is on the 4.0.0 line. */
+export function coreOf(version: string): string | undefined {
+  const p = parseVersion(version);
+  return p ? p.parts.join(".") : undefined;
+}
+
+/** A pre-release tag as numbers and words: "beta.10" is ["beta", 10], "rc1" is ["rc", 1]. */
+function tokens(pre: string): (string | number)[] {
+  return (pre.match(/\d+|[A-Za-z]+/g) ?? []).map((t) => (/^\d/.test(t) ? Number(t) : t));
+}
+
+function comparePre(a: string, b: string): number {
+  const x = tokens(a);
+  const y = tokens(b);
+  for (let i = 0; i < Math.max(x.length, y.length); i++) {
+    const p = x[i];
+    const q = y[i];
+    if (p === undefined) return -1;
+    if (q === undefined) return 1;
+    if (p === q) continue;
+    if (typeof p === "number" && typeof q === "number") return p - q;
+    // A number is older than a word, as in semantic versioning.
+    if (typeof p === "number") return -1;
+    if (typeof q === "number") return 1;
+    return p < q ? -1 : 1;
+  }
+  return 0;
+}
+
 /**
  * Negative when a is older than b, zero when equal, positive when newer; undefined when either is not a version.
- * A pre-release is older than its release and compared as text with another pre-release of the same numbers.
+ * A pre-release is older than its release; two pre-releases of the same numbers are compared tag by tag, numbers
+ * as numbers (beta.10 is after beta.2).
  */
 export function compareVersions(a: string, b: string): number | undefined {
   const x = parseVersion(a);
@@ -32,5 +62,5 @@ export function compareVersions(a: string, b: string): number | undefined {
   if (x.pre === y.pre) return 0;
   if (x.pre === undefined) return 1;
   if (y.pre === undefined) return -1;
-  return x.pre < y.pre ? -1 : 1;
+  return comparePre(x.pre, y.pre);
 }

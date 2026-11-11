@@ -3,7 +3,7 @@ import { Readable } from "node:stream";
 import { describe, expect, it } from "vitest";
 import { SITES_DIR } from "../../../../fixtures/src/index.js";
 import { staticSite } from "../../../../testkit/src/index.js";
-import { createFetcher, type Transport } from "../../fetcher.js";
+import { createFetcher, FetchError, type Fetcher, type Transport } from "../../fetcher.js";
 import { LIBRARY_SCRIPT_CAP } from "../../libraries/reader.js";
 import { createLibraries, type Libraries, type ScriptReading } from "../../libraries/reader.js";
 import { addLibraryChecks } from "../../libraries/registry.js";
@@ -11,7 +11,8 @@ import type { Detection } from "../../libraries/detect.js";
 import type { CheckContext } from "../../model.js";
 import { checkSite } from "../../site.js";
 import { createPageRegistry } from "../index.js";
-import { LIBRARY_CHECKS, libraryWithAdvisory } from "../libraries.js";
+import { advisoriesFor } from "../../libraries/advisories.js";
+import { describeFinding, LIBRARY_CHECKS, libraryWithAdvisory } from "../libraries.js";
 import { page } from "./helpers.js";
 
 const SHOP = "corner-pantry.example";
@@ -33,6 +34,7 @@ const found = (url: string, detections: Detection[], over: Partial<ScriptReading
 function fake(readings: Record<string, ScriptReading>): Libraries {
   return {
     read: async (url) => readings[url] ?? { ok: false, url, reason: "gave no answer" },
+    claim: () => true,
   };
 }
 
@@ -71,7 +73,7 @@ describe("the library check: unit", () => {
         severity: "medium",
         title: "A JavaScript library the site serves has a published advisory",
         evidence:
-          "jQuery 1.12.4 is served from https://corner-pantry.example/assets/js/jquery.min.js (version read from the file's banner comment). 4 published advisories name versions that include it: CVE-2020-11023 (cross-site scripting through HTML with option elements; fixed in 3.5.0), CVE-2020-11022 (cross-site scripting through htmlPrefilter; fixed in 3.5.0), CVE-2019-11358 (prototype pollution through extend; fixed in 3.4.0), CVE-2015-9251 (cross-site scripting in cross-domain Ajax requests; fixed in 3.0.0)",
+          "jQuery 1.12.4 is served from https://corner-pantry.example/assets/js/jquery.min.js (version read from the file's banner comment). 4 advisories in Gaugeline's list name versions that include it: CVE-2020-11023 (cross-site scripting through HTML with option elements; fixed in 3.5.0), CVE-2020-11022 (cross-site scripting through htmlPrefilter; fixed in 3.5.0), CVE-2019-11358 (prototype pollution through extend; fixed in 3.4.0), CVE-2015-9251 (cross-site scripting in cross-domain Ajax requests; fixed in 3.0.0). The entries in Gaugeline's list have not been compared with the advisories' own pages in this release",
         url: `https://${SHOP}/`,
       },
     ]);
@@ -183,6 +185,7 @@ describe("the library check: unit", () => {
         read.push(u);
         return found(u, []);
       },
+      claim: () => true,
     };
     const { ctx, notes } = context(libraries);
     await libraryWithAdvisory.run(shopPage(...urls, urls[0] as string), ctx);
@@ -202,6 +205,7 @@ describe("the library check: unit", () => {
         read.push(u);
         return found(u, []);
       },
+      claim: () => true,
     });
     await libraryWithAdvisory.run(
       shopPage("data:text/javascript,1", "javascript:void(0)", "ftp://x.test/a.js"),
@@ -379,5 +383,169 @@ describe("the script reader: unit", () => {
       [url]: { status: 200, text: `${filler}\n/*! jQuery v1.12.4 */` },
     });
     expect(await libraries.read(url)).toMatchObject({ ok: true, detections: [], truncated: true });
+  });
+});
+
+describe("the library check: wording about the list", () => {
+  const jq = jquery("1.12.4");
+
+  it("says the list has not been compared with the advisories' own pages while an entry is unverified", () => {
+    const text = describeFinding(
+      jq,
+      "https://x.test/jquery.min.js",
+      advisoriesFor("jquery", "1.12.4"),
+    );
+    expect(text).toContain("advisories in Gaugeline's list name versions that include it");
+    expect(text).toContain(
+      "The entries in Gaugeline's list have not been compared with the advisories' own pages in this release",
+    );
+    expect(text).not.toContain("published advisories");
+  });
+
+  it("leaves the sentence out when every matched entry is verified", () => {
+    const matches = advisoriesFor("jquery", "1.12.4").map((m) => ({
+      ...m,
+      advisory: { ...m.advisory, verified: true },
+    }));
+    expect(describeFinding(jq, "https://x.test/jquery.min.js", matches)).not.toContain(
+      "have not been compared",
+    );
+  });
+
+  it("says no fixed version is listed when there is none, and counts one advisory in the singular", () => {
+    const [one] = advisoriesFor("jquery", "1.12.4");
+    const text = describeFinding(jq, "https://x.test/jquery.min.js", [
+      { advisory: (one as NonNullable<typeof one>).advisory, fixedIn: null },
+    ]);
+    expect(text).toContain("1 advisory in Gaugeline's list names versions that include it");
+    expect(text).toContain("no fixed version listed");
+  });
+});
+
+describe("the library check: once per script per run", () => {
+  function onePageWorld() {
+    const asked: string[] = [];
+    const transport: Transport = (url) => {
+      asked.push(url.href);
+      return Promise.resolve({
+        status: 200,
+        headers: {},
+        body: Readable.from([
+          Buffer.from("/*! jQuery v1.12.4 | (c) jQuery Foundation | jquery.org/license */"),
+        ]),
+      });
+    };
+    return { libraries: createLibraries(createFetcher({ transport, timeoutMs: 5000 })), asked };
+  }
+
+  it("a script two pages name is reported on the first and left out of the second", async () => {
+    const { libraries, asked } = onePageWorld();
+    const first = context(libraries);
+    const second = context(libraries);
+    const a = await libraryWithAdvisory.run(shopPage(JQ), first.ctx);
+    const b = await libraryWithAdvisory.run(
+      page({ finalUrl: `https://${SHOP}/menu`, scripts: [JQ] }),
+      second.ctx,
+    );
+    expect(a).toHaveLength(1);
+    expect(b).toEqual([]);
+    expect(second.notes).toEqual([]);
+    expect(asked).toEqual([JQ]);
+  });
+
+  it("a could-not-check note is given once too", async () => {
+    const url = `https://${SHOP}/js/gone.js`;
+    const libraries = createLibraries(
+      createFetcher({
+        transport: () => Promise.resolve({ status: 404, headers: {}, body: Readable.from([]) }),
+        timeoutMs: 5000,
+      }),
+    );
+    const first = context(libraries);
+    const second = context(libraries);
+    await libraryWithAdvisory.run(shopPage(url), first.ctx);
+    await libraryWithAdvisory.run(
+      page({ finalUrl: `https://${SHOP}/menu`, scripts: [url] }),
+      second.ctx,
+    );
+    expect(first.notes).toHaveLength(1);
+    expect(second.notes).toEqual([]);
+  });
+});
+
+describe("the script reader: refused addresses and the size read", () => {
+  const throwing = (error: unknown): Fetcher =>
+    ({ get: () => Promise.reject(error) }) as unknown as Fetcher;
+
+  it("a redirect to a private address is 'refused (private address)', not 'answered 0'", async () => {
+    const url = "https://x.test/a.js";
+    const err = new FetchError("private-address-refused", "x.test resolves to 10.0.0.1.", url, [
+      { url, status: 302, headers: {}, ms: 1 },
+      {
+        url: "http://10.0.0.1/a.js",
+        status: 0,
+        headers: {},
+        ms: 0,
+        error: "private-address-refused",
+      },
+    ]);
+    expect(await createLibraries(throwing(err)).read(url)).toEqual({
+      ok: false,
+      url,
+      reason: "refused (private address)",
+    });
+  });
+
+  it("a last hop that was refused and not requested is the same reason", async () => {
+    const url = "https://x.test/a.js";
+    const fetcher = {
+      get: async () => [
+        {
+          url: "http://10.0.0.1/a.js",
+          status: 0,
+          headers: {},
+          ms: 0,
+          error: "private-address-refused",
+        },
+      ],
+    } as unknown as Fetcher;
+    expect(await createLibraries(fetcher).read(url)).toMatchObject({
+      ok: false,
+      reason: "refused (private address)",
+    });
+  });
+
+  it("asks the fetcher to stop at the size it searches, so a large file is not read whole", async () => {
+    const seen: unknown[] = [];
+    const fetcher = {
+      get: async (_u: string, opts: unknown) => {
+        seen.push(opts);
+        return [
+          {
+            url: "https://x.test/a.js",
+            status: 200,
+            headers: {},
+            ms: 1,
+            body: "",
+            truncated: true,
+          },
+        ];
+      },
+    } as unknown as Fetcher;
+    const r = await createLibraries(fetcher).read("https://x.test/a.js", "https://shop.example/");
+    expect(seen).toEqual([{ maxBytes: 2 * 1024 * 1024 }]);
+    expect(r).toMatchObject({ ok: true, truncated: true });
+  });
+
+  it("asks for a script on the page's own site as the secret check does, so it is not asked for twice", async () => {
+    const seen: unknown[] = [];
+    const fetcher = {
+      get: async (_u: string, opts: unknown) => {
+        seen.push(opts);
+        return [{ url: "https://shop.example/a.js", status: 200, headers: {}, ms: 1, body: "" }];
+      },
+    } as unknown as Fetcher;
+    await createLibraries(fetcher).read("https://shop.example/a.js", "https://www.shop.example/");
+    expect(seen).toEqual([undefined]);
   });
 });
