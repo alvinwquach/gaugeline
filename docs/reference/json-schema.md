@@ -31,7 +31,7 @@ Current schema number: `1` (`RESULT_SCHEMA_VERSION` in `@gaugeline/core`). The f
 
 The request log and the page's data are not part of `--json`. With `--save-requests <file>` they are
 written to a separate file with its own `schemaVersion` and its own schema,
-`packages/core/schema/requests.v1.json`; see
+`packages/core/schema/requests.v2.json` (version 2 adds the read-only queries of ADR-0006: a request of kind `query`, method `POST`, with the id of the allowlist entry that allowed it; a version 1 file, published as `requests.v1.json`, is still read); see
 [Privacy and safety](../privacy.md#saving-the-requests-save-requests).
 
 ## The work order is its own document

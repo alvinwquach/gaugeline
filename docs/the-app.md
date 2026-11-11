@@ -134,10 +134,12 @@ along the way (`robots.txt`, the sitemap, `llms.txt`).
 ![The Pages checked view: a table of every address the check requested, one row each, with its kind, how it was asked for, what it answered and how long that took. Rows that did not end in a 2xx are marked, and a footer says how much of each kind was read.](/img/app-pages.png)
 
 - **One row for each request.** Rows are grouped by kind, in the order Page, Link, Image, Sitemap page, Feed,
-  JavaScript file, Other page and Other, and within a kind in the order they were requested. A
+  JavaScript file, Other page, Other and Read-only query, and within a kind in the order they were requested. A
   redirect is not tucked under its first address: each step is a row, and every row that moved
   says where to, so you read the chain from top to bottom. The Request column says whether the
-  check asked with GET or HEAD (Gaugeline never sends anything else).
+  check asked with GET or HEAD. The one other request is a Read-only query, a POST that asks a
+  platform's own API a question (ADR-0006): its row names the allowlist entry that let it
+  through, and the body and the key are never shown.
 - **The answer** is a short phrase for the status: Loaded (any 2xx), Moved to an address, Not found
   (404 and 410), Server error (5xx), Refused (401, 403 and 429: the site said no, which is not the
   same as broken), or No answer when the site did not reply in time. An address that would have led

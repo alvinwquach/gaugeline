@@ -211,7 +211,7 @@ describe("cli: blocked addresses", () => {
 
 describe("cli: install paths", () => {
   it("the bundled bin runs from a folder whose path has spaces", async () => {
-    const { copyFileSync, mkdtempSync, mkdirSync, rmSync } = await import("node:fs");
+    const { copyFileSync, cpSync, mkdtempSync, mkdirSync, rmSync } = await import("node:fs");
     const { tmpdir } = await import("node:os");
     const { join } = await import("node:path");
     const { execFile } = await import("node:child_process");
@@ -221,7 +221,8 @@ describe("cli: install paths", () => {
     try {
       const dir = join(root, "node modules", "gaugeline with space", "dist");
       mkdirSync(dir, { recursive: true });
-      copyFileSync(bin, join(dir, "index.js"));
+      // The bundle is dist/index.js plus its chunks (tsup splitting), so the whole of dist/ is copied.
+      cpSync(join(bin, ".."), dir, { recursive: true });
       // As installed: the package's own package.json says the bundle is an ES module.
       copyFileSync(join(bin, "..", "..", "package.json"), join(dir, "..", "package.json"));
       const r = await promisify(execFile)(

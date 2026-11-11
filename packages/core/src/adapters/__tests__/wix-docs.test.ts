@@ -69,7 +69,7 @@ describe("docs/integrations/wix.md", () => {
     expect(firstParagraphs).toContain("no key");
     expect(firstParagraphs).toContain("API key with only read permissions");
     expect(firstParagraphs).toContain("POST");
-    expect(page).toContain(`${WIX_CMS_READ_PATH.method} ${WIX_CMS_READ_PATH.path}`);
+    expect(page).toContain(`${WIX_CMS_READ_PATH.queryVerb} ${WIX_CMS_READ_PATH.path}`);
     expect(page).toContain("open question 52");
   });
 

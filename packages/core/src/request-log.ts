@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from "node:async_hooks";
+import type { QueryMethod } from "./fetch/read-only-query.js";
 import { redact } from "./redact.js";
 
 /**
@@ -16,6 +17,8 @@ export const REQUEST_KINDS = [
   "script",
   "extra-page",
   "other",
+  /** A POST to a documented read-only query endpoint (ADR-0006). Always last. */
+  "query",
 ] as const;
 export type RequestKind = (typeof REQUEST_KINDS)[number];
 
@@ -26,7 +29,12 @@ export type RequestError = "timeout" | "private-address-refused" | "no-answer";
 export interface RequestRecord {
   url: string;
   kind: RequestKind;
-  method: "GET" | "HEAD";
+  method: "GET" | "HEAD" | QueryMethod;
+  /**
+   * Only on a query (kind "query", method POST): the id of the allowlist entry that let it through.
+   * The body, the headers and the key are never kept.
+   */
+  allow?: string;
   /** null when nothing answered. */
   status: number | null;
   error?: RequestError;
