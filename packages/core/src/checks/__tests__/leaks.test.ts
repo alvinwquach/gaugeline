@@ -43,6 +43,7 @@ describe("leaks: unit (detectors)", () => {
       "stripe-secret",
       "sanity-token",
       "contentful-preview-token",
+      "contentstack-preview-token",
       "secret-assignment",
     ]);
   });
@@ -147,7 +148,11 @@ describe("leaks: unit (detectors)", () => {
 
   it("the key-name patterns cap the name, so a hostile 2 MiB file is scanned in linear time", () => {
     const named = DETECTORS.filter((d) => /token\|key/i.test(d.pattern.source));
-    expect(named.map((d) => d.id)).toEqual(["contentful-preview-token", "secret-assignment"]);
+    expect(named.map((d) => d.id)).toEqual([
+      "contentful-preview-token",
+      "contentstack-preview-token",
+      "secret-assignment",
+    ]);
     for (const d of named) {
       expect(d.pattern.source, d.id).not.toContain("]*(?:");
       expect(d.pattern.source, d.id).toContain("{0,40}(?:");

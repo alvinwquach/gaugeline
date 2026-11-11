@@ -238,6 +238,8 @@
   "sitemap-host",
   "sitemap-missing",
   "sitemap-redirects",
+  "squarespace-price-differs",
+  "squarespace-stock-differs",
   "staging-indexable",
   "stega-leak",
   "strapi-drafts-public",

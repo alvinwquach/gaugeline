@@ -3,7 +3,7 @@ name: PR gate
 # Separate from ci.yml so adding or removing a label re-runs only this job, not the test matrix.
 on:
   pull_request:
-    types: [opened, synchronize, reopened, labeled, unlabeled]
+    types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled]
 
 permissions:
   contents: read
@@ -16,7 +16,8 @@ concurrency:
 jobs:
   pr-gate:
     # The Release pull request deletes changesets by design.
-    if: github.head_ref != 'changeset-release/main'
+    # A draft pull request runs no CI; marking it ready starts it (ready_for_review).
+    if: github.head_ref != 'changeset-release/main' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
