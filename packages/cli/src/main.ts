@@ -90,6 +90,12 @@ import {
   type NavResult,
   createRenewals,
   createRenewalsRegistry,
+  createHandoff,
+  createHandoffRegistry,
+  buildHandoff,
+  formatHandoffLines,
+  HANDOFF_CHECKS,
+  HANDOFF_ENV_VARS,
   formatRenewalRows,
   RENEWALS_CHECKS,
   RENEWALS_ENV_VARS,
@@ -101,6 +107,7 @@ import { formatError, toOutcome } from "./fail.js";
 import { envIsOn, type FlagDef } from "./flags.js";
 import { createLogger } from "./logger.js";
 import { checkBriefTarget, emitBrief } from "./brief.js";
+import { checkHandoffTarget, writeHandoff } from "./handoff.js";
 import { runDigest } from "./digest.js";
 import { formatLegacyTable, formatPlanSummary } from "./plan.js";
 import { formatTerminal } from "./reporter.js";
@@ -148,6 +155,7 @@ import {
   readLanguageRules,
   readPayments,
   readRenewalsConfig,
+  readHandoffConfig,
   readEvents,
   readSchemaRules,
   readTags,
@@ -240,6 +248,8 @@ export interface Deps {
   ads?: AdsEngine;
   /** `gaugeline brief --out`: the file system calls the work order is written with. Tests pass one that fails. */
   briefFs?: ScaffoldFs;
+  /** `gaugeline handoff`: the file system calls the report is written with. Tests pass one that fails. */
+  handoffFs?: ScaffoldFs;
   /**
    * How messages reach the CRM's MCP server (gaugeline.crm.json). Given the validated read-only
    * server address and only the variables the CRM needs. By default there is none: this version
@@ -1097,6 +1107,13 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           cwd,
           ...(deps.briefFs ? { fs: deps.briefFs } : {}),
         });
+      // gaugeline handoff: the same for the report's folder.
+      if (args.handoff)
+        await checkHandoffTarget(args.handoff, {
+          cwd,
+          json: args.json,
+          ...(deps.handoffFs ? { fs: deps.handoffFs } : {}),
+        });
       const host = new URL(args.address).host;
       const last = args.since ? readLastRun(cwd, host) : undefined;
       if (last?.kind === "none") io.stderr.write("nothing to compare yet\n");
@@ -1280,14 +1297,22 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       // The renewals checks (the domain, the certificates of the bare domain and www, tokens, runtimes)
       // are in the run only with --renewals or `gaugeline renewals`.
       const renewing = args.renewals;
+      // gaugeline handoff: the page registry and the three handoff checks, and only those run.
+      const handing = args.command === "handoff";
       const registry =
-        deps.registry ?? (renewing ? createRenewalsRegistry() : createPageRegistry());
+        deps.registry ??
+        (handing
+          ? createHandoffRegistry()
+          : renewing
+            ? createRenewalsRegistry()
+            : createPageRegistry());
       let only: readonly string[] | undefined =
         deps.registry === undefined && skeleton ? skeleton : undefined;
       if (args.command === "renewals")
         only = ["certificate-expiring", ...RENEWALS_CHECKS.map((c) => c.id)].filter((id) =>
           registry.has(id),
         );
+      if (handing) only = HANDOFF_CHECKS.map((c) => c.id).filter((id) => registry.has(id));
       if (launch) {
         const registered = new Set(registry.all().map((c) => c.id));
         const wanted = [...LAUNCH_PRESET, ...(args.dns ? EMAIL_PRESET : [])];
@@ -1300,7 +1325,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       const dns = args.dns ? (deps.dns ?? createDnsReader()) : undefined;
       const registeredIds = new Set(registry.all().map((c) => c.id));
       const dnsSkipped =
-        !launch && args.command !== "renewals" && !args.dns
+        !launch && args.command !== "renewals" && !handing && !args.dns
           ? EMAIL_PRESET.filter((id) => registeredIds.has(id))
           : [];
       // --save-requests: the file is claimed before the first request, so a path that cannot be
@@ -1321,12 +1346,39 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
             fetcher,
           )
         : undefined;
+      // What the handoff checks read: the registry's record through the renewals reader (which only asks
+      // RDAP here: no token goes to it), then the provider reads, each with its own key from the environment.
+      const handoff = handing
+        ? createHandoff(
+            {
+              config: readHandoffConfig(cwd) ?? {},
+              env: freezeEnv(io.env ?? {}, HANDOFF_ENV_VARS),
+              ...(listingsConfig?.google?.location
+                ? { googleLocation: listingsConfig.google.location }
+                : {}),
+              ...(dns ? { dns } : {}),
+            },
+            fetcher,
+            createRenewals(
+              {
+                config: readRenewalsConfig(cwd) ?? {},
+                env: {},
+                ...(deps.renewals?.port !== undefined ? { port: deps.renewals.port } : {}),
+                ...(deps.renewals?.bootstrapUrl
+                  ? { bootstrapUrl: deps.renewals.bootstrapUrl }
+                  : {}),
+              },
+              fetcher,
+            ),
+          )
+        : undefined;
       const checking = checkSite({
         address: args.input,
         fetcher,
         registry,
         ...(renewals ? { renewals } : {}),
-        ...(args.command === "renewals" ? { tolerateUnreachable: true } : {}),
+        ...(handoff ? { handoff } : {}),
+        ...(args.command === "renewals" || handing ? { tolerateUnreachable: true } : {}),
         // The walking skeleton (0.0.x) runs one check; an injected registry is used as given.
         ...(only ? { only } : {}),
         ...(dnsSkipped.length > 0 ? { skip: dnsSkipped } : {}),
@@ -1370,7 +1422,11 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       // A site that does not answer is the usual sign of a lapsed domain: say so, and carry on.
       if (unreachable !== undefined && !args.quiet)
         io.stderr.write(
-          `The site did not answer (${unreachable.replace(/\.?\s*Check the spelling\.$/, "")}), which is what a lapsed domain looks like. The registration and the other renewals were still read.\n`,
+          `The site did not answer (${unreachable.replace(/\.?\s*Check the spelling\.$/, "")}), which is what a lapsed domain looks like. ${
+            handing
+              ? "The report was still made from the public record and the tokens you set up."
+              : "The registration and the other renewals were still read."
+          }\n`,
         );
       // The request log and page data go to their own file and nowhere else: not into the result,
       // the report or stdout. A failed write is exit 2 at the end, after everything else has run.
@@ -1403,6 +1459,44 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           io.stderr.write(
             `${dismissed} finding${dismissed === 1 ? "" : "s"} dismissed in ${IGNORE_FILE}\n`,
           );
+      }
+      // gaugeline handoff: the summary of what the checks read, as three files (or JSON on stdout). Nothing
+      // else is written or sent: no page report, no notification, no saved run.
+      if (handoff && args.handoff) {
+        const summary = buildHandoff({
+          site: new URL(snapshot.finalUrl).host,
+          now: (deps.now ?? io.now ?? (() => new Date()))(),
+          version: deps.version ?? VERSION,
+          systems: await handoff.systems(snapshot),
+          findings: result.findings,
+          couldNotCheck: result.couldNotCheck,
+          people: handoff.people,
+          registry,
+        });
+        const written = await writeHandoff({
+          flags: args.handoff,
+          json: args.json,
+          summary,
+          cwd,
+          ...(deps.handoffFs ? { fs: deps.handoffFs } : {}),
+        });
+        if (args.json) io.stdout.write(`${JSON.stringify(summary, null, 2)}\n`);
+        else {
+          io.stdout.write(
+            `${formatHandoffLines(summary).join("\n")}\n\n${formatTerminal({
+              result,
+              sampled: budget.summary(),
+              color: useColor(io.stdout, env),
+              origin: new URL(snapshot.finalUrl).origin,
+            })}`,
+          );
+        }
+        if (written !== undefined && !args.quiet)
+          io.stderr.write(
+            `Handoff report written to ${written}: handoff.html, handoff.md and handoff.json. It holds no password, token or full email address.\n`,
+          );
+        const high = result.findings.filter((f) => f.severity === "high").length;
+        return { outcome: { kind: "ran", highFindings: high, drift: false }, ci };
       }
       // gaugeline brief: the same run, written as a work order instead of a report. Nothing else is
       // written or sent: no report file, no notification, no saved run.
