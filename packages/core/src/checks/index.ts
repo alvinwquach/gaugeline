@@ -150,6 +150,9 @@ import { redirectChain } from "./redirect-chain.js";
 import { robotsBlock } from "./robots-block.js";
 import { rscServedAsPage } from "./rsc-served-as-page.js";
 import { rscVaryMissing } from "./rsc-vary-missing.js";
+import { sanityImageDuplicate } from "./sanity-image-duplicate.js";
+import { sanityImageOriginal } from "./sanity-image-original.js";
+import { sanityImageOversized } from "./sanity-image-oversized.js";
 import { schemaBreadcrumbMismatch } from "./schema-breadcrumb-mismatch.js";
 import { schemaBreadcrumbStart } from "./schema-breadcrumb-start.js";
 import { schemaDanglingRef } from "./schema-dangling-ref.js";
@@ -332,6 +335,9 @@ export const PAGE_CHECKS = [
   robotsBlock,
   rscServedAsPage,
   rscVaryMissing,
+  sanityImageDuplicate,
+  sanityImageOriginal,
+  sanityImageOversized,
   schemaBreadcrumbMismatch,
   schemaBreadcrumbStart,
   schemaDanglingRef,

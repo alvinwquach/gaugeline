@@ -1768,19 +1768,6 @@
     "estimateChanges": "Minutes to point the embed at the form that replaced the deleted one, or to restore it from HubSpot's recently deleted forms. Longer when the page's template holds the form id in several places."
   },
   {
-    "id": "ai-crawlers-intent",
-    "severity": "medium",
-    "area": "Search & sharing",
-    "title": "Your robots.txt does not do what you said you want for AI crawlers",
-    "what": "You said what AI crawlers should be able to do (aiCrawlers in gaugeline.ai.json), and robots.txt does the opposite for one or more known crawlers. Gaugeline names them and says whether a rule names them or the rule for every crawler decides.",
-    "why": "A rule copied from a staging site, or a plugin's default, can shut assistants out of a site that wants to be found by them, or let training crawlers in when you meant to keep them out.",
-    "fix": "Edit robots.txt so each crawler listed gets the group you want, or change aiCrawlers in gaugeline.ai.json if the rules are right and the intent changed.",
-    "tech": "for each known AI user-agent token (packages/core/src/data/ai-agents.json), isAllowed(robots.txt, token, /) differs from the aiCrawlers intent for its purpose; no robots.txt means every crawler is allowed",
-    "size": "S",
-    "done": "robots.txt does for each known AI crawler what gaugeline.ai.json says you want.",
-    "estimateChanges": "A rule set in a firewall or a CDN rather than robots.txt is found by looking at those settings."
-  },
-  {
     "id": "app-smart-banner-mismatch",
     "severity": "medium",
     "area": "Visitors",
@@ -2429,6 +2416,32 @@
     "size": "S",
     "done": "Every redirect points straight at the final address.",
     "estimateChanges": "Rules in the host, a CDN and the app each need checking."
+  },
+  {
+    "id": "sanity-image-original",
+    "severity": "medium",
+    "area": "Visitors",
+    "title": "Sanity images are served at the size they were uploaded",
+    "what": "An image from cdn.sanity.io is requested with no width or height, so the visitor gets the file as it was uploaded: often 3000 to 6000 pixels wide.",
+    "why": "A phone photo from the shop owner is several megabytes. Shown a few hundred pixels across, it still downloads whole, and the page is slow on a phone for no visible gain.",
+    "fix": "Ask for the size you show: add w (and h with fit=crop if the shape is fixed) and auto=format to the address, or build it with @sanity/image-url: urlFor(image).width(800).auto('format').url().",
+    "tech": "an img src, srcset or picture source on cdn.sanity.io/images with none of w, h, max-w, max-h, min-w or min-h, whose upload is wider than 1200 px (the size is in the file name, so nothing is downloaded); other hosts, and addresses on a custom domain for Sanity's CDN, are not read; one finding per page; the page's own HTML only",
+    "size": "S",
+    "done": "Every Sanity image on the page asks for a width, and for auto format, in its address.",
+    "estimateChanges": "Usually one image helper in the front end. Images written by hand into rich text are edited one by one."
+  },
+  {
+    "id": "sanity-image-oversized",
+    "severity": "medium",
+    "area": "Visitors",
+    "title": "Sanity images are delivered far larger than they are shown",
+    "what": "An image from cdn.sanity.io is asked for at a width much greater than the width attribute on the page, and the page offers no smaller version.",
+    "why": "The visitor downloads several times the pixels they can see. On a phone that is seconds of waiting and mobile data spent on detail the screen throws away.",
+    "fix": "Ask Sanity for about twice the width the image is shown at (for a 400 px slot, w=800), or give the image a srcset with smaller widths and a sizes attribute so each screen picks one.",
+    "tech": "an img with a width attribute whose smallest Sanity address (src, srcset or picture source) delivers more than 2 times that width and at least 200 px more; delivered is w times dpr, never above the upload, and the upload's own width when no w is given (read from the file name); an img with no width attribute is not judged; no rendering, so a width set only in CSS is not seen",
+    "size": "S",
+    "done": "No Sanity image is delivered at more than twice the width its slot shows.",
+    "estimateChanges": "One width in the image helper, or the sizes list in a responsive image component."
   },
   {
     "id": "schema-breadcrumb-mismatch",
@@ -3510,19 +3523,6 @@
     "estimateChanges": "A move to new URLs changes every link at once, in the content as well as the templates."
   },
   {
-    "id": "llms-txt-malformed",
-    "severity": "low",
-    "area": "Search & sharing",
-    "title": "Your llms.txt is not in the format assistants expect",
-    "what": "/llms.txt exists but has no # title, no ## section with a list of links, or is so large it is no longer a short guide.",
-    "why": "llms.txt is meant to be a short Markdown guide to your most useful pages. A file an assistant cannot parse into a title and links is ignored or misread.",
-    "fix": "Start with one # line naming the business, optionally a > summary, then ## sections of - [Page](https://...): note lines. Put long text in llms-full.txt.",
-    "tech": "/llms.txt (2xx, not HTML) has no H1, or no H2 section with a Markdown link list item, or is over 200000 characters; an HTML 200 counts as missing",
-    "size": "S",
-    "done": "llms.txt has a title, at least one section of links, and stays a short guide.",
-    "estimateChanges": "A llms.txt generated by a plugin is fixed in the plugin's settings."
-  },
-  {
     "id": "nav-label-drift",
     "severity": "low",
     "area": "Visitors",
@@ -3562,17 +3562,17 @@
     "estimateChanges": "A price kept in several places is edited in each."
   },
   {
-    "id": "quotable-facts-in-data-only",
+    "id": "sanity-image-duplicate",
     "severity": "low",
-    "area": "Search & sharing",
-    "title": "Your phone number or address is in structured data but not written on the page",
-    "what": "The page's LocalBusiness structured data has a phone number or street address that appears in no visible text on the pages Gaugeline read (as sent, without JavaScript).",
-    "why": "An assistant answering 'what's their number?' quotes text it can read. A fact that is only in markup, in an image or built by scripts is often missed or second-guessed.",
-    "fix": "Write the phone number and street address as plain text on the home or contact page (the footer is fine), not only in an image or a script.",
-    "tech": "the JSON-LD telephone digits and streetAddress are not found in the visible text (scripts, styles and templates removed) of the checked page or the other pages sampled",
+    "area": "Visitors",
+    "title": "One Sanity image is processed and downloaded more than once",
+    "what": "The same uploaded image is requested with different parameters by different images on the page, such as one width in the header and another in a card.",
+    "why": "Each variant is a separate file for Sanity's CDN to make and for the visitor to download, and none of them is in the browser's cache for the others.",
+    "fix": "Use one address for the image and let CSS size it, or give it one srcset the browser chooses from. If a card needs a different crop, that is a different picture: upload it as its own image.",
+    "tech": "the same asset id (the hash in the file name; the same bytes are the same asset) in two or more img elements with different parameter sets; an img's own srcset and picture sources are one image and are not compared with each other; parameter order is ignored; the page's own HTML only",
     "size": "S",
-    "done": "The phone number and street address in your structured data are also written as text on a page.",
-    "estimateChanges": "A fact that only lives in an image needs the text written out."
+    "done": "Each Sanity asset on a page is requested with one set of parameters, and differing sizes come from one srcset.",
+    "estimateChanges": "Usually one shared image helper used by every component that shows the image."
   },
   {
     "id": "schema-breadcrumb-start",
@@ -3625,19 +3625,6 @@
     "size": "S",
     "done": "Every page on the temporary host has a canonical pointing at the real domain.",
     "estimateChanges": "A shared layout is one edit."
-  },
-  {
-    "id": "well-known-invalid",
-    "severity": "low",
-    "area": "Search & sharing",
-    "title": "An agent discovery file on your site is broken",
-    "what": "The site serves one of the standard /.well-known/ files AI agents look for (an agent card, an OAuth resource description or a legacy plugin manifest), and it is not valid JSON.",
-    "why": "Agents read these files to learn what the site offers and how to sign in. A file that does not parse is skipped, or breaks the agent's setup.",
-    "fix": "Fix the JSON, or remove the file if it is no longer used. A site with none of these files has nothing to fix: they are optional.",
-    "tech": "GET of each path in packages/core/src/data/well-known.json answers 2xx with a non-HTML body that does not parse as a JSON object; 404, HTML and 5xx answers mean no file",
-    "size": "S",
-    "done": "Every agent discovery file the site serves is a valid JSON object.",
-    "estimateChanges": "A file generated by a plugin is fixed at the source."
   },
   {
     "id": "zero-width-in-text",

@@ -243,10 +243,6 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   ],
   "hubspot-page-404": ["A page published in HubSpot answers 404 on the live domain", "Launch day"],
   "hubspot-form-deleted": ["A page embeds a HubSpot form that has been deleted", "Launch day"],
-  "ai-crawlers-intent": [
-    "Your robots.txt does not do what you said you want for AI crawlers",
-    "Search & sharing",
-  ],
   "app-smart-banner-mismatch": ["The iPhone app banner promotes a different app", "Visitors"],
   "astro-draft-entry-public": [
     "A live page embeds a content entry marked as a draft",
@@ -321,6 +317,11 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "placeholder-images": ["The page shows placeholder images", "Visitors"],
   "placeholder-text": ["The page still has placeholder text", "Visitors"],
   "redirect-chain": ["Your address takes several jumps to load", "Search & sharing"],
+  "sanity-image-original": ["Sanity images are served at the size they were uploaded", "Visitors"],
+  "sanity-image-oversized": [
+    "Sanity images are delivered far larger than they are shown",
+    "Visitors",
+  ],
   "schema-breadcrumb-mismatch": ["A breadcrumb ends on a different page", "Search & sharing"],
   "schema-dangling-ref": [
     "Structured data refers to something that isn't there",
@@ -464,22 +465,17 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "lang-untranslated": ["Some text wasn't translated", "Visitors"],
   "links-vague-text": ["Some links don't say where they go", "Visitors"],
   "links-via-redirect": ["Links on this page go through a redirect", "Visitors"],
-  "llms-txt-malformed": [
-    "Your llms.txt is not in the format assistants expect",
-    "Search & sharing",
-  ],
   "nav-label-drift": ["One page has two names in your menus", "Visitors"],
   "og-image-missing": ["Shared links have no picture", "Search & sharing"],
   "price-changed": ["A price changed since the last run", "Sales & prices"],
-  "quotable-facts-in-data-only": [
-    "Your phone number or address is in structured data but not written on the page",
-    "Search & sharing",
+  "sanity-image-duplicate": [
+    "One Sanity image is processed and downloaded more than once",
+    "Visitors",
   ],
   "schema-breadcrumb-start": ["Breadcrumbs don't start where your guide says", "Search & sharing"],
   "sveltekit-data-unshown": ["The page's data has text the page does not show", "Security & email"],
   "tel-format": ["A phone link may not dial correctly", "Visitors"],
   "temp-host-canonical": ["A temporary address doesn't name the real one", "Launch day"],
-  "well-known-invalid": ["An agent discovery file on your site is broken", "Search & sharing"],
   "zero-width-in-text": ["Invisible characters sit inside words on the page", "Security & email"],
   "plan-redirect-drops-query": ["A redirect drops the old address's query string", "Launch day"],
   "plan-rank-unknown-address": [
@@ -1329,12 +1325,6 @@ export const CHECK_TEXT: Readonly<
     "Restore the form in HubSpot (Marketing, Forms, recently deleted), or edit the page or its template to embed a form that exists.",
     "The form ids and portal ids are read as text from the HTML of the published pages already asked for (data-form-id and portalId/formId in an hbspt.forms.create call; nothing is run); only forms of the portal the token belongs to (GET /account-info/v3/details) are asked about, one GET /marketing/v3/forms/{formId} for each different form (at most 50 a run); a 404, or a form marked archived, is the finding. A token without the forms scope, a page that names no portal or more than one, and a form of another portal are could-not-check or not counted, never a pass. Form ids and page paths only.",
   ],
-  "ai-crawlers-intent": [
-    "You said what AI crawlers should be able to do (aiCrawlers in gaugeline.ai.json), and robots.txt does the opposite for one or more known crawlers. Gaugeline names them and says whether a rule names them or the rule for every crawler decides.",
-    "A rule copied from a staging site, or a plugin's default, can shut assistants out of a site that wants to be found by them, or let training crawlers in when you meant to keep them out.",
-    "Edit robots.txt so each crawler listed gets the group you want, or change aiCrawlers in gaugeline.ai.json if the rules are right and the intent changed.",
-    "for each known AI user-agent token (packages/core/src/data/ai-agents.json), isAllowed(robots.txt, token, /) differs from the aiCrawlers intent for its purpose; no robots.txt means every crawler is allowed",
-  ],
   "app-smart-banner-mismatch": [
     "The page's Smart App Banner (the apple-itunes-app meta tag) names a different app id than the page's App Store link.",
     "Safari shows the banner at the top of the page on iPhone, so visitors install whichever app it names, which here is not the one the page links to.",
@@ -1634,6 +1624,18 @@ export const CHECK_TEXT: Readonly<
     "Each jump slows the first visit and can weaken how search engines credit the page.",
     "Point every redirect straight at the final address.",
     "more than one 3xx hop on the entered URL",
+  ],
+  "sanity-image-original": [
+    "An image from cdn.sanity.io is requested with no width or height, so the visitor gets the file as it was uploaded: often 3000 to 6000 pixels wide.",
+    "A phone photo from the shop owner is several megabytes. Shown a few hundred pixels across, it still downloads whole, and the page is slow on a phone for no visible gain.",
+    "Ask for the size you show: add w (and h with fit=crop if the shape is fixed) and auto=format to the address, or build it with @sanity/image-url: urlFor(image).width(800).auto('format').url().",
+    "an img src, srcset or picture source on cdn.sanity.io/images with none of w, h, max-w, max-h, min-w or min-h, whose upload is wider than 1200 px (the size is in the file name, so nothing is downloaded); other hosts, and addresses on a custom domain for Sanity's CDN, are not read; one finding per page; the page's own HTML only",
+  ],
+  "sanity-image-oversized": [
+    "An image from cdn.sanity.io is asked for at a width much greater than the width attribute on the page, and the page offers no smaller version.",
+    "The visitor downloads several times the pixels they can see. On a phone that is seconds of waiting and mobile data spent on detail the screen throws away.",
+    "Ask Sanity for about twice the width the image is shown at (for a 400 px slot, w=800), or give the image a srcset with smaller widths and a sizes attribute so each screen picks one.",
+    "an img with a width attribute whose smallest Sanity address (src, srcset or picture source) delivers more than 2 times that width and at least 200 px more; delivered is w times dpr, never above the upload, and the upload's own width when no w is given (read from the file name); an img with no width attribute is not judged; no rendering, so a width set only in CSS is not seen",
   ],
   "schema-breadcrumb-mismatch": [
     "The last item of a page's breadcrumb structured data points at an address other than the page's own canonical.",
@@ -2133,12 +2135,6 @@ export const CHECK_TEXT: Readonly<
     "Change the link to the address it ends up at. This usually follows a move to new URLs, https or www.",
     "a sampled same-site a[href] answers 3xx first and ends in 200",
   ],
-  "llms-txt-malformed": [
-    "/llms.txt exists but has no # title, no ## section with a list of links, or is so large it is no longer a short guide.",
-    "llms.txt is meant to be a short Markdown guide to your most useful pages. A file an assistant cannot parse into a title and links is ignored or misread.",
-    "Start with one # line naming the business, optionally a > summary, then ## sections of - [Page](https://...): note lines. Put long text in llms-full.txt.",
-    "/llms.txt (2xx, not HTML) has no H1, or no H2 section with a Markdown link list item, or is over 200000 characters; an HTML 200 counts as missing",
-  ],
   "nav-label-drift": [
     "The same link appears in the menu, header or footer with two different labels.",
     "Visitors wonder whether the two labels are two pages, and the site reads as unfinished.",
@@ -2157,11 +2153,11 @@ export const CHECK_TEXT: Readonly<
     "If the change wasn't meant, correct the price at its source (the shop or CMS) and rebuild; if it was, nothing to do.",
     "With --since last only: the JSON-LD Offer price (integer minor units; anything but 48 or 48.00 is unread) for a product key (sku or name plus currency) present in both runs",
   ],
-  "quotable-facts-in-data-only": [
-    "The page's LocalBusiness structured data has a phone number or street address that appears in no visible text on the pages Gaugeline read (as sent, without JavaScript).",
-    "An assistant answering 'what's their number?' quotes text it can read. A fact that is only in markup, in an image or built by scripts is often missed or second-guessed.",
-    "Write the phone number and street address as plain text on the home or contact page (the footer is fine), not only in an image or a script.",
-    "the JSON-LD telephone digits and streetAddress are not found in the visible text (scripts, styles and templates removed) of the checked page or the other pages sampled",
+  "sanity-image-duplicate": [
+    "The same uploaded image is requested with different parameters by different images on the page, such as one width in the header and another in a card.",
+    "Each variant is a separate file for Sanity's CDN to make and for the visitor to download, and none of them is in the browser's cache for the others.",
+    "Use one address for the image and let CSS size it, or give it one srcset the browser chooses from. If a card needs a different crop, that is a different picture: upload it as its own image.",
+    "the same asset id (the hash in the file name; the same bytes are the same asset) in two or more img elements with different parameter sets; an img's own srcset and picture sources are one image and are not compared with each other; parameter order is ignored; the page's own HTML only",
   ],
   "schema-breadcrumb-start": [
     "The first item of a page's breadcrumb structured data is not the Home name and address your schema guide sets.",
@@ -2186,12 +2182,6 @@ export const CHECK_TEXT: Readonly<
     "If a search engine finds the temporary address, nothing tells it the real page is on your domain, and the preview can show up in results.",
     'Add <link rel="canonical" href="https://yourdomain/..."> to every page, so each preview points at the real address.',
     "The final address's host ends in .vercel.app, .netlify.app or .pages.dev and the HTML has no link rel=canonical",
-  ],
-  "well-known-invalid": [
-    "The site serves one of the standard /.well-known/ files AI agents look for (an agent card, an OAuth resource description or a legacy plugin manifest), and it is not valid JSON.",
-    "Agents read these files to learn what the site offers and how to sign in. A file that does not parse is skipped, or breaks the agent's setup.",
-    "Fix the JSON, or remove the file if it is no longer used. A site with none of these files has nothing to fix: they are optional.",
-    "GET of each path in packages/core/src/data/well-known.json answers 2xx with a non-HTML body that does not parse as a JSON object; 404, HTML and 5xx answers mean no file",
   ],
   "zero-width-in-text": [
     "Zero-width characters are inside words in the page's visible text.",
