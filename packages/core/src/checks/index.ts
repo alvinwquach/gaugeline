@@ -7,6 +7,11 @@ import { appLinkDead } from "./app-link-dead.js";
 import { appNameMismatch } from "./app-name-mismatch.js";
 import { appSmartBannerMismatch } from "./app-smart-banner-mismatch.js";
 import { assetFilePublic } from "./asset-file-public.js";
+import { astroDevToolsPublic } from "./astro-dev-tools-public.js";
+import { astroDraftEntryPublic } from "./astro-draft-entry-public.js";
+import { astroEndpointsListed } from "./astro-endpoints-listed.js";
+import { astroPreviewCanonical } from "./astro-preview-canonical.js";
+import { astroPrivateProps } from "./astro-private-props.js";
 import { blocked } from "./blocked.js";
 import { brokenLinks } from "./broken-links.js";
 import { canonicalElsewhere } from "./canonical-elsewhere.js";
@@ -171,6 +176,11 @@ export const PAGE_CHECKS = [
   appNameMismatch,
   appSmartBannerMismatch,
   assetFilePublic,
+  astroDevToolsPublic,
+  astroDraftEntryPublic,
+  astroEndpointsListed,
+  astroPreviewCanonical,
+  astroPrivateProps,
   blocked,
   brokenLinks,
   canonicalElsewhere,
