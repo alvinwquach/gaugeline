@@ -10,6 +10,7 @@ import {
   handoffConfigSchema,
   costConfigSchema,
   trackersConfigSchema,
+  adaptersConfigSchema,
   servicesConfigSchema,
   eventsConfigSchema,
   factsConfigSchema,
@@ -34,6 +35,7 @@ import {
   type RenewalsConfig,
   type CostConfig,
   type TrackersConfig,
+  type AdaptersConfig,
   type ServicesConfig,
   type HandoffConfig,
   type EventsConfig,
@@ -74,6 +76,8 @@ export const COST_CONFIG_FILE = "gaugeline.cost.json";
 export const SERVICES_CONFIG_FILE = "gaugeline.services.json";
 /** The paths that count as sensitive for the tracker checks (--trackers), likewise. Nothing in it is a key. */
 export const TRACKERS_CONFIG_FILE = "gaugeline.trackers.json";
+/** The content systems to read (`adapters`: Sanity now), the fields to fingerprint and where items live, likewise. Keys stay in the environment. */
+export const ADAPTERS_CONFIG_FILE = "gaugeline.adapters.json";
 /** The database project and roles to test its access rules as, likewise. Keys stay in the environment. */
 export const ACCESS_CONFIG_FILE = "gaugeline.access.json";
 /** The business listings to compare with the site (Google, Yelp, Apple, bio links), likewise. Keys stay in the environment. */
@@ -169,6 +173,10 @@ export function readServicesConfig(dir: string): ServicesConfig | undefined {
 
 export function readTrackersConfig(dir: string): TrackersConfig | undefined {
   return readJsonConfig(dir, TRACKERS_CONFIG_FILE, trackersConfigSchema, "the tracker settings");
+}
+
+export function readAdaptersConfig(dir: string): AdaptersConfig | undefined {
+  return readJsonConfig(dir, ADAPTERS_CONFIG_FILE, adaptersConfigSchema, "the content adapters");
 }
 
 export function readAccess(dir: string): AccessConfig | undefined {
