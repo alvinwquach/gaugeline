@@ -74,6 +74,13 @@ describe("docs/integrations/umbraco.md", () => {
     if (!TODO.test(outputs[0] ?? "")) expect(outputs[0]).toBe(await umbracoReads());
   });
 
+  it("names both checks, and says the probing one needs consent and a site you own", () => {
+    expect(page).toContain("umbraco-node-no-page");
+    expect(page).toContain("umbraco-delivery-api-public");
+    expect(page).toContain("--owner-consent");
+    expect(page).toContain("only on sites you own or have permission to test");
+  });
+
   it("shows no text from the site's content", () => {
     for (const marker of Object.values(UMBRACO_MARKERS)) expect(page).not.toContain(marker);
   });
