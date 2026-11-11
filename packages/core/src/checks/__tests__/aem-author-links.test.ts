@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { authorTierLink, isAuthorHost } from "../../adapters/aem-author.js";
+import { authorTierLink, isAuthorHost } from "../../adapters/shared/aem-author.js";
 import { aemAuthorLinks } from "../aem-author-links.js";
 import { URL0, ctx, page } from "./helpers.js";
 

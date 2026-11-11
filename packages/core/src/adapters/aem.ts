@@ -4,7 +4,7 @@ import { describeRetry, retryAfterSeconds } from "../connectors/http.js";
 import { createRedactor } from "../connectors/redact.js";
 import type { Env } from "../connectors/types.js";
 import type { Fetcher, Hop } from "../fetcher.js";
-import { isAuthorHost } from "./aem-author.js";
+import { isAuthorHost } from "./shared/aem-author.js";
 import {
   AEM_CONFIG,
   AEM_DESCRIPTION,
@@ -50,6 +50,8 @@ const CURSOR = /^[A-Za-z0-9+/=_.~:-]{1,512}$/;
 const SEGMENT = /^[A-Za-z0-9_@~+-][A-Za-z0-9_.@~+-]{0,127}$/;
 const DAM = "/content/dam/";
 const MAX_SEGMENTS = 12;
+/** Hex characters of a path hash kept at the end of an id that had to be shortened. */
+const ID_HASH_CHARS = 12;
 
 /** The fragment's modification time, where the query returns it (`_metadata { calendarMetadata { name value } }`). Uncited. */
 const MODIFIED_NAMES: readonly string[] = ["jcr:lastModified", "cq:lastModified"];
@@ -101,7 +103,7 @@ function idOfPath(path: string): string {
     .replace(/[^A-Za-z0-9._-]/g, "-");
   if (!/^[A-Za-z0-9]/.test(id)) id = `x${id}`;
   if (id.length <= 128) return id;
-  return `${id.slice(0, 115)}-${createHash("sha256").update(path).digest("hex").slice(0, 12)}`;
+  return `${id.slice(0, 115)}-${createHash("sha256").update(path).digest("hex").slice(0, ID_HASH_CHARS)}`;
 }
 
 /** The fragment's slug: its last path segment. */
