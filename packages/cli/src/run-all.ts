@@ -82,6 +82,7 @@ async function runSite(
     trackers: boolean;
     libraries: boolean;
     wordpress: boolean;
+    backups: boolean;
     published: boolean;
     runOne: RunOne;
   },
@@ -104,6 +105,7 @@ async function runSite(
         ...(opts.trackers ? ["--trackers"] : []),
         ...(opts.libraries ? ["--libraries"] : []),
         ...(opts.wordpress ? ["--wordpress"] : []),
+        ...(opts.backups ? ["--backups"] : []),
         ...(opts.published ? ["--published"] : []),
       ],
       {
@@ -155,6 +157,8 @@ export async function runAll(
     /** Each site's run also runs the WordPress checks (--wordpress). */
     wordpress?: boolean;
     /** Each site's run also compares changed CMS items with their pages (--published). */
+    /** Each site's run also reads when its content and database were last backed up (--backups). */
+    backups?: boolean;
     published?: boolean;
     runOne: RunOne;
   },
@@ -181,6 +185,7 @@ export async function runAll(
               trackers: opts.trackers ?? false,
               libraries: opts.libraries ?? false,
               wordpress: opts.wordpress ?? false,
+              backups: opts.backups ?? false,
               published: opts.published ?? false,
               runOne: opts.runOne,
             }),
