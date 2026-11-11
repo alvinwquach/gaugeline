@@ -17,7 +17,7 @@ const SITEMAP_FEED = "sitemap-feed";
 const WEBFLOW = "webflow";
 
 /** The adapters that read the live site's sitemap and feeds: they take `site`, `sitemaps` and `feeds`, and no fields. */
-const PAGE_READERS: readonly string[] = [SITEMAP_FEED, "framer", ...BUILDER_IDS];
+const PAGE_READERS: readonly string[] = [SITEMAP_FEED, "framer", "wix", ...BUILDER_IDS];
 
 /**
  * gaugeline.adapters.json, read from the working folder like the other settings files (there is no
@@ -80,7 +80,7 @@ export const adaptersConfigSchema = z.strictObject({
               ctx.addIssue({
                 code: "custom",
                 path: [key],
-                message: `"${key}" belongs to the sitemap-feed, framer and hosted-builder adapters, not to ${entry.id}`,
+                message: `"${key}" belongs to the sitemap-feed, framer, wix and hosted-builder adapters, not to ${entry.id}`,
               });
           if (entry.id !== WEBFLOW)
             for (const [type, fields] of Object.entries(entry.fingerprint ?? {}))
