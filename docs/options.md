@@ -76,6 +76,9 @@ Options:
       --wordpress                Also check a WordPress site's versions against
                                  the current releases, and whether it lists its
                                  users
+      --published                Also check that content changed in your CMS is
+                                 live on the site, and that unpublished pages
+                                 are gone
       --owner-consent            Run the probing checks, which ask routes for
                                  what they protect with no login; only on sites
                                  you may test
@@ -503,6 +506,7 @@ between the markers; CI fails when it differs from the flag table.
 | `--trackers`                | Also list the trackers on pages with a form or a path you listed, and what a tag manager holds                       |                      | 0.2.0 |
 | `--libraries`               | Also check the JavaScript files a page loads for libraries with a published advisory                                 |                      | 0.2.0 |
 | `--wordpress`               | Also check a WordPress site's versions against the current releases, and whether it lists its users                  |                      | 0.2.0 |
+| `--published`               | Also check that content changed in your CMS is live on the site, and that unpublished pages are gone                 |                      | 0.2.0 |
 | `--owner-consent`           | Run the probing checks, which ask routes for what they protect with no login; only on sites you may test             |                      | 0.2.0 |
 | `--routes <value>`          | With --owner-consent: download routes in files matching this glob (repeatable); no glob: a folder's signed-in routes |                      | 0.2.0 |
 | `--since <value>`           | Page check: compare with the last run (the only value is last). delivery: the window to read, such as 7d             |                      | 0.2.0 |
@@ -792,6 +796,25 @@ is no settings file: the WordPress adapter's own settings are in `gaugeline.adap
 `GET`; at most 15 plugins and 15 themes are looked up in a run, each once. What it reads and what it does not see:
 [WordPress](integrations/wordpress.md). What it sends:
 [Privacy and safety](privacy.md#wordpress-wordpress).
+
+### The published option
+
+`--published` adds three checks to the page check for a site whose content lives in a CMS: `published-not-live`
+compares the fingerprint of each field you chose (the title unless you say otherwise) of every item changed in
+the last 7 days with the live page; `live-page-missing` finds a published item whose address answers 404;
+`unpublished-still-live` finds a page that still serves after its item was unpublished or deleted. A page may
+lag its item for a grace period (15 minutes). It uses the adapters in `gaugeline.adapters.json`, or the sitemap
+and feed adapter when there is no file. It is off by default.
+
+```sh
+npx gaugeline lantern-ladle.example --published
+```
+
+It checks the site of the page you give it, once. `gaugeline run --all --published` adds it to every site of a
+nightly run. Settings: the `live` entry of `gaugeline.adapters.json` (`days`, `graceMinutes`, `maxPages`,
+`fields`). Each request is a `GET`, on the site being checked only, at most 40 pages in a run. What it reads and
+what it does not see: [Published but not live](guides/published-not-live.md). What it sends:
+[Privacy and safety](privacy.md#published-but-not-live-published).
 
 ### The query command
 
