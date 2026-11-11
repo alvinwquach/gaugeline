@@ -76,6 +76,9 @@ Options:
       --wordpress                Also check a WordPress site's versions against
                                  the current releases, and whether it lists its
                                  users
+      --backups                  Also check when the client's content and
+                                 database were last backed up (Supabase, Sanity,
+                                 an export folder)
       --published                Also check that content changed in your CMS is
                                  live on the site, and that unpublished pages
                                  are gone
@@ -828,6 +831,27 @@ lifetime, the Vercel team, the usage window and multiple). What it reads, what k
 checks: [Hosting cost](guides/hosting-cost.md). What it sends:
 [Privacy and safety](privacy.md#hosting-cost-gaugeline-cost).
 
+### The backups command
+
+`gaugeline backups <address>` finds out when a client's content and database were last backed up. Where a
+platform documents a read-only way to ask, it reads Supabase's backups and point-in-time recovery (a project
+named in `gaugeline.backups.json` and `SUPABASE_ACCESS_TOKEN`) and Sanity's dataset backups (`SANITY_TOKEN`
+and `SANITY_PROJECT_ID`), and it lists the dated files of any export folder you name. It flags the newest
+backup being older than `maxAgeDays` (7 by default), backups never switched on, and an export far smaller
+than the one before. A platform whose backup status cannot be read becomes a line to check by hand, here and
+on the handoff checklist. It prints each source, then what to fix.
+
+```sh
+npx gaugeline backups marlowe-bar.com
+npx gaugeline backups marlowe-bar.com --ci
+```
+
+It takes `--ci`, `--json` (the schema 2 result and nothing else), `--allow-private`, `--no-open` and the
+notification flags, like the page check. `--backups` adds the same checks to the page check, and
+`gaugeline run --all --backups` to every site of a nightly run. It never starts a backup or an export, and an
+export file is listed, never opened. What it reads, what keys to make and the three checks:
+[Backups](guides/backups.md). What it sends: [Privacy and safety](privacy.md#backups-gaugeline-backups).
+
 ### The trackers option
 
 `--trackers` adds two checks to the page check: the trackers (Meta, TikTok and LinkedIn pixels, Google
@@ -941,11 +965,12 @@ to test.** Without either, nothing is asked and the check is not listed.
 `by` says who agreed and `on` says when, so a shared repository records it once. A run with consent
 prints one line on stderr saying probing checks are on.
 
-There are four probing checks: `gated-download-open`, described in
+There are five probing checks: `gated-download-open`, described in
 [Paid downloads and delivery](delivery.md#a-download-route-that-hands-the-file-to-anyone),
 `route-hidden-not-protected`, described in [Routes that are hidden, not protected](protected-routes.md),
-`strapi-drafts-public`, described in [Strapi](integrations/strapi.md#the-two-checks), and
-`umbraco-delivery-api-public`, described in [Umbraco](integrations/umbraco.md#the-two-checks) (the last two run
+`strapi-drafts-public`, described in [Strapi](integrations/strapi.md#the-two-checks),
+`umbraco-delivery-api-public`, described in [Umbraco](integrations/umbraco.md#the-two-checks), and
+`datocms-drafts-reachable`, described in [DatoCMS](integrations/datocms.md#the-check) (the last three run
 from an adapter's reading, not from a page check).
 
 `--routes <glob>` (repeatable) points that check at your repository's route files, so it finds routes

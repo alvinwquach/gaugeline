@@ -20,10 +20,23 @@ const PAGE_READERS: readonly string[] = ADAPTER_ENTRIES.filter((e) => e.settings
   (e) => e.id,
 );
 
+/** The page readers that also read their platform's collections with a key: they take fingerprint, urls and siteId. */
+const FIELD_READERS: readonly string[] = ADAPTER_ENTRIES.filter((e) => e.settings?.fields).map(
+  (e) => e.id,
+);
+
 /** The adapters that take `expectPrivate`: the owner says their public API is meant to be private. */
 const EXPECT_PRIVATE: readonly string[] = ADAPTER_ENTRIES.filter(
   (e) => e.settings?.expectPrivate,
 ).map((e) => e.id);
+
+/** The adapters that name a GraphQL collection for each content type (`collections`) and take `expectPublishedOnly`. */
+const GRAPHQL_COLLECTIONS: readonly string[] = ADAPTER_ENTRIES.filter(
+  (e) => e.settings?.graphqlCollections,
+).map((e) => e.id);
+
+/** A GraphQL name: letters, digits and underscores, not starting with a digit. It is put into a query document, so nothing else is accepted. */
+const GRAPHQL_NAME = /^[A-Za-z_][A-Za-z0-9_]{0,63}$/;
 
 /** The adapters that read content kept in a repository: they take `path` or `github`, and `folders`. */
 const CONTENT_FOLDERS: readonly string[] = ADAPTER_ENTRIES.filter(
@@ -85,6 +98,31 @@ export const adaptersConfigSchema = z.strictObject({
            * whether it answers a visitor with no key (still only with --owner-consent).
            */
           expectPrivate: z.boolean().optional(),
+          /**
+           * DatoCMS only: the GraphQL collection to read for each content type, and the field that holds an item's
+           * slug. The Content Delivery API has no list of types, so the types are the ones named here.
+           */
+          collections: z
+            .record(
+              z.string().regex(TYPE, "a content type name"),
+              z.strictObject({
+                collection: z
+                  .string()
+                  .regex(GRAPHQL_NAME, "a GraphQL field name such as allClasses"),
+                slug: z
+                  .string()
+                  .regex(GRAPHQL_NAME, "a GraphQL field name such as slug")
+                  .optional(),
+              }),
+            )
+            .optional(),
+          /**
+           * DatoCMS only: the token is meant for published content only. Switches on the check that asks whether
+           * it can also read drafts (it sends the token to DatoCMS's own API, as every read does).
+           */
+          expectPublishedOnly: z.boolean().optional(),
+          /** DatoCMS only: the check names the ids of the unpublished records it finds (at most five). Default: a count. */
+          showDraftIds: z.boolean().optional(),
           /** Content kept in a repository only: the repository's folder on this computer, relative to where the run starts. */
           path: z
             .string()
@@ -132,6 +170,11 @@ export const adaptersConfigSchema = z.strictObject({
             .string()
             .regex(/^https?:\/\/[^\s/]+\/?$/, "a site address such as https://example.com")
             .optional(),
+          /** `wix` only: the Wix site's id (a UUID), sent as the wix-site-id header with the API key. */
+          siteId: z
+            .string()
+            .regex(/^[A-Za-z0-9][A-Za-z0-9-]{7,63}$/, "a Wix site id, such as a UUID")
+            .optional(),
           /** `sitemap-feed` only: sitemap files to read instead of looking for them. */
           sitemaps: z
             .array(z.string().regex(SITE_FILE, "a path on the site, or an https address"))
@@ -163,12 +206,25 @@ export const adaptersConfigSchema = z.strictObject({
                     path: ["fingerprint", type],
                     message: `"${field}" has a hyphen: only the Webflow and git-content adapters have field names like that, and ${entry.id} does not`,
                   });
+          if (!FIELD_READERS.includes(entry.id) && entry.siteId !== undefined)
+            ctx.addIssue({
+              code: "custom",
+              path: ["siteId"],
+              message: `"siteId" belongs to the wix adapter, not to ${entry.id}`,
+            });
           if (entry.expectPrivate !== undefined && !EXPECT_PRIVATE.includes(entry.id))
             ctx.addIssue({
               code: "custom",
               path: ["expectPrivate"],
               message: `"expectPrivate" belongs to the Umbraco adapter, not to ${entry.id}`,
             });
+          for (const key of ["collections", "expectPublishedOnly", "showDraftIds"] as const)
+            if (entry[key] !== undefined && !GRAPHQL_COLLECTIONS.includes(entry.id))
+              ctx.addIssue({
+                code: "custom",
+                path: [key],
+                message: `"${key}" belongs to the DatoCMS adapter, not to ${entry.id}`,
+              });
           const repo = CONTENT_FOLDERS.includes(entry.id);
           for (const key of ["path", "github", "folders"] as const)
             if (!repo && entry[key] !== undefined)
@@ -201,7 +257,7 @@ export const adaptersConfigSchema = z.strictObject({
               });
           }
           for (const key of ["fingerprint", "urls"] as const)
-            if (own && entry[key] !== undefined)
+            if (own && !FIELD_READERS.includes(entry.id) && entry[key] !== undefined)
               ctx.addIssue({
                 code: "custom",
                 path: [key],
