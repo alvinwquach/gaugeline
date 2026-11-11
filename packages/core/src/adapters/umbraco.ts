@@ -426,7 +426,14 @@ export function createUmbracoAdapter(options: UmbracoAdapterOptions): UmbracoAda
         yield item;
       }
       skip += page.items.length;
-      if (skip >= page.total) return;
+      if (skip >= page.total) {
+        // The position reached the total, but a window that repeated a node leaves another one out.
+        if (seen.size < page.total)
+          throw new AdapterCouldNotCheck(
+            "Umbraco's list repeated nodes and did not give all of them, so the rest was not read.",
+          );
+        return;
+      }
       if (page.items.length === 0)
         throw new AdapterCouldNotCheck(
           `Umbraco's list stopped after ${skip} of ${page.total} nodes, so the rest was not read.`,
