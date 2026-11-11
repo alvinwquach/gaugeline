@@ -332,10 +332,10 @@ describe("gatsby: edge cases", () => {
     const p = page("https://shop.example/", GATSBY_HTML("Hello there"));
     const { ctx } = ctxFor({
       [PD]: json(
-        pd({ note: "bad \\ud800 value that is long enough", ok: "Hello there" }).replace(
-          /\\\\/g,
-          "\\",
-        ),
+        pd({
+          note: `bad ${String.fromCharCode(0xd800)} value that is long enough`,
+          ok: "Hello there",
+        }),
       ),
     });
     const out = await gatsbyDataUnshown.run(p, ctx);
@@ -470,7 +470,7 @@ describe("gatsby: edge cases", () => {
       } as CheckContext,
     );
     expect(viaSitemap[0]?.evidence).toBe(
-      "the sitemap lists https://shop.gatsbyjs.io/a are on a preview domain".replace("are", "is"),
+      "the sitemap lists https://shop.gatsbyjs.io/a is on a preview domain",
     );
   });
 });
