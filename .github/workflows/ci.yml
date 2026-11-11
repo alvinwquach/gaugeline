@@ -14,12 +14,14 @@ permissions:
 # (Linux, Windows and macOS on Node 22 and 24), docs-examples and pack-and-smoke run on every push to
 # main and on the Release pull request (head ref changeset-release/main).
 #
-# A new push to a pull request cancels the run of the older commit, and a new merge to main cancels
-# the older run on main. The release workflow's ci-gate therefore never releases a cancelled run: the
-# newer commit's own gate waits for its own full matrix.
+# A new push to a pull request cancels the run of the older commit. A run on main has its own group
+# and is never cancelled by a newer merge (owner order, 11 Nov 2026: it replaces the earlier "a new
+# merge cancels the older run on main"). While one run on main is in progress, only the newest queued
+# run waits; GitHub cancels the older queued ones, and the release workflow's ci-gate refuses a
+# cancelled run, so nothing is released from it: the newer commit's own gate waits for its own matrix.
 concurrency:
-  group: ${{ github.event_name == 'pull_request' && format('ci-pr-{0}', github.head_ref) || 'ci-main' }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   test:

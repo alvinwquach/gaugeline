@@ -10,6 +10,11 @@ on:
 permissions:
   contents: read
 
+# One report per pull request; a newer run of the same pull request replaces the older.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   report:
     if: github.event.pull_request.merged == true && github.event.pull_request.head.repo.full_name == github.repository

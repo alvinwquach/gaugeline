@@ -21,8 +21,8 @@ jobs:
   ci-gate:
     # Pull requests run Node 22 on Linux only (and the Release pull request runs the full matrix on its head).
     # The full matrix runs again on main after each merge. Nothing is released from a commit until that
-    # run is green. A newer merge cancels the older run on main (ci.yml concurrency): a cancelled run is
-    # never treated as green. This commit is then not released from here; the newer commit includes it,
+    # run is green. A run on main is not cancelled by a newer merge (ci.yml concurrency), but GitHub drops an
+    # older queued run when a newer one queues: a cancelled run is never treated as green. This commit is then not released from here; the newer commit includes it,
     # and the newer commit's own gate waits for its own full matrix.
     if: vars.RELEASE_PR_ENABLED == 'true'
     runs-on: ubuntu-latest
