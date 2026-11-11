@@ -6,6 +6,7 @@ import { entries as contentstack } from "./contentstack.entry.js";
 import { entries as framer } from "./framer.entry.js";
 import { entries as genericApi } from "./generic-api.entry.js";
 import { entries as gitContent } from "./git-content.entry.js";
+import { entries as hubspotCms } from "./hubspot-cms.entry.js";
 import { entries as sanity } from "./sanity.entry.js";
 import { entries as shopify } from "./shopify.entry.js";
 import { entries as sitemapFeed } from "./sitemap-feed.entry.js";
@@ -23,6 +24,7 @@ export const ADAPTER_ENTRIES: readonly AdapterEntry[] = [
   ...framer,
   ...genericApi,
   ...gitContent,
+  ...hubspotCms,
   ...sanity,
   ...shopify,
   ...sitemapFeed,

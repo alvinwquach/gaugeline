@@ -1560,6 +1560,32 @@
     "estimateChanges": "Usually one change in Strapi's Users & Permissions plugin: take the draft access away from the Public role, or stop sending drafts from the front end. Allow longer if the front end previews drafts through the public route and needs a preview token instead."
   },
   {
+    "id": "hubspot-page-404",
+    "severity": "high",
+    "area": "Launch day",
+    "title": "A page published in HubSpot answers 404 on the live domain",
+    "what": "HubSpot says a site page, landing page or blog post is published on this domain, and the address it gives for it answers 404 or 410 on the live site.",
+    "why": "Links, the sitemap, search results and the client's announcement point at a page that is not there, while the CMS shows it as live.",
+    "fix": "In HubSpot, open the page and check its domain, its URL and that it is published to this domain and not only to a staging one; republish it if it was cloned or moved. If it should not be public, unpublish it.",
+    "tech": "GET /cms/v3/pages/site-pages, /cms/v3/pages/landing-pages and /cms/v3/blogs/posts (each page of each list, stepped by the cursor the answer gives), keeping the pages whose state is PUBLISHED and whose own url is on the domain being checked (a page on another domain of the same portal is counted and not asked), then one anonymous GET of that address (redirects followed). A final 404 or 410 is the finding; any other answer that is not a 2xx is could-not-check for that page. A page with no usable https address is could-not-check. Ids, slugs and statuses only: no field is read for this.",
+    "size": "M",
+    "done": "Every page HubSpot says is published on this domain answers on the live site.",
+    "estimateChanges": "A page that is gone for a whole list is a domain, a language or a URL setting in HubSpot. A single page is usually a slug that was changed after publishing or a page a redirect rule swallows. Pages HubSpot serves on another domain of the same account are not counted."
+  },
+  {
+    "id": "hubspot-form-deleted",
+    "severity": "high",
+    "area": "Launch day",
+    "title": "A page embeds a HubSpot form that has been deleted",
+    "what": "A page on the live site embeds a HubSpot form by its id, and HubSpot answers that the form does not exist in this portal.",
+    "why": "The form shows nothing or an error, so enquiries and orders sent through it are lost without anyone seeing a failure.",
+    "fix": "Restore the form in HubSpot (Marketing, Forms, recently deleted), or edit the page or its template to embed a form that exists.",
+    "tech": "The form ids and portal ids are read as text from the HTML of the published pages already asked for (data-form-id and portalId/formId in an hbspt.forms.create call; nothing is run); only forms of the portal the token belongs to (GET /account-info/v3/details) are asked about, one GET /marketing/v3/forms/{formId} for each different form (at most 50 a run); a 404, or a form marked archived, is the finding. A token without the forms scope, a page that names no portal or more than one, and a form of another portal are could-not-check or not counted, never a pass. Form ids and page paths only.",
+    "size": "S",
+    "done": "Every HubSpot form a page embeds still exists in the portal.",
+    "estimateChanges": "Minutes to point the embed at the form that replaced the deleted one, or to restore it from HubSpot's recently deleted forms. Longer when the page's template holds the form id in several places."
+  },
+  {
     "id": "app-smart-banner-mismatch",
     "severity": "medium",
     "area": "Visitors",
@@ -2988,6 +3014,19 @@
     "size": "S",
     "done": "No product page offers something the Squarespace Inventory API says is sold out, or says sold out for something the API says is in stock.",
     "estimateChanges": "Usually one product: a stock count changed after the page was cached, or a variant was marked unlimited by mistake. Many products at once mean a cache in front of the site."
+  },
+  {
+    "id": "hubspot-hubdb-drift",
+    "severity": "medium",
+    "area": "Visitors",
+    "title": "A HubDB row differs from the page that shows it",
+    "what": "A published row of a HubDB table has a value in a column you named in gaugeline.adapters.json, and the dynamic page for that row does not show it.",
+    "why": "Visitors see a price, a time or a name that is not the one the client keeps in the table, so what is sold or announced is not what the table says.",
+    "fix": "Open the dynamic page's template and check the column it prints, then publish the table again (a table change shows on the page only once the table is published). If the template formats the value differently, name another column or accept the difference.",
+    "tech": "GET /cms/v3/hubdb/tables for the published tables, GET /cms/v3/hubdb/tables/{table}/rows for the published rows (stepped by the cursor), and the dynamic page that uses the table (a published page whose dynamicPageHubDbTableId is the table's id); for each row with a path, one anonymous GET of the page's address plus the row's path. Only the columns named under `fingerprint` for `hubdb.<table>` are used: each value is looked for in the words of the page (scripts, styles and tags removed, entities decoded, case ignored; a number as written, with two decimals and with a thousands comma, as a whole number). The values are held only for that comparison; a finding names the table, the row id, the page and the column, never a value. A table with no dynamic page, a row with no path, a row with nothing that can be looked for and a page that was not read are could-not-check.",
+    "size": "M",
+    "done": "Every column you named for a HubDB table shows the table's value on the page that displays the row.",
+    "estimateChanges": "Usually a page template that reads a different column, or a table published after the page was cached. Allow longer when the template formats the value (a price with a currency sign is looked for as written and with two decimals)."
   },
   {
     "id": "ai-crawlers-blocked",

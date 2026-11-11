@@ -171,6 +171,8 @@ example runs in CI against a fixture, from [Quick start](docs/quick-start.md).
 | `squarespace-price-differs`       | Fix this first | A Squarespace product page shows a price the store does not have              |
 | `strapi-entry-no-page`            | Fix this first | A published Strapi entry has no page on the live site                         |
 | `strapi-drafts-public`            | Fix this first | Strapi lists unpublished entries to visitors with no token                    |
+| `hubspot-page-404`                | Fix this first | A page published in HubSpot answers 404 on the live domain                    |
+| `hubspot-form-deleted`            | Fix this first | A page embeds a HubSpot form that has been deleted                            |
 | `app-smart-banner-mismatch`       | Fix soon       | The iPhone app banner promotes a different app                                |
 | `checkout-js-only`                | Fix soon       | Nothing on the page can be linked to buy                                      |
 | `crm-field-names`                 | Fix soon       | A form sends fields the CRM doesn't have                                      |
@@ -281,6 +283,7 @@ example runs in CI against a fixture, from [Quick start](docs/quick-start.md).
 | `webflow-item-staged`             | Fix soon       | Work saved in the Webflow CMS is not on the live site                         |
 | `shopify-theme-preview-indexable` | Fix soon       | A Shopify theme preview link on the live site can be indexed                  |
 | `squarespace-stock-differs`       | Fix soon       | A Squarespace product page and its stock disagree                             |
+| `hubspot-hubdb-drift`             | Fix soon       | A HubDB row differs from the page that shows it                               |
 | `ai-crawlers-blocked`             | Worth knowing  | Some AI assistants can't read your site                                       |
 | `app-name-mismatch`               | Worth knowing  | The store lists the app under a different name                                |
 | `asset-file-public`               | Worth knowing  | A downloadable file is on a public asset address                              |
