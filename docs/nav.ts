@@ -148,6 +148,7 @@ export const UNLISTED: NavPage[] = [
   },
   { slug: "guides/access-rules", title: "Database access rules, tested from outside" },
   { slug: "guides/nextjs", title: "Next.js sites" },
+  { slug: "guides/gatsby", title: "Gatsby sites" },
   { slug: "guides/sveltekit", title: "SvelteKit sites" },
   { slug: "guides/astro", title: "Astro sites" },
   { slug: "guides/weekly-digest", title: "The weekly digest" },
