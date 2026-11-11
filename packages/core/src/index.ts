@@ -78,6 +78,7 @@ export type {
   JsonQueryShape,
   QueryBodyShape,
   ReadOnlyQueryAllow,
+  RegisteredQueryAllow,
 } from "./fetch/read-only-query.js";
 export { Semaphore } from "./semaphore.js";
 export { BUDGET_KINDS, LIMITS, createBudget, formatSampleSummary } from "./limits.js";
@@ -368,6 +369,7 @@ export {
 export type { RunSnapshot, SnapshotChange } from "./run-snapshot.js";
 export { NEXT_RENDERED_NOTE, isNextSite, readCache } from "./next/detect.js";
 export type { CacheRead } from "./next/detect.js";
+export { isSveltekitSite, dataAddress as sveltekitDataAddress } from "./sveltekit/detect.js";
 export { isFrameworkUrl } from "./next/framework-urls.js";
 export { frameworkLinks } from "./links.js";
 export { consentConfigSchema } from "./consent.js";
@@ -1446,6 +1448,7 @@ export {
   createSquarespaceCommerceRegistry,
 } from "./checks/squarespace-commerce.js";
 export { STRAPI_CHECKS, createStrapiRegistry } from "./checks/strapi.js";
+export { UMBRACO_CHECKS, createUmbracoRegistry } from "./checks/umbraco.js";
 export { HUBSPOT_CMS_CHECKS, createHubspotCmsRegistry } from "./checks/hubspot-cms.js";
 export {
   ListBuilder,

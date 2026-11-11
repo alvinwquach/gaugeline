@@ -144,6 +144,11 @@ export interface AdapterSettings {
   feeds?: readonly string[] | undefined;
   /** Only `generic-api`: the mapping from the platform's read API to items. */
   api?: GenericApiMapping | undefined;
+  /**
+   * Only `umbraco`: the owner says the Delivery API is meant to be private. The probing check
+   * `umbraco-delivery-api-public` runs only when this is true; a key being set says nothing of it.
+   */
+  expectPrivate?: boolean | undefined;
   /** Only `git-content`: the repository's folder on this computer, relative to where the run starts. */
   path?: string | undefined;
   /** Only `git-content`: a repository on GitHub, read with GET. Instead of `path`. */

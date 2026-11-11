@@ -12,7 +12,7 @@ import { GqlSyntaxError, parseGraphql } from "../query/graphql-parse.js";
  * anything; the checks are pure functions, shared by the fetcher and by the adapter contract suite.
  */
 
-/** The one method a query is sent with. */
+/** The one method a query is sent with. The registry sets it; an adapter never writes it (ADR-0006, Amendment 1). */
 export type QueryMethod = "POST";
 
 /** A GraphQL request: one operation, and it must parse as a `query`. */
@@ -52,14 +52,14 @@ export interface ConfiguredHost {
 }
 
 /**
- * One allowed read-only query endpoint, exported by an adapter's file, registered and frozen.
- * `fetcher.query()` takes its `id`.
+ * One allowed read-only query endpoint, as an adapter's file writes it for `registerQueryAllow`.
+ * There is no `method` field: the registry fixes the method to POST itself (ADR-0006, Amendment 1),
+ * so an adapter never writes the verb, and PUT, PATCH and DELETE cannot be asked for at all. An
+ * entry that passes a `method` is a type error and is refused at run time.
  */
 export interface ReadOnlyQueryAllow {
   /** A short stable id, "wix-data-query": the request log records this and never the body. */
   id: string;
-  /** Always POST. Anything else (PUT, PATCH, DELETE) is never allowed. */
-  method: QueryMethod;
   /** The vendor's exact host (lower case, no wildcard), or `{ configured }` for a host the person set. */
   host: string | ConfiguredHost;
   /**
@@ -75,6 +75,11 @@ export interface ReadOnlyQueryAllow {
     /** YYYY-MM-DD the page was last read to confirm the endpoint only reads, or null: not verified. */
     checked: string | null;
   };
+}
+
+/** What `registerQueryAllow` stores and returns: the entry, frozen, with the method the registry fixed. */
+export interface RegisteredQueryAllow extends ReadOnlyQueryAllow {
+  readonly method: QueryMethod;
 }
 
 /** The most bytes a query body may have once serialised. */
@@ -253,13 +258,23 @@ export function isExactHost(host: unknown): host is string {
   return typeof host === "string" && HOST.test(host) && !host.includes("*");
 }
 
-/** What is wrong with the entry itself; an empty list means it is well formed. */
-export function allowProblems(allow: ReadOnlyQueryAllow): string[] {
+/**
+ * What is wrong with the entry itself; an empty list means it is well formed. An entry an adapter
+ * wrote must have no `method` key at all (the registry fixes it); with `{ stored: true }` the entry
+ * is one the registry stored, whose method must be the fixed one.
+ */
+export function allowProblems(
+  allow: ReadOnlyQueryAllow,
+  opts: { stored?: boolean } = {},
+): string[] {
   const out: string[] = [];
   const a = allow as unknown as Record<string, unknown>;
   if (typeof a.id !== "string" || !ID.test(a.id))
     out.push("the id must be a short lower-case name");
-  if (a.method !== "POST") out.push(`the method must be POST, not ${String(a.method)}`);
+  if (opts.stored === true) {
+    if (a.method !== "POST") out.push(`the method must be POST, not ${String(a.method)}`);
+  } else if ("method" in a)
+    out.push("the method is fixed by the registry: remove the method key from the entry");
   const host = a.host as { configured?: unknown } | string | undefined;
   if (typeof host === "string") {
     if (!isExactHost(host))
@@ -501,7 +516,9 @@ export function queryRefusal(
   body: unknown,
   configuredHost?: string,
 ): string | undefined {
-  const entry = allowProblems(allow);
+  // The fetcher passes the registry's stored entry (method fixed to POST); a bare entry (a unit
+  // test's fixture) has no method key. Either way a method that is there must be POST.
+  const entry = allowProblems(allow, { stored: "method" in allow });
   if (entry.length > 0) return `allowlist entry ${String(allow.id)} is not valid: ${entry[0]}`;
   return addressProblem(url, allow, configuredHost) ?? bodyProblem(allow, body);
 }
