@@ -88,7 +88,7 @@ then id.
 | Sales & prices   | 24             | 13       | 7             |
 | Leads            | 4              | 9        | 2             |
 | Security & email | 18             | 17       | 6             |
-| Launch day       | 27             | 17       | 6             |
+| Launch day       | 29             | 17       | 6             |
 
 <!-- skill-areas:end -->
 

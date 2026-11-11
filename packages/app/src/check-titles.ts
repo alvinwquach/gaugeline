@@ -46,6 +46,8 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "hidden-indexable": ["An unlaunched page can be indexed", "Launch day"],
   "hidden-linked": ["A public page links to an unlaunched section", "Launch day"],
   "host-duplicate": ["Your whole site exists at two addresses", "Search & sharing"],
+  "host-preview-indexable": ["A preview of the site can be found by search engines", "Launch day"],
+  "host-preview-named": ["The live site names a preview address", "Launch day"],
   "html-huge": ["This page's HTML is enormous", "Visitors"],
   "ics-floating-time": ["Your calendar shows the wrong hour on some phones", "Visitors"],
   "images-broken": ["Some images on this page don't load", "Visitors"],
@@ -618,6 +620,18 @@ export const CHECK_TEXT: Readonly<
     "Search engines can split your ranking between two copies of every page.",
     "Pick one address and 301-redirect the other to it at your host or DNS provider.",
     "the alternate host returns 200 instead of 301",
+  ],
+  "host-preview-indexable": [
+    "A Vercel, Netlify, Cloudflare Pages or Amplify preview or deploy address that the live site names answers with a page and does not ask search engines to stay away.",
+    "Search engines can index the preview next to the real site, with old prices, test content or a duplicate of every page competing with yours.",
+    "Turn on the host's deployment protection for previews (Vercel Authentication, Netlify password protection, Cloudflare Access, Amplify access control) or send X-Robots-Tag: noindex on every preview page, and stop the live site naming the address.",
+    "One GET of each preview address (at most 3 per page) that the page, the sitemap or a feed names, no address guessed: a final 200 on a preview host with no noindex or none in meta robots or X-Robots-Tag and a canonical that is missing or its own. A 401 or 403 is protected, a canonical elsewhere is consolidated and a redirect away is fine; no answer or a cut-off body is reported as could not check",
+  ],
+  "host-preview-named": [
+    "A page, the sitemap or a feed of the live site gives a Vercel, Netlify, Cloudflare Pages or Amplify preview or deploy address as its canonical, og:url, a language version, a script or an entry.",
+    "Search engines and feed readers follow those addresses to a copy of the site that can show old content, can be indexed next to the real one, and disappears when the host cleans up the preview.",
+    "Build absolute addresses from the live domain, not from the host's per-deploy variable (VERCEL_URL, DEPLOY_PRIME_URL, CF_PAGES_URL, AWS_BRANCH) and rebuild; then search the CMS content for the old name.",
+    "On a page not served from a .vercel.app, .netlify.app, .pages.dev or .amplifyapp.com host: canonical, og:url, hreflang, script src, feed links, the sitemap's entries and alternates and the feed items whose host has the shape of a preview address (deploy-preview-<n>--site, <branch>--site, <hash>.project.pages.dev, pr-<n>.<app id>.amplifyapp.com, project-git-<branch>-team and project-<hash>-team .vercel.app). Nothing is requested; links are left to temp-host-links, and a Next.js site's canonical, og:url and sitemap to next-preview-canonical",
   ],
   "html-huge": [
     "The HTML of the page alone is over 2 MB, before any image, script or stylesheet.",

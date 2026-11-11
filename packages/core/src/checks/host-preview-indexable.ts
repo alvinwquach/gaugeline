@@ -5,6 +5,16 @@ import { getOrNull } from "../probe.js";
 import { buildSnapshot, type PageSnapshot } from "../snapshot.js";
 import { firstFew } from "./site-helpers.js";
 
+/** The address to ask for: the one named, without its query or fragment (a token in it is never sent). */
+function asked(url: string): string[] {
+  try {
+    const u = new URL(url.startsWith("//") ? `https:${url}` : url);
+    return [`${u.protocol}//${u.host}${u.pathname}`];
+  } catch {
+    return [];
+  }
+}
+
 /** Preview addresses asked about per checked page: each is one GET, never more. */
 const MAX_ASKED = 3;
 
@@ -28,7 +38,7 @@ export const hostPreviewIndexable = defineCheck<PageSnapshot>({
       ...new Set(
         previewMentions(page, site, { links: true })
           .filter((m) => !["script", "feed link"].includes(m.where))
-          .map((m) => m.url.split("#")[0] ?? m.url),
+          .flatMap((m) => asked(m.url)),
       ),
     ].slice(0, MAX_ASKED);
     const open: string[] = [];

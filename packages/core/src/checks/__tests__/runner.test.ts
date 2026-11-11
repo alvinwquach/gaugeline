@@ -121,6 +121,8 @@ describe("runner: unit", () => {
       "hidden-linked",
       "hidden-past-launch",
       "host-duplicate",
+      "host-preview-indexable",
+      "host-preview-named",
       "hreflang-bad-code",
       "hreflang-not-reciprocal",
       "html-heavy",
