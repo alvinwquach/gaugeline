@@ -1,3 +1,4 @@
+import { PLANNED_ADAPTERS } from "@gaugeline/core";
 import { COPPERHILL_COUNTS, sanityCountsTransport } from "@gaugeline/testkit";
 import { mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -75,10 +76,13 @@ describe("gaugeline.adapters.json in gaugeline query: e2e", () => {
   });
 
   it("an adapter that is planned is exit 2 and names the branch that builds it", async () => {
-    writeFileSync(join(dir, "gaugeline.adapters.json"), '{ "adapters": [{ "id": "tina" }] }');
+    // Which adapters are planned changes with every merge (none may be left): use the first planned one, or an unknown id.
+    const planned = PLANNED_ADAPTERS[0];
+    const id = planned?.id ?? "no-such-adapter";
+    writeFileSync(join(dir, "gaugeline.adapters.json"), `{ "adapters": [{ "id": "${id}" }] }`);
     const r = await query();
     expect(r.code).toBe(EXIT.couldNotRun);
-    expect(r.err).toContain('the "tina" adapter is planned (C-03)');
+    if (planned) expect(r.err).toContain(`the "${id}" adapter is planned (${planned.branch})`);
     // The list grows with every adapter: check its shape (alphabetical, the ones this test needs), not the whole list.
     const built = /Built adapters: ([a-z0-9, -]+)\./.exec(r.err)?.[1]?.split(", ") ?? [];
     expect(built).toEqual([...built].sort());
