@@ -200,6 +200,8 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "The Umbraco Delivery API answers visitors with no key",
     "Security & email",
   ],
+  "hubspot-page-404": ["A page published in HubSpot answers 404 on the live domain", "Launch day"],
+  "hubspot-form-deleted": ["A page embeds a HubSpot form that has been deleted", "Launch day"],
   "app-smart-banner-mismatch": ["The iPhone app banner promotes a different app", "Visitors"],
   "checkout-js-only": ["Nothing on the page can be linked to buy", "Sales & prices"],
   "crm-field-names": ["A form sends fields the CRM doesn't have", "Leads"],
@@ -384,6 +386,7 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "A Squarespace product page and its stock disagree",
     "Sales & prices",
   ],
+  "hubspot-hubdb-drift": ["A HubDB row differs from the page that shows it", "Visitors"],
   "ai-crawlers-blocked": ["Some AI assistants can't read your site", "Search & sharing"],
   "app-name-mismatch": ["The store lists the app under a different name", "Visitors"],
   "asset-file-public": ["A downloadable file is on a public asset address", "Sales & prices"],
@@ -1162,6 +1165,18 @@ export const CHECK_TEXT: Readonly<
     "In appsettings.json set Umbraco:CMS:DeliveryApi:PublicAccess to false and keep an ApiKey, then send the key from the server only (never from the browser). If the API is meant to be public (a public API that also has a key, so that preview works, is a normal setup), remove expectPrivate from gaugeline.adapters.json: the key is not touched.",
     "probing check, off without --owner-consent: this check asks the Delivery API's public route as a visitor with no key, so it runs only with --owner-consent (or gaugeline.consent.json), on sites you own or have permission to test; only when the settings say expectPrivate: true (a key being set says nothing: Umbraco's preview needs the key on a public API too); one GET of /umbraco/delivery/api/v2/content?take=1 with no Api-Key header, no cookie and nothing the fetcher adds per address, fields=properties[] and expand=none; a 200 with a list and a numeric total is the finding (the total is a count, never a node); 401 or 403 is a protected API and 404 is an API that is off or not at that address, both with no finding; a 200 that is not the API's list (a page that answers every path) and any other status are could-not-check; the answer is read as a count and nothing else",
   ],
+  "hubspot-page-404": [
+    "HubSpot says a site page, landing page or blog post is published on this domain, and the address it gives for it answers 404 or 410 on the live site.",
+    "Links, the sitemap, search results and the client's announcement point at a page that is not there, while the CMS shows it as live.",
+    "In HubSpot, open the page and check its domain, its URL and that it is published to this domain and not only to a staging one; republish it if it was cloned or moved. If it should not be public, unpublish it.",
+    "GET /cms/v3/pages/site-pages, /cms/v3/pages/landing-pages and /cms/v3/blogs/posts (each page of each list, stepped by the cursor the answer gives), keeping the pages whose state is PUBLISHED and whose own url is on the domain being checked (a page on another domain of the same portal is counted and not asked), then one anonymous GET of that address (redirects followed). A final 404 or 410 is the finding; any other answer that is not a 2xx is could-not-check for that page. A page with no usable https address is could-not-check. Ids, slugs and statuses only: no field is read for this.",
+  ],
+  "hubspot-form-deleted": [
+    "A page on the live site embeds a HubSpot form by its id, and HubSpot answers that the form does not exist in this portal.",
+    "The form shows nothing or an error, so enquiries and orders sent through it are lost without anyone seeing a failure.",
+    "Restore the form in HubSpot (Marketing, Forms, recently deleted), or edit the page or its template to embed a form that exists.",
+    "The form ids and portal ids are read as text from the HTML of the published pages already asked for (data-form-id and portalId/formId in an hbspt.forms.create call; nothing is run); only forms of the portal the token belongs to (GET /account-info/v3/details) are asked about, one GET /marketing/v3/forms/{formId} for each different form (at most 50 a run); a 404, or a form marked archived, is the finding. A token without the forms scope, a page that names no portal or more than one, and a form of another portal are could-not-check or not counted, never a pass. Form ids and page paths only.",
+  ],
   "app-smart-banner-mismatch": [
     "The page's Smart App Banner (the apple-itunes-app meta tag) names a different app id than the page's App Store link.",
     "Safari shows the banner at the top of the page on iPhone, so visitors install whichever app it names, which here is not the one the page links to.",
@@ -1815,6 +1830,12 @@ export const CHECK_TEXT: Readonly<
     "Shoppers order what cannot be shipped, or leave a product that could have sold. Search results show the page's availability.",
     "Open the product in Squarespace and check each variant's stock. If the page is out of date, publish it again or clear a cache in front of the site.",
     'GET /1.0/commerce/products and GET /1.0/commerce/inventory (cursor pages; a key without the Inventory permission, or a plan that does not offer it, makes this check could-not-check and leaves the price check as it is), then one GET of each visible product\'s page. The API side: "in" when any variant has a row that is unlimited or has a quantity above 0, "out" when every variant has a row and none can be bought, otherwise unknown (a variant with no row is never read as out of stock). The page side: the Product offers\' availability in its JSON-LD (InStock, OutOfStock, SoldOut ...), or the page\'s one add-to-cart button saying sold out when the product data names no availability (no other button counts); mixed or missing words are unknown. Only "in" against "out", either way round, is a finding; unknown on either side is could-not-check. Findings carry a word and a name, never a quantity or a page\'s text',
+  ],
+  "hubspot-hubdb-drift": [
+    "A published row of a HubDB table has a value in a column you named in gaugeline.adapters.json, and the dynamic page for that row does not show it.",
+    "Visitors see a price, a time or a name that is not the one the client keeps in the table, so what is sold or announced is not what the table says.",
+    "Open the dynamic page's template and check the column it prints, then publish the table again (a table change shows on the page only once the table is published). If the template formats the value differently, name another column or accept the difference.",
+    "GET /cms/v3/hubdb/tables for the published tables, GET /cms/v3/hubdb/tables/{table}/rows for the published rows (stepped by the cursor), and the dynamic page that uses the table (a published page whose dynamicPageHubDbTableId is the table's id); for each row with a path, one anonymous GET of the page's address plus the row's path. Only the columns named under `fingerprint` for `hubdb.<table>` are used: each value is looked for in the words of the page (scripts, styles and tags removed, entities decoded, case ignored; a number as written, with two decimals and with a thousands comma, as a whole number). The values are held only for that comparison; a finding names the table, the row id, the page and the column, never a value. A table with no dynamic page, a row with no path, a row with nothing that can be looked for and a page that was not read are could-not-check.",
   ],
   "ai-crawlers-blocked": [
     "robots.txt stops one or more known AI crawlers from reading the home page. Gaugeline says which, and whether the block names them or comes from a rule for every crawler.",
