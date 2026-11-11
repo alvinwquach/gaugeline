@@ -134,6 +134,7 @@ import { runCutover } from "./cutover.js";
 import { runMigration } from "./migration.js";
 import { runAdvisory } from "./advisory.js";
 import { runInit } from "./init.js";
+import { gateVerdict } from "./deploy-gate.js";
 import { runSnapshot } from "./snapshot.js";
 import { runVerify } from "./verify.js";
 import { runAssert } from "./assert.js";
@@ -1217,7 +1218,9 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       // Probing checks (CLAUDE.md rule 14) ask a route that should be protected for what it protects,
       // with no login. They are off unless the owner agreed: --owner-consent, or gaugeline.consent.json.
       const consentFile = readConsent(cwd);
-      const ownerConsent = args.ownerConsent || consentFile !== undefined;
+      // The gate honours only the flag: a settings file in the folder is not consent to probe a preview.
+      const ownerConsent =
+        args.ownerConsent || (args.command !== "deploy-gate" && consentFile !== undefined);
       if (args.routes.length > 0 && !ownerConsent)
         throw new ConfigError(
           "--routes is read by the download route check, which asks your routes for their files with no login, so it runs only with --owner-consent.",
@@ -1874,6 +1877,11 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         io.stdout.write(
           highFindings === 0 ? "Ready to launch\n" : `Not yet: ${highFindings} to fix first\n`,
         );
+      // gaugeline deploy-gate: one line to end on. With --json it goes to stderr, so stdout stays JSON.
+      if (args.gate) {
+        const verdict = `${gateVerdict(args.gate.host, highFindings, args.gate.block)}\n`;
+        (args.json ? io.stderr : io.stdout).write(verdict);
+      }
       if (saveFailure) throw saveFailure;
       if (assertionProblems[0]) throw assertionProblems[0];
       return { outcome: { kind: "ran", highFindings, drift: false }, ci };

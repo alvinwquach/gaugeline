@@ -14,7 +14,6 @@ import { allowlistProblems, recording, requestProblems, type Seen } from "./cont
 const DOCS = { url: "https://dev.vendor.example/query", checked: "2026-11-11" } as const;
 const gqlAllow = registerQueryAllow({
   id: "guard-shop-graphql",
-  method: "POST",
   host: "api.vendor.example",
   path: "/graphql",
   body: { kind: "graphql-query" },
@@ -22,7 +21,6 @@ const gqlAllow = registerQueryAllow({
 });
 const jsonAllow = registerQueryAllow({
   id: "guard-items-query",
-  method: "POST",
   host: "api.vendor.example",
   path: "/v2/items/query",
   body: { kind: "json-query", keys: ["collection", "query"], operators: ["$eq"] },
@@ -30,7 +28,6 @@ const jsonAllow = registerQueryAllow({
 });
 const configuredAllow = registerQueryAllow({
   id: "guard-configured",
-  method: "POST",
   host: { configured: "SHOP_GRAPHQL_URL" },
   path: "/graphql",
   body: { kind: "graphql-query" },
