@@ -38,6 +38,7 @@ const FIXTURES = [
   "load-more",
   "hidden-library",
   "next-like",
+  "angular-like",
   "refusing",
   "tag-rules",
   "nav-events",

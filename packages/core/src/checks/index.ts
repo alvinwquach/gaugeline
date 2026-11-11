@@ -3,6 +3,11 @@ import { CheckRegistry } from "../model.js";
 import { accessPublicRead } from "./access-public-read.js";
 import { accessRoleScope } from "./access-role-scope.js";
 import { aiCrawlersBlocked } from "./ai-crawlers-blocked.js";
+import { angularAnalogEndpointsListed } from "./angular-analog-endpoints-listed.js";
+import { angularDevToolsPublic } from "./angular-dev-tools-public.js";
+import { angularPreviewCanonical } from "./angular-preview-canonical.js";
+import { angularSsrError200 } from "./angular-ssr-error-200.js";
+import { angularStatePrivateFields } from "./angular-state-private-fields.js";
 import { appLinkDead } from "./app-link-dead.js";
 import { appNameMismatch } from "./app-name-mismatch.js";
 import { appSmartBannerMismatch } from "./app-smart-banner-mismatch.js";
@@ -167,6 +172,11 @@ export const PAGE_CHECKS = [
   accessPublicRead,
   accessRoleScope,
   aiCrawlersBlocked,
+  angularAnalogEndpointsListed,
+  angularDevToolsPublic,
+  angularPreviewCanonical,
+  angularSsrError200,
+  angularStatePrivateFields,
   appLinkDead,
   appNameMismatch,
   appSmartBannerMismatch,
