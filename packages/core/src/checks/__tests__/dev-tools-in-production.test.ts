@@ -97,7 +97,7 @@ describe("dev-tools-in-production: integration (the source-maps fixture)", () =>
     try {
       const { result } = await checkSite({
         address: site.origin,
-        fetcher: createFetcher({ hosts: site.hosts }),
+        fetcher: createFetcher({ allowPrivate: true }),
         only: ["dev-tools-in-production"],
       });
       expect(result.findings.map((f) => [f.checkId, f.severity, f.evidence])).toEqual([

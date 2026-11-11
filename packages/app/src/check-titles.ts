@@ -28,6 +28,7 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "Private-looking content is in a public Sanity dataset",
     "Security & email",
   ],
+  "dev-tools-in-production": ["Development tools are live on your site", "Launch day"],
   "drafts-live": ["Unpublished work is in the live page", "Launch day"],
   "duplicate-title": ["This page has two titles", "Search & sharing"],
   "email-spf-missing": ["Your domain doesn't say who may send its email", "Security & email"],
@@ -98,7 +99,6 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   ],
   "script-known-bad-host": ["A script comes from a host on the known-bad list", "Security & email"],
   "secret-in-js": ["A private key is in your site's JavaScript", "Security & email"],
-  "dev-tools-in-production": ["Development tools are live on your site", "Launch day"],
   "sitemap-dead": ["Your sitemap lists pages that don't exist", "Search & sharing"],
   "staging-indexable": ["Your staging site can be found by search engines", "Launch day"],
   "stega-leak": ["Hidden editing characters leaked onto the live site", "Search & sharing"],
@@ -290,7 +290,6 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "A third-party script is new, or lost its integrity attribute",
     "Security & email",
   ],
-  "source-maps-public": ["Your site publishes its source maps", "Security & email"],
   "security-header-loosened": [
     "A security header sends less protection than before",
     "Security & email",
@@ -298,6 +297,7 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "sitemap-host": ["Your sitemap lists pages on a different address", "Search & sharing"],
   "sitemap-missing": ["Search engines can't find a list of your pages", "Search & sharing"],
   "sitemap-redirects": ["Your sitemap lists old addresses that redirect", "Search & sharing"],
+  "source-maps-public": ["Your site publishes its source maps", "Security & email"],
   "structured-duplicate": ["The same structured data is on this page twice", "Search & sharing"],
   "switch-page-wrong": [
     "A page does not say what it should for the current switch",
@@ -530,6 +530,12 @@ export const CHECK_TEXT: Readonly<
     "Anyone can download those documents with one request: names, emails and whatever else the forms collect.",
     "Make the dataset private in sanity.io/manage today and give the site a read token, or move those types to a private dataset.",
     "As dataset-public, and a type name whose last word is in checks/leaks/private-types.ts (order, inquiry, submission, customer and others); only the type names are read, never the documents. dataset-public is not also reported",
+  ],
+  "dev-tools-in-production": [
+    "A page or script this site serves to everyone carries a sign that it came from a development server or a development build: Vite, webpack, Next.js or React tooling, NODE_ENV set to development, or an address on the visitor's own computer.",
+    "A development build can expose original code and file paths, accepts hot reload connections, and runs slowly. An address such as 127.0.0.1:3000 in a script means the live site is asking each visitor's own machine for its data, so it breaks for everyone and can leak what the developer was working on.",
+    "Deploy a production build (npm run build, then serve its output) and set the API address variable on the host for production. If only a stray address remains, search the code and the host's environment variables for it.",
+    "No request of its own: the page's HTML and up to 15 same-site script files already read are searched for /@vite/client, /@react-refresh, /__webpack_hmr, webpack-dev-server/client, webpack-internal://, /_next/static/development/ or a development buildId, the React DevTools development notice, NODE_ENV assigned the value development, and a development build of a library named by a script address (.development.js); a loopback address (localhost, 127.0.0.1, 0.0.0.0 or [::1]) is reported only with a port, as host and port with nothing after them, and never the page's own address; a script cut at the cap is could not check; dev-only paths the page does not name are never asked for (that would be a probing check)",
   ],
   "drafts-live": [
     "The published HTML carries Sanity draft document ids (drafts.\u2026) or a preview-mode banner.",
@@ -824,12 +830,6 @@ export const CHECK_TEXT: Readonly<
     "Anyone can read it in their browser and use it as you: take payments, read customer data or change your content.",
     "Revoke the key in the provider's dashboard now, make a new one, and keep it on the server: never in code the browser loads.",
     'Inline scripts and up to 15 same-site script files (GET, first 5 MB each) matched against the detectors in checks/leaks/detectors.ts; publishable keys (pk_) are ignored; a Contentful preview token is a 43-character value named like a token or key next to the preview.contentful.com host, and a finding for it names the kind and the place only, with no character of the token; a Contentstack preview token is a value of "cs" and hex named like a token or key, and either "preview" is in its name in a file that names Contentstack or the Live Preview host (preview.contentstack.com) is in the same object; it is reported the same way, with no character of it; a Contentstack delivery token is public by design and is never reported; a 43-character Contentful delivery token (a value in a place that names Contentful or createClient, and not the Preview API) is public by design and is never reported; the other values are redacted to their first 6 and last 2 characters before a finding exists; names are capped at 40 characters each side of the word token or key, so a hostile file is scanned in linear time',
-  ],
-  "dev-tools-in-production": [
-    "A page or script this site serves to everyone carries a sign that it came from a development server or a development build: Vite, webpack, Next.js or React tooling, NODE_ENV set to development, or an address on the visitor's own computer.",
-    "A development build can expose original code and file paths, accepts hot reload connections, and runs slowly. An address such as 127.0.0.1:3000 in a script means the live site is asking each visitor's own machine for its data, so it breaks for everyone and can leak what the developer was working on.",
-    "Deploy a production build (npm run build, then serve its output) and set the API address variable on the host for production. If only a stray address remains, search the code and the host's environment variables for it.",
-    "No request of its own: the page's HTML and up to 15 same-site script files already read are searched for /@vite/client, /@react-refresh, /__webpack_hmr, webpack-dev-server/client, webpack-internal://, /_next/static/development/ or a development buildId, the React DevTools development notice, NODE_ENV assigned the value development, and a development build of a library named by a script address (.development.js); a loopback address (localhost, 127.0.0.1, 0.0.0.0 or [::1]) is reported only with a port, as host and port with nothing after them, and never the page's own address; a script cut at the cap is could not check; dev-only paths the page does not name are never asked for (that would be a probing check)",
   ],
   "sitemap-dead": [
     "Pages listed in the sitemap return an error (4xx or 5xx).",
@@ -1509,12 +1509,6 @@ export const CHECK_TEXT: Readonly<
     "Confirm the script was added on purpose and by whom. Remove it if not. For one you keep, add its integrity attribute so a changed file stops loading.",
     "With --since last only. Third-party means a host outside the page's registrable domain. A script is its host and path with no query string; the integrity attribute is present or not. Scripts that went away are not reported. On a first run: could not check",
   ],
-  "source-maps-public": [
-    "A script or stylesheet this page loads names a source map, and the map can be fetched by anyone. A source map is the original, readable code the minified file was made from.",
-    "Anyone can read your site's original code, comments and file layout, which makes it easier to find a mistake, an internal address or a key left in the code. Maps also add weight if browsers fetch them.",
-    "Turn production source maps off, or upload them to your error tracker and keep them out of the deploy. Vite: build.sourcemap false (the default) or 'hidden'. webpack: devtool false, or hidden-source-map. Next.js: leave productionBrowserSourceMaps off. Nuxt: sourcemap: { client: false }.",
-    "GET of the map address a same-site file names, never a guessed one: the SourceMap (or X-SourceMap) response header or the last //# sourceMappingURL= comment (/*# */ in CSS) of up to 15 script files and 5 stylesheets the page loads; at most 10 maps, same origin only, redirects not followed, a value that is not http(s) or not readable is not asked; a map counts only when its first 5 MB parse as a version 3 source map (so a page that answers 200 for every address does not); a map cut at the cap, a 401, 403, 429, 5xx and a network error are could not check; the evidence is file paths, counts of source files, whether the original code is included and a size class, never a name or a character from inside a map; an inline data: map is counted by size without decoding",
-  ],
   "security-header-loosened": [
     "Against the last run saved with --since last, one of these headers is gone or weaker: Strict-Transport-Security, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy, Cross-Origin-Opener-Policy, Cross-Origin-Embedder-Policy, Cross-Origin-Resource-Policy.",
     "These headers switch browser protections on. They vanish when a host, a CDN or a framework setting changes, and the site looks the same.",
@@ -1538,6 +1532,12 @@ export const CHECK_TEXT: Readonly<
     "A sitemap should list the final address of each page. Redirecting entries make search engines do extra work and can keep the old address in results.",
     "List each page at the address it redirects to. This often follows a move to https, to www, or to a new URL scheme.",
     "sampled sitemap entries return 3xx",
+  ],
+  "source-maps-public": [
+    "A script or stylesheet this page loads names a source map, and the map can be fetched by anyone. A source map is the original, readable code the minified file was made from.",
+    "Anyone can read your site's original code, comments and file layout, which makes it easier to find a mistake, an internal address or a key left in the code. Maps also add weight if browsers fetch them.",
+    "Turn production source maps off, or upload them to your error tracker and keep them out of the deploy. Vite: build.sourcemap false (the default) or 'hidden'. webpack: devtool false, or hidden-source-map. Next.js: leave productionBrowserSourceMaps off. Nuxt: sourcemap: { client: false }.",
+    "GET of the map address a same-site file names, never a guessed one: the SourceMap (or X-SourceMap) response header or the last //# sourceMappingURL= comment (/*# */ in CSS) of up to 15 script files and 5 stylesheets the page loads; at most 10 maps, same origin only, redirects not followed, a value that is not http(s) or not readable is not asked; a map counts only when its first 5 MB parse as a version 3 source map (so a page that answers 200 for every address does not); a map cut at the cap, a 401, 403, 429, 5xx and a network error are could not check; the evidence is file paths, counts of source files, whether the original code is included and a size class, never a name or a character from inside a map; an inline data: map is counted by size without decoding",
   ],
   "structured-duplicate": [
     "A schema.org type is described both in JSON-LD and as microdata (itemtype) on the same page.",

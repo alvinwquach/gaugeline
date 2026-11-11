@@ -200,7 +200,7 @@ describe("source-maps-public: integration (the source-maps fixture)", () => {
     try {
       const { result } = await checkSite({
         address: site.origin,
-        fetcher: createFetcher({ hosts: site.hosts }),
+        fetcher: createFetcher({ allowPrivate: true }),
         only: ["source-maps-public"],
       });
       expect(result.findings.map((f) => [f.checkId, f.severity, f.evidence])).toEqual([

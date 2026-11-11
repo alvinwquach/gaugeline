@@ -48,6 +48,7 @@ raised: they are a promise to the site being checked.
 | `data-assertion-failed`           | Fix this first | A data assertion found rows that should not exist                             |
 | `data-stale`                      | Fix this first | The numbers on this page are older than they should be                        |
 | `dataset-private-types`           | Fix this first | Private-looking content is in a public Sanity dataset                         |
+| `dev-tools-in-production`         | Fix this first | Development tools are live on your site                                       |
 | `drafts-live`                     | Fix this first | Unpublished work is in the live page                                          |
 | `duplicate-title`                 | Fix this first | This page has two titles                                                      |
 | `email-spf-missing`               | Fix this first | Your domain doesn't say who may send its email                                |
@@ -97,7 +98,6 @@ raised: they are a promise to the site being checked.
 | `schema-id-drift`                 | Fix this first | Your organization has more than one identity in structured data               |
 | `script-known-bad-host`           | Fix this first | A script comes from a host on the known-bad list                              |
 | `secret-in-js`                    | Fix this first | A private key is in your site's JavaScript                                    |
-| `dev-tools-in-production`         | Fix this first | Development tools are live on your site                                       |
 | `sitemap-dead`                    | Fix this first | Your sitemap lists pages that don't exist                                     |
 | `staging-indexable`               | Fix this first | Your staging site can be found by search engines                              |
 | `stega-leak`                      | Fix this first | Hidden editing characters leaked onto the live site                           |
@@ -211,11 +211,11 @@ raised: they are a promise to the site being checked.
 | `schema-org-redefined`            | Fix soon       | Pages redefine your organization instead of referring to it                   |
 | `schema-template-missing-type`    | Fix soon       | A page is missing structured data its template requires                       |
 | `script-changed`                  | Fix soon       | A third-party script is new, or lost its integrity attribute                  |
-| `source-maps-public`              | Fix soon       | Your site publishes its source maps                                           |
 | `security-header-loosened`        | Fix soon       | A security header sends less protection than before                           |
 | `sitemap-host`                    | Fix soon       | Your sitemap lists pages on a different address                               |
 | `sitemap-missing`                 | Fix soon       | Search engines can't find a list of your pages                                |
 | `sitemap-redirects`               | Fix soon       | Your sitemap lists old addresses that redirect                                |
+| `source-maps-public`              | Fix soon       | Your site publishes its source maps                                           |
 | `structured-duplicate`            | Fix soon       | The same structured data is on this page twice                                |
 | `switch-page-wrong`               | Fix soon       | A page does not say what it should for the current switch                     |
 | `tags-dead-rules`                 | Fix soon       | A tracking rule points at something that no longer exists                     |
