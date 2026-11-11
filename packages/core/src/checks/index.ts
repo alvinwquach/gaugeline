@@ -156,6 +156,14 @@ import { stagingIndexable } from "./staging-indexable.js";
 import { stegaLeak } from "./stega-leak.js";
 import { stripeTestMode } from "./stripe-test-mode.js";
 import { structuredDuplicate } from "./structured-duplicate.js";
+import { sveltekitDataAsPage } from "./sveltekit-data-as-page.js";
+import { sveltekitDataUnshown } from "./sveltekit-data-unshown.js";
+import { sveltekitDevServerLive } from "./sveltekit-dev-server-live.js";
+import { sveltekitDraftPublic } from "./sveltekit-draft-public.js";
+import { sveltekitPreviewCanonical } from "./sveltekit-preview-canonical.js";
+import { sveltekitPrivateFields } from "./sveltekit-private-fields.js";
+import { sveltekitStalePage } from "./sveltekit-stale-page.js";
+import { sveltekitVaryMissing } from "./sveltekit-vary-missing.js";
 import { switchOffStillLinked } from "./switch-off-still-linked.js";
 import { switchPageWrong } from "./switch-page-wrong.js";
 import { tagsDeadRules } from "./tags-dead-rules.js";
@@ -323,6 +331,14 @@ export const PAGE_CHECKS = [
   stegaLeak,
   stripeTestMode,
   structuredDuplicate,
+  sveltekitDataAsPage,
+  sveltekitDataUnshown,
+  sveltekitDevServerLive,
+  sveltekitDraftPublic,
+  sveltekitPreviewCanonical,
+  sveltekitPrivateFields,
+  sveltekitStalePage,
+  sveltekitVaryMissing,
   switchOffStillLinked,
   switchPageWrong,
   tagsDeadRules,
