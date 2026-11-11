@@ -67,7 +67,13 @@ export interface ContractEntry {
     draftsReachable: boolean | "not-applicable";
   };
   /** A published() read that is cut short: the first `succeedFirst` requests are answered, the rest are 429. */
-  rateLimit: { options: PublishedOptions; succeedFirst: number; atLeast: number };
+  rateLimit: {
+    options: PublishedOptions;
+    succeedFirst: number;
+    atLeast: number;
+    /** The platform also sends its limit as a 403 with x-ratelimit-remaining: 0 (GitHub): that form must be a rate limit too. */
+    alsoAs403?: true;
+  };
   /** For an adapter with members(): the recorded answers, what comes back, and the addresses that must not. */
   members?: {
     transport(): Transport;
@@ -115,6 +121,23 @@ export function rateLimited(
     if (at >= limit.after && at < limit.after + limit.times)
       return tooMany(limit.retryAfter ?? "2") as ReturnType<Transport>;
     return base(url, req);
+  };
+}
+
+/** From request number `after` on, every request is a 403 that says the hourly limit is used up and when it resets. */
+export function rateLimitedAs403(base: Transport, after: number): Transport {
+  let n = 0;
+  return (url, req) => {
+    if (n++ < after) return base(url, req);
+    return Promise.resolve({
+      status: 403,
+      headers: {
+        "content-type": "application/json",
+        "x-ratelimit-remaining": "0",
+        "x-ratelimit-reset": String(Math.floor(Date.now() / 1000) + 3600),
+      },
+      body: Readable.from([Buffer.from('{"message":"API rate limit exceeded"}')]),
+    }) as ReturnType<Transport>;
   };
 }
 
