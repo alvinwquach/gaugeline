@@ -123,6 +123,7 @@ export const UNLISTED: NavPage[] = [
     title: "Handoff: who owns what, and can the client get in without you",
   },
   { slug: "guides/hidden-text", title: "Hidden text aimed at AI assistants" },
+  { slug: "guides/out-of-date-copy", title: "Out-of-date copy: dates that have passed" },
   {
     slug: "guides/script-baseline",
     title: "Script and header baseline: what loads on a payment page, and what changed",

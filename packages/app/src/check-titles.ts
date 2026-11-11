@@ -204,6 +204,10 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "hubspot-form-deleted": ["A page embeds a HubSpot form that has been deleted", "Launch day"],
   "app-smart-banner-mismatch": ["The iPhone app banner promotes a different app", "Visitors"],
   "checkout-js-only": ["Nothing on the page can be linked to buy", "Sales & prices"],
+  "copy-date-passed": [
+    "A promotion or notice on the page has a date that has already passed",
+    "Visitors",
+  ],
   "crm-field-names": ["A form sends fields the CRM doesn't have", "Leads"],
   "crm-late-tracking": ["Tracking starts after the form loads", "Leads"],
   "crm-lead-source": ["New leads are arriving without a source", "Leads"],
@@ -392,6 +396,7 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "asset-file-public": ["A downloadable file is on a public asset address", "Sales & prices"],
   blocked: ["The site wouldn't let Gaugeline read the page", "Search & sharing"],
   "canonical-missing": ["The page doesn't say which address is the real one", "Search & sharing"],
+  "copyright-stale": ["The footer copyright year is out of date", "Visitors"],
   "data-no-stamp": ["A page of changing numbers does not say when they were updated", "Visitors"],
   "dataset-public": ["Your Sanity content can be read by anyone", "Security & email"],
   "email-dmarc-none": ["Your DMARC policy only watches", "Security & email"],
@@ -1189,6 +1194,12 @@ export const CHECK_TEXT: Readonly<
     "Make the buy button a link to your checkout or payment link, or a submit button in a form that posts to your cart, and let the script improve it from there.",
     "a price (a currency next to a number in the visible text, or an Offer price in the structured data) and at least one button or link whose text matches buy, add to cart, checkout, get it, purchase or download now; none is an a[href] with an address (not empty, #, javascript:, mailto: or tel:) or a submit button in a form with an action or its own formaction; a link to a hosted payment page (Stripe, Square, PayPal.me) anywhere on the page is a pass; the page is read as sent, so a button drawn by a script is not seen",
   ],
+  "copy-date-passed": [
+    'Visible text such as "Happy hour through Oct 31", "Summer 2025 menu" or "Closed until Jan 3" names a date that is already in the past.',
+    "Guests plan around what the page says. A special that ended months ago, or a closure notice left up in spring, makes the business look unattended and sends people to something that is no longer there.",
+    "Update or remove the text. For something that repeats each year, change the date; for a banner that should end on its own, give it an end date in the CMS.",
+    "Visible text only (no script, style, noscript, template, hidden element, comment or attribute such as alt). A date is flagged when it is more than graceDays (1) before today in the venue's time zone and sits after an end word (through, until, ends, last day, hasta, jusqu'au and similar) or ends a range, or has a year and a promotional word within 40 characters (offer, special, menu, season, closed, holiday, hiring, sale, tickets...). A month and day with no year is read as the nearest occurrence, a season as the end of its last month. Never flagged: since, established or founded dates, pages whose structured data or og:type says article or news (or whose path is under historic in gaugeline.stale-dates.json), and a published or modified <time>. Words in packages/core/src/data/stale-dates.json; a page cut at the size limit is could not check",
+  ],
   "crm-field-names": [
     "A Web-to-Lead form on the page submits field names that are not fields on the Lead object in Salesforce.",
     "Salesforce drops what it can't place. The visitor typed it, the form said thanks, and the CRM never got it.",
@@ -1866,6 +1877,12 @@ export const CHECK_TEXT: Readonly<
     "Copies of the page with tracking parameters can be treated as separate pages.",
     "Add a self-referencing canonical tag.",
     'no <link rel="canonical">',
+  ],
+  "copyright-stale": [
+    "The copyright notice in the page's footer names a year before the current one.",
+    "A year that never changes tells visitors, and anyone judging the site, that nobody has touched it in a while.",
+    "Set the footer to the current year, or print it from the date in the template so it updates itself.",
+    "the footer element or role=contentinfo (the whole page when it has none) is searched for a (c), \u00a9 or \"copyright\" notice with a year or range of years; the latest year in the page's notices is used, and it is stale when it is before the current year in the venue's time zone, with graceDays (1) after 1 January before last year's counts; one finding for the page checked, not one per page",
   ],
   "data-no-stamp": [
     "A page under one of your freshness rules shows no update time at all, in the place you named or in its structured data.",

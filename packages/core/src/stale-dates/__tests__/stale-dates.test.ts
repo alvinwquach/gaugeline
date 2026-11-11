@@ -113,6 +113,12 @@ describe("unit: the context rule", () => {
     expect(hits("Holiday special through Dec 31, 2026")).toEqual([]);
     expect(hits("Holiday special through January 3", { today: day(2026, 12, 20) })).toEqual([]);
   });
+  it("keeps one finding per sentence, and none when the sentence also names a date ahead", () => {
+    const both = hits("Summer 2025 menu: every Thursday through September 2025.");
+    expect(both).toHaveLength(1);
+    expect(both[0]?.date).toBe("2025-09-30");
+    expect(hits("Summer 2025 menu, now through Dec 31")).toEqual([]);
+  });
   it("flags the end of a range", () => {
     expect(hits("Fall tasting menu Sep 1 - Oct 31")).toHaveLength(1);
   });

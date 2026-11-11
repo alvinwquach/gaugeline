@@ -1612,6 +1612,19 @@
     "estimateChanges": "A buy button built entirely by a script means rebuilding that button, and each product page that uses it."
   },
   {
+    "id": "copy-date-passed",
+    "severity": "medium",
+    "area": "Visitors",
+    "title": "A promotion or notice on the page has a date that has already passed",
+    "what": "Visible text such as \"Happy hour through Oct 31\", \"Summer 2025 menu\" or \"Closed until Jan 3\" names a date that is already in the past.",
+    "why": "Guests plan around what the page says. A special that ended months ago, or a closure notice left up in spring, makes the business look unattended and sends people to something that is no longer there.",
+    "fix": "Update or remove the text. For something that repeats each year, change the date; for a banner that should end on its own, give it an end date in the CMS.",
+    "tech": "Visible text only (no script, style, noscript, template, hidden element, comment or attribute such as alt). A date is flagged when it is more than graceDays (1) before today in the venue's time zone and sits after an end word (through, until, ends, last day, hasta, jusqu'au and similar) or ends a range, or has a year and a promotional word within 40 characters (offer, special, menu, season, closed, holiday, hiring, sale, tickets...). A month and day with no year is read as the nearest occurrence, a season as the end of its last month. Never flagged: since, established or founded dates, pages whose structured data or og:type says article or news (or whose path is under historic in gaugeline.stale-dates.json), and a published or modified <time>. Words in packages/core/src/data/stale-dates.json; a page cut at the size limit is could not check",
+    "size": "S",
+    "done": "Every promotion, season and notice on the page is current, or has been taken down, and Gaugeline finds no date that has passed beside one.",
+    "estimateChanges": "Text typed into a page is edited in minutes. Text spread over many pages, or in a theme or a template, takes longer, and a banner with an end date built in fixes itself."
+  },
+  {
     "id": "crm-field-names",
     "severity": "medium",
     "area": "Leads",
@@ -3079,6 +3092,19 @@
     "size": "S",
     "done": "Each page has a canonical tag that names its own address.",
     "estimateChanges": "One shared SEO component is a single edit."
+  },
+  {
+    "id": "copyright-stale",
+    "severity": "low",
+    "area": "Visitors",
+    "title": "The footer copyright year is out of date",
+    "what": "The copyright notice in the page's footer names a year before the current one.",
+    "why": "A year that never changes tells visitors, and anyone judging the site, that nobody has touched it in a while.",
+    "fix": "Set the footer to the current year, or print it from the date in the template so it updates itself.",
+    "tech": "the footer element or role=contentinfo (the whole page when it has none) is searched for a (c), © or \"copyright\" notice with a year or range of years; the latest year in the page's notices is used, and it is stale when it is before the current year in the venue's time zone, with graceDays (1) after 1 January before last year's counts; one finding for the page checked, not one per page",
+    "size": "S",
+    "done": "The footer shows the current year, or builds it from the date so it never goes out of date.",
+    "estimateChanges": "One footer in a theme or layout is a one-line change; a footer repeated by hand on many pages is slower."
   },
   {
     "id": "data-no-stamp",

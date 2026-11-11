@@ -84,7 +84,7 @@ then id.
 | Area             | Fix this first | Fix soon | Worth knowing |
 | ---------------- | -------------- | -------- | ------------- |
 | Search & sharing | 21             | 24       | 6             |
-| Visitors         | 28             | 30       | 15            |
+| Visitors         | 28             | 31       | 16            |
 | Sales & prices   | 24             | 13       | 7             |
 | Leads            | 4              | 9        | 2             |
 | Security & email | 18             | 17       | 6             |

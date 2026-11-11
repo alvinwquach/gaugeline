@@ -56,8 +56,8 @@ function patternsFor(langs: readonly string[]): Patterns {
   return p;
 }
 
-/** The sentence a span sits in: bounded by line breaks and full stops, and cut around the date when long. */
-export function sentenceAround(text: string, start: number, end: number): string {
+/** Where the sentence around a span starts and ends: bounded by line breaks and full stops. */
+function sentenceSpan(text: string, start: number, end: number): { from: number; to: number } {
   const lo = Math.max(0, start - 240);
   const slice = text.slice(lo, Math.min(text.length, end + 240));
   let from = 0;
@@ -70,13 +70,19 @@ export function sentenceAround(text: string, start: number, end: number): string
       break;
     }
   }
-  let a = from;
-  let b = to;
+  return { from: lo + from, to: lo + to };
+}
+
+/** The sentence a span sits in, cut around the date when it is long. */
+export function sentenceAround(text: string, start: number, end: number): string {
+  const span = sentenceSpan(text, start, end);
+  let a = span.from;
+  let b = span.to;
   if (b - a > SENTENCE_MAX) {
-    a = Math.max(a, start - lo - 80);
-    b = Math.min(b, end - lo + 80);
+    a = Math.max(a, start - 80);
+    b = Math.min(b, end + 80);
   }
-  return slice.slice(a, b).replace(/\s+/g, " ").trim();
+  return text.slice(a, b).replace(/\s+/g, " ").trim();
 }
 
 /**
@@ -92,7 +98,7 @@ export function staleCopy(text: string, opts: StaleOptions): StaleHit[] {
   const p = patternsFor(opts.langs);
   const ignore = opts.ignore.map((s) => s.toLowerCase()).filter((s) => s !== "");
   const out: StaleHit[] = [];
-  const seen = new Set<string>();
+  const seen = new Map<string, number>();
   dates.forEach((f: FoundDate, i) => {
     const end = resolveEnd(f, opts.today);
     if (end === undefined || opts.today - end <= opts.graceDays) return;
@@ -106,6 +112,14 @@ export function staleCopy(text: string, opts: StaleOptions): StaleHit[] {
     const ended = p.endBefore.test(before) || p.afterEnd.test(after) || rangeEnd;
     if (f.kind === "month" && !ended) return;
     if (!ended && (!f.hasYear || p.lead.test(before))) return;
+    // A sentence that also names a date still ahead ("Summer 2025 menu, now through Dec 31") is current.
+    const span = sentenceSpan(text, f.start, f.end);
+    const ahead = dates.some((d) => {
+      if (d.start < span.from || d.end > span.to) return false;
+      const e = resolveEnd(d, opts.today);
+      return e !== undefined && opts.today - e <= opts.graceDays;
+    });
+    if (ahead) return;
     const sentence = sentenceAround(text, f.start, f.end);
     const lower = sentence.toLowerCase();
     if (ignore.some((s) => lower.includes(s))) return;
@@ -113,10 +127,12 @@ export function staleCopy(text: string, opts: StaleOptions): StaleHit[] {
       const near = text.slice(Math.max(0, f.start - PROMO_REACH), f.end + PROMO_REACH);
       if (!p.promo.test(near)) return;
     }
-    const key = `${sentence}|${end}`;
-    if (seen.has(key)) return;
-    seen.add(key);
-    out.push({ sentence, date: isoOfDay(end), raw: f.raw, daysAgo: opts.today - end });
+    const hit = { sentence, date: isoOfDay(end), raw: f.raw, daysAgo: opts.today - end };
+    const at = seen.get(sentence);
+    if (at === undefined) {
+      seen.set(sentence, out.length);
+      out.push(hit);
+    } else if (hit.daysAgo < (out[at] as StaleHit).daysAgo) out[at] = hit;
   });
   return out;
 }
