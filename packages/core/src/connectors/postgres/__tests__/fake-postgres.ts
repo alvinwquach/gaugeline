@@ -30,6 +30,10 @@ export interface FakeOptions {
   /** Behave as a server with no TLS: answer the TLS request with N. Always true here. */
   /** Say what `show transaction_read_only` answers; "on" by default. */
   readOnlyAnswer?: "on" | "off";
+  /** Hold back the answer to the startup message by this many ms, like a server that is slow to accept a connection. */
+  startupDelayMs?: number;
+  /** A statement for which the server never says anything, like a server that has stopped answering. */
+  silentOn?: (sql: string) => boolean;
 }
 
 export interface Received {
@@ -153,6 +157,7 @@ export async function startFakePostgres(options: FakeOptions = {}): Promise<Fake
       if (type === "Q") {
         const sql = body.toString("utf8").replace(/\0$/, "");
         received.push({ protocol: "simple", sql });
+        if (options.silentOn?.(sql)) return;
         const r = reply(sql);
         if (isError(r)) {
           if (txn === "T") txn = "E";
@@ -174,6 +179,7 @@ export async function startFakePostgres(options: FakeOptions = {}): Promise<Fake
         const sqlEnd = body.indexOf(0, nameEnd + 1);
         const sql = body.subarray(nameEnd + 1, sqlEnd).toString("utf8");
         received.push({ protocol: "extended", sql });
+        if (options.silentOn?.(sql)) return;
         const r = reply(sql);
         described = r;
         if (isError(r)) {
@@ -268,16 +274,17 @@ export async function startFakePostgres(options: FakeOptions = {}): Promise<Fake
             socket.end();
             return;
           }
-          socket.write(
-            Buffer.concat([
-              msg("R", i32(0)),
-              msg("S", cstr("server_version"), cstr("16.0")),
-              msg("S", cstr("standard_conforming_strings"), cstr("on")),
-              msg("S", cstr("client_encoding"), cstr("UTF8")),
-              msg("K", i32(1), i32(2)),
-              ready(),
-            ]),
-          );
+          const accepted = Buffer.concat([
+            msg("R", i32(0)),
+            msg("S", cstr("server_version"), cstr("16.0")),
+            msg("S", cstr("standard_conforming_strings"), cstr("on")),
+            msg("S", cstr("client_encoding"), cstr("UTF8")),
+            msg("K", i32(1), i32(2)),
+            ready(),
+          ]);
+          if (options.startupDelayMs)
+            setTimeout(() => socket.destroyed || socket.write(accepted), options.startupDelayMs);
+          else socket.write(accepted);
           continue;
         }
         if (buffer.length < 5) return;

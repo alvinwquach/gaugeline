@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { DatabaseError } from "../failure.js";
+import { DatabaseError, describeFailure } from "../failure.js";
 import { databaseConnector } from "../connector.js";
 import { ReadOnlySession } from "../session.js";
 import { parseConnectionString } from "../url.js";
@@ -275,6 +275,62 @@ describe("limits", () => {
     // Each query got its own transaction, and both were rolled back.
     expect(server.received.filter((r) => r.sql === "begin read only")).toHaveLength(3);
     expect(server.received.filter((r) => r.sql === "rollback")).toHaveLength(3);
+  });
+});
+
+describe("the client's deadline (FIX-1: it must never beat the server's own statement timeout)", () => {
+  const session = (port: number, options: ConstructorParameters<typeof ReadOnlySession>[1]) => {
+    const parsed = parseConnectionString(localUrl(port), {});
+    if (!parsed.ok) throw new Error("setup");
+    return new ReadOnlySession(parsed.value, options);
+  };
+  const statementTimeout = {
+    error: { code: "57014", message: "canceling statement due to statement timeout" },
+  };
+
+  it("does not spend the budget for the statement on a slow connection: the server's timeout message still wins", async () => {
+    // The server takes 300 ms to accept the connection. The slack is 50 ms and the statement timeout 1 ms,
+    // so a deadline that counted from before the connection (the old code: 1 + 50 ms) would fire first
+    // and report "did not answer in time". The connection has its own 5 s allowance, which the deadline
+    // now includes. Both durations are set by the stand-in server, not by how fast this machine is.
+    const server = await fake({
+      startupDelayMs: 300,
+      onQuery: (sql) => (sql === "select slow" ? statementTimeout : undefined),
+    });
+    const s = session(server.port, { connectTimeoutSeconds: 5, deadlineSlackMs: 50 });
+    try {
+      await expect(
+        s.runUnchecked("select slow", { statementTimeoutMs: 1, maxRows: 10 }),
+      ).rejects.toMatchObject({ code: "57014" });
+    } finally {
+      await s.close();
+    }
+  });
+
+  it("gives up on a server that stopped answering, with the deadline error, and closes the connection", async () => {
+    const server = await fake({ silentOn: (sql) => sql === "select never" });
+    const s = session(server.port, { connectTimeoutSeconds: 0.2, deadlineSlackMs: 50 });
+    try {
+      await expect(
+        s.runUnchecked("select never", { statementTimeoutMs: 1, maxRows: 10 }),
+      ).rejects.toMatchObject({ code: "GAUGELINE_DEADLINE" });
+    } finally {
+      await s.close();
+    }
+  });
+
+  it("the deadline error becomes the plain message, and the server's statement-timeout error becomes the other one", () => {
+    const redact = (t: string): string => t;
+    expect(describeFailure({ code: "GAUGELINE_DEADLINE" }, "db:5432", redact).message).toMatch(
+      /did not answer in time/,
+    );
+    expect(
+      describeFailure(
+        Object.assign(new Error(statementTimeout.error.message), { code: "57014" }),
+        "db:5432",
+        redact,
+      ).message,
+    ).toMatch(/longer than the statement timeout/);
   });
 });
 
