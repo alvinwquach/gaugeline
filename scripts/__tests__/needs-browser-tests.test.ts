@@ -44,10 +44,21 @@ function pullRequestChanging(files: string[]): string {
 }
 
 function decide(cwd: string, event: string): { run: string; stdout: string } {
+  // A merge queue run is compared with the commit the queue built on: here, the tip of main.
+  const baseSha = execFileSync("git", ["rev-parse", "origin/main"], {
+    cwd,
+    encoding: "utf8",
+  }).trim();
   const res = spawnSync("bash", [script], {
     cwd,
     encoding: "utf8",
-    env: { ...process.env, EVENT_NAME: event, BASE_REF: "main", GITHUB_OUTPUT: "" },
+    env: {
+      ...process.env,
+      EVENT_NAME: event,
+      BASE_REF: "main",
+      BASE_SHA: baseSha,
+      GITHUB_OUTPUT: "",
+    },
   });
   expect(res.status).toBe(0);
   const m = /^run=(true|false)$/m.exec(res.stdout);
@@ -89,6 +100,27 @@ describe.skipIf(!posix)("needs-browser-tests.sh", () => {
     const { run, stdout } = decide(pullRequestChanging([file]), "pull_request");
     expect(run).toBe("false");
     expect(stdout).toContain("skipping the browser tests");
+  });
+
+  it.each([
+    ["docs/options.md", "true"],
+    ["packages/cli/src/audit.ts", "false"],
+  ])(
+    "a merge queue run that changes %s decides %s the same way a pull request does",
+    (file, want) => {
+      expect(decide(pullRequestChanging([file]), "merge_group").run).toBe(want);
+    },
+  );
+
+  it("a merge queue run with no base commit runs them (safe default)", () => {
+    const work = pullRequestChanging(["CLAUDE.md"]);
+    const res = spawnSync("bash", [script], {
+      cwd: work,
+      encoding: "utf8",
+      env: { ...process.env, EVENT_NAME: "merge_group", BASE_SHA: "", GITHUB_OUTPUT: "" },
+    });
+    expect(res.status).toBe(0);
+    expect(res.stdout).toContain("run=true");
   });
 
   it("one matching file among many that do not is enough", () => {

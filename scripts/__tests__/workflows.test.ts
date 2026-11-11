@@ -124,14 +124,14 @@ describe("faster pull request runs", () => {
 
   // The two JSON strings the CI matrix chooses between, read out of the workflow file itself.
   function matrices(): { pullRequest: unknown; main: unknown } {
-    const m = /fromJSON\(github\.event_name == 'pull_request' && '(.*?)' \|\| '(.*?)'\)/.exec(
+    const m = /fromJSON\(github\.event_name != 'push' && '(.*?)' \|\| '(.*?)'\)/.exec(
       read("ci.yml"),
     );
     if (!m) throw new Error("ci.yml does not choose its matrix from the event");
     return { pullRequest: JSON.parse(m[1] ?? ""), main: JSON.parse(m[2] ?? "") };
   }
 
-  it("a pull request runs Linux on Node 22 and 24 and Windows on Node 24, nothing else", () => {
+  it("a pull request and a merge queue run use Linux on Node 22 and 24 and Windows on Node 24, nothing else", () => {
     expect(matrices().pullRequest).toEqual({
       include: [
         { os: "ubuntu-latest", node: "22" },
@@ -156,6 +156,17 @@ describe("faster pull request runs", () => {
         /concurrency:\n\s+group: .*\$\{\{ github\.event\.pull_request\.number \|\| github\.sha \}\}/,
       );
     }
+  });
+
+  it("the merge queue is tested: every workflow that reports a required check also runs on merge_group", () => {
+    for (const f of ["ci.yml", "docs.yml", "pr-gate.yml", "pr-body.yml"]) {
+      expect(read(f), f).toMatch(/\n {2}merge_group:/);
+    }
+    // The checks that only make sense on a pull request are skipped in the queue (a skipped job counts as passed).
+    expect(read("pr-gate.yml")).toContain("github.event_name == 'pull_request' && github.head_ref");
+    expect(read("pr-body.yml")).toContain("if: github.event_name == 'pull_request'");
+    // The full matrix stays on pushes to main only.
+    expect(read("ci.yml")).toContain("github.event_name != 'push' && ");
   });
 
   it("the release workflow waits for the full matrix of its own commit before it does anything", () => {

@@ -4,6 +4,9 @@ name: PR gate
 on:
   pull_request:
     types: [opened, synchronize, reopened, labeled, unlabeled]
+  # The merge queue waits for every required check to report; this one is skipped (which counts as passed) there,
+  # because the pull request was gated before it was queued.
+  merge_group:
 
 permissions:
   contents: read
@@ -11,7 +14,7 @@ permissions:
 jobs:
   pr-gate:
     # The Release pull request deletes changesets by design.
-    if: github.head_ref != 'changeset-release/main'
+    if: github.event_name == 'pull_request' && github.head_ref != 'changeset-release/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0

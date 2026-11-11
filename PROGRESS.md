@@ -197,6 +197,23 @@ Updated by the C-04 build (11 Nov 2026). Resume from this file alone.
     registry, the docs build or the app they drive change (`scripts/needs-browser-tests.sh`), and always on main;
     a new push to a pull request cancels the older run. If a run on main fails after a merge, fixing it comes next,
     before any other branch is merged or started.
+- Merge queue and throughput (owner, 11 Nov 2026; goal: everything ships today). These replace the earlier "one PR at a time"
+  rule; every other rule (tests, docs, changeset, merge only on green, independent review on security, credential, payment and
+  SQL classifier branches) stays.
+  - Merge queue is on for main. CI, docs, pr-gate and pr-body also run on `merge_group` (smaller matrix; pr-gate and pr-body are
+    skipped there). Every PR is put in the queue the moment it opens: auto-merge with the squash method (`enable_pr_auto_merge`).
+  - Each PR has its own remote branch, `claude/<branch-name>` (the owner allowed this on 11 Nov 2026; plain pushes only, never a
+    force push), so several PRs can sit in the queue. Queue PRs in the order they are READY, not in build order. Adapters are
+    independent; when two touch the same index file the queue re-tests and the one that fails is rebased.
+  - Keep the queue full: always have the next 2 or 3 branches building while the current PR is in CI.
+  - Do not wait for the full-matrix run on main between merges: check it in the background; if it is red, fix or revert it next,
+    before anything else is merged or started.
+  - Timebox: 30 minutes per branch. If it is not ready, open a draft PR, add a "finish <id>" row at the end of its step, and
+    start the next branch.
+  - Decision (open question 52, 11 Nov 2026): POST is allowed for DOCUMENTED READ-ONLY QUERY endpoints, the same rule as GraphQL
+    queries. Each adapter has an allowlist (method, path pattern, body shape) and the contract suite tests that no request body is
+    ever a write. Recorded in ADR-0006 (branch `adr/read-only-post`, then the Wix native read `c/wix-native`).
+  - After a merge, post the count: branches merged, left and in progress, with an estimate of when everything finishes.
 - Schema 3 is refused: `--json` stays at schemaVersion 2 (see Decisions).
 - Method that works: one fresh agent per branch with `scratchpad/brief.md` (the orchestrator's brief: spec
   entry, rules, gotchas), plain `git push origin <branch>:claude/relaxed-brown-7yxex4` after syncing that branch
