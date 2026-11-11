@@ -20,6 +20,11 @@ const PAGE_READERS: readonly string[] = ADAPTER_ENTRIES.filter((e) => e.settings
   (e) => e.id,
 );
 
+/** The adapters that take `expectPrivate`: the owner says their public API is meant to be private. */
+const EXPECT_PRIVATE: readonly string[] = ADAPTER_ENTRIES.filter(
+  (e) => e.settings?.expectPrivate,
+).map((e) => e.id);
+
 /** The adapters that read content kept in a repository: they take `path` or `github`, and `folders`. */
 const CONTENT_FOLDERS: readonly string[] = ADAPTER_ENTRIES.filter(
   (e) => e.settings?.contentFolders,
@@ -75,6 +80,11 @@ export const adaptersConfigSchema = z.strictObject({
               }),
             )
             .optional(),
+          /**
+           * Umbraco only: the Content Delivery API is meant to be private. Switches on the probing check that asks
+           * whether it answers a visitor with no key (still only with --owner-consent).
+           */
+          expectPrivate: z.boolean().optional(),
           /** Content kept in a repository only: the repository's folder on this computer, relative to where the run starts. */
           path: z
             .string()
@@ -153,6 +163,12 @@ export const adaptersConfigSchema = z.strictObject({
                     path: ["fingerprint", type],
                     message: `"${field}" has a hyphen: only the Webflow and git-content adapters have field names like that, and ${entry.id} does not`,
                   });
+          if (entry.expectPrivate !== undefined && !EXPECT_PRIVATE.includes(entry.id))
+            ctx.addIssue({
+              code: "custom",
+              path: ["expectPrivate"],
+              message: `"expectPrivate" belongs to the Umbraco adapter, not to ${entry.id}`,
+            });
           const repo = CONTENT_FOLDERS.includes(entry.id);
           for (const key of ["path", "github", "folders"] as const)
             if (!repo && entry[key] !== undefined)

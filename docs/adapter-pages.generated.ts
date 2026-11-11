@@ -19,6 +19,10 @@ export const ADAPTER_PAGES: { slug: string; title: string }[] = [
     title: "Content kept in git: content checks for sites whose content lives in the repo",
   },
   {
+    slug: "integrations/hubspot-cms",
+    title: "HubSpot CMS: content checks for sites built on HubSpot CMS",
+  },
+  {
     slug: "integrations/sitemap-feed",
     title: "Sitemap and feeds: content checks for sites built on any CMS",
   },
@@ -28,6 +32,7 @@ export const ADAPTER_PAGES: { slug: string; title: string }[] = [
   },
   { slug: "integrations/strapi", title: "Strapi: content checks for sites built on Strapi" },
   { slug: "integrations/tina", title: "TinaCMS: content checks for sites built on TinaCMS" },
+  { slug: "integrations/umbraco", title: "Umbraco: content checks for sites built on Umbraco" },
   { slug: "integrations/webflow", title: "Webflow: content checks for sites built on Webflow" },
   { slug: "integrations/wix", title: "Wix: content checks for sites built on Wix" },
   {
