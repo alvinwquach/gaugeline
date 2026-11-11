@@ -334,7 +334,7 @@
     "fix": "Build the site (`gatsby build`) and serve the public folder (a static host, or `gatsby serve` for a quick check), not `gatsby develop`. Check the host's start command.",
     "tech": "Gatsby sites only, read from the page already fetched, no extra request: a script address ending /socket.io/socket.io.js, /commons.js or /framework.js (a production build names its files with a content hash, as in framework-<hash>.js). Dev-only paths are not asked for",
     "size": "S",
-    "done": "The live address serves the built site (public/ from `gatsby build`), not `gatsby develop`.",
+    "done": "The live address serves the built site (public/ from gatsby build), not gatsby develop.",
     "estimateChanges": "A host that runs the develop command as its start command needs the build and serve commands set."
   },
   {
@@ -348,7 +348,7 @@
     "tech": "Probing check: off unless --owner-consent or gaugeline.consent.json; run only on sites you own or have permission to test. Gatsby sites only: one GET of /___graphql per run, no query sent and no POST ever; a 2xx HTML answer whose title contains GraphiQL is a finding. A production build does not serve this address",
     "size": "S",
     "done": "/___graphql answers 404 on the live address.",
-    "estimateChanges": "A host that runs `gatsby develop` needs to be moved to the built site; a proxy rule that forwards /___graphql needs removing."
+    "estimateChanges": "A host that runs gatsby develop needs to be moved to the built site; a proxy rule that forwards /___graphql needs removing."
   },
   {
     "id": "gatsby-preview-canonical",

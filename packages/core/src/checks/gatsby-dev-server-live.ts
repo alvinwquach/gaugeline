@@ -5,7 +5,7 @@ import type { PageSnapshot } from "../snapshot.js";
 export const gatsbyDevServerLive = defineCheck<PageSnapshot>({
   id: "gatsby-dev-server-live",
   size: "S",
-  done: "The live address serves the built site (public/ from `gatsby build`), not `gatsby develop`.",
+  done: "The live address serves the built site (public/ from gatsby build), not gatsby develop.",
   estimateChanges:
     "A host that runs the develop command as its start command needs the build and serve commands set.",
   area: "Security & email",

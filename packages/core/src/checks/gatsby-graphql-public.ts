@@ -14,7 +14,7 @@ export const gatsbyGraphqlPublic = defineCheck<PageSnapshot>({
   size: "S",
   done: "/___graphql answers 404 on the live address.",
   estimateChanges:
-    "A host that runs `gatsby develop` needs to be moved to the built site; a proxy rule that forwards /___graphql needs removing.",
+    "A host that runs gatsby develop needs to be moved to the built site; a proxy rule that forwards /___graphql needs removing.",
   area: "Security & email",
   severity: "high",
   title: "The GraphQL explorer is reachable on the live site",
