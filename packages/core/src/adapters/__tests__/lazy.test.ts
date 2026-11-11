@@ -6,6 +6,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createFetcher } from "../../fetcher.js";
 import { adaptersConfigSchema } from "../config.js";
 import { BUILT_ADAPTERS } from "../registry.js";
+import type { AdapterSettings } from "../types.js";
+import { HERON_API } from "./generic-api-fixture.js";
 
 /**
  * The loader rule (CONTRIBUTING, "Writing an adapter"): every adapter has cheap metadata and a loader that
@@ -26,6 +28,7 @@ const SHARED = new Set([
   "collect.ts",
   "config.ts",
   "fingerprint.ts",
+  "generic-api-config.ts",
   "entries.generated.ts",
   "entry.ts",
   "index.ts",
@@ -134,6 +137,11 @@ describe("the loader rule", () => {
   });
 });
 
+/** The adapters that cannot be built without settings: the generic API adapter is driven by its mapping. */
+const NEEDS_SETTINGS: Readonly<Record<string, AdapterSettings>> = {
+  "generic-api": { id: "generic-api", api: HERON_API },
+};
+
 describe("the registry's metadata", () => {
   it("every built adapter has its description without being loaded, and says the same once loaded", async () => {
     const fetcher = createFetcher({ transport: () => Promise.reject(new Error("no request")) });
@@ -141,7 +149,10 @@ describe("the registry's metadata", () => {
       expect(built.id).toBe(id);
       expect(typeof built.load).toBe("function");
       expect(built.describe.name.length).toBeGreaterThan(0);
-      const adapter = (await built.load())({ env: {}, fetcher, site: "https://marlow.example" });
+      const adapter = (await built.load())(
+        { env: {}, fetcher, site: "https://marlow.example" },
+        NEEDS_SETTINGS[id],
+      );
       expect(adapter.id).toBe(id);
       // The static metadata and the adapter's own description are one thing: the run header reads either.
       expect(adapter.describe()).toEqual(built.describe);

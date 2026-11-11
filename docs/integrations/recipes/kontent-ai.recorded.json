@@ -1,0 +1,95 @@
+{
+  "format": 1,
+  "recipe": "kontent-ai",
+  "provenance": "Invented content in the shape Kontent.ai's documented API is remembered to answer. Not recorded from a live service; the shapes are uncited (the vendor's pages could not be read when this was written).",
+  "env": {},
+  "exchanges": [
+    {
+      "request": {
+        "url": "https://deliver.kontent.ai/00000000-0000-4000-8000-000000000000/items",
+        "query": {
+          "skip": "0"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "items": [
+            {
+              "system": {
+                "id": "k1",
+                "type": "article",
+                "last_modified": "2026-11-02T10:00:00.123Z"
+              },
+              "elements": {
+                "url": {
+                  "value": "autumn-menu"
+                },
+                "title": {
+                  "value": "Autumn menu"
+                }
+              }
+            },
+            {
+              "system": {
+                "id": "k2",
+                "type": "article",
+                "last_modified": "2026-10-02T10:00:00Z"
+              },
+              "elements": {
+                "url": {
+                  "value": "events"
+                }
+              }
+            }
+          ],
+          "pagination": {
+            "skip": 0,
+            "limit": 100,
+            "count": 2,
+            "total_count": 2
+          }
+        }
+      }
+    }
+  ],
+  "expect": {
+    "options": {
+      "types": ["article"],
+      "fields": {
+        "article": ["title"]
+      }
+    },
+    "countType": "article",
+    "countFields": ["title", "subtitle"],
+    "drafts": false,
+    "types": [
+      {
+        "name": "article",
+        "count": 2
+      }
+    ],
+    "fieldCounts": {
+      "title": 1,
+      "subtitle": 0
+    },
+    "published": [
+      {
+        "id": "k1",
+        "type": "article",
+        "slug": "autumn-menu",
+        "updatedAt": "2026-11-02T10:00:00.123Z",
+        "fieldHashes": {
+          "title": "11b55d2f19d8976f"
+        }
+      },
+      {
+        "id": "k2",
+        "type": "article",
+        "slug": "events",
+        "updatedAt": "2026-10-02T10:00:00.000Z",
+        "fieldHashes": {}
+      }
+    ]
+  }
+}
