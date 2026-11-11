@@ -20,6 +20,8 @@ export type Generator = "hugo" | "jekyll" | "eleventy" | "docusaurus" | "vitepre
 
 /** The most HTML read for any scan: the head and the start of the body. */
 export const HTML_SCAN_MAX = 300_000;
+/** The most dates read from one page. */
+const DATES_MAX = 21;
 /** The largest search index read, in characters. */
 export const INDEX_MAX = 5 * 1024 * 1024;
 /** The most addresses an index may list before it is not read. */
@@ -70,7 +72,7 @@ export function pageDates(page: PageSnapshot): { source: string; raw: string }[]
   const published = metas(page).get("article:published_time");
   if (published !== undefined) out.push({ source: "article:published_time", raw: published });
   const walk = (v: unknown, depth: number): void => {
-    if (depth > 4 || out.length > 20) return;
+    if (depth > 4 || out.length >= DATES_MAX) return;
     if (Array.isArray(v)) for (const x of v.slice(0, 50)) walk(x, depth + 1);
     else if (v && typeof v === "object") {
       const o = v as Record<string, unknown>;
