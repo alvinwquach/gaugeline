@@ -30,6 +30,11 @@ const CONTENT_FOLDERS: readonly string[] = ADAPTER_ENTRIES.filter(
   (e) => e.settings?.contentFolders,
 ).map((e) => e.id);
 
+/** Of those, the adapters that learn the folders from the platform's own config file: `folders` is optional for them. */
+const FOLDERS_FROM_CONFIG: readonly string[] = ADAPTER_ENTRIES.filter(
+  (e) => e.settings?.contentFolders === "from-config",
+).map((e) => e.id);
+
 /** A folder inside the repository: relative, "/" separators, no ".." or "." part, no spaces or odd characters. */
 const FOLDER =
   /^(?:\.|[A-Za-z0-9_@~+-][A-Za-z0-9_.@~+-]*(?:\/[A-Za-z0-9_@~+-][A-Za-z0-9_.@~+-]*){0,11})$/;
@@ -179,7 +184,10 @@ export const adaptersConfigSchema = z.strictObject({
                 path: ["path"],
                 message: `${entry.id} needs exactly one of "path" (a folder on this computer) and "github"`,
               });
-            if (entry.folders === undefined || Object.keys(entry.folders).length === 0)
+            if (
+              !FOLDERS_FROM_CONFIG.includes(entry.id) &&
+              (entry.folders === undefined || Object.keys(entry.folders).length === 0)
+            )
               ctx.addIssue({
                 code: "custom",
                 path: ["folders"],
