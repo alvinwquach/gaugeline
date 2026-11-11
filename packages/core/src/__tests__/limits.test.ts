@@ -50,6 +50,7 @@ describe("LIMITS and Budget: unit", () => {
       routeProbes: 30,
       routeProbeBytes: 65536,
       frameworkAddresses: 0,
+      nuxtAddresses: 6,
       scripts: 15,
       structuredDataAddresses: 12,
       concurrency: 5,
