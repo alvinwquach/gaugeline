@@ -21,7 +21,12 @@ export function checkDocs(input: DocsCheckInput): string[] {
     if (!files.has(slug))
       problems.push(`NAV lists "${slug}" (${group}) but docs/${slug}.md does not exist.`);
   }
-  const known = new Set([...seen.keys(), ...input.unlisted]);
+  // A folder's index page (integrations/index) is linked as /docs/integrations/.
+  const known = new Set(
+    [...seen.keys(), ...input.unlisted].flatMap((s) =>
+      s.endsWith("/index") ? [s, s.slice(0, -6)] : [s],
+    ),
+  );
   for (const slug of input.unlisted) {
     if (!files.has(slug))
       problems.push(`UNLISTED names "${slug}" but docs/${slug}.md does not exist.`);

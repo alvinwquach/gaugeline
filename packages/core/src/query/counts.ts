@@ -55,7 +55,7 @@ export const RESERVED = new Set(["true", "false", "null", "in", "match", "asc", 
 const PLAIN = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 /** `slug.current`, or `@["gated-file"]["a b"]` when a name is not a plain identifier. */
-function accessor(path: string): string {
+export function accessor(path: string): string {
   return path
     .split(".")
     .map((name, i) => {
@@ -85,7 +85,7 @@ const isCount = (v: unknown): v is number =>
   typeof v === "number" && Number.isSafeInteger(v) && v >= 0;
 
 /** One request, or two halves when the address would be too long. Returns the counts and how many requests it took. */
-async function countPaths(
+export async function countPaths(
   type: string,
   paths: readonly string[],
   read: SanityRead,

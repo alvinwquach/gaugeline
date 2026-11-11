@@ -3,6 +3,7 @@ import { LIMITS } from "../limits.js";
 import { toMinor } from "../products/money.js";
 import { SANITY_API_VERSION } from "../sanity.js";
 import { isConfigured } from "./env.js";
+import { MAX_RETRY_SECONDS } from "./get-json.js";
 import { ConnectorRateLimitedError, ConnectorRefusedError, connectorGet } from "./http.js";
 import { createRedactor } from "./redact.js";
 import type { Connector, Env } from "./types.js";
@@ -89,8 +90,13 @@ export type SanitySettings = Settings;
  * a draft nobody has published is never compared with checkout. The query travels in the address;
  * the token never does.
  */
-export function productsUrl(projectId: string, dataset: string, query: string): string {
-  return `https://${projectId}.api.sanity.io/${SANITY_API_VERSION}/data/query/${encodeURIComponent(dataset)}?query=${encodeURIComponent(query)}&perspective=published`;
+export function productsUrl(
+  projectId: string,
+  dataset: string,
+  query: string,
+  perspective: "published" | "raw" = "published",
+): string {
+  return `https://${projectId}.api.sanity.io/${SANITY_API_VERSION}/data/query/${encodeURIComponent(dataset)}?query=${encodeURIComponent(query)}&perspective=${perspective}`;
 }
 
 const REFUSED_NO_TOKEN =
@@ -121,20 +127,28 @@ export class QueryTooLongError extends Error {
   }
 }
 
+/** How one question is asked: the perspective (published unless a draft count is wanted), and a retry that must not be served the fetcher's memory of a 429. */
+interface AskOptions {
+  perspective?: "published" | "raw";
+  fresh?: boolean;
+}
+
 /** One GROQ query, one GET. Returns the `result` of the answer. */
 async function ask(
   env: Env,
   fetcher: Fetcher,
   query: string,
   hints: AskHints = PRODUCTS_HINTS,
+  options: AskOptions = {},
 ): Promise<unknown> {
   const s = settings(env);
-  const url = productsUrl(s.projectId, s.dataset, query);
+  const url = productsUrl(s.projectId, s.dataset, query, options.perspective);
   if (url.length > MAX_URL) throw new QueryTooLongError(hints.tooLong);
   let body: string;
   try {
     const hop = await connectorGet(fetcher, url, {
       ...(s.token ? { authorization: `Bearer ${s.token}` } : {}),
+      ...(options.fresh === true ? { fresh: true } : {}),
     });
     if (hop.truncated)
       throw new Error(
@@ -253,29 +267,39 @@ const readProducts = guarded(async (env: Env, fetcher: Fetcher): Promise<SanityP
  * single query without sending a row per document). Types come back in the order they were named,
  * which is alphabetical.
  */
-export const typeCounts = guarded(
-  async (env: Env, fetcher: Fetcher): Promise<Map<string, number>> => {
-    const named = await ask(env, fetcher, "array::unique(*[]._type)");
-    if (!Array.isArray(named))
-      throw new Error("Sanity answered with something that is not a list of types.");
-    const names = [...new Set(named.filter((n): n is string => typeof n === "string" && n !== ""))]
-      .sort()
-      .slice(0, 1000);
-    const counts = new Map<string, number>();
-    for (let at = 0; at < names.length; at += COUNT_CHUNK) {
-      const chunk = names.slice(at, at + COUNT_CHUNK);
-      const query = `{${chunk.map((n, i) => `"t${i}": count(*[_type == ${JSON.stringify(n)}])`).join(", ")}}`;
-      const result = await ask(env, fetcher, query);
-      chunk.forEach((n, i) => {
-        const c = isRecord(result) ? result[`t${i}`] : undefined;
-        if (typeof c !== "number" || !Number.isSafeInteger(c) || c < 0)
-          throw new Error("Sanity answered with something that is not a count.");
-        counts.set(n, c);
-      });
-    }
-    return counts;
-  },
+export const typeCounts = guarded((env: Env, fetcher: Fetcher): Promise<Map<string, number>> =>
+  typeCountsWith((groq) => ask(env, fetcher, groq)),
 );
+
+/**
+ * typeCounts over any way of asking a GROQ question. Counts are put into `into` as they arrive, so a
+ * caller whose run is cut short (a rate limit) still holds the types counted so far.
+ */
+export async function typeCountsWith(
+  query: (groq: string) => Promise<unknown>,
+  into: Map<string, number> = new Map(),
+): Promise<Map<string, number>> {
+  const named = await query("array::unique(*[]._type)");
+  if (!Array.isArray(named))
+    throw new Error("Sanity answered with something that is not a list of types.");
+  const names = [...new Set(named.filter((n): n is string => typeof n === "string" && n !== ""))]
+    .sort()
+    .slice(0, 1000);
+  for (let at = 0; at < names.length; at += COUNT_CHUNK) {
+    const chunk = names.slice(at, at + COUNT_CHUNK);
+    const groq = `{${chunk.map((n, i) => `"t${i}": count(*[_type == ${JSON.stringify(n)}])`).join(", ")}}`;
+    const result = await query(groq);
+    const counted = new Map<string, number>();
+    chunk.forEach((n, i) => {
+      const c = isRecord(result) ? result[`t${i}`] : undefined;
+      if (typeof c !== "number" || !Number.isSafeInteger(c) || c < 0)
+        throw new Error("Sanity answered with something that is not a count.");
+      counted.set(n, c);
+    });
+    for (const [n, c] of counted) into.set(n, c);
+  }
+  return into;
+}
 
 /** What a document type is called: a letter, then letters, digits, underscores and hyphens. */
 export const TYPE_NAME = /^[A-Za-z][A-Za-z0-9_-]{0,63}$/;
@@ -323,17 +347,52 @@ export interface SanityRead {
   readonly datasetAssumed: boolean;
 }
 
+export interface SanityReadOptions {
+  /**
+   * How a wait for Retry-After is made. Given, a 429 whose Retry-After is at most MAX_RETRY_SECONDS is
+   * waited out and the query asked once more; without it a 429 is thrown at once, as it always was.
+   */
+  sleep?: (ms: number) => Promise<void>;
+  /** "raw" lets a query see drafts (the adapter's draft count); the default is published documents only. */
+  perspective?: "published" | "raw";
+}
+
 /**
  * A reader for GROQ queries over the published documents of the configured dataset, for the query
  * check's counts. GET only, drafts left out, the token (optional for a public dataset) in an
  * Authorization header and never in the address. A query whose address is too long throws
  * QueryTooLongError before any request is made. Every message has the token blanked.
  */
-export function createSanityRead(env: Env, fetcher: Fetcher): SanityRead {
+export function createSanityRead(
+  env: Env,
+  fetcher: Fetcher,
+  options: SanityReadOptions = {},
+): SanityRead {
   const s = settings(env);
-  const run = guarded((e: Env, groq: string): Promise<unknown> =>
-    ask(e, fetcher, groq, COUNT_HINTS),
-  );
+  const { sleep, perspective } = options;
+  const run = guarded(async (e: Env, groq: string): Promise<unknown> => {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return await ask(e, fetcher, groq, COUNT_HINTS, {
+          ...(perspective ? { perspective } : {}),
+          // The fetcher remembers answers: a retry must not be handed the 429 it already got.
+          ...(attempt > 0 ? { fresh: true } : {}),
+        });
+      } catch (err) {
+        if (
+          sleep !== undefined &&
+          err instanceof ConnectorRateLimitedError &&
+          attempt === 0 &&
+          err.retrySeconds !== undefined &&
+          err.retrySeconds <= MAX_RETRY_SECONDS
+        ) {
+          await sleep(err.retrySeconds * 1000);
+          continue;
+        }
+        throw err;
+      }
+    }
+  });
   return {
     query: (groq) => run(env, groq),
     dataset: s.dataset,
