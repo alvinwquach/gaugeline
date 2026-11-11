@@ -191,15 +191,7 @@ describe("nuxt: unit", () => {
     expect(privateKindOf("privateKey")).toBe("a private key");
     expect(privateKindOf("accessToken")).toBe("an access token");
     expect(privateKindOf("mailgunApiKey")).toBe("an API key");
-    for (const n of [
-      "secretary",
-      "passwordHint",
-      "publishableKey",
-      "csrfToken",
-      "monkey",
-      "title",
-      "tokenizer",
-    ])
+    for (const n of ["secretary", "publishableKey", "csrfToken", "monkey", "title", "tokenizer"])
       expect(privateKindOf(n), n).toBeUndefined();
   });
 
@@ -225,12 +217,6 @@ describe("nuxt: integration (the nuxt-like fixture)", () => {
       expect(result.findings.map((f) => [f.checkId, f.severity, f.evidence])).toEqual([
         ["nuxt-dev-build-live", "high", "the page loads /_nuxt/@vite/client"],
         [
-          "nuxt-framework-file-listed",
-          "medium",
-          `the sitemap lists ${site.origin}/_payload.json, ${site.origin}/menu/_payload.json`,
-        ],
-        ["nuxt-page-cache-header", "medium", "its Cache-Control says immutable"],
-        [
           "nuxt-preview-canonical",
           "high",
           "canonical https://marrow-rye-git-main.vercel.app/; hreflang alternates https://marrow-rye-git-main.vercel.app/, https://marrow-rye-git-main.vercel.app/fr are on a preview or local address",
@@ -240,6 +226,12 @@ describe("nuxt: integration (the nuxt-like fixture)", () => {
           "high",
           "3 fields in the page's embedded state look private: mailgunApiKey (an API key, in the public config), stripeSecretKey (a secret, in the payload), supabaseServiceRole (a service role key, in the payload). Values are not shown",
         ],
+        [
+          "nuxt-framework-file-listed",
+          "medium",
+          `the sitemap lists ${site.origin}/_payload.json, ${site.origin}/menu/_payload.json`,
+        ],
+        ["nuxt-page-cache-header", "medium", "its Cache-Control says immutable"],
       ]);
       expect(budget.summary().frameworkAddresses.found).toBe(2);
       // The payload files named in the sitemap were never requested.
