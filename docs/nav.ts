@@ -131,6 +131,10 @@ export const UNLISTED: NavPage[] = [
     slug: "integrations/sitemap-feed",
     title: "Sitemap and feeds: content checks for sites built on any CMS",
   },
+  {
+    slug: "integrations/webflow",
+    title: "Webflow: content checks for sites built on Webflow",
+  },
   { slug: "connectors/listings", title: "Listings off the site" },
   { slug: "connectors/postgres", title: "A database as a source: Postgres and Supabase" },
   { slug: "sources/shopify", title: "Shopify as a price source" },

@@ -5,6 +5,16 @@ import { ConnectorRateLimitedError, connectorGet, type ConnectorRequest } from "
 /** Proposed: the longest Retry-After Gaugeline waits for, in seconds. A longer one is given up on. */
 export const MAX_RETRY_SECONDS = 60;
 
+/** The answer was bigger than one response may be (LIMITS.bodyBytes). A caller that can ask for less may do so. */
+export class ResponseTooLargeError extends Error {
+  constructor(system: string) {
+    super(
+      `${system}'s answer is larger than ${LIMITS.bodyBytes / (1024 * 1024)} MB, which is more than a page should be.`,
+    );
+    this.name = "ResponseTooLargeError";
+  }
+}
+
 export interface JsonSource {
   fetcher: Fetcher;
   /** Headers for every request: the key goes here, never into an address. */
@@ -33,10 +43,7 @@ export async function getJson(
         // The fetcher remembers answers: a retry must not be handed the 429 it already got.
         ...(attempt > 0 ? { fresh: true } : {}),
       });
-      if (hop.truncated)
-        throw new Error(
-          `${source.system}'s answer is larger than ${LIMITS.bodyBytes / (1024 * 1024)} MB, which is more than a page should be.`,
-        );
+      if (hop.truncated) throw new ResponseTooLargeError(source.system);
       try {
         return { body: JSON.parse(hop.body ?? "") as unknown, headers: hop.headers };
       } catch {
