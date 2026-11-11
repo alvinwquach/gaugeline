@@ -7,6 +7,7 @@ import {
 import { createRedactor } from "../connectors/redact.js";
 import type { Env } from "../connectors/types.js";
 import type { Fetcher } from "../fetcher.js";
+import { parseGraphql } from "../query/graphql-parse.js";
 import { fillUrlTemplate, hashValue } from "./fingerprint.js";
 import {
   AdapterCouldNotCheck,
@@ -38,6 +39,10 @@ const ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
 
 /** The statuses Craft gives an element. `live` is published: enabled, enabled for the site, posted and not expired. */
 const ALL_STATUSES = '["live", "pending", "expired", "disabled"]';
+
+/** The most fields one section's read asks for, and the longest address a GET is sent with. */
+const MAX_FIELDS = 20;
+const MAX_ADDRESS = 4000;
 
 /** The most characters of a path or uri that is used. A longer one is not an address. */
 const MAX_PATH = 512;
@@ -78,6 +83,8 @@ export interface CraftAdapter extends ContentAdapter {
    * Called once before the first read; a key that cannot be shown to be query-only because introspection is off passes.
    */
   checkKey(): Promise<void>;
+  /** True after checkKey when a token was sent and Gaugeline could not confirm its schema cannot write (introspection refused or off). */
+  keyUnconfirmed(): boolean;
   /** The live entries of the named sections, on every site or on the one site handle, with the address of each page. */
   liveEntries(options?: {
     types?: readonly string[];
@@ -189,7 +196,12 @@ interface FieldSpec {
 
 function parseFieldSpecs(fields: readonly string[]): FieldSpec[] {
   const out: FieldSpec[] = [];
-  for (const spec of new Set(fields)) {
+  const unique = [...new Set(fields)];
+  if (unique.length > MAX_FIELDS)
+    throw new AdapterCouldNotCheck(
+      `A section is read with at most ${MAX_FIELDS} fields; ${unique.length} were named. Name fewer fields under "fingerprint".`,
+    );
+  for (const spec of unique) {
     const dot = spec.indexOf(".");
     const on = dot === -1 ? undefined : spec.slice(0, dot);
     const name = dot === -1 ? spec : spec.slice(dot + 1);
@@ -269,12 +281,28 @@ export function createCraftAdapter(options: CraftAdapterOptions): CraftAdapter {
       throw new AdapterCouldNotCheck(
         `${CRAFT_URL} must be an https address with no user name, password or fragment in it.`,
       );
+    // A key must never ride in the route: only Craft's own action parameter is accepted, and its value is not echoed.
+    const params = [...url.searchParams];
+    if (
+      params.length > 1 ||
+      (params[0] !== undefined && !(params[0][0] === "action" && params[0][1] === "graphql/api"))
+    )
+      throw new AdapterCouldNotCheck(
+        `${CRAFT_URL} must have no query string except action=graphql/api.`,
+      );
     return url;
   };
 
-  /** A GraphQL document, refused unless it is a query: nothing else is ever built, and nothing else is ever sent. */
+  /** A GraphQL document, refused unless it parses as exactly one query: nothing else is ever built, and nothing else is ever sent. */
   const readOnly = (document: string): string => {
-    if (/(^|[^A-Za-z0-9_])(mutation|subscription)\b/i.test(document))
+    let defs: ReturnType<typeof parseGraphql>;
+    try {
+      defs = parseGraphql(document);
+    } catch {
+      throw new Error("Only a GraphQL query is ever built.");
+    }
+    const only = defs[0];
+    if (defs.length !== 1 || only?.kind !== "operation" || only.operation !== "query")
       throw new Error("Only a GraphQL query is ever built.");
     return document;
   };
@@ -295,7 +323,11 @@ export function createCraftAdapter(options: CraftAdapterOptions): CraftAdapter {
       address.searchParams.set("query", readOnly(document));
       if (address.origin !== base.origin)
         throw new AdapterCouldNotCheck("Craft CMS pointed at another address, which is not asked.");
-      const { body } = await getJson(
+      if (address.href.length > MAX_ADDRESS)
+        throw new AdapterCouldNotCheck(
+          `The query is too long for a GET request (${address.href.length} characters; the limit is ${MAX_ADDRESS}). Name fewer or shorter fields under "fingerprint".`,
+        );
+      const { body, url: answeredBy } = await getJson(
         {
           fetcher,
           request: {
@@ -307,6 +339,17 @@ export function createCraftAdapter(options: CraftAdapterOptions): CraftAdapter {
         },
         address.href,
       );
+      // A redirect to another origin, or to plain http, is followed without the token; what it answers is not Craft's.
+      let finalOrigin = "";
+      try {
+        finalOrigin = new URL(answeredBy).origin;
+      } catch {
+        finalOrigin = "";
+      }
+      if (finalOrigin !== base.origin)
+        throw new AdapterCouldNotCheck(
+          "Craft CMS's route redirected to another origin or to plain http, so the answer is not used.",
+        );
       if (!isRecord(body))
         throw new AdapterCouldNotCheck("Craft CMS answered with something that is not an object.");
       return body;
@@ -328,6 +371,7 @@ export function createCraftAdapter(options: CraftAdapterOptions): CraftAdapter {
 
   /** True once the token is known to be query-only (or cannot be shown not to be). A refusal is remembered; a rate limit is not. */
   let keyState: "unknown" | "ok" | { refused: AdapterCouldNotCheck } = "unknown";
+  let unconfirmed = false;
 
   const checkKey = async (): Promise<void> => {
     if (keyState === "ok") return;
@@ -342,6 +386,12 @@ export function createCraftAdapter(options: CraftAdapterOptions): CraftAdapter {
         if (err instanceof AdapterRateLimitedError) throw err;
       }
       const schema = data !== undefined && isRecord(data.__schema) ? data.__schema : {};
+      // Not shown to be query-only: the check says so, never "read-only" without the evidence.
+      unconfirmed = !(
+        data !== undefined &&
+        isRecord(data.__schema) &&
+        "mutationType" in data.__schema
+      );
       if (isRecord(schema.mutationType)) {
         const refused = new AdapterCouldNotCheck(
           `The schema behind ${CRAFT_TOKEN} allows mutations, so the token can change content. Gaugeline will not use a key that can write: make a schema token whose schema allows queries only (Craft: GraphQL, Schemas), or run the live-site checks without Craft.`,
@@ -637,6 +687,7 @@ export function createCraftAdapter(options: CraftAdapterOptions): CraftAdapter {
     resolveUrl,
     sections: () => [...named],
     checkKey,
+    keyUnconfirmed: () => unconfirmed,
     liveEntries,
   };
 }

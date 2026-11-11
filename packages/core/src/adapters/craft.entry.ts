@@ -56,7 +56,7 @@ export const entries: readonly AdapterEntry[] = [
     }),
     // The row in docs/integrations/index.md is generated from this (pnpm gen:adapters).
     docs: {
-      key: "read-only (a GraphQL schema token that allows queries only, on the sections you name)",
+      key: "read-only if the schema is query-only (a GraphQL schema token that allows queries only, on the sections you name)",
       reads:
         "Sections you name, through the GraphQL API (queries over GET): counts, field counts, live entries as fingerprints, whether unpublished entries are reachable, and entries live on a site that have no page on it. [Endpoints and the key](/docs/integrations/craft)",
     },

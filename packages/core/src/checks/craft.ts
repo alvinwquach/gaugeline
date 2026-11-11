@@ -20,7 +20,7 @@ export const craftEntryNoPage = defineCheck<CraftReading>({
   what: "Craft says an entry is live (enabled, enabled for the site, posted and not expired) on this site, and the address its page should have answers 404 or 410 on the site's live pages.",
   why: "Links, the sitemap and search results point at a page that is not there, and the client's announcement leads to an error page. On a multi-site install an entry can be switched on for a site whose templates or routes do not build it.",
   fix: "Check that the site has a route or template for the section (a headless front end may need a rebuild or a revalidation after publishing) and that the entry's URI matches it. If the entry should not be on this site, switch it off for the site in Craft (the entry's Site status).",
-  tech: "GET {CRAFT_URL}?query=... with a GraphQL query only (never a mutation): entryCount and entries(section, site, status: [\"live\"], orderBy, limit, offset) for each section named in the settings, asking for id, slug, uri, url, siteHandle, status and the dates, never a field value; pages are stepped by the size each answer returned, and a repeated entry, an over-long page or an empty page before the total is could-not-check. Each live entry's own url (or the settings' urls pattern for its section) is then asked with one GET on the live site (redirects followed). A final 404 or 410 is the finding; any other answer that is not a 2xx is could-not-check for that page. An entry whose page is on another site's domain is not counted for this site. Entries are kept in a Set by element id and site handle to catch a repeat.",
+  tech: "GET {CRAFT_URL}?query=... with a GraphQL query only (never a mutation): entryCount and entries(section, site, status: [\"live\"], orderBy, limit, offset) for each section named in the settings, asking for id, slug, uri, url, siteHandle, status and the dates, never a field value; pages are stepped by the size each answer returned, and a repeated entry, an over-long page or an empty page before the total is could-not-check. Each live entry's own url (or the settings' urls pattern for its section) is then asked with one GET on the live site (redirects followed). A final 404 or 410 is the finding; any other answer that is not a 2xx is could-not-check for that page. An entry whose page is on another site's domain is not counted for this site. A section none of whose live entries is on this site, and a urls pattern on an entry set that spans several Craft sites with no site handle, are could-not-check, never a pass; so is a token whose schema was not shown to be query-only. Entries are kept in a Set by element id and site handle to catch a repeat.",
   run(r, ctx) {
     if (r.keyRefused !== undefined) {
       ctx.couldNotCheck?.(r.site, r.keyRefused);
@@ -37,6 +37,21 @@ export const craftEntryNoPage = defineCheck<CraftReading>({
       ctx.couldNotCheck?.(
         r.site,
         `${type}: Craft returned no live entry. The section may have none, or the key's schema may not include it (Craft does not say which).`,
+      );
+    for (const o of r.onOtherSites)
+      ctx.couldNotCheck?.(
+        r.site,
+        `${o.type}: none of its ${o.count} live ${o.count === 1 ? "entry has" : "entries has"} a page on this site, so nothing was asked. Their addresses are on ${o.hosts.join(", ")}. Check that the address you gave is the site's own, or (a headless site) add a urls pattern for the section in gaugeline.adapters.json.`,
+      );
+    for (const type of r.patternNeedsSite)
+      ctx.couldNotCheck?.(
+        r.site,
+        `${type}: its urls pattern is the same path on every site and its entries are on several sites, so it cannot say which entries belong to this one. Give the Craft site handle for this site (craftSite) and only that site is read.`,
+      );
+    if (r.keyUnconfirmed)
+      ctx.couldNotCheck?.(
+        r.site,
+        "Gaugeline could not confirm this token cannot write (the schema's introspection was off or refused). Gaugeline only sends queries, but make the schema query-only (Craft: GraphQL, Schemas) so the key is read-only, and a key that can write is for live-site checks only.",
       );
     if (r.partial) ctx.couldNotCheck?.(r.site, describePartial(r.partial));
     for (const u of r.unaddressed)

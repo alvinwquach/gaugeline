@@ -1,3 +1,4 @@
+import { Readable } from "node:stream";
 import { describe, expect, it } from "vitest";
 import { testKey } from "../../connectors/__tests__/fake.js";
 import { createFetcher, type Transport } from "../../fetcher.js";
@@ -255,14 +256,14 @@ describe("the Craft CMS adapter: review fixes", () => {
   });
 
   it("an answer that came from another origin or from plain http is not taken as Craft's", async () => {
-    const inner = craftTransport(undefined, { token: KEY });
+    const inner = craftTransport();
     for (const target of ["https://elsewhere.example/api", "http://cms.fernlight.example/api"]) {
       const redirecting: Transport = (url, req) => {
         if (url.host === "cms.fernlight.example" && url.protocol === "https:")
           return Promise.resolve({
             status: 302,
             headers: { location: `${target}${url.search}` },
-            body: (async function* () {})() as never,
+            body: Readable.from([Buffer.from("")]),
           });
         const answered = inner(
           new URL(url.href.replace(url.origin, "https://cms.fernlight.example")),

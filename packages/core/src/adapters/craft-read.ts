@@ -37,6 +37,12 @@ export interface CraftReading {
   unaddressed: { type: string; id: string; reason: string }[];
   /** Live entries whose page is on another site (another domain): they belong to that site's check and are not counted here. */
   otherSites: number;
+  /** Sections whose live entries all have their page on another host: nothing of them was asked here, which is not a pass. Hosts are at most three. */
+  onOtherSites: { type: string; count: number; hosts: string[] }[];
+  /** Sections whose entries are on several Craft sites and whose `urls` pattern cannot say which site an entry is on: not asked. */
+  patternNeedsSite: string[];
+  /** A token was sent and Gaugeline could not confirm its schema cannot write (introspection off or refused). */
+  keyUnconfirmed?: boolean;
   /** Live entries with an address that were not asked for, because the page budget was used. */
   pagesSkipped: number;
   pageBudget: number;
@@ -65,7 +71,7 @@ export interface ReadCraftOptions {
 function addressFor(
   e: CraftLiveEntry,
   origin: string,
-): { url: URL } | { other: true } | { reason: string } {
+): { url: URL } | { other: string } | { reason: string } {
   if (e.url === undefined)
     return {
       reason:
@@ -82,7 +88,7 @@ function addressFor(
   if (bare(url.host) !== bare(new URL(origin).host))
     return e.patterned
       ? { reason: `the address pattern points to another site (${url.host})` }
-      : { other: true };
+      : { other: url.host };
   // The address is built again from the checked site's own origin and a path that passed the same rules as every path.
   const path = safePath(url.pathname);
   if (path === undefined) return { reason: "its address is not a plain path on the site" };
@@ -111,6 +117,8 @@ export async function readCraft(options: ReadCraftOptions): Promise<CraftReading
     empty: [],
     unaddressed: [],
     otherSites: 0,
+    onOtherSites: [],
+    patternNeedsSite: [],
     pagesSkipped: 0,
     pageBudget: budget,
   };
@@ -135,24 +143,43 @@ export async function readCraft(options: ReadCraftOptions): Promise<CraftReading
     throw err;
   }
 
+  if (adapter.keyUnconfirmed()) reading.keyUnconfirmed = true;
+
   const todo: Omit<CraftPageRead, "answer">[] = [];
   for (const type of names) {
-    let seen = 0;
+    const entries: CraftLiveEntry[] = [];
     try {
       for await (const e of adapter.liveEntries({
         types: [type],
         ...(options.craftSite !== undefined ? { site: options.craftSite } : {}),
-      })) {
-        seen++;
+      }))
+        entries.push(e);
+      if (entries.length === 0) {
+        reading.empty.push(type);
+        continue;
+      }
+      // A pattern is the same path on every site: with entries on several sites it cannot say which one an entry is on.
+      const sites = new Set(entries.map((e) => e.siteHandle));
+      if (options.craftSite === undefined && sites.size > 1 && entries.some((e) => e.patterned)) {
+        reading.patternNeedsSite.push(type);
+        continue;
+      }
+      let asked = 0;
+      let others = 0;
+      const hosts = new Set<string>();
+      for (const e of entries) {
         const at = addressFor(e, origin);
         if ("other" in at) {
           reading.otherSites++;
+          others++;
+          if (hosts.size < 3) hosts.add(at.other);
           continue;
         }
         if ("reason" in at) {
           reading.unaddressed.push({ type, id: e.id, reason: at.reason });
           continue;
         }
+        asked++;
         todo.push({
           id: e.id,
           type,
@@ -162,7 +189,8 @@ export async function readCraft(options: ReadCraftOptions): Promise<CraftReading
           path: at.url.pathname,
         });
       }
-      if (seen === 0) reading.empty.push(type);
+      if (asked === 0 && others === entries.length)
+        reading.onOtherSites.push({ type, count: others, hosts: [...hosts].sort() });
     } catch (err) {
       if (err instanceof AdapterRateLimitedError) {
         reading.partial = {
