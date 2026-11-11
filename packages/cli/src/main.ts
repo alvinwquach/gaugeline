@@ -114,6 +114,7 @@ import { useColor } from "./color.js";
 import { formatError, toOutcome } from "./fail.js";
 import { envIsOn, type FlagDef } from "./flags.js";
 import { createLogger } from "./logger.js";
+import { checkAuditTarget, checkServices, emitAuditPack } from "./audit.js";
 import { checkBriefTarget, emitBrief } from "./brief.js";
 import { checkHandoffTarget, writeHandoff } from "./handoff.js";
 import { runDigest } from "./digest.js";
@@ -164,6 +165,7 @@ import {
   readPayments,
   readRenewalsConfig,
   readHandoffConfig,
+  readServicesConfig,
   readCostConfig,
   readEvents,
   readSchemaRules,
@@ -267,6 +269,8 @@ export interface Deps {
   briefFs?: ScaffoldFs;
   /** `gaugeline handoff`: the file system calls the report is written with. Tests pass one that fails. */
   handoffFs?: ScaffoldFs;
+  /** `gaugeline audit --pack`: the file system calls the pack is written with. Tests pass one that fails. */
+  auditFs?: ScaffoldFs;
   /**
    * How messages reach the CRM's MCP server (gaugeline.crm.json). Given the validated read-only
    * server address and only the variables the CRM needs. By default there is none: this version
@@ -1125,6 +1129,12 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           cwd,
           ...(deps.briefFs ? { fs: deps.briefFs } : {}),
         });
+      // gaugeline audit --pack: the same for the pack's folder.
+      if (args.audit)
+        await checkAuditTarget(args.audit, {
+          cwd,
+          ...(deps.auditFs ? { fs: deps.auditFs } : {}),
+        });
       // gaugeline handoff: the same for the report's folder.
       if (args.handoff)
         await checkHandoffTarget(args.handoff, {
@@ -1331,6 +1341,10 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
               : renewing
                 ? createRenewalsRegistry()
                 : createPageRegistry());
+      // gaugeline audit --pack: the packages are read, and checked against the checks this run makes, before
+      // any request: a package that names a check that never runs is a mistake in the file (exit 2).
+      const services = args.audit ? readServicesConfig(cwd) : undefined;
+      checkServices(services, registry);
       let only: readonly string[] | undefined =
         deps.registry === undefined && skeleton ? skeleton : undefined;
       if (args.command === "renewals")
@@ -1560,6 +1574,37 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           stderr: io.stderr,
           quiet: args.quiet,
         });
+        if (assertionProblems[0]) throw assertionProblems[0];
+        return { outcome: { kind: "ran", highFindings: 0, drift: false }, ci: false };
+      }
+      // gaugeline audit --pack: the same run, written as a proposal pack in a folder instead of a report.
+      // Nothing else is written or sent: no report file, no notification, no saved run.
+      if (args.audit) {
+        const { pack, paths } = await emitAuditPack({
+          flags: args.audit,
+          result: buildResult({
+            url: snapshot.requestedUrl,
+            startedAt,
+            findings: result.findings,
+            passed: result.passed,
+            failed: [...result.failed.map((f) => f.id), ...dnsSkipped],
+            couldNotCheck: result.couldNotCheck,
+            sampled: result.sampled,
+          }),
+          registry,
+          services,
+          probing: ownerConsent,
+          dns: args.dns,
+          cwd,
+          ...(deps.auditFs ? { fs: deps.auditFs } : {}),
+        });
+        if (!args.quiet && services === undefined)
+          io.stderr.write(
+            "No gaugeline.services.json here, so the findings are grouped by area and the pack shows no price: Gaugeline never makes up a price.\n",
+          );
+        io.stdout.write(
+          `Audit pack for ${pack.host}: ${pack.healthy ? "nothing to fix" : `${pack.total} ${pack.total === 1 ? "thing" : "things"} worth fixing`}.\n${paths.map((p) => `Wrote ${p}`).join("\n")}\n`,
+        );
         if (assertionProblems[0]) throw assertionProblems[0];
         return { outcome: { kind: "ran", highFindings: 0, drift: false }, ci: false };
       }

@@ -311,6 +311,24 @@ name (inside the one you ran from), never over a file without `--force`, all thr
 What it prints: paths, cache header values, usage figures and dates. It never buys, upgrades, renews, logs in
 or changes anything.
 
+### Audit pack (gaugeline audit --pack)
+
+`gaugeline audit <address> --pack` runs the default page check on a prospect's site and writes a proposal
+pack ([Audit pack](guides/audit-pack.md)). Every request is `GET` or `HEAD`, through the fetcher, and
+they are the page check's own: public pages, the files they link to, `robots.txt` and the sitemap. The
+probing checks (non-public paths, a site's own keys) are off unless you pass `--owner-consent` or keep a
+`gaugeline.consent.json` in the folder you run from, and the pack says whether they ran.
+
+- **Nothing is sent.** The pack is two files, written only into the folder you name (inside the one you ran
+  from), never over a file without `--force`, both files or neither.
+- **No secrets, no full email addresses.** Text from the site is redacted like every finding, and an email
+  address in it is masked to its first letter and its domain. A content system contributes names, counts
+  and ids only.
+- **The logo is not fetched.** `--brand-logo` (or `brand.logoUrl`) is an `https` address written into the
+  HTML. Gaugeline does not request it; the browser that opens the file does.
+- **No model.** The pack is made from templates. Prices and hours are only those in
+  `gaugeline.services.json`.
+
 ### Saving the requests (--save-requests)
 
 By default a run keeps what it asked for in memory and writes only the report. `--save-requests <file>`

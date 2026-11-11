@@ -106,7 +106,7 @@ export async function inspectScaffold(
   const info = await fs.lstat(folder);
   if (info !== null && !info.isDirectory())
     throw new ConfigError(`--out ${JSON.stringify(out)} is a file, not a folder.`, {
-      hint: "Name the folder the three files should go in.",
+      hint: `Name the folder ${files.length === 2 ? "the two files" : "the three files"} should go in.`,
     });
   const replacing = new Map<string, string>();
   const existing: string[] = [];
@@ -125,7 +125,9 @@ export async function inspectScaffold(
   if (existing.length > 0)
     throw new ConfigError(
       `${existing.join(", ")} already ${existing.length === 1 ? "exists" : "exist"} in ${JSON.stringify(out)}, so nothing was written.`,
-      { hint: "Choose another --out, or add --force to replace the three files." },
+      {
+        hint: `Choose another --out, or add --force to replace ${files.length === 2 ? "the two files" : "the three files"}.`,
+      },
     );
   return { folder, replacing };
 }
