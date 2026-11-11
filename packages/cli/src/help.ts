@@ -20,6 +20,7 @@ export const COMMANDS = [
   "delivery",
   "platform",
   "query",
+  "emails",
 ] as const;
 export type Command = (typeof COMMANDS)[number];
 
@@ -172,6 +173,23 @@ export const HELP: Record<string, string> = {
       "delivered, and report an enabled endpoint with events older than an hour that",
       "are still waiting, and an endpoint that is disabled: a host, a count and an age.",
       "Read only: it never replays, retries or resends an event.",
+    ].join("\n"),
+    footer: "Exit codes: 0 ran, 1 --ci with a fix-first finding, 2 could not run",
+  }),
+  emails: renderHelp(FLAGS, "emails", {
+    usage: "gaugeline emails <folder> [--base <address>] [options]",
+    summary: [
+      "Check the rendered emails in a folder (the .html your email tool or export",
+      "command wrote; order.en.html and order.es.html are read as a pair). Gaugeline",
+      "never renders a template or runs your code: it reads the files as text. It",
+      "reports a relative or localhost link, a template variable left in the text",
+      "({{name}}, [object Object]), an image that will not load in an inbox, and, with",
+      "textVersion in gaugeline.emails.json, an email with no .txt beside it; and it",
+      "runs the link, image, payment, facts and language checks on each email, with",
+      "gaugeline.payments.json, gaugeline.facts.json and gaugeline.languages.json.",
+      "Every finding names the file and the line. With no --base nothing is",
+      "requested; with it, that site's links and images are asked for with GET or",
+      "HEAD, 30 links and 20 images for each email. Nothing is ever sent.",
     ].join("\n"),
     footer: "Exit codes: 0 ran, 1 --ci with a fix-first finding, 2 could not run",
   }),
