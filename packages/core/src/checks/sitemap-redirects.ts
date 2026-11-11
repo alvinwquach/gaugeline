@@ -4,6 +4,10 @@ import { finalStatus, firstFew, shortUrl } from "./site-helpers.js";
 
 export const sitemapRedirects = defineCheck<PageSnapshot>({
   id: "sitemap-redirects",
+  size: "S",
+  done: "Each sitemap entry is the address its page redirects to.",
+  estimateChanges:
+    "A move to https, www or a new URL scheme changes every entry at once, and the sitemap is regenerated.",
   area: "Search & sharing",
   severity: "medium",
   title: "Your sitemap lists old addresses that redirect",

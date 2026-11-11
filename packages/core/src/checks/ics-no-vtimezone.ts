@@ -4,6 +4,9 @@ import { shortUrl } from "./site-helpers.js";
 
 export const icsNoVtimezone = defineCheck<PageSnapshot>({
   id: "ics-no-vtimezone",
+  size: "S",
+  done: "The calendar carries a VTIMEZONE for each TZID its events use.",
+  estimateChanges: "Software with no export option for this needs a different export.",
   area: "Visitors",
   severity: "medium",
   title: "Your calendar names a time zone it doesn't describe",

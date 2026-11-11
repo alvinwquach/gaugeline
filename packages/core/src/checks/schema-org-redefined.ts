@@ -6,6 +6,9 @@ import { firstFew } from "./site-helpers.js";
 
 export const schemaOrgRedefined = defineCheck<PageSnapshot>({
   id: "schema-org-redefined",
+  size: "M",
+  done: "Every other page refers to the Organization by @id and the homepage defines it once.",
+  estimateChanges: "Structured data written by several templates or plugins each need the change.",
   area: "Search & sharing",
   severity: "medium",
   title: "Pages redefine your organization instead of referring to it",

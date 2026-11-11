@@ -4,6 +4,10 @@ import type { PageSnapshot } from "../snapshot.js";
 
 export const canonicalElsewhere = defineCheck<PageSnapshot>({
   id: "canonical-elsewhere",
+  size: "S",
+  done: "Each page's canonical tag names its own address.",
+  estimateChanges:
+    "A canonical that comes from one shared SEO component is a single edit. Ones set by hand in the CMS are one edit per page.",
   area: "Search & sharing",
   severity: "high",
   title: "This page tells Google to show a different page",

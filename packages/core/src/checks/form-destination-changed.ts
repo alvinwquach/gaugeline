@@ -4,6 +4,9 @@ import type { PageSnapshot } from "../snapshot.js";
 
 export const formDestinationChanged = defineCheck<PageSnapshot>({
   id: "form-destination-changed",
+  size: "S",
+  done: "The form posts to an address that belongs to your account with that service.",
+  estimateChanges: "If the change was not yours, finding who changed it comes first.",
   area: "Leads",
   severity: "medium",
   title: "A form now posts to a different address",

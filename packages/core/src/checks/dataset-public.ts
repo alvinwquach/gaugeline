@@ -5,6 +5,10 @@ import { firstFew } from "./site-helpers.js";
 
 export const datasetPublic = defineCheck<PageSnapshot>({
   id: "dataset-public",
+  size: "S",
+  done: "The dataset is private with a token for the site, or left public on purpose.",
+  estimateChanges:
+    "A site that reads the dataset from the browser needs those queries moved to the server.",
   area: "Security & email",
   severity: "low",
   title: "Your Sanity content can be read by anyone",

@@ -8,6 +8,10 @@ import { shortUrl } from "./site-helpers.js";
 
 export const stripeTestMode = defineCheck<PageSnapshot>({
   id: "stripe-test-mode",
+  size: "M",
+  done: "The site uses the live key and one small real order went through.",
+  estimateChanges:
+    "Checkout code in several places, a webhook secret and product ids that differ between test and live add work.",
   area: "Sales & prices",
   severity: "high",
   title: "This live site is using Stripe's test key",

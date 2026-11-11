@@ -6,6 +6,9 @@ import { schemaPages } from "./schema/common.js";
 
 export const schemaBreadcrumbMismatch = defineCheck<PageSnapshot>({
   id: "schema-breadcrumb-mismatch",
+  size: "S",
+  done: "The last ListItem of the breadcrumb is the page's canonical address.",
+  estimateChanges: "A shared breadcrumb component is one edit.",
   area: "Search & sharing",
   severity: "medium",
   title: "A breadcrumb ends on a different page",

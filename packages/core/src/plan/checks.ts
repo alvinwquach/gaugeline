@@ -1,4 +1,4 @@
-import { CheckRegistry, defineCheck, type Finding } from "../model.js";
+import { CheckRegistry, defineCheck, type Finding, type Size } from "../model.js";
 import { BUILT_CHECK_IDS, BUILT_TITLES, type BuiltResult } from "./built.js";
 import {
   REDIRECT_CHECK_IDS,
@@ -14,6 +14,22 @@ import type { Plan } from "./read.js";
 import { SELF_RULES, runSelfRule, type SelfRule } from "./self.js";
 import { checkSlugs } from "./slug.js";
 import { checkKeywords } from "./keywords.js";
+
+/** What each check of a table says about itself: the same fields defineCheck reads. */
+interface CheckText {
+  what: string;
+  why: string;
+  fix: string;
+  tech: string;
+  size: Size;
+  done: string;
+  estimateChanges: string;
+}
+
+/** The same, for a table whose checks differ in severity. */
+interface CheckTextAt extends CheckText {
+  severity: Finding["severity"];
+}
 
 /** What a plan check reads: the plan, what was read out of its notes, and the file's name. */
 export interface PlanCheckInput {
@@ -39,6 +55,9 @@ const WHY: Record<string, string> = {
 
 export const planLegacyUnresolved = defineCheck<PlanCheckInput>({
   id: "plan-legacy-unresolved",
+  size: "S",
+  done: "Each old address in the notes is written as a path or decided, and the plan check passes.",
+  estimateChanges: "Someone who knows the old site has to say what each note means.",
   area: "Launch day",
   severity: "medium",
   title: "Some old addresses in the plan's notes aren't settled",
@@ -69,20 +88,29 @@ export const planLegacyUnresolved = defineCheck<PlanCheckInput>({
   },
 });
 
-const TEXT: Record<SelfRule["id"], { what: string; why: string; fix: string; tech: string }> = {
+const TEXT: Record<SelfRule["id"], CheckText> = {
   "plan-duplicate-address": {
+    size: "S",
+    done: "Each planned page has its own address.",
+    estimateChanges: "Deciding which of two competing rows is the real page.",
     what: "Two or more rows of the plan give the same address (path and #section), so only one of those pages can exist.",
     why: "The pages compete for one address: one gets built, the other is lost, and whichever wins gets the wrong title, heading and redirects.",
     fix: "Give each planned page its own address, or merge the rows into one page.",
     tech: "Rows grouped by host without www. and path in lower case, no trailing slash or query, plus #fragment when there is one; an anchor row and its page row differ by the fragment. One finding per group, with every line",
   },
   "plan-duplicate-title": {
+    size: "S",
+    done: "Each planned page has a title that says what is different about it.",
+    estimateChanges: "Writing good titles takes time per page.",
     what: "Two or more rows of the plan plan the same title tag.",
     why: "Search engines show the title in results; two pages with one title compete with each other and neither looks like the answer.",
     fix: "Write a title that says what is different about each page.",
     tech: "Title Tag cells compared trimmed, whitespace collapsed, lower case, with curly quotes and dashes straightened; a brand suffix is part of the title. Empty cells are left out",
   },
   "plan-duplicate-h1": {
+    size: "S",
+    done: "Each planned page has a heading that names its own topic.",
+    estimateChanges: "Writing good headings takes time per page.",
     what: "Two or more rows of the plan plan the same H1.",
     why: "The H1 tells visitors and search engines what the page is about; two pages with the same heading read as the same page.",
     fix: "Give each page a heading that names its own topic.",
@@ -105,6 +133,10 @@ export const planSelfChecks = SELF_RULES.map((rule) =>
 
 export const planSlugMisspelling = defineCheck<PlanCheckInput>({
   id: "plan-slug-misspelling",
+  size: "S",
+  done: "The slug uses the heading's spelling.",
+  estimateChanges:
+    "Easy before the page is built. After it is linked or indexed it also needs a redirect.",
   area: "Launch day",
   severity: "medium",
   title: "A slug misspells its own heading",
@@ -119,6 +151,9 @@ export const planSlugMisspelling = defineCheck<PlanCheckInput>({
 
 export const planKeywordCannibalisation = defineCheck<PlanCheckInput>({
   id: "plan-keyword-cannibalisation",
+  size: "M",
+  done: "Each page has its own primary keyword, or the competing pages are merged.",
+  estimateChanges: "Merging pages means content and redirect work.",
   area: "Launch day",
   severity: "medium",
   title: "Two pages in the plan target the same primary keyword",
@@ -133,6 +168,9 @@ export const planKeywordCannibalisation = defineCheck<PlanCheckInput>({
 
 export const planKeywordOverlap = defineCheck<PlanCheckInput>({
   id: "plan-keyword-overlap",
+  size: "S",
+  done: "The supporting pages link to the primary page and none is built to rank for its term.",
+  estimateChanges: "Content edits on each supporting page.",
   area: "Launch day",
   severity: "low",
   title: "One page's primary keyword is another page's secondary",
@@ -145,11 +183,12 @@ export const planKeywordOverlap = defineCheck<PlanCheckInput>({
   },
 });
 
-const BUILT_TEXT: Record<
-  (typeof BUILT_CHECK_IDS)[number],
-  { severity: Finding["severity"]; what: string; why: string; fix: string; tech: string }
-> = {
+const BUILT_TEXT: Record<(typeof BUILT_CHECK_IDS)[number], CheckTextAt> = {
   "plan-404": {
+    size: "M",
+    done: "Each planned page loads on the preview, or its row is taken out of the plan.",
+    estimateChanges:
+      "A dropped page is a plan edit. A page that was never built is the full cost of building it.",
     severity: "high",
     what: "A page the plan lists returns 404 (or 410) on the preview given with --base.",
     why: "A planned page that doesn't exist at cutover loses every visitor and link meant for it.",
@@ -157,6 +196,9 @@ const BUILT_TEXT: Record<
     tech: "Each planned path on --base fetched once with GET; 404 or 410 on the final hop. One finding per path, with every row on it",
   },
   "plan-title-drift": {
+    size: "S",
+    done: "Each page's title equals the plan's, or the plan is updated.",
+    estimateChanges: "Pages edited by several people need the change in one place.",
     severity: "medium",
     what: "The title tag the preview sends isn't the one the plan gives the page.",
     why: "Someone edited the page, or the template overrode it, and the title the plan chose for search is gone.",
@@ -164,6 +206,9 @@ const BUILT_TEXT: Record<
     tech: "The page row's Title Tag against the HTML title, compared trimmed, case-folded, whitespace collapsed, quotes and dashes straightened; a brand suffix counts. No title in the HTML is reported with a hint that it may be set by JavaScript",
   },
   "plan-h1-drift": {
+    size: "S",
+    done: "Each page's H1 equals the plan's, or the plan is updated.",
+    estimateChanges: "Deciding which side is right comes first.",
     severity: "medium",
     what: "The page's first H1 isn't the one the plan gives it.",
     why: "Usually a content change nobody recorded; the heading the plan chose for the keyword is gone.",
@@ -171,6 +216,9 @@ const BUILT_TEXT: Record<
     tech: "The page row's H1 against the first h1 in the HTML, compared like titles; a page with several H1s is noted",
   },
   "plan-canonical-elsewhere": {
+    size: "S",
+    done: "Each page's canonical is its own planned address on production.",
+    estimateChanges: "A canonical that comes from one template is a single edit.",
     severity: "high",
     what: "The page's canonical names another address, often the legacy one, instead of the planned page.",
     why: "Search engines index the canonical: the new page won't be listed, the old address will.",
@@ -178,6 +226,9 @@ const BUILT_TEXT: Record<
     tech: "The canonical's path (lower case, no trailing slash) against the row's path, on the preview's host or the plan's production host, with or without www",
   },
   "plan-anchor-missing": {
+    size: "S",
+    done: "Each planned #section has an element with that id on the page.",
+    estimateChanges: "A section that was never built is the full cost of building it.",
     severity: "medium",
     what: "A plan row with a #section points at an id that isn't on the page.",
     why: "Links to the section land at the top of the page, and the plan's section was never built.",
@@ -200,11 +251,12 @@ export const planBuiltChecks = BUILT_CHECK_IDS.map((id) =>
   }),
 );
 
-const REDIRECT_TEXT: Record<
-  RedirectCheckId,
-  { severity: Finding["severity"]; what: string; why: string; fix: string; tech: string }
-> = {
+const REDIRECT_TEXT: Record<RedirectCheckId, CheckTextAt> = {
   "plan-redirect-missing": {
+    size: "S",
+    done: "Each old address answers with a 301 to the page its plan row names.",
+    estimateChanges:
+      "Many legacy addresses are one redirect file or rule, within the host's limits. The count of addresses matters less than the host.",
     severity: "high",
     what: "An old address in the plan's Legacy URL column still answers 200 or 404 on the preview instead of redirecting.",
     why: "The old address's rankings and links go nowhere: a 404 loses them, a page left in place competes with the new one.",
@@ -212,6 +264,10 @@ const REDIRECT_TEXT: Record<
     tech: "The legacy address (its path and query, moved onto --base) fetched with GET; the first hop isn't a 3xx. A 200 with a meta refresh or a location assignment is reported with that hint",
   },
   "plan-redirect-not-301": {
+    size: "S",
+    done: "Each old address redirects with a 301, or a 308 to the right place.",
+    estimateChanges:
+      "A host setting that defaults to a temporary redirect fixes all of them at once.",
     severity: "high",
     what: "An old address redirects with 302, 303 or 307, or with 308 to the wrong place.",
     why: "A temporary redirect tells search engines the old address is coming back, so its rankings may not move to the new page.",
@@ -219,6 +275,9 @@ const REDIRECT_TEXT: Record<
     tech: "The status of the first hop. 308 to the planned page is accepted, with a note on stderr",
   },
   "plan-redirect-wrong-destination": {
+    size: "S",
+    done: "Each old address lands on the page its plan row names.",
+    estimateChanges: "Overlapping rules mean testing each address after the change.",
     severity: "high",
     what: "An old address redirects, but not to the page the plan says it should.",
     why: "The old address's visitors and rankings land on the wrong page, and the planned page starts from nothing.",
@@ -226,6 +285,9 @@ const REDIRECT_TEXT: Record<
     tech: "The trail's final address (or where the last hop points, when it leaves the preview): its path against the row's, on the preview's host or exactly the plan's",
   },
   "plan-redirect-chain": {
+    size: "S",
+    done: "Each old address redirects once, straight to the final page.",
+    estimateChanges: "Rules in the host and in the app each need checking.",
     severity: "medium",
     what: "An old address takes two or more redirects to reach its page.",
     why: "Each hop costs visitors time, and search engines follow only so many before giving up on passing signals.",
@@ -233,6 +295,9 @@ const REDIRECT_TEXT: Record<
     tech: "More than one 3xx in the hop list the fetcher records; the trail is in the evidence",
   },
   "plan-redirect-drops-query": {
+    size: "S",
+    done: "The redirect passes the query string on.",
+    estimateChanges: "One rule is one edit. Several rules each need it.",
     severity: "low",
     what: "An old address with a query string redirects to an address without it.",
     why: "Campaign tags and filters on old links are lost, so their visits can't be told apart.",
@@ -240,6 +305,9 @@ const REDIRECT_TEXT: Record<
     tech: "The legacy address has a query; the trail's final address has none",
   },
   "plan-redirect-conflict": {
+    size: "S",
+    done: "Each old address appears in one plan row only.",
+    estimateChanges: "Someone who owns the plan has to decide which page wins.",
     severity: "high",
     what: "One old address is the Legacy URL of two rows that plan different pages.",
     why: "An address can redirect to one place only: one of the two rows won't get its traffic, and no crawl will show it.",
@@ -273,6 +341,10 @@ export const planRedirectConflict = defineCheck<PlanCheckInput>({
 
 export const planUncoveredPage = defineCheck<PlanCheckInput>({
   id: "plan-uncovered-page",
+  size: "S",
+  done: "Every live page has a row in the plan, or is named as the legacy address of its replacement.",
+  estimateChanges:
+    "Many pages are a spreadsheet job. Deciding what replaces each page is the real work.",
   area: "Launch day",
   severity: "high",
   title: "A page that exists today has no row in the plan",
@@ -287,6 +359,9 @@ export const planUncoveredPage = defineCheck<PlanCheckInput>({
 
 export const planRankUnknownAddress = defineCheck<PlanCheckInput>({
   id: "plan-rank-unknown-address",
+  size: "S",
+  done: "The rank export is of this site and recent, or the missing pages are added to --live.",
+  estimateChanges: "Getting a fresh export from the search tool.",
   area: "Launch day",
   severity: "low",
   title: "Addresses in the rank export are neither live nor planned",
@@ -305,11 +380,11 @@ export const NAV_CHECK_IDS: readonly NavCheckId[] = [
   "plan-nav-needs-page",
 ];
 
-const NAV_TEXT: Record<
-  NavCheckId,
-  { severity: Finding["severity"]; what: string; why: string; fix: string; tech: string }
-> = {
+const NAV_TEXT: Record<NavCheckId, CheckTextAt> = {
   "plan-nav-missing-row": {
+    size: "S",
+    done: "Every menu item has a row in the plan, or has been renamed to match one.",
+    estimateChanges: "Several items from one restructure share one decision.",
     severity: "high",
     what: "An item in a menu tab of the plan workbook has no page row in the page plan, and no page shares a distinctive word with it (or several do).",
     why: "The menu will link to a page nobody planned: it gets built late, without a title or keyword, or the link goes nowhere.",
@@ -317,6 +392,9 @@ const NAV_TEXT: Record<
     tech: "Menu labels against Page and H1 cells by labelKey (G16's textKey, & as and, a trailing note such as (anchor) dropped). Headings (the first column) may match a row with no URL and are reported at medium. With several candidates, up to three are named",
   },
   "plan-nav-label-mismatch": {
+    size: "S",
+    done: "The menu item and the page use one name.",
+    estimateChanges: "A name that is on purpose different is recorded rather than changed.",
     severity: "medium",
     what: "A menu item matches no page by name, and exactly one page shares a distinctive word with it.",
     why: "The menu and the page plan disagree on the name, so the page's title, H1 and keyword may not be what visitors click.",
@@ -324,6 +402,9 @@ const NAV_TEXT: Record<
     tech: "Distinctive words are five letters or more, not health, healthcare, medical, service(s) or management. Exactly one page name with one of them; the evidence gives both labels and both lines",
   },
   "plan-nav-needs-page": {
+    size: "M",
+    done: "The page is built before launch, or the menu item is left out until it exists.",
+    estimateChanges: "A page that is not written yet is the real cost.",
     severity: "medium",
     what: "A menu item matches a page row whose Status says Need Page.",
     why: "The menu will link to a page that hasn't been built: at launch it is a 404 in the navigation.",

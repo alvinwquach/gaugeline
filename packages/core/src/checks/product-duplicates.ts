@@ -262,6 +262,9 @@ const TITLES: Readonly<Record<DuplicateCheckId, string>> = {
 
 export const duplicateStripe = defineCheck<ProductDuplicatesInput>({
   id: "duplicate-stripe",
+  size: "S",
+  done: "One product is kept active in Stripe and the others are archived.",
+  estimateChanges: "Payment links and subscriptions on the copies have to be moved first.",
   area: "Sales & prices",
   severity: "medium",
   title: TITLES["duplicate-stripe"],
@@ -274,6 +277,9 @@ export const duplicateStripe = defineCheck<ProductDuplicatesInput>({
 
 export const duplicateSanity = defineCheck<ProductDuplicatesInput>({
   id: "duplicate-sanity",
+  size: "S",
+  done: "One product is kept in the website's content and the others are unpublished or deleted.",
+  estimateChanges: "Links to the copies need a redirect.",
   area: "Sales & prices",
   severity: "medium",
   title: TITLES["duplicate-sanity"],
@@ -286,6 +292,9 @@ export const duplicateSanity = defineCheck<ProductDuplicatesInput>({
 
 export const duplicatePrintful = defineCheck<ProductDuplicatesInput>({
   id: "duplicate-printful",
+  size: "S",
+  done: "One product is kept in Printful and the website points at it.",
+  estimateChanges: "Orders attached to the copies need care before they are deleted.",
   area: "Sales & prices",
   severity: "medium",
   title: TITLES["duplicate-printful"],

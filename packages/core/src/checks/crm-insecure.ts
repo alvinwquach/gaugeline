@@ -4,6 +4,9 @@ import { findings, insecure } from "./forms.js";
 
 export const crmInsecure = defineCheck<PageSnapshot>({
   id: "crm-insecure",
+  size: "S",
+  done: "The form, the tracker domain and the tracking script all load over https.",
+  estimateChanges: "Several forms, or an old embed code pasted into many pages, raise the count.",
   area: "Leads",
   severity: "high",
   title: "A form sends details over an insecure connection",

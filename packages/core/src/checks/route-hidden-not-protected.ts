@@ -45,6 +45,10 @@ function addressOf(base: string, path: string): string {
 
 export const routeHiddenNotProtected = defineCheck<RoutesInput>({
   id: "route-hidden-not-protected",
+  size: "M",
+  done: "A request with no session to the route gets 401, 403 or a redirect to sign in.",
+  estimateChanges:
+    "Several routes that skip the check, or a middleware that is only partly applied, each need the change.",
   area: "Security & email",
   severity: "high",
   title: ROUTE_TITLE,

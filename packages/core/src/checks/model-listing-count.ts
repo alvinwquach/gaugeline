@@ -9,6 +9,9 @@ const NAMED = 10;
 
 export const modelListingCount = defineCheck<PageSnapshot>({
   id: "model-listing-count",
+  size: "M",
+  done: "The listing shows every published entry named in the evidence, or the filter that leaves entries out is written down on purpose.",
+  estimateChanges: "A query shared by several listings, or a count limit in a template, adds work.",
   area: "Visitors",
   severity: "high",
   title: "A listing shows fewer entries than are published",

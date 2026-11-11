@@ -4,6 +4,10 @@ import type { PageSnapshot } from "../snapshot.js";
 
 export const robotsBlock = defineCheck<PageSnapshot>({
   id: "robots-block",
+  size: "S",
+  done: "robots.txt no longer disallows everything for every search engine.",
+  estimateChanges:
+    "A block set by the host or a plugin setting rather than the file means finding that setting.",
   area: "Search & sharing",
   severity: "high",
   title: "Your robots.txt tells every search engine to stay away",

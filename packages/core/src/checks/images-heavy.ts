@@ -5,6 +5,10 @@ import { shortUrl } from "./site-helpers.js";
 
 export const imagesHeavy = defineCheck<PageSnapshot>({
   id: "images-heavy",
+  size: "S",
+  done: "The images are resized to the size they are shown at and served as WebP or AVIF.",
+  estimateChanges:
+    "A site that serves originals needs an image component or CDN set up, then each image needs checking.",
   area: "Visitors",
   severity: "medium",
   title: "Some images are very large files",

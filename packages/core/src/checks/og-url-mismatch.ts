@@ -4,6 +4,9 @@ import type { PageSnapshot } from "../snapshot.js";
 
 export const ogUrlMismatch = defineCheck<PageSnapshot>({
   id: "og-url-mismatch",
+  size: "S",
+  done: "og:url equals the canonical address.",
+  estimateChanges: "Both come from one SEO component on most sites.",
   area: "Search & sharing",
   severity: "medium",
   title: "Shared links point at a different page than search engines see",

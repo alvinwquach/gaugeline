@@ -8,7 +8,16 @@ import { html, startServer, type FixtureServer } from "../../__tests__/helpers/s
 import { PAGE_CHECKS, createPageRegistry } from "../index.js";
 import { page } from "./helpers.js";
 
-const base = { area: "Visitors", what: "w", why: "y", fix: "f", tech: "t" } as const;
+const base = {
+  area: "Visitors",
+  what: "w",
+  why: "y",
+  fix: "f",
+  tech: "t",
+  size: "S",
+  done: "Done.",
+  estimateChanges: "Nothing.",
+} as const;
 function fixed(id: string, severity: Severity): ReturnType<typeof defineCheck<PageSnapshot>> {
   return defineCheck<PageSnapshot>({
     ...base,

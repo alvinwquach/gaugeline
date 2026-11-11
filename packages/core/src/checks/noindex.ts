@@ -5,6 +5,9 @@ const NOINDEX = /(^|[\s,:])(noindex|none)(\s*(,|$)|$)/i;
 
 export const noindex = defineCheck<PageSnapshot>({
   id: "noindex",
+  size: "S",
+  done: "The page no longer asks search engines to skip it.",
+  estimateChanges: "A noindex set in a plugin, a header and a meta tag all have to be found.",
   area: "Search & sharing",
   severity: "high",
   title: "This page asks search engines not to list it",

@@ -5,6 +5,9 @@ import { dmarcTags, isDmarc } from "./email/records.js";
 
 export const emailDmarcNone = defineCheck<PageSnapshot>({
   id: "email-dmarc-none",
+  size: "M",
+  done: "The DMARC policy moves from none to quarantine, then reject, after the reports look clean.",
+  estimateChanges: "The weeks spent reading reports and fixing each sender that fails.",
   area: "Security & email",
   severity: "low",
   title: "Your DMARC policy only watches",

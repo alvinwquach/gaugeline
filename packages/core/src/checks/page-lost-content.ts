@@ -5,6 +5,10 @@ import { comparePages, readPages } from "./page-shared.js";
 
 export const pageLostContent = defineCheck<PageSnapshot>({
   id: "page-lost-content",
+  size: "M",
+  done: "The missing content is back on the page, or the page is listed under expectedChanges with a reason.",
+  estimateChanges:
+    "A template change, a renamed CMS field and a deleted entry each need a different repair.",
   area: "Visitors",
   severity: "high",
   title: "A page lost content since the last run",

@@ -16,6 +16,9 @@ const DAY_LABEL = {
 
 export const llmsTxtStaleFacts = defineCheck<PageSnapshot>({
   id: "llms-txt-stale-facts",
+  size: "S",
+  done: "llms.txt gives the same phone number, address and hours as the structured data.",
+  estimateChanges: "Generating both from one source removes the drift but needs a template change.",
   area: "Search & sharing",
   severity: "medium",
   title: "Your llms.txt gives assistants an old phone number, address or hours",

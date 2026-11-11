@@ -4,6 +4,10 @@ import { eventTime, pageEvents, venueZone } from "./events/events.js";
 
 export const eventPastUpcoming = defineCheck<PageSnapshot>({
   id: "event-past-upcoming",
+  size: "S",
+  done: "Finished events no longer appear as upcoming, in the page or in its structured data.",
+  estimateChanges:
+    "Events entered by hand are removed one at a time. A list built from the calendar fixes it for good but needs a code change.",
   area: "Visitors",
   severity: "high",
   title: "The page still promotes an event that already happened",

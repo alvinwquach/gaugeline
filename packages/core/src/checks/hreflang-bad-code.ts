@@ -4,6 +4,9 @@ import type { PageSnapshot } from "../snapshot.js";
 
 export const hreflangBadCode = defineCheck<PageSnapshot>({
   id: "hreflang-bad-code",
+  size: "S",
+  done: "Every hreflang value is a valid code such as es-US, with an x-default.",
+  estimateChanges: "A plugin that writes the codes may need a setting changed.",
   area: "Search & sharing",
   severity: "low",
   title: "Some language codes are not valid",

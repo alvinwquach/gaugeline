@@ -7,6 +7,10 @@ export const STALE_AFTER_MINUTES = 10;
 
 export const nextStaleAfterPublish = defineCheck<PageSnapshot>({
   id: "next-stale-after-publish",
+  size: "M",
+  done: "An edit in the CMS shows on the live page without a redeploy.",
+  estimateChanges:
+    "An on-demand revalidation webhook is set up in the CMS and the app. A revalidate time is one line but gives slower updates.",
   area: "Launch day",
   severity: "medium",
   title: "The page still shows an old copy after an edit",

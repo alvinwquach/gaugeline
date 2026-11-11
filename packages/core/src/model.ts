@@ -86,8 +86,16 @@ export interface FindingGroup {
   lines: number[];
 }
 
-/** Effort to fix, used by the work order (G28). */
+/** Effort to fix, used by the work order (G28): Small, Medium or Large. */
 export type Size = "S" | "M" | "L";
+
+export const SIZES = ["S", "M", "L"] as const satisfies readonly Size[];
+
+/**
+ * Points per size: Small 1, Medium 3, Large 8. A Record, so the compiler checks all three sizes are
+ * here, and the table the docs show is visible on one line. Integers, so a total never drifts.
+ */
+export const POINTS: Readonly<Record<Size, number>> = Object.freeze({ S: 1, M: 3, L: 8 });
 
 /** Passed to every check. Later branches add the fetcher, the budget and the run's options. */
 /** What the person running the check says should be true, for checks that compare against it. */
@@ -242,10 +250,12 @@ export interface Check<Input> {
   fix: string;
   /** The technical line in the checks reference, for whoever fixes it. */
   tech: string;
-  /** Effort to fix (G28). */
-  size?: Size;
-  /** What fixed looks like (G28). */
-  done?: string;
+  /** Effort to fix, by the kind of fix and not by how bad it is (G28). Required: the work order reads it. */
+  size: Size;
+  /** What fixed looks like, in a sentence a person can confirm by running Gaugeline again (G28). */
+  done: string;
+  /** What makes this fix smaller or bigger than its size says, so nobody quotes blind (G28). */
+  estimateChanges: string;
   run(input: Input, ctx: CheckContext): Finding[] | Promise<Finding[]>;
 }
 
@@ -268,6 +278,17 @@ export function defineCheck<I>(c: Check<I>): Check<I> {
       throw new TypeError(
         `Check "${c.id}" has an empty ${field}. Every check needs what, why, fix and tech.`,
       );
+    }
+  }
+  // The work order (G28) reads the size from the check; a missing one fails here, at definition.
+  if (!(SIZES as readonly string[]).includes(c.size as string)) {
+    throw new TypeError(
+      `Check "${c.id}" ${c.size === undefined ? "has no size" : `has the size ${JSON.stringify(c.size)}`}. Give it size "S", "M" or "L" (1, 3 or 8 points), a done sentence and an estimateChanges sentence.`,
+    );
+  }
+  for (const field of ["done", "estimateChanges"] as const) {
+    if (typeof c[field] !== "string" || c[field].trim() === "") {
+      throw new TypeError(`Check "${c.id}" has an empty ${field}. Every check needs one.`);
     }
   }
   return Object.freeze({ ...c });

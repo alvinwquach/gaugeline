@@ -4,6 +4,9 @@ import { isTemporaryHost } from "./launch/hosts.js";
 
 export const tempHostCanonical = defineCheck<PageSnapshot>({
   id: "temp-host-canonical",
+  size: "S",
+  done: "Every page on the temporary host has a canonical pointing at the real domain.",
+  estimateChanges: "A shared layout is one edit.",
   area: "Launch day",
   severity: "low",
   title: "A temporary address doesn't name the real one",

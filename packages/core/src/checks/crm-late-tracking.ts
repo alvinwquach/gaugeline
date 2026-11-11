@@ -4,6 +4,9 @@ import { findings, lateTracking } from "./forms.js";
 
 export const crmLateTracking = defineCheck<PageSnapshot>({
   id: "crm-late-tracking",
+  size: "S",
+  done: "The tracking script loads in the page head before the form.",
+  estimateChanges: "A tag manager that fires it late is a rule change, not a code change.",
   area: "Leads",
   severity: "medium",
   title: "Tracking starts after the form loads",

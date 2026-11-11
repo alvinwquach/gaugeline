@@ -5,6 +5,10 @@ import { comparePages, readPages } from "./page-shared.js";
 
 export const pageLostItems = defineCheck<PageSnapshot>({
   id: "page-lost-items",
+  size: "M",
+  done: "The missing items are back in the list, or the page is listed under expectedChanges.",
+  estimateChanges:
+    "Finding what feeds the list, which may be a query, a filter or a deleted entry.",
   area: "Visitors",
   severity: "medium",
   title: "A listing has fewer items than last run",

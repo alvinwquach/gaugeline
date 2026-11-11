@@ -111,6 +111,10 @@ function recordFindings(
 
 export const cutoverMailChanged = defineCheck<CutoverCheckInput>({
   id: "cutover-mail-changed",
+  size: "M",
+  done: "The mail records match the old values, or the change is listed under expectedChanges with a reason.",
+  estimateChanges:
+    "Mail that already stopped working means finding what was lost. Records edited at a registrar and a host both need checking.",
   area: "Security & email",
   severity: "high",
   title: "The domain's mail records changed at cutover",
@@ -125,6 +129,9 @@ export const cutoverMailChanged = defineCheck<CutoverCheckInput>({
 
 export const cutoverRecordsChanged = defineCheck<CutoverCheckInput>({
   id: "cutover-records-changed",
+  size: "M",
+  done: "Each changed record matches what the new host and the mail provider publish, or is listed under expectedChanges.",
+  estimateChanges: "The number of records, and records edited at both a registrar and a host.",
   area: "Security & email",
   severity: "medium",
   title: "The domain's DNS records changed at cutover",
@@ -139,6 +146,9 @@ export const cutoverRecordsChanged = defineCheck<CutoverCheckInput>({
 
 export const cutoverCertificateChanged = defineCheck<CutoverCheckInput>({
   id: "cutover-certificate-changed",
+  size: "S",
+  done: "The new certificate covers every name the old one did.",
+  estimateChanges: "Most hosts add www as a separate domain, and each extra name is one more.",
   area: "Security & email",
   severity: "medium",
   title: "The certificate no longer covers a name it did",
@@ -171,6 +181,9 @@ const PERMANENT = new Set([301, 308]);
 
 export const cutoverCanonicalHost = defineCheck<CutoverCheckInput>({
   id: "cutover-canonical-host",
+  size: "S",
+  done: "The bare domain and www settle on one address with a 301.",
+  estimateChanges: "Mail or a certificate on the second name adds a step.",
   area: "Launch day",
   severity: "high",
   title: "The bare domain and www don't settle on one address",

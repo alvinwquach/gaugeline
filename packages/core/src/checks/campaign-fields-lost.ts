@@ -49,6 +49,9 @@ function evidenceFor(probe: TagProbe): string | undefined {
 
 export const campaignFieldsLost = defineCheck<CampaignTagsInput>({
   id: "campaign-fields-lost",
+  size: "S",
+  done: "The campaign tags arrive on the final page.",
+  estimateChanges: "A redirect set in the host, a CDN and the app each need checking.",
   area: "Visitors",
   severity: "high",
   title: TITLE,

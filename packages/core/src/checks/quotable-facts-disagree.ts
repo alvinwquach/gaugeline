@@ -27,6 +27,9 @@ export function sameName(a: string, b: string): boolean {
  */
 export const quotableFactsDisagree = defineCheck<PageSnapshot>({
   id: "quotable-facts-disagree",
+  size: "S",
+  done: "The business name in the LocalBusiness data matches the first heading of llms.txt.",
+  estimateChanges: "A name kept in several places is one edit each.",
   area: "Search & sharing",
   severity: "high",
   title: "Assistants find two different names for your business",

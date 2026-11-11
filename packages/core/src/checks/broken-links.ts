@@ -11,6 +11,10 @@ export const NOT_BROKEN: ReadonlySet<number> = new Set([401, 403, 429]);
 
 export const brokenLinks = defineCheck<PageSnapshot>({
   id: "broken-links",
+  size: "S",
+  done: "Every link on the page loads or has been removed, and a moved page answers with a 301 from its old address.",
+  estimateChanges:
+    "One cause (a renamed folder) is a single redirect rule. Links typed into CMS content are edited one by one.",
   area: "Visitors",
   severity: "high",
   title: "Links on this page go nowhere",

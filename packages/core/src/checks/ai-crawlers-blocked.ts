@@ -10,6 +10,10 @@ function label(a: AiAgent): string {
 
 export const aiCrawlersBlocked = defineCheck<PageSnapshot>({
   id: "ai-crawlers-blocked",
+  size: "S",
+  done: "The assistants you want can read the site, or the block is recorded as on purpose.",
+  estimateChanges:
+    "A block set in a firewall or a CDN rather than robots.txt is found by looking at those settings.",
   area: "Search & sharing",
   severity: "low",
   title: "Some AI assistants can't read your site",

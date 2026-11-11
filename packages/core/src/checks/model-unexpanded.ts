@@ -20,6 +20,9 @@ function describe(ref: RawRef): string {
 
 export const modelUnexpanded = defineCheck<PageSnapshot>({
   id: "model-unexpanded",
+  size: "S",
+  done: "The page prints the field's value, not a raw reference object.",
+  estimateChanges: "The same query pattern repeated in several templates is one edit each.",
   area: "Visitors",
   severity: "high",
   title: "A page shows a raw reference where content should be",

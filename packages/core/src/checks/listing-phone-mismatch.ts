@@ -5,6 +5,10 @@ import { ANY_LISTING, aside, finding, startListingCheck } from "./listings/share
 
 export const listingPhoneMismatch = defineCheck<PageSnapshot>({
   id: "listing-phone-mismatch",
+  size: "S",
+  done: "The listing and the site show the same phone number.",
+  estimateChanges:
+    "Each listing is edited separately, and a number repeated in many pages of the site adds edits.",
   area: "Search & sharing",
   severity: "high",
   title: "A listing shows a different phone number",

@@ -10,6 +10,10 @@ const TECH =
 
 export const generatedTotalMismatch = defineCheck<QueryInput>({
   id: "generated-total-mismatch",
+  size: "M",
+  done: "Each stated total equals the sum of its parts.",
+  estimateChanges:
+    "Deciding which side is wrong comes first. A part missing because something it links to is unpublished adds another fix.",
   area: "Visitors",
   severity: "high",
   title: GENERATED_TITLES.mismatch,
@@ -22,6 +26,9 @@ export const generatedTotalMismatch = defineCheck<QueryInput>({
 
 export const generatedTotalMissing = defineCheck<QueryInput>({
   id: "generated-total-missing",
+  size: "S",
+  done: "The stated field is filled in on each document named, or the rule's field name is corrected.",
+  estimateChanges: "Many documents are filled in one by one unless a migration sets them.",
   area: "Visitors",
   severity: "low",
   title: GENERATED_TITLES.unstated,
@@ -34,6 +41,10 @@ export const generatedTotalMissing = defineCheck<QueryInput>({
 
 export const generatedRefUnpublished = defineCheck<QueryInput>({
   id: "generated-ref-unpublished",
+  size: "S",
+  done: "Every link points at a published document, or the rule is changed on purpose.",
+  estimateChanges:
+    "Several documents that link to the same draft are fixed by publishing that one.",
   area: "Visitors",
   severity: "high",
   title: GENERATED_TITLES.unpublished,

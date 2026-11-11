@@ -5,6 +5,10 @@ import { ANY_LISTING, aside, finding, startListingCheck } from "./listings/share
 
 export const listingNameMismatch = defineCheck<PageSnapshot>({
   id: "listing-name-mismatch",
+  size: "S",
+  done: "The listing and the site use the same business name.",
+  estimateChanges:
+    "Each listing is its own login, and a name change that needs verification can take days.",
   area: "Search & sharing",
   severity: "high",
   title: "A listing still uses your old business name",

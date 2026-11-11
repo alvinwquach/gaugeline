@@ -4,6 +4,10 @@ import type { PageSnapshot } from "../snapshot.js";
 
 export const formProviderChanged = defineCheck<PageSnapshot>({
   id: "form-provider-changed",
+  size: "S",
+  done: "The form posts to the service you use, confirmed with whoever changed it.",
+  estimateChanges:
+    "An unnoticed plugin update takes longer to trace. A move that was meant needs your follow-up changed to match.",
   area: "Leads",
   severity: "high",
   title: "A form now sends to a different service",

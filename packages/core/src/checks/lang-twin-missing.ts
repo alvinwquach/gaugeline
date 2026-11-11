@@ -6,6 +6,9 @@ import { firstFew, shortUrl } from "./site-helpers.js";
 
 export const langTwinMissing = defineCheck<PageSnapshot>({
   id: "lang-twin-missing",
+  size: "M",
+  done: "The missing language version is published, or removed from the hreflang links and the sitemap.",
+  estimateChanges: "Translating the page is the cost. Removing the link is minutes.",
   area: "Visitors",
   severity: "medium",
   title: "A language version of this page is missing",

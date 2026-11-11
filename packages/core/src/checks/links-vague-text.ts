@@ -6,6 +6,9 @@ import { firstFew, shortUrl } from "./site-helpers.js";
 
 export const linksVagueText = defineCheck<PageSnapshot>({
   id: "links-vague-text",
+  size: "S",
+  done: "Each link's text names its destination, or carries an aria-label that does.",
+  estimateChanges: "A shared button component used everywhere is one edit.",
   area: "Visitors",
   severity: "low",
   title: "Some links don't say where they go",

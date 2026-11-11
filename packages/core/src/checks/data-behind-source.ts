@@ -29,6 +29,10 @@ function keyOf(url: string): string {
 
 export const dataBehindSource = defineCheck<PageSnapshot>({
   id: "data-behind-source",
+  size: "M",
+  done: "The page is rebuilt soon after its data changes.",
+  estimateChanges:
+    "An on-demand revalidation call from the sync, a revalidate time and a CDN each need different work.",
   area: "Visitors",
   severity: "medium",
   title: "The page is behind the data it is built from",

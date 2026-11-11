@@ -4,6 +4,10 @@ import { kindWords } from "../tags/analyse.js";
 
 export const tagsDeadRules = defineCheck<PageSnapshot>({
   id: "tags-dead-rules",
+  size: "S",
+  done: "Each rule fires on something the site still has, or is deleted with its tags.",
+  estimateChanges:
+    "The number of rules in the container, and who owns the tags that only they fire.",
   area: "Leads",
   severity: "medium",
   title: "A tracking rule points at something that no longer exists",

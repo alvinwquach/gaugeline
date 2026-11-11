@@ -8,6 +8,10 @@ const DAY = 86_400_000;
 
 export const crmWentQuiet = defineCheck<PageSnapshot>({
   id: "crm-went-quiet",
+  size: "M",
+  done: "A test lead sent through the form reaches the CRM, and real leads arrive again.",
+  estimateChanges:
+    "The break may be in the form, the connection or a rule inside the CRM, and finding which is most of the work.",
   area: "Leads",
   severity: "high",
   title: "Leads have stopped arriving",

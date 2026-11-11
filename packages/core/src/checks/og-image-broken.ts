@@ -5,6 +5,10 @@ import { finalStatus } from "./site-helpers.js";
 
 export const ogImageBroken = defineCheck<PageSnapshot>({
   id: "og-image-broken",
+  size: "S",
+  done: "The og:image address loads on the live domain over https.",
+  estimateChanges:
+    "One shared SEO component is one edit. Pages that set it by hand are edited one by one.",
   area: "Launch day",
   severity: "medium",
   title: "The share picture doesn't load",

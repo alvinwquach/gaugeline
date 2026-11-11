@@ -302,6 +302,10 @@ function notify(ctx: CheckContext, notices: readonly Notice[]): void {
 
 export const priceMismatch = defineCheck<PriceCheckInput>({
   id: "price-mismatch",
+  size: "M",
+  done: "The site and checkout show the same price for each product named.",
+  estimateChanges:
+    "Deciding which system owns the price comes first. Prices typed into many places are edited one by one.",
   area: "Sales & prices",
   severity: "high",
   title: TITLES["price-mismatch"],
@@ -318,6 +322,10 @@ export const priceMismatch = defineCheck<PriceCheckInput>({
 
 export const priceStoredTwice = defineCheck<PriceCheckInput>({
   id: "price-stored-twice",
+  size: "M",
+  done: "One system owns each price and the other reads it.",
+  estimateChanges:
+    "The number of products, and code on both sides that has to change to read instead of store.",
   area: "Sales & prices",
   severity: "low",
   title: TITLES["price-stored-twice"],
@@ -348,6 +356,9 @@ export const priceStoredTwice = defineCheck<PriceCheckInput>({
 
 export const printfulPrice = defineCheck<PriceCheckInput>({
   id: "printful-price",
+  size: "S",
+  done: "Fulfillment and checkout list the same price.",
+  estimateChanges: "Deciding which system owns the price comes first.",
   area: "Sales & prices",
   severity: "medium",
   title: TITLES["printful-price"],
@@ -364,6 +375,9 @@ export const printfulPrice = defineCheck<PriceCheckInput>({
 
 export const stripeNoPrice = defineCheck<PriceCheckInput>({
   id: "stripe-no-price",
+  size: "S",
+  done: "The product has a default price in Stripe, or is archived.",
+  estimateChanges: "Several products are one edit each.",
   area: "Sales & prices",
   severity: "medium",
   title: TITLES["stripe-no-price"],

@@ -4,6 +4,10 @@ import type { PageSnapshot } from "../snapshot.js";
 
 export const dataAssertionFailed = defineCheck<PageSnapshot>({
   id: "data-assertion-failed",
+  size: "M",
+  done: "The assertion returns no rows when it is run again.",
+  estimateChanges:
+    "A few bad rows are minutes. Rows created by a bug mean fixing the code as well as the rows.",
   area: "Visitors",
   severity: "high",
   title: "A data assertion found rows that should not exist",

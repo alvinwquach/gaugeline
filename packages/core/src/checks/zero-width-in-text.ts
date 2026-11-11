@@ -7,6 +7,10 @@ import { isHtmlPage } from "./page.js";
 
 export const zeroWidthInText = defineCheck<PageSnapshot>({
   id: "zero-width-in-text",
+  size: "S",
+  done: "The invisible characters are removed from the words they sit inside.",
+  estimateChanges:
+    "The number of fields they came from. Text pasted from a word processor often repeats the problem.",
   area: "Security & email",
   severity: "low",
   title: "Invisible characters sit inside words on the page",

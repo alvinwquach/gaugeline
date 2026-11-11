@@ -30,6 +30,10 @@ function whyDead(probe: TagProbe, why: string, status: number | undefined): stri
 
 export const adDeadPage = defineCheck<AdPagesInput>({
   id: "ad-dead-page",
+  size: "S",
+  done: "The ad's page loads, and the ad stays paused until it does.",
+  estimateChanges:
+    "A page that needs building is a bigger job. A redirect to its replacement is minutes.",
   area: "Visitors",
   severity: "high",
   title: TITLE,

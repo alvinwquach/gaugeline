@@ -17,6 +17,10 @@ function walk(value: unknown, out: string[]): void {
 
 export const draftsLive = defineCheck<PageSnapshot>({
   id: "drafts-live",
+  size: "M",
+  done: "The live page shows published content only, and a request without a preview cookie gets no drafts.",
+  estimateChanges:
+    "Preview mode wired into several routes, or the same query repeated in many files, each need the change.",
   area: "Launch day",
   severity: "high",
   title: "Unpublished work is in the live page",
