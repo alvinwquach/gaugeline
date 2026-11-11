@@ -5,9 +5,9 @@ import type { PageSnapshot } from "../snapshot.js";
 export const astroDevToolsPublic = defineCheck<PageSnapshot>({
   id: "astro-dev-tools-public",
   size: "S",
-  done: "The live pages come from `astro build`, with no dev client or dev toolbar in their HTML.",
+  done: "The live pages come from astro build, with no dev client or dev toolbar in their HTML.",
   estimateChanges:
-    "If the host runs `astro dev` as its start command, the deploy settings change too.",
+    "If the host runs astro dev as its start command, the deploy settings change too.",
   area: "Launch day",
   severity: "high",
   title: "The live Astro site is serving its development tools",

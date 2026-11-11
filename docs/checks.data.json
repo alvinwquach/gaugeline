@@ -48,8 +48,8 @@
     "fix": "Deploy the output of `astro build` (a static folder, or the server adapter's output) instead of running `astro dev` on the host.",
     "tech": "Astro sites only, no extra request: the page's own HTML is searched for src=/@vite/client, the dev-toolbar entrypoint under /@id/astro/runtime/client/dev-toolbar/, an astro-dev-toolbar element, or data-astro-source-file attributes",
     "size": "S",
-    "done": "The live pages come from `astro build`, with no dev client or dev toolbar in their HTML.",
-    "estimateChanges": "If the host runs `astro dev` as its start command, the deploy settings change too."
+    "done": "The live pages come from astro build, with no dev client or dev toolbar in their HTML.",
+    "estimateChanges": "If the host runs astro dev as its start command, the deploy settings change too."
   },
   {
     "id": "astro-preview-canonical",
