@@ -169,8 +169,12 @@ export function devMarkers(page: PageSnapshot): string[] {
   const body = bodyOf(page);
   const out: string[] = [];
   if (readBootstrap(page)?.dev) out.push("__sveltekit_dev");
-  for (const m of ["/@vite/client", "/.svelte-kit/", "/node_modules/.vite/"])
+  // Vite's own paths are every Vite framework's, so they count only on a page that is SvelteKit's.
+  const svelte = isSveltekitSite(page);
+  for (const m of ["/@vite/client", "/.svelte-kit/", "/node_modules/.vite/"]) {
+    if (m !== "/.svelte-kit/" && !svelte) continue;
     if (page.scripts.some((s) => s.includes(m)) || body.includes(m)) out.push(m);
+  }
   return out;
 }
 
