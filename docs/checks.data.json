@@ -845,6 +845,71 @@
     "estimateChanges": "Several staging or preview hosts each need the setting, and pages already indexed need removal requests."
   },
   {
+    "id": "static-dev-server-live",
+    "severity": "high",
+    "area": "Launch day",
+    "title": "The live site is a development server",
+    "what": "This page loads a live-reload or development script of a static site generator (Hugo, Jekyll, Eleventy, Docusaurus or VitePress).",
+    "why": "A development server shows drafts and future posts, rebuilds on every request and was never meant for visitors: it is slow, and it keeps a connection open for every one of them.",
+    "fix": "Build the site (hugo, jekyll build, eleventy, docusaurus build, vitepress build) and serve the output folder from a static host.",
+    "tech": "The page's own script addresses only: /livereload.js (Hugo and Jekyll servers: uncited), /.11ty/reload-client.js (eleventy-dev-server 2.1.2), /@vite/client beside a vitepress script (VitePress dev), or a Docusaurus generator tag with no version (the development template, @docusaurus/core 3.10.2). Names of the markers only",
+    "size": "S",
+    "done": "The live address serves the built files, not the generator's development server.",
+    "estimateChanges": "A host that runs a start command needs it changed to serve the build folder."
+  },
+  {
+    "id": "static-draft-marker-live",
+    "severity": "high",
+    "area": "Launch day",
+    "title": "A page that says it is a draft is live",
+    "what": "This page, built with a static site generator, shows a draft marker and is open to search engines or listed in the sitemap.",
+    "why": "Drafts are work nobody approved. A draft in the sitemap is handed to search engines to list, and a visitor can read it.",
+    "fix": "Build the live site without drafts (Hugo: drop --buildDrafts; Jekyll: drop --drafts; Docusaurus and VitePress: set the page's draft or unlisted option and rebuild), or finish the page and remove the marker.",
+    "tech": "Sites with a Hugo, Jekyll, Eleventy, Docusaurus or VitePress generator tag only: a class name \"draft\", \"is-draft\", \"post-draft\", \"draft-badge\", \"badge-draft\", the Docusaurus theme-draft-banner or theme-unlisted-banner on the page (class names only, never text), and no noindex, or an address the sitemaps list. The badge class names are theme conventions (uncited); the Docusaurus banners are from @docusaurus/theme-common 3.10.2",
+    "size": "S",
+    "done": "Draft pages are left out of the live build, so no page that says it is a draft is public.",
+    "estimateChanges": "Drafts built by a deploy preview and by the main build are two settings to change."
+  },
+  {
+    "id": "static-future-post-live",
+    "severity": "high",
+    "area": "Launch day",
+    "title": "A post dated in the future is already live",
+    "what": "This page, built with a static site generator, gives a publish date more than a day after today.",
+    "why": "A post dated for later (a sale, a menu, an announcement) is public now: anyone with the address, a search engine or a feed reader can read it before you meant them to.",
+    "fix": "Build the live site without future posts (Hugo: drop --buildFuture; Jekyll: drop --future; Eleventy: skip pages whose date is ahead) and rebuild, or correct the date.",
+    "tech": "Sites with a Hugo, Jekyll, Eleventy, Docusaurus or VitePress generator tag only: the page's article:published_time and JSON-LD datePublished, compared with the run's clock plus one day (a date with no zone is UTC, and the day absorbs any time zone). Only the date is shown, never the title or text. The Hugo and Jekyll flags are from memory of their docs, which could not be reached: uncited",
+    "size": "S",
+    "done": "The live site is built without future-dated posts, and the post's date is the day it should appear.",
+    "estimateChanges": "A build that runs on a schedule needs the date filter in every build command, not only this one."
+  },
+  {
+    "id": "static-preview-canonical",
+    "severity": "high",
+    "area": "Launch day",
+    "title": "The site was built with a placeholder or preview address",
+    "what": "A page built with a static site generator gives a placeholder (example.org, localhost) or preview domain as its canonical address, its og:url, or in its sitemap.",
+    "why": "Search engines and social cards follow those addresses away from your site, to a domain that is not yours or a preview that disappears.",
+    "fix": "Set the site's base address to the production domain (Hugo: baseURL; Jekyll: url; Eleventy: a site url in the data; Docusaurus: url; VitePress: sitemap hostname) and rebuild.",
+    "tech": "Sites with a Hugo, Jekyll, Eleventy, Docusaurus or VitePress generator tag, served from a non-temporary host: the canonical, og:url and sitemap entries whose host is example.org, example.com, example.net, localhost or 127.0.0.1, or ends in .vercel.app, .netlify.app or .pages.dev (the same list as next-preview-canonical). Hugo's example.org default is uncited",
+    "size": "S",
+    "done": "The built site's canonical and share addresses use the production domain.",
+    "estimateChanges": "A base address that is right in one build and wrong in another means checking every build setting."
+  },
+  {
+    "id": "static-search-index-hidden",
+    "severity": "high",
+    "area": "Launch day",
+    "title": "The site's search lists pages that are meant to be hidden",
+    "what": "The search index a static site generator built lists pages that the sitemap leaves out and that are marked noindex or draft.",
+    "why": "Anyone who types a word into your site search, or who downloads the index file, is shown those pages, even though you told search engines to skip them.",
+    "fix": "Leave drafts, unlisted and noindex pages out of the search index at build time (the same filter as the sitemap's), and rebuild.",
+    "tech": "Probing check: off unless --owner-consent or gaugeline.consent.json; run only on sites you own or have permission to test. Sites with a Hugo, Jekyll, Eleventy, Docusaurus or VitePress generator tag only. The index is the file the page's own markup names (a JSON alternate link, or VitePress's @localSearchIndex chunk named in its modules: read without consent, it is what every visitor's browser loads), else /index.json, /search.json, /search-index.json (conventions: uncited). Read up to 5 MB and 50,000 addresses; a larger, cut or unrecognised index is could not check. Addresses the sitemaps do not list are asked once each with GET (up to 4); a finding needs one that says noindex or shows a draft marker. Paths and counts only; reads use the run's script and page allowances",
+    "size": "M",
+    "done": "The site's search index lists only pages the sitemap lists and search engines may index.",
+    "estimateChanges": "The index and the sitemap are built by different plugins, and each needs the same filter on drafts and noindex pages."
+  },
+  {
     "id": "stega-leak",
     "severity": "high",
     "area": "Search & sharing",
@@ -2338,6 +2403,19 @@
     "size": "S",
     "done": "Each sitemap entry is the address its page redirects to.",
     "estimateChanges": "A move to https, www or a new URL scheme changes every entry at once, and the sitemap is regenerated."
+  },
+  {
+    "id": "static-old-version-indexed",
+    "severity": "medium",
+    "area": "Search & sharing",
+    "title": "An old version of the docs is open to search engines",
+    "what": "This Docusaurus page says its version is no longer maintained (or unreleased), and search engines may list it as it is.",
+    "why": "Search sends people to old instructions, prices or steps that no longer apply, and the old and new pages compete for the same searches.",
+    "fix": "Set noIndex: true for the old version in the docs plugin's options, or give its pages a canonical address that points at the current version, and rebuild.",
+    "tech": "Docusaurus pages only: the theme's theme-doc-version-banner with its no longer actively maintained or unreleased documentation text (@docusaurus/theme-classic and theme-translations 3.10.2), no noindex in the robots meta tag or X-Robots-Tag, and a canonical that is missing or is the page itself. The version name is read from the docusaurus_version meta tag. VitePress has no versioning feature, so its version folders are not judged",
+    "size": "M",
+    "done": "Old documentation versions are marked noindex or point their canonical at the current page.",
+    "estimateChanges": "Docusaurus sets noindex per version (noIndex: true in the docs plugin), and each old version needs it."
   },
   {
     "id": "structured-duplicate",
