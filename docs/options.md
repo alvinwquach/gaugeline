@@ -594,7 +594,6 @@ between the markers; CI fails when it differs from the flag table.
 | `--trackers`                | Also list the trackers on pages with a form or a path you listed, and what a tag manager holds                       |                        | 0.2.0 |
 | `--libraries`               | Also check the JavaScript files a page loads for libraries with a published advisory                                 |                        | 0.2.0 |
 | `--wordpress`               | Also check a WordPress site's versions against the current releases, and whether it lists its users                  |                        | 0.2.0 |
-| `--backups`                 | Also check when the client's content and database were last backed up (Supabase, Sanity, an export folder)           |                        | 0.2.0 |
 | `--published`               | Also check that content changed in your CMS is live on the site, and that unpublished pages are gone                 |                        | 0.2.0 |
 | `--owner-consent`           | Run the probing checks, which ask routes for what they protect with no login; only on sites you may test             |                        | 0.2.0 |
 | `--routes <value>`          | With --owner-consent: download routes in files matching this glob (repeatable); no glob: a folder's signed-in routes |                        | 0.2.0 |
