@@ -216,6 +216,76 @@ describe("Craft check: an architecture studio on a two-site install", () => {
     );
   });
 
+  it("every live entry on another site is could-not-check, never a clean pass (a staging address checked against production URLs)", async () => {
+    const { reading: r, seen } = await reading(PAGES_HEALTHY, {
+      site: "https://staging.fernlight-studio.example",
+    });
+    expect(r.pages).toEqual([]);
+    expect(seen.some((s) => s.includes("staging.fernlight-studio.example/"))).toBe(false);
+    const out = await run(r);
+    expect(out.findings).toEqual([]);
+    expect(out.passed).toEqual([]);
+    const text = out.couldNotCheck.map((c) => c.reason).join("\n");
+    expect(text).toMatch(/journal: none of its 2 live entries has a page on this site/);
+    expect(text).toContain("fernlight-studio.example");
+  });
+
+  it("a headless Craft whose entry addresses are the CMS host, with no urls pattern, is could-not-check by section", async () => {
+    const { reading: r } = await reading(PAGES_HEALTHY, {
+      fixture: { patch: (n) => ({ ...n, url: `https://cms.fernlight.example/${String(n.uri)}` }) },
+    });
+    const out = await run(r);
+    expect(out.passed).toEqual([]);
+    expect(out.couldNotCheck.map((c) => c.reason).join("\n")).toMatch(
+      /team: none of its 2 live entries has a page on this site.*cms\.fernlight\.example/,
+    );
+  });
+
+  it("a section with some entries on this site and some on another is counted, not could-not-check", async () => {
+    const { reading: r } = await reading(PAGES_HEALTHY);
+    expect(r.onOtherSites.map((o) => o.type)).toEqual([]);
+  });
+
+  it("a urls pattern on an install with several sites and no site handle is could-not-check, never a false 404", async () => {
+    const { reading: r, seen } = await reading(PAGES_HEALTHY, {
+      settings: { id: "craft", urls: { projects: "/projects/{slug}" } },
+    });
+    expect(r.patternNeedsSite).toEqual(["projects"]);
+    expect(seen.some((s) => s.includes("bibliotheque-du-port"))).toBe(false);
+    const out = await run(r);
+    expect(out.findings).toEqual([]);
+    expect(out.passed).toEqual([]);
+    expect(out.couldNotCheck.map((c) => c.reason).join("\n")).toMatch(
+      /projects: .*urls pattern.*several sites/,
+    );
+  });
+
+  it("the same pattern with the Craft site handle given is asked for that site only", async () => {
+    const { reading: r } = await reading(PAGES_HEALTHY, {
+      settings: { id: "craft", urls: { projects: "/projects/{slug}" } },
+      craftSite: "studio",
+    });
+    expect(r.patternNeedsSite).toEqual([]);
+    expect(r.pages.map((p) => p.path).sort()).toEqual([
+      "/projects/harbour-library",
+      "/projects/tidal-baths",
+    ]);
+    expect((await run(r)).findings).toEqual([]);
+  });
+
+  it("a token whose write capability could not be confirmed is a visible could-not-check, not a pass", async () => {
+    const { reading: r } = await reading(PAGES_DRIFT, { fixture: { noIntrospection: true } });
+    expect(r.keyUnconfirmed).toBe(true);
+    const out = await run(r);
+    expect(evidence(out)).toHaveLength(1);
+    expect(out.passed).toEqual([]);
+    expect(out.couldNotCheck.map((c) => c.reason).join("\n")).toMatch(
+      /could not confirm this token cannot write.*make the schema query-only/,
+    );
+    const healthy = await reading(PAGES_HEALTHY);
+    expect(healthy.reading.keyUnconfirmed).toBeUndefined();
+  });
+
   it("never puts the client's text in a finding, the reading or the key anywhere", async () => {
     const { reading: r } = await reading(PAGES_DRIFT);
     const text = JSON.stringify([r, await run(r)]);

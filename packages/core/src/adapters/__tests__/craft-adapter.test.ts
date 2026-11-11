@@ -195,6 +195,87 @@ describe("the Craft CMS adapter: requests", () => {
   });
 });
 
+describe("the Craft CMS adapter: review fixes", () => {
+  it("accepts only the action parameter on the route, and never echoes what else was there", async () => {
+    for (const url of [
+      "https://cms.fernlight.example/api?token=SECRETX",
+      "https://cms.fernlight.example/api?action=graphql%2Fapi&x=1",
+      "https://cms.fernlight.example/api?query=%7Bping%7D",
+      "https://cms.fernlight.example/api?action=other",
+    ]) {
+      const { adapter, seen } = over({ env: { CRAFT_URL: url } });
+      const reason = await reasonOf(adapter.types());
+      expect(reason).toMatch(/no query string except action=graphql\/api/);
+      expect(reason).not.toContain("SECRETX");
+      expect(seen).toEqual([]);
+    }
+  });
+
+  it("a section handle that is the word subscription or mutation is not mistaken for a write", async () => {
+    for (const word of ["subscription", "mutation"]) {
+      const { adapter } = over({
+        adapter: { settings: { id: "craft", fingerprint: { [word]: [] } } },
+      });
+      expect(await adapter.types()).toEqual([{ name: word, count: 0 }]);
+    }
+  });
+
+  it("a document that is not exactly one query is never sent", async () => {
+    const { adapter, seen } = over({
+      adapter: { settings: { id: "craft", fingerprint: { x: ["title"] } } },
+    });
+    // The only documents built are queries; a field name cannot add a second operation.
+    await expect(adapter.fieldCounts("x", ["title } query B { a"])).rejects.toBeInstanceOf(
+      AdapterCouldNotCheck,
+    );
+    expect(seen.filter((s) => s.url.includes("entryCount"))).toEqual([]);
+  });
+
+  it("a query too long for a GET is a could-not-check that says so, and is not blamed on the token", async () => {
+    const { adapter, seen } = over();
+    const fields = Array.from(
+      { length: 20 },
+      (_, i) => `${"T".repeat(100)}${i}_Entry.${"f".repeat(100)}${i}`,
+    );
+    const reason = await reasonOf(adapter.fieldCounts("projects", fields));
+    expect(reason).toMatch(/too long for a GET request/);
+    expect(reason).not.toContain("CRAFT_TOKEN");
+    expect(seen.filter((s) => s.url.includes("entryCount"))).toEqual([]);
+  });
+
+  it("more than 20 fields is refused with a message that names the limit", async () => {
+    const { adapter } = over();
+    const reason = await reasonOf(
+      adapter.fieldCounts(
+        "projects",
+        Array.from({ length: 21 }, (_, i) => `f${i}`),
+      ),
+    );
+    expect(reason).toMatch(/at most 20 fields/);
+  });
+
+  it("an answer that came from another origin or from plain http is not taken as Craft's", async () => {
+    const inner = craftTransport(undefined, { token: KEY });
+    for (const target of ["https://elsewhere.example/api", "http://cms.fernlight.example/api"]) {
+      const redirecting: Transport = (url, req) => {
+        if (url.host === "cms.fernlight.example" && url.protocol === "https:")
+          return Promise.resolve({
+            status: 302,
+            headers: { location: `${target}${url.search}` },
+            body: (async function* () {})() as never,
+          });
+        const answered = inner(
+          new URL(url.href.replace(url.origin, "https://cms.fernlight.example")),
+          req,
+        );
+        return answered;
+      };
+      const { adapter } = over({ transport: redirecting });
+      expect(await reasonOf(adapter.types())).toMatch(/redirect/);
+    }
+  });
+});
+
 describe("the Craft CMS adapter: a key that can write", () => {
   it("is refused when the schema shows a mutation type, before any entry is asked for", async () => {
     const { adapter, seen } = over({ fixture: { mutationType: true } });
