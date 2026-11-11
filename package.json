@@ -33,6 +33,7 @@
     "docs:check": "tsx scripts/check-docs.ts",
     "docs:e2e": "playwright test",
     "gen:checks": "tsx scripts/gen-checks.ts",
+    "gen:adapters": "tsx scripts/gen-adapters.ts",
     "since": "tsx scripts/check-since.ts",
     "new:check": "tsx scripts/new-check.ts",
     "new:adapter": "tsx scripts/new-adapter.ts",

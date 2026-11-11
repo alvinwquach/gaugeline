@@ -54,7 +54,7 @@ Sanity (`adapters/sanity.ts`) is the worked example. The rules are the same for 
 - **Rate limits.** Wait once for a short Retry-After, then throw `AdapterRateLimitedError` carrying what
   was read, so the run reports a partial result.
 
-Do not start from a blank file. Run the generator:
+**The quickest way is the generator.** Run it, fill in what it marks, and you are done: there is nothing else to edit.
 
 ```bash
 pnpm new:adapter <id> [--name "<Name>"] [--read rest|graphql|live-site] [--key read-only|scoped|full-access|none]
@@ -70,42 +70,90 @@ pnpm new:adapter <id> [--name "<Name>"] [--read rest|graphql|live-site] [--key r
 | `--read live-site` (`--key none`)                         | For a platform with no read API: the live site's sitemap through the sitemap and feed reader, fields and drafts answered "not applicable", and a reason in plain words for what is not read (`adapters/framer.ts` is the model).                                    |
 | `--key full-access`                                       | For a platform whose only key can also write. This means `--read live-site`: the scaffold does not ask for that key, and `--read rest` with it is refused (release plan in PROGRESS.md, Standing orders).                                                           |
 
-The generator writes the adapter (`adapters/<id>.ts`), a recorded-response fixture of an invented site
-(`adapters/__tests__/<id>-fixture.ts`), its own small test, a docs example and docs test, the docs page
-`docs/integrations/<id>.md`, a changeset, and it edits the five shared files for you: the row in
-`registry.ts` (taken out of `PLANNED_ADAPTERS` if it was there), the `ContractEntry` in `entries.ts`,
-the exports in `adapters/index.ts`, the row in `docs/integrations/index.md` and the page in `docs/nav.ts`.
-The contract suite (`contract.test.ts`, one `describe.each` over every entry) then runs against the
-new adapter with no test of yours needed for its rules: counts and fingerprints but never a value, a
-missing field counts 0, no request but GET or HEAD, a key that is refused is could-not-check, a rate limit
-is waited out once and then reported as partial. A platform that needs no key to read what is published
-(WordPress) sets `keyHeader` on its entry: the published reads then must carry no key, and only the reads
-that need it carry exactly that header.
+It writes **new files only**: `adapters/<id>.ts`, the entry file `adapters/<id>.entry.ts` (metadata, the loader,
+the settings rules and the docs row), `adapters/__tests__/<id>-fixture.ts` (a recorded-response fixture of an
+invented site), `<id>.contract.ts`, its own small test, a docs example and docs test, `docs/integrations/<id>.md`
+and a changeset. Then it runs what `pnpm gen:adapters` runs, so the new adapter is in the generated index, the
+docs table and the sidebar with no hand edit. If a planned entry for the id exists (`strapi.entry.ts` with
+`status: "planned"`), the generator replaces that one file with the built entry and keeps its name. It never
+touches `registry.ts`, `adapters/index.ts`, `entries.ts`, the docs index, `docs/nav.ts` or `PROGRESS.md`.
+
+The contract suite (`contract.test.ts`, one `describe.each` over every entry) then runs against the new adapter
+with no test of yours needed for its rules (counts and fingerprints but never a value, a missing field counts 0,
+no request but GET or HEAD, a key that is refused is could-not-check, a rate limit is waited out once and then
+reported as partial).
 
 Then make it real, in this order:
 
 1. Read the platform's documentation and fill in every `TODO(new:adapter)` (`grep -rn "TODO(new:adapter" .`).
-   They are in the adapter (its endpoints, the key's permissions, the mapping of an item), the fixture
-   (change the answers to the shape of the platform's documented responses; keep every value invented), the
-   docs page and the changeset. Put the date you read the documentation on the docs page and mark a detail
-   you could not confirm `uncited`. The scaffold passes the contract suite with the markers in place, so
-   you can build step by step; `no-todo.test.ts` fails until the last one is gone, which is what keeps
-   unfinished text out of the docs, the changelog and the run header. (It is the adapters' version of the
-   guard `pnpm gen:checks` has for a check.)
+   They are in the adapter (its endpoints, the key's permissions, the mapping of an item), the entry (the docs
+   row), the fixture (change the answers to the shape of the platform's documented responses; keep every value
+   invented), the docs page and the changeset. Put the date you read the documentation on the docs page and
+   mark a detail you could not confirm `uncited`. The scaffold passes the contract suite with the markers in
+   place, so you can build step by step; `no-todo.test.ts` fails until the last one is gone, which is what keeps
+   unfinished text out of the docs, the changelog and the run header.
 2. Run `pnpm exec tsx packages/core/src/adapters/__tests__/<id>-docs-example.ts`, paste its output into the
    page's `Output` block, and make the settings block match `<ID>_SETTINGS`. The docs test compares them.
-3. Add a test in `<id>-adapter.test.ts` for each thing this platform does that no other does. Do not
-   repeat the contract.
-4. A new environment variable changes the public surface: run `pnpm surface`. Update the sentences in
-   `docs/integrations/index.md` that list the built adapters, and PROGRESS.md.
+3. Add a test in `<id>-adapter.test.ts` for each thing this platform does that no other does. Do not repeat the
+   contract. After you change an entry file, run `pnpm gen:adapters` again (CI runs `--check`).
+4. A new environment variable changes the public surface: run `pnpm surface`.
 5. A check that is particular to the platform (WordPress and Webflow have two each) is a separate step:
    `pnpm new:check`, then register it with the platform's other checks.
 
 POST is for a documented read-only query endpoint only, and only through the allowlist in ADR-0006
 (branch `adr/read-only-post`, not merged yet). Until it has merged the scaffold sends GET and HEAD and
-nothing else; it marks, in the adapter and in its `registry.ts` row, where the `queryAllow` entry (method,
-path pattern, body shape) goes. Do not add a POST of your own, and do not invent a `query` method on the
-fetcher.
+nothing else; it marks, in the adapter, where the `queryAllow` entry (method, path pattern, body shape) goes.
+Do not add a POST of your own, and do not invent a `query` method on the fetcher.
+
+By hand, the steps are the same files. **Adding an adapter adds files and edits no shared one** (no
+`registry.ts`, no `config.ts`, no `adapters/index.ts`, no `entries.ts`, no `docs/integrations/index.md` row, no
+`docs/nav.ts` entry, no `PROGRESS.md`): that is what kept six adapter pull requests conflicting.
+
+The steps, if you write the files yourself:
+
+1. Write the adapter in `packages/core/src/adapters/<id>.ts` (more files may start with `<id>`, such as
+   `<id>-read.ts`). It exports `create<Cms>Adapter(options)` and nothing else needs to leave the folder.
+2. Write its **entry file**, `packages/core/src/adapters/<id>.entry.ts`, the only thing the rest of Gaugeline
+   knows about it without loading it. It exports `entries: readonly AdapterEntry[]` (the type is in
+   `adapters/entry.ts`; `sanity.entry.ts` and `wordpress.entry.ts` are worked examples, and a planned adapter such
+   as `strapi.entry.ts` is the same file with `status: "planned"` and a `branch`, which you replace):
+   - `id` (lower case, digits, hyphens: the name in `gaugeline.adapters.json`), `name` (as a person writes it),
+     `status: "built"`;
+   - `describe`: the `AdapterDescription` (name, `docsUrl`, `keyKind`, `noKey`, `beta`). Export it as
+     `<CMS>_DESCRIPTION` from this file: the adapter module imports it from here and returns it from `describe()`,
+     so the run header and the adapter say one thing (a test compares them);
+   - `envVars`: the variables the adapter may read, when a caller must copy them before loading it;
+   - `settings`: what it adds to the `gaugeline.adapters.json` rules: `pageReader: true` if it reads the live site's
+     sitemap and takes `site`, `sitemaps` and `feeds`; `hyphenFields: true` if its field names have hyphens;
+   - `docs`: the row in `docs/integrations/index.md`: `key` (what key it asks for) and `reads` (what it reads,
+     one line of Markdown), and `page`: its docs page `{ slug, title }` in the sidebar;
+   - `load`: **the loader.** `load: lazy("<id>", async () => { const { create<Cms>Adapter } = await
+import("./<id>.js"); return (c, settings) => create<Cms>Adapter({ env: c.env, fetcher: c.fetcher, settings,
+...(c.sleep ? { sleep: c.sleep } : {}) }); })`. This dynamic `import()` is the only way the adapter's code is
+     reached, so the bundler gives it its own chunk and a WordPress-only run never loads the Shopify code.
+     An entry file imports only types, `lazy` (`load.ts`) and plain data, never the adapter module.
+3. Write its **contract file**, `packages/core/src/adapters/__tests__/<id>.contract.ts`, beside a recorded-response
+   fixture (`<id>-fixture.ts`; invented content, no real client data; `sanity.contract.ts` is the example). It
+   exports `contractEntries: readonly ContractEntry[]`. The contract suite (`contract.test.ts`, one `describe.each`
+   over every entry) then runs against it with no test of yours needed for these rules: counts and fingerprints
+   but never a value, a missing field counts 0, no request but GET or HEAD, a key that is refused is
+   could-not-check, a rate limit is waited out once and then reported as partial. A platform that needs no key to
+   read what is published (WordPress) sets `keyHeader` on its entry: the published reads then must carry no key,
+   and only the reads that need it carry exactly that header. Tests may import the adapter module directly.
+4. Run **`pnpm gen:adapters`**. It collects every `adapters/*.entry.ts` and `adapters/__tests__/*.contract.ts`
+   into `adapters/entries.generated.ts` and `adapters/__tests__/contracts.generated.ts`, rewrites the table
+   between the `adapters:start` and `adapters:end` markers in `docs/integrations/index.md`, and rewrites
+   `docs/adapter-pages.generated.ts` (the adapters' pages in `docs/nav.ts`). Commit what it writes; CI runs
+   `pnpm gen:adapters --check`. If two pull requests both add an adapter and the generated files conflict, run
+   `pnpm gen:adapters` again after the rebase.
+5. Write `docs/integrations/<id>.md` (the page named in `page.slug`) with a freelancer example, and add a changeset.
+
+Code outside `adapters/<id>*.ts` (the CLI, `core/src/index.ts`, the check registries, the docs scripts) gets an
+adapter with `createAdapter(built, context, settings)` or `createAdapters(config, context)` (both `async`), its
+description with `adapterDescription(id)` and its variables with `adapterEnvVars(id)`, and never with a static
+`import` of the adapter module; `adapters/__tests__/lazy.test.ts` fails the build if it does. A pull request that
+changes code does not edit `PROGRESS.md` either (the gate in `scripts/lib/gate.ts` fails it unless it carries the
+label `progress`): progress updates go in their own pull request after every five merges.
 
 ## Writing a recipe
 

@@ -1,3 +1,14 @@
+#if key
+import { testKey } from "../../connectors/__tests__/fake.js";
+#end
+import { create$PASCAL$Adapter } from "../$ID$.js";
+import type { ContractEntry } from "./contract.js";
+#if live
+import { $CAMEL$Routes, $CAMEL$Serve, $P$_MARKERS, $P$_SITE } from "./$ID$-fixture.js";
+#else
+import { $CAMEL$Transport, $P$_MARKERS } from "./$ID$-fixture.js";
+#end
+
 /**
 #if live
  * Larkspur Yoga Studio: a small studio on $NAME$. The live site's sitemap is all Gaugeline reads, so there
@@ -80,3 +91,6 @@ export const $CAMEL$Entry: ContractEntry = {
   rateLimit: { options: { types: ["classes", "teachers"] }, succeedFirst: 2, atLeast: 2 },
 };
 #end
+
+/** The contract suite's entries for this adapter (collected by pnpm gen:adapters). */
+export const contractEntries: readonly ContractEntry[] = [$CAMEL$Entry];

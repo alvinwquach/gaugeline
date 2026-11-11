@@ -27,6 +27,7 @@ import type { Renewals } from "./renewals/reader.js";
 import type { Handoff } from "./handoff/reader.js";
 import type { Cost } from "./cost/reader.js";
 import type { Trackers } from "./trackers/reader.js";
+import type { Published } from "./published/reader.js";
 import type { Libraries } from "./libraries/reader.js";
 import type { WordPress } from "./wordpress/reader.js";
 import type { HiddenConfig } from "./hidden.js";
@@ -118,6 +119,8 @@ export interface SiteCheckOptions {
   cost?: Cost;
   /** What the tracker checks read (`--trackers`). Without it they are not in the run. */
   trackers?: Trackers;
+  /** What the published-not-live checks read (`--published`). Without it they are not in the run. */
+  published?: Published;
   /** What the library check reads (`--libraries`). Without it the check is not in the run. */
   libraries?: Libraries;
   /** What the WordPress checks read (`--wordpress`). Without it they are not in the run. */
@@ -310,6 +313,7 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
       ...(opts.handoff ? { handoff: opts.handoff } : {}),
       ...(opts.cost ? { cost: opts.cost } : {}),
       ...(opts.trackers ? { trackers: opts.trackers } : {}),
+      ...(opts.published ? { published: opts.published } : {}),
       ...(opts.libraries ? { libraries: opts.libraries } : {}),
       ...(opts.wordpress ? { wordpress: opts.wordpress } : {}),
       ...(opts.hidden ? { hidden: opts.hidden } : {}),

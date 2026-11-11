@@ -99,9 +99,15 @@ describe("docs/integrations/index.md: the key and the example", () => {
 describe("CONTRIBUTING.md: writing an adapter", () => {
   const contributing = read("CONTRIBUTING.md");
 
-  it("has the section the docs page links to, naming the contract suite and the three places a new adapter goes", () => {
+  it("has the section the docs page links to, naming the entry file, the contract file and the generator a new adapter needs", () => {
     expect(contributing).toContain("## Writing an adapter");
-    for (const place of ["registry.ts", "entries.ts", "docs/integrations/index.md"])
+    for (const place of [
+      ".entry.ts",
+      ".contract.ts",
+      "pnpm gen:adapters",
+      "lazy(",
+      "docs/integrations/index.md",
+    ])
       expect(contributing).toContain(place);
   });
 });

@@ -2,33 +2,14 @@ import { createSitemapFeedAdapter } from "./sitemap-feed.js";
 import type { Fetcher } from "../fetcher.js";
 import {
   AdapterCouldNotCheck,
-  type AdapterDescription,
   type AdapterSettings,
   type ContentAdapter,
   type PublishedDoc,
   type PublishedOptions,
 } from "./types.js";
 
-/**
- * The $NAME$ adapter reads the live site only. It asks for no key: it reads what the site publishes, the
- * same files every visitor can read. `keyKind` is "read-only" because nothing it does can change anything;
- * `noKey` makes the run header say there is no key at all. If the platform's own API is in beta, add
- * `beta: true` (as adapters/framer.ts does): the run header then says "(beta)" and the docs page says what may change.
- *
- * Why it reads the live site only (rule 6 of CLAUDE.md, and the release plan in PROGRESS.md):
-#if full-access
- * TODO(new:adapter) $NAME$'s key can also write (say what it can change, and where you read that), so
- * Gaugeline does not ask for it, read it or use it.
-#else
- * TODO(new:adapter) $NAME$ has no read API (say what you looked for, and where), so there is nothing to ask.
-#end
- */
-export const $P$_DESCRIPTION: AdapterDescription = {
-  name: "$NAME$",
-  docsUrl: "https://gaugeline.dev/docs/integrations/$ID$",
-  keyKind: "read-only",
-  noKey: true,
-};
+import { $P$_DESCRIPTION } from "./$ID$.entry.js";
+export { $P$_DESCRIPTION };
 
 /**
  * Why $NAME$'s content is not read beyond the live site, in one place so the answer, the docs page and the

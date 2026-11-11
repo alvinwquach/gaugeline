@@ -11,7 +11,6 @@ import { fillUrlTemplate, hashValue } from "./fingerprint.js";
 import {
   AdapterCouldNotCheck,
   AdapterRateLimitedError,
-  type AdapterDescription,
   type AdapterSettings,
   type ContentAdapter,
   type PublishedDoc,
@@ -19,28 +18,12 @@ import {
   type TypeCount,
 } from "./types.js";
 
-/**
- * The $NAME$ adapter.
-#if key
- * TODO(new:adapter) say which key the platform offers and why it is the narrowest ($KEYKIND$). Write the
- * same sentence at the top of docs/integrations/$ID$.md.
-#else
- * It reads the platform's public API, which needs no key. TODO(new:adapter) say which endpoints are public.
-#end
- */
-// If the platform's own API is in beta, add `beta: true` (as adapters/framer.ts does): the run header then
-// says "(beta)" and the docs page says what may change.
-export const $P$_DESCRIPTION: AdapterDescription = {
-  name: "$NAME$",
-  docsUrl: "https://gaugeline.dev/docs/integrations/$ID$",
-  keyKind: "$KEYKIND$",
-#if !key
-  noKey: true,
-#end
-};
+import { $P$_DESCRIPTION } from "./$ID$.entry.js";
+export { $P$_DESCRIPTION };
 
 #if key
-export const $P$_TOKEN = "$P$_TOKEN";
+import { $P$_TOKEN } from "./$ID$.entry.js";
+export { $P$_TOKEN };
 
 #end
 /** TODO(new:adapter) the platform's API base, from its documentation (the date you checked it goes on the docs page). */
