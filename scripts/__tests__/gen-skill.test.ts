@@ -202,3 +202,15 @@ describe("the skill's safety rules", () => {
       expect(options, m[1]).toContain(`\`${m[1]}`);
   });
 });
+
+describe("the guide", () => {
+  it("is in the sidebar, links the skill folder and shows a runnable example", () => {
+    const guide = read(join(repoRoot, "docs/guides/agent-skill.md"));
+    expect(read(join(repoRoot, "docs/nav.ts"))).toContain('slug: "guides/agent-skill"');
+    expect(guide).toContain("skills/gaugeline");
+    expect(guide).toMatch(
+      /<!-- fixture: agent-skill-bakery -->\s+```sh title=Terminal\n\$ npx gaugeline /,
+    );
+    expect(guide).toContain("gen:skill");
+  });
+});
