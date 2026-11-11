@@ -17,7 +17,13 @@ function markdownFiles(dir: string): string[] {
       continue;
     const full = join(dir, name);
     if (statSync(full).isDirectory()) out.push(...markdownFiles(full));
-    else if (name.endsWith(".md") && name !== "index.md" && name !== "README.md") out.push(full);
+    // docs/index.md is the home page; a folder's index.md (docs/integrations/index.md) is a page, slug "integrations/index".
+    else if (
+      name.endsWith(".md") &&
+      name !== "README.md" &&
+      !(name === "index.md" && dir === docsDir)
+    )
+      out.push(full);
   }
   return out;
 }
