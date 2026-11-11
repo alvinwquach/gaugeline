@@ -70,8 +70,14 @@ jobs:
       - run: pnpm adr:check
       - run: pnpm community:check
       - name: Public surface (STABILITY.md)
+        env:
+          # A pull request is compared with the base commit its merge ref was built from. The tip of main at job
+          # time may hold a merge that landed since: a pull request would then look as if it removed what that
+          # merge added. Other events have no base commit and compare with the tip of main.
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BASE_REF: ${{ github.base_ref || 'main' }}
         run: |
-          git fetch --depth=1 origin "${{ github.base_ref || 'main' }}"
+          git fetch --depth=1 origin "${BASE_SHA:-$BASE_REF}"
           pnpm surface --check --base FETCH_HEAD
           # A released check's "Since" version never changes (docs/check-since.lock.json).
           pnpm since --base FETCH_HEAD

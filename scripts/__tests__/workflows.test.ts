@@ -139,6 +139,21 @@ describe("faster pull request runs", () => {
     expect(matrices().pullRequest).toEqual({ include: [{ os: "ubuntu-latest", node: "22" }] });
   });
 
+  it("the public surface and since checks compare a pull request with the commit its merge ref was built from, not main's moving tip", () => {
+    const ci = parse(read("ci.yml")) as {
+      jobs: { lint: { steps: { name?: string; run?: string; env?: Record<string, string> }[] } };
+    };
+    const step = ci.jobs.lint.steps.find((s) => s.name?.startsWith("Public surface"));
+    expect(step).toBeDefined();
+    // A pull request fetches its base commit; any other event keeps fetching the tip of main.
+    expect(step?.env?.BASE_SHA).toBe("${{ github.event.pull_request.base.sha }}");
+    expect(step?.env?.BASE_REF).toBe("${{ github.base_ref || 'main' }}");
+    expect(step?.run).toContain('git fetch --depth=1 origin "${BASE_SHA:-$BASE_REF}"');
+    // The comparison is as strict as before: both checks still run against what was fetched.
+    expect(step?.run).toContain("pnpm surface --check --base FETCH_HEAD");
+    expect(step?.run).toContain("pnpm since --base FETCH_HEAD");
+  });
+
   it("main and the Release pull request run the full matrix: three systems on Node 22 and 24", () => {
     expect(matrices().full).toEqual({
       os: ["ubuntu-latest", "windows-latest", "macos-latest"],
