@@ -191,6 +191,11 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "Strapi lists unpublished entries to visitors with no token",
     "Security & email",
   ],
+  "umbraco-node-no-page": ["A published Umbraco node has no page on the live site", "Launch day"],
+  "umbraco-delivery-api-public": [
+    "The Umbraco Delivery API answers visitors with no key",
+    "Security & email",
+  ],
   "app-smart-banner-mismatch": ["The iPhone app banner promotes a different app", "Visitors"],
   "checkout-js-only": ["Nothing on the page can be linked to buy", "Sales & prices"],
   "crm-field-names": ["A form sends fields the CRM doesn't have", "Leads"],
@@ -1130,6 +1135,18 @@ export const CHECK_TEXT: Readonly<
     "Unfinished work is public: prices before they are announced, an event before it is confirmed, a draft nobody has approved. Anyone who guesses the route can read it, and search engines or scrapers may already have.",
     "In Strapi's settings, open Users & Permissions, then the Public role, and remove find and findOne from the collection, or give the front end a read-only API token and keep the Public role closed. If the front end previews drafts, send the token from the server, never from the browser.",
     "probing check, off without --owner-consent: this check asks Strapi's public routes for entries that are not published, so it runs only with --owner-consent (or gaugeline.consent.json), on sites you own or have permission to test; per collection named in the settings, with no Authorization header and no cookie: GET /api/{collection} for the published total, GET /api/{collection}?status=draft and GET /api/{collection}?publicationState=preview for the draft total (the second is asked even when the first answers with no extra entries, because a Strapi that ignores a parameter it does not know answers with the published list), all with pagination[pageSize]=1 and fields[0]=updatedAt; when a draft total is larger, the ids of both lists are read (at most 500 each, each list stepped by the page size the answer reports, fields[0]=updatedAt only) and the entries only the draft list has are counted and named by id (Strapi 5 documentId, Strapi 4 id); a collection that answers 401 or 403 to the published list is not shown to visitors, and a 404 is could-not-check (most likely a mistyped name); a collection that refuses the draft list shows no drafts to visitors; one whose draft lists show no extra entries gives no sign of public drafts, which is not proof, since a Strapi that ignores both spellings looks the same as one with nothing unpublished; a finding is a count and ids, never a field; ids are held in a Set to subtract the published list from the draft list; the requests carry no header the fetcher adds per address",
+  ],
+  "umbraco-node-no-page": [
+    "Umbraco says a node is published, and the address its page should have answers 404 or 410 on the live site.",
+    "Links, the sitemap and search results point at a page that is not there, and the client's announcement leads to an error page.",
+    "Check the content type has a template (or the front end builds a route for it), that the node's culture and domain settings match the site being checked, and that a headless front end was rebuilt or revalidated after publishing. If the node should not be public, unpublish it in the Umbraco backoffice.",
+    "GET /umbraco/delivery/api/v2/content?filter=contentType:{alias} for each content type named in the settings (the published list; skip and take step by the number of nodes that came back, and a list is complete only when the position reaches the total it reports), then one GET of the live address: the settings' `urls` pattern when the type has one, else the route.path the API gave the node (redirects followed). A final 404 or 410 is the finding; any other answer that is not a 2xx is could-not-check for that page. A node with no route and no pattern, and a path that is not a plain path (a host, `..`, an escaped slash), are could-not-check by name and are not asked. Ids and paths only: no property is requested beyond those named in `fingerprint`, and none is used for this. A site with several root nodes and no domains may give paths relative to a start item: set `urls` for those types.",
+  ],
+  "umbraco-delivery-api-public": [
+    "You have set UMBRACO_API_KEY, which says the Content Delivery API is meant to be protected, and a plain GET of its list route with no key is answered with the list of published nodes.",
+    "Anyone who finds the route can read every published node as data, including nodes that are published but not linked from the site, and can page through the whole content tree. If the API was meant to be private, its protection is off.",
+    "In appsettings.json set Umbraco:CMS:DeliveryApi:PublicAccess to false and keep an ApiKey, then send the key from the server only (never from the browser). If the API is meant to be public, remove UMBRACO_API_KEY from Gaugeline's settings; it is only a hint for this check.",
+    "probing check, off without --owner-consent: this check asks the Delivery API's public route as a visitor with no key, so it runs only with --owner-consent (or gaugeline.consent.json), on sites you own or have permission to test; only when UMBRACO_API_KEY is set (that is the owner saying the API is private); one GET of /umbraco/delivery/api/v2/content?take=1 with no Api-Key header, no cookie and nothing the fetcher adds per address, fields=properties[] and expand=none; a 200 with a list and a numeric total is the finding (the total is a count, never a node); 401 or 403 is a protected API and 404 is an API that is off or not at that address, both with no finding; a 200 that is not the API's list (a page that answers every path) and any other status are could-not-check; the answer is read as a count and nothing else",
   ],
   "app-smart-banner-mismatch": [
     "The page's Smart App Banner (the apple-itunes-app meta tag) names a different app id than the page's App Store link.",
