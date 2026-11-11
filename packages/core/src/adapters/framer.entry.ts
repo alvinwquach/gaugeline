@@ -21,6 +21,7 @@ export const entries: readonly AdapterEntry[] = [
     name: "Framer",
     status: "built",
     describe: FRAMER_DESCRIPTION,
+    detect: { generator: ["framer"], hosts: ["framerusercontent.com"] },
     settings: { pageReader: true },
     load: lazy("framer", async () => {
       const { createFramerAdapter } = await import("./framer.js");

@@ -23,6 +23,7 @@ export const entries: readonly AdapterEntry[] = [
     status: "built",
     describe: WEBFLOW_DESCRIPTION,
     envVars: [WEBFLOW_TOKEN, WEBFLOW_SITE_ID],
+    detect: { generator: ["webflow"], hosts: ["website-files.com", "uploads-ssl.webflow.com"] },
     settings: { hyphenFields: true },
     load: lazy("webflow", async () => {
       const { createWebflowAdapter } = await import("./webflow.js");

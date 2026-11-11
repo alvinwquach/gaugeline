@@ -5,7 +5,9 @@
 ![License: MIT](https://img.shields.io/badge/license-MIT-informational)
 
 Gaugeline checks a website the way search engines and visitors see it, and tells whoever owns
-the site what to fix first. It only reads: every request to a checked site is a GET or a HEAD.
+the site what to fix first. It only reads: every request to a checked site is a GET or a HEAD. The one exception for reads is a
+documented read-only query endpoint on an adapter's allowlist ([ADR-0006](docs/adr/0006-read-only-post-queries.md)),
+and notifications to your own channels ([ADR-0005](docs/adr/0005-notifications-post-to-your-own-channels.md)).
 
 > Status: version 0.1.0 is ready to publish; nothing is on npm yet.
 

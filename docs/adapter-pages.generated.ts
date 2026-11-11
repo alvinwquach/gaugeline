@@ -11,6 +11,10 @@ export const ADAPTER_PAGES: { slug: string; title: string }[] = [
   },
   { slug: "integrations/framer", title: "Framer: content checks for sites built on Framer (beta)" },
   {
+    slug: "integrations/git-content",
+    title: "Content kept in git: content checks for sites whose content lives in the repo",
+  },
+  {
     slug: "integrations/hubspot-cms",
     title: "HubSpot CMS: content checks for sites built on HubSpot CMS",
   },

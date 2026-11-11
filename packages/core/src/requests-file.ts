@@ -13,7 +13,14 @@ import type { PageData, StructuredBlock } from "./run-view.js";
  * headers and no response bodies beyond the page's own title, canonical, first words and
  * structured data, and it is cut to the caps below, saying so in the file itself.
  */
-export const REQUESTS_FILE_SCHEMA_VERSION = 1 as const;
+export const REQUESTS_FILE_SCHEMA_VERSION = 2 as const;
+/**
+ * Version 1 (published as schema/requests.v1.json) listed GET and HEAD requests only. Version 2 adds
+ * the read-only queries of ADR-0006: a request of kind "query", method POST, with `allow`, the id of
+ * the allowlist entry that let it through (never the body, a header or a key). A file of version 1
+ * is still read.
+ */
+export const REQUESTS_FILE_V1 = 1 as const;
 
 /** Requests kept in the file. A run makes a few hundred at most; the rest are counted, not listed. */
 export const MAX_SAVED_REQUESTS = 1000;
@@ -44,61 +51,86 @@ const badBlockSchema = z
   })
   .strict();
 
+const requestFields = {
+  url: z.string(),
+  /** null when nothing answered. */
+  status: z.number().int().nullable(),
+  error: z.enum(["timeout", "private-address-refused", "no-answer"]).optional(),
+  ms: z.number().nonnegative(),
+  /** Where a 3xx pointed. */
+  location: z.string().optional(),
+};
+
+const requestSchemaV1 = z
+  .object({
+    ...requestFields,
+    kind: z.enum(REQUEST_KINDS.filter((k) => k !== "query") as [string, ...string[]]),
+    method: z.enum(["GET", "HEAD"]),
+  })
+  .strict();
+
 const requestSchema = z
   .object({
-    url: z.string(),
+    ...requestFields,
     kind: z.enum(REQUEST_KINDS),
-    method: z.enum(["GET", "HEAD"]),
-    /** null when nothing answered. */
-    status: z.number().int().nullable(),
-    error: z.enum(["timeout", "private-address-refused", "no-answer"]).optional(),
-    ms: z.number().nonnegative(),
-    /** Where a 3xx pointed. */
-    location: z.string().optional(),
+    method: z.enum(["GET", "HEAD", "POST"]),
+    /** On a query only: the id of the allowlist entry (ADR-0006). */
+    allow: z.string().optional(),
   })
   .strict();
 
-export const requestsFileSchema = z
-  .object({
-    schemaVersion: z.literal(REQUESTS_FILE_SCHEMA_VERSION),
-    generatedBy: z.string(),
-    notice: z.string(),
-    url: z.string(),
-    startedAt: z.iso.datetime({ offset: true }),
-    /** What was cut to keep the file small. Everything is "not cut" in a normal run. */
-    truncation: z
-      .object({
-        truncated: z.boolean(),
-        maxRequests: z.number().int().nonnegative(),
-        requestsTotal: z.number().int().nonnegative(),
-        requestsSaved: z.number().int().nonnegative(),
-        maxPageBytes: z.number().int().nonnegative(),
-        notes: z.array(z.string()),
-      })
-      .strict(),
-    /** By kind, then in the order they were requested. */
-    requests: z.array(requestSchema),
-    page: z
-      .object({
-        url: z.string(),
-        title: z.string().optional(),
-        canonical: z.string().optional(),
-        words: z.number().int().nonnegative(),
-        firstWords: z.string(),
-        blocks: z.array(z.union([okBlockSchema, badBlockSchema])),
-        /** Structured data blocks left out because the page's text limit was reached. */
-        blocksOmitted: z.number().int().nonnegative(),
-        /** Names of the fields above that were cut: "title", "canonical", "firstWords", "blocks". */
-        truncated: z.array(z.enum(["title", "canonical", "firstWords", "blocks"])),
-      })
-      .strict(),
-  })
-  .strict();
+function fileSchema<V extends number, R extends z.ZodType>(version: V, request: R) {
+  return z
+    .object({
+      schemaVersion: z.literal(version),
+      generatedBy: z.string(),
+      notice: z.string(),
+      url: z.string(),
+      startedAt: z.iso.datetime({ offset: true }),
+      /** What was cut to keep the file small. Everything is "not cut" in a normal run. */
+      truncation: z
+        .object({
+          truncated: z.boolean(),
+          maxRequests: z.number().int().nonnegative(),
+          requestsTotal: z.number().int().nonnegative(),
+          requestsSaved: z.number().int().nonnegative(),
+          maxPageBytes: z.number().int().nonnegative(),
+          notes: z.array(z.string()),
+        })
+        .strict(),
+      /** By kind, then in the order they were requested. */
+      requests: z.array(request),
+      page: z
+        .object({
+          url: z.string(),
+          title: z.string().optional(),
+          canonical: z.string().optional(),
+          words: z.number().int().nonnegative(),
+          firstWords: z.string(),
+          blocks: z.array(z.union([okBlockSchema, badBlockSchema])),
+          /** Structured data blocks left out because the page's text limit was reached. */
+          blocksOmitted: z.number().int().nonnegative(),
+          /** Names of the fields above that were cut: "title", "canonical", "firstWords", "blocks". */
+          truncated: z.array(z.enum(["title", "canonical", "firstWords", "blocks"])),
+        })
+        .strict(),
+    })
+    .strict();
+}
+
+export const requestsFileSchema = fileSchema(REQUESTS_FILE_SCHEMA_VERSION, requestSchema);
+/** The version 1 shape, kept so an older saved file can still be read. */
+export const requestsFileSchemaV1 = fileSchema(REQUESTS_FILE_V1, requestSchemaV1);
 
 export type RequestsFile = z.infer<typeof requestsFileSchema>;
+export type RequestsFileV1 = z.infer<typeof requestsFileSchemaV1>;
 
-export function parseRequestsFile(value: unknown): RequestsFile {
-  return requestsFileSchema.parse(value);
+/** Read a saved requests file of version 2 or of version 1. */
+export function parseRequestsFile(value: unknown): RequestsFile | RequestsFileV1 {
+  const version = (value as { schemaVersion?: unknown } | null)?.schemaVersion;
+  return version === REQUESTS_FILE_V1
+    ? requestsFileSchemaV1.parse(value)
+    : requestsFileSchema.parse(value);
 }
 
 export interface RequestsFileCaps {
@@ -156,6 +188,7 @@ export function buildRequestsFile(
       url: r.url,
       kind: r.kind,
       method: r.method,
+      ...(r.allow === undefined ? {} : { allow: r.allow }),
       status: r.status,
       ...(r.error === undefined ? {} : { error: r.error }),
       ms: r.ms,

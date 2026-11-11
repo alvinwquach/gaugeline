@@ -5,6 +5,17 @@
 A check never changes anything. Every request to a checked site is a `GET` or a `HEAD`, sent
 through one module (`packages/core/src/fetcher.ts`) that refuses any other method.
 
+The one exception for reads is a documented read-only query endpoint on an adapter's allowlist
+(ADR-0006): some content systems (Wix Data, GraphQL-only APIs) answer a read only to a `POST`. The
+fetcher sends it only through `fetcher.query()`, by the id of an endpoint the adapter's own file
+registered (code that merely holds a fetcher cannot write one), at the registered host and path, with
+a body that is a query: one GraphQL `query` (a `mutation` or `subscription` is refused), or a JSON
+object whose keys and operators are the vendor's documented ones and none, however deep, is named
+like a write. It never follows a redirect, so the key goes to one host, every query appears in the
+Pages checked view and the saved requests file with the endpoint's id and never its body, and the
+contract tests and a scan of the source fail an adapter that builds anything else. `PUT`, `PATCH` and `DELETE` are never sent. Notifications to your own
+channels are the other `POST` (ADR-0005).
+
 ## Addresses Gaugeline will not request
 
 A checked site must not be able to turn Gaugeline against the computer it runs on or the network

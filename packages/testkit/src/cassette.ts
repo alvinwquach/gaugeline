@@ -180,7 +180,8 @@ export function useCassette(name: string, opts: CassetteOptions = {}): CassetteF
     const res = await real(url, req);
     const body = req.method === "HEAD" ? "" : await readAll(res.body);
     const raw: Interaction = {
-      method: req.method,
+      // assertReadOnly above refuses POST: a cassette records GET and HEAD only (ADR-0006: queries are not recorded here).
+      method: req.method as "GET" | "HEAD",
       url: url.href,
       status: res.status,
       headers: res.headers,

@@ -219,7 +219,7 @@ describe("the CMS collections: could-not-check, with the reason, for that part o
 
   it("has no members, and the endpoint named as unusable is the one the docs name", () => {
     expect(build().adapter.members).toBeUndefined();
-    expect(WIX_CMS_READ_PATH.method).toBe("POST");
+    expect(WIX_CMS_READ_PATH.queryVerb).toBe("POST");
     expect(WIX_CMS_READ_PATH.path).toBe("/wix-data/v2/items/query");
   });
 });

@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 /**
- * Where the built app lives. In the published package the CLI is one file, dist/index.js, and the
+ * Where the built app lives. In the published package the CLI is dist/index.js and its chunks, and the
  * client is the folder dist/client beside it. Run from source (the tests), this file is
  * src/client-dir.ts, and the build put the client in ../dist/client.
  */

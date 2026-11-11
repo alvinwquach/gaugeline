@@ -193,7 +193,8 @@ function readRequest(v: unknown): RequestRow | undefined {
     !isObject(v) ||
     !isString(v.url) ||
     !REQUEST_KINDS.some((k) => k === v.kind) ||
-    (v.method !== "GET" && v.method !== "HEAD") ||
+    (v.method !== "GET" && v.method !== "HEAD" && v.method !== "POST") ||
+    (v.allow !== undefined && !isString(v.allow)) ||
     !(v.status === null || isCount(v.status)) ||
     !isCount(v.ms) ||
     (v.location !== undefined && !isString(v.location)) ||
@@ -207,6 +208,7 @@ function readRequest(v: unknown): RequestRow | undefined {
     url: v.url,
     kind: v.kind as RequestRow["kind"],
     method: v.method,
+    ...(v.allow !== undefined ? { allow: v.allow } : {}),
     status: v.status,
     ...(v.error ? { error: v.error } : {}),
     ms: v.ms,
