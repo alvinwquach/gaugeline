@@ -45,20 +45,6 @@ export const BUILT_ADAPTERS: ReadonlyMap<string, BuiltAdapter> = new Map<string,
     },
   ],
   [
-    "framer",
-    {
-      id: "framer",
-      describe: FRAMER_DESCRIPTION,
-      create: (c, settings) =>
-        createFramerAdapter({
-          fetcher: c.fetcher,
-          site: c.site,
-          settings,
-          ...(c.sleep ? { sleep: c.sleep } : {}),
-        }),
-    },
-  ],
-  [
     "sitemap-feed",
     {
       id: "sitemap-feed",
@@ -95,6 +81,20 @@ export const BUILT_ADAPTERS: ReadonlyMap<string, BuiltAdapter> = new Map<string,
         createWebflowAdapter({
           env: c.env,
           fetcher: c.fetcher,
+          settings,
+          ...(c.sleep ? { sleep: c.sleep } : {}),
+        }),
+    },
+  ],
+  [
+    "framer",
+    {
+      id: "framer",
+      describe: FRAMER_DESCRIPTION,
+      create: (c, settings) =>
+        createFramerAdapter({
+          fetcher: c.fetcher,
+          site: c.site,
           settings,
           ...(c.sleep ? { sleep: c.sleep } : {}),
         }),
