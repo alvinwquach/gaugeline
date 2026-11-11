@@ -173,8 +173,10 @@ export function umbracoTransport(
   content: readonly FixtureType[] = UMBRACO_CONTENT,
   options: UmbracoFixtureOptions = {},
 ): Transport {
+  // The live site answers a page with or without its trailing slash, as an Umbraco site does.
+  const bare = (path: string): string => (path.length > 1 ? path.replace(/\/$/, "") : path);
   const pagePaths = new Set(
-    content.flatMap((t) => t.nodes.flatMap((n) => (n.routePath ? [n.routePath] : []))),
+    content.flatMap((t) => t.nodes.flatMap((n) => (n.routePath ? [bare(n.routePath)] : []))),
   );
   return (url, req) => {
     options.onRequest?.(req.method, url, req.headers);
@@ -223,8 +225,9 @@ export function umbracoTransport(
       });
     }
     // The live site: a page the content gives an address for answers, unless it is listed as missing.
-    if ((options.missingPages ?? []).includes(url.pathname)) return html(404);
-    if (pagePaths.has(url.pathname) || url.pathname === "/") return html(200);
+    const at = bare(url.pathname);
+    if ((options.missingPages ?? []).map(bare).includes(at)) return html(404);
+    if (pagePaths.has(at) || at === "/") return html(200);
     return html(404);
   };
 }
