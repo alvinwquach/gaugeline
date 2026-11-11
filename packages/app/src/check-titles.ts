@@ -38,6 +38,18 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "feed-broken": ["The feed this page advertises is broken", "Search & sharing"],
   "form-provider-changed": ["A form now sends to a different service", "Leads"],
   "gated-download-open": ["A download meant for customers is handed to anyone", "Sales & prices"],
+  "headless-wp-preview-canonical": [
+    "The live site points search engines at a preview address",
+    "Launch day",
+  ],
+  "headless-wp-preview-open": [
+    "A preview link shows an unpublished page without a login",
+    "Launch day",
+  ],
+  "headless-wp-private-fields": [
+    "The data sent with a page has private fields or unpublished posts",
+    "Security & email",
+  ],
   "hidden-ai-directive": [
     "Hidden text on the page gives orders to AI assistants",
     "Security & email",
@@ -222,6 +234,10 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "Visitors",
   ],
   "form-destination-changed": ["A form now posts to a different address", "Leads"],
+  "headless-wp-introspection-open": [
+    "Anyone can read the schema of your WordPress GraphQL API",
+    "Security & email",
+  ],
   "hreflang-not-reciprocal": ["A language version doesn't link back", "Search & sharing"],
   "html-heavy": ["Most of this page's HTML is a data payload", "Visitors"],
   "ics-no-vtimezone": ["Your calendar names a time zone it doesn't describe", "Visitors"],
@@ -588,6 +604,24 @@ export const CHECK_TEXT: Readonly<
     "A route that protects a paid file should refuse, or send the visitor to sign in. If it returns the file, everyone who has the address gets it for free, and the address is easy to find in the page, in a search engine or in a customer's email.",
     "Check the purchase inside the route before it answers, then hand back a short-lived signed link instead of the file itself. A route with no session should answer 401, 403 or a redirect to sign in.",
     "probing check, off without --owner-consent: one anonymous GET per route (no cookie, no Authorization, no Referer, no compression), the status and headers, then at most 1,024 bytes of the body and the connection is closed; the route is a same-site link whose path contains download, file, deliver or export or sits under /api/, or a route file given with --routes (app/**/route.ts, pages/api/**) whose path says the same; a dynamic segment is asked only for an address seen in a link and ids are never guessed; at most 10 routes, in sorted order, the rest named; a finding is status 200 with a file content type or Content-Disposition attachment and first bytes that are not HTML (%PDF, PK, ID3 and a few other signatures are read); 401, 403, 404, a redirect to a sign-in address and a 200 HTML page pass; a redirect elsewhere is followed one hop; the body and the query string are never stored, logged or printed",
+  ],
+  "headless-wp-preview-canonical": [
+    "A production page of this headless WordPress site gives a preview address as its canonical, its og:url or og:image, or in its sitemap: either a preview deployment (vercel.app, netlify.app, pages.dev) or a WordPress preview link (preview=true, preview_id, previewId).",
+    "Search engines and social cards follow those addresses to a draft or a deployment that can show old content, ask for a login or vanish.",
+    "Build canonical and share addresses from the production domain and the post's permalink, never from the request that rendered the preview; rebuild.",
+    "Headless WordPress sites served from a non-temporary host: the canonical, og:url, og:image and sitemap entries whose host ends in .vercel.app, .netlify.app or .pages.dev, or whose query has preview=true, preview_id or previewId. From responses already read; no extra request",
+  ],
+  "headless-wp-preview-open": [
+    "A preview address this headless WordPress site links to answers a visitor who is not logged in with a page that looks like an unpublished draft, not a login page.",
+    "Anyone with the address sees posts, prices or announcements nobody approved yet, as if they were live.",
+    "Serve previews only to a logged-in editor: check the session on the server before the draft is fetched or rendered, and redirect everyone else to the login page. In Faust.js, keep the draft query behind the authenticated client.",
+    "Probing check: off unless --owner-consent or gaugeline.consent.json; run only on sites you own or have permission to test. Headless WordPress sites only. One GET, with no cookie or secret, of each preview address the checked page itself links to on its own origin (a query with preview=true, preview_id or previewId; at most 3). A finding needs an answer of 200 HTML that is not a login address or form and carries a draft marker: a status of draft, auto-draft, pending, private or future in its embedded data, isPreview set, or a draft title. An answer with no marker is could not check, because an unpublished page cannot be told from a published one without a marker. Only the path and the query parameter names are shown, never their values. Faust.js checks the login in the browser and fetches the draft with an authenticated client (read from the @faustwp/core source, 4.1.1: preview=true, previewPathname and p); the markers other than that are conventions (uncited)",
+  ],
+  "headless-wp-private-fields": [
+    "The state this headless WordPress page embeds (__NEXT_DATA__ with WPGraphQL data) has fields named like something private, a user's email or roles, or posts that are not published.",
+    "Everything a page's queries return is sent to every visitor, whether or not the page shows it. A fragment that asks for the whole user, or a query that includes drafts, puts them in the page source.",
+    "Ask only for the fields the page shows (not the whole User or Post type), and keep draft and private posts behind an authenticated request.",
+    "Headless WordPress sites only, from the page already read, no extra request. The __NEXT_DATA__ script is read as JSON (up to 1 MB, 100,000 nodes, 12 levels deep; a larger or cut one is could not check) and walked once. Names only, never values: field names matched by word against password, passwd, secret, token, credential, ssn, salt, bearer, authorization, cvv, iban, private, apiKey, accessKey, secretKey, privateKey, authKey, internalNote (is.../has... flags are left out); email, username, capabilities, roles and registeredDate on a node whose __typename is User; and a count of nodes whose status is draft, auto-draft, pending, private or future. The names are matched by their words, which is a guess (uncited)",
   ],
   "hidden-ai-directive": [
     "Text that visitors can't see, or a comment in the page's code, speaks to an AI assistant (for example 'ignore previous instructions').",
@@ -1278,6 +1312,12 @@ export const CHECK_TEXT: Readonly<
     "A different host can mean a different account or region with the same service, so entries may land where nobody reads them.",
     "Confirm the new address belongs to your account with that service.",
     "With --since last only: the same form key and provider, with a different action host",
+  ],
+  "headless-wp-introspection-open": [
+    "The GraphQL endpoint behind this headless WordPress site answers an introspection query with its schema to a visitor who is not logged in.",
+    "WPGraphQL turns public introspection off by default, so someone turned it on. The schema lists every post type, custom field and relation, including ones the site never shows, and tells a stranger exactly what to ask for.",
+    "In WordPress, open GraphQL, then Settings, and turn off public introspection (leave it on for logged-in users and local development). If a build tool needs the schema, save a copy in the repository instead.",
+    "Probing check: off unless --owner-consent or gaugeline.consent.json; run only on sites you own or have permission to test. Headless WordPress sites only (a front end with WPGraphQL state in its embedded data, or Next.js serving /wp-content/uploads/). One GET of /graphql on the site, and of the back end its images come from, with the query {__schema{queryType{name}}} in the address: the smallest query that says whether introspection is on. It is parsed with the GraphQL parser and refused unless it is one query; never a mutation, never a full schema, never a POST. An answer holding __schema.queryType.name is a finding (only the root type name is shown); an errors answer means introspection is off. An endpoint that answers a GET with an error status, or not in JSON, is could not check (a POST-only endpoint is). The setting's name and default are from the WPGraphQL security documentation, as quoted in a search result: its exact label was not confirmed (uncited)",
   ],
   "hreflang-not-reciprocal": [
     "This page's hreflang points at a version in another language, but that version's hreflang doesn't point back.",

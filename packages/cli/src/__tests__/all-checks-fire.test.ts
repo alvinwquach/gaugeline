@@ -38,6 +38,7 @@ const FIXTURES = [
   "load-more",
   "hidden-library",
   "next-like",
+  "headless-wp",
   "refusing",
   "tag-rules",
   "nav-events",

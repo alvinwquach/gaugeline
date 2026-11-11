@@ -1,0 +1,6 @@
+{
+  "/graphql": {
+    "headers": { "content-type": "application/json" },
+    "body": "{\"data\":{\"__schema\":{\"queryType\":{\"name\":\"RootQuery\"}}}}"
+  }
+}

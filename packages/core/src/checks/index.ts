@@ -57,6 +57,10 @@ import { formDestinationChanged } from "./form-destination-changed.js";
 import { formProviderChanged } from "./form-provider-changed.js";
 import { formsManyProviders } from "./forms-many-providers.js";
 import { gatedDownloadOpen } from "./gated-download-open.js";
+import { headlessWpIntrospectionOpen } from "./headless-wp-introspection-open.js";
+import { headlessWpPreviewCanonical } from "./headless-wp-preview-canonical.js";
+import { headlessWpPreviewOpen } from "./headless-wp-preview-open.js";
+import { headlessWpPrivateFields } from "./headless-wp-private-fields.js";
 import { hiddenAiDirective } from "./hidden-ai-directive.js";
 import { hiddenInSitemap } from "./hidden-in-sitemap.js";
 import { hiddenIndexable } from "./hidden-indexable.js";
@@ -216,6 +220,10 @@ export const PAGE_CHECKS = [
   formProviderChanged,
   formsManyProviders,
   gatedDownloadOpen,
+  headlessWpIntrospectionOpen,
+  headlessWpPreviewCanonical,
+  headlessWpPreviewOpen,
+  headlessWpPrivateFields,
   hiddenAiDirective,
   hiddenInSitemap,
   hiddenIndexable,
