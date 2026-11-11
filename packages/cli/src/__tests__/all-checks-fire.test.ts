@@ -116,6 +116,13 @@ const NEEDS_LIVE_STORES = new Set([
   "model-listing-count",
   "model-dependents",
   "model-orphan-fields",
+  // Sanity image checks that read the dataset (crop and hotspot, alt text, upload sizes): they run only when
+  // gaugeline.adapters.json names sanity and ask the project's query address with a Viewer token; confirmed
+  // in-process against the invented Harbour Lane dataset (core checks/__tests__/sanity-studio-images.test.ts,
+  // cli sanity-studio-images.test.ts).
+  "sanity-image-crop-ignored",
+  "sanity-image-alt-unrendered",
+  "sanity-image-heavy",
   // Public DNS: the built-bin run resolves nothing; confirmed in-process with a fake reader.
   "email-dmarc-missing",
   "email-dmarc-none",

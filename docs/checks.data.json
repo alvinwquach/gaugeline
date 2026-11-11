@@ -2418,6 +2418,45 @@
     "estimateChanges": "Rules in the host, a CDN and the app each need checking."
   },
   {
+    "id": "sanity-image-alt-unrendered",
+    "severity": "medium",
+    "area": "Visitors",
+    "title": "Alt text written in Sanity is not on the page",
+    "what": "An editor wrote alt text for a picture in Sanity Studio, and the img on the page has no alt attribute or an empty one.",
+    "why": "Screen readers skip an image with an empty alt and read the file name when there is none, so the description the editor took the time to write never reaches the visitor who needs it, and search engines never see it.",
+    "fix": "Add the alt field to the query that loads the image and pass it to the img: alt={image.alt}. If the picture is only decoration, clear the alt text in Studio so the two agree.",
+    "tech": "reads the Sanity dataset named by SANITY_PROJECT_ID and SANITY_DATASET with GET (published perspective, a Viewer token in a header): the published documents that refer to each upload on the page; an image value counts as having alt text when its alt field is text that is not blank; reported when every document using the upload has alt text and the img on the page has no alt attribute or alt=\"\"; an upload used in several places where only some have alt text, or in no published document, is could not check; only a field named alt is read; the text itself is never kept or printed",
+    "size": "S",
+    "done": "Every Sanity image whose editor wrote alt text in Studio has that text in its alt attribute on the page.",
+    "estimateChanges": "One line in the image component when the alt is never passed. Allow longer when the field has to be added to the query first."
+  },
+  {
+    "id": "sanity-image-crop-ignored",
+    "severity": "medium",
+    "area": "Visitors",
+    "title": "A crop or hotspot set in Sanity Studio is not used by the page",
+    "what": "An editor set a crop or a hotspot on a picture in Sanity Studio, and the address the page asks the image network for does not carry it, so the picture is shown uncropped or cut around the middle.",
+    "why": "The editor drew the crop and the hotspot so the face, the dish or the shopfront stays in the frame. Without them a tall or wide slot cuts the heads off a team photo, and the editor has no way to see why.",
+    "fix": "Build the address with the image value, not just its asset: urlFor(image).width(800).height(600).url() from @sanity/image-url writes the rect for the crop and cuts around the hotspot. If you write addresses by hand, pass the image's crop as rect and its hotspot as fp-x and fp-y with crop=focalpoint.",
+    "tech": "reads the Sanity dataset named by SANITY_PROJECT_ID and SANITY_DATASET with GET (published perspective, a Viewer token in a header): the published documents that refer to each upload on the page, and on their image values the crop (an edge of 1 percent or more) and the hotspot (centre 2 percent or more off the middle); a crop is ignored when no address of the img has rect, fp-x, fp-y or crop; a hotspot is ignored when none has them, the address asks for both w and h with fit=crop, and the asked shape differs from the image's by more than 2 percent; an upload used with different crops in several places, or in no published document, is could not check; a size set only in CSS and object-position are not read, so a hotspot on an address with no w and h is could not check; only Studio values are read, none is printed",
+    "size": "S",
+    "done": "Every Sanity image on the page uses the crop and hotspot its editor set in Studio.",
+    "estimateChanges": "One image helper when the page builds its addresses by hand; each call site when the front end writes them one by one. Allow longer if the editors have not set the hotspots yet."
+  },
+  {
+    "id": "sanity-image-heavy",
+    "severity": "medium",
+    "area": "Visitors",
+    "title": "Uploads the page uses are heavy in Sanity",
+    "what": "Pictures the page uses are stored in Sanity at more than 500 KB, and some at more than 1 MB: a count, and the list, largest first.",
+    "why": "The upload is what an unresized address delivers whole, what every new size is made from, and what the client's Sanity plan stores and serves. A 4 MB phone photo in a hero costs the visitor seconds on mobile data and the client bandwidth on every view.",
+    "fix": "Re-export the largest files at the width the site needs (about 2000 px for a full-width banner) and re-upload them, and ask for a width and auto=format in every address so the visitor never downloads the upload as it was. Ask editors to resize before they upload.",
+    "tech": "reads the Sanity dataset named by SANITY_PROJECT_ID and SANITY_DATASET with GET (published perspective, a Viewer token in a header): the size field, in whole bytes, of the asset document of each upload the page's image addresses name (at most 100 per run, in groups of 40); an upload is heavy at 512000 bytes (500 KB) or more and huge at 1048576 bytes (1 MB) or more; the list is sorted by size, largest first, then by asset id; it is the upload's size, not the size delivered, so a resized address is much smaller (the evidence says which uploads the page serves whole)",
+    "size": "M",
+    "done": "No Sanity upload the page uses is over 500 KB, or each one that is has been replaced by a smaller file.",
+    "estimateChanges": "Re-exporting one photo is minutes; a whole media library uploaded at camera size is an afternoon, and the editors need a size rule so it does not come back. Allow longer if the originals are needed for print."
+  },
+  {
     "id": "sanity-image-original",
     "severity": "medium",
     "area": "Visitors",

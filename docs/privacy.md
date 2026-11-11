@@ -709,6 +709,17 @@ GET https://<project>.api.sanity.io/v2021-10-21/data/query/<dataset>?query=*[_ty
 
 The answer is the id, the slug and the title of each document: nothing else is requested. Gaugeline keeps them in memory only long enough to group them and keeps the groups. A finding prints the type, the shared slug or title, and the ids of the documents that share it. That is text an editor wrote, escaped before it is printed, and it appears only when two documents share it. The token goes in a header and never in the address. Without `--dupes` none of this is requested. What the findings mean: [Checking your queries](/docs/query-check#the-same-thing-twice).
 
+### Sanity images (checks that read your dataset)
+
+Three checks (`sanity-image-crop-ignored`, `sanity-image-alt-unrendered`, `sanity-image-heavy`) run only when `gaugeline.adapters.json` names `sanity`. For the Sanity images on the page they send `GET` requests of the query address, published content only, with `SANITY_TOKEN` (a Viewer token) in a header and never in an address: one for the `size` of the asset documents (40 uploads to a request) and one for the published documents that refer to the uploads (10 uploads to a request). At most 100 uploads of the page are read.
+
+```text
+GET https://<project>.api.sanity.io/v2021-10-21/data/query/<dataset>?query=*[_type == "sanity.imageAsset" && _id in ["image-<hash>-<width>x<height>-<format>", ...]]{_id,size}&perspective=published
+GET https://<project>.api.sanity.io/v2021-10-21/data/query/<dataset>?query=*[_type != "sanity.imageAsset" && (references("image-...") || ...)][0...31]&perspective=published
+```
+
+The second answer holds whole documents, because an image value can sit at any depth. Gaugeline reads each one in memory, keeps only the crop and hotspot numbers of the image values that point at the uploads and a yes or no for whether the value has alt text, and drops the document. No text, no title and no other field is kept, printed or stored. The asset ids put into a query are rebuilt from the page's image addresses and tested against a strict pattern first. What the findings mean: [Sanity images](/docs/guides/sanity-images#the-checks-that-read-your-dataset).
+
 ### Generated content (gaugeline query --totals and --refs)
 
 `--totals "type:stated=parts"` and `--refs "type:path"` need `SANITY_PROJECT_ID` and send one `GET` for each rule (ten at most), published content only. The dataset does the comparing, so what comes back is document ids and whole numbers:
