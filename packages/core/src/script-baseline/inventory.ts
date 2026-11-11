@@ -250,6 +250,7 @@ const READ_LIMITS = Object.freeze({
   directives: 400,
   values: 2000,
   text: 1000,
+  cuts: 20,
 });
 
 const isCut = (c: unknown): c is Cut =>
@@ -286,7 +287,10 @@ export function readBaseline(value: unknown): ScriptBaseline | undefined {
       if (list.some((t) => t.length > READ_LIMITS.text)) return undefined;
     }
   }
-  if (v.cut !== undefined && !(Array.isArray(v.cut) && v.cut.length <= 20 && v.cut.every(isCut)))
+  if (
+    v.cut !== undefined &&
+    !(Array.isArray(v.cut) && v.cut.length <= READ_LIMITS.cuts && v.cut.every(isCut))
+  )
     return undefined;
   return value as ScriptBaseline;
 }
