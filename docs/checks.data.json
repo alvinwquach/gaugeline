@@ -1443,6 +1443,19 @@
     "estimateChanges": "A missing page is either content that was not moved (minutes in the CMS if it exists, longer if it has to be written again) or a redirect that was left out. The number of pages decides it."
   },
   {
+    "id": "webflow-item-no-page",
+    "severity": "high",
+    "area": "Launch day",
+    "title": "A published Webflow item has no page on the live site",
+    "what": "The CMS says an item is published, and the address its page should have answers 404 or 410 on the live site.",
+    "why": "Links, the sitemap and search results point at a page that is not there, and the client's announcement leads to an error page.",
+    "fix": "Check the collection's template page is published and its address matches the pattern in gaugeline.adapters.json, then publish the site. If the item should not be public, archive it in Webflow.",
+    "tech": "GET /v2/collections/{id}/items/live for each collection named in the `urls` settings, then one GET of the live address from the pattern (redirects followed). A final 404 or 410 is the finding; any other answer that is not a 2xx is could-not-check for that page. A collection with published items and no pattern, and an item whose slug the pattern cannot use, are could-not-check by name and are not asked.",
+    "size": "M",
+    "done": "Every published item of the collections you named has a page that answers on the live site.",
+    "estimateChanges": "A page that is gone for every item of a collection is one template or one address pattern. A single item is a slug that was changed or a page the client switched off. A collection with no pages of its own always shows as could not check, which is expected."
+  },
+  {
     "id": "app-smart-banner-mismatch",
     "severity": "medium",
     "area": "Visitors",
@@ -2819,6 +2832,19 @@
     "size": "M",
     "done": "Each page still carries the structured data types it had (Article, FAQPage, Event, Product and so on).",
     "estimateChanges": "A type the new build never wrote means adding the JSON-LD to the page template and filling its fields from the CMS. One template covers every page of its kind."
+  },
+  {
+    "id": "webflow-item-staged",
+    "severity": "medium",
+    "area": "Launch day",
+    "title": "Work saved in the Webflow CMS is not on the live site",
+    "what": "A collection item was saved as ready (not a draft) and has never been published, or it was changed after it was last published, so the live site still shows the old version or none.",
+    "why": "The client believes the change is out. Customers see the old price, the old opening hours, or no page for the event they were told about.",
+    "fix": "In Webflow, review the staged items and publish the site. If an item should not go out yet, set it back to draft so it is not mistaken for finished work.",
+    "tech": "GET /v2/collections/{id}/items (the staged list) for each collection: isDraft false, isArchived false, and lastPublished absent (staged) or more than 2 seconds earlier than lastUpdated (changed). Drafts and archived items are never reported. Ids, slugs and dates only: no field is used for this.",
+    "size": "S",
+    "done": "Every item the client saved is published, or is a draft on purpose, and a run of Gaugeline lists none that is staged.",
+    "estimateChanges": "Publishing is one click in Webflow, but it publishes the whole site, so check what else is waiting before you do. Allow longer where the client has to approve the wording first."
   },
   {
     "id": "ai-crawlers-blocked",
