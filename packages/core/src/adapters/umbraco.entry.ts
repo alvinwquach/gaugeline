@@ -55,6 +55,7 @@ export const entries: readonly AdapterEntry[] = [
           ...(c.sleep ? { sleep: c.sleep } : {}),
         });
     }),
+    settings: { expectPrivate: true },
     // The row in docs/integrations/index.md is generated from this (pnpm gen:adapters).
     docs: {
       key: "none if the Delivery API is public; read-only (the Delivery API key) if it is protected",

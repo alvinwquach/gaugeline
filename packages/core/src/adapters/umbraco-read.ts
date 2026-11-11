@@ -21,7 +21,7 @@ export interface UmbracoReading {
   pages: PageRead[];
   /** The owner agreed to probing checks. Without it nothing was asked of the Delivery API as a visitor. */
   ownerConsent: boolean;
-  /** UMBRACO_API_KEY is set: the owner says the Delivery API is meant to be protected. */
+  /** The settings say (`expectPrivate`) the Delivery API is meant to be private. Without it the visitor read is not made. */
   expectedPrivate: boolean;
   /** What a visitor with no key is told. Absent without consent, or when the read stopped before it. */
   publicApi?: UmbracoPublicApi;
@@ -67,7 +67,7 @@ export async function readUmbraco(options: ReadUmbracoOptions): Promise<UmbracoR
     site: origin,
     pages: [],
     ownerConsent: options.ownerConsent === true,
-    expectedPrivate: adapter.keyConfigured(),
+    expectedPrivate: adapter.privacyExpected(),
     unreadable: [],
     nothingNamed: adapter.collections().length === 0,
     unaddressed: [],
@@ -134,7 +134,7 @@ export async function readUmbraco(options: ReadUmbracoOptions): Promise<UmbracoR
   );
 
   // The one read that asks the API as a visitor: only with consent (CLAUDE.md rule 14), and only when the owner has
-  // said the API is private by setting a key.
+  // said so in the settings (a key being set does not say it: Umbraco's preview needs the key on a public API).
   if (reading.ownerConsent && reading.expectedPrivate && !reading.partial) {
     try {
       reading.publicApi = await adapter.publicApi();

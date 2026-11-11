@@ -100,8 +100,8 @@ export interface UmbracoPublicApi {
 export interface UmbracoAdapter extends ContentAdapter {
   /** The content types the settings name (under `urls` or `fingerprint`), in order. The API lists none. */
   collections(): string[];
-  /** Whether UMBRACO_API_KEY is set: the owner says the API is meant to be protected. */
-  keyConfigured(): boolean;
+  /** Whether the settings say (`expectPrivate: true`) that the Delivery API is meant to be private. A key being set says nothing of it. */
+  privacyExpected(): boolean;
   /**
    * What a visitor with NO key is told by the Delivery API's list route: one GET, sent with no key, no cookie and
    * nothing the fetcher adds per address. It asks a route a visitor is not meant to be sent to when the API is
@@ -582,7 +582,7 @@ export function createUmbracoAdapter(options: UmbracoAdapterOptions): UmbracoAda
     draftsReachable,
     resolveUrl,
     collections,
-    keyConfigured: () => keyOrUndefined() !== undefined,
+    privacyExpected: () => settings?.expectPrivate === true,
     publicApi,
   };
 }

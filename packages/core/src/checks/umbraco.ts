@@ -73,16 +73,16 @@ const PROBING_NOTE =
 export const umbracoDeliveryApiPublic = defineCheck<UmbracoReading>({
   id: "umbraco-delivery-api-public",
   size: "S",
-  done: "The Delivery API answers a visitor who sends no key with 401, and nothing else, because UMBRACO_API_KEY says it is private.",
+  done: "The Delivery API answers a visitor who sends no key with 401, and nothing else, because gaugeline.adapters.json says it is private (expectPrivate).",
   estimateChanges:
     "One setting in appsettings.json: Umbraco:CMS:DeliveryApi:PublicAccess to false (and an ApiKey set). Allow longer if the public front end calls the API from the browser and needs to move that call to the server.",
   area: "Security & email",
   severity: "high",
   title: "The Umbraco Delivery API answers visitors with no key",
-  what: "You have set UMBRACO_API_KEY, which says the Content Delivery API is meant to be protected, and a plain GET of its list route with no key is answered with the list of published nodes.",
+  what: "gaugeline.adapters.json says the Content Delivery API is meant to be private (expectPrivate: true), and a plain GET of its list route with no key is answered with the list of published nodes.",
   why: "Anyone who finds the route can read every published node as data, including nodes that are published but not linked from the site, and can page through the whole content tree. If the API was meant to be private, its protection is off.",
-  fix: "In appsettings.json set Umbraco:CMS:DeliveryApi:PublicAccess to false and keep an ApiKey, then send the key from the server only (never from the browser). If the API is meant to be public, remove UMBRACO_API_KEY from Gaugeline's settings; it is only a hint for this check.",
-  tech: `probing check, off without --owner-consent: ${PROBING_NOTE}; only when UMBRACO_API_KEY is set (that is the owner saying the API is private); one GET of /umbraco/delivery/api/v2/content?take=1 with no Api-Key header, no cookie and nothing the fetcher adds per address, fields=properties[] and expand=none; a 200 with a list and a numeric total is the finding (the total is a count, never a node); 401 or 403 is a protected API and 404 is an API that is off or not at that address, both with no finding; a 200 that is not the API's list (a page that answers every path) and any other status are could-not-check; the answer is read as a count and nothing else`,
+  fix: "In appsettings.json set Umbraco:CMS:DeliveryApi:PublicAccess to false and keep an ApiKey, then send the key from the server only (never from the browser). If the API is meant to be public (a public API that also has a key, so that preview works, is a normal setup), remove expectPrivate from gaugeline.adapters.json: the key is not touched.",
+  tech: `probing check, off without --owner-consent: ${PROBING_NOTE}; only when the settings say expectPrivate: true (a key being set says nothing: Umbraco's preview needs the key on a public API too); one GET of /umbraco/delivery/api/v2/content?take=1 with no Api-Key header, no cookie and nothing the fetcher adds per address, fields=properties[] and expand=none; a 200 with a list and a numeric total is the finding (the total is a count, never a node); 401 or 403 is a protected API and 404 is an API that is off or not at that address, both with no finding; a 200 that is not the API's list (a page that answers every path) and any other status are could-not-check; the answer is read as a count and nothing else`,
   run(r, ctx) {
     if (!r.ownerConsent) {
       ctx.couldNotCheck?.(
@@ -95,7 +95,7 @@ export const umbracoDeliveryApiPublic = defineCheck<UmbracoReading>({
     if (!r.expectedPrivate) {
       ctx.couldNotCheck?.(
         r.site,
-        "not asked: UMBRACO_API_KEY is not set, so Gaugeline cannot know the Delivery API is meant to be private. Set it if the API is protected; a public API is not a finding.",
+        "not asked: no privacy expectation given. A public Delivery API is a normal setup (a key is also needed for preview), so Gaugeline asks only when gaugeline.adapters.json says expectPrivate: true for umbraco.",
       );
       return [];
     }
@@ -114,7 +114,7 @@ export const umbracoDeliveryApiPublic = defineCheck<UmbracoReading>({
         checkId: this.id,
         severity: this.severity,
         title: this.title,
-        evidence: `a request with no key to /umbraco/delivery/api/v2/content was answered with a list of ${api.total ?? 0} ${api.total === 1 ? "node" : "nodes"}, and UMBRACO_API_KEY says the API is private`,
+        evidence: `a request with no key to /umbraco/delivery/api/v2/content was answered with a list of ${api.total ?? 0} ${api.total === 1 ? "node" : "nodes"}, and gaugeline.adapters.json says the API is private (expectPrivate)`,
         url: r.site,
       },
     ];
