@@ -141,6 +141,10 @@ export const UNLISTED: NavPage[] = [
     title: "Framer: content checks for sites built on Framer (beta)",
   },
   {
+    slug: "integrations/contentful",
+    title: "Contentful: content checks for sites built on Contentful",
+  },
+  {
     slug: "integrations/builders",
     title: "Hosted builders: content checks for sites built on Squarespace and similar builders",
   },

@@ -810,10 +810,10 @@
     "severity": "high",
     "area": "Security & email",
     "title": "A private key is in your site's JavaScript",
-    "what": "A secret key (a Stripe secret or restricted key, a Sanity token, or a long random value named like a secret) is in JavaScript the site sends to every visitor.",
+    "what": "A secret key (a Stripe secret or restricted key, a Sanity token, a Contentful preview token, or a long random value named like a secret) is in JavaScript the site sends to every visitor.",
     "why": "Anyone can read it in their browser and use it as you: take payments, read customer data or change your content.",
     "fix": "Revoke the key in the provider's dashboard now, make a new one, and keep it on the server: never in code the browser loads.",
-    "tech": "Inline scripts and up to 15 same-site script files (GET, first 5 MB each) matched against the detectors in checks/leaks/detectors.ts; publishable keys (pk_) are ignored; every value is redacted to its first 6 and last 2 characters before a finding exists",
+    "tech": "Inline scripts and up to 15 same-site script files (GET, first 5 MB each) matched against the detectors in checks/leaks/detectors.ts; publishable keys (pk_) are ignored; a Contentful preview token is a 43-character value named like a token or key next to the preview.contentful.com host, and a finding for it names the kind and the place only, with no character of the token; a 43-character Contentful delivery token (a value in a place that names Contentful or createClient, and not the Preview API) is public by design and is never reported; the other values are redacted to their first 6 and last 2 characters before a finding exists; names are capped at 40 characters each side of the word token or key, so a hostile file is scanned in linear time",
     "size": "M",
     "done": "The old key is revoked, a new one lives on the server only, and the site's JavaScript holds no key.",
     "estimateChanges": "Code that used the key in the browser has to move to a server route. A key exposed for long also means reading the provider's logs."
@@ -1454,6 +1454,19 @@
     "size": "M",
     "done": "Every published item of the collections you named has a page that answers on the live site.",
     "estimateChanges": "A page that is gone for every item of a collection is one template or one address pattern. A single item is a slug that was changed or a page the client switched off. A collection with no pages of its own always shows as could not check, which is expected."
+  },
+  {
+    "id": "contentful-entry-no-page",
+    "severity": "high",
+    "area": "Launch day",
+    "title": "A published Contentful entry has no page on the live site",
+    "what": "Contentful says an entry is published, and the address its page should have answers 404 or 410 on the live site.",
+    "why": "Links, the sitemap and search results point at a page that is not there, and an announcement the client sent leads to an error page. On a statically built site this is often a build that has not run since the entry was published.",
+    "fix": "Check the site was rebuilt after the entry was published (a webhook from Contentful to your host can fail quietly) and that the address pattern in gaugeline.adapters.json matches the route. If the entry should not be public, unpublish it in Contentful.",
+    "tech": "GET /spaces/{space}/environments/{env}/content_types and /entries?content_type=... on cdn.contentful.com (Content Delivery API, delivery token in an Authorization header) for each content type, then one GET of the live address from the `urls` pattern (redirects followed). A final 404 or 410 is the finding; any other answer that is not a 2xx is could-not-check for that page. A content type with published entries and no pattern, and an entry whose slug the pattern cannot use, are could-not-check by name and are not asked.",
+    "size": "M",
+    "done": "Every published entry of the content types you named has a page that answers on the live site.",
+    "estimateChanges": "A page that is gone for every entry of a content type is one route or one address pattern. A single entry is a slug that was changed or a page the site no longer builds. A content type with no pages of its own always shows as could not check, which is expected."
   },
   {
     "id": "app-smart-banner-mismatch",
