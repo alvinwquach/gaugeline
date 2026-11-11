@@ -19,6 +19,8 @@
   "checkout-js-only",
   "client-not-admin",
   "contentful-entry-no-page",
+  "copy-date-passed",
+  "copyright-stale",
   "crm-field-names",
   "crm-insecure",
   "crm-late-tracking",
