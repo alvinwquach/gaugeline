@@ -189,7 +189,9 @@ describe.each(ENTRIES)("the adapter contract: $id", (entry) => {
             expect(s.headers[name]).toBe(value);
           for (const value of Object.values(entry.keyHeaders)) expect(s.url).not.toContain(value);
         } else
-          expect(s.headers.authorization ?? "").toBe(entry.keyHeader ? "" : `Bearer ${entry.key}`);
+          expect(s.headers.authorization ?? "").toBe(
+            entry.keyHeader ? "" : entry.keyRaw ? entry.key : `Bearer ${entry.key}`,
+          );
       }
       if (!entry.keyHeader) return;
       // The key is sent, in this header and only here, for what needs it.

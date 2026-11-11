@@ -37,14 +37,6 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "Private-looking content is in a public Sanity dataset",
     "Security & email",
   ],
-  "document-hours-mismatch": [
-    "A PDF shows different opening hours than the site or a listing",
-    "Search & sharing",
-  ],
-  "document-price-mismatch": [
-    "A PDF menu or price list shows a different price than the site",
-    "Sales & prices",
-  ],
   "drafts-live": ["Unpublished work is in the live page", "Launch day"],
   "duplicate-title": ["This page has two titles", "Search & sharing"],
   "email-spf-missing": ["Your domain doesn't say who may send its email", "Security & email"],
@@ -55,6 +47,20 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "feed-broken": ["The feed this page advertises is broken", "Search & sharing"],
   "form-provider-changed": ["A form now sends to a different service", "Leads"],
   "gated-download-open": ["A download meant for customers is handed to anyone", "Sales & prices"],
+  "gatsby-data-as-page": ["A page address returns Gatsby data, not a page", "Search & sharing"],
+  "gatsby-dev-server-live": ["The live Gatsby site is a development server", "Security & email"],
+  "gatsby-graphql-public": [
+    "The GraphQL explorer is reachable on the live site",
+    "Security & email",
+  ],
+  "gatsby-preview-canonical": [
+    "The live Gatsby site points search engines at a preview deployment",
+    "Launch day",
+  ],
+  "gatsby-private-fields": [
+    "The data sent with a Gatsby page has fields that look private",
+    "Security & email",
+  ],
   "hidden-ai-directive": [
     "Hidden text on the page gives orders to AI assistants",
     "Security & email",
@@ -119,6 +125,24 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "staging-indexable": ["Your staging site can be found by search engines", "Launch day"],
   "stega-leak": ["Hidden editing characters leaked onto the live site", "Search & sharing"],
   "stripe-test-mode": ["This live site is using Stripe's test key", "Sales & prices"],
+  "sveltekit-data-as-page": [
+    "A page address returns SvelteKit data, not a page",
+    "Search & sharing",
+  ],
+  "sveltekit-dev-server-live": ["The live site is a development server", "Security & email"],
+  "sveltekit-draft-public": ["Anyone can switch on preview mode", "Launch day"],
+  "sveltekit-preview-canonical": [
+    "The live SvelteKit site points search engines at a preview deployment",
+    "Launch day",
+  ],
+  "sveltekit-private-fields": [
+    "The data sent with a page has fields that look private",
+    "Security & email",
+  ],
+  "sveltekit-vary-missing": [
+    "One address serves a page and JSON, and caches aren't told",
+    "Search & sharing",
+  ],
   "switch-off-still-linked": [
     "A switch is off but the site still links to what it controls",
     "Sales & prices",
@@ -230,10 +254,6 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "crm-lead-source": ["New leads are arriving without a source", "Leads"],
   "crm-no-campaign-fields": ["A form has nowhere to put campaign details", "Leads"],
   "data-behind-source": ["The page is behind the data it is built from", "Visitors"],
-  "document-item-missing": [
-    "A PDF menu or price list and the site list different items",
-    "Sales & prices",
-  ],
   "email-dmarc-missing": ["Your domain has no DMARC policy", "Security & email"],
   "email-spf-multiple": ["Your domain has two SPF records, which cancels both", "Security & email"],
   "event-location-mismatch": ["An event at your venue lists a different address", "Visitors"],
@@ -297,6 +317,11 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "placeholder-images": ["The page shows placeholder images", "Visitors"],
   "placeholder-text": ["The page still has placeholder text", "Visitors"],
   "redirect-chain": ["Your address takes several jumps to load", "Search & sharing"],
+  "sanity-image-original": ["Sanity images are served at the size they were uploaded", "Visitors"],
+  "sanity-image-oversized": [
+    "Sanity images are delivered far larger than they are shown",
+    "Visitors",
+  ],
   "schema-breadcrumb-mismatch": ["A breadcrumb ends on a different page", "Search & sharing"],
   "schema-dangling-ref": [
     "Structured data refers to something that isn't there",
@@ -322,6 +347,7 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "sitemap-missing": ["Search engines can't find a list of your pages", "Search & sharing"],
   "sitemap-redirects": ["Your sitemap lists old addresses that redirect", "Search & sharing"],
   "structured-duplicate": ["The same structured data is on this page twice", "Search & sharing"],
+  "sveltekit-stale-page": ["The page is from an older build than the site", "Launch day"],
   "switch-page-wrong": [
     "A page does not say what it should for the current switch",
     "Sales & prices",
@@ -423,14 +449,14 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "canonical-missing": ["The page doesn't say which address is the real one", "Search & sharing"],
   "data-no-stamp": ["A page of changing numbers does not say when they were updated", "Visitors"],
   "dataset-public": ["Your Sanity content can be read by anyone", "Security & email"],
-  "document-unreadable": [
-    "A PDF could not be read, so it was not compared with the site",
-    "Sales & prices",
-  ],
   "email-dmarc-none": ["Your DMARC policy only watches", "Security & email"],
   "event-missing-fields": ["Some events are missing details search engines need", "Visitors"],
   "events-distinct": ["Two menu links report the same click", "Leads"],
   "forms-many-providers": ["Several form services on one page", "Leads"],
+  "gatsby-data-unshown": [
+    "The data sent with a Gatsby page has text the page does not show",
+    "Security & email",
+  ],
   "hidden-past-launch": ["A hidden section is past its launch date", "Launch day"],
   "hreflang-bad-code": ["Some language codes are not valid", "Search & sharing"],
   "images-alt-missing": ["Some images have no alt attribute", "Visitors"],
@@ -442,7 +468,12 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "nav-label-drift": ["One page has two names in your menus", "Visitors"],
   "og-image-missing": ["Shared links have no picture", "Search & sharing"],
   "price-changed": ["A price changed since the last run", "Sales & prices"],
+  "sanity-image-duplicate": [
+    "One Sanity image is processed and downloaded more than once",
+    "Visitors",
+  ],
   "schema-breadcrumb-start": ["Breadcrumbs don't start where your guide says", "Search & sharing"],
+  "sveltekit-data-unshown": ["The page's data has text the page does not show", "Security & email"],
   "tel-format": ["A phone link may not dial correctly", "Visitors"],
   "temp-host-canonical": ["A temporary address doesn't name the real one", "Launch day"],
   "zero-width-in-text": ["Invisible characters sit inside words on the page", "Security & email"],
@@ -580,18 +611,6 @@ export const CHECK_TEXT: Readonly<
     "Make the dataset private in sanity.io/manage today and give the site a read token, or move those types to a private dataset.",
     "As dataset-public, and a type name whose last word is in checks/leaks/private-types.ts (order, inquiry, submission, customer and others); only the type names are read, never the documents. dataset-public is not also reported",
   ],
-  "document-hours-mismatch": [
-    "A PDF linked from your site states opening hours that differ from the hours on your site or on a business listing.",
-    "People plan the evening from the printed menu. Hours that are an hour off in the PDF send them to a closed door, or turn them away from a kitchen that is still open.",
-    "Decide which hours are right, then fix the others: re-export the PDF, or update the site and the listings.",
-    "the PDF's opening hours are read by the same parser the listing checks use (per-day intervals in the venue's local time; a close after midnight belongs to the day it opens; a day given two answers is not compared); only days the PDF states are compared, against the hours fact in gaugeline.facts.json or LocalBusiness structured data, and against each configured listing that has hours; a PDF that states hours when the site states none is could-not-check, never a pass",
-  ],
-  "document-price-mismatch": [
-    "A PDF linked from your site (a menu, price list or brochure) gives an item a different price than the site does.",
-    "People screenshot the PDF. A burger that is $16 on the page and $14 in the printable menu is a price you either honour at a loss or argue about at the counter.",
-    "Decide which price is right, then change the other. If the PDF is last season's, re-export it from the current menu, or remove the link until you can.",
-    "GET of each linked PDF (HEAD first for size, type and Last-Modified; redirects followed, the final address reported; files over 10 MB skipped with the reason), text read by the optional @gaugeline/documents package, item-and-price lines parsed (name, price in cents, optional size) and compared by normalised name and size with the first source that names the item: the content system and Stripe, then the facts in gaugeline.facts.json, then the words of the pages; both values are quoted; an item that appears twice in the PDF with two prices is not compared; without the package the check says it could not check",
-  ],
   "drafts-live": [
     "The published HTML carries Sanity draft document ids (drafts.\u2026) or a preview-mode banner.",
     "Drafts are work nobody approved: prices, announcements or pages that weren't meant to be public yet, readable by anyone who opens the page source.",
@@ -651,6 +670,36 @@ export const CHECK_TEXT: Readonly<
     "A route that protects a paid file should refuse, or send the visitor to sign in. If it returns the file, everyone who has the address gets it for free, and the address is easy to find in the page, in a search engine or in a customer's email.",
     "Check the purchase inside the route before it answers, then hand back a short-lived signed link instead of the file itself. A route with no session should answer 401, 403 or a redirect to sign in.",
     "probing check, off without --owner-consent: one anonymous GET per route (no cookie, no Authorization, no Referer, no compression), the status and headers, then at most 1,024 bytes of the body and the connection is closed; the route is a same-site link whose path contains download, file, deliver or export or sits under /api/, or a route file given with --routes (app/**/route.ts, pages/api/**) whose path says the same; a dynamic segment is asked only for an address seen in a link and ids are never guessed; at most 10 routes, in sorted order, the rest named; a finding is status 200 with a file content type or Content-Disposition attachment and first bytes that are not HTML (%PDF, PK, ID3 and a few other signatures are read); 401, 403, 404, a redirect to a sign-in address and a 200 HTML page pass; a redirect elsewhere is followed one hop; the body and the query string are never stored, logged or printed",
+  ],
+  "gatsby-data-as-page": [
+    "A page of this Gatsby site answers with the framework's page data (application/json starting with componentChunkName), or the sitemap lists page-data addresses.",
+    "Search engines and visitors get a JSON file instead of a page, or index the data files: the page can drop out of search while a browser that navigates inside the site looks fine.",
+    "Serve HTML at page addresses (look for a proxy, CDN or redirect rule that rewrites to page-data.json), and list only pages in the sitemap.",
+    'Gatsby sites only, from responses already read: the page\'s own answer with a JSON content type whose body starts {"componentChunkName"; sitemap entries under /page-data/ ending /page-data.json, /app-data.json or /sq/d/<hash>.json. No extra request',
+  ],
+  "gatsby-dev-server-live": [
+    "This page was served by `gatsby develop`: its scripts include /socket.io/socket.io.js, /commons.js or /framework.js, the unhashed files only the development server writes.",
+    "The development server exposes a GraphQL explorer over all your content, hot-reload endpoints and error overlays with file paths. It is not meant to face visitors.",
+    "Build the site (`gatsby build`) and serve the public folder (a static host, or `gatsby serve` for a quick check), not `gatsby develop`. Check the host's start command.",
+    "Gatsby sites only, read from the page already fetched, no extra request: a script address ending /socket.io/socket.io.js, /commons.js or /framework.js (a production build names its files with a content hash, as in framework-<hash>.js). Dev-only paths are not asked for",
+  ],
+  "gatsby-graphql-public": [
+    "The address /___graphql of this Gatsby site answers with the GraphiQL page (titled Gatsby - GraphiQL), which only `gatsby develop` serves.",
+    "That explorer can read every node in your content layer, drafts and private fields included, from any browser.",
+    "Serve the built site (`gatsby build`) on the live address and keep `gatsby develop` on your own machine. If a proxy forwards /___graphql, remove the rule.",
+    "Probing check: off unless --owner-consent or gaugeline.consent.json; run only on sites you own or have permission to test. Gatsby sites only: one GET of /___graphql per run, no query sent and no POST ever; a 2xx HTML answer whose title contains GraphiQL is a finding. A production build does not serve this address",
+  ],
+  "gatsby-preview-canonical": [
+    "A production page of this Gatsby site gives a preview domain as its canonical address, its og:url or og:image, or in its sitemap.",
+    "Search engines and social cards follow those addresses to the preview, which can show old content or vanish when the preview is cleaned up.",
+    "Set siteMetadata.siteUrl (and the sitemap plugin's site URL) from the production domain in every build, and rebuild.",
+    "Gatsby sites served from a non-temporary host: the canonical, og:url, og:image and sitemap entries whose host ends in .vercel.app, .netlify.app, .pages.dev, .gatsbyjs.io or .gtsb.io. The two Gatsby hosts are from memory of the hosted product (uncited)",
+  ],
+  "gatsby-private-fields": [
+    "The page-data file of this Gatsby page, a static query it lists, or the page data embedded in its HTML has fields named like something private (password, token, secret, apiKey, private notes).",
+    "Everything a page query returns is written to a public JSON file, whether or not the page shows it. A field used only at build time still travels to every visitor if the query selects it.",
+    "Select only the fields the page shows in its query. Keep secrets in environment variables read in gatsby-node or a Function, never in a query result.",
+    "Gatsby sites only. Names only, never values: the property names in the page's own /page-data/<path>/page-data.json (one GET, the file the framework's client fetches on every visit), in the /page-data/sq/d/<hash>.json files it lists (at most ten) and in an inline window.pageData literal, walked to depth 8 and capped, matched by word against password, passwd, secret, token, private, credential, ssn, salt, bearer, authorization, cvv, iban, apiKey, accessKey, secretKey, privateKey, internalNotes. A file that cannot be read in full is could not check. The word list is a guess (uncited)",
   ],
   "hidden-ai-directive": [
     "Text that visitors can't see, or a comment in the page's code, speaks to an AI assistant (for example 'ignore previous instructions').",
@@ -909,6 +958,42 @@ export const CHECK_TEXT: Readonly<
     "A checkout built on a test key looks like it works and takes no real money: every order a customer places goes nowhere, and no card is charged.",
     "In Stripe, switch to live mode, copy the live publishable key (pk_live_) and put it where the site reads its key, then redeploy and place one small real order to be sure.",
     "The page's HTML and the same-site scripts already read by the leak check are searched for pk_test_ followed by at least 16 letters or digits, not inside a longer word; no new request is sent; pages on vercel.app, netlify.app and pages.dev are skipped",
+  ],
+  "sveltekit-data-as-page": [
+    'A page of this SvelteKit site answers with the framework\'s route data (application/json or text/sveltekit-data holding {"type":"data","nodes":...}), or the sitemap lists __data.json addresses.',
+    "Search engines and visitors get a JSON payload instead of a page, or index the payloads: the page can drop out of search while a browser that navigates inside the app looks fine.",
+    "Serve HTML at page addresses (look for a proxy, CDN or adapter rule that rewrites to __data.json), and list only pages in the sitemap.",
+    'SvelteKit sites only, from responses already read: the page\'s own answer with a JSON or text/sveltekit-data content type whose body starts with {"type":"data","nodes"; sitemap entries ending /__data.json or .html__data.json. No extra request',
+  ],
+  "sveltekit-dev-server-live": [
+    "This page was served by `vite dev`: its bootstrap script is __sveltekit_dev, or it loads /@vite/client, /.svelte-kit/ or /node_modules/.vite/ files.",
+    "The dev server serves source files, can expose files from the project folder and is slow and unsupervised. It is not meant to face visitors.",
+    "Build the site (`vite build`) and serve the adapter's output (or `vite preview` for a quick check), not `vite dev`. Check the host's start command.",
+    "Read from the page already fetched, no extra request: the inline script assigns __sveltekit_dev (the name SvelteKit gives its global only under vite dev), or a script or the HTML names /@vite/client, /.svelte-kit/ or /node_modules/.vite/. Paths such as /__inspect are not asked for",
+  ],
+  "sveltekit-draft-public": [
+    "A preview or draft route on this SvelteKit site sets a preview or draft cookie for a request that carries no secret.",
+    "Anyone who visits that address sees unpublished content (prices, announcements, pages nobody approved) as if it were live.",
+    "Make the route check a secret (compare a token from the request with one from your environment) before it sets the cookie, and answer 401 otherwise.",
+    "Probing check: off unless --owner-consent or gaugeline.consent.json; run only on sites you own or have permission to test. SvelteKit sites only: one GET per conventional route (/api/preview, /api/draft, /preview, /draft), no secret sent or guessed; a Set-Cookie whose name contains preview or draft on any hop is a finding, and only its name is shown. The routes and the cookie rule are conventions, not SvelteKit's own (uncited)",
+  ],
+  "sveltekit-preview-canonical": [
+    "A production page of this SvelteKit site gives a preview domain as its canonical address, its og:url or og:image, or in its sitemap.",
+    "Search engines and social cards follow those addresses to the preview, which can show old content or vanish when the preview is cleaned up.",
+    "Build the site's base address from the production domain (often a PUBLIC_ variable that is set only for preview builds, or a canonical written from event.url.origin behind a proxy), and rebuild.",
+    "SvelteKit sites served from a non-temporary host: the canonical, og:url, og:image and sitemap entries whose host ends in .vercel.app, .netlify.app or .pages.dev",
+  ],
+  "sveltekit-private-fields": [
+    "The state SvelteKit embeds in this page, or its __data.json, has fields named like something private (password, token, secret, apiKey, private notes).",
+    "Everything a load function returns is sent to every visitor, whether or not the page shows it. A field that is only used on the server still travels with the page.",
+    "Return only the fields the page shows from load. Keep secrets in $env/static/private or $env/dynamic/private, and read them only in server code.",
+    "SvelteKit sites only. Names only, never values: the property names in the embedded state (the data literal of the inline __sveltekit_ script, read as text, strings skipped) and in the page's own __data.json (one GET of <page>/__data.json, devalue payload walked to depth 6, capped), matched by word against password, passwd, secret, token, private, credential, ssn, salt, bearer, authorization, cvv, iban, apiKey, accessKey, secretKey, privateKey, internalNotes. A payload that cannot be read is could not check. The names are matched by their words, which is a guess (uncited)",
+  ],
+  "sveltekit-vary-missing": [
+    "The same address of this SvelteKit site returns HTML to a browser and JSON to a request with Accept: application/json (a +page and a +server in one route), and neither response lists Accept in its Vary header.",
+    "A shared cache (a CDN, a proxy) then keys both on the address alone and can hand the JSON to a visitor or a search engine: an outage that returns 200.",
+    "SvelteKit adds Vary: Accept to GET responses of a route that has both a +page and a +server. If it is missing, a CDN or proxy is stripping it: keep Vary in its cache key and header settings, or give the endpoint its own address.",
+    "SvelteKit pages only. One extra GET of the same address with Accept: application/json, the only header added, sent on same-origin hops only. Vary tokens from both answers, lower case; Vary: * counts as covering Accept. A 429 or 5xx answer is could not check. The routing rule and the Vary header are in SvelteKit's routing docs (Content negotiation) and runtime/server/respond.js",
   ],
   "switch-off-still-linked": [
     "You turned a feature off (pre-orders, online ordering, bookings), and a page still has a link to the page that feature runs on.",
@@ -1288,12 +1373,6 @@ export const CHECK_TEXT: Readonly<
     "Look at how the page is rebuilt after the data changes: its revalidate time, an on-demand revalidation that the sync should call, or a CDN that keeps the old copy. The evidence shows the Age header when a cache served it.",
     "for each rule with a source and maxLag in gaugeline.freshness.json, the newest time is read from the source (a one-row query or a Sanity field) and compared with the page's stamp: reported only when the page is older than the source by more than maxLag at every instant the stamp could mean; for each spot check (up to five per rule) the figure at the selector is compared with the source's figure for the page (a one-row query, or the row whose key column is the last part of the page's address) with exact decimal arithmetic and the tolerance given (an amount or a percentage of the source's figure); an unreadable source, stamp or figure is could not check; the evidence adds the Age and Cache-Control headers when a cache served the page",
   ],
-  "document-item-missing": [
-    "An item is on the site but not in the linked PDF, or the PDF still lists an item the site no longer has.",
-    "A dish removed from the site that is still on the printed menu is one you get asked for. A new one missing from the PDF is one nobody orders from it.",
-    "Update the PDF or the site so both list the same items, or remove the PDF link until the PDF is current.",
-    "same reading and matching as document-price-mismatch (normalised names, '&' and 'and' alike); items the site's structured sources name that the PDF does not, and PDF items found nowhere on the site; the second list is reported only when the two are shown to be the same menu (a structured source names one of the PDF's items, or the pages carry at least half of them), so a page listing a few dishes does not make every dish missing; both lists name at most five items and count the rest",
-  ],
   "email-dmarc-missing": [
     "There is no DMARC record at _dmarc.<your domain>, so receiving servers have no instruction for mail that fails SPF or DKIM.",
     "Mail pretending to be from you is delivered like any other, and large mail providers increasingly expect a DMARC record from anyone who sends.",
@@ -1546,6 +1625,18 @@ export const CHECK_TEXT: Readonly<
     "Point every redirect straight at the final address.",
     "more than one 3xx hop on the entered URL",
   ],
+  "sanity-image-original": [
+    "An image from cdn.sanity.io is requested with no width or height, so the visitor gets the file as it was uploaded: often 3000 to 6000 pixels wide.",
+    "A phone photo from the shop owner is several megabytes. Shown a few hundred pixels across, it still downloads whole, and the page is slow on a phone for no visible gain.",
+    "Ask for the size you show: add w (and h with fit=crop if the shape is fixed) and auto=format to the address, or build it with @sanity/image-url: urlFor(image).width(800).auto('format').url().",
+    "an img src, srcset or picture source on cdn.sanity.io/images with none of w, h, max-w, max-h, min-w or min-h, whose upload is wider than 1200 px (the size is in the file name, so nothing is downloaded); other hosts, and addresses on a custom domain for Sanity's CDN, are not read; one finding per page; the page's own HTML only",
+  ],
+  "sanity-image-oversized": [
+    "An image from cdn.sanity.io is asked for at a width much greater than the width attribute on the page, and the page offers no smaller version.",
+    "The visitor downloads several times the pixels they can see. On a phone that is seconds of waiting and mobile data spent on detail the screen throws away.",
+    "Ask Sanity for about twice the width the image is shown at (for a 400 px slot, w=800), or give the image a srcset with smaller widths and a sizes attribute so each screen picks one.",
+    "an img with a width attribute whose smallest Sanity address (src, srcset or picture source) delivers more than 2 times that width and at least 200 px more; delivered is w times dpr, never above the upload, and the upload's own width when no w is given (read from the file name); an img with no width attribute is not judged; no rendering, so a width set only in CSS is not seen",
+  ],
   "schema-breadcrumb-mismatch": [
     "The last item of a page's breadcrumb structured data points at an address other than the page's own canonical.",
     "The trail should end where the visitor is. One that ends elsewhere usually means the breadcrumb was copied from another page.",
@@ -1605,6 +1696,12 @@ export const CHECK_TEXT: Readonly<
     "Search engines see two descriptions of one thing, which can disagree, and may pick the wrong one or ignore both.",
     "Keep one: usually the JSON-LD, and remove the itemscope and itemtype attributes from the theme or plugin that adds microdata.",
     "a schema.org @type in JSON-LD is also a microdata itemtype",
+  ],
+  "sveltekit-stale-page": [
+    "The build version written into this SvelteKit page differs from the one in the site's _app/version.json, so the page is a copy from an earlier deploy.",
+    "A prerendered or cached page from an old build points at script files that may be gone, and shows old content next to a new site: edits look unpublished.",
+    "Purge the CDN's copy of the page on every deploy, or let it expire (a short s-maxage). A prerendered page is rebuilt on each build, so check the cache in front of it.",
+    "SvelteKit sites only. The version: in the page's inline __sveltekit_ script against the version of one GET of <appDir>/version.json (the folder is read from the page's own module addresses; the file is public and fetched by every visitor's browser). A page whose version cannot be read, or a version file that is missing, is could not check. Pages sampled together are compared with the same file, asked for once per page",
   ],
   "switch-page-wrong": [
     'You said what a page must tell visitors while a feature is on or off ("order at the bar" while pre-orders are off), and the page does not say it.',
@@ -1960,12 +2057,6 @@ export const CHECK_TEXT: Readonly<
     "If nothing in it is private, nothing to do. Otherwise make the dataset private in sanity.io/manage and give the site a read token.",
     'Project and dataset read from cdn.sanity.io image addresses; one GET to <project>.api.sanity.io with the query {"count": count(*), "types": array::unique(*[]._type)} and no token, at most 2 datasets; never document contents',
   ],
-  "document-unreadable": [
-    "A PDF linked from your site has no text Gaugeline can read (a scan or a picture of a page, an encrypted file, or fonts that do not say which letters they are).",
-    "Nothing in it was compared with your site, so a wrong price in it would go unseen. Search engines and screen readers cannot read a scan either.",
-    "Export the PDF from the original menu or price list as text, not from a scan, and leave it unencrypted. Gaugeline never reads images (no OCR): a guessed price would be a false finding.",
-    "the linked PDF is read by the optional @gaugeline/documents package, text layer only, no OCR; a file with no text operators, an encrypted file, fonts without a ToUnicode map and streams of an unsupported kind are reported here (low severity) with the reason; a file that is too big, cut short, refused or not a PDF is could-not-check instead; limits: 10 MB per file (config documents.maxMegabytes up to 25), 200 pages, 4 MiB inflated per stream, 48 MiB in all",
-  ],
   "email-dmarc-none": [
     "The domain's DMARC record has p=none: receiving servers report mail that fails, and deliver it anyway.",
     "That is the right first step, and it doesn't stop anyone sending mail as you. Left at none, it never will.",
@@ -1989,6 +2080,12 @@ export const CHECK_TEXT: Readonly<
     "Leads from one page end up in different places, and each service needs its own tracking, consent and follow-up.",
     "Check that each form is meant to be there, and move the page to one service if you can.",
     "Sightings of more than one of Pardot, Web-to-Lead, HubSpot, Formstack, Marketo and Typeform on one page (form action, iframe src, embed script); the tracking code alone is not a sighting",
+  ],
+  "gatsby-data-unshown": [
+    "This Gatsby page's page-data file, or a static query it lists, has text fields whose text is nowhere on the page a visitor reads.",
+    "Everything a page query returns is written to a public JSON file. A field the page does not show is either unused (so it can go) or used by a script (so it is worth a look): either way it is public.",
+    "Select only the fields the page needs in its query, or move the rest to a source that checks who is asking.",
+    "Gatsby sites only. The page's own /page-data/<path>/page-data.json and the /page-data/sq/d/<hash>.json files it lists (the files the framework's client fetches on every visit; one GET each, at most eleven, walked to depth 8, capped). Text fields of 4 or more characters whose first 40 characters are not in the page's visible text (tags taken out of html fields); addresses, ids, dates and image plumbing are left out; names only, never values. Fields named like something private are left to gatsby-private-fields. A file or page text that cannot be read in full is could not check. Fields used by scripts or other pages are shown too, so read the list as a prompt (uncited)",
   ],
   "hidden-past-launch": [
     "Today is after the launch date set for a hidden section, and gaugeline.hidden.json still lists it as hidden.",
@@ -2056,11 +2153,23 @@ export const CHECK_TEXT: Readonly<
     "If the change wasn't meant, correct the price at its source (the shop or CMS) and rebuild; if it was, nothing to do.",
     "With --since last only: the JSON-LD Offer price (integer minor units; anything but 48 or 48.00 is unread) for a product key (sku or name plus currency) present in both runs",
   ],
+  "sanity-image-duplicate": [
+    "The same uploaded image is requested with different parameters by different images on the page, such as one width in the header and another in a card.",
+    "Each variant is a separate file for Sanity's CDN to make and for the visitor to download, and none of them is in the browser's cache for the others.",
+    "Use one address for the image and let CSS size it, or give it one srcset the browser chooses from. If a card needs a different crop, that is a different picture: upload it as its own image.",
+    "the same asset id (the hash in the file name; the same bytes are the same asset) in two or more img elements with different parameter sets; an img's own srcset and picture sources are one image and are not compared with each other; parameter order is ignored; the page's own HTML only",
+  ],
   "schema-breadcrumb-start": [
     "The first item of a page's breadcrumb structured data is not the Home name and address your schema guide sets.",
     "Search results show the breadcrumb trail; one that starts somewhere else on some pages looks inconsistent and can point at the wrong page.",
     "Start every BreadcrumbList with the configured first item, for example Home at /.",
     "the lowest-position ListItem's name or URL differs from breadcrumbs.firstName / breadcrumbs.firstUrl in gaugeline.schema.json (name case ignored, URL resolved)",
+  ],
+  "sveltekit-data-unshown": [
+    "This SvelteKit page's __data.json has text fields whose text is nowhere on the page a visitor reads.",
+    "Everything load returns is sent to every visitor. A field the page does not show is either unused (so it can go) or used by a script (so it is worth a look): either way it is public.",
+    "Return only what the page needs from load, or move the rest to a route that checks who is asking.",
+    "SvelteKit sites only. One GET of <page>/__data.json (the page's own data, fetched by the framework's client on every navigation; devalue payload walked to depth 6, capped). Text fields of 4 or more characters whose text is not in the page's visible text; names only, never values. Fields named like something private are left to sveltekit-private-fields. A payload or page text that cannot be read in full is could not check. Fields used by scripts or other pages are shown too, so read the list as a prompt (uncited)",
   ],
   "tel-format": [
     "A tel: link has spaces or brackets in the number.",
@@ -2196,7 +2305,6 @@ export const SAMPLE_NOUNS: Readonly<Record<string, readonly [one: string, many: 
   statePages: ["switch page", "switch pages"],
   draftRoutes: ["draft route", "draft routes"],
   downloadRoutes: ["download route", "download routes"],
-  documents: ["document", "documents"],
   frameworkAddresses: ["framework address", "framework addresses"],
   structuredDataAddresses: ["address in structured data", "addresses in structured data"],
 };

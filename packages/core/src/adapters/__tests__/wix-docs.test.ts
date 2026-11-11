@@ -4,9 +4,15 @@ import { describe, expect, it } from "vitest";
 import { adapterHeader } from "../collect.js";
 import { adaptersConfigSchema } from "../config.js";
 import { BUILT_ADAPTERS } from "../registry.js";
-import { WIX_CMS_READ_PATH } from "../wix.js";
-import { marlowReads, MARLOW_SETTINGS } from "./wix-docs-example.js";
+import { WIX_CMS_READ_PATH, WIX_QUERY_ALLOW } from "../wix.js";
+import {
+  marlowNativeReads,
+  marlowReads,
+  MARLOW_NATIVE_SETTINGS,
+  MARLOW_SETTINGS,
+} from "./wix-docs-example.js";
 import { MARLOW_MARKERS } from "./wix-fixture.js";
+import { WIX_NATIVE_MARKERS } from "./wix-native-fixture.js";
 
 const root = new URL("../../../../../", import.meta.url);
 const read = (path: string): string =>
@@ -43,33 +49,50 @@ describe("docs/integrations/wix.md", () => {
     expect(shown).toEqual([
       adapterHeader(built?.describe ?? { name: "", docsUrl: "", keyKind: "read-only" }),
     ]);
-    expect(shown[0]).toContain("Content system: Wix, with no key");
+    expect(shown[0]).toContain("Content system: Wix, with a read-only key when one is set");
   });
 
-  it("the settings it shows are valid and are the ones the example reads with", () => {
+  it("the settings it shows are valid and are the ones the examples read with", () => {
     const shown = block("json", "gaugeline\\.adapters\\.json");
-    expect(shown).toHaveLength(1);
+    expect(shown).toHaveLength(2);
+    // The first is the example with the key, the second the live-site read with none.
     expect(adaptersConfigSchema.parse(JSON.parse(shown[0] ?? "null"))).toEqual({
+      adapters: [MARLOW_NATIVE_SETTINGS],
+    });
+    expect(adaptersConfigSchema.parse(JSON.parse(shown[1] ?? "null"))).toEqual({
       adapters: [MARLOW_SETTINGS],
     });
   });
 
-  it("the output it shows for Marlow Coaching is what the adapter reads", async () => {
+  it("the output it shows for Marlow Coaching is what the adapter reads, with the key and without", async () => {
     const outputs = block("json", "Output");
-    expect(outputs).toHaveLength(1);
-    expect(outputs[0]).toBe(await marlowReads());
+    expect(outputs).toHaveLength(2);
+    expect(outputs[0]).toBe(await marlowNativeReads());
+    expect(outputs[1]).toBe(await marlowReads());
+  });
+
+  it("the key is in the environment in the example, never in a settings block, and the page holds no key", () => {
+    for (const settings of block("json", "gaugeline\\.adapters\\.json"))
+      expect(settings).not.toMatch(/key/i);
+    expect(page).toContain("WIX_API_KEY=<");
+    expect(page).not.toMatch(/IST\.|wix_docs_/);
   });
 
   it("shows no text from the site's pages", () => {
-    for (const marker of Object.values(MARLOW_MARKERS)) expect(page).not.toContain(marker);
+    for (const marker of [...Object.values(MARLOW_MARKERS), ...Object.values(WIX_NATIVE_MARKERS)])
+      expect(page).not.toContain(marker);
   });
 
-  it("states the key's access level and why the CMS is not read, near the top", () => {
+  it("states the key's access level and the one POST, near the top", () => {
     const firstParagraphs = page.split("\n").slice(0, 10).join("\n");
     expect(firstParagraphs).toContain("no key");
     expect(firstParagraphs).toContain("API key with only read permissions");
     expect(firstParagraphs).toContain("POST");
-    expect(page).toContain(`${WIX_CMS_READ_PATH.queryVerb} ${WIX_CMS_READ_PATH.path}`);
+    expect(firstParagraphs).toContain("ADR-0006");
+    expect(page).toContain("What this adapter reads, and the narrowest key");
+    expect(page).toContain(`${WIX_CMS_READ_PATH.path}`);
+    expect(page).toContain(WIX_QUERY_ALLOW.id);
+    expect(page).toContain(WIX_QUERY_ALLOW.host as string);
     expect(page).toContain("open question 52");
   });
 
@@ -89,6 +112,9 @@ describe("docs/integrations/wix.md", () => {
     const fields = rows(page, "`gaugeline.adapters.json` field").map((r) => r[0] ?? "");
     expect(fields).toEqual([
       "`adapters[].id`",
+      "`adapters[].siteId`",
+      "`adapters[].urls`",
+      "`adapters[].fingerprint`",
       "`adapters[].site`",
       "`adapters[].sitemaps`",
       "`adapters[].feeds`",
@@ -98,7 +124,8 @@ describe("docs/integrations/wix.md", () => {
   it("is linked from the content systems page, as built, with the same name the registry has", () => {
     const row = rows(index, "Content system").find((r) => r[0] === built?.describe.name);
     expect(row?.[1]).toBe("built");
-    expect(row?.[2]).toContain("no key");
+    expect(row?.[2]).toContain("none to read the live site");
+    expect(row?.[2]).toContain("read-only");
     expect(row?.[3]).toContain("wix.md");
   });
 });

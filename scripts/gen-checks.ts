@@ -21,6 +21,7 @@ import {
   COST_CHECKS,
   TRACKER_CHECKS,
   PUBLISHED_CHECKS,
+  BACKUPS_CHECKS,
   LIBRARY_CHECKS,
   WORDPRESS_CHECKS,
   PRINTED_CHECKS,
@@ -37,10 +38,13 @@ import {
   CUTOVER_ONLY_CHECKS,
   MIGRATION_CHECKS,
   WEBFLOW_CHECKS,
+  SHOPIFY_CHECKS,
   CONTENTFUL_CHECKS,
   SQUARESPACE_COMMERCE_CHECKS,
   STRAPI_CHECKS,
+  CRAFT_CHECKS,
   UMBRACO_CHECKS,
+  DATOCMS_CHECKS,
   HUBSPOT_CMS_CHECKS,
   catalogue,
   createPageRegistry,
@@ -81,6 +85,7 @@ for (const c of HANDOFF_CHECKS) registry.register(c);
 for (const c of COST_CHECKS) registry.register(c);
 for (const c of TRACKER_CHECKS) registry.register(c);
 for (const c of PUBLISHED_CHECKS) registry.register(c);
+for (const c of BACKUPS_CHECKS) registry.register(c);
 for (const c of LIBRARY_CHECKS) registry.register(c);
 for (const c of WORDPRESS_CHECKS) registry.register(c);
 for (const c of PRESENCE_CHECKS) registry.register(c);
@@ -98,10 +103,13 @@ for (const c of WEBHOOK_CHECKS) registry.register(c);
 for (const c of CUTOVER_ONLY_CHECKS) registry.register(c);
 for (const c of MIGRATION_CHECKS) registry.register(c);
 for (const c of WEBFLOW_CHECKS) registry.register(c);
+for (const c of SHOPIFY_CHECKS) registry.register(c);
 for (const c of CONTENTFUL_CHECKS) registry.register(c);
 for (const c of SQUARESPACE_COMMERCE_CHECKS) registry.register(c);
 for (const c of STRAPI_CHECKS) registry.register(c);
+for (const c of CRAFT_CHECKS) registry.register(c);
 for (const c of UMBRACO_CHECKS) registry.register(c);
+for (const c of DATOCMS_CHECKS) registry.register(c);
 for (const c of HUBSPOT_CMS_CHECKS) registry.register(c);
 const entries = catalogue(registry);
 // A scaffold from pnpm new:check imports and runs, but its TODO text must never reach the docs.

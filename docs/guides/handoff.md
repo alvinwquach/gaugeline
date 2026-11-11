@@ -31,6 +31,10 @@ that system alone, with the reason. Gaugeline does not guess, and it does not re
 provider's web page. Where a platform's API offers no read of a site's contributors, the system is
 a checklist line: a guessed "you're fine" is worse than an honest "check this yourself".
 
+The same goes for backups: where the page shows a platform whose backup status Gaugeline cannot read (a
+hosted builder, WordPress, Shopify), the checklist asks where its backups are kept and when the last one
+ran, under "Backups". [Backups](backups.md) reads the ones that can be read.
+
 **The narrowest key.** Vercel has no read-only token type: make the token on a team member with the
 narrowest role you have, scoped to the one team, with an expiry, and treat it as a key to that team.
 Sanity: a token for the one project, with the lowest role that can list the project's members (if
