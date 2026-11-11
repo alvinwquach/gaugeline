@@ -1,5 +1,5 @@
 import { parseArgs } from "node:util";
-import { SECRET_FLAGS, minorExponent, parseAddress } from "@gaugeline/core";
+import { SECRET_FLAGS, minorExponent, parseAddress, safeLogoUrl } from "@gaugeline/core";
 import { HELP } from "./help.js";
 import { FLAGS, nearestFlag, resolveFlags, toParseArgsOptions, type FlagDef } from "./flags.js";
 
@@ -28,6 +28,7 @@ export const SUBCOMMANDS = [
   "renewals",
   "handoff",
   "cost",
+  "audit",
 ] as const;
 export type CliCommand = "check" | (typeof SUBCOMMANDS)[number];
 
@@ -58,6 +59,20 @@ export interface HandoffFlags {
 /** Where `gaugeline handoff` writes when --out is not given. */
 export const HANDOFF_DEFAULT_OUT = "gaugeline-handoff";
 
+/** The options of `gaugeline audit --pack`, checked when the command line is read. */
+export interface AuditFlags {
+  /** --business: the prospect's business, shown in the heading. */
+  business?: string;
+  /** --brand, --brand-logo and --brand-contact: who the pack is from. They replace the same fields in gaugeline.services.json. */
+  brand: { name?: string; logoUrl?: string; contact?: string };
+  /** --out: the folder the two pack files go in, as typed. */
+  out: string;
+  force: boolean;
+}
+
+/** Where `gaugeline audit --pack` writes when --out is not given. */
+export const AUDIT_DEFAULT_OUT = "gaugeline-audit";
+
 export interface RunFlags {
   /** Which command: the default page check, launch or brief. */
   command: CliCommand;
@@ -65,6 +80,8 @@ export interface RunFlags {
   brief?: BriefFlags;
   /** gaugeline handoff: where to write the report. Absent for every other command. */
   handoff?: HandoffFlags;
+  /** gaugeline audit --pack: what to write and where. Absent for every other command. */
+  audit?: AuditFlags;
   /** launch --dns: add the email record checks. handoff --dns: read the name servers from DNS. */
   dns: boolean;
   /** --renewals (or the renewals command): add the renewals checks (domain, certificates, tokens, runtimes). */
@@ -1266,6 +1283,62 @@ export function parseCliArgs(
       );
     handoff = { ...(out !== undefined ? { out } : {}), force: values.force === true };
   }
+  let audit: AuditFlags | undefined;
+  if (command === "audit") {
+    const problem = (message: string, hint: string): ParsedArgs => ({
+      kind: "error",
+      message,
+      hint,
+      verbose,
+    });
+    if (positionals.length !== 1)
+      return problem(
+        positionals.length === 0
+          ? "gaugeline audit needs the address of the site: gaugeline audit example.com --pack"
+          : `gaugeline audit takes one address, got ${positionals.length}: ${positionals.join(", ")}.`,
+        'For example: gaugeline audit marlowe-bar.com --pack --business "Marlowe Bar" --brand "Harbour Studio"',
+      );
+    if (values.pack !== true)
+      return problem(
+        "gaugeline audit needs --pack: it turns a first run on a prospect's site into a proposal.",
+        "For example: gaugeline audit marlowe-bar.com --pack",
+      );
+    const text = (name: string, max: number, example: string): string | ParsedArgs | undefined => {
+      const v = values[name];
+      if (v === undefined) return undefined;
+      const t = typeof v === "string" ? v.trim() : "";
+      return t === "" || t.length > max
+        ? problem(`--${name} needs some text, up to ${max} characters.`, `For example: ${example}`)
+        : t;
+    };
+    const business = text("business", 120, '--business "Marlowe Bar"');
+    const name = text("brand", 80, '--brand "Harbour Studio"');
+    const contact = text("brand-contact", 200, '--brand-contact "Mia, 555 0142"');
+    const logo = text("brand-logo", 300, "--brand-logo https://harbour-studio.example/logo.png");
+    for (const v of [business, name, contact, logo]) if (typeof v === "object") return v;
+    const logoUrl = typeof logo === "string" ? safeLogoUrl(logo) : undefined;
+    if (typeof logo === "string" && logoUrl === undefined)
+      return problem(
+        `--brand-logo takes an https address with no user name or password, not "${logo}".`,
+        "For example: --brand-logo https://harbour-studio.example/logo.png. Gaugeline never fetches it; the browser that opens the pack does.",
+      );
+    const out = typeof values.out === "string" ? values.out.trim() : AUDIT_DEFAULT_OUT;
+    if (out === "")
+      return problem(
+        "--out needs the name of the folder to write the pack into.",
+        `For example: --out proposal. Leave it out to write ${AUDIT_DEFAULT_OUT}.`,
+      );
+    audit = {
+      ...(typeof business === "string" ? { business } : {}),
+      brand: {
+        ...(typeof name === "string" ? { name } : {}),
+        ...(logoUrl !== undefined ? { logoUrl } : {}),
+        ...(typeof contact === "string" ? { contact } : {}),
+      },
+      out,
+      force: values.force === true,
+    };
+  }
   if (positionals.length === 0) {
     return { kind: "error", message: "No address given.", hint: USAGE_HINT, verbose };
   }
@@ -1292,6 +1365,7 @@ export function parseCliArgs(
     command,
     ...(brief ? { brief } : {}),
     ...(handoff ? { handoff } : {}),
+    ...(audit ? { audit } : {}),
     dns: values.dns === true,
     renewals: values.renewals === true || command === "renewals",
     cost: values.cost === true || command === "cost",

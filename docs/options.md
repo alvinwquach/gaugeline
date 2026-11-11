@@ -280,13 +280,14 @@ Options:
                                    what they protect with no login; only on
                                    sites you may test
       --force                      Let --annotate (plan), --page, --save
-                                   (query), --out (brief) or handoff replace
-                                   files, never a folder or link
+                                   (query), --out (brief), handoff or audit
+                                   replace files, never a folder or link
       --out <value>                snapshot: the file (default before.json).
                                    query --page: the folder. brief: the file.
-                                   handoff: the report folder
+                                   handoff, audit: the folder
       --business <value>           brief: the business the work order is for,
-                                   shown in its heading
+                                   shown in its heading. audit: the prospect's
+                                   business
       --rate <value>               brief: what an hour costs, in whole currency
                                    units such as 110; used with
                                    --hours-per-point
@@ -310,6 +311,76 @@ there without `--force`, never outside the folder, and all of it or nothing). `-
 currency units and is stored as minor units (`--rate 110` is 11000). `--rate` without
 `--hours-per-point` gives points only, and says so on stderr. Exit codes: 0 when it ran, whatever it found,
 and 2 when it could not run. See [When you don't have a developer](/docs/no-developer).
+
+### The audit command
+
+`gaugeline audit --help` prints:
+
+```text title=Output
+Usage: gaugeline audit <address> --pack [options]
+
+Check a prospect's site, then write a proposal-ready pack into a folder (default
+gaugeline-audit): audit-pack.html to send or print, audit-pack.md to edit. A
+one-page summary for the owner (what is at risk, the five findings to start
+with, with evidence), the findings grouped into your packages from
+gaugeline.services.json with your own price and hours ranges and what each
+leaves out, how you would check each worked (the re-run), and what the audit
+does not include. Without that file the findings are grouped by area and there
+is no estimate: Gaugeline never makes up a price. It runs only the default
+checks, which look at public pages; the probing checks run only with
+--owner-consent, on a site you may test. Nothing is sent: the files stay in
+this folder, never replacing a file unless --force. Read-only, like the page
+check.
+
+Options:
+      --allow-private            Allow addresses on this computer or a private
+                                 network, such as 127.0.0.1 or 192.168.x.x
+      --allow-secret-key         Use a Stripe secret key, with a notice, instead
+                                 of refusing it; a restricted key is safer
+      --dns                      Also read the domain's mail records (SPF and
+                                 DMARC) from DNS
+      --owner-consent            Run the probing checks, which ask routes for
+                                 what they protect with no login; only on sites
+                                 you may test
+      --force                    Let --annotate (plan), --page, --save (query),
+                                 --out (brief), handoff or audit replace files,
+                                 never a folder or link
+      --out <value>              snapshot: the file (default before.json). query
+                                 --page: the folder. brief: the file. handoff,
+                                 audit: the folder
+      --business <value>         brief: the business the work order is for,
+                                 shown in its heading. audit: the prospect's
+                                 business
+      --pack                     audit: turn the run into a proposal-ready pack
+                                 (HTML and Markdown), using the packages in
+                                 gaugeline.services.json
+      --brand <value>            audit: your name, shown at the head and foot of
+                                 the pack
+      --brand-logo <value>       audit: an https address for your logo; it is
+                                 never fetched by Gaugeline, only by whoever
+                                 opens the pack
+      --brand-contact <value>    audit: your contact line, shown under your name
+      --quiet                    Print only results and errors
+      --verbose                  Show each request, and technical detail when
+                                 something goes wrong
+  -h, --help                     Show this help and exit
+  -v, --version                  Print the version and exit
+
+Exit codes: 0 wrote the pack, 2 could not run
+```
+
+`gaugeline audit <address> --pack` checks a prospect's site the way the page check does and turns the run
+into a proposal-ready pack: `audit-pack.html` to send or print and `audit-pack.md` to edit, in the folder
+`--out` names (`gaugeline-audit` when you leave it out, inside the folder you ran from; never over a file
+without `--force`, and both files or neither). The pack has a one-page summary for the owner, the findings
+grouped into the packages in `gaugeline.services.json` with your own price and hours ranges, what each
+package leaves out, and how you would check it worked. Without that file the findings are grouped by area
+and the pack shows no estimate: prices come only from your file. `--brand`, `--brand-logo` and
+`--brand-contact` say who the pack is from. It runs only the default checks; the probing checks run only
+with `--owner-consent`, on a site you own or have permission to test. A package that names a check
+Gaugeline does not run, a folder outside this one and a pack that is already there without `--force` are
+exit 2, before anything is requested. Settings, an example from a bar and one from a bakery:
+[Audit pack](guides/audit-pack.md). What it sends: [Privacy and safety](privacy.md#audit-pack-gaugeline-audit-pack).
 
 ### Flags
 
@@ -359,7 +430,7 @@ between the markers; CI fails when it differs from the flag table.
 | `--legacy-review <value>`   | Write the old addresses read with --legacy-from to this CSV file, for review                                         |                      | 0.2.0 |
 | `--base <value>`            | The site a plan is checked against (a preview); the site emails link to; or the site to ask for --routes             |                      | 0.2.0 |
 | `--annotate <value>`        | Write a copy of the plan with a Gaugeline column saying what is wrong on each row                                    |                      | 0.2.0 |
-| `--force`                   | Let --annotate (plan), --page, --save (query), --out (brief) or handoff replace files, never a folder or link        |                      | 0.2.0 |
+| `--force`                   | Let --annotate (plan), --page, --save (query), --out (brief), handoff or audit replace files, never a folder or link |                      | 0.2.0 |
 | `--progress <value>`        | With --base, say what was fixed and what is new since the last run (state file optional)                             |                      | 0.2.0 |
 | `--watch <value>`           | With --base on production: the 30-day watch from this cutover date (YYYY-MM-DD)                                      |                      | 0.2.0 |
 | `--all`                     | plan --progress: list the findings still open; run: check every site in gaugeline.sites.json                         |                      | 0.2.0 |
@@ -374,10 +445,14 @@ between the markers; CI fails when it differs from the flag table.
 | `--tag <value>`             | Check the sites in gaugeline.sites.json with this tag, such as client                                                |                      | 0.2.0 |
 | `--parallel <value>`        | Check this many sites at once (default 1); sites on one host never overlap                                           |                      | 0.2.0 |
 | `--limit <value>`           | Re-check this many of the export's pages (default 40; 0 only classifies the rows)                                    |                      | 0.2.0 |
-| `--out <value>`             | snapshot: the file (default before.json). query --page: the folder. brief: the file. handoff: the report folder      |                      | 0.2.0 |
-| `--business <value>`        | brief: the business the work order is for, shown in its heading                                                      |                      | 0.2.0 |
+| `--out <value>`             | snapshot: the file (default before.json). query --page: the folder. brief: the file. handoff, audit: the folder      |                      | 0.2.0 |
+| `--business <value>`        | brief: the business the work order is for, shown in its heading. audit: the prospect's business                      |                      | 0.2.0 |
 | `--rate <value>`            | brief: what an hour costs, in whole currency units such as 110; used with --hours-per-point                          |                      | 0.2.0 |
 | `--hours-per-point <value>` | brief: how many hours one point takes, such as 1.5; prints a range of hours, never one number                        |                      | 0.2.0 |
+| `--pack`                    | audit: turn the run into a proposal-ready pack (HTML and Markdown), using the packages in gaugeline.services.json    |                      | 0.2.0 |
+| `--brand <value>`           | audit: your name, shown at the head and foot of the pack                                                             |                      | 0.2.0 |
+| `--brand-logo <value>`      | audit: an https address for your logo; it is never fetched by Gaugeline, only by whoever opens the pack              |                      | 0.2.0 |
+| `--brand-contact <value>`   | audit: your contact line, shown under your name                                                                      |                      | 0.2.0 |
 | `--before <value>`          | The snapshot taken before cutover, written by gaugeline snapshot                                                     |                      | 0.2.0 |
 | `--runs <value>`            | The folder of saved runs (each one saved with --json) to read                                                        |                      | 0.2.0 |
 | `--time-zone <value>`       | The time zone for dates and ages, such as America/Los_Angeles (default UTC)                                          |                      | 0.2.0 |

@@ -16,6 +16,23 @@
       "verbose",
       "version"
     ],
+    "audit": [
+      "allow-private",
+      "allow-secret-key",
+      "brand",
+      "brand-contact",
+      "brand-logo",
+      "business",
+      "dns",
+      "force",
+      "help",
+      "out",
+      "owner-consent",
+      "pack",
+      "quiet",
+      "verbose",
+      "version"
+    ],
     "brief": [
       "allow-private",
       "allow-secret-key",
