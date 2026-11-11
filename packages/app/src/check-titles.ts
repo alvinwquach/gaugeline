@@ -223,11 +223,6 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "cutover-mail-changed": ["The domain's mail records changed at cutover", "Security & email"],
   "migration-page-missing": ["A page from the old site is missing on the new one", "Launch day"],
   "webflow-item-no-page": ["A published Webflow item has no page on the live site", "Launch day"],
-  "shopify-item-no-page": [
-    "A Shopify item published to the Online Store has no page on the live site",
-    "Launch day",
-  ],
-  "shopify-product-drift": ["A Shopify product's page differs from the store", "Sales & prices"],
   "contentful-entry-no-page": [
     "A published Contentful entry has no page on the live site",
     "Launch day",
@@ -438,10 +433,6 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "Search & sharing",
   ],
   "webflow-item-staged": ["Work saved in the Webflow CMS is not on the live site", "Launch day"],
-  "shopify-theme-preview-indexable": [
-    "A Shopify theme preview link on the live site can be indexed",
-    "Search & sharing",
-  ],
   "squarespace-stock-differs": [
     "A Squarespace product page and its stock disagree",
     "Sales & prices",
@@ -1286,18 +1277,6 @@ export const CHECK_TEXT: Readonly<
     "Check the collection's template page is published and its address matches the pattern in gaugeline.adapters.json, then publish the site. If the item should not be public, archive it in Webflow.",
     "GET /v2/collections/{id}/items/live for each collection named in the `urls` settings, then one GET of the live address from the pattern (redirects followed). A final 404 or 410 is the finding; any other answer that is not a 2xx is could-not-check for that page. A collection with published items and no pattern, and an item whose slug the pattern cannot use, are could-not-check by name and are not asked.",
   ],
-  "shopify-item-no-page": [
-    "Shopify says an item is published to the Online Store and gives it an address, and that address answers 404 or 410 on the live site.",
-    "Links, the sitemap and search results point at a page that is not there, and the client's announcement leads to an error page.",
-    "Check the item's Online Store publishing and the theme's template for its type, and that the live domain is the store's primary domain. If the item should not be public, remove it from the Online Store channel.",
-    "POST /api/<version>/graphql.json (a Storefront API query, ADR-0006) for products, collections, pages, blogs and articles, each with onlineStoreUrl; then one GET of that path on the live site (redirects followed). A final 404 or 410, or a redirect to the home page, is the finding; a redirect to the password page and any other non-2xx answer are could-not-check for that page. An item whose onlineStoreUrl is null is hidden from the Online Store and is never reported.",
-  ],
-  "shopify-product-drift": [
-    "The price on the page (or in its product data) is outside the range the Storefront API gives for the product, or the page says in stock or sold out against what the store says.",
-    "Shoppers see one price or stock state and pay or get another, and search results show the page's data: a mismatch costs trust and can get listings pulled.",
-    "Make the page's price and stock come from the product (the theme's product form and its structured data), and clear any cache or app that keeps an old copy.",
-    "Storefront API: priceRange (minVariantPrice and maxVariantPrice, amounts as text split into whole minor units, never floats) and availableForSale for each product published to the Online Store. Page: the theme's price element and the product JSON-LD offer, read by the same code as prices-disagree (readPrices) with no extra request. A page price outside min..max, or an availability that contradicts availableForSale, is the finding. Currencies whose minor unit is not hundredths, and different currencies, are could-not-check, never converted. Availability: every offer in the page's product data is considered (not the first only); a sold-out button alone is ignored.",
-  ],
   "contentful-entry-no-page": [
     "Contentful says an entry is published, and the address its page should have answers 404 or 410 on the live site.",
     "Links, the sitemap and search results point at a page that is not there, and an announcement the client sent leads to an error page. On a statically built site this is often a build that has not run since the entry was published.",
@@ -2017,12 +1996,6 @@ export const CHECK_TEXT: Readonly<
     "The client believes the change is out. Customers see the old price, the old opening hours, or no page for the event they were told about.",
     "In Webflow, review the staged items and publish the site. If an item should not go out yet, set it back to draft so it is not mistaken for finished work.",
     "GET /v2/collections/{id}/items (the staged list) for each collection: isDraft false, isArchived false, and lastPublished absent (staged) or more than 2 seconds earlier than lastUpdated (changed). Drafts and archived items are never reported. Ids, slugs and dates only: no field is used for this.",
-  ],
-  "shopify-theme-preview-indexable": [
-    "The live site links to a theme preview address (a preview_theme_id address, or a shopifypreview.com host), and that page has no noindex and no canonical pointing at the public page.",
-    "A preview shows an unfinished theme, can hold test content, and can compete with the real page in search.",
-    "Remove the preview link from the page, menu or template that holds it. Share previews by sending the link directly, not by publishing it.",
-    "One GET of the home page, then one GET of each linked address that carries preview_theme_id or a shopifypreview.com host (at most 5, only addresses the site itself links to, on the site's own host, a myshopify.com host or shopifypreview.com: none is guessed). Indexable means a 2xx answer with no noindex in the robots meta tag or X-Robots-Tag and no canonical to a different address.",
   ],
   "squarespace-stock-differs": [
     "A product page offers the product as in stock while the Squarespace Inventory API says every variant is out of stock, or says it is out of stock while the API says a variant can be bought.",

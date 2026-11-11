@@ -39,7 +39,7 @@ export const entries: readonly AdapterEntry[] = [
     docs: {
       key: "read-only (a Storefront API access token, which is public and read-only by design)",
       reads:
-        "Products, collections, pages, blogs and articles published to the Online Store, as fingerprints and counts, and whether a published item's page answers on the live site. [Endpoint and the token](/docs/integrations/shopify)",
+        "Products, collections, pages, blogs and articles published to the Online Store, as fingerprints and counts. Through `readShopify` (a library read; the CLI does not run it yet), whether a published item's page answers on the live site. [Endpoint and the token](/docs/integrations/shopify)",
     },
     page: {
       slug: "integrations/shopify",

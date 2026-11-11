@@ -55,6 +55,7 @@ async function read(
       adapter,
       fetcher,
       site: SHOPIFY_SITE,
+      shopHost: SHOPIFY_SHOP,
       ...(over.maxPages === undefined ? {} : { maxPages: over.maxPages }),
     }),
     seen,
@@ -420,5 +421,100 @@ describe("review fixes: currencies, skipped products, variants, previews, isolat
     );
     expect(evidence(out, "shopify-item-no-page")).toEqual([]);
     expect(JSON.stringify(out.couldNotCheck)).toContain("password");
+  });
+});
+
+describe("review fixes: preview hosts, preview addresses, products with no price (M2, L3, L8)", () => {
+  const home = (href: string) => ({
+    html: `<html><body><a href="${href}">Preview</a></body></html>`,
+  });
+
+  it("M2: a preview link on another store's myshopify.com address is not asked for, and its key is shown nowhere", async () => {
+    const other = "https://other-shop.myshopify.com/?preview_theme_id=1&key=abc";
+    const { reading: r, seen } = await read({ ...LIVE_HEALTHY, "/": home(other) });
+    expect(seen.some((s) => s.includes("other-shop"))).toBe(false);
+    const out = await run(r);
+    expect(JSON.stringify({ r, out })).not.toMatch(/key=abc|other-shop/);
+    // The refusal is said, without the address.
+    expect(JSON.stringify(out.couldNotCheck)).toContain("not this store's");
+  });
+
+  it("M2: another store's shopifypreview.com address is refused the same way", async () => {
+    const other = "https://some-other-shop.shopifypreview.com/?key=abc";
+    const { reading: r, seen } = await read({ ...LIVE_HEALTHY, "/": home(other) });
+    expect(seen.some((s) => s.includes("shopifypreview.com"))).toBe(false);
+    expect(JSON.stringify(r)).not.toContain("key=abc");
+  });
+
+  it("M2: the configured shop's own myshopify.com address is followed, and the finding's address keeps only preview_theme_id", async () => {
+    const own = `https://${SHOPIFY_SHOP}/?preview_theme_id=77&key=abc&token=zzz`;
+    const wrap =
+      (t: Transport): Transport =>
+      (url, req) =>
+        url.host === SHOPIFY_SHOP && req.method === "GET"
+          ? Promise.resolve({
+              status: 200,
+              headers: { "content-type": "text/html" },
+              body: Readable.from([Buffer.from("<html><body>New theme</body></html>")]),
+            })
+          : t(url, req);
+    const { reading: r } = await read({ ...LIVE_HEALTHY, "/": home(own) }, { wrap });
+    expect(r.previews).toHaveLength(1);
+    expect(r.previews[0]?.url).toBe(`https://${SHOPIFY_SHOP}/?preview_theme_id=77`);
+    const out = await run(r);
+    expect(JSON.stringify({ r, out })).not.toMatch(/key=abc|token=zzz/);
+  });
+
+  it("M2: a link on the site's own host keeps only preview_theme_id in the finding's address", async () => {
+    const preview = "/?preview_theme_id=1234&key=abc";
+    const { reading: r } = await read({
+      ...LIVE_HEALTHY,
+      "/": home(preview),
+      [preview]: { html: "<html><body>New theme</body></html>" },
+    });
+    expect(r.previews).toHaveLength(1);
+    expect(r.previews[0]?.url).toBe(`${SHOPIFY_SITE}/?preview_theme_id=1234`);
+    const out = await run(r);
+    expect(out.findings.map((f) => f.url)).toEqual([`${SHOPIFY_SITE}/?preview_theme_id=1234`]);
+    expect(JSON.stringify({ r, out })).not.toContain("key=abc");
+  });
+
+  it("L8: a published product the second read gave no price for is could-not-check, not dropped", async () => {
+    // The price read asks for priceRange; the list read does not. Leave the mug out of the price read only.
+    const wrap =
+      (t: Transport): Transport =>
+      async (url, req) => {
+        const res = await t(url, req);
+        if (!/priceRange/.test(req.body ?? "")) return res;
+        const text = await new Promise<string>((resolve) => {
+          const chunks: Buffer[] = [];
+          res.body.on("data", (c: Buffer) => chunks.push(c));
+          res.body.on("end", () => resolve(Buffer.concat(chunks).toString()));
+        });
+        const data = JSON.parse(text) as { data: { products: { nodes: { handle: string }[] } } };
+        data.data.products.nodes = data.data.products.nodes.filter(
+          (n) => n.handle !== "mug-speckled",
+        );
+        return { ...res, body: Readable.from([Buffer.from(JSON.stringify(data))]) };
+      };
+    const { reading: r } = await read(LIVE_HEALTHY, { wrap });
+    const out = await run(r);
+    expect(
+      JSON.stringify(out.couldNotCheck.filter((c) => c.id === "shopify-product-drift")),
+    ).toContain("no price from the Storefront API");
+    expect(out.passed).not.toContain("shopify-product-drift");
+  });
+
+  it("L3: items skipped past the list's cap are said in one could-not-check", async () => {
+    const content = structuredClone(SHOPIFY_CONTENT);
+    for (let i = 0; i < 1003; i++)
+      content.pages?.push({
+        id: `gid://shopify/Page/${9000 + i}`,
+        handle: `\u00fcber-${i}`,
+        onlineStoreUrl: `${SHOPIFY_SITE}/pages/x`,
+        updatedAt: "2026-10-10T09:00:00Z",
+      });
+    const out = await run((await read(LIVE_HEALTHY, { content })).reading);
+    expect(JSON.stringify(out.couldNotCheck)).toContain("3 more");
   });
 });

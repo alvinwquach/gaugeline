@@ -35,7 +35,8 @@ export const shopifyEntry: ContractEntry = {
     fields: {
       type: "products",
       counts: { title: 2, description: 1 },
-      missing: "subtitle",
+      // A field Shopify allows for products that no invented product has: counted as 0, not an error.
+      missing: "vendor",
     },
     published: {
       options: { types: ["products"], fields: { products: ["title", "description"] } },
@@ -43,6 +44,8 @@ export const shopifyEntry: ContractEntry = {
     },
     draftsReachable: false,
   },
+  // A field outside the type's own list, and a type Shopify does not have, are could-not-check (never zeros).
+  unknownType: "could-not-check",
   // The pages are answered, then the products are the first refused.
   rateLimit: { options: { types: ["pages", "products"] }, succeedFirst: 1, atLeast: 2 },
 };

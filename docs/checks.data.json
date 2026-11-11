@@ -1664,32 +1664,6 @@
     "estimateChanges": "A page that is gone for every item of a collection is one template or one address pattern. A single item is a slug that was changed or a page the client switched off. A collection with no pages of its own always shows as could not check, which is expected."
   },
   {
-    "id": "shopify-item-no-page",
-    "severity": "high",
-    "area": "Launch day",
-    "title": "A Shopify item published to the Online Store has no page on the live site",
-    "what": "Shopify says an item is published to the Online Store and gives it an address, and that address answers 404 or 410 on the live site.",
-    "why": "Links, the sitemap and search results point at a page that is not there, and the client's announcement leads to an error page.",
-    "fix": "Check the item's Online Store publishing and the theme's template for its type, and that the live domain is the store's primary domain. If the item should not be public, remove it from the Online Store channel.",
-    "tech": "POST /api/<version>/graphql.json (a Storefront API query, ADR-0006) for products, collections, pages, blogs and articles, each with onlineStoreUrl; then one GET of that path on the live site (redirects followed). A final 404 or 410, or a redirect to the home page, is the finding; a redirect to the password page and any other non-2xx answer are could-not-check for that page. An item whose onlineStoreUrl is null is hidden from the Online Store and is never reported.",
-    "size": "M",
-    "done": "Every product, collection, page, blog and article published to the Online Store has a page that answers on the live site.",
-    "estimateChanges": "A page that is gone for every item of a type is one theme template or one redirect. A single item is a handle that was changed or a page the client removed from the Online Store."
-  },
-  {
-    "id": "shopify-product-drift",
-    "severity": "high",
-    "area": "Sales & prices",
-    "title": "A Shopify product's page differs from the store",
-    "what": "The price on the page (or in its product data) is outside the range the Storefront API gives for the product, or the page says in stock or sold out against what the store says.",
-    "why": "Shoppers see one price or stock state and pay or get another, and search results show the page's data: a mismatch costs trust and can get listings pulled.",
-    "fix": "Make the page's price and stock come from the product (the theme's product form and its structured data), and clear any cache or app that keeps an old copy.",
-    "tech": "Storefront API: priceRange (minVariantPrice and maxVariantPrice, amounts as text split into whole minor units, never floats) and availableForSale for each product published to the Online Store. Page: the theme's price element and the product JSON-LD offer, read by the same code as prices-disagree (readPrices) with no extra request. A page price outside min..max, or an availability that contradicts availableForSale, is the finding. Currencies whose minor unit is not hundredths, and different currencies, are could-not-check, never converted. Availability: every offer in the page's product data is considered (not the first only); a sold-out button alone is ignored.",
-    "size": "M",
-    "done": "The price and availability on every product page match what the Storefront API says.",
-    "estimateChanges": "A theme that prints a hand-typed price or a cached stock badge is a template change per product type. Prices from another app or a market the theme adds are a settings change."
-  },
-  {
     "id": "contentful-entry-no-page",
     "severity": "high",
     "area": "Launch day",
@@ -3248,19 +3222,6 @@
     "size": "S",
     "done": "Every item the client saved is published, or is a draft on purpose, and a run of Gaugeline lists none that is staged.",
     "estimateChanges": "Publishing is one click in Webflow, but it publishes the whole site, so check what else is waiting before you do. Allow longer where the client has to approve the wording first."
-  },
-  {
-    "id": "shopify-theme-preview-indexable",
-    "severity": "medium",
-    "area": "Search & sharing",
-    "title": "A Shopify theme preview link on the live site can be indexed",
-    "what": "The live site links to a theme preview address (a preview_theme_id address, or a shopifypreview.com host), and that page has no noindex and no canonical pointing at the public page.",
-    "why": "A preview shows an unfinished theme, can hold test content, and can compete with the real page in search.",
-    "fix": "Remove the preview link from the page, menu or template that holds it. Share previews by sending the link directly, not by publishing it.",
-    "tech": "One GET of the home page, then one GET of each linked address that carries preview_theme_id or a shopifypreview.com host (at most 5, only addresses the site itself links to, on the site's own host, a myshopify.com host or shopifypreview.com: none is guessed). Indexable means a 2xx answer with no noindex in the robots meta tag or X-Robots-Tag and no canonical to a different address.",
-    "size": "S",
-    "done": "No link on the live site leads to a theme preview that search engines may list.",
-    "estimateChanges": "Removing a preview link from the theme or a page is a minute. A preview theme shared in a menu or a newsletter template needs the link found first."
   },
   {
     "id": "squarespace-stock-differs",

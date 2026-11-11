@@ -29,7 +29,10 @@ export interface ShopifyPageRead {
 
 /** A product's page set against what the Storefront API says: numbers and flags, no text of the page. */
 export interface ShopifyPriceRead {
-  offer: ShopifyOffer;
+  /** The product's slug (its handle). */
+  slug: string;
+  /** What the Storefront API said. Absent when the price read gave nothing for this published product (see `unread`). */
+  offer?: ShopifyOffer;
   url: string;
   /** What the page shows. Absent when the page could not be read (see `unread`). */
   page?: PriceReading;
@@ -75,6 +78,12 @@ export interface ReadShopifyOptions {
   fetcher: Fetcher;
   /** The address of the live site, such as https://larkspur-ceramics.example. */
   site: string;
+  /**
+   * The shop's own myshopify.com host (SHOPIFY_SHOP_DOMAIN, already checked). A theme preview is asked for only
+   * on the live site's own host, on this host, or on this shop's shopifypreview.com host; with none given, only
+   * on the live site's own host.
+   */
+  shopHost?: string | undefined;
   /** Replaces SHOPIFY_READ_LIMITS.pages. For tests. */
   maxPages?: number;
 }
@@ -140,43 +149,69 @@ function availabilitiesOf(jsonLd: unknown[]): string[] {
   return out;
 }
 
+/** A host that belongs to Shopify's own preview or store names: such a link is judged by whose it is. */
+const SHOPIFY_HOST = /(^|\.)(myshopify|shopifypreview)\.com$/;
+
 /**
- * A preview address the site links to: only on the site's own host, a myshopify.com host or a shopifypreview.com
- * host, and only with the `preview_theme_id` parameter or on a shopifypreview.com host. Another site's address
- * is never asked for and never shown. Never a guess: only what the site itself links to.
+ * A preview address the site links to, and whether it may be asked for. Only on the live site's own host, on the
+ * configured shop's myshopify.com host, or on that shop's own shopifypreview.com host (its handle, then
+ * `.shopifypreview.com`); and on the first two only with the `preview_theme_id` parameter. Another store's address
+ * is "refused": never asked for and never shown, but counted so the run can say so. An address on any other host
+ * is not Shopify's business and is ignored. Never a guess: only what the site itself links to.
  */
-function previewTarget(href: string, siteHost: string): URL | undefined {
+function previewTarget(
+  href: string,
+  siteHost: string,
+  shopHost: string | undefined,
+): URL | "refused" | undefined {
   try {
     const u = new URL(href);
     if (u.protocol !== "https:") return undefined;
     const host = u.hostname.toLowerCase();
-    const preview = /(^|\.)shopifypreview\.com$/.test(host);
-    const ours = bare(host) === bare(siteHost) || /(^|\.)myshopify\.com$/.test(host);
-    if (preview || (ours && u.searchParams.has("preview_theme_id"))) return u;
+    const handle =
+      shopHost === undefined ? undefined : shopHost.toLowerCase().replace(/\.myshopify\.com$/, "");
+    const ownHost = bare(host) === bare(siteHost) || host === shopHost?.toLowerCase();
+    if (ownHost) return u.searchParams.has("preview_theme_id") ? u : undefined;
+    if (!SHOPIFY_HOST.test(host)) return undefined;
+    if (handle !== undefined && host === `${handle}.shopifypreview.com`) return u;
+    return "refused";
   } catch {
     // not an address
   }
   return undefined;
 }
 
-/** Linked preview addresses of the home page, in page order, each once, at most `max`. */
-function previewLinks(home: Hop[], max: number, siteHost: string): URL[] {
+/** The address as it is shown and put in a finding: host and path, and only the preview_theme_id parameter. Any other parameter (a key, a token) is dropped. */
+function shownUrl(u: URL): string {
+  const id = u.searchParams.get("preview_theme_id");
+  const query = id === null ? "" : `?preview_theme_id=${encodeURIComponent(id)}`;
+  return `${u.origin}${u.pathname}${query}`;
+}
+
+/** Linked preview addresses of the home page, in page order, each once, at most `max`; and how many linked Shopify addresses were refused as not this store's. */
+function previewLinks(
+  home: Hop[],
+  max: number,
+  siteHost: string,
+  shopHost: string | undefined,
+): { urls: URL[]; refused: number } {
   const last = home.at(-1);
-  if (!last) return [];
+  if (!last) return { urls: [], refused: 0 };
   const $ = load(last.body ?? "");
   const seen = new Map<string, URL>();
+  const refused = new Set<string>();
   $("a[href], link[href]").each((_, el) => {
-    if (seen.size >= max) return;
     let abs: string;
     try {
       abs = new URL($(el).attr("href") ?? "", last.url).href;
     } catch {
       return;
     }
-    const t = previewTarget(abs, siteHost);
-    if (t !== undefined && !seen.has(t.href)) seen.set(t.href, t);
+    const t = previewTarget(abs, siteHost, shopHost);
+    if (t === "refused") refused.add(abs);
+    else if (t !== undefined && seen.size < max && !seen.has(t.href)) seen.set(t.href, t);
   });
-  return [...seen.values()];
+  return { urls: [...seen.values()], refused: refused.size };
 }
 
 function judgePreview(url: URL, hops: Hop[]): ShopifyPreviewRead | undefined {
@@ -195,7 +230,7 @@ function judgePreview(url: URL, hops: Hop[]): ShopifyPreviewRead | undefined {
   const indexable = !noindex && !canonicalElsewhere;
   return {
     shown,
-    url: url.href,
+    url: shownUrl(url),
     indexable,
     why: noindex
       ? "it says noindex"
@@ -266,11 +301,19 @@ export async function readShopify(options: ReadShopifyOptions): Promise<ShopifyR
       reason: `${k.reason}; it was not checked`,
     });
 
+  if (adapter.skippedMore() > 0)
+    reading.unreadable.push({
+      part: "more skipped items",
+      reason: `${adapter.skippedMore()} more items were skipped for the same kinds of reasons and are not listed`,
+    });
+
   const offers = new Map<string, ShopifyOffer>();
-  if (!unreadableTypes.has("products"))
+  let offersRead = !unreadableTypes.has("products");
+  if (offersRead)
     try {
       for await (const o of adapter.offers()) offers.set(o.id, o);
     } catch (err) {
+      offersRead = false;
       if (err instanceof AdapterCouldNotCheck)
         reading.unreadable.push({ part: "product prices", reason: err.reason });
       else if (err instanceof AdapterRateLimitedError)
@@ -290,10 +333,22 @@ export async function readShopify(options: ReadShopifyOptions): Promise<ShopifyR
       const hops = await fetchHops(fetcher, p.url);
       const answer = answerOf(hops, p.url);
       reading.pages.push({ ...p, answer });
-      const offer = p.type === "products" ? offers.get(p.id) : undefined;
-      if (offer === undefined) return;
+      if (p.type !== "products") return;
+      const offer = offers.get(p.id);
+      // A published product the price read gave nothing for is said, never dropped. (When the whole price read
+      // failed, that is already in `unreadable`.)
+      if (offer === undefined) {
+        if (offersRead)
+          reading.prices.push({
+            slug: p.slug ?? p.id,
+            url: p.url,
+            unread: "no price from the Storefront API",
+          });
+        return;
+      }
       if (answer.kind !== "page" || typeof hops === "string")
         reading.prices.push({
+          slug: p.slug ?? p.id,
           offer,
           url: p.url,
           unread:
@@ -304,6 +359,7 @@ export async function readShopify(options: ReadShopifyOptions): Promise<ShopifyR
       else {
         const snap = buildSnapshot(hops);
         reading.prices.push({
+          slug: p.slug ?? p.id,
           offer,
           url: p.url,
           page: await readPrices(snap),
@@ -321,8 +377,19 @@ export async function readShopify(options: ReadShopifyOptions): Promise<ShopifyR
   const home = await fetchHops(fetcher, `${origin}/`);
   if (typeof home === "string") reading.unreadable.push({ part: "theme previews", reason: home });
   else {
+    const links = previewLinks(
+      home,
+      SHOPIFY_READ_LIMITS.previews,
+      new URL(origin).host,
+      options.shopHost,
+    );
+    if (links.refused > 0)
+      reading.unreadable.push({
+        part: "theme previews",
+        reason: `${links.refused} linked ${links.refused === 1 ? "address is" : "addresses are"} on a Shopify host that is not this store's, so ${links.refused === 1 ? "it was" : "they were"} not asked for`,
+      });
     const found = await Promise.all(
-      previewLinks(home, SHOPIFY_READ_LIMITS.previews, new URL(origin).host).map(async (u) => {
+      links.urls.map(async (u) => {
         const hops = await fetchHops(fetcher, u.href);
         return typeof hops === "string" ? undefined : judgePreview(u, hops);
       }),

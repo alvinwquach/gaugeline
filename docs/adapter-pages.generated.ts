@@ -22,7 +22,6 @@ export const ADAPTER_PAGES: { slug: string; title: string }[] = [
     slug: "integrations/hubspot-cms",
     title: "HubSpot CMS: content checks for sites built on HubSpot CMS",
   },
-  { slug: "integrations/shopify", title: "Shopify: content checks for sites built on Shopify" },
   {
     slug: "integrations/sitemap-feed",
     title: "Sitemap and feeds: content checks for sites built on any CMS",

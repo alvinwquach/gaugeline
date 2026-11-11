@@ -7,16 +7,12 @@ import {
   retryAfterSeconds,
 } from "../connectors/http.js";
 import { createRedactor } from "../connectors/redact.js";
-import {
-  DEFAULT_SHOPIFY_API_VERSION,
-  SHOPIFY_API_VERSION,
-  SHOPIFY_SHOP_DOMAIN,
-} from "../connectors/shopify.js";
+import { SHOPIFY_API_VERSION, SHOPIFY_SHOP_DOMAIN } from "../connectors/shopify.js";
 import type { Env } from "../connectors/types.js";
 import type { Fetcher } from "../fetcher.js";
 import { registerQueryAllow } from "../fetch/query-registry.js";
 import { toMinor } from "../products/money.js";
-import { fillUrlTemplate, hashValue } from "./fingerprint.js";
+import { fillUrlTemplate, hasValue, hashValue, valueAt } from "./fingerprint.js";
 import { SHOPIFY_DESCRIPTION, SHOPIFY_STOREFRONT_TOKEN } from "./shopify.entry.js";
 import {
   AdapterCouldNotCheck,
@@ -30,6 +26,13 @@ import {
 
 export { SHOPIFY_DESCRIPTION, SHOPIFY_STOREFRONT_TOKEN };
 export { SHOPIFY_API_VERSION, SHOPIFY_SHOP_DOMAIN };
+
+/**
+ * The Storefront API version used when SHOPIFY_API_VERSION is not set: a quarterly release (the VERSION rule
+ * below). It is this adapter's own: the Admin connector keeps its own default, so moving one does not move
+ * the other. Uncited: shopify.dev could not be reached to confirm which releases are current.
+ */
+export const DEFAULT_SHOPIFY_STOREFRONT_API_VERSION = "2026-10";
 
 /**
  * The one POST this adapter sends (ADR-0006): a Storefront API GraphQL QUERY to the shop's own
@@ -46,6 +49,9 @@ export const SHOPIFY_STOREFRONT_QUERY = registerQueryAllow({
   body: { kind: "graphql-query" },
   docs: { url: "https://shopify.dev/docs/api/storefront", checked: null },
 });
+
+/** Skipped items listed by name; the rest are only counted. */
+export const SKIPPED_LISTED = 1000;
 
 /** Items asked for in one request: the Storefront API's own maximum (250) is not used, 50 keeps an answer small. */
 export const SHOPIFY_PAGE_SIZE = 50;
@@ -171,7 +177,9 @@ function selection(paths: readonly string[]): string {
 export function readQuery(type: string, fields: readonly string[]): string {
   const spec = SHOPIFY_TYPES[type];
   if (spec === undefined) throw new Error("No such Shopify type.");
-  const inner = ["id", "handle", "onlineStoreUrl", ...spec.times, selection(fields)]
+  // Only names from the type's own list are ever put in a document, whoever calls this.
+  const allowed = fields.filter((f) => spec.fields.includes(f));
+  const inner = ["id", "handle", "onlineStoreUrl", ...spec.times, selection(allowed)]
     .filter((s) => s !== "")
     .join(" ");
   return `query Read($first: Int!, $after: String) { ${spec.root}(first: $first, after: $after) { nodes { ${inner} } pageInfo { hasNextPage endCursor } } }`;
@@ -197,25 +205,6 @@ function isoOf(value: unknown): string | undefined {
   if (typeof value !== "string" || value === "") return undefined;
   const ms = Date.parse(value);
   return Number.isNaN(ms) ? undefined : new Date(ms).toISOString();
-}
-
-/** A field's value by dotted name. */
-function valueAt(data: Record<string, unknown>, path: string): unknown {
-  let at: unknown = data;
-  for (const part of path.split(".")) {
-    if (!isRecord(at)) return undefined;
-    at = at[part];
-  }
-  return at;
-}
-
-/** A field counts as present when it has a value: not missing, null, an empty string, an empty list or an empty object. */
-function hasValue(v: unknown): boolean {
-  if (v === undefined || v === null) return false;
-  if (typeof v === "string") return v.trim() !== "";
-  if (Array.isArray(v)) return v.length > 0;
-  if (isRecord(v)) return Object.keys(v).length > 0;
-  return true;
 }
 
 /** An answer over the size limit: asked again with a smaller page before it becomes could-not-check. */
@@ -309,6 +298,8 @@ export interface ShopifyOffer {
 export interface ShopifyAdapter extends ContentAdapter {
   /** Items left out because a field of one was not usable (a handle that is not plain ASCII, an address that is not a page path), with why. */
   skipped(): readonly SkippedItem[];
+  /** How many more items were skipped than `skipped()` lists (it lists the first 1000). */
+  skippedMore(): number;
   /** The published products' prices and availability, for comparing with their pages. Read in the same pages and bounds as everything else. */
   offers(): AsyncIterable<ShopifyOffer>;
 }
@@ -340,6 +331,8 @@ export function createShopifyAdapter(options: ShopifyAdapterOptions): ShopifyAda
   const redact = createRedactor(env, [SHOPIFY_STOREFRONT_TOKEN]);
   /** Keyed by type and id: reading again does not list an item twice. */
   const skipped = new Map<string, SkippedItem>();
+  /** Items skipped after the list was full: counted, so the run can say how many were not listed. */
+  let skippedMore = 0;
 
   /** What a failed read becomes: a rate limit carries what was read, anything else is could-not-check. */
   const translate = (err: unknown, partial: unknown): Error => {
@@ -388,10 +381,11 @@ export function createShopifyAdapter(options: ShopifyAdapterOptions): ShopifyAda
       throw new AdapterCouldNotCheck(
         `${SHOPIFY_SHOP_DOMAIN} is not a myshopify.com address, so nothing was asked and the token was not sent.`,
       );
-    const version = (env[SHOPIFY_API_VERSION] ?? "").trim() || DEFAULT_SHOPIFY_API_VERSION;
+    const version =
+      (env[SHOPIFY_API_VERSION] ?? "").trim() || DEFAULT_SHOPIFY_STOREFRONT_API_VERSION;
     if (!VERSION.test(version))
       throw new AdapterCouldNotCheck(
-        `${SHOPIFY_API_VERSION} must be a quarterly release such as ${DEFAULT_SHOPIFY_API_VERSION}.`,
+        `${SHOPIFY_API_VERSION} must be a quarterly release such as ${DEFAULT_SHOPIFY_STOREFRONT_API_VERSION}.`,
       );
     return { url: `https://${host}/api/${version}/graphql.json`, host, token };
   };
@@ -449,8 +443,15 @@ export function createShopifyAdapter(options: ShopifyAdapterOptions): ShopifyAda
 
   /** The `data` of a GraphQL answer. An answer with errors is never an empty list, and its messages (which may quote content) are not repeated. */
   const dataOf = (body: Record<string, unknown>): Record<string, unknown> => {
-    if (Array.isArray(body.errors) && body.errors.length > 0) {
-      const codes = body.errors.map((e: unknown) =>
+    const errors: unknown = body.errors;
+    // Anything but null, missing or an empty list is an error, whatever shape it has.
+    if (
+      errors !== undefined &&
+      errors !== null &&
+      !(Array.isArray(errors) && errors.length === 0)
+    ) {
+      const list: unknown[] = Array.isArray(errors) ? errors : [errors];
+      const codes = list.map((e: unknown) =>
         isRecord(e) && isRecord(e.extensions) ? e.extensions.code : undefined,
       );
       if (codes.includes("THROTTLED")) throw new Throttled();
@@ -459,7 +460,7 @@ export function createShopifyAdapter(options: ShopifyAdapterOptions): ShopifyAda
           "Shopify says the token may not read this: it lacks a Storefront API permission (unauthenticated_read_product_listings for products and collections, unauthenticated_read_content for pages, blogs and articles).",
         );
       throw new AdapterCouldNotCheck(
-        `Shopify answered with ${body.errors.length} error${body.errors.length === 1 ? "" : "s"}.`,
+        `Shopify answered with ${list.length} error${list.length === 1 ? "" : "s"}.`,
       );
     }
     if (!isRecord(body.data))
@@ -480,18 +481,27 @@ export function createShopifyAdapter(options: ShopifyAdapterOptions): ShopifyAda
   ): AsyncGenerator<RawItem> {
     const spec = SHOPIFY_TYPES[type];
     if (spec === undefined) return;
-    const asked = fields.filter((f) => spec.fields.includes(f));
-    const document = readQuery(type, asked);
+    const document = readQuery(type, fields);
     const seen = new Set<string>();
     let after: string | null = null;
     let size = pageSize;
     let read = 0;
+    let pages = 0;
+    // Pages cannot outnumber twice what the item cap needs at the normal page size: a list that keeps
+    // answering one item at a time is stopped here, whatever the item count says.
+    const maxPages = 2 * Math.ceil(cap / pageSize) + 1;
     for (;;) {
+      if (++pages > maxPages)
+        throw new AdapterCouldNotCheck(
+          `Shopify's list of ${type} took more than ${maxPages - 1} pages, which is more than Gaugeline reads, so the rest was not read.`,
+        );
       let data: Record<string, unknown>;
       try {
         data = await ask(document, { first: size, after });
       } catch (err) {
-        if (!(err instanceof TooLarge)) throw translate(err, partial());
+        // `ask` throws the fetcher's raw ResponseTooLargeError; translate() makes a TooLarge of it.
+        const big = err instanceof TooLarge || err instanceof ResponseTooLargeError;
+        if (!big) throw translate(err, partial());
         if (size > MIN_PAGE_SIZE) {
           size = Math.max(MIN_PAGE_SIZE, Math.floor(size / 2));
           continue;
@@ -519,7 +529,10 @@ export function createShopifyAdapter(options: ShopifyAdapterOptions): ShopifyAda
       for (const raw of nodes) {
         const item = parseItem(raw, type);
         if ("reason" in item) {
-          if (skipped.size < 1000) skipped.set(`${item.type}:${item.id}`, item);
+          const key = `${item.type}:${item.id}`;
+          if (skipped.has(key)) continue;
+          if (skipped.size < SKIPPED_LISTED) skipped.set(key, item);
+          else skippedMore++;
           continue;
         }
         yield item;
@@ -562,6 +575,13 @@ export function createShopifyAdapter(options: ShopifyAdapterOptions): ShopifyAda
     type: string,
     fields: readonly string[],
   ): Promise<Record<string, number>> => {
+    const spec = SHOPIFY_TYPES[type];
+    if (spec === undefined) throw new AdapterCouldNotCheck(`Shopify has no type called ${type}.`);
+    const outside = fields.filter((f) => !spec.fields.includes(f));
+    if (outside.length > 0)
+      throw new AdapterCouldNotCheck(
+        `${outside.join(", ")} ${outside.length === 1 ? "is not a field" : "are not fields"} Gaugeline reads from Shopify ${type}, so ${outside.length === 1 ? "it was" : "they were"} not counted.`,
+      );
     const out: Record<string, number> = Object.fromEntries(fields.map((f) => [f, 0]));
     for (const name of chosen([type]))
       for await (const item of itemsOfType(name, fields, () => ({ ...out }))) {
@@ -622,8 +642,15 @@ export function createShopifyAdapter(options: ShopifyAdapterOptions): ShopifyAda
       const code = valueAt(item.data, "priceRange.minVariantPrice.currencyCode");
       const currency =
         typeof code === "string" && /^[A-Za-z]{3}$/.test(code) ? code.toLowerCase() : "";
-      const min = minorOf(valueAt(item.data, "priceRange.minVariantPrice.amount"), currency);
-      const max = minorOf(valueAt(item.data, "priceRange.maxVariantPrice.amount"), currency);
+      // No usable currency code: the amounts cannot be read into minor units, so they are left out.
+      const min =
+        currency === ""
+          ? undefined
+          : minorOf(valueAt(item.data, "priceRange.minVariantPrice.amount"), currency);
+      const max =
+        currency === ""
+          ? undefined
+          : minorOf(valueAt(item.data, "priceRange.maxVariantPrice.amount"), currency);
       const available = valueAt(item.data, "availableForSale");
       yield {
         id: item.id,
@@ -660,5 +687,6 @@ export function createShopifyAdapter(options: ShopifyAdapterOptions): ShopifyAda
     resolveUrl,
     offers,
     skipped: () => [...skipped.values()],
+    skippedMore: () => skippedMore,
   };
 }

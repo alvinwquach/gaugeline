@@ -73,6 +73,10 @@ export const shopifyItemNoPage = defineCheck<ShopifyReading>({
 function disagreements(p: ShopifyPriceRead, ctx: CheckContext): string[] {
   const { offer, page } = p;
   const out: string[] = [];
+  if (offer === undefined) {
+    ctx.couldNotCheck?.(p.url, p.unread ?? "no price from the Storefront API");
+    return out;
+  }
   if (page === undefined) {
     ctx.couldNotCheck?.(p.url, `the page was not read (${p.unread ?? "no answer"})`);
     return out;
@@ -150,7 +154,7 @@ export const shopifyProductDrift = defineCheck<ShopifyReading>({
         checkId: this.id,
         severity: this.severity,
         title: this.title,
-        evidence: `${p.offer.slug}: ${parts.join("; ")}`,
+        evidence: `${p.slug}: ${parts.join("; ")}`,
         url: p.url,
       });
     }
@@ -170,7 +174,7 @@ export const shopifyThemePreviewIndexable = defineCheck<ShopifyReading>({
   what: "The live site links to a theme preview address (a preview_theme_id address, or a shopifypreview.com host), and that page has no noindex and no canonical pointing at the public page.",
   why: "A preview shows an unfinished theme, can hold test content, and can compete with the real page in search.",
   fix: "Remove the preview link from the page, menu or template that holds it. Share previews by sending the link directly, not by publishing it.",
-  tech: "One GET of the home page, then one GET of each linked address that carries preview_theme_id or a shopifypreview.com host (at most 5, only addresses the site itself links to, on the site's own host, a myshopify.com host or shopifypreview.com: none is guessed). Indexable means a 2xx answer with no noindex in the robots meta tag or X-Robots-Tag and no canonical to a different address.",
+  tech: "One GET of the home page, then one GET of each linked address that carries preview_theme_id or is on the store's own shopifypreview.com host (at most 5, only addresses the site itself links to, and only on the site's own host, the store's own myshopify.com host or its own shopifypreview.com host: a link to another store's Shopify host is could-not-check and is not asked for; none is guessed). The address in a finding keeps only the preview_theme_id parameter. Indexable means a 2xx answer with no noindex in the robots meta tag or X-Robots-Tag and no canonical to a different address.",
   run(r, ctx) {
     unfinished(r, ctx);
     return r.previews

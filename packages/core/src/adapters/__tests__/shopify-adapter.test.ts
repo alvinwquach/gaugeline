@@ -4,6 +4,7 @@ import { createFetcher, type Transport } from "../../fetcher.js";
 import { collectPublished } from "../collect.js";
 import {
   createShopifyAdapter,
+  DEFAULT_SHOPIFY_STOREFRONT_API_VERSION,
   readQuery,
   safePath,
   shopHost,
@@ -126,7 +127,9 @@ describe("the Shopify adapter: what it reads", () => {
     };
     await make({ transport }).adapter.draftsReachable();
     expect(seen).toHaveLength(1);
-    expect(seen[0]?.url).toBe(`https://${SHOPIFY_SHOP}/api/2025-07/graphql.json`);
+    expect(seen[0]?.url).toBe(
+      `https://${SHOPIFY_SHOP}/api/${DEFAULT_SHOPIFY_STOREFRONT_API_VERSION}/graphql.json`,
+    );
     expect(seen[0]?.url).not.toContain(TOKEN);
     expect(seen[0]?.headers["x-shopify-storefront-access-token"]).toBe(TOKEN);
     expect(seen[0]?.body).not.toContain(TOKEN);
@@ -532,4 +535,162 @@ describe("the Shopify adapter: prices are whole minor units, never floats", () =
       expect(o).not.toHaveProperty("maxMinor");
     },
   );
+});
+
+describe("the Shopify adapter: review fixes (M1, L1 to L9)", () => {
+  const info = (hasNextPage: boolean, endCursor: string | null) => ({ hasNextPage, endCursor });
+  const page = (i: number) => ({
+    id: `gid://shopify/Page/${i}`,
+    handle: `page-${i}`,
+    onlineStoreUrl: `https://x.example/pages/page-${i}`,
+    updatedAt: "2026-10-10T09:00:00Z",
+  });
+
+  it("M1: an answer over the fetcher's size cap is asked again with half as many, and everything is read", async () => {
+    const firsts: number[] = [];
+    // 40 pages in all, each node padded so that 40 of them do not fit in the cap and 25 do.
+    const all = Array.from({ length: 40 }, (_, i) => ({
+      ...page(i + 1),
+      padding: "x".repeat(100),
+    }));
+    const transport: Transport = (_url, req) => {
+      const v = JSON.parse(req.body ?? "{}").variables as { first: number; after: string | null };
+      firsts.push(v.first);
+      const start = v.after === null ? 0 : Number(v.after);
+      const nodes = all.slice(start, start + v.first);
+      const end = start + nodes.length;
+      return reply(200, {
+        data: { pages: { nodes, pageInfo: info(end < all.length, String(end)) } },
+      });
+    };
+    const adapter = createShopifyAdapter({
+      env: ENV,
+      fetcher: createFetcher({ transport, timeoutMs: 5000, maxBodyBytes: 8000 }),
+      sleep: noWait,
+    });
+    const { docs } = await collectPublished(adapter, { types: ["pages"] });
+    expect(docs).toHaveLength(40);
+    expect(firsts.slice(0, 2)).toEqual([50, 25]);
+  });
+
+  it("M1: an answer that stays over the cap down to the smallest page is could-not-check", async () => {
+    const transport: Transport = (_url, req) => {
+      const v = JSON.parse(req.body ?? "{}").variables as { first: number };
+      const nodes = Array.from({ length: v.first }, (_, i) => ({
+        ...page(i + 1),
+        padding: "x".repeat(2000),
+      }));
+      return reply(200, { data: { pages: { nodes, pageInfo: info(false, null) } } });
+    };
+    const adapter = createShopifyAdapter({
+      env: ENV,
+      fetcher: createFetcher({ transport, timeoutMs: 5000, maxBodyBytes: 4000 }),
+      sleep: noWait,
+    });
+    const err = await failure(collectPublished(adapter, { types: ["pages"] }));
+    expect(err).toBeInstanceOf(AdapterCouldNotCheck);
+    expect((err as AdapterCouldNotCheck).reason).toContain("larger than Gaugeline reads at once");
+  });
+
+  it.each([
+    ["an object", { message: "x" }],
+    ["a string", "Unauthorized"],
+    ["a number", 1],
+    ["a non-empty array", [{ message: "x" }]],
+  ])("L1: `errors` that is %s beside `data` is an error, never a success", async (_n, errors) => {
+    const transport = connection(() => ({
+      data: { pages: { nodes: [], pageInfo: info(false, null) } },
+      errors,
+    }));
+    expect(await failure(make({ transport }).adapter.types())).toBeInstanceOf(AdapterCouldNotCheck);
+  });
+
+  it("L1: null or an empty list of errors beside `data` is a success", async () => {
+    for (const errors of [null, []]) {
+      const transport = connection(() => ({
+        data: { pages: { nodes: [page(1)], pageInfo: info(false, null) } },
+        errors,
+      }));
+      const { docs } = await collectPublished(make({ transport }).adapter, { types: ["pages"] });
+      expect(docs).toHaveLength(1);
+    }
+  });
+
+  it("L2: a product with no currency code has no amounts to compare: they are left out, not read as hundredths", async () => {
+    const node = {
+      ...page(9),
+      onlineStoreUrl: "https://x.example/products/mug",
+      availableForSale: true,
+      priceRange: {
+        minVariantPrice: { amount: "19.99" },
+        maxVariantPrice: { amount: "19.99", currencyCode: "usd1" },
+      },
+    };
+    const transport = connection(() => ({
+      data: {
+        products: {
+          nodes: [{ ...node, id: "gid://shopify/Product/9" }],
+          pageInfo: info(false, null),
+        },
+      },
+    }));
+    const out = [];
+    for await (const o of make({ transport }).adapter.offers()) out.push(o);
+    expect(out).toHaveLength(1);
+    expect(out[0]).not.toHaveProperty("minMinor");
+    expect(out[0]).not.toHaveProperty("maxMinor");
+  });
+
+  it("L3: items skipped past the list's cap of 1000 are counted, not dropped without a word", async () => {
+    const bad = (i: number) => ({ ...page(i), handle: `\u00fcber-${i}` });
+    const transport: Transport = (_url, req) => {
+      const v = JSON.parse(req.body ?? "{}").variables as { first: number; after: string | null };
+      const start = v.after === null ? 0 : Number(v.after);
+      const nodes = Array.from({ length: Math.min(v.first, 1205 - start) }, (_, i) =>
+        bad(start + i + 1),
+      );
+      const end = start + nodes.length;
+      return reply(200, { data: { pages: { nodes, pageInfo: info(end < 1205, String(end)) } } });
+    };
+    const { adapter } = make({ transport, pageSize: 250 });
+    await collectPublished(adapter, { types: ["pages"] });
+    expect(adapter.skipped()).toHaveLength(1000);
+    expect(adapter.skippedMore()).toBe(205);
+  });
+
+  it("L4: readQuery asks only for field names in the type's own list, whoever calls it", () => {
+    const q = readQuery("products", ["title", "bogus", "x } y { z", "seo.title"]);
+    expect(q).toContain("title");
+    expect(q).toContain("seo { title }");
+    expect(q).not.toMatch(/bogus|\bz\b/);
+  });
+
+  it("L6: a list that never ends is stopped by a bound on pages, not only on items", async () => {
+    let asked = 0;
+    // One item a page and a new cursor each time: only the bound on pages stops it before the item cap.
+    const transport: Transport = () => {
+      asked++;
+      return reply(200, {
+        data: {
+          pages: { nodes: [page(asked)], pageInfo: info(true, `c${asked}`) },
+        },
+      });
+    };
+    const { adapter } = make({ transport, pageSize: 10, maxItemsPerType: 1000 });
+    const err = await failure(collectPublished(adapter, { types: ["pages"] }));
+    expect(err).toBeInstanceOf(AdapterCouldNotCheck);
+    expect((err as AdapterCouldNotCheck).reason).toContain("pages");
+    expect(asked).toBeLessThanOrEqual(2 * Math.ceil(1000 / 10) + 1);
+  });
+
+  it("L7: the default version is a current quarterly release that the version rule accepts", async () => {
+    expect(DEFAULT_SHOPIFY_STOREFRONT_API_VERSION).toMatch(/^20\d\d-(01|04|07|10)$/);
+    expect(DEFAULT_SHOPIFY_STOREFRONT_API_VERSION >= "2026-10").toBe(true);
+  });
+
+  it("L9: a field the type does not allow is could-not-check, never a count of zero", async () => {
+    const err = await failure(make().adapter.fieldCounts("products", ["title", "bogus"]));
+    expect(err).toBeInstanceOf(AdapterCouldNotCheck);
+    expect((err as AdapterCouldNotCheck).reason).toContain("bogus");
+  });
 });

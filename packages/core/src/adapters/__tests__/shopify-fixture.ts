@@ -1,5 +1,6 @@
 import { Readable } from "node:stream";
 import type { Transport } from "../../fetcher.js";
+import { DEFAULT_SHOPIFY_STOREFRONT_API_VERSION } from "../shopify.js";
 
 /**
  * Larkspur Ceramics' invented Shopify store: a small studio selling hand-thrown mugs and bowls, with a few
@@ -10,7 +11,7 @@ import type { Transport } from "../../fetcher.js";
  */
 export const SHOPIFY_SITE = "https://larkspur-ceramics.example";
 export const SHOPIFY_SHOP = "larkspur-ceramics.myshopify.com";
-export const SHOPIFY_VERSION = "2025-07";
+export const SHOPIFY_VERSION = DEFAULT_SHOPIFY_STOREFRONT_API_VERSION;
 
 /** Text that is in the client's content, hidden items included, and must never reach a report, a log or a hash input. */
 export const SHOPIFY_MARKERS = {
