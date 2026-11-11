@@ -36,6 +36,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
       "check",
       "launch",
       "renewals",
+      "handoff",
       "verify",
       "tags",
       "ads",
@@ -50,7 +51,17 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     type: "boolean",
     description: "Print the result as JSON on stdout, and nothing else",
     since: "0.1.0",
-    commands: ["check", "launch", "renewals", "ads", "delivery", "platform", "query", "emails"],
+    commands: [
+      "check",
+      "launch",
+      "renewals",
+      "handoff",
+      "ads",
+      "delivery",
+      "platform",
+      "query",
+      "emails",
+    ],
   },
   {
     name: "no-open",
@@ -85,6 +96,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
       "check",
       "launch",
       "renewals",
+      "handoff",
       "brief",
       "plan",
       "printed",
@@ -111,7 +123,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     type: "boolean",
     description: "Also read the domain's mail records (SPF and DMARC) from DNS",
     since: "0.2.0",
-    commands: ["check", "launch", "brief"],
+    commands: ["check", "launch", "brief", "handoff"],
   },
   {
     name: "renewals",
@@ -353,9 +365,9 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     name: "force",
     type: "boolean",
     description:
-      "Let --annotate (plan), --page, --save (query) or --out (brief) replace files that exist, never a folder or link",
+      "Let --annotate (plan), --page, --save (query), --out (brief) or handoff replace files, never a folder or link",
     since: "0.2.0",
-    commands: ["plan", "query", "brief"],
+    commands: ["plan", "query", "brief", "handoff"],
   },
   {
     name: "progress",
@@ -470,9 +482,9 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     name: "out",
     type: "string",
     description:
-      "snapshot: the file to write (default before.json). query --page: the folder to write into. brief: the Markdown file",
+      "snapshot: the file (default before.json). query --page: the folder. brief: the file. handoff: the report folder",
     since: "0.2.0",
-    commands: ["snapshot", "query", "brief"],
+    commands: ["snapshot", "query", "brief", "handoff"],
   },
   {
     name: "business",

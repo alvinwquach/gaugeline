@@ -1,0 +1,93 @@
+{
+  "about": "Where the owner adds a member, for each system a handoff report names, and the name servers of the DNS hosts a handoff recognises. Read by gaugeline handoff. Every page address was written from memory and has not been opened: confirm each one, then set verified to true and lastChecked to the day. A name server that matches nothing here is listed as it is, with no provider named.",
+  "written": "2026-11-11",
+  "lastChecked": null,
+  "verified": false,
+  "systems": {
+    "vercel": {
+      "name": "Vercel",
+      "help": "https://vercel.com/docs/rbac/managing-team-members"
+    },
+    "sanity": {
+      "name": "Sanity",
+      "help": "https://www.sanity.io/manage/project/{projectId}/members"
+    },
+    "google-business": {
+      "name": "Google Business Profile",
+      "help": "https://support.google.com/business/answer/3403100"
+    },
+    "domain": {
+      "name": "Domain registration"
+    },
+    "dns": {
+      "name": "DNS"
+    }
+  },
+  "manual": [
+    {
+      "id": "stripe",
+      "name": "Stripe",
+      "why": "Gaugeline has no read of who can sign in to a Stripe account, so this is a line to check by hand, never a finding.",
+      "help": "https://dashboard.stripe.com/settings/team",
+      "detect": ["js.stripe.com", "buy.stripe.com", "checkout.stripe.com"]
+    },
+    {
+      "id": "square",
+      "name": "Square",
+      "why": "Gaugeline has no read of who can sign in to a Square account, so this is a line to check by hand, never a finding.",
+      "help": "https://squareup.com/dashboard",
+      "detect": ["square.site", "squareup.com", "squarecdn.com"]
+    },
+    {
+      "id": "shopify",
+      "name": "Shopify",
+      "why": "Gaugeline has no read of who has a staff account on a Shopify store, so this is a line to check by hand, never a finding.",
+      "help": "https://help.shopify.com/en/manual/your-account/staff-accounts",
+      "detect": ["cdn.shopify.com", "myshopify.com"]
+    },
+    {
+      "id": "mailchimp",
+      "name": "Mailchimp",
+      "why": "Gaugeline has no read of who can sign in to a Mailchimp account, so this is a line to check by hand, never a finding.",
+      "help": "https://mailchimp.com/help/manage-user-levels-in-mailchimp/",
+      "detect": ["list-manage.com", "chimpstatic.com"]
+    },
+    {
+      "id": "google-analytics",
+      "name": "Google Analytics and Tag Manager",
+      "why": "Gaugeline has no read of who has access to a Google Analytics property or a Tag Manager container, so this is a line to check by hand, never a finding.",
+      "help": "https://support.google.com/analytics/answer/1009702",
+      "detect": ["googletagmanager.com", "google-analytics.com"]
+    }
+  ],
+  "dnsProviders": [
+    {
+      "name": "Cloudflare",
+      "suffixes": ["ns.cloudflare.com"],
+      "help": "https://developers.cloudflare.com/fundamentals/manage-members/"
+    },
+    {
+      "name": "Vercel",
+      "suffixes": ["vercel-dns.com"],
+      "help": "https://vercel.com/docs/rbac/managing-team-members"
+    },
+    { "name": "Amazon Route 53", "contains": ["awsdns-"] },
+    {
+      "name": "GoDaddy",
+      "suffixes": ["domaincontrol.com"],
+      "help": "https://www.godaddy.com/help/delegate-access-to-my-godaddy-account-12376"
+    },
+    { "name": "Namecheap", "suffixes": ["registrar-servers.com"] },
+    { "name": "Squarespace", "suffixes": ["squarespacedns.com", "googledomains.com"] },
+    { "name": "Wix", "suffixes": ["wixdns.net"] },
+    { "name": "Gandi", "suffixes": ["gandi.net"] },
+    { "name": "Hover", "suffixes": ["hover.com"] },
+    { "name": "Porkbun", "suffixes": ["porkbun.com"] },
+    { "name": "IONOS", "contains": ["ui-dns."] },
+    { "name": "DigitalOcean", "suffixes": ["digitalocean.com"] },
+    { "name": "Google Cloud DNS", "contains": ["ns-cloud-"] },
+    { "name": "Azure DNS", "contains": ["azure-dns."] },
+    { "name": "Name.com", "suffixes": ["name.com"] },
+    { "name": "DreamHost", "suffixes": ["dreamhost.com"] }
+  ]
+}

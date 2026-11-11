@@ -96,6 +96,18 @@
       "verbose",
       "version"
     ],
+    "handoff": [
+      "allow-private",
+      "ci",
+      "dns",
+      "force",
+      "help",
+      "json",
+      "out",
+      "quiet",
+      "verbose",
+      "version"
+    ],
     "launch": [
       "allow-private",
       "allow-secret-key",

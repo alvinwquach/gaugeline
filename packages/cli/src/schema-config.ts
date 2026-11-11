@@ -7,6 +7,7 @@ import {
   cutoverConfigSchema,
   emailsConfigSchema,
   renewalsConfigSchema,
+  handoffConfigSchema,
   eventsConfigSchema,
   factsConfigSchema,
   hiddenConfigSchema,
@@ -28,6 +29,7 @@ import {
   type CutoverConfig,
   type EmailsConfig,
   type RenewalsConfig,
+  type HandoffConfig,
   type EventsConfig,
   type FactsConfig,
   type HiddenConfig,
@@ -58,6 +60,8 @@ export const PAYMENTS_CONFIG_FILE = "gaugeline.payments.json";
 export const EMAILS_CONFIG_FILE = "gaugeline.emails.json";
 /** What the project says about its renewals (the registered name when it is unusual, the Vercel projects), likewise. Tokens stay in the environment. */
 export const RENEWALS_CONFIG_FILE = "gaugeline.renewals.json";
+/** Who the client and the freelancer are, and which Vercel and Sanity projects to read, for the handoff report, likewise. Tokens stay in the environment. */
+export const HANDOFF_CONFIG_FILE = "gaugeline.handoff.json";
 /** The database project and roles to test its access rules as, likewise. Keys stay in the environment. */
 export const ACCESS_CONFIG_FILE = "gaugeline.access.json";
 /** The business listings to compare with the site (Google, Yelp, Apple, bio links), likewise. Keys stay in the environment. */
@@ -137,6 +141,10 @@ export function readEmailsConfig(dir: string): EmailsConfig | undefined {
 
 export function readRenewalsConfig(dir: string): RenewalsConfig | undefined {
   return readJsonConfig(dir, RENEWALS_CONFIG_FILE, renewalsConfigSchema, "the renewals settings");
+}
+
+export function readHandoffConfig(dir: string): HandoffConfig | undefined {
+  return readJsonConfig(dir, HANDOFF_CONFIG_FILE, handoffConfigSchema, "the handoff settings");
 }
 
 export function readAccess(dir: string): AccessConfig | undefined {

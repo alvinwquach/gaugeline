@@ -26,6 +26,7 @@ export const SUBCOMMANDS = [
   "query",
   "emails",
   "renewals",
+  "handoff",
 ] as const;
 export type CliCommand = "check" | (typeof SUBCOMMANDS)[number];
 
@@ -46,12 +47,24 @@ export interface BriefFlags {
   force: boolean;
 }
 
+/** The options of `gaugeline handoff`, checked when the command line is read. */
+export interface HandoffFlags {
+  /** --out: the folder the three report files go in, as typed. Absent: the default folder, or none with --json. */
+  out?: string;
+  force: boolean;
+}
+
+/** Where `gaugeline handoff` writes when --out is not given. */
+export const HANDOFF_DEFAULT_OUT = "gaugeline-handoff";
+
 export interface RunFlags {
   /** Which command: the default page check, launch or brief. */
   command: CliCommand;
   /** gaugeline brief: what to write and where. Absent for every other command. */
   brief?: BriefFlags;
-  /** launch --dns: add the email record checks. */
+  /** gaugeline handoff: where to write the report. Absent for every other command. */
+  handoff?: HandoffFlags;
+  /** launch --dns: add the email record checks. handoff --dns: read the name servers from DNS. */
   dns: boolean;
   /** --renewals (or the renewals command): add the renewals checks (domain, certificates, tokens, runtimes). */
   renewals: boolean;
@@ -1219,6 +1232,34 @@ export function parseCliArgs(
       force: values.force === true,
     };
   }
+  let handoff: HandoffFlags | undefined;
+  if (command === "handoff") {
+    const problem = (message: string, hint: string): ParsedArgs => ({
+      kind: "error",
+      message,
+      hint,
+      verbose,
+    });
+    if (positionals.length !== 1)
+      return problem(
+        positionals.length === 0
+          ? "gaugeline handoff needs the address of the site: gaugeline handoff example.com"
+          : `gaugeline handoff takes one address, got ${positionals.length}: ${positionals.join(", ")}.`,
+        "For example: gaugeline handoff marlowe-bar.com --out handoff",
+      );
+    const out = typeof values.out === "string" ? values.out.trim() : undefined;
+    if (out === "")
+      return problem(
+        "--out needs the name of the folder to write the report into.",
+        `For example: --out handoff. Leave it out to write ${HANDOFF_DEFAULT_OUT}.`,
+      );
+    if (values.force === true && out === undefined && values.json === true)
+      return problem(
+        "--force is for the report files: it lets them replace files that already exist. With --json and no --out nothing is written.",
+        "Add --out <folder>, or leave --json out.",
+      );
+    handoff = { ...(out !== undefined ? { out } : {}), force: values.force === true };
+  }
   if (positionals.length === 0) {
     return { kind: "error", message: "No address given.", hint: USAGE_HINT, verbose };
   }
@@ -1244,6 +1285,7 @@ export function parseCliArgs(
     kind: "run",
     command,
     ...(brief ? { brief } : {}),
+    ...(handoff ? { handoff } : {}),
     dns: values.dns === true,
     renewals: values.renewals === true || command === "renewals",
     ownerConsent: values["owner-consent"] === true,

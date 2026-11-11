@@ -1321,3 +1321,48 @@ export type { RenewalRow, Renewals, RenewalsSettings, RuntimesRead } from "./ren
 export { RENEWAL_CHECK_IDS, renewalDate, renewalItems, renewalLine } from "./renewals/section.js";
 export type { RenewalItem } from "./renewals/section.js";
 export { formatRenewalRows } from "./renewals/format.js";
+
+export { createHandoffRegistry } from "./handoff/registry.js";
+export { HANDOFF_CHECKS } from "./checks/handoff.js";
+export { handoffConfigSchema, MANUAL_SYSTEM_IDS } from "./handoff/config.js";
+export type { HandoffConfig } from "./handoff/config.js";
+export { createHandoff, HANDOFF_ENV_VARS } from "./handoff/reader.js";
+export type { Handoff, HandoffSettings, HandoffSource } from "./handoff/reader.js";
+export { createPeople, maskEmail, normalizeEmail } from "./handoff/people.js";
+export type { People, PeopleConfig } from "./handoff/people.js";
+export { googleRole, isAdminRole, sanityRole, vercelRole } from "./handoff/roles.js";
+export { readVercel } from "./handoff/vercel.js";
+export { readSanity } from "./handoff/sanity.js";
+export { readGoogleAdmins } from "./handoff/google.js";
+export { dnsProviderOf, helpFor } from "./handoff/providers.js";
+export {
+  HANDOFF_FILES,
+  buildHandoff,
+  formatHandoffLines,
+  handoffFiles,
+  renderHandoffHtml,
+  renderHandoffMarkdown,
+} from "./handoff/report.js";
+export type {
+  BuildInput as HandoffBuildInput,
+  ChecklistItem as HandoffChecklistItem,
+  HandoffFile,
+  HandoffSummary,
+  SummaryFinding as HandoffFinding,
+  SummarySystem as HandoffSystemSummary,
+} from "./handoff/report.js";
+export type {
+  Account as HandoffAccount,
+  ClientAccess,
+  DnsSystem,
+  DomainSystem,
+  ManualSystem,
+  Member as HandoffMember,
+  Party as HandoffParty,
+  PeopleSystem,
+  RawMember,
+  Role as HandoffRole,
+  SourceRead as HandoffSourceRead,
+  System as HandoffSystem,
+  UnreadSystem,
+} from "./handoff/types.js";

@@ -2,7 +2,7 @@ import { Resolver } from "node:dns/promises";
 import { isIP } from "node:net";
 
 /**
- * Public DNS reads, for the email record checks and the cutover snapshot: TXT, MX, A and AAAA. This module never opens a
+ * Public DNS reads, for the email record checks, the cutover snapshot and the handoff report: TXT, MX, A, AAAA and NS. This module never opens a
  * connection to a mail server and never sends mail. Answers are whatever the machine's resolver
  * returns, so a network with its own internal DNS can see different records than the public does.
  */
@@ -18,6 +18,8 @@ export interface DnsReader {
   /** IPv4 and IPv6 address records (the cutover snapshot). Absent on a reader that has none. */
   a?(name: string): Promise<string[]>;
   aaaa?(name: string): Promise<string[]>;
+  /** The name servers the name is delegated to (the handoff report). Absent on a reader that has none. */
+  ns?(name: string): Promise<string[]>;
   /**
    * True for a name this reader will not look up (reserved for examples and tests): the checks
    * then skip it, rather than read "no records" as a missing record.
@@ -31,12 +33,13 @@ export interface DnsResolver {
   resolveMx(name: string): Promise<MxRecord[]>;
   resolve4?(name: string): Promise<string[]>;
   resolve6?(name: string): Promise<string[]>;
+  resolveNs?(name: string): Promise<string[]>;
 }
 
 /** A lookup that failed for a reason other than "no records": the checks report could-not-check. */
 export class DnsLookupError extends Error {
   constructor(
-    readonly rrtype: "TXT" | "MX" | "A" | "AAAA",
+    readonly rrtype: "TXT" | "MX" | "A" | "AAAA" | "NS",
     readonly hostname: string,
     readonly reason: string,
   ) {
@@ -69,7 +72,7 @@ export interface DnsReaderOptions {
   askReserved?: boolean;
 }
 
-/** TXT and MX reads through node:dns/promises, memoised by name in a Map. */
+/** TXT, MX, A, AAAA and NS reads through node:dns/promises, memoised by name in a Map. */
 export function createDnsReader({
   timeoutMs = 5000,
   resolver,
@@ -103,6 +106,7 @@ export function createDnsReader({
     mx: (name) => read("MX", name, () => r.resolveMx(name)),
     a: (name) => read("A", name, async () => (r.resolve4 ? r.resolve4(name) : [])),
     aaaa: (name) => read("AAAA", name, async () => (r.resolve6 ? r.resolve6(name) : [])),
+    ns: (name) => read("NS", name, async () => (r.resolveNs ? r.resolveNs(name) : [])),
   };
 }
 
