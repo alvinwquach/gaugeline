@@ -1,4 +1,5 @@
 import * as z from "zod";
+import { ADAPTER_ENTRIES } from "./entries.generated.js";
 import { isUrlTemplate } from "./fingerprint.js";
 import { PROTOTYPE_KEYS, genericApiSchema } from "./generic-api-config.js";
 
@@ -10,14 +11,20 @@ const FIELD = /^[A-Za-z_][A-Za-z0-9_-]{0,63}(?:\.[A-Za-z_][A-Za-z0-9_-]{0,63}){0
 /** A path on the site ("/sitemap-pages.xml") or an https address. Nothing else: no scheme tricks, no spaces. */
 const SITE_FILE = /^(?:\/[^\s]*|https:\/\/[^\s]+)$/;
 
-/** The adapter that reads a site's sitemap and feeds, and takes no fields. */
-const SITEMAP_FEED = "sitemap-feed";
+/**
+ * What each adapter adds to these rules comes from its entry file (adapters/<id>.entry.ts `settings`), so a new
+ * adapter edits nothing here. The adapters that read the live site's sitemap and feeds take `site`, `sitemaps`
+ * and `feeds`, and no fields.
+ */
+const PAGE_READERS: readonly string[] = ADAPTER_ENTRIES.filter((e) => e.settings?.pageReader).map(
+  (e) => e.id,
+);
 
-/** The adapter whose platform names its fields with hyphens. */
-const WEBFLOW = "webflow";
+/** The adapters whose platform names its fields with hyphens (Webflow). */
+const HYPHEN_FIELDS: readonly string[] = ADAPTER_ENTRIES.filter(
+  (e) => e.settings?.hyphenFields,
+).map((e) => e.id);
 
-/** The adapters that read the live site's sitemap and feeds: they take `site`, `sitemaps` and `feeds`, and no fields. */
-const PAGE_READERS: readonly string[] = [SITEMAP_FEED, "framer"];
 /** The adapter driven by a mapping in the settings (`api`). */
 const GENERIC_API = "generic-api";
 
@@ -121,9 +128,9 @@ export const adaptersConfigSchema = z.strictObject({
               ctx.addIssue({
                 code: "custom",
                 path: [key],
-                message: `"${key}" belongs to the sitemap-feed and framer adapters, not to ${entry.id}`,
+                message: `"${key}" belongs to the sitemap-feed, framer, wix and hosted-builder adapters, not to ${entry.id}`,
               });
-          if (entry.id !== WEBFLOW)
+          if (!HYPHEN_FIELDS.includes(entry.id))
             for (const [type, fields] of Object.entries(entry.fingerprint ?? {}))
               for (const field of fields)
                 if (field.includes("-"))
@@ -143,6 +150,27 @@ export const adaptersConfigSchema = z.strictObject({
     )
     .min(1)
     .max(8),
+  /**
+   * `gaugeline --published`: how far back to look for changed items, how long a page may lag, how many
+   * pages to ask for, and the fields to compare by type. Every key is optional.
+   */
+  live: z
+    .strictObject({
+      /** Items changed in the last this many days are compared with their pages. Default 7. */
+      days: z.number().int().min(1).max(90).optional(),
+      /** A page may lag its item by this many minutes before it is reported. Default 15. */
+      graceMinutes: z.number().int().min(0).max(10080).optional(),
+      /** At most this many pages are asked for in one run. Default 40. */
+      maxPages: z.number().int().min(1).max(200).optional(),
+      /** The fields to compare with the page, by type. Default: `title`. */
+      fields: z
+        .record(
+          z.string().regex(TYPE, "a content type name"),
+          z.array(z.string().regex(FIELD, "a field name, or names joined by dots")).min(1).max(5),
+        )
+        .optional(),
+    })
+    .optional(),
 });
 
 export type AdaptersConfig = z.infer<typeof adaptersConfigSchema>;

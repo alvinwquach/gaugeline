@@ -9,6 +9,7 @@ import type { Env } from "../connectors/types.js";
 import { ConfigError } from "../errors.js";
 import type { Fetcher } from "../fetcher.js";
 import { fillUrlTemplate, hashValue } from "./fingerprint.js";
+import { GENERIC_API_DESCRIPTION } from "./generic-api.entry.js";
 import {
   BLOCKED_REASONS,
   GENERIC_API_LIMITS,
@@ -22,24 +23,12 @@ import {
 import {
   AdapterCouldNotCheck,
   AdapterRateLimitedError,
-  type AdapterDescription,
   type AdapterSettings,
   type ContentAdapter,
   type PublishedDoc,
   type PublishedOptions,
   type TypeCount,
 } from "./types.js";
-
-/**
- * The generic adapter reads whatever a headless CMS's read API says, from a mapping in the settings. Its key kind
- * is the narrowest the platform offers, which only the platform's recipe can say (a read-only role's static token,
- * a delivery token): `scoped` is what it claims, and each recipe names the actual key.
- */
-export const GENERIC_API_DESCRIPTION: AdapterDescription = {
-  name: "Any headless CMS with a read API",
-  docsUrl: "https://gaugeline.dev/docs/integrations/generic-api",
-  keyKind: "scoped",
-};
 
 const wait = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 

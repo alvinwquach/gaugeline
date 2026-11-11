@@ -69,7 +69,7 @@ export interface ReadWebflowOptions {
 }
 
 /** The address a pattern made, or undefined when it made none (no slug) or something that is not an address. */
-function addressOf(raw: string, origin: string): URL | undefined {
+export function addressOf(raw: string, origin: string): URL | undefined {
   if (raw === "") return undefined;
   try {
     return new URL(raw, origin);
@@ -78,16 +78,16 @@ function addressOf(raw: string, origin: string): URL | undefined {
   }
 }
 
-const bare = (host: string): string => host.toLowerCase().replace(/^www\./, "");
+export const bare = (host: string): string => host.toLowerCase().replace(/^www\./, "");
 
 /** An address on the site being checked, or undefined: a finding never shows an address on another site. */
-function onSite(raw: string, origin: string): URL | undefined {
+export function onSite(raw: string, origin: string): URL | undefined {
   const url = addressOf(raw, origin);
   return url !== undefined && bare(url.host) === bare(new URL(origin).host) ? url : undefined;
 }
 
 /** One page, asked with GET through the fetcher: a 2xx is there, 404 and 410 are gone, anything else is not an answer. */
-async function askPage(fetcher: Fetcher, url: string): Promise<PageAnswer> {
+export async function askPage(fetcher: Fetcher, url: string): Promise<PageAnswer> {
   try {
     const hops = await fetcher.get(url);
     const last = hops.at(-1);

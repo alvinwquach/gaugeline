@@ -11,7 +11,7 @@ import {
   type GenericApiMapping,
 } from "../generic-api-config.js";
 import { createGenericApiAdapter, graphqlSelection } from "../generic-api.js";
-import { resolveAdapters } from "../registry.js";
+import { createAdapter, resolveAdapters } from "../registry.js";
 import { AdapterCouldNotCheck, AdapterRateLimitedError } from "../types.js";
 import type { AdapterSettings } from "../types.js";
 import { recording, requestProblems, type Seen } from "./contract.js";
@@ -688,13 +688,15 @@ describe("drafts and rate limits", () => {
 });
 
 describe("the adapter in the registry", () => {
-  it("is built, and an entry with no mapping cannot be created", () => {
+  it("is built, and an entry with no mapping cannot be created", async () => {
     const built = resolveAdapters({ adapters: [{ id: "generic-api", api: HERON_API }] });
     expect(built.map((b) => b.id)).toEqual(["generic-api"]);
     const fetcher = createFetcher({ transport: heronTransport(), timeoutMs: 1000 });
-    expect(() => built[0]?.create({ env: ENV, fetcher }, { id: "generic-api" })).toThrow(
-      /valid "api" mapping/,
-    );
+    const first = built[0];
+    if (!first) throw new Error("no adapter");
+    await expect(
+      createAdapter(first, { env: ENV, fetcher }, { id: "generic-api" }),
+    ).rejects.toThrow(/valid "api" mapping/);
   });
 });
 

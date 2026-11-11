@@ -96,6 +96,8 @@ export interface RunFlags {
   libraries: boolean;
   /** --wordpress: add the WordPress checks (versions shown against wordpress.org's current releases, and the REST API's list of users). */
   wordpress: boolean;
+  /** --published: add the published-not-live checks (changed CMS items against their live pages, and pages of items that are gone). */
+  published: boolean;
   /** --owner-consent: run the probing checks (they ask gated routes for what they protect, with no login). */
   ownerConsent: boolean;
   /** --routes: globs over the repository's route files, for the download route probe. */
@@ -231,6 +233,8 @@ export type ParsedArgs =
       libraries: boolean;
       /** --wordpress: each site's run also runs the WordPress checks. */
       wordpress: boolean;
+      /** --published: each site's run also compares changed CMS items with their pages. */
+      published: boolean;
       verbose: boolean;
       quiet: boolean;
     }
@@ -665,6 +669,7 @@ export function parseCliArgs(
       trackers: values.trackers === true,
       libraries: values.libraries === true,
       wordpress: values.wordpress === true,
+      published: values.published === true,
       verbose,
       quiet: values.quiet === true,
     };
@@ -1534,6 +1539,7 @@ export function parseCliArgs(
     trackers: values.trackers === true,
     libraries: values.libraries === true,
     wordpress: values.wordpress === true,
+    published: values.published === true,
     ownerConsent: values["owner-consent"] === true,
     routes: Array.isArray(values.routes)
       ? values.routes

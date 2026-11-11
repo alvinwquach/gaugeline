@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { createFetcher, type Transport } from "../../fetcher.js";
 import { collectPublished } from "../collect.js";
 import { adaptersConfigSchema } from "../config.js";
+import { copyAdapterEnv } from "../registry.js";
 import {
   GENERIC_ENV,
   type GenericApiCollection,
@@ -386,5 +387,18 @@ describe("review 7: smaller bounds", () => {
       const { adapter } = adapterFor(api, () => json({ data: { rows: [ROW], next } }));
       expect(await couldNot(collectPublished(adapter)), next.slice(0, 5)).toContain("cursor");
     }
+  });
+});
+
+describe("the key reaches the adapter from the CLI's environment", () => {
+  it("copies the variables a mapping may name, the adapters' own, and nothing else", () => {
+    const env = copyAdapterEnv({
+      GAUGELINE_API_HERON_TOKEN: "heron-value",
+      WORDPRESS_URL: "https://harbour-bar.example",
+      GAUGELINE_SLACK_WEBHOOK: "slack-value",
+      GAUGELINE_GITHUB_TOKEN: "github-value",
+      HOME: "/home/someone",
+    });
+    expect(Object.keys(env).sort()).toEqual(["GAUGELINE_API_HERON_TOKEN", "WORDPRESS_URL"]);
   });
 });

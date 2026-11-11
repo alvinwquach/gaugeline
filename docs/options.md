@@ -76,6 +76,9 @@ Options:
       --wordpress                Also check a WordPress site's versions against
                                  the current releases, and whether it lists its
                                  users
+      --published                Also check that content changed in your CMS is
+                                 live on the site, and that unpublished pages
+                                 are gone
       --owner-consent            Run the probing checks, which ask routes for
                                  what they protect with no login; only on sites
                                  you may test
@@ -503,6 +506,7 @@ between the markers; CI fails when it differs from the flag table.
 | `--trackers`                | Also list the trackers on pages with a form or a path you listed, and what a tag manager holds                       |                      | 0.2.0 |
 | `--libraries`               | Also check the JavaScript files a page loads for libraries with a published advisory                                 |                      | 0.2.0 |
 | `--wordpress`               | Also check a WordPress site's versions against the current releases, and whether it lists its users                  |                      | 0.2.0 |
+| `--published`               | Also check that content changed in your CMS is live on the site, and that unpublished pages are gone                 |                      | 0.2.0 |
 | `--owner-consent`           | Run the probing checks, which ask routes for what they protect with no login; only on sites you may test             |                      | 0.2.0 |
 | `--routes <value>`          | With --owner-consent: download routes in files matching this glob (repeatable); no glob: a folder's signed-in routes |                      | 0.2.0 |
 | `--since <value>`           | Page check: compare with the last run (the only value is last). delivery: the window to read, such as 7d             |                      | 0.2.0 |
@@ -793,6 +797,25 @@ is no settings file: the WordPress adapter's own settings are in `gaugeline.adap
 [WordPress](integrations/wordpress.md). What it sends:
 [Privacy and safety](privacy.md#wordpress-wordpress).
 
+### The published option
+
+`--published` adds three checks to the page check for a site whose content lives in a CMS: `published-not-live`
+compares the fingerprint of each field you chose (the title unless you say otherwise) of every item changed in
+the last 7 days with the live page; `live-page-missing` finds a published item whose address answers 404;
+`unpublished-still-live` finds a page that still serves after its item was unpublished or deleted. A page may
+lag its item for a grace period (15 minutes). It uses the adapters in `gaugeline.adapters.json`, or the sitemap
+and feed adapter when there is no file. It is off by default.
+
+```sh
+npx gaugeline lantern-ladle.example --published
+```
+
+It checks the site of the page you give it, once. `gaugeline run --all --published` adds it to every site of a
+nightly run. Settings: the `live` entry of `gaugeline.adapters.json` (`days`, `graceMinutes`, `maxPages`,
+`fields`). Each request is a `GET`, on the site being checked only, at most 40 pages in a run. What it reads and
+what it does not see: [Published but not live](guides/published-not-live.md). What it sends:
+[Privacy and safety](privacy.md#published-but-not-live-published).
+
 ### The query command
 
 `gaugeline query <folder>` reads the GROQ in a repository instead of checking a site. It takes one folder and reads files. For every query it finds (`groq` tagged templates and `defineQuery()` calls in `.ts`, `.tsx`, `.js`, `.jsx` and `.mjs` files) it prints the document type, the fields the query reads, whether its filter leaves drafts out, its parameters, and the file and line it starts on. A query built at run time, a file that does not parse and a query with no `_type` filter are listed as unreadable, never skipped.
@@ -831,9 +854,11 @@ to test.** Without either, nothing is asked and the check is not listed.
 `by` says who agreed and `on` says when, so a shared repository records it once. A run with consent
 prints one line on stderr saying probing checks are on.
 
-There are two probing checks: `gated-download-open`, described in
-[Paid downloads and delivery](delivery.md#a-download-route-that-hands-the-file-to-anyone), and
-`route-hidden-not-protected`, described in [Routes that are hidden, not protected](protected-routes.md).
+There are three probing checks: `gated-download-open`, described in
+[Paid downloads and delivery](delivery.md#a-download-route-that-hands-the-file-to-anyone),
+`route-hidden-not-protected`, described in [Routes that are hidden, not protected](protected-routes.md),
+and `strapi-drafts-public`, described in [Strapi](integrations/strapi.md#the-two-checks) (it runs from
+the adapter's reading, not from a page check).
 
 `--routes <glob>` (repeatable) points that check at your repository's route files, so it finds routes
 no page links to. Run Gaugeline from the repository's folder and give a glob such as

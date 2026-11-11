@@ -2,6 +2,8 @@
  * The docs sidebar, as data. Groups and slugs are exactly the published site's window.DOCS: slugs are
  * public addresses, so never rename one without a redirect (docs/slugs.lock.json pins them).
  */
+import { ADAPTER_PAGES } from "./adapter-pages.generated.js";
+
 export interface NavPage {
   slug: string;
   title: string;
@@ -106,6 +108,7 @@ export const UNLISTED: NavPage[] = [
   { slug: "guides/renewals", title: "Renewals: see what lapses before the site goes dark" },
   { slug: "guides/hosting-cost", title: "Hosting cost: find what runs up the bill" },
   { slug: "guides/trackers-on-sensitive-pages", title: "Trackers on sensitive pages" },
+  { slug: "guides/published-not-live", title: "Published but not live" },
   { slug: "guides/served-libraries", title: "Served libraries: the old jQuery nobody remembers" },
   { slug: "guides/advisory", title: "Advisory check: is my client affected?" },
   { slug: "guides/audit-pack", title: "Audit pack: turn a first run into a proposal" },
@@ -119,30 +122,12 @@ export const UNLISTED: NavPage[] = [
   },
   { slug: "guides/hidden-text", title: "Hidden text aimed at AI assistants" },
   {
-    slug: "integrations/wordpress",
-    title: "WordPress: what the client published, against the page",
-  },
-  {
     slug: "guides/script-baseline",
     title: "Script and header baseline: what loads on a payment page, and what changed",
   },
   { slug: "integrations/index", title: "Content systems: one interface for every CMS" },
-  {
-    slug: "integrations/sitemap-feed",
-    title: "Sitemap and feeds: content checks for sites built on any CMS",
-  },
-  {
-    slug: "integrations/webflow",
-    title: "Webflow: content checks for sites built on Webflow",
-  },
-  {
-    slug: "integrations/framer",
-    title: "Framer: content checks for sites built on Framer (beta)",
-  },
-  {
-    slug: "integrations/generic-api",
-    title: "Generic API adapter: content checks for any headless CMS with a read API",
-  },
+  // Each adapter's page comes from its entry file (pnpm gen:adapters), so a new adapter does not edit this list.
+  ...ADAPTER_PAGES,
   { slug: "integrations/recipes/index", title: "Recipes for the generic API adapter" },
   { slug: "connectors/listings", title: "Listings off the site" },
   { slug: "connectors/postgres", title: "A database as a source: Postgres and Supabase" },
