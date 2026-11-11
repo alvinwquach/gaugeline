@@ -65,6 +65,7 @@ describe("runner: unit", () => {
     expect(ids).toEqual([
       "access-public-read",
       "access-role-scope",
+      "aem-author-links",
       "ai-crawlers-blocked",
       "app-link-dead",
       "app-name-mismatch",
@@ -256,6 +257,7 @@ describe("runner: edge cases", () => {
     expect(out.passed.sort()).toEqual([
       "access-public-read",
       "access-role-scope",
+      "aem-author-links",
       "ai-crawlers-blocked",
       "app-link-dead",
       "app-name-mismatch",
