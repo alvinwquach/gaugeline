@@ -35,6 +35,10 @@ const IMAGE_BASE64 = /^(?:iVBORw0KGgo|\/9j\/|R0lGOD|UklGR|PHN2Zy|Qk[0-9A-Z])/;
 /** A value that names a file ("app.3f2a9c.js") is a build hash, not a key. */
 const FILE_NAME = /\.(?:js|mjs|cjs|css|map|json|png|jpe?g|gif|webp|avif|svg|woff2?|ttf|html?)$/i;
 
+/** The Contentful Preview API's host, and how far from a token it must be to count as the token's host. */
+const PREVIEW_HOST = /preview\.contentful\.com/i;
+const PREVIEW_WINDOW = 300;
+
 export const DETECTORS: readonly Detector[] = Object.freeze([
   {
     id: "stripe-secret",
@@ -49,6 +53,37 @@ export const DETECTORS: readonly Detector[] = Object.freeze([
     pattern: /(?<![A-Za-z0-9_])(?<secret>sk[A-Za-z0-9]{60,})(?![A-Za-z0-9])/g,
     // Real tokens mix upper case, lower case and digits; a run of one letter does not.
     verify: (s) => /[A-Z]/.test(s) && /[a-z]/.test(s.slice(2)) && /\d/.test(s),
+  },
+  {
+    id: "contentful-preview-token",
+    label: "Contentful preview token",
+    // Contentful tokens are 43 characters of base64url with no prefix, so the shape alone proves nothing
+    // (a delivery token is public by design). A match is a 43-character value assigned to a name that
+    // contains "token" or "key", either as name = "value" / name: "value", or as ?access_token=value.
+    // verify() then insists on the Preview API: the name says "preview" in a file that names Contentful,
+    // or the preview host is within a few hundred characters (the contentful SDK itself contains that
+    // host, which is why mere presence in a file is not enough).
+    pattern:
+      /(?:(?<![A-Za-z0-9_$])(?<name>[A-Za-z0-9_$]*(?:token|key)[A-Za-z0-9_$]*)["']?\s*[:=]\s*["'`]|[?&]access_token=)(?<secret>[A-Za-z0-9_-]{43})(?![A-Za-z0-9_-])/gi,
+    verify: (s, m) => {
+      if (entropy(s) < ENTROPY_MIN) return false;
+      const start = m.index;
+      const end = start + m[0].length;
+      const name = m.groups?.name ?? "";
+      if (name === "") {
+        // ?access_token=...: the preview host just before it, in the same address.
+        if (PREVIEW_HOST.test(m.input.slice(Math.max(0, start - PREVIEW_WINDOW), start)))
+          return true;
+      } else {
+        // name: "value": the preview host in the same object literal (after the last "{" before the
+        // token, up to the first "}" after it), so a delivery token next to a preview client is not one.
+        const before = m.input.slice(Math.max(0, start - PREVIEW_WINDOW), start);
+        const after = m.input.slice(end, end + PREVIEW_WINDOW);
+        const scope = `${before.slice(before.lastIndexOf("{") + 1)} ${after.split("}")[0] ?? ""}`;
+        if (PREVIEW_HOST.test(scope)) return true;
+      }
+      return /preview/i.test(name) && /contentful/i.test(m.input);
+    },
   },
   {
     id: "secret-assignment",

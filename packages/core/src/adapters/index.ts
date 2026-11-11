@@ -71,3 +71,22 @@ export type {
   StagedRead,
   WebflowReading,
 } from "./webflow-read.js";
+export {
+  CONTENTFUL_CDA,
+  CONTENTFUL_CPA,
+  CONTENTFUL_DELIVERY_TOKEN,
+  CONTENTFUL_DESCRIPTION,
+  CONTENTFUL_ENVIRONMENT,
+  CONTENTFUL_LIMITS,
+  CONTENTFUL_PAGE_SIZE,
+  CONTENTFUL_PREVIEW_TOKEN,
+  CONTENTFUL_SPACE_ID,
+  createContentfulAdapter,
+} from "./contentful.js";
+export type { ContentfulAdapterOptions, ContentfulType } from "./contentful.js";
+export { CONTENTFUL_READ_LIMITS, readContentful } from "./contentful-read.js";
+export type {
+  ContentfulReading,
+  ContentfulPageRead,
+  ReadContentfulOptions,
+} from "./contentful-read.js";

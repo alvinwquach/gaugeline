@@ -8,6 +8,7 @@ import { SITEMAP_FEED_DESCRIPTION, createSitemapFeedAdapter } from "./sitemap-fe
 import { WORDPRESS_DESCRIPTION, createWordPressAdapter } from "./wordpress.js";
 import type { AdapterDescription, AdapterSettings, ContentAdapter } from "./types.js";
 import { WEBFLOW_DESCRIPTION, createWebflowAdapter } from "./webflow.js";
+import { CONTENTFUL_DESCRIPTION, createContentfulAdapter } from "./contentful.js";
 
 export interface AdapterContext {
   env: Env;
@@ -100,6 +101,20 @@ export const BUILT_ADAPTERS: ReadonlyMap<string, BuiltAdapter> = new Map<string,
         }),
     },
   ],
+  [
+    "contentful",
+    {
+      id: "contentful",
+      describe: CONTENTFUL_DESCRIPTION,
+      create: (c, settings) =>
+        createContentfulAdapter({
+          env: c.env,
+          fetcher: c.fetcher,
+          settings,
+          ...(c.sleep ? { sleep: c.sleep } : {}),
+        }),
+    },
+  ],
 ]);
 
 /** A content system the docs list and the build order names, and no adapter yet. */
@@ -121,7 +136,6 @@ export const PLANNED_ADAPTERS: readonly PlannedAdapter[] = [
   { id: "builders", name: "Squarespace and other builders without a content API", branch: "C-12" },
   { id: "strapi", name: "Strapi", branch: "C-02" },
   { id: "tina", name: "TinaCMS", branch: "C-03" },
-  { id: "contentful", name: "Contentful", branch: "C-07" },
 ];
 
 /**
