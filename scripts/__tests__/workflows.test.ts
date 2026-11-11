@@ -153,7 +153,45 @@ describe("faster pull request runs", () => {
       const text = read(f);
       expect(text).toContain("cancel-in-progress: ${{ github.event_name == 'pull_request' }}");
       expect(text).toMatch(
-        /concurrency:\n\s+group: .*\$\{\{ github\.event\.pull_request\.number \|\| github\.sha \}\}/,
+        /concurrency:\n\s+group: .*\$\{\{ github\.head_ref \|\| github\.sha \}\}/,
+      );
+    }
+  });
+
+  it("every job has a timeout of at most 15 minutes (the release wait for the full matrix is the one longer job)", () => {
+    const problems: string[] = [];
+    for (const f of readdirSync(dir).filter((n) => /\.ya?ml$/.test(n))) {
+      const lines = read(f).split("\n");
+      const start = lines.findIndex((l) => l === "jobs:");
+      let job = "";
+      let timeout: number | undefined;
+      const flush = () => {
+        if (!job) return;
+        const allowed = f === "release-pr.yml" && job === "ci-gate" ? 60 : 15;
+        if (timeout === undefined) problems.push(`${f}: ${job} has no timeout-minutes`);
+        else if (timeout > allowed)
+          problems.push(`${f}: ${job} has ${timeout} minutes (max ${allowed})`);
+      };
+      for (const l of lines.slice(start + 1)) {
+        const j = /^ {2}([a-z][\w-]*):\s*$/.exec(l);
+        if (j) {
+          flush();
+          job = j[1] ?? "";
+          timeout = undefined;
+          continue;
+        }
+        const m = /^ {4}timeout-minutes:\s*(\d+)\s*$/.exec(l);
+        if (m) timeout = Number(m[1]);
+      }
+      flush();
+    }
+    expect(problems).toEqual([]);
+  });
+
+  it("the pull request checks cancel an older run of the same branch", () => {
+    for (const f of ["pr-gate.yml", "pr-body.yml"]) {
+      expect(read(f), f).toMatch(
+        /concurrency:\n {2}group: [\w-]+-\$\{\{ github\.head_ref \}\}\n {2}cancel-in-progress: true/,
       );
     }
   });
