@@ -81,7 +81,7 @@ Drafts are left out, so a hotspot an editor has not published is not judged.
 - Two uploads of the same picture have two asset ids and cannot be told apart without downloading them.
 - `auto=format` on a resized image is advised in the fix text but is not a finding of its own.
 
-### Example
+### Example with a Viewer token
 
 The invented Harbour Lane Tap Room, a Friday pop-up bar in a converted fishing container (the
 `sanity-studio-images` fixture and the `HARBOUR` dataset, all made up). The owner drew a crop on the cocktail menu
