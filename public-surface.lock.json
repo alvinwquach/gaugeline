@@ -61,6 +61,14 @@
       "verbose",
       "version"
     ],
+    "changes": [
+      "help",
+      "json",
+      "quiet",
+      "since",
+      "verbose",
+      "version"
+    ],
     "check": [
       "allow-private",
       "allow-secret-key",

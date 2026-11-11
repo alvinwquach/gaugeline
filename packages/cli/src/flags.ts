@@ -67,6 +67,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
       "platform",
       "query",
       "emails",
+      "changes",
     ],
   },
   {
@@ -206,9 +207,9 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     name: "since",
     type: "string",
     description:
-      "Page check: compare with the last run (the only value is last). delivery: the window to read, such as 7d",
+      "Page check: compare with the last run (the only value is last). delivery: the window to read, such as 7d. changes: show findings that appeared after this date or run id",
     since: "0.2.0",
-    commands: ["check", "delivery"],
+    commands: ["check", "delivery", "changes"],
   },
   {
     name: "paid",

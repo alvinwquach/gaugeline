@@ -9,6 +9,10 @@ import {
   EMAIL_PRESET,
   LAUNCH_PRESET,
   buildRunSnapshot,
+  buildPageRecord,
+  DEFAULT_RETENTION_DAYS,
+  HISTORY_SCHEMA,
+  runId,
   createDnsReader,
   createPageRegistry,
   notifyAll,
@@ -134,6 +138,8 @@ import { runCutover } from "./cutover.js";
 import { runMigration } from "./migration.js";
 import { runAdvisory } from "./advisory.js";
 import { runInit } from "./init.js";
+import { runChanges } from "./changes.js";
+import { saveRun } from "./runs.js";
 import { gateVerdict } from "./deploy-gate.js";
 import { runSnapshot } from "./snapshot.js";
 import { runVerify } from "./verify.js";
@@ -183,6 +189,7 @@ import {
   readCostConfig,
   readTrackersConfig,
   readAdaptersConfig,
+  readChangesConfig,
   readEvents,
   readSchemaRules,
   readTags,
@@ -1086,6 +1093,23 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         }),
         ci: false,
       };
+    case "changes":
+      return {
+        outcome: await runChanges(
+          {
+            address: args.address,
+            ...(args.since ? { since: args.since } : {}),
+            json: args.json,
+            quiet: args.quiet,
+          },
+          { stdout: io.stdout, stderr: io.stderr, ...(io.env ? { env: io.env } : {}) },
+          {
+            ...(deps.cwd ? { cwd: deps.cwd } : {}),
+            ...(deps.fetcher ? { fetcher: deps.fetcher } : {}),
+          },
+        ),
+        ci: false,
+      };
     case "digest": {
       await runDigest(
         {
@@ -1764,13 +1788,34 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       // Gains since the last run: information on stderr, never findings.
       if (contentNotes && contentNotes.length > 0 && !args.json && !args.quiet)
         io.stderr.write(`Since the last run:\n${contentNotes.map((l) => `  ${l}`).join("\n")}\n`);
-      if (args.since && last?.kind !== "newer")
+      if (args.since && last?.kind !== "newer") {
         writeLastRun(
           cwd,
           host,
           buildRunSnapshot(snapshot, () => startedAt, contents),
           `Gaugeline ${deps.version ?? VERSION}`,
         );
+        // The same run, kept as history for `gaugeline changes`: a few fields and hashes of the
+        // page, and the findings' check, path and title.
+        const pagePath = new URL(snapshot.finalUrl).pathname;
+        saveRun(
+          cwd,
+          host,
+          {
+            schema: HISTORY_SCHEMA,
+            id: runId(startedAt),
+            takenAt: startedAt.toISOString(),
+            pages: { [pagePath]: buildPageRecord(snapshot) },
+            findings: result.findings.map((f) => ({
+              checkId: f.checkId,
+              path: new URL(f.url, snapshot.finalUrl).pathname,
+              title: f.title,
+            })),
+          },
+          startedAt,
+          readChangesConfig(cwd)?.retentionDays ?? DEFAULT_RETENTION_DAYS,
+        );
+      }
       // The report: one self-contained file, written on every run that isn't --json, opened only
       // for a person at a terminal (not with --no-open, not in CI, not when piped).
       if (!args.json) {
