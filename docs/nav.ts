@@ -156,6 +156,7 @@ export const UNLISTED: NavPage[] = [
   { slug: "guides/nextjs", title: "Next.js sites" },
   { slug: "guides/static-generators", title: "Static site generators" },
   { slug: "guides/angular", title: "Angular sites" },
+  { slug: "guides/error-pages", title: "Error pages that answer 200" },
   { slug: "guides/gatsby", title: "Gatsby sites" },
   { slug: "guides/sveltekit", title: "SvelteKit sites" },
   { slug: "guides/astro", title: "Astro sites" },

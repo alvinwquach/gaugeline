@@ -59,6 +59,7 @@ const FIXTURES = [
   "paid-downloads",
   "gated-downloads",
   "image-optimizer",
+  "error-pages",
   "checkout-after",
 ];
 
