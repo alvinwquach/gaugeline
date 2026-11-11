@@ -30,8 +30,11 @@ export interface TransportResponse {
 }
 
 export interface SendOptions {
-  method: "GET" | "HEAD";
+  /** POST only for a documented read-only query (ADR-0006), sent by `fetcher.query()`. */
+  method: "GET" | "HEAD" | "POST";
   headers: Record<string, string>;
+  /** The JSON text of a query. Only with POST. */
+  body?: string;
   /** The address that was checked. The socket connects here and nowhere else: no second lookup. */
   pinned: ResolvedAddress;
   timeoutMs: number;
@@ -98,7 +101,13 @@ export function send(url: URL, opts: SendOptions): Promise<TransportResponse> {
     let settled = false;
     const req = request(url, {
       method: opts.method,
-      headers: { "accept-encoding": "gzip, deflate, br", ...opts.headers },
+      headers: {
+        "accept-encoding": "gzip, deflate, br",
+        ...(opts.body === undefined
+          ? {}
+          : { "content-length": String(Buffer.byteLength(opts.body)) }),
+        ...opts.headers,
+      },
       agent: false,
       lookup: pinnedLookup,
       ...(opts.ca && url.protocol === "https:" ? { ca: opts.ca } : {}),
@@ -136,6 +145,7 @@ export function send(url: URL, opts: SendOptions): Promise<TransportResponse> {
         ...(certificate ? { certificate } : {}),
       });
     });
+    if (opts.body !== undefined) req.write(opts.body);
     req.end();
   });
 }

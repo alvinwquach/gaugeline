@@ -5,7 +5,9 @@ export interface Row {
   /** The address as requested. Shown as text, never as a link. */
   address: string;
   kind: RequestKind;
-  method: "GET" | "HEAD";
+  method: "GET" | "HEAD" | "POST";
+  /** On a read-only query: the id of the allowlist entry that let it through. */
+  allow?: string;
   status: number | null;
   /** A short phrase built from the status: "Loaded", "Moved to <address>", "Not found" ... */
   answer: string;
@@ -44,6 +46,7 @@ export function toRows(requests: readonly RequestRow[]): Row[] {
       address: r.url,
       kind: r.kind,
       method: r.method,
+      ...(r.allow === undefined ? {} : { allow: r.allow }),
       status: r.status,
       answer: answerFor(r),
       ...(r.location !== undefined && r.status !== null && r.status >= 300 && r.status < 400

@@ -16,6 +16,8 @@ import {
   type RequestKind,
   type RequestRecord,
 } from "./request-log.js";
+import { resolveQueryAllow } from "./fetch/query-registry.js";
+import { QueryRefusedError, queryRefusal, serializeBody } from "./fetch/read-only-query.js";
 import {
   send,
   systemResolver,
@@ -26,7 +28,9 @@ import {
 
 /**
  * The only module allowed to touch the network. Every request to a checked site goes through here:
- * GET or HEAD only, at most `concurrency` at a time, a named user agent, every redirect hop kept.
+ * GET or HEAD, at most `concurrency` at a time, a named user agent, every redirect hop kept.
+ * The one other request it can send is `query()`: a POST to a documented read-only query endpoint
+ * on an adapter's allowlist, with a body that is a query and never a write (ADR-0006).
  */
 
 export interface Hop {
@@ -211,9 +215,38 @@ export interface GetOptions {
   fresh?: boolean;
 }
 
+/** What `fetcher.query()` needs besides the address. */
+export interface QueryOptions {
+  /**
+   * The id of a REGISTERED allowlist entry (`registerQueryAllow`, in an adapter's file). An id
+   * nobody registered is refused: a caller cannot pass an entry of its own.
+   */
+  allow: string;
+  /** For an entry whose host is `{ configured }`: the host from the adapter's validated configuration. */
+  host?: string;
+  /** The query as an object. It is serialised once; that text is what is checked and what is sent. */
+  body: Record<string, unknown>;
+  /** The key or token, from the environment. Sent to the entry's origin only; never logged. */
+  headers?: Record<string, string>;
+  /** Read at most this many bytes of the answer; it can only lower the fetcher's own cap. */
+  maxBytes?: number;
+}
+
 export interface Fetcher {
   /** Every redirect hop; the last one is the final response. */
   get(url: string, opts?: GetOptions): Promise<Hop[]>;
+  /**
+   * The only way to send a POST (ADR-0006): a documented read-only query on an adapter's
+   * registered allowlist, named by id. Refused with a QueryRefusedError, before anything is sent,
+   * unless the id is registered, the address matches the entry (https, host, path) and the body is
+   * a query of the entry's shape (a GraphQL `query`, or a JSON object of the entry's query keys and
+   * operators, none named like a write). A redirect is never followed, so the body and headers go
+   * to the entry's origin only: a 3xx is refused. The request is in `history()` with kind "query"
+   * and the entry's id, never the body. Not remembered: every call is a request. Takes the same
+   * slot, timeout and size cap as `get`.
+   * Absent on a stand-in, like `history`; the real fetcher always has it.
+   */
+  query?(url: string, opts: QueryOptions): Promise<Hop>;
   /**
    * Fetch what someone typed. A bare domain ("example.com") is tried as https first and, if the
    * secure address does not answer at all, as http. The fallback is recorded on the first hop.
@@ -332,8 +365,11 @@ function hostOf(url: string): string {
 }
 
 export interface TransportRequest {
-  method: "GET" | "HEAD";
+  /** POST only from `fetcher.query()` (ADR-0006). */
+  method: "GET" | "HEAD" | "POST";
   headers: Record<string, string>;
+  /** The JSON text of a query; present only with POST. */
+  body?: string;
   timeoutMs: number;
 }
 
@@ -498,26 +534,37 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
 
   async function requestOnce(
     url: string,
-    method: "GET" | "HEAD",
+    method: "GET" | "HEAD" | "POST",
     headers: Record<string, string>,
     at: { kind: RequestKind; chain: number; hop: number },
-    extra: { anonymous?: boolean; peek?: PeekOptions; maxBytes?: number } = {},
+    extra: {
+      anonymous?: boolean;
+      peek?: PeekOptions;
+      maxBytes?: number;
+      /** A query that `query()` has already checked against an allowlist: the only way method is POST. */
+      query?: { body: string; allow: string };
+    } = {},
   ): Promise<{ hop: Hop; location: string | null }> {
-    assertReadOnly(method);
+    const query = extra.query;
+    if (query === undefined) assertReadOnly(method);
+    else if (method !== "POST") throw new TypeError("A query is sent with POST.");
     return gate.run(async () => {
       const started = performance.now();
-      const note = (r: Pick<RequestRecord, "status" | "error" | "location">) =>
+      const note = (r: Pick<RequestRecord, "status" | "error" | "location">) => {
+        const ms = Math.round(performance.now() - started);
         history.push({
           url,
-          kind: at.kind,
+          kind: query === undefined ? at.kind : "query",
           method,
+          ...(query === undefined ? {} : { allow: query.allow }),
           status: r.status,
           ...(r.error ? { error: r.error } : {}),
-          ms: Math.round(performance.now() - started),
+          ms,
           ...(r.location ? { location: r.location } : {}),
           chain: at.chain,
           hop: at.hop,
         });
+      };
       let res;
       const target = new URL(url);
       try {
@@ -526,8 +573,11 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
           headers: {
             "user-agent": userAgent,
             ...headers,
-            ...(extra.anonymous ? {} : options.headersFor?.(target)),
+            // A query carries only the headers its caller gave: the per-address headers of a
+            // protected preview belong to the checked site, never to a vendor's API.
+            ...(extra.anonymous || query !== undefined ? {} : options.headersFor?.(target)),
           },
+          ...(query === undefined ? {} : { body: query.body }),
           timeoutMs,
         });
       } catch (err) {
@@ -681,6 +731,85 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
     return pending;
   }
 
+  /**
+   * Headers a caller of query() never sets: the fetcher sets its own, and these would change what
+   * the request is (a method override), how its body is framed, who it is sent as, or how much of
+   * the answer comes back.
+   */
+  const FORBIDDEN_QUERY_HEADERS = new Set([
+    "host",
+    "connection",
+    "content-length",
+    "content-type",
+    "content-encoding",
+    "accept",
+    "accept-encoding",
+    "user-agent",
+    "transfer-encoding",
+    "te",
+    "trailer",
+    "expect",
+    "upgrade",
+    "cookie",
+    "proxy-authorization",
+    "range",
+    "if-range",
+  ]);
+  /** Any header whose name speaks of a method (X-HTTP-Method-Override, X-Original-Method, ...). */
+  const METHOD_HEADER = /method|override/i;
+
+  async function query(url: string, opts: QueryOptions): Promise<Hop> {
+    const id = typeof opts.allow === "string" ? opts.allow : "unknown";
+    let target: URL;
+    try {
+      target = new URL(url);
+    } catch {
+      // The text may hold a key: say nothing of it.
+      throw new QueryRefusedError("an invalid address", id, "the address is not a valid URL");
+    }
+    const refuse = (reason: string): never => {
+      throw new QueryRefusedError(target.host, id, reason);
+    };
+    const entry = resolveQueryAllow(opts.allow);
+    if (entry === undefined) return refuse("no allowlist entry with this id is registered");
+    // Serialise once: this text is validated (as parsed back) and is exactly what is sent.
+    const body = serializeBody(opts.body);
+    if (!body.ok) return refuse(body.reason);
+    const why = queryRefusal(target, entry, body.parsed, opts.host);
+    if (why !== undefined) return refuse(why);
+    const headers: Record<string, string> = {};
+    for (const [name, value] of Object.entries(opts.headers ?? {})) {
+      const lower = name.toLowerCase();
+      if (FORBIDDEN_QUERY_HEADERS.has(lower) || METHOD_HEADER.test(lower))
+        refuse(`the ${lower} header is set by the fetcher or would change the request`);
+      headers[lower] = value;
+    }
+    const step = await requestOnce(
+      target.href,
+      "POST",
+      { ...headers, accept: "application/json", "content-type": "application/json" },
+      { kind: currentKind(), chain: chains++, hop: 0 },
+      {
+        query: { body: body.text, allow: entry.id },
+        ...(opts.maxBytes === undefined ? {} : { maxBytes: opts.maxBytes }),
+      },
+    ).catch((err: unknown) => {
+      if (err instanceof FetchError)
+        throw new FetchError(err.reason, err.message, err.url, [], err.cause, err.hint);
+      throw err;
+    });
+    if (step.location !== null)
+      throw new FetchError(
+        "refused",
+        `${target.host} answered a read-only query with a redirect (${step.hop.status}). Gaugeline does not send a query body anywhere else.`,
+        target.href,
+        [step.hop],
+        undefined,
+        "Use the address the vendor documents for this endpoint.",
+      );
+    return step.hop;
+  }
+
   async function getSite(address: string, opts: GetOptions = {}): Promise<Hop[]> {
     const trimmed = address.trim();
     if (/^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed)) return get(trimmed, opts);
@@ -705,6 +834,7 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
   return {
     get,
     getSite,
+    query,
     history: () => history,
     stats: {
       get requests() {
