@@ -1,152 +1,42 @@
-import type { Env } from "../connectors/types.js";
 import { ConfigError } from "../errors.js";
-import type { Fetcher } from "../fetcher.js";
 import type { AdaptersConfig } from "./config.js";
-import { BUILDERS, builderDescription, createBuilderAdapter } from "./builders.js";
-import { FRAMER_DESCRIPTION, createFramerAdapter } from "./framer.js";
-import { SANITY_DESCRIPTION, createSanityAdapter } from "./sanity.js";
-import { SITEMAP_FEED_DESCRIPTION, createSitemapFeedAdapter } from "./sitemap-feed.js";
-import { WIX_DESCRIPTION, createWixAdapter } from "./wix.js";
-import { WORDPRESS_DESCRIPTION, createWordPressAdapter } from "./wordpress.js";
+import { ADAPTER_ENTRIES } from "./entries.generated.js";
+import type { AdapterContext, AdapterFactory } from "./entry.js";
 import type { AdapterDescription, AdapterSettings, ContentAdapter } from "./types.js";
-import { WEBFLOW_DESCRIPTION, createWebflowAdapter } from "./webflow.js";
-import { CONTENTFUL_DESCRIPTION, createContentfulAdapter } from "./contentful.js";
 
-export interface AdapterContext {
-  env: Env;
-  fetcher: Fetcher;
-  sleep?: (ms: number) => Promise<void>;
-  /** The address of the site being checked. The sitemap and feed adapter reads it unless its settings give one. */
-  site?: string;
-}
+export type { AdapterContext, AdapterEntry, AdapterFactory } from "./entry.js";
+export { onAdapterLoad } from "./load.js";
 
-/** An adapter that is built. Its row in docs/integrations is "built" and a test keeps the two in step. */
+// LOADER RULE: this file and every other file outside adapters/<id>*.ts reach an adapter's code only through
+// its entry's `load` (a dynamic `import()` in adapters/<id>.entry.ts), never through a static import. A
+// type-only import is fine: it is erased. The bundler then keeps each adapter out of start-up, so a run that
+// uses WordPress never loads the Shopify code. adapters/__tests__/lazy.test.ts enforces it.
+
+/**
+ * An adapter that is built. Its row in docs/integrations is "built". `describe` is metadata, known without
+ * loading the adapter (the docs table and the run header read it); `load` imports the adapter's module, once,
+ * the first time it is used.
+ */
 export interface BuiltAdapter {
-  /** What it says about itself, known without building it (the docs table and the run header read it). */
   describe: AdapterDescription;
   id: string;
-  create(context: AdapterContext, settings?: AdapterSettings): ContentAdapter;
+  /** The environment variables the adapter may read, when it reads any beyond the key. */
+  envVars: readonly string[];
+  load(): Promise<AdapterFactory>;
 }
 
 /**
- * The adapters that exist. A new adapter adds one line here, one entry to the contract suite
- * (adapters/__tests__/entries.ts) and its row in docs/integrations/index.md.
+ * The adapters that exist, from the entry files (adapters/<id>.entry.ts, collected by `pnpm gen:adapters`
+ * into entries.generated.ts). A new adapter adds its entry file, one contract entry and its docs page; it
+ * edits no shared file.
  */
-export const BUILT_ADAPTERS: ReadonlyMap<string, BuiltAdapter> = new Map<string, BuiltAdapter>([
-  [
-    "sanity",
-    {
-      id: "sanity",
-      describe: SANITY_DESCRIPTION,
-      create: (c, settings) =>
-        createSanityAdapter({
-          env: c.env,
-          fetcher: c.fetcher,
-          settings,
-          ...(c.sleep ? { sleep: c.sleep } : {}),
-        }),
-    },
-  ],
-  [
-    "sitemap-feed",
-    {
-      id: "sitemap-feed",
-      describe: SITEMAP_FEED_DESCRIPTION,
-      create: (c, settings) =>
-        createSitemapFeedAdapter({
-          fetcher: c.fetcher,
-          site: c.site,
-          settings,
-          ...(c.sleep ? { sleep: c.sleep } : {}),
-        }),
-    },
-  ],
-  [
-    "wix",
-    {
-      id: "wix",
-      describe: WIX_DESCRIPTION,
-      create: (c, settings) =>
-        createWixAdapter({
-          fetcher: c.fetcher,
-          site: c.site,
-          settings,
-          ...(c.sleep ? { sleep: c.sleep } : {}),
-        }),
-    },
-  ],
-  [
-    "wordpress",
-    {
-      id: "wordpress",
-      describe: WORDPRESS_DESCRIPTION,
-      create: (c, settings) =>
-        createWordPressAdapter({
-          env: c.env,
-          fetcher: c.fetcher,
-          settings,
-          ...(c.sleep ? { sleep: c.sleep } : {}),
-        }),
-    },
-  ],
-  [
-    "webflow",
-    {
-      id: "webflow",
-      describe: WEBFLOW_DESCRIPTION,
-      create: (c, settings) =>
-        createWebflowAdapter({
-          env: c.env,
-          fetcher: c.fetcher,
-          settings,
-          ...(c.sleep ? { sleep: c.sleep } : {}),
-        }),
-    },
-  ],
-  [
-    "framer",
-    {
-      id: "framer",
-      describe: FRAMER_DESCRIPTION,
-      create: (c, settings) =>
-        createFramerAdapter({
-          fetcher: c.fetcher,
-          site: c.site,
-          settings,
-          ...(c.sleep ? { sleep: c.sleep } : {}),
-        }),
-    },
-  ],
-  [
-    "contentful",
-    {
-      id: "contentful",
-      describe: CONTENTFUL_DESCRIPTION,
-      create: (c, settings) =>
-        createContentfulAdapter({
-          env: c.env,
-          fetcher: c.fetcher,
-          settings,
-          ...(c.sleep ? { sleep: c.sleep } : {}),
-        }),
-    },
-  ],
-  // One adapter id per hosted builder with no content API (adapters/builders.ts): the live site only.
-  ...BUILDERS.map((platform): [string, BuiltAdapter] => [
-    platform.id,
-    {
-      id: platform.id,
-      describe: builderDescription(platform),
-      create: (c, settings) =>
-        createBuilderAdapter(platform, {
-          fetcher: c.fetcher,
-          site: c.site,
-          settings,
-          ...(c.sleep ? { sleep: c.sleep } : {}),
-        }),
-    },
-  ]),
-]);
+export const BUILT_ADAPTERS: ReadonlyMap<string, BuiltAdapter> = new Map<string, BuiltAdapter>(
+  ADAPTER_ENTRIES.flatMap((e): [string, BuiltAdapter][] =>
+    e.status === "built" && e.describe && e.load
+      ? [[e.id, { id: e.id, describe: e.describe, envVars: e.envVars ?? [], load: e.load }]]
+      : [],
+  ),
+);
 
 /** A content system the docs list and the build order names, and no adapter yet. */
 export interface PlannedAdapter {
@@ -156,16 +46,30 @@ export interface PlannedAdapter {
   branch: string;
 }
 
-/**
- * What is planned, in build order (PROGRESS.md). C-08 Storyblok, C-09 Payload, C-10 Ghost and C-11
- * Drupal ship first as C-14 recipes; a native adapter for them is built when someone asks.
- */
-export const PLANNED_ADAPTERS: readonly PlannedAdapter[] = [
-  { id: "generic-api", name: "Any headless CMS with a read API", branch: "C-14" },
-  { id: "git-content", name: "Content kept in git", branch: "C-15" },
-  { id: "strapi", name: "Strapi", branch: "C-02" },
-  { id: "tina", name: "TinaCMS", branch: "C-03" },
-];
+/** What is planned (adapters/<id>.entry.ts with status "planned"), in the order of the entry files. */
+export const PLANNED_ADAPTERS: readonly PlannedAdapter[] = ADAPTER_ENTRIES.flatMap(
+  (e): PlannedAdapter[] =>
+    e.status === "planned" && e.branch ? [{ id: e.id, name: e.name, branch: e.branch }] : [],
+);
+
+/** What a built adapter says about itself, without loading it. Throws for an id that is not built. */
+export function adapterDescription(id: string): AdapterDescription {
+  const built = BUILT_ADAPTERS.get(id);
+  if (!built) throw new Error(`"${id}" is not a built adapter.`);
+  return built.describe;
+}
+
+/** The environment variables a built adapter may read, without loading it. */
+export function adapterEnvVars(id: string): readonly string[] {
+  const built = BUILT_ADAPTERS.get(id);
+  if (!built) throw new Error(`"${id}" is not a built adapter.`);
+  return built.envVars;
+}
+
+/** Every environment variable any built adapter may read, for a caller that copies them before loading one. */
+export function allAdapterEnvVars(): string[] {
+  return [...new Set([...BUILT_ADAPTERS.values()].flatMap((b) => b.envVars))];
+}
 
 /**
  * The built adapter for each entry of a settings file, or a ConfigError: an id that is planned says
@@ -176,7 +80,7 @@ export function resolveAdapters(config: AdaptersConfig): BuiltAdapter[] {
     const built = BUILT_ADAPTERS.get(entry.id);
     if (built) return built;
     const planned = PLANNED_ADAPTERS.find((p) => p.id === entry.id);
-    const known = [...BUILT_ADAPTERS.keys()].join(", ");
+    const known = [...BUILT_ADAPTERS.keys()].sort().join(", ");
     throw new ConfigError(
       planned
         ? `gaugeline.adapters.json: the "${entry.id}" adapter is planned (${planned.branch}) and not built yet.`
@@ -186,9 +90,25 @@ export function resolveAdapters(config: AdaptersConfig): BuiltAdapter[] {
   });
 }
 
-/** The adapters a settings file names, built over this environment and fetcher. */
-export function createAdapters(config: AdaptersConfig, context: AdapterContext): ContentAdapter[] {
-  return resolveAdapters(config).map((built, i) => built.create(context, config.adapters[i]));
+/** One built adapter, loaded now and built over this environment and fetcher. */
+export async function createAdapter(
+  built: BuiltAdapter,
+  context: AdapterContext,
+  settings?: AdapterSettings,
+): Promise<ContentAdapter> {
+  return (await built.load())(context, settings);
+}
+
+/**
+ * The adapters a settings file names, built over this environment and fetcher. Only the adapters it
+ * names are loaded, and none until this is called.
+ */
+export async function createAdapters(
+  config: AdaptersConfig,
+  context: AdapterContext,
+): Promise<ContentAdapter[]> {
+  const built = resolveAdapters(config);
+  return Promise.all(built.map((b, i) => createAdapter(b, context, config.adapters[i])));
 }
 
 /**
@@ -197,10 +117,10 @@ export function createAdapters(config: AdaptersConfig, context: AdapterContext):
  * works on a site built on any CMS. It needs only the site's address; with none there is no adapter
  * and nothing is requested.
  */
-export function adaptersOrDefault(
+export async function adaptersOrDefault(
   config: AdaptersConfig | undefined,
   context: AdapterContext,
-): ContentAdapter[] {
+): Promise<ContentAdapter[]> {
   if (config !== undefined) return createAdapters(config, context);
   if (context.site === undefined || context.site.trim() === "") return [];
   return createAdapters({ adapters: [{ id: "sitemap-feed" }] }, context);

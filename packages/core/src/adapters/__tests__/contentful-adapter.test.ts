@@ -77,13 +77,13 @@ async function findings(pages: Readonly<Record<string, number>>) {
 }
 
 describe("the Contentful adapter: what it asks and how", () => {
-  it("is registered, described as read-only, and no longer planned", () => {
+  it("is registered, described as read-only, and no longer planned", async () => {
     expect(BUILT_ADAPTERS.get("contentful")?.describe).toEqual(CONTENTFUL_DESCRIPTION);
     expect(PLANNED_ADAPTERS.some((p) => p.id === "contentful")).toBe(false);
     expect(CONTENTFUL_DESCRIPTION.keyKind).toBe("read-only");
     expect(adapterHeader(CONTENTFUL_DESCRIPTION)).toContain("a read-only key");
     const config = adaptersConfigSchema.parse({ adapters: [SETTINGS] });
-    const [adapter] = createAdapters(config, { env: ENV, fetcher: over().fetcher });
+    const [adapter] = await createAdapters(config, { env: ENV, fetcher: over().fetcher });
     expect(adapter?.id).toBe("contentful");
   });
 

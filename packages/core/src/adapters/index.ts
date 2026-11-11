@@ -17,88 +17,24 @@ export { fillUrlTemplate, hashValue, isUrlTemplate } from "./fingerprint.js";
 export {
   BUILT_ADAPTERS,
   PLANNED_ADAPTERS,
+  adapterDescription,
+  adapterEnvVars,
+  allAdapterEnvVars,
   adaptersOrDefault,
+  createAdapter,
   createAdapters,
+  onAdapterLoad,
   resolveAdapters,
 } from "./registry.js";
-export type { AdapterContext, BuiltAdapter, PlannedAdapter } from "./registry.js";
-export {
-  SITEMAP_FEED_DESCRIPTION,
-  FEED_PATHS,
-  SITEMAP_FEED_LIMITS,
-  SITEMAP_PATHS,
-  TOP_LEVEL,
-  createSitemapFeedAdapter,
-} from "./sitemap-feed.js";
-export type { SitemapFeedOptions } from "./sitemap-feed.js";
-export {
-  BUILDERS,
-  BUILDER_IDS,
-  builderById,
-  builderCannotRead,
-  builderDescription,
-  createBuilderAdapter,
-  suggestBuilder,
-} from "./builders.js";
-export type { BuilderAdapterOptions, BuilderPlatform, BuilderSuggestion } from "./builders.js";
-export { FRAMER_CMS_READ_PATH, FRAMER_DESCRIPTION, createFramerAdapter } from "./framer.js";
-export type { FramerAdapterOptions } from "./framer.js";
-export { SANITY_DESCRIPTION, SANITY_PAGE_SIZE, createSanityAdapter } from "./sanity.js";
-export type { SanityAdapterOptions } from "./sanity.js";
-export { WIX_CMS_READ_PATH, WIX_DESCRIPTION, createWixAdapter } from "./wix.js";
-export type { WixAdapterOptions } from "./wix.js";
-export {
-  WORDPRESS_APP_PASSWORD,
-  WORDPRESS_COUNT_CAP,
-  WORDPRESS_DESCRIPTION,
-  WORDPRESS_ENV_VARS,
-  WORDPRESS_PAGE_SIZE,
-  WORDPRESS_URL,
-  WORDPRESS_USER,
-  createWordPressAdapter,
-} from "./wordpress.js";
-export type { WordPressAdapter, WordPressAdapterOptions } from "./wordpress.js";
-export {
-  WEBFLOW_API,
-  WEBFLOW_DESCRIPTION,
-  WEBFLOW_LIMITS,
-  WEBFLOW_PAGE_SIZE,
-  WEBFLOW_SITE_ID,
-  WEBFLOW_STAGED_TOLERANCE_MS,
-  WEBFLOW_TOKEN,
-  createWebflowAdapter,
-} from "./webflow.js";
 export type {
-  WebflowAdapter,
-  WebflowAdapterOptions,
-  WebflowCollection,
-  WebflowItemState,
-  WebflowStagedItem,
-} from "./webflow.js";
-export { WEBFLOW_READ_LIMITS, readWebflow } from "./webflow-read.js";
-export type {
-  PageAnswer,
-  PageRead,
-  ReadWebflowOptions,
-  StagedRead,
-  WebflowReading,
-} from "./webflow-read.js";
-export {
-  CONTENTFUL_CDA,
-  CONTENTFUL_CPA,
-  CONTENTFUL_DELIVERY_TOKEN,
-  CONTENTFUL_DESCRIPTION,
-  CONTENTFUL_ENVIRONMENT,
-  CONTENTFUL_LIMITS,
-  CONTENTFUL_PAGE_SIZE,
-  CONTENTFUL_PREVIEW_TOKEN,
-  CONTENTFUL_SPACE_ID,
-  createContentfulAdapter,
-} from "./contentful.js";
-export type { ContentfulAdapterOptions, ContentfulType } from "./contentful.js";
-export { CONTENTFUL_READ_LIMITS, readContentful } from "./contentful-read.js";
-export type {
-  ContentfulReading,
-  ContentfulPageRead,
-  ReadContentfulOptions,
-} from "./contentful-read.js";
+  AdapterContext,
+  AdapterEntry,
+  AdapterFactory,
+  BuiltAdapter,
+  PlannedAdapter,
+} from "./registry.js";
+// Nothing per adapter is exported from here: an adapter's code is reached through its loader (see the loader rule
+// in registry.ts), and its description and variable names through `adapterDescription` and `adapterEnvVars`, so a
+// new adapter adds no line to this file. The builders' table is plain data the docs and the suggestions read.
+export { BUILDERS, BUILDER_IDS, builderById, builderDescription } from "./builder-platforms.js";
+export type { BuilderPlatform } from "./builder-platforms.js";

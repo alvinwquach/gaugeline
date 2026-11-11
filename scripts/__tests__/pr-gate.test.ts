@@ -12,6 +12,37 @@ const repoRoot = fileURLToPath(new URL("../../", import.meta.url));
 const SRC = "packages/core/src/checks/noindex.ts";
 const patch = { bump: "patch" as const, summary: "Reads the robots header too." };
 
+describe("gate: PROGRESS.md belongs to its own pull request", () => {
+  const code = ["packages/core/src/adapters/strapi.entry.ts", "scripts/gen-adapters.ts"];
+  for (const file of code) {
+    it(`${file} with PROGRESS.md: not ok, and the message says what to do`, () => {
+      const r = gate({ files: [file, "PROGRESS.md"], changesets: [patch], labels: [] });
+      expect(r.ok).toBe(false);
+      expect(r.problems[0]).toContain("Feature pull requests do not edit PROGRESS.md");
+      expect(r.problems[0]).toContain("`progress`");
+    });
+  }
+  it("a test file under packages/*/src counts as code", () => {
+    const files = ["packages/core/src/adapters/__tests__/x.test.ts", "PROGRESS.md"];
+    expect(gate({ files, changesets: [], labels: [] }).ok).toBe(false);
+  });
+  it("the internal label does not excuse it", () => {
+    expect(gate({ files: [SRC, "PROGRESS.md"], changesets: [], labels: ["internal"] }).ok).toBe(
+      false,
+    );
+  });
+  it("the label `progress` allows it", () => {
+    const files = [SRC, "docs/checks.md", "PROGRESS.md"];
+    expect(gate({ files, changesets: [patch], labels: ["progress"] }).ok).toBe(true);
+  });
+  it("PROGRESS.md alone, or with docs, is fine", () => {
+    expect(gate({ files: ["PROGRESS.md"], changesets: [], labels: [] }).ok).toBe(true);
+    expect(gate({ files: ["PROGRESS.md", "docs/options.md"], changesets: [], labels: [] }).ok).toBe(
+      true,
+    );
+  });
+});
+
 describe("gate: unit", () => {
   it("source file, no changeset: not ok, one problem", () => {
     expect(gate({ files: [SRC], changesets: [], labels: [] })).toEqual({
