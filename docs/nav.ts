@@ -138,6 +138,8 @@ export const UNLISTED: NavPage[] = [
   {
     slug: "integrations/git-content",
     title: "Content kept in git: content checks for sites whose content lives in the repo",
+  },
+  {
     slug: "integrations/framer",
     title: "Framer: content checks for sites built on Framer (beta)",
   },
