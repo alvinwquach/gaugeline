@@ -265,8 +265,8 @@ describe("the HubSpot CMS adapter: reading", () => {
   it("reads HubDB rows with only the columns asked for", async () => {
     const rows = await make().hubdbRows("loaves", ["price"]);
     expect(rows).toEqual([
-      { id: "7001", path: "sourdough", columns: { price: 8 } },
-      { id: "7002", path: "rye", columns: { price: 9 } },
+      { id: "7001", path: "sourdough", columns: { price: 8.5 } },
+      { id: "7002", path: "rye", columns: { price: 9.25 } },
       { id: "7003", path: "seeded", columns: {} },
     ]);
   });

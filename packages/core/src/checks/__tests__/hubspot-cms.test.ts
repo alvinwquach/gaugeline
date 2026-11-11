@@ -202,7 +202,7 @@ describe("hubspot-hubdb-drift", () => {
     // The finding names the column, never the value or the client's words.
     const text = JSON.stringify(out.findings);
     expect(text).not.toContain(HUBSPOT_CMS_MARKERS.rye);
-    expect(text).not.toContain("$9");
+    expect(text).not.toContain("9.25");
   });
 
   it("negative: rows whose values are on their pages are not a finding", async () => {
@@ -211,10 +211,10 @@ describe("hubspot-hubdb-drift", () => {
     expect(out.passed).toContain("hubspot-hubdb-drift");
   });
 
-  it("a whole number is not found inside a longer one (8 is not in 18.00)", () => {
-    expect(valueOnPage(8, visibleText("<p>Only $18.00 today</p>"))).toBe(false);
-    expect(valueOnPage(8, visibleText("<p>$8.00</p>"))).toBe(true);
-    expect(valueOnPage(8, visibleText("<p>8</p>"))).toBe(true);
+  it("a number is not found inside a longer one (8.5 is not in 18.50)", () => {
+    expect(valueOnPage(8.5, visibleText("<p>Only $18.50 today</p>"))).toBe(false);
+    expect(valueOnPage(8.5, visibleText("<p>$8.50</p>"))).toBe(true);
+    expect(valueOnPage(8.5, visibleText("<p>8.5</p>"))).toBe(true);
     expect(valueOnPage(1200, visibleText("<p>$1,200</p>"))).toBe(true);
     expect(
       valueOnPage("Dark rye &amp; caraway", visibleText("<b>Dark   rye</b> &amp; caraway")),

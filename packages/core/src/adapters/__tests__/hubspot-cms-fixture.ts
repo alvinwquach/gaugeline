@@ -169,14 +169,14 @@ export function hubspotData(): HubspotFixtureData {
           {
             id: "7001",
             path: "sourdough",
-            values: { name: HUBSPOT_CMS_MARKERS.sourdough, price: 8 },
+            values: { name: HUBSPOT_CMS_MARKERS.sourdough, price: 8.5 },
             publishedAt: "2026-10-01T09:00:00.000Z",
             updatedAt: "2026-10-01T09:00:00.000Z",
           },
           {
             id: "7002",
             path: "rye",
-            values: { name: HUBSPOT_CMS_MARKERS.rye, price: 9 },
+            values: { name: HUBSPOT_CMS_MARKERS.rye, price: 9.25 },
             publishedAt: "2026-10-01T09:00:00.000Z",
             updatedAt: "2026-10-30T09:00:00.000Z",
           },
@@ -331,14 +331,14 @@ export function healthySite(): Record<string, LivePage> {
     "/bread": { status: 200, html: livePage("<h1>Our loaves</h1>") },
     "/bread/sourdough": {
       status: 200,
-      html: livePage(`<h1>${HUBSPOT_CMS_MARKERS.sourdough}</h1><p class="price">$8.00</p>`, {
+      html: livePage(`<h1>${HUBSPOT_CMS_MARKERS.sourdough}</h1><p class="price">$8.50</p>`, {
         portalId: HUBSPOT_CMS_PORTAL,
         formId: FORM_LIVE,
       }),
     },
     "/bread/rye": {
       status: 200,
-      html: livePage(`<h1>${HUBSPOT_CMS_MARKERS.rye}</h1><p class="price">$9.00</p>`),
+      html: livePage(`<h1>${HUBSPOT_CMS_MARKERS.rye}</h1><p class="price">$9.25</p>`),
     },
     "/bread/seeded": {
       status: 200,
