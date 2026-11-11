@@ -48,6 +48,7 @@ const FIXTURES = [
   "paid-downloads",
   "gated-downloads",
   "checkout-after",
+  "source-maps",
 ];
 
 /**
