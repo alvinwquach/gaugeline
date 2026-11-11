@@ -38,6 +38,8 @@ const FIXTURES = [
   "load-more",
   "hidden-library",
   "next-like",
+  "gatsby-like",
+  "gatsby-dev",
   "refusing",
   "tag-rules",
   "nav-events",

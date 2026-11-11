@@ -38,6 +38,20 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "feed-broken": ["The feed this page advertises is broken", "Search & sharing"],
   "form-provider-changed": ["A form now sends to a different service", "Leads"],
   "gated-download-open": ["A download meant for customers is handed to anyone", "Sales & prices"],
+  "gatsby-data-as-page": ["A page address returns Gatsby data, not a page", "Search & sharing"],
+  "gatsby-dev-server-live": ["The live Gatsby site is a development server", "Security & email"],
+  "gatsby-graphql-public": [
+    "The GraphQL explorer is reachable on the live site",
+    "Security & email",
+  ],
+  "gatsby-preview-canonical": [
+    "The live Gatsby site points search engines at a preview deployment",
+    "Launch day",
+  ],
+  "gatsby-private-fields": [
+    "The data sent with a Gatsby page has fields that look private",
+    "Security & email",
+  ],
   "hidden-ai-directive": [
     "Hidden text on the page gives orders to AI assistants",
     "Security & email",
@@ -398,6 +412,10 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "event-missing-fields": ["Some events are missing details search engines need", "Visitors"],
   "events-distinct": ["Two menu links report the same click", "Leads"],
   "forms-many-providers": ["Several form services on one page", "Leads"],
+  "gatsby-data-unshown": [
+    "The data sent with a Gatsby page has text the page does not show",
+    "Security & email",
+  ],
   "hidden-past-launch": ["A hidden section is past its launch date", "Launch day"],
   "hreflang-bad-code": ["Some language codes are not valid", "Search & sharing"],
   "images-alt-missing": ["Some images have no alt attribute", "Visitors"],
@@ -588,6 +606,36 @@ export const CHECK_TEXT: Readonly<
     "A route that protects a paid file should refuse, or send the visitor to sign in. If it returns the file, everyone who has the address gets it for free, and the address is easy to find in the page, in a search engine or in a customer's email.",
     "Check the purchase inside the route before it answers, then hand back a short-lived signed link instead of the file itself. A route with no session should answer 401, 403 or a redirect to sign in.",
     "probing check, off without --owner-consent: one anonymous GET per route (no cookie, no Authorization, no Referer, no compression), the status and headers, then at most 1,024 bytes of the body and the connection is closed; the route is a same-site link whose path contains download, file, deliver or export or sits under /api/, or a route file given with --routes (app/**/route.ts, pages/api/**) whose path says the same; a dynamic segment is asked only for an address seen in a link and ids are never guessed; at most 10 routes, in sorted order, the rest named; a finding is status 200 with a file content type or Content-Disposition attachment and first bytes that are not HTML (%PDF, PK, ID3 and a few other signatures are read); 401, 403, 404, a redirect to a sign-in address and a 200 HTML page pass; a redirect elsewhere is followed one hop; the body and the query string are never stored, logged or printed",
+  ],
+  "gatsby-data-as-page": [
+    "A page of this Gatsby site answers with the framework's page data (application/json starting with componentChunkName), or the sitemap lists page-data addresses.",
+    "Search engines and visitors get a JSON file instead of a page, or index the data files: the page can drop out of search while a browser that navigates inside the site looks fine.",
+    "Serve HTML at page addresses (look for a proxy, CDN or redirect rule that rewrites to page-data.json), and list only pages in the sitemap.",
+    'Gatsby sites only, from responses already read: the page\'s own answer with a JSON content type whose body starts {"componentChunkName"; sitemap entries under /page-data/ ending /page-data.json, /app-data.json or /sq/d/<hash>.json. No extra request',
+  ],
+  "gatsby-dev-server-live": [
+    "This page was served by `gatsby develop`: its scripts include /socket.io/socket.io.js, /commons.js or /framework.js, the unhashed files only the development server writes.",
+    "The development server exposes a GraphQL explorer over all your content, hot-reload endpoints and error overlays with file paths. It is not meant to face visitors.",
+    "Build the site (`gatsby build`) and serve the public folder (a static host, or `gatsby serve` for a quick check), not `gatsby develop`. Check the host's start command.",
+    "Gatsby sites only, read from the page already fetched, no extra request: a script address ending /socket.io/socket.io.js, /commons.js or /framework.js (a production build names its files with a content hash, as in framework-<hash>.js). Dev-only paths are not asked for",
+  ],
+  "gatsby-graphql-public": [
+    "The address /___graphql of this Gatsby site answers with the GraphiQL page (titled Gatsby - GraphiQL), which only `gatsby develop` serves.",
+    "That explorer can read every node in your content layer, drafts and private fields included, from any browser.",
+    "Serve the built site (`gatsby build`) on the live address and keep `gatsby develop` on your own machine. If a proxy forwards /___graphql, remove the rule.",
+    "Probing check: off unless --owner-consent or gaugeline.consent.json; run only on sites you own or have permission to test. Gatsby sites only: one GET of /___graphql per run, no query sent and no POST ever; a 2xx HTML answer whose title contains GraphiQL is a finding. A production build does not serve this address",
+  ],
+  "gatsby-preview-canonical": [
+    "A production page of this Gatsby site gives a preview domain as its canonical address, its og:url or og:image, or in its sitemap.",
+    "Search engines and social cards follow those addresses to the preview, which can show old content or vanish when the preview is cleaned up.",
+    "Set siteMetadata.siteUrl (and the sitemap plugin's site URL) from the production domain in every build, and rebuild.",
+    "Gatsby sites served from a non-temporary host: the canonical, og:url, og:image and sitemap entries whose host ends in .vercel.app, .netlify.app, .pages.dev, .gatsbyjs.io or .gtsb.io. The two Gatsby hosts are from memory of the hosted product (uncited)",
+  ],
+  "gatsby-private-fields": [
+    "The page-data file of this Gatsby page, a static query it lists, or the page data embedded in its HTML has fields named like something private (password, token, secret, apiKey, private notes).",
+    "Everything a page query returns is written to a public JSON file, whether or not the page shows it. A field used only at build time still travels to every visitor if the query selects it.",
+    "Select only the fields the page shows in its query. Keep secrets in environment variables read in gatsby-node or a Function, never in a query result.",
+    "Gatsby sites only. Names only, never values: the property names in the page's own /page-data/<path>/page-data.json (one GET, the file the framework's client fetches on every visit), in the /page-data/sq/d/<hash>.json files it lists (at most ten) and in an inline window.pageData literal, walked to depth 8 and capped, matched by word against password, passwd, secret, token, private, credential, ssn, salt, bearer, authorization, cvv, iban, apiKey, accessKey, secretKey, privateKey, internalNotes. A file that cannot be read in full is could not check. The word list is a guess (uncited)",
   ],
   "hidden-ai-directive": [
     "Text that visitors can't see, or a comment in the page's code, speaks to an AI assistant (for example 'ignore previous instructions').",
@@ -1902,6 +1950,12 @@ export const CHECK_TEXT: Readonly<
     "Leads from one page end up in different places, and each service needs its own tracking, consent and follow-up.",
     "Check that each form is meant to be there, and move the page to one service if you can.",
     "Sightings of more than one of Pardot, Web-to-Lead, HubSpot, Formstack, Marketo and Typeform on one page (form action, iframe src, embed script); the tracking code alone is not a sighting",
+  ],
+  "gatsby-data-unshown": [
+    "This Gatsby page's page-data file, or a static query it lists, has text fields whose text is nowhere on the page a visitor reads.",
+    "Everything a page query returns is written to a public JSON file. A field the page does not show is either unused (so it can go) or used by a script (so it is worth a look): either way it is public.",
+    "Select only the fields the page needs in its query, or move the rest to a source that checks who is asking.",
+    "Gatsby sites only. The page's own /page-data/<path>/page-data.json and the /page-data/sq/d/<hash>.json files it lists (the files the framework's client fetches on every visit; one GET each, at most eleven, walked to depth 8, capped). Text fields of 4 or more characters whose first 40 characters are not in the page's visible text (tags taken out of html fields); addresses, ids, dates and image plumbing are left out; names only, never values. Fields named like something private are left to gatsby-private-fields. A file or page text that cannot be read in full is could not check. Fields used by scripts or other pages are shown too, so read the list as a prompt (uncited)",
   ],
   "hidden-past-launch": [
     "Today is after the launch date set for a hidden section, and gaugeline.hidden.json still lists it as hidden.",
