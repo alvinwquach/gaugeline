@@ -431,6 +431,53 @@ text. Settings, an example from a bakery and what each check means:
 [Migration completeness](guides/migration.md). What it sends:
 [Privacy and safety](privacy.md#migration-completeness-gaugeline-migration).
 
+### The advisory command
+
+`gaugeline advisory --help` prints:
+
+```text title=Output
+Usage: gaugeline advisory <site> <advisory-id | package@range> [options]
+
+A client asks "are we affected?" the day an advisory is announced. Give the
+site and a CVE or GHSA id (read from OSV, with one GET of api.osv.dev) or a
+package and affected versions. Answers likely-affected, likely-not-affected or
+cannot-tell, from outside only, with the evidence and what to check inside.
+Read only: GET requests; --dns also reads the name servers. It never says a
+site is safe.
+
+Options:
+      --ci                 Exit 1 when a "Fix this first" finding is found [CI]
+      --json               Print the result as JSON on stdout, and nothing else
+      --allow-private      Allow addresses on this computer or a private
+                           network, such as 127.0.0.1 or 192.168.x.x
+      --dns                Also read the domain's mail records (SPF and DMARC)
+                           from DNS
+      --package <value>    advisory: a package@range to use instead of looking
+                           the id up in OSV (repeatable)
+      --host <value>       advisory: another hostname of the client to look at,
+                           such as an old subdomain (up to 5)
+      --note               advisory: print the short note for the client
+                           (Markdown) instead of the report
+      --quiet              Print only results and errors
+      --verbose            Show each request, and technical detail when
+                           something goes wrong
+  -h, --help               Show this help and exit
+  -v, --version            Print the version and exit
+
+Exit codes: 0 ran, 1 --ci and likely-affected, 2 could not run
+```
+
+`gaugeline advisory <site> <advisory-id | package@range>` answers "is my client affected?" the day an advisory
+is announced, from outside only. An id (CVE or GHSA) is read from OSV with one `GET` of `api.osv.dev`; a
+package and its affected versions (`"next@>=15.0.0 <15.2.3"`) need no request to OSV, and `--package` gives
+the ranges for an id when OSV cannot be reached. It reads the site's home page, its `www` twin, the
+hostnames you give with `--host` and a few linked subdomains, each with `GET`, and answers
+`likely-affected`, `likely-not-affected` or `cannot-tell` with the evidence, what to check inside and a
+note for the client (`--note`). It never says a site is safe. `--json` has its own schema (`advisory.v1.json`),
+and `--ci` exits 1 on `likely-affected`. An example from a pop-up bar, one from a clinic and one from a
+roaster behind a CDN: [Advisory check](guides/advisory.md). What it sends:
+[Privacy and safety](privacy.md#advisory-check-gaugeline-advisory).
+
 ### Flags
 
 The table below is generated from `packages/cli/src/flags.ts` (`pnpm docs:flags`). Do not edit
@@ -507,6 +554,9 @@ between the markers; CI fails when it differs from the flag table.
 | `--before <value>`          | The snapshot taken before cutover, written by gaugeline snapshot                                                     |                      | 0.2.0 |
 | `--old <value>`             | migration: the old site's address, to read its list of pages and the pages themselves                                |                      | 0.2.0 |
 | `--old-file <value>`        | migration: a Wix, Webflow or other export (CSV or JSON) that lists the old site's pages, read from this file         |                      | 0.2.0 |
+| `--package <value>`         | advisory: a package@range to use instead of looking the id up in OSV (repeatable)                                    |                      | 0.2.0 |
+| `--host <value>`            | advisory: another hostname of the client to look at, such as an old subdomain (up to 5)                              |                      | 0.2.0 |
+| `--note`                    | advisory: print the short note for the client (Markdown) instead of the report                                       |                      | 0.2.0 |
 | `--runs <value>`            | The folder of saved runs (each one saved with --json) to read                                                        |                      | 0.2.0 |
 | `--time-zone <value>`       | The time zone for dates and ages, such as America/Los_Angeles (default UTC)                                          |                      | 0.2.0 |
 | `--notify-on <value>`       | When to send: any (something was found, the default), high or always                                                 |                      | 0.2.0 |

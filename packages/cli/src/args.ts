@@ -30,6 +30,7 @@ export const SUBCOMMANDS = [
   "cost",
   "audit",
   "migration",
+  "advisory",
 ] as const;
 export type CliCommand = "check" | (typeof SUBCOMMANDS)[number];
 
@@ -169,6 +170,24 @@ export type ParsedArgs =
       quiet: boolean;
     }
   | { kind: "cutover"; before: string; allowPrivate: boolean; verbose: boolean; quiet: boolean }
+  | {
+      kind: "advisory";
+      /** The client's site, https unless it was typed with http. */
+      address: string;
+      /** An advisory id (CVE-..., GHSA-...) or a package and range (next@>=15.0.0 <15.2.3). */
+      spec: string;
+      /** --package: packages and ranges given directly. */
+      packages: string[];
+      /** --host: other hostnames to look at. */
+      hosts: string[];
+      dns: boolean;
+      note: boolean;
+      json: boolean;
+      ci: boolean;
+      allowPrivate: boolean;
+      verbose: boolean;
+      quiet: boolean;
+    }
   | {
       kind: "migration";
       /** The new site's address, https unless it was typed with http. */
@@ -1180,6 +1199,67 @@ export function parseCliArgs(
       address: parsedNew.url.href,
       ...(oldAddress !== undefined ? { old: oldAddress } : {}),
       ...(oldFile !== undefined ? { oldFile } : {}),
+      ci: values.ci === true,
+      allowPrivate: values["allow-private"] === true,
+      verbose,
+      quiet: values.quiet === true,
+    };
+  }
+  if (command === "advisory") {
+    const problem = (message: string, hint: string): ParsedArgs => ({
+      kind: "error",
+      message,
+      hint,
+      verbose,
+    });
+    const example = 'gaugeline advisory harbourbar.example "next@>=15.0.0 <15.2.3"';
+    if (positionals.length !== 2)
+      return problem(
+        positionals.length < 2
+          ? "gaugeline advisory needs the site and the advisory: gaugeline advisory harbourbar.example CVE-2026-1234"
+          : `gaugeline advisory takes a site and one advisory, got ${positionals.length} words: ${positionals.join(", ")}.`,
+        `The advisory is an id (CVE-..., GHSA-...) or a package and affected versions in quotes: ${example}`,
+      );
+    const parsedSite = parseAddress(positionals[0] ?? "");
+    if (!parsedSite.ok)
+      return problem(
+        `The site's address: ${parsedSite.reason}`,
+        "Type the site like harbourbar.example or https://harbourbar.example.",
+      );
+    const listed = (v: unknown): string[] =>
+      (Array.isArray(v) ? v : typeof v === "string" ? [v] : [])
+        .map((x) => String(x).trim())
+        .filter((x) => x !== "");
+    const packages = listed(values.package);
+    const hosts: string[] = [];
+    for (const h of listed(values.host)) {
+      const name = h
+        .replace(/^https?:\/\//i, "")
+        .replace(/\/.*$/, "")
+        .toLowerCase();
+      if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/.test(name))
+        return problem(
+          `--host: "${h.slice(0, 60)}" is not a hostname.`,
+          "Give a name such as old.harbourbar.example, with no path.",
+        );
+      hosts.push(name);
+    }
+    if (hosts.length > 5)
+      return problem("--host: at most 5 other hostnames.", "Run again with the others.");
+    if (values.note === true && values.json === true)
+      return problem(
+        "Choose --note or --json, not both.",
+        "--note prints the client's note; --json prints the data.",
+      );
+    return {
+      kind: "advisory",
+      address: parsedSite.url.href,
+      spec: positionals[1] ?? "",
+      packages,
+      hosts,
+      dns: values.dns === true,
+      note: values.note === true,
+      json: values.json === true,
       ci: values.ci === true,
       allowPrivate: values["allow-private"] === true,
       verbose,
