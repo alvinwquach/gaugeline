@@ -159,7 +159,7 @@ It never returns a list with a hole in it. The read is could-not-check, with the
 - the platform does not accept the token or the stack key (HTTP 401), or the token may not read a type (HTTP 403): the reason names the type, and a read of other types still works when the types are named;
 - the environment or the content type is not known to the token (HTTP 404 or 422);
 - an answer is not the shape the platform sends, a uid or a count is not valid, or an entry has no uid or no update time;
-- a type is bigger than the bound, a page of entries is too big even at 10, or the list stops before its count.
+- a type is bigger than the bound, a page of entries is too big even at 10, the list stops before its count, the pages are too small to read the count in a sane number of requests, the same entry comes back twice, or a run needs more requests than the bound.
 
 A platform that asks Gaugeline to slow down (HTTP 429) is waited for once when it says how long and the wait is a minute or less; after that the run keeps what it had read and says it is partial.
 
@@ -170,6 +170,7 @@ A platform that asks Gaugeline to slow down (HTTP 429) is waited for once when i
 | Entries in one page of a list | 100    |
 | Entries read from one type    | 10,000 |
 | Content types read            | 1,000  |
+| Requests in one run           | 3,000  |
 
 There are no flags to raise them.
 
