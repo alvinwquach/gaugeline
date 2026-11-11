@@ -173,6 +173,7 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "webhook-failing": ["A webhook endpoint is not receiving its events", "Sales & prices"],
   "cutover-canonical-host": ["The bare domain and www don't settle on one address", "Launch day"],
   "cutover-mail-changed": ["The domain's mail records changed at cutover", "Security & email"],
+  "migration-page-missing": ["A page from the old site is missing on the new one", "Launch day"],
   "app-smart-banner-mismatch": ["The iPhone app banner promotes a different app", "Visitors"],
   "checkout-js-only": ["Nothing on the page can be linked to buy", "Sales & prices"],
   "crm-field-names": ["A form sends fields the CRM doesn't have", "Leads"],
@@ -321,6 +322,19 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "Security & email",
   ],
   "cutover-records-changed": ["The domain's DNS records changed at cutover", "Security & email"],
+  "migration-redirect-chain": [
+    "An old address takes more than one redirect to reach its page",
+    "Launch day",
+  ],
+  "migration-title-changed": ["A page's title changed in the move", "Search & sharing"],
+  "migration-canonical-changed": [
+    "A page's canonical address changed in the move",
+    "Search & sharing",
+  ],
+  "migration-schema-type-lost": [
+    "A page lost a structured data type in the move",
+    "Search & sharing",
+  ],
   "ai-crawlers-blocked": ["Some AI assistants can't read your site", "Search & sharing"],
   "app-name-mismatch": ["The store lists the app under a different name", "Visitors"],
   "asset-file-public": ["A downloadable file is on a public asset address", "Sales & prices"],
@@ -1019,6 +1033,12 @@ export const CHECK_TEXT: Readonly<
     "Put the old MX and SPF values back unless the move was meant. If it was, list mx or spf under expectedChanges in gaugeline.cutover.json with the reason.",
     "gaugeline cutover --before <file>. MX and TXT (v=spf1) at the domain, compared as sets, so order is not a change. A lookup that failed in either run is could not check, never a change",
   ],
+  "migration-page-missing": [
+    "An address the old site published answers 404 or 410 on the new site, after any redirects.",
+    "Anyone with the old address (a search result, a link in an email, a bookmark, a printed menu's QR code) lands on an error page, and the page's ranking is lost with it.",
+    "Move the page's content to the new site, or add a permanent (301) redirect from the old address to the page that replaces it. Run it again to confirm.",
+    "Each path in the old site's content list (the WordPress REST API's published posts and pages, a Wix or Webflow export, or the old sitemap) is requested with GET on the new site, redirects followed. A final 404 or 410 is the finding; a 5xx, a refusal, a password or a timeout is could-not-check for that page.",
+  ],
   "app-smart-banner-mismatch": [
     "The page's Smart App Banner (the apple-itunes-app meta tag) names a different app id than the page's App Store link.",
     "Safari shows the banner at the top of the page on iPhone, so visitors install whichever app it names, which here is not the one the page links to.",
@@ -1600,6 +1620,30 @@ export const CHECK_TEXT: Readonly<
     "A lost DKIM key or DMARC record breaks mail authentication quietly; new address records are the cutover itself, worth confirming they point where the new host says.",
     "Check each value against what the new host and your mail provider publish. List a change that was meant under expectedChanges in gaugeline.cutover.json.",
     "TXT at _dmarc.<domain> (v=DMARC1), TXT at <selector>._domainkey.<domain>, A and AAAA at the domain; sets compared. A lookup that failed in either run is could not check",
+  ],
+  "migration-redirect-chain": [
+    "An address from the old site reaches its page on the new site only after two or more redirects, or never settles because the redirects loop.",
+    "Every extra redirect is another round trip for the visitor, and search engines pass less on through each one and may stop following a long chain.",
+    "Point the old address straight at the page's final address with a single 301, and make the slash, www and https rules agree with it.",
+    "The redirects of the GET to each path on the new site are counted from the fetcher's record of every hop. One redirect is accepted; two or more, or a loop, is the finding. A trail that ends in 404 is migration-page-missing instead.",
+  ],
+  "migration-title-changed": [
+    "The title the old site gave a page (its name in the list, and the old page's <title>) does not match the new page's <title>, og:title or first heading.",
+    "The title is what a search result shows. A title that changed by accident, because a CMS field was not mapped, can cost clicks and rankings the page had earned.",
+    "Put the old title back in the new page's title field, or leave the new one if you changed it on purpose.",
+    "Both titles are lower-cased with accents, punctuation and spacing removed; they match when equal or when one holds the other as whole words, so adding or dropping the site's name is not a change. The list's title is compared with the new <title>, og:title and first <h1>; the old page's <title> with the new <title> and og:title. With neither an old title nor an old page, the page is could-not-check.",
+  ],
+  "migration-canonical-changed": [
+    "The old page named an address as its canonical, and the new page names a different one (or none), and neither is the address the page now lives at.",
+    "The canonical tells search engines which address to keep. One that points at the blog index, the home page or an address that redirects asks them to drop the page.",
+    "Make the new page's canonical the address it is served at. If it moved, that is its new address; the old address should redirect to it.",
+    "Paths are compared (the host is left out, since a preview and the live site differ), ignoring a trailing slash and case. The new canonical must equal the old canonical's path or the path the redirects ended on. Needs the old page: with --old, the old site's own address; a page with no old canonical is skipped.",
+  ],
+  "migration-schema-type-lost": [
+    "The old page had structured data of a type (Article, FAQPage, Event, Product, Recipe, LocalBusiness, BreadcrumbList) that the new page no longer has.",
+    "Structured data is what earns a page its rich result in search: the FAQ dropdown, the event date, the star rating. Without it the page appears as a plain link.",
+    "Add the missing JSON-LD to the new page's template, filled from the page's own content, and test it with a rich results tester.",
+    "The @type of every JSON-LD node (an @graph read through) and every microdata itemtype, on the old and the new page. Types that describe the whole site (WebSite, WebPage, Organization, Person, ImageObject, SearchAction) are left out. A type the old page had and the new one lacks is the finding; a new type is not. Needs the old page: with --old, the old site's own address.",
   ],
   "ai-crawlers-blocked": [
     "robots.txt stops one or more known AI crawlers from reading the home page. Gaugeline says which, and whether the block names them or comes from a rule for every crawler.",

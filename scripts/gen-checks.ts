@@ -31,6 +31,7 @@ import {
   WEBHOOK_CHECKS,
   SUBSCRIPTION_CHECKS,
   CUTOVER_ONLY_CHECKS,
+  MIGRATION_CHECKS,
   catalogue,
   createPageRegistry,
 } from "../packages/core/src/index.js";
@@ -81,6 +82,7 @@ for (const c of RECEIPT_CHECKS) registry.register(c);
 for (const c of ROUTE_CHECKS) registry.register(c);
 for (const c of WEBHOOK_CHECKS) registry.register(c);
 for (const c of CUTOVER_ONLY_CHECKS) registry.register(c);
+for (const c of MIGRATION_CHECKS) registry.register(c);
 const entries = catalogue(registry);
 // A scaffold from pnpm new:check imports and runs, but its TODO text must never reach the docs.
 const unfinished = entries.flatMap((e) =>

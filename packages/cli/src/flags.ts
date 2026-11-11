@@ -38,6 +38,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
       "renewals",
       "handoff",
       "cost",
+      "migration",
       "verify",
       "tags",
       "ads",
@@ -102,6 +103,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
       "cost",
       "brief",
       "audit",
+      "migration",
       "plan",
       "printed",
       "snapshot",
@@ -558,6 +560,22 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     description: "The snapshot taken before cutover, written by gaugeline snapshot",
     since: "0.2.0",
     commands: ["cutover"],
+  },
+  {
+    name: "old",
+    type: "string",
+    description:
+      "migration: the old site's address, to read its list of pages and the pages themselves",
+    since: "0.2.0",
+    commands: ["migration"],
+  },
+  {
+    name: "old-file",
+    type: "string",
+    description:
+      "migration: a Wix, Webflow or other export (CSV or JSON) that lists the old site's pages, read from this file",
+    since: "0.2.0",
+    commands: ["migration"],
   },
   {
     name: "runs",

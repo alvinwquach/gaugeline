@@ -25,6 +25,7 @@ export const COMMANDS = [
   "handoff",
   "cost",
   "audit",
+  "migration",
 ] as const;
 export type Command = (typeof COMMANDS)[number];
 
@@ -170,6 +171,17 @@ export const HELP: Record<string, string> = {
       "SPF change is fix first unless gaugeline.cutover.json lists it as expected.",
     ].join("\n"),
     footer: "Exit codes: 0 nothing to fix first, 1 something to fix first, 2 could not check",
+  }),
+  migration: renderHelp(FLAGS, "migration", {
+    usage: "gaugeline migration <address> (--old <site> | --old-file <file>)",
+    summary: [
+      "Moving a site? Read the old site's list of pages (its WordPress API, an export",
+      "from Wix or Webflow, or its sitemap) and check that each one exists on the new",
+      "site, redirects in one hop, and keeps its title, canonical and structured data",
+      "type. Read only: GET requests, up to 500 pages. The list is data; nothing in",
+      "it is run.",
+    ].join("\n"),
+    footer: "Exit codes: 0 ran, 1 --ci and a fix-first finding, 2 could not run or read",
   }),
   open: renderHelp(FLAGS, "open", {
     usage: "gaugeline open [address] [options]",
