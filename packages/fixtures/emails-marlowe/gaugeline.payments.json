@@ -1,0 +1,6 @@
+{
+  "payments": [
+    { "kind": "venmo", "value": "@marlowe-popup" },
+    { "kind": "cashapp", "value": "$marlowepopup" }
+  ]
+}

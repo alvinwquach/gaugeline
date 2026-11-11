@@ -3,6 +3,7 @@ import {
   AD_LANDING_CHECKS,
   CAMPAIGN_CHECKS,
   DUPLICATE_CHECKS,
+  EMAIL_CHECKS,
   PLAN_CHECKS,
   PRESENCE_CHECKS,
   PRICE_CHECKS,
@@ -20,7 +21,7 @@ import {
   createPageRegistry,
 } from "../../packages/core/src/index.js";
 
-/** Every check the docs list: page checks, plan checks, printed-link checks, price and subscription checks, the query (and its --dupes and --mutations), delivery and webhook checks and the cutover-only ones. */
+/** Every check the docs list: page checks, plan checks, printed-link checks, price and subscription checks, the query (and its --dupes and --mutations), delivery and webhook checks, the rendered-email checks and the cutover-only ones. */
 export function CATALOGUE_IDS(): string[] {
   const registry = createPageRegistry();
   for (const c of PLAN_CHECKS) registry.register(c);
@@ -28,6 +29,7 @@ export function CATALOGUE_IDS(): string[] {
   for (const c of CAMPAIGN_CHECKS) registry.register(c);
   for (const c of AD_LANDING_CHECKS) registry.register(c);
   for (const c of DUPLICATE_CHECKS) registry.register(c);
+  for (const c of EMAIL_CHECKS) registry.register(c);
   for (const c of PRESENCE_CHECKS) registry.register(c);
   for (const c of PRICE_CHECKS) registry.register(c);
   for (const c of SUBSCRIPTION_CHECKS) registry.register(c);

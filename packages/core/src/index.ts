@@ -1262,3 +1262,28 @@ export {
   routeHiddenNotProtected,
 } from "./checks/route-hidden-not-protected.js";
 export type { RoutesInput } from "./checks/route-hidden-not-protected.js";
+export { emailsConfigSchema } from "./emails/config.js";
+export type { EmailsConfig, TrackingRule } from "./emails/config.js";
+export { PLACEHOLDER_RULES, findPlaceholders } from "./emails/placeholders.js";
+export type { PlaceholderMatch, PlaceholderRule } from "./emails/placeholders.js";
+export { nameEmail, pairEmails } from "./emails/pair.js";
+export type { EmailPairs, NamedEmail } from "./emails/pair.js";
+export { KNOWN_TRACKING, unwrapTracking } from "./emails/tracking.js";
+export { maskSource, parseEmail } from "./emails/parse.js";
+export type { EmailImage, EmailLink, ParsedEmail } from "./emails/parse.js";
+export { MAX_EMAILS, MAX_EMAIL_BYTES, readEmailFolder } from "./emails/read.js";
+export type { EmailFolder, EmailSource } from "./emails/read.js";
+export { NO_BASE_REASON, checkEmails } from "./emails/run.js";
+export type { EmailsOptions, EmailsRun, EmailSummary } from "./emails/run.js";
+export {
+  EMAIL_CHECKS,
+  EMAIL_NETWORK_CHECKS,
+  EMAIL_PAGE_CHECKS,
+  badHref,
+  createEmailRegistry,
+  emailImageNotAbsolute,
+  emailNoTextPart,
+  emailPreviewPlaceholder,
+  emailRelativeLink,
+} from "./checks/email-templates.js";
+export type { EmailInput, EmailPlaceholder } from "./checks/email-templates.js";

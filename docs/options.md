@@ -82,9 +82,9 @@ Options:
                                  GAUGELINE_WEBHOOK)
       --email <value>            Email the full report to these addresses
                                  through Resend (or set GAUGELINE_EMAIL)
-      --base <value>             Check the plan against the site built at this
-                                 address, such as a preview; or the site to ask
-                                 for --routes
+      --base <value>             The site a plan is checked against (a preview);
+                                 the site emails link to; or the site to ask for
+                                 --routes
       --notify-on <value>        When to send: any (something was found, the
                                  default), high or always
       --report-url <value>       Link each message to a hosted copy of the
@@ -349,7 +349,7 @@ between the markers; CI fails when it differs from the flag table.
 | `--sheet <value>`           | Read this tab of a workbook instead of the one with a URL column                                                     |                      | 0.2.0 |
 | `--legacy-from <value>`     | Read old addresses from this notes column when the plan has no Legacy URL column (repeatable)                        |                      | 0.2.0 |
 | `--legacy-review <value>`   | Write the old addresses read with --legacy-from to this CSV file, for review                                         |                      | 0.2.0 |
-| `--base <value>`            | Check the plan against the site built at this address, such as a preview; or the site to ask for --routes            |                      | 0.2.0 |
+| `--base <value>`            | The site a plan is checked against (a preview); the site emails link to; or the site to ask for --routes             |                      | 0.2.0 |
 | `--annotate <value>`        | Write a copy of the plan with a Gaugeline column saying what is wrong on each row                                    |                      | 0.2.0 |
 | `--force`                   | Let --annotate (plan), --page, --save (query) or --out (brief) replace files that exist, never a folder or link      |                      | 0.2.0 |
 | `--progress <value>`        | With --base, say what was fixed and what is new since the last run (state file optional)                             |                      | 0.2.0 |
@@ -459,6 +459,26 @@ npx gaugeline platform --webhooks
 What they read, what keys to make, and how the match is made: [Paid downloads and
 delivery](delivery.md#paid-and-the-receipt-never-went-out). What they send:
 [Privacy and safety](privacy.md#orders-emails-and-webhooks-delivery-and-platform).
+
+### The emails command
+
+`gaugeline emails <folder>` checks the rendered emails in a folder (or one `.html` file) instead of a
+site. It reads the files as text and never renders, runs or sends anything; each finding names the file
+and the line. With no `--base` it makes no request. With `--base https://your-site.example` it asks that
+site for the links and images the emails point at it, `GET` or `HEAD` only, 30 links and 20 images for
+each email.
+
+```sh
+npx gaugeline emails ./emails
+npx gaugeline emails ./emails --base https://example.com --ci
+```
+
+It takes `--base`, `--allow-private`, `--json` (the schema 2 result and nothing else, each finding's
+`source` holding its file and line, `0` when the finding is about the whole email) and `--ci` (exit 1 for
+a "Fix this first" finding). A missing folder, a folder with no `.html` and a settings file that does not
+read are exit 2. Settings: `gaugeline.emails.json`, and the payments, facts and languages files the
+page check reads. What runs on each email, how to get the folder from React Email or MJML, and two
+examples: [Transactional emails](guides/emails.md).
 
 ### The query command
 
