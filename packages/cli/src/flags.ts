@@ -121,8 +121,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
   {
     name: "dns",
     type: "boolean",
-    description:
-      "Also read the domain's records from DNS: the mail records (SPF and DMARC), and for handoff the name servers",
+    description: "Also read the domain's mail records (SPF and DMARC) from DNS",
     since: "0.2.0",
     commands: ["check", "launch", "brief", "handoff"],
   },
@@ -366,7 +365,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     name: "force",
     type: "boolean",
     description:
-      "Let --annotate (plan), --page, --save (query), --out (brief) or the report files (handoff) replace files that exist, never a folder or link",
+      "Let --annotate (plan), --page, --save (query), --out (brief) or handoff replace files, never a folder or link",
     since: "0.2.0",
     commands: ["plan", "query", "brief", "handoff"],
   },
@@ -483,7 +482,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     name: "out",
     type: "string",
     description:
-      "snapshot: the file to write (default before.json). query --page: the folder to write into. brief: the Markdown file. handoff: the folder for handoff.html, handoff.md and handoff.json (default gaugeline-handoff)",
+      "snapshot: the file (default before.json). query --page: the folder. brief: the file. handoff: the report folder",
     since: "0.2.0",
     commands: ["snapshot", "query", "brief", "handoff"],
   },

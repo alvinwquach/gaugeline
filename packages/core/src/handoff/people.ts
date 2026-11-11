@@ -33,8 +33,12 @@ export interface People {
   personOf(email: string): string;
 }
 
-const keyOf = (text: string): string =>
-  createHash("sha256").update(text).digest("hex").slice(0, 12);
+/** How many hex characters of the hash a key keeps: enough that two people never share one. */
+const KEY_HEX = 12;
+
+/** An opaque key for a string: a truncated SHA-256, so the key holds no part of an address or a provider id. */
+export const keyOf = (text: string): string =>
+  createHash("sha256").update(text).digest("hex").slice(0, KEY_HEX);
 
 export function createPeople(config: PeopleConfig): People {
   const clients: ReadonlySet<string> = new Set((config.clientEmails ?? []).map(normalizeEmail));

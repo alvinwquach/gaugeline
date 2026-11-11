@@ -10,10 +10,9 @@ import { VERCEL_TOKEN_VAR } from "../renewals/tokens.js";
 import type { HandoffConfig } from "./config.js";
 import { readGoogleAdmins } from "./google.js";
 import { clip } from "./http.js";
-import { createPeople, maskEmail, type People } from "./people.js";
+import { createPeople, keyOf, maskEmail, type People } from "./people.js";
 import { MANUAL_SYSTEMS, dnsProviderOf, helpFor } from "./providers.js";
 import { readSanity } from "./sanity.js";
-import { createHash } from "node:crypto";
 import type {
   DnsSystem,
   DomainSystem,
@@ -69,9 +68,6 @@ export interface Handoff {
   readonly people: People;
   systems(page: PageSnapshot): Promise<System[]>;
 }
-
-const keyOf = (text: string): string =>
-  createHash("sha256").update(text).digest("hex").slice(0, 12);
 
 const hostOf = (page: PageSnapshot): string => {
   try {
