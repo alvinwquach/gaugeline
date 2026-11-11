@@ -7,6 +7,12 @@ import { isHtmlPage } from "./page.js";
 export const UNREAD_REASON =
   "the page body was cut at the size cap before an error message could be told from the page, so it is not judged";
 
+/** The address without its query or fragment: a finding names the page, nothing more. */
+function where(url: string): string {
+  const u = new URL(url);
+  return `${u.origin}${u.pathname}`;
+}
+
 export const errorShell200 = defineCheck<PageSnapshot>({
   id: "error-shell-200",
   area: "Search & sharing",
@@ -31,7 +37,7 @@ export const errorShell200 = defineCheck<PageSnapshot>({
           checkId: this.id,
           severity: this.severity,
           title: this.title,
-          evidence: `answers ${p.status} but shows ${SHELL_LABEL[read.kind]}`,
+          evidence: `${where(p.finalUrl)} answers ${p.status} but shows ${SHELL_LABEL[read.kind]}`,
           url: p.finalUrl,
         });
       } else if (read.unread) {

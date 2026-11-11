@@ -53,7 +53,7 @@ describe("error-shell-200: unit", () => {
         severity: "high",
         title: "A page that is an error says everything is fine",
         evidence:
-          "answers 200 but shows the Next.js error page (an html element with the id __next_error__)",
+          "https://harbour.example/events/readings answers 200 but shows the Next.js error page (an html element with the id __next_error__)",
         url: "https://harbour.example/events/readings",
       },
     ]);

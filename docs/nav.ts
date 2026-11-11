@@ -147,6 +147,7 @@ export const UNLISTED: NavPage[] = [
   },
   { slug: "guides/access-rules", title: "Database access rules, tested from outside" },
   { slug: "guides/nextjs", title: "Next.js sites" },
+  { slug: "guides/error-pages", title: "Error pages that answer 200" },
   { slug: "guides/weekly-digest", title: "The weekly digest" },
   { slug: "guides/click-events", title: "Click events: the tracking plan, checked" },
   { slug: "guides/tag-rules", title: "Tracking rules that point at things that no longer exist" },

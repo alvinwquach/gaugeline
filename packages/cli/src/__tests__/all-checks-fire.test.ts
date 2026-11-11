@@ -47,6 +47,7 @@ const FIXTURES = [
   "form-checks",
   "paid-downloads",
   "gated-downloads",
+  "error-pages",
   "checkout-after",
 ];
 

@@ -1228,7 +1228,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         ownerConsent && args.routes.length > 0 ? listRouteFiles(args.routes, cwd) : undefined;
       if (ownerConsent && !args.quiet) {
         io.stderr.write(
-          `Probing checks are on (${args.ownerConsent ? "--owner-consent" : CONSENT_CONFIG_FILE}): gated-download-open asks download routes for their file with no login. Run only on sites you own or have permission to test.\n`,
+          `Probing checks are on (${args.ownerConsent ? "--owner-consent" : CONSENT_CONFIG_FILE}): gated-download-open asks download routes for their file with no login, and not-found-200 asks for one address that does not exist. Run only on sites you own or have permission to test.\n`,
         );
         if (routeFiles && routeFiles.length === 0)
           io.stderr.write(`--routes matched no files in ${cwd}.\n`);
