@@ -74,6 +74,17 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "Launch day",
   ],
   noindex: ["This page asks search engines not to list it", "Search & sharing"],
+  "nuxt-dev-build-live": ["This Nuxt site is running its development server", "Security & email"],
+  "nuxt-devtools-public": ["The Nuxt DevTools are reachable", "Security & email"],
+  "nuxt-preview-canonical": [
+    "The live Nuxt site points search engines at a preview or local address",
+    "Launch day",
+  ],
+  "nuxt-preview-public": ["Anyone can switch on preview mode", "Launch day"],
+  "nuxt-private-state": [
+    "A Nuxt page sends fields that look private to every visitor",
+    "Security & email",
+  ],
   "page-gone": ["A page from the last run is gone", "Visitors"],
   "page-lost-content": ["A page lost content since the last run", "Visitors"],
   "pagination-same-content": ["Page 2 of this list shows page 1 again", "Search & sharing"],
@@ -248,6 +259,11 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "nav-orphans": ["Pages in the sitemap that no page links to", "Visitors"],
   "nav-parity": ["The mobile menu is missing links the desktop menu has", "Visitors"],
   "next-stale-after-publish": ["The page still shows an old copy after an edit", "Launch day"],
+  "nuxt-framework-file-listed": ["A Nuxt data file is named as a page", "Search & sharing"],
+  "nuxt-page-cache-header": [
+    "A Nuxt page is cached in a way that will show old or other people's content",
+    "Launch day",
+  ],
   "og-image-broken": ["The share picture doesn't load", "Launch day"],
   "og-image-relative": ["Shared links may show no picture", "Search & sharing"],
   "og-url-mismatch": [
@@ -727,6 +743,36 @@ export const CHECK_TEXT: Readonly<
     "If that isn't on purpose, the page is invisible in search.",
     "Remove noindex from pages you want found.",
     '<meta name="robots" content="noindex">',
+  ],
+  "nuxt-dev-build-live": [
+    "A page of this Nuxt site loads Vite's dev server client (/_nuxt/@vite/client) or other dev-only files, or its payload carries the Nuxt DevTools state.",
+    "A development server is slow, ships source code and debug information, and exposes tools (the DevTools, error overlays with source) that were never meant for visitors.",
+    "Deploy the output of nuxt build (or nuxt generate), not the dev server, and check the host's start command. The Nuxt DevTools module only runs under nuxt dev.",
+    "Nuxt sites only, read from the page already fetched: a script whose address has /@vite/client, /_nuxt/@id/, /_nuxt/@fs/ or /__nuxt_devtools__/, or a __nuxt_devtools__ useState key in the payload (added by the DevTools server plugin, which exists only in a dev build). The payload is the inline __NUXT_DATA__ script, and the page's own _payload.json when the page points at one. No separate dev-tools address is asked here (see nuxt-devtools-public)",
+  ],
+  "nuxt-devtools-public": [
+    "This Nuxt site answers at /__nuxt_devtools__/client/ with the Nuxt DevTools page.",
+    "The DevTools show the app's files, routes, runtime config, server routes and modules to whoever opens the address.",
+    "Run the live site from a production build (nuxt build, then the server output or the static files), never nuxt dev, and keep the @nuxt/devtools module to development.",
+    "probing check, off without --owner-consent: Nuxt sites only; one GET of /__nuxt_devtools__/client/ on the site's origin (the route the Nuxt DevTools module registers; a site under a base URL prefix is not asked at its prefix), once per address in a run, at most 6 Nuxt addresses; a finding needs a 200 HTML answer whose text includes \"Nuxt DevTools\" (that title is uncited: it comes from the module's own branding, not from the documentation). Any other answer, including a 200 page that is the site's own, is not reported; no answer is could-not-check",
+  ],
+  "nuxt-preview-canonical": [
+    "A production page of this Nuxt site gives a preview deployment or a local address as its canonical address, its og:url or og:image, one of its hreflang alternates, or in its sitemap.",
+    "Search engines and social cards follow those addresses to the preview, which can show old content or vanish when the preview is cleaned up, and the language versions of the page are tied to the wrong site.",
+    "Build the site's base address from the production domain (site config, runtimeConfig.public, or the language module's baseUrl, often set only for preview builds), and rebuild.",
+    "Nuxt sites served from a host that is not a temporary one: the canonical, og:url, og:image, hreflang alternates and sitemap entries whose host ends in .vercel.app, .netlify.app or .pages.dev, or is localhost or 127.0.0.1",
+  ],
+  "nuxt-preview-public": [
+    "This Nuxt page, asked with ?preview=true and no secret, is rendered on the server with preview mode switched on (the page's own state says enabled: true).",
+    "Pages that show unpublished content in preview mode (prices before an announcement, drafts nobody approved) show it to anyone who adds the query to the address.",
+    "Give usePreviewMode a shouldEnable that checks a secret (compare a token from the request with one from runtimeConfig, server side) and returns false otherwise, and fetch draft content only from server routes that check the same secret.",
+    "probing check, off without --owner-consent: Nuxt sites only; one GET of the page's own address with ?preview=true&token=gaugeline-probe (the documented default query of usePreviewMode; the token is a fixed word, not a secret), at most 6 Nuxt addresses per run, no cookie and no header added; the answer's __NUXT_DATA__ is read as a flat JSON array and its $s_preview-state useState value is looked at for enabled being true. A page that never sends that state, a cached copy that ignores the query, a payload held in a separate file or one that is cut or not JSON is could-not-check, never a pass. The preview state's contents are never shown",
+  ],
+  "nuxt-private-state": [
+    "The page's embedded state (the __NUXT_DATA__ payload, or its _payload.json) or its public runtime config (window.__NUXT__) has a field whose name says it is a secret, password, private key, service role key, access token or API key, with a value in it.",
+    "Everything in that state is in the page's source for anyone to read. A field named like a secret usually is one: a key someone put under runtimeConfig.public, or a whole server record returned to the page.",
+    "Keep the value in the private runtimeConfig (outside public) and use it only in server routes, return only the fields the page shows from useAsyncData and useFetch (pick or transform them), and rotate any key that has been public.",
+    "Nuxt sites only: the __NUXT_DATA__ script (a flat JSON array, read as the page was sent), the page's own /_payload.json when the data script points at one (one GET, same site only), and the window.__NUXT__ config literal, each read up to 2 MB or 256 KB by a single linear scan, never evaluated. Every object key is split into words (camelCase and snake_case alike) and matched against service role, secret, password, private key, access/auth/bearer/refresh/session token and API key; a field with an empty, null or true/false value is not reported. A name containing only API key is medium, the rest high. Only field names and the kind of place are shown, never a value; names are held in a Map keyed by name so a repeated field counts once, and a __proto__ key is an ordinary name. A payload that is cut, too large or not JSON is could-not-check, not a pass",
   ],
   "page-gone": [
     "An address the last run read (saved with --since last) now answers 404 or 410, or redirects to a different page; the evidence says where it now leads.",
@@ -1393,6 +1439,18 @@ export const CHECK_TEXT: Readonly<
     "Editors publish a fix and visitors keep seeing the old version, so the fix looks broken.",
     "Revalidate the page when its document changes (an on-demand revalidation webhook from the CMS), or lower its revalidate time.",
     "Next.js sites with a content source (branch 30) only, otherwise unchecked: x-nextjs-cache or x-vercel-cache HIT or STALE with an Age header, the copy's age older than the document's last change, and the change more than 10 minutes ago. Without an Age header nothing is reported",
+  ],
+  "nuxt-framework-file-listed": [
+    "The sitemap, the canonical address, og:url or an hreflang alternate of this Nuxt site names a framework file (a _payload.json, a /_nuxt/ build file or a /__nuxt_island/ component) as if it were a page.",
+    "Search engines then crawl and may index a JSON payload instead of the page, and the page's real address loses its signals.",
+    "Keep payload and build addresses out of the sitemap (exclude _payload.json and /_nuxt/), and build the canonical from the page's route path, not from the address of the request that fetched its payload.",
+    "Nuxt sites only: canonical, og:url, hreflang hrefs and sitemap entries whose path starts /_nuxt/, /__nuxt_island/ or /__nuxt_devtools__, or ends /_payload.json or /_payload.js. Read from the page and the sitemap already fetched; nothing extra is requested. Paths are compared as written, so a site under a base URL prefix is matched only on the suffix",
+  ],
+  "nuxt-page-cache-header": [
+    "The HTML of this Nuxt page is told to be cached for a year or as immutable, or it sets a cookie while shared caches (a CDN) are allowed to keep it.",
+    "Edits to a page that caches for a year never reach visitors who already have it, and a CDN that keeps a response with a Set-Cookie hands one visitor's cookie to the next.",
+    "In nuxt.config routeRules, give page routes a short time or swr/isr (for example '/**': { swr: 600 }) and keep long, immutable headers for /_nuxt/** files only. Do not set cookies on routes that are cached.",
+    "Nuxt sites only, from the page's own response headers (nothing extra is requested): Cache-Control with immutable or a max-age or s-maxage of a year or more on an HTML page; or a Set-Cookie header together with public or s-maxage above 0 in Cache-Control and no Vary: Cookie, private or no-store. routeRules headers, swr and isr add these headers in Nuxt. Directives are held in a Map from name to number",
   ],
   "og-image-broken": [
     "The og:image the page names answers with an error, or can't be reached.",
@@ -2093,5 +2151,6 @@ export const SAMPLE_NOUNS: Readonly<Record<string, readonly [one: string, many: 
   draftRoutes: ["draft route", "draft routes"],
   downloadRoutes: ["download route", "download routes"],
   frameworkAddresses: ["framework address", "framework addresses"],
+  nuxtAddresses: ["Nuxt address", "Nuxt addresses"],
   structuredDataAddresses: ["address in structured data", "addresses in structured data"],
 };
