@@ -1446,6 +1446,7 @@ export {
   createSquarespaceCommerceRegistry,
 } from "./checks/squarespace-commerce.js";
 export { STRAPI_CHECKS, createStrapiRegistry } from "./checks/strapi.js";
+export { HUBSPOT_CMS_CHECKS, createHubspotCmsRegistry } from "./checks/hubspot-cms.js";
 export {
   ListBuilder,
   MIGRATION_ITEM_CAP,
