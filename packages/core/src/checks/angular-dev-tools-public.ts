@@ -7,7 +7,7 @@ export const angularDevToolsPublic = defineCheck<PageSnapshot>({
   size: "S",
   done: "The live pages come from a production build, with no dev client in their HTML.",
   estimateChanges:
-    "If the host runs `ng serve` or `analog dev` as its start command, the deploy settings change too.",
+    "If the host runs ng serve or analog dev as its start command, the deploy settings change too.",
   area: "Launch day",
   severity: "high",
   title: "The live Angular site is serving its development tools",

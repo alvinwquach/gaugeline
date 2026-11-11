@@ -36,7 +36,7 @@
     "tech": "Angular sites only, no extra request: the page's own HTML is searched for src=/@vite/client, /@ng/component (Angular's dev-server component updates) and /@analogjs/ module addresses",
     "size": "S",
     "done": "The live pages come from a production build, with no dev client in their HTML.",
-    "estimateChanges": "If the host runs `ng serve` or `analog dev` as its start command, the deploy settings change too."
+    "estimateChanges": "If the host runs ng serve or analog dev as its start command, the deploy settings change too."
   },
   {
     "id": "angular-preview-canonical",
