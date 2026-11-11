@@ -1,12 +1,11 @@
 import { describePartial } from "../adapters/collect.js";
-import {
-  comparablePrice,
-  type ProductRead,
-  type SquarespaceCommerceReading,
+import type {
+  ProductRead,
+  SquarespaceCommerceReading,
 } from "../adapters/squarespace-commerce-read.js";
 import { SQUARESPACE_COMMERCE_LIMITS } from "../adapters/squarespace-commerce.entry.js";
 import { CheckRegistry, defineCheck, type CheckContext, type Finding } from "../model.js";
-import { formatMoney } from "../products/money.js";
+import { formatMoney, minorExponent } from "../products/money.js";
 
 /**
  * The checks that need Squarespace's Commerce API: whether the price and the stock a product page shows
@@ -15,6 +14,10 @@ import { formatMoney } from "../products/money.js";
  * numbers in minor units and are compared only in one currency, never converted. Nothing here says which
  * side is right. Everything in a reading came from a platform and a site: it is printed and never acted on.
  */
+
+/** True when a price in this currency is one the page readers can compare (they read two decimal places). */
+const comparablePrice = (currency: string | undefined): boolean =>
+  currency !== undefined && currency !== "mixed" && minorExponent(currency) === 2;
 
 const nameOf = (p: { slug?: string; id: string }): string => p.slug ?? p.id;
 

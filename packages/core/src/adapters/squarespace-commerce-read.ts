@@ -1,5 +1,5 @@
 import type { Fetcher } from "../fetcher.js";
-import { minorExponent, toMinor } from "../products/money.js";
+import { toMinor } from "../products/money.js";
 import { readPrices } from "../price.js";
 import { buildSnapshot, jsonLdNodes } from "../snapshot.js";
 import type { PartialRead } from "./collect.js";
@@ -266,7 +266,3 @@ export async function readSquarespaceCommerce(
   );
   return reading;
 }
-
-/** True when a price in this currency is one the page readers can compare (they read two decimal places). */
-export const comparablePrice = (currency: string | undefined): boolean =>
-  currency !== undefined && currency !== "mixed" && minorExponent(currency) === 2;
