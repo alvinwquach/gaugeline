@@ -82,9 +82,7 @@ describe("gaugeline.adapters.json in gaugeline query: e2e", () => {
     const r = await query();
     expect(r.code).toBe(EXIT.couldNotRun);
     expect(r.err).toContain('the "generic-api" adapter is planned (C-14)');
-    expect(r.err).toContain(
-      "Built adapters: sanity, sitemap-feed, wix, wordpress, webflow, framer",
-    );
+    expect(r.err).toContain("Built adapters: carrd, duda, framer, godaddy, sanity, sitemap-feed,");
     expect(r.out).toBe("");
   });
 

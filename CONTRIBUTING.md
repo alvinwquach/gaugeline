@@ -102,7 +102,7 @@ description with `adapterDescription(id)` and its variables with `adapterEnvVars
 changes code does not edit `PROGRESS.md` either (the gate in `scripts/lib/gate.ts` fails it unless it carries the
 label `progress`): progress updates go in their own pull request after every five merges.
 
-**For the generator (`pnpm new:adapter`, PR #171):** its templates must write `<id>.ts`, `<id>.entry.ts` (with the
+**For the adapter generator (PR #171):** its templates must write `<id>.ts`, `<id>.entry.ts` (with the
 `lazy` loader), `__tests__/<id>-fixture.ts`, `__tests__/<id>.contract.ts` and `docs/integrations/<id>.md`, run
 `gen:adapters`, and edit no other tracked file.
 

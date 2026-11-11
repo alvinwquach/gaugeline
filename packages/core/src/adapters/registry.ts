@@ -75,7 +75,7 @@ export function resolveAdapters(config: AdaptersConfig): BuiltAdapter[] {
     const built = BUILT_ADAPTERS.get(entry.id);
     if (built) return built;
     const planned = PLANNED_ADAPTERS.find((p) => p.id === entry.id);
-    const known = [...BUILT_ADAPTERS.keys()].join(", ");
+    const known = [...BUILT_ADAPTERS.keys()].sort().join(", ");
     throw new ConfigError(
       planned
         ? `gaugeline.adapters.json: the "${entry.id}" adapter is planned (${planned.branch}) and not built yet.`
