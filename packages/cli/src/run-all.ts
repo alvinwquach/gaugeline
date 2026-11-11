@@ -79,6 +79,7 @@ async function runSite(
     allowPrivate: boolean;
     renewals: boolean;
     cost: boolean;
+    trackers: boolean;
     runOne: RunOne;
   },
 ): Promise<SiteOutcome> {
@@ -97,6 +98,7 @@ async function runSite(
         ...(opts.allowPrivate ? ["--allow-private"] : []),
         ...(opts.renewals ? ["--renewals"] : []),
         ...(opts.cost ? ["--cost"] : []),
+        ...(opts.trackers ? ["--trackers"] : []),
       ],
       {
         stdout: { write: (s: string) => out.push(s) },
@@ -140,6 +142,8 @@ export async function runAll(
     renewals?: boolean;
     /** Each site's run also checks what runs up the hosting bill (--cost). */
     cost?: boolean;
+    /** Each site's run also lists the trackers on pages with a form (--trackers). */
+    trackers?: boolean;
     runOne: RunOne;
   },
 ): Promise<SiteOutcome[]> {
@@ -162,6 +166,7 @@ export async function runAll(
               allowPrivate: opts.allowPrivate ?? false,
               renewals: opts.renewals ?? false,
               cost: opts.cost ?? false,
+              trackers: opts.trackers ?? false,
               runOne: opts.runOne,
             }),
           );

@@ -9,6 +9,7 @@ import {
   renewalsConfigSchema,
   handoffConfigSchema,
   costConfigSchema,
+  trackersConfigSchema,
   servicesConfigSchema,
   eventsConfigSchema,
   factsConfigSchema,
@@ -32,6 +33,7 @@ import {
   type EmailsConfig,
   type RenewalsConfig,
   type CostConfig,
+  type TrackersConfig,
   type ServicesConfig,
   type HandoffConfig,
   type EventsConfig,
@@ -70,6 +72,8 @@ export const HANDOFF_CONFIG_FILE = "gaugeline.handoff.json";
 export const COST_CONFIG_FILE = "gaugeline.cost.json";
 /** The freelancer's own packages, prices and brand, for `gaugeline audit --pack`, likewise. No keys. */
 export const SERVICES_CONFIG_FILE = "gaugeline.services.json";
+/** The paths that count as sensitive for the tracker checks (--trackers), likewise. Nothing in it is a key. */
+export const TRACKERS_CONFIG_FILE = "gaugeline.trackers.json";
 /** The database project and roles to test its access rules as, likewise. Keys stay in the environment. */
 export const ACCESS_CONFIG_FILE = "gaugeline.access.json";
 /** The business listings to compare with the site (Google, Yelp, Apple, bio links), likewise. Keys stay in the environment. */
@@ -161,6 +165,10 @@ export function readCostConfig(dir: string): CostConfig | undefined {
 
 export function readServicesConfig(dir: string): ServicesConfig | undefined {
   return readJsonConfig(dir, SERVICES_CONFIG_FILE, servicesConfigSchema, "your packages");
+}
+
+export function readTrackersConfig(dir: string): TrackersConfig | undefined {
+  return readJsonConfig(dir, TRACKERS_CONFIG_FILE, trackersConfigSchema, "the tracker settings");
 }
 
 export function readAccess(dir: string): AccessConfig | undefined {
