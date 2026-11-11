@@ -1,7 +1,8 @@
 import { spawn } from "node:child_process";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
-import { readdirSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 import { SITES_DIR, startFixture } from "../../packages/fixtures/src/index.js";
 
 export interface Example {
@@ -243,8 +244,11 @@ export async function runExample(
     ];
     const result = await new Promise<{ stdout: string; stderr: string; code: number }>(
       (resolve) => {
+        // A fixture that carries gaugeline.images.json is run from its own folder, so the settings it names are read.
+        const dir = join(SITES_DIR, e.fixture);
         const child = spawn(process.execPath, argv, {
           env: childProcessEnv({ ...extraEnv, ...childEnv }),
+          ...(existsSync(join(dir, "gaugeline.images.json")) ? { cwd: dir } : {}),
         });
         let stdout = "";
         let stderr = "";
