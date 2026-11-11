@@ -2,6 +2,10 @@
 
 export const ADAPTER_PAGES: { slug: string; title: string }[] = [
   {
+    slug: "integrations/aem",
+    title: "Adobe Experience Manager: content checks for sites built on Adobe Experience Manager",
+  },
+  {
     slug: "integrations/builders",
     title: "Hosted builders: content checks for sites built on Squarespace and similar builders",
   },
