@@ -71,6 +71,8 @@ Options:
                                  jumps
       --trackers                 Also list the trackers on pages with a form or
                                  a path you listed, and what a tag manager holds
+      --libraries                Also check the JavaScript files a page loads
+                                 for libraries with a published advisory
       --owner-consent            Run the probing checks, which ask routes for
                                  what they protect with no login; only on sites
                                  you may test
@@ -449,6 +451,7 @@ between the markers; CI fails when it differs from the flag table.
 | `--renewals`                | Also check what lapses: the domain's registration, the certificates and any token you set up                         |                      | 0.2.0 |
 | `--cost`                    | Also check what runs up the hosting bill: pages that change on every visit, the cache and usage jumps                |                      | 0.2.0 |
 | `--trackers`                | Also list the trackers on pages with a form or a path you listed, and what a tag manager holds                       |                      | 0.2.0 |
+| `--libraries`               | Also check the JavaScript files a page loads for libraries with a published advisory                                 |                      | 0.2.0 |
 | `--owner-consent`           | Run the probing checks, which ask routes for what they protect with no login; only on sites you may test             |                      | 0.2.0 |
 | `--routes <value>`          | With --owner-consent: download routes in files matching this glob (repeatable); no glob: a folder's signed-in routes |                      | 0.2.0 |
 | `--since <value>`           | Page check: compare with the last run (the only value is last). delivery: the window to read, such as 7d             |                      | 0.2.0 |
@@ -697,6 +700,25 @@ It checks the page you give it. `gaugeline run --all --trackers` adds it to ever
 Settings: `gaugeline.trackers.json` (`sensitivePaths`: exact paths or `/folder/*`). What it lists and what it
 does not see: [Trackers on sensitive pages](guides/trackers-on-sensitive-pages.md). What it sends:
 [Privacy and safety](privacy.md#trackers-on-sensitive-pages-trackers).
+
+### The libraries option
+
+`--libraries` adds one check to the page check: the version of jQuery, jQuery UI, Lodash, Moment.js, Bootstrap
+or AngularJS in each script file the page loads (on the site or on another host), and the published
+advisories that name that version, with the version that fixes each. It states facts and never says a site
+is vulnerable. A file with no version in it, or a minified file with no library name, is could-not-check. It
+is off by default.
+
+```sh
+npx gaugeline shop.example --libraries
+npx gaugeline shop.example --libraries --json
+```
+
+It checks the page you give it. `gaugeline run --all --libraries` adds it to every site of a nightly run. There
+is no settings file. At most 20 script files are read for one page, each once with `GET`, the first 2 MiB of
+each, and only the scripts the page names. What it reads and what it does not see:
+[Served libraries](guides/served-libraries.md). What it sends:
+[Privacy and safety](privacy.md#served-libraries-libraries).
 
 ### The query command
 
