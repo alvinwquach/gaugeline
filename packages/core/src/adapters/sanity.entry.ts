@@ -18,6 +18,7 @@ export const entries: readonly AdapterEntry[] = [
     name: "Sanity",
     status: "built",
     describe: SANITY_DESCRIPTION,
+    detect: { hosts: ["cdn.sanity.io"] },
     load: lazy("sanity", async () => {
       const { createSanityAdapter } = await import("./sanity.js");
       return (c, settings) =>

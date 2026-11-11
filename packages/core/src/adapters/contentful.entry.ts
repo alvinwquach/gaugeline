@@ -24,6 +24,7 @@ export const entries: readonly AdapterEntry[] = [
     name: "Contentful",
     status: "built",
     describe: CONTENTFUL_DESCRIPTION,
+    detect: { hosts: ["ctfassets.net"] },
     envVars: [
       CONTENTFUL_SPACE_ID,
       CONTENTFUL_ENVIRONMENT,

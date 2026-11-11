@@ -16,5 +16,8 @@ export default defineConfig({
   clean: true,
   minify: true,
   keepNames: true,
-  banner: { js: "#!/usr/bin/env node" },
+  // `yaml` is CommonJS and calls require() for Node built-ins: give the ESM bundle a real require.
+  banner: {
+    js: '#!/usr/bin/env node\nimport { createRequire as __gaugelineCreateRequire } from "node:module";\nconst require = __gaugelineCreateRequire(import.meta.url);',
+  },
 });
