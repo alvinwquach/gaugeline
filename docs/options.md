@@ -76,6 +76,9 @@ Options:
       --wordpress                Also check a WordPress site's versions against
                                  the current releases, and whether it lists its
                                  users
+      --backups                  Also check when the client's content and
+                                 database were last backed up (Supabase, Sanity,
+                                 an export folder)
       --published                Also check that content changed in your CMS is
                                  live on the site, and that unpublished pages
                                  are gone
