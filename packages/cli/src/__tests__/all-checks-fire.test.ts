@@ -40,6 +40,7 @@ const FIXTURES = [
   "next-like",
   "sveltekit-like",
   "sveltekit-dev",
+  "astro-like",
   "refusing",
   "tag-rules",
   "nav-events",

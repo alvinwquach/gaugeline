@@ -128,6 +128,17 @@
       "verbose",
       "version"
     ],
+    "deploy-gate": [
+      "allow-private",
+      "block",
+      "dns",
+      "help",
+      "json",
+      "owner-consent",
+      "quiet",
+      "verbose",
+      "version"
+    ],
     "digest": [
       "email",
       "help",
@@ -344,6 +355,11 @@
     "app-name-mismatch",
     "app-smart-banner-mismatch",
     "asset-file-public",
+    "astro-dev-tools-public",
+    "astro-draft-entry-public",
+    "astro-endpoints-listed",
+    "astro-preview-canonical",
+    "astro-private-props",
     "blocked",
     "broken-links",
     "canonical-elsewhere",
@@ -513,6 +529,11 @@
     "app-name-mismatch": "low",
     "app-smart-banner-mismatch": "medium",
     "asset-file-public": "low",
+    "astro-dev-tools-public": "high",
+    "astro-draft-entry-public": "medium",
+    "astro-endpoints-listed": "low",
+    "astro-preview-canonical": "high",
+    "astro-private-props": "high",
     "blocked": "low",
     "broken-links": "high",
     "canonical-elsewhere": "high",
@@ -677,6 +698,7 @@
   "envVars": [
     "CI",
     "FORCE_COLOR",
+    "GAUGELINE_GATE_BLOCK",
     "NO_COLOR"
   ],
   "exitCodes": [

@@ -56,6 +56,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     since: "0.1.0",
     commands: [
       "check",
+      "deploy-gate",
       "launch",
       "renewals",
       "handoff",
@@ -108,6 +109,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
       "migration",
       "advisory",
       "init",
+      "deploy-gate",
       "plan",
       "printed",
       "snapshot",
@@ -133,7 +135,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     type: "boolean",
     description: "Also read the domain's mail records (SPF and DMARC) from DNS",
     since: "0.2.0",
-    commands: ["check", "launch", "brief", "audit", "handoff", "advisory", "init"],
+    commands: ["check", "launch", "brief", "audit", "handoff", "advisory", "init", "deploy-gate"],
   },
   {
     name: "renewals",
@@ -189,7 +191,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     description:
       "Run the probing checks, which ask routes for what they protect with no login; only on sites you may test",
     since: "0.2.0",
-    commands: ["check", "brief", "audit"],
+    commands: ["check", "brief", "audit", "deploy-gate"],
   },
   {
     name: "routes",
@@ -630,6 +632,15 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     since: "0.2.0",
     commands: ["advisory"],
     multiple: true,
+  },
+  {
+    name: "block",
+    type: "boolean",
+    description:
+      'deploy-gate: exit 1 when a "Fix this first" finding is found; without it the gate only reports',
+    env: "GAUGELINE_GATE_BLOCK",
+    since: "0.2.0",
+    commands: ["deploy-gate"],
   },
   {
     name: "dry-run",
