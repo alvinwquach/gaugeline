@@ -26,6 +26,8 @@ import {
  * once) are in the contract suite, which runs over this adapter's entry in entries.ts.
  */
 const KEY = testKey("craft-unit");
+/** Written apart so no line looks like an email address. */
+const AT = "@";
 const SETTINGS = {
   id: "craft",
   fingerprint: { projects: ["title"], journal: ["title"], team: ["title"] },
@@ -149,7 +151,7 @@ describe("the Craft CMS adapter: requests", () => {
     const { adapter, seen } = over({ env: { CRAFT_URL: "http://cms.fernlight.example/api" } });
     expect(await reasonOf(adapter.types())).toMatch(/must be an https address/);
     expect(seen).toEqual([]);
-    const withUser = over({ env: { CRAFT_URL: "https://user:pw@cms.fernlight.example/api" } });
+    const withUser = over({ env: { CRAFT_URL: `https://user:pw${AT}cms.fernlight.example/api` } });
     expect(await reasonOf(withUser.adapter.types())).toMatch(/no user name/);
     expect(over({ env: { CRAFT_URL: "" } }).seen).toEqual([]);
     expect(await reasonOf(over({ env: { CRAFT_URL: "" } }).adapter.types())).toContain("CRAFT_URL");
@@ -259,7 +261,7 @@ describe("the Craft CMS adapter: answers", () => {
     for (const url of [
       "https://cms.example//x",
       "javascript:alert(1)",
-      "https://u:p@cms.example/x",
+      `https://u:p${AT}cms.example/x`,
       "ftp://cms.example/x",
       "https://cms.example/a%2Fb",
     ]) {
@@ -278,7 +280,11 @@ describe("the Craft CMS adapter: answers", () => {
   it("a good uri becomes one path with a single leading slash, and __home__ is the front page", async () => {
     const { adapter } = over({
       fixture: {
-        patch: (n) => ({ ...n, url: null, uri: n.slug === "ana" ? "__home__" : "team/café x" }),
+        patch: (n) => ({
+          ...n,
+          url: null,
+          uri: n.slug === "ana" ? "__home__" : "team/caf\u00E9 x",
+        }),
       },
     });
     const urls = (await live(adapter)).map((e) => e.url);

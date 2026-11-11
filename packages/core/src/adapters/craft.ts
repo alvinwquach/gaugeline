@@ -119,8 +119,9 @@ function hasValue(v: unknown): boolean {
 /** Characters that never belong in a path taken from an answer: control characters, backslash, and a lone surrogate. */
 // eslint-disable-next-line no-control-regex
 const BAD_CHARS = /[\u0000-\u001f\u007f\\]/;
+/** No lone surrogate: every high surrogate is followed by a low one, and no low one stands alone. */
 const wellFormed = (s: string): boolean =>
-  typeof s.isWellFormed === "function" ? s.isWellFormed() : !/[\ud800-\udfff]/.test(s);
+  !/[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/.test(s);
 
 /**
  * A path that is one site's own page: a single leading slash, no `//`, no `.` or `..` segment (written or
@@ -514,7 +515,6 @@ export function createCraftAdapter(options: CraftAdapterOptions): CraftAdapter {
     if (pattern !== undefined) {
       const raw = fillUrlTemplate(pattern, {
         id: n.id,
-        type,
         ...(n.slug !== undefined ? { slug: n.slug } : {}),
       });
       return { ...(raw !== "" ? { url: raw } : {}), patterned: true };
