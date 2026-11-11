@@ -371,6 +371,14 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "email-no-text-part": ["An email has no plain-text version", "Security & email"],
   "never-cached": ["A page marked static is never served from the CDN's cache", "Visitors"],
   "revalidate-too-often": ["A page marked static is rebuilt too often", "Visitors"],
+  "tracker-on-sensitive-page": [
+    "Trackers load on a page with a form or a listed path",
+    "Security & email",
+  ],
+  "tracker-in-tag-manager": [
+    "A Tag Manager container on a page with a form or a listed path holds trackers",
+    "Security & email",
+  ],
   "printful-missing": ["On the website, not in fulfillment", "Sales & prices"],
   "printful-orphan": ["In fulfillment, not on the website", "Sales & prices"],
   "stripe-orphan": ["In checkout, not on the website", "Sales & prices"],
@@ -1842,6 +1850,18 @@ export const CHECK_TEXT: Readonly<
     "A lifetime of a second or two means the host rebuilds the page about as often as it is visited. A page that changes once a day does not need that, and every rebuild is billed.",
     "Raise the lifetime to what the content needs: an hour for a menu, a day for an about page. On Next.js that is the revalidate setting; on any host it is the s-maxage in Cache-Control.",
     'Only pages marked static ("static" in gaugeline.cost.json). The lifetime is s-maxage when Cache-Control has one, else max-age; no-store, no-cache and private count as zero. A max-age with no s-maxage is the browser\'s lifetime: when the CDN answered a hit (Vercel and Cloudflare keep such a page until the next deploy or purge) it is fine. Compared with "minimumSeconds" (default 60). A page with no Cache-Control header is could-not-check. A zero lifetime on a page that never hit the cache is reported as never-cached instead',
+  ],
+  "tracker-on-sensitive-page": [
+    "Gaugeline lists the advertising pixels, analytics, session replay tools and tag managers that load on a page with a form, an embedded form service or a path you listed as sensitive, with the id each one carries.",
+    "A form or a page about a health condition, a booking or an intake is where visitors share details, and anything that loads there can receive information about the visit. Clients are often surprised to find what the site loads. This is a list of facts: whether any of it is allowed is for the client and their own counsel to decide, and Gaugeline does not say.",
+    "Show the client the list. For each tracker, ask who set it up and what it is for; where it is not needed on this page, move it out of the page template or restrict it in the tag manager. For the question of whether a tracker is allowed here, the client should ask their own counsel.",
+    'Only with --trackers. A page counts when it has a form that collects details (a search box, a GET form whose visible fields are named like a search, does not count), an embedded form service, or a path listed under "sensitivePaths" in gaugeline.trackers.json. Trackers are read from the script addresses and inline scripts in the HTML (and the noscript fallback tags) by a fixed table of patterns: Meta pixel, TikTok pixel, LinkedIn Insight Tag, Google Analytics 4, Google Tag Manager, five session replay tools (Hotjar, Microsoft Clarity, FullStory, LogRocket, Mouseflow) and the tracking code of HubSpot, Pardot and Marketo. Each finding shows the kind and the id the page\'s own code carries, never page content or a form field. A tag a script adds after the page loads is not seen (a run that fires scripts is a later branch); the same page gives the same findings',
+  ],
+  "tracker-in-tag-manager": [
+    "A Google Tag Manager container loads on a page with a form, an embedded form service or a path you listed as sensitive, and its public file contains tracker ids (Meta, TikTok, LinkedIn, session replay, Google Analytics 4).",
+    "A tag manager hides what the page loads: the page's own code shows one container id, and the trackers are inside it. They are the same kind of fact as the ones in the page's code, and the same question for the client and their own counsel. Gaugeline lists them and does not say whether any is allowed.",
+    "Open the container in Tag Manager and look at the tags the finding names and their triggers. Where a tracker is not needed on this page, change its trigger so it does not fire here, or remove it. For the question of whether a tracker is allowed here, the client should ask their own counsel.",
+    "Only with --trackers, on the pages the first check counts. The container's public file (GET www.googletagmanager.com/gtm.js?id=GTM-XXXX, the file every visitor receives) is read as text, once per container, at most three per page, and never run; its escaped characters are decoded and the same table of patterns is applied, with Google Analytics 4's measurement id read from a tag's settings. What the file holds is what the container could load: whether a tag fires on this page depends on its triggers, which Gaugeline does not run, and the finding says so. A tag built from a template that keeps its id out of the file is not seen. A container that cannot be read, or is longer than the size cap, is could-not-check with the reason",
   ],
   "printful-missing": [
     "A product on your website has no matching product in Printful.",

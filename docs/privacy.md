@@ -311,6 +311,23 @@ name (inside the one you ran from), never over a file without `--force`, all thr
 What it prints: paths, cache header values, usage figures and dates. It never buys, upgrades, renews, logs in
 or changes anything.
 
+### Trackers on sensitive pages (--trackers)
+
+`--trackers` on the page check lists the trackers on pages with a form or a path you list
+([Trackers on sensitive pages](guides/trackers-on-sensitive-pages.md)). Every request is `GET`, through the
+fetcher.
+
+- **The page itself.** Nothing extra: the trackers are read from the HTML the page check already fetched
+  (script addresses, inline scripts and noscript tags), by a fixed table of patterns. Nothing is run and no
+  cookie is read.
+- **A Tag Manager container, only for a page that counts.** One `GET https://www.googletagmanager.com/gtm.js?id=GTM-XXXX`
+  per container the page loads (at most three), the same public file every visitor's browser downloads.
+  It is read as text in memory and dropped; no key or cookie is sent.
+
+What it prints: the kind of tracker, the id it carries (a public identifier in the page's own code), the
+page's path and why the page counts. Never page text, a form field name or a form value, and never a verdict
+on whether a tracker is allowed. Nothing is submitted and no one is logged in.
+
 ### Audit pack (gaugeline audit --pack)
 
 `gaugeline audit <address> --pack` runs the default page check on a prospect's site and writes a proposal

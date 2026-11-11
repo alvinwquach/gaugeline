@@ -107,6 +107,8 @@ import {
   createCostRegistry,
   detectBuilder,
   formatCostSummary,
+  addTrackerChecks,
+  createTrackers,
 } from "@gaugeline/core";
 import { parseCliArgs } from "./args.js";
 import { HELP } from "./help.js";
@@ -168,6 +170,7 @@ import {
   readHandoffConfig,
   readServicesConfig,
   readCostConfig,
+  readTrackersConfig,
   readEvents,
   readSchemaRules,
   readTags,
@@ -957,6 +960,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         allowPrivate: args.allowPrivate,
         renewals: args.renewals,
         cost: args.cost,
+        trackers: args.trackers,
         runOne: (argv, siteIo, siteCwd) => main(argv, siteIo, { ...deps, cwd: siteCwd }),
       });
       io.stdout.write(`${formatRunAll(rows)}\n`);
@@ -1343,7 +1347,10 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       const costing = args.cost;
       // gaugeline handoff: the page registry and the three handoff checks, and only those run.
       const handing = args.command === "handoff";
-      const registry =
+      // The tracker checks (trackers on pages with a form or a listed path, what a Tag Manager container
+      // holds) are added to whichever registry the run uses, only with --trackers.
+      const tracking = args.trackers;
+      const baseRegistry =
         deps.registry ??
         (handing
           ? createHandoffRegistry()
@@ -1354,6 +1361,8 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
               : renewing
                 ? createRenewalsRegistry()
                 : createPageRegistry());
+      const registry =
+        tracking && deps.registry === undefined ? addTrackerChecks(baseRegistry) : baseRegistry;
       // gaugeline audit --pack: the packages are read, and checked against the checks this run makes, before
       // any request: a package that names a check that never runs is a mistake in the file (exit 2).
       const services = args.audit ? readServicesConfig(cwd) : undefined;
@@ -1413,6 +1422,10 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
             fetcher,
           )
         : undefined;
+      // What the tracker checks read: the settings, and the public file of each Tag Manager container a page loads.
+      const trackers = tracking
+        ? createTrackers(readTrackersConfig(cwd) ?? {}, fetcher)
+        : undefined;
       // What the handoff checks read: the registry's record through the renewals reader (which only asks
       // RDAP here: no token goes to it), then the provider reads, each with its own key from the environment.
       const handoff = handing
@@ -1446,6 +1459,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         ...(renewals ? { renewals } : {}),
         ...(handoff ? { handoff } : {}),
         ...(cost ? { cost } : {}),
+        ...(trackers ? { trackers } : {}),
         ...(args.command === "renewals" || handing ? { tolerateUnreachable: true } : {}),
         // The walking skeleton (0.0.x) runs one check; an injected registry is used as given.
         ...(only ? { only } : {}),

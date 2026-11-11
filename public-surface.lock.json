@@ -70,6 +70,7 @@
       "save-requests",
       "since",
       "slack",
+      "trackers",
       "verbose",
       "version",
       "webhook"
@@ -276,6 +277,7 @@
       "renewals",
       "site",
       "tag",
+      "trackers",
       "verbose",
       "version"
     ],

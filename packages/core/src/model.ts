@@ -13,6 +13,7 @@ import type { DnsReader } from "./dns.js";
 import type { Renewals } from "./renewals/reader.js";
 import type { Handoff } from "./handoff/reader.js";
 import type { Cost } from "./cost/reader.js";
+import type { Trackers } from "./trackers/reader.js";
 import type { HiddenConfig } from "./hidden.js";
 import type { NavRules } from "./nav/read-regions.js";
 import type { ContentNow, PagesConfig } from "./snapshot/compare.js";
@@ -203,6 +204,12 @@ export interface CheckContext {
    * has --cost: those checks then do nothing.
    */
   cost?: Cost;
+  /**
+   * What the tracker checks read: the public file of each Tag Manager container a page loads, once each on
+   * first use, and the settings (the paths that count as sensitive). Absent unless the run has --trackers:
+   * those checks then do nothing.
+   */
+  trackers?: Trackers;
   /** The page's App Store and Google Play apps, looked up once on first use. */
   apps?: () => Promise<AppLookup[]>;
   /**

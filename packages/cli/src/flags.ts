@@ -148,6 +148,14 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     commands: ["check", "run"],
   },
   {
+    name: "trackers",
+    type: "boolean",
+    description:
+      "Also list the trackers on pages with a form or a path you listed, and what a tag manager holds",
+    since: "0.2.0",
+    commands: ["check", "run"],
+  },
+  {
     name: "owner-consent",
     type: "boolean",
     description:
