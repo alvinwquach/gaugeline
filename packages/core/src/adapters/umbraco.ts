@@ -519,7 +519,12 @@ export function createUmbracoAdapter(options: UmbracoAdapterOptions): UmbracoAda
    * draft, or a node never published. Two counts per type and no node is asked for beyond the first.
    */
   const draftsReachable = async (): Promise<boolean> => {
-    for (const name of named()) {
+    const every = named();
+    if (keyOrUndefined() === undefined)
+      throw new AdapterCouldNotCheck(
+        `${UMBRACO_API_KEY} is not set. Umbraco shows unpublished work only to a request that carries the Delivery API key and asks for preview.`,
+      );
+    for (const name of every) {
       const live = await countOf(name, {}, () => undefined);
       const preview = await countOf(name, { preview: true }, () => undefined);
       if (preview > live) return true;

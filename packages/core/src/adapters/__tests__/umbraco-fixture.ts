@@ -126,6 +126,10 @@ export interface UmbracoFixtureOptions {
   protectedApi?: boolean;
   /** The API is not switched on: every route answers 404. */
   off?: boolean;
+  /** Every path answers 200 with a web page, as a site with a catch-all route does: the API list is not there. */
+  catchAll?: boolean;
+  /** Content types the key may not read: their list answers 403. */
+  denied?: readonly string[];
   /** The most nodes one answer holds, whatever `take` asks for (the API may clamp). */
   maxTake?: number;
   /** Replace what the list route answers (a hostile or broken server). Called with the parsed query. */
@@ -178,6 +182,7 @@ export function umbracoTransport(
     if (req.method !== "GET") return json(405, { message: "method not allowed" });
     if (url.pathname === "/umbraco/delivery/api/v2/content") {
       if (options.off === true) return html(404);
+      if (options.catchAll === true) return html(200);
       const key = req.headers["api-key"];
       const hasKey = options.apiKey !== undefined && key === options.apiKey;
       if (key !== undefined && !hasKey) return json(401, { title: "Unauthorized" });
@@ -189,6 +194,8 @@ export function umbracoTransport(
       const take = Number(url.searchParams.get("take") ?? "10");
       if (options.list) return json(200, options.list({ filter, skip, take }));
       const alias = /^contentType:(.+)$/.exec(filter)?.[1];
+      if (alias !== undefined && (options.denied ?? []).includes(alias))
+        return json(403, { title: "Forbidden" });
       const type = alias === undefined ? undefined : content.find((t) => t.alias === alias);
       const nodes = (
         alias === undefined ? content.flatMap((t) => t.nodes) : (type?.nodes ?? [])
