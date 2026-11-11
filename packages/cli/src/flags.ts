@@ -32,14 +32,24 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     description: 'Exit 1 when a "Fix this first" finding is found',
     env: "CI",
     since: "0.1.0",
-    commands: ["check", "launch", "verify", "tags", "ads", "delivery", "platform", "query"],
+    commands: [
+      "check",
+      "launch",
+      "verify",
+      "tags",
+      "ads",
+      "delivery",
+      "platform",
+      "query",
+      "emails",
+    ],
   },
   {
     name: "json",
     type: "boolean",
     description: "Print the result as JSON on stdout, and nothing else",
     since: "0.1.0",
-    commands: ["check", "launch", "ads", "delivery", "platform", "query"],
+    commands: ["check", "launch", "ads", "delivery", "platform", "query", "emails"],
   },
   {
     name: "no-open",
@@ -83,6 +93,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
       "ads",
       "tags",
       "query",
+      "emails",
     ],
   },
   {
@@ -316,9 +327,9 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     name: "base",
     type: "string",
     description:
-      "Check the plan against the site built at this address, such as a preview; or the site to ask for --routes",
+      "The site a plan is checked against (a preview); the site emails link to; or the site to ask for --routes",
     since: "0.2.0",
-    commands: ["plan", "check"],
+    commands: ["plan", "check", "emails"],
   },
   {
     name: "annotate",

@@ -228,6 +228,24 @@ What they print: two counts and UTC days for the comparison, and for a webhook e
 many events are waiting and the age of the oldest. Every message that mentions a system is passed
 through the redactor that blanks both keys first.
 
+### Rendered emails (gaugeline emails)
+
+`gaugeline emails <folder>` reads the `.html` files, and the `.txt` beside them, that your email export
+wrote ([Transactional emails](guides/emails.md)). It reads them as text: it never renders a template,
+runs your code, connects to a mail account or sends a message, and it has no key and no option to do
+any of those.
+
+Without `--base` it makes no request at all. With `--base https://your-site.example` it makes `GET` and
+`HEAD` requests, through the fetcher, to links and images on that one site, at most 30 links and 20
+images for each email. A link to another site is never requested, and neither is an unsubscribe,
+opt-out or preferences link on any site, because a `GET` to one can unsubscribe a person.
+
+What it prints: the file and the line, the template variable or the address that is wrong, and counts.
+An address in the evidence is cut before its `?`, because a real export can hold a customer's token in
+a query string; text from an email is escaped, and a finding passes through the same redactor as every
+other. The files you point it at should still be rendered from sample data, not exported from a real
+customer's send.
+
 ### Saving the requests (--save-requests)
 
 By default a run keeps what it asked for in memory and writes only the report. `--save-requests <file>`

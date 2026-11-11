@@ -24,6 +24,7 @@ export const SUBCOMMANDS = [
   "delivery",
   "platform",
   "query",
+  "emails",
 ] as const;
 export type CliCommand = "check" | (typeof SUBCOMMANDS)[number];
 
@@ -225,6 +226,18 @@ export type ParsedArgs =
       kind: "platform";
       webhooks: boolean;
       allowSecretKey: boolean;
+      json: boolean;
+      ci: boolean;
+      verbose: boolean;
+      quiet: boolean;
+    }
+  | {
+      kind: "emails";
+      /** gaugeline emails <dir>: the folder of rendered emails (or one .html file), as typed. */
+      dir: string;
+      /** --base, as an address: the site the emails link to. Without it nothing is requested. */
+      base?: string;
+      allowPrivate: boolean;
       json: boolean;
       ci: boolean;
       verbose: boolean;
@@ -952,6 +965,40 @@ export function parseCliArgs(
       sent,
       ...(typeof values.since === "string" ? { since: values.since } : {}),
       allowSecretKey: values["allow-secret-key"] === true,
+      json: values.json === true,
+      ci: values.ci === true,
+      verbose,
+      quiet: values.quiet === true,
+    };
+  }
+  if (command === "emails") {
+    if (positionals.length !== 1)
+      return {
+        kind: "error",
+        message:
+          positionals.length === 0
+            ? "gaugeline emails needs the folder your email export wrote: gaugeline emails ./emails"
+            : `Expected one folder, got ${positionals.length}: ${positionals.join(", ")}.`,
+        hint: "Export your emails as HTML first; the steps are in docs/guides/emails.",
+        verbose,
+      };
+    let base: string | undefined;
+    if (typeof values.base === "string") {
+      const parsedBase = parseAddress(values.base.trim());
+      if (!parsedBase.ok)
+        return {
+          kind: "error",
+          message: `--base: ${parsedBase.reason}`,
+          hint: "Type the site the emails link to, like https://example.com.",
+          verbose,
+        };
+      base = parsedBase.url.href;
+    }
+    return {
+      kind: "emails",
+      dir: positionals[0] ?? "",
+      ...(base !== undefined ? { base } : {}),
+      allowPrivate: values["allow-private"] === true,
       json: values.json === true,
       ci: values.ci === true,
       verbose,

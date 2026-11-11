@@ -12,6 +12,7 @@ import {
   AD_LANDING_CHECKS,
   CAMPAIGN_CHECKS,
   DUPLICATE_CHECKS,
+  EMAIL_CHECKS,
   PLAN_CHECKS,
   PRESENCE_CHECKS,
   PRICE_CHECKS,
@@ -60,6 +61,7 @@ for (const c of PRINTED_CHECKS) registry.register(c);
 for (const c of CAMPAIGN_CHECKS) registry.register(c);
 for (const c of AD_LANDING_CHECKS) registry.register(c);
 for (const c of DUPLICATE_CHECKS) registry.register(c);
+for (const c of EMAIL_CHECKS) registry.register(c);
 for (const c of PRESENCE_CHECKS) registry.register(c);
 for (const c of PRICE_CHECKS) registry.register(c);
 for (const c of SUBSCRIPTION_CHECKS) registry.register(c);
