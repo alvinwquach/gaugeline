@@ -1,7 +1,7 @@
 import type { CheckContext } from "../model.js";
 import type { ImageSettings } from "./config.js";
 import {
-  describeOptimizer,
+  optimizerLabel,
   readImageSettings,
   type OptimizerAddress,
   type SettingsIssue,
@@ -56,7 +56,7 @@ export function noteNoSettings(
     if (!first) continue;
     ctx.couldNotCheck?.(
       `${origin}${first.path}`,
-      `this page resizes images through ${describeOptimizer(first.optimizer)}, and whether that address fetches only the hosts you listed is not visible from the page; add settingsFiles to gaugeline.images.json (the images settings of your framework), or run the probe on a site you own`,
+      `this page resizes images through the ${optimizerLabel(first.optimizer)} image address, and whether that address fetches only the hosts you listed is not visible from the page; add settingsFiles to gaugeline.images.json (the images settings of your framework), or run the probe on a site you own`,
     );
   }
 }

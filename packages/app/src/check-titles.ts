@@ -48,6 +48,14 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "host-duplicate": ["Your whole site exists at two addresses", "Search & sharing"],
   "html-huge": ["This page's HTML is enormous", "Visitors"],
   "ics-floating-time": ["Your calendar shows the wrong hour on some phones", "Visitors"],
+  "image-optimizer-allowlist-wide": [
+    "Your image settings let the image address fetch from any website",
+    "Security & email",
+  ],
+  "image-optimizer-open": [
+    "Your image address fetched a picture from a website you did not list",
+    "Security & email",
+  ],
   "images-broken": ["Some images on this page don't load", "Visitors"],
   "invisible-unicode-tags": ["The page carries text in invisible characters", "Security & email"],
   "item-unavailable-shown": [
@@ -225,6 +233,10 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "hreflang-not-reciprocal": ["A language version doesn't link back", "Search & sharing"],
   "html-heavy": ["Most of this page's HTML is a data payload", "Visitors"],
   "ics-no-vtimezone": ["Your calendar names a time zone it doesn't describe", "Visitors"],
+  "image-optimizer-allowlist-unanchored": [
+    "An image allowlist expression is not anchored",
+    "Security & email",
+  ],
   "image-width-absurd": ["Images are requested at an enormous width", "Visitors"],
   "images-alt-empty": ["None of the images on this page are described", "Visitors"],
   "images-heavy": ["Some images are very large files", "Visitors"],
@@ -630,6 +642,18 @@ export const CHECK_TEXT: Readonly<
     "Phones read such a time in the guest's own zone, so anyone in another zone, or travelling, sees the event at the wrong hour.",
     "Give each DTSTART a time zone, for example DTSTART;TZID=America/Los_Angeles:20261112T190000. Most calendar exports have a time zone setting.",
     "a VEVENT's DTSTART has neither TZID nor a trailing Z (a floating time, RFC 5545 \u00a73.3.5); all-day VALUE=DATE events are not reported",
+  ],
+  "image-optimizer-allowlist-wide": [
+    "The image settings you gave (next.config, nuxt.config, astro.config or netlify.toml) allow a wildcard host, a pattern with no host, or a match-everything expression, so the site's image address will fetch, resize and serve a picture from any address a visitor puts in it.",
+    "Anyone can then use your site to resize and serve images from any address. You pay for the bandwidth and the optimization, your cache fills with other people's pictures, and your site's name sits on an open relay.",
+    "List the exact hosts your pictures come from (and a path prefix where you can) in remotePatterns, domains or remote_images, and remove the wildcard.",
+    "Not a probing check: no request is made. Reads the files named in settingsFiles of gaugeline.images.json as text (never run) and reports a hostname that is only wildcards or a wildcard and a top-level name, a remotePatterns entry with no hostname (an https-only pattern), a domains list holding a wildcard, and a Netlify remote_images expression that matches every address. A page that uses /_next/image, /_vercel/image, /_ipx/, /_image or /.netlify/images with no settings given is could not check. A statement about the file, not about the running site",
+  ],
+  "image-optimizer-open": [
+    "The site's image address (/_next/image, /_vercel/image, /_ipx/, /_image or /.netlify/images) fetched an image from the address you chose for the test, on a host that is not one of your image hosts, and sent it back.",
+    "Anyone can then use your site to resize and serve images from any address. You pay for the bandwidth and the optimization, your cache fills with other people's pictures, and your site's name sits on an open relay.",
+    "Allow only the hosts your pictures come from: remotePatterns or domains in next.config, nuxt.config or astro.config, images in the Vercel project settings, remote_images in netlify.toml. Then rebuild and run the check again.",
+    "probing check, off without --owner-consent: needs imageOptimizerProbeUrl in gaugeline.images.json, an https address on a public host you control that is not your own host, not a host your image addresses already use and not a host in the settings files given, never an IP address or a private name; one GET per optimizer the page uses (at most 5 a run), to the site's own origin, with the width and quality the page itself used, no cookie, no redirect followed, 1,024 bytes of the answer read to see whether it is an image and then dropped; 200 with an image content type and image bytes is a finding, 400, 403 and 404 pass, anything else is could not check; the query string and the body are never stored, logged or printed",
   ],
   "images-broken": [
     "An image on the site (or the original behind a Next.js /_next/image address) returns an error.",
@@ -1296,6 +1320,12 @@ export const CHECK_TEXT: Readonly<
     "The iCalendar standard requires the description. Some calendar apps fall back to UTC or the guest's zone without it, and show the wrong hour.",
     "Export the calendar with time zone definitions included, or add a VTIMEZONE for each TZID the events use.",
     "a DTSTART or DTEND TZID has no matching VTIMEZONE component (RFC 5545 \u00a73.6.5)",
+  ],
+  "image-optimizer-allowlist-unanchored": [
+    "A Netlify remote_images expression in the settings you gave does not start with ^ and end with $, so it matches when the allowed address appears anywhere in the image address.",
+    "An address such as https://evil.example/?x=https://images.yourshop.example/ then passes the allowlist, and the Image CDN fetches it for anyone who asks.",
+    "Anchor each expression and escape its dots: ^https://images\\\\.yourshop\\\\.example/.*$.",
+    "Not a probing check: no request is made. Reads settingsFiles of gaugeline.images.json as text and reports each remote_images entry that lacks a leading ^ or a trailing $ (an entry that matches every address is image-optimizer-allowlist-wide). A statement about the file, not about the running site",
   ],
   "image-width-absurd": [
     "An image is offered or requested 3840 pixels wide or more, wider than almost any screen shows it.",

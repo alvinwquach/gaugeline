@@ -156,6 +156,30 @@ Checked 20 of 41 images.
 Each check that passed also prints a `✓ <id>` line, left out above. The output is asserted by
 `packages/cli/src/__tests__/images.test.ts`.
 
+### Image optimizers (a probing check)
+
+With `--owner-consent` (or a `gaugeline.consent.json`) **and** an `imageOptimizerProbeUrl` in
+`gaugeline.images.json`, the `image-optimizer-open` check asks your site's image address
+(`/_next/image`, `/_vercel/image`, `/_ipx/`, `/_image` or `/.netlify/images`) to fetch one picture from the
+address you chose, and reports it when it does ([Open image optimizers](guides/image-optimizers.md)).
+**Run it only on sites you own or have permission to test.** Without consent, or without an address, nothing
+is asked. The settings files you list in `gaugeline.images.json` are read as text with or without consent:
+that part sends nothing.
+
+What it sends, per optimizer the page uses:
+
+- One `GET` to your own origin, at most 5 in a run, with the width and quality your page itself used and
+  your chosen address in the query. No cookie, no `Authorization` header, no `Referer`. No retry.
+- No redirect is followed. Gaugeline never chooses the address: it refuses one that is not `https`, is an IP
+  address or a private name, is your own host, is a host your image addresses already use, or is a host in
+  the settings files you gave.
+- The cost to you: your server fetches your picture once, one small cache entry per optimizer, and a line in
+  your access log.
+
+What it reads: the status, the content type and at most 1,024 bytes of the body, to tell an image from a web
+page, after which the connection is closed. The body is never stored, logged, printed or put in a report, and
+neither is the query string of the address.
+
 ### Download routes (a probing check)
 
 With `--owner-consent` (or a `gaugeline.consent.json`), the `gated-download-open` check asks each

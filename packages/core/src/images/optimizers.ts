@@ -136,6 +136,11 @@ export function findOptimizerAddresses(
   return out;
 }
 
+/** The optimizer's name, for a report. */
+export function optimizerLabel(id: OptimizerId): string {
+  return BY_ID.get(id)?.label ?? id;
+}
+
 /** The optimizer's label and path, for a report. */
 export function describeOptimizer(id: OptimizerId): string {
   const o = BY_ID.get(id);

@@ -403,6 +403,32 @@
     "estimateChanges": "A calendar made by software with no time zone setting needs its export changed."
   },
   {
+    "id": "image-optimizer-allowlist-wide",
+    "severity": "high",
+    "area": "Security & email",
+    "title": "Your image settings let the image address fetch from any website",
+    "what": "The image settings you gave (next.config, nuxt.config, astro.config or netlify.toml) allow a wildcard host, a pattern with no host, or a match-everything expression, so the site's image address will fetch, resize and serve a picture from any address a visitor puts in it.",
+    "why": "Anyone can then use your site to resize and serve images from any address. You pay for the bandwidth and the optimization, your cache fills with other people's pictures, and your site's name sits on an open relay.",
+    "fix": "List the exact hosts your pictures come from (and a path prefix where you can) in remotePatterns, domains or remote_images, and remove the wildcard.",
+    "tech": "Not a probing check: no request is made. Reads the files named in settingsFiles of gaugeline.images.json as text (never run) and reports a hostname that is only wildcards or a wildcard and a top-level name, a remotePatterns entry with no hostname (an https-only pattern), a domains list holding a wildcard, and a Netlify remote_images expression that matches every address. A page that uses /_next/image, /_vercel/image, /_ipx/, /_image or /.netlify/images with no settings given is could not check. A statement about the file, not about the running site",
+    "size": "S",
+    "done": "The image settings list the exact hosts the site fetches pictures from, with no wildcard that matches every host.",
+    "estimateChanges": "Replacing a wildcard with the real image hosts is one settings change. If pictures come from many hosts, finding that list is the work."
+  },
+  {
+    "id": "image-optimizer-open",
+    "severity": "high",
+    "area": "Security & email",
+    "title": "Your image address fetched a picture from a website you did not list",
+    "what": "The site's image address (/_next/image, /_vercel/image, /_ipx/, /_image or /.netlify/images) fetched an image from the address you chose for the test, on a host that is not one of your image hosts, and sent it back.",
+    "why": "Anyone can then use your site to resize and serve images from any address. You pay for the bandwidth and the optimization, your cache fills with other people's pictures, and your site's name sits on an open relay.",
+    "fix": "Allow only the hosts your pictures come from: remotePatterns or domains in next.config, nuxt.config or astro.config, images in the Vercel project settings, remote_images in netlify.toml. Then rebuild and run the check again.",
+    "tech": "probing check, off without --owner-consent: needs imageOptimizerProbeUrl in gaugeline.images.json, an https address on a public host you control that is not your own host, not a host your image addresses already use and not a host in the settings files given, never an IP address or a private name; one GET per optimizer the page uses (at most 5 a run), to the site's own origin, with the width and quality the page itself used, no cookie, no redirect followed, 1,024 bytes of the answer read to see whether it is an image and then dropped; 200 with an image content type and image bytes is a finding, 400, 403 and 404 pass, anything else is could not check; the query string and the body are never stored, logged or printed",
+    "size": "M",
+    "done": "The image address answers 400, 403 or 404 for a picture on a host that is not in your image list.",
+    "estimateChanges": "Closing the allowlist is one settings change, then a rebuild. If pictures come from many hosts, finding that list is the work."
+  },
+  {
     "id": "images-broken",
     "severity": "high",
     "area": "Visitors",
@@ -1844,6 +1870,19 @@
     "size": "S",
     "done": "The calendar carries a VTIMEZONE for each TZID its events use.",
     "estimateChanges": "Software with no export option for this needs a different export."
+  },
+  {
+    "id": "image-optimizer-allowlist-unanchored",
+    "severity": "medium",
+    "area": "Security & email",
+    "title": "An image allowlist expression is not anchored",
+    "what": "A Netlify remote_images expression in the settings you gave does not start with ^ and end with $, so it matches when the allowed address appears anywhere in the image address.",
+    "why": "An address such as https://evil.example/?x=https://images.yourshop.example/ then passes the allowlist, and the Image CDN fetches it for anyone who asks.",
+    "fix": "Anchor each expression and escape its dots: ^https://images\\\\.yourshop\\\\.example/.*$.",
+    "tech": "Not a probing check: no request is made. Reads settingsFiles of gaugeline.images.json as text and reports each remote_images entry that lacks a leading ^ or a trailing $ (an entry that matches every address is image-optimizer-allowlist-wide). A statement about the file, not about the running site",
+    "size": "S",
+    "done": "Every remote_images expression in netlify.toml starts with a caret and ends with a dollar sign.",
+    "estimateChanges": "One line per expression in netlify.toml."
   },
   {
     "id": "image-width-absurd",

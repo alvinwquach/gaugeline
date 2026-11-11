@@ -2,6 +2,7 @@ import { defineCheck, type Finding } from "../model.js";
 import {
   buildProbe,
   describeOptimizer,
+  optimizerLabel,
   findOptimizerAddresses,
   pickAddress,
   probeRefusal,
@@ -86,7 +87,7 @@ export const imageOptimizerOpen = defineCheck<PageSnapshot>({
         checkId: this.id,
         severity: this.severity,
         title: this.title,
-        evidence: `${picked.path} answered ${outcome.status} with an image fetched from ${used.host}${used.pathname}, a host that is not in your image list: anyone can use your site to resize and serve images from any address`,
+        evidence: `The ${optimizerLabel(picked.optimizer)} image address answered ${outcome.status} with an image fetched from ${used.host}${used.pathname}, a host that is not in your image list: anyone can use your site to resize and serve images from any address`,
         url: where,
       });
     }
