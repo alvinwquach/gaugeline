@@ -14,14 +14,22 @@ export interface ContractEntry {
   make(world: { fetcher: Fetcher; sleep: (ms: number) => Promise<void> }): ContentAdapter;
   /** The recorded answers of a healthy platform. A new transport for each call, so nothing carries over. */
   transport(): Transport;
-  /** The key the adapter is given. It must never appear in anything the adapter returns or throws. */
-  key: string;
+  /**
+   * The key the adapter is given. It must never appear in anything the adapter returns or throws.
+   * Leave it out for an adapter that asks for no key (describe().noKey): the suite then checks that
+   * no request carries an Authorization header or a cookie.
+   */
+  key?: string;
   /** Text that is in the platform's content, including an unpublished draft, and must never come back. */
   secrets: readonly string[];
   expected: {
     types: readonly TypeCount[];
-    /** `missing` is a field no item has: its count is 0, not an error. */
-    fields: { type: string; counts: Readonly<Record<string, number>>; missing: string };
+    /**
+     * `missing` is a field no item has: its count is 0, not an error. Leave it out for an adapter
+     * whose platform has no fields (a sitemap): fieldCounts() must then be could-not-check with a
+     * reason that says "Not applicable", and every `fieldHashes` is empty.
+     */
+    fields?: { type: string; counts: Readonly<Record<string, number>>; missing: string };
     published: {
       options: PublishedOptions;
       /** The ids published() gives for `options`, in order. */

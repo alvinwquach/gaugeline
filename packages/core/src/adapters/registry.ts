@@ -3,12 +3,15 @@ import { ConfigError } from "../errors.js";
 import type { Fetcher } from "../fetcher.js";
 import type { AdaptersConfig } from "./config.js";
 import { SANITY_DESCRIPTION, createSanityAdapter } from "./sanity.js";
+import { SITEMAP_FEED_DESCRIPTION, createSitemapFeedAdapter } from "./sitemap-feed.js";
 import type { AdapterDescription, AdapterSettings, ContentAdapter } from "./types.js";
 
 export interface AdapterContext {
   env: Env;
   fetcher: Fetcher;
   sleep?: (ms: number) => Promise<void>;
+  /** The address of the site being checked. The sitemap and feed adapter reads it unless its settings give one. */
+  site?: string;
 }
 
 /** An adapter that is built. Its row in docs/integrations is "built" and a test keeps the two in step. */
@@ -38,6 +41,20 @@ export const BUILT_ADAPTERS: ReadonlyMap<string, BuiltAdapter> = new Map<string,
         }),
     },
   ],
+  [
+    "sitemap-feed",
+    {
+      id: "sitemap-feed",
+      describe: SITEMAP_FEED_DESCRIPTION,
+      create: (c, settings) =>
+        createSitemapFeedAdapter({
+          fetcher: c.fetcher,
+          site: c.site,
+          settings,
+          ...(c.sleep ? { sleep: c.sleep } : {}),
+        }),
+    },
+  ],
 ]);
 
 /** A content system the docs list and the build order names, and no adapter yet. */
@@ -53,7 +70,6 @@ export interface PlannedAdapter {
  * Drupal ship first as C-14 recipes; a native adapter for them is built when someone asks.
  */
 export const PLANNED_ADAPTERS: readonly PlannedAdapter[] = [
-  { id: "sitemap-feed", name: "Sitemap and feeds (any CMS that publishes them)", branch: "C-13" },
   { id: "wordpress", name: "WordPress", branch: "C-01" },
   { id: "webflow", name: "Webflow", branch: "C-04" },
   { id: "framer", name: "Framer", branch: "C-06" },
@@ -88,4 +104,19 @@ export function resolveAdapters(config: AdaptersConfig): BuiltAdapter[] {
 /** The adapters a settings file names, built over this environment and fetcher. */
 export function createAdapters(config: AdaptersConfig, context: AdapterContext): ContentAdapter[] {
   return resolveAdapters(config).map((built, i) => built.create(context, config.adapters[i]));
+}
+
+/**
+ * The adapters to use for a run. A settings file that names some gets exactly those. With no settings
+ * file the sitemap and feed adapter is the default, so every check that needs "what is published"
+ * works on a site built on any CMS. It needs only the site's address; with none there is no adapter
+ * and nothing is requested.
+ */
+export function adaptersOrDefault(
+  config: AdaptersConfig | undefined,
+  context: AdapterContext,
+): ContentAdapter[] {
+  if (config !== undefined) return createAdapters(config, context);
+  if (context.site === undefined || context.site.trim() === "") return [];
+  return createAdapters({ adapters: [{ id: "sitemap-feed" }] }, context);
 }

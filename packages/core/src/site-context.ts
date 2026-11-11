@@ -69,19 +69,39 @@ function local(name: string): string {
   return (i >= 0 ? name.slice(i + 1) : name).toLowerCase();
 }
 
-/** The root element and every <loc> under <url> or <sitemap>, in document order. */
-export function parseSitemap(xml: string): {
+/** One <url> or <sitemap> of a sitemap file: its address and the dates the file gives for it, as written. */
+export interface SitemapEntry {
+  loc: string;
+  /** <lastmod>, as written (a date or a date and time); not checked here. */
+  lastmod?: string;
+  /** A Google News sitemap's <news:publication_date>, as written. */
+  published?: string;
+}
+
+interface SitemapScan {
   kind: SitemapKind;
   locs: string[];
-  alternates?: { loc: string; hreflang: string; href: string }[];
-} {
+  entries: SitemapEntry[];
+  alternates: { loc: string; hreflang: string; href: string }[];
+}
+
+/**
+ * The one sitemap reader: the root element, every <loc> under <url> or <sitemap> in document order,
+ * the dates beside each, and the hreflang alternates. htmlparser2 in XML mode decodes only the five
+ * XML entities and numeric references; it never expands a DOCTYPE's own entities, so an entity bomb
+ * is read as the plain text it is.
+ */
+function scanSitemap(xml: string): SitemapScan {
   let root: string | undefined;
   const locs: string[] = [];
+  const entries: SitemapEntry[] = [];
   // xhtml:link rel="alternate" hreflang inside a <url>: the page's language versions.
   const alternates: { loc: string; hreflang: string; href: string }[] = [];
   let pending: { hreflang: string; href: string }[] = [];
+  let current: SitemapEntry | undefined;
   const stack: string[] = [];
   let text: string | undefined;
+  let dateOf: "lastmod" | "published" | undefined;
   const parser = new Parser(
     {
       onopentag(name, attribs) {
@@ -89,6 +109,14 @@ export function parseSitemap(xml: string): {
         root ??= tag;
         const parent = stack.at(-1);
         if (tag === "loc" && (parent === "url" || parent === "sitemap")) text = "";
+        if (tag === "lastmod" && (parent === "url" || parent === "sitemap")) {
+          text = "";
+          dateOf = "lastmod";
+        }
+        if (tag === "publication_date") {
+          text = "";
+          dateOf = "published";
+        }
         if (
           tag === "link" &&
           parent === "url" &&
@@ -98,6 +126,7 @@ export function parseSitemap(xml: string): {
         )
           pending.push({ hreflang: attribs.hreflang, href: attribs.href });
         if (tag === "url") pending = [];
+        if (tag === "url" || tag === "sitemap") current = { loc: "" };
         stack.push(tag);
       },
       ontext(chunk) {
@@ -107,13 +136,27 @@ export function parseSitemap(xml: string): {
         const tag = stack.pop();
         if (tag === "loc" && text !== undefined) {
           const loc = text.trim();
-          if (loc !== "") locs.push(loc);
+          if (loc !== "") {
+            locs.push(loc);
+            if (current) current.loc = loc;
+          }
           text = undefined;
+        }
+        if ((tag === "lastmod" || tag === "publication_date") && text !== undefined) {
+          const value = text.trim();
+          const which = dateOf ?? "lastmod";
+          if (current && value !== "" && current[which] === undefined) current[which] = value;
+          text = undefined;
+          dateOf = undefined;
         }
         if (tag === "url") {
           const loc = locs.at(-1);
           if (loc) for (const a of pending) alternates.push({ loc, ...a });
           pending = [];
+        }
+        if ((tag === "url" || tag === "sitemap") && current) {
+          if (current.loc !== "") entries.push(current);
+          current = undefined;
         }
       },
     },
@@ -123,31 +166,90 @@ export function parseSitemap(xml: string): {
   parser.end();
   const kind: SitemapKind =
     root === "urlset" ? "urlset" : root === "sitemapindex" ? "sitemapindex" : "unknown";
+  return kind === "unknown"
+    ? { kind, locs: [], entries: [], alternates: [] }
+    : { kind, locs, entries, alternates };
+}
+
+/** The root element and every <loc> under <url> or <sitemap>, in document order. */
+export function parseSitemap(xml: string): {
+  kind: SitemapKind;
+  locs: string[];
+  alternates?: { loc: string; hreflang: string; href: string }[];
+} {
+  const { kind, locs, alternates } = scanSitemap(xml);
   if (kind === "unknown") return { kind, locs: [] };
   return alternates.length > 0 ? { kind, locs, alternates } : { kind, locs };
 }
 
-/** Item links of an RSS (<item><link>) or Atom (<entry><link href>) feed, resolved, in order. */
-export function parseFeedLinks(xml: string, base: string): string[] {
-  const out: string[] = [];
+/** The same read, with each address's dates: for the sitemap and feed adapter. */
+export function parseSitemapEntries(xml: string): { kind: SitemapKind; entries: SitemapEntry[] } {
+  const { kind, entries } = scanSitemap(xml);
+  return { kind, entries };
+}
+
+/** One <item> of an RSS feed or <entry> of an Atom feed, with what it says about when, as written. */
+export interface FeedEntry {
+  /** Every link the entry gives, resolved against the feed's address (RSS: <link>; Atom: rel="alternate"). */
+  links: string[];
+  /** RSS <guid>, or Atom <id>: used as the address only when it is one and the entry has no link. */
+  guid?: string;
+  /** RSS <pubDate> or <dc:date>; Atom <published>. */
+  published?: string;
+  /** Atom <updated>. */
+  updated?: string;
+  /** The first <category> (RSS text, Atom term). */
+  category?: string;
+}
+
+type FeedLeaf = "link" | "guid" | "published" | "updated" | "category";
+
+/**
+ * Entries of an RSS (<item>), RSS 1.0 or Atom (<entry>) feed, in order. Only addresses, dates and a
+ * category are collected: titles, descriptions and content are never read.
+ */
+export function parseFeed(
+  xml: string,
+  base: string,
+): { kind: "rss" | "atom" | "unknown"; entries: FeedEntry[] } {
+  const entries: FeedEntry[] = [];
   const stack: string[] = [];
+  let root: string | undefined;
+  let current: FeedEntry | undefined;
   let text: string | undefined;
-  const push = (href: string) => {
+  let into: FeedLeaf | undefined;
+  const resolveHref = (href: string): string | undefined => {
     try {
-      out.push(new URL(href.trim(), base).href);
+      return new URL(href.trim(), base).href;
     } catch {
-      // not an address: skip it
+      return undefined; // not an address: skip it
     }
   };
   const parser = new Parser(
     {
       onopentag(name, attribs) {
         const tag = local(name);
+        root ??= tag;
         const parent = stack.at(-1);
-        if (tag === "link" && parent === "item") text = "";
-        if (tag === "link" && parent === "entry" && attribs.href !== undefined) {
-          const rel = (attribs.rel ?? "alternate").toLowerCase();
-          if (rel === "alternate") push(attribs.href);
+        if (tag === "item" || tag === "entry") current = { links: [] };
+        else if (current && (parent === "item" || parent === "entry")) {
+          const atom = parent === "entry";
+          if (tag === "link" && !atom) into = "link";
+          else if (tag === "link" && attribs.href !== undefined) {
+            const rel = (attribs.rel ?? "alternate").toLowerCase();
+            const href = rel === "alternate" ? resolveHref(attribs.href) : undefined;
+            if (href !== undefined) current.links.push(href);
+          } else if (tag === "guid" || (atom && tag === "id")) into = "guid";
+          else if ((tag === "pubdate" || tag === "date") && !atom) into = "published";
+          else if (tag === "published" && atom) into = "published";
+          else if (tag === "updated" && atom) into = "updated";
+          else if (tag === "category") {
+            if (atom) {
+              const term = (attribs.term ?? "").trim();
+              if (current.category === undefined && term !== "") current.category = term;
+            } else into = "category";
+          }
+          if (into !== undefined) text = "";
         }
         stack.push(tag);
       },
@@ -156,9 +258,20 @@ export function parseFeedLinks(xml: string, base: string): string[] {
       },
       onclosetag() {
         const tag = stack.pop();
-        if (tag === "link" && text !== undefined) {
-          if (text.trim() !== "") push(text);
+        if (into !== undefined && text !== undefined && current) {
+          const value = text.trim();
+          if (value !== "") {
+            if (into === "link") {
+              const href = resolveHref(value);
+              if (href !== undefined) current.links.push(href);
+            } else current[into] ??= value;
+          }
           text = undefined;
+          into = undefined;
+        }
+        if (tag === "item" || tag === "entry") {
+          if (current) entries.push(current);
+          current = undefined;
         }
       },
     },
@@ -166,7 +279,13 @@ export function parseFeedLinks(xml: string, base: string): string[] {
   );
   parser.write(xml.replace(/^\uFEFF/, ""));
   parser.end();
-  return out;
+  const kind = root === "rss" || root === "rdf" ? "rss" : root === "feed" ? "atom" : "unknown";
+  return { kind, entries };
+}
+
+/** Item links of an RSS (<item><link>) or Atom (<entry><link href>) feed, resolved, in order. */
+export function parseFeedLinks(xml: string, base: string): string[] {
+  return parseFeed(xml, base).entries.flatMap((e) => e.links);
 }
 
 /** Enough of a body to see "<!doctype" or "<html" after a BOM and whitespace. */
