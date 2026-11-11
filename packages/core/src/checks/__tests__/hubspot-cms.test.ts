@@ -240,7 +240,7 @@ describe("hubspot-hubdb-drift", () => {
 
   it("a table the settings name that HubSpot does not have is could-not-check", async () => {
     const { reading } = await read({ fingerprint: { "hubdb.nope": ["name"] } });
-    expect(reasons(await run(reading))).toMatch(/hubdb\.nope: HubSpot would not give this/);
+    expect(reasons(await run(reading))).toMatch(/hubdb\.nope: not read/);
   });
 });
 
@@ -292,8 +292,11 @@ describe("hubspot-form-deleted", () => {
 <script>hbspt.forms.create({ portalId: "55", formId: '${FORM_DELETED}' });</script>
 <script>var formId = "not-a-uuid"; </script>`;
     expect(formEmbeds(html)).toEqual({
-      formIds: [FORM_LIVE, FORM_DELETED].map((f) => f.toLowerCase()),
-      portalIds: ["55"],
+      forms: [
+        { formId: FORM_DELETED, portalId: "55" },
+        { formId: FORM_LIVE, portalId: "55" },
+      ],
+      truncated: false,
     });
   });
 });
@@ -307,13 +310,13 @@ describe("a key that lacks a permission is could-not-check for that part only", 
     expect(out.passed).toContain("hubspot-form-deleted");
     expect(out.passed).not.toContain("hubspot-hubdb-drift");
     expect(reasons(out)).toMatch(
-      /hubdb: HubSpot would not give this \(HubSpot did not let the token read this \(HTTP 403\)/,
+      /hubdb: not read \(HubSpot did not let the token read this \(HTTP 403\)/,
     );
   });
 
   it("no page scope for blog posts: the other lists are still read", async () => {
     const out = await run((await read({ denied: ["/cms/v3/blogs"] })).reading);
-    expect(reasons(out)).toMatch(/blog-posts: HubSpot would not give this/);
+    expect(reasons(out)).toMatch(/blog-posts: not read/);
     expect(out.passed).not.toContain("hubspot-page-404");
     // The blog posts' forms were not read either, so that check is not a pass; the HubDB part is.
     expect(out.passed).not.toContain("hubspot-form-deleted");

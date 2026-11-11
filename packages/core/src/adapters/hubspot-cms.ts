@@ -89,6 +89,8 @@ export interface HubdbTable {
   id: string;
   name: string;
   published: boolean;
+  /** Columns the table says hold a date or a date and time: their values are epoch milliseconds, not text. */
+  dateColumns: string[];
 }
 
 /** A HubDB row as far as a comparison needs it: its id, its path, and the named columns as text, in memory only. */
@@ -96,15 +98,26 @@ export interface HubdbRow {
   id: string;
   path?: string;
   columns: Record<string, string | number | boolean>;
+  /** Named columns that have a value here and are left out of `columns` because they cannot be compared with a page (dates). */
+  notCompared: string[];
 }
 
 /** The adapter as the HubSpot reading uses it: the ContentAdapter plus the reads only HubSpot has. */
 export interface HubspotCmsAdapter extends ContentAdapter {
   /** Published pages of one list (published only: a draft or an archived page is never yielded). */
-  livePages(kind: HubspotPageKind, partial?: () => unknown): AsyncGenerator<HubspotLivePage>;
+  livePages(
+    kind: HubspotPageKind,
+    partial?: () => unknown,
+    /** Called for each page whose state is not PUBLISHED, DRAFT or SCHEDULED (and not archived). */
+    onUnrecognisedState?: () => void,
+  ): AsyncGenerator<HubspotLivePage>;
   hubdbTables(): Promise<HubdbTable[]>;
   /** The published rows of one table, with only the named columns. */
-  hubdbRows(table: string, columns: readonly string[]): Promise<HubdbRow[]>;
+  hubdbRows(
+    table: string,
+    columns: readonly string[],
+    dateColumns?: readonly string[],
+  ): Promise<HubdbRow[]>;
   /** The HubDB tables the settings name columns for: `{ table, columns }`. */
   hubdbNamed(): { table: string; columns: string[] }[];
   /** The portal (account) the token belongs to. */
@@ -180,12 +193,17 @@ interface RawItem {
   id: string;
   slug?: string;
   published: boolean;
+  /** A state that is none of PUBLISHED, DRAFT, SCHEDULED (and the page is not archived): not counted as live, but counted. */
+  unrecognisedState?: boolean;
   publishedAt?: string;
   updatedAt: string;
   url?: string;
   hubdbTableId?: string;
   data: Record<string, unknown>;
 }
+
+/** The page states Gaugeline knows are not live. Any other value but PUBLISHED is counted and reported (uncited). */
+const KNOWN_NOT_LIVE = new Set(["DRAFT", "SCHEDULED"]);
 
 const BAD_ITEMS = "HubSpot CMS answered with items that have no usable id or no update time.";
 
@@ -203,6 +221,9 @@ function parsePage(raw: unknown): RawItem {
     id,
     ...(slug !== undefined ? { slug } : {}),
     published: r.state === "PUBLISHED" && r.archived !== true,
+    ...(r.archived !== true && r.state !== "PUBLISHED" && !KNOWN_NOT_LIVE.has(String(r.state))
+      ? { unrecognisedState: true }
+      : {}),
     ...(publishedAt !== undefined ? { publishedAt } : {}),
     updatedAt,
     ...(url !== undefined ? { url: url.href } : {}),
@@ -441,7 +462,15 @@ export function createHubspotCmsAdapter(options: HubspotCmsAdapterOptions): Hubs
           throw new AdapterCouldNotCheck(
             "HubSpot CMS answered with a table that has no usable id or name.",
           );
-        out.push({ id, name, published: rec.published === true });
+        const dateColumns = (Array.isArray(rec.columns) ? rec.columns : []).flatMap((c: unknown) =>
+          isRecord(c) &&
+          typeof c.name === "string" &&
+          SAFE.test(c.name) &&
+          /^DATE(TIME)?$/i.test(String(c.type))
+            ? [c.name]
+            : [],
+        );
+        out.push({ id, name, published: rec.published === true, dateColumns });
       }
       const paging = isRecord(body.paging) ? body.paging : {};
       const next = isRecord(paging.next) ? paging.next : undefined;
@@ -597,8 +626,10 @@ export function createHubspotCmsAdapter(options: HubspotCmsAdapterOptions): Hubs
   async function* livePages(
     kind: HubspotPageKind,
     partial: () => unknown = () => undefined,
+    onUnrecognisedState?: () => void,
   ): AsyncGenerator<HubspotLivePage> {
     for await (const item of itemsOf(kind, true, partial)) {
+      if (item.unrecognisedState === true) onUnrecognisedState?.();
       if (!item.published) continue;
       yield {
         id: item.id,
@@ -616,7 +647,15 @@ export function createHubspotCmsAdapter(options: HubspotCmsAdapterOptions): Hubs
       .map(([type, columns]) => ({ table: tableOf(type) ?? "", columns: [...columns] }))
       .sort((a, b) => (a.table < b.table ? -1 : a.table > b.table ? 1 : 0));
 
-  const hubdbRows = async (table: string, columns: readonly string[]): Promise<HubdbRow[]> => {
+  /** HubDB date and datetime cells are epoch milliseconds: a whole number this large is a date, not a quantity. */
+  const looksLikeEpoch = (v: unknown): boolean =>
+    typeof v === "number" && Number.isInteger(v) && v >= 1e11 && v < 1e14;
+
+  const hubdbRows = async (
+    table: string,
+    columns: readonly string[],
+    dateColumns: readonly string[] = [],
+  ): Promise<HubdbRow[]> => {
     if (!SAFE.test(table)) throw new AdapterCouldNotCheck("That is not a HubDB table name.");
     const rows: HubdbRow[] = [];
     for await (const item of listOf(
@@ -627,18 +666,22 @@ export function createHubspotCmsAdapter(options: HubspotCmsAdapterOptions): Hubs
       () => rows.slice(),
     )) {
       const cells: Record<string, string | number | boolean> = {};
+      const notCompared: string[] = [];
       for (const c of columns) {
         const v = valueAt(item.data, c);
         if (
           (typeof v === "string" || typeof v === "number" || typeof v === "boolean") &&
           hasValue(v)
-        )
-          cells[c] = v;
+        ) {
+          if (dateColumns.includes(c) || looksLikeEpoch(v)) notCompared.push(c);
+          else cells[c] = v;
+        }
       }
       rows.push({
         id: item.id,
         ...(item.slug !== undefined ? { path: item.slug } : {}),
         columns: cells,
+        notCompared,
       });
     }
     return rows;

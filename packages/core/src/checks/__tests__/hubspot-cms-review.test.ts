@@ -155,6 +155,16 @@ describe("2. a form id is bound to its own HubSpot embed", () => {
   });
 });
 
+describe("1b. form embeds are found in bounded time on hostile pages", () => {
+  for (const [name, html] of [
+    ["create calls that never close", "hbspt.forms.create(".repeat(26_000)],
+    ["data-form-id attributes with no element", "data-form-id".repeat(40_000)],
+  ] as const)
+    it(`${name}: well under a second`, () => {
+      expect(timed(() => formEmbeds(html))).toBeLessThan(300);
+    });
+});
+
 describe("3. forms past the per-page limit are could-not-check, not dropped", () => {
   const many = (n: number): string =>
     Array.from(

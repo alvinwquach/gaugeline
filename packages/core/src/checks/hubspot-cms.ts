@@ -14,13 +14,27 @@ import { CheckRegistry, defineCheck, type CheckContext, type Finding } from "../
 /** What no check can say when the read itself fell short: a part the token would not give, or a rate limit that stayed. */
 function unfinished(r: HubspotCmsReading, ctx: CheckContext, parts: (p: string) => boolean): void {
   for (const u of r.unreadable)
-    if (parts(u.part))
-      ctx.couldNotCheck?.(r.site, `${u.part}: HubSpot would not give this (${u.reason})`);
+    if (parts(u.part)) ctx.couldNotCheck?.(r.site, `${u.part}: not read (${u.reason})`);
   if (r.partial) ctx.couldNotCheck?.(r.site, describePartial(r.partial));
   if (r.pagesSkipped > 0)
     ctx.couldNotCheck?.(
       r.site,
       `${r.pagesSkipped} ${r.pagesSkipped === 1 ? "page was" : "pages were"} not asked for, because a run asks for at most ${r.pageBudget}.`,
+    );
+}
+
+/** A check that has looked at no page has seen nothing: it says so rather than passing. */
+function noPages(r: HubspotCmsReading, ctx: CheckContext): void {
+  if (r.pages.length > 0 || r.pagesSkipped > 0 || r.partial) return;
+  if (r.otherDomain > 0)
+    ctx.couldNotCheck?.(
+      r.site,
+      `HubSpot lists ${r.otherDomain} published ${r.otherDomain === 1 ? "page" : "pages"} on other domains and none is on this site (${new URL(r.site).host}), so nothing was checked. Check the site address.`,
+    );
+  else if (r.noAddress === 0 && r.unreadable.length === 0)
+    ctx.couldNotCheck?.(
+      r.site,
+      "HubSpot lists no published page for this key, so nothing was checked.",
     );
 }
 
@@ -42,6 +56,12 @@ export const hubspotPage404 = defineCheck<HubspotCmsReading>({
   tech: "GET /cms/v3/pages/site-pages, /cms/v3/pages/landing-pages and /cms/v3/blogs/posts (each page of each list, stepped by the cursor the answer gives), keeping the pages whose state is PUBLISHED and whose own url is on the domain being checked (a page on another domain of the same portal is counted and not asked), then one anonymous GET of that address (redirects followed). A final 404 or 410 is the finding; any other answer that is not a 2xx is could-not-check for that page. A page with no usable https address is could-not-check. Ids, slugs and statuses only: no field is read for this.",
   run(r, ctx) {
     unfinished(r, ctx, isPageList);
+    noPages(r, ctx);
+    if (r.statesUnrecognised > 0)
+      ctx.couldNotCheck?.(
+        r.site,
+        `${r.statesUnrecognised} ${r.statesUnrecognised === 1 ? "page has a state" : "pages have a state"} Gaugeline does not recognise (not PUBLISHED, DRAFT or SCHEDULED), so ${r.statesUnrecognised === 1 ? "it was" : "they were"} not counted as published or asked for.`,
+      );
     if (r.noAddress > 0)
       ctx.couldNotCheck?.(
         r.site,
@@ -91,6 +111,15 @@ export const hubspotHubdbDrift = defineCheck<HubspotCmsReading>({
         r.site,
         `${r.hubdbRowsWithoutPath} HubDB ${r.hubdbRowsWithoutPath === 1 ? "row has" : "rows have"} no path, so no page of ${r.hubdbRowsWithoutPath === 1 ? "its" : "their"} own, and ${r.hubdbRowsWithoutPath === 1 ? "was" : "were"} not compared.`,
       );
+    const skipped = new Set<string>();
+    for (const d of r.hubdb) for (const c of d.notCompared) skipped.add(`${d.table}\u0000${c}`);
+    for (const key of [...skipped].sort()) {
+      const [table = "", column = ""] = key.split("\u0000");
+      ctx.couldNotCheck?.(
+        r.site,
+        `hubdb.${table}: column ${column} was not compared. It is a date, or a value too short or too long to look for on a page reliably.`,
+      );
+    }
     const out: Finding[] = [];
     for (const d of r.hubdb) {
       if (d.state === "unread") {
@@ -128,6 +157,7 @@ export const hubspotFormDeleted = defineCheck<HubspotCmsReading>({
   tech: "The form ids and portal ids are read as text from the HTML of the published pages already asked for (data-form-id and portalId/formId in an hbspt.forms.create call; nothing is run); only forms of the portal the token belongs to (GET /account-info/v3/details) are asked about, one GET /marketing/v3/forms/{formId} for each different form (at most 50 a run); a 404, or a form marked archived, is the finding. A token without the forms scope, a page that names no portal or more than one, and a form of another portal are could-not-check or not counted, never a pass. Form ids and page paths only.",
   run(r, ctx) {
     unfinished(r, ctx, isPageList);
+    noPages(r, ctx);
     if (r.forms.unread !== undefined)
       ctx.couldNotCheck?.(r.site, `forms were not checked: ${r.forms.unread}`);
     const out: Finding[] = [];

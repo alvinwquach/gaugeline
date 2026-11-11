@@ -103,6 +103,7 @@ describe("docs/integrations/hubspot-cms.md", () => {
     expect(value("Live pages")).toBe(String(HUBSPOT_READ_LIMITS.pages));
     expect(value("Different forms")).toBe(String(HUBSPOT_READ_LIMITS.forms));
     expect(value("Form embeds")).toBe(String(HUBSPOT_READ_LIMITS.formsPerPage));
+    expect(value("Page HTML scanned")).toBe(`${HUBSPOT_READ_LIMITS.htmlChars / 1024} KB`);
   });
 
   it("is marked uncited where the platform's documentation could not be read", () => {

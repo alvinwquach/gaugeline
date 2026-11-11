@@ -56,6 +56,8 @@ export interface HsTable {
   id: string;
   name: string;
   published: boolean;
+  /** Column definitions as the table list gives them (name and type), when a test needs them. */
+  columns?: { name: string; type: string }[];
   rows: HsRow[];
 }
 
@@ -283,6 +285,7 @@ export function hubspotCmsTransport(
           id: t.id,
           name: t.name,
           published: t.published,
+          ...(t.columns ? { columns: t.columns } : {}),
           rowCount: t.rows.length,
         })),
       );

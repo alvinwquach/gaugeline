@@ -26,7 +26,7 @@ Every request to HubSpot is a `GET` to `https://api.hubapi.com`, through the sam
 | `GET /account-info/v3/details`          | none confirmed | The portal the token belongs to, so a form of another portal is not judged. Only for the deleted-form check. |
 | `GET /marketing/v3/forms/{formId}`      | forms          | Whether a form still exists, for each different form a page embeds. Only for the deleted-form check.         |
 
-Lists are read with `limit` and the cursor HubSpot returns in `paging.next.after`, to the real end of the cursor: a server that answers fewer items than asked still gives the whole list, and one that gives a cursor Gaugeline cannot follow (not plain characters, or one it was already given), more items than the bound, or fewer items than its own total is could-not-check, never a shorter list. A page that is too big is asked again with half as many items, down to 10. A page counts as published only when its `state` is `PUBLISHED` and it is not archived. When HubSpot answers 429 with a short `Retry-After`, Gaugeline waits once and goes on; after that it keeps what it read and says the result is partial.
+Lists are read with `limit` and the cursor HubSpot returns in `paging.next.after`, to the real end of the cursor: a server that answers fewer items than asked still gives the whole list, and one that gives a cursor Gaugeline cannot follow (not plain characters, or one it was already given), more items than the bound, or fewer items than its own total is could-not-check, never a shorter list. A page that is too big is asked again with half as many items, down to 10. A page counts as published only when its `state` is `PUBLISHED` and it is not archived (`uncited`). A page whose state is none of `PUBLISHED`, `DRAFT` or `SCHEDULED` is not counted as published and is counted in the result as a state Gaugeline does not recognise, so a state HubSpot uses for a published page with pending edits would show up as could-not-check and never as a quiet gap. When HubSpot answers 429 with a short `Retry-After`, Gaugeline waits once and goes on; after that it keeps what it read and says the result is partial.
 
 ## Make the key
 
@@ -176,9 +176,9 @@ All three are in the [checks reference](/docs/checks) with what they catch, why 
 | `hubspot-hubdb-drift`  | medium   | A published HubDB row whose value in a column you named is not on the dynamic page that shows the row.   |
 | `hubspot-form-deleted` | high     | A form id embedded in a page that HubSpot says does not exist in the token's portal.                     |
 
-The HubDB comparison looks for the value in the words of the page (scripts, styles and tags removed, entities decoded, case ignored). A number is looked for as written, with two decimals and with a thousands comma, as a whole number: `8` is found in `$8.00` and not in `$18.00`. A value the template formats another way (spelled out, in another currency) shows as differing: name another column, or read the finding as a prompt to look. A row with no path has no page of its own, and a table that no published dynamic page shows is could-not-check, by name.
+The HubDB comparison looks for the value in the words of the page (scripts, styles and tags removed, entities decoded, case ignored). Text must match whole words (`rye` is not found in `dryer`). A number is looked for as written, with two decimals, with a decimal comma and with grouping (`1,234.50`, `1.234,50`, `1 234,50`), as a whole number and never inside a longer one: `8.50` is found in `$8.50` and `8,50 EUR`, and not in `$18.50`. Some values cannot be compared reliably, and then the column is could-not-check, named, never drift and never a pass: a date or date and time column (HubDB sends these as milliseconds since 1970, not as the text a page shows), a whole number under 100, a text under 3 characters or over 300, and a flag. A value the template formats another way (spelled out, in another currency) shows as differing: name another column, or read the finding as a prompt to look. A row with no path has no page of its own, and a table that no published dynamic page shows is could-not-check, by name; so is a table whose page lists could not all be read.
 
-Forms are read from the HTML as text (`data-form-id`, and `formId` and `portalId` in an `hbspt.forms.create` call): nothing in the page is run. A form is judged only when the page names exactly the portal the token belongs to.
+Forms are read from the HTML as text, and nothing in the page is run. A form is read only from a HubSpot embed: the object given to one `hbspt.forms.create({...})` call, or one element with `data-form-id` and `data-portal-id`. A `formId` anywhere else on the page (another vendor's script) is not a HubSpot form and is not asked about. Each form is judged only against the portal its own embed names, and only when that is the token's portal. A page with more than 20 embeds, an embed that names no portal, and a page larger than 512 KB (its words and forms are not scanned, though its answer still counts for the 404 check) make the forms part could-not-check, with the reason.
 
 The checks do not run from a command yet: like the other content checks they use the adapter as it arrives (`readHubspotCms` and `createHubspotCmsRegistry` in Gaugeline's core).
 
@@ -186,17 +186,19 @@ The checks do not run from a command yet: like the other content checks they use
 
 Anything the platform does not expose is could-not-check, with the reason, never a pass and never scraped from HubSpot's admin screens:
 
-| Question                                       | Answer here                    | Why                                                                                                              |
-| ---------------------------------------------- | ------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
-| Who has access to the portal (`members`)       | not offered                    | The adapter asks for no user list.                                                                               |
-| Whether a page shows the same words as the CMS | not decided here               | The adapter gives hashes; the comparison with the page is the published-but-not-live check.                      |
-| A page's address                               | from HubSpot's own `url`       | A page with no usable https address is could-not-check; a `urls` pattern in the settings wins when you give one. |
-| HubDB rows that are only drafts                | not read                       | Only the published rows are asked for; the draft rows endpoint is not used.                                      |
-| A HubDB table listed on a page, not per row    | could not check                | Only a published dynamic page for the table, with a path for each row, can be compared.                          |
-| A part the token may not read                  | could not check, for that part | HTTP 403 for blog posts, HubDB or forms leaves the other parts read, and the result says which part was not.     |
-| Other languages and translated variants        | read as separate pages         | HubSpot lists each variant as a page of its own; each is checked at its own address.                             |
-| Content on another domain of the account       | not counted for this site      | Its pages are another site's: counted as `otherDomain`, not asked.                                               |
-| Any HubSpot endpoint that needs `POST`         | could not check                | The adapter sends `GET` only. A read-only `POST` waits for ADR-0006 (see the open question in the pull request). |
+| Question                                       | Answer here                    | Why                                                                                                                                        |
+| ---------------------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Who has access to the portal (`members`)       | not offered                    | The adapter asks for no user list.                                                                                                         |
+| Whether a page shows the same words as the CMS | not decided here               | The adapter gives hashes; the comparison with the page is the published-but-not-live check.                                                |
+| A page's address                               | from HubSpot's own `url`       | A page with no usable https address is could-not-check; a `urls` pattern in the settings wins when you give one.                           |
+| HubDB rows that are only drafts                | not read                       | Only the published rows are asked for; the draft rows endpoint is not used.                                                                |
+| A HubDB table listed on a page, not per row    | could not check                | Only a published dynamic page for the table, with a path for each row, can be compared.                                                    |
+| A part the token may not read                  | could not check, for that part | HTTP 403 for blog posts, HubDB or forms leaves the other parts read, and the result says which part was not.                               |
+| Other languages and translated variants        | read as separate pages         | HubSpot lists each variant as a page of its own; each is checked at its own address.                                                       |
+| Content on another domain of the account       | not counted for this site      | Its pages are another site's: counted as `otherDomain`, not asked. If every page is on another domain, the check says nothing was checked. |
+| A date, short or very long HubDB value         | could not check, per column    | A date column is sent as milliseconds, and a short value is on every page: the column is named, not compared.                              |
+| A page larger than 512 KB                      | answered, not scanned          | Its words and forms are not read; rows shown on it and its forms are could-not-check.                                                      |
+| Any HubSpot endpoint that needs `POST`         | could not check                | The adapter sends `GET` only. A read-only `POST` waits for ADR-0006 (see the open question in the pull request).                           |
 
 ## When it cannot check
 
@@ -207,6 +209,7 @@ It never returns a list with a hole in it. The read is could-not-check, with the
 - a list name is not one of `site-pages`, `landing-pages`, `blog-posts` or `hubdb.<table>`, or the table named in the settings is not a published HubDB table;
 - an answer is not the shape HubSpot sends, or an item has no usable id (letters, digits, dots, hyphens and underscores) or no update time;
 - a list is bigger than the bound, a page of items is too big even at 10 items, the cursor repeats or is not plain, or the list stops before its total;
+- no published page of this site is found at all (the portal lists none, or every one is on another domain), so a clean run could be a mistyped site address;
 - a page answers anything but a page or a 404 or 410 (a 503, a login, a timeout), in which case that one page is could-not-check.
 
 A platform that asks Gaugeline to slow down (HTTP 429) is waited for once when it says how long and the wait is a minute or less; after that the run keeps what it had read and says it is partial.
@@ -220,6 +223,7 @@ A platform that asks Gaugeline to slow down (HTTP 429) is waited for once when i
 | Live pages asked for in one run        | 300    |
 | Different forms asked about in one run | 50     |
 | Form embeds read from one page         | 20     |
+| Page HTML scanned                      | 512 KB |
 
 There are no flags to raise them. A page beyond the budget is could-not-check, named in the result, not skipped quietly.
 
