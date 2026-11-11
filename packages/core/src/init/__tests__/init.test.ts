@@ -307,7 +307,7 @@ describe("planInit", () => {
     expect(JSON.parse(plan.files[0]?.text ?? "")).toEqual({ adapters: [{ id: "sitemap-feed" }] });
     expect(plan.envVars).toEqual([]);
     expect(plan.next[0]?.command).toBe(`npx gaugeline ${SITE}`);
-    expect(renderInit({ report, plan, dryRun: true, wrote: [], left: [] })).toContain(
+    expect(renderInit({ report, plan, dryRun: true, wrote: [] })).toContain(
       "Nothing it could name",
     );
   });
@@ -360,11 +360,8 @@ describe("planInit", () => {
       plan: planInit(report, SITE),
       dryRun: true,
       wrote: [],
-      left: [],
     });
-    expect(out).toBe(
-      renderInit({ report, plan: planInit(report, SITE), dryRun: true, wrote: [], left: [] }),
-    );
+    expect(out).toBe(renderInit({ report, plan: planInit(report, SITE), dryRun: true, wrote: [] }));
   });
 
   it("orders the next steps by value: the first check first, the handoff last, a docs page for each", async () => {
@@ -381,7 +378,6 @@ describe("planInit", () => {
       plan: planInit(report, SITE),
       dryRun: true,
       wrote: [],
-      left: [],
     });
     expect(text).toContain("nothing was written");
     expect(text).toContain("--- gaugeline.adapters.json ---");

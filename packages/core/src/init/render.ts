@@ -8,8 +8,6 @@ export interface InitOutput {
   dryRun: boolean;
   /** The paths written, as the writer gave them. Empty with `dryRun`. */
   wrote: readonly string[];
-  /** Files that already existed and were left alone (no `--force`). */
-  left: readonly string[];
 }
 
 const pad = (s: string, n: number): string => s + " ".repeat(Math.max(1, n - s.length));
@@ -35,15 +33,10 @@ export function renderInit(o: InitOutput): string {
   for (const n of report.notes) out.push(`  Not read: ${n}`);
   out.push("");
 
-  out.push(o.dryRun ? "Would write (--dry-run: nothing was written)" : "Files");
+  out.push(o.dryRun ? "Would write (--dry-run: nothing was written)" : "Wrote");
   for (const f of plan.files) {
-    const path = o.wrote.find((w) => w.endsWith(f.name));
-    const status = o.dryRun
-      ? ""
-      : o.left.includes(f.name)
-        ? "left alone, it already exists (--force replaces it)"
-        : "";
-    out.push(`  ${pad(path ?? f.name, 28)}${status !== "" ? status : f.what}`);
+    if (o.dryRun) out.push(`  ${pad(f.name, 28)}${f.what}`);
+    else out.push(`  ${o.wrote.find((w) => w.endsWith(f.name)) ?? f.name}`, `    ${f.what}`);
   }
   out.push("");
   if (o.dryRun) for (const f of plan.files) out.push(`--- ${f.name} ---`, f.text.trimEnd(), "");

@@ -132,6 +132,7 @@ import { formatTerminal } from "./reporter.js";
 import { runCutover } from "./cutover.js";
 import { runMigration } from "./migration.js";
 import { runAdvisory } from "./advisory.js";
+import { runInit } from "./init.js";
 import { runSnapshot } from "./snapshot.js";
 import { runVerify } from "./verify.js";
 import { runAssert } from "./assert.js";
@@ -1073,6 +1074,15 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           ...(deps.now ? { now: deps.now } : io.now ? { now: io.now } : {}),
         }),
         ci: args.ci,
+      };
+    case "init":
+      return {
+        outcome: await runInit(args, io, {
+          ...(deps.cwd ? { cwd: deps.cwd } : {}),
+          ...(deps.fetcher ? { fetcher: deps.fetcher } : {}),
+          ...(deps.dns ? { dns: deps.dns } : {}),
+        }),
+        ci: false,
       };
     case "digest": {
       await runDigest(
