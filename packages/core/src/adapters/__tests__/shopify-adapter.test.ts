@@ -432,3 +432,46 @@ describe("the Shopify adapter: answers that are not what they should be", () => 
       expect(safePath(bad)).toBeUndefined();
   });
 });
+
+describe("the Shopify adapter: prices are whole minor units, never floats", () => {
+  const product = (min: unknown, max: unknown, currency = "USD") => ({
+    id: "gid://shopify/Product/77",
+    handle: "mug",
+    onlineStoreUrl: "https://x.example/products/mug",
+    updatedAt: "2026-10-10T09:00:00Z",
+    availableForSale: true,
+    priceRange: {
+      minVariantPrice: { amount: min, currencyCode: currency },
+      maxVariantPrice: { amount: max },
+    },
+  });
+  const offersOf = async (node: Record<string, unknown>) => {
+    const transport = connection(() => ({
+      data: { products: { nodes: [node], pageInfo: { hasNextPage: false, endCursor: null } } },
+    }));
+    const out = [];
+    for await (const o of make({ transport }).adapter.offers()) out.push(o);
+    return out[0];
+  };
+
+  it("splits the text at the point: 19.99 is 1999, and a yen price has no minor unit", async () => {
+    expect(await offersOf(product("19.99", "20.10"))).toMatchObject({
+      minMinor: 1999,
+      maxMinor: 2010,
+    });
+    expect(await offersOf(product("1500", "1500", "JPY"))).toMatchObject({
+      minMinor: 1500,
+      currency: "jpy",
+    });
+  });
+
+  it.each([["-5.00"], ["NaN"], ["Infinity"], ["1e21"], [19.99], [null], ["12.345"]])(
+    "%s is not a price: it is left out, never read as zero",
+    async (bad) => {
+      const o = await offersOf(product(bad, bad));
+      expect(o).toBeDefined();
+      expect(o).not.toHaveProperty("minMinor");
+      expect(o).not.toHaveProperty("maxMinor");
+    },
+  );
+});

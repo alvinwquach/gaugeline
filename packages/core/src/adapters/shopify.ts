@@ -15,6 +15,7 @@ import {
 import type { Env } from "../connectors/types.js";
 import type { Fetcher } from "../fetcher.js";
 import { registerQueryAllow } from "../fetch/query-registry.js";
+import { toMinor } from "../products/money.js";
 import { fillUrlTemplate, hashValue } from "./fingerprint.js";
 import { SHOPIFY_DESCRIPTION, SHOPIFY_STOREFRONT_TOKEN } from "./shopify.entry.js";
 import {
@@ -137,6 +138,7 @@ export const SHOPIFY_TYPES: Readonly<Record<string, TypeSpec>> = Object.freeze({
       "featuredImage.url",
       "priceRange.minVariantPrice.amount",
       "priceRange.minVariantPrice.currencyCode",
+      "priceRange.maxVariantPrice.amount",
       ...SEO,
     ],
   },
@@ -273,7 +275,50 @@ function parseItem(raw: unknown, type: string): RawItem {
   };
 }
 
-export function createShopifyAdapter(options: ShopifyAdapterOptions): ContentAdapter {
+/**
+ * What the Storefront API says a published product costs and whether it can be bought: numbers and a
+ * flag, never a title or a description. Prices are whole minor units; a price that is missing, negative,
+ * not a plain decimal or not safe to hold is left out (the check says it could not compare), never zero.
+ */
+export interface ShopifyOffer {
+  id: string;
+  slug: string;
+  /** The product's path on the live site, from the platform. */
+  path: string;
+  /** Lower case ISO 4217 code, or "" when the platform did not say. */
+  currency: string;
+  /** The lowest and highest variant price, in minor units. */
+  minMinor?: number;
+  maxMinor?: number;
+  /** availableForSale: at least one variant can be bought. */
+  available?: boolean;
+}
+
+/** The adapter, with the one read the price check needs on top of ContentAdapter. */
+export interface ShopifyAdapter extends ContentAdapter {
+  /** The published products' prices and availability, for comparing with their pages. Read in the same pages and bounds as everything else. */
+  offers(): AsyncIterable<ShopifyOffer>;
+}
+
+/** A price as text to whole minor units, or undefined when it is not a plain non-negative amount. */
+function minorOf(v: unknown, currency: string): number | undefined {
+  if (typeof v !== "string") return undefined;
+  try {
+    const n = toMinor(v, currency);
+    return Number.isSafeInteger(n) && n >= 0 ? n : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+const OFFER_FIELDS = [
+  "availableForSale",
+  "priceRange.minVariantPrice.amount",
+  "priceRange.minVariantPrice.currencyCode",
+  "priceRange.maxVariantPrice.amount",
+] as const;
+
+export function createShopifyAdapter(options: ShopifyAdapterOptions): ShopifyAdapter {
   const { env, fetcher } = options;
   const sleep = options.sleep ?? wait;
   const pageSize = Math.max(1, Math.min(options.pageSize ?? SHOPIFY_PAGE_SIZE, MAX_PAGE_SIZE));
@@ -547,6 +592,27 @@ export function createShopifyAdapter(options: ShopifyAdapterOptions): ContentAda
     }
   }
 
+  async function* offers(): AsyncGenerator<ShopifyOffer> {
+    for await (const item of itemsOfType("products", OFFER_FIELDS, true, () => [])) {
+      if (!item.published || item.path === undefined) continue;
+      const code = valueAt(item.data, "priceRange.minVariantPrice.currencyCode");
+      const currency =
+        typeof code === "string" && /^[A-Za-z]{3}$/.test(code) ? code.toLowerCase() : "";
+      const min = minorOf(valueAt(item.data, "priceRange.minVariantPrice.amount"), currency);
+      const max = minorOf(valueAt(item.data, "priceRange.maxVariantPrice.amount"), currency);
+      const available = valueAt(item.data, "availableForSale");
+      yield {
+        id: item.id,
+        slug: item.slug,
+        path: item.path,
+        currency,
+        ...(min !== undefined ? { minMinor: min } : {}),
+        ...(max !== undefined ? { maxMinor: max } : {}),
+        ...(typeof available === "boolean" ? { available } : {}),
+      };
+    }
+  }
+
   /**
    * A Storefront API token sees only what is published, by design: it cannot reach a draft, so the
    * answer is no. One cheap read first, so a token the shop refuses is could-not-check, never a "no".
@@ -568,5 +634,6 @@ export function createShopifyAdapter(options: ShopifyAdapterOptions): ContentAda
     published,
     draftsReachable,
     resolveUrl,
+    offers,
   };
 }

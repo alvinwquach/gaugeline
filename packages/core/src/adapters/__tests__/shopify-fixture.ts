@@ -46,7 +46,10 @@ export const SHOPIFY_CONTENT: Record<string, FixtureNode[]> = {
       title: SHOPIFY_MARKERS.mug,
       description: SHOPIFY_MARKERS.mugDescription,
       availableForSale: true,
-      priceRange: { minVariantPrice: { amount: "28.00", currencyCode: "USD" } },
+      priceRange: {
+        minVariantPrice: { amount: "28.00", currencyCode: "USD" },
+        maxVariantPrice: { amount: "28.00", currencyCode: "USD" },
+      },
     },
     // No description: a field an item lacks is left out of its hashes, never hashed as empty.
     {
@@ -58,7 +61,10 @@ export const SHOPIFY_CONTENT: Record<string, FixtureNode[]> = {
       title: SHOPIFY_MARKERS.bowl,
       description: "",
       availableForSale: false,
-      priceRange: { minVariantPrice: { amount: "42.50", currencyCode: "USD" } },
+      priceRange: {
+        minVariantPrice: { amount: "42.50", currencyCode: "USD" },
+        maxVariantPrice: { amount: "42.50", currencyCode: "USD" },
+      },
     },
     // Hidden from the Online Store: the API still answers it, with no address. Never reported as missing.
     {
@@ -70,7 +76,10 @@ export const SHOPIFY_CONTENT: Record<string, FixtureNode[]> = {
       title: SHOPIFY_MARKERS.seconds,
       description: SHOPIFY_MARKERS.seconds,
       availableForSale: true,
-      priceRange: { minVariantPrice: { amount: "60.00", currencyCode: "USD" } },
+      priceRange: {
+        minVariantPrice: { amount: "60.00", currencyCode: "USD" },
+        maxVariantPrice: { amount: "60.00", currencyCode: "USD" },
+      },
     },
   ],
   collections: [
@@ -188,6 +197,69 @@ export function shopifyTransport(
           pageInfo: { hasNextPage: end < nodes.length, endCursor: end > 0 ? cursorAt(end) : null },
         },
       },
+    });
+  };
+}
+
+/** A product page as a theme prints it: the price in the theme's element, and the product data in JSON-LD. */
+export function productHtml(
+  price: string,
+  currency = "USD",
+  availability = "InStock",
+  extra = "",
+): string {
+  const ld = JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "Product",
+    offers: {
+      "@type": "Offer",
+      price,
+      priceCurrency: currency,
+      availability: `https://schema.org/${availability}`,
+    },
+  });
+  return `<!doctype html><html><head><title>Product</title><script type="application/ld+json">${ld}</script></head><body><span class="price-item--regular">$${price}</span>${extra}</body></html>`;
+}
+
+export interface LivePage {
+  status?: number;
+  headers?: Record<string, string>;
+  html?: string;
+}
+
+/** The live site's pages by path. A number is a status with an empty body. */
+export type LivePages = Readonly<Record<string, number | LivePage>>;
+
+export const LIVE_HEALTHY: LivePages = {
+  "/": { html: "<html><body><a href='/products/mug-speckled'>Mug</a></body></html>" },
+  "/products/mug-speckled": { html: productHtml("28.00") },
+  "/products/bowl-ash-glaze": { html: productHtml("42.50", "USD", "OutOfStock") },
+  "/collections/mugs": 200,
+  "/collections/bowls": 200,
+  "/pages/about": 200,
+  "/pages/studio-hours": 200,
+  "/blogs/news": 200,
+  "/blogs/news/spring-glaze-test": 200,
+};
+
+/** The store's Storefront API and its live site, in one transport. Any path not listed on the live site is a 404. */
+export function shopifyStoreTransport(
+  pages: LivePages = LIVE_HEALTHY,
+  options: ShopifyFixtureOptions = {},
+  content: Record<string, readonly FixtureNode[]> = SHOPIFY_CONTENT,
+): Transport {
+  const api = shopifyTransport(content, options);
+  return (url, req) => {
+    if (url.host === SHOPIFY_SHOP) return api(url, req);
+    options.onRequest?.(req.method, url, req.body);
+    if (url.host !== new URL(SHOPIFY_SITE).host) return json(404, {});
+    const key = `${url.pathname}${url.search}`;
+    const hit = pages[key] ?? pages[url.pathname];
+    const page: LivePage = typeof hit === "number" ? { status: hit } : (hit ?? { status: 404 });
+    return Promise.resolve({
+      status: page.status ?? 200,
+      headers: { "content-type": "text/html", ...page.headers },
+      body: Readable.from([Buffer.from(page.html ?? "<html><body></body></html>")]),
     });
   };
 }
