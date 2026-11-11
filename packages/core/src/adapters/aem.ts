@@ -408,8 +408,10 @@ export function createAemAdapter(options: AemAdapterOptions): ContentAdapter {
     const out: TypeCount[] = [];
     for (const name of named()) {
       let count = 0;
-      for await (const item of itemsOfType(name, true, () => out.slice()))
-        count += item.id === "" ? 0 : 1;
+      for await (const item of itemsOfType(name, true, () => out.slice())) {
+        void item;
+        count++;
+      }
       out.push({ name, count });
     }
     return out;
