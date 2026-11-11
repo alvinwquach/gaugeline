@@ -96,6 +96,8 @@ function hasValue(v: unknown): boolean {
 /** One variant as the checks need it: its price in whole minor units, never a float. */
 export interface VariantFacts {
   id: string;
+  /** The variant's SKU, when it is a plain identifier: it ties a page's product data to this product. */
+  sku?: string;
   /** What a buyer pays now (the sale price when the variant is on sale), in minor units. Absent when the price could not be read. */
   price?: number;
   /** Lower-case ISO 4217, such as "usd". */
@@ -108,6 +110,8 @@ export interface ProductFacts {
   slug?: string;
   /** The product page's path on the shop, when the API gave one that is safe to ask for. */
   path?: string;
+  /** The host, when the API gave the address as an https URL. A host that is not the site's makes the product unaddressed. */
+  pathHost?: string;
   /** "physical", "service", "digital", "gift_card" or "unknown". */
   kind: string;
   /** Visible in the store. A product that is not is a draft: it has no live page. */
@@ -115,6 +119,8 @@ export interface ProductFacts {
   publishedAt?: string;
   updatedAt: string;
   variants: VariantFacts[];
+  /** Variants the answer listed that were left out (no usable id): the product's prices and stock are then incomplete. */
+  variantsDropped: number;
 }
 
 /** Whether a variant can be bought now, from the Inventory API. */
@@ -147,8 +153,9 @@ interface RawProduct extends ProductFacts {
 /** The price a buyer pays for a variant, in minor units, or undefined when it is not a plain decimal. */
 function variantPrice(pricing: unknown): { price: number; currency: string } | undefined {
   if (!isRecord(pricing)) return undefined;
-  const sale = isRecord(pricing.salePrice) ? pricing.salePrice : undefined;
-  const at = pricing.onSale === true && sale !== undefined ? sale : pricing.basePrice;
+  // On sale with no sale price is a malformed record: the base price is not what a buyer pays, so there is none.
+  if (pricing.onSale === true && !isRecord(pricing.salePrice)) return undefined;
+  const at = pricing.onSale === true ? pricing.salePrice : pricing.basePrice;
   if (!isRecord(at) || typeof at.currency !== "string" || typeof at.value !== "string")
     return undefined;
   if (!/^[A-Za-z]{3}$/.test(at.currency)) return undefined;
@@ -159,19 +166,25 @@ function variantPrice(pricing: unknown): { price: number; currency: string } | u
   }
 }
 
-/** The path of a product page: the API's `url` when it is a safe path, or the path of an https address. */
-function pathOf(url: unknown): string | undefined {
+/**
+ * The path of a product page, and the host when the API gave an https address: the reader refuses an
+ * address on another site, it never rewrites one.
+ */
+function pathOf(url: unknown): { path: string; host?: string } | undefined {
   if (typeof url !== "string" || url === "") return undefined;
   let path = url;
+  let host: string | undefined;
   if (url.startsWith("https://")) {
     try {
-      path = new URL(url).pathname;
+      const parsed = new URL(url);
+      path = parsed.pathname;
+      host = parsed.host.toLowerCase();
     } catch {
       return undefined;
     }
   }
   if (!SAFE_PATH.test(path) || path.split("/").includes("..")) return undefined;
-  return path;
+  return { path, ...(host !== undefined ? { host } : {}) };
 }
 
 /** An item of the Products API as a RawProduct. A product with no usable id or time makes the read could-not-check. */
@@ -184,24 +197,35 @@ function parseProduct(raw: unknown): RawProduct {
       "Squarespace answered with products that have no usable id or no update time.",
     );
   const variants: VariantFacts[] = [];
+  let variantsDropped = 0;
   for (const v of Array.isArray(r.variants) ? r.variants : []) {
-    if (!isRecord(v) || typeof v.id !== "string" || !PLAIN.test(v.id)) continue;
+    if (!isRecord(v) || typeof v.id !== "string" || !PLAIN.test(v.id)) {
+      variantsDropped++;
+      continue;
+    }
     const p = variantPrice(v.pricing);
-    variants.push({ id: v.id, ...(p !== undefined ? p : {}) });
+    const sku = typeof v.sku === "string" && PLAIN.test(v.sku) ? v.sku : undefined;
+    variants.push({
+      id: v.id,
+      ...(sku !== undefined ? { sku } : {}),
+      ...(p !== undefined ? p : {}),
+    });
   }
-  const path = pathOf(r.url);
+  const address = pathOf(r.url);
   const kind =
     typeof r.type === "string" && /^[A-Z_]{1,32}$/.test(r.type) ? r.type.toLowerCase() : "unknown";
   return {
     id: r.id,
     ...(typeof r.urlSlug === "string" && PLAIN.test(r.urlSlug) ? { slug: r.urlSlug } : {}),
-    ...(path !== undefined ? { path } : {}),
+    ...(address !== undefined ? { path: address.path } : {}),
+    ...(address?.host !== undefined ? { pathHost: address.host } : {}),
     kind,
     // Only a product the store shows is live: hidden products are drafts. Absence of the flag is not "published".
     published: r.isVisible === true,
     ...(publishedAt !== undefined ? { publishedAt } : {}),
     updatedAt,
     variants,
+    variantsDropped,
     data: r,
   };
 }
@@ -323,8 +347,14 @@ export function createSquarespaceCommerceAdapter(
     enforceCap: boolean,
     partial: () => unknown,
   ): AsyncGenerator<RawProduct> {
-    for await (const raw of listOf("products", "products", enforceCap, partial))
-      yield parseProduct(raw);
+    // A product listed twice (a cursor that overlaps, a hostile server) is read once.
+    const seen = new Set<string>();
+    for await (const raw of listOf("products", "products", enforceCap, partial)) {
+      const product = parseProduct(raw);
+      if (seen.has(product.id)) continue;
+      seen.add(product.id);
+      yield product;
+    }
   }
 
   const resolveUrl: NonNullable<ContentAdapter["resolveUrl"]> = (doc) => {

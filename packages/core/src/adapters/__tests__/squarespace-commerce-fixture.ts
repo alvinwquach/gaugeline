@@ -30,6 +30,8 @@ export interface FixtureVariant {
   base: string;
   /** Present when the variant is on sale. */
   sale?: string;
+  /** On sale, but the answer carries no sale price (a malformed record). */
+  saleMissing?: boolean;
   /** Inventory: a quantity, or "unlimited"; undefined means the Inventory API has no row for it. */
   stock?: number | "unlimited";
 }
@@ -147,8 +149,10 @@ const productJson = (p: FixtureProduct) => ({
     sku: v.sku,
     pricing: {
       basePrice: { currency: v.currency, value: v.base },
-      onSale: v.sale !== undefined,
-      salePrice: { currency: v.currency, value: v.sale ?? "0.00" },
+      onSale: v.sale !== undefined || v.saleMissing === true,
+      ...(v.saleMissing === true
+        ? {}
+        : { salePrice: { currency: v.currency, value: v.sale ?? "0.00" } }),
     },
   })),
   createdOn: p.createdOn,
@@ -220,9 +224,16 @@ export interface ShownProduct {
   /** schema.org availability without the prefix: "InStock", "OutOfStock". */
   availability?: string;
   /** More offers, for a product with several variants: each its own price. */
-  more?: { price: string; availability?: string }[];
+  more?: { price: string; availability?: string; currency?: string }[];
   /** Text of the visible price element, when the page has no product data. */
   visible?: string;
+  /** The address and SKU the main Product data names for itself. */
+  productUrl?: string;
+  sku?: string;
+  /** Other Product data blocks on the page (a related product): each its own price, address or SKU. */
+  others?: { price: string; url?: string; sku?: string }[];
+  /** Extra markup in the page body (buttons, a second price). */
+  body?: string;
 }
 
 /** A product page the way a Squarespace store writes one: schema.org Product data in a script tag. */
@@ -240,18 +251,36 @@ export function productPage(shown: ShownProduct): string {
   ].map((o) => ({
     "@type": "Offer",
     price: o.price,
-    priceCurrency: shown.currency ?? "USD",
+    priceCurrency:
+      ("currency" in o && o.currency ? o.currency : undefined) ?? shown.currency ?? "USD",
     ...("availability" in o && o.availability
       ? { availability: `https://schema.org/${o.availability}` }
       : {}),
   }));
-  const data =
-    offers.length === 0
-      ? ""
-      : `<script type="application/ld+json">${JSON.stringify({ "@context": "https://schema.org", "@type": "Product", name: "Invented", offers })}</script>`;
+  const node = (extra: Record<string, unknown>, list: unknown[]) =>
+    `<script type="application/ld+json">${JSON.stringify({ "@context": "https://schema.org", "@type": "Product", name: "Invented", ...extra, offers: list })}</script>`;
+  const data = [
+    ...(offers.length === 0
+      ? []
+      : [
+          node(
+            {
+              ...(shown.productUrl ? { url: shown.productUrl } : {}),
+              ...(shown.sku ? { sku: shown.sku } : {}),
+            },
+            offers,
+          ),
+        ]),
+    ...(shown.others ?? []).map((o) =>
+      node({ ...(o.url ? { url: o.url } : {}), ...(o.sku ? { sku: o.sku } : {}) }, [
+        { "@type": "Offer", price: o.price, priceCurrency: "USD" },
+      ]),
+    ),
+  ].join("");
   const visible =
     shown.visible !== undefined ? `<div class="product-price">${shown.visible}</div>` : "";
-  return `<!doctype html><html lang="en"><head><title>Invented product</title>${data}</head><body><h1>Invented</h1>${visible}</body></html>`;
+  const body = shown.body ?? "";
+  return `<!doctype html><html lang="en"><head><title>Invented product</title>${data}</head><body><h1>Invented</h1>${visible}${body}</body></html>`;
 }
 
 /** The shop's pages by path: a status and what the page shows. Any other path is 404. */

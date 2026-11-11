@@ -312,6 +312,190 @@ describe("Squarespace commerce checks: a pop-up print shop", () => {
     });
   });
 
+  describe("what a page shows is read for this product only", () => {
+    const tote = (shown: ShopPages[string]): ShopPages => ({
+      ...HEALTHY_PAGES,
+      "/shop/tide-chart-tote": shown,
+    });
+
+    it("a struck-through old price beside the new one is not a second price", async () => {
+      const ok = await run(
+        (await reading(tote({ visible: "<s>$40.00</s> <b>$32.00</b>" }))).reading,
+      );
+      expect(evidence(ok, "squarespace-price-differs")).toEqual([]);
+      const drift = await run(
+        (await reading(tote({ visible: "<del>$40.00</del> <b>$31.00</b>" }))).reading,
+      );
+      expect(evidence(drift, "squarespace-price-differs")).toEqual([
+        "tide-chart-tote: the page shows 31.00 USD and the Commerce API has 32.00 USD",
+      ]);
+    });
+
+    it("two amounts and none struck through is could-not-check, never a drift", async () => {
+      const out = await run((await reading(tote({ visible: "$20.00 $15.00" }))).reading);
+      expect(evidence(out, "squarespace-price-differs")).toEqual([]);
+      expect(reasons(out)).toMatch(/more than one amount/);
+    });
+
+    it("with two Product data blocks only this product's is used (by address or SKU)", async () => {
+      const byUrl = await run(
+        (
+          await reading(
+            tote({
+              price: "32.00",
+              availability: "OutOfStock",
+              productUrl: `${SQUARESPACE_COMMERCE_SITE}/shop/tide-chart-tote`,
+              others: [{ price: "99.00", url: "/shop/other" }],
+            }),
+          )
+        ).reading,
+      );
+      expect(evidence(byUrl, "squarespace-price-differs")).toEqual([]);
+      const bySku = await run(
+        (
+          await reading(
+            tote({
+              price: "32.00",
+              availability: "OutOfStock",
+              sku: "TOTE-1",
+              others: [{ price: "99.00", sku: "OTHER-1" }],
+            }),
+          )
+        ).reading,
+      );
+      expect(evidence(bySku, "squarespace-price-differs")).toEqual([]);
+    });
+
+    it("with two Product data blocks and none this product's, the page is could-not-check", async () => {
+      const out = await run(
+        (
+          await reading(
+            tote({
+              price: "32.00",
+              productUrl: "/shop/somewhere-else",
+              others: [{ price: "99.00", url: "/shop/other" }],
+            }),
+          )
+        ).reading,
+      );
+      expect(evidence(out, "squarespace-price-differs")).toEqual([]);
+      expect(reasons(out)).toMatch(/several Product data blocks and none is this product's/);
+    });
+
+    it("offers in more than one currency are could-not-check, never compared or dropped", async () => {
+      const out = await run(
+        (
+          await reading(
+            tote({
+              price: "32.00",
+              availability: "OutOfStock",
+              more: [{ price: "29.00", currency: "EUR" }],
+            }),
+          )
+        ).reading,
+      );
+      expect(evidence(out, "squarespace-price-differs")).toEqual([]);
+      expect(reasons(out)).toMatch(/more than one currency/);
+    });
+
+    it("a 'Sold out' button elsewhere on the page is not this product's add-to-cart button", async () => {
+      const unrelated = await run(
+        (
+          await reading(
+            tote({
+              visible: "$32.00",
+              body: "<button>Size unavailable</button><button>Sold out</button>",
+            }),
+          )
+        ).reading,
+      );
+      expect(evidence(unrelated, "squarespace-stock-differs")).toEqual([]);
+      const own = await run(
+        (
+          await reading({
+            ...HEALTHY_PAGES,
+            "/shop/sea-glass-zine": {
+              visible: "$9.50",
+              body: '<button class="sqs-add-to-cart-button">Sold Out</button>',
+            },
+          })
+        ).reading,
+      );
+      expect(evidence(own, "squarespace-stock-differs")).toEqual([
+        "sea-glass-zine: the page offers it as out of stock and the Inventory API says a variant is in stock",
+      ]);
+    });
+  });
+
+  describe("what the API gives is not guessed at", () => {
+    const withTote = (variants: FixtureProduct["variants"]): FixtureProduct[] =>
+      SQUARESPACE_COMMERCE_PRODUCTS.map((p) => (p.id === "p-tote" ? { ...p, variants } : p));
+    const toteVariant = SQUARESPACE_COMMERCE_PRODUCTS[1]!.variants[0]!;
+
+    it("a variant with an unusable id makes its price and stock unknown, not a drift or sold out", async () => {
+      const products = withTote([
+        toteVariant,
+        { ...toteVariant, id: "../bad", base: "10.00", sale: undefined },
+      ]);
+      const out = await run(
+        (
+          await reading(
+            {
+              ...HEALTHY_PAGES,
+              "/shop/tide-chart-tote": { price: "55.00", availability: "InStock" },
+            },
+            { products },
+          )
+        ).reading,
+      );
+      expect(evidence(out, "squarespace-price-differs")).toEqual([]);
+      expect(evidence(out, "squarespace-stock-differs")).toEqual([]);
+      expect(reasons(out)).toMatch(/a variant's price could not be read/);
+      expect(reasons(out)).toMatch(/no row for one of its variants/);
+    });
+
+    it("on sale with no sale price is unknown, not the base price", async () => {
+      const products = withTote([{ ...toteVariant, sale: undefined, saleMissing: true }]);
+      const out = await run(
+        (
+          await reading(
+            {
+              ...HEALTHY_PAGES,
+              "/shop/tide-chart-tote": { price: "32.00", availability: "OutOfStock" },
+            },
+            { products },
+          )
+        ).reading,
+      );
+      expect(evidence(out, "squarespace-price-differs")).toEqual([]);
+      expect(reasons(out)).toMatch(/gave no price Gaugeline could read/);
+    });
+
+    it("an address on another host is never rewritten onto the checked site", async () => {
+      const strays = SQUARESPACE_COMMERCE_PRODUCTS.map((p) =>
+        p.id === "p-zine" ? { ...p, url: "https://elsewhere.example/shop/sea-glass-zine" } : p,
+      );
+      const { reading: r, seen } = await reading(HEALTHY_PAGES, {
+        products: strays,
+        urls: { products: "/shop/{slug}" },
+      });
+      expect(r.unaddressed.map((u) => u.id)).toEqual(["p-zine"]);
+      expect(r.unaddressed[0]?.reason).toMatch(/another site/);
+      expect(
+        seen.some((s) => s.includes("sea-glass-zine") && s.includes(SQUARESPACE_COMMERCE_SITE)),
+      ).toBe(false);
+    });
+
+    it("an address on the same host as the site is asked by its path", async () => {
+      const same = SQUARESPACE_COMMERCE_PRODUCTS.map((p) =>
+        p.id === "p-zine" ? { ...p, url: `${SQUARESPACE_COMMERCE_SITE}/shop/sea-glass-zine` } : p,
+      );
+      const { reading: r } = await reading(HEALTHY_PAGES, { products: same });
+      expect(r.unaddressed).toEqual([]);
+      expect(r.products).toHaveLength(3);
+    });
+  });
+
   it("a store with no visible product is could-not-check, not a clean pass", async () => {
     const hidden = SQUARESPACE_COMMERCE_PRODUCTS.map((p) => ({ ...p, isVisible: false }));
     const out = await run((await reading(HEALTHY_PAGES, { products: hidden })).reading);
@@ -335,14 +519,14 @@ describe("Squarespace commerce checks: a pop-up print shop", () => {
           : p,
     );
     const { reading: r, seen } = await reading(HEALTHY_PAGES, { products: strays });
-    // The path of an https address is kept (the page is asked on this site); a missing one has no pattern.
-    expect(r.unaddressed.map((u) => u.id)).toEqual(["p-tote"]);
+    // An address on another host is never rewritten onto this site; a missing one has no pattern.
+    expect(r.unaddressed.map((u) => u.id).sort()).toEqual(["p-tote", "p-zine"]);
     expect(seen.some((s) => s.includes("elsewhere.example"))).toBe(false);
     const withPattern = await reading(HEALTHY_PAGES, {
       products: strays,
       urls: { products: "/shop/{slug}" },
     });
-    expect(withPattern.reading.unaddressed).toEqual([]);
+    expect(withPattern.reading.unaddressed.map((u) => u.id)).toEqual(["p-zine"]);
   });
 
   it("no finding or could-not-check line carries a word of the client's content", async () => {

@@ -1,6 +1,7 @@
-import type { Fetcher } from "../fetcher.js";
+import { load } from "cheerio/slim";
+import type { Fetcher, Hop } from "../fetcher.js";
+import { parseAmount } from "../price.js";
 import { toMinor } from "../products/money.js";
-import { readPrices } from "../price.js";
 import { buildSnapshot, jsonLdNodes } from "../snapshot.js";
 import type { PartialRead } from "./collect.js";
 import { SQUARESPACE_COMMERCE_LIMITS } from "./squarespace-commerce.entry.js";
@@ -10,7 +11,7 @@ import type {
   StockState,
 } from "./squarespace-commerce.js";
 import { AdapterCouldNotCheck, AdapterRateLimitedError } from "./types.js";
-import { onSite } from "./webflow-read.js";
+import { bare, onSite } from "./webflow-read.js";
 
 /** What a product page shows, reduced to numbers and two words. The page's text is never kept. */
 export type ShownOnPage =
@@ -83,12 +84,87 @@ export interface ReadSquarespaceCommerceOptions {
 const OUT = new Set(["OutOfStock", "SoldOut", "Discontinued"]);
 const IN = new Set(["InStock", "LimitedAvailability", "OnlineOnly", "InStoreOnly", "PreSale"]);
 
-/** What a product page says about price and stock, from its product data (and its visible price when there is none). */
-export async function shownOnPage(hops: Parameters<typeof buildSnapshot>[0]): Promise<ShownOnPage> {
+/** Elements themes put the shown price in, most specific first (the same list the shared price reader uses). */
+const VISIBLE = [
+  "[data-product-price]",
+  ".price-item--sale",
+  ".price-item--regular",
+  ".product__price",
+  ".product-price",
+  "[itemprop=price]",
+  ".price",
+];
+
+/** Markup that shows a price that no longer applies: an old price beside the new one. */
+const STRUCK =
+  "s, del, strike, [style*='line-through'], [class*='original'], [class*='compare'], [class*='strike']";
+
+const AMOUNT = /\d{1,3}(?:[,.\s]\d{3})+(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?/g;
+
+const SYMBOLS: Readonly<Record<string, string>> = {
+  "\u20AC": "eur",
+  "\u00A3": "gbp",
+  "\u00A5": "jpy",
+};
+
+const currencyOfText = (text: string): string | undefined => {
+  for (const [symbol, code] of Object.entries(SYMBOLS)) if (text.includes(symbol)) return code;
+  return /\b(USD|EUR|GBP|CAD|AUD|JPY|NZD|CHF|SEK|MXN)\b/.exec(text)?.[1]?.toLowerCase();
+};
+
+/** A path without a trailing slash, for comparing a product's address with the one its data names. */
+function normalPath(address: string): string | undefined {
+  try {
+    return new URL(address, "https://page.invalid").pathname.replace(/\/+$/, "") || "/";
+  } catch {
+    return undefined;
+  }
+}
+
+/** What identifies this product on its page: its path and the SKUs of its variants. */
+export interface OwnProduct {
+  path: string;
+  skus: readonly string[];
+}
+
+/**
+ * What a product page says about price and stock, for this product only. With one Product data block it is
+ * that block's. With several (a related product beside it) only the block whose address or SKU is this
+ * product's counts, and none matching is unread. Offers in more than one currency are unread. With no
+ * product data, the one price in the page's price element, with an old struck-through price left out: two
+ * amounts left is unread. A sold-out reading from a button needs the one add-to-cart button of the page.
+ */
+export async function shownOnPage(
+  hops: Hop[],
+  own: OwnProduct = { path: "", skus: [] },
+): Promise<ShownOnPage> {
   const snapshot = buildSnapshot(hops);
+  const isProduct = (node: Record<string, unknown>): boolean => {
+    const type = node["@type"];
+    return type === "Product" || (Array.isArray(type) && type.includes("Product"));
+  };
+  const products = jsonLdNodes(snapshot).filter(isProduct);
+  let mine = products;
+  if (products.length > 1) {
+    const path = normalPath(own.path);
+    const skus = new Set(own.skus);
+    mine = products.filter(
+      (n) =>
+        (typeof n.url === "string" && path !== undefined && normalPath(n.url) === path) ||
+        (typeof n.sku === "string" && skus.has(n.sku)),
+    );
+    if (mine.length === 0)
+      return {
+        kind: "unread",
+        reason:
+          "the page has several Product data blocks and none is this product's (by address or SKU)",
+      };
+  }
+
   const prices = new Set<number>();
   const currencies = new Set<string>();
   const states: string[] = [];
+  let unnamedCurrency = false;
   const visit = (node: Record<string, unknown>): void => {
     const offers = node.offers;
     for (const o of Array.isArray(offers) ? offers : offers !== undefined ? [offers] : []) {
@@ -99,6 +175,7 @@ export async function shownOnPage(hops: Parameters<typeof buildSnapshot>[0]): Pr
           ? offer.priceCurrency.toLowerCase()
           : undefined;
       if (currency !== undefined) currencies.add(currency);
+      else unnamedCurrency = true;
       for (const key of ["price", "lowPrice", "highPrice"] as const) {
         const raw = offer[key];
         if (typeof raw !== "string" && typeof raw !== "number") continue;
@@ -113,24 +190,51 @@ export async function shownOnPage(hops: Parameters<typeof buildSnapshot>[0]): Pr
       if (Array.isArray(offer.offers)) visit({ offers: offer.offers });
     }
   };
-  for (const node of jsonLdNodes(snapshot)) {
-    const type = node["@type"];
-    if (type === "Product" || (Array.isArray(type) && type.includes("Product"))) visit(node);
-  }
+  for (const node of mine) visit(node);
+  if (currencies.size > 1)
+    return {
+      kind: "unread",
+      reason:
+        "the page's product data prices it in more than one currency, which are not converted",
+    };
 
+  const $ = load(hops.at(-1)?.body ?? "");
   let startingPrice = false;
   let visibleCurrency: string | undefined;
   if (prices.size === 0) {
-    // No product data: the one price the page shows, which is only a comparison when the page has no better.
-    const reading = await readPrices(snapshot);
-    if (reading.visible !== undefined) prices.add(reading.visible);
-    startingPrice = reading.startingPrice === true;
-    visibleCurrency = reading.visibleCurrency?.toLowerCase();
-    if (reading.canBuy === false && states.length === 0) states.push("OutOfStock");
+    for (const selector of VISIBLE) {
+      const el = $(selector).first();
+      if (el.length === 0) continue;
+      const clone = el.clone();
+      clone.find(STRUCK).remove();
+      const text = (el.attr("content") ?? clone.text()).replace(/\s+/g, " ").trim();
+      const amounts = text.match(AMOUNT) ?? [];
+      const first = amounts[0];
+      if (first === undefined) continue;
+      if (amounts.length > 1)
+        return {
+          kind: "unread",
+          reason:
+            "the page's price element holds more than one amount (and none is struck through), so which one is the price is not known",
+        };
+      const amount = parseAmount(first);
+      if (amount === undefined) continue;
+      prices.add(amount);
+      startingPrice = /\bfrom\b/i.test(text) || /\bfrom\b/i.test(el.parent().text().slice(0, 40));
+      visibleCurrency = currencyOfText(text);
+      break;
+    }
+  }
+  if (states.length === 0) {
+    // Only the product's own add-to-cart button says "sold out": any other button on the page is not about it.
+    const buttons = $(".sqs-add-to-cart-button");
+    const label =
+      buttons.length === 1 ? buttons.text().replace(/\s+/g, " ").trim().toLowerCase() : "";
+    if (label === "sold out" || label === "out of stock") states.push("OutOfStock");
   }
   const anyIn = states.some((s) => IN.has(s));
   const anyOut = states.some((s) => OUT.has(s));
-  const currency = currencies.size === 1 ? [...currencies][0] : visibleCurrency;
+  const currency = currencies.size === 1 && !unnamedCurrency ? [...currencies][0] : visibleCurrency;
   return {
     kind: "page",
     prices: [...prices].sort((a, b) => a - b),
@@ -142,7 +246,7 @@ export async function shownOnPage(hops: Parameters<typeof buildSnapshot>[0]): Pr
 }
 
 /** One page, asked with GET through the fetcher, and reduced. A 404 or 410 is "missing"; any other non-2xx is unread. */
-async function askShown(fetcher: Fetcher, url: string): Promise<ShownOnPage> {
+async function askShown(fetcher: Fetcher, url: string, own: OwnProduct): Promise<ShownOnPage> {
   try {
     const hops = await fetcher.get(url);
     const last = hops.at(-1);
@@ -150,7 +254,7 @@ async function askShown(fetcher: Fetcher, url: string): Promise<ShownOnPage> {
     if (last.status === 404 || last.status === 410) return { kind: "missing", status: last.status };
     if (last.status < 200 || last.status >= 300)
       return { kind: "unread", reason: `the site answered ${last.status}` };
-    return await shownOnPage(hops);
+    return await shownOnPage(hops, own);
   } catch (err) {
     return { kind: "unread", reason: err instanceof Error ? err.message : String(err) };
   }
@@ -171,13 +275,15 @@ function apiSide(
       : currencies.size > 1
         ? { currency: "mixed" }
         : {}),
-    priceGap: priced.length < p.variants.length,
+    // A variant that was dropped (no usable id) or has no readable price leaves the product's prices incomplete.
+    priceGap: priced.length < p.variants.length || p.variantsDropped > 0,
+    // "out" needs every variant known: one that was dropped could be the one in stock.
     stock:
       stock === undefined || p.variants.length === 0
         ? "unknown"
         : states.includes("in")
           ? "in"
-          : states.every((s) => s === "out")
+          : p.variantsDropped === 0 && states.every((s) => s === "out")
             ? "out"
             : "unknown",
   };
@@ -228,10 +334,17 @@ export async function readSquarespaceCommerce(
       : { state: "unread", reason: catalogue.stock.reason };
 
   const todo: Omit<ProductRead, "page">[] = [];
+  /** The SKUs of each product's variants: what ties a Product data block on its page to it. */
+  const skus = new Map<string, string[]>();
   for (const p of catalogue.products) {
     if (!p.published) continue;
     reading.visible++;
     // The API's own path first; the settings' pattern when it gave none. Another site's address is never asked.
+    if (p.pathHost !== undefined && bare(p.pathHost) !== bare(new URL(origin).host)) {
+      // An https address on another host is another site's page: never rewritten onto this one.
+      reading.unaddressed.push({ id: p.id, reason: "its address is on another site" });
+      continue;
+    }
     const raw =
       p.path ??
       adapter.resolveUrl?.({
@@ -251,6 +364,10 @@ export async function readSquarespaceCommerce(
       });
       continue;
     }
+    skus.set(
+      p.id,
+      p.variants.flatMap((v) => (v.sku !== undefined ? [v.sku] : [])),
+    );
     todo.push({
       id: p.id,
       ...(p.slug !== undefined ? { slug: p.slug } : {}),
@@ -262,7 +379,10 @@ export async function readSquarespaceCommerce(
   const asked = todo.slice(0, budget);
   reading.pagesSkipped = todo.length - asked.length;
   reading.products = await Promise.all(
-    asked.map(async (p): Promise<ProductRead> => ({ ...p, page: await askShown(fetcher, p.url) })),
+    asked.map(async (p): Promise<ProductRead> => ({
+      ...p,
+      page: await askShown(fetcher, p.url, { path: p.path, skus: skus.get(p.id) ?? [] }),
+    })),
   );
   return reading;
 }

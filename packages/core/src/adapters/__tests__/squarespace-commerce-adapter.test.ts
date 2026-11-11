@@ -145,8 +145,8 @@ describe("the Squarespace commerce adapter: reading products", () => {
     const { products } = await make().adapter.catalogue();
     const dawn = products.find((p) => p.id === "p-dawn");
     expect(dawn?.variants).toEqual([
-      { id: "v-dawn-a4", price: 2800, currency: "usd" },
-      { id: "v-dawn-a3", price: 4500, currency: "usd" },
+      { id: "v-dawn-a4", sku: "DAWN-A4", price: 2800, currency: "usd" },
+      { id: "v-dawn-a3", sku: "DAWN-A3", price: 4500, currency: "usd" },
     ]);
     expect(products.find((p) => p.id === "p-tote")?.variants[0]?.price).toBe(3200);
     const odd = SQUARESPACE_COMMERCE_PRODUCTS.map((p) => ({
@@ -154,7 +154,45 @@ describe("the Squarespace commerce adapter: reading products", () => {
       variants: p.variants.map((v) => ({ ...v, base: "1e3", currency: "USD" })),
     }));
     const got = (await make({ products: odd }).adapter.catalogue()).products[0]?.variants[0];
-    expect(got).toEqual({ id: "v-dawn-a4" });
+    expect(got).toEqual({ id: "v-dawn-a4", sku: "DAWN-A4" });
+  });
+
+  it("on sale with no sale price has no price: the base price is never taken for it", async () => {
+    const tote = SQUARESPACE_COMMERCE_PRODUCTS[1]!;
+    const products = [
+      { ...tote, variants: [{ ...tote.variants[0]!, sale: undefined, saleMissing: true }] },
+    ];
+    const got = (await make({ products }).adapter.catalogue()).products[0]?.variants[0];
+    expect(got).toEqual({ id: "v-tote", sku: "TOTE-1" });
+  });
+
+  it("counts a variant it had to drop, so the product's price and stock are not taken as complete", async () => {
+    const tote = SQUARESPACE_COMMERCE_PRODUCTS[1]!;
+    const products = [
+      { ...tote, variants: [tote.variants[0]!, { ...tote.variants[0]!, id: "../bad" }] },
+    ];
+    const got = (await make({ products }).adapter.catalogue()).products[0];
+    expect(got?.variants).toHaveLength(1);
+    expect(got?.variantsDropped).toBe(1);
+  });
+
+  it("reads a product that is listed twice once", async () => {
+    const [dawn, tote] = SQUARESPACE_COMMERCE_PRODUCTS as [FixtureProduct, FixtureProduct];
+    const products = [dawn, dawn, tote, dawn];
+    const { adapter } = make({ products });
+    expect((await collectPublished(adapter)).docs.map((d) => d.id)).toEqual(["p-dawn", "p-tote"]);
+    expect(await adapter.types()).toEqual([{ name: "products", count: 2 }]);
+    expect((await adapter.catalogue()).products.map((p) => p.id)).toEqual(["p-dawn", "p-tote"]);
+    expect(await adapter.fieldCounts("products", ["name"])).toEqual({ name: 2 });
+  });
+
+  it("keeps the host of an https address, so the reader can refuse another site's", async () => {
+    const dawn = SQUARESPACE_COMMERCE_PRODUCTS[0]!;
+    const products = [{ ...dawn, url: "https://elsewhere.example/shop/harbour-at-dawn" }];
+    const got = (await make({ products }).adapter.catalogue()).products[0];
+    expect(got).toMatchObject({ path: "/shop/harbour-at-dawn", pathHost: "elsewhere.example" });
+    const plain = (await make().adapter.catalogue()).products[0];
+    expect(plain?.pathHost).toBeUndefined();
   });
 
   it("keeps no name or description in what the catalogue returns", async () => {

@@ -133,6 +133,8 @@ Both run on every visible product, one `GET` of its page each (at most 300 a run
 
 A product with several variants counts as in stock when any variant is. A variant with no inventory row is never read as out of stock. While a variant is on sale, its price is the sale price.
 
+The page side is read for this product only. A page with several Product data blocks (a related product beside it) uses the block whose address or SKU is the product's, and none matching is could-not-check. Offers in more than one currency, a price element that holds two amounts with neither struck through, a variant the API listed with an unusable id, a variant on sale with no sale price, and a product whose address is on another site are all could-not-check, never a finding. A "sold out" button counts only when it is the page's one add-to-cart button, and a product the API lists twice is read once.
+
 ## What cannot be checked
 
 Anything the platform does not expose is could-not-check, with the reason, never a pass and never scraped from the platform's admin screens:
