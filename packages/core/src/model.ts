@@ -38,6 +38,7 @@ import type { PageSnapshot } from "./snapshot.js";
 import type { ImageSample } from "./checks/images/refs.js";
 import type { LinkSample } from "./links.js";
 import type { SiteContext } from "./site-context.js";
+import type { StaleDatesConfig } from "./stale-dates/config.js";
 
 /** Fix this first / Fix soon / Worth knowing. */
 export type Severity = "high" | "medium" | "low";
@@ -162,6 +163,8 @@ export interface CheckContext {
   hidden?: HiddenConfig;
   /** Where the menus are and which footer links are required (gaugeline.nav.json). */
   navRules?: NavRules;
+  /** The out-of-date copy settings (gaugeline.stale-dates.json): grace days, ignored sentences, historic paths. */
+  staleDates?: StaleDatesConfig;
   /**
    * Each page saved with the last run (--since last), as it is now: read once on first use. Absent
    * when the last run saved no pages.

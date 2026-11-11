@@ -95,7 +95,7 @@ function scannerFor(langs: readonly string[]): Scanner {
   const s: Scanner = {
     words,
     monthFirst: new RegExp(
-      `${BEFORE}(${M})\\.?\\s+(\\d{1,2})(?:st|nd|rd|th|\u00BA)?(?![\\d:])(?:,?\\s+(\\d{4})(?!\\d))?`,
+      `${BEFORE}(${M})\\.?\\s+(\\d{1,2})(?:st|nd|rd|th|\u00BA)?(?!\\d|:\\d)(?:,?\\s+(\\d{4})(?!\\d))?`,
       "giud",
     ),
     dayFirst: new RegExp(

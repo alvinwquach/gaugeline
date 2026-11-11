@@ -26,7 +26,7 @@ const PROMO_REACH = 40;
 /** The longest sentence kept as evidence. */
 const SENTENCE_MAX = 160;
 /** A block ends a sentence, and so does ". " before a capital letter ("Oct. 31" is not an end). */
-const BOUNDARY = /\n|[.!?](?=\s+[\p{Lu}¿¡])/gu;
+const BOUNDARY = /\n|[.!?](?=\s+[\p{Lu}\u00BF\u00A1])/gu;
 
 interface Patterns {
   endBefore: RegExp;
@@ -42,14 +42,14 @@ function patternsFor(langs: readonly string[]): Patterns {
   const hit = cache.get(key);
   if (hit) return hit;
   const w = wordsFor(langs);
-  const word = (inner: string) => `(?<![\\p{L}\\p{N}'’])(?:${inner})`;
+  const word = (inner: string) => `(?<![\\p{L}\\p{N}'\u2019])(?:${inner})`;
   const p: Patterns = {
     endBefore: new RegExp(
       `${word(alternation(w.endWords))}(?:\\s+(?:${alternation(w.fillers)})){0,3}\\s*[:,-]?\\s*$`,
       "iu",
     ),
     afterEnd: new RegExp(`^\\s*[,.)]?\\s*(?:${alternation(w.afterEnd)})(?![\\p{L}\\p{N}])`, "iu"),
-    lead: new RegExp(`(?:${word(alternation(w.leads))}|©)\\s*[:.,]?\\s*$`, "iu"),
+    lead: new RegExp(`(?:${word(alternation(w.leads))}|\u00A9)\\s*[:.,]?\\s*$`, "iu"),
     promo: new RegExp(`(?<![\\p{L}\\p{N}])(?:${alternation(w.promo)})(?![\\p{L}\\p{N}])`, "iu"),
   };
   cache.set(key, p);
@@ -102,7 +102,7 @@ export function staleCopy(text: string, opts: StaleOptions): StaleHit[] {
     const rangeEnd =
       prev !== undefined &&
       f.start - prev.end <= 8 &&
-      /^\s*(?:-|–|—|to|al|au|a)\s*$/iu.test(text.slice(prev.end, f.start));
+      /^\s*(?:-|\u2013|\u2014|to|al|au|a)\s*$/iu.test(text.slice(prev.end, f.start));
     const ended = p.endBefore.test(before) || p.afterEnd.test(after) || rangeEnd;
     if (f.kind === "month" && !ended) return;
     if (!ended && (!f.hasYear || p.lead.test(before))) return;
