@@ -1451,6 +1451,7 @@ export {
 export { STRAPI_CHECKS, createStrapiRegistry } from "./checks/strapi.js";
 export { CRAFT_CHECKS, createCraftRegistry } from "./checks/craft.js";
 export { UMBRACO_CHECKS, createUmbracoRegistry } from "./checks/umbraco.js";
+export { DATOCMS_CHECKS, createDatocmsRegistry } from "./checks/datocms.js";
 export { HUBSPOT_CMS_CHECKS, createHubspotCmsRegistry } from "./checks/hubspot-cms.js";
 export {
   ListBuilder,
