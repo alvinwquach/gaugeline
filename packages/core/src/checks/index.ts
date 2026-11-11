@@ -62,6 +62,12 @@ import { formDestinationChanged } from "./form-destination-changed.js";
 import { formProviderChanged } from "./form-provider-changed.js";
 import { formsManyProviders } from "./forms-many-providers.js";
 import { gatedDownloadOpen } from "./gated-download-open.js";
+import { gatsbyDataAsPage } from "./gatsby-data-as-page.js";
+import { gatsbyDataUnshown } from "./gatsby-data-unshown.js";
+import { gatsbyDevServerLive } from "./gatsby-dev-server-live.js";
+import { gatsbyGraphqlPublic } from "./gatsby-graphql-public.js";
+import { gatsbyPreviewCanonical } from "./gatsby-preview-canonical.js";
+import { gatsbyPrivateFields } from "./gatsby-private-fields.js";
 import { hiddenAiDirective } from "./hidden-ai-directive.js";
 import { hiddenInSitemap } from "./hidden-in-sitemap.js";
 import { hiddenIndexable } from "./hidden-indexable.js";
@@ -234,6 +240,12 @@ export const PAGE_CHECKS = [
   formProviderChanged,
   formsManyProviders,
   gatedDownloadOpen,
+  gatsbyDataAsPage,
+  gatsbyDataUnshown,
+  gatsbyDevServerLive,
+  gatsbyGraphqlPublic,
+  gatsbyPreviewCanonical,
+  gatsbyPrivateFields,
   hiddenAiDirective,
   hiddenInSitemap,
   hiddenIndexable,
