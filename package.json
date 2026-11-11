@@ -34,6 +34,7 @@
     "docs:e2e": "playwright test",
     "gen:checks": "tsx scripts/gen-checks.ts",
     "gen:adapters": "tsx scripts/gen-adapters.ts",
+    "gen:skill": "tsx scripts/gen-skill.ts",
     "since": "tsx scripts/check-since.ts",
     "new:check": "tsx scripts/new-check.ts",
     "new:adapter": "tsx scripts/new-adapter.ts",

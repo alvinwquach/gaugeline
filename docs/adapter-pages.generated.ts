@@ -35,6 +35,7 @@ export const ADAPTER_PAGES: { slug: string; title: string }[] = [
     title: "Squarespace commerce: price and stock checks for stores built on Squarespace",
   },
   { slug: "integrations/strapi", title: "Strapi: content checks for sites built on Strapi" },
+  { slug: "integrations/umbraco", title: "Umbraco: content checks for sites built on Umbraco" },
   { slug: "integrations/webflow", title: "Webflow: content checks for sites built on Webflow" },
   { slug: "integrations/wix", title: "Wix: content checks for sites built on Wix" },
   {
