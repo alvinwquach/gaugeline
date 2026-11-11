@@ -129,7 +129,7 @@ describe("Strapi: the key and the site", () => {
   it("an address with a user name or password in it is refused", async () => {
     const address = new URL(CMS_URL);
     address.username = "admin";
-    address.password = ["pass", "word"].join("");
+    address.password = ["hush", "puppy", "42"].join("");
     const { adapter } = over({ adapter: { env: { STRAPI_URL: address.href, STRAPI_TOKEN: KEY } } });
     const reason = await reasonOf(adapter.types());
     expect(reason).toMatch(/no user name or password/);
