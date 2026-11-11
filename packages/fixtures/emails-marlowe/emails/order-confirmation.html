@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Your order is confirmed</title>
+    <style>
+      .button {
+        color: #ffffff;
+      }
+      @media (max-width: 600px) {
+        .wrap {
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <table role="presentation" width="600">
+      <tr>
+        <td>
+          <img
+            src="https://marlowe-popup.example/mail/logo.png"
+            alt="Marlowe Street Pop-Up"
+            width="120"
+          />
+          <h1>Thanks, Dana. Order {{order_id}} is confirmed.</h1>
+          <p>Pickup is Saturday from 4pm at 18 Marlowe Street.</p>
+          <p>
+            <a class="button" href="https://marlowe-popup.example/orders/1001">View your order</a>
+          </p>
+          <p>Questions? Call (415) 555-0132.</p>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

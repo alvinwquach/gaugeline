@@ -126,6 +126,10 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "campaign-fields-lost": ["Campaign tags are lost", "Visitors"],
   "ad-dead-page": ["The page doesn't load", "Visitors"],
   "ad-sold-out": ["The advertised product is sold out", "Sales & prices"],
+  "email-relative-link": [
+    "A link in an email only works on the developer's computer",
+    "Sales & prices",
+  ],
   "printful-unsynced": ["A fulfillment product has variants that cannot be made", "Sales & prices"],
   "stripe-archived": ["A website product is archived in checkout", "Sales & prices"],
   "stripe-missing": ["A website product is missing from checkout", "Sales & prices"],
@@ -272,6 +276,11 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "duplicate-printful": ["The same product is in Printful more than once", "Sales & prices"],
   "duplicate-sanity": ["The same product is on the website more than once", "Sales & prices"],
   "duplicate-stripe": ["The same product is in Stripe more than once", "Sales & prices"],
+  "email-preview-placeholder": ["An email still has template variables in it", "Sales & prices"],
+  "email-image-not-absolute": [
+    "An image in an email will not load in an inbox",
+    "Security & email",
+  ],
   "printful-price": ["Fulfillment lists a different price", "Sales & prices"],
   "stripe-no-price": ["No default price in checkout", "Sales & prices"],
   "plan-trial-mismatch": ["A plan's free trial differs from checkout", "Sales & prices"],
@@ -319,6 +328,7 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   ],
   "plan-keyword-overlap": ["One page's primary keyword is another page's secondary", "Launch day"],
   "printed-chain": ["A printed address takes more than two redirects", "Launch day"],
+  "email-no-text-part": ["An email has no plain-text version", "Security & email"],
   "printful-missing": ["On the website, not in fulfillment", "Sales & prices"],
   "printful-orphan": ["In fulfillment, not on the website", "Sales & prices"],
   "stripe-orphan": ["In checkout, not on the website", "Sales & prices"],
@@ -824,6 +834,12 @@ export const CHECK_TEXT: Readonly<
     "Each click is paid for by someone who wants to buy and cannot, so the money buys nothing until the product is back.",
     "Pause the ad or point it at a product that is in stock, and turn it back on when the product returns. If some sizes are out, say so in the ad.",
     "a landing page is a Shopify product page when its address ends /products/<handle> and its HTML carries Shopify's markers (cdn.shopify.com, window.Shopify, the checkout or digital-wallet meta tags); one GET of /products/<handle>.js on the same host, no key; sold out means every variant says available false (high); some variants out is a low note listing them; an empty variants list, an answer that is not that JSON, a 404, or a variant that does not say is could-not-check (stock could not be read), never sold out; a page that is not on Shopify is not asked",
+  ],
+  "email-relative-link": [
+    "A link in a rendered email is a relative path such as /orders/1001, or points at localhost or another address that only a computer on your own network can open.",
+    "An inbox has no website to resolve a relative path against, and a customer cannot open your laptop. The button they need most (view my order, confirm my booking) does nothing, in every inbox.",
+    "Build the email with the site's full public address, https://example.com/orders/1001, taken from a setting your production build sets, then export the emails again.",
+    "a[href] in the rendered HTML with no scheme (a path, ../path or //host), or an http(s) address on localhost, *.localhost, *.local, 0.0.0.0, ::1, 127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 or 169.254.0.0/16, after a tracking wrapper with a known pattern is unwrapped; an anchor, a mailto: or tel: link, another scheme and a template variable are not read here; the address is shown without its query, which can hold a customer's token; one finding for each email, at the first line",
   ],
   "printful-unsynced": [
     "A Printful product matched to a product on your website has a variant that is not synced.",
@@ -1413,6 +1429,18 @@ export const CHECK_TEXT: Readonly<
     "Keep one, archive the rest in Stripe and point the website at the one you keep. Gaugeline does not choose which.",
     "active Stripe products grouped by normaliseName in one pass into a Map; one finding per group listing every copy with its id and default price, up to 10 and then a count; archived products are not counted as copies and are named in the finding when their group also has active ones; names that normalise to an empty string are never grouped; runs only when Stripe returned data",
   ],
+  "email-preview-placeholder": [
+    "A rendered email still holds a variable that was never filled in, such as {{order_id}}, {% if paid %}, {name} or [object Object].",
+    'The customer reads "Order {{order_id}} is confirmed" or "Hi undefined", which looks broken and hides the one detail (which order, which booking) they opened the email for.',
+    "Pass the missing value to the template, or delete the variable. For a preview that was exported before the data was merged, export the email from the real send path or with sample data.",
+    "Handlebars and Mustache {{ }} and {{{ }}}, Liquid {% %}, ERB and EJS <% %>, JavaScript ${ }, JSX and message {name} and {props.name}, [object Object], Mailchimp *|MERGE|* tags, undefined and NaN as words, and null alone or after a greeting; read in the text a recipient sees and in attributes (style and script bodies and comments are left out, JSON-LD is not), and in the .txt beside it; one finding for each file, at the first line",
+  ],
+  "email-image-not-absolute": [
+    "An image in a rendered email is on a relative path, on localhost or a private address, or on plain http://.",
+    "A relative or local image is a broken box in every inbox, and many mail apps block or warn about plain http images, so the logo or the product photo is missing exactly where the customer is looking.",
+    "Serve the images from your live site over https and write their full addresses into the email (https://example.com/mail/logo.png), or attach them inline.",
+    "img[src] in the rendered HTML with no scheme, with http:, or with an http(s) address on a local or private host (the list is the one email-relative-link uses); cid: and data: images are not read; the address is shown without its query; one finding for each email, at the first line",
+  ],
   "printful-price": [
     "A synced Printful variant's retail price is different from the price Stripe charges for the product.",
     "Anything that reads Printful's price (a storefront sync, an invoice, a packing slip) shows customers a different number from the one they paid.",
@@ -1658,6 +1686,12 @@ export const CHECK_TEXT: Readonly<
     "Every hop is a wait on a phone, often on a weak signal, and one broken hop breaks the code.",
     "Redirect the printed address straight to its page.",
     "More than two 3xx in the trail; the trail is in the evidence",
+  ],
+  "email-no-text-part": [
+    "An .html email has no .txt file with the same name beside it, and gaugeline.emails.json says every email should have one.",
+    "A message with only an HTML part is more likely to be treated as bulk mail, and anyone whose mail client shows text only, or reads aloud, gets nothing.",
+    "Export or write the plain-text version (order.html and order.txt), and send both as one multipart message.",
+    'only when gaugeline.emails.json sets "textVersion": true; an .html or .htm email with no .txt of the same name in the same folder (order.es.html wants order.es.txt); without that setting the check says it could not run and passes nothing',
   ],
   "printful-missing": [
     "A product on your website has no matching product in Printful.",

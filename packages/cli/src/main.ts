@@ -119,6 +119,7 @@ import { runTags } from "./tags.js";
 import { runDeliveryCommand, runPlatformCommand } from "./delivery.js";
 import { runQuery } from "./query.js";
 import type { ScaffoldFs } from "./scaffold-write.js";
+import { runEmails } from "./emails.js";
 import { runRoutes } from "./routes.js";
 import { formatRunAll, runAll, runAllExit } from "./run-all.js";
 import { readSites, selectSites, SITES_FILE } from "./sites.js";
@@ -1052,6 +1053,16 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         ci: args.ci,
       };
     }
+    case "emails":
+      return {
+        outcome: await runEmails(args, io, {
+          cwd: deps.cwd ?? process.cwd(),
+          now: (deps.now ?? io.now ?? (() => new Date()))(),
+          ...(deps.fetcher ? { fetcher: deps.fetcher } : {}),
+          color: useColor(io.stdout, io.env ?? {}),
+        }),
+        ci: args.ci,
+      };
     case "run": {
       const env = io.env ?? {};
       const ci = args.ci;

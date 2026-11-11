@@ -5,6 +5,7 @@ import {
   accessConfigSchema,
   consentConfigSchema,
   cutoverConfigSchema,
+  emailsConfigSchema,
   eventsConfigSchema,
   factsConfigSchema,
   hiddenConfigSchema,
@@ -24,6 +25,7 @@ import {
   type AccessConfig,
   type ConsentConfig,
   type CutoverConfig,
+  type EmailsConfig,
   type EventsConfig,
   type FactsConfig,
   type HiddenConfig,
@@ -50,6 +52,8 @@ export const LANGUAGES_CONFIG_FILE = "gaugeline.languages.json";
 export const FACTS_CONFIG_FILE = "gaugeline.facts.json";
 /** The business's payment handles and links, likewise. */
 export const PAYMENTS_CONFIG_FILE = "gaugeline.payments.json";
+/** What the project says about its rendered emails (a text version is expected, click-tracking patterns), likewise. */
+export const EMAILS_CONFIG_FILE = "gaugeline.emails.json";
 /** The database project and roles to test its access rules as, likewise. Keys stay in the environment. */
 export const ACCESS_CONFIG_FILE = "gaugeline.access.json";
 /** The business listings to compare with the site (Google, Yelp, Apple, bio links), likewise. Keys stay in the environment. */
@@ -121,6 +125,10 @@ export function readFacts(dir: string): FactsConfig | undefined {
 
 export function readPayments(dir: string): PaymentsConfig | undefined {
   return readJsonConfig(dir, PAYMENTS_CONFIG_FILE, paymentsConfigSchema, "payment details");
+}
+
+export function readEmailsConfig(dir: string): EmailsConfig | undefined {
+  return readJsonConfig(dir, EMAILS_CONFIG_FILE, emailsConfigSchema, "the email settings");
 }
 
 export function readAccess(dir: string): AccessConfig | undefined {

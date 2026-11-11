@@ -85,6 +85,16 @@
       "version",
       "webhook"
     ],
+    "emails": [
+      "allow-private",
+      "base",
+      "ci",
+      "help",
+      "json",
+      "quiet",
+      "verbose",
+      "version"
+    ],
     "launch": [
       "allow-private",
       "allow-secret-key",
