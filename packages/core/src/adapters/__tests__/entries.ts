@@ -160,7 +160,6 @@ export const wordpressEntry: ContractEntry = {
   },
 };
 
-
 /**
  * Saltmarsh Supper Club: a Webflow site with events, menu items and testimonials, one event staged and
  * never published, one a draft, one archived, and a menu item with a later edit not yet published (see
@@ -199,7 +198,6 @@ export const webflowEntry: ContractEntry = {
   // The collections and the first events page are answered; the menu items' page is the first refused.
   rateLimit: { options: { types: ["events", "menu-items"] }, succeedFirst: 2, atLeast: 2 },
 };
-
 
 export const ENTRIES: readonly ContractEntry[] = [
   sanityEntry,
