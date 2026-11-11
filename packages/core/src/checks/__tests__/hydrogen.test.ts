@@ -373,35 +373,40 @@ describe("hydrogen: integration", () => {
   it("the hydrogen-like fixture produces each finding, and only GET and HEAD leave the machine", async () => {
     const site = await startFixture("hydrogen-like");
     try {
-      const fetcher = createFetcher({ allowPrivate: true, hosts: site.hosts });
+      const fetcher = createFetcher({ allowPrivate: true });
       const { result } = await checkSite({ address: site.origin, fetcher, only: IDS });
-      const journal = await checkSite({
-        address: `${site.origin}/journal.html`,
-        fetcher,
-        only: ["hydrogen-preview-indexable"],
-      });
-      const by = Object.fromEntries(
-        [...result.findings, ...journal.result.findings].map((f) => [f.checkId, f.evidence]),
-      );
-      expect(Object.keys(by).sort()).toEqual(
-        [
-          "hydrogen-preview-canonical",
-          "hydrogen-preview-indexable",
-          "hydrogen-prices-disagree",
-          "hydrogen-private-fields",
-        ].sort(),
-      );
+      const by = Object.fromEntries(result.findings.map((f) => [f.checkId, f.evidence]));
+      expect(Object.keys(by).sort()).toEqual([
+        "hydrogen-preview-canonical",
+        "hydrogen-prices-disagree",
+        "hydrogen-private-fields",
+      ]);
       expect(by["hydrogen-private-fields"]).toBe(
         "__reactRouterContext has privateStorefrontToken (field names only)",
       );
       expect(by["hydrogen-prices-disagree"]).toBe(
         "the page shows 38.00 but the product data 36.00 USD",
       );
-      expect(by["hydrogen-preview-indexable"]).toMatch(
-        /o2\.myshopify\.dev answers 200 with no noindex/,
-      );
       expect([...site.methods.keys()].filter((m) => m !== "GET" && m !== "HEAD")).toEqual([]);
       expect(JSON.stringify(result.couldNotCheck)).toMatch(/needs a cart/);
+    } finally {
+      await site.close();
+    }
+  });
+
+  it("a linked preview deployment that answers without noindex is found, with GET only", async () => {
+    const site = await startFixture("hydrogen-preview-link");
+    try {
+      const fetcher = createFetcher({ allowPrivate: true, hosts: site.hosts });
+      const { result } = await checkSite({
+        address: site.origin,
+        fetcher,
+        only: ["hydrogen-preview-indexable"],
+      });
+      expect(result.findings.map((f) => f.evidence)).toEqual([
+        "http://marrowlane-preview-4f2a.o2.myshopify.dev answers 200 with no noindex (linked from this page)",
+      ]);
+      expect([...site.methods.keys()].filter((m) => m !== "GET" && m !== "HEAD")).toEqual([]);
     } finally {
       await site.close();
     }

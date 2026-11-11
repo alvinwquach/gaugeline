@@ -157,7 +157,7 @@ const NEEDS_LIVE_STORES = new Set([
   // marks them as stand-ins (runner.test.ts duplicate-host, launch tests for staging-indexable).
   "host-duplicate",
   "staging-indexable",
-  // Asks a preview host the page links to (hydrogen-like /journal.html), which is another host: confirmed in-process
+  // Asks a preview host the page links to (the hydrogen-preview-link fixture), which is another host: confirmed in-process
   // with the fetcher's hosts map (core checks/__tests__/hydrogen.test.ts).
   "hydrogen-preview-indexable",
 ]);
