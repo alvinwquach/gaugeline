@@ -1495,3 +1495,28 @@ export type { AdvisoryToolDeps, AdvisoryToolInput } from "./advisory/tool.js";
 export { isAdvisoryId } from "./advisory/target.js";
 export type { WordPressData } from "./advisory/evidence.js";
 export * from "./adapters/index.js";
+
+export { BACKUPS_CHECKS } from "./checks/backups.js";
+export { addBackupsChecks, createBackupsRegistry } from "./backups/registry.js";
+export {
+  backupsConfigSchema,
+  DEFAULT_MAX_AGE_DAYS,
+  DEFAULT_SHRINK_PERCENT,
+} from "./backups/config.js";
+export type { BackupsConfig } from "./backups/config.js";
+export { BACKUPS_ENV_VARS, readSanityBackups, readSupabaseBackups } from "./backups/providers.js";
+export { createBackups } from "./backups/reader.js";
+export type { Backups, BackupsSettings } from "./backups/reader.js";
+export { buildBackupsSummary, formatBackupsSummary } from "./backups/summary.js";
+export type { BackupsSummary } from "./backups/summary.js";
+export { manualBackups } from "./backups/manual.js";
+export type { ManualBackup } from "./backups/manual.js";
+export { exportDateOf, judgeExports, formatBytes } from "./backups/judge.js";
+export type {
+  BackupsReading,
+  ExportFile,
+  ExportLister,
+  ExportRead,
+  PlatformRead,
+  RawExportFile,
+} from "./backups/types.js";

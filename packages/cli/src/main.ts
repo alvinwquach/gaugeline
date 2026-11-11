@@ -1613,6 +1613,10 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           couldNotCheck: result.couldNotCheck,
           people: handoff.people,
           registry,
+          // Systems whose backups cannot be read become checklist lines (see `gaugeline backups`).
+          backupLines: manualBackups(snapshot, undefined)
+            .filter((m) => m.id !== "supabase" && m.id !== "sanity")
+            .map((m) => m.line),
         });
         const written = await writeHandoff({
           flags: args.handoff,
