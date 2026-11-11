@@ -41,6 +41,14 @@ Sanity (`adapters/sanity.ts`) is the worked example. The rules are the same for 
   named, ask for none. Reports show field names and the mismatch, never the client's words.
 - **The key** comes from the environment, travels in a header and never in an address, and is blanked
   from every message (`createRedactor`). Say which `keyKind` it is: `read-only`, `scoped` or `full-access`.
+  An adapter that reads only what the site shows every visitor (`adapters/sitemap-feed.ts`) asks for no
+  key: it is `read-only` with `noKey: true`, and the contract entry leaves `key` out, so the suite checks
+  that no request carries an `Authorization` header or a cookie.
+- **No fields?** A platform that has none (a sitemap) answers `fieldCounts()` with `AdapterCouldNotCheck`
+  whose reason starts "Not applicable", leaves every `fieldHashes` empty, and returns `"not-applicable"`
+  from `draftsReachable()` without asking anything. The contract entry leaves `expected.fields` out.
+- **No date?** `PublishedDoc.updatedAt` is optional for the same reason: when the platform does not say,
+  leave it out. Never make a date up.
 - **Could not check, with the reason.** Anything the platform does not expose, or a key that may not
   read it, throws `AdapterCouldNotCheck`. Never scrape an admin screen and never report a pass.
 - **Rate limits.** Wait once for a short Retry-After, then throw `AdapterRateLimitedError` carrying what
