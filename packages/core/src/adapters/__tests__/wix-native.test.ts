@@ -425,14 +425,25 @@ describe("pagination stops at the real end", () => {
     expect(seen).toHaveLength(1);
   });
 
-  it("an answer with no pagingMetadata at all is the end only when its page is shorter than the limit asked for", async () => {
+  it("an answer with no paging information (no pagingMetadata, or one with no cursor and no hasNext) is the end only when its page is shorter than the limit asked for", async () => {
     const bare = (n: number) => () =>
       json(200, { dataItems: items(n).map((i) => ({ id: i.id, data: i.data })) });
     // 3 items for a limit of 100: nothing says there is more, and the page is not full.
     const short = build({ handler: bare(3) }, { pageSize: 100, ...only });
     expect((await short.adapter.types())[0]?.count).toBe(3);
     // A full page (100 of 100) with nothing about paging could be the first of many: never the whole count.
-    for (const metadata of [undefined, null, "none", []]) {
+    // Nothing in the metadata says whether there is more: absent, not an object, or an object with no cursor
+    // and no hasNext (a count or a total is not an end).
+    for (const metadata of [
+      undefined,
+      null,
+      "none",
+      [],
+      {},
+      { count: 100 },
+      { cursors: {} },
+      { total: 500 },
+    ]) {
       const { adapter } = build(
         {
           handler: () =>
@@ -446,6 +457,20 @@ describe("pagination stops at the real end", () => {
       const reason = await reasonOf(adapter.types());
       expect(reason).toContain("Programs");
       expect(reason).toContain("not read to the end");
+    }
+    // The same metadata on a page shorter than the limit is the end.
+    for (const metadata of [{}, { count: 3 }, { cursors: {} }, { total: 3 }]) {
+      const { adapter } = build(
+        {
+          handler: () =>
+            json(200, {
+              dataItems: items(3).map((i) => ({ id: i.id, data: i.data })),
+              pagingMetadata: metadata,
+            }),
+        },
+        { pageSize: 100, ...only },
+      );
+      expect((await adapter.types())[0]?.count).toBe(3);
     }
   });
 

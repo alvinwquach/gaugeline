@@ -100,7 +100,6 @@ describe("docs/integrations/wix.md", () => {
   it("says a Wix Data query returns every item the key can read, not only published ones", () => {
     const reads = (entries[0]?.docs?.reads ?? "").split("With the key:")[1] ?? "";
     expect(reads).not.toMatch(/published items/i);
-    expect(index).not.toMatch(/field counts and published items/);
     expect(page).not.toMatch(/published items/i);
     expect(page).toContain("every item the key can read");
   });
@@ -108,6 +107,11 @@ describe("docs/integrations/wix.md", () => {
   it("says Gaugeline cannot check that a key is read-only, and that making one is the owner's job", () => {
     expect(page).toMatch(/cannot (see|check) (what|whether)[^.]*key/i);
     expect(page).toContain("you make");
+  });
+
+  it("the sidebar and index title carries (beta), like the page's own heading and Framer's", () => {
+    expect(entries[0]?.page?.title).toBe("Wix: content checks for sites built on Wix (beta)");
+    expect(entries[0]?.page?.title).toBe(page.split("\n")[0]?.replace(/^# /, ""));
   });
 
   it("is marked beta, with the reason: the endpoint shapes are not confirmed", () => {

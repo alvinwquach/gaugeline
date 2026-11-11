@@ -307,24 +307,19 @@ export function createWixAdapter(options: WixAdapterOptions): WixAdapter {
       }
       if (!isRecord(json) || !Array.isArray(json.dataItems))
         throw new AdapterCouldNotCheck("Wix answered with something that is not a list of items.");
-      const meta = json.pagingMetadata;
-      if (!isRecord(meta)) {
-        // No paging information at all: a page shorter than the limit asked for is the end, a full one could
-        // be the first of many and is never reported as the whole list.
-        if (json.dataItems.length >= size)
-          throw new AdapterCouldNotCheck(
-            `Wix answered for the "${type}" collection with a full page and no paging information, so it was not read to the end.`,
-          );
-        return { items: json.dataItems as unknown[], next: undefined, hasNext: undefined };
-      }
+      const meta = isRecord(json.pagingMetadata) ? json.pagingMetadata : {};
       const cursors = isRecord(meta.cursors) ? meta.cursors : {};
       const next =
         typeof cursors.next === "string" && cursors.next !== "" ? cursors.next : undefined;
-      return {
-        items: json.dataItems as unknown[],
-        next,
-        hasNext: typeof meta.hasNext === "boolean" ? meta.hasNext : undefined,
-      };
+      const hasNext = typeof meta.hasNext === "boolean" ? meta.hasNext : undefined;
+      // Nothing says whether there is more (no pagingMetadata, or one with no cursor and no hasNext: a count
+      // or a total is not an end). A page shorter than the limit asked for is the end; a full one could be the
+      // first of many and is never reported as the whole list.
+      if (next === undefined && hasNext === undefined && json.dataItems.length >= size)
+        throw new AdapterCouldNotCheck(
+          `Wix answered for the "${type}" collection with a full page and no paging information, so it was not read to the end.`,
+        );
+      return { items: json.dataItems as unknown[], next, hasNext };
     }
   }
 

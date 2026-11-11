@@ -67,6 +67,6 @@ export const entries: readonly AdapterEntry[] = [
       reads:
         "With no key: the items the sitemap lists, from the site's `sitemap.xml` and feeds, with their dates. With the key: the collections you name, through Wix's Query Data Items endpoint (the one POST Gaugeline sends, ADR-0006): counts, field counts and a fingerprint for every item the key can read. [Wix](wix.md)",
     },
-    page: { slug: "integrations/wix", title: "Wix: content checks for sites built on Wix" },
+    page: { slug: "integrations/wix", title: "Wix: content checks for sites built on Wix (beta)" },
   },
 ];
