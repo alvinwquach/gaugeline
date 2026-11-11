@@ -41,6 +41,7 @@ const FIXTURES = [
   "qwik-like",
   "qwik-dev",
   "solidstart-like",
+  "angular-like",
   "gatsby-like",
   "gatsby-dev",
   "sveltekit-like",

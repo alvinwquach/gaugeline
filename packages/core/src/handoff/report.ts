@@ -98,6 +98,8 @@ export interface BuildInput {
   couldNotCheck: readonly CouldNotCheck[];
   people: People;
   registry: CheckRegistry;
+  /** Systems whose backups Gaugeline cannot read (gaugeline backups): each becomes a line on the owner's checklist, never a guess. */
+  backupLines?: readonly string[];
 }
 
 /** A sentence ends in one full stop: a registrar called "Plume Registrar, Inc." does not get two. */
@@ -339,7 +341,14 @@ export function buildHandoff(input: BuildInput): HandoffSummary {
     },
     systems,
     findings,
-    checklist: checklistFor(systems),
+    checklist: [
+      ...checklistFor(systems),
+      ...(input.backupLines ?? []).map((line): ChecklistItem => ({
+        group: "ask",
+        system: "backups",
+        text: `Backups: ${clip(line, 400)}`,
+      })),
+    ],
     notes,
   };
 }
