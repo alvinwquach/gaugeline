@@ -86,6 +86,7 @@ compares with the last, and builds each site's [weekly digest](/docs/guides/week
 Each key comes from a secret named with the site's prefix (`HARBOUR_GAUGELINE_BASIC_AUTH`).
 Add `--renewals` to the command to also read each site's domain registration, certificates and
 tokens, so a date drifting closer is caught the night it crosses a threshold: [Renewals](renewals.md).
+Add `--cost` to also find the pages that run up a hosting bill and a usage figure that jumped: [Hosting cost](hosting-cost.md).
 
 ::: warning
 Run files hold findings and their evidence. Keep the repository that stores them **private**.

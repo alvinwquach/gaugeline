@@ -12,6 +12,7 @@ import type { AccessRead } from "./access/probe.js";
 import type { DnsReader } from "./dns.js";
 import type { Renewals } from "./renewals/reader.js";
 import type { Handoff } from "./handoff/reader.js";
+import type { Cost } from "./cost/reader.js";
 import type { HiddenConfig } from "./hidden.js";
 import type { NavRules } from "./nav/read-regions.js";
 import type { ContentNow, PagesConfig } from "./snapshot/compare.js";
@@ -196,6 +197,12 @@ export interface CheckContext {
    * unless the run is `gaugeline handoff`: those checks then do nothing.
    */
   handoff?: Handoff;
+  /**
+   * What the cost checks read: every page visited twice a few seconds apart and the account usage of the
+   * providers whose tokens are set, once each on first use. Absent unless the run is `gaugeline cost` or
+   * has --cost: those checks then do nothing.
+   */
+  cost?: Cost;
   /** The page's App Store and Google Play apps, looked up once on first use. */
   apps?: () => Promise<AppLookup[]>;
   /**

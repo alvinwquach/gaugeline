@@ -8,6 +8,7 @@ import {
   emailsConfigSchema,
   renewalsConfigSchema,
   handoffConfigSchema,
+  costConfigSchema,
   eventsConfigSchema,
   factsConfigSchema,
   hiddenConfigSchema,
@@ -29,6 +30,7 @@ import {
   type CutoverConfig,
   type EmailsConfig,
   type RenewalsConfig,
+  type CostConfig,
   type HandoffConfig,
   type EventsConfig,
   type FactsConfig,
@@ -62,6 +64,8 @@ export const EMAILS_CONFIG_FILE = "gaugeline.emails.json";
 export const RENEWALS_CONFIG_FILE = "gaugeline.renewals.json";
 /** Who the client and the freelancer are, and which Vercel and Sanity projects to read, for the handoff report, likewise. Tokens stay in the environment. */
 export const HANDOFF_CONFIG_FILE = "gaugeline.handoff.json";
+/** What the project says about its hosting cost (the pages that should be cached, other pages to visit, the usage window), likewise. Tokens stay in the environment. */
+export const COST_CONFIG_FILE = "gaugeline.cost.json";
 /** The database project and roles to test its access rules as, likewise. Keys stay in the environment. */
 export const ACCESS_CONFIG_FILE = "gaugeline.access.json";
 /** The business listings to compare with the site (Google, Yelp, Apple, bio links), likewise. Keys stay in the environment. */
@@ -145,6 +149,10 @@ export function readRenewalsConfig(dir: string): RenewalsConfig | undefined {
 
 export function readHandoffConfig(dir: string): HandoffConfig | undefined {
   return readJsonConfig(dir, HANDOFF_CONFIG_FILE, handoffConfigSchema, "the handoff settings");
+}
+
+export function readCostConfig(dir: string): CostConfig | undefined {
+  return readJsonConfig(dir, COST_CONFIG_FILE, costConfigSchema, "the hosting cost settings");
 }
 
 export function readAccess(dir: string): AccessConfig | undefined {

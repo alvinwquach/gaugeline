@@ -23,6 +23,7 @@ export const COMMANDS = [
   "emails",
   "renewals",
   "handoff",
+  "cost",
 ] as const;
 export type Command = (typeof COMMANDS)[number];
 
@@ -78,6 +79,22 @@ export const HELP: Record<string, string> = {
       "handoff.md and handoff.json into --out (default gaugeline-handoff), never",
       "over a file unless --force. Read-only: it never logs in, adds, removes or",
       "changes anything, and the report holds no password, token or key.",
+    ].join("\n"),
+    footer: "Exit codes: 0 ran, 1 --ci with a fix-first finding, 2 could not run",
+  }),
+  cost: renderHelp(FLAGS, "cost", {
+    usage: "gaugeline cost <address> [options]",
+    summary: [
+      "Find what runs up a client's hosting bill, before the invoice does. Visits the",
+      "page twice a few seconds apart (and any pages listed in gaugeline.cost.json)",
+      "and says which ones change on every visit, which you marked static never hit",
+      "the CDN's cache, and which have too short a cache lifetime. With a usage token",
+      "in the environment (GAUGELINE_VERCEL_TOKEN) it also flags a usage figure that",
+      "jumped past a multiple of its recent average. Sites on Wix, Squarespace,",
+      "Webflow or Framer have a fixed plan, so usage is not applicable there. Prints",
+      "the pages by likely cause, then what to fix. Read-only: GET only, it never",
+      "buys, upgrades or changes anything. The same checks run in the page check with",
+      "--cost, and so in gaugeline run --all --cost.",
     ].join("\n"),
     footer: "Exit codes: 0 ran, 1 --ci with a fix-first finding, 2 could not run",
   }),

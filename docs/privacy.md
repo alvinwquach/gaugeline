@@ -293,6 +293,24 @@ removed or changed. Text from a provider (a team's name, a project's title) is e
 the Markdown, with invisible characters written out. The report is written only into the folder you
 name (inside the one you ran from), never over a file without `--force`, all three files or none.
 
+### Hosting cost (gaugeline cost)
+
+`gaugeline cost <address>` (and `--cost` on the page check) looks for what runs up a hosting bill
+([Hosting cost](guides/hosting-cost.md)). Every request is `GET`, through the fetcher.
+
+- **The site itself.** The page is asked for a second time a few seconds after the first, with no cookies
+  and no login, and so is each page you list under `pages` in `gaugeline.cost.json` (up to ten, on the same
+  site), twice each. The bodies are compared in memory and dropped; only the first differing word of each
+  is kept, in a finding, and it is escaped like all text from a site. Nothing is submitted.
+- **Vercel, only for a token you set.** One `GET https://api.vercel.com/v1/billing/charges` for the
+  complete days before today (and `teamId` when you name a team), with the token in a request header to that
+  host only. Read from the answer: each service's name, quantity, unit, cost and currency by day. The token
+  is never put in an address, a log, a finding or a report.
+- **Sanity.** Nothing is requested: its usage has no documented read API Gaugeline could confirm.
+
+What it prints: paths, cache header values, usage figures and dates. It never buys, upgrades, renews, logs in
+or changes anything.
+
 ### Saving the requests (--save-requests)
 
 By default a run keeps what it asked for in memory and writes only the report. `--save-requests <file>`

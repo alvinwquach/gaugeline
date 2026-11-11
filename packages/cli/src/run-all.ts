@@ -78,6 +78,7 @@ async function runSite(
     now: () => Date;
     allowPrivate: boolean;
     renewals: boolean;
+    cost: boolean;
     runOne: RunOne;
   },
 ): Promise<SiteOutcome> {
@@ -95,6 +96,7 @@ async function runSite(
         "--quiet",
         ...(opts.allowPrivate ? ["--allow-private"] : []),
         ...(opts.renewals ? ["--renewals"] : []),
+        ...(opts.cost ? ["--cost"] : []),
       ],
       {
         stdout: { write: (s: string) => out.push(s) },
@@ -136,6 +138,8 @@ export async function runAll(
     allowPrivate?: boolean;
     /** Each site's run also checks what lapses (--renewals). */
     renewals?: boolean;
+    /** Each site's run also checks what runs up the hosting bill (--cost). */
+    cost?: boolean;
     runOne: RunOne;
   },
 ): Promise<SiteOutcome[]> {
@@ -157,6 +161,7 @@ export async function runAll(
               now,
               allowPrivate: opts.allowPrivate ?? false,
               renewals: opts.renewals ?? false,
+              cost: opts.cost ?? false,
               runOne: opts.runOne,
             }),
           );

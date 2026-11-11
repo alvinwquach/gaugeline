@@ -99,6 +99,14 @@ import {
   formatRenewalRows,
   RENEWALS_CHECKS,
   RENEWALS_ENV_VARS,
+  COST_CHECKS,
+  COST_ENV_VARS,
+  DEFAULT_MINIMUM_SECONDS,
+  buildCostSummary,
+  createCost,
+  createCostRegistry,
+  detectBuilder,
+  formatCostSummary,
 } from "@gaugeline/core";
 import { parseCliArgs } from "./args.js";
 import { HELP } from "./help.js";
@@ -156,6 +164,7 @@ import {
   readPayments,
   readRenewalsConfig,
   readHandoffConfig,
+  readCostConfig,
   readEvents,
   readSchemaRules,
   readTags,
@@ -212,6 +221,12 @@ export function isCiEnv(env: Record<string, string | undefined>): boolean {
 }
 
 /** Exit codes are a public contract: 0 ran, 1 --ci found fix-first work, 2 could not run. */
+/** A registry with the cost checks added: for a run that asks for both --renewals and --cost. */
+function withCostChecks(registry: ReturnType<typeof createCostRegistry>) {
+  for (const check of COST_CHECKS) registry.register(check);
+  return registry;
+}
+
 export const EXIT = { ok: 0, findings: 1, couldNotRun: 2 } as const;
 
 export interface Deps {
@@ -234,6 +249,8 @@ export interface Deps {
   retentionDays?: number;
   /** `gaugeline renewals`, `--renewals`: where the registry's bootstrap file is and the port https answers on. Tests only. */
   renewals?: { bootstrapUrl?: string; port?: number };
+  /** `gaugeline cost`, `--cost`: how long to wait between the two visits to a page, and how the wait is made. Tests pass one that does not wait. */
+  cost?: { delayMs?: number; sleep?: (ms: number) => Promise<void> };
   /** Where gaugeline.schema.json is looked for. Defaults to the current directory. */
   cwd?: string;
   /** Opens the written report. Defaults to the system browser; tests pass a fake. */
@@ -934,6 +951,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         parallel: args.parallel,
         allowPrivate: args.allowPrivate,
         renewals: args.renewals,
+        cost: args.cost,
         runOne: (argv, siteIo, siteCwd) => main(argv, siteIo, { ...deps, cwd: siteCwd }),
       });
       io.stdout.write(`${formatRunAll(rows)}\n`);
@@ -1297,21 +1315,30 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       // The renewals checks (the domain, the certificates of the bare domain and www, tokens, runtimes)
       // are in the run only with --renewals or `gaugeline renewals`.
       const renewing = args.renewals;
+      // The cost checks (pages that change on every visit, pages that never hit the cache, usage jumps)
+      // are in the run only with --cost or `gaugeline cost`.
+      const costing = args.cost;
       // gaugeline handoff: the page registry and the three handoff checks, and only those run.
       const handing = args.command === "handoff";
       const registry =
         deps.registry ??
         (handing
           ? createHandoffRegistry()
-          : renewing
-            ? createRenewalsRegistry()
-            : createPageRegistry());
+          : renewing && costing
+            ? withCostChecks(createRenewalsRegistry())
+            : costing
+              ? createCostRegistry()
+              : renewing
+                ? createRenewalsRegistry()
+                : createPageRegistry());
       let only: readonly string[] | undefined =
         deps.registry === undefined && skeleton ? skeleton : undefined;
       if (args.command === "renewals")
         only = ["certificate-expiring", ...RENEWALS_CHECKS.map((c) => c.id)].filter((id) =>
           registry.has(id),
         );
+      if (args.command === "cost")
+        only = COST_CHECKS.map((c) => c.id).filter((id) => registry.has(id));
       if (handing) only = HANDOFF_CHECKS.map((c) => c.id).filter((id) => registry.has(id));
       if (launch) {
         const registered = new Set(registry.all().map((c) => c.id));
@@ -1325,7 +1352,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       const dns = args.dns ? (deps.dns ?? createDnsReader()) : undefined;
       const registeredIds = new Set(registry.all().map((c) => c.id));
       const dnsSkipped =
-        !launch && args.command !== "renewals" && !handing && !args.dns
+        !launch && args.command !== "renewals" && args.command !== "cost" && !handing && !args.dns
           ? EMAIL_PRESET.filter((id) => registeredIds.has(id))
           : [];
       // --save-requests: the file is claimed before the first request, so a path that cannot be
@@ -1342,6 +1369,19 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
               env: freezeEnv(io.env ?? {}, RENEWALS_ENV_VARS),
               ...(deps.renewals?.port !== undefined ? { port: deps.renewals.port } : {}),
               ...(deps.renewals?.bootstrapUrl ? { bootstrapUrl: deps.renewals.bootstrapUrl } : {}),
+            },
+            fetcher,
+          )
+        : undefined;
+      // What the cost checks read, built here so the summary can be printed from what they read.
+      const cost = costing
+        ? createCost(
+            {
+              config: readCostConfig(cwd) ?? {},
+              env: freezeEnv(io.env ?? {}, COST_ENV_VARS),
+              now: deps.now ?? io.now ?? (() => new Date()),
+              ...(deps.cost?.delayMs !== undefined ? { delayMs: deps.cost.delayMs } : {}),
+              ...(deps.cost?.sleep ? { sleep: deps.cost.sleep } : {}),
             },
             fetcher,
           )
@@ -1378,6 +1418,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         registry,
         ...(renewals ? { renewals } : {}),
         ...(handoff ? { handoff } : {}),
+        ...(cost ? { cost } : {}),
         ...(args.command === "renewals" || handing ? { tolerateUnreachable: true } : {}),
         // The walking skeleton (0.0.x) runs one check; an injected registry is used as given.
         ...(only ? { only } : {}),
@@ -1541,6 +1582,26 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           io.stdout.write(
             `Renewals for ${new URL(snapshot.finalUrl).host}, by date\n${lines.length > 0 ? lines.join("\n") : "Nothing with a date could be read."}\n\n`,
           );
+        }
+        // gaugeline cost: the pages by likely cause and what the usage says first, then what to fix.
+        if (cost && args.command === "cost") {
+          const when = (deps.now ?? io.now ?? (() => new Date()))();
+          const config = cost.config;
+          // A fixed plan has no usage to read: nothing is asked of any usage API.
+          const builder = detectBuilder(snapshot);
+          const lines = formatCostSummary(
+            buildCostSummary({
+              site: new URL(snapshot.finalUrl).host,
+              reads: await cost.pages(snapshot),
+              usage: builder ? { providers: [] } : await cost.usage(),
+              now: when,
+              minimumSeconds: config.minimumSeconds ?? DEFAULT_MINIMUM_SECONDS,
+              usageSettings: cost.usageSettings,
+              builder,
+              staticListed: (config.static?.length ?? 0) > 0,
+            }),
+          );
+          io.stdout.write(`${lines.join("\n")}\n\n`);
         }
         io.stdout.write(
           formatTerminal({

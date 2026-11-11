@@ -104,6 +104,7 @@ export const UNLISTED: NavPage[] = [
   { slug: "guides/payments", title: "Payment details everywhere" },
   { slug: "guides/emails", title: "Transactional emails: the emails customers get" },
   { slug: "guides/renewals", title: "Renewals: see what lapses before the site goes dark" },
+  { slug: "guides/hosting-cost", title: "Hosting cost: find what runs up the bill" },
   {
     slug: "guides/handoff",
     title: "Handoff: who owns what, and can the client get in without you",
