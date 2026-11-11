@@ -5,7 +5,7 @@ import type { Transport } from "../../fetcher.js";
  * Harbour Lantern Inn's invented Contentstack stack: a boutique hotel whose site an agency built on Contentstack,
  * with rooms, offers and team members. Nothing here was recorded from a real stack, and every address is on a
  * reserved `.example` domain. The shapes follow the Content Delivery API's documented answers (docs page:
- * "Sources"); every value is invented.
+ * "A note on sources"); every value is invented.
  */
 export const CONTENTSTACK_SITE = "https://harbour-lantern.example";
 export const CONTENTSTACK_HOST = "cdn.contentstack.io";

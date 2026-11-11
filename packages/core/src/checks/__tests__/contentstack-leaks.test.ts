@@ -60,6 +60,15 @@ describe("contentstack-preview-token", () => {
       expect(ids(miss), miss).not.toContain("contentstack-preview-token");
   });
 
+  it("a delivery token next to a nested Live Preview config is not a leak, and a real preview token beside it is the only finding", () => {
+    const nested = `Contentstack.Stack({delivery_token:"${delivery}",live_preview:{enable:true,host:"rest-preview.contentstack.com"}})`;
+    expect(ids(nested)).not.toContain("contentstack-preview-token");
+    const both = `Contentstack.Stack({delivery_token:"${delivery}",live_preview:{enable:true,host:"rest-preview.contentstack.com",preview_token:"${preview}"}})`;
+    const found = findLeaks(both).filter((l) => l.detector === "contentstack-preview-token");
+    expect(found).toHaveLength(1);
+    expect(both.slice(found[0]?.offset, (found[0]?.offset ?? 0) + preview.length)).toBe(preview);
+  });
+
   it("a page with a preview token gives exactly one secret-in-js finding with no character of the token; a delivery token gives none", async () => {
     const quiet = page(
       `<script>Contentstack.Stack({api_key:"${stackKey}",delivery_token:"${delivery}",environment:"production"})</script>`,

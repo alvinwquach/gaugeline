@@ -75,6 +75,17 @@ function isContentfulDeliveryToken(secret: string, m: RegExpExecArray): boolean 
   return !(/preview/i.test(name) || PREVIEW_HOST.test(scopeOf(m, false)));
 }
 
+/**
+ * The text of the object literal a value sits in and no nested one: after the last "{" before it, up to the
+ * next "{" or "}" after it. A nested `live_preview:{...}` after a delivery token is another object.
+ */
+function ownObject(m: RegExpExecArray): string {
+  const start = m.index;
+  const before = m.input.slice(Math.max(0, start - PREVIEW_WINDOW), start);
+  const after = m.input.slice(start + m[0].length, start + m[0].length + PREVIEW_WINDOW);
+  return `${before.slice(before.lastIndexOf("{") + 1)} ${after.split(/[{}]/)[0] ?? ""}`;
+}
+
 /** The Contentstack Live Preview host (rest-preview.contentstack.com and its regional spellings). */
 const CONTENTSTACK_PREVIEW_HOST = /preview\.contentstack\.(?:com|io)/i;
 
@@ -133,7 +144,7 @@ export const DETECTORS: readonly Detector[] = Object.freeze([
     pattern:
       /(?<![A-Za-z0-9_$])(?<name>[A-Za-z0-9_$]{0,40}(?:token|key)[A-Za-z0-9_$]{0,40})["']?\s*[:=]\s*["'`](?<secret>cs[0-9a-f]{20,60})(?![A-Za-z0-9_-])/gi,
     verify: (_s, m) =>
-      CONTENTSTACK_PREVIEW_HOST.test(scopeOf(m, false)) ||
+      CONTENTSTACK_PREVIEW_HOST.test(ownObject(m)) ||
       (/preview/i.test(m.groups?.name ?? "") && /contentstack/i.test(m.input)),
   },
   {
