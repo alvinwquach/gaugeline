@@ -168,9 +168,11 @@ describe("planNewAdapter: unit (no disk)", () => {
     const k = known();
     expect(k.find((x) => x.id === "wordpress")).toEqual({ id: "wordpress" });
     expect(k.map((x) => x.id)).toEqual(expect.arrayContaining(["contentful", "framer", "duda"]));
-    expect(k.find((x) => x.id === "generic-api")?.plannedName).toBe(
-      "Any headless CMS with a read API",
-    );
+    // A planned adapter carries its planned name; a built one has none (which ones are planned changes with every merge).
+    const planned = k.filter((x) => x.plannedName !== undefined);
+    expect(planned.length).toBeGreaterThan(0);
+    for (const x of planned) expect(x.plannedName?.length).toBeGreaterThan(0);
+    expect(k.find((x) => x.id === "generic-api")).toEqual({ id: "generic-api" });
   });
 
   it("an adapter that is planned takes its planned name and replaces only its placeholder entry", () => {
