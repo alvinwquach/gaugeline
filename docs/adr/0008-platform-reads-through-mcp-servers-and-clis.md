@@ -370,10 +370,10 @@ non-JSON answer, `isError`, an unexpected field dropped, a request for more inpu
 token appears nowhere). Integration: a recorded `tools/list` and `tools/call` for each entry through
 `fetcher.query`; a server that lists a tool not on the allowlist (never called); a redirect (refused); a
 session in read-only mode that lists a write tool (the run stops). End to end: a run with
-`gaugeline.platforms.json` and the token set reads the fixture and prints the invented project's findings; with
+the platforms config file (gaugeline.platforms.json, not yet created) and the token set reads the fixture and prints the invented project's findings; with
 no entry or no token nothing is requested. Edge cases: a server that changes a tool's annotations between
 `tools/list` and the call; a tool name with different case or Unicode lookalikes; the `project_ref` that is not an
-id. The scan: `post-scan.ts` fails any file but the adapter that builds a `tools/call`, registers a platform read,
+id. The scan: post-scan.ts fails any file but the adapter that builds a `tools/call`, registers a platform read,
 or (Part B) calls `spawn`, `exec`, `execFile` or `fork` or sets `shell: true`; its self-test runs each way of
 evading it. A contract test asserts every entry has `documentation`, `vendorVersion`, a `listingHash` and
 `hints` as above, and that no entry has a write word in `tool`.

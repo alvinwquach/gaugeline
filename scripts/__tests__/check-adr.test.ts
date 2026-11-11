@@ -76,6 +76,7 @@ describe("check-adr: integration", () => {
       "0004-requests-the-checked-page-names.md",
       "0005-notifications-post-to-your-own-channels.md",
       "0006-read-only-post-queries.md",
+      "0007-open-image-optimizers.md",
       "0008-platform-reads-through-mcp-servers-and-clis.md",
       "README.md",
     ]);

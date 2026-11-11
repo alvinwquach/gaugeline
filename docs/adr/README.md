@@ -12,6 +12,7 @@ with a new record.
 | [0004](0004-requests-the-checked-page-names.md)             | Requests to addresses the checked page names                                                                 | accepted | 2026-11-05 |
 | [0005](0005-notifications-post-to-your-own-channels.md)     | Notifications post to your own channels                                                                      | accepted | 2026-11-06 |
 | [0006](0006-read-only-post-queries.md)                      | A POST is allowed for a documented read-only query                                                           | accepted | 2026-11-11 |
+| [0007](0007-open-image-optimizers.md)                       | Open image optimizers: read the config, probe only with consent and your own address                         | proposed | 2026-11-11 |
 | [0008](0008-platform-reads-through-mcp-servers-and-clis.md) | Platform reads through MCP servers and CLIs: a named allowlist, a read-only credential, never the hint alone | proposed | 2026-11-11 |
 
 Start a new record from [0000-template.md](0000-template.md).
