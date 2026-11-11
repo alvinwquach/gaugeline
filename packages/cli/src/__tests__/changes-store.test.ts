@@ -233,3 +233,25 @@ describe("--since with an unknown run id (review 2)", () => {
     );
   });
 });
+
+describe("links in the runs folder are not followed (re-review L1)", () => {
+  it.skipIf(process.platform === "win32")(
+    "a symlink to a run and a FIFO named like a run are skipped, and nothing hangs",
+    async () => {
+      const { symlinkSync } = await import("node:fs");
+      const { execFileSync } = await import("node:child_process");
+      const cwd = tmp();
+      const dir = hostDir(cwd, HOST);
+      mkdirSync(dir, { recursive: true });
+      const outside = join(cwd, "outside.json");
+      writeFileSync(
+        outside,
+        JSON.stringify(good("r-20261101T100000Z", "2026-11-01T10:00:00.000Z")),
+      );
+      symlinkSync(outside, join(dir, "r-20261101T100000Z.json"));
+      execFileSync("mkfifo", [join(dir, "r-20261102T100000Z.json")]);
+      expect(readRuns(cwd, HOST).runs).toEqual([]);
+    },
+    10_000,
+  );
+});

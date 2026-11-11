@@ -66,7 +66,8 @@ export function isRunRecord(v: unknown): v is RunRecord {
   if (typeof v.takenAt !== "string" || Number.isNaN(Date.parse(v.takenAt))) return false;
   if (!isObject(v.pages) || Object.keys(v.pages).length > MAX_PAGES) return false;
   for (const [path, p] of Object.entries(v.pages)) {
-    if (!isText(path) || !isObject(p)) return false;
+    // A page key is a site path: "constructor" or "toString" would otherwise hit the prototype.
+    if (!isText(path) || !path.startsWith("/") || !isObject(p)) return false;
     if (!isText(p.mainHash, 64) || !isList(p.links) || !isList(p.types) || !isList(p.scripts))
       return false;
     for (const k of ["title", "canonical", "h1"])
@@ -74,7 +75,13 @@ export function isRunRecord(v: unknown): v is RunRecord {
   }
   if (!Array.isArray(v.findings) || v.findings.length > MAX_FINDINGS) return false;
   for (const f of v.findings)
-    if (!isObject(f) || !isText(f.checkId, 100) || !isText(f.path) || !isText(f.title))
+    if (
+      !isObject(f) ||
+      !isText(f.checkId, 100) ||
+      !isText(f.path) ||
+      !f.path.startsWith("/") ||
+      !isText(f.title)
+    )
       return false;
   return v.offPage === undefined || (Number.isSafeInteger(v.offPage) && (v.offPage as number) >= 0);
 }

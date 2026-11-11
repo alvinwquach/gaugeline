@@ -6,7 +6,7 @@ import {
   readdirSync,
   renameSync,
   rmSync,
-  statSync,
+  lstatSync,
   writeFileSync,
 } from "node:fs";
 import { join, resolve, sep } from "node:path";
@@ -34,7 +34,11 @@ const PRUNED_FILE = "pruned-before.txt";
 const FILE_NAME = /^(r-\d{8}T\d{6}Z)\.json$/;
 /** A run is a few kilobytes; a bigger file is not one of ours. */
 const MAX_RUN_BYTES = 1_000_000;
-/** The newest runs read for one host. */
+/**
+ * The newest runs read for one host. The same cap applies when pruning: runs older than the newest
+ * 500 files are neither read nor pruned, so a host with more than that keeps its oldest files on disk
+ * until they are removed by hand.
+ */
 const MAX_RUN_FILES = 500;
 
 export function hostDir(cwd: string, host: string): string {
@@ -62,7 +66,9 @@ export function readRuns(cwd: string, host: string): { runs: RunRecord[]; pruned
   for (const name of names)
     try {
       const path = join(dir, name);
-      if (statSync(path).size > MAX_RUN_BYTES) continue;
+      // Never follow a link or open a device or a pipe: only a plain file of a sensible size.
+      const info = lstatSync(path);
+      if (info.isSymbolicLink() || !info.isFile() || info.size > MAX_RUN_BYTES) continue;
       const parsed: unknown = JSON.parse(readFileSync(path, "utf8"));
       if (isRunRecord(parsed) && `${parsed.id}.json` === name) runs.push(parsed);
     } catch {

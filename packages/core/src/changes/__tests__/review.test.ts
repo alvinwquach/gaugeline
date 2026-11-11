@@ -361,3 +361,74 @@ describe("deployment lists fail safe (review 3, 5, 14)", () => {
     expect(seen.find((s) => s.host === "evil.example")?.auth).toBeUndefined();
   });
 });
+
+describe("'history not kept' is only said when it is true (re-review M1)", () => {
+  const edit = (path: string): PageRecord => ({
+    ...page,
+    mainHash: path === "/book" ? "c".repeat(16) : page.mainHash,
+  });
+  it("a page first read after the prune marker is 'no earlier run', not 'history not kept'", async () => {
+    const runs = [
+      run("r-20261101T100000Z", "2026-11-01T10:00:00.000Z"),
+      run("r-20261103T100000Z", "2026-11-03T10:00:00.000Z", {
+        pages: { "/book": edit("/book") },
+        findings: [{ checkId: "viewport", path: "/book", title: "x" }],
+      }),
+    ];
+    const report = await buildChanges({
+      site: "h",
+      runs,
+      sources: none,
+      prunedBefore: "2026-10-01T00:00:00.000Z",
+    });
+    expect(report.items).toEqual([]);
+    expect(report.noHistory).toBe(1);
+    expect(formatChanges(report)).not.toContain("history not kept");
+  });
+  it("the earliest kept run is where history may have been cut", async () => {
+    const runs = [
+      run("r-20261101T100000Z", "2026-11-01T10:00:00.000Z", {
+        findings: [{ checkId: "viewport", path: "/events", title: "x" }],
+      }),
+      run("r-20261103T100000Z", "2026-11-03T10:00:00.000Z", {
+        findings: [{ checkId: "viewport", path: "/events", title: "x" }],
+      }),
+    ];
+    const report = await buildChanges({
+      site: "h",
+      runs,
+      since: { kind: "date", at: "2026-10-01T00:00:00.000Z" },
+      sources: none,
+      prunedBefore: "2026-10-01T00:00:00.000Z",
+    });
+    expect(report.items[0]?.sentence).toBe("Changed before 1 Oct 2026, history not kept.");
+  });
+});
+
+describe("a path is a path, never a property name (re-review L2)", () => {
+  it.each(["constructor", "toString", "__proto__", "no-slash"])(
+    "isRunRecord refuses a finding or page path of %s",
+    (path) => {
+      const r = run("r-20261101T100000Z", "2026-11-01T10:00:00.000Z");
+      expect(isRunRecord({ ...r, findings: [{ checkId: "a", path, title: "t" }] })).toBe(false);
+      expect(
+        isRunRecord(
+          JSON.parse(
+            `{"schema":1,"id":"r-20261101T100000Z","takenAt":"2026-11-01T10:00:00.000Z","pages":{"${path}":{"mainHash":"x","links":[],"types":[],"scripts":[]}},"findings":[]}`,
+          ),
+        ),
+      ).toBe(false);
+    },
+  );
+  it("even a record that skipped validation does not crash on such a path", async () => {
+    const runs = [
+      run("r-20261101T100000Z", "2026-11-01T10:00:00.000Z"),
+      run("r-20261103T100000Z", "2026-11-03T10:00:00.000Z", {
+        findings: [{ checkId: "a", path: "constructor", title: "t" }],
+      }),
+    ];
+    const report = await buildChanges({ site: "h", runs, sources: none });
+    expect(report.items).toEqual([]);
+    expect(report.noHistory).toBe(1);
+  });
+});

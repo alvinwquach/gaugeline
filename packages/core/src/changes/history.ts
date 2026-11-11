@@ -67,7 +67,7 @@ export function newFindings(
     if (seen.has(key)) continue;
     seen.add(key);
     // Runs that read this page, oldest first.
-    const read = ordered.filter((r) => finding.path in r.pages);
+    const read = ordered.filter((r) => Object.hasOwn(r.pages, finding.path));
     let i = read.length - 1;
     while (i > 0 && read[i - 1]!.findings.some((f) => findingKey(f) === key)) i--;
     const first = read[i] ?? latest;

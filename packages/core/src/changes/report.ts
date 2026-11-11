@@ -150,10 +150,16 @@ export async function buildChanges(args: {
   const items: ChangeItem[] = [];
   let noHistory = 0;
   for (const { finding, first, before } of appearances) {
-    const now = first.pages[finding.path];
+    const now = Object.hasOwn(first.pages, finding.path) ? first.pages[finding.path] : undefined;
     if (!before || !now) {
-      // The earliest run kept has it: either the page was never read before, or the runs before were pruned.
-      if (args.prunedBefore !== undefined && before === undefined) {
+      // Only the earliest run kept can have lost its earlier runs to pruning: a page first read in a
+      // later run was simply not read before.
+      if (
+        args.prunedBefore !== undefined &&
+        before === undefined &&
+        first.id === ordered[0]?.id &&
+        first.takenAt >= args.prunedBefore
+      ) {
         const reason = `changed before ${day(args.prunedBefore)}, history not kept`;
         items.push({
           finding,
@@ -174,7 +180,11 @@ export async function buildChanges(args: {
       } else noHistory++;
       continue;
     }
-    const prev = before.pages[finding.path]!;
+    const prev = before.pages[finding.path];
+    if (!prev) {
+      noHistory++;
+      continue;
+    }
     const revisions = await args.sources.revisions(finding.path, before.takenAt);
     const attribution = attribute({
       after: before.takenAt,
