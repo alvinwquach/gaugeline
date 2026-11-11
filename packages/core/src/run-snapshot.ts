@@ -1,6 +1,7 @@
 import { load } from "cheerio/slim";
 import type { Severity } from "./model.js";
 import { readRegions, type NavEntry } from "./nav/read-regions.js";
+import { buildBaseline, type ScriptBaseline } from "./script-baseline/inventory.js";
 import { jsonLdNodes, type PageSnapshot } from "./snapshot.js";
 import type { ContentSnapshot } from "./snapshot/page-snapshot.js";
 
@@ -27,6 +28,12 @@ export interface RunSnapshot {
    * headings and item addresses, never body text. Absent in a snapshot written before pages were.
    */
   pages?: Record<string, ContentSnapshot>;
+  /**
+   * The page's third-party scripts (host and path, integrity attribute or not) and security headers
+   * with their directive lists (script-changed, csp-loosened, security-header-loosened). Absent in a
+   * snapshot written before it was saved.
+   */
+  baseline?: ScriptBaseline;
 }
 
 export const RUN_SNAPSHOT_SCHEMA = 1;
@@ -104,6 +111,7 @@ export function buildRunSnapshot(
     prices,
     forms,
     nav,
+    baseline: buildBaseline(page),
     ...(contents ? { pages: contents } : {}),
   };
 }
