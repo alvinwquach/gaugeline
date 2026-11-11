@@ -1415,6 +1415,7 @@ export { MIGRATION_CHECKS, createMigrationRegistry, unreadPages } from "./checks
 export { WEBFLOW_CHECKS, createWebflowRegistry } from "./checks/webflow.js";
 export { CONTENTFUL_CHECKS, createContentfulRegistry } from "./checks/contentful.js";
 export { STRAPI_CHECKS, createStrapiRegistry } from "./checks/strapi.js";
+export { HUBSPOT_CMS_CHECKS, createHubspotCmsRegistry } from "./checks/hubspot-cms.js";
 export {
   ListBuilder,
   MIGRATION_ITEM_CAP,
