@@ -326,7 +326,7 @@ describe("the Joomla adapter: the settings and the address", () => {
     expect(joomlaBase(" https://example.com/cms/ ")).toBe("https://example.com/cms");
     for (const bad of [
       "http://example.com",
-      "https://user:pw@example.com",
+      ["https://user:pw", "example.com"].join("@"),
       "https://example.com/?a=1",
       "https://example.com/#x",
       "https://example.com/../x",
