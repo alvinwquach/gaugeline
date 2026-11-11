@@ -6,6 +6,7 @@ import { SANITY_DESCRIPTION, createSanityAdapter } from "./sanity.js";
 import { SITEMAP_FEED_DESCRIPTION, createSitemapFeedAdapter } from "./sitemap-feed.js";
 import { WORDPRESS_DESCRIPTION, createWordPressAdapter } from "./wordpress.js";
 import type { AdapterDescription, AdapterSettings, ContentAdapter } from "./types.js";
+import { STRAPI_DESCRIPTION, createStrapiAdapter } from "./strapi.js";
 import { WEBFLOW_DESCRIPTION, createWebflowAdapter } from "./webflow.js";
 
 export interface AdapterContext {
@@ -85,6 +86,20 @@ export const BUILT_ADAPTERS: ReadonlyMap<string, BuiltAdapter> = new Map<string,
         }),
     },
   ],
+  [
+    "strapi",
+    {
+      id: "strapi",
+      describe: STRAPI_DESCRIPTION,
+      create: (c, settings) =>
+        createStrapiAdapter({
+          env: c.env,
+          fetcher: c.fetcher,
+          settings,
+          ...(c.sleep ? { sleep: c.sleep } : {}),
+        }),
+    },
+  ],
 ]);
 
 /** A content system the docs list and the build order names, and no adapter yet. */
@@ -105,7 +120,6 @@ export const PLANNED_ADAPTERS: readonly PlannedAdapter[] = [
   { id: "generic-api", name: "Any headless CMS with a read API", branch: "C-14" },
   { id: "git-content", name: "Content kept in git", branch: "C-15" },
   { id: "builders", name: "Squarespace and other builders without a content API", branch: "C-12" },
-  { id: "strapi", name: "Strapi", branch: "C-02" },
   { id: "tina", name: "TinaCMS", branch: "C-03" },
   { id: "contentful", name: "Contentful", branch: "C-07" },
 ];

@@ -69,3 +69,20 @@ export type {
   StagedRead,
   WebflowReading,
 } from "./webflow-read.js";
+export {
+  STRAPI_DESCRIPTION,
+  STRAPI_ENV_VARS,
+  STRAPI_LIMITS,
+  STRAPI_PAGE_SIZE,
+  STRAPI_TOKEN,
+  STRAPI_URL,
+  createStrapiAdapter,
+} from "./strapi.js";
+export type {
+  StrapiAdapter,
+  StrapiAdapterOptions,
+  StrapiPublicDrafts,
+  StrapiPublicState,
+} from "./strapi.js";
+export { STRAPI_READ_LIMITS, readStrapi } from "./strapi-read.js";
+export type { ReadStrapiOptions, StrapiReading } from "./strapi-read.js";

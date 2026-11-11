@@ -177,6 +177,11 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "cutover-mail-changed": ["The domain's mail records changed at cutover", "Security & email"],
   "migration-page-missing": ["A page from the old site is missing on the new one", "Launch day"],
   "webflow-item-no-page": ["A published Webflow item has no page on the live site", "Launch day"],
+  "strapi-entry-no-page": ["A published Strapi entry has no page on the live site", "Launch day"],
+  "strapi-drafts-public": [
+    "Strapi lists unpublished entries to visitors with no token",
+    "Security & email",
+  ],
   "app-smart-banner-mismatch": ["The iPhone app banner promotes a different app", "Visitors"],
   "checkout-js-only": ["Nothing on the page can be linked to buy", "Sales & prices"],
   "crm-field-names": ["A form sends fields the CRM doesn't have", "Leads"],
@@ -1085,6 +1090,18 @@ export const CHECK_TEXT: Readonly<
     "Links, the sitemap and search results point at a page that is not there, and the client's announcement leads to an error page.",
     "Check the collection's template page is published and its address matches the pattern in gaugeline.adapters.json, then publish the site. If the item should not be public, archive it in Webflow.",
     "GET /v2/collections/{id}/items/live for each collection named in the `urls` settings, then one GET of the live address from the pattern (redirects followed). A final 404 or 410 is the finding; any other answer that is not a 2xx is could-not-check for that page. A collection with published items and no pattern, and an item whose slug the pattern cannot use, are could-not-check by name and are not asked.",
+  ],
+  "strapi-entry-no-page": [
+    "Strapi says an entry is published, and the address its page should have answers 404 or 410 on the live site.",
+    "Links, the sitemap and search results point at a page that is not there, and the client's announcement leads to an error page.",
+    "Check the front end builds a page for the collection (a static site may need a rebuild or a revalidation after publishing) and that its address matches the pattern in gaugeline.adapters.json. If the entry should not be public, unpublish it in Strapi.",
+    "GET /api/{collection} for each collection named in the settings (published entries are the default list; a row marked as a draft is dropped), then one GET of the live address from the `urls` pattern (redirects followed). A final 404 or 410 is the finding; any other answer that is not a 2xx is could-not-check for that page. A collection with published entries and no pattern, and an entry whose slug the pattern cannot use, are could-not-check by name and are not asked. Ids, slugs and statuses only: no field is used for this.",
+  ],
+  "strapi-drafts-public": [
+    "A visitor who sends no token and asks a collection for its drafts (status=draft, or publicationState=preview on Strapi 4) is given entries that have no published version.",
+    "Unfinished work is public: prices before they are announced, an event before it is confirmed, a draft nobody has approved. Anyone who guesses the route can read it, and search engines or scrapers may already have.",
+    "In Strapi's settings, open Users & Permissions, then the Public role, and remove find and findOne from the collection, or give the front end a read-only API token and keep the Public role closed. If the front end previews drafts, send the token from the server, never from the browser.",
+    "probing check, off without --owner-consent: this check asks Strapi's public routes for entries that are not published, so it runs only with --owner-consent (or gaugeline.consent.json), on sites you own or have permission to test; per collection named in the settings, with no Authorization header and no cookie: GET /api/{collection} for the published total, GET /api/{collection}?status=draft (and, only if Strapi answers 400 to that, publicationState=preview) for the draft total, both with pagination[pageSize]=1 and fields[0]=updatedAt; when the draft total is larger, the ids of both lists are read (at most 500 each, fields[0]=updatedAt only) and the entries only the draft list has are counted and named by id (Strapi 5 documentId, Strapi 4 id); a collection that answers 401, 403 or 404 to the published list is not public, and one that refuses only the draft list is safe; a finding is a count and ids, never a field; ids are held in a Set to subtract the published list from the draft list",
   ],
   "app-smart-banner-mismatch": [
     "The page's Smart App Banner (the apple-itunes-app meta tag) names a different app id than the page's App Store link.",
