@@ -1,7 +1,10 @@
 import { ConfigError } from "../errors.js";
 import type { AdaptersConfig } from "./config.js";
+import { freezeEnv } from "../connectors/env.js";
+import type { Env } from "../connectors/types.js";
 import { ADAPTER_ENTRIES } from "./entries.generated.js";
 import type { AdapterContext, AdapterFactory } from "./entry.js";
+import { GENERIC_ENV } from "./generic-api-config.js";
 import type { AdapterDescription, AdapterSettings, ContentAdapter } from "./types.js";
 
 export type { AdapterContext, AdapterEntry, AdapterFactory } from "./entry.js";
@@ -69,6 +72,18 @@ export function adapterEnvVars(id: string): readonly string[] {
 /** Every environment variable any built adapter may read, for a caller that copies them before loading one. */
 export function allAdapterEnvVars(): string[] {
   return [...new Set([...BUILT_ADAPTERS.values()].flatMap((b) => b.envVars))];
+}
+
+/**
+ * A frozen copy of the variables the adapters may read: the ones their entries name, and the ones a generic API
+ * mapping may name for its key (GAUGELINE_API_<NAME>, which no entry can list ahead of time). Nothing else leaves
+ * the environment.
+ */
+export function copyAdapterEnv(source: Readonly<Record<string, string | undefined>>): Env {
+  return freezeEnv(source, [
+    ...allAdapterEnvVars(),
+    ...Object.keys(source).filter((n) => GENERIC_ENV.test(n)),
+  ]);
 }
 
 /**

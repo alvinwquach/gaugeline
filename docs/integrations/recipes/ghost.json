@@ -1,0 +1,43 @@
+{
+  "format": 1,
+  "recipe": "ghost",
+  "name": "Ghost",
+  "settings": {
+    "id": "generic-api",
+    "fingerprint": {
+      "post": ["title"]
+    },
+    "urls": {
+      "post": "/{slug}/"
+    },
+    "api": {
+      "endpoint": "https://blog.example/ghost/api/content",
+      "blocked": "key-in-address",
+      "collections": {
+        "post": {
+          "path": "/posts/",
+          "items": "/posts",
+          "total": "/meta/pagination/total",
+          "pagination": {
+            "style": "page",
+            "page": "page",
+            "size": "limit",
+            "pageSize": 100,
+            "pages": "/meta/pagination/pages"
+          },
+          "select": {
+            "param": "fields",
+            "always": ["id", "slug", "url", "updated_at", "published_at"]
+          },
+          "fields": {
+            "id": "/id",
+            "slug": "/slug",
+            "url": "/url",
+            "updatedAt": "/updated_at",
+            "publishedAt": "/published_at"
+          }
+        }
+      }
+    }
+  }
+}

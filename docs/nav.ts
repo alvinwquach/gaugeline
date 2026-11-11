@@ -132,6 +132,7 @@ export const UNLISTED: NavPage[] = [
   { slug: "integrations/index", title: "Content systems: one interface for every CMS" },
   // Each adapter's page comes from its entry file (pnpm gen:adapters), so a new adapter does not edit this list.
   ...ADAPTER_PAGES,
+  { slug: "integrations/recipes/index", title: "Recipes for the generic API adapter" },
   { slug: "connectors/listings", title: "Listings off the site" },
   { slug: "connectors/postgres", title: "A database as a source: Postgres and Supabase" },
   { slug: "sources/shopify", title: "Shopify as a price source" },
@@ -150,6 +151,7 @@ export const UNLISTED: NavPage[] = [
   { slug: "guides/access-rules", title: "Database access rules, tested from outside" },
   { slug: "guides/nextjs", title: "Next.js sites" },
   { slug: "guides/host-previews", title: "Preview addresses that search engines can find" },
+  { slug: "guides/static-generators", title: "Static site generators" },
   { slug: "guides/angular", title: "Angular sites" },
   { slug: "guides/gatsby", title: "Gatsby sites" },
   { slug: "guides/sveltekit", title: "SvelteKit sites" },
