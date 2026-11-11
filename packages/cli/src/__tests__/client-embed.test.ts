@@ -163,10 +163,17 @@ describe("embedded client: the policy has nothing to block", () => {
   });
 });
 
+/** The bundle without its client: dist/index.js and the chunks beside it (tsup splitting), not dist/client. */
+function copyBundle(to: string): void {
+  const from = join(bin, "..");
+  for (const f of readdirSync(from))
+    if (f.endsWith(".js")) copyFileSync(join(from, f), join(to, f));
+}
+
 describe("embedded client: edge cases (the built bin)", () => {
   it("dist/client missing (the CLI built alone): open exits 2 with one line and no stack trace", async () => {
     const alone = scratch("alone");
-    copyFileSync(bin, join(alone, "index.js"));
+    copyBundle(alone);
     const run = openFile(join(alone, "index.js"));
     expect(await run.exited).toBe(2);
     expect(run.err()).toContain("the app was not built into this package");
@@ -177,7 +184,7 @@ describe("embedded client: edge cases (the built bin)", () => {
 
   it("a client that no longer matches its manifest: open exits 2 with one line and does not listen", async () => {
     const damaged = scratch("damaged");
-    copyFileSync(bin, join(damaged, "index.js"));
+    copyBundle(damaged);
     cpSync(distClient, join(damaged, "client"), { recursive: true });
     const js = manifest().find((e) => e.path.endsWith(".js"))?.path ?? "";
     // Same length, one byte different: the size matches, so only the hash can tell.
