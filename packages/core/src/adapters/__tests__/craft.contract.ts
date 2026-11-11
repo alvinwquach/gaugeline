@@ -1,20 +1,32 @@
 import { testKey } from "../../connectors/__tests__/fake.js";
 import { createCraftAdapter } from "../craft.js";
 import type { ContractEntry } from "./contract.js";
-import { craftTransport, CRAFT_MARKERS } from "./craft-fixture.js";
+import { CRAFT_ENDPOINT, CRAFT_MARKERS, craftTransport } from "./craft-fixture.js";
 
 /**
- * Larkspur Yoga Studio: a small studio on Craft CMS, with classes (one a draft), notices and teachers (see
- * craft-fixture.ts). TODO(new:adapter) describe the invented site in terms of the platform.
+ * Fernlight Architects: a two-site Craft CMS install (English studio site, French atelier site) with projects
+ * (one disabled draft, one switched off for the French site), journal posts and team members (see
+ * craft-fixture.ts). The sections come from the settings, because Craft lists its sections only to a schema
+ * that opted in.
  */
 const CRAFT_KEY = testKey("craft-adapter");
+
+export const CRAFT_CONTRACT_SETTINGS = {
+  id: "craft",
+  fingerprint: {
+    projects: ["title", "project_Entry.summary"],
+    journal: ["title"],
+    team: ["title"],
+  },
+} as const;
 
 export const craftEntry: ContractEntry = {
   id: "craft",
   make: ({ fetcher, sleep }) =>
     createCraftAdapter({
-      env: { CRAFT_TOKEN: CRAFT_KEY },
+      env: { CRAFT_URL: CRAFT_ENDPOINT, CRAFT_TOKEN: CRAFT_KEY },
       fetcher,
+      settings: CRAFT_CONTRACT_SETTINGS,
       sleep,
     }),
   transport: () => craftTransport(undefined, { token: CRAFT_KEY }),
@@ -22,23 +34,27 @@ export const craftEntry: ContractEntry = {
   secrets: Object.values(CRAFT_MARKERS),
   expected: {
     types: [
-      { name: "classes", count: 2 },
-      { name: "notices", count: 1 },
-      { name: "teachers", count: 2 },
+      { name: "journal", count: 2 },
+      { name: "projects", count: 3 },
+      { name: "team", count: 2 },
     ],
     fields: {
-      type: "classes",
-      counts: { name: 2, summary: 1 },
-      missing: "subtitle",
+      type: "projects",
+      counts: { title: 3, "project_Entry.summary": 1 },
+      missing: "project_Entry.subtitle",
     },
     published: {
-      options: { types: ["classes"], fields: { classes: ["name", "summary"] } },
-      ids: ["c-morning", "c-evening"],
+      options: {
+        types: ["projects"],
+        fields: { projects: ["title", "project_Entry.summary"] },
+      },
+      // One entry on two sites is two items: the id carries the site handle.
+      ids: ["101.studio", "101.atelier", "102.studio"],
     },
     draftsReachable: true,
   },
-  // The types and the first type's page are answered; the second type's page is the first refused.
-  rateLimit: { options: { types: ["classes", "teachers"] }, succeedFirst: 2, atLeast: 2 },
+  // The key check is the first request and the journal's page the second; the projects' page is the first refused.
+  rateLimit: { options: { types: ["journal", "projects"] }, succeedFirst: 2, atLeast: 2 },
 };
 
 /** The contract suite's entries for this adapter (collected by pnpm gen:adapters). */
