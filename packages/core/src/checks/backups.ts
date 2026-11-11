@@ -36,23 +36,55 @@ function noteUnread(reading: BackupsReading, page: PageSnapshot, ctx: CheckConte
     ctx.couldNotCheck?.(page.finalUrl, NOTHING_SET_UP);
     return;
   }
+  const now = new Date(reading.now);
   for (const p of reading.platforms) {
     if (!p.ok) {
       if (p.configured) ctx.couldNotCheck?.(`backups:${p.id}`, p.reason);
-    } else if (p.enabled && p.latest === undefined) {
+      continue;
+    }
+    if (p.future)
+      ctx.couldNotCheck?.(
+        `backups:${p.id}`,
+        `${p.platform} lists ${p.future} ${p.future === 1 ? "backup" : "backups"} dated in the future, which cannot be trusted and ${p.future === 1 ? "was" : "were"} not counted`,
+      );
+    if (p.enabled && p.latest === undefined && !p.future)
       ctx.couldNotCheck?.(
         `backups:${p.id}`,
         `${p.platform} shows backups on but gives no date for the newest one, so how recent it is cannot be judged`,
       );
-    }
+    if (p.partial && p.latest !== undefined && stale(p.latest, now, reading.maxAgeDays))
+      ctx.couldNotCheck?.(
+        `backups:${p.id}`,
+        `${p.partial}: the newest backup read is old, but it may have missed newer ones, so no finding is made`,
+      );
   }
-  for (const e of reading.exports) if (!e.ok) ctx.couldNotCheck?.(`backups:${e.id}`, e.reason);
+  for (const e of reading.exports) {
+    if (!e.ok) {
+      ctx.couldNotCheck?.(`backups:${e.id}`, e.reason);
+      continue;
+    }
+    if (e.future.length > 0)
+      ctx.couldNotCheck?.(
+        `backups:${e.id}`,
+        `${e.future.length} ${e.future.length === 1 ? "file" : "files"} in the folder (${e.future
+          .slice(0, 3)
+          .map((n) => clip(n))
+          .join(
+            ", ",
+          )}) ${e.future.length === 1 ? "is" : "are"} dated in the future, which cannot be trusted, so ${e.future.length === 1 ? "it was" : "they were"} not counted`,
+      );
+    if (e.unread > 0)
+      ctx.couldNotCheck?.(
+        `backups:${e.id}`,
+        `${e.unread} ${e.unread === 1 ? "entry was" : "entries were"} not read (links or folders), so an export inside one is not counted`,
+      );
+  }
 }
 
 export const noRecentBackup = defineCheck<PageSnapshot>({
   id: "no-recent-backup",
   size: "M",
-  done: "The newest backup of each system is newer than the limit in gaugeline.backups.json (7 days by default), and whoever owns the backup knows where it is and how to restore it.",
+  done: "The newest backup of each system is newer than the limit in gaugeline.backups.json (7 days by default), and whoever owns the backup knows where it is. Whether it restores is only known by trying a restore, and that is still the owner's to do.",
   estimateChanges:
     "An hour to find why the backup stopped (a failed job, an expired credential, a plan change) and run it again. More when the restore has never been tried.",
   area: "Security & email",
@@ -61,7 +93,7 @@ export const noRecentBackup = defineCheck<PageSnapshot>({
   what: "The newest backup the platform lists, or the newest dated export file in the folder you named, is older than the limit (7 days unless you changed it), or there is none.",
   why: "When a client's content or database is wiped, the first question is when the last backup was. A backup that stopped weeks ago is as good as none: everything since is lost, and nobody finds out until the day it is needed.",
   fix: "Open the platform's backups page (or the job that writes the export), find why the last run did not happen, and run it. Then check the next one runs by itself, and that someone has the access to restore it.",
-  tech: 'Read-only: one GET per platform and a listing of each export folder; nothing triggers a backup or an export. Supabase: GET /v1/projects/{ref}/database/backups on the Management API with SUPABASE_ACCESS_TOKEN (Supabase has no read-only token type: use one that only needs this project). The newest COMPLETED backup, or the latest point-in-time recovery moment, is compared with the injected clock. Sanity: GET /projects/{id}/datasets/{dataset}/backups with SANITY_TOKEN where the plan exposes it. Exports: the files directly in each folder named under "exports", never opened; a day in the file name (2026-11-10, 20261110) is the date, else the time the file was last changed, and the finding says which. Limit: "maxAgeDays" (default 7). Only with --backups or gaugeline backups; anything a platform does not expose is could-not-check with the reason',
+  tech: 'Read-only: one GET per platform and a listing of each export folder; nothing triggers a backup or an export. Supabase: GET /v1/projects/{ref}/database/backups on the Management API with SUPABASE_ACCESS_TOKEN (Supabase has no read-only token type: use one that only needs this project). The newest COMPLETED backup, or the latest point-in-time recovery moment, is compared with the injected clock. Sanity: GET /projects/{id}/datasets/{dataset}/backups with SANITY_TOKEN where the plan exposes it. Exports: the files directly in each folder named under "exports", never opened; only dump files count (no dotfiles; a known dump extension, or the "pattern" setting). A day in the file name (2026-11-10, 20261110) is the date, counted to the end of that day, else the time the file was last changed, to the minute, and the finding says which. A backup or file dated more than a day after the clock is set aside as untrustworthy and noted, never taken as the newest. A listing cut short, or a folder of only links and subfolders, is could-not-check. Limit: "maxAgeDays" (default 7). Only with --backups or gaugeline backups; anything a platform does not expose is could-not-check with the reason',
   async run(page, ctx) {
     const reading = await readingFor("no-recent-backup", page, ctx);
     if (!reading) return [];
@@ -69,7 +101,13 @@ export const noRecentBackup = defineCheck<PageSnapshot>({
     const out: Finding[] = [];
     const limit = `more than ${reading.maxAgeDays} ${reading.maxAgeDays === 1 ? "day" : "days"} is flagged`;
     for (const p of reading.platforms)
-      if (p.ok && p.enabled && p.latest !== undefined && stale(p.latest, now, reading.maxAgeDays))
+      if (
+        p.ok &&
+        p.enabled &&
+        !p.partial &&
+        p.latest !== undefined &&
+        stale(p.latest, now, reading.maxAgeDays)
+      )
         out.push({
           checkId: "no-recent-backup",
           severity: "high",
@@ -81,15 +119,17 @@ export const noRecentBackup = defineCheck<PageSnapshot>({
       if (!e.ok) continue;
       const j = judgeExports(e.files, e.shrinkPercent);
       const where = `Export "${clip(e.name)}" (${clip(e.folder)})`;
-      if (j.kind === "empty")
+      if (j.kind === "empty") {
+        // Files dated in the future are noted as could-not-check: nothing is known about this folder.
+        if (e.future.length > 0) continue;
         out.push({
           checkId: "no-recent-backup",
           severity: "high",
           title: this.title,
-          evidence: `${where}: the folder has no files, so there is no export`,
+          evidence: `${where}: the folder has no backup files, so there is no export${e.skipped > 0 ? ` (${e.skipped} ${e.skipped === 1 ? "file was" : "files were"} skipped: dotfiles and files that are not backups)` : ""}`,
           url: `backups:${e.id}`,
         });
-      else if (stale(`${j.latest.date}T00:00:00Z`, now, reading.maxAgeDays))
+      } else if (stale(j.latest.at, now, reading.maxAgeDays))
         out.push({
           checkId: "no-recent-backup",
           severity: "high",

@@ -48,6 +48,17 @@ export const backupsConfigSchema = z.strictObject({
           .optional(),
         /** The folder, relative to where Gaugeline runs. */
         folder: z.string().min(1).max(300),
+        /**
+         * Which files are backups: a name with * for any run of characters ("dump-*.sql.gz"). Without it, the
+         * files with a known dump extension (.sql, .gz, .dump, .zip, ...) count, and dotfiles never do.
+         */
+        pattern: z
+          .string()
+          .regex(
+            /^[A-Za-z0-9 ._*-]{1,80}$/,
+            "a file name with * for any text, such as dump-*.sql.gz",
+          )
+          .optional(),
         /** The latest export is flagged when it is under this percent of the one before it. 1 to 99, default 50. */
         shrinkPercent: z.number().int().min(1).max(99).optional(),
       }),

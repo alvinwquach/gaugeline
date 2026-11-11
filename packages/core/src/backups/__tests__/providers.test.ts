@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readSanityBackups, readSupabaseBackups } from "../providers.js";
+
+const NOW = new Date("2026-11-11T09:00:00Z");
 import {
   ENV,
   REF,
@@ -16,7 +18,10 @@ import {
 
 const supabase = (routes: Parameters<typeof fetcherFor>[0], env: Record<string, string> = ENV) => {
   const f = fetcherFor(routes);
-  return { ...f, read: () => readSupabaseBackups({ env, fetcher: f.fetcher, projectRef: REF }) };
+  return {
+    ...f,
+    read: () => readSupabaseBackups({ env, fetcher: f.fetcher, projectRef: REF, now: NOW }),
+  };
 };
 
 describe("readSupabaseBackups (recorded responses)", () => {
@@ -123,7 +128,7 @@ const sanity = (
   args = {},
 ) => {
   const f = fetcherFor(routes);
-  return { ...f, read: () => readSanityBackups({ env, fetcher: f.fetcher, ...args }) };
+  return { ...f, read: () => readSanityBackups({ env, fetcher: f.fetcher, now: NOW, ...args }) };
 };
 
 describe("readSanityBackups (recorded responses)", () => {
@@ -176,5 +181,149 @@ describe("readSanityBackups (recorded responses)", () => {
     const b = sanity({}, { SANITY_PROJECT_ID: "marlowe1" }, { explicit: true });
     expect(await b.read()).toMatchObject({ ok: false, configured: true });
     expect(a.seen.length + b.seen.length).toBe(0);
+  });
+});
+
+describe("times that cannot be trusted", () => {
+  it("a future-dated backup is not the latest: the real one is, and the future one is counted", async () => {
+    const { read } = supabase({
+      [`GET ${SUPABASE_URL}`]: {
+        status: 200,
+        body: supabaseOn("2099-01-01T00:00:00Z", {
+          backups: [
+            { status: "COMPLETED", inserted_at: "2099-01-01T00:00:00Z" },
+            { status: "COMPLETED", inserted_at: "2026-01-01T00:00:00Z" },
+          ],
+        }),
+      },
+    });
+    const got = await read();
+    expect(got).toMatchObject({
+      ok: true,
+      enabled: true,
+      latest: "2026-01-01T00:00:00.000Z",
+      future: 1,
+    });
+  });
+
+  it("a time a few hours ahead (a clock a little off) is still trusted", async () => {
+    const { read } = supabase({
+      [`GET ${SUPABASE_URL}`]: { status: 200, body: supabaseOn("2026-11-11T20:00:00Z") },
+    });
+    expect(await read()).toMatchObject({ ok: true, latest: "2026-11-11T20:00:00.000Z" });
+  });
+
+  it("only a future backup: on, with no date, so it is never judged recent", async () => {
+    const { read } = supabase({
+      [`GET ${SUPABASE_URL}`]: {
+        status: 200,
+        body: supabaseOn("x", {
+          walg_enabled: false,
+          backups: [{ status: "COMPLETED", inserted_at: "2099-01-01T00:00:00Z" }],
+        }),
+      },
+    });
+    const got = await read();
+    expect(got).toMatchObject({ ok: true, enabled: true, future: 1 });
+    expect(got.ok && got.latest).toBeUndefined();
+  });
+
+  it("a huge number is an unknown time, not an exception", async () => {
+    const { read } = supabase({
+      [`GET ${SUPABASE_URL}`]: {
+        status: 200,
+        body: supabaseOn("x", {
+          backups: [
+            { status: "COMPLETED", inserted_at: 1e20 },
+            { status: "COMPLETED", inserted_at: 8.64e15 },
+            { status: "COMPLETED", inserted_at: "2026-11-10T03:00:00Z" },
+          ],
+        }),
+      },
+    });
+    expect(await read()).toMatchObject({ ok: true, latest: "2026-11-10T03:00:00.000Z" });
+    const pitr = supabase({
+      [`GET ${SUPABASE_URL}`]: {
+        status: 200,
+        body: {
+          walg_enabled: false,
+          pitr_enabled: true,
+          physical_backup_data: { latest_physical_backup_date_unix: 1e20 },
+        },
+      },
+    });
+    await expect(pitr.read()).resolves.toMatchObject({ ok: true });
+    const sane = sanity({
+      [`GET ${SANITY_URL}`]: {
+        status: 200,
+        body: { backups: [{ createdAt: 1e20 }, { createdAt: "9999-12-31T00:00:00Z" }] },
+      },
+    });
+    await expect(sane.read()).resolves.toMatchObject({ ok: true });
+  });
+
+  it("Sanity: a future-dated backup is not the latest either", async () => {
+    const { read } = sanity({
+      [`GET ${SANITY_URL}`]: {
+        status: 200,
+        body: sanityBackups("2099-01-01T00:00:00Z", "2026-10-01T02:00:00Z"),
+      },
+    });
+    expect(await read()).toMatchObject({ ok: true, latest: "2026-10-01T02:00:00.000Z", future: 1 });
+  });
+});
+
+describe("Sanity pages (the paging fields are uncited: see the docs page)", () => {
+  it("follows nextCursor and takes the newest over every page", async () => {
+    const { read, seen } = sanity({
+      [`GET ${SANITY_URL}`]: {
+        status: 200,
+        body: { backups: [{ createdAt: "2026-10-01T02:00:00Z" }], nextCursor: "c2" },
+      },
+      [`GET ${SANITY_URL}?nextCursor=c2`]: {
+        status: 200,
+        body: { backups: [{ createdAt: "2026-11-10T02:00:00Z" }] },
+      },
+    });
+    const got = await read();
+    expect(got).toMatchObject({ ok: true, latest: "2026-11-10T02:00:00.000Z" });
+    expect(got.ok && got.partial).toBeUndefined();
+    expect(seen.map((s) => s.method)).toEqual(["GET", "GET"]);
+  });
+
+  it("a hard page cap: still more pages after it is partial, never complete", async () => {
+    const routes: Record<string, { status: number; body: unknown }> = {};
+    for (let i = 0; i < 10; i++)
+      routes[`GET ${SANITY_URL}${i === 0 ? "" : `?nextCursor=c${i}`}`] = {
+        status: 200,
+        body: { backups: [{ createdAt: "2026-10-01T02:00:00Z" }], nextCursor: `c${i + 1}` },
+      };
+    const { read, seen } = sanity(routes);
+    const got = await read();
+    expect(seen.length).toBeLessThanOrEqual(5);
+    expect(got).toMatchObject({ ok: true });
+    expect(got.ok && got.partial).toContain("more backups");
+  });
+
+  it("a page that fails after the first is partial, with the newest of what was read", async () => {
+    const { read } = sanity({
+      [`GET ${SANITY_URL}`]: {
+        status: 200,
+        body: { backups: [{ createdAt: "2026-10-01T02:00:00Z" }], nextCursor: "c2" },
+      },
+      [`GET ${SANITY_URL}?nextCursor=c2`]: { status: 500 },
+    });
+    const got = await read();
+    expect(got).toMatchObject({ ok: true, latest: "2026-10-01T02:00:00.000Z" });
+    expect(got.ok && got.partial).toBeDefined();
+  });
+
+  it("a full page of 100 with no cursor may be only the first page", async () => {
+    const rows = Array.from({ length: 100 }, (_, i) => ({
+      createdAt: `2026-0${1 + (i % 9)}-01T00:00:00Z`,
+    }));
+    const { read } = sanity({ [`GET ${SANITY_URL}`]: { status: 200, body: { backups: rows } } });
+    const got = await read();
+    expect(got.ok && got.partial).toBeDefined();
   });
 });

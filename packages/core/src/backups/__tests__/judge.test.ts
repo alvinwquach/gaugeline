@@ -9,6 +9,7 @@ const file = (name: string, size: number, date: string): ExportFile => ({
   size,
   date,
   dateFrom: "name",
+  at: `${date}T23:59:59.999Z`,
 });
 
 describe("age", () => {
@@ -42,13 +43,17 @@ describe("the day of an export file", () => {
     ["marlowe-bar-2026-11-10T03-00-01Z.json", "2026-11-10"],
     ["2026.11.09-uploads.zip", "2026-11-09"],
   ])("reads %s as %s", (name, day) => {
-    expect(exportDateOf(name, "2026-01-01T00:00:00Z")).toEqual({ date: day, dateFrom: "name" });
+    expect(exportDateOf(name, "2026-01-01T00:00:00Z")).toMatchObject({
+      date: day,
+      dateFrom: "name",
+    });
   });
 
   it("falls back to when the file was last changed, and says so", () => {
     expect(exportDateOf("latest.sql.gz", "2026-11-08T23:10:00Z")).toEqual({
       date: "2026-11-08",
       dateFrom: "modified",
+      at: "2026-11-08T23:10:00.000Z",
     });
   });
 

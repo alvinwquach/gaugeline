@@ -97,6 +97,27 @@ An export's date is the date in its file name (`2026-11-10`, `20261110`, `2026.1
 in its name is dated by when it was last changed, and the finding says so. When two files share a day, the
 bigger one stands for the day, so a second run does not hide a good export.
 
+**Which files count.** Dotfiles never do (`.DS_Store`, `.gitkeep`), and without a `pattern` only files with a
+known dump extension do: `.sql`, `.sql.gz`, `.dump`, `.backup`, `.bak`, `.tar`, `.tar.gz`, `.tgz`, `.zip`,
+`.json`, `.ndjson`, `.gz`, `.bz2`, `.xz`, `.7z` and `.zst`. A `README.txt` or a `cron.log` touched this morning
+does not make a stale folder look fresh. Set `pattern` (for example `dump-*.sql.gz`, with `*` for any text) to
+name your own files; it replaces the extension list. Files that were left out are counted in the report.
+
+**How old a file is.** A date in the name counts as the end of that day, because a name has no hour; a file
+without one counts from the moment it was last changed, to the minute. So a file made 7 days ago at 23:00 is
+not flagged a few hours before it should be.
+
+**Times that cannot be trusted.** A backup or file dated more than a day after the clock (`2099-01-01`, a
+file touched into the future) is not counted as the newest backup: it would hide a real one that is months
+old. It is reported as "dated in the future, cannot be trusted", as a line that could not be checked, and the
+real newest backup is judged as usual. A time outside the years 2000 to 2099 is read as no time at all.
+
+**Folders that are hard to read.** Links are not followed and subfolders are not entered. Gaugeline says how
+many entries it did not read, and a folder where nothing else is left is "could not be checked", not "no
+export". If a folder has more than 20,000 entries, only part of it can be looked at, so it is "could not be
+checked" too: an old date on part of a folder would be a false alarm. Of the files that count, the newest
+1,000 by date are compared.
+
 ## Keys, and the narrowest one
 
 | Variable                | Asked                                                                         | What is read                                                                               |
@@ -114,31 +135,43 @@ no key.
 
 **Sanity** backups are a plan feature. A plan or token that cannot see them answers with an error status,
 which is "could not be checked" with that status, never "no backups". An empty list is reported as "lists no
-backups": Gaugeline cannot tell from it whether they are off or none has run yet, and says so.
+backups": Gaugeline cannot tell from it whether they are off or none has run yet, and says so. If the list
+comes in pages (a `nextCursor` in the answer), Gaugeline follows it for up to five pages and takes the newest
+date over all of them. If the list may be longer than what was read (more pages than that, a later page that
+failed, or a full page of 100 with no cursor), only the newest backup read is known, so an old date is
+"could not be checked" and never a stale finding: a newer backup may exist.
 
 Both endpoints and their field names (`walg_enabled`, `pitr_enabled`, `backups[].status`, `inserted_at`,
 `physical_backup_data`, and Sanity's `createdAt`) were written from memory: the vendors' documentation could
 not be reached when this page was written, and none of its text is quoted. If an answer differs, the
 vendor's reference is right and this page is not; an answer in any other shape is "could not be checked".
+Official references, not read when this was written (so every name above is uncited): Supabase's
+[Management API](https://supabase.com/docs/reference/api/introduction) and Sanity's
+[HTTP reference](https://www.sanity.io/docs/http-reference). The paging field and the `nextCursor`
+parameter are the least certain.
 
 ## In the nightly run
 
 `--backups` adds these checks to any page check, so they join the nightly run, and
 `gaugeline run --all --backups` does it for every site in `gaugeline.sites.json`. The tokens come from
-secrets, by site prefix like the other keys ([Many sites](many-sites.md)). A site with nothing set up adds
-one "could not be checked" line, not a failure.
+secrets, by site prefix like the other keys ([Many sites](many-sites.md)): `HARBOUR_SANITY_TOKEN`,
+`HARBOUR_SANITY_PROJECT_ID`, `HARBOUR_SANITY_DATASET` and `HARBOUR_SUPABASE_ACCESS_TOKEN` are that site's
+`SANITY_TOKEN` and so on. A variable set **without** a prefix applies to every site, so an unprefixed
+`SANITY_PROJECT_ID` would show one dataset's backups for each of them: give each site its own prefix, or name
+the project under `sanity` in that site's own `gaugeline.backups.json`. A site with nothing set up adds one
+"could not be checked" line, not a failure.
 
 ## Settings
 
 `gaugeline.backups.json`, read from the folder you run from. Every field is optional.
 
-| Field                 | What it does                                                                                                                            |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `maxAgeDays`          | The oldest the newest backup may be, 1 to 365. Default 7                                                                                |
-| `supabase.projectRef` | The Supabase project whose backups are read: 20 lower-case letters                                                                      |
-| `sanity.projectId`    | The Sanity project, when `SANITY_PROJECT_ID` is not set. Naming `sanity` at all makes a missing key worth a note                        |
-| `sanity.dataset`      | The dataset, when `SANITY_DATASET` is not set. Default `production`                                                                     |
-| `exports`             | Up to five folders of dated exports: `folder` (relative to where you run), `name` for the report, `shrinkPercent` (1 to 99, default 50) |
+| Field                 | What it does                                                                                                                                                                                    |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `maxAgeDays`          | The oldest the newest backup may be, 1 to 365. Default 7                                                                                                                                        |
+| `supabase.projectRef` | The Supabase project whose backups are read: 20 lower-case letters                                                                                                                              |
+| `sanity.projectId`    | The Sanity project, when `SANITY_PROJECT_ID` is not set. Naming `sanity` at all makes a missing key worth a note                                                                                |
+| `sanity.dataset`      | The dataset, when `SANITY_DATASET` is not set. Default `production`                                                                                                                             |
+| `exports`             | Up to five folders of dated exports: `folder` (relative to where you run), `name` for the report, `shrinkPercent` (1 to 99, default 50), `pattern` (which files count, such as `dump-*.sql.gz`) |
 
 ## Options
 

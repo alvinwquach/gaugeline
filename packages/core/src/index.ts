@@ -1547,6 +1547,7 @@ export type {
   ExportRead,
   PlatformRead,
   RawExportFile,
+  RawListing,
 } from "./backups/types.js";
 
 // gaugeline init: detect a site's stack from outside and propose starter settings files (F-07).

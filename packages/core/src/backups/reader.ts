@@ -45,7 +45,7 @@ export function createBackups(settings: BackupsSettings, fetcher: Fetcher): Back
           Promise.all([
             // Supabase is asked only for a project the settings name: the reference is in no environment variable.
             config.supabase
-              ? readSupabaseBackups({ env, fetcher, projectRef: config.supabase.projectRef })
+              ? readSupabaseBackups({ env, fetcher, projectRef: config.supabase.projectRef, now })
               : Promise.resolve(undefined),
             readSanityBackups({
               env,
@@ -53,10 +53,11 @@ export function createBackups(settings: BackupsSettings, fetcher: Fetcher): Back
               projectId: config.sanity?.projectId,
               dataset: config.sanity?.dataset,
               explicit: config.sanity !== undefined,
+              now,
             }),
           ]),
           Promise.all(
-            (config.exports ?? []).map((e, i) => readExportFolder(e, i, settings.lister)),
+            (config.exports ?? []).map((e, i) => readExportFolder(e, i, settings.lister, now)),
           ),
         ]);
         return {

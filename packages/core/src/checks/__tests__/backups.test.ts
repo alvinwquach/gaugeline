@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { CheckContext } from "../../model.js";
 import { createBackups } from "../../backups/reader.js";
 import type { BackupsConfig } from "../../backups/config.js";
-import type { ExportLister, RawExportFile } from "../../backups/types.js";
+import type { ExportLister, RawExportFile, RawListing } from "../../backups/types.js";
 import { buildBackupsSummary, formatBackupsSummary } from "../../backups/summary.js";
 import {
   ENV,
@@ -29,7 +29,7 @@ function run(opts: {
   config?: BackupsConfig;
   routes?: Routes;
   env?: Record<string, string>;
-  files?: Record<string, RawExportFile[] | Error>;
+  files?: Record<string, RawExportFile[] | RawListing | Error>;
   off?: boolean;
 }) {
   const { fetcher, seen } = fetcherFor(opts.routes ?? {});
@@ -245,7 +245,7 @@ describe("export folders", () => {
     const r = run({ config: cfg, env: {}, files: { "backups/db": [] } });
     const found = await r.all();
     expect(found.map((f) => f.checkId)).toEqual(["no-recent-backup"]);
-    expect(found[0]?.evidence).toContain("no files");
+    expect(found[0]?.evidence).toContain("no backup files");
   });
 
   it("a folder that cannot be read is could-not-check with the reason", async () => {
@@ -325,5 +325,175 @@ describe("summary and checklist", () => {
     const s = buildBackupsSummary({ site: "x.example", reading, page: PAGE, now: NOW });
     expect(s.lines).toEqual(["No backup source is set up, so no backup status was read."]);
     expect(s.checklist[0]?.line).toContain("Write down where");
+  });
+});
+
+describe("times and files that cannot be trusted", () => {
+  const cfg: BackupsConfig = { exports: [{ name: "database", folder: "backups/db" }] };
+  const only = (checkId: string, found: { checkId: string }[]) =>
+    found.filter((f) => f.checkId === checkId);
+
+  it("a future-dated platform backup does not hide a stale real one, and is noted", async () => {
+    const r = run({
+      config: SUPA,
+      routes: {
+        [`GET ${SUPABASE_URL}`]: {
+          status: 200,
+          body: supabaseOn("x", {
+            backups: [
+              { status: "COMPLETED", inserted_at: "2099-01-01T00:00:00Z" },
+              { status: "COMPLETED", inserted_at: "2026-01-01T00:00:00Z" },
+            ],
+          }),
+        },
+      },
+    });
+    const found = await r.all();
+    expect(found.map((f) => f.checkId)).toEqual(["no-recent-backup"]);
+    expect(found[0]?.evidence).toContain("1 Jan 2026");
+    expect(r.notes.map((n) => n.reason).join(" ")).toContain("dated in the future");
+    const s = buildBackupsSummary({
+      site: "x",
+      reading: await r.backups.read(NOW),
+      page: PAGE,
+      now: NOW,
+    });
+    expect(s.lines.join(" ")).not.toContain("2099");
+    expect(s.lines.join(" ")).toContain("future");
+  });
+
+  it("a future-dated export file name or time does not hide a stale one", async () => {
+    for (const files of [
+      [file("db-2099-01-01.sql", 10), file("db-2026-01-01.sql", 10)],
+      [file("a.sql", 10, "2099-01-01T00:00:00Z"), file("db-2026-01-01.sql", 10)],
+    ]) {
+      const r = run({ config: cfg, env: {}, files: { "backups/db": files } });
+      const found = await r.all();
+      expect(only("no-recent-backup", found)).toHaveLength(1);
+      expect(found[0]?.evidence).toContain("1 Jan 2026");
+      expect(r.notes.map((n) => n.reason).join(" ")).toContain("dated in the future");
+    }
+  });
+
+  it("only future files: no export is judged, so could-not-check and no finding of freshness", async () => {
+    const r = run({
+      config: cfg,
+      env: {},
+      files: { "backups/db": [file("db-2099-01-01.sql", 10)] },
+    });
+    const found = await r.all();
+    expect(found.map((f) => f.evidence).join(" ")).not.toContain("2099");
+    expect(r.notes.map((n) => n.reason).join(" ")).toContain("dated in the future");
+  });
+
+  it("only dump files count: dotfiles, READMEs and logs touched today do not make a folder fresh", async () => {
+    const r = run({
+      config: cfg,
+      env: {},
+      files: {
+        "backups/db": [
+          file("db-2026-10-01.sql.gz", 10),
+          file(".DS_Store", 6000, "2026-11-11T08:00:00Z"),
+          file("README.txt", 10, "2026-11-11T08:00:00Z"),
+          file("cron.log", 10, "2026-11-11T08:00:00Z"),
+          file(".gitkeep", 0, "2026-11-11T08:00:00Z"),
+        ],
+      },
+    });
+    const found = await r.all();
+    expect(found.map((f) => f.checkId)).toEqual(["no-recent-backup"]);
+    expect(found[0]?.evidence).toContain("db-2026-10-01.sql.gz");
+  });
+
+  it("a folder of only non-backup files says so, as a finding naming how many were skipped", async () => {
+    const r = run({
+      config: cfg,
+      env: {},
+      files: { "backups/db": [file("README.txt", 10), file(".DS_Store", 10)] },
+    });
+    const found = await r.all();
+    expect(found[0]?.evidence).toContain("2 files were skipped");
+  });
+
+  it("a configured pattern replaces the extension list", async () => {
+    const r = run({
+      config: { exports: [{ name: "database", folder: "backups/db", pattern: "dump-*.txt" }] },
+      env: {},
+      files: { "backups/db": [file("dump-2026-11-10.txt", 10), file("db-2026-11-10.sql", 10)] },
+    });
+    expect(await r.all()).toEqual([]);
+    const reading = await r.backups.read(NOW);
+    expect(reading.exports[0]).toMatchObject({ ok: true, skipped: 1 });
+  });
+
+  it("1,500 dumps with the newest listed last is not a false stale finding", async () => {
+    const files: RawExportFile[] = [];
+    for (let i = 0; i < 1500; i++) {
+      const d = new Date(Date.parse("2026-11-10T00:00:00Z") - (1499 - i) * 86_400_000);
+      files.push(file(`db-${d.toISOString().slice(0, 10)}.sql`, 100, d.toISOString()));
+    }
+    const r = run({ config: cfg, env: {}, files: { "backups/db": files } });
+    expect(await r.all()).toEqual([]);
+  });
+
+  it("a listing cut short by the reader is could-not-check, never a stale finding", async () => {
+    const r = run({
+      config: cfg,
+      env: {},
+      files: { "backups/db": { files: [file("db-2026-01-01.sql", 10)], truncated: true } },
+    });
+    expect(await r.all()).toEqual([]);
+    expect(r.notes[0]?.reason).toContain("more entries");
+  });
+
+  it("links and folders that were not read are said, and with nothing readable left it is could-not-check", async () => {
+    const some = run({
+      config: cfg,
+      env: {},
+      files: { "backups/db": { files: [file("db-2026-11-10.sql", 10)], unread: 2 } },
+    });
+    expect(await some.all()).toEqual([]);
+    expect(some.notes[0]?.reason).toContain("2 entries were not read (links or folders)");
+    const none = run({
+      config: cfg,
+      env: {},
+      files: { "backups/db": { files: [], unread: 3 } },
+    });
+    expect(await none.all()).toEqual([]);
+    expect(none.notes[0]?.reason).toContain("3 entries were not read (links or folders)");
+  });
+
+  it("a file from 7 days ago at 23:00 is not flagged a day early: the real time of the file counts", async () => {
+    const r = run({
+      config: cfg,
+      env: {},
+      files: { "backups/db": [file("latest.sql.gz", 10, "2026-11-04T23:00:00Z")] },
+    });
+    expect(await r.all()).toEqual([]);
+    const late = run({
+      config: cfg,
+      env: {},
+      files: { "backups/db": [file("latest.sql.gz", 10, "2026-11-04T08:00:00Z")] },
+    });
+    expect((await late.all()).map((f) => f.checkId)).toEqual(["no-recent-backup"]);
+  });
+
+  it("a partial Sanity read that looks stale is could-not-check, a fresh one is fine", async () => {
+    const page1 = (created: string) => ({
+      [`GET ${SANITY_URL}`]: {
+        status: 200,
+        body: { backups: [{ createdAt: created }], nextCursor: "c2" },
+      },
+      [`GET ${SANITY_URL}?nextCursor=c2`]: { status: 500 },
+    });
+    const stale = run({ routes: page1("2026-10-01T02:00:00Z") });
+    expect(await stale.all()).toEqual([]);
+    expect(stale.notes.map((n) => n.reason).join(" ")).toContain("may have missed");
+    const fresh = run({ routes: page1("2026-11-10T02:00:00Z") });
+    expect(await fresh.all()).toEqual([]);
+  });
+
+  it("no-recent-backup's done text does not claim a restore was tested", () => {
+    expect(noRecentBackup.done).not.toMatch(/knows how to restore/);
   });
 });

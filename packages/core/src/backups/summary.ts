@@ -33,11 +33,12 @@ export function buildBackupsSummary(args: {
       continue;
     }
     const head = `${p.platform} ${clip(p.subject)}: ${clip(p.detail)}`;
-    if (!p.enabled) lines.push(`${head}. Not enabled.`);
-    else if (p.latest === undefined) lines.push(`${head}. No date for the newest backup.`);
+    const extra = `${p.future ? ` ${p.future} ${p.future === 1 ? "backup is" : "backups are"} dated in the future and not counted.` : ""}${p.partial ? ` The list may be incomplete: ${clip(p.partial, 200)}.` : ""}`;
+    if (!p.enabled) lines.push(`${head}. Not enabled.${extra}`);
+    else if (p.latest === undefined) lines.push(`${head}. No date for the newest backup.${extra}`);
     else
       lines.push(
-        `${head}. Newest backup ${agePhrase(p.latest, now)}${stale(p.latest, now, limit) ? `, over the ${limit}-day limit` : ""}.`,
+        `${head}. Newest backup ${agePhrase(p.latest, now)}${stale(p.latest, now, limit) ? `, over the ${limit}-day limit` : ""}.${extra}`,
       );
   }
   for (const e of reading.exports) {
@@ -47,8 +48,9 @@ export function buildBackupsSummary(args: {
       continue;
     }
     const j = judgeExports(e.files, e.shrinkPercent);
+    const notes = `${e.future.length > 0 ? ` ${e.future.length} ${e.future.length === 1 ? "file is" : "files are"} dated in the future and not counted.` : ""}${e.unread > 0 ? ` ${e.unread} ${e.unread === 1 ? "entry was" : "entries were"} not read (links or folders).` : ""}${e.skipped > 0 ? ` ${e.skipped} ${e.skipped === 1 ? "file was" : "files were"} skipped (not backups).` : ""}`;
     if (j.kind === "empty") {
-      lines.push(`${head}: no files.`);
+      lines.push(`${head}: no backup files.${notes}`);
       continue;
     }
     const day = `${j.latest.date}T00:00:00Z`;
@@ -56,7 +58,7 @@ export function buildBackupsSummary(args: {
       ? `, the one before ${formatBytes(j.previous.size)}${j.shrunk ? " (far smaller)" : ""}`
       : "";
     lines.push(
-      `${head}: ${e.files.length} ${e.files.length === 1 ? "file" : "files"}, newest ${j.latest.name}, ${formatBytes(j.latest.size)}, dated ${agePhrase(day, now)}${previous}.`,
+      `${head}: ${e.files.length} ${e.files.length === 1 ? "file" : "files"}, newest ${j.latest.name}, ${formatBytes(j.latest.size)}, dated ${agePhrase(day, now)}${previous}.${notes}`,
     );
   }
   if (lines.length === 0) lines.push("No backup source is set up, so no backup status was read.");

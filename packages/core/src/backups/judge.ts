@@ -11,6 +11,14 @@ export function stale(iso: string, now: Date, maxAgeDays: number): boolean {
   return now.getTime() - Date.parse(iso) > maxAgeDays * DAY_MS;
 }
 
+/** A time further than this past the clock cannot be a backup that already ran: a clock a few hours off is allowed. */
+export const FUTURE_SLACK_MS = DAY_MS;
+
+/** True when a time is more than a day after the injected clock. */
+export function inFuture(iso: string, now: Date): boolean {
+  return Date.parse(iso) - now.getTime() > FUTURE_SLACK_MS;
+}
+
 /** "today (11 Nov 2026)", "1 day ago (10 Nov 2026)", "12 days ago (30 Oct 2026)". */
 export function agePhrase(iso: string, now: Date): string {
   const days = ageInDays(iso, now);
@@ -32,14 +40,16 @@ const NAME_DATE =
 export function exportDateOf(
   name: string,
   modified: string,
-): { date: string; dateFrom: "name" | "modified" } {
+): { date: string; dateFrom: "name" | "modified"; at: string } {
   const m = NAME_DATE.exec(name);
   if (m) {
     const date = `${m[1]}-${m[2]}-${m[3]}`;
     // 2026-02-31 matches the pattern and is not a day.
-    if (dayOf(`${date}T00:00:00Z`) === date) return { date, dateFrom: "name" };
+    if (dayOf(`${date}T00:00:00Z`) === date)
+      return { date, dateFrom: "name", at: `${date}T23:59:59.999Z` };
   }
-  return { date: dayOf(modified), dateFrom: "modified" };
+  const at = new Date(Date.parse(modified));
+  return { date: dayOf(modified), dateFrom: "modified", at: at.toISOString() };
 }
 
 export type ExportJudgement =

@@ -1,7 +1,15 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, utimesSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  realpathSync,
+  rmSync,
+  symlinkSync,
+  utimesSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { resultSchema } from "@gaugeline/core";
+import { resultSchema, siteEnv, BACKUPS_ENV_VARS, type RawListing } from "@gaugeline/core";
 import { afterEach, describe, expect, it } from "vitest";
 import { parseCliArgs } from "../args.js";
 import { folderLister } from "../export-folder.js";
@@ -132,9 +140,39 @@ describe("the export folder on disk", () => {
     const when = new Date("2026-11-10T03:00:00Z");
     utimesSync(f, when, when);
     const listed = await folderLister(dir)("dumps");
-    expect(listed).toEqual([
-      { name: "db-2026-11-10.sql", size: 40, modified: "2026-11-10T03:00:00.000Z" },
-    ]);
+    expect(listed).toEqual({
+      files: [{ name: "db-2026-11-10.sql", size: 40, modified: "2026-11-10T03:00:00.000Z" }],
+      unread: 1,
+      truncated: false,
+    });
+  });
+
+  it.skipIf(process.platform === "win32")(
+    "a link is not followed and is counted as not read",
+    async () => {
+      const dir = folder();
+      mkdirSync(join(dir, "dumps"), { recursive: true });
+      writeFileSync(join(dir, "real.sql"), "x");
+      symlinkSync(join(dir, "real.sql"), join(dir, "dumps", "db-2026-11-10.sql"));
+      expect(await folderLister(dir)("dumps")).toEqual({ files: [], unread: 1, truncated: false });
+    },
+  );
+
+  it("stops after a bound on the entries it reads and says the listing is cut short", async () => {
+    const dir = folder();
+    mkdirSync(join(dir, "dumps"));
+    for (let i = 0; i < 10; i++) writeFileSync(join(dir, "dumps", `db-2026-11-0${i}.sql`), "x");
+    const listed = (await folderLister(dir, { maxEntries: 4 })("dumps")) as RawListing;
+    expect(listed).toMatchObject({ truncated: true });
+    expect(listed.files.length + (listed.unread ?? 0)).toBeLessThanOrEqual(4);
+  });
+
+  it("an error never holds the folder's absolute path", async () => {
+    const dir = folder();
+    const err = await folderLister(dir)("nowhere").catch((e: unknown) => e as Error);
+    expect(err).toBeInstanceOf(Error);
+    expect((err as Error).message).not.toContain(dir);
+    expect((err as Error).message).not.toContain("nowhere");
   });
 
   it("a missing folder is could-not-check with the reason, end to end", async () => {
@@ -233,5 +271,33 @@ describe("backups: help and flags", () => {
   it("--backups is on the page check and on run", () => {
     expect(FLAGS.find((f) => f.name === "backups")?.commands).toEqual(["check", "run"]);
     expect(HELP[""]).toContain("--backups");
+  });
+});
+
+describe("run --all keeps each site's backup settings apart", () => {
+  it("a prefixed Sanity project, dataset and token reach only that site", () => {
+    const env = {
+      HARBOUR_SANITY_PROJECT_ID: "harbour1",
+      HARBOUR_SANITY_DATASET: "live",
+      HARBOUR_SANITY_TOKEN: "t-harbour",
+      FERN_SANITY_PROJECT_ID: "fern0001",
+      FERN_SUPABASE_ACCESS_TOKEN: "t-fern",
+      PATH: "/bin",
+    };
+    const names = (prefix: string) =>
+      Object.fromEntries(
+        BACKUPS_ENV_VARS.map((k) => [k, siteEnv(env, prefix)[k]]).filter(
+          ([, v]) => v !== undefined,
+        ),
+      );
+    expect(names("HARBOUR")).toEqual({
+      SANITY_PROJECT_ID: "harbour1",
+      SANITY_DATASET: "live",
+      SANITY_TOKEN: "t-harbour",
+    });
+    expect(names("FERN")).toEqual({
+      SANITY_PROJECT_ID: "fern0001",
+      SUPABASE_ACCESS_TOKEN: "t-fern",
+    });
   });
 });
