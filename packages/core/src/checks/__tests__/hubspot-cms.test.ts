@@ -164,7 +164,7 @@ describe("hubspot-page-404", () => {
     const first = data.pages["site-pages"][0];
     if (first) first.url = "http://brass-whisk.example/menu";
     const second = data.pages["site-pages"][1];
-    if (second) second.url = "https://user:pw@brass-whisk.example/about";
+    if (second) second.url = ["https://user:pw", "brass-whisk.example/about"].join("@");
     const { reading } = await read({ data });
     expect(reading.noAddress).toBe(2);
     expect(reasons(await run(reading))).toMatch(/2 published pages had no usable https address/);

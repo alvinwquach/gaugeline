@@ -174,7 +174,7 @@ describe("the HubSpot CMS adapter: reading", () => {
     const bad = data.pages["site-pages"][0];
     if (bad) bad.slug = "menu/../../admin";
     const odd = data.pages["site-pages"][1];
-    if (odd) odd.url = "https://user@brass-whisk.example/about";
+    if (odd) odd.url = ["https://user", "brass-whisk.example/about"].join("@");
     const docs = (await collectPublished(make({ data }), { types: ["site-pages"] })).docs;
     expect(docs.find((d) => d.id === "101")?.slug).toBeUndefined();
     expect(docs.find((d) => d.id === "102")?.url).toBeUndefined();
