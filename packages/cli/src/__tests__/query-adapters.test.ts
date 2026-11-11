@@ -82,7 +82,10 @@ describe("gaugeline.adapters.json in gaugeline query: e2e", () => {
     const r = await query();
     expect(r.code).toBe(EXIT.couldNotRun);
     expect(r.err).toContain('the "generic-api" adapter is planned (C-14)');
-    expect(r.err).toContain("Built adapters: carrd, duda, framer, godaddy, sanity, sitemap-feed,");
+    // The list grows with every adapter: check its shape (alphabetical, the ones this test needs), not the whole list.
+    const built = /Built adapters: ([a-z0-9, -]+)\./.exec(r.err)?.[1]?.split(", ") ?? [];
+    expect(built).toEqual([...built].sort());
+    expect(built).toEqual(expect.arrayContaining(["sanity", "sitemap-feed", "wordpress"]));
     expect(r.out).toBe("");
   });
 
