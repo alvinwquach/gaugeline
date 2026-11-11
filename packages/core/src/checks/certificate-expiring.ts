@@ -62,11 +62,27 @@ export const certificateExpiring = defineCheck<CertInput>({
   what: "The https certificate the site presented expires in under 21 days (fix soon) or under 7 (fix first), or has expired.",
   why: "When it lapses, every browser shows a full-page security warning instead of the site, and most visitors leave.",
   fix: "Renew it, or find why automatic renewal stopped (a DNS change at cutover often breaks the renewal check). Domain registration expiry is a separate date: check it at your registrar.",
-  tech: "Read from the TLS connection of the page's own GET: no extra request. Days left = whole days until notAfter, by the run's clock. Plain http, or a certificate that failed verification, gives nothing here. Domain registration expiry needs registrar access and is not checked",
-  run(input, ctx) {
+  tech: "Read from the TLS connection of the page's own GET: no extra request. Days left = whole days until notAfter, by the run's clock. Plain http, or a certificate that failed verification, gives nothing here. With --renewals the certificates of the bare domain and www are read too (one HEAD each, from the connection), and one with a different expiry is reported as well. Domain registration expiry is a separate check (domain-expires-soon)",
+  async run(input, ctx) {
     const { cert, url, host } = certOf(input);
-    if (!cert || cert.validTo === "") return [];
-    const f = expiryFinding(cert, ctx.now?.() ?? new Date(), url, host);
-    return f ? [f] : [];
+    const at = ctx.now?.() ?? new Date();
+    const found: Finding[] = [];
+    const seen = new Set<string>();
+    const key = (c: Certificate) => `${c.names.join(",")}|${c.validTo}`;
+    if (cert && cert.validTo !== "") {
+      seen.add(key(cert));
+      const f = expiryFinding(cert, at, url, host);
+      if (f) found.push(f);
+    }
+    // With --renewals, the other of the bare domain and www may be served by a different certificate.
+    if (ctx.renewals && "hops" in input && host !== "") {
+      for (const read of await ctx.renewals.certificates(host)) {
+        if (read.kind !== "cert" || read.cert.validTo === "" || seen.has(key(read.cert))) continue;
+        seen.add(key(read.cert));
+        const f = expiryFinding(read.cert, at, `https://${read.host}/`, read.host);
+        if (f) found.push(f);
+      }
+    }
+    return found;
   },
 });

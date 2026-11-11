@@ -1287,3 +1287,37 @@ export {
   emailRelativeLink,
 } from "./checks/email-templates.js";
 export type { EmailInput, EmailPlaceholder } from "./checks/email-templates.js";
+
+export { createRenewalsRegistry } from "./renewals/registry.js";
+export { RENEWALS_CHECKS } from "./checks/renewals.js";
+export { renewalsConfigSchema } from "./renewals/config.js";
+export type { RenewalsConfig } from "./renewals/config.js";
+export { DAY_MS, daysUntil, expiryPhrase, urgency, writeDate } from "./renewals/dates.js";
+export { createRdapClient, isHold, parseRdapDomain, IANA_BOOTSTRAP } from "./renewals/rdap.js";
+export type { RdapClient, Registration, RegistrationRead } from "./renewals/rdap.js";
+export { certificateHosts, readCertificates } from "./renewals/certs.js";
+export type { CertRead } from "./renewals/certs.js";
+export { registrableOf } from "./renewals/suffix.js";
+export type { Registrable } from "./renewals/suffix.js";
+export {
+  NODE_RETIREMENTS,
+  NODE_RETIREMENTS_MAX_AGE_DAYS,
+  NODE_RETIREMENTS_WRITTEN,
+  nodeMajor,
+  retirementsStale,
+  runtimeStatus,
+} from "./renewals/runtimes.js";
+export type { RuntimeRetirement, RuntimeStatus } from "./renewals/runtimes.js";
+export {
+  GITHUB_TOKEN_VAR,
+  RENEWALS_ENV_VARS,
+  VERCEL_TOKEN_VAR,
+  parseGithubExpiry,
+  parseVercelExpiry,
+} from "./renewals/tokens.js";
+export type { ProjectRuntime, TokenRead } from "./renewals/tokens.js";
+export { createRenewals } from "./renewals/reader.js";
+export type { RenewalRow, Renewals, RenewalsSettings, RuntimesRead } from "./renewals/reader.js";
+export { RENEWAL_CHECK_IDS, renewalDate, renewalItems, renewalLine } from "./renewals/section.js";
+export type { RenewalItem } from "./renewals/section.js";
+export { formatRenewalRows } from "./renewals/format.js";

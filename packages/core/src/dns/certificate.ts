@@ -12,7 +12,7 @@ export interface Certificate {
 }
 
 /** The fields of node:tls's getPeerCertificate() this reads. */
-interface PeerCertificate {
+export interface PeerCertificate {
   subject?: { CN?: string | string[] };
   issuer?: { O?: string | string[]; CN?: string | string[] };
   subjectaltname?: string;
@@ -33,6 +33,14 @@ export function certificateOf(socket: unknown): Certificate | undefined {
   } catch {
     return undefined;
   }
+  return certificateFromPeer(peer);
+}
+
+/**
+ * The same reading for a certificate object that is not on a socket: the `cert` Node attaches to a
+ * hostname-mismatch error, which is how a name that the certificate does not cover is still read.
+ */
+export function certificateFromPeer(peer: PeerCertificate | undefined): Certificate | undefined {
   if (!peer || !peer.valid_to) return undefined;
   const san = (peer.subjectaltname ?? "")
     .split(",")

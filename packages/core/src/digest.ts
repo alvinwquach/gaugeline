@@ -1,6 +1,7 @@
 import { createPageRegistry } from "./checks/index.js";
 import { SEVERITY_ORDER, type CheckRegistry, type Finding, type Severity } from "./model.js";
 import { redact } from "./redact.js";
+import { RENEWAL_CHECK_IDS, renewalItems } from "./renewals/section.js";
 import { escapeHtml } from "./report/html.js";
 import type { Result } from "./result.js";
 
@@ -246,10 +247,37 @@ function sections(d: Digest): { plain: Section[]; checked: string; notes: string
   const day = (t: Date) => shortDate(t, d.timeZone);
   const todo = (i: DigestItem) => (i.fix ? ` What to do: ${i.fix}` : "");
   const plain: Section[] = [];
-  if (d.newThisWeek.length > 0)
+  // Renewals (a domain, a certificate, a token) read by their date, not by when they were first seen:
+  // one section, soonest first, with the date written out. They leave the lists below.
+  const open = [...d.newThisWeek, ...d.stillOpen];
+  const byKey = new Map(open.map((i) => [i.key, i] as const));
+  const renewals = renewalItems(
+    open.map((i) => ({
+      checkId: i.checkId,
+      severity: i.severity,
+      title: i.title,
+      evidence: i.evidence,
+      url: i.key,
+    })),
+  ).flatMap((r) => {
+    const item = byKey.get(r.url);
+    return item ? [item] : [];
+  });
+  const isRenewal = (i: DigestItem) => RENEWAL_CHECK_IDS.has(i.checkId);
+  if (renewals.length > 0)
+    plain.push({
+      heading: "Renewals",
+      lines: renewals.map((item) => ({
+        lead: item.title,
+        rest: `: ${item.evidence}.${todo(item)}`,
+      })),
+    });
+  const newThisWeek = d.newThisWeek.filter((i) => !isRenewal(i));
+  const stillOpen = d.stillOpen.filter((i) => !isRenewal(i));
+  if (newThisWeek.length > 0)
     plain.push({
       heading: "New this week",
-      lines: d.newThisWeek.map((i) => ({
+      lines: newThisWeek.map((i) => ({
         lead: i.title,
         rest: ` (on ${path(i.page)}, first seen ${day(i.firstSeen)}).${todo(i)}`,
       })),
@@ -262,10 +290,10 @@ function sections(d: Digest): { plain: Section[]; checked: string; notes: string
         rest: ` (on ${path(i.page)}, seen ${day(i.firstSeen)}${i.fixedAt ? `, fixed by ${day(i.fixedAt)}` : ""}).`,
       })),
     });
-  if (d.stillOpen.length > 0)
+  if (stillOpen.length > 0)
     plain.push({
       heading: "Still open",
-      lines: d.stillOpen.map((i) => ({
+      lines: stillOpen.map((i) => ({
         lead: i.title,
         rest: ` (on ${path(i.page)}, ${age(i, d)}).${todo(i)}`,
       })),

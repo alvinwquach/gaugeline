@@ -77,6 +77,7 @@ async function runSite(
     env: Record<string, string | undefined>;
     now: () => Date;
     allowPrivate: boolean;
+    renewals: boolean;
     runOne: RunOne;
   },
 ): Promise<SiteOutcome> {
@@ -93,6 +94,7 @@ async function runSite(
         "--no-open",
         "--quiet",
         ...(opts.allowPrivate ? ["--allow-private"] : []),
+        ...(opts.renewals ? ["--renewals"] : []),
       ],
       {
         stdout: { write: (s: string) => out.push(s) },
@@ -132,6 +134,8 @@ export async function runAll(
     now?: () => Date;
     parallel?: number;
     allowPrivate?: boolean;
+    /** Each site's run also checks what lapses (--renewals). */
+    renewals?: boolean;
     runOne: RunOne;
   },
 ): Promise<SiteOutcome[]> {
@@ -152,6 +156,7 @@ export async function runAll(
               env: opts.env,
               now,
               allowPrivate: opts.allowPrivate ?? false,
+              renewals: opts.renewals ?? false,
               runOne: opts.runOne,
             }),
           );

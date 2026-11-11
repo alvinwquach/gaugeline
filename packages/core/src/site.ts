@@ -1,3 +1,4 @@
+import { NetworkError } from "./errors.js";
 import { createPageRegistry } from "./checks/index.js";
 import type { Fetcher } from "./fetcher.js";
 import { createBudget, sampleCounts, type Budget } from "./limits.js";
@@ -22,6 +23,7 @@ import { lazyLanguageGroup, type LanguageRules } from "./languages.js";
 import { lazyAccess } from "./access/probe.js";
 import type { AccessSettings } from "./access/types.js";
 import type { DnsReader } from "./dns.js";
+import type { Renewals } from "./renewals/reader.js";
 import type { HiddenConfig } from "./hidden.js";
 import { lazyEvents, type EventObserver } from "./events/observe.js";
 import type { EventsConfig } from "./events/types.js";
@@ -97,6 +99,14 @@ export interface SiteCheckOptions {
   access?: AccessSettings;
   /** Public DNS for the email record checks. Without one, they find nothing and nothing is resolved. */
   dns?: DnsReader;
+  /**
+   * `gaugeline renewals`: a site that does not answer (a lapsed domain is the usual reason) is not an
+   * error. The run goes on with an empty page, and `SiteCheck.unreachable` says why it was empty. The
+   * checks that need the page are not in such a run.
+   */
+  tolerateUnreachable?: boolean;
+  /** What the renewals checks read (--renewals). Without it they are not in the run. Built by the caller so it can print the section afterwards. */
+  renewals?: Renewals;
   /** Sections hidden until launch. */
   hidden?: HiddenConfig;
   /** Where the menus are and which footer links are required (gaugeline.nav.json). */
@@ -123,6 +133,8 @@ export interface SiteCheck {
   snapshot: PageSnapshot;
   result: RunResult;
   budget: Budget;
+  /** Set with `tolerateUnreachable` when the page did not answer: the plain sentence saying so. */
+  unreachable?: string;
   /** How many of the container's triggers can fire, when a tag check read them. */
   tags?: TagSummary;
   /**
@@ -151,7 +163,17 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
   sink({ step: "load-page" });
   // A fetcher kept across checks has history already: only what this check asks for is reported.
   const before = opts.fetcher.history?.().length ?? 0;
-  const snapshot = buildSnapshot(await inKind("page", () => opts.fetcher.getSite(opts.address)));
+  let unreachable: string | undefined;
+  const snapshot = await (async (): Promise<PageSnapshot> => {
+    try {
+      return buildSnapshot(await inKind("page", () => opts.fetcher.getSite(opts.address)));
+    } catch (err) {
+      if (!opts.tolerateUnreachable || !(err instanceof NetworkError)) throw err;
+      unreachable = err.message;
+      const url = new URL(/^[a-z]+:\/\//i.test(err.url) ? err.url : `https://${err.url}`);
+      return buildSnapshot([{ url: `https://${url.host}/`, status: 0, headers: {}, ms: 0 }]);
+    }
+  })();
   sink({ step: "robots-sitemap" });
   // The same candidates the link checks sample: same-site http(s), no #fragment of this page.
   const sameSite = dedupeUrls(linkCandidates(snapshot).map((l) => l.url));
@@ -269,6 +291,7 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
       ...(opts.facts ? { facts: opts.facts } : {}),
       ...(opts.payments ? { payments: opts.payments } : {}),
       ...(opts.dns ? { dns: opts.dns } : {}),
+      ...(opts.renewals ? { renewals: opts.renewals } : {}),
       ...(opts.hidden ? { hidden: opts.hidden } : {}),
       ...(opts.nav ? { navRules: opts.nav } : {}),
       ...(container && tagRules ? { tagContainer: container, tagRules } : {}),
@@ -347,6 +370,7 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
     snapshot,
     result,
     budget,
+    ...(unreachable !== undefined ? { unreachable } : {}),
     page: pageData(snapshot),
     leaks: leaksView({
       page: snapshot,
