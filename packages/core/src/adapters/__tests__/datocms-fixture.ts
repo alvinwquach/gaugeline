@@ -132,8 +132,9 @@ export interface DatocmsFixtureOptions {
    * What a request that carries `X-Include-Drafts: true` is answered with. "drafts" (default): the drafts are
    * included, like a token that may preview. "refused": 403, like a token that may not. "ignored": the header
    * has no effect and the published list comes back, like a project with no unpublished record.
+   * "refused-after-first-page": the first page of a draft list is answered and every later page is 403.
    */
-  drafts?: "drafts" | "refused" | "ignored";
+  drafts?: "drafts" | "refused" | "ignored" | "refused-after-first-page";
   /** Called with every request, to see what was asked. */
   onRequest?: (request: {
     method: string;
@@ -141,6 +142,8 @@ export interface DatocmsFixtureOptions {
     headers: Record<string, string>;
     body: string;
   }) => void;
+  /** The `count` the collection's meta field gives, instead of the true one (for the count tests). */
+  countOverride?: (collection: string, drafts: boolean) => number | undefined;
   /** Answers the whole of one collection's next request with this body instead (for the odd-answer tests). */
   override?: (collection: string, skip: number) => unknown;
 }
@@ -198,30 +201,52 @@ export function datocmsTransport(
     const mode = options.drafts ?? "drafts";
     if (wantsDrafts && mode === "refused")
       return json(403, { errors: [{ message: "This token cannot read drafts" }] });
-    const withDrafts = wantsDrafts && mode === "drafts";
+    const withDrafts = wantsDrafts && (mode === "drafts" || mode === "refused-after-first-page");
 
     const data: Record<string, unknown> = {};
     for (const field of operation.selections) {
       if (field.kind !== "field") continue;
+      // A collection's meta field, `_allClassesMeta { count }`.
+      const meta = /^_(all[A-Za-z]+)Meta$/.exec(field.name);
+      if (meta !== null) {
+        const target = content.find((c) => c.collection === meta[1]);
+        if (target === undefined)
+          return json(200, {
+            errors: [{ message: `Cannot query field ${field.name} on type Query` }],
+          });
+        const shown = target.records.filter((r) => withDrafts || r.published).length;
+        data[field.name] = {
+          count: options.countOverride?.(target.collection, withDrafts) ?? shown,
+        };
+        continue;
+      }
       const collection = content.find((c) => c.collection === field.name);
       if (collection === undefined)
         return json(200, {
           errors: [{ message: `Cannot query field ${field.name} on type Query` }],
         });
       const text = asked.query ?? "";
-      const page = new RegExp(`${field.name}\\(first: (\\d+), skip: (\\d+)\\)`).exec(text);
+      const page = new RegExp(
+        `${field.name}\\(first: (\\d+), skip: (\\d+), orderBy: \\[id_ASC\\]\\)`,
+      ).exec(text);
       if (page === null)
-        return json(200, { errors: [{ message: "first and skip are required here" }] });
+        return json(200, {
+          errors: [{ message: "first, skip and an explicit orderBy are required here" }],
+        });
       const first = Number(page[1]);
       const skip = Number(page[2]);
       if (first < 1 || first > 500)
         return json(200, { errors: [{ message: "first must be 1 to 500" }] });
+      if (wantsDrafts && mode === "refused-after-first-page" && skip !== 0)
+        return json(403, { errors: [{ message: "This token cannot read drafts" }] });
       const odd = options.override?.(field.name, skip);
       if (odd !== undefined) {
         data[field.name] = odd;
         continue;
       }
-      const visible = collection.records.filter((r) => withDrafts || r.published);
+      const visible = collection.records
+        .filter((r) => withDrafts || r.published)
+        .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
       data[field.name] = visible.slice(skip, skip + first).map((r) =>
         project(
           {

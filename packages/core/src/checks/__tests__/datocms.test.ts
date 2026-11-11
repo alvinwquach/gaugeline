@@ -20,6 +20,8 @@ async function reading(
   options: {
     fixture?: DatocmsFixtureOptions;
     settings?: Partial<AdapterSettings>;
+    /** The owner agreed to probing checks. Default here: yes, so each test says when it is not. */
+    ownerConsent?: boolean;
     wrap?: (t: ReturnType<typeof datocmsTransport>) => ReturnType<typeof datocmsTransport>;
   } = {},
 ): Promise<{ reading: DatocmsReading; seen: string[] }> {
@@ -45,7 +47,10 @@ async function reading(
     },
     sleep: () => Promise.resolve(),
   });
-  return { reading: await readDatocms({ adapter }), seen };
+  return {
+    reading: await readDatocms({ adapter, ownerConsent: options.ownerConsent ?? true }),
+    seen,
+  };
 }
 
 const run = (r: DatocmsReading) => runChecks(r, createDatocmsRegistry());
@@ -67,7 +72,7 @@ describe("DatoCMS checks: drafts reachable with the published-only token", () =>
     const { reading: r } = await reading();
     const out = await run(r);
     expect(evidence(out)).toEqual([
-      "classes: a request that asks for drafts returned 1 record that the published list does not have (id 1003)",
+      "classes: a request that asks for drafts returned 1 record that the published list does not have",
     ]);
     expect(out.passed).toEqual([]);
     // Collections that were accepted with nothing extra are could-not-check, never a pass.
@@ -75,10 +80,43 @@ describe("DatoCMS checks: drafts reachable with the published-only token", () =>
     expect(reasons(out)).toMatch(/teachers: .*no record that is not published/);
   });
 
+  it("names the ids of unpublished records only when the settings ask for them (showDraftIds)", async () => {
+    const { reading: r } = await reading({ settings: { showDraftIds: true } });
+    expect(evidence(await run(r))).toEqual([
+      "classes: a request that asks for drafts returned 1 record that the published list does not have (id 1003)",
+    ]);
+  });
+
   it("shows no text from the content: no field, no name, no summary", async () => {
     const { reading: r } = await reading();
     const printed = JSON.stringify([r, await run(r)]);
     for (const marker of Object.values(DATOCMS_MARKERS)) expect(printed).not.toContain(marker);
+  });
+
+  it("is a probing check: without --owner-consent it asks nothing, finds nothing and does not pass", async () => {
+    const { reading: r, seen } = await reading({ ownerConsent: false });
+    const out = await run(r);
+    expect(seen).toEqual([]);
+    expect(r.ownerConsent).toBe(false);
+    expect(out.findings).toEqual([]);
+    expect(out.passed).toEqual([]);
+    expect(reasons(out)).toMatch(
+      /not asked: .*--owner-consent.*only on sites you own or have permission to test/,
+    );
+  });
+
+  it("with consent but no expectPublishedOnly it still asks nothing", async () => {
+    const { seen } = await reading({
+      ownerConsent: true,
+      settings: { expectPublishedOnly: undefined },
+    });
+    expect(seen).toEqual([]);
+  });
+
+  it("says in its technical line that it is a probing check for sites you own", () => {
+    const c = DATOCMS_CHECKS[0];
+    expect(c?.tech).toMatch(/^probing check, off without --owner-consent/);
+    expect(c?.tech).toContain("only on sites you own or have permission to test");
   });
 
   it("asks nothing and says so when the settings do not say the token is meant for published content only", async () => {
@@ -136,7 +174,7 @@ describe("DatoCMS checks: drafts reachable with the published-only token", () =>
       settings: { id: "datocms", collections: DATOCMS_COLLECTIONS, expectPublishedOnly: true },
       sleep: () => Promise.resolve(),
     });
-    const out = await run(await readDatocms({ adapter }));
+    const out = await run(await readDatocms({ adapter, ownerConsent: true }));
     expect(out.findings).toEqual([]);
     expect(out.couldNotCheck.length).toBeGreaterThan(0);
     expect(reasons(out)).not.toContain("some-other-token-0123456789");
@@ -178,10 +216,11 @@ describe("DatoCMS checks: drafts reachable with the published-only token", () =>
         id: "datocms",
         collections: { classes: { collection: "allClasses" } },
         expectPublishedOnly: true,
+        showDraftIds: true,
       },
       sleep: () => Promise.resolve(),
     });
-    const r = await readDatocms({ adapter });
+    const r = await readDatocms({ adapter, ownerConsent: true });
     expect(r.drafts[0]).toMatchObject({ extra: 12 });
     expect(r.drafts[0]?.extraIds).toHaveLength(5);
     expect(evidence(await run(r))[0]).toContain("12 records");

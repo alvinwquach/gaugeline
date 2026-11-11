@@ -81,6 +81,18 @@ describe("docs/integrations/datocms.md", () => {
     expect(page).toContain("ADR-0006");
   });
 
+  it("says the check is a probing check: needs --owner-consent and a site you own", () => {
+    expect(page).toContain("`datocms-drafts-reachable` is a probing check");
+    expect(page).toContain("--owner-consent");
+    expect(page).toContain("only on sites you own or have permission to test");
+    expect(page).not.toContain("does not need `--owner-consent`");
+  });
+
+  it("says the check judges the token you give Gaugeline, and that ids are named only with showDraftIds", () => {
+    expect(page).toMatch(/judges the token you give Gaugeline/);
+    expect(page).toContain("showDraftIds");
+  });
+
   it("says which token flags are the narrowest key", () => {
     const top = page.split("## ")[1] ?? "";
     for (const flag of ["can_access_cda", "can_access_cda_preview", "can_access_cma"])

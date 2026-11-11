@@ -97,7 +97,7 @@ describe("the DatoCMS adapter: the requests it builds", () => {
       )
     ).docs;
     const query = (JSON.parse(sent[0]?.body ?? "{}") as { query: string }).query;
-    expect(query).toMatch(/allClasses\(first: 100, skip: 0\)/);
+    expect(query).toMatch(/allClasses\(first: 100, skip: 0, orderBy: \[id_ASC\]\)/);
     expect(query).toMatch(/seo\s*\{\s*title\s*\}/);
     expect(query).not.toContain("summary");
     expect(Object.keys(docs[0]?.fieldHashes ?? {}).sort()).toEqual(["name", "seo.title"]);
@@ -266,7 +266,8 @@ describe("the DatoCMS adapter: can the token read drafts", () => {
     expect(read.find((r) => r.type === "classes")).toMatchObject({
       state: "reachable",
       published: 2,
-      extraIds: ["1003"],
+      extra: 1,
+      extraIds: [],
     });
     expect(read.find((r) => r.type === "teachers")?.state).toBe("accepted-no-drafts");
   });
@@ -292,8 +293,14 @@ describe("the DatoCMS adapter: can the token read drafts", () => {
   });
 
   it("ids are held in a Set to subtract the published list from the draft list, so order and repeats do not matter", async () => {
-    const reading = await make({ pageSize: 1 }).draftReading();
-    expect(reading.find((r) => r.type === "classes")?.extraIds).toEqual(["1003"]);
+    const reading = await make({
+      pageSize: 1,
+      settings: { showDraftIds: true },
+    }).draftReading();
+    expect(reading.find((r) => r.type === "classes")).toMatchObject({
+      extra: 1,
+      extraIds: ["1003"],
+    });
   });
 
   it("never reads a draft's field values: the draft read asks for ids only", async () => {
@@ -310,16 +317,125 @@ describe("the DatoCMS adapter: can the token read drafts", () => {
   });
 });
 
+describe("the DatoCMS adapter: what the read must get right", () => {
+  it("the first page asks for the collection's count, every page asks for an explicit order, and later pages ask no count", async () => {
+    const sent: Sent[] = [];
+    await make({ sent, pageSize: 1 }).fieldCounts("classes", ["name"]);
+    const queries = sent.map((r) => (JSON.parse(r.body) as { query: string }).query);
+    expect(queries[0]).toMatch(/_allClassesMeta\s*\{\s*count\s*\}/);
+    for (const q of queries) expect(q).toMatch(/orderBy: \[id_ASC\]/);
+    for (const q of queries.slice(1)) expect(q).not.toContain("_allClassesMeta");
+  });
+
+  it("a count that is not the number of records read is could-not-check", async () => {
+    const reason = await reasonOf(
+      make({ fixture: { countOverride: () => 5 } }).fieldCounts("classes", ["name"]),
+    );
+    expect(reason).toMatch(/said 5 records and 2 were read/);
+  });
+
+  it("a count that is not a whole number is could-not-check", async () => {
+    const reason = await reasonOf(
+      make({ fixture: { countOverride: () => -1 } }).fieldCounts("classes", ["name"]),
+    );
+    expect(reason).toMatch(/not a count of records/);
+  });
+
+  it("a count over the bound fails on the first page, before the rest is read", async () => {
+    const sent: Sent[] = [];
+    const reason = await reasonOf(
+      make({
+        sent,
+        pageSize: 1,
+        maxItemsPerType: 100,
+        fixture: { countOverride: () => 10_000_000 },
+      }).fieldCounts("classes", ["name"]),
+    );
+    expect(reason).toMatch(/more than 100 records/);
+    expect(sent).toHaveLength(1);
+  });
+
+  it("records scanned count against the bound even when a limit and a since filter mean none is delivered", async () => {
+    const reason = await reasonOf(
+      collectPublished(make({ maxItemsPerType: 1 }), {
+        types: ["classes"],
+        limit: 5,
+        since: "2030-01-01T00:00:00Z",
+      }),
+    );
+    expect(reason).toMatch(/more than 1 record/);
+  });
+
+  it("a refusal of the draft list after its first page is could-not-check, never 'the token cannot read drafts'", async () => {
+    const adapter = make({ pageSize: 1, fixture: { drafts: "refused-after-first-page" } });
+    const read = await adapter.draftReading();
+    const classes = read.find((r) => r.type === "classes");
+    expect(classes?.state).toBe("unread");
+    expect(classes?.reason).toMatch(/refused the draft read after answering its first page/);
+    expect(read.some((r) => r.state === "refused")).toBe(false);
+    expect(await reasonOf(adapter.draftsReachable())).toMatch(/refused the draft read after/);
+  });
+
+  it("a refusal of the first draft page is still the token that cannot read drafts", async () => {
+    const read = await make({ pageSize: 1, fixture: { drafts: "refused" } }).draftReading();
+    expect(read.every((r) => r.state === "refused")).toBe(true);
+  });
+
+  it("when drafts are found, the published list is read again; a list that changed in between is could-not-check", async () => {
+    const records = DATOCMS_CONTENT.map((c) => ({
+      ...c,
+      records: c.records.map((r) => ({ ...r })),
+    }));
+    const adapter = createDatocmsAdapter({
+      env: { DATOCMS_TOKEN: KEY },
+      fetcher: createFetcher({
+        transport: datocmsTransport(records, {
+          token: KEY,
+          onRequest: (r) => {
+            // The retreat is published while the draft list is being read.
+            if (r.headers["x-include-drafts"] === "true")
+              for (const c of records)
+                for (const rec of c.records) if (rec.id === "1003") rec.published = true;
+          },
+        }),
+        timeoutMs: 5000,
+      }),
+      settings: { id: "datocms", collections: DATOCMS_COLLECTIONS },
+      sleep: noWait,
+    });
+    const classes = (await adapter.draftReading()).find((r) => r.type === "classes");
+    expect(classes?.state).toBe("unread");
+    expect(classes?.reason).toMatch(/list changed during the read/);
+  });
+
+  it("a stable list is read again once when drafts are found, and not at all when there are none", async () => {
+    const sent: Sent[] = [];
+    await make({
+      sent,
+      settings: { collections: { classes: DATOCMS_COLLECTIONS.classes } },
+    }).draftReading();
+    // published, drafts, published again.
+    expect(sent).toHaveLength(3);
+    const none: Sent[] = [];
+    await make({
+      sent: none,
+      settings: { collections: { teachers: DATOCMS_COLLECTIONS.teachers } },
+    }).draftReading();
+    expect(none).toHaveLength(2);
+  });
+});
+
 describe("the DatoCMS settings", () => {
   const parse = (entry: Record<string, unknown>) =>
     adaptersConfigSchema.safeParse({ adapters: [entry] });
 
-  it("accepts collections and expectPublishedOnly for datocms", () => {
+  it("accepts collections, expectPublishedOnly and showDraftIds for datocms", () => {
     expect(
       parse({
         id: "datocms",
         collections: { classes: { collection: "allClasses", slug: "slug" } },
         expectPublishedOnly: true,
+        showDraftIds: true,
       }).success,
     ).toBe(true);
   });
@@ -336,6 +452,7 @@ describe("the DatoCMS settings", () => {
   it("refuses them for another adapter", () => {
     expect(parse({ id: "sanity", collections: { a: { collection: "allA" } } }).success).toBe(false);
     expect(parse({ id: "sanity", expectPublishedOnly: true }).success).toBe(false);
+    expect(parse({ id: "sanity", showDraftIds: true }).success).toBe(false);
   });
 
   it("the fixture's content has the draft the tests rely on", () => {
