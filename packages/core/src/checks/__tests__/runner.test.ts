@@ -65,6 +65,7 @@ describe("runner: unit", () => {
     expect(ids).toEqual([
       "access-public-read",
       "access-role-scope",
+      "aem-author-links",
       "ai-crawlers-blocked",
       "angular-analog-endpoints-listed",
       "angular-dev-tools-public",
@@ -289,6 +290,7 @@ describe("runner: edge cases", () => {
     expect(out.passed.sort()).toEqual([
       "access-public-read",
       "access-role-scope",
+      "aem-author-links",
       "ai-crawlers-blocked",
       "angular-analog-endpoints-listed",
       "angular-dev-tools-public",

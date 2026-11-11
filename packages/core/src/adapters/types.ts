@@ -24,6 +24,11 @@ export interface AdapterDescription {
    */
   noKey?: true;
   /**
+   * With `noKey`: the adapter reads content (ids, dates and field hashes) from a public API, not pages from a
+   * sitemap, so `--published` gives it the changed-since window and the fields to compare, like a keyed adapter.
+   */
+  fingerprintsFields?: true;
+  /**
    * The adapter reads without a key and reads more with one (a key in the environment turns it on). The run
    * header says both. `keyKind` is the kind of the key it asks for when one is set.
    */
