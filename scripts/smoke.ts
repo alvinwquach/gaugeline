@@ -10,11 +10,13 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { withFixture } from "../packages/fixtures/src/index.js";
 
-// 1 MiB, unchanged by G21c. The embedded client adds about 68 KB (its own budget is 300 KB gzipped, see
-// scripts/embed-client.mjs); the tarball was 435 KB before and is 502 KB now, so even a client at its
-// full budget fits under this line. If a future change needs the line moved, that is a decision for
-// the pull request that needs it.
-export const SIZE_BUDGET_BYTES = 1024 * 1024;
+// 2 MiB. It was 1 MiB (unchanged by G21c: the embedded client added about 68 KB, its own budget is 300 KB gzipped, see
+// scripts/embed-client.mjs). The owner raised it on 11 Nov 2026 because every CMS adapter ships in the one
+// bundled file (the git adapter's YAML parser alone took the tarball past 1 MiB). Past WARN_BYTES (1.6 MiB) the
+// smoke test prints a notice: tell the owner before raising the budget again. After the first release the
+// adapters move into an optional `@gaugeline/adapters` package (a follow-up branch, not a blocker).
+export const SIZE_BUDGET_BYTES = 2 * 1024 * 1024;
+export const WARN_BYTES = Math.round(1.6 * 1024 * 1024);
 const ALLOWED = /^package\/(dist\/.+|README\.md|LICENSE|THIRD_PARTY_LICENSES\.md|package\.json)$/;
 
 const cliDir = fileURLToPath(new URL("../packages/cli/", import.meta.url));
@@ -53,6 +55,10 @@ try {
   const size = statSync(path).size;
   if (size > SIZE_BUDGET_BYTES)
     fail(`tarball is ${size} bytes, over the ${SIZE_BUDGET_BYTES}-byte budget`);
+  if (size > WARN_BYTES)
+    process.stdout.write(
+      `smoke: NOTICE the tarball is ${size} bytes, past ${WARN_BYTES} (1.6 MiB): tell the owner before raising the budget again\n`,
+    );
   process.stdout.write(
     `smoke: ${tarball} is ${(size / 1024).toFixed(1)} kB with ${files.length} files\n`,
   );
