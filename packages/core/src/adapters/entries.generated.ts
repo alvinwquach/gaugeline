@@ -12,6 +12,7 @@ import { entries as sitemapFeed } from "./sitemap-feed.entry.js";
 import { entries as squarespaceCommerce } from "./squarespace-commerce.entry.js";
 import { entries as strapi } from "./strapi.entry.js";
 import { entries as tina } from "./tina.entry.js";
+import { entries as umbraco } from "./umbraco.entry.js";
 import { entries as webflow } from "./webflow.entry.js";
 import { entries as wix } from "./wix.entry.js";
 import { entries as wordpress } from "./wordpress.entry.js";
@@ -29,6 +30,7 @@ export const ADAPTER_ENTRIES: readonly AdapterEntry[] = [
   ...squarespaceCommerce,
   ...strapi,
   ...tina,
+  ...umbraco,
   ...webflow,
   ...wix,
   ...wordpress,
