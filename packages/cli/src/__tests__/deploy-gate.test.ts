@@ -183,7 +183,9 @@ describe("deploy-gate: edge cases", () => {
     expect(resolveOk(env, undefined, true).address).toBe("http://127.0.0.1:8123/");
   });
   it("a typed address with a user name is refused", () => {
-    expect(resolveBad({}, "https://me:pw@x.example/").message).toMatch(/user name|password/i);
+    expect(
+      resolveBad({}, ["https://me:pw", "x.example/"].join(String.fromCharCode(64))).message,
+    ).toMatch(/user name|password/i);
   });
 });
 

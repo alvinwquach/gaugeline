@@ -533,13 +533,13 @@ with a Formspree form: [gaugeline init](guides/init.md).
 ```text title=Output
 Usage: gaugeline deploy-gate [<address>] [options]
 
-Check a preview deployment on Vercel, Netlify or Cloudflare Pages before it goes
-to production. Type the preview's address, or leave it out and Gaugeline reads it
-from the host's environment (VERCEL_URL, DEPLOY_PRIME_URL, CF_PAGES_URL). It
-refuses to run when the environment says production. Runs the normal checks (GET
-only; probing checks stay off without --owner-consent) and ends with one line:
-gate: clear, or gate: would block. Report only: the exit code stays 0 until you
-add --block.
+Check a preview deployment on Vercel, Netlify or Cloudflare Pages before it
+goes to production. Type the preview's address, or leave it out and Gaugeline
+reads it from the host's environment (VERCEL_URL, DEPLOY_PRIME_URL,
+CF_PAGES_URL). It refuses to run when the environment says production. Runs the
+normal checks (GET only; probing checks stay off without --owner-consent) and
+ends with one line: gate: clear, or gate: would block. Report only: the exit
+code stays 0 until you add --block.
 
 Options:
       --json             Print the result as JSON on stdout, and nothing else
@@ -558,7 +558,7 @@ Options:
   -h, --help             Show this help and exit
   -v, --version          Print the version and exit
 
-Exit codes: 0 ran (or clear), 1 --block with a fix-first finding, 2 could not run
+Exit codes: 0 ran, 1 --block and a fix-first finding, 2 could not run
 ```
 
 `gaugeline deploy-gate` checks a preview deployment on Vercel, Netlify or Cloudflare Pages before it goes to
