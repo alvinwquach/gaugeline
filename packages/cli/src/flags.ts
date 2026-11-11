@@ -175,6 +175,14 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     commands: ["check", "run"],
   },
   {
+    name: "published",
+    type: "boolean",
+    description:
+      "Also check that content changed in your CMS is live on the site, and that unpublished pages are gone",
+    since: "0.2.0",
+    commands: ["check", "run"],
+  },
+  {
     name: "owner-consent",
     type: "boolean",
     description:

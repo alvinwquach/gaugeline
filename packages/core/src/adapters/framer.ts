@@ -2,25 +2,14 @@ import { createSitemapFeedAdapter } from "./sitemap-feed.js";
 import type { Fetcher } from "../fetcher.js";
 import {
   AdapterCouldNotCheck,
-  type AdapterDescription,
   type AdapterSettings,
   type ContentAdapter,
   type PublishedDoc,
   type PublishedOptions,
 } from "./types.js";
 
-/**
- * The Framer adapter is beta because Framer's own API is. It asks for no key: it reads what the live
- * site publishes, the same files every visitor can read. `keyKind` is "read-only" because nothing it
- * does can change anything; `noKey` makes the run header say there is no key at all.
- */
-export const FRAMER_DESCRIPTION: AdapterDescription = {
-  name: "Framer",
-  docsUrl: "https://gaugeline.dev/docs/integrations/framer",
-  keyKind: "read-only",
-  noKey: true,
-  beta: true,
-};
+import { FRAMER_DESCRIPTION } from "./framer.entry.js";
+export { FRAMER_DESCRIPTION };
 
 /**
  * Why Framer's CMS collections are not read, in one place so the answer, the docs page and the tests say

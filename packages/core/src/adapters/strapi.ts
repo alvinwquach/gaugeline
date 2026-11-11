@@ -11,7 +11,6 @@ import { fillUrlTemplate, hashValue } from "./fingerprint.js";
 import {
   AdapterCouldNotCheck,
   AdapterRateLimitedError,
-  type AdapterDescription,
   type AdapterSettings,
   type ContentAdapter,
   type PublishedDoc,
@@ -19,34 +18,22 @@ import {
   type TypeCount,
 } from "./types.js";
 
-/**
- * Strapi lets an administrator make an API token of type "Read-only": it can find and read the
- * content types it is given and cannot create, update or delete anything. Gaugeline asks for that
- * type and nothing wider. The page is Gaugeline's own: it lists the endpoints used and how to make
- * the token.
- */
-export const STRAPI_DESCRIPTION: AdapterDescription = {
-  name: "Strapi",
-  docsUrl: "https://gaugeline.dev/docs/integrations/strapi",
-  keyKind: "read-only",
+import {
+  STRAPI_DESCRIPTION,
+  STRAPI_ENV_VARS,
+  STRAPI_LIMITS,
+  STRAPI_PAGE_SIZE,
+  STRAPI_TOKEN,
+  STRAPI_URL,
+} from "./strapi.entry.js";
+export {
+  STRAPI_DESCRIPTION,
+  STRAPI_ENV_VARS,
+  STRAPI_LIMITS,
+  STRAPI_PAGE_SIZE,
+  STRAPI_TOKEN,
+  STRAPI_URL,
 };
-
-export const STRAPI_URL = "STRAPI_URL";
-export const STRAPI_TOKEN = "STRAPI_TOKEN";
-
-/** Every variable the Strapi adapter may read. Only the token is a key. */
-export const STRAPI_ENV_VARS = [STRAPI_URL, STRAPI_TOKEN] as const;
-
-/** Entries asked for in one request: Strapi's default maximum page size. */
-export const STRAPI_PAGE_SIZE = 100;
-
-/** Bounds a run keeps to, in the platform's terms. There are no flags to raise them. */
-export const STRAPI_LIMITS = {
-  /** Entries read from one collection. A bigger one is could-not-check, never a count of part of it. */
-  itemsPerType: 10_000,
-  /** Ids read from each list when looking for unpublished entries a visitor can reach. Past it the count stands and the ids are left out. */
-  publicIds: 500,
-} as const;
 
 /** The smallest page asked for when an answer is too big: the page is halved down to this and no further. */
 const MIN_PAGE_SIZE = 10;

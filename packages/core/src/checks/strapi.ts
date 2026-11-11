@@ -1,6 +1,6 @@
 import { describePartial } from "../adapters/collect.js";
 import type { StrapiReading } from "../adapters/strapi-read.js";
-import { STRAPI_LIMITS } from "../adapters/strapi.js";
+import { STRAPI_LIMITS } from "../adapters/strapi.entry.js";
 import { CheckRegistry, defineCheck, type CheckContext, type Finding } from "../model.js";
 
 /**

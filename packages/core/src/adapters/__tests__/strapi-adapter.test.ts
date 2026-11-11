@@ -78,7 +78,7 @@ describe("Strapi on ContentAdapter: what it says about itself", () => {
     );
   });
 
-  it("is built, not planned, and a settings file can name it", () => {
+  it("is built, not planned, and a settings file can name it", async () => {
     expect(BUILT_ADAPTERS.has("strapi")).toBe(true);
     expect(PLANNED_ADAPTERS.some((p) => p.id === "strapi")).toBe(false);
     const config = adaptersConfigSchema.parse({
@@ -86,7 +86,8 @@ describe("Strapi on ContentAdapter: what it says about itself", () => {
     });
     expect(resolveAdapters(config).map((b) => b.id)).toEqual(["strapi"]);
     const fetcher = createFetcher({ transport: strapiTransport() });
-    expect(createAdapters(config, { env: ENV, fetcher }).map((a) => a.id)).toEqual(["strapi"]);
+    const created = await createAdapters(config, { env: ENV, fetcher });
+    expect(created.map((a) => a.id)).toEqual(["strapi"]);
   });
 
   it("names its collections from the settings, because Strapi lists none to a token", () => {
