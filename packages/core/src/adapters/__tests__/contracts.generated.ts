@@ -7,6 +7,7 @@ import { contractEntries as gitContent } from "./git-content.contract.js";
 import { contractEntries as sanity } from "./sanity.contract.js";
 import { contractEntries as sitemapFeed } from "./sitemap-feed.contract.js";
 import { contractEntries as strapi } from "./strapi.contract.js";
+import { contractEntries as umbraco } from "./umbraco.contract.js";
 import { contractEntries as webflow } from "./webflow.contract.js";
 import { contractEntries as wix } from "./wix.contract.js";
 import { contractEntries as wordpress } from "./wordpress.contract.js";
@@ -19,6 +20,7 @@ export const CONTRACT_ENTRIES: readonly ContractEntry[] = [
   ...sanity,
   ...sitemapFeed,
   ...strapi,
+  ...umbraco,
   ...webflow,
   ...wix,
   ...wordpress,
