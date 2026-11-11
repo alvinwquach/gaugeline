@@ -66,6 +66,7 @@ describe("runner: unit", () => {
       "access-public-read",
       "access-role-scope",
       "ai-crawlers-blocked",
+      "ai-crawlers-intent",
       "app-link-dead",
       "app-name-mismatch",
       "app-smart-banner-mismatch",
@@ -152,6 +153,7 @@ describe("runner: unit", () => {
       "listing-special-hours-missing",
       "listing-website-wrong",
       "llms-txt-broken-links",
+      "llms-txt-malformed",
       "llms-txt-stale-facts",
       "mailto-cta",
       "mock-content-live",
@@ -190,6 +192,7 @@ describe("runner: unit", () => {
       "placeholder-text",
       "price-changed",
       "quotable-facts-disagree",
+      "quotable-facts-in-data-only",
       "redirect-chain",
       "robots-block",
       "rsc-served-as-page",
@@ -221,6 +224,7 @@ describe("runner: unit", () => {
       "temp-host-links",
       "thin-html",
       "viewport",
+      "well-known-invalid",
       "zero-width-in-text",
     ]);
     for (const c of PAGE_CHECKS) expect(c.what && c.why && c.fix && c.tech).toBeTruthy();
@@ -257,6 +261,7 @@ describe("runner: edge cases", () => {
       "access-public-read",
       "access-role-scope",
       "ai-crawlers-blocked",
+      "ai-crawlers-intent",
       "app-link-dead",
       "app-name-mismatch",
       "app-smart-banner-mismatch",
@@ -334,6 +339,7 @@ describe("runner: edge cases", () => {
       "listing-special-hours-missing",
       "listing-website-wrong",
       "llms-txt-broken-links",
+      "llms-txt-malformed",
       "llms-txt-stale-facts",
       "mailto-cta",
       "mock-content-live",
@@ -365,6 +371,7 @@ describe("runner: edge cases", () => {
       "placeholder-text",
       "price-changed",
       "quotable-facts-disagree",
+      "quotable-facts-in-data-only",
       "redirect-chain",
       "robots-block",
       "rsc-served-as-page",
@@ -392,6 +399,7 @@ describe("runner: edge cases", () => {
       "tel-format",
       "temp-host-canonical",
       "temp-host-links",
+      "well-known-invalid",
       "zero-width-in-text",
     ]);
   });

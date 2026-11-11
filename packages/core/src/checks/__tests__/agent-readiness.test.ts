@@ -403,7 +403,7 @@ describe("agent readiness: end to end on the ai-agents fixture", () => {
       expect(byId.get("ai-crawlers-intent")?.evidence).toContain("blocked but should be allowed");
       expect(byId.has("ai-crawlers-blocked")).toBe(false);
       expect(byId.get("llms-txt-malformed")?.evidence).toMatch(/no ## sections$/);
-      expect(byId.get("well-known-invalid")?.evidence).toContain("/.well-known/agent.json");
+      expect(byId.get("well-known-invalid")?.evidence).toContain(".well-known/agent.json");
       expect(byId.get("quotable-facts-in-data-only")?.evidence).toMatch(
         /^phone and street address/,
       );
