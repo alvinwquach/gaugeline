@@ -131,11 +131,21 @@ export function isSveltekitSite(page: PageSnapshot): boolean {
  * Undefined when the page names no module of its own.
  */
 export function appPrefix(page: PageSnapshot): string | undefined {
-  for (const s of page.scripts) {
-    const at = s.slice(0, 500).search(/\/immutable\/(?:entry|nodes|chunks)\//);
-    if (at < 0) continue;
+  const marker = /\/immutable\/(?:entry|nodes|chunks)\//;
+  const fromScripts = page.scripts.map((s) => s.slice(0, 500));
+  // The modules are named in modulepreload links and the bootstrap's import(): look in the HTML too.
+  const body = bodyOf(page);
+  const at = body.indexOf("/immutable/entry/");
+  if (at >= 0) {
+    let start = at;
+    while (start > 0 && at - start < 300 && !/["'(\s=]/.test(body[start - 1] ?? "")) start -= 1;
+    fromScripts.push(body.slice(start, at + "/immutable/entry/".length));
+  }
+  for (const s of fromScripts) {
+    const m = marker.exec(s);
+    if (!m) continue;
     try {
-      return new URL(s.slice(0, at), page.finalUrl).href.replace(/\/$/, "");
+      return new URL(s.slice(0, m.index), page.finalUrl).href.replace(/\/$/, "");
     } catch {
       // not an address
     }
