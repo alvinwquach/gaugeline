@@ -73,6 +73,9 @@ Options:
                                  a path you listed, and what a tag manager holds
       --libraries                Also check the JavaScript files a page loads
                                  for libraries with a published advisory
+      --wordpress                Also check a WordPress site's versions against
+                                 the current releases, and whether it lists its
+                                 users
       --owner-consent            Run the probing checks, which ask routes for
                                  what they protect with no login; only on sites
                                  you may test
@@ -499,6 +502,7 @@ between the markers; CI fails when it differs from the flag table.
 | `--cost`                    | Also check what runs up the hosting bill: pages that change on every visit, the cache and usage jumps                |                      | 0.2.0 |
 | `--trackers`                | Also list the trackers on pages with a form or a path you listed, and what a tag manager holds                       |                      | 0.2.0 |
 | `--libraries`               | Also check the JavaScript files a page loads for libraries with a published advisory                                 |                      | 0.2.0 |
+| `--wordpress`               | Also check a WordPress site's versions against the current releases, and whether it lists its users                  |                      | 0.2.0 |
 | `--owner-consent`           | Run the probing checks, which ask routes for what they protect with no login; only on sites you may test             |                      | 0.2.0 |
 | `--routes <value>`          | With --owner-consent: download routes in files matching this glob (repeatable); no glob: a folder's signed-in routes |                      | 0.2.0 |
 | `--since <value>`           | Page check: compare with the last run (the only value is last). delivery: the window to read, such as 7d             |                      | 0.2.0 |
@@ -769,6 +773,25 @@ is no settings file. At most 20 script files are read for one page, each once wi
 each, and only the scripts the page names. What it reads and what it does not see:
 [Served libraries](guides/served-libraries.md). What it sends:
 [Privacy and safety](privacy.md#served-libraries-libraries).
+
+### The WordPress option
+
+`--wordpress` adds two checks to the page check for a site built on WordPress: `wp-outdated` compares the
+WordPress version the page shows, and the version of each plugin and theme in the `?ver=` on its files, with the
+current releases from the public wordpress.org API; `wp-users-exposed` asks the site's REST API for its list of
+users the way a visitor can, and asks for the id only. A site that hides its versions is could-not-check, never
+up to date. It needs no key and is off by default.
+
+```sh
+npx gaugeline copper-lantern.example --wordpress
+npx gaugeline copper-lantern.example --wordpress --json
+```
+
+It checks the page you give it. `gaugeline run --all --wordpress` adds it to every site of a nightly run. There
+is no settings file: the WordPress adapter's own settings are in `gaugeline.adapters.json`. Each request is a
+`GET`; at most 15 plugins and 15 themes are looked up in a run, each once. What it reads and what it does not see:
+[WordPress](integrations/wordpress.md). What it sends:
+[Privacy and safety](privacy.md#wordpress-wordpress).
 
 ### The query command
 

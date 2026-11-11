@@ -63,7 +63,9 @@ To add one, in this order:
    `adapters/__tests__/entries.ts`. The contract suite (`contract.test.ts`, one `describe.each` over
    every entry) then runs against it with no test of yours needed for these rules: counts and
    fingerprints but never a value, a missing field counts 0, no request but GET or HEAD, a key that is
-   refused is could-not-check, a rate limit is waited out once and then reported as partial.
+   refused is could-not-check, a rate limit is waited out once and then reported as partial. A platform
+   that needs no key to read what is published (WordPress) sets `keyHeader` on its entry: the published
+   reads then must carry no key, and only the reads that need it carry exactly that header.
 3. Write `docs/integrations/<cms>.md` with a freelancer example, change the row in
    `docs/integrations/index.md` from planned to built (a test keeps the table and the registry in step),
    and add a changeset.

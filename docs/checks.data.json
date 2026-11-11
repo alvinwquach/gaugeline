@@ -2600,6 +2600,32 @@
     "estimateChanges": "An hour for a library the theme loads from a file you can swap. A day or more when the library is bundled into an old theme or plugin and the code that uses it has to be tested on the newer version."
   },
   {
+    "id": "wp-outdated",
+    "severity": "medium",
+    "area": "Security & email",
+    "title": "WordPress, a plugin or a theme is older than its current release",
+    "what": "Gaugeline reads the WordPress version a page shows (the generator tag, or the version on the files WordPress loads from wp-includes) and the version of each plugin and theme in the addresses of the files the page loads, and compares them with the current releases the public wordpress.org API lists.",
+    "why": "Most WordPress updates fix something, and a site that falls behind keeps the problems the updates fixed. This states which versions are shown and which are current; it does not say a site can be attacked. A site that hides its versions is not reported as up to date: Gaugeline says it could not check.",
+    "fix": "Take a backup, update on a staging copy if there is one, then update WordPress, the plugins and the theme the finding names, and look at the pages that use them. A premium plugin that is not in the wordpress.org directory is updated from its own vendor and is listed as could-not-check here.",
+    "tech": "Only with --wordpress. The version of WordPress is the generator meta tag (WordPress 6.4.2), else the ?ver= on the core files under /wp-includes/ (the emoji and block-library files); a plugin's or theme's version is the ?ver= on its files under /wp-content/plugins/<slug>/ or /wp-content/themes/<slug>/, read as a release number written with dots (2.1.3, 5.8, 1.0.0-beta2) and never a date, a hash or a timestamp, which are cache-busters; a number that is WordPress's own (what WordPress writes when a plugin gives none) is not the plugin's. A plugin whose files carry more than one number, or none, is could-not-check. The current releases are one GET each to https://api.wordpress.org/core/version-check/1.7/ and https://api.wordpress.org/plugins/info/1.2/ (themes/info/1.2/ for a theme) with the slug the page shows, no key and nothing sent, at most 15 plugins and 15 themes for a run. A plugin or theme not in the directory (a premium or custom one) is could-not-check. A page the run reaches on a site that is not WordPress is skipped. Versions are compared as whole numbers in four parts (5.10 is after 5.8), and each component is reported once per run, on the first page that shows it.",
+    "size": "M",
+    "done": "WordPress, the plugins and the theme the finding names are on their current release (or the client has decided with the developer why one stays), and running Gaugeline again shows the new version numbers.",
+    "estimateChanges": "An hour when the site has a staging copy and the updates are clean. A day or more when a plugin is years behind, the theme is customised, or nobody has tested updates on this site before."
+  },
+  {
+    "id": "wp-users-exposed",
+    "severity": "medium",
+    "area": "Security & email",
+    "title": "The site's REST API lists its users to anyone",
+    "what": "Gaugeline asks the site's REST API for its list of users the way a visitor's browser can, with no login, and reports when it answers with users.",
+    "why": "The list gives each author's display name and the slug that is often also the login name, so anyone can learn who the accounts are before guessing passwords. It is on by default in WordPress, which is why it is common, and closing it costs a site very little. This is a fact about what is listed, not a sign of a break-in.",
+    "fix": "Restrict the users route to logged-in users: most security plugins have the setting, or a short snippet in the theme's functions.php removes it for visitors. Check the author archive pages the theme shows, and that no plugin or app on the site needs the list public.",
+    "tech": "Only with --wordpress. One GET of the REST root the page names in its api.w.org link (the same site only), /wp-json/wp/v2/users?per_page=100&_fields=id, with no key; if /wp-json/ answers 404, one GET of /?rest_route=/wp/v2/users (a site with plain permalinks). Only the id is asked for, so no name or slug is sent back, and only how many users were listed is kept and shown. A 401, 403 or 404 from both routes, or an empty list, is not exposed. Any other answer, an answer that is not a list, or a request that fails is could-not-check. The route is a documented, public REST route, so it is not a probing check under rule 14; it is still off unless --wordpress is given. Pages of a site that is not WordPress are skipped, and the site is asked once per run.",
+    "size": "S",
+    "done": "The REST API's list of users answers a visitor with no login with an error or an empty list, and running Gaugeline again finds no users listed.",
+    "estimateChanges": "Minutes with a hardening plugin or a small snippet in the theme. A site whose app or booking plugin needs the list public takes longer, because it has to be given another way first."
+  },
+  {
     "id": "printful-price",
     "severity": "medium",
     "area": "Sales & prices",
