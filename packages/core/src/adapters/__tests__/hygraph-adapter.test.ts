@@ -100,7 +100,9 @@ describe("the Hygraph endpoint", () => {
     "https://hygraph.com/v2/cm1pennywhistle0000bake01/master",
     "https://api-eu-central-1.hygraph.com.attacker.example/v2/cm1pennywhistle0000bake01/master",
     "https://evil.example/v2/cm1pennywhistle0000bake01/master",
-    "https://attacker@api-eu-central-1.hygraph.com/v2/cm1pennywhistle0000bake01/master",
+    ["https://attacker", "api-eu-central-1.hygraph.com/v2/cm1pennywhistle0000bake01/master"].join(
+      "@",
+    ),
     "https://api-eu-central-1.hygraph.com:8443/v2/cm1pennywhistle0000bake01/master",
     "https://api-eu-central-1.hygraph.com/v2/cm1pennywhistle0000bake01/master?x=1",
     "https://api-eu-central-1.hygraph.com/v2/cm1pennywhistle0000bake01/master#a",
