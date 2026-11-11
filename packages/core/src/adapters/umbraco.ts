@@ -48,6 +48,8 @@ const FIELD_ALIAS = /^[A-Za-z][A-Za-z0-9_-]{0,63}$/;
 const ITEM_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
 /** What a route path may be made of: unreserved and sub-delimiter characters, ":" and "@", "/" and well-formed "%" escapes. */
 const ROUTE_CHARS = /^\/(?:[A-Za-z0-9\-._~!$&'()*+,;=:@/]|%[0-9A-Fa-f]{2})*$/;
+/** A start item's path: a short run of path characters (it may be empty). */
+const ROOT_PATH = /^[A-Za-z0-9._~/-]{0,200}$/;
 const SLUG = /^[A-Za-z0-9][A-Za-z0-9._~-]{0,127}$/;
 
 /**
@@ -100,6 +102,10 @@ export interface UmbracoPublicApi {
 export interface UmbracoAdapter extends ContentAdapter {
   /** The content types the settings name (under `urls` or `fingerprint`), in order. The API lists none. */
   collections(): string[];
+  /** How many different start items (root nodes) the published nodes read so far were routed from. More than one means a route path cannot be tied to one site. */
+  rootsSeen(): number;
+  /** Aliases in the settings that are not valid content type aliases (so were not asked). */
+  invalidAliases(): string[];
   /** Whether the settings say (`expectPrivate: true`) that the Delivery API is meant to be private. A key being set says nothing of it. */
   privacyExpected(): boolean;
   /**
@@ -164,6 +170,8 @@ interface RawItem {
   slug?: string;
   /** The node's route path from the API, when it is a plain path. */
   path?: string;
+  /** The route's start item path: the root node `path` is relative to. Absent when the API gave none. */
+  root?: string;
   updatedAt: string;
   data: Record<string, unknown>;
 }
@@ -201,6 +209,8 @@ function parseItem(raw: unknown, aliases: readonly string[]): RawItem {
           .split("/")
           .filter((s) => s !== "")
           .at(-1);
+  const start = isRecord(route.startItem) ? route.startItem.path : undefined;
+  const root = typeof start === "string" && ROOT_PATH.test(start) ? start : undefined;
   const props = isRecord(r.properties) ? r.properties : {};
   const data: Record<string, unknown> = {};
   for (const a of aliases) if (Object.hasOwn(props, a)) data[a] = props[a];
@@ -209,6 +219,7 @@ function parseItem(raw: unknown, aliases: readonly string[]): RawItem {
     type: r.contentType,
     ...(last !== undefined && SLUG.test(last) ? { slug: last } : {}),
     ...(path !== undefined ? { path } : {}),
+    ...(root !== undefined ? { root } : {}),
     updatedAt,
     data,
   };
@@ -326,7 +337,23 @@ export function createUmbracoAdapter(options: UmbracoAdapterOptions): UmbracoAda
     return [...names].filter((n) => TYPE_ALIAS.test(n)).sort();
   };
 
+  const invalidAliases = (): string[] =>
+    [
+      ...new Set([
+        ...Object.keys(settings?.urls ?? {}),
+        ...Object.keys(settings?.fingerprint ?? {}),
+      ]),
+    ]
+      .filter((n) => !TYPE_ALIAS.test(n))
+      .sort();
+
+  const roots = new Set<string>();
+
   const named = (): string[] => {
+    if (invalidAliases().length > 0)
+      throw new AdapterCouldNotCheck(
+        'A name in gaugeline.adapters.json (under "urls" or "fingerprint") is not a valid content type alias, so nothing was read.',
+      );
     const all = collections();
     if (all.length === 0)
       throw new AdapterCouldNotCheck(
@@ -505,7 +532,9 @@ export function createUmbracoAdapter(options: UmbracoAdapterOptions): UmbracoAda
           type,
           ...(item.slug !== undefined ? { slug: item.slug } : {}),
         });
-        const url = given !== "" ? given : (item.path ?? "");
+        if (item.root !== undefined) roots.add(item.root);
+        // A route is an address only with its start item: without one it cannot be tied to a root.
+        const url = given !== "" ? given : item.root !== undefined ? (item.path ?? "") : "";
         remaining--;
         delivered++;
         yield {
@@ -536,7 +565,11 @@ export function createUmbracoAdapter(options: UmbracoAdapterOptions): UmbracoAda
       const preview = await countOf(name, { preview: true }, () => undefined);
       if (preview > live) return true;
     }
-    return false;
+    // No more nodes with preview than without does not show that nothing is unpublished: the server may ignore
+    // Preview, and a draft may be an edit to a published node. Not false.
+    throw new AdapterCouldNotCheck(
+      "Umbraco showed no more nodes with preview than without, which does not show whether unpublished work is reachable (the Preview header may be ignored, or the drafts may be edits to published nodes).",
+    );
   };
 
   const publicApi = async (): Promise<UmbracoPublicApi> => {
@@ -582,6 +615,8 @@ export function createUmbracoAdapter(options: UmbracoAdapterOptions): UmbracoAda
     draftsReachable,
     resolveUrl,
     collections,
+    rootsSeen: () => roots.size,
+    invalidAliases,
     privacyExpected: () => settings?.expectPrivate === true,
     publicApi,
   };

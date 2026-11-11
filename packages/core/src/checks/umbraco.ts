@@ -18,6 +18,11 @@ function unfinished(r: UmbracoReading, ctx: CheckContext): void {
       r.site,
       'No content type is named in gaugeline.adapters.json (under "urls" or "fingerprint"), and the Umbraco Delivery API does not list its content types, so nothing was read.',
     );
+  if (r.noTypeSelected)
+    ctx.couldNotCheck?.(
+      r.site,
+      "none of the content types asked for is named in the settings, so nothing was read.",
+    );
   for (const u of r.unreadable)
     ctx.couldNotCheck?.(
       r.site,
@@ -41,6 +46,11 @@ export const umbracoNodeNoPage = defineCheck<UmbracoReading>({
   tech: "GET /umbraco/delivery/api/v2/content?filter=contentType:{alias} for each content type named in the settings (the published list; skip and take step by the number of nodes that came back, and a list is complete only when the position reaches the total it reports), then one GET of the live address: the settings' `urls` pattern when the type has one, else the route.path the API gave the node (redirects followed). A final 404 or 410 is the finding; any other answer that is not a 2xx is could-not-check for that page. A node with no route and no pattern, and a path that is not a plain path (a host, `..`, an escaped slash), are could-not-check by name and are not asked. Ids and paths only: no property is requested beyond those named in `fingerprint`, and none is used for this. A site with several root nodes and no domains may give paths relative to a start item: set `urls` for those types.",
   run(r, ctx) {
     unfinished(r, ctx);
+    for (const type of r.emptyTypes)
+      ctx.couldNotCheck?.(
+        r.site,
+        `${type}: no published nodes were read, so no page of it was checked. The alias may be mistyped, the type may be hidden from the API (DisallowedContentTypeAliases), or its content may exist only in another language.`,
+      );
     for (const u of r.unaddressed)
       ctx.couldNotCheck?.(r.site, `${u.type}: node ${u.id} was not checked, because ${u.reason}.`);
     if (r.pagesSkipped > 0)

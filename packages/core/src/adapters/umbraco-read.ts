@@ -1,7 +1,7 @@
 import type { Fetcher } from "../fetcher.js";
 import { collectPublished, type PartialRead } from "./collect.js";
 import type { UmbracoAdapter, UmbracoPublicApi } from "./umbraco.js";
-import { AdapterCouldNotCheck, AdapterRateLimitedError } from "./types.js";
+import { AdapterCouldNotCheck, AdapterRateLimitedError, type PublishedDoc } from "./types.js";
 import { addressOf, askPage, bare, type PageRead } from "./webflow-read.js";
 
 /** Bounds an Umbraco read keeps to. There are no flags to raise them. */
@@ -29,7 +29,11 @@ export interface UmbracoReading {
   unreadable: { type: string; reason: string }[];
   /** The settings name no content type (the API lists none), so nothing was read: both checks are could-not-check, not a pass. */
   nothingNamed: boolean;
-  /** Published nodes that could not be given an address (no route from the API and no pattern in the settings). */
+  /** Content types that gave no published node at all: a mistyped alias, a type hidden from the API, or content only in another language. Never a pass. */
+  emptyTypes: string[];
+  /** Types were asked for (`types`), and none of them is named in the settings. */
+  noTypeSelected: boolean;
+  /** Published nodes that could not be given an address (no route and start item from the API and no pattern, or routed from another root than the site's). */
   unaddressed: { type: string; id: string; reason: string }[];
   /** Published nodes with an address that were not asked for, because the page budget was used. */
   pagesSkipped: number;
@@ -69,6 +73,8 @@ export async function readUmbraco(options: ReadUmbracoOptions): Promise<UmbracoR
     ownerConsent: options.ownerConsent === true,
     expectedPrivate: adapter.privacyExpected(),
     unreadable: [],
+    emptyTypes: [],
+    noTypeSelected: false,
     nothingNamed: adapter.collections().length === 0,
     unaddressed: [],
     pagesSkipped: 0,
@@ -81,29 +87,22 @@ export async function readUmbraco(options: ReadUmbracoOptions): Promise<UmbracoR
   const names = adapter
     .collections()
     .filter((s) => options.types === undefined || options.types.includes(s));
+  for (const bad of adapter.invalidAliases())
+    reading.unreadable.push({
+      type: JSON.stringify(bad.slice(0, 40)),
+      reason: "it is not a valid content type alias",
+    });
+  if (names.length === 0) {
+    reading.noTypeSelected = true;
+    return reading;
+  }
 
+  const read: { type: string; docs: PublishedDoc[] }[] = [];
   for (const type of names) {
     try {
       const got = await collectPublished(adapter, { types: [type] });
-      for (const d of got.docs) {
-        const url = d.url === undefined ? undefined : addressOf(d.url, origin);
-        if (url === undefined) {
-          reading.unaddressed.push({
-            type,
-            id: d.id,
-            reason:
-              "the Delivery API gave it no route, and the settings have no address pattern for its type",
-          });
-          continue;
-        }
-        todo.push({
-          id: d.id,
-          type,
-          ...(d.slug !== undefined ? { slug: d.slug } : {}),
-          url: url.href,
-          path: url.pathname,
-        });
-      }
+      if (got.docs.length === 0 && !got.partial) reading.emptyTypes.push(type);
+      read.push({ type, docs: got.docs });
       if (got.partial) {
         reading.partial = got.partial;
         break;
@@ -114,6 +113,34 @@ export async function readUmbraco(options: ReadUmbracoOptions): Promise<UmbracoR
         continue;
       }
       throw err;
+    }
+  }
+
+  // Decided after every type was read: with more than one start item (root node) a route path is relative to a root
+  // the site being checked may not be, so a path with no pattern for its type is not asked.
+  const manyRoots = adapter.rootsSeen() > 1;
+  for (const { type, docs } of read) {
+    const patterned = (adapter.resolveUrl?.({ id: "probe", type, slug: "probe" }) ?? "") !== "";
+    for (const d of docs) {
+      const url = d.url === undefined ? undefined : addressOf(d.url, origin);
+      if (url === undefined || (manyRoots && !patterned)) {
+        reading.unaddressed.push({
+          type,
+          id: d.id,
+          reason:
+            url !== undefined
+              ? "the Umbraco site has more than one root node (start item), so its route path cannot be tied to the site being checked; set an address pattern for its type in the settings (urls)"
+              : "the Delivery API gave it no route or start item, and the settings have no address pattern for its type",
+        });
+        continue;
+      }
+      todo.push({
+        id: d.id,
+        type,
+        ...(d.slug !== undefined ? { slug: d.slug } : {}),
+        url: url.href,
+        path: url.pathname,
+      });
     }
   }
 

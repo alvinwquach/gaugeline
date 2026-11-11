@@ -32,7 +32,7 @@ Every request is a `GET` to your `UMBRACO_URL`, through the same fetcher as ever
 
 **The Delivery API does not list content types.** So you name the types to read, by their alias (such as `show`), as keys of `urls` or `fingerprint` in `gaugeline.adapters.json`. A type you do not name is not read. A mistyped alias is not an error to the API: it answers a total of 0, so a type that counts 0 may be misspelled.
 
-A node's page address is the `route.path` the API gives it, unless `urls` has a pattern for its type (the pattern wins). Paths are checked before they are used: one leading `/`, never a host (`//`), a scheme, `..`, a backslash or an escaped dot or slash. A site with several root nodes and no domains may give paths relative to a start item: set `urls` for those types.
+A node's page address is the `route.path` the API gives it, unless `urls` has a pattern for its type (the pattern wins). Paths are checked before they are used: one leading `/`, never a host (`//`), a scheme, `..`, a backslash or an escaped dot or slash. A route is only an address together with its start item (the root node it is relative to). A node whose route has no start item is not given an address, and when the nodes read come from more than one start item (several sites or domains in one Umbraco), no route path is asked on your site: those nodes are could-not-check by name unless `urls` has a pattern for their type, because Gaugeline cannot tell which root is the site being checked.
 
 Lists are read a window at a time. The window moves by the number of nodes that came back, never by the number asked for, because the API may give fewer than asked. A list is complete only when the position reaches the total the API reports: an empty window before the total, a window with only nodes already seen, a total that is not a count, a type with more than 10,000 nodes and a list that needs more than 500 requests are all could-not-check, never a count of part of the list. When Umbraco answers 429 with a short `Retry-After`, Gaugeline waits once and goes on; after that it keeps what it read and says the result is partial.
 
@@ -115,21 +115,23 @@ These two checks run from one read of the Umbraco site (`readUmbraco`), not from
 
 **`umbraco-node-no-page`: A published Umbraco node has no page on the live site.** For each node the API says is published and that has an address, Gaugeline asks the live site for that page once. A final 404 or 410 is the finding, and it names the content type, the node's slug (or id) and the path, never its text. Any other answer that is not a 2xx is could-not-check for that page. A node with no route and no pattern, a path that is not a plain path, and pages past the run's budget of 300 are could-not-check by name, never skipped quietly. To fix one: check the content type has a template (or the front end builds a route for it), that the node's culture and domain settings match the site being checked, and that a headless front end was rebuilt after publishing.
 
-**`umbraco-delivery-api-public`: The Umbraco Delivery API answers visitors with no key.** This is a **probing** check: it asks a route a visitor is not meant to use when the API is private. **It is off unless you run with `--owner-consent` (or a `gaugeline.consent.json` entry), and you should run it only on sites you own or have permission to test.** It also runs only when `UMBRACO_API_KEY` is set, because that is how you tell Gaugeline the API is meant to be protected; a public API that you never said was private is not a finding. It sends one `GET` of `/umbraco/delivery/api/v2/content?take=1` with no `Api-Key`, no cookie and no preview header. A 200 with a list and a numeric total is the finding, and the evidence is the count of nodes the API reported, never a node. A 401 or 403 is a protected API and a 404 is an API that is off or not at that address: neither is a finding. A 200 that is not the API's list (a front end that answers every path with a page) and any other status are could-not-check. To fix it: set `Umbraco:CMS:DeliveryApi:PublicAccess` to `false` and keep an `ApiKey`, and send the key from the server, never from the browser.
+**`umbraco-delivery-api-public`: The Umbraco Delivery API answers visitors with no key.** This is a **probing** check: it asks a route a visitor is not meant to use when the API is private. **It is off unless you run with `--owner-consent` (or a `gaugeline.consent.json` entry), and you should run it only on sites you own or have permission to test.** It also runs only when you say the API is meant to be private, with `"expectPrivate": true` in the `umbraco` entry of `gaugeline.adapters.json`. Setting `UMBRACO_API_KEY` does not say it: a public API with a key is a normal setup, because preview needs the key on a public API too. Without `expectPrivate` the check is could-not-check ("no privacy expectation given"), and a public API you never said was private is not a finding. It sends one `GET` of `/umbraco/delivery/api/v2/content?take=1` with no `Api-Key`, no cookie and no preview header. A 200 with a list and a numeric total is the finding, and the evidence is the count of nodes the API reported, never a node. A 401 or 403 is a protected API and a 404 is an API that is off or not at that address: neither is a finding. A 200 that is not the API's list (a front end that answers every path with a page) and any other status are could-not-check. To fix it: set `Umbraco:CMS:DeliveryApi:PublicAccess` to `false` and keep an `ApiKey`, and send the key from the server, never from the browser. If the API is meant to be public, remove `expectPrivate`; the key stays.
 
 ## What cannot be checked
 
 Anything the platform does not expose is could-not-check, with the reason, never a pass and never scraped from the backoffice:
 
-| Question                                       | Answer here      | Why                                                                                                    |
-| ---------------------------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------ |
-| Which content types exist                      | you name them    | The Delivery API has no list of content types, and the backoffice is never used.                       |
-| Who has access to the site (`members`)         | not offered      | The Delivery API does not list backoffice users.                                                       |
-| Whether a page shows the same words            | not decided here | The adapter gives hashes; comparing them with the page is another check.                               |
-| Nodes in other languages                       | not read         | Requests carry no `Accept-Language`, so the API answers for the site's default language.               |
-| Content types the Delivery API is told to hide | not read         | `DisallowedContentTypeAliases` hides them from the API. A hidden type counts 0.                        |
-| A node's publish date                          | left out         | The API gives a created date and an updated date, and no publish date; Gaugeline does not make one up. |
-| Whether unpublished work is reachable          | needs the key    | Preview needs the Delivery API key. Without it, the answer is could-not-check and nothing is asked.    |
+| Question                                                    | Answer here      | Why                                                                                                                                                                                                              |
+| ----------------------------------------------------------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Which content types exist                                   | you name them    | The Delivery API has no list of content types, and the backoffice is never used.                                                                                                                                 |
+| Who has access to the site (`members`)                      | not offered      | The Delivery API does not list backoffice users.                                                                                                                                                                 |
+| Whether a page shows the same words                         | not decided here | The adapter gives hashes; comparing them with the page is another check.                                                                                                                                         |
+| Nodes in other languages                                    | not read         | Requests carry no `Accept-Language`, so the API answers for the site's default language.                                                                                                                         |
+| A type that gives no published node                         | could-not-check  | A mistyped alias, a hidden type or content only in another language all answer 0. A named type with 0 published nodes is could-not-check by name, never a pass.                                                  |
+| Whether unpublished work is reachable when the counts match | could-not-check  | Preview showing no more nodes than the public list does not show nothing is unpublished (the server may ignore `Preview`, or a draft may be an edit to a published node). Only more nodes with preview is a yes. |
+| Content types the Delivery API is told to hide              | not read         | `DisallowedContentTypeAliases` hides them from the API. A hidden type counts 0.                                                                                                                                  |
+| A node's publish date                                       | left out         | The API gives a created date and an updated date, and no publish date; Gaugeline does not make one up.                                                                                                           |
+| Whether unpublished work is reachable                       | needs the key    | Preview needs the Delivery API key. Without it, the answer is could-not-check and nothing is asked.                                                                                                              |
 
 ## When it cannot check
 
@@ -139,6 +141,8 @@ It never returns a list with a hole in it. The read is could-not-check, with the
 - the API answers 401 (the key is missing, or is not the one in the site's `ApiKey` setting) or 403, or 404 (the API is off, or `UMBRACO_URL` is not the Umbraco site);
 - an answer is not the shape the API sends, a node has no usable id or no update time, or a node is of another type than the one asked for;
 - a type is bigger than the bound, a window is too big even at 10 nodes, the list stops before its total, repeats itself, or needs more than 500 requests.
+
+Pages are read in `createDate` order, which can tie: if the windows repeat a node and so leave another out (the nodes seen are fewer than the total), the list is could-not-check, never a clean list. A tie-breaker in the sort is `uncited` and is not sent.
 
 A key refused for one type is could-not-check for that type only: the other types are still read.
 
@@ -155,13 +159,14 @@ There are no flags to raise them.
 
 ## Settings
 
-| `gaugeline.adapters.json` field | What it does                                                                                                                      |
-| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `adapters[].id`                 | `umbraco`.                                                                                                                        |
-| `adapters[].fingerprint`        | Properties to hash, by content type alias. Up to 20 per type. A dotted name goes into the property's object.                      |
-| `adapters[].urls`               | Where a type's pages live: a path or an https address. Only `{slug}` and `{id}` are filled in. Wins over the route the API gives. |
+| `gaugeline.adapters.json` field | What it does                                                                                                                              |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `adapters[].id`                 | `umbraco`.                                                                                                                                |
+| `adapters[].fingerprint`        | Properties to hash, by content type alias. Up to 20 per type. A dotted name goes into the property's object.                              |
+| `adapters[].expectPrivate`      | `true` says the Delivery API is meant to be private, which switches on `umbraco-delivery-api-public` (still only with `--owner-consent`). |
+| `adapters[].urls`               | Where a type's pages live: a path or an https address. Only `{slug}` and `{id}` are filled in. Wins over the route the API gives.         |
 
-| Environment variable | What it is                                                                                                                  |
-| -------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `UMBRACO_URL`        | The Umbraco site's address (https, no path). Not a key.                                                                     |
-| `UMBRACO_API_KEY`    | The Delivery API key, sent in `Api-Key`. Only if the API is protected; setting it also says the API is meant to be private. |
+| Environment variable | What it is                                                                                                                                                            |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `UMBRACO_URL`        | The Umbraco site's address (https, no path). Not a key.                                                                                                               |
+| `UMBRACO_API_KEY`    | The Delivery API key, sent in `Api-Key`. Only if the API is protected, and for preview (`drafts reachable`). It does not say the API is private: use `expectPrivate`. |
