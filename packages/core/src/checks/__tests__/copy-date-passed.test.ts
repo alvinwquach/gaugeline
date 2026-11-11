@@ -36,7 +36,7 @@ describe("copy-date-passed: unit", () => {
       severity: "medium",
       url: "https://bar.example/",
     });
-    expect(f?.evidence).toBe('"Halloween special through Oct 31" ended 2026-10-31 (12 days ago)');
+    expect(f?.evidence).toBe('"Halloween special through Oct 31" ended 2026-10-31');
   });
   it("is registered, deterministic and uses the run's clock", async () => {
     expect(PAGE_CHECKS).toContain(copyDatePassed);
@@ -145,7 +145,7 @@ describe("copyright-stale: unit", () => {
     const out = await foot("<footer>\u00A9 2019-2023 Harbour Physio</footer>");
     expect(out).toHaveLength(1);
     expect(out[0]).toMatchObject({ checkId: "copyright-stale", severity: "low" });
-    expect(out[0]?.evidence).toBe('the footer says "\u00A9 2019-2023" and it is 2026');
+    expect(out[0]?.evidence).toBe('the footer says "\u00A9 2019-2023"');
   });
   it("is quiet for the current year, a later year and a page with no notice", async () => {
     expect(await foot("<footer>\u00A9 2026 Harbour Physio</footer>")).toEqual([]);

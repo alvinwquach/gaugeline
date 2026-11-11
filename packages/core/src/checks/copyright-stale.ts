@@ -55,7 +55,7 @@ export const copyrightStale = defineCheck<PageSnapshot>({
         checkId: "copyright-stale",
         severity: "low" as const,
         title: this.title,
-        evidence: `the footer says "${escapeInvisible(shown.trim(), 60)}" and it is ${year}`,
+        evidence: `the footer says "${escapeInvisible(shown.trim(), 60)}"`,
         url: page.finalUrl,
       },
     ];

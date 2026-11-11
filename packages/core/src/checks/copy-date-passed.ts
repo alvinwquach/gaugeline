@@ -45,7 +45,7 @@ export const copyDatePassed = defineCheck<PageSnapshot>({
       checkId: "copy-date-passed",
       severity: "medium" as const,
       title: this.title,
-      evidence: `"${escapeInvisible(h.sentence, 160)}" ended ${h.date} (${h.daysAgo} day${h.daysAgo === 1 ? "" : "s"} ago)`,
+      evidence: `"${escapeInvisible(h.sentence, 160)}" ended ${h.date}`,
       url: page.finalUrl,
     }));
     return capFindings(findings);
