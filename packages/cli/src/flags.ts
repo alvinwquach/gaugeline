@@ -101,6 +101,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
       "handoff",
       "cost",
       "brief",
+      "audit",
       "plan",
       "printed",
       "snapshot",
@@ -119,14 +120,14 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     description:
       "Use a Stripe secret key, with a notice, instead of refusing it; a restricted key is safer",
     since: "0.2.0",
-    commands: ["check", "launch", "brief", "delivery", "platform"],
+    commands: ["check", "launch", "brief", "audit", "delivery", "platform"],
   },
   {
     name: "dns",
     type: "boolean",
     description: "Also read the domain's mail records (SPF and DMARC) from DNS",
     since: "0.2.0",
-    commands: ["check", "launch", "brief", "handoff"],
+    commands: ["check", "launch", "brief", "audit", "handoff"],
   },
   {
     name: "renewals",
@@ -150,7 +151,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     description:
       "Run the probing checks, which ask routes for what they protect with no login; only on sites you may test",
     since: "0.2.0",
-    commands: ["check", "brief"],
+    commands: ["check", "brief", "audit"],
   },
   {
     name: "routes",
@@ -376,9 +377,9 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     name: "force",
     type: "boolean",
     description:
-      "Let --annotate (plan), --page, --save (query), --out (brief) or handoff replace files, never a folder or link",
+      "Let --annotate (plan), --page, --save (query), --out (brief), handoff or audit replace files, never a folder or link",
     since: "0.2.0",
-    commands: ["plan", "query", "brief", "handoff"],
+    commands: ["plan", "query", "brief", "handoff", "audit"],
   },
   {
     name: "progress",
@@ -493,16 +494,17 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     name: "out",
     type: "string",
     description:
-      "snapshot: the file (default before.json). query --page: the folder. brief: the file. handoff: the report folder",
+      "snapshot: the file (default before.json). query --page: the folder. brief: the file. handoff, audit: the folder",
     since: "0.2.0",
-    commands: ["snapshot", "query", "brief", "handoff"],
+    commands: ["snapshot", "query", "brief", "handoff", "audit"],
   },
   {
     name: "business",
     type: "string",
-    description: "brief: the business the work order is for, shown in its heading",
+    description:
+      "brief: the business the work order is for, shown in its heading. audit: the prospect's business",
     since: "0.2.0",
-    commands: ["brief"],
+    commands: ["brief", "audit"],
   },
   {
     name: "rate",
@@ -519,6 +521,36 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
       "brief: how many hours one point takes, such as 1.5; prints a range of hours, never one number",
     since: "0.2.0",
     commands: ["brief"],
+  },
+  {
+    name: "pack",
+    type: "boolean",
+    description:
+      "audit: turn the run into a proposal-ready pack (HTML and Markdown), using the packages in gaugeline.services.json",
+    since: "0.2.0",
+    commands: ["audit"],
+  },
+  {
+    name: "brand",
+    type: "string",
+    description: "audit: your name, shown at the head and foot of the pack",
+    since: "0.2.0",
+    commands: ["audit"],
+  },
+  {
+    name: "brand-logo",
+    type: "string",
+    description:
+      "audit: an https address for your logo; it is never fetched by Gaugeline, only by whoever opens the pack",
+    since: "0.2.0",
+    commands: ["audit"],
+  },
+  {
+    name: "brand-contact",
+    type: "string",
+    description: "audit: your contact line, shown under your name",
+    since: "0.2.0",
+    commands: ["audit"],
   },
   {
     name: "before",

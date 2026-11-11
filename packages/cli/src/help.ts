@@ -24,6 +24,7 @@ export const COMMANDS = [
   "renewals",
   "handoff",
   "cost",
+  "audit",
 ] as const;
 export type Command = (typeof COMMANDS)[number];
 
@@ -110,6 +111,24 @@ export const HELP: Record<string, string> = {
       "there unless --force. Read-only: it checks the site exactly as the page check.",
     ].join("\n"),
     footer: "Exit codes: 0 wrote the work order, 2 could not run",
+  }),
+  audit: renderHelp(FLAGS, "audit", {
+    usage: "gaugeline audit <address> --pack [options]",
+    summary: [
+      "Check a prospect's site, then write a proposal-ready pack into a folder (default",
+      "gaugeline-audit): audit-pack.html to send or print, audit-pack.md to edit. A",
+      "one-page summary for the owner (what is at risk, the five findings to start",
+      "with, with evidence), the findings grouped into your packages from",
+      "gaugeline.services.json with your own price and hours ranges and what each",
+      "leaves out, how you would check each worked (the re-run), and what the audit",
+      "does not include. Without that file the findings are grouped by area and there",
+      "is no estimate: Gaugeline never makes up a price. It runs only the default",
+      "checks, which look at public pages; the probing checks run only with",
+      "--owner-consent, on a site you may test. Nothing is sent: the files stay in",
+      "this folder, never replacing a file unless --force. Read-only, like the page",
+      "check.",
+    ].join("\n"),
+    footer: "Exit codes: 0 wrote the pack, 2 could not run",
   }),
   view: renderHelp(FLAGS, "view", {
     usage: "gaugeline view <run.json> [options]",

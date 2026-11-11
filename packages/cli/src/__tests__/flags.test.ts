@@ -36,6 +36,7 @@ const SAMPLE_VALUES: Record<string, string> = {
   "legacy-review": "review.csv",
   progress: "plan-state.json",
   "save-requests": "requests.json",
+  "brand-logo": "https://studio.example/logo.png",
   tags: "utm_,ref",
   // Today is day 1 of the watch, whenever the test runs.
   watch: new Date().toISOString().slice(0, 10),
@@ -386,11 +387,17 @@ describe("flag table: e2e", () => {
       const queryOnly = f.commands.length === 1 && f.commands[0] === "query";
       // brief runs the page check and writes a work order: its own flags are proved on a run.
       const briefOnly = f.commands.length === 1 && f.commands[0] === "brief";
+      // --business is brief's and audit's, proved on brief. audit --pack runs the page check too, and its own flags
+      // are proved on a run that writes a pack into a folder of its own (a pack that is there is refused).
+      const businessFlag = f.commands.join() === "brief,audit";
+      const auditOnly = f.commands.length === 1 && f.commands[0] === "audit";
       const digestOnly =
         !deliveryOnly &&
         !platformOnly &&
         !queryOnly &&
         !briefOnly &&
+        !businessFlag &&
+        !auditOnly &&
         !planOnly &&
         !printedOnly &&
         !snapshotOnly &&
@@ -416,8 +423,19 @@ describe("flag table: e2e", () => {
               "--owner-consent",
               "--allow-private",
             ]
-          : briefOnly
-            ? ["brief", `${site.origin}/`, "--allow-private", `--${f.name}`, ...value]
+          : briefOnly || businessFlag || auditOnly
+            ? auditOnly
+              ? [
+                  "audit",
+                  `${site.origin}/`,
+                  "--allow-private",
+                  ...(f.name === "pack" ? [] : ["--pack"]),
+                  "--out",
+                  `pack-${f.name}`,
+                  `--${f.name}`,
+                  ...value,
+                ]
+              : ["brief", `${site.origin}/`, "--allow-private", `--${f.name}`, ...value]
             : planOnly
               ? [
                   "plan",

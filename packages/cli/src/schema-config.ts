@@ -9,6 +9,7 @@ import {
   renewalsConfigSchema,
   handoffConfigSchema,
   costConfigSchema,
+  servicesConfigSchema,
   eventsConfigSchema,
   factsConfigSchema,
   hiddenConfigSchema,
@@ -31,6 +32,7 @@ import {
   type EmailsConfig,
   type RenewalsConfig,
   type CostConfig,
+  type ServicesConfig,
   type HandoffConfig,
   type EventsConfig,
   type FactsConfig,
@@ -66,6 +68,8 @@ export const RENEWALS_CONFIG_FILE = "gaugeline.renewals.json";
 export const HANDOFF_CONFIG_FILE = "gaugeline.handoff.json";
 /** What the project says about its hosting cost (the pages that should be cached, other pages to visit, the usage window), likewise. Tokens stay in the environment. */
 export const COST_CONFIG_FILE = "gaugeline.cost.json";
+/** The freelancer's own packages, prices and brand, for `gaugeline audit --pack`, likewise. No keys. */
+export const SERVICES_CONFIG_FILE = "gaugeline.services.json";
 /** The database project and roles to test its access rules as, likewise. Keys stay in the environment. */
 export const ACCESS_CONFIG_FILE = "gaugeline.access.json";
 /** The business listings to compare with the site (Google, Yelp, Apple, bio links), likewise. Keys stay in the environment. */
@@ -153,6 +157,10 @@ export function readHandoffConfig(dir: string): HandoffConfig | undefined {
 
 export function readCostConfig(dir: string): CostConfig | undefined {
   return readJsonConfig(dir, COST_CONFIG_FILE, costConfigSchema, "the hosting cost settings");
+}
+
+export function readServicesConfig(dir: string): ServicesConfig | undefined {
+  return readJsonConfig(dir, SERVICES_CONFIG_FILE, servicesConfigSchema, "your packages");
 }
 
 export function readAccess(dir: string): AccessConfig | undefined {
