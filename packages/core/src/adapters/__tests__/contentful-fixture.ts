@@ -233,6 +233,14 @@ export function contentfulTransport(
     const all = (type ? [type] : content).flatMap((t) =>
       [...t.entries, ...(preview ? (t.drafts ?? []) : [])].map((e) => ({ t, e })),
     );
+    // `sys.updatedAt[gte]=<ISO time>`: only entries updated at or after it, as Contentful's search does.
+    const since = url.searchParams.get("sys.updatedAt[gte]");
+    if (since !== null) {
+      const at = Date.parse(since);
+      if (Number.isNaN(at)) return json(400, { sys: { type: "Error", id: "InvalidQuery" } });
+      for (let i = all.length - 1; i >= 0; i--)
+        if (Date.parse(all[i]?.e.updatedAt ?? "") < at) all.splice(i, 1);
+    }
     all.sort((a, b) =>
       a.e.createdAt < b.e.createdAt ? -1 : a.e.createdAt > b.e.createdAt ? 1 : 0,
     );

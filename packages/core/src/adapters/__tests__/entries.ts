@@ -260,6 +260,8 @@ export const contentfulEntry: ContractEntry = {
     }),
   transport: () => contentfulTransport(undefined, { token: CONTENTFUL_KEY }),
   key: CONTENTFUL_KEY,
+  // The space lists its content types, so a name that is not one is a mistake, not an empty type.
+  unknownType: "could-not-check",
   secrets: Object.values(CONTENTFUL_MARKERS),
   expected: {
     types: [

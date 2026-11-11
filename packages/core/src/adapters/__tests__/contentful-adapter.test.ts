@@ -28,6 +28,7 @@ import {
   SPACE_ID,
   contentfulTransport,
   type ContentfulFixtureOptions,
+  type FixtureType,
 } from "./contentful-fixture.js";
 
 const KEY = testKey("contentful-unit");
@@ -367,5 +368,171 @@ describe("Contentful against the live site: a healthy site, and drift between th
     const result = await runChecks(reading, createContentfulRegistry());
     expect(result.findings).toEqual([]);
     expect(result.couldNotCheck.map((c) => c.reason).join("\n")).toContain("slow down");
+  });
+});
+
+/** A lone surrogate, built at run time: the shell and some tools turn a written escape into a raw character. */
+const LONE = String.fromCharCode(0xd800);
+const NUL = String.fromCharCode(0);
+
+type OddEntry = FixtureType["entries"][number];
+const withEvents = (extra: OddEntry[]): FixtureType[] =>
+  ASH.map((t) => (t.id === "event" ? { ...t, entries: [...t.entries, ...extra] } : t));
+
+describe("the Contentful adapter: what a hostile or odd answer cannot do (independent review)", () => {
+  const odd = (id: string, slug: string | undefined, n: number): OddEntry => ({
+    id,
+    createdAt: `2026-06-0${n}T10:00:00.000Z`,
+    updatedAt: `2026-06-0${n}T10:00:00.000Z`,
+    fields: slug === undefined ? { title: "x" } : { title: "x", slug },
+  });
+  const BAD_SLUGS = [LONE, "..", ".", "a/b", "a b", "-x", "x".repeat(129), "a?b=c", `a${NUL}b`];
+
+  it("a slug that is not a plain address part makes no address and never throws; the entry is named as unaddressed", async () => {
+    const content = withEvents(BAD_SLUGS.map((s, i) => odd(`odd-${i}`, s, 1 + (i % 9))));
+    const pages = { ...PAGES_HEALTHY, "/": 200 };
+    const { adapter, fetcher, seen } = over({
+      transport: contentfulTransport(content, { token: KEY, pages }),
+    });
+    const docs = (await collectPublished(adapter, { types: ["event"] })).docs;
+    const oddDocs = docs.filter((d) => d.id.startsWith("odd-"));
+    expect(oddDocs).toHaveLength(BAD_SLUGS.length);
+    for (const d of oddDocs) {
+      expect(d.url).toBeUndefined();
+      expect(d.slug).toBeUndefined();
+    }
+    // The good entries keep their addresses.
+    expect(docs.filter((d) => d.url !== undefined).map((d) => d.url)).toEqual([
+      "/events/quiz-night",
+      "/events/brewers-dinner",
+    ]);
+    for (const s of BAD_SLUGS)
+      expect(adapter.resolveUrl?.({ id: "x", type: "event", slug: s }), JSON.stringify(s)).toBe("");
+    // The read for the page check does not throw either, names each entry, and asks no wrong page.
+    const reading = await readContentful({ adapter, fetcher, site: ASH_SITE });
+    expect(reading.unaddressed.filter((u) => u.type === "event").map((u) => u.id)).toEqual(
+      oddDocs.map((d) => d.id),
+    );
+    expect(reading.unaddressed[0]?.reason).toContain("slug");
+    const siteHits = seen
+      .filter((s) => s.url.startsWith(ASH_SITE))
+      .map((s) => new URL(s.url).pathname);
+    expect(siteHits.sort()).toEqual(Object.keys(PAGES_HEALTHY).sort());
+    expect((await runChecks(reading, createContentfulRegistry())).findings).toEqual([]);
+  });
+
+  it("an id that is not well-formed text (a lone surrogate) is could-not-check, never a URIError", async () => {
+    const badEntry = over({
+      transport: contentfulTransport(withEvents([odd(`e${LONE}`, "fine-slug", 2)]), { token: KEY }),
+    });
+    expect(await reasonOf(collectPublished(badEntry.adapter, { types: ["event"] }))).toContain(
+      "not valid text",
+    );
+    const badType = over({
+      transport: contentfulTransport(
+        [...ASH, { id: `t${LONE}`, name: "Odd", fields: ["slug"], entries: [] }],
+        { token: KEY },
+      ),
+    });
+    expect(await reasonOf(badType.adapter.types())).toContain("not valid text");
+    // resolveUrl with such an id (a caller's doc) is an empty address, not a throw.
+    const { adapter } = over();
+    expect(adapter.resolveUrl?.({ id: LONE, type: "event", slug: "ok" })).toBe("");
+  });
+
+  it("since is sent to Contentful as sys.updatedAt[gte], so limit counts the entries that match", async () => {
+    const { adapter, seen } = over();
+    const got = (
+      await collectPublished(adapter, { types: ["event"], since: "2026-11-01", limit: 5 })
+    ).docs;
+    expect(got.map((d) => d.id)).toEqual(["ev-dinner"]);
+    const entries = seen
+      .map((s) => new URL(s.url))
+      .filter((u) => u.pathname.endsWith("/entries") && u.searchParams.has("content_type"));
+    expect(entries.length).toBeGreaterThan(0);
+    for (const u of entries)
+      expect(u.searchParams.get("sys.updatedAt[gte]")).toBe("2026-11-01T00:00:00.000Z");
+    // No since: no such parameter.
+    const plain = over();
+    await collectPublished(plain.adapter, { types: ["event"] });
+    expect(plain.seen.some((s) => s.url.includes("updatedAt"))).toBe(false);
+  });
+
+  it("a server that ignores since cannot make a read unbounded: the cap still stops it, with a limit too", async () => {
+    const inner = contentfulTransport(ASH, { token: KEY });
+    const ignoring: Transport = (url, req) => {
+      url.searchParams.delete("sys.updatedAt[gte]");
+      return inner(url, req);
+    };
+    const { adapter } = over({
+      transport: ignoring,
+      adapter: { maxEntriesPerType: 1, pageSize: 1 },
+    });
+    const reason = await reasonOf(
+      collectPublished(adapter, { types: ["beer"], since: "2030-01-01", limit: 1 }),
+    );
+    expect(reason).toContain("more than 1");
+  });
+
+  it("asks for include=0, so linked entries and assets never come back inside an answer", async () => {
+    const { adapter, seen } = over({
+      adapter: { env: { ...ENV, CONTENTFUL_PREVIEW_TOKEN: PREVIEW_KEY } },
+      fixture: { previewToken: PREVIEW_KEY },
+    });
+    await adapter.types();
+    await collectPublished(adapter);
+    await adapter.fieldCounts("event", ["title"]);
+    await adapter.draftsReachable();
+    const entries = seen.map((s) => new URL(s.url)).filter((u) => u.pathname.endsWith("/entries"));
+    expect(entries.length).toBeGreaterThan(6);
+    for (const u of entries) expect(u.searchParams.get("include"), u.href).toBe("0");
+  });
+
+  it("a list of content types that never ends is could-not-check after a bounded number of requests", async () => {
+    const inner = contentfulTransport(ASH, { token: KEY });
+    const types = (n: number, from: number) =>
+      Array.from({ length: n }, (_, i) => ({
+        sys: { type: "ContentType", id: `t${from + i}` },
+        fields: [],
+      }));
+    for (const [perPage, label] of [
+      [1000, "a full page each time"],
+      [1, "one item a page"],
+    ] as const) {
+      const seen: Seen[] = [];
+      const fetcher = createFetcher({
+        transport: recording((url, req) => {
+          if (!url.pathname.endsWith("/content_types")) return inner(url, req);
+          const skip = Number(url.searchParams.get("skip") ?? "0");
+          const body = { total: 1_000_000_000, skip, limit: 1000, items: types(perPage, skip) };
+          return Promise.resolve({
+            status: 200,
+            headers: { "content-type": "application/json" },
+            body: Readable.from([Buffer.from(JSON.stringify(body))]),
+          });
+        }, seen),
+        timeoutMs: 5000,
+      });
+      const adapter = createContentfulAdapter({
+        env: ENV,
+        fetcher,
+        sleep: () => Promise.resolve(),
+      });
+      const reason = await reasonOf(adapter.types());
+      expect(reason, label).toContain("content types");
+      expect(seen.length, label).toBeLessThanOrEqual(25);
+    }
+  });
+
+  it("a content type that does not exist is could-not-check with the reason, not zeros and not an empty list", async () => {
+    const { adapter, seen } = over();
+    expect(await reasonOf(adapter.fieldCounts("typo", ["title"]))).toContain(
+      "no content type named typo",
+    );
+    expect(await reasonOf(collectPublished(adapter, { types: ["event", "typo"] }))).toContain(
+      "no content type named typo",
+    );
+    // Nothing was read from the entries of a type that was asked for wrongly.
+    expect(seen.some((s) => s.url.includes("content_type=typo"))).toBe(false);
   });
 });

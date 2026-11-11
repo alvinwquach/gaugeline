@@ -46,6 +46,10 @@ export const CONTENTFUL_PAGE_SIZE = 100;
 export const CONTENTFUL_LIMITS = {
   /** Entries read from one content type. A bigger one is could-not-check, never a count of part of it. */
   entriesPerType: 10_000,
+  /** Content types read. A space has a few hundred at most; a longer list is could-not-check, not read to its end. */
+  contentTypes: 1000,
+  /** Pages of content types asked for, so a server that sends one item a page cannot keep a run going. */
+  contentTypePages: 20,
 } as const;
 
 /** The smallest page asked for when an answer is too big: the page is halved down to this and no further. */
@@ -55,6 +59,16 @@ const MIN_PAGE_SIZE = 10;
 const SPACE_ID = /^[A-Za-z0-9]{6,32}$/;
 /** An environment id: letters, digits, underscore, hyphen and dot. */
 const ENVIRONMENT_ID = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,39}$/;
+
+/**
+ * A slug or an id used as a part of an address: it starts with a letter or digit and holds only letters,
+ * digits, dot, hyphen and underscore, up to 128 characters. Nothing else can become `..`, a path or a query.
+ */
+const ADDRESS_PART = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
+
+/** A lone surrogate half: `encodeURIComponent` throws on one, so text that has one is never put in an address. */
+const LONE_SURROGATE = /[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/;
+const wellFormed = (text: string): boolean => !LONE_SURROGATE.test(text);
 
 /** A content type, with the ids of its fields (the names a `select` may use). */
 export interface ContentfulType {
@@ -124,6 +138,8 @@ function parseEntry(raw: unknown): RawEntry {
     throw new AdapterCouldNotCheck(
       "Contentful answered with entries that have no id or no update time.",
     );
+  if (!wellFormed(id))
+    throw new AdapterCouldNotCheck("Contentful answered with an entry id that is not valid text.");
   return { id, updatedAt, data: isRecord(r.fields) ? r.fields : {} };
 }
 
@@ -230,7 +246,9 @@ export function createContentfulAdapter(options: ContentfulAdapterOptions): Cont
     if (known) return known;
     const out: ContentfulType[] = [];
     let skip = 0;
+    let pages = 0;
     for (;;) {
+      pages++;
       const body = await get("delivery", `/content_types?limit=1000&skip=${skip}`, () => []);
       const items = body.items;
       if (!Array.isArray(items))
@@ -242,6 +260,10 @@ export function createContentfulAdapter(options: ContentfulAdapterOptions): Cont
         const id = isRecord(r.sys) ? r.sys.id : undefined;
         if (typeof id !== "string" || id === "")
           throw new AdapterCouldNotCheck("Contentful answered with a content type that has no id.");
+        if (!wellFormed(id))
+          throw new AdapterCouldNotCheck(
+            "Contentful answered with a content type id that is not valid text.",
+          );
         const fields = Array.isArray(r.fields)
           ? r.fields.flatMap((f) => (isRecord(f) && typeof f.id === "string" ? [f.id] : []))
           : [];
@@ -253,6 +275,10 @@ export function createContentfulAdapter(options: ContentfulAdapterOptions): Cont
         throw new AdapterCouldNotCheck(
           `Contentful's list of content types stopped after ${skip}, so the rest was not read.`,
         );
+      if (skip >= CONTENTFUL_LIMITS.contentTypes || pages >= CONTENTFUL_LIMITS.contentTypePages)
+        throw new AdapterCouldNotCheck(
+          `Contentful has more than ${skip} content types, more than Gaugeline reads (${CONTENTFUL_LIMITS.contentTypes}), so none was read.`,
+        );
     }
     out.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
     known = out;
@@ -261,22 +287,32 @@ export function createContentfulAdapter(options: ContentfulAdapterOptions): Cont
 
   const chosen = async (names: readonly string[] | undefined): Promise<ContentfulType[]> => {
     const all = await contentTypes();
-    return names === undefined ? all : all.filter((t) => names.includes(t.id));
+    if (names === undefined) return all;
+    const missing = names.filter((n) => !all.some((t) => t.id === n));
+    if (missing.length > 0)
+      throw new AdapterCouldNotCheck(
+        `The space has no content type named ${missing.join(", ")}. Its content types are: ${all.map((t) => t.id).join(", ") || "none"}.`,
+      );
+    return all.filter((t) => names.includes(t.id));
   };
 
   /**
    * `select` names what comes back: the system part and only the fields asked for. A field the
    * content type does not have is not selected, so the API is never asked for a name it does not know.
+   * `include=0` keeps linked entries and assets (with their field values) out of the answer; `since`
+   * becomes `sys.updatedAt[gte]`, so Contentful does the filtering and a limit counts what matches.
+   * The content type's id was checked to be well-formed text when the list of types was read.
    */
   const entriesPath = (
     type: ContentfulType,
     fields: readonly string[],
     limit: number,
     skip: number,
+    since?: string,
   ): string => {
     const selected = [...new Set(fields.map(topLevel))].filter((f) => type.fields.includes(f));
     const select = ["sys", ...selected.map((f) => `fields.${f}`)].join(",");
-    return `/entries?content_type=${encodeURIComponent(type.id)}&select=${encodeURIComponent(select)}&order=sys.createdAt&limit=${limit}&skip=${skip}`;
+    return `/entries?content_type=${encodeURIComponent(type.id)}&select=${encodeURIComponent(select)}&include=0&order=sys.createdAt&limit=${limit}&skip=${skip}${since !== undefined ? `&sys.updatedAt%5Bgte%5D=${encodeURIComponent(since)}` : ""}`;
   };
 
   /**
@@ -289,13 +325,14 @@ export function createContentfulAdapter(options: ContentfulAdapterOptions): Cont
     fields: readonly string[],
     enforceCap: boolean,
     partial: () => unknown,
+    since?: string,
   ): AsyncGenerator<RawEntry> {
     let skip = 0;
     let size = pageSize;
     for (;;) {
       let body: Record<string, unknown>;
       try {
-        body = await get("delivery", entriesPath(type, fields, size, skip), partial);
+        body = await get("delivery", entriesPath(type, fields, size, skip, since), partial);
       } catch (err) {
         if (!(err instanceof TooLarge)) throw err;
         if (size > MIN_PAGE_SIZE) {
@@ -322,12 +359,25 @@ export function createContentfulAdapter(options: ContentfulAdapterOptions): Cont
         throw new AdapterCouldNotCheck(
           `Contentful's list stopped after ${skip} of ${total} entries, so the rest was not read.`,
         );
+      // However the read was asked for (a limit, a since the server might ignore), it stops at the bound.
+      if (skip >= cap)
+        throw new AdapterCouldNotCheck(
+          `The content type has more than ${cap} entries to read, which is as many as Gaugeline reads from one content type.`,
+        );
     }
   }
 
   const resolveUrl: NonNullable<ContentAdapter["resolveUrl"]> = (doc) => {
     const template = settings?.urls?.[doc.type];
-    return template === undefined ? "" : fillUrlTemplate(template, doc);
+    if (template === undefined) return "";
+    // An id or slug that could change the address (`..`, a slash) or throw in the encoder makes no address.
+    if (!wellFormed(doc.id) || (doc.slug !== undefined && !ADDRESS_PART.test(doc.slug))) return "";
+    if (!ADDRESS_PART.test(doc.id)) return "";
+    try {
+      return fillUrlTemplate(template, doc);
+    } catch {
+      return "";
+    }
   };
 
   const types = async (): Promise<TypeCount[]> => {
@@ -363,10 +413,17 @@ export function createContentfulAdapter(options: ContentfulAdapterOptions): Cont
       const hashed = opts.fields?.[t.id] ?? settings?.fingerprint?.[t.id] ?? [];
       // The slug is read to make the entry's address; it is an address part, not content.
       const asked = t.fields.includes("slug") ? [...hashed, "slug"] : hashed;
-      for await (const entry of entriesOf(t, asked, opts.limit === undefined, () => delivered)) {
+      for await (const entry of entriesOf(
+        t,
+        asked,
+        opts.limit === undefined,
+        () => delivered,
+        since,
+      )) {
         if (since !== undefined && Date.parse(entry.updatedAt) < Date.parse(since)) continue;
         const s = entry.data.slug;
-        const slug = typeof s === "string" && s !== "" ? s : undefined;
+        // A slug that is not a plain address part is dropped: the entry has no address, and says why in the read.
+        const slug = typeof s === "string" && ADDRESS_PART.test(s) ? s : undefined;
         const fieldHashes: Record<string, string> = {};
         for (const f of hashed) {
           const h = hashValue(valueAt(entry.data, f));

@@ -91,6 +91,7 @@ describe("docs/integrations/contentful.md", () => {
     expect(rows(page, "Limit")).toEqual([
       ["Entries in one page of a list", n(CONTENTFUL_PAGE_SIZE)],
       ["Entries read from one content type", n(CONTENTFUL_LIMITS.entriesPerType)],
+      ["Content types read from one space", n(CONTENTFUL_LIMITS.contentTypes)],
       ["Live pages asked for in one run", n(CONTENTFUL_READ_LIMITS.pages)],
     ]);
   });
@@ -101,7 +102,11 @@ describe("docs/integrations/contentful.md", () => {
     );
     expect(rows(page, "Check").map((r) => r[1])).toEqual(CONTENTFUL_CHECKS.map((c) => c.severity));
     expect(page).toContain("`secret-in-js`");
-    expect(page).toContain("first 6 and the last 2 characters");
+    expect(page).toContain("no character of the token at all");
+    expect(page).not.toContain("first 6 and the last 2 characters");
+    expect(page).toContain(
+      "never reported, by this detector or by the general `secret-assignment` one",
+    );
   });
 
   it("its settings tables match the schema and the environment the adapter reads", () => {

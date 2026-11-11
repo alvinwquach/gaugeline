@@ -10,6 +10,11 @@ export interface Detector {
   /** Global. The secret is capture group "secret". */
   pattern: RegExp;
   verify?(secret: string, match: RegExpExecArray): boolean;
+  /**
+   * True when a finding for this kind shows no character of the value at all, not the usual first 6 and
+   * last 2: only the kind and the place.
+   */
+  hideValue?: boolean;
 }
 
 /** Shannon entropy in bits per character. Random base64 is about 5-6; hex at most 4; words about 3. */
@@ -39,6 +44,37 @@ const FILE_NAME = /\.(?:js|mjs|cjs|css|map|json|png|jpe?g|gif|webp|avif|svg|woff
 const PREVIEW_HOST = /preview\.contentful\.com/i;
 const PREVIEW_WINDOW = 300;
 
+/** A Contentful token (delivery or preview) is 43 characters of base64url. */
+const CONTENTFUL_TOKEN_LENGTH = 43;
+/** Words that tie a value to Contentful's client: the SDK's name, its host, or its constructor. */
+const CONTENTFUL_CONTEXT = /contentful|createClient/i;
+
+/**
+ * The part of the text a value belongs to: the object literal it sits in (after the last "{" before it,
+ * up to the first "}" after it), or, with `wide`, the 300 characters on each side.
+ */
+function scopeOf(m: RegExpExecArray, wide: boolean): string {
+  const start = m.index;
+  const end = start + m[0].length;
+  const before = m.input.slice(Math.max(0, start - PREVIEW_WINDOW), start);
+  const after = m.input.slice(end, end + PREVIEW_WINDOW);
+  return wide
+    ? `${before} ${after}`
+    : `${before.slice(before.lastIndexOf("{") + 1)} ${after.split("}")[0] ?? ""}`;
+}
+
+/**
+ * A Contentful delivery token: 43 characters in a place that names Contentful or createClient, and not
+ * the Preview API (the preview host in the same object or address, or "preview" in its name). Delivery
+ * tokens read published content and are meant to be in the page's JavaScript, so they are not leaks.
+ */
+function isContentfulDeliveryToken(secret: string, m: RegExpExecArray): boolean {
+  if (secret.length !== CONTENTFUL_TOKEN_LENGTH) return false;
+  if (!CONTENTFUL_CONTEXT.test(scopeOf(m, true))) return false;
+  const name = m.groups?.name ?? "";
+  return !(/preview/i.test(name) || PREVIEW_HOST.test(scopeOf(m, false)));
+}
+
 export const DETECTORS: readonly Detector[] = Object.freeze([
   {
     id: "stripe-secret",
@@ -57,6 +93,8 @@ export const DETECTORS: readonly Detector[] = Object.freeze([
   {
     id: "contentful-preview-token",
     label: "Contentful preview token",
+    // A finding says the kind and the place only: no prefix, no suffix, no hash.
+    hideValue: true,
     // Contentful tokens are 43 characters of base64url with no prefix, so the shape alone proves nothing
     // (a delivery token is public by design). A match is a 43-character value assigned to a name that
     // contains "token" or "key", either as name = "value" / name: "value", or as ?access_token=value.
@@ -64,11 +102,10 @@ export const DETECTORS: readonly Detector[] = Object.freeze([
     // or the preview host is within a few hundred characters (the contentful SDK itself contains that
     // host, which is why mere presence in a file is not enough).
     pattern:
-      /(?:(?<![A-Za-z0-9_$])(?<name>[A-Za-z0-9_$]*(?:token|key)[A-Za-z0-9_$]*)["']?\s*[:=]\s*["'`]|[?&]access_token=)(?<secret>[A-Za-z0-9_-]{43})(?![A-Za-z0-9_-])/gi,
+      /(?:(?<![A-Za-z0-9_$])(?<name>[A-Za-z0-9_$]{0,40}(?:token|key)[A-Za-z0-9_$]{0,40})["']?\s*[:=]\s*["'`]|[?&]access_token=)(?<secret>[A-Za-z0-9_-]{43})(?![A-Za-z0-9_-])/gi,
     verify: (s, m) => {
       if (entropy(s) < ENTROPY_MIN) return false;
       const start = m.index;
-      const end = start + m[0].length;
       const name = m.groups?.name ?? "";
       if (name === "") {
         // ?access_token=...: the preview host just before it, in the same address.
@@ -77,10 +114,7 @@ export const DETECTORS: readonly Detector[] = Object.freeze([
       } else {
         // name: "value": the preview host in the same object literal (after the last "{" before the
         // token, up to the first "}" after it), so a delivery token next to a preview client is not one.
-        const before = m.input.slice(Math.max(0, start - PREVIEW_WINDOW), start);
-        const after = m.input.slice(end, end + PREVIEW_WINDOW);
-        const scope = `${before.slice(before.lastIndexOf("{") + 1)} ${after.split("}")[0] ?? ""}`;
-        if (PREVIEW_HOST.test(scope)) return true;
+        if (PREVIEW_HOST.test(scopeOf(m, false))) return true;
       }
       return /preview/i.test(name) && /contentful/i.test(m.input);
     },
@@ -88,14 +122,17 @@ export const DETECTORS: readonly Detector[] = Object.freeze([
   {
     id: "secret-assignment",
     label: "Secret value",
-    // name = "value" or name: "value", where the name contains SECRET, TOKEN or KEY.
+    // name = "value" or name: "value", where the name contains SECRET, TOKEN or KEY. The name is capped
+    // at 40 characters each side of that word: an open-ended name made a hostile file scan in quadratic time.
     pattern:
-      /(?<![A-Za-z0-9_$])(?<name>[A-Za-z0-9_$]*(?:secret|token|key)[A-Za-z0-9_$]*)["']?\s*[:=]\s*(?<q>["'`])(?<secret>[A-Za-z0-9+/_=.-]{20,200})\k<q>/gi,
+      /(?<![A-Za-z0-9_$])(?<name>[A-Za-z0-9_$]{0,40}(?:secret|token|key)[A-Za-z0-9_$]{0,40})["']?\s*[:=]\s*(?<q>["'`])(?<secret>[A-Za-z0-9+/_=.-]{20,200})\k<q>/gi,
     verify: (s, m) => {
       const name = m.groups?.name ?? "";
       if (/public|publishable/i.test(name)) return false;
       if (/^pk_(?:live|test)_/.test(s)) return false;
       if (FILE_NAME.test(s) || IMAGE_BASE64.test(s)) return false;
+      // A Contentful delivery token is public by design; the preview token is the contentful detector's.
+      if (isContentfulDeliveryToken(s, m)) return false;
       return entropy(s) >= ENTROPY_MIN;
     },
   },
@@ -116,7 +153,7 @@ export function redact(secret: string): string {
 export interface Leak {
   detector: string;
   label: string;
-  /** Redacted. The raw value is never stored. */
+  /** Redacted. The raw value is never stored. Empty for a kind that shows no character of the value. */
   redacted: string;
   /** Byte offset of the secret in the file, as sent. */
   offset: number;
@@ -136,7 +173,7 @@ export function findLeaks(text: string): Leak[] {
       out.push({
         detector: d.id,
         label: d.label,
-        redacted: redact(secret),
+        redacted: d.hideValue ? "" : redact(secret),
         offset: Buffer.byteLength(text.slice(0, at)),
       });
     }

@@ -136,7 +136,7 @@ export async function readContentful(options: ReadContentfulOptions): Promise<Co
               id: d.id,
               reason:
                 d.slug === undefined
-                  ? "it has no slug, and the address pattern needs one"
+                  ? "it has no slug (or one that is not a plain address part: letters, digits, dot, hyphen and underscore), and the address pattern needs one"
                   : "the address pattern did not make a usable address from its slug",
             });
             continue;
