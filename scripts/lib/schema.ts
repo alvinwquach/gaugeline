@@ -12,7 +12,7 @@ export const BUMP_MESSAGE =
  * versioned on their own: each has its own file stem, its own hash map and its own bump message.
  * The work order ("brief") is the Brief that buildBrief returns.
  */
-export type SchemaKind = "result" | "requests" | "brief";
+export type SchemaKind = "result" | "requests" | "brief" | "advisory";
 
 export const REQUESTS_BUMP_MESSAGE =
   "The saved requests file shape changed. Bump REQUESTS_FILE_SCHEMA_VERSION and add schema/requests.v<N>.json; do not edit a published file in place.";
@@ -20,10 +20,14 @@ export const REQUESTS_BUMP_MESSAGE =
 export const BRIEF_BUMP_MESSAGE =
   "The work order (brief) shape changed. Bump BRIEF_SCHEMA_VERSION and add schema/brief.v<N>.json; do not edit a published file in place.";
 
+export const ADVISORY_BUMP_MESSAGE =
+  "The advisory answer shape changed. Bump ADVISORY_SCHEMA_VERSION and add schema/advisory.v<N>.json; do not edit a published file in place.";
+
 const TITLES: Readonly<Record<SchemaKind, string>> = {
   result: "Gaugeline result",
   requests: "Gaugeline saved requests file",
   brief: "Gaugeline work order",
+  advisory: "Gaugeline advisory answer",
 };
 
 /** The file that maps each published version of a kind to the hash of its schema. */
@@ -33,6 +37,7 @@ export function versionsFileName(kind: SchemaKind = "result"): string {
 
 export function bumpMessage(kind: SchemaKind = "result"): string {
   if (kind === "result") return BUMP_MESSAGE;
+  if (kind === "advisory") return ADVISORY_BUMP_MESSAGE;
   return kind === "requests" ? REQUESTS_BUMP_MESSAGE : BRIEF_BUMP_MESSAGE;
 }
 
