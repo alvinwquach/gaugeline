@@ -38,6 +38,7 @@ async function summaryFor(
     over?: Parameters<typeof world>[0];
     env?: Record<string, string | undefined>;
     mutate?: (s: System[]) => System[];
+    google?: boolean;
   } = {},
 ): Promise<HandoffSummary> {
   const { transport } = world(opts.over);
