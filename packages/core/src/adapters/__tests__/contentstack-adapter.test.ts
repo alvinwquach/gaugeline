@@ -143,16 +143,78 @@ describe("the Contentstack adapter: reading", () => {
   });
 
   it("a server that lies about a huge count cannot keep a run going", async () => {
-    const same = hostile(() => ({
-      entries: [{ uid: "blt0a1b2c3d4e5f0001", updated_at: "2026-10-01T00:00:00.000Z" }],
-      count: 1_000_000_000,
-    }));
+    const same = hostile((url) => {
+      const skip = Number(url.searchParams.get("skip") ?? "0");
+      return {
+        entries: [0, 1, 2].map((i) => ({
+          uid: `blt00000000${skip + i}`,
+          updated_at: "2026-10-01T00:00:00.000Z",
+        })),
+        count: 1_000_000_000,
+      };
+    });
     const { adapter } = make({ maxEntriesPerType: 5 }, {}, undefined, same);
     // Asked for a few (a limit): the cap on the whole type is not applied, but the read still stops.
     expect(
       await reasonOf(() => collectPublished(adapter, { types: ["rooms"], limit: 50 })),
     ).toMatch(/more than 5 entries/);
     expect(await reasonOf(() => adapter.fieldCounts("rooms", ["title"]))).toMatch(/more than 5/);
+  });
+
+  it("a server that sends one entry a page for a huge count is stopped by a page cap, not 10,000 requests", async () => {
+    let asked = 0;
+    const slow = hostile((url) => {
+      asked++;
+      const skip = Number(url.searchParams.get("skip") ?? "0");
+      return {
+        entries: [{ uid: `blt00000000${skip}`, updated_at: "2026-10-01T00:00:00.000Z" }],
+        count: 1_000_000_000,
+      };
+    });
+    const { adapter } = make({ maxEntriesPerType: 200 }, {}, undefined, slow);
+    expect(
+      await reasonOf(() => collectPublished(adapter, { types: ["rooms"], limit: 1000 })),
+    ).toMatch(/pages/);
+    expect(asked).toBeLessThanOrEqual(25);
+  });
+
+  it("a run has a request budget: over it, the read is could-not-check with the reason", async () => {
+    const { adapter, seen } = make({ maxRequests: 2 }, { pageMax: 1 });
+    expect(await reasonOf(() => adapter.fieldCounts("rooms", ["title"]))).toMatch(/requests/);
+    expect(seen.length).toBeLessThanOrEqual(2);
+  });
+
+  it("the same entries for every page are could-not-check, never counted or yielded twice", async () => {
+    const loop = hostile(() => ({
+      entries: [
+        { uid: "blt0a1b2c3d4e5f0001", updated_at: "2026-10-01T00:00:00.000Z" },
+        { uid: "blt0a1b2c3d4e5f0002", updated_at: "2026-10-01T00:00:00.000Z" },
+      ],
+      count: 6,
+    }));
+    const { adapter } = make({}, {}, undefined, loop);
+    const seenIds: string[] = [];
+    const reason = await reasonOf(async () => {
+      for await (const d of adapter.published({ types: ["rooms"] })) seenIds.push(d.id);
+    });
+    expect(reason).toMatch(/more than once|repeat/);
+    expect(seenIds).toEqual(["blt0a1b2c3d4e5f0001", "blt0a1b2c3d4e5f0002"]);
+    expect(await reasonOf(() => adapter.fieldCounts("rooms", ["title"]))).toMatch(
+      /more than once|repeat/,
+    );
+  });
+
+  it("a field uid with a surrogate half is could-not-check in plain words, never a raw URIError", async () => {
+    const { adapter } = make({}, {}, undefined, (url) =>
+      url.pathname === "/v3/content_types"
+        ? json({
+            content_types: [{ uid: "rooms", schema: [{ uid: "a\ud800" }, { uid: "title" }] }],
+            count: 1,
+          })
+        : json({ entries: [], count: 0 }),
+    );
+    expect(await reasonOf(() => adapter.fieldCounts("rooms", ["title"]))).toMatch(/field/);
+    expect(await reasonOf(() => adapter.fieldCounts("rooms", ["a\ud800"]))).toMatch(/field/);
   });
 
   it("a list that comes back empty before its count is could-not-check", async () => {
@@ -184,6 +246,11 @@ describe("the Contentstack adapter: reading", () => {
       "/rooms/a?b=1",
       "/rooms/a b",
       "/\\evil.example",
+      "/%2e%2e/admin",
+      "/%2E%2e/admin",
+      "/rooms/%2e/x",
+      "/rooms%2fa",
+      "/rooms%5Ca",
     ];
     const entries = bad.map((url, i) => ({
       uid: `blt000000000000${i}`,

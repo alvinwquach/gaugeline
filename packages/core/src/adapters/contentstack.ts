@@ -60,6 +60,8 @@ export const CONTENTSTACK_LIMITS = {
   contentTypes: 1000,
   /** Pages of content types asked for, so a server that sends one a page cannot keep a run going. */
   contentTypePages: 40,
+  /** Requests in one run (one adapter), retries included: a server that answers one entry a page cannot cost more. */
+  requestsPerRun: 3000,
 } as const;
 
 /** The smallest page asked for when an answer is too big: the page is halved down to this and no further. */
@@ -99,6 +101,8 @@ export interface ContentstackAdapterOptions {
   pageSize?: number | undefined;
   /** Replaces CONTENTSTACK_LIMITS.entriesPerType. For tests. */
   maxEntriesPerType?: number | undefined;
+  /** Replaces CONTENTSTACK_LIMITS.requestsPerRun. For tests. */
+  maxRequests?: number | undefined;
 }
 
 const wait = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
@@ -168,7 +172,8 @@ function parseEntry(raw: unknown): RawEntry {
     typeof url === "string" &&
     url.length <= 512 &&
     ENTRY_PATH.test(url) &&
-    !url.split("/").some((s) => s === "." || s === "..")
+    !/%2f|%5c/i.test(url) &&
+    !url.split("/").some((s) => /^(?:\.|%2e){1,2}$/i.test(s))
       ? url
       : undefined;
   return {
@@ -187,6 +192,8 @@ export function createContentstackAdapter(options: ContentstackAdapterOptions): 
     Math.min(options.pageSize ?? CONTENTSTACK_PAGE_SIZE, CONTENTSTACK_PAGE_SIZE),
   );
   const cap = options.maxEntriesPerType ?? CONTENTSTACK_LIMITS.entriesPerType;
+  const maxRequests = options.maxRequests ?? CONTENTSTACK_LIMITS.requestsPerRun;
+  let requests = 0;
   const settings = options.settings;
   const redact = createRedactor(env, [CONTENTSTACK_API_KEY, CONTENTSTACK_DELIVERY_TOKEN]);
   let known: ContentstackType[] | undefined;
@@ -262,6 +269,14 @@ export function createContentstackAdapter(options: ContentstackAdapterOptions): 
    */
   const get = async (path: string, partial: () => unknown): Promise<Record<string, unknown>> => {
     const { apiKey, token } = credentialsOrThrow();
+    if (requests >= maxRequests)
+      throw translate(
+        new AdapterCouldNotCheck(
+          `A run reads at most ${maxRequests} requests from Contentstack; this one needed more, so the rest was not read.`,
+        ),
+        partial(),
+      );
+    requests++;
     const url = `https://${hostOrThrow()}${path}`;
     try {
       const { body } = await getJson(
@@ -325,6 +340,10 @@ export function createContentstackAdapter(options: ContentstackAdapterOptions): 
         const fields = Array.isArray(r.schema)
           ? r.schema.flatMap((f) => (isRecord(f) && typeof f.uid === "string" ? [f.uid] : []))
           : [];
+        if (fields.some((f) => !wellFormed(f) || !ADDRESS_PART.test(f)))
+          throw new AdapterCouldNotCheck(
+            "Contentstack answered with a field uid that is not valid.",
+          );
         out.push({ uid, fields });
       }
       skip += list.length;
@@ -386,6 +405,9 @@ export function createContentstackAdapter(options: ContentstackAdapterOptions): 
   ): AsyncGenerator<RawEntry> {
     let skip = 0;
     let size = pageSize;
+    let pages = 0;
+    const pageCap = Math.ceil(cap / MIN_PAGE_SIZE) + 1;
+    const seen = new Set<string>();
     for (;;) {
       let body: Record<string, unknown>;
       try {
@@ -409,8 +431,18 @@ export function createContentstackAdapter(options: ContentstackAdapterOptions): 
         throw new AdapterCouldNotCheck(
           "Contentstack answered with something that is not a list of entries.",
         );
-      for (const raw of body.entries) yield parseEntry(raw);
-      skip += body.entries.length;
+      pages++;
+      const batch = body.entries.map(parseEntry);
+      // A server that answers the same entries for every page is never counted or yielded twice.
+      for (const entry of batch) {
+        if (seen.has(entry.id))
+          throw new AdapterCouldNotCheck(
+            "Contentstack sent the same entry more than once while a list was read, so the list was not trusted.",
+          );
+        seen.add(entry.id);
+      }
+      for (const entry of batch) yield entry;
+      skip += batch.length;
       if (skip >= total) return;
       if (body.entries.length === 0)
         throw new AdapterCouldNotCheck(
@@ -420,6 +452,10 @@ export function createContentstackAdapter(options: ContentstackAdapterOptions): 
       if (skip >= cap)
         throw new AdapterCouldNotCheck(
           `The content type has more than ${cap} entries to read, which is as many as Gaugeline reads from one content type.`,
+        );
+      if (pages >= pageCap)
+        throw new AdapterCouldNotCheck(
+          `Contentstack sent its entries in pages too small to read ${total} entries in ${pageCap} pages, so the rest was not read.`,
         );
     }
   }
