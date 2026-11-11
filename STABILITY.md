@@ -14,6 +14,9 @@ what will not change without a major version, and what can change at any time.
 - **The work order data** (`Brief`, returned by `buildBrief` in `@gaugeline/core`), identified by its
   own `schemaVersion` (`1`, published as `packages/core/schema/brief.v1.json`). It changes
   independently of the `--json` shape and of the requests file.
+- **The advisory answer** (`gaugeline advisory --json`, returned by `checkAdvisory`), identified by its own
+  `schemaVersion` (`1`, published as `packages/core/schema/advisory.v1.json`). It changes independently
+  of the other shapes.
 - **Check ids**, such as `canonical-elsewhere`. An id that has shipped is never reused for a
   different rule (`docs/check-ids.lock.json`).
 - **Environment variable names**, such as `CI`, `NO_COLOR` and later `GAUGELINE_SLACK_WEBHOOK`.
