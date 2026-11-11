@@ -3,10 +3,20 @@ import { CheckRegistry } from "../model.js";
 import { accessPublicRead } from "./access-public-read.js";
 import { accessRoleScope } from "./access-role-scope.js";
 import { aiCrawlersBlocked } from "./ai-crawlers-blocked.js";
+import { angularAnalogEndpointsListed } from "./angular-analog-endpoints-listed.js";
+import { angularDevToolsPublic } from "./angular-dev-tools-public.js";
+import { angularPreviewCanonical } from "./angular-preview-canonical.js";
+import { angularSsrError200 } from "./angular-ssr-error-200.js";
+import { angularStatePrivateFields } from "./angular-state-private-fields.js";
 import { appLinkDead } from "./app-link-dead.js";
 import { appNameMismatch } from "./app-name-mismatch.js";
 import { appSmartBannerMismatch } from "./app-smart-banner-mismatch.js";
 import { assetFilePublic } from "./asset-file-public.js";
+import { astroDevToolsPublic } from "./astro-dev-tools-public.js";
+import { astroDraftEntryPublic } from "./astro-draft-entry-public.js";
+import { astroEndpointsListed } from "./astro-endpoints-listed.js";
+import { astroPreviewCanonical } from "./astro-preview-canonical.js";
+import { astroPrivateProps } from "./astro-private-props.js";
 import { blocked } from "./blocked.js";
 import { brokenLinks } from "./broken-links.js";
 import { canonicalElsewhere } from "./canonical-elsewhere.js";
@@ -57,6 +67,12 @@ import { formDestinationChanged } from "./form-destination-changed.js";
 import { formProviderChanged } from "./form-provider-changed.js";
 import { formsManyProviders } from "./forms-many-providers.js";
 import { gatedDownloadOpen } from "./gated-download-open.js";
+import { gatsbyDataAsPage } from "./gatsby-data-as-page.js";
+import { gatsbyDataUnshown } from "./gatsby-data-unshown.js";
+import { gatsbyDevServerLive } from "./gatsby-dev-server-live.js";
+import { gatsbyGraphqlPublic } from "./gatsby-graphql-public.js";
+import { gatsbyPreviewCanonical } from "./gatsby-preview-canonical.js";
+import { gatsbyPrivateFields } from "./gatsby-private-fields.js";
 import { hiddenAiDirective } from "./hidden-ai-directive.js";
 import { hiddenInSitemap } from "./hidden-in-sitemap.js";
 import { hiddenIndexable } from "./hidden-indexable.js";
@@ -136,6 +152,9 @@ import { redirectChain } from "./redirect-chain.js";
 import { robotsBlock } from "./robots-block.js";
 import { rscServedAsPage } from "./rsc-served-as-page.js";
 import { rscVaryMissing } from "./rsc-vary-missing.js";
+import { sanityImageDuplicate } from "./sanity-image-duplicate.js";
+import { sanityImageOriginal } from "./sanity-image-original.js";
+import { sanityImageOversized } from "./sanity-image-oversized.js";
 import { schemaBreadcrumbMismatch } from "./schema-breadcrumb-mismatch.js";
 import { schemaBreadcrumbStart } from "./schema-breadcrumb-start.js";
 import { schemaDanglingRef } from "./schema-dangling-ref.js";
@@ -157,6 +176,14 @@ import { staticSearchIndexHidden } from "./static-search-index-hidden.js";
 import { stegaLeak } from "./stega-leak.js";
 import { stripeTestMode } from "./stripe-test-mode.js";
 import { structuredDuplicate } from "./structured-duplicate.js";
+import { sveltekitDataAsPage } from "./sveltekit-data-as-page.js";
+import { sveltekitDataUnshown } from "./sveltekit-data-unshown.js";
+import { sveltekitDevServerLive } from "./sveltekit-dev-server-live.js";
+import { sveltekitDraftPublic } from "./sveltekit-draft-public.js";
+import { sveltekitPreviewCanonical } from "./sveltekit-preview-canonical.js";
+import { sveltekitPrivateFields } from "./sveltekit-private-fields.js";
+import { sveltekitStalePage } from "./sveltekit-stale-page.js";
+import { sveltekitVaryMissing } from "./sveltekit-vary-missing.js";
 import { switchOffStillLinked } from "./switch-off-still-linked.js";
 import { switchPageWrong } from "./switch-page-wrong.js";
 import { tagsDeadRules } from "./tags-dead-rules.js";
@@ -173,10 +200,20 @@ export const PAGE_CHECKS = [
   accessPublicRead,
   accessRoleScope,
   aiCrawlersBlocked,
+  angularAnalogEndpointsListed,
+  angularDevToolsPublic,
+  angularPreviewCanonical,
+  angularSsrError200,
+  angularStatePrivateFields,
   appLinkDead,
   appNameMismatch,
   appSmartBannerMismatch,
   assetFilePublic,
+  astroDevToolsPublic,
+  astroDraftEntryPublic,
+  astroEndpointsListed,
+  astroPreviewCanonical,
+  astroPrivateProps,
   blocked,
   brokenLinks,
   canonicalElsewhere,
@@ -222,6 +259,12 @@ export const PAGE_CHECKS = [
   formProviderChanged,
   formsManyProviders,
   gatedDownloadOpen,
+  gatsbyDataAsPage,
+  gatsbyDataUnshown,
+  gatsbyDevServerLive,
+  gatsbyGraphqlPublic,
+  gatsbyPreviewCanonical,
+  gatsbyPrivateFields,
   hiddenAiDirective,
   hiddenInSitemap,
   hiddenIndexable,
@@ -301,6 +344,9 @@ export const PAGE_CHECKS = [
   robotsBlock,
   rscServedAsPage,
   rscVaryMissing,
+  sanityImageDuplicate,
+  sanityImageOriginal,
+  sanityImageOversized,
   schemaBreadcrumbMismatch,
   schemaBreadcrumbStart,
   schemaDanglingRef,
@@ -325,6 +371,14 @@ export const PAGE_CHECKS = [
   stegaLeak,
   stripeTestMode,
   structuredDuplicate,
+  sveltekitDataAsPage,
+  sveltekitDataUnshown,
+  sveltekitDevServerLive,
+  sveltekitDraftPublic,
+  sveltekitPreviewCanonical,
+  sveltekitPrivateFields,
+  sveltekitStalePage,
+  sveltekitVaryMissing,
   switchOffStillLinked,
   switchPageWrong,
   tagsDeadRules,

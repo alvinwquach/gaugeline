@@ -1,0 +1,29 @@
+# GitLab CI: check a site every night with Gaugeline.
+# Copy the job into .gitlab-ci.yml, or save this file and add `include: { local: gitlab-ci.yml }`.
+#
+# Variables: Settings > CI/CD > Variables.
+#   SITE_URL                 the site to check, for example https://example.com
+#   GAUGELINE_SLACK_WEBHOOK  optional: where a summary goes. Add it as Masked; never write it here.
+# Schedule: Build > Pipeline schedules > New schedule (for example "43 4 * * *").
+#
+# Exit codes are the job's exit codes, unchanged: 0 the check ran, 1 a "Fix this first"
+# finding, 2 Gaugeline could not run. The report is saved even when the job fails.
+variables:
+  npm_config_cache: "$CI_PROJECT_DIR/.npm"
+
+gaugeline:
+  image: node:24
+  cache:
+    key: gaugeline-npm
+    paths:
+      - .npm/
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+  script:
+    - npx --yes gaugeline "$SITE_URL" --ci --no-open
+  artifacts:
+    when: always
+    expire_in: 30 days
+    paths:
+      - gaugeline-report.html

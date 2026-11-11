@@ -10,7 +10,7 @@ export const staticDevServerLive = defineCheck<PageSnapshot>({
   estimateChanges: "A host that runs a start command needs it changed to serve the build folder.",
   area: "Launch day",
   severity: "high",
-  title: "The live site is a development server",
+  title: "The live static site generator is a development server",
   what: "This page loads a live-reload or development script of a static site generator (Hugo, Jekyll, Eleventy, Docusaurus or VitePress).",
   why: "A development server shows drafts and future posts, rebuilds on every request and was never meant for visitors: it is slow, and it keeps a connection open for every one of them.",
   fix: "Build the site (hugo, jekyll build, eleventy, docusaurus build, vitepress build) and serve the output folder from a static host.",
