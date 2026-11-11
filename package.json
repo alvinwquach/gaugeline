@@ -36,6 +36,7 @@
     "gen:adapters": "tsx scripts/gen-adapters.ts",
     "since": "tsx scripts/check-since.ts",
     "new:check": "tsx scripts/new-check.ts",
+    "new:adapter": "tsx scripts/new-adapter.ts",
     "docs:examples": "tsx scripts/docs-examples.ts",
     "dogfood": "tsx scripts/dogfood.ts",
     "surface": "tsx scripts/check-surface.ts",

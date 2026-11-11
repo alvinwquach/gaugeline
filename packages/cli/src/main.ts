@@ -47,6 +47,7 @@ import {
   freshnessUsesSanity,
   readModelSchema,
   SANITY_ENV_VARS,
+  onAdapterLoad,
   usesSanity,
   LISTING_ENV_VARS,
   CRM_ENV_VARS,
@@ -1872,6 +1873,11 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
 
 /** Runs the CLI and returns the exit code. Nothing else in the CLI decides an exit code. */
 export async function main(argv: readonly string[], io: Io, deps: Deps = {}): Promise<number> {
+  // For the start-up test: GAUGELINE_TRACE_ADAPTER_LOADS=1 names each adapter the run loads, on stderr.
+  const stopTracing =
+    io.env?.GAUGELINE_TRACE_ADAPTER_LOADS === "1"
+      ? onAdapterLoad((id) => io.stderr.write(`gaugeline: loaded adapter ${id}\n`))
+      : undefined;
   // formatError reads the same level as the logger; --quiet --verbose is refused before this matters.
   const verbose = argv.includes("--verbose") && !argv.includes("--quiet");
   try {
@@ -1880,6 +1886,8 @@ export async function main(argv: readonly string[], io: Io, deps: Deps = {}): Pr
   } catch (err) {
     io.stderr.write(`${formatError(err, { verbose })}\n`);
     return exitCodeFor(toOutcome(err), { ci: false });
+  } finally {
+    stopTracing?.();
   }
 }
 
