@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="Astro v5.0.0">
+<meta property="og:image" content="{{origin}}/og.png">
+<title>Fernlight Yoga · Classes and a blog</title>
+<meta name="description" content="An invented yoga studio built with Astro, for Gaugeline's framework checks.">
+<link rel="canonical" href="https://fernlight-yoga-git-main.vercel.app/">
+<link rel="stylesheet" href="/_astro/index.Bx9d2k1a.css">
+<script type="module" src="/@vite/client"></script>
+</head>
+<body data-astro-cid-fern1a>
+<header data-astro-cid-fern1a><nav><a href="/">Fernlight Yoga</a></nav></header>
+<main data-astro-cid-fern1a data-astro-source-file="/srv/site/src/pages/index.astro">
+<h1 data-astro-cid-fern1a>Fernlight Yoga</h1>
+<p data-astro-cid-fern1a>An invented yoga studio for Gaugeline's tests, built with Astro. Small evening classes,
+a Saturday morning flow and a blog about breathing. Nothing here is a real business.</p>
+<astro-island uid="Z1a2b3c" component-url="/_astro/BookingForm.Dk3f9aZ1.js" component-export="default" renderer-url="/_astro/client.Bq1x7Yp2.js" props="{&quot;classId&quot;:[0,&quot;vinyasa-evening&quot;],&quot;apiToken&quot;:[0,&quot;invented-not-a-key&quot;],&quot;teacher&quot;:[0,{&quot;name&quot;:[0,&quot;Mira&quot;],&quot;internalNotes&quot;:[0,&quot;invented note&quot;]}]}" ssr client="load" opts="{&quot;name&quot;:&quot;BookingForm&quot;,&quot;value&quot;:true}" await-children><form data-astro-cid-fern1a><button>Book</button></form><!--astro:end--></astro-island>
+<astro-island uid="Z4d5e6f" component-url="/_astro/Newsletter.Hq2k8bR3.js" component-export="default" renderer-url="/_astro/client.Bq1x7Yp2.js" props="{&quot;title&quot;:[0,&quot;Breathing before bed&quot;],&quot;draft&quot;:[0,true]}" ssr client="visible" opts="{&quot;name&quot;:&quot;Newsletter&quot;,&quot;value&quot;:true}" await-children><div>Newsletter</div><!--astro:end--></astro-island>
+<!--[if astro]>server-island-start<![endif]--><p>Next class loading</p>
+<script type="module" data-astro-rerun data-island-id="9f1c2d3e-0000-4000-8000-000000000001">const response = await fetch("/_server-islands/NextClass?e=default&p=&s=");</script>
+<form method="POST" action="?_action=subscribe"><input name="email"><button>Subscribe</button></form>
+<script>fetch("/_actions/bookClass/", { method: "POST" });</script>
+</main>
+</body>
+</html>

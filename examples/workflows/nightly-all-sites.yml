@@ -34,6 +34,7 @@ jobs:
         # Add --renewals after "run --all" to also check each site's domain registration, certificates and
         # tokens (docs/guides/renewals); list GAUGELINE_GITHUB_TOKEN and GAUGELINE_VERCEL_TOKEN above, by prefix.
         # Add --cost as well to find pages that run up the hosting bill and a usage jump (docs/guides/hosting-cost).
+        # Add --backups as well to read when each site's content and database were last backed up (docs/guides/backups).
         # Exit 1 (a new fix-first finding) or 2 (a site couldn't run) is kept for the last step,
         # so the runs are committed and the digests built either way.
         run: npx --yes gaugeline run --all || echo "code=$?" >> "$GITHUB_OUTPUT"
