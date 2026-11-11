@@ -11,6 +11,11 @@ on:
 permissions:
   contents: read
 
+# A new push to a pull request cancels the run of the older commit; runs on main finish.
+concurrency:
+  group: docs-${{ github.event_name }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -33,10 +38,20 @@ jobs:
           DOCS_URL: ${{ vars.DOCS_URL }}
       - run: pnpm docs:build
       - run: pnpm vitest run --config vitest.docs.config.ts
-      - run: pnpm exec playwright install --with-deps chromium
+      # The browser tests run on every push to main, and on a pull request only when it changes the docs,
+      # the check registry, the docs build or what the browser tests drive (the app and its server).
+      - id: browser
+        run: bash scripts/needs-browser-tests.sh
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+      - if: steps.browser.outputs.run == 'true'
+        run: pnpm exec playwright install --with-deps chromium
       # e2e/app.spec.ts drives the built CLI (gaugeline open).
-      - run: pnpm build
-      - run: pnpm docs:e2e
+      - if: steps.browser.outputs.run == 'true'
+        run: pnpm build
+      - if: steps.browser.outputs.run == 'true'
+        run: pnpm docs:e2e
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: docs-site

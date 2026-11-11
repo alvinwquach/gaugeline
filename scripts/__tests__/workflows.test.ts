@@ -118,3 +118,62 @@ describe("docs workflow", () => {
     expect(text.match(/scripts\/deploy-docs\.sh/g)?.length).toBeGreaterThanOrEqual(2);
   });
 });
+
+describe("faster pull request runs", () => {
+  const read = (f: string) => readFileSync(join(dir, f), "utf8");
+
+  // The two JSON strings the CI matrix chooses between, read out of the workflow file itself.
+  function matrices(): { pullRequest: unknown; main: unknown } {
+    const m = /fromJSON\(github\.event_name == 'pull_request' && '(.*?)' \|\| '(.*?)'\)/.exec(
+      read("ci.yml"),
+    );
+    if (!m) throw new Error("ci.yml does not choose its matrix from the event");
+    return { pullRequest: JSON.parse(m[1] ?? ""), main: JSON.parse(m[2] ?? "") };
+  }
+
+  it("a pull request runs Linux on Node 22 and 24 and Windows on Node 24, nothing else", () => {
+    expect(matrices().pullRequest).toEqual({
+      include: [
+        { os: "ubuntu-latest", node: "22" },
+        { os: "ubuntu-latest", node: "24" },
+        { os: "windows-latest", node: "24" },
+      ],
+    });
+  });
+
+  it("main runs the full matrix: three systems on Node 22 and 24", () => {
+    expect(matrices().main).toEqual({
+      os: ["ubuntu-latest", "windows-latest", "macos-latest"],
+      node: ["22", "24"],
+    });
+  });
+
+  it("a new push cancels the older pull request run and never cancels a run on main", () => {
+    for (const f of ["ci.yml", "docs.yml"]) {
+      const text = read(f);
+      expect(text).toContain("cancel-in-progress: ${{ github.event_name == 'pull_request' }}");
+      expect(text).toMatch(
+        /concurrency:\n\s+group: .*\$\{\{ github\.event\.pull_request\.number \|\| github\.sha \}\}/,
+      );
+    }
+  });
+
+  it("the release workflow waits for the full matrix of its own commit before it does anything", () => {
+    const text = read("release-pr.yml");
+    expect(text).toContain("ci-gate:");
+    expect(text).toContain("actions/workflows/ci.yml/runs?head_sha=$SHA&event=push");
+    expect(text).toMatch(/release:\n\s+needs: ci-gate/);
+  });
+
+  it("the browser tests run only on the decision of scripts/needs-browser-tests.sh", () => {
+    const text = read("docs.yml");
+    expect(text).toContain("bash scripts/needs-browser-tests.sh");
+    for (const step of ["playwright install --with-deps chromium", "pnpm docs:e2e"]) {
+      expect(text).toMatch(
+        new RegExp(
+          `- if: steps\\.browser\\.outputs\\.run == 'true'\\n\\s+run: pnpm (exec )?${step.replace(/^pnpm /, "").replace(/[.]/g, "\\.")}`,
+        ),
+      );
+    }
+  });
+});
