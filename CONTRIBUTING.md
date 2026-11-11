@@ -17,7 +17,7 @@ network and no keys.
 
 Run `pnpm new:check <id> --area <area> --severity <level>`, fill in the four texts (what it catches,
 why it matters, how to fix it, the technical line) and the rule, then run `pnpm gen:checks` to
-regenerate the checks reference. The whole walkthrough is in
+regenerate the checks reference and `pnpm gen:skill` to regenerate the agent skill's table of findings. The whole walkthrough is in
 [docs/contributing/adding-a-check.md](docs/contributing/adding-a-check.md).
 
 ## Add a fixture
