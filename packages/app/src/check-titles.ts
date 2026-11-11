@@ -196,6 +196,11 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "Security & email",
   ],
   "craft-entry-no-page": ["A live Craft entry has no page on its site", "Launch day"],
+  "umbraco-node-no-page": ["A published Umbraco node has no page on the live site", "Launch day"],
+  "umbraco-delivery-api-public": [
+    "The Umbraco Delivery API answers visitors with no key",
+    "Security & email",
+  ],
   "hubspot-page-404": ["A page published in HubSpot answers 404 on the live domain", "Launch day"],
   "hubspot-form-deleted": ["A page embeds a HubSpot form that has been deleted", "Launch day"],
   "app-smart-banner-mismatch": ["The iPhone app banner promotes a different app", "Visitors"],
@@ -1154,6 +1159,18 @@ export const CHECK_TEXT: Readonly<
     "Links, the sitemap and search results point at a page that is not there, and the client's announcement leads to an error page. On a multi-site install an entry can be switched on for a site whose templates or routes do not build it.",
     "Check that the site has a route or template for the section (a headless front end may need a rebuild or a revalidation after publishing) and that the entry's URI matches it. If the entry should not be on this site, switch it off for the site in Craft (the entry's Site status).",
     "GET {CRAFT_URL}?query=... with a GraphQL query only (never a mutation): entryCount and entries(section, site, status: [\"live\"], orderBy, limit, offset) for each section named in the settings, asking for id, slug, uri, url, siteHandle, status and the dates, never a field value; pages are stepped by the size each answer returned, and a repeated entry, an over-long page or an empty page before the total is could-not-check. Each live entry's own url (or the settings' urls pattern for its section) is then asked with one GET on the live site (redirects followed). A final 404 or 410 is the finding; any other answer that is not a 2xx is could-not-check for that page. An entry whose page is on another site's domain is not counted for this site. A section none of whose live entries is on this site, and a urls pattern on an entry set that spans several Craft sites with no site handle, are could-not-check, never a pass; so is a token whose schema was not shown to be query-only. Entries are kept in a Set by element id and site handle to catch a repeat.",
+  ],
+  "umbraco-node-no-page": [
+    "Umbraco says a node is published, and the address its page should have answers 404 or 410 on the live site.",
+    "Links, the sitemap and search results point at a page that is not there, and the client's announcement leads to an error page.",
+    "Check the content type has a template (or the front end builds a route for it), that the node's culture and domain settings match the site being checked, and that a headless front end was rebuilt or revalidated after publishing. If the node should not be public, unpublish it in the Umbraco backoffice.",
+    "GET /umbraco/delivery/api/v2/content?filter=contentType:{alias} for each content type named in the settings (the published list; skip and take step by the number of nodes that came back, and a list is complete only when the position reaches the total it reports), then one GET of the live address: the settings' `urls` pattern when the type has one, else the route.path the API gave the node (redirects followed). A final 404 or 410 is the finding; any other answer that is not a 2xx is could-not-check for that page. A node with no route and no pattern, and a path that is not a plain path (a host, `..`, an escaped slash), are could-not-check by name and are not asked. Ids and paths only: no property is requested beyond those named in `fingerprint`, and none is used for this. A site with several root nodes and no domains may give paths relative to a start item: set `urls` for those types.",
+  ],
+  "umbraco-delivery-api-public": [
+    "gaugeline.adapters.json says the Content Delivery API is meant to be private (expectPrivate: true), and a plain GET of its list route with no key is answered with the list of published nodes.",
+    "Anyone who finds the route can read every published node as data, including nodes that are published but not linked from the site, and can page through the whole content tree. If the API was meant to be private, its protection is off.",
+    "In appsettings.json set Umbraco:CMS:DeliveryApi:PublicAccess to false and keep an ApiKey, then send the key from the server only (never from the browser). If the API is meant to be public (a public API that also has a key, so that preview works, is a normal setup), remove expectPrivate from gaugeline.adapters.json: the key is not touched.",
+    "probing check, off without --owner-consent: this check asks the Delivery API's public route as a visitor with no key, so it runs only with --owner-consent (or gaugeline.consent.json), on sites you own or have permission to test; only when the settings say expectPrivate: true (a key being set says nothing: Umbraco's preview needs the key on a public API too); one GET of /umbraco/delivery/api/v2/content?take=1 with no Api-Key header, no cookie and nothing the fetcher adds per address, fields=properties[] and expand=none; a 200 with a list and a numeric total is the finding (the total is a count, never a node); 401 or 403 is a protected API and 404 is an API that is off or not at that address, both with no finding; a 200 that is not the API's list (a page that answers every path) and any other status are could-not-check; the answer is read as a count and nothing else",
   ],
   "hubspot-page-404": [
     "HubSpot says a site page, landing page or blog post is published on this domain, and the address it gives for it answers 404 or 410 on the live site.",
