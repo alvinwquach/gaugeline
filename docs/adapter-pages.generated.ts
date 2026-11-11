@@ -15,10 +15,6 @@ export const ADAPTER_PAGES: { slug: string; title: string }[] = [
   },
   { slug: "integrations/framer", title: "Framer: content checks for sites built on Framer (beta)" },
   {
-    slug: "integrations/generic-api",
-    title: "Generic API adapter: content checks for any headless CMS with a read API",
-  },
-  {
     slug: "integrations/git-content",
     title: "Content kept in git: content checks for sites whose content lives in the repo",
   },

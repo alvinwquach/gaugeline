@@ -4,7 +4,6 @@ import { contractEntries as builders } from "./builders.contract.js";
 import { contractEntries as contentful } from "./contentful.contract.js";
 import { contractEntries as contentstack } from "./contentstack.contract.js";
 import { contractEntries as framer } from "./framer.contract.js";
-import { contractEntries as genericApi } from "./generic-api.contract.js";
 import { contractEntries as gitContent } from "./git-content.contract.js";
 import { contractEntries as hubspotCms } from "./hubspot-cms.contract.js";
 import { contractEntries as sanity } from "./sanity.contract.js";
@@ -22,7 +21,6 @@ export const CONTRACT_ENTRIES: readonly ContractEntry[] = [
   ...contentful,
   ...contentstack,
   ...framer,
-  ...genericApi,
   ...gitContent,
   ...hubspotCms,
   ...sanity,
