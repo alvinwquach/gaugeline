@@ -1,7 +1,9 @@
 import { spawn } from "node:child_process";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
-import { readdirSync } from "node:fs";
+import { copyFileSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { SITES_DIR, startFixture } from "../../packages/fixtures/src/index.js";
 
 export interface Example {
@@ -240,10 +242,17 @@ export async function runExample(
         ? []
         : ["--no-open"]),
     ];
+    // A fixture that ships settings files (gaugeline.*.json) runs from a temporary copy of them, as a
+    // person would run from their project folder; other examples keep the working folder as it was.
+    const dir = join(SITES_DIR, e.fixture);
+    const settings = readdirSync(dir).filter((n) => /^gaugeline\.[a-z-]+\.json$/.test(n));
+    const cwd = settings.length > 0 ? mkdtempSync(join(tmpdir(), "gaugeline-example-")) : undefined;
+    for (const n of settings) copyFileSync(join(dir, n), join(cwd ?? "", n));
     const result = await new Promise<{ stdout: string; stderr: string; code: number }>(
       (resolve) => {
         const child = spawn(process.execPath, argv, {
           env: childProcessEnv({ ...extraEnv, ...childEnv }),
+          ...(cwd ? { cwd } : {}),
         });
         let stdout = "";
         let stderr = "";
@@ -252,6 +261,7 @@ export async function runExample(
         child.on("close", (code) => resolve({ stdout, stderr, code: code ?? -1 }));
       },
     );
+    if (cwd) rmSync(cwd, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
     return {
       ...result,
       origin: site.origin,

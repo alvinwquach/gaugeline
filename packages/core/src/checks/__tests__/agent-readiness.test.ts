@@ -326,7 +326,7 @@ describe("well-known-invalid: integration", () => {
       fetcher,
     });
     expect(found.map((f) => f.evidence)).toEqual([
-      "/.well-known/agent.json (A2A agent card (earlier path)) is not valid JSON",
+      ".well-known/agent.json (A2A agent card (earlier path)) is not valid JSON",
     ]);
     // One request per documented path, never a path that is not documented.
     const paths = server.log.map((r) => r.path).sort();

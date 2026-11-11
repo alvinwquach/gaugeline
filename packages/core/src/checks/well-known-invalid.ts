@@ -25,7 +25,7 @@ export const wellKnownInvalid = defineCheck<PageSnapshot>({
       checkId: "well-known-invalid",
       severity: "low" as const,
       title: this.title,
-      evidence: `${r.path} (${r.name}) ${r.why ?? "is invalid"}`,
+      evidence: `${r.path.replace(/^\//, "")} (${r.name}) ${r.why ?? "is invalid"}`,
       url: r.url,
     }));
   },

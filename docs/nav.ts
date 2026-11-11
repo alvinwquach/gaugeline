@@ -99,6 +99,7 @@ export const UNLISTED: NavPage[] = [
   { slug: "contributing/migration-guides", title: "Migration guides, Since badges and the feed" },
   { slug: "known-findings", title: "Known findings on our own site" },
   { slug: "guides/ai-assistants", title: "How AI assistants read your site" },
+  { slug: "guides/agent-readiness", title: "How AI agents read your site" },
   { slug: "guides/events", title: "How Gaugeline reads a venue calendar" },
   { slug: "guides/schema-rules", title: "Checking structured data against your schema guide" },
   { slug: "guides/languages", title: "Checking language versions" },
