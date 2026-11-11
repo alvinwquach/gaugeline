@@ -38,6 +38,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
       "renewals",
       "handoff",
       "cost",
+      "backups",
       "migration",
       "advisory",
       "verify",
@@ -56,11 +57,13 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     since: "0.1.0",
     commands: [
       "check",
+      "deploy-gate",
       "launch",
       "renewals",
       "handoff",
       "advisory",
       "cost",
+      "backups",
       "ads",
       "delivery",
       "platform",
@@ -73,7 +76,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     type: "boolean",
     description: "Do not open anything in a browser",
     since: "0.1.0",
-    commands: ["check", "launch", "renewals", "cost", "open"],
+    commands: ["check", "launch", "renewals", "cost", "backups", "open"],
   },
   {
     name: "demo",
@@ -103,11 +106,13 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
       "renewals",
       "handoff",
       "cost",
+      "backups",
       "brief",
       "audit",
       "migration",
       "advisory",
       "init",
+      "deploy-gate",
       "plan",
       "printed",
       "snapshot",
@@ -133,7 +138,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     type: "boolean",
     description: "Also read the domain's mail records (SPF and DMARC) from DNS",
     since: "0.2.0",
-    commands: ["check", "launch", "brief", "audit", "handoff", "advisory", "init"],
+    commands: ["check", "launch", "brief", "audit", "handoff", "advisory", "init", "deploy-gate"],
   },
   {
     name: "renewals",
@@ -176,6 +181,14 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     commands: ["check", "run"],
   },
   {
+    name: "backups",
+    type: "boolean",
+    description:
+      "Also check when the client's content and database were last backed up (Supabase, Sanity, an export folder)",
+    since: "0.2.0",
+    commands: ["check", "run"],
+  },
+  {
     name: "published",
     type: "boolean",
     description:
@@ -189,7 +202,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     description:
       "Run the probing checks, which ask routes for what they protect with no login; only on sites you may test",
     since: "0.2.0",
-    commands: ["check", "brief", "audit"],
+    commands: ["check", "brief", "audit", "deploy-gate"],
   },
   {
     name: "routes",
@@ -342,28 +355,28 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     type: "string",
     description: "Send a summary to this Slack incoming webhook (or set GAUGELINE_SLACK_WEBHOOK)",
     since: "0.2.0",
-    commands: ["check", "launch", "renewals", "cost", "plan"],
+    commands: ["check", "launch", "renewals", "cost", "backups", "plan"],
   },
   {
     name: "discord",
     type: "string",
     description: "Send an embed to this Discord webhook (or set GAUGELINE_DISCORD_WEBHOOK)",
     since: "0.2.0",
-    commands: ["check", "launch", "renewals", "cost", "plan"],
+    commands: ["check", "launch", "renewals", "cost", "backups", "plan"],
   },
   {
     name: "webhook",
     type: "string",
     description: "POST the result as JSON to this address (or set GAUGELINE_WEBHOOK)",
     since: "0.2.0",
-    commands: ["check", "launch", "renewals", "cost", "digest", "plan"],
+    commands: ["check", "launch", "renewals", "cost", "backups", "digest", "plan"],
   },
   {
     name: "email",
     type: "string",
     description: "Email the full report to these addresses through Resend (or set GAUGELINE_EMAIL)",
     since: "0.2.0",
-    commands: ["check", "launch", "renewals", "cost", "digest"],
+    commands: ["check", "launch", "renewals", "cost", "backups", "digest"],
   },
   {
     name: "plan-only",
@@ -632,6 +645,15 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     multiple: true,
   },
   {
+    name: "block",
+    type: "boolean",
+    description:
+      'deploy-gate: exit 1 when a "Fix this first" finding is found; without it the gate only reports',
+    env: "GAUGELINE_GATE_BLOCK",
+    since: "0.2.0",
+    commands: ["deploy-gate"],
+  },
+  {
     name: "dry-run",
     type: "boolean",
     description: "init: print the settings files it would write, and write nothing",
@@ -664,14 +686,14 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     type: "string",
     description: "When to send: any (something was found, the default), high or always",
     since: "0.2.0",
-    commands: ["check", "launch", "renewals", "cost", "plan"],
+    commands: ["check", "launch", "renewals", "cost", "backups", "plan"],
   },
   {
     name: "report-url",
     type: "string",
     description: "Link each message to a hosted copy of the report at this address",
     since: "0.2.0",
-    commands: ["check", "launch", "renewals", "cost"],
+    commands: ["check", "launch", "renewals", "cost", "backups"],
   },
   {
     name: "save-requests",
@@ -679,7 +701,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     description:
       "Save the requests made and the page's data to this JSON file; it may contain page content, so do not commit it",
     since: "0.2.0",
-    commands: ["check", "launch", "renewals", "cost"],
+    commands: ["check", "launch", "renewals", "cost", "backups"],
   },
   {
     name: "list",

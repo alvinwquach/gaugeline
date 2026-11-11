@@ -1,0 +1,50 @@
+{
+  "format": 1,
+  "recipe": "prismic",
+  "name": "Prismic",
+  "settings": {
+    "id": "generic-api",
+    "fingerprint": {
+      "blog_post": ["title"]
+    },
+    "urls": {
+      "blog_post": "/blog/{slug}"
+    },
+    "api": {
+      "endpoint": "https://fernhill.cdn.prismic.io/api/v2",
+      "bootstrap": [
+        {
+          "param": "ref",
+          "path": "",
+          "value": "/refs/0/ref",
+          "expect": {
+            "path": "/refs/0/isMasterRef",
+            "equals": true
+          }
+        }
+      ],
+      "collections": {
+        "documents": {
+          "path": "/documents/search",
+          "items": "/results",
+          "total": "/total_results_size",
+          "fieldRoot": "/data",
+          "pagination": {
+            "style": "page",
+            "page": "page",
+            "size": "pageSize",
+            "pageSize": 100,
+            "pages": "/total_pages"
+          },
+          "fields": {
+            "id": "/id",
+            "type": "/type",
+            "slug": "/uid",
+            "updatedAt": "/last_publication_date",
+            "publishedAt": "/first_publication_date"
+          }
+        }
+      }
+    }
+  }
+}
