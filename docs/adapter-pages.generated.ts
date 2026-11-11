@@ -23,6 +23,10 @@ export const ADAPTER_PAGES: { slug: string; title: string }[] = [
     title: "Content kept in git: content checks for sites whose content lives in the repo",
   },
   {
+    slug: "integrations/hubspot-cms",
+    title: "HubSpot CMS: content checks for sites built on HubSpot CMS",
+  },
+  {
     slug: "integrations/sitemap-feed",
     title: "Sitemap and feeds: content checks for sites built on any CMS",
   },
