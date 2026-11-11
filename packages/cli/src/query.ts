@@ -1,4 +1,7 @@
 import {
+  SANITY_DESCRIPTION,
+  adapterHeader,
+  resolveAdapters,
   checkMutationsOnly,
   compareQueries,
   ConfigError,
@@ -34,6 +37,7 @@ import { inspectBaselineFile, writeBaselineFile, type ScaffoldFs } from "./scaff
 import { runSuggest } from "./query-suggest.js";
 import { runUnused } from "./query-unused.js";
 import { formatTerminal } from "./reporter.js";
+import { readAdaptersConfig } from "./schema-config.js";
 
 /** Why each kind of unreadable query was left alone, in a sentence a person can act on. */
 const WHY: Record<Unreadable["reason"], string> = {
@@ -225,6 +229,11 @@ export async function runQuery(
       deps,
     );
   const asks = (io.env?.[SANITY_PROJECT_ID] ?? "").trim() !== "";
+  // gaugeline.adapters.json, when there is one, must name adapters that exist: checked before anything is asked.
+  if (asks) {
+    const named = readAdaptersConfig(deps.cwd);
+    if (named) resolveAdapters(named);
+  }
   if (args.json && !asks && args.mutations !== true)
     throw new ConfigError(
       "gaugeline query --json prints findings, and they need SANITY_PROJECT_ID or --mutations.",
@@ -379,6 +388,8 @@ export async function runQuery(
     if (run) {
       const { result, counts, dupes } = run;
       if (out.length > 0) out.push("");
+      // Which content system was read and with what kind of key, before what was asked of it.
+      if (asks) out.push(adapterHeader(SANITY_DESCRIPTION), "");
       if (counts && counts.size > 0)
         out.push(
           `Counted the published documents of ${plural(counts.size, "type")} in the dataset: one request each, counts only.`,

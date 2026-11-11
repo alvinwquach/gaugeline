@@ -40,6 +40,10 @@ The token needs the Viewer role and nothing more: the command sends only `GET` r
 
 Nothing else is asked for: no body, no image, no other field. The documents are grouped in memory and only the groups are kept. The report shows a slug or a title only when two documents of one type share it, and it names their ids. The Viewer role is enough: it is a read, which is the same thing the Viewer role is for ("find duplicates" is on its list). Without `SANITY_TOKEN` a private dataset answers 401 and the command stops with the same message as above. What the findings mean: [The same thing, twice](/docs/query-check#the-same-thing-twice).
 
+## Other content systems
+
+Sanity is the first of the content systems Gaugeline reads through one interface. Which others are planned, and the kind of key each one asks for, are on [Content systems](/docs/integrations/).
+
 ## Where the token lives
 
 - Read from the environment when the command runs. Never written to disk, never printed in output or reports.

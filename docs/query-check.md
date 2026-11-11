@@ -74,6 +74,8 @@ It exits 0 when it read the folder, with or without unreadable queries, and 2 wh
 
 Set `SANITY_PROJECT_ID` (and `SANITY_DATASET`, `production` if you leave it out, and `SANITY_TOKEN` for a private dataset) and the command compares what your queries ask for with what the dataset holds.
 
+The output says which content system it read and what kind of key it used (`read-only` for Sanity: a Viewer token, or none for a public dataset) before it says what it asked. [Content systems](/docs/integrations/) lists the others.
+
 ```sh title=Terminal untested="Needs a Sanity project, and the docs runner points every example at a fixture website. packages/cli/src/__tests__/query-docs.test.ts runs this command in the invented bakery repository against an invented dataset (nine pop-ups, forty menu items) and compares the output with the block below."
 $ SANITY_PROJECT_ID=cprhl1b4 npx gaugeline query ./src/app
 ```
@@ -103,6 +105,8 @@ Could not read 1 query:
   ./src/app/search/page.tsx:5  concatenated: built at run time (a template with an interpolation, strings joined with +, or a variable), so it cannot be read from the file
 
 4 shapes from 4 queries; 1 could not be read.
+
+Content system: Sanity, with a read-only key. Endpoints and how to make the key: https://gaugeline.dev/docs/private-datasets
 
 Counted the published documents of 4 types in the dataset: one request each, counts only.
 
@@ -607,6 +611,8 @@ menuItem  ./src/app/menu/[slug]/page.tsx:3
   params: $slug
 
 1 shape from 1 query.
+
+Content system: Sanity, with a read-only key. Endpoints and how to make the key: https://gaugeline.dev/docs/private-datasets
 
 Counted the published documents of 1 type in the dataset: one request each, counts only.
 

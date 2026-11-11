@@ -37,6 +37,20 @@ describe("check-docs: unit", () => {
     ]);
   });
 
+  it("a folder's index page is a page, linked as /docs/<folder>/", () => {
+    const input = {
+      ...base,
+      unlisted: ["integrations/index"],
+      files: [...base.files, "integrations/index"],
+      links: { "quick-start": extractLinks("[cms](/docs/integrations/)", "quick-start") },
+    };
+    expect(checkDocs(input)).toEqual([]);
+    expect(checkDocs({ ...input, unlisted: [] })).toEqual([
+      "docs/integrations/index.md is not in NAV (or UNLISTED) in docs/nav.ts.",
+      "docs/quick-start.md links to /docs/integrations, which does not exist.",
+    ]);
+  });
+
   it("a duplicate slug in two groups fails", () => {
     expect(
       checkDocs({ ...base, nav: [...base.nav, { group: "Reference", slug: "options" }] }),

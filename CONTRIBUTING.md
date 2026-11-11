@@ -26,6 +26,40 @@ A fixture is a folder under `packages/fixtures/sites/` with static files and an 
 `routes.json` (see "Adding a fixture site" below). One fixture per behaviour. Never point a test at a
 real site.
 
+## Writing an adapter
+
+An adapter puts one content system (a CMS) behind `ContentAdapter` (`packages/core/src/adapters/types.ts`),
+so every check that compares "what the CMS says is published" with "what the page shows" works on it.
+Sanity (`adapters/sanity.ts`) is the worked example. The rules are the same for every platform:
+
+- **Read only.** Every request is a GET or HEAD (or a GraphQL query, never a mutation) through the
+  fetcher you are given. Start your docs page by listing, with links, the platform's documented read
+  endpoints and how to make its narrowest key. If the platform has no read-only key, say so in the first
+  paragraph and recommend the narrowest option (a dedicated low-role user, a scoped key).
+- **Fingerprints, never content.** Return ids, types, slugs or addresses, times, counts and a hash of
+  each field the settings name (`hashValue`). A field's value is read only to be hashed. With no fields
+  named, ask for none. Reports show field names and the mismatch, never the client's words.
+- **The key** comes from the environment, travels in a header and never in an address, and is blanked
+  from every message (`createRedactor`). Say which `keyKind` it is: `read-only`, `scoped` or `full-access`.
+- **Could not check, with the reason.** Anything the platform does not expose, or a key that may not
+  read it, throws `AdapterCouldNotCheck`. Never scrape an admin screen and never report a pass.
+- **Rate limits.** Wait once for a short Retry-After, then throw `AdapterRateLimitedError` carrying what
+  was read, so the run reports a partial result.
+
+To add one, in this order:
+
+1. Write the adapter in `packages/core/src/adapters/<cms>.ts`, and add it to `BUILT_ADAPTERS` in
+   `registry.ts` (and take it out of `PLANNED_ADAPTERS`).
+2. Add a recorded-response fixture (invented content, no real client data; the Sanity one is
+   `adapters/__tests__/sanity-fixture.ts`) and one `ContractEntry` for it in
+   `adapters/__tests__/entries.ts`. The contract suite (`contract.test.ts`, one `describe.each` over
+   every entry) then runs against it with no test of yours needed for these rules: counts and
+   fingerprints but never a value, a missing field counts 0, no request but GET or HEAD, a key that is
+   refused is could-not-check, a rate limit is waited out once and then reported as partial.
+3. Write `docs/integrations/<cms>.md` with a freelancer example, change the row in
+   `docs/integrations/index.md` from planned to built (a test keeps the table and the registry in step),
+   and add a changeset.
+
 ## Add a connector
 
 Connectors read counts and shapes from another system, never content. Keys come from environment
