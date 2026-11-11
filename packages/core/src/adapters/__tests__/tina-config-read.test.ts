@@ -161,9 +161,124 @@ describe("reading tina/config.ts as text", () => {
     expect(r.notRead).toEqual([expect.objectContaining({ name: "a" })]);
   });
 
-  it("a repeated key keeps its first value", () => {
-    const r = ok(wrap(`[{ name: "a", path: "content/one", path: "content/two" }]`));
-    expect(r.collections[0]?.dir).toBe("content/one");
+  it("a collection with a repeated key is not read: JavaScript takes the last, a reader must not guess", () => {
+    const r = ok(
+      wrap(
+        `[{ name: "a", path: "content/one", path: "content/two" }, { name: "b", path: "content/b" }]`,
+      ),
+    );
+    expect(r.collections.map((c) => c.name)).toEqual(["b"]);
+    expect(r.notRead).toEqual([expect.objectContaining({ name: "a", kind: "collection" })]);
+    expect(r.notRead[0]?.reason).toMatch(/more than once/);
+    expect(JSON.stringify(r)).not.toContain("content/two");
+  });
+
+  it("a hostile match glob cannot make a path check slow (no exponential backtracking)", () => {
+    const hostile = `${"**/".repeat(30)}x`;
+    expect(hostile.length).toBeLessThan(200);
+    const [c] = ok(
+      wrap(`[{ name: "a", path: "content/a", match: { include: "${hostile}" } }]`),
+    ).collections;
+    const path = `${"a/".repeat(25)}y.md`;
+    const started = Date.now();
+    expect(c?.accepts(path)).toBe(false);
+    expect(c?.accepts(`${"a/".repeat(25)}x.md`)).toBe(true);
+    for (const braces of [
+      `{${"a,".repeat(30)}b}`.repeat(3),
+      "*a".repeat(40) + "*",
+      "**a".repeat(30),
+    ]) {
+      const r = readTinaConfig(
+        wrap(`[{ name: "b", path: "content/b", match: { include: "${braces}" } }]`),
+      );
+      if (r.ok) for (const col of r.collections) col.accepts(`${"a".repeat(300)}.md`);
+    }
+    expect(Date.now() - started).toBeLessThan(1000);
+  });
+
+  it("globs keep their meaning: ** crosses folders, * does not, {a,b} and ? work", () => {
+    const m = (include: string) =>
+      ok(wrap(`[{ name: "a", path: "content/a", match: { include: "${include}" } }]`))
+        .collections[0]!;
+    expect(m("x/**").accepts("x/a/b.md")).toBe(true);
+    expect(m("x/**").accepts("x.md")).toBe(false);
+    expect(m("x/*").accepts("x/a/b.md")).toBe(false);
+    expect(m("x/*").accepts("x/a.md")).toBe(true);
+    expect(m("**/x").accepts("x.md")).toBe(true);
+    expect(m("**/x").accepts("a/b/x.md")).toBe(true);
+    expect(m("**/x").accepts("a/b/xy.md")).toBe(false);
+    expect(m("{a,b/**}").accepts("b/c/d.md")).toBe(true);
+    expect(m("{a,b/**}").accepts("a.md")).toBe(true);
+    expect(m("{a,b/**}").accepts("c.md")).toBe(false);
+    expect(m("a?c").accepts("abc.md")).toBe(true);
+    expect(m("a?c").accepts("a/c.md")).toBe(false);
+    expect(m("a*c*e").accepts("abcde.md")).toBe(true);
+    expect(m("a*c*e").accepts("abde.md")).toBe(false);
+  });
+
+  it("a format named like an inherited property is refused, not crashed on", () => {
+    for (const f of ["constructor", "toString", "__proto__", "hasOwnProperty", "valueOf"]) {
+      const r = ok(
+        wrap(
+          `[{ name: "a", path: "content/a", format: "${f}" }, { name: "g", path: "content/g" }]`,
+        ),
+      );
+      expect(r.collections.map((c) => c.name)).toEqual(["g"]);
+      expect(r.notRead).toEqual([expect.objectContaining({ name: "a", kind: "collection" })]);
+    }
+  });
+
+  it("a router token named like an inherited property gives no address and does not throw", () => {
+    const r = ok(
+      wrap(
+        '[{ name: "a", path: "content/a", ui: { router: ({ document }) => `/${document.constructor}` } }]',
+      ),
+    );
+    expect(r.collections[0]?.permalink).toBeUndefined();
+    expect(r.notRead.map((n) => n.kind)).toEqual(["address"]);
+  });
+
+  it("toml is not read: the git-content parser has no TOML, so the collection is named as not read", () => {
+    const r = ok(wrap(`[{ name: "a", path: "content/a", format: "toml" }]`));
+    expect(r.collections).toEqual([]);
+    expect(r.notRead).toEqual([expect.objectContaining({ name: "a", kind: "collection" })]);
+    expect(r.notRead[0]?.reason).toMatch(/md, markdown, mdx, json, yaml or yml/);
+  });
+
+  it("a collections list that is changed after the closing bracket is not read as complete", () => {
+    for (const tail of [
+      `.filter((c) => c.name !== "b")`,
+      `.concat(more)`,
+      `.map((c) => c)`,
+      `[0]`,
+      ` as any`,
+      ` + more`,
+    ]) {
+      const r = readTinaConfig(
+        wrap(`[{ name: "a", path: "content/a" }, { name: "b", path: "content/b" }]${tail}`),
+      );
+      expect(r.ok).toBe(false);
+      if (!r.ok) expect(r.reason).not.toContain("filter");
+    }
+    // A trailing comma or the end of the object is fine.
+    expect(readTinaConfig(wrap(`[{ name: "a", path: "content/a" }]`)).ok).toBe(true);
+    expect(
+      readTinaConfig(
+        `export default defineConfig({ schema: { collections: [{ name: "a", path: "content/a" }], }, });`,
+      ).ok,
+    ).toBe(true);
+  });
+
+  it("two collections lists, or a collections key that is not a list, are not read", () => {
+    const one = `{ name: "a", path: "content/a" }`;
+    expect(
+      readTinaConfig(`const x = { collections: [${one}] }; const y = { collections: [${one}] };`)
+        .ok,
+    ).toBe(false);
+    expect(readTinaConfig(`const x = { collections: shared }; ${wrap(`[${one}]`)}`).ok).toBe(false);
+    expect(readTinaConfig(`const x = { collections: [${one}] }; ${wrap(`[${one}]`)}`).ok).toBe(
+      false,
+    );
   });
 
   it("tinaCloud is true only with a non-empty clientId", () => {
