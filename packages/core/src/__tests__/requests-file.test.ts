@@ -17,7 +17,9 @@ import {
   MAX_SAVED_REQUESTS,
   REQUESTS_FILE_SCHEMA_VERSION,
   buildRequestsFile,
+  parseRequestsFile,
   requestsFileSchema,
+  requestsFileSchemaV1,
 } from "../requests-file.js";
 import type { PageData } from "../run-view.js";
 import type { RequestRow } from "../request-log.js";
@@ -77,7 +79,7 @@ describe("requests file: unit", () => {
   it("names its schema version, says what is in it, and validates against the zod schema and the published JSON Schema", () => {
     const file = build();
     expect(file.schemaVersion).toBe(REQUESTS_FILE_SCHEMA_VERSION);
-    expect(file.schemaVersion).toBe(1);
+    expect(file.schemaVersion).toBe(2);
     expect(file.generatedBy).toBe("Gaugeline 0.1.0");
     expect(file.startedAt).toBe("2026-11-09T20:00:00.000Z");
     expect(file.notice).toMatch(/page content/);
@@ -89,9 +91,9 @@ describe("requests file: unit", () => {
   it("an unknown key or a wrong schema number is refused by both validators", () => {
     const file = build();
     expect(requestsFileSchema.safeParse({ ...file, extra: 1 }).success).toBe(false);
-    expect(requestsFileSchema.safeParse({ ...file, schemaVersion: 2 }).success).toBe(false);
+    expect(requestsFileSchema.safeParse({ ...file, schemaVersion: 3 }).success).toBe(false);
     expect(ajvValidate({ ...file, extra: 1 }).ok).toBe(false);
-    expect(ajvValidate({ ...file, schemaVersion: 2 }).ok).toBe(false);
+    expect(ajvValidate({ ...file, schemaVersion: 3 }).ok).toBe(false);
   });
 
   it("the caps are named constants: 256 KB of page text and a request count", () => {
@@ -290,7 +292,7 @@ describe("requests file: its schema is versioned apart from the result's", () =>
       encoding: "utf8",
     });
     expect(r.status, r.stderr).toBe(0);
-    expect(r.stdout).toContain("requests.v1.json is up to date.");
+    expect(r.stdout).toContain("requests.v2.json is up to date.");
     expect(r.stdout).toContain(`result.v${RESULT_SCHEMA_VERSION}.json is up to date.`);
   });
 
@@ -298,8 +300,8 @@ describe("requests file: its schema is versioned apart from the result's", () =>
     const text = buildSchemaText(requestsFileSchema, REQUESTS_FILE_SCHEMA_VERSION, "requests");
     expect(text).toBe(schemaText);
     const parsed = JSON.parse(schemaText) as { $id: string; title: string };
-    expect(parsed.$id).toBe("https://gaugeline.dev/schema/requests.v1.json");
-    expect(parsed.title).toBe("Gaugeline saved requests file v1");
+    expect(parsed.$id).toBe("https://gaugeline.dev/schema/requests.v2.json");
+    expect(parsed.title).toBe("Gaugeline saved requests file v2");
   });
 
   it("changing the shape without a new version fails with the requests bump message, not the result's", () => {
@@ -316,6 +318,56 @@ describe("requests file: its schema is versioned apart from the result's", () =>
 
   it("the result's hash map is untouched: it holds versions 1 and 2 only", () => {
     const versions = JSON.parse(readFileSync(join(schemaDir, "versions.json"), "utf8")) as object;
+    expect(Object.keys(versions)).toEqual(["1", "2"]);
+  });
+});
+
+describe("requests file: queries (ADR-0006) and version 1", () => {
+  const query = row({
+    url: "https://api.vendor.example/v2/items/query",
+    kind: "query",
+    method: "POST",
+    allow: "wix-data-query",
+  });
+
+  it("a query is saved with its allowlist id, and validates against both validators", () => {
+    const file = build({ requests: [row(), query] });
+    expect(file.requests[1]).toEqual({
+      url: "https://api.vendor.example/v2/items/query",
+      kind: "query",
+      method: "POST",
+      allow: "wix-data-query",
+      status: 200,
+      ms: 12,
+    });
+    expect(requestsFileSchema.safeParse(file).success).toBe(true);
+    expect(ajvValidate(file)).toEqual({ ok: true, errors: "No errors" });
+    expect(JSON.stringify(file)).not.toMatch(/body|authorization/i);
+  });
+
+  it("a file of version 1 is still read, and is not given a query", () => {
+    const v1 = { ...build({ requests: [row()] }), schemaVersion: 1 };
+    const parsed = parseRequestsFile(v1);
+    expect(parsed.schemaVersion).toBe(1);
+    expect(requestsFileSchemaV1.safeParse(v1).success).toBe(true);
+    const withQuery = { ...build({ requests: [query] }), schemaVersion: 1 };
+    expect(() => parseRequestsFile(withQuery)).toThrow();
+    expect(requestsFileSchema.safeParse(v1).success).toBe(false);
+  });
+
+  it("the published version 1 schema file is untouched", () => {
+    const schemaDir = join(
+      fileURLToPath(new URL("../../../../", import.meta.url)),
+      "packages/core/schema",
+    );
+    const v1 = readFileSync(join(schemaDir, "requests.v1.json"), "utf8");
+    expect(JSON.parse(v1).properties.requests.items.properties.method.enum).toEqual([
+      "GET",
+      "HEAD",
+    ]);
+    const versions = JSON.parse(
+      readFileSync(join(schemaDir, "requests-versions.json"), "utf8"),
+    ) as object;
     expect(Object.keys(versions)).toEqual(["1", "2"]);
   });
 });

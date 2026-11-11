@@ -179,3 +179,20 @@ describe("footerLines: the sample against the published limits", () => {
     ).toEqual(["1 of up to 20 images"]);
   });
 });
+
+describe("toRows: a read-only query (ADR-0006)", () => {
+  it("is listed last, as a POST with the allowlist id and no body", () => {
+    const rows = toRows([
+      req({
+        url: "https://api.vendor.example/v2/items/query",
+        kind: "query",
+        method: "POST",
+        allow: "wix-data-query",
+      }),
+      req({ url: "https://shop.example/a", kind: "link", method: "HEAD" }),
+    ]);
+    expect(rows.map((r) => r.kind)).toEqual(["link", "query"]);
+    expect(rows[1]).toMatchObject({ method: "POST", allow: "wix-data-query", answer: "Loaded" });
+    expect(JSON.stringify(rows)).not.toMatch(/body/i);
+  });
+});

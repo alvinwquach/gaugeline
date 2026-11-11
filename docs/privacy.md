@@ -16,8 +16,16 @@ What the code in this repository does today. The sections above describe the pro
 Gaugeline only asks the site you name for public pages, the same way a search engine or a visitor's
 browser would:
 
-- `GET` and `HEAD` requests only. It never submits a form, never sends a `POST`, `PUT`, `PATCH` or
-  `DELETE`, and never logs in.
+- `GET` and `HEAD` requests. It never submits a form, never sends a `PUT`, `PATCH` or `DELETE`, and
+  never logs in. The one exception for reads is a documented read-only query endpoint on an adapter's
+  allowlist ([ADR-0006](https://github.com/alvinwquach/gaugeline/blob/main/docs/adr/0006-read-only-post-queries.md)):
+  a content system such as Wix answers a read only to a `POST`, so an adapter may send one `POST` whose
+  body is a query (a GraphQL `query`, or a JSON object of the vendor's documented query keys) to the
+  vendor's API address and nowhere else. A mutation, a write-looking key, a path not on the list or a
+  redirect is refused before anything is sent. Every such query is listed in the request log (the
+  Pages checked view and the saved requests file) with the id of the endpoint that allowed it; the
+  body and the key are never kept. The other `POST`s are notifications to your own channels
+  ([ADR-0005](https://github.com/alvinwquach/gaugeline/blob/main/docs/adr/0005-notifications-post-to-your-own-channels.md)).
 - At most five requests at a time, with the user agent `Gaugeline/0.1 (read-only site check)`.
 - Each address once per run.
 
@@ -486,9 +494,11 @@ What is in the file:
 - `schemaVersion`, `generatedBy`, a `notice` that says what is in it, the address that was checked and
   when.
 - `requests`: one row for every address the check requested, with its kind (`page`, `link`,
-  `image`, `sitemap`, `feed`, `script`, `extra-page` or `other`), the method (`GET` or `HEAD`), the
-  status or the reason there was none, how long it took in milliseconds and, for a redirect, where it
-  pointed.
+  `image`, `sitemap`, `feed`, `script`, `extra-page`, `other` or `query`), the method (`GET` or
+  `HEAD`; `POST` for a read-only query, ADR-0006), the status or the reason there was none, how long
+  it took in milliseconds and, for a redirect, where it pointed. A read-only query row also has
+  `allow`, the id of the allowlist entry that let it through; the body, the headers and the key are
+  never saved. The file is schema 2; a file of schema 1 (no queries) is still read.
 - `page`: the address the page ended at, its title and canonical, how many words a visitor can read
   without JavaScript, the first 200 of them, and each structured data block (parsed, or as raw text
   with the parser's message when it did not parse).
