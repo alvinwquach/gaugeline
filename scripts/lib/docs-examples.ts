@@ -159,7 +159,7 @@ export interface RunResult {
 
 /** Split `A=1 B=2 npx gaugeline shop.example --ci` into env, the address and the flags. */
 /** Commands that take an address after their name, so an example can run them against a fixture site. */
-const SUBCOMMANDS_WITH_ADDRESS: readonly string[] = ["brief", "advisory"];
+const SUBCOMMANDS_WITH_ADDRESS: readonly string[] = ["brief", "advisory", "init"];
 
 export function parseCommand(command: string): {
   env: Record<string, string>;
@@ -233,7 +233,10 @@ export async function runExample(
       target,
       ...args,
       "--allow-private",
-      ...(args.includes("--json") || subcommand === "brief" || subcommand === "advisory"
+      ...(args.includes("--json") ||
+      subcommand === "brief" ||
+      subcommand === "advisory" ||
+      subcommand === "init"
         ? []
         : ["--no-open"]),
     ];
