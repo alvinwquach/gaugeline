@@ -148,6 +148,12 @@ import { sitemapHost } from "./sitemap-host.js";
 import { sitemapMissing } from "./sitemap-missing.js";
 import { sitemapRedirects } from "./sitemap-redirects.js";
 import { stagingIndexable } from "./staging-indexable.js";
+import { staticDevServerLive } from "./static-dev-server-live.js";
+import { staticDraftMarkerLive } from "./static-draft-marker-live.js";
+import { staticFuturePostLive } from "./static-future-post-live.js";
+import { staticOldVersionIndexed } from "./static-old-version-indexed.js";
+import { staticPreviewCanonical } from "./static-preview-canonical.js";
+import { staticSearchIndexHidden } from "./static-search-index-hidden.js";
 import { stegaLeak } from "./stega-leak.js";
 import { stripeTestMode } from "./stripe-test-mode.js";
 import { structuredDuplicate } from "./structured-duplicate.js";
@@ -310,6 +316,12 @@ export const PAGE_CHECKS = [
   sitemapMissing,
   sitemapRedirects,
   stagingIndexable,
+  staticDevServerLive,
+  staticDraftMarkerLive,
+  staticFuturePostLive,
+  staticOldVersionIndexed,
+  staticPreviewCanonical,
+  staticSearchIndexHidden,
   stegaLeak,
   stripeTestMode,
   structuredDuplicate,
