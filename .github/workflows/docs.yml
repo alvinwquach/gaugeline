@@ -5,7 +5,6 @@ name: Docs
 # repository variable DOCS_DEPLOY_ENABLED=true and the Netlify settings in scripts/deploy-docs.sh.
 on:
   pull_request:
-  merge_group:
   push:
     branches: [main]
 
@@ -46,7 +45,6 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           BASE_REF: ${{ github.base_ref }}
-          BASE_SHA: ${{ github.event.merge_group.base_sha }}
       - if: steps.browser.outputs.run == 'true'
         run: pnpm exec playwright install --with-deps chromium
       # e2e/app.spec.ts drives the built CLI (gaugeline open).

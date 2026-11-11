@@ -5,15 +5,12 @@ name: PR body
 on:
   pull_request:
     types: [opened, edited, synchronize, reopened]
-  # Skipped (counts as passed) in the merge queue: the body was checked when the pull request was queued.
-  merge_group:
 
 permissions:
   contents: read
 
 jobs:
   pr-body:
-    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
