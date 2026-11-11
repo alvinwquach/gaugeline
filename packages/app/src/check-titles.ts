@@ -39,7 +39,7 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "form-provider-changed": ["A form now sends to a different service", "Leads"],
   "gated-download-open": ["A download meant for customers is handed to anyone", "Sales & prices"],
   "headless-wp-preview-canonical": [
-    "The live site points search engines at a preview address",
+    "The live site points search engines at a WordPress preview link",
     "Launch day",
   ],
   "headless-wp-preview-open": [
@@ -606,10 +606,10 @@ export const CHECK_TEXT: Readonly<
     "probing check, off without --owner-consent: one anonymous GET per route (no cookie, no Authorization, no Referer, no compression), the status and headers, then at most 1,024 bytes of the body and the connection is closed; the route is a same-site link whose path contains download, file, deliver or export or sits under /api/, or a route file given with --routes (app/**/route.ts, pages/api/**) whose path says the same; a dynamic segment is asked only for an address seen in a link and ids are never guessed; at most 10 routes, in sorted order, the rest named; a finding is status 200 with a file content type or Content-Disposition attachment and first bytes that are not HTML (%PDF, PK, ID3 and a few other signatures are read); 401, 403, 404, a redirect to a sign-in address and a 200 HTML page pass; a redirect elsewhere is followed one hop; the body and the query string are never stored, logged or printed",
   ],
   "headless-wp-preview-canonical": [
-    "A production page of this headless WordPress site gives a preview address as its canonical, its og:url or og:image, or in its sitemap: either a preview deployment (vercel.app, netlify.app, pages.dev) or a WordPress preview link (preview=true, preview_id, previewId).",
-    "Search engines and social cards follow those addresses to a draft or a deployment that can show old content, ask for a login or vanish.",
+    "A production page of this headless WordPress site gives a WordPress preview link (a query with preview=true, preview_id or previewId) as its canonical, its og:url or og:image, or in its sitemap.",
+    "Search engines and social cards follow that address to a draft, which asks for a login or shows content nobody approved. A preview deployment (vercel.app, netlify.app) used as the canonical is reported by the framework's own check (next-preview-canonical on Next.js).",
     "Build canonical and share addresses from the production domain and the post's permalink, never from the request that rendered the preview; rebuild.",
-    "Headless WordPress sites served from a non-temporary host: the canonical, og:url, og:image and sitemap entries whose host ends in .vercel.app, .netlify.app or .pages.dev, or whose query has preview=true, preview_id or previewId. From responses already read; no extra request",
+    "Headless WordPress sites: the canonical, og:url, og:image and sitemap entries whose query has preview=true, preview_id or previewId (WordPress's preview link, and Faust.js's, read from the @faustwp/core source: preview=true; preview_id and previewId are uncited). Preview deployment hosts are left to the framework's own check. From responses already read; no extra request",
   ],
   "headless-wp-preview-open": [
     "A preview address this headless WordPress site links to answers a visitor who is not logged in with a page that looks like an unpublished draft, not a login page.",

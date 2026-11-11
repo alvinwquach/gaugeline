@@ -6,7 +6,7 @@ import {
   isHeadlessWordPress,
   previewLinks,
 } from "../headless-wordpress/detect.js";
-import { NO_CONSENT_PREVIEW, ask } from "../headless-wordpress/read.js";
+import { NO_CONSENT_PREVIEW, askOnce } from "../headless-wordpress/read.js";
 import type { PageSnapshot } from "../snapshot.js";
 
 export const headlessWpPreviewOpen = defineCheck<PageSnapshot>({
@@ -23,7 +23,7 @@ export const headlessWpPreviewOpen = defineCheck<PageSnapshot>({
   fix: "Serve previews only to a logged-in editor: check the session on the server before the draft is fetched or rendered, and redirect everyone else to the login page. In Faust.js, keep the draft query behind the authenticated client.",
   tech: "Probing check: off unless --owner-consent or gaugeline.consent.json; run only on sites you own or have permission to test. Headless WordPress sites only. One GET, with no cookie or secret, of each preview address the checked page itself links to on its own origin (a query with preview=true, preview_id or previewId; at most 3). A finding needs an answer of 200 HTML that is not a login address or form and carries a draft marker: a status of draft, auto-draft, pending, private or future in its embedded data, isPreview set, or a draft title. An answer with no marker is could not check, because an unpublished page cannot be told from a published one without a marker. Only the path and the query parameter names are shown, never their values. Faust.js checks the login in the browser and fetches the draft with an authenticated client (read from the @faustwp/core source, 4.1.1: preview=true, previewPathname and p); the markers other than that are conventions (uncited)",
   async run(page, ctx) {
-    if (!ctx.fetcher || !ctx.budget || !isHeadlessWordPress(page)) return [];
+    if (!ctx.fetcher || !isHeadlessWordPress(page)) return [];
     const links = previewLinks(page);
     if (links.length === 0) return [];
     if (ctx.ownerConsent !== true) {
@@ -31,8 +31,8 @@ export const headlessWpPreviewOpen = defineCheck<PageSnapshot>({
       return [];
     }
     const out = [];
-    for (const url of ctx.budget.take("draftRoutes", links)) {
-      const a = await ask(ctx, url);
+    for (const url of links) {
+      const a = await askOnce(ctx, url);
       if ("none" in a) {
         ctx.couldNotCheck?.(url, `the preview address could not be read: ${a.none}`);
         continue;

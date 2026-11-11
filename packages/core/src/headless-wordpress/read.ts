@@ -1,5 +1,5 @@
 import { NetworkError } from "../errors.js";
-import { FetchError, type Hop } from "../fetcher.js";
+import { FetchError, type Fetcher, type Hop } from "../fetcher.js";
 import type { CheckContext } from "../model.js";
 
 /** What one GET answered: every hop, or the reason there was no answer. */
@@ -9,6 +9,22 @@ export type Asked = { hops: Hop[] } | { none: string };
  * One GET through the run's fetcher (never a POST). A refusal, an error status or a network
  * failure is not a finding: the caller gets the hops that came back, or the reason there were none.
  */
+const memo = new WeakMap<Fetcher, Map<string, Promise<Asked>>>();
+
+/** `ask`, once per run and address: every page of a run shares one request for a back-end address. */
+export function askOnce(
+  ctx: CheckContext,
+  url: string,
+  headers?: Record<string, string>,
+): Promise<Asked> {
+  if (!ctx.fetcher) return ask(ctx, url, headers);
+  let m = memo.get(ctx.fetcher);
+  if (!m) memo.set(ctx.fetcher, (m = new Map()));
+  let hit = m.get(url);
+  if (!hit) m.set(url, (hit = ask(ctx, url, headers)));
+  return hit;
+}
+
 export async function ask(
   ctx: CheckContext,
   url: string,

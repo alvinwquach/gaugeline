@@ -185,7 +185,9 @@ describe("headless wordpress: integration (the headless-wp fixture)", () => {
     expect(result.findings.map((f) => [f.checkId, f.evidence])).toEqual([
       [
         "headless-wp-preview-canonical",
-        "canonical https://saltmarsh-kitchen-preview.netlify.app/ is a preview address",
+        expect.stringMatching(
+          /^canonical http:\/\/saltmarsh\.test\/\?p=12&preview=true is a preview link$/,
+        ),
       ],
       [
         "headless-wp-private-fields",
@@ -310,7 +312,7 @@ describe("headless wordpress: edge cases", () => {
   it("a preview address that redirects to the login, or answers 401, is not reported", async () => {
     const p = page("https://pop.example/", `${HEADLESS}<a href="/a?p=1&preview=true">x</a>`);
     const login = {
-      get: async (url: string) => [
+      get: async (url: string): Promise<Hop[]> => [
         { url, status: 302, headers: { location: "/wp-login.php" }, body: "", ms: 1 },
         {
           url: "https://pop.example/wp-login.php",
@@ -424,7 +426,7 @@ describe("headless wordpress: edge cases", () => {
       `<link rel="canonical" href="https://pop.example/a?p=1&preview=true">${HEADLESS}`,
     );
     expect((await headlessWpPreviewCanonical.run(bad, ctx)).map((f) => f.evidence)).toEqual([
-      "canonical https://pop.example/a?p=1&preview=true is a preview address",
+      "canonical https://pop.example/a?p=1&preview=true is a preview link",
     ]);
     const good = page(
       "https://pop.example/",

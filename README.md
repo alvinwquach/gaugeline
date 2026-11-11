@@ -75,7 +75,7 @@ example runs in CI against a fixture, from [Quick start](docs/quick-start.md).
 | `feed-broken`                     | Fix this first | The feed this page advertises is broken                                       |
 | `form-provider-changed`           | Fix this first | A form now sends to a different service                                       |
 | `gated-download-open`             | Fix this first | A download meant for customers is handed to anyone                            |
-| `headless-wp-preview-canonical`   | Fix this first | The live site points search engines at a preview address                      |
+| `headless-wp-preview-canonical`   | Fix this first | The live site points search engines at a WordPress preview link               |
 | `headless-wp-preview-open`        | Fix this first | A preview link shows an unpublished page without a login                      |
 | `headless-wp-private-fields`      | Fix this first | The data sent with a page has private fields or unpublished posts             |
 | `hidden-ai-directive`             | Fix this first | Hidden text on the page gives orders to AI assistants                         |

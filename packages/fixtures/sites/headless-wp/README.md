@@ -9,4 +9,4 @@ headless WordPress checks (FW-09). Nothing here is a real business, address or d
   (probing: only with `--owner-consent`).
 - The page links to a preview address (`/specials?p=14&preview=true&...`) that answers 200 with a
   draft and no login: `headless-wp-preview-open` (probing).
-- The canonical is a preview deployment (`netlify.app`): `headless-wp-preview-canonical`.
+- The canonical is a WordPress preview link (`?p=12&preview=true`): `headless-wp-preview-canonical`.
