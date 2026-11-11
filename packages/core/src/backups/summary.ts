@@ -26,6 +26,8 @@ export function buildBackupsSummary(args: {
   const lines: string[] = [];
   const limit = reading.maxAgeDays;
   for (const p of reading.platforms) {
+    // A platform nobody set up is not a line: it was never asked for.
+    if (!p.ok && !p.configured) continue;
     if (!p.ok) {
       lines.push(`${p.platform}: could not check: ${clip(p.reason, 300)}`);
       continue;

@@ -178,7 +178,7 @@ export async function readSanityBackups(args: SanityArgs): Promise<PlatformRead>
     `${SANITY_API}/projects/${encodeURIComponent(projectId)}/datasets/${encodeURIComponent(dataset)}/backups`,
     "the dataset's backups",
   );
-  if (!got.ok) return { ok: false, ...base, configured: true, reason: got.reason };
+  if (!got.ok) return { ok: false, ...base, configured, reason: got.reason };
   const rows = Array.isArray(got.body)
     ? got.body
     : isRecord(got.body) && Array.isArray(got.body.backups)
@@ -188,7 +188,7 @@ export async function readSanityBackups(args: SanityArgs): Promise<PlatformRead>
     return {
       ok: false,
       ...base,
-      configured: true,
+      configured,
       reason: "Sanity answered about the dataset's backups with something Gaugeline cannot read",
     };
   const latest = newest(rows.filter(isRecord).map((b) => timeOf(b.createdAt ?? b.created_at)));

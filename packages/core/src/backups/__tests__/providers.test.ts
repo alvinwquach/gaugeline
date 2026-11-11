@@ -164,7 +164,7 @@ describe("readSanityBackups (recorded responses)", () => {
 
   it("a plan or token that cannot see backups is could-not-check with the status", async () => {
     for (const status of [402, 403, 404]) {
-      const { read } = sanity({ [`GET ${SANITY_URL}`]: { status } });
+      const { read } = sanity({ [`GET ${SANITY_URL}`]: { status } }, ENV, { explicit: true });
       const got = await read();
       expect(got).toMatchObject({ ok: false, configured: true, platform: "Sanity" });
     }
