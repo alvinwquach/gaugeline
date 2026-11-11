@@ -3,6 +3,7 @@ import type { ContractEntry } from "./contract.js";
 import { contractEntries as builders } from "./builders.contract.js";
 import { contractEntries as contentful } from "./contentful.contract.js";
 import { contractEntries as framer } from "./framer.contract.js";
+import { contractEntries as hubspotCms } from "./hubspot-cms.contract.js";
 import { contractEntries as sanity } from "./sanity.contract.js";
 import { contractEntries as sitemapFeed } from "./sitemap-feed.contract.js";
 import { contractEntries as strapi } from "./strapi.contract.js";
@@ -14,6 +15,7 @@ export const CONTRACT_ENTRIES: readonly ContractEntry[] = [
   ...builders,
   ...contentful,
   ...framer,
+  ...hubspotCms,
   ...sanity,
   ...sitemapFeed,
   ...strapi,
