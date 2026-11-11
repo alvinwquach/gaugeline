@@ -1,0 +1,138 @@
+import { findDates, isoOfDay, resolveEnd, type Day, type FoundDate } from "./parse.js";
+import { alternation, wordsFor } from "./words.js";
+
+export interface StaleOptions {
+  /** Languages beyond English to read. */
+  langs: readonly string[];
+  /** The run's date, in the venue's time zone. */
+  today: Day;
+  /** A date is flagged only when it is more than this many days past. */
+  graceDays: number;
+  /** A sentence containing any of these (without regard to case) is never flagged. */
+  ignore: readonly string[];
+}
+
+export interface StaleHit {
+  sentence: string;
+  /** The last day the date covers, YYYY-MM-DD. */
+  date: string;
+  /** The date as written. */
+  raw: string;
+  daysAgo: number;
+}
+
+/** How far, in characters, a promotional word may be from a date that has a year. */
+const PROMO_REACH = 40;
+/** The longest sentence kept as evidence. */
+const SENTENCE_MAX = 160;
+/** A block ends a sentence, and so does ". " before a capital letter ("Oct. 31" is not an end). */
+const BOUNDARY = /\n|[.!?](?=\s+[\p{Lu}\u00BF\u00A1])/gu;
+
+interface Patterns {
+  endBefore: RegExp;
+  afterEnd: RegExp;
+  lead: RegExp;
+  promo: RegExp;
+}
+
+const cache = new Map<string, Patterns>();
+
+function patternsFor(langs: readonly string[]): Patterns {
+  const key = [...langs].sort().join(",");
+  const hit = cache.get(key);
+  if (hit) return hit;
+  const w = wordsFor(langs);
+  const word = (inner: string) => `(?<![\\p{L}\\p{N}'\u2019])(?:${inner})`;
+  const p: Patterns = {
+    endBefore: new RegExp(
+      `${word(alternation(w.endWords))}(?:\\s+(?:${alternation(w.fillers)})){0,3}\\s*[:,-]?\\s*$`,
+      "iu",
+    ),
+    afterEnd: new RegExp(`^\\s*[,.)]?\\s*(?:${alternation(w.afterEnd)})(?![\\p{L}\\p{N}])`, "iu"),
+    lead: new RegExp(`(?:${word(alternation(w.leads))}|\u00A9)\\s*[:.,]?\\s*$`, "iu"),
+    promo: new RegExp(`(?<![\\p{L}\\p{N}])(?:${alternation(w.promo)})(?![\\p{L}\\p{N}])`, "iu"),
+  };
+  cache.set(key, p);
+  return p;
+}
+
+/** Where the sentence around a span starts and ends: bounded by line breaks and full stops. */
+function sentenceSpan(text: string, start: number, end: number): { from: number; to: number } {
+  const lo = Math.max(0, start - 240);
+  const slice = text.slice(lo, Math.min(text.length, end + 240));
+  let from = 0;
+  let to = slice.length;
+  for (const m of slice.matchAll(BOUNDARY)) {
+    const at = m.index + (m[0] === "\n" ? 0 : 1);
+    if (at <= start - lo) from = at + (m[0] === "\n" ? 1 : 0);
+    else {
+      to = at;
+      break;
+    }
+  }
+  return { from: lo + from, to: lo + to };
+}
+
+/** The sentence a span sits in, cut around the date when it is long. */
+export function sentenceAround(text: string, start: number, end: number): string {
+  const span = sentenceSpan(text, start, end);
+  let a = span.from;
+  let b = span.to;
+  if (b - a > SENTENCE_MAX) {
+    a = Math.max(a, start - 80);
+    b = Math.min(b, end + 80);
+  }
+  return text.slice(a, b).replace(/\s+/g, " ").trim();
+}
+
+/**
+ * The dates in a text that have passed while a promotion or notice still points at them. A date counts
+ * when it is past by more than graceDays and either (a) it sits right after an end word ("through",
+ * "until", "ends", "last day", "hasta"), or ends a range, or is followed by "only": a date with no year
+ * is flagged on that alone, one with a year also needs a promotional word beside it; or (b) it has a
+ * year, no "since", "established" or "published" in front of it, and a promotional word within
+ * 40 characters ("Summer 2025 menu"). A date with no year and no end word is never flagged.
+ */
+export function staleCopy(text: string, opts: StaleOptions): StaleHit[] {
+  const dates = findDates(text, opts.langs);
+  const p = patternsFor(opts.langs);
+  const ignore = opts.ignore.map((s) => s.toLowerCase()).filter((s) => s !== "");
+  const out: StaleHit[] = [];
+  const seen = new Map<string, number>();
+  dates.forEach((f: FoundDate, i) => {
+    const end = resolveEnd(f, opts.today);
+    if (end === undefined || opts.today - end <= opts.graceDays) return;
+    const before = text.slice(Math.max(0, f.start - 48), f.start);
+    const after = text.slice(f.end, f.end + 40);
+    const prev = dates[i - 1];
+    const rangeEnd =
+      prev !== undefined &&
+      f.start - prev.end <= 8 &&
+      /^\s*(?:-|\u2013|\u2014|to|al|au|a)\s*$/iu.test(text.slice(prev.end, f.start));
+    const ended = p.endBefore.test(before) || p.afterEnd.test(after) || rangeEnd;
+    if (f.kind === "month" && !ended) return;
+    if (!ended && (!f.hasYear || p.lead.test(before))) return;
+    // A sentence that also names a date still ahead ("Summer 2025 menu, now through Dec 31") is current.
+    const span = sentenceSpan(text, f.start, f.end);
+    const ahead = dates.some((d) => {
+      if (d.start < span.from || d.end > span.to) return false;
+      const e = resolveEnd(d, opts.today);
+      return e !== undefined && opts.today - e <= opts.graceDays;
+    });
+    if (ahead) return;
+    const sentence = sentenceAround(text, f.start, f.end);
+    const lower = sentence.toLowerCase();
+    if (ignore.some((s) => lower.includes(s))) return;
+    if (f.hasYear) {
+      const near = text.slice(Math.max(0, f.start - PROMO_REACH), f.end + PROMO_REACH);
+      if (!p.promo.test(near)) return;
+    }
+    const hit = { sentence, date: isoOfDay(end), raw: f.raw, daysAgo: opts.today - end };
+    const at = seen.get(sentence);
+    if (at === undefined) {
+      seen.set(sentence, out.length);
+      out.push(hit);
+    } else if (hit.daysAgo < (out[at] as StaleHit).daysAgo) out[at] = hit;
+  });
+  return out;
+}
