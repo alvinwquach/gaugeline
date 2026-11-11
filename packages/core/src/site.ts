@@ -26,6 +26,7 @@ import type { DnsReader } from "./dns.js";
 import type { Renewals } from "./renewals/reader.js";
 import type { Handoff } from "./handoff/reader.js";
 import type { Cost } from "./cost/reader.js";
+import type { Trackers } from "./trackers/reader.js";
 import type { HiddenConfig } from "./hidden.js";
 import { lazyEvents, type EventObserver } from "./events/observe.js";
 import type { EventsConfig } from "./events/types.js";
@@ -113,6 +114,8 @@ export interface SiteCheckOptions {
   handoff?: Handoff;
   /** What the cost checks read (`gaugeline cost`, `--cost`). Without it they are not in the run. Built by the caller so it can print the summary from what they read. */
   cost?: Cost;
+  /** What the tracker checks read (`--trackers`). Without it they are not in the run. */
+  trackers?: Trackers;
   /** Sections hidden until launch. */
   hidden?: HiddenConfig;
   /** Where the menus are and which footer links are required (gaugeline.nav.json). */
@@ -300,6 +303,7 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
       ...(opts.renewals ? { renewals: opts.renewals } : {}),
       ...(opts.handoff ? { handoff: opts.handoff } : {}),
       ...(opts.cost ? { cost: opts.cost } : {}),
+      ...(opts.trackers ? { trackers: opts.trackers } : {}),
       ...(opts.hidden ? { hidden: opts.hidden } : {}),
       ...(opts.nav ? { navRules: opts.nav } : {}),
       ...(container && tagRules ? { tagContainer: container, tagRules } : {}),
