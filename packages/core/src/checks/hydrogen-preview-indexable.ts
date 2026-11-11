@@ -28,7 +28,7 @@ export const hydrogenPreviewIndexable = defineCheck<PageSnapshot>({
   what: "A preview deployment of this Hydrogen storefront (an Oxygen preview address, or another temporary host) answers with a public page that carries no noindex, in a header or a robots meta tag.",
   why: "A preview shows work in progress, old prices and products that are not for sale. Once a search engine finds its address (from a link on the live site, a sitemap or a share) it can list it beside, or instead of, the real store.",
   fix: "Send `X-Robots-Tag: noindex` from every non-production deployment (check the environment in the server entry), serve a disallow-all robots.txt there, take the preview's address out of the live site's links and sitemap, and turn off the deployment's shared link when it is not needed.",
-  tech: "Hydrogen storefronts. Only addresses the site itself reveals are asked for, with one GET each and at most the run's hiddenPages budget: the page's own address when it is on a preview host, and links, canonical, og:url and sitemap entries of a production page whose host ends in myshopify.dev, o2.myshopify.dev, vercel.app, netlify.app or pages.dev. A 200 HTML answer without noindex is a finding; a sign-in redirect, 401, 403 or 404 is not (Shopify documents that only signed-in staff can open a deployment until a shared link is made). No other path is asked for. The two myshopify.dev suffixes are the owner's note and not confirmed in Shopify's documentation (uncited)",
+  tech: "Hydrogen storefronts. Only addresses the site itself reveals are asked for, with one GET each and at most the run's hiddenPages budget: the page's own address when it is on a preview host, and links and sitemap entries (the canonical and og:url are reported by hydrogen-preview-canonical and not asked for) of a production page whose host ends in myshopify.dev, o2.myshopify.dev, vercel.app, netlify.app or pages.dev. A 200 HTML answer without noindex is a finding; a sign-in redirect, 401, 403 or 404 is not (Shopify documents that only signed-in staff can open a deployment until a shared link is made). No other path is asked for. The two myshopify.dev suffixes are the owner's note and not confirmed in Shopify's documentation (uncited)",
   async run(page, ctx) {
     if (!isHydrogenSite(page)) return [];
     const here = new URL(page.finalUrl);
@@ -54,8 +54,6 @@ export const hydrogenPreviewIndexable = defineCheck<PageSnapshot>({
       if (!revealed.has(u.origin)) revealed.set(u.origin, via);
     };
     for (const l of page.links) note(l.href, "linked from this page");
-    note(page.canonical, "its canonical");
-    note(page.og["og:url"], "its og:url");
     for (const u of (await ctx.site?.())?.sitemapUrls ?? []) note(u, "listed in the sitemap");
     for (const origin of ctx.budget.take("hiddenPages", [...revealed.keys()])) {
       const hops = await getOrNull(ctx.fetcher, `${origin}/`);

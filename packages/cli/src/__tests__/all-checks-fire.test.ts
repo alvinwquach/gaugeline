@@ -38,6 +38,8 @@ const FIXTURES = [
   "load-more",
   "hidden-library",
   "next-like",
+  "hydrogen-like",
+  "hydrogen-dev",
   "refusing",
   "tag-rules",
   "nav-events",
@@ -155,6 +157,9 @@ const NEEDS_LIVE_STORES = new Set([
   // marks them as stand-ins (runner.test.ts duplicate-host, launch tests for staging-indexable).
   "host-duplicate",
   "staging-indexable",
+  // Asks a preview host the page links to (hydrogen-like /journal.html), which is another host: confirmed in-process
+  // with the fetcher's hosts map (core checks/__tests__/hydrogen.test.ts).
+  "hydrogen-preview-indexable",
 ]);
 
 async function findingsOf(name: string): Promise<string[]> {

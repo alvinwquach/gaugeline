@@ -47,6 +47,23 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "hidden-linked": ["A public page links to an unlaunched section", "Launch day"],
   "host-duplicate": ["Your whole site exists at two addresses", "Search & sharing"],
   "html-huge": ["This page's HTML is enormous", "Visitors"],
+  "hydrogen-dev-tools-live": [
+    "The live Hydrogen store is a development server",
+    "Security & email",
+  ],
+  "hydrogen-preview-canonical": [
+    "The live Hydrogen store points search engines at a preview deployment",
+    "Launch day",
+  ],
+  "hydrogen-preview-indexable": [
+    "A Hydrogen preview deployment can be found by search engines",
+    "Launch day",
+  ],
+  "hydrogen-prices-disagree": ["This Hydrogen product's prices disagree", "Sales & prices"],
+  "hydrogen-private-fields": [
+    "The data sent with a Hydrogen page has fields that look private",
+    "Security & email",
+  ],
   "ics-floating-time": ["Your calendar shows the wrong hour on some phones", "Visitors"],
   "images-broken": ["Some images on this page don't load", "Visitors"],
   "invisible-unicode-tags": ["The page carries text in invisible characters", "Security & email"],
@@ -624,6 +641,36 @@ export const CHECK_TEXT: Readonly<
     "Phones on slow connections wait seconds before anything shows, and search engines may stop reading the page before the end.",
     "Find what fills the HTML: usually a framework data payload, inlined SVG or CSS, or a long list rendered in full. Load it on demand or paginate it.",
     "the UTF-8 HTML body is over 2 MB (2,097,152 bytes); html-heavy is not reported for the same page",
+  ],
+  "hydrogen-dev-tools-live": [
+    "This page was served by the Hydrogen dev server: it loads /@vite/client, /@react-refresh, the inject-hmr-runtime module or the Vite preamble.",
+    "The dev server serves source files, can expose files from the project folder and is slow and unsupervised. It is not meant to face shoppers.",
+    "Deploy the storefront to Oxygen (`shopify hydrogen deploy`) and point the domain at the deployment, not at a machine running `shopify hydrogen dev`.",
+    "Hydrogen storefronts (or React Router pages that load Vite's dev client), read from the page already fetched, no extra request: the HTML or a script address names /@vite/client, /@react-refresh, inject-hmr-runtime, __vite_plugin_react_preamble_installed__ or /node_modules/.vite/. Dev-only paths are not asked for. The dev server is Vite, as run by @shopify/cli-hydrogen 13.0.6",
+  ],
+  "hydrogen-preview-canonical": [
+    "A production page of this Hydrogen storefront gives an Oxygen preview or other temporary address as its canonical, its og:url or og:image, or in its sitemap.",
+    "Search engines and social cards follow those addresses to the preview, which can show old products and prices or vanish when the preview is deleted.",
+    "Build the storefront's base address from the production domain (an environment variable set per Oxygen environment, or the request's own origin), and redeploy.",
+    "Hydrogen storefronts (the powered-by: Shopify, Hydrogen header) served from a non-preview host: the canonical, og:url, og:image and sitemap entries whose host ends in myshopify.dev, o2.myshopify.dev, vercel.app, netlify.app or pages.dev. The two myshopify.dev suffixes are the owner's note, not confirmed in Shopify's documentation (uncited)",
+  ],
+  "hydrogen-preview-indexable": [
+    "A preview deployment of this Hydrogen storefront (an Oxygen preview address, or another temporary host) answers with a public page that carries no noindex, in a header or a robots meta tag.",
+    "A preview shows work in progress, old prices and products that are not for sale. Once a search engine finds its address (from a link on the live site, a sitemap or a share) it can list it beside, or instead of, the real store.",
+    "Send `X-Robots-Tag: noindex` from every non-production deployment (check the environment in the server entry), serve a disallow-all robots.txt there, take the preview's address out of the live site's links and sitemap, and turn off the deployment's shared link when it is not needed.",
+    "Hydrogen storefronts. Only addresses the site itself reveals are asked for, with one GET each and at most the run's hiddenPages budget: the page's own address when it is on a preview host, and links and sitemap entries (the canonical and og:url are reported by hydrogen-preview-canonical and not asked for) of a production page whose host ends in myshopify.dev, o2.myshopify.dev, vercel.app, netlify.app or pages.dev. A 200 HTML answer without noindex is a finding; a sign-in redirect, 401, 403 or 404 is not (Shopify documents that only signed-in staff can open a deployment until a shared link is made). No other path is asked for. The two myshopify.dev suffixes are the owner's note and not confirmed in Shopify's documentation (uncited)",
+  ],
+  "hydrogen-prices-disagree": [
+    "On a product page of this Hydrogen storefront, the price shown to the shopper, the price in the page's structured data (JSON-LD offer, product:price:amount or og:price:amount) and the variant price in the page's embedded state are not all the same, or are in different currencies.",
+    "Shoppers see one price and the cart can start from another, and Google shows the structured data's price in results: a mismatch costs trust and can get listings pulled.",
+    "Build the JSON-LD and meta tags from the same selected variant the page shows (selectedOrFirstAvailableVariant, after the ?option= choices are applied) rather than the product's first variant or a cached copy.",
+    "Hydrogen storefronts, no extra request. Amounts are integers in minor units with the currency's own exponent (JPY 0, USD 2, BHD 3), read digit by digit, never as floats; currencies are compared, never converted. Shown: the text of the .product-price element (or aria-label Price), compare-at (s, del) left out. Structured: the JSON-LD Product offer for ?variant= or the first, product:price:amount with product:price:currency, og:price:amount with og:price:currency. Embedded: product.selectedOrFirstAvailableVariant.price (MoneyV2) in the streamed state. What a cart or checkout would charge is not compared: it needs a cart, which Gaugeline never creates, and the Storefront API is POST only; the check says so under could not run. The product and price fields are those of the @shopify/cli-hydrogen 13.0.6 starter; JSON-LD and the meta names are schema.org and Open Graph conventions (uncited for Hydrogen)",
+  ],
+  "hydrogen-private-fields": [
+    "The state this Hydrogen page embeds for the browser (window.__reactRouterContext, with the storefront data its loaders return) has fields named like something private (password, private token, secret, apiKey, private notes).",
+    "Everything a loader returns is sent to every shopper, whether or not the page shows it. A server-only value such as the private Storefront API token or the session secret travels with the page.",
+    "Return only the fields the page shows from the loader, and keep PRIVATE_STOREFRONT_API_TOKEN, SESSION_SECRET and other secrets in server-only code (context.env in a loader or action) that never returns them.",
+    "Hydrogen storefronts. Names only, never values: the property names in the page's own embedded context and in its first streamed turbo-stream chunk (a flat JSON array, each index decoded once, capped), matched by word against password, passwd, secret, token, private, credential, ssn, salt, bearer, authorization, cvv, iban, apiKey, accessKey, secretKey, privateKey, internalNotes. The public Storefront token (storefrontAccessToken, which the starter's root loader sends for the consent banner) and checkoutDomain are public by design and are not flagged. No extra request. A state that cannot be read in full, or deferred chunks after the first, are could not check. The header, globals and starter fields are read from @shopify/hydrogen 2026.10.3 and @shopify/cli-hydrogen 13.0.6 on npm; matching names by their words is a guess (uncited)",
   ],
   "ics-floating-time": [
     "Events in your .ics calendar have a start time with no time zone (no TZID and no Z).",

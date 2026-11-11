@@ -375,7 +375,14 @@ describe("hydrogen: integration", () => {
     try {
       const fetcher = createFetcher({ allowPrivate: true, hosts: site.hosts });
       const { result } = await checkSite({ address: site.origin, fetcher, only: IDS });
-      const by = Object.fromEntries(result.findings.map((f) => [f.checkId, f.evidence]));
+      const journal = await checkSite({
+        address: `${site.origin}/journal.html`,
+        fetcher,
+        only: ["hydrogen-preview-indexable"],
+      });
+      const by = Object.fromEntries(
+        [...result.findings, ...journal.result.findings].map((f) => [f.checkId, f.evidence]),
+      );
       expect(Object.keys(by).sort()).toEqual(
         [
           "hydrogen-preview-canonical",
