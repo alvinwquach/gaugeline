@@ -159,6 +159,23 @@ export const CRAFT_CONTENT: FixtureEntry[] = [
   }),
 ];
 
+/** Every live entry's page answers: the healthy install. */
+export const PAGES_HEALTHY: Record<string, number> = {
+  [`${STUDIO_SITE}/projects/harbour-library`]: 200,
+  [`${STUDIO_SITE}/projects/tidal-baths`]: 200,
+  [`${STUDIO_SITE}/journal/site-visit-notes`]: 200,
+  [`${STUDIO_SITE}/journal/award-shortlist`]: 200,
+  [`${STUDIO_SITE}/team/ana`]: 200,
+  [`${STUDIO_SITE}/team/ben`]: 200,
+  [`${ATELIER_SITE}/projets/bibliotheque-du-port`]: 200,
+};
+
+/** The front end has drifted from the CMS: one journal post is not built on the studio site, and the French page is gone. */
+export const PAGES_DRIFT: Record<string, number> = {
+  ...PAGES_HEALTHY,
+  [`${STUDIO_SITE}/journal/award-shortlist`]: 404,
+};
+
 /** The sites of the install, and where each lives. */
 export const CRAFT_SITES = {
   studio: STUDIO_SITE,
@@ -182,6 +199,10 @@ export interface CraftFixtureOptions {
   samePage?: boolean;
   /** Sections the schema does not include: asking for them is a GraphQL error. */
   forbidden?: readonly string[];
+  /** From this many requests to the GraphQL route on, answer 429 with a Retry-After too long to wait for. */
+  limitAfter?: number;
+  /** How the live sites answer, by full address: a status. An address not listed answers 404. */
+  pages?: Readonly<Record<string, number>>;
   /** Replace what a node holds, by entry id and site, for tests that need odd values (a hostile uri). */
   patch?: (node: Record<string, unknown>, e: FixtureEntry) => Record<string, unknown>;
 }
@@ -205,9 +226,25 @@ export function craftTransport(
   content: readonly FixtureEntry[] = CRAFT_CONTENT,
   options: CraftFixtureOptions = {},
 ): Transport {
+  let graphql = 0;
   return (url, req) => {
     options.onRequest?.(req.method, url, req.headers);
-    if (url.host !== CRAFT_HOST) return json(404, { message: "not here" });
+    if (
+      url.host === CRAFT_HOST &&
+      options.limitAfter !== undefined &&
+      graphql++ >= options.limitAfter
+    )
+      return json(429, { message: "slow down" }, { "retry-after": "3600" });
+    if (url.host !== CRAFT_HOST) {
+      const status = options.pages?.[url.href] ?? 404;
+      return Promise.resolve({
+        status,
+        headers: { "content-type": "text/html" },
+        body: Readable.from([
+          Buffer.from(status < 300 ? "<html><body>page</body></html>" : "gone"),
+        ]),
+      });
+    }
     if (req.method !== "GET") return json(405, { message: "method not allowed" });
     if (options.token !== undefined && req.headers.authorization !== `Bearer ${options.token}`)
       return json(400, { message: "Invalid authorization token" });

@@ -1442,6 +1442,7 @@ export { MIGRATION_CHECKS, createMigrationRegistry, unreadPages } from "./checks
 export { WEBFLOW_CHECKS, createWebflowRegistry } from "./checks/webflow.js";
 export { CONTENTFUL_CHECKS, createContentfulRegistry } from "./checks/contentful.js";
 export { STRAPI_CHECKS, createStrapiRegistry } from "./checks/strapi.js";
+export { CRAFT_CHECKS, createCraftRegistry } from "./checks/craft.js";
 export {
   ListBuilder,
   MIGRATION_ITEM_CAP,
