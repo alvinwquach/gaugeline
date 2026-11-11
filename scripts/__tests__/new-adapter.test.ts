@@ -170,7 +170,7 @@ describe("planNewAdapter: unit (no disk)", () => {
     expect(k.map((x) => x.id)).toEqual(expect.arrayContaining(["contentful", "framer", "duda"]));
     // A planned adapter carries its planned name; a built one has none (which ones are planned changes with every merge).
     const planned = k.filter((x) => x.plannedName !== undefined);
-    expect(planned.length).toBeGreaterThan(0);
+    // Once every planned adapter is built there are none left; each one that is has a name.
     for (const x of planned) expect(x.plannedName?.length).toBeGreaterThan(0);
     expect(k.find((x) => x.id === "generic-api")).toEqual({ id: "generic-api" });
   });

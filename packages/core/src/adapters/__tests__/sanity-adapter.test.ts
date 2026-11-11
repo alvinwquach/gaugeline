@@ -262,9 +262,12 @@ describe("the adapters entry in gaugeline.adapters.json: unit", () => {
     const fetcher = createFetcher({ transport: sanityTransport(), timeoutMs: 5000 });
     const [built] = await createAdapters(adaptersConfigSchema.parse(ok), { env: ENV, fetcher });
     expect(built?.id).toBe("sanity");
-    await expect(
-      createAdapters({ adapters: [{ id: "tina" }] }, { env: ENV, fetcher }),
-    ).rejects.toThrow(/"tina" adapter is planned \(C-03\)/);
+    // Which adapters are planned changes with every merge (none may be left): test the first one if there is one.
+    const planned = PLANNED_ADAPTERS[0];
+    if (planned)
+      await expect(
+        createAdapters({ adapters: [{ id: planned.id }] }, { env: ENV, fetcher }),
+      ).rejects.toThrow(new RegExp(`"${planned.id}" adapter is planned \\(${planned.branch}\\)`));
     await expect(
       createAdapters({ adapters: [{ id: "nope" }] }, { env: ENV, fetcher }),
     ).rejects.toThrow(ConfigError);
