@@ -9,6 +9,14 @@ import type { Env } from "../connectors/types.js";
 import type { Fetcher } from "../fetcher.js";
 import { fillUrlTemplate, hashValue } from "./fingerprint.js";
 import {
+  JOOMLA_DESCRIPTION,
+  JOOMLA_ENV_VARS,
+  JOOMLA_LIMITS,
+  JOOMLA_PAGE_SIZE,
+  JOOMLA_TOKEN,
+  JOOMLA_URL,
+} from "./joomla.entry.js";
+import {
   AdapterCouldNotCheck,
   AdapterRateLimitedError,
   type AdapterSettings,
@@ -17,62 +25,146 @@ import {
   type PublishedOptions,
   type TypeCount,
 } from "./types.js";
+export {
+  JOOMLA_DESCRIPTION,
+  JOOMLA_ENV_VARS,
+  JOOMLA_LIMITS,
+  JOOMLA_PAGE_SIZE,
+  JOOMLA_TOKEN,
+  JOOMLA_URL,
+};
 
-import { JOOMLA_DESCRIPTION } from "./joomla.entry.js";
-export { JOOMLA_DESCRIPTION };
+/** The one content type the adapter reads: Joomla's articles (`GET /api/index.php/v1/content/articles`). [docs] */
+export const JOOMLA_TYPE = "articles";
 
-import { JOOMLA_TOKEN } from "./joomla.entry.js";
-export { JOOMLA_TOKEN };
+/** Where the Web Services API lives under the site's address (the `index.php` form works with or without URL rewriting). [docs] */
+export const JOOMLA_API_PATH = "/api/index.php/v1";
 
-/** TODO(new:adapter) the platform's API base, from its documentation (the date you checked it goes on the docs page). */
-export const JOOMLA_API = "https://api.joomla.example/v1";
-
-/** Items asked for in one request: the API's own maximum. TODO(new:adapter) confirm it. */
-export const JOOMLA_PAGE_SIZE = 100;
-
-/** Bounds a run keeps to, in the platform's terms. There are no flags to raise them. */
-export const JOOMLA_LIMITS = {
-  /** Items read from one type. A bigger one is could-not-check, never a count of part of it. */
-  itemsPerType: 10_000,
-} as const;
+/** The article list route, under the API path. [docs] */
+export const JOOMLA_ARTICLES_PATH = `${JOOMLA_API_PATH}/content/articles`;
 
 /** The smallest page asked for when an answer is too big: the page is halved down to this and no further. */
 const MIN_PAGE_SIZE = 10;
 
-/** Every address is built from this origin and no other: a key is never sent anywhere else. */
-const API_ORIGIN = new URL(JOOMLA_API).origin;
+/** The view level id of "Public" in a Joomla install. An article at another level is not for every visitor. [uncited] */
+const PUBLIC_ACCESS = 1;
+
+/** An article id: a positive integer, sent as text. */
+const ITEM_ID = /^[1-9][0-9]{0,9}$/;
+/** An article alias that can stand in a path. A Unicode alias is not used (it is left out of the slug). */
+const SLUG = /^[A-Za-z0-9][A-Za-z0-9._~-]{0,127}$/;
+/** A custom or core field's name: the key it has in an article's attributes. */
+const FIELD_NAME = /^[A-Za-z][A-Za-z0-9_-]{0,63}$/;
+/** A site folder: path characters only, no dot segments (checked apart). */
+const FOLDER = /^(?:\/[A-Za-z0-9._~-]{1,64}){0,8}$/;
+/** What an API token is made of (base64 of "algorithm:user id:hash"), and no whitespace that could end a header. */
+const TOKEN = /^[A-Za-z0-9+/=_-]{16,512}$/;
+
+/**
+ * The site's own address from JOOMLA_URL, without a trailing slash, or undefined: https only, a host, no sign-in
+ * details, no query and no fragment, and at most a folder as a path (Joomla may live in /cms). Anything else is
+ * not the Joomla site, and a token is never sent to it.
+ */
+export function joomlaBase(raw: string): string | undefined {
+  let url: URL;
+  try {
+    url = new URL(raw.trim());
+  } catch {
+    return undefined;
+  }
+  if (url.protocol !== "https:" || url.hostname === "") return undefined;
+  if (url.username !== "" || url.password !== "") return undefined;
+  if (url.search !== "" || url.hash !== "") return undefined;
+  // The URL parser resolves dot segments, so they are looked for in the text as it was written.
+  if (/(^|\/)(\.|%2e){1,2}(\/|$|\?|#)/i.test(raw.trim().replace(/^https:\/\/[^/]*/i, "")))
+    return undefined;
+  const folder = url.pathname.replace(/\/+$/, "");
+  if (!FOLDER.test(folder) || folder.split("/").some((s) => s === "." || s === ".."))
+    return undefined;
+  return `${url.origin}${folder}`;
+}
+
+/**
+ * What an anonymous visitor (no token) is told by the article list route:
+ * - `public`: it answered with a JSON:API list. `total` is how many articles it says a visitor can list.
+ * - `protected`: it answered 401 or 403, which is what Joomla does for a route that is not public.
+ * - `closed`: it answered 404: the Web Services API is off, or this is not where it is.
+ * - `unread`: the answer could not be read; `reason` says why.
+ */
+export type JoomlaPublicState = "public" | "protected" | "closed" | "unread";
+
+export interface JoomlaPublicApi {
+  state: JoomlaPublicState;
+  /** The article count the route reported to a visitor with no token. Only when `public`. */
+  total?: number;
+  reason?: string;
+}
+
+/** Articles the adapter did not give to published(), and why: counted, never silent. */
+export interface JoomlaSkipped {
+  /** Published, but for a view level other than Public (a visitor is sent to sign in, so no page is expected). */
+  notPublic: number;
+  /** Published, but its start time has not come. */
+  scheduled: number;
+  /** Published, but its finish time has passed. */
+  expired: number;
+  /** Published in one language (not "All"): its address carries a language prefix this adapter cannot know. */
+  otherLanguage: number;
+}
+
+/** The Joomla adapter: ContentAdapter, plus the reads the two Joomla checks need. */
+export interface JoomlaAdapter extends ContentAdapter {
+  /** Always the one type: articles. */
+  collections(): string[];
+  /** Names in the settings (under `urls` or `fingerprint`) that are not a type this adapter reads. */
+  unknownTypes(): string[];
+  /** Articles published() left out so far, and why. Counts for the reads made through this adapter. */
+  skipped(): JoomlaSkipped;
+  /** Whether the settings say (`expectPrivate: true`) that the Web Services API is meant to be private. A token being set says nothing of it. */
+  privacyExpected(): boolean;
+  /**
+   * What a visitor with NO token is told by the article list route: one GET, sent with no token, no cookie and
+   * nothing the fetcher adds per address. It asks a route a visitor is not meant to be sent to when the API is
+   * private, so a caller runs it only with the owner's consent (CLAUDE.md rule 14).
+   */
+  publicApi(): Promise<JoomlaPublicApi>;
+}
 
 export interface JoomlaAdapterOptions {
-  /** JOOMLA_TOKEN, already copied (see freezeEnv). */
+  /** JOOMLA_URL and JOOMLA_TOKEN, already copied (see freezeEnv). */
   env: Env;
   fetcher: Fetcher;
-  /** The settings entry (`fingerprint`, `urls`). With none, no field value is hashed. */
+  /** The settings entry. Its `urls` and `fingerprint` keys may name `articles`. */
   settings?: AdapterSettings | undefined;
   /** How a wait for Retry-After is made. Tests pass a stand-in that does not wait. */
   sleep?: ((ms: number) => Promise<void>) | undefined;
+  /** The time "now" is judged by (scheduled and expired articles). Default: the clock. For tests. */
+  now?: (() => number) | undefined;
   pageSize?: number | undefined;
   /** Replaces JOOMLA_LIMITS.itemsPerType. For tests. */
   maxItemsPerType?: number | undefined;
+  /** Replaces JOOMLA_LIMITS.requestsPerList. For tests. */
+  maxRequestsPerList?: number | undefined;
 }
 
 const wait = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
-/** An ISO 8601 UTC time from a value the platform gave, or undefined when it is not a time. */
+/**
+ * An ISO 8601 UTC time from a value Joomla gave, or undefined when it is not a time. Joomla's database format
+ * ("2026-10-01 09:00:00", always UTC) and ISO 8601 are both read; the zero date is no time. [docs]
+ */
 function isoOf(value: unknown): string | undefined {
-  if (typeof value !== "string" || value === "") return undefined;
-  const ms = Date.parse(value);
+  if (typeof value !== "string" || value === "" || value.startsWith("0000-00-00")) return undefined;
+  const text = /^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d$/.test(value)
+    ? `${value.replace(" ", "T")}Z`
+    : value;
+  const ms = Date.parse(text);
   return Number.isNaN(ms) ? undefined : new Date(ms).toISOString();
 }
 
-/** A field's value by name; a dotted name goes into objects. */
-function valueAt(data: Record<string, unknown>, path: string): unknown {
-  if (path in data) return data[path];
-  let at: unknown = data;
-  for (const part of path.split(".")) {
-    if (!isRecord(at)) return undefined;
-    at = at[part];
-  }
-  return at;
+/** A field's value by name. */
+function valueAt(data: Record<string, unknown>, name: string): unknown {
+  return Object.hasOwn(data, name) ? data[name] : undefined;
 }
 
 /** A field counts as present when it has a value: not missing, null, an empty string, an empty list or an empty object. */
@@ -87,43 +179,74 @@ function hasValue(v: unknown): boolean {
 /** An answer over the size limit: asked again with a smaller page before it becomes could-not-check. */
 class TooLarge extends AdapterCouldNotCheck {}
 
-/** An item as the adapter keeps it: ids, state and times, and the field data only until it is hashed or counted. */
+/** An article as the adapter keeps it: id, state, times and alias, and the named fields only until they are hashed or counted. */
 interface RawItem {
   id: string;
   slug?: string;
-  published: boolean;
-  publishedAt?: string;
+  state: number;
+  access: number;
+  language: string;
+  publishUp?: string;
+  publishDown?: string;
   updatedAt: string;
   data: Record<string, unknown>;
 }
 
+/** An integer sent as a number or as digits, or undefined. */
+function intOf(v: unknown): number | undefined {
+  if (typeof v === "number" && Number.isSafeInteger(v)) return v;
+  if (typeof v === "string" && /^-?\d{1,10}$/.test(v)) return Number(v);
+  return undefined;
+}
+
 /**
- * TODO(new:adapter) map the platform's item to RawItem: where its id, slug, state, times and field data are.
- * Throw AdapterCouldNotCheck for an item that has no id or no time; never make one up.
+ * One article of a list: a JSON:API resource with `id` and `attributes`. Only the id, the state, the access level,
+ * the language, the alias, the three times and the requested fields are kept: the title, the text and every other
+ * attribute are dropped here. [docs]
  */
-function parseItem(raw: unknown): RawItem {
+function parseItem(raw: unknown, fields: readonly string[]): RawItem {
   const r = isRecord(raw) ? raw : {};
-  const publishedAt = isoOf(r.publishedAt);
-  const updatedAt = isoOf(r.updatedAt) ?? publishedAt;
-  if (typeof r.id !== "string" || r.id === "" || updatedAt === undefined)
-    throw new AdapterCouldNotCheck("Joomla answered with items that have no id or no update time.");
+  const a = isRecord(r.attributes) ? r.attributes : {};
+  const id = typeof r.id === "string" ? r.id : typeof r.id === "number" ? String(r.id) : "";
+  const publishUp = isoOf(a.publish_up);
+  const updatedAt = isoOf(a.modified) ?? publishUp ?? isoOf(a.created);
+  const state = intOf(a.state);
+  const access = intOf(a.access);
+  if (!ITEM_ID.test(id) || updatedAt === undefined || state === undefined)
+    throw new AdapterCouldNotCheck(
+      "Joomla answered with articles that have no usable id, state or update time.",
+    );
+  if (access === undefined)
+    throw new AdapterCouldNotCheck(
+      "Joomla answered with an article that has no view level (access), so whether visitors can see it is not known.",
+    );
+  const data: Record<string, unknown> = {};
+  for (const f of fields) if (Object.hasOwn(a, f)) data[f] = a[f];
+  const alias = a.alias;
+  const publishDown = isoOf(a.publish_down);
   return {
-    id: r.id,
-    ...(typeof r.slug === "string" && r.slug !== "" ? { slug: r.slug } : {}),
-    published: r.status === "published",
-    ...(publishedAt !== undefined ? { publishedAt } : {}),
+    id,
+    ...(typeof alias === "string" && SLUG.test(alias) ? { slug: alias } : {}),
+    state,
+    access,
+    language: typeof a.language === "string" ? a.language : "*",
+    ...(publishUp !== undefined ? { publishUp } : {}),
+    ...(publishDown !== undefined ? { publishDown } : {}),
     updatedAt,
-    data: isRecord(r.fields) ? r.fields : {},
+    data,
   };
 }
 
-export function createJoomlaAdapter(options: JoomlaAdapterOptions): ContentAdapter {
+export function createJoomlaAdapter(options: JoomlaAdapterOptions): JoomlaAdapter {
   const { env, fetcher } = options;
   const sleep = options.sleep ?? wait;
+  const now = options.now ?? Date.now;
   const pageSize = Math.max(1, Math.min(options.pageSize ?? JOOMLA_PAGE_SIZE, JOOMLA_PAGE_SIZE));
   const cap = options.maxItemsPerType ?? JOOMLA_LIMITS.itemsPerType;
+  const requestBudget = options.maxRequestsPerList ?? JOOMLA_LIMITS.requestsPerList;
   const settings = options.settings;
   const redact = createRedactor(env, [JOOMLA_TOKEN]);
+  const skipped: JoomlaSkipped = { notPublic: 0, scheduled: 0, expired: 0, otherLanguage: 0 };
 
   /** What a failed read becomes: a rate limit carries what was read, anything else is could-not-check. */
   const translate = (err: unknown, partial: unknown): Error => {
@@ -134,46 +257,75 @@ export function createJoomlaAdapter(options: JoomlaAdapterOptions): ContentAdapt
     if (err instanceof ConnectorRefusedError)
       return new AdapterCouldNotCheck(
         err.status === 401
-          ? "Joomla did not accept JOOMLA_TOKEN (HTTP 401). Check that it is a current key."
-          : `Joomla did not let the key read this (HTTP ${err.status}). TODO(new:adapter) name the permission the key needs.`,
+          ? `Joomla did not accept ${JOOMLA_TOKEN} (HTTP 401). Check that it is the user's current API token, that the token is enabled, and that the user's group may sign in to the API.`
+          : "Joomla did not let the token read articles (HTTP 403). The user's group needs the Access API permission.",
       );
     if (err instanceof ConnectorStatusError)
       return new AdapterCouldNotCheck(
         err.status === 404
-          ? "Joomla answered HTTP 404: it has no such type or item."
+          ? `Joomla answered HTTP 404: the Web Services API is not at this address. It may be switched off (the Web Services plugins), or ${JOOMLA_URL} is not the Joomla site.`
           : `Joomla answered HTTP ${err.status}.`,
       );
     return new AdapterCouldNotCheck(redact(err instanceof Error ? err.message : String(err)));
   };
 
-  const keyOrThrow = (): string => {
-    const key = (env[JOOMLA_TOKEN] ?? "").trim();
-    if (key === "")
-      throw new AdapterCouldNotCheck(`${JOOMLA_TOKEN} is not set. Joomla's content needs a key.`);
-    return key;
+  /** The site's address, or could-not-check naming the variable (never its value). */
+  const baseOrThrow = (): string => {
+    const raw = (env[JOOMLA_URL] ?? "").trim();
+    if (raw === "")
+      throw new AdapterCouldNotCheck(
+        `${JOOMLA_URL} is not set. Set it to the Joomla site's address, such as https://example.com.`,
+      );
+    const base = joomlaBase(raw);
+    if (base === undefined)
+      throw new AdapterCouldNotCheck(
+        `${JOOMLA_URL} must be the site's address with https and no query, such as https://example.com or https://example.com/cms.`,
+      );
+    return base;
+  };
+
+  const tokenOrThrow = (): string => {
+    const token = (env[JOOMLA_TOKEN] ?? "").trim();
+    if (token === "")
+      throw new AdapterCouldNotCheck(
+        `${JOOMLA_TOKEN} is not set. Joomla's article list needs an API token.`,
+      );
+    if (!TOKEN.test(token))
+      throw new AdapterCouldNotCheck(
+        `${JOOMLA_TOKEN} does not look like a Joomla API token (it is base64 text with no spaces). Copy it again from the user's Joomla API Token tab.`,
+      );
+    return token;
   };
 
   /**
-   * One GET, parsed as a JSON object, to this API's origin and no other.
-   * The key goes in a header, never in the address.
+   * One GET of the article list route, parsed as a JSON object, to the site's origin and no other. The token goes
+   * in the X-Joomla-Token header, never in the address. `visitor` sends no token (and nothing the fetcher adds
+   * per address). JSON:API content negotiation needs the vnd.api+json type: Joomla answers 406 to any other.
    */
-  const get = async (address: string, partial: () => unknown): Promise<Record<string, unknown>> => {
-    if (new URL(address).origin !== API_ORIGIN)
-      throw new AdapterCouldNotCheck("Joomla pointed at another address, which is not asked.");
-    const key = keyOrThrow();
-    try {
-      const { body } = await getJson(
-        {
-          fetcher,
-          request: {
-            authorization: `Bearer ${key}`,
-            headers: { accept: "application/json" },
+  const rawGet = async (query: string, visitor: boolean): Promise<unknown> => {
+    const base = baseOrThrow();
+    const token = visitor ? undefined : tokenOrThrow();
+    const { body } = await getJson(
+      {
+        fetcher,
+        request: {
+          headers: {
+            accept: "application/vnd.api+json",
+            ...(token !== undefined ? { "x-joomla-token": token } : {}),
           },
-          sleep,
-          system: "Joomla",
+          ...(visitor ? { anonymous: true } : {}),
         },
-        address,
-      );
+        sleep,
+        system: "Joomla",
+      },
+      `${base}${JOOMLA_ARTICLES_PATH}?${query}`,
+    );
+    return body;
+  };
+
+  const get = async (query: string, partial: () => unknown): Promise<Record<string, unknown>> => {
+    try {
+      const body = await rawGet(query, false);
       if (!isRecord(body))
         throw new AdapterCouldNotCheck("Joomla answered with something that is not an object.");
       return body;
@@ -183,83 +335,90 @@ export function createJoomlaAdapter(options: JoomlaAdapterOptions): ContentAdapt
   };
 
   /**
-   * TODO(new:adapter) the platform's real read endpoints. Every one is a GET. Add each to the table in
-   * docs/integrations/joomla.md with its documentation link.
-   *
-   * POST is allowed only for a documented read-only query endpoint, through ADR-0006's allowlist
-   * (branch adr/read-only-post; not merged yet). TODO(new:adapter, after ADR-0006 has merged) add the
-   * `queryAllow` entry (method, path pattern, body shape) in this adapter's registry row. Until then this
-   * adapter sends GET and HEAD only.
+   * The query for one page: the state filter (`filter[state]=1` is Published; with none Joomla lists published and
+   * unpublished articles), a stable order, and the window. Brackets are escaped. [docs]
    */
-  const typesAddress = (): string => `${JOOMLA_API}/types`;
-  const itemsAddress = (
-    type: string,
-    status: "published" | "all",
-    limit: number,
-    offset: number,
-  ): string =>
-    `${JOOMLA_API}/types/${encodeURIComponent(type)}/items?status=${status}&limit=${limit}&offset=${offset}`;
+  const listQuery = (published: boolean, offset: number, limit: number): string =>
+    `${published ? "filter%5Bstate%5D=1&" : ""}list%5Bordering%5D=a.id&list%5Bdirection%5D=ASC` +
+    `&page%5Blimit%5D=${limit}&page%5Boffset%5D=${offset}`;
 
-  const typeNames = async (partial: () => unknown): Promise<string[]> => {
-    const body = await get(typesAddress(), partial);
-    return namesOf(body.types);
-  };
-
-  const pageOf = async (
-    type: string,
-    status: "published" | "all",
-    limit: number,
-    offset: number,
-    partial: () => unknown,
-  ): Promise<{ items: unknown[]; total: number }> => {
-    const body = await get(itemsAddress(type, status, limit, offset), partial);
-    return { items: itemsOf(body.items), total: totalOf(body.total) };
-  };
-
-  const namesOf = (list: unknown): string[] => {
-    if (!Array.isArray(list))
-      throw new AdapterCouldNotCheck("Joomla answered with something that is not a list of types.");
-    const names = list.map((t) => {
-      const slug = isRecord(t) ? t.slug : undefined;
-      if (typeof slug !== "string" || slug === "")
-        throw new AdapterCouldNotCheck("Joomla answered with a type that has no slug.");
-      return slug;
-    });
-    return names.sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
-  };
-
-  const itemsOf = (list: unknown): unknown[] => {
-    if (!Array.isArray(list))
-      throw new AdapterCouldNotCheck("Joomla answered with something that is not a list of items.");
-    return list;
-  };
-
-  const totalOf = (total: unknown): number => {
-    if (typeof total !== "number" || !Number.isSafeInteger(total) || total < 0)
+  const typeOrThrow = (type: string): void => {
+    if (type !== JOOMLA_TYPE)
       throw new AdapterCouldNotCheck(
-        "Joomla answered with something that is not a count of items.",
+        `The Joomla adapter reads articles only; "${type.slice(0, 40)}" is not read.`,
       );
-    return total;
+  };
+
+  const unknownTypes = (): string[] =>
+    [
+      ...new Set([
+        ...Object.keys(settings?.urls ?? {}),
+        ...Object.keys(settings?.fingerprint ?? {}),
+      ]),
+    ]
+      .filter((n) => n !== JOOMLA_TYPE)
+      .sort();
+
+  const pagesOf = (meta: unknown): number => {
+    const pages = isRecord(meta) ? meta["total-pages"] : undefined;
+    if (typeof pages !== "number" || !Number.isSafeInteger(pages) || pages < 0)
+      throw new AdapterCouldNotCheck(
+        "Joomla answered with something that is not a count of pages (meta total-pages).",
+      );
+    return pages;
   };
 
   /**
-   * The items of one type, a page at a time, until every one is read. An answer over the size limit is
-   * asked again with half as many items, down to ten; a page that comes back short is not the end, and
-   * one that comes back empty before the total is could-not-check. `status` "published" asks for what
-   * is live; "all" asks for everything the key can see.
+   * How many articles a list has. The API reports pages ("total-pages"), not a total, so a window of one article is
+   * the exact count. It is checked with a window of two: the pages there must be half the count, rounded up. A
+   * server that clamps the window (an extension, a proxy) breaks that, and is could-not-check, never a wrong count.
+   * [docs]
    */
-  async function* itemsOfType(
-    type: string,
-    status: "published" | "all",
-    enforceCap: boolean,
-    partial: () => unknown,
-  ): AsyncGenerator<RawItem> {
+  const countOf = async (published: boolean, partial: () => unknown): Promise<number> => {
+    const pagesFor = async (limit: number): Promise<number> => {
+      const body = await get(listQuery(published, 0, limit), partial);
+      if (!Array.isArray(body.data))
+        throw new AdapterCouldNotCheck(
+          "Joomla answered with something that is not a list of articles.",
+        );
+      return pagesOf(body.meta);
+    };
+    const count = await pagesFor(1);
+    if ((await pagesFor(2)) !== Math.ceil(count / 2))
+      throw new AdapterCouldNotCheck(
+        "Joomla's page counts for one article and for two articles a page do not agree, so the number of articles is not known (something between Gaugeline and Joomla changes the page size).",
+      );
+    return count;
+  };
+
+  /**
+   * The Published articles, a window at a time, until every one is read. The window moves by the number of
+   * articles that came back, never by the number asked for. A list is complete only when the position reaches the
+   * count taken first: an empty window, a window with nothing new in it, a list that needs more requests than the
+   * budget, or one that changed while it was read is could-not-check, never a short list taken for the whole.
+   */
+  async function* articles(o: {
+    fields: readonly string[];
+    enforceCap: boolean;
+    partial: () => unknown;
+  }): AsyncGenerator<RawItem> {
+    const total = await countOf(true, o.partial);
+    if (o.enforceCap && total > cap)
+      throw new AdapterCouldNotCheck(
+        `The site has ${total} published articles, more than ${cap} article${cap === 1 ? "" : "s"}, which is as many as Gaugeline reads in one list.`,
+      );
     let offset = 0;
     let size = pageSize;
-    for (;;) {
-      let page: { items: unknown[]; total: number };
+    let requests = 0;
+    const seen = new Set<string>();
+    while (offset < total) {
+      if (++requests > requestBudget)
+        throw new AdapterCouldNotCheck(
+          `Joomla's article list needed more than ${requestBudget} requests, so the rest was not read.`,
+        );
+      let body: Record<string, unknown>;
       try {
-        page = await pageOf(type, status, size, offset, partial);
+        body = await get(listQuery(true, offset, size), o.partial);
       } catch (err) {
         if (!(err instanceof TooLarge)) throw err;
         if (size > MIN_PAGE_SIZE) {
@@ -267,21 +426,39 @@ export function createJoomlaAdapter(options: JoomlaAdapterOptions): ContentAdapt
           continue;
         }
         throw new AdapterCouldNotCheck(
-          `Joomla's answer for ${size} items is larger than Gaugeline reads at once, even after asking for fewer items at a time (down to ${MIN_PAGE_SIZE}). The type was not read.`,
+          `Joomla's answer for ${size} articles is larger than Gaugeline reads at once, even after asking for fewer at a time (down to ${MIN_PAGE_SIZE}). The articles were not read.`,
         );
       }
-      if (enforceCap && page.total > cap)
+      if (!Array.isArray(body.data))
         throw new AdapterCouldNotCheck(
-          `The type has ${page.total} items, more than ${cap} item${cap === 1 ? "" : "s"}, which is as many as Gaugeline reads from one type.`,
+          "Joomla answered with something that is not a list of articles.",
         );
-      for (const raw of page.items) yield parseItem(raw);
-      offset += page.items.length;
-      if (offset >= page.total) return;
-      if (page.items.length === 0)
+      let fresh = 0;
+      for (const raw of body.data) {
+        const item = parseItem(raw, o.fields);
+        if (item.state !== 1)
+          throw new AdapterCouldNotCheck(
+            "Joomla answered with an article that is not published to a request for published articles.",
+          );
+        if (seen.has(item.id)) continue;
+        seen.add(item.id);
+        fresh++;
+        yield item;
+      }
+      offset += body.data.length;
+      if (body.data.length === 0)
         throw new AdapterCouldNotCheck(
-          `Joomla's list stopped after ${offset} of ${page.total} items, so the rest was not read.`,
+          `Joomla's list stopped after ${offset} of ${total} articles, so the rest was not read.`,
+        );
+      if (fresh === 0)
+        throw new AdapterCouldNotCheck(
+          "Joomla's list gave the same articles again instead of the next ones, so the rest was not read.",
         );
     }
+    if (seen.size < total)
+      throw new AdapterCouldNotCheck(
+        "Joomla's list changed while it was read (articles were unpublished or deleted), so it may be missing some. Run again.",
+      );
   }
 
   const resolveUrl: NonNullable<ContentAdapter["resolveUrl"]> = (doc) => {
@@ -289,29 +466,19 @@ export function createJoomlaAdapter(options: JoomlaAdapterOptions): ContentAdapt
     return template === undefined ? "" : fillUrlTemplate(template, doc);
   };
 
-  const chosen = async (names: readonly string[] | undefined): Promise<string[]> => {
-    const all = await typeNames(() => []);
-    return names === undefined ? all : all.filter((n) => names.includes(n));
-  };
-
-  const types = async (): Promise<TypeCount[]> => {
-    const out: TypeCount[] = [];
-    for (const name of await typeNames(() => [])) {
-      const page = await pageOf(name, "published", 1, 0, () => out.slice());
-      out.push({ name, count: page.total });
-    }
-    return out;
-  };
+  const types = async (): Promise<TypeCount[]> => [
+    { name: JOOMLA_TYPE, count: await countOf(true, () => []) },
+  ];
 
   const fieldCounts = async (
     type: string,
     fields: readonly string[],
   ): Promise<Record<string, number>> => {
+    typeOrThrow(type);
     const out: Record<string, number> = Object.fromEntries(fields.map((f) => [f, 0]));
-    for (const name of await chosen([type]))
-      for await (const item of itemsOfType(name, "published", true, () => ({}))) {
-        for (const f of fields) if (hasValue(valueAt(item.data, f))) out[f] = (out[f] ?? 0) + 1;
-      }
+    const names = fields.filter((f) => FIELD_NAME.test(f));
+    for await (const item of articles({ fields: names, enforceCap: true, partial: () => out }))
+      for (const f of names) if (hasValue(valueAt(item.data, f))) out[f] = (out[f] ?? 0) + 1;
     return out;
   };
 
@@ -321,52 +488,106 @@ export function createJoomlaAdapter(options: JoomlaAdapterOptions): ContentAdapt
       since = isoOf(opts.since);
       if (since === undefined) throw new TypeError("since must be a date and time (ISO 8601).");
     }
+    if (opts.types !== undefined && !opts.types.includes(JOOMLA_TYPE)) return;
     let delivered = 0;
     let remaining = opts.limit ?? Number.POSITIVE_INFINITY;
-    for (const type of await chosen(opts.types)) {
-      if (remaining <= 0) return;
-      const fields = opts.fields?.[type] ?? settings?.fingerprint?.[type] ?? [];
-      const read = itemsOfType(type, "published", opts.limit === undefined, () => delivered);
-      for await (const item of read) {
-        if (!item.published) continue;
-        if (since !== undefined && Date.parse(item.updatedAt) < Date.parse(since)) continue;
-        const fieldHashes: Record<string, string> = {};
-        for (const f of fields) {
-          const h = hashValue(valueAt(item.data, f));
-          if (h !== undefined) fieldHashes[f] = h;
-        }
-        const url = resolveUrl({
-          id: item.id,
-          type,
-          ...(item.slug !== undefined ? { slug: item.slug } : {}),
-        });
-        remaining--;
-        delivered++;
-        yield {
-          id: item.id,
-          type,
-          ...(url !== "" ? { url } : {}),
-          ...(item.slug !== undefined ? { slug: item.slug } : {}),
-          ...(item.publishedAt !== undefined ? { publishedAt: item.publishedAt } : {}),
-          updatedAt: item.updatedAt,
-          fieldHashes,
-        };
-        if (remaining <= 0) return;
+    if (remaining <= 0) return;
+    const fields = (
+      opts.fields?.[JOOMLA_TYPE] ??
+      settings?.fingerprint?.[JOOMLA_TYPE] ??
+      []
+    ).filter((f) => FIELD_NAME.test(f));
+    const at = now();
+    for await (const item of articles({
+      fields,
+      enforceCap: opts.limit === undefined,
+      partial: () => delivered,
+    })) {
+      // Left out, and counted: a visitor is not expected to find a page for these.
+      if (item.access !== PUBLIC_ACCESS) {
+        skipped.notPublic++;
+        continue;
       }
+      if (item.publishUp !== undefined && Date.parse(item.publishUp) > at) {
+        skipped.scheduled++;
+        continue;
+      }
+      if (item.publishDown !== undefined && Date.parse(item.publishDown) <= at) {
+        skipped.expired++;
+        continue;
+      }
+      if (item.language !== "*") {
+        skipped.otherLanguage++;
+        continue;
+      }
+      if (since !== undefined && Date.parse(item.updatedAt) < Date.parse(since)) continue;
+      const fieldHashes: Record<string, string> = {};
+      for (const f of fields) {
+        // Joomla sends an empty field as "": an empty field is left out, as a missing one is.
+        const value = valueAt(item.data, f);
+        const h = hasValue(value) ? hashValue(value) : undefined;
+        if (h !== undefined) fieldHashes[f] = h;
+      }
+      const url = resolveUrl({
+        id: item.id,
+        type: JOOMLA_TYPE,
+        ...(item.slug !== undefined ? { slug: item.slug } : {}),
+      });
+      remaining--;
+      delivered++;
+      yield {
+        id: item.id,
+        type: JOOMLA_TYPE,
+        ...(url !== "" ? { url } : {}),
+        ...(item.slug !== undefined ? { slug: item.slug } : {}),
+        ...(item.publishUp !== undefined ? { publishedAt: item.publishUp } : {}),
+        updatedAt: item.updatedAt,
+        fieldHashes,
+      };
+      if (remaining <= 0) return;
     }
   }
 
   /**
-   * True when the list of everything the key can see holds an item the published list does not: a draft
-   * or an item never published. Two counts per type and no item is asked for beyond the first.
+   * True when the default list (published and unpublished articles) holds more than the Published filter does:
+   * an unpublished article the token can list. Four small requests and no article is read beyond the first two.
    */
   const draftsReachable = async (): Promise<boolean> => {
-    for (const name of await typeNames(() => undefined)) {
-      const every = (await pageOf(name, "all", 1, 0, () => undefined)).total;
-      const live = (await pageOf(name, "published", 1, 0, () => undefined)).total;
-      if (every > live) return true;
+    const live = await countOf(true, () => undefined);
+    const every = await countOf(false, () => undefined);
+    if (every > live) return true;
+    // No more articles unfiltered than filtered does not show that nothing is unpublished: a draft may sit at a
+    // view level the user cannot see, and a site with no drafts looks the same. Not false.
+    throw new AdapterCouldNotCheck(
+      "Joomla listed no unpublished article to this token, which does not show whether unpublished work is reachable (there may be none, or they may be at a view level the user cannot see).",
+    );
+  };
+
+  const publicApi = async (): Promise<JoomlaPublicApi> => {
+    try {
+      const body = await rawGet("page%5Blimit%5D=1", true);
+      if (!isRecord(body) || !Array.isArray(body.data) || !isRecord(body.meta))
+        return {
+          state: "unread",
+          reason: "the route answered, but not with Joomla's JSON:API list of articles",
+        };
+      const pages = body.meta["total-pages"];
+      return typeof pages === "number" && Number.isSafeInteger(pages) && pages >= 0
+        ? { state: "public", total: pages }
+        : { state: "unread", reason: "the route answered with a count that is not a number" };
+    } catch (err) {
+      if (err instanceof AdapterCouldNotCheck) throw err;
+      if (err instanceof ConnectorRefusedError) return { state: "protected" };
+      if (err instanceof ConnectorRateLimitedError)
+        throw new AdapterRateLimitedError([], err.retry);
+      if (err instanceof ConnectorStatusError)
+        return err.status === 404
+          ? { state: "closed" }
+          : { state: "unread", reason: `the route answered HTTP ${err.status}` };
+      if (err instanceof ResponseTooLargeError)
+        return { state: "unread", reason: "the answer was larger than a response may be" };
+      return { state: "unread", reason: redact(err instanceof Error ? err.message : String(err)) };
     }
-    return false;
   };
 
   return {
@@ -377,5 +598,10 @@ export function createJoomlaAdapter(options: JoomlaAdapterOptions): ContentAdapt
     published,
     draftsReachable,
     resolveUrl,
+    collections: () => [JOOMLA_TYPE],
+    unknownTypes,
+    skipped: () => ({ ...skipped }),
+    privacyExpected: () => settings?.expectPrivate === true,
+    publicApi,
   };
 }

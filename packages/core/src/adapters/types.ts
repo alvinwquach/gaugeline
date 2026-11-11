@@ -142,8 +142,8 @@ export interface AdapterSettings {
   /** Only `sitemap-feed`: feeds to read instead of looking (a path or an address on the site). */
   feeds?: readonly string[] | undefined;
   /**
-   * Only `umbraco`: the owner says the Delivery API is meant to be private. The probing check
-   * `umbraco-delivery-api-public` runs only when this is true; a key being set says nothing of it.
+   * Only `umbraco` and `joomla`: the owner says the platform's API is meant to be private. The probing checks
+   * `umbraco-delivery-api-public` and `joomla-api-public` run only when this is true; a key being set says nothing of it.
    */
   expectPrivate?: boolean | undefined;
   /** Only `git-content`: the repository's folder on this computer, relative to where the run starts. */

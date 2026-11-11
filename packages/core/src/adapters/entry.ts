@@ -69,7 +69,7 @@ export interface AdapterEntry {
     pageReader?: true;
     /** The platform names its fields with hyphens. */
     hyphenFields?: true;
-    /** Takes `expectPrivate`: the owner says the platform's public API is meant to be private (Umbraco's Delivery API). */
+    /** Takes `expectPrivate`: the owner says the platform's public API is meant to be private (Umbraco's Delivery API, Joomla's Web Services API). */
     expectPrivate?: true;
     /**
      * Reads content kept in a repository: takes `path` or `github`, and `folders`; `urls` is replaced by each folder's

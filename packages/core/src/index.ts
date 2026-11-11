@@ -1447,6 +1447,7 @@ export {
 } from "./checks/squarespace-commerce.js";
 export { STRAPI_CHECKS, createStrapiRegistry } from "./checks/strapi.js";
 export { UMBRACO_CHECKS, createUmbracoRegistry } from "./checks/umbraco.js";
+export { JOOMLA_CHECKS, createJoomlaRegistry } from "./checks/joomla.js";
 export { HUBSPOT_CMS_CHECKS, createHubspotCmsRegistry } from "./checks/hubspot-cms.js";
 export {
   ListBuilder,

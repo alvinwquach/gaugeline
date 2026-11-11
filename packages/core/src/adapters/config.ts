@@ -81,7 +81,7 @@ export const adaptersConfigSchema = z.strictObject({
             )
             .optional(),
           /**
-           * Umbraco only: the Content Delivery API is meant to be private. Switches on the probing check that asks
+           * Umbraco and Joomla only: the platform's API is meant to be private. Switches on the probing check that asks
            * whether it answers a visitor with no key (still only with --owner-consent).
            */
           expectPrivate: z.boolean().optional(),
@@ -167,7 +167,7 @@ export const adaptersConfigSchema = z.strictObject({
             ctx.addIssue({
               code: "custom",
               path: ["expectPrivate"],
-              message: `"expectPrivate" belongs to the Umbraco adapter, not to ${entry.id}`,
+              message: `"expectPrivate" belongs to the Umbraco and Joomla adapters, not to ${entry.id}`,
             });
           const repo = CONTENT_FOLDERS.includes(entry.id);
           for (const key of ["path", "github", "folders"] as const)
