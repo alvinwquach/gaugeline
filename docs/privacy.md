@@ -267,6 +267,32 @@ the host names, and the names of the variables that hold the tokens. Text from a
 a finding passes through the same redactor as every other. It never renews, buys, logs in or changes
 anything.
 
+### Handoff (gaugeline handoff)
+
+`gaugeline handoff <address>` reads who holds each part of a client's site and writes a report
+([Handoff](guides/handoff.md)). Every request is `GET` or `HEAD`, through the fetcher, and each key goes
+in a request header to its own provider and nowhere else.
+
+- **The domain's registry.** The same two `GET`s as [Renewals](guides/renewals.md#domain-registration):
+  IANA's bootstrap file and the registry's public RDAP record. It keeps the registrar's name, the name
+  servers and whether the registry hides the registrant: never the registrant's name or contact.
+- **DNS, only with `--dns`.** The name servers of the domain, through the machine's resolver.
+- **Vercel, only for a project you name and a token you set.** `GET https://api.vercel.com/v9/projects/<name>`,
+  then, for a team, the team's name and its member list, or, for a personal account, `/v2/user`. It
+  keeps each member's address (to compare, then masked), role and whether an invitation is pending.
+- **Sanity, only for a project and a token you set.** `GET https://api.sanity.io/v2021-06-07/projects/<id>`
+  and the members' profiles. It keeps each member's address, role and whether it is an API token.
+- **Google Business Profile, only when `gaugeline.listings.json` names the location and the listings
+  token is set.** One `GET` of the location's administrators.
+
+Addresses read from a provider are compared with the ones in `gaugeline.handoff.json` and are then
+masked to their first letter and their domain: the screen, the three files and every message show only
+the masked form, and the JSON holds no full address, no token and no provider id. A token never reaches
+a log, a finding or a report (every message passes the redactor), and nothing is created, invited,
+removed or changed. Text from a provider (a team's name, a project's title) is escaped in the HTML and
+the Markdown, with invisible characters written out. The report is written only into the folder you
+name (inside the one you ran from), never over a file without `--force`, all three files or none.
+
 ### Saving the requests (--save-requests)
 
 By default a run keeps what it asked for in memory and writes only the report. `--save-requests <file>`

@@ -22,6 +22,7 @@ export const COMMANDS = [
   "query",
   "emails",
   "renewals",
+  "handoff",
 ] as const;
 export type Command = (typeof COMMANDS)[number];
 
@@ -59,6 +60,24 @@ export const HELP: Record<string, string> = {
       "gaugeline.renewals.json). Prints one Renewals list by date, then what to fix.",
       "Read-only: it never renews, buys, logs in or changes anything. The same checks",
       "run in the page check with --renewals, and so in gaugeline run --all --renewals.",
+    ].join("\n"),
+    footer: "Exit codes: 0 ran, 1 --ci with a fix-first finding, 2 could not run",
+  }),
+  handoff: renderHelp(FLAGS, "handoff", {
+    usage: "gaugeline handoff <address> [options]",
+    summary: [
+      "Write a handoff report: who owns each part of a client's site, and whether",
+      "the client can get in without you. Reads the domain's registrar and name",
+      "servers from public records (--dns reads the name servers from DNS too) and,",
+      "with the tokens you already have and only through GET, who holds the Vercel",
+      "project (GAUGELINE_VERCEL_TOKEN), the Sanity project (SANITY_TOKEN) and the",
+      "Google Business Profile (GOOGLE_BUSINESS_PROFILE_TOKEN). The client's and your",
+      "addresses are in gaugeline.handoff.json; they are compared and shown only as",
+      "a first letter and a domain. Stripe, Square and other systems whose users it",
+      "cannot read become a checklist line, never a guess. Writes handoff.html,",
+      "handoff.md and handoff.json into --out (default gaugeline-handoff), never",
+      "over a file unless --force. Read-only: it never logs in, adds, removes or",
+      "changes anything, and the report holds no password, token or key.",
     ].join("\n"),
     footer: "Exit codes: 0 ran, 1 --ci with a fix-first finding, 2 could not run",
   }),

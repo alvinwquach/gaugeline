@@ -1,4 +1,4 @@
-import { ConfigError, type GeneratedFile } from "@gaugeline/core";
+import { ConfigError } from "@gaugeline/core";
 import { lstat, mkdir, readFile, realpath, rmdir, unlink, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 
@@ -22,6 +22,12 @@ export interface ScaffoldFs {
   writeFile(path: string, text: string, flag: "wx" | "w"): Promise<void>;
   unlink(path: string): Promise<void>;
   rmdir(path: string): Promise<void>;
+}
+
+/** A file to write: its name inside the folder and its text. The scaffold's three files and the handoff report's three both fit. */
+export interface WritableFile {
+  name: string;
+  text: string;
 }
 
 const codeOf = (err: unknown): string => (err as { code?: string }).code ?? "an error";
@@ -85,7 +91,7 @@ export interface Inspected {
  * never started.
  */
 export async function inspectScaffold(
-  files: readonly Pick<GeneratedFile, "name">[],
+  files: readonly Pick<WritableFile, "name">[],
   out: string,
   opts: { force: boolean; cwd: string; fs?: ScaffoldFs },
 ): Promise<Inspected> {
@@ -146,7 +152,7 @@ async function missingFolders(fs: ScaffoldFs, folder: string): Promise<string[]>
  * failure leaves the folder as it was found. Returns the absolute paths it wrote, in order.
  */
 export async function writeScaffold(
-  files: readonly GeneratedFile[],
+  files: readonly WritableFile[],
   out: string,
   opts: { force: boolean; cwd?: string; fs?: ScaffoldFs },
 ): Promise<string[]> {

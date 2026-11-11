@@ -136,6 +136,10 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "The bare domain or www is not covered by the certificate",
     "Security & email",
   ],
+  "client-not-admin": [
+    "The client is not an owner or admin of a system their site depends on",
+    "Security & email",
+  ],
   "printful-unsynced": ["A fulfillment product has variants that cannot be made", "Sales & prices"],
   "stripe-archived": ["A website product is archived in checkout", "Sales & prices"],
   "stripe-missing": ["A website product is missing from checkout", "Sales & prices"],
@@ -291,6 +295,14 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "token-expires-soon": ["An access token expires soon", "Security & email"],
   "runtime-deprecated": [
     "A Vercel project runs a Node.js version Vercel is retiring",
+    "Security & email",
+  ],
+  "single-admin": [
+    "The freelancer is the only owner or admin of a system the client depends on",
+    "Security & email",
+  ],
+  "personal-account": [
+    "A system the site depends on lives in a personal account",
     "Security & email",
   ],
   "printful-price": ["Fulfillment lists a different price", "Sales & prices"],
@@ -870,6 +882,12 @@ export const CHECK_TEXT: Readonly<
     "A visitor who types or follows the uncovered address gets a full-page browser warning instead of the site. A link from a business card or a social profile is often the one that is not covered.",
     "Add the missing name to the certificate (most hosts do it from the domain's settings), or point that address at the host that serves it. Then open both addresses in a browser to confirm.",
     "One HEAD request, not followed, to https://<domain>/ and https://www.<domain>/ through the fetcher: the names (subjectAltName, else the common name) come off the connection. When the handshake fails because the certificate does not name the host, Node's error carries the certificate and its names are read from it. A one-label wildcard covers a host. A www that does not exist in DNS is skipped; a certificate that fails for another reason is could-not-check with the code",
+  ],
+  "client-not-admin": [
+    "In a system Gaugeline could read, none of the client's addresses (gaugeline.handoff.json) holds an owner or admin role that has been accepted.",
+    "If you are away, or the relationship ends, the client cannot add a new developer, change a plan or recover the account without asking you, and a lockout can take days to undo while the site's content is out of reach.",
+    "Ask a current owner to invite the client's own address as an owner or admin and have them accept it, or promote them if they are already a member. Then run the handoff again.",
+    "Read-only, GET only, with the tokens already in the environment: Vercel (GAUGELINE_VERCEL_TOKEN: the project, its team and the team's members), Sanity (SANITY_TOKEN: the project's members and their profiles) and Google Business Profile (GOOGLE_BUSINESS_PROFILE_TOKEN: the location's administrators). Each provider's role is mapped to owner, admin, member or viewer; an invitation not yet accepted is not a role. Addresses are compared in lower case and shown only as their first letter and domain. A system whose token may not list members, or whose members' addresses are hidden, is could-not-check for that system alone; no client address in the settings is could-not-check for all",
   ],
   "printful-unsynced": [
     "A Printful product matched to a product on your website has a variant that is not synced.",
@@ -1488,6 +1506,18 @@ export const CHECK_TEXT: Readonly<
     "Once Vercel retires a version, new deployments of the project can fail to build, and a site nobody touched for months stops being deployable the day someone needs to fix something.",
     "Set the project's Node.js version to a current one (Project Settings, then Node.js Version, and the engines field in package.json), deploy a preview and check the site before promoting it.",
     "GET /v9/projects/<name> on Vercel with GAUGELINE_VERCEL_TOKEN, reading only nodeVersion. The version's major is looked up in packages/core/src/data/vercel-node-runtimes.json: a dated list of the versions Vercel has announced for retirement, each with the page that says so. A version that is not in the list has no announced retirement and is not a finding. Under 7 days or past is high, under 90 days medium, further out low",
+  ],
+  "single-admin": [
+    "A system has exactly one owner or admin that has accepted, and it is one of the freelancer's addresses (gaugeline.handoff.json). Two addresses listed together under sameAs count as one person.",
+    "One person is the single way in. If their login is lost, their account is closed or they are unreachable, nobody can add anyone, and the client has to wait for them.",
+    "Make a second person an owner or admin: the client first, and ideally a teammate you trust as well. Then run the handoff again.",
+    "Read as client-not-admin does. Owners and admins who have accepted, and who are not an API token, are counted by person: the addresses a person is listed under in sameAs share one key. Exactly one such person, whose address is in freelancerEmails, is the finding. A system whose members could not be read is could-not-check, never a pass",
+  ],
+  "personal-account": [
+    "The project that serves or feeds the site belongs to one person's account, not to a team or organisation.",
+    "A personal account is one person's login. It has no list of members to add the client to, it cannot outlive that person's access, and it often belongs to the freelancer who set the site up, so the client's site is tied to a login that is not theirs.",
+    "Create a team or organisation owned by the client (or by both of you), move the project into it, and give the client's own address the owner role. Then run the handoff again.",
+    "Vercel: the project's accountId. An id that begins with team_ is a team; any other is a personal account, whose one owner is the token's own user (GET /v2/user). Other systems report a personal account only when their API says so. A project whose owner cannot be told apart is could-not-check",
   ],
   "printful-price": [
     "A synced Printful variant's retail price is different from the price Stripe charges for the product.",

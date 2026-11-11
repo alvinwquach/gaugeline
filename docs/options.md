@@ -276,12 +276,12 @@ Options:
       --owner-consent              Run the probing checks, which ask routes for
                                    what they protect with no login; only on
                                    sites you may test
-      --force                      Let --annotate (plan), --page, --save (query)
-                                   or --out (brief) replace files that exist,
-                                   never a folder or link
-      --out <value>                snapshot: the file to write (default
-                                   before.json). query --page: the folder to
-                                   write into. brief: the Markdown file
+      --force                      Let --annotate (plan), --page, --save
+                                   (query), --out (brief) or handoff replace
+                                   files, never a folder or link
+      --out <value>                snapshot: the file (default before.json).
+                                   query --page: the folder. brief: the file.
+                                   handoff: the report folder
       --business <value>           brief: the business the work order is for,
                                    shown in its heading
       --rate <value>               brief: what an hour costs, in whole currency
@@ -355,7 +355,7 @@ between the markers; CI fails when it differs from the flag table.
 | `--legacy-review <value>`   | Write the old addresses read with --legacy-from to this CSV file, for review                                         |                      | 0.2.0 |
 | `--base <value>`            | The site a plan is checked against (a preview); the site emails link to; or the site to ask for --routes             |                      | 0.2.0 |
 | `--annotate <value>`        | Write a copy of the plan with a Gaugeline column saying what is wrong on each row                                    |                      | 0.2.0 |
-| `--force`                   | Let --annotate (plan), --page, --save (query) or --out (brief) replace files that exist, never a folder or link      |                      | 0.2.0 |
+| `--force`                   | Let --annotate (plan), --page, --save (query), --out (brief) or handoff replace files, never a folder or link        |                      | 0.2.0 |
 | `--progress <value>`        | With --base, say what was fixed and what is new since the last run (state file optional)                             |                      | 0.2.0 |
 | `--watch <value>`           | With --base on production: the 30-day watch from this cutover date (YYYY-MM-DD)                                      |                      | 0.2.0 |
 | `--all`                     | plan --progress: list the findings still open; run: check every site in gaugeline.sites.json                         |                      | 0.2.0 |
@@ -370,7 +370,7 @@ between the markers; CI fails when it differs from the flag table.
 | `--tag <value>`             | Check the sites in gaugeline.sites.json with this tag, such as client                                                |                      | 0.2.0 |
 | `--parallel <value>`        | Check this many sites at once (default 1); sites on one host never overlap                                           |                      | 0.2.0 |
 | `--limit <value>`           | Re-check this many of the export's pages (default 40; 0 only classifies the rows)                                    |                      | 0.2.0 |
-| `--out <value>`             | snapshot: the file to write (default before.json). query --page: the folder to write into. brief: the Markdown file  |                      | 0.2.0 |
+| `--out <value>`             | snapshot: the file (default before.json). query --page: the folder. brief: the file. handoff: the report folder      |                      | 0.2.0 |
 | `--business <value>`        | brief: the business the work order is for, shown in its heading                                                      |                      | 0.2.0 |
 | `--rate <value>`            | brief: what an hour costs, in whole currency units such as 110; used with --hours-per-point                          |                      | 0.2.0 |
 | `--hours-per-point <value>` | brief: how many hours one point takes, such as 1.5; prints a range of hours, never one number                        |                      | 0.2.0 |
@@ -503,6 +503,30 @@ checks to the page check, and `gaugeline run --all --renewals` to every site of 
 `gaugeline.renewals.json` (the Vercel projects, and the domain when its ending is unusual). What it reads,
 what keys to make and the thresholds: [Renewals](guides/renewals.md). What it sends:
 [Privacy and safety](privacy.md#renewals-gaugeline-renewals).
+
+### The handoff command
+
+`gaugeline handoff <address>` writes a report of who owns each part of a client's site, and whether the
+client can get in without you: the domain's registrar and name servers (from public records), and, with
+the tokens you already have and only through `GET`, who holds the Vercel project, the Sanity project and
+the Google Business Profile. It does not need the site to answer. Stripe, Square and other systems whose
+users it cannot read become a checklist line, never a guess.
+
+```sh
+npx gaugeline handoff marlowe-bar.com
+npx gaugeline handoff marlowe-bar.com --out client-handoff --dns
+```
+
+It writes `handoff.html`, `handoff.md` and `handoff.json` into `--out` (a folder inside the one you ran
+from, `gaugeline-handoff` when you leave it out), never over a file unless `--force`, all three or none.
+It takes `--json` (the summary and nothing else; with no `--out` nothing is written), `--ci` (exit 1 for a
+"Fix this first" finding: the client is not an owner or admin somewhere), `--dns` (the name servers from
+DNS as well as from the registry), `--allow-private`, `--quiet` and `--verbose`. A settings file that does
+not read, a folder outside this one, a report that is already there without `--force` and a failed write
+are exit 2, before anything is requested where they can be. Settings: `gaugeline.handoff.json` (the
+client's and your addresses, the Vercel project, the Sanity project, extra checklist lines). What it
+reads, what keys to make, the three checks and two examples: [Handoff](guides/handoff.md). What it
+sends: [Privacy and safety](privacy.md#handoff-gaugeline-handoff).
 
 ### The query command
 
