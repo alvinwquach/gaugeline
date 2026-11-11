@@ -111,6 +111,7 @@ export const UNLISTED: NavPage[] = [
   { slug: "guides/published-not-live", title: "Published but not live" },
   { slug: "guides/served-libraries", title: "Served libraries: the old jQuery nobody remembers" },
   { slug: "guides/init", title: "gaugeline init: start from what the site is built on" },
+  { slug: "guides/deploy-gates", title: "Deploy gates: check a preview before it goes live" },
   { slug: "guides/advisory", title: "Advisory check: is my client affected?" },
   { slug: "guides/audit-pack", title: "Audit pack: turn a first run into a proposal" },
   { slug: "guides/agent-skill", title: "The agent skill: let a coding agent run Gaugeline" },
@@ -148,6 +149,8 @@ export const UNLISTED: NavPage[] = [
   { slug: "guides/access-rules", title: "Database access rules, tested from outside" },
   { slug: "guides/nextjs", title: "Next.js sites" },
   { slug: "guides/hydrogen", title: "Shopify Hydrogen sites" },
+  { slug: "guides/sveltekit", title: "SvelteKit sites" },
+  { slug: "guides/astro", title: "Astro sites" },
   { slug: "guides/weekly-digest", title: "The weekly digest" },
   { slug: "guides/click-events", title: "Click events: the tracking plan, checked" },
   { slug: "guides/tag-rules", title: "Tracking rules that point at things that no longer exist" },
@@ -156,4 +159,5 @@ export const UNLISTED: NavPage[] = [
   { slug: "guides/page-snapshots", title: "Page snapshots: what each page lost" },
   { slug: "guides/cutover", title: "Cutover: what changed on the day" },
   { slug: "guides/many-sites", title: "Many sites from one file" },
+  { slug: "guides/ci-templates", title: "CI templates: GitLab CI, Bitbucket Pipelines, CircleCI" },
 ];

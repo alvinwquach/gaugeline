@@ -11,6 +11,15 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "access-public-read": ["Anyone can read a table you didn't make public", "Security & email"],
   "access-role-scope": ["A signed-in user can read other people's rows", "Security & email"],
   "app-link-dead": ["The app this page links to isn't in the store", "Visitors"],
+  "astro-dev-tools-public": ["The live Astro site is serving its development tools", "Launch day"],
+  "astro-preview-canonical": [
+    "The live Astro site points search engines at a preview deployment",
+    "Launch day",
+  ],
+  "astro-private-props": [
+    "A page hands private-looking fields to the browser in an island's props",
+    "Security & email",
+  ],
   "broken-links": ["Links on this page go nowhere", "Visitors"],
   "canonical-elsewhere": ["This page tells Google to show a different page", "Search & sharing"],
   "capacity-zero-not-sold-out": [
@@ -119,6 +128,24 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "staging-indexable": ["Your staging site can be found by search engines", "Launch day"],
   "stega-leak": ["Hidden editing characters leaked onto the live site", "Search & sharing"],
   "stripe-test-mode": ["This live site is using Stripe's test key", "Sales & prices"],
+  "sveltekit-data-as-page": [
+    "A page address returns SvelteKit data, not a page",
+    "Search & sharing",
+  ],
+  "sveltekit-dev-server-live": ["The live site is a development server", "Security & email"],
+  "sveltekit-draft-public": ["Anyone can switch on preview mode", "Launch day"],
+  "sveltekit-preview-canonical": [
+    "The live SvelteKit site points search engines at a preview deployment",
+    "Launch day",
+  ],
+  "sveltekit-private-fields": [
+    "The data sent with a page has fields that look private",
+    "Security & email",
+  ],
+  "sveltekit-vary-missing": [
+    "One address serves a page and JSON, and caches aren't told",
+    "Search & sharing",
+  ],
   "switch-off-still-linked": [
     "A switch is off but the site still links to what it controls",
     "Sales & prices",
@@ -220,6 +247,10 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "hubspot-page-404": ["A page published in HubSpot answers 404 on the live domain", "Launch day"],
   "hubspot-form-deleted": ["A page embeds a HubSpot form that has been deleted", "Launch day"],
   "app-smart-banner-mismatch": ["The iPhone app banner promotes a different app", "Visitors"],
+  "astro-draft-entry-public": [
+    "A live page embeds a content entry marked as a draft",
+    "Launch day",
+  ],
   "checkout-js-only": ["Nothing on the page can be linked to buy", "Sales & prices"],
   "crm-field-names": ["A form sends fields the CRM doesn't have", "Leads"],
   "crm-late-tracking": ["Tracking starts after the form loads", "Leads"],
@@ -314,6 +345,7 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "sitemap-missing": ["Search engines can't find a list of your pages", "Search & sharing"],
   "sitemap-redirects": ["Your sitemap lists old addresses that redirect", "Search & sharing"],
   "structured-duplicate": ["The same structured data is on this page twice", "Search & sharing"],
+  "sveltekit-stale-page": ["The page is from an older build than the site", "Launch day"],
   "switch-page-wrong": [
     "A page does not say what it should for the current switch",
     "Sales & prices",
@@ -407,6 +439,10 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "ai-crawlers-blocked": ["Some AI assistants can't read your site", "Search & sharing"],
   "app-name-mismatch": ["The store lists the app under a different name", "Visitors"],
   "asset-file-public": ["A downloadable file is on a public asset address", "Sales & prices"],
+  "astro-endpoints-listed": [
+    "This Astro page calls public endpoints that need a second look",
+    "Security & email",
+  ],
   blocked: ["The site wouldn't let Gaugeline read the page", "Search & sharing"],
   "canonical-missing": ["The page doesn't say which address is the real one", "Search & sharing"],
   "data-no-stamp": ["A page of changing numbers does not say when they were updated", "Visitors"],
@@ -427,6 +463,7 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "og-image-missing": ["Shared links have no picture", "Search & sharing"],
   "price-changed": ["A price changed since the last run", "Sales & prices"],
   "schema-breadcrumb-start": ["Breadcrumbs don't start where your guide says", "Search & sharing"],
+  "sveltekit-data-unshown": ["The page's data has text the page does not show", "Security & email"],
   "tel-format": ["A phone link may not dial correctly", "Visitors"],
   "temp-host-canonical": ["A temporary address doesn't name the real one", "Launch day"],
   "zero-width-in-text": ["Invisible characters sit inside words on the page", "Security & email"],
@@ -479,6 +516,24 @@ export const CHECK_TEXT: Readonly<
     'Visitors who tap "Get the app" land on an error page. Apps disappear when they are renamed, moved to a new developer account or pulled.',
     "Link to the app's current store page, or remove the link if the app is gone.",
     "the iTunes Lookup API returns no result for the id (in the link's storefront and in the US), or the Google Play listing answers 404. A 429 or a regional-only app is could-not-check, not dead",
+  ],
+  "astro-dev-tools-public": [
+    "A page of this Astro site loads the Vite dev client or the Astro dev toolbar, or carries data-astro-source-file attributes. Those exist only when the site runs from `astro dev`.",
+    "A development server is slow, exposes source file paths, and serves modules and errors that a built site never does. Visitors see an unfinished site and anyone can read how it is put together.",
+    "Deploy the output of `astro build` (a static folder, or the server adapter's output) instead of running `astro dev` on the host.",
+    "Astro sites only, no extra request: the page's own HTML is searched for src=/@vite/client, the dev-toolbar entrypoint under /@id/astro/runtime/client/dev-toolbar/, an astro-dev-toolbar element, or data-astro-source-file attributes",
+  ],
+  "astro-preview-canonical": [
+    "A production page of this Astro site gives a preview domain as its canonical address, its og:url or og:image, or in its sitemap.",
+    "Search engines and social cards follow those addresses to the preview, which can show old content or vanish when the preview is cleaned up.",
+    "Set `site` in astro.config.mjs to the production domain (not the preview address a deployment host gives each build), and rebuild.",
+    "Astro sites served from a non-temporary host: the canonical, og:url, og:image and sitemap entries whose host ends in .vercel.app, .netlify.app or .pages.dev",
+  ],
+  "astro-private-props": [
+    "An Astro island (a component with a client: directive) on this page has props with a field named like a secret, token, password, internal note or admin value.",
+    "Everything passed to a client island is written into the page as readable JSON. Anyone can view source and read it, whatever the component shows.",
+    "Pass the island only the fields it displays. Read the private value on the server (in the frontmatter or an Action) and leave it out of the props.",
+    "Astro sites only, no extra request: each astro-island's props attribute in the HTML is decoded and its field names (not values) matched against secret, token, passw, api key, private, internal, credential, authorization, admin, wholesale and margin; at most 100 islands, 200,000 characters of props each; the evidence lists names, never values",
   ],
   "broken-links": [
     "Links to other pages on the site return an error (404, 410 or 5xx).",
@@ -894,6 +949,42 @@ export const CHECK_TEXT: Readonly<
     "In Stripe, switch to live mode, copy the live publishable key (pk_live_) and put it where the site reads its key, then redeploy and place one small real order to be sure.",
     "The page's HTML and the same-site scripts already read by the leak check are searched for pk_test_ followed by at least 16 letters or digits, not inside a longer word; no new request is sent; pages on vercel.app, netlify.app and pages.dev are skipped",
   ],
+  "sveltekit-data-as-page": [
+    'A page of this SvelteKit site answers with the framework\'s route data (application/json or text/sveltekit-data holding {"type":"data","nodes":...}), or the sitemap lists __data.json addresses.',
+    "Search engines and visitors get a JSON payload instead of a page, or index the payloads: the page can drop out of search while a browser that navigates inside the app looks fine.",
+    "Serve HTML at page addresses (look for a proxy, CDN or adapter rule that rewrites to __data.json), and list only pages in the sitemap.",
+    'SvelteKit sites only, from responses already read: the page\'s own answer with a JSON or text/sveltekit-data content type whose body starts with {"type":"data","nodes"; sitemap entries ending /__data.json or .html__data.json. No extra request',
+  ],
+  "sveltekit-dev-server-live": [
+    "This page was served by `vite dev`: its bootstrap script is __sveltekit_dev, or it loads /@vite/client, /.svelte-kit/ or /node_modules/.vite/ files.",
+    "The dev server serves source files, can expose files from the project folder and is slow and unsupervised. It is not meant to face visitors.",
+    "Build the site (`vite build`) and serve the adapter's output (or `vite preview` for a quick check), not `vite dev`. Check the host's start command.",
+    "Read from the page already fetched, no extra request: the inline script assigns __sveltekit_dev (the name SvelteKit gives its global only under vite dev), or a script or the HTML names /@vite/client, /.svelte-kit/ or /node_modules/.vite/. Paths such as /__inspect are not asked for",
+  ],
+  "sveltekit-draft-public": [
+    "A preview or draft route on this SvelteKit site sets a preview or draft cookie for a request that carries no secret.",
+    "Anyone who visits that address sees unpublished content (prices, announcements, pages nobody approved) as if it were live.",
+    "Make the route check a secret (compare a token from the request with one from your environment) before it sets the cookie, and answer 401 otherwise.",
+    "Probing check: off unless --owner-consent or gaugeline.consent.json; run only on sites you own or have permission to test. SvelteKit sites only: one GET per conventional route (/api/preview, /api/draft, /preview, /draft), no secret sent or guessed; a Set-Cookie whose name contains preview or draft on any hop is a finding, and only its name is shown. The routes and the cookie rule are conventions, not SvelteKit's own (uncited)",
+  ],
+  "sveltekit-preview-canonical": [
+    "A production page of this SvelteKit site gives a preview domain as its canonical address, its og:url or og:image, or in its sitemap.",
+    "Search engines and social cards follow those addresses to the preview, which can show old content or vanish when the preview is cleaned up.",
+    "Build the site's base address from the production domain (often a PUBLIC_ variable that is set only for preview builds, or a canonical written from event.url.origin behind a proxy), and rebuild.",
+    "SvelteKit sites served from a non-temporary host: the canonical, og:url, og:image and sitemap entries whose host ends in .vercel.app, .netlify.app or .pages.dev",
+  ],
+  "sveltekit-private-fields": [
+    "The state SvelteKit embeds in this page, or its __data.json, has fields named like something private (password, token, secret, apiKey, private notes).",
+    "Everything a load function returns is sent to every visitor, whether or not the page shows it. A field that is only used on the server still travels with the page.",
+    "Return only the fields the page shows from load. Keep secrets in $env/static/private or $env/dynamic/private, and read them only in server code.",
+    "SvelteKit sites only. Names only, never values: the property names in the embedded state (the data literal of the inline __sveltekit_ script, read as text, strings skipped) and in the page's own __data.json (one GET of <page>/__data.json, devalue payload walked to depth 6, capped), matched by word against password, passwd, secret, token, private, credential, ssn, salt, bearer, authorization, cvv, iban, apiKey, accessKey, secretKey, privateKey, internalNotes. A payload that cannot be read is could not check. The names are matched by their words, which is a guess (uncited)",
+  ],
+  "sveltekit-vary-missing": [
+    "The same address of this SvelteKit site returns HTML to a browser and JSON to a request with Accept: application/json (a +page and a +server in one route), and neither response lists Accept in its Vary header.",
+    "A shared cache (a CDN, a proxy) then keys both on the address alone and can hand the JSON to a visitor or a search engine: an outage that returns 200.",
+    "SvelteKit adds Vary: Accept to GET responses of a route that has both a +page and a +server. If it is missing, a CDN or proxy is stripping it: keep Vary in its cache key and header settings, or give the endpoint its own address.",
+    "SvelteKit pages only. One extra GET of the same address with Accept: application/json, the only header added, sent on same-origin hops only. Vary tokens from both answers, lower case; Vary: * counts as covering Accept. A 429 or 5xx answer is could not check. The routing rule and the Vary header are in SvelteKit's routing docs (Content negotiation) and runtime/server/respond.js",
+  ],
   "switch-off-still-linked": [
     "You turned a feature off (pre-orders, online ordering, bookings), and a page still has a link to the page that feature runs on.",
     "Visitors click the link, land on a page that no longer works or takes orders you cannot fill, and call or leave. A cached or hard-coded link is the usual cause: the menu and the header were built before the switch was flipped.",
@@ -1229,6 +1320,12 @@ export const CHECK_TEXT: Readonly<
     "Safari shows the banner at the top of the page on iPhone, so visitors install whichever app it names, which here is not the one the page links to.",
     "Set app-id in the apple-itunes-app meta tag to the same id as the App Store link.",
     '<meta name="apple-itunes-app" content="app-id=..."> differs from every apps.apple.com/.../id<digits> link on the page',
+  ],
+  "astro-draft-entry-public": [
+    "An island on this Astro page is handed data with a field named draft set to true: an entry the author marked as not ready.",
+    "Draft entries are meant to be hidden. When a page or island still receives one, its unfinished text is in the HTML for anyone to read.",
+    "Filter drafts out where you read the collection (for example `getCollection('posts', ({ data }) => !data.draft)`), and build the island's props from that filtered list only.",
+    "Astro sites only, no extra request: astro-island props in the HTML, a boolean field named draft or isDraft that is true; Astro has no built-in draft field, so this reads the common schema convention. The evidence gives the island and field name, never a value",
   ],
   "checkout-js-only": [
     "A page shows a price and a buy button, but no button is a link with an address or a submit button in a form with an action.",
@@ -1578,6 +1675,12 @@ export const CHECK_TEXT: Readonly<
     "Keep one: usually the JSON-LD, and remove the itemscope and itemtype attributes from the theme or plugin that adds microdata.",
     "a schema.org @type in JSON-LD is also a microdata itemtype",
   ],
+  "sveltekit-stale-page": [
+    "The build version written into this SvelteKit page differs from the one in the site's _app/version.json, so the page is a copy from an earlier deploy.",
+    "A prerendered or cached page from an old build points at script files that may be gone, and shows old content next to a new site: edits look unpublished.",
+    "Purge the CDN's copy of the page on every deploy, or let it expire (a short s-maxage). A prerendered page is rebuilt on each build, so check the cache in front of it.",
+    "SvelteKit sites only. The version: in the page's inline __sveltekit_ script against the version of one GET of <appDir>/version.json (the folder is read from the page's own module addresses; the file is public and fetched by every visitor's browser). A page whose version cannot be read, or a version file that is missing, is could not check. Pages sampled together are compared with the same file, asked for once per page",
+  ],
   "switch-page-wrong": [
     'You said what a page must tell visitors while a feature is on or off ("order at the bar" while pre-orders are off), and the page does not say it.',
     "A visitor who reaches the page learns nothing: no explanation, no other way to order. They are left guessing whether the site is broken.",
@@ -1902,6 +2005,12 @@ export const CHECK_TEXT: Readonly<
     "If the file is free, nothing to do. If it will ever be sold, serve it from a download route that checks the purchase and hands back a short-lived signed link.",
     "a[href] to a file with a sold file type on a public asset store host, on a page with no price, or whose link text is terms, privacy or policy; one finding per page; the file is never requested; the query string is not printed; a signed address with an expiry is a pass",
   ],
+  "astro-endpoints-listed": [
+    "A page of this Astro site calls Astro Actions (/_actions/<name>) or loads server islands (/_server-islands/<name>). Both are addresses anyone can request, not only your page.",
+    "An action runs for any visitor who posts to it, signed in or not, and a server island answers any GET. Treating them as part of the page, instead of as public endpoints, is how booking and contact handlers end up open.",
+    "Check each action handler: validate the input (an Astro Action takes a Zod schema), check the session inside it, and rate-limit it. For a server island, confirm it renders only what any visitor may see.",
+    "Astro sites only, no extra request (Gaugeline never calls an action, which is a POST): the names come from /_actions/<name> and ?_action=<name> in the page's HTML and /_server-islands/<name> in its scripts. They also show the site runs on the server (an adapter), not as a static build",
+  ],
   blocked: [
     "The page answered with a refusal (401, 403, 429, 503 with Retry-After) or a bot-challenge page instead of its content.",
     "A firewall or bot protection is in front of the site. That isn't a broken site, but it can also stop search engines' and AI assistants' crawlers, and nothing else could be checked.",
@@ -2021,6 +2130,12 @@ export const CHECK_TEXT: Readonly<
     "Search results show the breadcrumb trail; one that starts somewhere else on some pages looks inconsistent and can point at the wrong page.",
     "Start every BreadcrumbList with the configured first item, for example Home at /.",
     "the lowest-position ListItem's name or URL differs from breadcrumbs.firstName / breadcrumbs.firstUrl in gaugeline.schema.json (name case ignored, URL resolved)",
+  ],
+  "sveltekit-data-unshown": [
+    "This SvelteKit page's __data.json has text fields whose text is nowhere on the page a visitor reads.",
+    "Everything load returns is sent to every visitor. A field the page does not show is either unused (so it can go) or used by a script (so it is worth a look): either way it is public.",
+    "Return only what the page needs from load, or move the rest to a route that checks who is asking.",
+    "SvelteKit sites only. One GET of <page>/__data.json (the page's own data, fetched by the framework's client on every navigation; devalue payload walked to depth 6, capped). Text fields of 4 or more characters whose text is not in the page's visible text; names only, never values. Fields named like something private are left to sveltekit-private-fields. A payload or page text that cannot be read in full is could not check. Fields used by scripts or other pages are shown too, so read the list as a prompt (uncited)",
   ],
   "tel-format": [
     "A tel: link has spaces or brackets in the number.",

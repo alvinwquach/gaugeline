@@ -7,6 +7,11 @@ import { appLinkDead } from "./app-link-dead.js";
 import { appNameMismatch } from "./app-name-mismatch.js";
 import { appSmartBannerMismatch } from "./app-smart-banner-mismatch.js";
 import { assetFilePublic } from "./asset-file-public.js";
+import { astroDevToolsPublic } from "./astro-dev-tools-public.js";
+import { astroDraftEntryPublic } from "./astro-draft-entry-public.js";
+import { astroEndpointsListed } from "./astro-endpoints-listed.js";
+import { astroPreviewCanonical } from "./astro-preview-canonical.js";
+import { astroPrivateProps } from "./astro-private-props.js";
 import { blocked } from "./blocked.js";
 import { brokenLinks } from "./broken-links.js";
 import { canonicalElsewhere } from "./canonical-elsewhere.js";
@@ -156,6 +161,14 @@ import { stagingIndexable } from "./staging-indexable.js";
 import { stegaLeak } from "./stega-leak.js";
 import { stripeTestMode } from "./stripe-test-mode.js";
 import { structuredDuplicate } from "./structured-duplicate.js";
+import { sveltekitDataAsPage } from "./sveltekit-data-as-page.js";
+import { sveltekitDataUnshown } from "./sveltekit-data-unshown.js";
+import { sveltekitDevServerLive } from "./sveltekit-dev-server-live.js";
+import { sveltekitDraftPublic } from "./sveltekit-draft-public.js";
+import { sveltekitPreviewCanonical } from "./sveltekit-preview-canonical.js";
+import { sveltekitPrivateFields } from "./sveltekit-private-fields.js";
+import { sveltekitStalePage } from "./sveltekit-stale-page.js";
+import { sveltekitVaryMissing } from "./sveltekit-vary-missing.js";
 import { switchOffStillLinked } from "./switch-off-still-linked.js";
 import { switchPageWrong } from "./switch-page-wrong.js";
 import { tagsDeadRules } from "./tags-dead-rules.js";
@@ -176,6 +189,11 @@ export const PAGE_CHECKS = [
   appNameMismatch,
   appSmartBannerMismatch,
   assetFilePublic,
+  astroDevToolsPublic,
+  astroDraftEntryPublic,
+  astroEndpointsListed,
+  astroPreviewCanonical,
+  astroPrivateProps,
   blocked,
   brokenLinks,
   canonicalElsewhere,
@@ -323,6 +341,14 @@ export const PAGE_CHECKS = [
   stegaLeak,
   stripeTestMode,
   structuredDuplicate,
+  sveltekitDataAsPage,
+  sveltekitDataUnshown,
+  sveltekitDevServerLive,
+  sveltekitDraftPublic,
+  sveltekitPreviewCanonical,
+  sveltekitPrivateFields,
+  sveltekitStalePage,
+  sveltekitVaryMissing,
   switchOffStillLinked,
   switchPageWrong,
   tagsDeadRules,

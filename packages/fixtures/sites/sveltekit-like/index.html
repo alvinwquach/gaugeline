@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en" class="has-js">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta property="og:image" content="{{origin}}/og.png">
+<title>Crag North · Climbing gym and bouldering classes</title>
+<meta name="description" content="An invented climbing gym built with SvelteKit, for Gaugeline's framework checks.">
+<link rel="canonical" href="https://cragnorth-git-main-team.vercel.app/">
+<link rel="modulepreload" href="/_app/immutable/entry/start.4f2a1b.js">
+<link rel="modulepreload" href="/_app/immutable/entry/app.9c8d7e.js">
+</head>
+<body data-sveltekit-preload-data="hover">
+<div style="display: contents">
+<header><nav><a href="/">Crag North</a> <a href="/classes">Classes</a></nav></header>
+<main>
+<h1>Crag North</h1>
+<p>An invented climbing gym for Gaugeline's tests, built with SvelteKit. Day passes, shoe hire,
+beginner bouldering classes and a Thursday youth night on a wall that was reset last weekend.
+Nothing here is a real business or deployment.</p>
+<h2>This week's classes</h2>
+<ul><li>Intro to Bouldering</li><li>Youth Night</li></ul>
+<p>Book a class at the front desk or ask about a first-visit pass. The site was copied from a
+preview build, its canonical address still points at the preview, and its pages come from an
+earlier deploy than the one the site is on now.</p>
+</main>
+</div>
+<script>
+{
+  __sveltekit_1k2m3n = {
+    base: "",
+    version: "1731000000000"
+  };
+
+  const element = document.currentScript.parentElement;
+
+  Promise.all([
+    import("/_app/immutable/entry/start.4f2a1b.js"),
+    import("/_app/immutable/entry/app.9c8d7e.js")
+  ]).then(([kit, app]) => {
+    kit.start(app, element, {
+      node_ids: [0, 2],
+      data: [{type:"data",data:{gymName:"Crag North",classes:["Intro to Bouldering","Youth Night"],coachNotes:"password reset needed for the till",apiToken:"invented-fixture-value"},uses:{}},null],
+      form: null,
+      error: null
+    });
+  });
+}
+</script>
+</body>
+</html>

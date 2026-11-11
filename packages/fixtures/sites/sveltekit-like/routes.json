@@ -1,0 +1,16 @@
+{
+  "/": {
+    "headers": { "x-sveltekit-page": "true" },
+    "ifHeader": {
+      "name": "accept",
+      "value": "application/json",
+      "then": { "headers": { "content-type": "application/json" }, "body": "{\"classes\":[\"Intro to Bouldering\",\"Youth Night\"]}" }
+    }
+  },
+  "/api/preview": {
+    "status": 307,
+    "location": "/",
+    "headers": { "set-cookie": "preview_session=invented-fixture-value; Path=/; HttpOnly; SameSite=Lax" }
+  },
+  "/api/draft": { "status": 401, "body": "Invalid token" }
+}

@@ -15,7 +15,6 @@ const DOCS = { url: "https://dev.vendor.example/query-items", checked: "2026-11-
 
 const items = registerQueryAllow({
   id: "test-items-query",
-  method: "POST",
   host: "api.vendor.example",
   path: "/v2/items/query",
   body: {
@@ -28,7 +27,6 @@ const items = registerQueryAllow({
 });
 const gql = registerQueryAllow({
   id: "test-shop-graphql",
-  method: "POST",
   host: "api.vendor.example",
   path: "/graphql",
   body: { kind: "graphql-query", persisted: ["StoredProducts"] },
@@ -36,7 +34,6 @@ const gql = registerQueryAllow({
 });
 const configured = registerQueryAllow({
   id: "test-configured-graphql",
-  method: "POST",
   host: { configured: "SHOP_GRAPHQL_URL" },
   path: "/graphql",
   body: { kind: "graphql-query" },
@@ -125,7 +122,6 @@ describe("fetcher.query: a POST only to a registered, documented read-only query
       const f = createFetcher({ transport });
       const own: ReadOnlyQueryAllow = {
         id: "shop-everything",
-        method: "POST",
         host: "shop.example",
         path: "/*",
         body: { kind: "json-query", keys: ["name"] },
@@ -183,7 +179,6 @@ describe("fetcher.query: a POST only to a registered, documented read-only query
 
     it("refuses a registration that is malformed, a path named like a write, or a clash", () => {
       const base = {
-        method: "POST",
         host: "api.vendor.example",
         body: { kind: "graphql-query" },
         docs: DOCS,
@@ -196,7 +191,15 @@ describe("fetcher.query: a POST only to a registered, documented read-only query
         registerQueryAllow({ ...base, id: "test-shop-graphql", path: "/other" }),
       ).toThrow(/already registered/);
       // The same entry again (a module loaded twice) is fine and gives back the frozen one.
-      expect(registerQueryAllow({ ...gql })).toBe(gql);
+      expect(
+        registerQueryAllow({
+          id: gql.id,
+          host: gql.host,
+          path: gql.path,
+          body: gql.body,
+          docs: gql.docs,
+        }),
+      ).toBe(gql);
       expect(Object.isFrozen(gql) && Object.isFrozen(gql.body) && Object.isFrozen(gql.docs)).toBe(
         true,
       );
