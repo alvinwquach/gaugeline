@@ -100,6 +100,8 @@
   "images-legacy-wp",
   "invisible-unicode-tags",
   "item-unavailable-shown",
+  "joomla-api-public",
+  "joomla-article-no-page",
   "jsonld-404",
   "jsonld-invalid",
   "lang-attr-mismatch",

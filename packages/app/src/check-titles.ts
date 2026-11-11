@@ -200,6 +200,14 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "The Umbraco Delivery API answers visitors with no key",
     "Security & email",
   ],
+  "joomla-article-no-page": [
+    "A published Joomla article has no page on the live site",
+    "Launch day",
+  ],
+  "joomla-api-public": [
+    "The Joomla Web Services API answers visitors with no token",
+    "Security & email",
+  ],
   "hubspot-page-404": ["A page published in HubSpot answers 404 on the live domain", "Launch day"],
   "hubspot-form-deleted": ["A page embeds a HubSpot form that has been deleted", "Launch day"],
   "app-smart-banner-mismatch": ["The iPhone app banner promotes a different app", "Visitors"],
@@ -1164,6 +1172,18 @@ export const CHECK_TEXT: Readonly<
     "Anyone who finds the route can read every published node as data, including nodes that are published but not linked from the site, and can page through the whole content tree. If the API was meant to be private, its protection is off.",
     "In appsettings.json set Umbraco:CMS:DeliveryApi:PublicAccess to false and keep an ApiKey, then send the key from the server only (never from the browser). If the API is meant to be public (a public API that also has a key, so that preview works, is a normal setup), remove expectPrivate from gaugeline.adapters.json: the key is not touched.",
     "probing check, off without --owner-consent: this check asks the Delivery API's public route as a visitor with no key, so it runs only with --owner-consent (or gaugeline.consent.json), on sites you own or have permission to test; only when the settings say expectPrivate: true (a key being set says nothing: Umbraco's preview needs the key on a public API too); one GET of /umbraco/delivery/api/v2/content?take=1 with no Api-Key header, no cookie and nothing the fetcher adds per address, fields=properties[] and expand=none; a 200 with a list and a numeric total is the finding (the total is a count, never a node); 401 or 403 is a protected API and 404 is an API that is off or not at that address, both with no finding; a 200 that is not the API's list (a page that answers every path) and any other status are could-not-check; the answer is read as a count and nothing else",
+  ],
+  "joomla-article-no-page": [
+    "Joomla says an article is published for every visitor, and the address its page should have answers 404 or 410 on the live site.",
+    "Links, the sitemap and search results point at a page that is not there, and the client's announcement leads to an error page.",
+    "Check that a menu item or a category menu item shows the article, that the menu item is published and its access is Public, and that the article's category is published. If the article should not be public, unpublish it in the Joomla administrator. If every article fails, the address pattern in gaugeline.adapters.json (urls, articles) does not match the site's menu.",
+    "GET /api/index.php/v1/content/articles?filter[state]=1 (Accept: application/vnd.api+json, X-Joomla-Token) in windows of up to 100, stepped by the number that came back; the count is taken first with a window of one article (meta.total-pages is a page count) and checked with a window of two, and a list is complete only when every counted article was seen; articles at a view level other than Public (access 1), with a start time in the future, with a finish time in the past, or in one language (not All) are counted and not asked; then one GET of the live address, which is the settings' urls pattern filled with the alias or id (Joomla's API gives no address), redirects followed. A final 404 or 410 is the finding; any other answer that is not a 2xx is could-not-check for that page. With no pattern for articles nothing is asked and that is could-not-check. Ids and aliases only: a field is requested only when the settings name it in fingerprint, and none is used for this.",
+  ],
+  "joomla-api-public": [
+    "gaugeline.adapters.json says the Web Services API is meant to be private (expectPrivate: true), and a plain GET of its article list with no token is answered with a list of articles.",
+    "Anyone who finds the route can read every article the Public view level can see as data, including articles that are not linked from the site, and can page through all of them. If the API was meant to be private, its protection is off.",
+    "In the Joomla administrator open System, Plugins and switch off the Web Services plugins you do not use (Web Services - Content, for articles), or find the extension that registered a public route (Joomla's own routes need a token). Send the token from the server only, never from the browser. If the API is meant to be public, remove expectPrivate from gaugeline.adapters.json: the token is not touched.",
+    "probing check, off without --owner-consent: this check asks the Web Services API's article list as a visitor with no token, so it runs only with --owner-consent (or gaugeline.consent.json), on sites you own or have permission to test; only when the settings say expectPrivate: true (a token being set says nothing); one GET of /api/index.php/v1/content/articles?page[limit]=1 with Accept: application/vnd.api+json and no X-Joomla-Token, no cookie and nothing the fetcher adds per address; a 200 with a JSON:API list (data) and a numeric meta.total-pages is the finding (the number is a count, never an article); 401 or 403 is a route that needs a token and 404 is an API that is off or not at that address, both with no finding; a 200 that is not the API's list (a page that answers every path) and any other status are could-not-check; the answer is read as a count and nothing else",
   ],
   "hubspot-page-404": [
     "HubSpot says a site page, landing page or blog post is published on this domain, and the address it gives for it answers 404 or 410 on the live site.",

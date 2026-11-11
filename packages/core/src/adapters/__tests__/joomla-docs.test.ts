@@ -74,6 +74,18 @@ describe("docs/integrations/joomla.md", () => {
     if (!TODO.test(outputs[0] ?? "")) expect(outputs[0]).toBe(await joomlaReads());
   });
 
+  it("names both checks, and says the probing one needs consent and a site you own", () => {
+    expect(page).toContain("joomla-article-no-page");
+    expect(page).toContain("joomla-api-public");
+    expect(page).toContain("--owner-consent");
+    expect(page).toContain("only on sites you own or have permission to test");
+  });
+
+  it("says plainly that Joomla has no read-only token and that the docs sites were not reached", () => {
+    expect(page).toContain("Joomla has no read-only token type");
+    expect(page).toContain("could not be reached");
+  });
+
   it("shows no text from the site's content", () => {
     for (const marker of Object.values(JOOMLA_MARKERS)) expect(page).not.toContain(marker);
   });
