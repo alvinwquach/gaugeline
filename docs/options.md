@@ -182,9 +182,12 @@ npx gaugeline yoursite.com --since last
   last time lost content, list items or structured data, or is gone (see
   [Page snapshots](/docs/guides/page-snapshots)). New pages, sections and items are printed on stderr
   under "Since the last run", never as findings.
+- `script-changed`, `csp-loosened` and `security-header-loosened`: a third-party script is new or lost
+  its integrity attribute, the Content-Security-Policy allows more, or another security header is
+  gone or weaker (see [Script and header baseline](/docs/guides/script-baseline)).
 
 The run is saved in `.gaugeline/last-run/<host>.json` in the folder you run from: hosts, amounts and
-provider names, word counts, headings and item addresses only, never form values, page text or keys. Without `--since` nothing is read or
+provider names, word counts, headings, item addresses, third-party script hosts and paths and security header directives only, never form values, page text or keys. Without `--since` nothing is read or
 written. The first run prints `nothing to compare yet` on stderr and saves. A file Gaugeline can't
 read is replaced with a warning. A file written by a newer version (another schema) is left alone,
 and nothing is compared. Delete the folder to start again. Two forms with no id or name that swap

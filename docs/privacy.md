@@ -363,6 +363,20 @@ site when you give `--old`.
   followed as instructions or sent anywhere, and a title that reads like an instruction changes nothing.
 - **No secrets, no model.** The checks are plain rules: the same two sites give the same findings.
 
+### Script and header baseline
+
+The script and header checks ([Script and header baseline](guides/script-baseline.md)) make no request
+of their own. They read the page the run already loaded.
+
+- **Read.** The `src` of each script tag, whether it has an `integrity` attribute, and the response
+  headers of the page itself. No script is downloaded and nothing is sent to a script's host.
+- **Kept with `--since last`** in `.gaugeline/last-run/<host>.json`: the host and path of each
+  third-party script (the query string is cut off), integrity present or not, and nine security
+  headers as header name and directive lists. A nonce or a hash in a policy is kept as one marker.
+- **Never kept.** Page text, query strings, nonces, cookies, keys and every other header.
+- **The known-bad list** is a data file in the package. It is read on this computer and nothing is
+  looked up online.
+
 ### Saving the requests (--save-requests)
 
 By default a run keeps what it asked for in memory and writes only the report. `--save-requests <file>`
