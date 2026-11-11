@@ -100,12 +100,31 @@ describe("walking skeleton: integration (the packed tarball)", () => {
     const manifest = JSON.parse(
       readFileSync(join(cliDir, "dist/client/client-manifest.json"), "utf8"),
     ) as { path: string }[];
-    expect(info.files.map((f) => f.path).sort()).toEqual(
+    // The bundle is split into chunks (tsup `splitting`): dist/index.js, the start-up guard, and flat chunk
+    // files beside it, one for each content adapter (loaded on use, see adapters/registry.ts) and shared ones.
+    // Their names carry content hashes, so they are matched by shape and the adapters by their module name.
+    const chunk = /^dist\/[A-Za-z0-9_-]+\.js$/;
+    const paths = info.files.map((f) => f.path);
+    const chunks = paths.filter((p) => chunk.test(p));
+    expect(chunks).toContain("dist/index.js");
+    for (const adapter of [
+      "sanity",
+      "sitemap-feed",
+      "wix",
+      "wordpress",
+      "webflow",
+      "framer",
+      "builders",
+    ])
+      expect(
+        chunks.some((c) => c.startsWith(`dist/${adapter}-`)),
+        `${adapter} has its own chunk`,
+      ).toBe(true);
+    expect(paths.filter((p) => !chunk.test(p)).sort()).toEqual(
       [
         "LICENSE",
         "README.md",
         "THIRD_PARTY_LICENSES.md",
-        "dist/index.js",
         "dist/client/client-manifest.json",
         ...manifest.map((e) => `dist/client/${e.path}`),
         "package.json",

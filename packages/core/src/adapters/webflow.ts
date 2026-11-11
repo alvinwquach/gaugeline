@@ -11,7 +11,6 @@ import { fillUrlTemplate, hashValue } from "./fingerprint.js";
 import {
   AdapterCouldNotCheck,
   AdapterRateLimitedError,
-  type AdapterDescription,
   type AdapterSettings,
   type ContentAdapter,
   type PublishedDoc,
@@ -19,16 +18,8 @@ import {
   type TypeCount,
 } from "./types.js";
 
-/**
- * Webflow asks for a site token whose scopes are `sites:read` and `cms:read` and nothing else, so the
- * token can read and cannot change anything. The page is Gaugeline's own: it lists the endpoints used
- * and how to make the token.
- */
-export const WEBFLOW_DESCRIPTION: AdapterDescription = {
-  name: "Webflow",
-  docsUrl: "https://gaugeline.dev/docs/integrations/webflow",
-  keyKind: "read-only",
-};
+import { WEBFLOW_DESCRIPTION } from "./meta.js";
+export { WEBFLOW_DESCRIPTION };
 
 export const WEBFLOW_TOKEN = "WEBFLOW_TOKEN";
 export const WEBFLOW_SITE_ID = "WEBFLOW_SITE_ID";

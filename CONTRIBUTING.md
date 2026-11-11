@@ -57,7 +57,19 @@ Sanity (`adapters/sanity.ts`) is the worked example. The rules are the same for 
 To add one, in this order:
 
 1. Write the adapter in `packages/core/src/adapters/<cms>.ts`, and add it to `BUILT_ADAPTERS` in
-   `registry.ts` (and take it out of `PLANNED_ADAPTERS`).
+   `registry.ts` (and take it out of `PLANNED_ADAPTERS`). **The loader rule:** an entry is metadata plus a
+   loader, and nothing imports your module statically. Put the adapter's `AdapterDescription` (and the names
+   of the environment variables a caller needs before loading it) in `adapters/meta.ts`, and give the registry
+   entry `describe: <CMS>_DESCRIPTION` and `load: lazy("<id>", async () => { const { create<Cms>Adapter } =
+await import("./<cms>.js"); return (c, settings) => create<Cms>Adapter({ ... }); })`. The bundler then
+   puts each adapter in its own chunk, so a WordPress-only run never loads the Shopify code and start-up does
+   not grow with the number of adapters (`scripts/__tests__/startup.test.ts` runs the built bin and checks it).
+   Code outside `adapters/<cms>*.ts` (the CLI, `core/src/index.ts`, the check registries, the docs scripts)
+   gets an adapter with `createAdapter(built, context, settings)` or `createAdapters(config, context)`, which
+   are `async`, and never with `import { create<Cms>Adapter } from ...`; `adapters/index.ts` exports types
+   and metadata, not adapter code. `adapters/__tests__/lazy.test.ts` fails the build if a file outside the
+   adapter's own module imports it by a static `import`. Tests inside `adapters/__tests__` may import the
+   module directly.
 2. Add a recorded-response fixture (invented content, no real client data; the Sanity one is
    `adapters/__tests__/sanity-fixture.ts`) and one `ContractEntry` for it in
    `adapters/__tests__/entries.ts`. The contract suite (`contract.test.ts`, one `describe.each` over

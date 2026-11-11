@@ -2,26 +2,14 @@ import { createSitemapFeedAdapter } from "./sitemap-feed.js";
 import type { Fetcher } from "../fetcher.js";
 import {
   AdapterCouldNotCheck,
-  type AdapterDescription,
   type AdapterSettings,
   type ContentAdapter,
   type PublishedDoc,
   type PublishedOptions,
 } from "./types.js";
 
-/**
- * The Wix adapter asks for no key: it reads what the live site publishes, the same files every visitor can
- * read. `keyKind` is "read-only" because nothing it does can change anything; `noKey` makes the run header say
- * there is no key at all. Wix does have a key that can be limited to read permissions (an API key with only
- * the Wix Data read permissions ticked), and docs/integrations/wix.md says how to make it; Gaugeline does not
- * ask for it yet, because the call that key is for is not one Gaugeline may send (see WIX_CMS_READ_PATH).
- */
-export const WIX_DESCRIPTION: AdapterDescription = {
-  name: "Wix",
-  docsUrl: "https://gaugeline.dev/docs/integrations/wix",
-  keyKind: "read-only",
-  noKey: true,
-};
+import { WIX_DESCRIPTION } from "./meta.js";
+export { WIX_DESCRIPTION };
 
 /**
  * Why Wix's CMS items are not read, in one place so the answer, the docs page and the tests say the same

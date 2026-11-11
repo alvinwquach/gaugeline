@@ -18,56 +18,35 @@ export {
   BUILT_ADAPTERS,
   PLANNED_ADAPTERS,
   adaptersOrDefault,
+  createAdapter,
   createAdapters,
+  onAdapterLoad,
   resolveAdapters,
 } from "./registry.js";
-export type { AdapterContext, BuiltAdapter, PlannedAdapter } from "./registry.js";
+export type { AdapterContext, AdapterFactory, BuiltAdapter, PlannedAdapter } from "./registry.js";
+// Metadata only: what each adapter says about itself and the names of the variables it reads. The adapters'
+// own code is reached through the loaders in registry.ts and never exported from here, so importing the
+// engine does not load it (see the loader rule in registry.ts).
 export {
+  FRAMER_DESCRIPTION,
+  SANITY_DESCRIPTION,
   SITEMAP_FEED_DESCRIPTION,
-  FEED_PATHS,
-  SITEMAP_FEED_LIMITS,
-  SITEMAP_PATHS,
-  TOP_LEVEL,
-  createSitemapFeedAdapter,
-} from "./sitemap-feed.js";
-export type { SitemapFeedOptions } from "./sitemap-feed.js";
-export {
-  BUILDERS,
-  BUILDER_IDS,
-  builderById,
-  builderCannotRead,
-  builderDescription,
-  createBuilderAdapter,
-  suggestBuilder,
-} from "./builders.js";
-export type { BuilderAdapterOptions, BuilderPlatform, BuilderSuggestion } from "./builders.js";
-export { FRAMER_CMS_READ_PATH, FRAMER_DESCRIPTION, createFramerAdapter } from "./framer.js";
-export type { FramerAdapterOptions } from "./framer.js";
-export { SANITY_DESCRIPTION, SANITY_PAGE_SIZE, createSanityAdapter } from "./sanity.js";
-export type { SanityAdapterOptions } from "./sanity.js";
-export { WIX_CMS_READ_PATH, WIX_DESCRIPTION, createWixAdapter } from "./wix.js";
-export type { WixAdapterOptions } from "./wix.js";
-export {
+  WEBFLOW_DESCRIPTION,
+  WIX_DESCRIPTION,
   WORDPRESS_APP_PASSWORD,
-  WORDPRESS_COUNT_CAP,
   WORDPRESS_DESCRIPTION,
   WORDPRESS_ENV_VARS,
-  WORDPRESS_PAGE_SIZE,
   WORDPRESS_URL,
   WORDPRESS_USER,
-  createWordPressAdapter,
-} from "./wordpress.js";
+} from "./meta.js";
+export { BUILDERS, BUILDER_IDS, builderById, builderDescription } from "./builder-platforms.js";
+export type { BuilderPlatform } from "./builder-platforms.js";
+export type { SitemapFeedOptions } from "./sitemap-feed.js";
+export type { BuilderAdapterOptions, BuilderSuggestion } from "./builders.js";
+export type { FramerAdapterOptions } from "./framer.js";
+export type { SanityAdapterOptions } from "./sanity.js";
+export type { WixAdapterOptions } from "./wix.js";
 export type { WordPressAdapter, WordPressAdapterOptions } from "./wordpress.js";
-export {
-  WEBFLOW_API,
-  WEBFLOW_DESCRIPTION,
-  WEBFLOW_LIMITS,
-  WEBFLOW_PAGE_SIZE,
-  WEBFLOW_SITE_ID,
-  WEBFLOW_STAGED_TOLERANCE_MS,
-  WEBFLOW_TOKEN,
-  createWebflowAdapter,
-} from "./webflow.js";
 export type {
   WebflowAdapter,
   WebflowAdapterOptions,
@@ -75,7 +54,6 @@ export type {
   WebflowItemState,
   WebflowStagedItem,
 } from "./webflow.js";
-export { WEBFLOW_READ_LIMITS, readWebflow } from "./webflow-read.js";
 export type {
   PageAnswer,
   PageRead,

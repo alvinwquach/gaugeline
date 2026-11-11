@@ -20,7 +20,6 @@ import {
 import {
   AdapterCouldNotCheck,
   AdapterRateLimitedError,
-  type AdapterDescription,
   type AdapterSettings,
   type ContentAdapter,
   type PublishedDoc,
@@ -28,17 +27,8 @@ import {
   type TypeCount,
 } from "./types.js";
 
-/**
- * The sitemap and feed adapter asks for no key: it reads the files a site already hands every visitor.
- * `keyKind` is "read-only" because nothing it does can change anything; `noKey` makes the run header
- * say there is no key at all.
- */
-export const SITEMAP_FEED_DESCRIPTION: AdapterDescription = {
-  name: "Sitemap and feeds",
-  docsUrl: "https://gaugeline.dev/docs/integrations/sitemap-feed",
-  keyKind: "read-only",
-  noKey: true,
-};
+import { SITEMAP_FEED_DESCRIPTION } from "./meta.js";
+export { SITEMAP_FEED_DESCRIPTION };
 
 /**
  * What one read may cost. They are promises to the site being read, like LIMITS, and a read that

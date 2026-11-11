@@ -1,5 +1,5 @@
 import * as z from "zod";
-import { BUILDER_IDS } from "./builders.js";
+import { BUILDER_IDS } from "./builder-platforms.js";
 import { isUrlTemplate } from "./fingerprint.js";
 
 const ID = /^[a-z][a-z0-9-]{0,30}$/;

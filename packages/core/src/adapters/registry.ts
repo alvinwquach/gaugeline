@@ -2,14 +2,22 @@ import type { Env } from "../connectors/types.js";
 import { ConfigError } from "../errors.js";
 import type { Fetcher } from "../fetcher.js";
 import type { AdaptersConfig } from "./config.js";
-import { BUILDERS, builderDescription, createBuilderAdapter } from "./builders.js";
-import { FRAMER_DESCRIPTION, createFramerAdapter } from "./framer.js";
-import { SANITY_DESCRIPTION, createSanityAdapter } from "./sanity.js";
-import { SITEMAP_FEED_DESCRIPTION, createSitemapFeedAdapter } from "./sitemap-feed.js";
-import { WIX_DESCRIPTION, createWixAdapter } from "./wix.js";
-import { WORDPRESS_DESCRIPTION, createWordPressAdapter } from "./wordpress.js";
+import { BUILDERS, builderDescription } from "./builder-platforms.js";
+import {
+  FRAMER_DESCRIPTION,
+  SANITY_DESCRIPTION,
+  SITEMAP_FEED_DESCRIPTION,
+  WEBFLOW_DESCRIPTION,
+  WIX_DESCRIPTION,
+  WORDPRESS_DESCRIPTION,
+} from "./meta.js";
 import type { AdapterDescription, AdapterSettings, ContentAdapter } from "./types.js";
-import { WEBFLOW_DESCRIPTION, createWebflowAdapter } from "./webflow.js";
+
+// LOADER RULE: this file, index.ts and every other file outside adapters/<id>*.ts reach an adapter's
+// code only through the `import()` in its loader below, never through a static import (a type-only
+// import is fine: it is erased). The bundler then keeps each adapter out of start-up, so a run that
+// uses WordPress never loads the Shopify code and start-up does not grow with the adapter count.
+// adapters/__tests__/lazy.test.ts enforces it.
 
 export interface AdapterContext {
   env: Env;
@@ -19,16 +27,60 @@ export interface AdapterContext {
   site?: string;
 }
 
-/** An adapter that is built. Its row in docs/integrations is "built" and a test keeps the two in step. */
+/** Builds an adapter over this environment and fetcher: what a loader gives back. */
+export type AdapterFactory = (
+  context: AdapterContext,
+  settings?: AdapterSettings,
+) => ContentAdapter;
+
+/**
+ * An adapter that is built. Its row in docs/integrations is "built" and a test keeps the two in step.
+ * `describe` is metadata, known without loading the adapter (the docs table and the run header read it).
+ * `load` imports the adapter's module, once, the first time it is used.
+ */
 export interface BuiltAdapter {
-  /** What it says about itself, known without building it (the docs table and the run header read it). */
   describe: AdapterDescription;
   id: string;
-  create(context: AdapterContext, settings?: AdapterSettings): ContentAdapter;
+  load(): Promise<AdapterFactory>;
+}
+
+type LoadListener = (id: string) => void;
+const loadListeners = new Set<LoadListener>();
+
+/**
+ * Calls `listener` with the id of each adapter the first time its code is loaded. The CLI wires it to
+ * stderr when GAUGELINE_TRACE_ADAPTER_LOADS=1, which is how the start-up test proves that `--version`,
+ * `--help` and a run that names one adapter load no other. Returns a function that removes it.
+ */
+export function onAdapterLoad(listener: LoadListener): () => void {
+  loadListeners.add(listener);
+  return () => void loadListeners.delete(listener);
+}
+
+/** A loader that imports once, tells the listeners, and tries again if the import failed. */
+function lazy(
+  id: string,
+  importFactory: () => Promise<AdapterFactory>,
+): () => Promise<AdapterFactory> {
+  let loading: Promise<AdapterFactory> | undefined;
+  return () => {
+    loading ??= importFactory().then(
+      (factory) => {
+        for (const listener of loadListeners) listener(id);
+        return factory;
+      },
+      (err: unknown) => {
+        loading = undefined;
+        throw err;
+      },
+    );
+    return loading;
+  };
 }
 
 /**
- * The adapters that exist. A new adapter adds one line here, one entry to the contract suite
+ * The adapters that exist. A new adapter adds one entry here (metadata plus a loader that dynamically
+ * imports its module: never a static import, see the loader rule above), one entry to the contract suite
  * (adapters/__tests__/entries.ts) and its row in docs/integrations/index.md.
  */
 export const BUILT_ADAPTERS: ReadonlyMap<string, BuiltAdapter> = new Map<string, BuiltAdapter>([
@@ -37,13 +89,16 @@ export const BUILT_ADAPTERS: ReadonlyMap<string, BuiltAdapter> = new Map<string,
     {
       id: "sanity",
       describe: SANITY_DESCRIPTION,
-      create: (c, settings) =>
-        createSanityAdapter({
-          env: c.env,
-          fetcher: c.fetcher,
-          settings,
-          ...(c.sleep ? { sleep: c.sleep } : {}),
-        }),
+      load: lazy("sanity", async () => {
+        const { createSanityAdapter } = await import("./sanity.js");
+        return (c, settings) =>
+          createSanityAdapter({
+            env: c.env,
+            fetcher: c.fetcher,
+            settings,
+            ...(c.sleep ? { sleep: c.sleep } : {}),
+          });
+      }),
     },
   ],
   [
@@ -51,13 +106,16 @@ export const BUILT_ADAPTERS: ReadonlyMap<string, BuiltAdapter> = new Map<string,
     {
       id: "sitemap-feed",
       describe: SITEMAP_FEED_DESCRIPTION,
-      create: (c, settings) =>
-        createSitemapFeedAdapter({
-          fetcher: c.fetcher,
-          site: c.site,
-          settings,
-          ...(c.sleep ? { sleep: c.sleep } : {}),
-        }),
+      load: lazy("sitemap-feed", async () => {
+        const { createSitemapFeedAdapter } = await import("./sitemap-feed.js");
+        return (c, settings) =>
+          createSitemapFeedAdapter({
+            fetcher: c.fetcher,
+            site: c.site,
+            settings,
+            ...(c.sleep ? { sleep: c.sleep } : {}),
+          });
+      }),
     },
   ],
   [
@@ -65,13 +123,16 @@ export const BUILT_ADAPTERS: ReadonlyMap<string, BuiltAdapter> = new Map<string,
     {
       id: "wix",
       describe: WIX_DESCRIPTION,
-      create: (c, settings) =>
-        createWixAdapter({
-          fetcher: c.fetcher,
-          site: c.site,
-          settings,
-          ...(c.sleep ? { sleep: c.sleep } : {}),
-        }),
+      load: lazy("wix", async () => {
+        const { createWixAdapter } = await import("./wix.js");
+        return (c, settings) =>
+          createWixAdapter({
+            fetcher: c.fetcher,
+            site: c.site,
+            settings,
+            ...(c.sleep ? { sleep: c.sleep } : {}),
+          });
+      }),
     },
   ],
   [
@@ -79,13 +140,16 @@ export const BUILT_ADAPTERS: ReadonlyMap<string, BuiltAdapter> = new Map<string,
     {
       id: "wordpress",
       describe: WORDPRESS_DESCRIPTION,
-      create: (c, settings) =>
-        createWordPressAdapter({
-          env: c.env,
-          fetcher: c.fetcher,
-          settings,
-          ...(c.sleep ? { sleep: c.sleep } : {}),
-        }),
+      load: lazy("wordpress", async () => {
+        const { createWordPressAdapter } = await import("./wordpress.js");
+        return (c, settings) =>
+          createWordPressAdapter({
+            env: c.env,
+            fetcher: c.fetcher,
+            settings,
+            ...(c.sleep ? { sleep: c.sleep } : {}),
+          });
+      }),
     },
   ],
   [
@@ -93,13 +157,16 @@ export const BUILT_ADAPTERS: ReadonlyMap<string, BuiltAdapter> = new Map<string,
     {
       id: "webflow",
       describe: WEBFLOW_DESCRIPTION,
-      create: (c, settings) =>
-        createWebflowAdapter({
-          env: c.env,
-          fetcher: c.fetcher,
-          settings,
-          ...(c.sleep ? { sleep: c.sleep } : {}),
-        }),
+      load: lazy("webflow", async () => {
+        const { createWebflowAdapter } = await import("./webflow.js");
+        return (c, settings) =>
+          createWebflowAdapter({
+            env: c.env,
+            fetcher: c.fetcher,
+            settings,
+            ...(c.sleep ? { sleep: c.sleep } : {}),
+          });
+      }),
     },
   ],
   [
@@ -107,13 +174,16 @@ export const BUILT_ADAPTERS: ReadonlyMap<string, BuiltAdapter> = new Map<string,
     {
       id: "framer",
       describe: FRAMER_DESCRIPTION,
-      create: (c, settings) =>
-        createFramerAdapter({
-          fetcher: c.fetcher,
-          site: c.site,
-          settings,
-          ...(c.sleep ? { sleep: c.sleep } : {}),
-        }),
+      load: lazy("framer", async () => {
+        const { createFramerAdapter } = await import("./framer.js");
+        return (c, settings) =>
+          createFramerAdapter({
+            fetcher: c.fetcher,
+            site: c.site,
+            settings,
+            ...(c.sleep ? { sleep: c.sleep } : {}),
+          });
+      }),
     },
   ],
   // One adapter id per hosted builder with no content API (adapters/builders.ts): the live site only.
@@ -122,13 +192,16 @@ export const BUILT_ADAPTERS: ReadonlyMap<string, BuiltAdapter> = new Map<string,
     {
       id: platform.id,
       describe: builderDescription(platform),
-      create: (c, settings) =>
-        createBuilderAdapter(platform, {
-          fetcher: c.fetcher,
-          site: c.site,
-          settings,
-          ...(c.sleep ? { sleep: c.sleep } : {}),
-        }),
+      load: lazy(platform.id, async () => {
+        const { createBuilderAdapter } = await import("./builders.js");
+        return (c, settings) =>
+          createBuilderAdapter(platform, {
+            fetcher: c.fetcher,
+            site: c.site,
+            settings,
+            ...(c.sleep ? { sleep: c.sleep } : {}),
+          });
+      }),
     },
   ]),
 ]);
@@ -172,9 +245,25 @@ export function resolveAdapters(config: AdaptersConfig): BuiltAdapter[] {
   });
 }
 
-/** The adapters a settings file names, built over this environment and fetcher. */
-export function createAdapters(config: AdaptersConfig, context: AdapterContext): ContentAdapter[] {
-  return resolveAdapters(config).map((built, i) => built.create(context, config.adapters[i]));
+/** One built adapter, loaded now and built over this environment and fetcher. */
+export async function createAdapter(
+  built: BuiltAdapter,
+  context: AdapterContext,
+  settings?: AdapterSettings,
+): Promise<ContentAdapter> {
+  return (await built.load())(context, settings);
+}
+
+/**
+ * The adapters a settings file names, built over this environment and fetcher. Only the adapters it
+ * names are loaded, and none until this is called.
+ */
+export async function createAdapters(
+  config: AdaptersConfig,
+  context: AdapterContext,
+): Promise<ContentAdapter[]> {
+  const built = resolveAdapters(config);
+  return Promise.all(built.map((b, i) => createAdapter(b, context, config.adapters[i])));
 }
 
 /**
@@ -183,10 +272,10 @@ export function createAdapters(config: AdaptersConfig, context: AdapterContext):
  * works on a site built on any CMS. It needs only the site's address; with none there is no adapter
  * and nothing is requested.
  */
-export function adaptersOrDefault(
+export async function adaptersOrDefault(
   config: AdaptersConfig | undefined,
   context: AdapterContext,
-): ContentAdapter[] {
+): Promise<ContentAdapter[]> {
   if (config !== undefined) return createAdapters(config, context);
   if (context.site === undefined || context.site.trim() === "") return [];
   return createAdapters({ adapters: [{ id: "sitemap-feed" }] }, context);

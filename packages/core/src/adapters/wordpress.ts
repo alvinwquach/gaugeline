@@ -14,7 +14,6 @@ import { fillUrlTemplate, hashValue } from "./fingerprint.js";
 import {
   AdapterCouldNotCheck,
   AdapterRateLimitedError,
-  type AdapterDescription,
   type AdapterMember,
   type AdapterSettings,
   type ContentAdapter,
@@ -23,24 +22,16 @@ import {
   type TypeCount,
 } from "./types.js";
 
-/**
- * WordPress asks for no key at all to read what is published: the REST API lists published posts, pages and
- * custom types to any visitor. A key is asked for only for drafts and members, and WordPress has no read-only
- * key: an application password acts with the role of the user it belongs to. So the narrowest key is an
- * application password on a dedicated user with the lowest role that does the job, and the kind is "scoped".
- */
-export const WORDPRESS_DESCRIPTION: AdapterDescription = {
-  name: "WordPress",
-  docsUrl: "https://gaugeline.dev/docs/integrations/wordpress",
-  keyKind: "scoped",
-};
+import { WORDPRESS_DESCRIPTION } from "./meta.js";
+export { WORDPRESS_DESCRIPTION };
 
-export const WORDPRESS_URL = "WORDPRESS_URL";
-export const WORDPRESS_USER = "WORDPRESS_USER";
-export const WORDPRESS_APP_PASSWORD = "WORDPRESS_APP_PASSWORD";
-
-/** Every variable the WordPress adapter may read. Only the last two hold a key, and only for drafts and members. */
-export const WORDPRESS_ENV_VARS = [WORDPRESS_URL, WORDPRESS_USER, WORDPRESS_APP_PASSWORD] as const;
+import {
+  WORDPRESS_APP_PASSWORD,
+  WORDPRESS_ENV_VARS,
+  WORDPRESS_URL,
+  WORDPRESS_USER,
+} from "./meta.js";
+export { WORDPRESS_APP_PASSWORD, WORDPRESS_ENV_VARS, WORDPRESS_URL, WORDPRESS_USER };
 
 /** Items asked for in one request: the most the REST API allows. */
 export const WORDPRESS_PAGE_SIZE = 100;

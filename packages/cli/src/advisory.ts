@@ -5,7 +5,8 @@ import {
   checkAdvisory,
   createDnsReader,
   createFetcher,
-  createWordPressAdapter,
+  BUILT_ADAPTERS,
+  createAdapter,
   freezeEnv,
   renderAdvisoryNote,
   renderAdvisoryTerminal,
@@ -13,6 +14,7 @@ import {
   type Fetcher,
   type FetcherOptions,
   type Outcome,
+  type WordPressAdapter,
   type WordPressData,
 } from "@gaugeline/core";
 import { readAdaptersConfig } from "./schema-config.js";
@@ -78,8 +80,11 @@ async function readInstalled(
       );
     return undefined;
   }
-  const adapter = createWordPressAdapter({ env, fetcher, settings: entry });
   try {
+    // Loaded here, the first time this run needs it (the registry's loader), and not at start-up.
+    const built = BUILT_ADAPTERS.get("wordpress");
+    if (!built) return undefined;
+    const adapter = (await createAdapter(built, { env, fetcher }, entry)) as WordPressAdapter;
     return await adapter.installed();
   } catch (err) {
     if (err instanceof AdapterCouldNotCheck || err instanceof AdapterRateLimitedError) {

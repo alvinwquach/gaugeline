@@ -16,7 +16,6 @@ import { fillUrlTemplate, hashValue } from "./fingerprint.js";
 import {
   AdapterCouldNotCheck,
   AdapterRateLimitedError,
-  type AdapterDescription,
   type AdapterMember,
   type AdapterSettings,
   type ContentAdapter,
@@ -25,15 +24,8 @@ import {
   type TypeCount,
 } from "./types.js";
 
-/**
- * Sanity asks for a token with the Viewer role (read only); a public dataset needs none. The page is
- * Gaugeline's own: it lists the endpoints used and how to make the token.
- */
-export const SANITY_DESCRIPTION: AdapterDescription = {
-  name: "Sanity",
-  docsUrl: "https://gaugeline.dev/docs/private-datasets",
-  keyKind: "read-only",
-};
+import { SANITY_DESCRIPTION } from "./meta.js";
+export { SANITY_DESCRIPTION };
 
 /** Items asked for in one request. A GET carries the query in its address, so the page stays small. */
 export const SANITY_PAGE_SIZE = 100;
