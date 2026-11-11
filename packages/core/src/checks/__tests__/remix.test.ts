@@ -155,7 +155,7 @@ describe("remix: integration (the remix-like and remix-dev fixtures)", () => {
     try {
       const { result } = await checkSite({
         address: site.origin,
-        fetcher: createFetcher({ hosts: site.hosts }),
+        fetcher: createFetcher({ allowPrivate: true }),
         only: IDS,
         ownerConsent: true,
       });
@@ -163,7 +163,7 @@ describe("remix: integration (the remix-like and remix-dev fixtures)", () => {
       expect(Object.keys(by).sort()).toEqual(
         IDS.filter((i) => i !== "remix-dev-tools-live").sort(),
       );
-      expect(by["remix-draft-public"]).toBe("/api/preview set preview_session with no secret");
+      expect(by["remix-draft-public"]).toBe("/preview set preview_session with no secret");
       expect(by["remix-preview-canonical"]).toBe(
         "canonical https://marrowlane-git-main-studio.vercel.app/ is on a preview domain",
       );
@@ -183,11 +183,11 @@ describe("remix: integration (the remix-like and remix-dev fixtures)", () => {
     try {
       const { result } = await checkSite({
         address: site.origin,
-        fetcher: createFetcher({ hosts: site.hosts }),
+        fetcher: createFetcher({ allowPrivate: true }),
         only: ["remix-draft-public"],
       });
       expect(result.findings).toEqual([]);
-      expect([...site.hits.keys()].filter((k) => k.startsWith("/api/"))).toEqual([]);
+      expect([...site.hits.keys()].filter((k) => k === "/preview" || k === "/draft")).toEqual([]);
       expect(JSON.stringify(result.couldNotCheck)).toMatch(/--owner-consent/);
     } finally {
       await site.close();
@@ -199,7 +199,7 @@ describe("remix: integration (the remix-like and remix-dev fixtures)", () => {
     try {
       const { result } = await checkSite({
         address: site.origin,
-        fetcher: createFetcher({ hosts: site.hosts }),
+        fetcher: createFetcher({ allowPrivate: true }),
         only: ["remix-dev-tools-live"],
       });
       expect(result.findings.map((f) => f.evidence)).toEqual([

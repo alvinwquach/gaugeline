@@ -86,6 +86,17 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "Assistants find two different names for your business",
     "Search & sharing",
   ],
+  "remix-data-as-page": ["A page address returns Remix data, not a page", "Search & sharing"],
+  "remix-dev-tools-live": ["The live site is a development server", "Security & email"],
+  "remix-draft-public": ["Anyone can switch on preview mode", "Launch day"],
+  "remix-preview-canonical": [
+    "The live Remix site points search engines at a preview deployment",
+    "Launch day",
+  ],
+  "remix-private-fields": [
+    "The data sent with a page has fields that look private",
+    "Security & email",
+  ],
   "robots-block": ["Your robots.txt tells every search engine to stay away", "Search & sharing"],
   "rsc-served-as-page": ["The page address returns app data, not a page", "Search & sharing"],
   "rsc-vary-missing": [
@@ -786,6 +797,36 @@ export const CHECK_TEXT: Readonly<
     "Assistants match a question to a business by name. Two names can make them treat one business as two, or quote the wrong one.",
     "Use the same business name in the LocalBusiness structured data and as the first heading of llms.txt.",
     'LocalBusiness JSON-LD name and the llms.txt H1 disagree (case, punctuation and a leading "The" ignored)',
+  ],
+  "remix-data-as-page": [
+    "A page of this Remix or React Router site answers with the framework's route data (a single-fetch .data payload or a ?_data= answer), or the sitemap or the canonical names a .data or ?_data= address.",
+    "Search engines and visitors get a data payload instead of a page, or index the payloads: the page can drop out of search while a browser that navigates inside the app looks fine.",
+    "Serve HTML at page addresses (look for a proxy, CDN or server rule that rewrites to .data or keeps the ?_data= query), and list only pages in the sitemap and canonical.",
+    "Remix and React Router sites. From responses already read, no extra request: the page's own answer with content type text/x-script or the header X-Remix-Response (the framework sets both on every data answer), sitemap entries ending .data or carrying a _data query, and a canonical that does. The markers are in react-router 7.18.5 (lib/server-runtime/single-fetch.ts) and @remix-run/server-runtime 2.17.5 (server.ts), read from npm",
+  ],
+  "remix-dev-tools-live": [
+    "This page was served by the Remix or React Router dev server: it loads /@vite/client, /@react-refresh, the inject-hmr-runtime module or the live-reload script.",
+    "The dev server serves source files, can expose files from the project folder and is slow and unsupervised. It is not meant to face visitors.",
+    "Build the site (`react-router build` or `remix vite:build`) and serve the build with `react-router-serve` or your host's adapter, not `vite dev`. Check the host's start command.",
+    "Read from the page already fetched, no extra request: the HTML or a script address names /@vite/client, /@react-refresh, inject-hmr-runtime (virtual:react-router/ or virtual:remix/), remixLiveReloadConnect, __vite_plugin_react_preamble_installed__ or /node_modules/.vite/. Dev-only paths are not asked for. Names read from @react-router/dev 7.18.5 and @remix-run/dev 2.17.5 on npm",
+  ],
+  "remix-draft-public": [
+    "A preview or draft route on this Remix or React Router site sets a preview or draft cookie for a request that carries no secret.",
+    "Anyone who visits that address sees unpublished content (prices, announcements, pages nobody approved) as if it were live.",
+    "Make the loader check a secret (compare a token from the request with one from your environment) before it sets the cookie, and answer 401 otherwise.",
+    "Probing check: off unless --owner-consent or gaugeline.consent.json; run only on sites you own or have permission to test. Remix and React Router sites only: one GET per conventional route (/api/preview, /api/draft, /preview, /draft), no secret sent or guessed, never a POST (actions are not called); a Set-Cookie whose name contains preview or draft on any hop is a finding, and only its name is shown. The routes and the cookie rule are conventions, not the frameworks' own (uncited)",
+  ],
+  "remix-preview-canonical": [
+    "A production page of this Remix or React Router site gives a preview domain as its canonical address, its og:url or og:image, or in its sitemap.",
+    "Search engines and social cards follow those addresses to the preview, which can show old content or vanish when the preview is cleaned up.",
+    "Build the site's base address from the production domain (often an environment variable that is set only for preview builds, or an address taken from request.url behind a proxy), and redeploy.",
+    "Remix and React Router sites served from a non-temporary host: the canonical, og:url, og:image and sitemap entries whose host ends in .vercel.app, .netlify.app or .pages.dev",
+  ],
+  "remix-private-fields": [
+    "The state this Remix or React Router page embeds for the browser (window.__remixContext, window.__reactRouterContext or window.__staticRouterHydrationData) has fields named like something private (password, token, secret, apiKey, private notes).",
+    "Everything a loader returns is sent to every visitor, whether or not the page shows it. A field that is only used on the server still travels with the page.",
+    "Return only the fields the page shows from the loader, and keep secrets in server-only code (process.env in a loader or action, or a .server module) that never returns them.",
+    "Remix and React Router sites. Names only, never values: the property names in the page's own embedded context (JSON, read as text) and in its first streamed turbo-stream chunk (a flat JSON array, walked from index 0 once per index, capped), matched by word against password, passwd, secret, token, private, credential, ssn, salt, bearer, authorization, cvv, iban, apiKey, accessKey, secretKey, privateKey, internalNotes. No extra request. A state that cannot be read in full, or deferred chunks after the first, are could not check. The embedded globals and the turbo-stream layout are read from react-router 7.18.5 and @remix-run/react 2.17.5 on npm; matching names by their words is a guess (uncited)",
   ],
   "robots-block": [
     "robots.txt has a group for every crawler (User-agent: *) that disallows the whole site.",
