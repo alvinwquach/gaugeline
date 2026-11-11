@@ -1134,13 +1134,13 @@ export const CHECK_TEXT: Readonly<
     "Shopify says an item is published to the Online Store and gives it an address, and that address answers 404 or 410 on the live site.",
     "Links, the sitemap and search results point at a page that is not there, and the client's announcement leads to an error page.",
     "Check the item's Online Store publishing and the theme's template for its type, and that the live domain is the store's primary domain. If the item should not be public, remove it from the Online Store channel.",
-    "POST /api/<version>/graphql.json (a Storefront API query, ADR-0006) for products, collections, pages, blogs and articles, each with onlineStoreUrl; then one GET of that path on the live site (redirects followed). A final 404 or 410 is the finding; any other non-2xx answer is could-not-check for that page. An item whose onlineStoreUrl is null is hidden from the Online Store and is never reported.",
+    "POST /api/<version>/graphql.json (a Storefront API query, ADR-0006) for products, collections, pages, blogs and articles, each with onlineStoreUrl; then one GET of that path on the live site (redirects followed). A final 404 or 410, or a redirect to the home page, is the finding; a redirect to the password page and any other non-2xx answer are could-not-check for that page. An item whose onlineStoreUrl is null is hidden from the Online Store and is never reported.",
   ],
   "shopify-product-drift": [
     "The price on the page (or in its product data) is outside the range the Storefront API gives for the product, or the page says in stock or sold out against what the store says.",
     "Shoppers see one price or stock state and pay or get another, and search results show the page's data: a mismatch costs trust and can get listings pulled.",
     "Make the page's price and stock come from the product (the theme's product form and its structured data), and clear any cache or app that keeps an old copy.",
-    "Storefront API: priceRange (minVariantPrice and maxVariantPrice, amounts as text split into whole minor units, never floats) and availableForSale for each product published to the Online Store. Page: the theme's price element and the product JSON-LD offer, read by the same code as prices-disagree (readPrices) with no extra request. A page price outside min..max, or an availability that contradicts availableForSale, is the finding. Different currencies are could-not-check, never converted.",
+    "Storefront API: priceRange (minVariantPrice and maxVariantPrice, amounts as text split into whole minor units, never floats) and availableForSale for each product published to the Online Store. Page: the theme's price element and the product JSON-LD offer, read by the same code as prices-disagree (readPrices) with no extra request. A page price outside min..max, or an availability that contradicts availableForSale, is the finding. Currencies whose minor unit is not hundredths, and different currencies, are could-not-check, never converted. Availability: every offer in the page's product data is considered (not the first only); a sold-out button alone is ignored.",
   ],
   "contentful-entry-no-page": [
     "Contentful says an entry is published, and the address its page should have answers 404 or 410 on the live site.",
@@ -1818,7 +1818,7 @@ export const CHECK_TEXT: Readonly<
     "The live site links to a theme preview address (a preview_theme_id address, or a shopifypreview.com host), and that page has no noindex and no canonical pointing at the public page.",
     "A preview shows an unfinished theme, can hold test content, and can compete with the real page in search.",
     "Remove the preview link from the page, menu or template that holds it. Share previews by sending the link directly, not by publishing it.",
-    "One GET of the home page, then one GET of each linked address that carries preview_theme_id or a shopifypreview.com host (at most 5, only addresses the site itself links to: none is guessed). Indexable means a 2xx answer with no noindex in the robots meta tag or X-Robots-Tag and no canonical to a different address on the same site.",
+    "One GET of the home page, then one GET of each linked address that carries preview_theme_id or a shopifypreview.com host (at most 5, only addresses the site itself links to, on the site's own host, a myshopify.com host or shopifypreview.com: none is guessed). Indexable means a 2xx answer with no noindex in the robots meta tag or X-Robots-Tag and no canonical to a different address.",
   ],
   "squarespace-stock-differs": [
     "A product page offers the product as in stock while the Squarespace Inventory API says every variant is out of stock, or says it is out of stock while the API says a variant can be bought.",

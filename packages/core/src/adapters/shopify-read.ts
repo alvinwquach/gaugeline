@@ -3,7 +3,7 @@ import type { Fetcher, Hop } from "../fetcher.js";
 import { readPrices, type PriceReading } from "../price.js";
 import { buildSnapshot } from "../snapshot.js";
 import { collectPublished, type PartialRead } from "./collect.js";
-import type { ShopifyAdapter, ShopifyOffer } from "./shopify.js";
+import { SHOPIFY_TYPES, type ShopifyAdapter, type ShopifyOffer } from "./shopify.js";
 import { AdapterCouldNotCheck, AdapterRateLimitedError } from "./types.js";
 import { bare, onSite, type PageAnswer } from "./webflow-read.js";
 
@@ -15,13 +15,16 @@ export const SHOPIFY_READ_LIMITS = {
   previews: 5,
 } as const;
 
+/** How the live site answered for a page: as the page, gone, unread, or a redirect to the home page (the store's way of hiding a page). */
+export type ShopifyAnswer = PageAnswer | { kind: "redirected-home"; status: number };
+
 export interface ShopifyPageRead {
   id: string;
   type: string;
   slug?: string;
   url: string;
   path: string;
-  answer: PageAnswer;
+  answer: ShopifyAnswer;
 }
 
 /** A product's page set against what the Storefront API says: numbers and flags, no text of the page. */
@@ -30,6 +33,8 @@ export interface ShopifyPriceRead {
   url: string;
   /** What the page shows. Absent when the page could not be read (see `unread`). */
   page?: PriceReading;
+  /** The availability of every offer in the page's product data, without the schema.org prefix ("InStock"). One per variant when the theme lists them. */
+  offerAvailability?: string[];
   unread?: string;
 }
 
@@ -57,6 +62,8 @@ export interface ShopifyReading {
   unreadable: { part: string; reason: string }[];
   /** Published items with a page that were not asked for, because the page budget was used. */
   pagesSkipped: number;
+  /** Of those, the products whose price and availability were therefore not compared. */
+  productsSkipped: number;
   pageBudget: number;
   /** Present when a rate limit stopped the read: what is listed is not everything. */
   partial?: PartialRead;
@@ -83,22 +90,69 @@ async function fetchHops(fetcher: Fetcher, url: string): Promise<Hop[] | string>
   }
 }
 
-function answerOf(hops: Hop[] | string): PageAnswer {
+function answerOf(hops: Hop[] | string, requested: string): ShopifyAnswer {
   if (typeof hops === "string") return { kind: "unread", reason: hops };
   const last = hops.at(-1);
   if (!last) return { kind: "unread", reason: "no answer" };
-  if (last.status >= 200 && last.status < 300) return { kind: "page", status: last.status };
+  if (last.status >= 200 && last.status < 300) {
+    // A 200 is not proof of the page: the store may have sent the visitor to its password page or home page.
+    let from: string;
+    let to: string;
+    try {
+      from = new URL(requested).pathname;
+      to = new URL(last.url).pathname;
+    } catch {
+      return { kind: "page", status: last.status };
+    }
+    if (to !== from && /^\/password(?:\/|$)/i.test(to))
+      return {
+        kind: "unread",
+        reason: "the store is password protected, so the page could not be read",
+      };
+    if (to !== from && to === "/" && hops.length > 1)
+      return { kind: "redirected-home", status: hops[0]?.status ?? last.status };
+    return { kind: "page", status: last.status };
+  }
   if (last.status === 404 || last.status === 410) return { kind: "missing", status: last.status };
   return { kind: "unread", reason: `the site answered ${last.status}` };
 }
 
-/** A preview address: the `preview_theme_id` parameter, or a shopifypreview.com host. Never a guess: only what the site links to. */
-function previewTarget(href: string): URL | undefined {
+/** The availability of every offer in the page's product data ("InStock", "OutOfStock"...), one per variant when listed. */
+function availabilitiesOf(jsonLd: unknown[]): string[] {
+  const out: string[] = [];
+  const offers = (raw: unknown): void => {
+    if (Array.isArray(raw)) return raw.forEach(offers);
+    if (raw === null || typeof raw !== "object") return;
+    const o = raw as Record<string, unknown>;
+    if (typeof o.availability === "string")
+      out.push(o.availability.replace(/^https?:\/\/schema\.org\//, ""));
+    if (o.offers !== undefined) offers(o.offers);
+  };
+  const visit = (node: unknown): void => {
+    if (Array.isArray(node)) return node.forEach(visit);
+    if (node === null || typeof node !== "object") return;
+    const o = node as Record<string, unknown>;
+    const type = o["@type"];
+    if (type === "Product" || (Array.isArray(type) && type.includes("Product"))) offers(o.offers);
+    if (o["@graph"] !== undefined) visit(o["@graph"]);
+  };
+  jsonLd.forEach(visit);
+  return out;
+}
+
+/**
+ * A preview address the site links to: only on the site's own host, a myshopify.com host or a shopifypreview.com
+ * host, and only with the `preview_theme_id` parameter or on a shopifypreview.com host. Another site's address
+ * is never asked for and never shown. Never a guess: only what the site itself links to.
+ */
+function previewTarget(href: string, siteHost: string): URL | undefined {
   try {
     const u = new URL(href);
     if (u.protocol !== "https:") return undefined;
-    if (u.searchParams.has("preview_theme_id") || /(^|\.)shopifypreview\.com$/i.test(u.hostname))
-      return u;
+    const host = u.hostname.toLowerCase();
+    const preview = /(^|\.)shopifypreview\.com$/.test(host);
+    const ours = bare(host) === bare(siteHost) || /(^|\.)myshopify\.com$/.test(host);
+    if (preview || (ours && u.searchParams.has("preview_theme_id"))) return u;
   } catch {
     // not an address
   }
@@ -106,7 +160,7 @@ function previewTarget(href: string): URL | undefined {
 }
 
 /** Linked preview addresses of the home page, in page order, each once, at most `max`. */
-function previewLinks(home: Hop[], max: number): URL[] {
+function previewLinks(home: Hop[], max: number, siteHost: string): URL[] {
   const last = home.at(-1);
   if (!last) return [];
   const $ = load(last.body ?? "");
@@ -119,7 +173,7 @@ function previewLinks(home: Hop[], max: number): URL[] {
     } catch {
       return;
     }
-    const t = previewTarget(abs);
+    const t = previewTarget(abs, siteHost);
     if (t !== undefined && !seen.has(t.href)) seen.set(t.href, t);
   });
   return [...seen.values()];
@@ -135,10 +189,9 @@ function judgePreview(url: URL, hops: Hop[]): ShopifyPreviewRead | undefined {
     (header !== undefined && NOINDEX.test(header));
   const shown = `${url.host}${url.pathname}${url.searchParams.has("preview_theme_id") ? " (preview_theme_id)" : ""}`;
   const noHash = (u: string): string => u.replace(/#.*$/, "");
+  // A canonical to a different address, on any host, asks search engines to list that address instead.
   const canonicalElsewhere =
-    snap.canonical !== undefined &&
-    noHash(snap.canonical) !== noHash(snap.finalUrl) &&
-    bare(new URL(snap.canonical).host) === bare(new URL(snap.finalUrl).host);
+    snap.canonical !== undefined && noHash(snap.canonical) !== noHash(snap.finalUrl);
   const indexable = !noindex && !canonicalElsewhere;
   return {
     shown,
@@ -147,7 +200,7 @@ function judgePreview(url: URL, hops: Hop[]): ShopifyPreviewRead | undefined {
     why: noindex
       ? "it says noindex"
       : canonicalElsewhere
-        ? "its canonical points at the public page"
+        ? "its canonical points at a different address"
         : snap.canonical === undefined
           ? "it has no noindex and no canonical"
           : "it has no noindex and its canonical is itself",
@@ -172,31 +225,49 @@ export async function readShopify(options: ReadShopifyOptions): Promise<ShopifyR
     previews: [],
     unreadable: [],
     pagesSkipped: 0,
+    productsSkipped: 0,
     pageBudget: budget,
   };
 
   const todo: Omit<ShopifyPageRead, "answer">[] = [];
-  try {
-    const got = await collectPublished(adapter);
-    for (const d of got.docs) {
-      const url = d.url === undefined ? undefined : onSite(d.url, origin);
-      if (url === undefined) continue;
-      todo.push({
-        id: d.id,
-        type: d.type,
-        ...(d.slug !== undefined ? { slug: d.slug } : {}),
-        url: url.href,
-        path: url.pathname,
-      });
+  // Products first: they are what the drift check needs, and what a page budget should cut last.
+  const ORDER = ["products", "pages", "collections", "articles", "blogs"].filter(
+    (t) => t in SHOPIFY_TYPES,
+  );
+  const unreadableTypes = new Set<string>();
+  for (const type of ORDER) {
+    try {
+      const got = await collectPublished(adapter, { types: [type] });
+      for (const d of got.docs) {
+        const url = d.url === undefined ? undefined : onSite(d.url, origin);
+        if (url === undefined) continue;
+        todo.push({
+          id: d.id,
+          type: d.type,
+          ...(d.slug !== undefined ? { slug: d.slug } : {}),
+          url: url.href,
+          path: url.pathname,
+        });
+      }
+      if (got.partial) {
+        reading.partial = got.partial;
+        break;
+      }
+    } catch (err) {
+      // One type the token may not read does not stop the others.
+      if (!(err instanceof AdapterCouldNotCheck)) throw err;
+      unreadableTypes.add(type);
+      reading.unreadable.push({ part: type, reason: err.reason });
     }
-    if (got.partial) reading.partial = got.partial;
-  } catch (err) {
-    if (!(err instanceof AdapterCouldNotCheck)) throw err;
-    reading.unreadable.push({ part: "published items", reason: err.reason });
   }
+  for (const k of adapter.skipped())
+    reading.unreadable.push({
+      part: `${k.type} ${k.id}`,
+      reason: `${k.reason}; it was not checked`,
+    });
 
   const offers = new Map<string, ShopifyOffer>();
-  if (reading.unreadable.length === 0)
+  if (!unreadableTypes.has("products"))
     try {
       for await (const o of adapter.offers()) offers.set(o.id, o);
     } catch (err) {
@@ -213,23 +284,31 @@ export async function readShopify(options: ReadShopifyOptions): Promise<ShopifyR
 
   const asked = todo.slice(0, budget);
   reading.pagesSkipped = todo.length - asked.length;
+  reading.productsSkipped = todo.slice(budget).filter((p) => p.type === "products").length;
   await Promise.all(
     asked.map(async (p) => {
       const hops = await fetchHops(fetcher, p.url);
-      reading.pages.push({ ...p, answer: answerOf(hops) });
+      const answer = answerOf(hops, p.url);
+      reading.pages.push({ ...p, answer });
       const offer = p.type === "products" ? offers.get(p.id) : undefined;
       if (offer === undefined) return;
-      if (typeof hops === "string") reading.prices.push({ offer, url: p.url, unread: hops });
+      if (answer.kind !== "page" || typeof hops === "string")
+        reading.prices.push({
+          offer,
+          url: p.url,
+          unread:
+            answer.kind === "unread"
+              ? answer.reason
+              : `the page answered ${answer.kind === "missing" ? answer.status : "with a redirect"}`,
+        });
       else {
-        const last = hops.at(-1);
-        if (last === undefined || last.status < 200 || last.status >= 300)
-          reading.prices.push({
-            offer,
-            url: p.url,
-            unread: `the page answered ${last?.status ?? "nothing"}`,
-          });
-        else
-          reading.prices.push({ offer, url: p.url, page: await readPrices(buildSnapshot(hops)) });
+        const snap = buildSnapshot(hops);
+        reading.prices.push({
+          offer,
+          url: p.url,
+          page: await readPrices(snap),
+          offerAvailability: availabilitiesOf(snap.jsonLd),
+        });
       }
     }),
   );
@@ -243,7 +322,7 @@ export async function readShopify(options: ReadShopifyOptions): Promise<ShopifyR
   if (typeof home === "string") reading.unreadable.push({ part: "theme previews", reason: home });
   else {
     const found = await Promise.all(
-      previewLinks(home, SHOPIFY_READ_LIMITS.previews).map(async (u) => {
+      previewLinks(home, SHOPIFY_READ_LIMITS.previews, new URL(origin).host).map(async (u) => {
         const hops = await fetchHops(fetcher, u.href);
         return typeof hops === "string" ? undefined : judgePreview(u, hops);
       }),

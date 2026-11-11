@@ -221,6 +221,21 @@ export function productHtml(
   return `<!doctype html><html><head><title>Product</title><script type="application/ld+json">${ld}</script></head><body><span class="price-item--regular">$${price}</span>${extra}</body></html>`;
 }
 
+/** A product page whose JSON-LD lists one offer per variant, each with its own availability. */
+export function productHtmlOffers(price: string, availabilities: readonly string[]): string {
+  const ld = JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "Product",
+    offers: availabilities.map((a) => ({
+      "@type": "Offer",
+      price,
+      priceCurrency: "USD",
+      availability: `https://schema.org/${a}`,
+    })),
+  });
+  return `<!doctype html><html><head><script type="application/ld+json">${ld}</script></head><body><span class="price-item--regular">$${price}</span></body></html>`;
+}
+
 export interface LivePage {
   status?: number;
   headers?: Record<string, string>;

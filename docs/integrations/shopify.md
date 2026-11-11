@@ -125,11 +125,11 @@ Read it the way the freelancer does. Of three products, two are published to the
 
 These read the store and the live site together (`readShopify`, then `createShopifyRegistry` from `@gaugeline/core`), the way the Webflow checks do. Each finding names an item by handle and path, never by its words.
 
-| Check                             | What it finds                                                                                                                                                                                                                                                    |
-| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `shopify-item-no-page`            | A product, collection, page, blog or article published to the Online Store whose address answers 404 or 410 on the live site. A hidden item is never asked for.                                                                                                  |
-| `shopify-product-drift`           | A product page whose price (or product data price) is outside the Storefront API's range for it, or whose availability contradicts `availableForSale`. Reuses the price and availability reading of `prices-disagree`. Different currencies are could-not-check. |
-| `shopify-theme-preview-indexable` | A link on the live site to a theme preview (`preview_theme_id` or a `shopifypreview.com` host) that has no noindex and no canonical to the public page. Only addresses the site itself links to are asked for; none is guessed.                                  |
+| Check                             | What it finds                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `shopify-item-no-page`            | A product, collection, page, blog or article published to the Online Store whose address answers 404 or 410 on the live site. A hidden item is never asked for. A page that redirects to the home page is a finding; one that ends on the store's password page is could-not-check. Products are read first, so a page budget cuts the least valuable pages first.                                                                         |
+| `shopify-product-drift`           | A product page whose price (or product data price) is outside the Storefront API's range for it, or whose availability contradicts `availableForSale`. Reuses the price and availability reading of `prices-disagree`. A currency whose minor unit is not hundredths (yen, won, dinar) and a page in another currency are could-not-check, never converted. Availability is judged on every offer the page lists, never a sold-out button. |
+| `shopify-theme-preview-indexable` | A link on the live site to a theme preview (`preview_theme_id` or a `shopifypreview.com` host) that has no noindex and no canonical to the public page. Only addresses the site itself links to are asked for, and only on the site's own host, a `myshopify.com` host or `shopifypreview.com`; none is guessed. A canonical to a different address makes it not indexable.                                                                |
 
 ## What cannot be checked
 
@@ -149,10 +149,10 @@ Anything the platform does not expose is could-not-check, with the reason, never
 
 It never returns a list with a hole in it. The read is could-not-check, with the reason in plain words, when:
 
-- `SHOPIFY_STOREFRONT_TOKEN` or `SHOPIFY_SHOP_DOMAIN` is not set (nothing is asked), `SHOPIFY_SHOP_DOMAIN` is not a `myshopify.com` address (the token is not sent), or `SHOPIFY_API_VERSION` is not a quarterly release;
-- Shopify does not accept the token (HTTP 401) or says it may not read a part (403, or an `ACCESS_DENIED` error): a type the token may not read is could-not-check by itself, and the other types can still be read;
+- `SHOPIFY_STOREFRONT_TOKEN` or `SHOPIFY_SHOP_DOMAIN` is not set (nothing is asked), the token starts with an Admin API prefix (`shpat_`, `shpss_`, `shpca_`, `shppa_`: refused before anything is sent), `SHOPIFY_SHOP_DOMAIN` is not a `myshopify.com` address (the token is not sent), or `SHOPIFY_API_VERSION` is not a quarterly release;
+- Shopify does not accept the token (HTTP 401) or says it may not read a part (403, or an `ACCESS_DENIED` error): a type the token may not read (for example articles, without `unauthenticated_read_content`) is could-not-check by itself, and the checks still run on the other types;
 - the answer holds GraphQL `errors` (their messages, which can quote content, are never repeated), is not JSON, or is not the shape Shopify sends;
-- an item has an id of the wrong kind, a handle that is not a plain handle, an address that is not a plain path, or no update time where its type has one;
+- an item has an id of the wrong kind or no update time where its type has one (that type is could-not-check); an item whose handle is not a plain ASCII handle (so `über-uns` is flagged) or whose address is not a plain page path is skipped and listed by id as could-not-check, and the rest of its type is still read;
 - a list stops moving, over-fills a page, loses its cursor or is bigger than the bound.
 
 ## What is bounded
