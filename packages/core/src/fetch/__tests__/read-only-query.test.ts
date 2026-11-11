@@ -13,7 +13,6 @@ const DOCS = { url: "https://dev.example/docs/query-items", checked: "2026-11-11
 
 const graphql: ReadOnlyQueryAllow = {
   id: "shop-graphql",
-  method: "POST",
   host: "api.shop.example",
   path: "/graphql",
   body: { kind: "graphql-query" },
@@ -22,7 +21,6 @@ const graphql: ReadOnlyQueryAllow = {
 
 const json: ReadOnlyQueryAllow = {
   id: "items-query",
-  method: "POST",
   host: "www.wixapis.example",
   path: "/wix-data/v2/items/query",
   body: { kind: "json-query", keys: ["dataCollectionId", "query", "returnTotalCount"] },
