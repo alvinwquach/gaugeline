@@ -58,6 +58,11 @@ export class FileNotRead extends Error {}
 export interface ContentSource {
   list(dir: string): Promise<Listing>;
   read(file: SourceFile): Promise<string>;
+  /**
+   * One exact file of any kind (a project's own config, not content), or undefined when it is not there or
+   * is a link. `file` is from the repository root. Read it with `read`. Hidden and dependency folders are refused.
+   */
+  find(file: string): Promise<SourceFile | undefined>;
 }
 
 const SKIPPED_DIRS = new Set(["node_modules", "_drafts"]);
@@ -203,7 +208,19 @@ export function localSource(root: string, limits = GIT_CONTENT_LIMITS): ContentS
     }
   }
 
-  return { list, read };
+  async function find(file: string): Promise<SourceFile | undefined> {
+    const segments = file.split("/");
+    if (segments.some((s) => s === "" || s === "." || s === "..") || path.isAbsolute(file))
+      throw new AdapterCouldNotCheck(`The file "${file}" is not inside the repository.`);
+    if (segments.some(hidden)) return undefined;
+    const base = await rootOrThrow();
+    const stat = await lstat(path.join(base, ...segments)).catch(() => undefined);
+    // A link is never followed, and a folder is not a file.
+    if (stat === undefined || !stat.isFile()) return undefined;
+    return { path: segments.join("/"), size: stat.size };
+  }
+
+  return { list, read, find };
 }
 
 /** Where the GitHub API lives. The token is sent here and nowhere else. */
@@ -223,6 +240,11 @@ export interface GitHubSourceOptions {
   token?: string | undefined;
   sleep: (ms: number) => Promise<void>;
   limits?: typeof GIT_CONTENT_LIMITS;
+  /**
+   * A folder with nothing under it in the repository is could-not-check ("does not exist", as a local clone says),
+   * not an empty listing. Off by default, so the git-content adapter keeps listing it as zero items.
+   */
+  missingFolderIsError?: boolean;
 }
 
 /**
@@ -327,8 +349,10 @@ export function githubSource(options: GitHubSourceOptions): ContentSource {
     const prefix = segments.length === 0 ? "" : `${segments.join("/")}/`;
     const files: SourceFile[] = [];
     const unread: Unread[] = [];
+    let inFolder = prefix === "";
     for (const entry of await loadTree()) {
       if (!entry.path.startsWith(prefix)) continue;
+      inFolder = true;
       const parts = entry.path.slice(prefix.length).split("/");
       const name = parts.at(-1) ?? "";
       if (parts.slice(0, -1).some((p) => hidden(p) || SKIPPED_DIRS.has(p)) || !isContentName(name))
@@ -337,6 +361,8 @@ export function githubSource(options: GitHubSourceOptions): ContentSource {
         unread.push({ path: entry.path, reason: `is larger than ${kib(limits.fileBytes)}` });
       else files.push({ path: entry.path, size: entry.size, sha: entry.sha });
     }
+    if (!inFolder && options.missingFolderIsError === true)
+      throw new AdapterCouldNotCheck(`The folder "${dir}" does not exist in the repository.`);
     const cap = token === "" ? limits.githubFilesAnonymous : limits.githubFiles;
     if (files.length > cap)
       throw new AdapterCouldNotCheck(
@@ -366,5 +392,13 @@ export function githubSource(options: GitHubSourceOptions): ContentSource {
     return bytes.toString("utf8");
   }
 
-  return { list, read };
+  async function find(file: string): Promise<SourceFile | undefined> {
+    const segments = file.split("/");
+    if (segments.some((s) => s === "" || s === "." || s === ".." || hidden(s))) return undefined;
+    const wanted = segments.join("/");
+    const entry = (await loadTree()).find((e) => e.path === wanted);
+    return entry === undefined ? undefined : { path: entry.path, size: entry.size, sha: entry.sha };
+  }
+
+  return { list, read, find };
 }
