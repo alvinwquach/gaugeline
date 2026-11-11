@@ -1419,3 +1419,19 @@ export { readOldSite } from "./migration/old-site.js";
 export { SITE_WIDE_TYPES, factsOf, readMigration } from "./migration/read.js";
 export type { ItemRead, MigrationReading, NewRead, PageFacts } from "./migration/read.js";
 export { normaliseTitle, sameTitle, titleKept } from "./migration/titles.js";
+
+export { TRACKER_CHECKS } from "./checks/trackers.js";
+export { trackersConfigSchema, TRACKERS_CONFIG_FILE } from "./trackers/config.js";
+export type { TrackersConfig } from "./trackers/config.js";
+export { addTrackerChecks } from "./trackers/registry.js";
+export { createTrackers, containerUrl, CONTAINER_CAP } from "./trackers/reader.js";
+export type { ContainerRead, Trackers } from "./trackers/reader.js";
+export {
+  FINGERPRINTS,
+  findTrackers,
+  findTrackersInContainer,
+  decodeContainer,
+  containerIds,
+} from "./trackers/fingerprints.js";
+export type { Fingerprint, Tracker, TrackerGroup } from "./trackers/fingerprints.js";
+export { sensitiveReason, collectsDetails } from "./trackers/sensitive.js";

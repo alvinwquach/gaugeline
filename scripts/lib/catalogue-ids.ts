@@ -11,6 +11,7 @@ import {
   RENEWALS_CHECKS,
   HANDOFF_CHECKS,
   COST_CHECKS,
+  TRACKER_CHECKS,
   PRINTED_CHECKS,
   GRAPHQL_CHECKS,
   MUTATION_CHECKS,
@@ -25,7 +26,7 @@ import {
   createPageRegistry,
 } from "../../packages/core/src/index.js";
 
-/** Every check the docs list: page checks, plan checks, printed-link checks, price and subscription checks, the query (and its --dupes and --mutations), delivery and webhook checks, the rendered-email checks, the renewals, handoff and cost checks and the cutover-only ones. */
+/** Every check the docs list: page checks, plan checks, printed-link checks, price and subscription checks, the query (and its --dupes and --mutations), delivery and webhook checks, the rendered-email checks, the renewals, handoff, cost and tracker checks and the cutover-only ones. */
 export function CATALOGUE_IDS(): string[] {
   const registry = createPageRegistry();
   for (const c of PLAN_CHECKS) registry.register(c);
@@ -37,6 +38,7 @@ export function CATALOGUE_IDS(): string[] {
   for (const c of RENEWALS_CHECKS) registry.register(c);
   for (const c of HANDOFF_CHECKS) registry.register(c);
   for (const c of COST_CHECKS) registry.register(c);
+  for (const c of TRACKER_CHECKS) registry.register(c);
   for (const c of PRESENCE_CHECKS) registry.register(c);
   for (const c of PRICE_CHECKS) registry.register(c);
   for (const c of SUBSCRIPTION_CHECKS) registry.register(c);

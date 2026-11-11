@@ -69,6 +69,8 @@ Options:
       --cost                     Also check what runs up the hosting bill: pages
                                  that change on every visit, the cache and usage
                                  jumps
+      --trackers                 Also list the trackers on pages with a form or
+                                 a path you listed, and what a tag manager holds
       --owner-consent            Run the probing checks, which ask routes for
                                  what they protect with no login; only on sites
                                  you may test
@@ -443,6 +445,7 @@ between the markers; CI fails when it differs from the flag table.
 | `--dns`                     | Also read the domain's mail records (SPF and DMARC) from DNS                                                         |                      | 0.2.0 |
 | `--renewals`                | Also check what lapses: the domain's registration, the certificates and any token you set up                         |                      | 0.2.0 |
 | `--cost`                    | Also check what runs up the hosting bill: pages that change on every visit, the cache and usage jumps                |                      | 0.2.0 |
+| `--trackers`                | Also list the trackers on pages with a form or a path you listed, and what a tag manager holds                       |                      | 0.2.0 |
 | `--owner-consent`           | Run the probing checks, which ask routes for what they protect with no login; only on sites you may test             |                      | 0.2.0 |
 | `--routes <value>`          | With --owner-consent: download routes in files matching this glob (repeatable); no glob: a folder's signed-in routes |                      | 0.2.0 |
 | `--since <value>`           | Page check: compare with the last run (the only value is last). delivery: the window to read, such as 7d             |                      | 0.2.0 |
@@ -673,6 +676,24 @@ run. Settings: `gaugeline.cost.json` (the pages that should be cached, other pag
 lifetime, the Vercel team, the usage window and multiple). What it reads, what key to make and the four
 checks: [Hosting cost](guides/hosting-cost.md). What it sends:
 [Privacy and safety](privacy.md#hosting-cost-gaugeline-cost).
+
+### The trackers option
+
+`--trackers` adds two checks to the page check: the trackers (Meta, TikTok and LinkedIn pixels, Google
+Analytics 4, Google Tag Manager, session replay tools) on a page with a form, an embedded form service or a
+path you list, and what a Tag Manager container on such a page holds. It lists kind and id and nothing
+else, and never says whether a tracker is allowed: that is for the client's own counsel. It is off by
+default.
+
+```sh
+npx gaugeline clinic.example/intake --trackers
+npx gaugeline clinic.example/intake --trackers --json
+```
+
+It checks the page you give it. `gaugeline run --all --trackers` adds it to every site of a nightly run.
+Settings: `gaugeline.trackers.json` (`sensitivePaths`: exact paths or `/folder/*`). What it lists and what it
+does not see: [Trackers on sensitive pages](guides/trackers-on-sensitive-pages.md). What it sends:
+[Privacy and safety](privacy.md#trackers-on-sensitive-pages-trackers).
 
 ### The query command
 

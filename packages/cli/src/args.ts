@@ -89,6 +89,8 @@ export interface RunFlags {
   renewals: boolean;
   /** --cost (or the cost command): add the cost checks (pages that rebuild on every visit, never-cached pages, usage jumps). */
   cost: boolean;
+  /** --trackers: add the tracker checks (trackers on pages with a form or a listed sensitive path, and what a Tag Manager container holds). */
+  trackers: boolean;
   /** --owner-consent: run the probing checks (they ask gated routes for what they protect, with no login). */
   ownerConsent: boolean;
   /** --routes: globs over the repository's route files, for the download route probe. */
@@ -200,6 +202,8 @@ export type ParsedArgs =
       renewals: boolean;
       /** --cost: each site's run also checks what runs up the hosting bill. */
       cost: boolean;
+      /** --trackers: each site's run also lists the trackers on pages with a form. */
+      trackers: boolean;
       verbose: boolean;
       quiet: boolean;
     }
@@ -631,6 +635,7 @@ export function parseCliArgs(
       allowPrivate: values["allow-private"] === true,
       renewals: values.renewals === true,
       cost: values.cost === true,
+      trackers: values.trackers === true,
       verbose,
       quiet: values.quiet === true,
     };
@@ -1436,6 +1441,7 @@ export function parseCliArgs(
     dns: values.dns === true,
     renewals: values.renewals === true || command === "renewals",
     cost: values.cost === true || command === "cost",
+    trackers: values.trackers === true,
     ownerConsent: values["owner-consent"] === true,
     routes: Array.isArray(values.routes)
       ? values.routes
