@@ -39,6 +39,7 @@ const FIXTURES = [
   "hidden-library",
   "next-like",
   "astro-like",
+  "sanity-images",
   "refusing",
   "tag-rules",
   "nav-events",
