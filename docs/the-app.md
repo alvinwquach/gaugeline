@@ -291,7 +291,7 @@ Staging copies
 - **JavaScript scanned for keys.** One row for each file the check scanned, up to the published
   limit of 15 (see [Security](/docs/security#how-much-a-run-requests)), with Nothing found or the
   kind of key. A key is shown as the check emits it, its first 6 and last 2 characters, and the
-  whole value never reaches the app: it is cut down before the result exists. To find the key,
+  whole value never reaches the app: it is cut down before the result exists (a Contentful preview token shows no characters at all, only the kind and the place). To find the key,
   open the file the row names and search for those characters. A file that could not be read says
   so instead of Nothing found, and a file longer than the read limit says only its start was read.
   The footer states the sample ("2 of up to 15 JavaScript files scanned"), and says how many more

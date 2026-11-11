@@ -12,13 +12,14 @@ permissions:
 # A new push to a pull request cancels the run of the older commit. Runs on main are never cancelled:
 # the release workflow waits for the full matrix of the commit it releases.
 concurrency:
-  group: ci-${{ github.event_name }}-${{ github.event.pull_request.number || github.sha }}
+  group: ci-${{ github.event_name }}-${{ github.head_ref || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   test:
     name: test (node ${{ matrix.node }}, ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       # Pull requests: Linux on Node 22 and 24, Windows on Node 24. Pushes to main (after each merge):
@@ -39,6 +40,7 @@ jobs:
   lint:
     # Lint and the generated-file checks run once, on the active LTS.
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
@@ -53,6 +55,7 @@ jobs:
       - run: pnpm docs:flags:check
       - run: pnpm docs:changelog --check
       - run: pnpm gen:checks --check
+      - run: pnpm gen:adapters --check
       - run: pnpm adr:check
       - run: pnpm community:check
       - name: Public surface (STABILITY.md)
@@ -65,6 +68,7 @@ jobs:
   docs-examples:
     # Runs every "$ npx gaugeline" example in the docs against its fixture and compares the output.
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
@@ -80,6 +84,7 @@ jobs:
     # The tarball people will npx: contents, size budget, and a run under the oldest supported Node (22).
     name: pack and smoke (node 22)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0

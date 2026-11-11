@@ -43,6 +43,12 @@ export interface ContractEntry {
   queryAllow?: readonly ReadOnlyQueryAllow[];
   /** For an entry whose host is `{ configured }`: the host the adapter's configuration gives, by entry id. */
   queryHosts?: Readonly<Record<string, string>>;
+  /**
+   * What fieldCounts() does for a content type the platform does not have. Default: counts of 0 (a type with
+   * no items). "could-not-check": an AdapterCouldNotCheck that names the type, for a platform that lists its
+   * content types and so knows a name is wrong (Contentful); a typo is then not read as an empty type.
+   */
+  unknownType?: "could-not-check";
   /** Text that is in the platform's content, including an unpublished draft, and must never come back. */
   secrets: readonly string[];
   expected: {

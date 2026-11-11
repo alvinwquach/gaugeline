@@ -82,6 +82,7 @@ async function runSite(
     trackers: boolean;
     libraries: boolean;
     wordpress: boolean;
+    published: boolean;
     runOne: RunOne;
   },
 ): Promise<SiteOutcome> {
@@ -103,6 +104,7 @@ async function runSite(
         ...(opts.trackers ? ["--trackers"] : []),
         ...(opts.libraries ? ["--libraries"] : []),
         ...(opts.wordpress ? ["--wordpress"] : []),
+        ...(opts.published ? ["--published"] : []),
       ],
       {
         stdout: { write: (s: string) => out.push(s) },
@@ -152,6 +154,8 @@ export async function runAll(
     libraries?: boolean;
     /** Each site's run also runs the WordPress checks (--wordpress). */
     wordpress?: boolean;
+    /** Each site's run also compares changed CMS items with their pages (--published). */
+    published?: boolean;
     runOne: RunOne;
   },
 ): Promise<SiteOutcome[]> {
@@ -177,6 +181,7 @@ export async function runAll(
               trackers: opts.trackers ?? false,
               libraries: opts.libraries ?? false,
               wordpress: opts.wordpress ?? false,
+              published: opts.published ?? false,
               runOne: opts.runOne,
             }),
           );

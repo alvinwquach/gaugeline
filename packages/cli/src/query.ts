@@ -1,5 +1,5 @@
 import {
-  SANITY_DESCRIPTION,
+  adapterDescription,
   adapterHeader,
   resolveAdapters,
   checkMutationsOnly,
@@ -389,7 +389,7 @@ export async function runQuery(
       const { result, counts, dupes } = run;
       if (out.length > 0) out.push("");
       // Which content system was read and with what kind of key, before what was asked of it.
-      if (asks) out.push(adapterHeader(SANITY_DESCRIPTION), "");
+      if (asks) out.push(adapterHeader(adapterDescription("sanity")), "");
       if (counts && counts.size > 0)
         out.push(
           `Counted the published documents of ${plural(counts.size, "type")} in the dataset: one request each, counts only.`,

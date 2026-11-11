@@ -59,7 +59,8 @@ export function describeRetry(headers: Record<string, string>): string | undefin
  * "2.0" (Shopify sends one) is seconds too, rounded up so a wait is never too short.
  */
 export function retryAfterSeconds(headers: Record<string, string>): number | undefined {
-  const after = (headers["retry-after"] ?? "").trim();
+  // Contentful names its wait X-Contentful-RateLimit-Reset (whole seconds) and sends no Retry-After.
+  const after = (headers["retry-after"] ?? headers["x-contentful-ratelimit-reset"] ?? "").trim();
   return /^\d{1,6}(?:\.\d{1,3})?$/.test(after) ? Math.ceil(Number(after)) : undefined;
 }
 
@@ -70,6 +71,8 @@ export interface ConnectorRequest {
   headers?: Record<string, string>;
   /** Ask again even if this address was already asked in this run (a retry; the fetcher remembers answers). */
   fresh?: boolean;
+  /** Send nothing the fetcher adds per address (a protected preview's headers): a visitor with no session. */
+  anonymous?: boolean;
 }
 
 /**
@@ -94,6 +97,7 @@ export async function connectorGet(
     },
     headersSameOrigin: true,
     ...(request.fresh === true ? { fresh: true } : {}),
+    ...(request.anonymous === true ? { anonymous: true } : {}),
   });
   const last = hops.at(-1);
   if (!last) throw new Error("No answer.");

@@ -22,6 +22,7 @@ jobs:
        github.event.deployment.environment == 'docs-preview') ||
       (github.event_name != 'deployment_status' && vars.DOCS_URL != '')
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
       issues: write # nightly only: one issue, updated, never one per night

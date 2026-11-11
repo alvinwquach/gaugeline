@@ -4,7 +4,7 @@ import { createFetcher } from "../../fetcher.js";
 import { adapterHeader, collectPublished } from "../collect.js";
 import { adaptersConfigSchema } from "../config.js";
 import { FRAMER_CMS_READ_PATH, FRAMER_DESCRIPTION, createFramerAdapter } from "../framer.js";
-import { BUILT_ADAPTERS, PLANNED_ADAPTERS, resolveAdapters } from "../registry.js";
+import { BUILT_ADAPTERS, PLANNED_ADAPTERS, createAdapter, resolveAdapters } from "../registry.js";
 import { AdapterCouldNotCheck } from "../types.js";
 import { recording, requestProblems, type Seen } from "./contract.js";
 import {
@@ -210,15 +210,18 @@ describe("a project API key is never read, sent or logged", () => {
     });
     const built = BUILT_ADAPTERS.get("framer");
     expect(built).toBeDefined();
-    const adapter = built?.create(
-      {
-        env: { FRAMER_API_KEY: key, GAUGELINE_FRAMER_KEY: key },
-        fetcher,
-        site: LANTERN,
-        sleep: () => Promise.resolve(),
-      },
-      { id: "framer" },
-    );
+    const adapter = built
+      ? await createAdapter(
+          built,
+          {
+            env: { FRAMER_API_KEY: key, GAUGELINE_FRAMER_KEY: key },
+            fetcher,
+            site: LANTERN,
+            sleep: () => Promise.resolve(),
+          },
+          { id: "framer" },
+        )
+      : undefined;
     expect(adapter).toBeDefined();
     if (!adapter) return;
     const out = [

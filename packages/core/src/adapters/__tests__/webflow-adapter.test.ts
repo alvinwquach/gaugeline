@@ -77,7 +77,7 @@ describe("Webflow on ContentAdapter: what it says about itself", () => {
     );
   });
 
-  it("is built, not planned, and a settings file can name it", () => {
+  it("is built, not planned, and a settings file can name it", async () => {
     expect(BUILT_ADAPTERS.has("webflow")).toBe(true);
     expect(PLANNED_ADAPTERS.some((p) => p.id === "webflow")).toBe(false);
     const config = adaptersConfigSchema.parse({
@@ -91,7 +91,9 @@ describe("Webflow on ContentAdapter: what it says about itself", () => {
     });
     expect(resolveAdapters(config).map((b) => b.id)).toEqual(["webflow"]);
     const { fetcher } = { fetcher: createFetcher({ transport: webflowTransport() }) };
-    expect(createAdapters(config, { env: ENV, fetcher }).map((a) => a.id)).toEqual(["webflow"]);
+    expect((await createAdapters(config, { env: ENV, fetcher })).map((a) => a.id)).toEqual([
+      "webflow",
+    ]);
   });
 
   it("Webflow field names may have hyphens; no other adapter takes one, and the Webflow-only settings stay refused", () => {
