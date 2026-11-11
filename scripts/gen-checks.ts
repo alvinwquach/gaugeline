@@ -38,6 +38,7 @@ import {
   MIGRATION_CHECKS,
   WEBFLOW_CHECKS,
   CONTENTFUL_CHECKS,
+  SQUARESPACE_COMMERCE_CHECKS,
   STRAPI_CHECKS,
   catalogue,
   createPageRegistry,
@@ -96,6 +97,7 @@ for (const c of CUTOVER_ONLY_CHECKS) registry.register(c);
 for (const c of MIGRATION_CHECKS) registry.register(c);
 for (const c of WEBFLOW_CHECKS) registry.register(c);
 for (const c of CONTENTFUL_CHECKS) registry.register(c);
+for (const c of SQUARESPACE_COMMERCE_CHECKS) registry.register(c);
 for (const c of STRAPI_CHECKS) registry.register(c);
 const entries = catalogue(registry);
 // A scaffold from pnpm new:check imports and runs, but its TODO text must never reach the docs.

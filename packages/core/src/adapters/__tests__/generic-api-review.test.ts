@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { createFetcher, type Transport } from "../../fetcher.js";
 import { collectPublished } from "../collect.js";
 import { adaptersConfigSchema } from "../config.js";
-import { copyAdapterEnv } from "../registry.js";
+import { allAdapterEnvVars, copyAdapterEnv } from "../registry.js";
 import {
   GENERIC_ENV,
   type GenericApiCollection,
@@ -391,14 +391,20 @@ describe("review 7: smaller bounds", () => {
 });
 
 describe("the key reaches the adapter from the CLI's environment", () => {
-  it("copies the variables a mapping may name, the adapters' own, and nothing else", () => {
-    const env = copyAdapterEnv({
+  it("copies the variables a mapping may name and the adapters' own, and nothing else", () => {
+    const own = allAdapterEnvVars();
+    expect(own.length).toBeGreaterThan(0);
+    // The adapters' own variables come from the registry, so a new adapter's variable needs no change here.
+    const source: Record<string, string> = {
       GAUGELINE_API_HERON_TOKEN: "heron-value",
-      WORDPRESS_URL: "https://harbour-bar.example",
       GAUGELINE_SLACK_WEBHOOK: "slack-value",
-      GAUGELINE_GITHUB_TOKEN: "github-value",
       HOME: "/home/someone",
-    });
-    expect(Object.keys(env).sort()).toEqual(["GAUGELINE_API_HERON_TOKEN", "WORDPRESS_URL"]);
+      SOME_OTHER_SECRET: "other-value",
+    };
+    for (const name of own) source[name] = `${name}-value`;
+    const copied = Object.keys(copyAdapterEnv(source)).sort();
+    expect(copied).toEqual([...new Set([...own, "GAUGELINE_API_HERON_TOKEN"])].sort());
+    for (const name of ["GAUGELINE_SLACK_WEBHOOK", "HOME", "SOME_OTHER_SECRET"])
+      expect(copied, name).not.toContain(name);
   });
 });

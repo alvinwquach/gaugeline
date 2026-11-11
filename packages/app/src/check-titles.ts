@@ -186,6 +186,10 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "A published Contentful entry has no page on the live site",
     "Launch day",
   ],
+  "squarespace-price-differs": [
+    "A Squarespace product page shows a price the store does not have",
+    "Sales & prices",
+  ],
   "strapi-entry-no-page": ["A published Strapi entry has no page on the live site", "Launch day"],
   "strapi-drafts-public": [
     "Strapi lists unpublished entries to visitors with no token",
@@ -371,6 +375,10 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "Search & sharing",
   ],
   "webflow-item-staged": ["Work saved in the Webflow CMS is not on the live site", "Launch day"],
+  "squarespace-stock-differs": [
+    "A Squarespace product page and its stock disagree",
+    "Sales & prices",
+  ],
   "ai-crawlers-blocked": ["Some AI assistants can't read your site", "Search & sharing"],
   "app-name-mismatch": ["The store lists the app under a different name", "Visitors"],
   "asset-file-public": ["A downloadable file is on a public asset address", "Sales & prices"],
@@ -802,10 +810,10 @@ export const CHECK_TEXT: Readonly<
     "a script src whose host, or a parent domain of it, is in data/known-bad-script-hosts.json. The list names its source for every host. Nothing is requested: the address is read from the page",
   ],
   "secret-in-js": [
-    "A secret key (a Stripe secret or restricted key, a Sanity token, a Contentful preview token, or a long random value named like a secret) is in JavaScript the site sends to every visitor.",
+    "A secret key (a Stripe secret or restricted key, a Sanity token, a Contentful or Contentstack preview token, or a long random value named like a secret) is in JavaScript the site sends to every visitor.",
     "Anyone can read it in their browser and use it as you: take payments, read customer data or change your content.",
     "Revoke the key in the provider's dashboard now, make a new one, and keep it on the server: never in code the browser loads.",
-    "Inline scripts and up to 15 same-site script files (GET, first 5 MB each) matched against the detectors in checks/leaks/detectors.ts; publishable keys (pk_) are ignored; a Contentful preview token is a 43-character value named like a token or key next to the preview.contentful.com host, and a finding for it names the kind and the place only, with no character of the token; a 43-character Contentful delivery token (a value in a place that names Contentful or createClient, and not the Preview API) is public by design and is never reported; the other values are redacted to their first 6 and last 2 characters before a finding exists; names are capped at 40 characters each side of the word token or key, so a hostile file is scanned in linear time",
+    'Inline scripts and up to 15 same-site script files (GET, first 5 MB each) matched against the detectors in checks/leaks/detectors.ts; publishable keys (pk_) are ignored; a Contentful preview token is a 43-character value named like a token or key next to the preview.contentful.com host, and a finding for it names the kind and the place only, with no character of the token; a Contentstack preview token is a value of "cs" and hex named like a token or key, and either "preview" is in its name in a file that names Contentstack or the Live Preview host (preview.contentstack.com) is in the same object; it is reported the same way, with no character of it; a Contentstack delivery token is public by design and is never reported; a 43-character Contentful delivery token (a value in a place that names Contentful or createClient, and not the Preview API) is public by design and is never reported; the other values are redacted to their first 6 and last 2 characters before a finding exists; names are capped at 40 characters each side of the word token or key, so a hostile file is scanned in linear time',
   ],
   "sitemap-dead": [
     "Pages listed in the sitemap return an error (4xx or 5xx).",
@@ -1118,6 +1126,12 @@ export const CHECK_TEXT: Readonly<
     "Links, the sitemap and search results point at a page that is not there, and an announcement the client sent leads to an error page. On a statically built site this is often a build that has not run since the entry was published.",
     "Check the site was rebuilt after the entry was published (a webhook from Contentful to your host can fail quietly) and that the address pattern in gaugeline.adapters.json matches the route. If the entry should not be public, unpublish it in Contentful.",
     "GET /spaces/{space}/environments/{env}/content_types and /entries?content_type=... on cdn.contentful.com (Content Delivery API, delivery token in an Authorization header) for each content type, then one GET of the live address from the `urls` pattern (redirects followed). A final 404 or 410 is the finding; any other answer that is not a 2xx is could-not-check for that page. A content type with published entries and no pattern, and an entry whose slug the pattern cannot use, are could-not-check by name and are not asked.",
+  ],
+  "squarespace-price-differs": [
+    "The price in a product page's product data (or the one price it shows) is not one of the prices the Squarespace Commerce API gives that product's variants.",
+    "Shoppers see one price and the store charges another, and search engines show the page's price in results. Gaugeline can tell you the two disagree, not which is right.",
+    "Open the product in Squarespace and check each variant's price and any sale. If the page is wrong, publish it again or clear a cache in front of the site; if the store is wrong, change the variant price. A page that copies prices by hand should read them from the product.",
+    "GET /1.0/commerce/products (cursor pages, at most 400 pages and 10000 products; the next page is asked for by the cursor the answer returns, never by an address it gives), then one GET of each visible product's page (its path from the API, or the `urls` pattern; at most 300 pages a run). The API side is each variant's price in minor units (the sale price while it is on sale), parsed from the decimal text without a float. The page side is the Product offers (with several Product data blocks, only the one whose address or SKU is this product's; offers in more than one currency are could-not-check)' price, lowPrice and highPrice in its JSON-LD (or the one visible price when there is none, with a struck-through old price left out), also in minor units. Every page price must be one of the variants' prices; a \"From\" price must be the lowest. Compared only in a currency with two decimal places and only when both sides name the same one (a page in another currency is could-not-check, never converted); a product with a variant whose price could not be read, a page with no price, or a page that does not answer is could-not-check. Findings carry both numbers and no text from the page or the product. Integers in minor units: 19.99 times 100 is 1998.9999999999998 as a float",
   ],
   "strapi-entry-no-page": [
     "Strapi says an entry is published, and the address its page should have answers 404 or 410 on the live site.",
@@ -1778,6 +1792,12 @@ export const CHECK_TEXT: Readonly<
     "The client believes the change is out. Customers see the old price, the old opening hours, or no page for the event they were told about.",
     "In Webflow, review the staged items and publish the site. If an item should not go out yet, set it back to draft so it is not mistaken for finished work.",
     "GET /v2/collections/{id}/items (the staged list) for each collection: isDraft false, isArchived false, and lastPublished absent (staged) or more than 2 seconds earlier than lastUpdated (changed). Drafts and archived items are never reported. Ids, slugs and dates only: no field is used for this.",
+  ],
+  "squarespace-stock-differs": [
+    "A product page offers the product as in stock while the Squarespace Inventory API says every variant is out of stock, or says it is out of stock while the API says a variant can be bought.",
+    "Shoppers order what cannot be shipped, or leave a product that could have sold. Search results show the page's availability.",
+    "Open the product in Squarespace and check each variant's stock. If the page is out of date, publish it again or clear a cache in front of the site.",
+    'GET /1.0/commerce/products and GET /1.0/commerce/inventory (cursor pages; a key without the Inventory permission, or a plan that does not offer it, makes this check could-not-check and leaves the price check as it is), then one GET of each visible product\'s page. The API side: "in" when any variant has a row that is unlimited or has a quantity above 0, "out" when every variant has a row and none can be bought, otherwise unknown (a variant with no row is never read as out of stock). The page side: the Product offers\' availability in its JSON-LD (InStock, OutOfStock, SoldOut ...), or the page\'s one add-to-cart button saying sold out when the product data names no availability (no other button counts); mixed or missing words are unknown. Only "in" against "out", either way round, is a finding; unknown on either side is could-not-check. Findings carry a word and a name, never a quantity or a page\'s text',
   ],
   "ai-crawlers-blocked": [
     "robots.txt stops one or more known AI crawlers from reading the home page. Gaugeline says which, and whether the block names them or comes from a rule for every crawler.",
