@@ -150,7 +150,7 @@ describe("--save-requests <file>: the file", () => {
     const file = saved(path);
     expect(requestsFileSchema.safeParse(file).success).toBe(true);
     expect(validateSchema(file), ajv.errorsText(validateSchema.errors)).toBe(true);
-    expect(file.schemaVersion).toBe(1);
+    expect(file.schemaVersion).toBe(2);
     expect(file.startedAt).toBe(NOW.toISOString());
     expect(file.url).toBe(`${server.origin}/`);
     expect(file.page).toMatchObject({

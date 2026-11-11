@@ -75,6 +75,7 @@ describe("check-adr: integration", () => {
       "0003-no-telemetry-nothing-sent.md",
       "0004-requests-the-checked-page-names.md",
       "0005-notifications-post-to-your-own-channels.md",
+      "0006-read-only-post-queries.md",
       "README.md",
     ]);
     expect(checkAdrs(files, files.find((f) => f.name === "README.md")?.text ?? "")).toEqual([]);

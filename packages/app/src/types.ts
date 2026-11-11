@@ -54,6 +54,7 @@ export const REQUEST_KINDS = [
   "script",
   "extra-page",
   "other",
+  "query",
 ] as const;
 export type RequestKind = (typeof REQUEST_KINDS)[number];
 
@@ -61,7 +62,9 @@ export type RequestKind = (typeof REQUEST_KINDS)[number];
 export interface RequestRow {
   url: string;
   kind: RequestKind;
-  method: "GET" | "HEAD";
+  method: "GET" | "HEAD" | "POST";
+  /** On a read-only query (kind "query", ADR-0006): the id of the allowlist entry. Never the body. */
+  allow?: string;
   /** null when nothing answered. */
   status: number | null;
   error?: "timeout" | "private-address-refused" | "no-answer";

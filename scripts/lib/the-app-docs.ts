@@ -24,6 +24,7 @@ const KIND = {
   script: "JavaScript file",
   "extra-page": "Other page",
   other: "Other",
+  query: "Read-only query",
 } as const;
 
 export const SHOWN_ORIGIN = "https://studio.example";
