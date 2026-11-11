@@ -42,8 +42,31 @@ export function isUserFacing(c: GateInput["changesets"][number]): boolean {
   return c.bump !== "none" && !c.summary.trim().startsWith("(internal)");
 }
 
-/** The pull request gate. Rules run in order; the internal label skips everything. */
+export const PROGRESS_FILE = "PROGRESS.md";
+
+/** Code a feature pull request changes: any file under packages/<name>/src (tests too) or scripts/. */
+export function isCode(path: string): boolean {
+  return /^packages\/[^/]+\/src\//.test(path) || path.startsWith("scripts/");
+}
+
+/**
+ * The pull request gate. Rules run in order; the internal label skips everything except the PROGRESS.md rule:
+ * a pull request that changes code and PROGRESS.md fails unless it carries the label `progress`, because
+ * every feature pull request editing the same file made them conflict. Progress updates go in their own pull
+ * request after every five merges.
+ */
 export function gate(input: GateInput): GateResult {
+  if (
+    input.files.includes(PROGRESS_FILE) &&
+    input.files.some(isCode) &&
+    !input.labels.includes("progress")
+  )
+    return {
+      ok: false,
+      problems: [
+        "This changes code and PROGRESS.md. Feature pull requests do not edit PROGRESS.md (it made them conflict); the orchestrator updates it in a separate pull request after every 5 merges. Remove the PROGRESS.md change, or label this pull request `progress` if it is that update.",
+      ],
+    };
   if (input.labels.includes("internal")) return { ok: true, problems: [] };
   const problems: string[] = [];
   const sourceChanged = input.files.some(isSource);

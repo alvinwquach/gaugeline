@@ -18,11 +18,11 @@ import {
   type TypeCount,
 } from "./types.js";
 
-import { WEBFLOW_DESCRIPTION } from "./meta.js";
+import { WEBFLOW_DESCRIPTION } from "./webflow.entry.js";
 export { WEBFLOW_DESCRIPTION };
 
-export const WEBFLOW_TOKEN = "WEBFLOW_TOKEN";
-export const WEBFLOW_SITE_ID = "WEBFLOW_SITE_ID";
+import { WEBFLOW_SITE_ID, WEBFLOW_TOKEN } from "./webflow.entry.js";
+export { WEBFLOW_SITE_ID, WEBFLOW_TOKEN };
 
 /** Webflow's Data API, version 2. */
 export const WEBFLOW_API = "https://api.webflow.com/v2";

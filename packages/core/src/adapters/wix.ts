@@ -8,7 +8,7 @@ import {
   type PublishedOptions,
 } from "./types.js";
 
-import { WIX_DESCRIPTION } from "./meta.js";
+import { WIX_DESCRIPTION } from "./wix.entry.js";
 export { WIX_DESCRIPTION };
 
 /**

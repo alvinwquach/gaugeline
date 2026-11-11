@@ -27,7 +27,7 @@ import {
   type TypeCount,
 } from "./types.js";
 
-import { SITEMAP_FEED_DESCRIPTION } from "./meta.js";
+import { SITEMAP_FEED_DESCRIPTION } from "./sitemap-feed.entry.js";
 export { SITEMAP_FEED_DESCRIPTION };
 
 /**

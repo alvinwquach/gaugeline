@@ -17,47 +17,24 @@ export { fillUrlTemplate, hashValue, isUrlTemplate } from "./fingerprint.js";
 export {
   BUILT_ADAPTERS,
   PLANNED_ADAPTERS,
+  adapterDescription,
+  adapterEnvVars,
+  allAdapterEnvVars,
   adaptersOrDefault,
   createAdapter,
   createAdapters,
   onAdapterLoad,
   resolveAdapters,
 } from "./registry.js";
-export type { AdapterContext, AdapterFactory, BuiltAdapter, PlannedAdapter } from "./registry.js";
-// Metadata only: what each adapter says about itself and the names of the variables it reads. The adapters'
-// own code is reached through the loaders in registry.ts and never exported from here, so importing the
-// engine does not load it (see the loader rule in registry.ts).
-export {
-  FRAMER_DESCRIPTION,
-  SANITY_DESCRIPTION,
-  SITEMAP_FEED_DESCRIPTION,
-  WEBFLOW_DESCRIPTION,
-  WIX_DESCRIPTION,
-  WORDPRESS_APP_PASSWORD,
-  WORDPRESS_DESCRIPTION,
-  WORDPRESS_ENV_VARS,
-  WORDPRESS_URL,
-  WORDPRESS_USER,
-} from "./meta.js";
+export type {
+  AdapterContext,
+  AdapterEntry,
+  AdapterFactory,
+  BuiltAdapter,
+  PlannedAdapter,
+} from "./registry.js";
+// Nothing per adapter is exported from here: an adapter's code is reached through its loader (see the loader rule
+// in registry.ts), and its description and variable names through `adapterDescription` and `adapterEnvVars`, so a
+// new adapter adds no line to this file. The builders' table is plain data the docs and the suggestions read.
 export { BUILDERS, BUILDER_IDS, builderById, builderDescription } from "./builder-platforms.js";
 export type { BuilderPlatform } from "./builder-platforms.js";
-export type { SitemapFeedOptions } from "./sitemap-feed.js";
-export type { BuilderAdapterOptions, BuilderSuggestion } from "./builders.js";
-export type { FramerAdapterOptions } from "./framer.js";
-export type { SanityAdapterOptions } from "./sanity.js";
-export type { WixAdapterOptions } from "./wix.js";
-export type { WordPressAdapter, WordPressAdapterOptions } from "./wordpress.js";
-export type {
-  WebflowAdapter,
-  WebflowAdapterOptions,
-  WebflowCollection,
-  WebflowItemState,
-  WebflowStagedItem,
-} from "./webflow.js";
-export type {
-  PageAnswer,
-  PageRead,
-  ReadWebflowOptions,
-  StagedRead,
-  WebflowReading,
-} from "./webflow-read.js";

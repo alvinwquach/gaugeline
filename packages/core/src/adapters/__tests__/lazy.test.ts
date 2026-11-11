@@ -26,14 +26,16 @@ const SHARED = new Set([
   "collect.ts",
   "config.ts",
   "fingerprint.ts",
+  "entries.generated.ts",
+  "entry.ts",
   "index.ts",
-  "meta.ts",
+  "load.ts",
   "registry.ts",
   "types.ts",
 ]);
 
 const adapterModules = readdirSync(adaptersDir)
-  .filter((f) => f.endsWith(".ts") && !SHARED.has(f))
+  .filter((f) => f.endsWith(".ts") && !SHARED.has(f) && !f.endsWith(".entry.ts"))
   .map((f) => join(adaptersDir, f));
 
 function sourceFiles(dir: string): string[] {
@@ -119,11 +121,16 @@ describe("the loader rule", () => {
     expect(offenders).toEqual([]);
   });
 
-  it("registry.ts loads every built adapter with a dynamic import, in a loader", () => {
-    const text = readFileSync(join(adaptersDir, "registry.ts"), "utf8");
-    for (const module of ["sanity", "sitemap-feed", "wix", "wordpress", "webflow", "framer"])
-      expect(text, module).toContain(`await import("./${module}.js")`);
-    expect(text).toContain('await import("./builders.js")');
+  it("every adapter module is reached by a dynamic import in its entry file", () => {
+    const entryFiles = readdirSync(adaptersDir).filter((f) => f.endsWith(".entry.ts"));
+    expect(entryFiles.length).toBeGreaterThan(10);
+    const loaders = entryFiles.map((f) => readFileSync(join(adaptersDir, f), "utf8")).join("\n");
+    for (const module of adapterModules) {
+      const name = relative(adaptersDir, module).replaceAll(sep, "/").replace(/\.ts$/, "");
+      // <id>-read.ts is part of the adapter <id> (its reading for a check) and is reached through <id>.ts.
+      if (name.endsWith("-read")) continue;
+      expect(loaders, name).toContain(`await import("./${name}.js")`);
+    }
   });
 });
 

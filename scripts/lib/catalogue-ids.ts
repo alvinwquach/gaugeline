@@ -2,6 +2,7 @@ import {
   CUTOVER_ONLY_CHECKS,
   MIGRATION_CHECKS,
   WEBFLOW_CHECKS,
+  CONTENTFUL_CHECKS,
   AD_LANDING_CHECKS,
   CAMPAIGN_CHECKS,
   DUPLICATE_CHECKS,
@@ -13,6 +14,7 @@ import {
   HANDOFF_CHECKS,
   COST_CHECKS,
   TRACKER_CHECKS,
+  PUBLISHED_CHECKS,
   LIBRARY_CHECKS,
   WORDPRESS_CHECKS,
   PRINTED_CHECKS,
@@ -42,6 +44,7 @@ export function CATALOGUE_IDS(): string[] {
   for (const c of HANDOFF_CHECKS) registry.register(c);
   for (const c of COST_CHECKS) registry.register(c);
   for (const c of TRACKER_CHECKS) registry.register(c);
+  for (const c of PUBLISHED_CHECKS) registry.register(c);
   for (const c of LIBRARY_CHECKS) registry.register(c);
   for (const c of WORDPRESS_CHECKS) registry.register(c);
   for (const c of PRESENCE_CHECKS) registry.register(c);
@@ -59,5 +62,6 @@ export function CATALOGUE_IDS(): string[] {
   for (const c of CUTOVER_ONLY_CHECKS) registry.register(c);
   for (const c of MIGRATION_CHECKS) registry.register(c);
   for (const c of WEBFLOW_CHECKS) registry.register(c);
+  for (const c of CONTENTFUL_CHECKS) registry.register(c);
   return registry.all().map((c) => c.id);
 }

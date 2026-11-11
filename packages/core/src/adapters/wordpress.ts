@@ -22,7 +22,7 @@ import {
   type TypeCount,
 } from "./types.js";
 
-import { WORDPRESS_DESCRIPTION } from "./meta.js";
+import { WORDPRESS_DESCRIPTION } from "./wordpress.entry.js";
 export { WORDPRESS_DESCRIPTION };
 
 import {
@@ -30,7 +30,7 @@ import {
   WORDPRESS_ENV_VARS,
   WORDPRESS_URL,
   WORDPRESS_USER,
-} from "./meta.js";
+} from "./wordpress.entry.js";
 export { WORDPRESS_APP_PASSWORD, WORDPRESS_ENV_VARS, WORDPRESS_URL, WORDPRESS_USER };
 
 /** Items asked for in one request: the most the REST API allows. */

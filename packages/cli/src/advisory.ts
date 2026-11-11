@@ -1,7 +1,7 @@
 import {
   AdapterCouldNotCheck,
   AdapterRateLimitedError,
-  WORDPRESS_ENV_VARS,
+  adapterEnvVars,
   checkAdvisory,
   createDnsReader,
   createFetcher,
@@ -10,11 +10,11 @@ import {
   freezeEnv,
   renderAdvisoryNote,
   renderAdvisoryTerminal,
+  type ContentAdapter,
   type DnsReader,
   type Fetcher,
   type FetcherOptions,
   type Outcome,
-  type WordPressAdapter,
   type WordPressData,
 } from "@gaugeline/core";
 import { readAdaptersConfig } from "./schema-config.js";
@@ -63,7 +63,7 @@ async function readInstalled(
   quiet: boolean,
   address: string,
 ): Promise<WordPressData | undefined> {
-  const env = freezeEnv(io.env ?? {}, WORDPRESS_ENV_VARS);
+  const env = freezeEnv(io.env ?? {}, adapterEnvVars("wordpress"));
   // The adapter's list is about the site WORDPRESS_URL names. It is used for that site only, and is not even asked
   // for when the site being checked is another one.
   let named = "";
@@ -84,7 +84,9 @@ async function readInstalled(
     // Loaded here, the first time this run needs it (the registry's loader), and not at start-up.
     const built = BUILT_ADAPTERS.get("wordpress");
     if (!built) return undefined;
-    const adapter = (await createAdapter(built, { env, fetcher }, entry)) as WordPressAdapter;
+    const adapter = (await createAdapter(built, { env, fetcher }, entry)) as ContentAdapter & {
+      installed(): Promise<WordPressData>;
+    };
     return await adapter.installed();
   } catch (err) {
     if (err instanceof AdapterCouldNotCheck || err instanceof AdapterRateLimitedError) {

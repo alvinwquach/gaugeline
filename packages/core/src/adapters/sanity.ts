@@ -24,7 +24,7 @@ import {
   type TypeCount,
 } from "./types.js";
 
-import { SANITY_DESCRIPTION } from "./meta.js";
+import { SANITY_DESCRIPTION } from "./sanity.entry.js";
 export { SANITY_DESCRIPTION };
 
 /** Items asked for in one request. A GET carries the query in its address, so the page stays small. */

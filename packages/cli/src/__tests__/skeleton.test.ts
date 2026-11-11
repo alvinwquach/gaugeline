@@ -107,15 +107,17 @@ describe("walking skeleton: integration (the packed tarball)", () => {
     const paths = info.files.map((f) => f.path);
     const chunks = paths.filter((p) => chunk.test(p));
     expect(chunks).toContain("dist/index.js");
-    for (const adapter of [
-      "sanity",
-      "sitemap-feed",
-      "wix",
-      "wordpress",
-      "webflow",
-      "framer",
-      "builders",
-    ])
+    // The adapter modules are read from the entry files (adapters/<id>.entry.ts), so a new adapter edits no list here.
+    const adaptersDir = join(repoRoot, "packages/core/src/adapters");
+    const adapterModules = readdirSync(adaptersDir)
+      .filter((f) => f.endsWith(".entry.ts"))
+      .flatMap((f) =>
+        [
+          ...readFileSync(join(adaptersDir, f), "utf8").matchAll(/import\("\.\/([\w-]+)\.js"\)/g),
+        ].map((m) => m[1] ?? ""),
+      );
+    expect(adapterModules.length).toBeGreaterThan(0);
+    for (const adapter of new Set(adapterModules))
       expect(
         chunks.some((c) => c.startsWith(`dist/${adapter}-`)),
         `${adapter} has its own chunk`,

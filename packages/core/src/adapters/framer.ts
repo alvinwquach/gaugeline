@@ -8,7 +8,7 @@ import {
   type PublishedOptions,
 } from "./types.js";
 
-import { FRAMER_DESCRIPTION } from "./meta.js";
+import { FRAMER_DESCRIPTION } from "./framer.entry.js";
 export { FRAMER_DESCRIPTION };
 
 /**
