@@ -39,6 +39,7 @@ interface Fake {
 function fake(f: Fake = {}): WordPress & { asked: string[] } {
   const asked: string[] = [];
   const claimed = new Set<string>();
+  const spent = new Map<string, number>();
   return {
     asked,
     latest: async (kind, slug = "") => {
@@ -53,6 +54,11 @@ function fake(f: Fake = {}): WordPress & { asked: string[] } {
     },
     users: async () => f.users ?? { ok: true, exposed: false, listed: 0, route: "/x" },
     claim: (k) => (claimed.has(k) ? false : (claimed.add(k), true)),
+    reserve: (kind) => {
+      const used = (spent.get(kind) ?? 0) + 1;
+      spent.set(kind, used);
+      return used <= 15;
+    },
   };
 }
 
@@ -120,12 +126,12 @@ describe("wp-outdated: positive and negative", () => {
       [
         "wp-outdated",
         "medium",
-        "WordPress 6.2.1 is shown (read from the generator tag); the current release in the wordpress.org API is 6.8.3.",
+        "The page declares WordPress 6.2.1 (read from the generator tag); the current release in the wordpress.org API is 6.8.3.",
       ],
       [
         "wp-outdated",
         "medium",
-        "The plugin easy-booking 2.1.3 is shown (read from the ?ver= on its files on this page); the current release in the wordpress.org directory is 2.4.0.",
+        "The page declares the plugin easy-booking 2.1.3 (read from the ?ver= on its files on this page); the current release in the wordpress.org directory is 2.4.0.",
       ],
     ]);
     expect(out[0]?.url).toBe(`https://${BAR}/`);
@@ -138,7 +144,7 @@ describe("wp-outdated: positive and negative", () => {
       generator: "WordPress 6.8.3",
       plugins: [
         ["easy-booking", "2.4.0"],
-        ["gallery-lite", "1.4.0"],
+        ["gallery-lite", "1.3.0"],
       ],
     });
     expect(await wpOutdated.run(p, ctx)).toEqual([]);
@@ -211,7 +217,7 @@ describe("wp-outdated: positive and negative", () => {
         plugins: [["easy-booking", "2.1.3"]],
       }).replace(
         "</head>",
-        '<link rel="stylesheet" href="/wp-content/plugins/easy-booking/vendor/x.css?ver=9.9.1"></head>',
+        '<link rel="stylesheet" href="/wp-content/plugins/easy-booking/includes/x.css?ver=9.9.1"></head>',
       );
       expect(await wpOutdated.run(pageOf(html), ctx)).toEqual([]);
       expect(notes[0]?.reason).toContain("more than one version number");
@@ -241,7 +247,7 @@ describe("wp-outdated: positive and negative", () => {
       const p = pageOf(wpPage({ generator: null, coreVer: "6.2.1" }));
       const out = await wpOutdated.run(p, ctx);
       expect(out[0]?.evidence).toContain(
-        "WordPress 6.2.1 is shown (read from the version on the site's wp-includes files)",
+        "The page declares WordPress 6.2.1 (read from the version on the site's wp-includes files)",
       );
       expect(notes).toEqual([]);
     });
@@ -306,15 +312,74 @@ describe("wp-outdated: positive and negative", () => {
     expect(second).toEqual([]);
   });
 
-  it("looks up at most 15 plugins, and says so", async () => {
-    const many = Array.from({ length: 17 }, (_, i): [string, string] => [`plugin-${i}`, "1.0.0"]);
+  it("looks up at most 15 plugins for the whole run, not for each page, and says how many were left", async () => {
+    const many = (from: number) =>
+      Array.from({ length: 10 }, (_, i): [string, string] => [`plugin-${from + i}`, "1.0.0"]);
     const wp = fake({ latest: CURRENT });
     const { ctx, notes } = context(wp);
-    await wpOutdated.run(pageOf(wpPage({ generator: "WordPress 6.8.3", plugins: many })), ctx);
+    for (const from of [0, 10])
+      await wpOutdated.run(
+        pageOf(wpPage({ generator: "WordPress 6.8.3", plugins: many(from) })),
+        ctx,
+      );
     expect(wp.asked.filter((a) => a.startsWith("plugin:"))).toHaveLength(15);
-    expect(notes.some((n) => n.reason.includes("2 plugins were not compared: at most 15"))).toBe(
-      true,
+    expect(
+      notes.filter((n) => /not compared: at most 15/.test(n.reason)).map((n) => n.reason),
+    ).toEqual([
+      expect.stringContaining(
+        "5 plugins were not compared: at most 15 plugins are looked up in a run",
+      ),
+    ]);
+  });
+
+  describe("a ?ver= is the plugin's version only on the plugin's own files", () => {
+    const withExtra = (extra: string, own: string | null = null) =>
+      pageOf(
+        wpPage({ generator: "WordPress 6.8.3", plugins: [["easy-booking", own]] }).replace(
+          "</head>",
+          `${extra}</head>`,
+        ),
+      );
+    const bundled = (file: string, ver: string) =>
+      `<link rel="stylesheet" href="/wp-content/plugins/easy-booking/${file}?ver=${ver}">`;
+
+    it("a bundled library's number is not the plugin's: could-not-check, never outdated", async () => {
+      for (const file of [
+        "vendor/fontawesome/css/all.css",
+        "assets/lib/slick/slick.css",
+        "fonts/font-awesome.min.css",
+        "css/bootstrap.min.css",
+        "node_modules/swiper/swiper.css",
+      ]) {
+        const { ctx, notes } = context(fake({ latest: CURRENT }));
+        expect(await wpOutdated.run(withExtra(bundled(file, "5.15.4")), ctx), file).toEqual([]);
+        expect(notes[0]?.reason, file).toContain(
+          "no version Gaugeline can read (plugin easy-booking)",
+        );
+      }
+    });
+
+    it("its own file's number is used, and a bundled library's beside it is ignored", async () => {
+      const { ctx, notes } = context(fake({ latest: CURRENT }));
+      const out = await wpOutdated.run(
+        withExtra(bundled("vendor/fontawesome/css/all.css", "5.15.4"), "2.1.3"),
+        ctx,
+      );
+      expect(out.map((f) => f.evidence)).toEqual([expect.stringContaining("easy-booking 2.1.3")]);
+      expect(notes).toEqual([]);
+    });
+  });
+
+  it("a version newer than the directory's current release is could-not-check, not current", async () => {
+    const { ctx, notes } = context(fake({ latest: CURRENT }));
+    const out = await wpOutdated.run(
+      pageOf(wpPage({ generator: "WordPress 6.8.3", plugins: [["easy-booking", "9.9.1"]] })),
+      ctx,
     );
+    expect(out).toEqual([]);
+    expect(notes.map((n) => n.reason)).toEqual([
+      expect.stringContaining("declares 9.9.1, which is newer than the current release 2.4.0"),
+    ]);
   });
 });
 

@@ -128,6 +128,31 @@ describe("the users reader", () => {
     expect(seen).toHaveLength(2);
   });
 
+  it("plain permalinks in a folder: the fallback stays under the site's own folder, never the origin's root", async () => {
+    const sub: SiteDef = {
+      routes: {
+        "/blog/?rest_route=%2Fwp%2Fv2%2Fusers&per_page=100&_fields=id": {
+          body: usersJson(2),
+          type: "application/json",
+        },
+        // Another site at the origin's root, which must not be asked.
+        "/?rest_route=%2Fwp%2Fv2%2Fusers&per_page=100&_fields=id": {
+          body: usersJson(9),
+          type: "application/json",
+        },
+      },
+    };
+    const { wp, seen } = reader({ [HOST]: sub });
+    expect(await wp.users(`https://${HOST}/blog/wp-json/`)).toMatchObject({
+      exposed: true,
+      listed: 2,
+    });
+    expect(seen.map((s) => new URL(s.url).pathname)).toEqual([
+      "/blog/wp-json/wp/v2/users",
+      "/blog/",
+    ]);
+  });
+
   it("the REST API off in both forms is not exposed", async () => {
     expect(await reader({ [HOST]: { routes: {} } }).wp.users(ROOT)).toMatchObject({
       ok: true,

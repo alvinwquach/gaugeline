@@ -3,13 +3,12 @@ import { wordpressOf, type WordPressAsset, type WordPressRead } from "../advisor
 import type { CheckContext, Finding } from "../model.js";
 import { defineCheck } from "../model.js";
 import type { PageSnapshot } from "../snapshot.js";
-import type { Latest, WordPress } from "../wordpress/reader.js";
+import { WORDPRESS_LOOKUP_CAP, type Latest, type WordPress } from "../wordpress/reader.js";
 import { escapeInvisible } from "./hidden-text/escape.js";
 
 const clip = (text: string): string => escapeInvisible(text, 120);
 
-/** The most plugins, and the most themes, one run compares with wordpress.org: one request each. */
-export const WORDPRESS_ASSET_CAP = 15;
+export { WORDPRESS_LOOKUP_CAP } from "../wordpress/reader.js";
 
 /** The WordPress a page shows, from its own HTML and headers: undefined when the page shows none. */
 function wordpressOfPage(page: PageSnapshot): { read: WordPressRead; html: string } | undefined {
@@ -53,12 +52,17 @@ interface Component {
 const labelOf = (c: Pick<Component, "kind" | "slug">): string =>
   c.kind === "core" ? "WordPress" : `The ${c.kind} ${clip(c.slug)}`;
 
-/** The finding for one component whose version is older than wordpress.org's current one, or undefined. */
-function compared(c: Component, latest: string): "older" | "current" | "unreadable" {
+/**
+ * How the version a page declares stands against wordpress.org's current one. A version above the current release
+ * cannot be a release of this plugin (a bundled file's number, a beta, a different product), so it is not "current":
+ * it is "newer", and the check says it could not compare.
+ */
+function compared(c: Component, latest: string): "older" | "current" | "newer" | "unreadable" {
   const a = parseVersion("wordpress", c.version);
   const b = parseVersion("wordpress", latest);
   if (!a || !b) return "unreadable";
-  return compare("wordpress", a, b) < 0 ? "older" : "current";
+  const d = compare("wordpress", a, b);
+  return d < 0 ? "older" : d === 0 ? "current" : "newer";
 }
 
 function assetVersion(asset: WordPressAsset): { version?: string; several?: string[] } {
@@ -84,7 +88,7 @@ export const wpOutdated = defineCheck<PageSnapshot>({
   what: "Gaugeline reads the WordPress version a page shows (the generator tag, or the version on the files WordPress loads from wp-includes) and the version of each plugin and theme in the addresses of the files the page loads, and compares them with the current releases the public wordpress.org API lists.",
   why: "Most WordPress updates fix something, and a site that falls behind keeps the problems the updates fixed. This states which versions are shown and which are current; it does not say a site can be attacked. A site that hides its versions is not reported as up to date: Gaugeline says it could not check.",
   fix: "Take a backup, update on a staging copy if there is one, then update WordPress, the plugins and the theme the finding names, and look at the pages that use them. A premium plugin that is not in the wordpress.org directory is updated from its own vendor and is listed as could-not-check here.",
-  tech: "Only with --wordpress. The version of WordPress is the generator meta tag (WordPress 6.4.2), else the ?ver= on the core files under /wp-includes/ (the emoji and block-library files); a plugin's or theme's version is the ?ver= on its files under /wp-content/plugins/<slug>/ or /wp-content/themes/<slug>/, read as a release number written with dots (2.1.3, 5.8, 1.0.0-beta2) and never a date, a hash or a timestamp, which are cache-busters; a number that is WordPress's own (what WordPress writes when a plugin gives none) is not the plugin's. A plugin whose files carry more than one number, or none, is could-not-check. The current releases are one GET each to https://api.wordpress.org/core/version-check/1.7/ and https://api.wordpress.org/plugins/info/1.2/ (themes/info/1.2/ for a theme) with the slug the page shows, no key and nothing sent, at most 15 plugins and 15 themes for a run. A plugin or theme not in the directory (a premium or custom one) is could-not-check. A page the run reaches on a site that is not WordPress is skipped. Versions are compared as whole numbers in four parts (5.10 is after 5.8), and each component is reported once per run, on the first page that shows it.",
+  tech: "Only with --wordpress. The version of WordPress is the generator meta tag (WordPress 6.4.2), else the ?ver= on the core files under /wp-includes/ (the emoji and block-library files); a plugin's or theme's version is the ?ver= on its files under /wp-content/plugins/<slug>/ or /wp-content/themes/<slug>/, read as a release number written with dots (2.1.3, 5.8, 1.0.0-beta2) and never a date, a hash or a timestamp, which are cache-busters; a number that is WordPress's own (what WordPress writes when a plugin gives none) is not the plugin's, and neither is the number on a file the plugin bundles from another project (a vendor, lib or fonts folder, or a file such as font-awesome, bootstrap or swiper), which is that project's. What a page declares is only what its files say: a version newer than the directory's current release is could-not-check, not current. A plugin whose files carry more than one number, or none, is could-not-check. The current releases are one GET each to https://api.wordpress.org/core/version-check/1.7/ and https://api.wordpress.org/plugins/info/1.2/ (themes/info/1.2/ for a theme) with the slug the page shows, no key and nothing sent, at most 15 plugins and 15 themes for the whole run, shared by every page (the rest are listed as could-not-check with their number). A plugin or theme not in the directory (a premium or custom one) is could-not-check. A page the run reaches on a site that is not WordPress is skipped. Versions are compared as whole numbers in four parts (5.10 is after 5.8), and each component is reported once per run, on the first page that shows it.",
   async run(page, ctx: CheckContext) {
     const wp: WordPress | undefined = ctx.wordpress;
     if (!wp) return [];
@@ -110,32 +114,39 @@ export const wpOutdated = defineCheck<PageSnapshot>({
         );
     }
 
+    const overCap: Record<"plugin" | "theme", string[]> = { plugin: [], theme: [] };
     const hidden: string[] = [];
     const several: string[] = [];
     for (const [kind, assets] of [
       ["plugin", read.plugins],
       ["theme", read.themes],
     ] as const) {
-      if (assets.length > WORDPRESS_ASSET_CAP && wp.claim(`${kind}-cap`))
-        ctx.couldNotCheck?.(
-          url,
-          `${assets.length - WORDPRESS_ASSET_CAP} ${kind}s were not compared: at most ${WORDPRESS_ASSET_CAP} are looked up for one run.`,
-        );
-      for (const asset of assets.slice(0, WORDPRESS_ASSET_CAP)) {
+      for (const asset of assets) {
         if (!wp.claim(`${kind}:${asset.slug}`)) continue;
         const v = assetVersion(asset);
-        if (v.version)
+        if (v.version) {
+          // The allowance is the run's: only a component with a version to compare costs a request.
+          if (!wp.reserve(kind)) {
+            overCap[kind].push(asset.slug);
+            continue;
+          }
           components.push({
             kind,
             slug: asset.slug,
             version: v.version,
             how: `the ?ver= on its files on this page`,
           });
-        else if (v.several) several.push(`${kind} ${asset.slug} (${v.several.join(", ")})`);
+        } else if (v.several) several.push(`${kind} ${asset.slug} (${v.several.join(", ")})`);
         else hidden.push(`${kind} ${asset.slug}`);
       }
     }
 
+    for (const kind of ["plugin", "theme"] as const)
+      if (overCap[kind].length > 0)
+        ctx.couldNotCheck?.(
+          url,
+          `${overCap[kind].length} ${kind}${overCap[kind].length === 1 ? " was" : "s were"} not compared: at most ${WORDPRESS_LOOKUP_CAP} ${kind}s are looked up in a run (${list(overCap[kind])}).`,
+        );
     const unlisted: string[] = [];
     for (const c of components) {
       const latest: Latest = await wp.latest(c.kind, c.slug);
@@ -156,12 +167,19 @@ export const wpOutdated = defineCheck<PageSnapshot>({
         );
         continue;
       }
+      if (result === "newer") {
+        ctx.couldNotCheck?.(
+          url,
+          `${labelOf(c)} declares ${clip(c.version)}, which is newer than the current release ${clip(latest.version)} in wordpress.org, so it is not taken for the ${c.kind === "core" ? "WordPress" : c.kind}'s own version and was not compared.`,
+        );
+        continue;
+      }
       if (result === "older")
         out.push({
           checkId: "wp-outdated",
           severity: "medium",
           title: this.title,
-          evidence: `${labelOf(c)} ${clip(c.version)} is shown (read from ${c.how}); the current release in the wordpress.org ${c.kind === "core" ? "API" : "directory"} is ${clip(latest.version)}.`,
+          evidence: `The page declares ${c.kind === "core" ? "WordPress" : `the ${c.kind} ${clip(c.slug)}`} ${clip(c.version)} (read from ${c.how}); the current release in the wordpress.org ${c.kind === "core" ? "API" : "directory"} is ${clip(latest.version)}.`,
           url: clip(url),
         });
     }

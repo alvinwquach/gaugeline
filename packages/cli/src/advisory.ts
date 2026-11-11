@@ -38,19 +38,47 @@ export interface AdvisoryDeps {
  * WordPress lists them only to an administrator, so a key that may not is a note on stderr and the run goes on
  * with what the page shows. Nothing is read when the file does not name wordpress.
  */
-async function wordpressRead(
+function wordpressRead(
   cwd: string,
   io: AdvisoryIo,
   fetcher: Fetcher,
   quiet: boolean,
-): Promise<WordPressData | undefined> {
+  address: string,
+): (() => Promise<WordPressData | undefined>) | undefined {
   const entry = readAdaptersConfig(cwd)?.adapters.find((a) => a.id === "wordpress");
   if (!entry) return undefined;
-  const adapter = createWordPressAdapter({
-    env: freezeEnv(io.env ?? {}, WORDPRESS_ENV_VARS),
-    fetcher,
-    settings: entry,
-  });
+  // Called only once the advisory is known to be about WordPress (checkAdvisory decides), so an Administrator's key
+  // is not used for any other advisory.
+  return () => readInstalled(entry, io, fetcher, quiet, address);
+}
+
+const bare = (h: string): string => h.toLowerCase().replace(/^www\./, "");
+
+async function readInstalled(
+  entry: NonNullable<ReturnType<typeof readAdaptersConfig>>["adapters"][number],
+  io: AdvisoryIo,
+  fetcher: Fetcher,
+  quiet: boolean,
+  address: string,
+): Promise<WordPressData | undefined> {
+  const env = freezeEnv(io.env ?? {}, WORDPRESS_ENV_VARS);
+  // The adapter's list is about the site WORDPRESS_URL names. It is used for that site only, and is not even asked
+  // for when the site being checked is another one.
+  let named = "";
+  try {
+    named = new URL((env.WORDPRESS_URL ?? "").trim()).hostname;
+  } catch {
+    named = "";
+  }
+  const checked = new URL(address).hostname;
+  if (named !== "" && bare(named) !== bare(checked)) {
+    if (!quiet)
+      io.stderr.write(
+        `The WordPress adapter in gaugeline.adapters.json names ${named}, not ${checked}, so its list of installed plugins was not used. The answer uses what the page shows.\n`,
+      );
+    return undefined;
+  }
+  const adapter = createWordPressAdapter({ env, fetcher, settings: entry });
   try {
     return await adapter.installed();
   } catch (err) {
@@ -90,7 +118,7 @@ export async function runAdvisory(
     // --allow-private trusts the address you typed, not where its pages point.
     ...(args.allowPrivate ? { allowPrivate: true, target: args.address } : {}),
   });
-  const wordpress = await wordpressRead(deps.cwd ?? process.cwd(), io, fetcher, args.quiet);
+  const wordpress = wordpressRead(deps.cwd ?? process.cwd(), io, fetcher, args.quiet, args.address);
   const result = await checkAdvisory({
     fetcher,
     address: args.address,

@@ -5,7 +5,11 @@ import { resultSchema, type Transport } from "@gaugeline/core";
 import { afterEach, describe, expect, it } from "vitest";
 import { WP_ENV, WP_USER } from "../../../core/src/adapters/__tests__/entries.js";
 import { wordpressTransport } from "../../../core/src/adapters/__tests__/wordpress-fixture.js";
-import { html, worldTransport } from "../../../core/src/advisory/__tests__/world.js";
+import {
+  html,
+  worldTransport,
+  type SiteDef as SiteDef2,
+} from "../../../core/src/advisory/__tests__/world.js";
 import {
   ROUTES,
   wpPage,
@@ -172,18 +176,17 @@ describe("gaugeline advisory: the WordPress adapter's read reaches the answer", 
   const SPEC = "wp-plugin:easy-booking@<2.4.0";
 
   function transport(): Transport {
-    // The site shows no version on the plugin's files; the REST API, asked with the application password, lists it.
-    const site = worldTransport({
-      [BAR]: {
-        headers: { server: "nginx", "x-powered-by": "PHP/8.1.27" },
-        routes: {
-          "/": html({
-            head: '<meta name="generator" content="WordPress 6.4.2">',
-            scripts: ["/wp-content/plugins/easy-booking/js/app.js"],
-          }),
-        },
+    const wpSite = (): SiteDef2 => ({
+      headers: { server: "nginx", "x-powered-by": "PHP/8.1.27" },
+      routes: {
+        "/": html({
+          head: '<meta name="generator" content="WordPress 6.4.2">',
+          scripts: ["/wp-content/plugins/easy-booking/js/app.js"],
+        }),
       },
-    }).transport;
+    });
+    // The site shows no version on the plugin's files; the REST API, asked with the application password, lists it.
+    const site = worldTransport({ [BAR]: wpSite(), "other.example": wpSite() }).transport;
     const rest = wordpressTransport(undefined, {
       app: { user: WP_USER, password: WP_ENV.WORDPRESS_APP_PASSWORD },
     });
@@ -228,5 +231,22 @@ describe("gaugeline advisory: the WordPress adapter's read reaches the answer", 
     writeFileSync(join(dir, "gaugeline.adapters.json"), settings);
     const r = await advise(dir, { WORDPRESS_URL: `https://${BAR}` });
     expect(r.err).toContain("WORDPRESS_USER and WORDPRESS_APP_PASSWORD are not set");
+  });
+
+  it("another site's plugins are not used: the adapter's host must be the checked host, and it is not even asked", async () => {
+    const dir = folder();
+    writeFileSync(join(dir, "gaugeline.adapters.json"), settings);
+    const r = await run(["advisory", "other.example", SPEC, "--json"], dir, transport(), env);
+    expect(JSON.parse(r.out)).toMatchObject({ verdict: "cannot-tell" });
+    expect(r.seen.some((s) => s.url.includes("/wp-json/"))).toBe(false);
+    expect(r.err).toContain(`names ${BAR}, not other.example`);
+  });
+
+  it("the adapter's key is not used for an advisory that is not about WordPress", async () => {
+    const dir = folder();
+    writeFileSync(join(dir, "gaugeline.adapters.json"), settings);
+    const r = await run(["advisory", BAR, "next@<15.2.3", "--json"], dir, transport(), env);
+    expect(r.seen.some((s) => s.url.includes("/wp-json/"))).toBe(false);
+    expect(JSON.parse(r.out)).not.toMatchObject({ verdict: "likely-affected" });
   });
 });

@@ -81,6 +81,25 @@ export interface WordPressAdapterOptions {
   pageSize?: number | undefined;
 }
 
+/**
+ * Blanks the application password in every spelling it can turn up in: as typed (WordPress shows it in groups of
+ * four, with spaces), without the spaces, and inside the Basic value (base64 of "user:password") that travels in the
+ * Authorization header. Reasons are built from status codes and fixed words and never carry a response body, so this
+ * is the backstop for a message some layer below puts the header in.
+ */
+export function createWordPressRedactor(env: Env): (text: string) => string {
+  const user = (env[WORDPRESS_USER] ?? "").trim();
+  const password = (env[WORDPRESS_APP_PASSWORD] ?? "").trim();
+  const basic =
+    user !== "" && password !== "" ? Buffer.from(`${user}:${password}`).toString("base64") : "";
+  const nospace = password.replace(/\s+/g, "");
+  return createRedactor({ ...env, _nospace: nospace, _basic: basic }, [
+    WORDPRESS_APP_PASSWORD,
+    "_nospace",
+    "_basic",
+  ]);
+}
+
 /** ContentAdapter, plus the one read WordPress offers that no other adapter has: what is installed. */
 export interface WordPressAdapter extends ContentAdapter {
   /**
@@ -89,6 +108,9 @@ export interface WordPressAdapter extends ContentAdapter {
    */
   installed(): Promise<WordPressData>;
 }
+
+/** WordPress answered 400, which for a page of a list means "there is no such page" (rest_post_invalid_page_number). */
+class NoSuchPage extends AdapterCouldNotCheck {}
 
 /** A read WordPress refused to a visitor with no key: for one type, that is not an error but "not published content". */
 class AnonymousRefused extends AdapterCouldNotCheck {}
@@ -165,12 +187,7 @@ export function createWordPressAdapter(options: WordPressAdapterOptions): WordPr
   const password = (env[WORDPRESS_APP_PASSWORD] ?? "").trim();
   const basic =
     user !== "" && password !== "" ? Buffer.from(`${user}:${password}`).toString("base64") : "";
-  // The password as typed, without its spaces (WordPress shows it in groups of four), and the Basic value.
-  const redact = createRedactor({ ...env, _nospace: password.replace(/\s+/g, ""), _basic: basic }, [
-    WORDPRESS_APP_PASSWORD,
-    "_nospace",
-    "_basic",
-  ]);
+  const redact = createWordPressRedactor(env);
 
   /** What a failed read becomes: a rate limit carries what was read, anything else is could-not-check. */
   const translate = (err: unknown, partial: unknown, authed: boolean): Error => {
@@ -187,6 +204,8 @@ export function createWordPressAdapter(options: WordPressAdapterOptions): WordPr
       return new AdapterCouldNotCheck(
         `WordPress's REST API was not found at ${WORDPRESS_URL} (HTTP 404). Check the address, that permalinks are not set to Plain and that no plugin turns the REST API off.`,
       );
+    if (err instanceof ConnectorStatusError && err.status === 400)
+      return new NoSuchPage(redact(err.message));
     return new AdapterCouldNotCheck(redact(err instanceof Error ? err.message : String(err)));
   };
 
@@ -290,7 +309,12 @@ export function createWordPressAdapter(options: WordPressAdapterOptions): WordPr
     const found = await restTypes(done);
     for (const t of found) {
       try {
-        const { headers } = await read(t.base, { per_page: "1", _fields: "id" }, false, done);
+        const { headers } = await read(
+          t.base,
+          { status: "publish", per_page: "1", _fields: "id" },
+          false,
+          done,
+        );
         done.push({ name: t.name, count: total(headers, `published ${t.name} items`) });
       } catch (err) {
         // A type a visitor may not list (the API answers 401 or 403 for it) is not published content.
@@ -309,19 +333,40 @@ export function createWordPressAdapter(options: WordPressAdapterOptions): WordPr
     delivered: () => number,
   ): AsyncGenerator<Record<string, unknown>> {
     let page = 1;
+    let counted = false;
     for (;;) {
-      const asked = [...new Set(["id", ...fields])];
-      const { body, headers } = await read(
-        base,
-        { ...params, per_page: String(pageSize), page: String(page), _fields: asked.join(",") },
-        false,
-        delivered(),
-      );
+      // status=publish is asked for, and asked back: a plugin that leaks drafts to visitors does not make them published.
+      const asked = [...new Set(["id", "status", ...fields])];
+      let answer: { body: unknown; headers: Record<string, string> };
+      try {
+        answer = await read(
+          base,
+          {
+            ...params,
+            status: "publish",
+            per_page: String(pageSize),
+            page: String(page),
+            _fields: asked.join(","),
+          },
+          false,
+          delivered(),
+        );
+      } catch (err) {
+        // With no page count (a proxy stripped X-WP-TotalPages) the page after a full last page is a 400: the end.
+        if (err instanceof NoSuchPage && page > 1 && !counted) return;
+        throw err;
+      }
+      const { body, headers } = answer;
       if (!Array.isArray(body))
         throw new AdapterCouldNotCheck("WordPress answered with something that is not a list.");
-      for (const row of body) yield isRecord(row) ? row : {};
+      for (const row of body) {
+        const item = isRecord(row) ? row : {};
+        if (typeof item.status === "string" && item.status !== "publish") continue;
+        yield item;
+      }
       const pagesTotal = Number(headers["x-wp-totalpages"]);
-      const more = Number.isSafeInteger(pagesTotal) ? page < pagesTotal : body.length >= pageSize;
+      counted = Number.isSafeInteger(pagesTotal);
+      const more = counted ? page < pagesTotal : body.length >= pageSize;
       if (!more || body.length === 0) return;
       page++;
     }
@@ -516,7 +561,7 @@ export function createWordPressAdapter(options: WordPressAdapterOptions): WordPr
         ...(typeof v === "string" && v !== "" ? { version: v } : {}),
       });
     }
-    return { plugins, themes };
+    return { host: site().hostname, plugins, themes };
   };
 
   return {

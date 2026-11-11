@@ -32,7 +32,15 @@ export interface WordPress {
    * versions, and a finding or note about one is given once, on the first page.
    */
   claim(key: string): boolean;
+  /**
+   * True while fewer than WORDPRESS_LOOKUP_CAP plugins (or themes) have been looked up on wordpress.org in this run:
+   * the allowance is the run's, shared by every page, so the requests are bounded however many pages are checked.
+   */
+  reserve(kind: "plugin" | "theme"): boolean;
 }
+
+/** The most plugins, and the most themes, one run asks wordpress.org about. */
+export const WORDPRESS_LOOKUP_CAP = 15;
 
 export const WORDPRESS_API = "https://api.wordpress.org";
 
@@ -48,6 +56,7 @@ export function createWordPress(fetcher: Fetcher, api: string = WORDPRESS_API): 
   const latests = new Map<string, Promise<Latest>>();
   const users = new Map<string, Promise<UsersRead>>();
   const claimed = new Set<string>();
+  const spent = { plugin: 0, theme: 0 };
 
   /** One GET, parsed as JSON: the status and the parsed body (undefined when it was not JSON). */
   async function getJson(
@@ -125,7 +134,7 @@ export function createWordPress(fetcher: Fetcher, api: string = WORDPRESS_API): 
     const routes = [
       `${base}/wp/v2/users?per_page=100&_fields=id`,
       // A site with plain permalinks serves its REST API at /?rest_route=, and answers /wp-json/ with 404.
-      `${new URL(base).origin}/?rest_route=${encodeURIComponent("/wp/v2/users")}&per_page=100&_fields=id`,
+      `${base.replace(/\/wp-json$/, "")}/?rest_route=${encodeURIComponent("/wp/v2/users")}&per_page=100&_fields=id`,
     ];
     let last = "";
     for (const [i, url] of routes.entries()) {
@@ -174,6 +183,11 @@ export function createWordPress(fetcher: Fetcher, api: string = WORDPRESS_API): 
       return once(latests, `${kind}:${slug}`, () => fetchLatest(kind, slug));
     },
     users: (root) => once(users, root, () => fetchUsers(root)),
+    reserve(kind) {
+      if (spent[kind] >= WORDPRESS_LOOKUP_CAP) return false;
+      spent[kind]++;
+      return true;
+    },
     claim(key) {
       if (claimed.has(key)) return false;
       claimed.add(key);

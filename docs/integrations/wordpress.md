@@ -8,17 +8,17 @@ Read [Content systems](index.md) first for what every adapter does and never doe
 
 Every request is a `GET` through the fetcher, which refuses private, loopback and metadata addresses unless `--allow-private` is set. Nothing is submitted, no login form is touched, `xmlrpc.php` is never called, and no path that is not a documented REST route is asked for. `<site>` is `WORDPRESS_URL`, so a WordPress installed in a folder works.
 
-| Request                                                                      | Key                                 | What it is for                                                                                           |
-| ---------------------------------------------------------------------------- | ----------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `GET <site>/wp-json/wp/v2/types`                                             | none                                | The content types the site lists (post, page, and any custom type) and the path each is read at          |
-| `GET <site>/wp-json/wp/v2/<type>?per_page=1&_fields=id`                      | none                                | How many published items a type has, from the `X-WP-Total` header, so no item is read to count it        |
-| `GET <site>/wp-json/wp/v2/<type>?per_page=100&page=N&_fields=...`            | none                                | Published items as fingerprints: only the fields named, in id order, a page at a time                    |
-| `GET <site>/wp-json/wp/v2/posts` and `pages` with `status=draft,pending,...` | application password                | Whether the key can see unpublished work: a count, never a draft                                         |
-| `GET <site>/wp-json/wp/v2/users?context=edit&_fields=id,email,roles`         | application password, Administrator | Who has access, as a masked address and a role (the handoff report reads the same list with more detail) |
-| `GET <site>/wp-json/wp/v2/plugins` and `themes?status=active`                | application password, Administrator | Installed plugin and theme versions, for `gaugeline advisory` only                                       |
-| `GET https://api.wordpress.org/core/version-check/1.7/`                      | none                                | The current WordPress release, for `--wordpress`                                                         |
-| `GET https://api.wordpress.org/plugins/info/1.2/` (and `themes/info/1.2/`)   | none                                | The current version of a plugin or theme the page's files name, for `--wordpress`                        |
-| `GET <site>/wp-json/wp/v2/users?per_page=100&_fields=id`                     | none                                | Whether the site lists its users to a visitor, for `--wordpress`: only the id is asked for               |
+| Request                                                                          | Key                                 | What it is for                                                                                                                                                                                                         |
+| -------------------------------------------------------------------------------- | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET <site>/wp-json/wp/v2/types`                                                 | none                                | The content types the site lists (post, page, and any custom type) and the path each is read at                                                                                                                        |
+| `GET <site>/wp-json/wp/v2/<type>?status=publish&per_page=1&_fields=id`           | none                                | How many published items a type has, from the `X-WP-Total` header, so no item is read to count it                                                                                                                      |
+| `GET <site>/wp-json/wp/v2/<type>?status=publish&per_page=100&page=N&_fields=...` | none                                | Published items as fingerprints: only the fields named, in id order, a page at a time. `status=publish` is asked for and checked on every item, so a plugin that leaks drafts to visitors does not make them published |
+| `GET <site>/wp-json/wp/v2/posts` and `pages` with `status=draft,pending,...`     | application password                | Whether the key can see unpublished work: a count, never a draft                                                                                                                                                       |
+| `GET <site>/wp-json/wp/v2/users?context=edit&_fields=id,email,roles`             | application password, Administrator | Who has access, as a masked address and a role (the handoff report reads the same list with more detail)                                                                                                               |
+| `GET <site>/wp-json/wp/v2/plugins` and `themes?status=active`                    | application password, Administrator | Installed plugin and theme versions, for `gaugeline advisory` only                                                                                                                                                     |
+| `GET https://api.wordpress.org/core/version-check/1.7/`                          | none                                | The current WordPress release, for `--wordpress`                                                                                                                                                                       |
+| `GET https://api.wordpress.org/plugins/info/1.2/` (and `themes/info/1.2/`)       | none                                | The current version of a plugin or theme the page's files name, for `--wordpress`                                                                                                                                      |
+| `GET <site>/wp-json/wp/v2/users?per_page=100&_fields=id`                         | none                                | Whether the site lists its users to a visitor, for `--wordpress`: only the id is asked for                                                                                                                             |
 
 These routes and parameters are the ones the WordPress REST API handbook describes. The handbook's pages ([posts](https://developer.wordpress.org/rest-api/reference/posts/), [users](https://developer.wordpress.org/rest-api/reference/users/), [authentication](https://developer.wordpress.org/rest-api/using-the-rest-api/authentication/)) could not be reached from the session that built this, so each detail was not compared with the current page in this release: check them before relying on one. The wordpress.org endpoints (`core/version-check/1.7/`, `plugins/info/1.2/`, `themes/info/1.2/`) are the ones WordPress itself uses and are not documented on a handbook page Gaugeline could cite; the tests use recorded stand-ins for their answers.
 
@@ -45,7 +45,7 @@ These routes and parameters are the ones the WordPress REST API handbook describ
 
 The key is sent in an `Authorization` header and only over https, and only for drafts and members: published content is read with no header at all, exactly as a visitor's browser could read it. It is blanked, with or without the spaces WordPress shows, from every message, finding and report. If the user is not allowed to read something, that part is "could not check" with the reason and the rest still runs.
 
-Installed plugins and themes are listed by WordPress only to an Administrator, so reading them means handing Gaugeline a key that can do everything. It is optional: it is used by `gaugeline advisory` only, and only when `gaugeline.adapters.json` names `wordpress`. Without it the advisory answer uses what the page's files show.
+Installed plugins and themes are listed by WordPress only to an Administrator, so reading them means handing Gaugeline a key that can do everything. It is optional: it is used by `gaugeline advisory` only, only when `gaugeline.adapters.json` names `wordpress`, only for an advisory about WordPress itself, a plugin or a theme (any other advisory never uses the key), and only when `WORDPRESS_URL` is the site being checked: the list of one site is never used for another. Without it the advisory answer uses what the page's files show.
 
 ## Example: a cocktail bar built with Elementor
 
@@ -134,7 +134,7 @@ npx gaugeline copper-lantern.example --wordpress
 
 `--wordpress` adds two checks to the page check. It is off by default, and `gaugeline run --all --wordpress` adds it to every site of a nightly run. They look at a site's public face and need no key:
 
-- **`wp-outdated`** (medium) reads the WordPress version the page shows (the generator tag, or the version on the files under `wp-includes`) and the version of each plugin and theme in the `?ver=` on its files, and compares them with the current releases from the public wordpress.org API. A `?ver=` is a version only when it is a release number written with dots (`2.1.3`, `5.8`, `1.0.0-beta2`); a date, a hash or a timestamp is a cache-buster and is never read as one. The same logic reads the versions for [`gaugeline advisory`](../guides/advisory.md).
+- **`wp-outdated`** (medium) reads the WordPress version the page shows (the generator tag, or the version on the files under `wp-includes`) and the version of each plugin and theme in the `?ver=` on its files, and compares them with the current releases from the public wordpress.org API. A `?ver=` is a version only when it is a release number written with dots (`2.1.3`, `5.8`, `1.0.0-beta2`); a date, a hash or a timestamp is a cache-buster and is never read as one. The number is what the page declares, and no more: a `?ver=` on a file the plugin bundles from another project (a `vendor`, `lib` or `fonts` folder, or a file such as `font-awesome` or `swiper`) is that project's number and is ignored, and a version newer than the directory's current release is could-not-check, never "current". At most 15 plugins and 15 themes are looked up in a whole run, however many pages it checks; the rest are listed as could-not-check with their count. The same logic reads the versions for [`gaugeline advisory`](../guides/advisory.md).
 - **`wp-users-exposed`** (medium) asks the site's REST API for its list of users the way a visitor's browser can, with no login, and reports when it answers with users. Only the id is asked for: no name or slug is sent back, and only how many were listed is kept.
 
 Here is what they say about the Copper Lantern's site, against recorded stand-ins for wordpress.org's answers (the current version numbers are invented, so the numbers you see on a real run will differ):
@@ -145,17 +145,17 @@ Here is what they say about the Copper Lantern's site, against recorded stand-in
     {
       "check": "wp-outdated",
       "severity": "medium",
-      "evidence": "WordPress 6.2.1 is shown (read from the generator tag); the current release in the wordpress.org API is 6.8.3."
+      "evidence": "The page declares WordPress 6.2.1 (read from the generator tag); the current release in the wordpress.org API is 6.8.3."
     },
     {
       "check": "wp-outdated",
       "severity": "medium",
-      "evidence": "The plugin elementor 3.19.0 is shown (read from the ?ver= on its files on this page); the current release in the wordpress.org directory is 3.25.4."
+      "evidence": "The page declares the plugin elementor 3.19.0 (read from the ?ver= on its files on this page); the current release in the wordpress.org directory is 3.25.4."
     },
     {
       "check": "wp-outdated",
       "severity": "medium",
-      "evidence": "The plugin easy-booking 2.1.3 is shown (read from the ?ver= on its files on this page); the current release in the wordpress.org directory is 2.4.0."
+      "evidence": "The page declares the plugin easy-booking 2.1.3 (read from the ?ver= on its files on this page); the current release in the wordpress.org directory is 2.4.0."
     },
     {
       "check": "wp-users-exposed",

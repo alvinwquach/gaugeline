@@ -25,6 +25,11 @@ const clip = (s: string, n = 80): string => escapeInvisible(s, n);
 
 /** WordPress facts the WordPress adapter has read (installed()), used in place of the page's own signs when given. */
 export interface WordPressData {
+  /**
+   * The host the data was read from. It is used only for the site with this host (or its www twin): data about
+   * another site is never merged into this one's evidence. Absent: not checked (a caller that has no host).
+   */
+  host?: string;
   version?: string;
   plugins?: { slug: string; version?: string }[];
   themes?: { slug: string; version?: string }[];
@@ -140,6 +145,13 @@ async function readScript(fetcher: Fetcher, url: string): Promise<ScriptRead> {
   }
 }
 
+const bare = (h: string): string => h.toLowerCase().replace(/^www\./, "");
+
+/** Is the adapter's data about this host: the same name, or its www twin. Data with no host is taken as given. */
+function sameSite(host: string, dataHost: string | undefined): boolean {
+  return dataHost === undefined || bare(host) === bare(dataHost);
+}
+
 function mergeWordPress(read: WordPressRead | undefined, data: WordPressData): WordPressRead {
   const base: WordPressRead = read ?? { signs: [], plugins: [], themes: [] };
   const fold = (rows: WordPressAsset[], given: { slug: string; version?: string }[] = []) => {
@@ -225,7 +237,8 @@ async function readHost(
   const isNext = nextHeader || (page ? isNextSite(page) : false);
   if (isNext) stacks.push("Next.js");
   let wordpress = wordpressOf(body, headers);
-  if (primary && opts.wordpress) wordpress = mergeWordPress(wordpress, opts.wordpress);
+  if (primary && opts.wordpress && sameSite(host, opts.wordpress.host))
+    wordpress = mergeWordPress(wordpress, opts.wordpress);
   if (wordpress) stacks.push("WordPress");
   let php = phpFromHeaders(headers);
   if (!php && page?.links.some((l) => /\.php(?:[?#]|$)/i.test(l.href.split("?")[0] ?? "")))
@@ -328,6 +341,10 @@ export async function gatherEvidence(opts: GatherOptions): Promise<Evidence> {
     return u.href;
   };
 
+  if (opts.wordpress && !sameSite(url.hostname, opts.wordpress.host))
+    notes.push(
+      `The WordPress adapter's list is for ${clip(opts.wordpress.host ?? "")}, not ${clip(url.hostname)}, so it was not used.`,
+    );
   const first = await readHost(opts, url.hostname, url.href, false, true);
   hosts.push(first.evidence);
   if (first.finalHost) finals.set(first.finalHost, url.hostname);

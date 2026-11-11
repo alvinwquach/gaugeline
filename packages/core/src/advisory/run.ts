@@ -23,8 +23,12 @@ export interface AdvisoryOptions {
   hosts?: readonly string[];
   /** With DNS: the name servers are read. */
   dns?: DnsReader;
-  /** The WordPress adapter's read (adapters/wordpress.ts installed()), when there is one, in place of the page's own signs. */
-  wordpress?: WordPressData;
+  /**
+   * The WordPress adapter's read (adapters/wordpress.ts installed()), when there is one, in place of the page's own
+   * signs. A function is called only once the advisory is known and only when it names WordPress (core, a plugin or a
+   * theme), so a key that reads installed plugins is not used for any other advisory.
+   */
+  wordpress?: WordPressData | (() => Promise<WordPressData | undefined>);
   now?: () => Date;
 }
 
@@ -67,13 +71,21 @@ async function resolve(opts: AdvisoryOptions): Promise<Advisory> {
  */
 export async function checkAdvisory(opts: AdvisoryOptions): Promise<AdvisoryResult> {
   const advisory = await resolve(opts);
+  const wordpress =
+    typeof opts.wordpress === "function"
+      ? advisory.components.some(
+          (c) => c.kind === "wp-core" || c.kind === "wp-plugin" || c.kind === "wp-theme",
+        )
+        ? await opts.wordpress()
+        : undefined
+      : opts.wordpress;
   const evidence = await gatherEvidence({
     fetcher: opts.fetcher,
     address: opts.address,
     hosts: opts.hosts ?? [],
     needs: needsOf(advisory.components),
     ...(opts.dns ? { dns: opts.dns } : {}),
-    ...(opts.wordpress ? { wordpress: opts.wordpress } : {}),
+    ...(wordpress ? { wordpress } : {}),
   });
   const d = decide(advisory, evidence);
   const summary = advisory.summary ? escapeInvisible(advisory.summary, 200) : undefined;

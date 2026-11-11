@@ -1,3 +1,4 @@
+import { Readable } from "node:stream";
 import { describe, expect, it } from "vitest";
 import { createFetcher } from "../../fetcher.js";
 import { collectPublished } from "../collect.js";
@@ -8,6 +9,7 @@ import {
   WORDPRESS_COUNT_CAP,
   WORDPRESS_DESCRIPTION,
   createWordPressAdapter,
+  createWordPressRedactor,
   type WordPressAdapter,
 } from "../wordpress.js";
 import { recording, requestProblems, type Seen } from "./contract.js";
@@ -113,7 +115,7 @@ describe("WordPress: a healthy site, read with no key for what is published", ()
     const { adapter, seen } = build();
     await collectPublished(adapter, { types: ["post"] });
     const asked = decodeURIComponent(seen.map((s) => s.url).join("\n"));
-    expect(asked).toContain("_fields=id,slug,link,date_gmt,modified_gmt");
+    expect(asked).toContain("_fields=id,status,slug,link,date_gmt,modified_gmt");
     expect(asked).not.toMatch(/_fields=[^&\n]*(title|content|excerpt)/);
   });
 
@@ -168,6 +170,31 @@ describe("WordPress: a healthy site, read with no key for what is published", ()
     expect(
       (await collectPublished(old, { types: ["post"], since: "2026-10-01" })).docs.map((d) => d.id),
     ).toEqual(["11", "12"]);
+  });
+
+  it("asks for status=publish, and drops anything else a plugin leaks to visitors", async () => {
+    const { adapter, seen } = build({ fixture: { leaky: true } });
+    const { docs } = await collectPublished(adapter, { types: ["post"] });
+    expect(docs.map((d) => d.id)).toEqual(["11", "12", "13"]);
+    expect(await adapter.fieldCounts("post", ["title"])).toEqual({ title: 3 });
+    expect(
+      seen
+        .filter((s) => s.url.includes("per_page=100"))
+        .every((s) => s.url.includes("status=publish")),
+    ).toBe(true);
+  });
+
+  it("a proxy that strips X-WP-TotalPages: a count that is a multiple of the page size ends at the 400 after it", async () => {
+    const two = COPPER_LANTERN.filter((i) => i.type === "post" && i.status === "publish").slice(
+      0,
+      2,
+    );
+    const { adapter } = build({ content: two, fixture: { stripPages: true }, pageSize: 2 });
+    expect((await collectPublished(adapter, { types: ["post"] })).docs.map((d) => d.id)).toEqual([
+      "11",
+      "12",
+    ]);
+    expect(await adapter.fieldCounts("post", ["title"])).toEqual({ title: 2 });
   });
 
   it("a type the site does not list gives nothing, and fieldCounts for it gives zeros", async () => {
@@ -289,6 +316,85 @@ describe("WordPress: a key that may not read part of it", () => {
     expect(reason).not.toContain(KEY);
   });
 
+  it("a redirect to another origin carries no Authorization header", async () => {
+    const seen: Seen[] = [];
+    const inner = wordpressTransport(undefined, { app: APP });
+    const fetcher = createFetcher({
+      transport: recording((url, req) => {
+        if (url.hostname === "copper-lantern.example" && url.searchParams.has("status"))
+          return Promise.resolve({
+            status: 302,
+            headers: { location: "https://elsewhere.example/landing" },
+            body: Readable.from([]),
+          });
+        return url.hostname === "elsewhere.example"
+          ? Promise.resolve({
+              status: 200,
+              headers: { "content-type": "application/json" },
+              body: Readable.from([Buffer.from("[]")]),
+            })
+          : inner(url, req);
+      }, seen),
+      timeoutMs: 5000,
+    });
+    const adapter = createWordPressAdapter({
+      env: WP_ENV,
+      fetcher,
+      sleep: () => Promise.resolve(),
+    });
+    await adapter.draftsReachable().catch(() => undefined);
+    const hops = seen.filter((s) => s.url.includes("elsewhere.example"));
+    expect(hops.length).toBeGreaterThan(0);
+    for (const h of hops) expect(h.headers.authorization).toBeUndefined();
+    expect(
+      seen.some((s) => s.url.includes("copper-lantern") && s.headers.authorization !== undefined),
+    ).toBe(true);
+  });
+
+  it("the redactor blanks the password as typed, without its spaces, and the Basic value of the header", () => {
+    const typed = "abcd efgh ijkl mnop";
+    const env = { ...WP_ENV, WORDPRESS_APP_PASSWORD: typed };
+    const basic = Buffer.from(`${WP_USER}:${typed}`).toString("base64");
+    const redact = createWordPressRedactor(env);
+    for (const text of [
+      typed,
+      "abcdefghijklmnop",
+      basic,
+      `Authorization: Basic ${basic}`,
+      `{"password":"${typed}"}`,
+      encodeURIComponent(typed),
+    ])
+      expect(redact(`saw ${text} here`), text).not.toMatch(/abcd|efgh|ijkl|mnop|YWJjZ/i);
+    expect(redact("nothing secret")).toBe("nothing secret");
+    expect(createWordPressRedactor({ WORDPRESS_URL: "https://x.example" })("abcd")).toBe("abcd");
+  });
+
+  it("no reason carries the key whatever a failing transport says (a message that echoes the header, the Basic value or the password)", async () => {
+    const basic = Buffer.from(`${WP_USER}:${KEY}`).toString("base64");
+    const echoes = [
+      (auth: string) => `proxy refused ${auth}`,
+      () => `bad credentials ${basic}`,
+      () => `password was ${KEY}`,
+    ];
+    for (const echo of echoes) {
+      const fetcher = createFetcher({
+        transport: (_url, req) =>
+          Promise.reject(
+            Object.assign(new Error(echo(req.headers.authorization ?? "")), { code: "ECONNRESET" }),
+          ),
+        timeoutMs: 5000,
+      });
+      const adapter = createWordPressAdapter({
+        env: WP_ENV,
+        fetcher,
+        sleep: () => Promise.resolve(),
+      });
+      const reason = await reasonOf(() => adapter.draftsReachable());
+      expect(reason).not.toContain(KEY);
+      expect(reason).not.toContain(basic);
+    }
+  });
+
   it("an http address: the password is not sent over plain http", async () => {
     const { adapter, seen } = build({
       env: { ...WP_ENV, WORDPRESS_URL: "http://copper-lantern.example" },
@@ -339,6 +445,7 @@ describe("WordPress: a key that may not read part of it", () => {
 describe("WordPress: what is installed (for gaugeline advisory)", () => {
   it("lists active plugins and the active theme with their versions, and leaves inactive ones out", async () => {
     expect(await build().adapter.installed()).toEqual({
+      host: "copper-lantern.example",
       plugins: [
         { slug: "easy-booking", version: "2.1.3" },
         { slug: "elementor", version: "3.19.0" },

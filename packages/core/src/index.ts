@@ -1447,7 +1447,7 @@ export { addLibraryChecks } from "./libraries/registry.js";
 export { createLibraries, LIBRARY_SCRIPT_CAP } from "./libraries/reader.js";
 
 // C-01: the WordPress checks (wp-outdated, wp-users-exposed), off unless --wordpress
-export { WORDPRESS_CHECKS, WORDPRESS_ASSET_CAP, restRootOf } from "./checks/wordpress.js";
+export { WORDPRESS_CHECKS, WORDPRESS_LOOKUP_CAP, restRootOf } from "./checks/wordpress.js";
 export { addWordPressChecks } from "./wordpress/registry.js";
 export { createWordPress, WORDPRESS_API } from "./wordpress/reader.js";
 export type { Latest, UsersRead, WordPress } from "./wordpress/reader.js";

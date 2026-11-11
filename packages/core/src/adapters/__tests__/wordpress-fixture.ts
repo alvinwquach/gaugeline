@@ -189,6 +189,10 @@ export interface WordPressFixtureOptions {
   visitorsRefused?: boolean;
   /** The users list is open to visitors (the default of a WordPress with no hardening). */
   usersPublic?: boolean;
+  /** A plugin that leaks unpublished items to visitors: the status parameter is ignored and every item comes back. */
+  leaky?: boolean;
+  /** A proxy strips X-WP-TotalPages (X-WP-Total stays). */
+  stripPages?: boolean;
   /** Where the site is installed, "" or "/blog". */
   root?: string;
 }
@@ -283,7 +287,9 @@ export function wordpressTransport(
       if (role === "subscriber" || (role === "contributor" && type !== "post"))
         return respond(403, { code: "rest_forbidden_status", data: { status: 403 } });
     }
-    let rows = content.filter((i) => i.type === type && statuses.includes(i.status));
+    let rows = content.filter(
+      (i) => i.type === type && (options.leaky && !authed ? true : statuses.includes(i.status)),
+    );
     const after = asked.get("modified_after");
     if (after !== null) rows = rows.filter((i) => `${i.modified_gmt}Z` > after);
     rows = [...rows].sort((a, b) => a.id - b.id);
@@ -299,7 +305,7 @@ export function wordpressTransport(
     });
     return respond(200, slice, {
       "x-wp-total": String(rows.length),
-      "x-wp-totalpages": String(pages),
+      ...(options.stripPages ? {} : { "x-wp-totalpages": String(pages) }),
     });
   };
 }

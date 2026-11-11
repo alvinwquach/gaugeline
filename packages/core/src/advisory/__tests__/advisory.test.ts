@@ -185,7 +185,7 @@ describe("WordPress: a plugin in served assets", () => {
     // The adapter reads the installed plugins through the REST API, as an administrator's application password may.
     const read = (role: "administrator" | "editor") =>
       createWordPressAdapter({
-        env: WP_ENV,
+        env: { ...WP_ENV, WORDPRESS_URL: `https://${BAR}` },
         fetcher: createFetcher({
           transport: wordpressTransport(undefined, {
             app: { user: WP_USER, password: WP_ENV.WORDPRESS_APP_PASSWORD },
@@ -205,6 +205,41 @@ describe("WordPress: a plugin in served assets", () => {
     expect(text(seen.result)).toMatch(/the WordPress adapter's read/);
     // An editor may not list plugins: the adapter says so, and nothing is handed over.
     await expect(read("editor")).rejects.toBeInstanceOf(AdapterCouldNotCheck);
+  });
+
+  it("the adapter's data for another site is not used: it names its host, and a different host is ignored", async () => {
+    const spec = "wp-plugin:easy-booking@<2.4.0";
+    const other = { host: "client.example", plugins: [{ slug: "easy-booking", version: "2.1.3" }] };
+    const mine = { host: BAR, plugins: [{ slug: "easy-booking", version: "2.1.3" }] };
+    expect((await run({ [BAR]: wordpress(null) }, spec, { wordpress: other })).result.verdict).toBe(
+      "cannot-tell",
+    );
+    expect((await run({ [BAR]: wordpress(null) }, spec, { wordpress: mine })).result.verdict).toBe(
+      "likely-affected",
+    );
+  });
+
+  it("a site that shows no WordPress is not stamped WordPress by data from another host", async () => {
+    const { result } = await run({ [BAR]: next("15.1.0") }, "wp-plugin:easy-booking@<2.4.0", {
+      wordpress: { host: "client.example", plugins: [{ slug: "easy-booking", version: "2.1.3" }] },
+    });
+    expect(result.verdict).not.toBe("likely-affected");
+    expect(text(result)).not.toMatch(/adapter's read/);
+  });
+
+  it("the adapter is asked only for a WordPress advisory, and only once the advisory is known", async () => {
+    let asked = 0;
+    const lazy = async () => {
+      asked++;
+      return { host: BAR, plugins: [{ slug: "easy-booking", version: "2.1.3" }] };
+    };
+    await run({ [BAR]: next("15.1.0") }, "next@<15.2.3", { wordpress: lazy });
+    expect(asked).toBe(0);
+    const wp = await run({ [BAR]: wordpress(null) }, "wp-plugin:easy-booking@<2.4.0", {
+      wordpress: lazy,
+    });
+    expect(asked).toBe(1);
+    expect(wp.result.verdict).toBe("likely-affected");
   });
 
   it("WordPress core by version", async () => {
