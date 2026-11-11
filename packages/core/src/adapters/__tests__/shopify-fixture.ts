@@ -2,120 +2,138 @@ import { Readable } from "node:stream";
 import type { Transport } from "../../fetcher.js";
 
 /**
- * Larkspur Yoga Studio's invented Shopify site: a small studio whose site a freelancer built on Shopify, with
- * classes, teachers and notices. Nothing here was recorded from a real site, and every address is on a
- * reserved `.example` domain.
- *
- * TODO(new:adapter) the answers are in the shape the scaffold's adapter expects, not the platform's.
- * Change them to the shape of the platform's documented responses (copy the shape from its reference page,
- * not a real answer: invent every value) and keep these four things true, because the contract suite
- * relies on them: a draft in the first type, an item that lacks a field the others have, at least two types
- * with two published items each, and a text in every item that is the client's words (the markers).
+ * Larkspur Ceramics' invented Shopify store: a small studio selling hand-thrown mugs and bowls, with a few
+ * pages and a journal. Nothing here was recorded from a real store, and every address is on a reserved
+ * `.example` domain. The shapes follow the Storefront API's GraphQL connections (`nodes`, `pageInfo`
+ * with `hasNextPage` and `endCursor`, `onlineStoreUrl` null when the item is not published to the Online
+ * Store) as the adapter reads them; every value is invented.
  */
-export const SHOPIFY_SITE = "https://larkspur-yoga.example";
-export const SHOPIFY_HOST = "api.shopify.example";
+export const SHOPIFY_SITE = "https://larkspur-ceramics.example";
+export const SHOPIFY_SHOP = "larkspur-ceramics.myshopify.com";
+export const SHOPIFY_VERSION = "2025-07";
 
-/** Text that is in the client's content, drafts included, and must never reach a report, a log or a hash input. */
+/** Text that is in the client's content, hidden items included, and must never reach a report, a log or a hash input. */
 export const SHOPIFY_MARKERS = {
-  morning: "Morning flow: slow breathing, then one long sun salutation",
-  morningSummary: "Forty minutes, no experience needed, mats provided",
-  evening: "Evening stretch for people who sit all day",
-  retreat: "Autumn retreat, deposit not yet announced",
-  ana: "Ana teaches the early classes and runs the retreat",
-  ben: "Ben took over the Saturday workshop in October",
-  notice: "The studio is closed on the last Friday of November",
+  mug: "Speckled mug, thrown in a morning and fired twice",
+  mugDescription: "Holds three hundred millilitres and is dishwasher safe",
+  bowl: "Ash glaze bowl with a thumb rest",
+  seconds: "Kiln seconds box, not yet photographed",
+  collection: "Everything we make for the table",
+  about: "Two potters in a converted bakery",
+  hours: "Open Saturdays from ten until four",
+  blog: "Studio notes",
+  article: "Testing a new spring glaze on forty tiles",
 } as const;
 
-export interface FixtureItem {
+export interface FixtureNode {
   id: string;
-  slug: string;
-  status: "published" | "draft";
-  updatedAt: string;
+  handle: string;
+  /** null: not published to the Online Store (hidden on purpose). */
+  onlineStoreUrl: string | null;
+  updatedAt?: string;
   publishedAt?: string;
-  fields: Record<string, unknown>;
+  [field: string]: unknown;
 }
 
-export interface FixtureType {
-  slug: string;
-  items: FixtureItem[];
-}
-
-export const SHOPIFY_CONTENT: FixtureType[] = [
-  {
-    slug: "classes",
-    items: [
-      {
-        id: "c-morning",
-        slug: "morning-flow",
-        status: "published",
-        publishedAt: "2026-10-01T09:00:00.000Z",
-        updatedAt: "2026-10-20T08:30:00.000Z",
-        fields: {
-          name: SHOPIFY_MARKERS.morning,
-          summary: SHOPIFY_MARKERS.morningSummary,
-          seats: 14,
-        },
-      },
-      // No summary: a field an item lacks is left out of its hashes, never hashed as empty.
-      {
-        id: "c-evening",
-        slug: "evening-stretch",
-        status: "published",
-        publishedAt: "2026-10-05T09:00:00.000Z",
-        updatedAt: "2026-11-02T17:00:00.000Z",
-        fields: { name: SHOPIFY_MARKERS.evening, seats: 20 },
-      },
-      // A draft: saved and not published. The published list never holds it.
-      {
-        id: "c-retreat",
-        slug: "autumn-retreat",
-        status: "draft",
-        updatedAt: "2026-11-09T10:00:00.000Z",
-        fields: { name: SHOPIFY_MARKERS.retreat },
-      },
-    ],
-  },
-  {
-    slug: "notices",
-    items: [
-      {
-        id: "n-closed",
-        slug: "closed-last-friday",
-        status: "published",
-        publishedAt: "2026-11-03T12:00:00.000Z",
-        updatedAt: "2026-11-03T12:00:00.000Z",
-        fields: { name: SHOPIFY_MARKERS.notice },
-      },
-    ],
-  },
-  {
-    slug: "teachers",
-    items: [
-      {
-        id: "t-ana",
-        slug: "ana",
-        status: "published",
-        publishedAt: "2026-06-01T09:00:00.000Z",
-        updatedAt: "2026-09-01T09:00:00.000Z",
-        fields: { name: "Ana", bio: SHOPIFY_MARKERS.ana },
-      },
-      {
-        id: "t-ben",
-        slug: "ben",
-        status: "published",
-        publishedAt: "2026-10-10T09:00:00.000Z",
-        updatedAt: "2026-10-10T09:00:00.000Z",
-        fields: { name: "Ben", bio: SHOPIFY_MARKERS.ben },
-      },
-    ],
-  },
-];
+export const SHOPIFY_CONTENT: Record<string, FixtureNode[]> = {
+  products: [
+    {
+      id: "gid://shopify/Product/1001",
+      handle: "mug-speckled",
+      onlineStoreUrl: `${SHOPIFY_SITE}/products/mug-speckled`,
+      updatedAt: "2026-10-20T08:30:00Z",
+      publishedAt: "2026-10-01T09:00:00Z",
+      title: SHOPIFY_MARKERS.mug,
+      description: SHOPIFY_MARKERS.mugDescription,
+      availableForSale: true,
+      priceRange: { minVariantPrice: { amount: "28.00", currencyCode: "USD" } },
+    },
+    // No description: a field an item lacks is left out of its hashes, never hashed as empty.
+    {
+      id: "gid://shopify/Product/1002",
+      handle: "bowl-ash-glaze",
+      onlineStoreUrl: `${SHOPIFY_SITE}/products/bowl-ash-glaze`,
+      updatedAt: "2026-11-02T17:00:00Z",
+      publishedAt: "2026-10-05T09:00:00Z",
+      title: SHOPIFY_MARKERS.bowl,
+      description: "",
+      availableForSale: false,
+      priceRange: { minVariantPrice: { amount: "42.50", currencyCode: "USD" } },
+    },
+    // Hidden from the Online Store: the API still answers it, with no address. Never reported as missing.
+    {
+      id: "gid://shopify/Product/1003",
+      handle: "kiln-seconds-box",
+      onlineStoreUrl: null,
+      updatedAt: "2026-11-09T10:00:00Z",
+      publishedAt: "2026-11-09T10:00:00Z",
+      title: SHOPIFY_MARKERS.seconds,
+      description: SHOPIFY_MARKERS.seconds,
+      availableForSale: true,
+      priceRange: { minVariantPrice: { amount: "60.00", currencyCode: "USD" } },
+    },
+  ],
+  collections: [
+    {
+      id: "gid://shopify/Collection/2001",
+      handle: "mugs",
+      onlineStoreUrl: `${SHOPIFY_SITE}/collections/mugs`,
+      updatedAt: "2026-10-21T08:00:00Z",
+      title: "Mugs",
+      description: SHOPIFY_MARKERS.collection,
+    },
+    {
+      id: "gid://shopify/Collection/2002",
+      handle: "bowls",
+      onlineStoreUrl: `${SHOPIFY_SITE}/collections/bowls`,
+      updatedAt: "2026-10-22T08:00:00Z",
+      title: "Bowls",
+      description: SHOPIFY_MARKERS.collection,
+    },
+  ],
+  pages: [
+    {
+      id: "gid://shopify/Page/3001",
+      handle: "about",
+      onlineStoreUrl: `${SHOPIFY_SITE}/pages/about`,
+      updatedAt: "2026-09-01T09:00:00Z",
+      title: "About",
+      body: SHOPIFY_MARKERS.about,
+    },
+    {
+      id: "gid://shopify/Page/3002",
+      handle: "studio-hours",
+      onlineStoreUrl: `${SHOPIFY_SITE}/pages/studio-hours`,
+      updatedAt: "2026-10-10T09:00:00Z",
+      title: "Studio hours",
+      body: SHOPIFY_MARKERS.hours,
+    },
+  ],
+  blogs: [
+    {
+      id: "gid://shopify/Blog/4001",
+      handle: "news",
+      onlineStoreUrl: `${SHOPIFY_SITE}/blogs/news`,
+      title: SHOPIFY_MARKERS.blog,
+    },
+  ],
+  articles: [
+    {
+      id: "gid://shopify/Article/5001",
+      handle: "spring-glaze-test",
+      onlineStoreUrl: `${SHOPIFY_SITE}/blogs/news/spring-glaze-test`,
+      publishedAt: "2026-10-12T09:00:00Z",
+      title: SHOPIFY_MARKERS.article,
+      content: SHOPIFY_MARKERS.article,
+    },
+  ],
+};
 
 export interface ShopifyFixtureOptions {
-  /** When set, a request without `Authorization: Bearer <token>` is answered 401. */
+  /** When set, a request without this Storefront access token is answered 401. */
   token?: string;
   /** Called with every request, to see what was asked. */
-  onRequest?: (method: string, url: URL) => void;
+  onRequest?: (method: string, url: URL, body: string | undefined) => void;
 }
 
 const json = (status: number, body: unknown, headers: Record<string, string> = {}) =>
@@ -125,47 +143,51 @@ const json = (status: number, body: unknown, headers: Record<string, string> = {
     body: Readable.from([Buffer.from(JSON.stringify(body))]),
   });
 
+/** The cursor the fixture gives for a position: opaque to the adapter. */
+const cursorAt = (n: number): string => `cursor-${n}`;
+
 /**
- * Shopify's API over the invented site. Every list answers at most 100 items a page (a larger `limit` is 400)
- * with the total, and nothing but a GET is answered. TODO(new:adapter) match the platform's paths and shapes.
+ * The Storefront API over the invented store. Only a POST to the store's own `/api/<version>/graphql.json`
+ * is answered; a list answers at most 250 nodes a page with `pageInfo`, and a token that is not the
+ * configured one is a 401. Nothing here ever changes.
  */
 export function shopifyTransport(
-  content: readonly FixtureType[] = SHOPIFY_CONTENT,
+  content: Record<string, readonly FixtureNode[]> = SHOPIFY_CONTENT,
   options: ShopifyFixtureOptions = {},
 ): Transport {
   return (url, req) => {
-    options.onRequest?.(req.method, url);
-    if (url.host !== SHOPIFY_HOST) return json(404, { message: "not here" });
-    if (req.method !== "GET") return json(405, { message: "method not allowed" });
-    if (options.token !== undefined && req.headers.authorization !== `Bearer ${options.token}`)
-      return json(401, { message: "Request not authorized" });
-
-    /** The items a list holds: with a key, "all" includes drafts; without one, only what is published. */
-    const listed = (slug: string, status: string | null) => {
-      const type = content.find((t) => t.slug === slug);
-      if (!type) return undefined;
-      return status === "all" ? type.items : type.items.filter((i) => i.status === "published");
+    options.onRequest?.(req.method, url, req.body);
+    if (url.host !== SHOPIFY_SHOP) return json(404, { message: "not here" });
+    if (req.method !== "POST") return json(405, { message: "method not allowed" });
+    if (url.pathname !== `/api/${SHOPIFY_VERSION}/graphql.json`) return json(404, {});
+    if (
+      options.token !== undefined &&
+      req.headers["x-shopify-storefront-access-token"] !== options.token
+    )
+      return json(401, { errors: "Unauthorized" });
+    const body = JSON.parse(req.body ?? "{}") as {
+      query?: string;
+      variables?: Record<string, unknown>;
     };
-
-    if (url.pathname !== "/v1/graphql") return json(404, { message: "no such route" });
-    const query = url.searchParams.get("query") ?? "";
-    const variables = JSON.parse(url.searchParams.get("variables") ?? "{}") as Record<
-      string,
-      unknown
-    >;
-    if (/^query Types\b/.test(query))
-      return json(200, { data: { types: content.map((t) => ({ slug: t.slug })) } });
-    if (/^query Items\b/.test(query)) {
-      const all = listed(String(variables.type), String(variables.status));
-      if (!all) return json(200, { errors: [{ message: "no such type" }] });
-      const limit = Number(variables.limit);
-      const offset = Number(variables.offset);
-      if (!Number.isInteger(limit) || limit < 1 || limit > 100)
-        return json(200, { errors: [{ message: "limit must be 1 to 100" }] });
-      return json(200, {
-        data: { items: { total: all.length, nodes: all.slice(offset, offset + limit) } },
-      });
-    }
-    return json(200, { errors: [{ message: "unknown query" }] });
+    const query = body.query ?? "";
+    const root = /^query Read\(\$first: Int!, \$after: String\) \{ (\w+)\(/.exec(query)?.[1];
+    const nodes = root === undefined ? undefined : content[root];
+    if (nodes === undefined) return json(200, { errors: [{ message: "unknown query" }] });
+    const first = Number(body.variables?.first);
+    if (!Number.isInteger(first) || first < 1 || first > 250)
+      return json(200, { errors: [{ message: "first must be 1 to 250" }] });
+    const after = body.variables?.after;
+    const start = typeof after === "string" ? Number(/^cursor-(\d+)$/.exec(after)?.[1] ?? NaN) : 0;
+    if (!Number.isInteger(start)) return json(200, { errors: [{ message: "bad cursor" }] });
+    const page = nodes.slice(start, start + first);
+    const end = start + page.length;
+    return json(200, {
+      data: {
+        [root as string]: {
+          nodes: page,
+          pageInfo: { hasNextPage: end < nodes.length, endCursor: end > 0 ? cursorAt(end) : null },
+        },
+      },
+    });
   };
 }

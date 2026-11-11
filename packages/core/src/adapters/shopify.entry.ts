@@ -3,12 +3,9 @@ import type { AdapterEntry } from "./entry.js";
 import { lazy } from "./load.js";
 
 /**
- * The Shopify adapter.
- * TODO(new:adapter) say which key the platform offers and why it is the narrowest (read-only). Write the
- * same sentence at the top of docs/integrations/shopify.md.
- *
- * If the platform's own API is in beta, add `beta: true` (as framer.entry.ts does): the run header then says
- * "(beta)" and the docs page says what may change.
+ * The Shopify adapter reads the Storefront API, whose access token is public and read-only by design:
+ * it can only read what the Online Store shows every visitor. The Admin API is not used (its tokens
+ * can carry write scopes). The page is Gaugeline's own: it lists the endpoint and how to make the token.
  */
 export const SHOPIFY_DESCRIPTION: AdapterDescription = {
   name: "Shopify",
@@ -16,8 +13,8 @@ export const SHOPIFY_DESCRIPTION: AdapterDescription = {
   keyKind: "read-only",
 };
 
-/** The variable the key comes from. The adapter imports it from here. */
-export const SHOPIFY_TOKEN = "SHOPIFY_TOKEN";
+/** The variable the Storefront API access token comes from. The adapter imports it from here. */
+export const SHOPIFY_STOREFRONT_TOKEN = "SHOPIFY_STOREFRONT_TOKEN";
 
 export const entries: readonly AdapterEntry[] = [
   {
@@ -25,7 +22,7 @@ export const entries: readonly AdapterEntry[] = [
     name: "Shopify",
     status: "built",
     describe: SHOPIFY_DESCRIPTION,
-    envVars: [SHOPIFY_TOKEN],
+    envVars: [SHOPIFY_STOREFRONT_TOKEN, "SHOPIFY_SHOP_DOMAIN", "SHOPIFY_API_VERSION"],
     // The only way the adapter's code is reached: a dynamic import, so the bundler gives it its own chunk.
     // An entry file imports only types, `lazy` and plain data, never the adapter module.
     load: lazy("shopify", async () => {
@@ -40,9 +37,9 @@ export const entries: readonly AdapterEntry[] = [
     }),
     // The row in docs/integrations/index.md is generated from this (pnpm gen:adapters).
     docs: {
-      key: "read-only (TODO(new:adapter) the narrowest key, in one clause)",
+      key: "read-only (a Storefront API access token, which is public and read-only by design)",
       reads:
-        "TODO(new:adapter) what it reads, in one sentence. [Endpoints and the key](/docs/integrations/shopify)",
+        "Products, collections, pages, blogs and articles published to the Online Store, as fingerprints and counts, and whether a published item's page answers on the live site. [Endpoint and the token](/docs/integrations/shopify)",
     },
     page: {
       slug: "integrations/shopify",

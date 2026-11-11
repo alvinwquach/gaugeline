@@ -1,11 +1,11 @@
 import { testKey } from "../../connectors/__tests__/fake.js";
-import { createShopifyAdapter } from "../shopify.js";
+import { createShopifyAdapter, SHOPIFY_STOREFRONT_QUERY } from "../shopify.js";
 import type { ContractEntry } from "./contract.js";
-import { shopifyTransport, SHOPIFY_MARKERS } from "./shopify-fixture.js";
+import { SHOPIFY_SHOP, shopifyTransport, SHOPIFY_MARKERS } from "./shopify-fixture.js";
 
 /**
- * Larkspur Yoga Studio: a small studio on Shopify, with classes (one a draft), notices and teachers (see
- * shopify-fixture.ts). TODO(new:adapter) describe the invented site in terms of the platform.
+ * Larkspur Ceramics: a small studio store on Shopify, with products (one hidden from the Online Store),
+ * collections, pages, a blog and an article (see shopify-fixture.ts).
  */
 const SHOPIFY_KEY = testKey("shopify-adapter");
 
@@ -13,32 +13,38 @@ export const shopifyEntry: ContractEntry = {
   id: "shopify",
   make: ({ fetcher, sleep }) =>
     createShopifyAdapter({
-      env: { SHOPIFY_TOKEN: SHOPIFY_KEY },
+      env: { SHOPIFY_STOREFRONT_TOKEN: SHOPIFY_KEY, SHOPIFY_SHOP_DOMAIN: SHOPIFY_SHOP },
       fetcher,
       sleep,
     }),
   transport: () => shopifyTransport(undefined, { token: SHOPIFY_KEY }),
   key: SHOPIFY_KEY,
+  // The Storefront API reads its token from this header, not from Authorization.
+  keyHeaderName: "x-shopify-storefront-access-token",
+  queryAllow: [SHOPIFY_STOREFRONT_QUERY],
+  queryHosts: { [SHOPIFY_STOREFRONT_QUERY.id]: SHOPIFY_SHOP },
   secrets: Object.values(SHOPIFY_MARKERS),
   expected: {
     types: [
-      { name: "classes", count: 2 },
-      { name: "notices", count: 1 },
-      { name: "teachers", count: 2 },
+      { name: "articles", count: 1 },
+      { name: "blogs", count: 1 },
+      { name: "collections", count: 2 },
+      { name: "pages", count: 2 },
+      { name: "products", count: 2 },
     ],
     fields: {
-      type: "classes",
-      counts: { name: 2, summary: 1 },
+      type: "products",
+      counts: { title: 2, description: 1 },
       missing: "subtitle",
     },
     published: {
-      options: { types: ["classes"], fields: { classes: ["name", "summary"] } },
-      ids: ["c-morning", "c-evening"],
+      options: { types: ["products"], fields: { products: ["title", "description"] } },
+      ids: ["1001", "1002"],
     },
-    draftsReachable: true,
+    draftsReachable: false,
   },
-  // The types and the first type's page are answered; the second type's page is the first refused.
-  rateLimit: { options: { types: ["classes", "teachers"] }, succeedFirst: 2, atLeast: 2 },
+  // The pages are answered, then the products are the first refused.
+  rateLimit: { options: { types: ["pages", "products"] }, succeedFirst: 1, atLeast: 2 },
 };
 
 /** The contract suite's entries for this adapter (collected by pnpm gen:adapters). */
