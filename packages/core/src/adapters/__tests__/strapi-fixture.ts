@@ -158,6 +158,12 @@ export interface StrapiFixtureOptions {
   publicDrafts?: readonly string[];
   /** 5 (default): flat rows, `status=draft`. 4: rows wrapped in `attributes`, `publicationState=preview`. */
   version?: 4 | 5;
+  /** Strapi 4 does not refuse a parameter it does not know, it ignores it (`status=draft` then lists published entries). Default: refuse with 400. */
+  ignoreUnknown?: boolean;
+  /** `api.rest.maxLimit`: a larger pageSize is clamped to this, and the answer says so. Default: 100. */
+  maxPageSize?: number;
+  /** Refuse (400) a `fields[n]` that names an attribute no entry has. Default: ignore it. */
+  strictFields?: boolean;
   /** The pages the front end itself serves, by path. A path not here is 404. */
   pages?: Readonly<Record<string, number>>;
   /** Called with every request, to count them or look at their addresses and headers. */
@@ -186,7 +192,7 @@ const forbidden = () =>
  * `{ data, meta: { pagination: { page, pageSize, pageCount, total } } }` with at most 100 rows a page
  * (a larger pageSize is 400, as Strapi does); the default list holds what is published, the draft
  * list (`status=draft`, or `publicationState=preview` on Strapi 4) every entry. The spelling the
- * installed version does not know is 400. With `fields[0]=updatedAt` a row has its ids and that time only.
+ * installed version does not know is 400. With `fields[n]` a row has its ids and those fields only.
  */
 export function strapiTransport(
   content: readonly StrapiFixtureCollection[] = BRASS,
@@ -203,7 +209,9 @@ export function strapiTransport(
     const name = decodeURIComponent(route[1] ?? "");
     const collection = content.find((c) => c.name === name);
     const q = url.searchParams;
-    const wantsDrafts = q.get("status") === "draft" || q.get("publicationState") === "preview";
+    // Only the spelling this version knows asks for drafts; the other is refused, or ignored.
+    const wantsDrafts =
+      version === 5 ? q.get("status") === "draft" : q.get("publicationState") === "preview";
 
     const auth = req.headers.authorization;
     if (auth !== undefined) {
@@ -217,30 +225,43 @@ export function strapiTransport(
     if (!collection)
       return json(404, { data: null, error: { status: 404, name: "NotFoundError" } });
 
-    // A parameter the version does not know is refused, as Strapi 5 does.
-    if (q.has("status") && version === 4) return json(400, { error: { status: 400 } });
-    if (q.has("publicationState") && version === 5) return json(400, { error: { status: 400 } });
+    // A parameter the version does not know is refused, as Strapi 5 does (Strapi 4 ignores it).
+    const unknown =
+      (q.has("status") && version === 4) || (q.has("publicationState") && version === 5);
+    if (unknown && !options.ignoreUnknown) return json(400, { error: { status: 400 } });
 
     const page = Number(q.get("pagination[page]") ?? "1");
-    const size = Number(q.get("pagination[pageSize]") ?? "25");
-    if (!Number.isInteger(size) || size < 1 || size > 100 || !Number.isInteger(page) || page < 1)
+    const asked = Number(q.get("pagination[pageSize]") ?? "25");
+    if (!Number.isInteger(asked) || asked < 1 || asked > 100 || !Number.isInteger(page) || page < 1)
       return json(400, { error: { status: 400, name: "ValidationError" } });
+    const size = Math.min(asked, options.maxPageSize ?? 100);
+    const selected = [...q.entries()].filter(([k]) => /^fields\[\d+\]$/.test(k)).map(([, v]) => v);
+    if (options.strictFields) {
+      const known = new Set([
+        "createdAt",
+        "updatedAt",
+        "publishedAt",
+        ...collection.entries.flatMap((e) => Object.keys(e.fields)),
+      ]);
+      if (selected.some((f) => !known.has(f))) return json(400, { error: { status: 400 } });
+    }
     const all = collection.entries
       .filter((e) => wantsDrafts || e.publishedAt !== null)
       .sort((a, b) => a.id - b.id);
     const slice = all.slice((page - 1) * size, page * size);
-    const small = q.get("fields[0]") === "updatedAt";
     const row = (e: StrapiFixtureEntry): Record<string, unknown> => {
       // The draft list of Strapi 5 shows the draft version of every entry: no published time.
       const publishedAt = version === 5 && wantsDrafts ? null : e.publishedAt;
-      const body = small
-        ? { updatedAt: e.updatedAt }
-        : {
-            ...e.fields,
-            createdAt: "2026-05-01T10:00:00.000Z",
-            updatedAt: e.updatedAt,
-            publishedAt,
-          };
+      const full: Record<string, unknown> = {
+        ...e.fields,
+        createdAt: "2026-05-01T10:00:00.000Z",
+        updatedAt: e.updatedAt,
+        publishedAt,
+      };
+      const body =
+        selected.length === 0
+          ? full
+          : Object.fromEntries(Object.entries(full).filter(([k]) => selected.includes(k)));
       return version === 5
         ? { id: e.id, documentId: e.documentId, ...body }
         : { id: e.id, attributes: body };

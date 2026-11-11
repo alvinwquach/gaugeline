@@ -26,6 +26,8 @@ export interface StrapiReading {
   publicDrafts: StrapiPublicDrafts[];
   /** Collections the token would not give, with why. */
   unreadable: { type: string; reason: string }[];
+  /** The settings name no collection (Strapi lists none to a token), so nothing was read: both checks are could-not-check, not a pass. */
+  nothingNamed: boolean;
   /** Collections with published entries and no address pattern in the settings: their pages were not asked. */
   withoutPattern: string[];
   /** Published entries in a collection with a pattern that could not be given an address. */
@@ -68,6 +70,7 @@ export async function readStrapi(options: ReadStrapiOptions): Promise<StrapiRead
     ownerConsent: options.ownerConsent === true,
     publicDrafts: [],
     unreadable: [],
+    nothingNamed: adapter.collections().length === 0,
     withoutPattern: [],
     unaddressed: [],
     pagesSkipped: 0,
@@ -78,6 +81,9 @@ export async function readStrapi(options: ReadStrapiOptions): Promise<StrapiRead
   const names = adapter
     .collections()
     .filter((s) => options.types === undefined || options.types.includes(s));
+
+  // Nothing is asked of the CMS or the site when there is nothing to ask about.
+  if (reading.nothingNamed) return reading;
 
   for (const type of names) {
     try {

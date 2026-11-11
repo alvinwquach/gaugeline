@@ -23,11 +23,11 @@ This page lists the endpoints, how to make the token, a worked example, what the
 
 Every request is a `GET` to your `STRAPI_URL`, through the same fetcher as every other request.
 
-| Endpoint                             | Key             | What for                                                                                                                                                    |
-| ------------------------------------ | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET /api/{collection}`              | read-only token | The published entries of a collection you named: counts, fingerprints and field counts. Pages of 100 (`pagination[page]`, `pagination[pageSize]`).          |
-| `GET /api/{collection}?status=draft` | read-only token | A count of the draft list (Strapi 5), compared with the published count, for whether unpublished work is reachable. `publicationState=preview` on Strapi 4. |
-| `GET /api/{collection}`, no token    | none            | Only with `--owner-consent`: what a visitor can list. See [the draft check](#the-two-checks).                                                               |
+| Endpoint                             | Key             | What for                                                                                                                                                                                                                                                  |
+| ------------------------------------ | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/{collection}`              | read-only token | The published entries of a collection you named: counts, fingerprints and field counts. Pages of up to 100 (`pagination[page]`, `pagination[pageSize]`), asking only for the attributes needed (`fields[n]`: the id, slug, dates and the fields to hash). |
+| `GET /api/{collection}?status=draft` | read-only token | A count of the draft list (Strapi 5), compared with the published count, for whether unpublished work is reachable. `publicationState=preview` on Strapi 4; both spellings are asked, because which one a server refuses or ignores is not confirmed.     |
+| `GET /api/{collection}`, no token    | none            | Only with `--owner-consent`: what a visitor can list. See [the draft check](#the-two-checks).                                                                                                                                                             |
 
 **Strapi does not list its collections to an API token** (the content-type routes belong to the admin panel, which Gaugeline never uses). So you name the collections to read, by their API ID (the plural name, such as `events`), as keys of `urls` or `fingerprint` in `gaugeline.adapters.json`. A collection you do not name is not read.
 
@@ -139,7 +139,7 @@ Both are in the [checks reference](/docs/checks) with what they catch, why it ma
 | `strapi-entry-no-page` | high     | A published entry whose address, from the pattern in the settings, answers 404 or 410 on the live site.       |
 | `strapi-drafts-public` | high     | A collection whose entries that were never published can be listed by a visitor who sends no token (probing). |
 
-**`strapi-drafts-public` is a probing check.** It asks Strapi's public routes for work the owner did not publish, so it is off unless you pass `--owner-consent` (or put the consent in `gaugeline.consent.json`), and it should be run only on sites you own or have permission to test. Without consent Gaugeline asks nothing of the draft routes and the check says it was not asked; it is never a pass. It sends no token (a visitor has none), looks at counts and ids only (`fields[0]=updatedAt`, so the answer carries no content), reads at most 500 ids from each list and subtracts the published ids from the draft ids in a set. A collection that answers 401, 403 or 404 to a visitor is private and passes; one that lists published entries and refuses the draft list passes. It sends no login, no form and no guess at an id.
+**`strapi-drafts-public` is a probing check.** It asks Strapi's public routes for work the owner did not publish, so it is off unless you pass `--owner-consent` (or put the consent in `gaugeline.consent.json`), and it should be run only on sites you own or have permission to test. Without consent Gaugeline asks nothing of the draft routes and the check says it was not asked; it is never a pass. It sends no token (a visitor has none), looks at counts and ids only (`fields[0]=updatedAt`, so the answer carries no content), reads at most 500 ids from each list and subtracts the published ids from the draft ids in a set. The requests are a visitor's: they carry no token and none of the headers Gaugeline may add for a protected preview. A collection that answers 401 or 403 to a visitor is not shown to visitors; one that lists published entries and refuses the draft list shows no drafts. A 404 is could-not-check (most likely a mistyped collection name), not a pass. **The check gives you "no sign of public drafts", not "safe":** it asks for drafts with `status=draft` and with `publicationState=preview`, and a Strapi that ignores both looks the same as one with nothing unpublished. It sends no login, no form and no guess at an id.
 
 The checks do not run from a command yet: like the other content checks they use the adapter as it arrives (`readStrapi` and `createStrapiRegistry` in Gaugeline's core).
 
@@ -147,16 +147,17 @@ The checks do not run from a command yet: like the other content checks they use
 
 Anything the platform does not expose is could-not-check, with the reason, never a pass and never scraped from Strapi's admin:
 
-| Question                                       | Answer here                          | Why                                                                                                |
-| ---------------------------------------------- | ------------------------------------ | -------------------------------------------------------------------------------------------------- |
-| Which collections the site has                 | only the ones you name               | Listing content types belongs to the admin panel, not the REST API a token can use.                |
-| Who has access to the admin (`members`)        | not offered                          | There is no members route for an API token.                                                        |
-| Whether a page shows the same words as the CMS | not decided here                     | The adapter gives hashes; the comparison with the page is the published-but-not-live check (F-05). |
-| A collection's page address                    | only from your `urls` settings       | The API does not say where the front end serves a collection, so Gaugeline does not guess.         |
-| Relations, media and components                | counted as missing                   | They are not sent without `populate`, and Gaugeline sends none.                                    |
-| Other locales                                  | not read                             | Only the default locale is.                                                                        |
-| A collection the token may not read            | could not check, for that collection | The others are still read.                                                                         |
-| GraphQL                                        | not used                             | Its queries are `POST` requests, which wait for ADR-0006.                                          |
+| Question                                         | Answer here                          | Why                                                                                                          |
+| ------------------------------------------------ | ------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| Which collections the site has                   | only the ones you name               | Listing content types belongs to the admin panel, not the REST API a token can use.                          |
+| Who has access to the admin (`members`)          | not offered                          | There is no members route for an API token.                                                                  |
+| Whether a page shows the same words as the CMS   | not decided here                     | The adapter gives hashes; the comparison with the page is the published-but-not-live check (F-05).           |
+| A collection's page address                      | only from your `urls` settings       | The API does not say where the front end serves a collection, so Gaugeline does not guess.                   |
+| Whether a Strapi hides every draft from visitors | not proven here                      | A clean draft check means no sign of public drafts by the two spellings asked, not that none can be reached. |
+| Relations, media and components                  | counted as missing                   | They are not sent without `populate`, and Gaugeline sends none.                                              |
+| Other locales                                    | not read                             | Only the default locale is.                                                                                  |
+| A collection the token may not read              | could not check, for that collection | The others are still read.                                                                                   |
+| GraphQL                                          | not used                             | Its queries are `POST` requests, which wait for ADR-0006.                                                    |
 
 ## When it cannot check
 
@@ -164,18 +165,18 @@ It never returns a list with a hole in it. The read is could-not-check, with the
 
 - `STRAPI_URL` is not set, is not an address, has a user name or password in it, or is `http` while a token is set (the token is not sent over plain http);
 - `STRAPI_TOKEN` is not set and the question is about unpublished work, or Strapi does not accept it (HTTP 401), or the token may not read the collection (HTTP 403: its permissions need `find` and `findOne`);
-- a name under `urls` or `fingerprint` is not a collection API ID, or Strapi has no such collection (HTTP 404), or no collection is named at all;
+- a name under `urls` or `fingerprint` is not a collection API ID, or Strapi has no such collection (HTTP 404, also for the visitor's request of the draft check: a typo is never reported as a private collection), or no collection is named at all (both checks say so; neither passes);
 - an answer is not the shape Strapi sends, an entry has no id or no update time, a collection is bigger than the bound, a page is too big even at 10 entries, or the list stops before its total;
 - a collection has published entries and no `urls` pattern, or an entry has no slug for the pattern (its pages were not checked), or a live page answers anything but a page or a 404 or 410 (a 503, a login, a timeout), in which case that one page is could-not-check.
 
 ## What is bounded
 
-| Limit                                      | Value  |
-| ------------------------------------------ | ------ |
-| Entries in one page of a list              | 100    |
-| Entries read from one collection           | 10,000 |
-| Ids read from each list by the draft check | 500    |
-| Live pages asked for in one run            | 300    |
+| Limit                                                                     | Value  |
+| ------------------------------------------------------------------------- | ------ |
+| Entries in one page of a list (a smaller `api.rest.maxLimit` is followed) | 100    |
+| Entries read from one collection                                          | 10,000 |
+| Ids read from each list by the draft check                                | 500    |
+| Live pages asked for in one run                                           | 300    |
 
 There are no flags to raise them. A page beyond the budget is could-not-check, named in the result, not skipped quietly. An address pattern that points at another site is not asked.
 

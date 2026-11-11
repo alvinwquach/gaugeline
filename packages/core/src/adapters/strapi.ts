@@ -253,7 +253,8 @@ export function createStrapiAdapter(options: StrapiAdapterOptions): StrapiAdapte
         {
           fetcher,
           request: {
-            ...(sendToken ? { authorization: `Bearer ${token}` } : {}),
+            // A request with no token is a visitor's: nothing the fetcher adds per address goes with it.
+            ...(sendToken ? { authorization: `Bearer ${token}` } : { anonymous: true }),
             headers: { accept: "application/json" },
           },
           sleep,
@@ -302,31 +303,70 @@ export function createStrapiAdapter(options: StrapiAdapterOptions): StrapiAdapte
     ...extra,
   });
 
+  /** `fields[0]=slug`, `fields[1]=updatedAt`, ...: ask Strapi for these attributes only. */
+  const selectParams = (names: readonly string[]): Record<string, string> =>
+    Object.fromEntries([...new Set(names)].map((n, i) => [`fields[${i}]`, n]));
+
+  const topLevel = (fields: readonly string[]): string[] => fields.map((f) => f.split(".")[0] ?? f);
+
+  const positive = (v: unknown): number | undefined =>
+    typeof v === "number" && Number.isSafeInteger(v) && v >= 1 ? v : undefined;
+
   /**
-   * The entries of one collection a page at a time, until every one is read. An answer over the size
-   * limit is asked again with half as many, down to ten. A page that comes back empty before the total
-   * is could-not-check, never the end of the list.
+   * The entries of one collection a page at a time, until every one is read. A server may clamp the
+   * page size below the one asked for (`api.rest.maxLimit`), so pages are stepped by the page size the
+   * answer reports (`meta.pagination.pageSize`) and the total is read again on every page. An answer
+   * over the size limit is asked again with half as many, down to ten; an attribute selection Strapi
+   * refuses (HTTP 400) is dropped once and the whole row asked for. A page that comes back empty
+   * before the total is could-not-check, never the end of the list; so is a list longer than
+   * `maxRead`, whatever total the server claims.
    */
   async function* entriesOf(
     type: string,
     authed: boolean,
     enforceCap: boolean,
     partial: () => unknown,
-    extra: Record<string, string> = {},
+    options: {
+      extra?: Record<string, string>;
+      select?: readonly string[];
+      maxRead?: number;
+    } = {},
   ): AsyncGenerator<RawEntry> {
+    const extra = options.extra ?? {};
+    const maxRead = options.maxRead ?? cap;
+    const maxPages = Math.ceil(maxRead / MIN_PAGE_SIZE) + 12;
+    let select =
+      options.select !== undefined && options.select.length > 0
+        ? selectParams(options.select)
+        : undefined;
     let page = 1;
     let size = pageSize;
+    // The page size the server was seen to clamp to, once an answer reported less than was asked.
+    let clamp = Number.POSITIVE_INFINITY;
     let read = 0;
+    let asked = 0;
     for (;;) {
+      if (++asked > maxPages)
+        throw new AdapterCouldNotCheck(
+          `Strapi needed more than ${maxPages} requests to list one collection, so it was not read to the end.`,
+        );
       let body: Record<string, unknown>;
       try {
-        body = await get(type, listParams(size, page, extra), authed, partial);
+        body = await get(type, listParams(size, page, { ...extra, ...select }), authed, partial);
       } catch (err) {
+        if (
+          select !== undefined &&
+          err instanceof AdapterCouldNotCheck &&
+          /HTTP 400\b/.test(err.reason)
+        ) {
+          select = undefined;
+          continue;
+        }
         if (!(err instanceof TooLarge)) throw err;
         if (size > MIN_PAGE_SIZE) {
-          // Pages are counted in entries, so the page number is kept in step with the new size.
           size = Math.max(MIN_PAGE_SIZE, Math.floor(size / 2));
-          page = Math.floor(read / size) + 1;
+          // Pages are counted in entries, so the page number is kept in step with the new size.
+          page = Math.floor(read / Math.min(size, clamp)) + 1;
           continue;
         }
         throw new AdapterCouldNotCheck(
@@ -348,10 +388,18 @@ export function createStrapiAdapter(options: StrapiAdapterOptions): StrapiAdapte
             : undefined;
       if (rows === undefined)
         throw new AdapterCouldNotCheck("Strapi answered with something that is not a list.");
+      const meta = isRecord(body.meta) ? body.meta : {};
+      const pagination = isRecord(meta.pagination) ? meta.pagination : {};
+      const step = positive(pagination.pageSize) ?? size;
+      if (step < size) clamp = step;
+      if ((page - 1) * step + rows.length > maxRead)
+        throw new AdapterCouldNotCheck(
+          `Strapi listed more entries than the ${maxRead} Gaugeline reads from one list, whatever total it reported.`,
+        );
       // The rows after the ones already read, in case the page size changed under us.
-      const skip = Math.max(0, read - (page - 1) * size);
+      const skip = Math.max(0, read - (page - 1) * step);
       for (const raw of rows.slice(skip)) yield parseEntry(raw);
-      read = (page - 1) * size + rows.length;
+      read = Math.max(read, (page - 1) * step + rows.length);
       if (read >= total || isRecord(body.data)) return;
       if (rows.length === 0)
         throw new AdapterCouldNotCheck(
@@ -392,7 +440,8 @@ export function createStrapiAdapter(options: StrapiAdapterOptions): StrapiAdapte
   ): Promise<Record<string, number>> => {
     const out: Record<string, number> = Object.fromEntries(fields.map((f) => [f, 0]));
     if (!named.includes(type)) return out;
-    for await (const e of entriesOf(type, true, true, () => ({}))) {
+    const select = ["publishedAt", "updatedAt", ...topLevel(fields)];
+    for await (const e of entriesOf(type, true, true, () => ({}), { select })) {
       if (e.publishedAt === null) continue;
       for (const f of fields) if (hasValue(valueAt(e.data, f))) out[f] = (out[f] ?? 0) + 1;
     }
@@ -410,7 +459,10 @@ export function createStrapiAdapter(options: StrapiAdapterOptions): StrapiAdapte
     for (const type of named.filter((n) => opts.types === undefined || opts.types.includes(n))) {
       if (remaining <= 0) return;
       const fields = opts.fields?.[type] ?? settings?.fingerprint?.[type] ?? [];
-      for await (const e of entriesOf(type, true, opts.limit === undefined, () => delivered)) {
+      const select = ["slug", "updatedAt", "publishedAt", ...topLevel(fields)];
+      for await (const e of entriesOf(type, true, opts.limit === undefined, () => delivered, {
+        select,
+      })) {
         // Published is what Strapi lists by default; a row marked as a draft is not published, whatever listed it.
         if (e.publishedAt === null) continue;
         const updatedAt = e.updatedAt ?? e.publishedAt;
@@ -441,38 +493,54 @@ export function createStrapiAdapter(options: StrapiAdapterOptions): StrapiAdapte
   }
 
   /**
-   * Strapi 5 lists drafts with `status=draft`; Strapi 4 with `publicationState=preview`. Strapi 5
-   * refuses a parameter it does not know with HTTP 400, so the Strapi 5 spelling is asked first and
-   * the Strapi 4 one only after that answer.
+   * Strapi 5 lists drafts with `status=draft`; Strapi 4 with `publicationState=preview`. Which of
+   * the two a server refuses (Strapi 5 is said to answer 400 to one it does not know) or quietly
+   * ignores (Strapi 4 is believed to) is not confirmed, so both spellings are asked unless the first
+   * already shows more entries than the published list does. A Strapi that ignores both looks the
+   * same as one with nothing unpublished: that is "no sign of drafts", never "safe".
    */
   const DRAFT_PARAMS: readonly Record<string, string>[] = [
     { status: "draft" },
     { publicationState: "preview" },
   ];
 
-  /** The entry total of the draft list, in whichever spelling this Strapi understands. */
+  const isRefusal = (err: unknown): err is AdapterCouldNotCheck =>
+    err instanceof AdapterCouldNotCheck &&
+    /did not accept|may not read|does not show this collection/.test(err.reason);
+
+  /**
+   * The entry total of the draft list, in the spelling that lists more than `live`, or in the first
+   * spelling that answered when neither does, unless one was refused (then the refusal). When none answered, the refusal if there was one
+   * (the collection is closed to this reader), else the first failure.
+   */
   const draftTotal = async (
     type: string,
     authed: boolean,
+    live: number,
     partial: () => unknown,
   ): Promise<{ total: number; extra: Record<string, string> }> => {
-    let last: unknown;
+    let best: { total: number; extra: Record<string, string> } | undefined;
+    let failure: AdapterCouldNotCheck | undefined;
+    let refusal: AdapterCouldNotCheck | undefined;
     for (const extra of DRAFT_PARAMS) {
       try {
-        return { total: await countOf(type, authed, extra, partial), extra };
+        const total = await countOf(type, authed, extra, partial);
+        if (total > live) return { total, extra };
+        best ??= { total, extra };
       } catch (err) {
-        if (err instanceof AdapterCouldNotCheck && /HTTP 400\b/.test(err.reason)) {
-          last = err;
-          continue;
-        }
-        throw err;
+        if (!(err instanceof AdapterCouldNotCheck)) throw err;
+        if (isRefusal(err)) refusal ??= err;
+        failure ??= err;
       }
     }
-    throw last instanceof Error ? last : new AdapterCouldNotCheck("Strapi did not list drafts.");
+    // A spelling that was refused is an answer: this reader may not list drafts. One that answered with no extra entries may only have been ignored.
+    if (refusal) throw refusal;
+    if (best) return best;
+    throw failure ?? new AdapterCouldNotCheck("Strapi did not list drafts.");
   };
 
   /**
-   * True when the token's draft list holds an entry the published list does not. Two counts per
+   * True when the token's draft list holds an entry the published list does not. A few counts per
    * collection and no entry is asked for beyond the first. A collection whose draft list the token is
    * refused (and whose published list it may read) has no draft the token can reach.
    */
@@ -485,14 +553,10 @@ export function createStrapiAdapter(options: StrapiAdapterOptions): StrapiAdapte
       try {
         const live = await countOf(type, true, {}, () => undefined);
         try {
-          const { total } = await draftTotal(type, true, () => undefined);
+          const { total } = await draftTotal(type, true, live, () => undefined);
           if (total > live) seen = true;
         } catch (err) {
-          if (
-            !(err instanceof AdapterCouldNotCheck) ||
-            !/did not accept|may not read/.test(err.reason)
-          )
-            throw err;
+          if (!isRefusal(err)) throw err;
         }
         asked++;
       } catch (err) {
@@ -509,6 +573,7 @@ export function createStrapiAdapter(options: StrapiAdapterOptions): StrapiAdapte
     return seen;
   };
 
+  /** The keys of a list, or undefined when the list is longer than STRAPI_LIMITS.publicIds (the count stands, the ids are left out). */
   const idsOf = async (
     type: string,
     extra: Record<string, string>,
@@ -516,11 +581,20 @@ export function createStrapiAdapter(options: StrapiAdapterOptions): StrapiAdapte
   ): Promise<Set<string> | undefined> => {
     if (total > STRAPI_LIMITS.publicIds) return undefined;
     const out = new Set<string>();
-    for await (const e of entriesOf(type, false, false, () => undefined, {
-      ...extra,
-      "fields[0]": "updatedAt",
-    }))
-      out.add(e.key);
+    try {
+      for await (const e of entriesOf(type, false, false, () => undefined, {
+        extra,
+        select: ["updatedAt"],
+        maxRead: STRAPI_LIMITS.publicIds + 1,
+      })) {
+        out.add(e.key);
+        if (out.size > STRAPI_LIMITS.publicIds) return undefined;
+      }
+    } catch (err) {
+      if (err instanceof AdapterCouldNotCheck && /listed more entries than/.test(err.reason))
+        return undefined;
+      throw err;
+    }
     return out;
   };
 
@@ -540,10 +614,8 @@ export function createStrapiAdapter(options: StrapiAdapterOptions): StrapiAdapte
         live = await countOf(type, false, {}, partial);
       } catch (err) {
         if (err instanceof AdapterRateLimitedError) throw err;
-        if (
-          err instanceof AdapterCouldNotCheck &&
-          /does not show this collection|HTTP 404/.test(err.reason)
-        ) {
+        // 401 and 403 mean the collection is not shown to visitors. A 404 is no such collection: most likely a typo.
+        if (isRefusal(err)) {
           out.push(none(type, "private"));
           continue;
         }
@@ -557,14 +629,14 @@ export function createStrapiAdapter(options: StrapiAdapterOptions): StrapiAdapte
         continue;
       }
       try {
-        const { total, extra } = await draftTotal(type, false, partial);
+        const { total, extra } = await draftTotal(type, false, live, partial);
         const unpublished = Math.max(0, total - live);
         if (unpublished === 0) {
           out.push(none(type, "nothing"));
           continue;
         }
         const drafts = await idsOf(type, extra, total);
-        const livers = await idsOf(type, {}, live);
+        const livers = drafts === undefined ? undefined : await idsOf(type, {}, live);
         const ids =
           drafts !== undefined && livers !== undefined
             ? [...drafts].filter((k) => !livers.has(k)).sort()
@@ -572,10 +644,7 @@ export function createStrapiAdapter(options: StrapiAdapterOptions): StrapiAdapte
         out.push({ type, state: "reachable", unpublished, ids });
       } catch (err) {
         if (err instanceof AdapterRateLimitedError) throw err;
-        if (
-          err instanceof AdapterCouldNotCheck &&
-          /does not show this collection/.test(err.reason)
-        ) {
+        if (isRefusal(err)) {
           out.push(none(type, "refused"));
           continue;
         }

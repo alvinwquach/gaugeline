@@ -87,7 +87,10 @@ describe("docs/integrations/strapi.md", () => {
       );
     const n = (v: number) => v.toLocaleString("en-US");
     expect(rows(page, "Limit")).toEqual([
-      ["Entries in one page of a list", n(STRAPI_PAGE_SIZE)],
+      [
+        "Entries in one page of a list (a smaller `api.rest.maxLimit` is followed)",
+        n(STRAPI_PAGE_SIZE),
+      ],
       ["Entries read from one collection", n(STRAPI_LIMITS.itemsPerType)],
       ["Ids read from each list by the draft check", n(STRAPI_LIMITS.publicIds)],
       ["Live pages asked for in one run", n(STRAPI_READ_LIMITS.pages)],

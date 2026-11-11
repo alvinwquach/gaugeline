@@ -95,6 +95,21 @@ describe("Strapi checks: a bar whose CMS and front end have drifted", () => {
     expect(seen.some((s) => s.includes("/api/reviews"))).toBe(false);
   });
 
+  it("no collection named in the settings is could-not-check for both checks, never a clean pass", async () => {
+    const { reading: r, seen } = await reading(BRASS, PAGES_HEALTHY, {
+      urls: {},
+      ownerConsent: true,
+    });
+    expect(r.nothingNamed).toBe(true);
+    expect(seen).toEqual([]);
+    const out = await run(r);
+    expect(out.findings).toEqual([]);
+    expect(out.passed).toEqual([]);
+    const reasons = out.couldNotCheck.map((c) => `${c.id}: ${c.reason}`).join("\n");
+    expect(reasons).toMatch(/strapi-entry-no-page: .*No collection is named/);
+    expect(reasons).toMatch(/strapi-drafts-public: .*No collection is named/);
+  });
+
   it("a collection fingerprinted and given no pattern lists as could not check", async () => {
     const fetcher = createFetcher({
       transport: strapiTransport(BRASS, { token: KEY, pages: PAGES_HEALTHY }),
