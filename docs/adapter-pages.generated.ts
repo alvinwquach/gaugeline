@@ -9,6 +9,10 @@ export const ADAPTER_PAGES: { slug: string; title: string }[] = [
     slug: "integrations/contentful",
     title: "Contentful: content checks for sites built on Contentful",
   },
+  {
+    slug: "integrations/contentstack",
+    title: "Contentstack: content checks for sites built on Contentstack",
+  },
   { slug: "integrations/framer", title: "Framer: content checks for sites built on Framer (beta)" },
   {
     slug: "integrations/sitemap-feed",

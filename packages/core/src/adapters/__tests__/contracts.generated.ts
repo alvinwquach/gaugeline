@@ -2,6 +2,7 @@
 import type { ContractEntry } from "./contract.js";
 import { contractEntries as builders } from "./builders.contract.js";
 import { contractEntries as contentful } from "./contentful.contract.js";
+import { contractEntries as contentstack } from "./contentstack.contract.js";
 import { contractEntries as framer } from "./framer.contract.js";
 import { contractEntries as sanity } from "./sanity.contract.js";
 import { contractEntries as sitemapFeed } from "./sitemap-feed.contract.js";
@@ -13,6 +14,7 @@ import { contractEntries as wordpress } from "./wordpress.contract.js";
 export const CONTRACT_ENTRIES: readonly ContractEntry[] = [
   ...builders,
   ...contentful,
+  ...contentstack,
   ...framer,
   ...sanity,
   ...sitemapFeed,
