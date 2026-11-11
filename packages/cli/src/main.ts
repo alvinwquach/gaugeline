@@ -109,6 +109,8 @@ import {
   formatCostSummary,
   addTrackerChecks,
   createTrackers,
+  addLibraryChecks,
+  createLibraries,
 } from "@gaugeline/core";
 import { parseCliArgs } from "./args.js";
 import { HELP } from "./help.js";
@@ -961,6 +963,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         renewals: args.renewals,
         cost: args.cost,
         trackers: args.trackers,
+        libraries: args.libraries,
         runOne: (argv, siteIo, siteCwd) => main(argv, siteIo, { ...deps, cwd: siteCwd }),
       });
       io.stdout.write(`${formatRunAll(rows)}\n`);
@@ -1361,8 +1364,14 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
               : renewing
                 ? createRenewalsRegistry()
                 : createPageRegistry());
-      const registry =
+      // The library check (a JavaScript library with a published advisory) likewise, only with --libraries.
+      const libraryChecking = args.libraries;
+      const trackedRegistry =
         tracking && deps.registry === undefined ? addTrackerChecks(baseRegistry) : baseRegistry;
+      const registry =
+        libraryChecking && deps.registry === undefined
+          ? addLibraryChecks(trackedRegistry)
+          : trackedRegistry;
       // gaugeline audit --pack: the packages are read, and checked against the checks this run makes, before
       // any request: a package that names a check that never runs is a mistake in the file (exit 2).
       const services = args.audit ? readServicesConfig(cwd) : undefined;
@@ -1426,6 +1435,8 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       const trackers = tracking
         ? createTrackers(readTrackersConfig(cwd) ?? {}, fetcher)
         : undefined;
+      // What the library check reads: the script files the page names, with GET through the fetcher.
+      const libraries = libraryChecking ? createLibraries(fetcher) : undefined;
       // What the handoff checks read: the registry's record through the renewals reader (which only asks
       // RDAP here: no token goes to it), then the provider reads, each with its own key from the environment.
       const handoff = handing
@@ -1460,6 +1471,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         ...(handoff ? { handoff } : {}),
         ...(cost ? { cost } : {}),
         ...(trackers ? { trackers } : {}),
+        ...(libraries ? { libraries } : {}),
         ...(args.command === "renewals" || handing ? { tolerateUnreachable: true } : {}),
         // The walking skeleton (0.0.x) runs one check; an injected registry is used as given.
         ...(only ? { only } : {}),
