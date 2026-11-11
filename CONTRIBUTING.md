@@ -17,7 +17,7 @@ network and no keys.
 
 Run `pnpm new:check <id> --area <area> --severity <level>`, fill in the four texts (what it catches,
 why it matters, how to fix it, the technical line) and the rule, then run `pnpm gen:checks` to
-regenerate the checks reference. The whole walkthrough is in
+regenerate the checks reference and `pnpm gen:skill` to regenerate the agent skill's table of findings. The whole walkthrough is in
 [docs/contributing/adding-a-check.md](docs/contributing/adding-a-check.md).
 
 ## Add a fixture
@@ -43,13 +43,13 @@ Sanity (`adapters/sanity.ts`) is the worked example. The rules are the same for 
   Write the entry in your adapter's own file with `registerQueryAllow` and export what it returns;
   `fetcher.query` takes the entry's id, and an id nobody registered is refused. Put the same exported
   entry in your `ContractEntry.queryAllow`, in `adapters/__tests__/<id>.contract.ts`. The host is the vendor's (or `{ configured }` for a host
-  the person set, passed with each request); the rest comes from the vendor's documentation, which
+  the person set, passed with each request); the method is not written (the registry fixes it to POST; an entry with a `method` key is a type
+  error and refused); the rest comes from the vendor's documentation, which
   the entry links with the date you read it (`checked: null` marks an entry you did not verify):
 
   ```ts
   export const WIX_ITEMS_QUERY = registerQueryAllow({
     id: "wix-data-query",
-    method: "POST",
     host: "www.wixapis.com",
     path: "/wix-data/v2/items/query",
     body: {
@@ -141,7 +141,7 @@ Then make it real, in this order:
 
 POST is for a documented read-only query endpoint only, and only through the allowlist in ADR-0006
 (branch `adr/read-only-post`, not merged yet). Until it has merged the scaffold sends GET and HEAD and
-nothing else; it marks, in the adapter, where the `queryAllow` entry (method, path pattern, body shape) goes.
+nothing else; it marks, in the adapter, where the `queryAllow` entry (path pattern, body shape; never a method) goes.
 Do not add a POST of your own, and do not invent a `query` method on the fetcher.
 
 By hand, the steps are the same files. **Adding an adapter adds files and edits no shared one** (no

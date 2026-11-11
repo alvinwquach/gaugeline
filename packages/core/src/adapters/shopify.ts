@@ -41,7 +41,6 @@ export { SHOPIFY_API_VERSION, SHOPIFY_SHOP_DOMAIN };
  */
 export const SHOPIFY_STOREFRONT_QUERY = registerQueryAllow({
   id: "shopify-storefront-query",
-  method: "POST",
   host: { configured: SHOPIFY_SHOP_DOMAIN },
   path: "/api/*/graphql.json",
   body: { kind: "graphql-query" },

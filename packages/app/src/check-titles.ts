@@ -11,6 +11,15 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "access-public-read": ["Anyone can read a table you didn't make public", "Security & email"],
   "access-role-scope": ["A signed-in user can read other people's rows", "Security & email"],
   "app-link-dead": ["The app this page links to isn't in the store", "Visitors"],
+  "astro-dev-tools-public": ["The live Astro site is serving its development tools", "Launch day"],
+  "astro-preview-canonical": [
+    "The live Astro site points search engines at a preview deployment",
+    "Launch day",
+  ],
+  "astro-private-props": [
+    "A page hands private-looking fields to the browser in an island's props",
+    "Security & email",
+  ],
   "broken-links": ["Links on this page go nowhere", "Visitors"],
   "canonical-elsewhere": ["This page tells Google to show a different page", "Search & sharing"],
   "capacity-zero-not-sold-out": [
@@ -200,9 +209,18 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "Strapi lists unpublished entries to visitors with no token",
     "Security & email",
   ],
+  "umbraco-node-no-page": ["A published Umbraco node has no page on the live site", "Launch day"],
+  "umbraco-delivery-api-public": [
+    "The Umbraco Delivery API answers visitors with no key",
+    "Security & email",
+  ],
   "hubspot-page-404": ["A page published in HubSpot answers 404 on the live domain", "Launch day"],
   "hubspot-form-deleted": ["A page embeds a HubSpot form that has been deleted", "Launch day"],
   "app-smart-banner-mismatch": ["The iPhone app banner promotes a different app", "Visitors"],
+  "astro-draft-entry-public": [
+    "A live page embeds a content entry marked as a draft",
+    "Launch day",
+  ],
   "checkout-js-only": ["Nothing on the page can be linked to buy", "Sales & prices"],
   "crm-field-names": ["A form sends fields the CRM doesn't have", "Leads"],
   "crm-late-tracking": ["Tracking starts after the form loads", "Leads"],
@@ -394,6 +412,10 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "ai-crawlers-blocked": ["Some AI assistants can't read your site", "Search & sharing"],
   "app-name-mismatch": ["The store lists the app under a different name", "Visitors"],
   "asset-file-public": ["A downloadable file is on a public asset address", "Sales & prices"],
+  "astro-endpoints-listed": [
+    "This Astro page calls public endpoints that need a second look",
+    "Security & email",
+  ],
   blocked: ["The site wouldn't let Gaugeline read the page", "Search & sharing"],
   "canonical-missing": ["The page doesn't say which address is the real one", "Search & sharing"],
   "data-no-stamp": ["A page of changing numbers does not say when they were updated", "Visitors"],
@@ -466,6 +488,24 @@ export const CHECK_TEXT: Readonly<
     'Visitors who tap "Get the app" land on an error page. Apps disappear when they are renamed, moved to a new developer account or pulled.',
     "Link to the app's current store page, or remove the link if the app is gone.",
     "the iTunes Lookup API returns no result for the id (in the link's storefront and in the US), or the Google Play listing answers 404. A 429 or a regional-only app is could-not-check, not dead",
+  ],
+  "astro-dev-tools-public": [
+    "A page of this Astro site loads the Vite dev client or the Astro dev toolbar, or carries data-astro-source-file attributes. Those exist only when the site runs from `astro dev`.",
+    "A development server is slow, exposes source file paths, and serves modules and errors that a built site never does. Visitors see an unfinished site and anyone can read how it is put together.",
+    "Deploy the output of `astro build` (a static folder, or the server adapter's output) instead of running `astro dev` on the host.",
+    "Astro sites only, no extra request: the page's own HTML is searched for src=/@vite/client, the dev-toolbar entrypoint under /@id/astro/runtime/client/dev-toolbar/, an astro-dev-toolbar element, or data-astro-source-file attributes",
+  ],
+  "astro-preview-canonical": [
+    "A production page of this Astro site gives a preview domain as its canonical address, its og:url or og:image, or in its sitemap.",
+    "Search engines and social cards follow those addresses to the preview, which can show old content or vanish when the preview is cleaned up.",
+    "Set `site` in astro.config.mjs to the production domain (not the preview address a deployment host gives each build), and rebuild.",
+    "Astro sites served from a non-temporary host: the canonical, og:url, og:image and sitemap entries whose host ends in .vercel.app, .netlify.app or .pages.dev",
+  ],
+  "astro-private-props": [
+    "An Astro island (a component with a client: directive) on this page has props with a field named like a secret, token, password, internal note or admin value.",
+    "Everything passed to a client island is written into the page as readable JSON. Anyone can view source and read it, whatever the component shows.",
+    "Pass the island only the fields it displays. Read the private value on the server (in the frontmatter or an Action) and leave it out of the props.",
+    "Astro sites only, no extra request: each astro-island's props attribute in the HTML is decoded and its field names (not values) matched against secret, token, passw, api key, private, internal, credential, authorization, admin, wholesale and margin; at most 100 islands, 200,000 characters of props each; the evidence lists names, never values",
   ],
   "broken-links": [
     "Links to other pages on the site return an error (404, 410 or 5xx).",
@@ -1169,6 +1209,18 @@ export const CHECK_TEXT: Readonly<
     "In Strapi's settings, open Users & Permissions, then the Public role, and remove find and findOne from the collection, or give the front end a read-only API token and keep the Public role closed. If the front end previews drafts, send the token from the server, never from the browser.",
     "probing check, off without --owner-consent: this check asks Strapi's public routes for entries that are not published, so it runs only with --owner-consent (or gaugeline.consent.json), on sites you own or have permission to test; per collection named in the settings, with no Authorization header and no cookie: GET /api/{collection} for the published total, GET /api/{collection}?status=draft and GET /api/{collection}?publicationState=preview for the draft total (the second is asked even when the first answers with no extra entries, because a Strapi that ignores a parameter it does not know answers with the published list), all with pagination[pageSize]=1 and fields[0]=updatedAt; when a draft total is larger, the ids of both lists are read (at most 500 each, each list stepped by the page size the answer reports, fields[0]=updatedAt only) and the entries only the draft list has are counted and named by id (Strapi 5 documentId, Strapi 4 id); a collection that answers 401 or 403 to the published list is not shown to visitors, and a 404 is could-not-check (most likely a mistyped name); a collection that refuses the draft list shows no drafts to visitors; one whose draft lists show no extra entries gives no sign of public drafts, which is not proof, since a Strapi that ignores both spellings looks the same as one with nothing unpublished; a finding is a count and ids, never a field; ids are held in a Set to subtract the published list from the draft list; the requests carry no header the fetcher adds per address",
   ],
+  "umbraco-node-no-page": [
+    "Umbraco says a node is published, and the address its page should have answers 404 or 410 on the live site.",
+    "Links, the sitemap and search results point at a page that is not there, and the client's announcement leads to an error page.",
+    "Check the content type has a template (or the front end builds a route for it), that the node's culture and domain settings match the site being checked, and that a headless front end was rebuilt or revalidated after publishing. If the node should not be public, unpublish it in the Umbraco backoffice.",
+    "GET /umbraco/delivery/api/v2/content?filter=contentType:{alias} for each content type named in the settings (the published list; skip and take step by the number of nodes that came back, and a list is complete only when the position reaches the total it reports), then one GET of the live address: the settings' `urls` pattern when the type has one, else the route.path the API gave the node (redirects followed). A final 404 or 410 is the finding; any other answer that is not a 2xx is could-not-check for that page. A node with no route and no pattern, and a path that is not a plain path (a host, `..`, an escaped slash), are could-not-check by name and are not asked. Ids and paths only: no property is requested beyond those named in `fingerprint`, and none is used for this. A site with several root nodes and no domains may give paths relative to a start item: set `urls` for those types.",
+  ],
+  "umbraco-delivery-api-public": [
+    "gaugeline.adapters.json says the Content Delivery API is meant to be private (expectPrivate: true), and a plain GET of its list route with no key is answered with the list of published nodes.",
+    "Anyone who finds the route can read every published node as data, including nodes that are published but not linked from the site, and can page through the whole content tree. If the API was meant to be private, its protection is off.",
+    "In appsettings.json set Umbraco:CMS:DeliveryApi:PublicAccess to false and keep an ApiKey, then send the key from the server only (never from the browser). If the API is meant to be public (a public API that also has a key, so that preview works, is a normal setup), remove expectPrivate from gaugeline.adapters.json: the key is not touched.",
+    "probing check, off without --owner-consent: this check asks the Delivery API's public route as a visitor with no key, so it runs only with --owner-consent (or gaugeline.consent.json), on sites you own or have permission to test; only when the settings say expectPrivate: true (a key being set says nothing: Umbraco's preview needs the key on a public API too); one GET of /umbraco/delivery/api/v2/content?take=1 with no Api-Key header, no cookie and nothing the fetcher adds per address, fields=properties[] and expand=none; a 200 with a list and a numeric total is the finding (the total is a count, never a node); 401 or 403 is a protected API and 404 is an API that is off or not at that address, both with no finding; a 200 that is not the API's list (a page that answers every path) and any other status are could-not-check; the answer is read as a count and nothing else",
+  ],
   "hubspot-page-404": [
     "HubSpot says a site page, landing page or blog post is published on this domain, and the address it gives for it answers 404 or 410 on the live site.",
     "Links, the sitemap, search results and the client's announcement point at a page that is not there, while the CMS shows it as live.",
@@ -1186,6 +1238,12 @@ export const CHECK_TEXT: Readonly<
     "Safari shows the banner at the top of the page on iPhone, so visitors install whichever app it names, which here is not the one the page links to.",
     "Set app-id in the apple-itunes-app meta tag to the same id as the App Store link.",
     '<meta name="apple-itunes-app" content="app-id=..."> differs from every apps.apple.com/.../id<digits> link on the page',
+  ],
+  "astro-draft-entry-public": [
+    "An island on this Astro page is handed data with a field named draft set to true: an entry the author marked as not ready.",
+    "Draft entries are meant to be hidden. When a page or island still receives one, its unfinished text is in the HTML for anyone to read.",
+    "Filter drafts out where you read the collection (for example `getCollection('posts', ({ data }) => !data.draft)`), and build the island's props from that filtered list only.",
+    "Astro sites only, no extra request: astro-island props in the HTML, a boolean field named draft or isDraft that is true; Astro has no built-in draft field, so this reads the common schema convention. The evidence gives the island and field name, never a value",
   ],
   "checkout-js-only": [
     "A page shows a price and a buy button, but no button is a link with an address or a submit button in a form with an action.",
@@ -1864,6 +1922,12 @@ export const CHECK_TEXT: Readonly<
     "That is fine for a brochure or a menu. It becomes a problem the day the file is something a customer bought, because anyone with the address can open it.",
     "If the file is free, nothing to do. If it will ever be sold, serve it from a download route that checks the purchase and hands back a short-lived signed link.",
     "a[href] to a file with a sold file type on a public asset store host, on a page with no price, or whose link text is terms, privacy or policy; one finding per page; the file is never requested; the query string is not printed; a signed address with an expiry is a pass",
+  ],
+  "astro-endpoints-listed": [
+    "A page of this Astro site calls Astro Actions (/_actions/<name>) or loads server islands (/_server-islands/<name>). Both are addresses anyone can request, not only your page.",
+    "An action runs for any visitor who posts to it, signed in or not, and a server island answers any GET. Treating them as part of the page, instead of as public endpoints, is how booking and contact handlers end up open.",
+    "Check each action handler: validate the input (an Astro Action takes a Zod schema), check the session inside it, and rate-limit it. For a server island, confirm it renders only what any visitor may see.",
+    "Astro sites only, no extra request (Gaugeline never calls an action, which is a POST): the names come from /_actions/<name> and ?_action=<name> in the page's HTML and /_server-islands/<name> in its scripts. They also show the site runs on the server (an adapter), not as a static build",
   ],
   blocked: [
     "The page answered with a refusal (401, 403, 429, 503 with Retry-After) or a bot-challenge page instead of its content.",
