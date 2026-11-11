@@ -8,6 +8,7 @@ import {
   STRAPI_CHECKS,
   CRAFT_CHECKS,
   UMBRACO_CHECKS,
+  DATOCMS_CHECKS,
   HUBSPOT_CMS_CHECKS,
   AD_LANDING_CHECKS,
   CAMPAIGN_CHECKS,
@@ -76,6 +77,7 @@ export function CATALOGUE_IDS(): string[] {
   for (const c of STRAPI_CHECKS) registry.register(c);
   for (const c of CRAFT_CHECKS) registry.register(c);
   for (const c of UMBRACO_CHECKS) registry.register(c);
+  for (const c of DATOCMS_CHECKS) registry.register(c);
   for (const c of HUBSPOT_CMS_CHECKS) registry.register(c);
   return registry.all().map((c) => c.id);
 }
