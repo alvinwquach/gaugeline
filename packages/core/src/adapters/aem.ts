@@ -1,12 +1,17 @@
-import { ResponseTooLargeError, getJson, isRecord } from "../connectors/get-json.js";
-import {
-  ConnectorRateLimitedError,
-  ConnectorRefusedError,
-  ConnectorStatusError,
-} from "../connectors/http.js";
+import { createHash } from "node:crypto";
+import { ResponseTooLargeError, MAX_RETRY_SECONDS, isRecord } from "../connectors/get-json.js";
+import { describeRetry, retryAfterSeconds } from "../connectors/http.js";
 import { createRedactor } from "../connectors/redact.js";
 import type { Env } from "../connectors/types.js";
-import type { Fetcher } from "../fetcher.js";
+import type { Fetcher, Hop } from "../fetcher.js";
+import { isAuthorHost } from "./aem-author.js";
+import {
+  AEM_CONFIG,
+  AEM_DESCRIPTION,
+  AEM_LIMITS,
+  AEM_PAGE_SIZE,
+  AEM_PUBLISH_URL,
+} from "./aem.entry.js";
 import { fillUrlTemplate, hashValue } from "./fingerprint.js";
 import {
   AdapterCouldNotCheck,
@@ -18,41 +23,36 @@ import {
   type TypeCount,
 } from "./types.js";
 
-import { AEM_DESCRIPTION } from "./aem.entry.js";
-export { AEM_DESCRIPTION };
+export { AEM_DESCRIPTION, AEM_LIMITS, AEM_PAGE_SIZE };
 
-/** TODO(new:adapter) the platform's API base, from its documentation (the date you checked it goes on the docs page). */
-export const AEM_API = "https://api.aem.example/v1";
+/**
+ * Adobe Experience Manager, read through the PUBLISH tier and nothing else. The site's developers publish
+ * persisted GraphQL queries for their Content Fragments; a persisted query is run with a GET:
+ * `/graphql/execute.json/<config>/<query>` (a `;name=value` suffix passes a variable). That GET is the only
+ * request this adapter sends: no key, no POST, no author tier, and no persisted query is ever created (that
+ * is a write). A "type" in the settings is the NAME of a persisted query.
+ *
+ * Adobe's documentation (experienceleague.adobe.com) was not reachable when this was written, so the URL
+ * form, the paginated shape (`edges`, `pageInfo { hasNextPage endCursor }`, variables `first` and `after`)
+ * and the list shape (`items`) are from memory and marked uncited on the docs page.
+ */
 
-/** Items asked for in one request: the API's own maximum. TODO(new:adapter) confirm it. */
-export const AEM_PAGE_SIZE = 100;
+/** The publish tier's address: an https origin. */
+const ORIGIN_VARIABLE = AEM_PUBLISH_URL;
 
-/** Bounds a run keeps to, in the platform's terms. There are no flags to raise them. */
-export const AEM_LIMITS = {
-  /** Items read from one type. A bigger one is could-not-check, never a count of part of it. */
-  itemsPerType: 10_000,
-} as const;
+/** One path segment of a configuration or a query name. No dots, so no `..`; no slash, so no second segment. */
+const NAME = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
 
-/** The smallest page asked for when an answer is too big: the page is halved down to this and no further. */
-const MIN_PAGE_SIZE = 10;
+/** A page cursor: the characters a base64 or opaque token uses, and no more than 512 of them. */
+const CURSOR = /^[A-Za-z0-9+/=_.~:-]{1,512}$/;
 
-/** Every address is built from this origin and no other: a key is never sent anywhere else. */
-const API_ORIGIN = new URL(AEM_API).origin;
+/** One segment of a fragment's path in the DAM: no dot first (so never `..`), no `%`, no slash, no space. */
+const SEGMENT = /^[A-Za-z0-9_@~+-][A-Za-z0-9_.@~+-]{0,127}$/;
+const DAM = "/content/dam/";
+const MAX_SEGMENTS = 12;
 
-export interface AemAdapterOptions {
-  /** Not read: this adapter asks for no key. Kept so the registry gives every adapter the same options. */
-  env: Env;
-  fetcher: Fetcher;
-  /** The settings entry (`fingerprint`, `urls`). With none, no field value is hashed. */
-  settings?: AdapterSettings | undefined;
-  /** How a wait for Retry-After is made. Tests pass a stand-in that does not wait. */
-  sleep?: ((ms: number) => Promise<void>) | undefined;
-  pageSize?: number | undefined;
-  /** Replaces AEM_LIMITS.itemsPerType. For tests. */
-  maxItemsPerType?: number | undefined;
-}
-
-const wait = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
+/** The fragment's modification time, where the query returns it (`_metadata { calendarMetadata { name value } }`). Uncited. */
+const MODIFIED_NAMES: readonly string[] = ["jcr:lastModified", "cq:lastModified"];
 
 /** An ISO 8601 UTC time from a value the platform gave, or undefined when it is not a time. */
 function isoOf(value: unknown): string | undefined {
@@ -81,223 +81,321 @@ function hasValue(v: unknown): boolean {
   return true;
 }
 
-/** An answer over the size limit: asked again with a smaller page before it becomes could-not-check. */
-class TooLarge extends AdapterCouldNotCheck {}
+/**
+ * A fragment's path, checked: `/content/dam/` and then 1 to 12 plain segments. Anything else (a second
+ * leading slash, a host, `..`, `%2e`, a space, a lone surrogate) is undefined, so it never reaches an
+ * address, an id or a report. Pure ASCII test: it cannot throw on any string.
+ */
+export function damPath(value: unknown): string | undefined {
+  if (typeof value !== "string" || value.length > 512 || !value.startsWith(DAM)) return undefined;
+  const segments = value.slice(DAM.length).split("/");
+  if (segments.length < 1 || segments.length > MAX_SEGMENTS) return undefined;
+  return segments.every((s) => SEGMENT.test(s)) ? value : undefined;
+}
 
-/** An item as the adapter keeps it: ids, state and times, and the field data only until it is hashed or counted. */
+/** An id from a DAM path: the part after /content/dam/ with "/" as ".", inside the id charset, 128 characters at most. */
+function idOfPath(path: string): string {
+  let id = path
+    .slice(DAM.length)
+    .replace(/\//g, ".")
+    .replace(/[^A-Za-z0-9._-]/g, "-");
+  if (!/^[A-Za-z0-9]/.test(id)) id = `x${id}`;
+  if (id.length <= 128) return id;
+  return `${id.slice(0, 115)}-${createHash("sha256").update(path).digest("hex").slice(0, 12)}`;
+}
+
+/** The fragment's slug: its last path segment. */
+const slugOfPath = (path: string): string => path.slice(path.lastIndexOf("/") + 1);
+
+/** An item as the adapter keeps it: its address, its time if the query gave one, and the data until it is hashed or counted. */
 interface RawItem {
   id: string;
-  slug?: string;
-  published: boolean;
-  publishedAt?: string;
-  updatedAt: string;
+  slug: string;
+  updatedAt?: string;
   data: Record<string, unknown>;
 }
 
-/**
- * TODO(new:adapter) map the platform's item to RawItem: where its id, slug, state, times and field data are.
- * Throw AdapterCouldNotCheck for an item that has no id or no time; never make one up.
- */
-function parseItem(raw: unknown): RawItem {
-  const r = isRecord(raw) ? raw : {};
-  const publishedAt = isoOf(r.publishedAt);
-  const updatedAt = isoOf(r.updatedAt) ?? publishedAt;
-  if (typeof r.id !== "string" || r.id === "" || updatedAt === undefined)
-    throw new AdapterCouldNotCheck(
-      "Adobe Experience Manager answered with items that have no id or no update time.",
-    );
-  return {
-    id: r.id,
-    ...(typeof r.slug === "string" && r.slug !== "" ? { slug: r.slug } : {}),
-    published: r.status === "published",
-    ...(publishedAt !== undefined ? { publishedAt } : {}),
-    updatedAt,
-    data: isRecord(r.fields) ? r.fields : {},
-  };
+function modifiedOf(item: Record<string, unknown>): string | undefined {
+  const meta = item._metadata;
+  const list = isRecord(meta) ? meta.calendarMetadata : undefined;
+  if (!Array.isArray(list)) return undefined;
+  for (const entry of list)
+    if (isRecord(entry) && typeof entry.name === "string" && MODIFIED_NAMES.includes(entry.name))
+      return isoOf(entry.value);
+  return undefined;
+}
+
+/** An answer over the size limit. */
+class TooLarge extends AdapterCouldNotCheck {}
+
+interface Page {
+  items: unknown[];
+  /** Present when the query is paginated: whether there is another page, and where it starts. */
+  next?: { has: boolean; cursor: string | undefined };
+}
+
+const wait = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
+
+export interface AemAdapterOptions {
+  /** Reads AEM_PUBLISH_URL and AEM_CONFIG. Neither is a key; there is no key. */
+  env: Env;
+  fetcher: Fetcher;
+  /** The settings entry: its `urls` and `fingerprint` keys name the persisted queries to read. */
+  settings?: AdapterSettings | undefined;
+  /** How a wait for Retry-After is made. Tests pass a stand-in that does not wait. */
+  sleep?: ((ms: number) => Promise<void>) | undefined;
+  pageSize?: number | undefined;
+  /** Replaces AEM_LIMITS.itemsPerType. For tests. */
+  maxItemsPerType?: number | undefined;
+  /** Replaces AEM_LIMITS.pagesPerType. For tests. */
+  maxPagesPerType?: number | undefined;
 }
 
 export function createAemAdapter(options: AemAdapterOptions): ContentAdapter {
   const { env, fetcher } = options;
   const sleep = options.sleep ?? wait;
   const pageSize = Math.max(1, Math.min(options.pageSize ?? AEM_PAGE_SIZE, AEM_PAGE_SIZE));
-  const cap = options.maxItemsPerType ?? AEM_LIMITS.itemsPerType;
+  const itemCap = options.maxItemsPerType ?? AEM_LIMITS.itemsPerType;
+  const pageCap = options.maxPagesPerType ?? AEM_LIMITS.pagesPerType;
   const settings = options.settings;
   const redact = createRedactor(env, []);
 
-  /** What a failed read becomes: a rate limit carries what was read, anything else is could-not-check. */
-  const translate = (err: unknown, partial: unknown): Error => {
+  /** The publish tier's origin, or a could-not-check that names the variable. https only; never an author host. */
+  const origin = (): string => {
+    const text = (env[ORIGIN_VARIABLE] ?? "").trim();
+    if (text === "") throw new AdapterCouldNotCheck(`${ORIGIN_VARIABLE} is not set.`);
+    let url: URL;
+    try {
+      url = new URL(text);
+    } catch {
+      throw new AdapterCouldNotCheck(
+        `${ORIGIN_VARIABLE} is not an address (expected https://www.client.example).`,
+      );
+    }
+    if (
+      url.protocol !== "https:" ||
+      url.username !== "" ||
+      url.password !== "" ||
+      url.search !== "" ||
+      url.hash !== "" ||
+      url.pathname.replace(/\/+$/, "") !== ""
+    )
+      throw new AdapterCouldNotCheck(
+        `${ORIGIN_VARIABLE} must be an https address with a host only (no path, query, user name or password).`,
+      );
+    if (isAuthorHost(url.hostname))
+      throw new AdapterCouldNotCheck(
+        `${ORIGIN_VARIABLE} is an author-tier address. Gaugeline reads the publish tier only, which needs no login.`,
+      );
+    return url.origin;
+  };
+
+  const config = (): string => {
+    const name = (env[AEM_CONFIG] ?? "").trim();
+    if (name === "") throw new AdapterCouldNotCheck(`${AEM_CONFIG} is not set.`);
+    if (!NAME.test(name))
+      throw new AdapterCouldNotCheck(
+        `${AEM_CONFIG} must be one name of letters, digits, hyphens and underscores (the part after /graphql/execute.json/).`,
+      );
+    return name;
+  };
+
+  /** The persisted queries named in the settings (under `urls` or `fingerprint`), sorted. */
+  const named = (): string[] => {
+    const names = new Set([
+      ...Object.keys(settings?.urls ?? {}),
+      ...Object.keys(settings?.fingerprint ?? {}),
+    ]);
+    if (names.size === 0)
+      throw new AdapterCouldNotCheck(
+        'No persisted query is named in gaugeline.adapters.json (under "urls" or "fingerprint"), and the publish tier does not list its persisted queries, so nothing was read.',
+      );
+    for (const n of names)
+      if (!NAME.test(n))
+        throw new AdapterCouldNotCheck(
+          "A persisted query name in gaugeline.adapters.json has characters a persisted query name cannot have (letters, digits, hyphens and underscores only).",
+        );
+    return [...names].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  };
+
+  const chosen = (wanted: readonly string[] | undefined): string[] => {
+    const all = named();
+    return wanted === undefined ? all : all.filter((n) => wanted.includes(n));
+  };
+
+  /** What a failed fetch becomes: could-not-check, with the message blanked of anything secret. */
+  const translate = (err: unknown): Error => {
     if (err instanceof AdapterCouldNotCheck || err instanceof AdapterRateLimitedError) return err;
-    if (err instanceof ConnectorRateLimitedError)
-      return new AdapterRateLimitedError(partial, err.retry);
     if (err instanceof ResponseTooLargeError) return new TooLarge(err.message);
-    if (err instanceof ConnectorRefusedError)
-      return new AdapterCouldNotCheck(
-        `Adobe Experience Manager asked for a key (HTTP ${err.status}), and this adapter sends none. TODO(new:adapter) say which content needs one.`,
-      );
-    if (err instanceof ConnectorStatusError)
-      return new AdapterCouldNotCheck(
-        err.status === 404
-          ? "Adobe Experience Manager answered HTTP 404: it has no such type or item."
-          : `Adobe Experience Manager answered HTTP ${err.status}.`,
-      );
     return new AdapterCouldNotCheck(redact(err instanceof Error ? err.message : String(err)));
   };
 
-  /**
-   * One GET, parsed as a JSON object, to this API's origin and no other.
-   * No key is sent.
-   */
-  const get = async (address: string, partial: () => unknown): Promise<Record<string, unknown>> => {
-    if (new URL(address).origin !== API_ORIGIN)
-      throw new AdapterCouldNotCheck(
-        "Adobe Experience Manager pointed at another address, which is not asked.",
-      );
-    try {
-      const { body } = await getJson(
-        {
-          fetcher,
-          request: {
-            headers: { accept: "application/json" },
-          },
-          sleep,
-          system: "Adobe Experience Manager",
-        },
-        address,
-      );
-      if (!isRecord(body))
-        throw new AdapterCouldNotCheck(
-          "Adobe Experience Manager answered with something that is not an object.",
-        );
-      return body;
-    } catch (err) {
-      throw translate(err, partial());
+  /** One GET to the publish origin: anonymous, no redirect followed, a 429 waited out once. */
+  const send = async (address: string, partial: () => unknown): Promise<Hop> => {
+    for (let attempt = 0; ; attempt++) {
+      let hop: Hop | undefined;
+      try {
+        const hops = await fetcher.get(address, {
+          headers: { accept: "application/json" },
+          anonymous: true,
+          maxRedirects: 0,
+          ...(attempt > 0 ? { fresh: true } : {}),
+        });
+        hop = hops.at(-1);
+      } catch (err) {
+        throw translate(err);
+      }
+      if (!hop) throw new AdapterCouldNotCheck("Adobe Experience Manager did not answer.");
+      if (hop.status === 429) {
+        const seconds = retryAfterSeconds(hop.headers);
+        if (attempt === 0 && seconds !== undefined && seconds <= MAX_RETRY_SECONDS) {
+          await sleep(seconds * 1000);
+          continue;
+        }
+        throw new AdapterRateLimitedError(partial(), describeRetry(hop.headers));
+      }
+      return hop;
     }
   };
 
-  /**
-   * TODO(new:adapter) the platform's real queries and address. A query only: it travels as GET parameters,
-   * so the contract suite can see that none is a mutation, and `readOnly` refuses a document that is not one.
-   *
-   * POST is allowed only for a documented read-only query endpoint, through ADR-0006's allowlist
-   * (branch adr/read-only-post; not merged yet). TODO(new:adapter, after ADR-0006 has merged) add the
-   * `queryAllow` entry (method, path pattern, body shape) in this adapter's registry row. Until then this
-   * adapter sends GET and HEAD only.
-   */
-  const TYPES_QUERY = "query Types { types { slug } }";
-  const ITEMS_QUERY =
-    "query Items($type: String!, $status: String!, $limit: Int!, $offset: Int!) { items(type: $type, status: $status, limit: $limit, offset: $offset) { total nodes { id slug status updatedAt publishedAt fields } } }";
-
-  const readOnly = (document: string): string => {
-    if (/(^|[^A-Za-z0-9_])(mutation|subscription)\b/i.test(document))
-      throw new Error("Only a GraphQL query is ever built.");
-    return document;
+  const get = async (address: string, partial: () => unknown): Promise<Record<string, unknown>> => {
+    const hop = await send(address, partial);
+    if (hop.status === 401 || hop.status === 403)
+      throw new AdapterCouldNotCheck(
+        `The publish tier asked for a login (HTTP ${hop.status}) for this persisted query, and this adapter sends none. The query or its fragments are not public, so they were not read.`,
+      );
+    if (hop.status === 404)
+      throw new AdapterCouldNotCheck(
+        "The publish tier answered HTTP 404 for this persisted query: it is not published to the publish tier under that configuration and name.",
+      );
+    if (hop.status >= 300 && hop.status < 400)
+      throw new AdapterCouldNotCheck(
+        `The publish tier answered with a redirect (HTTP ${hop.status}) instead of the query's result, and a redirect is not followed.`,
+      );
+    if (hop.status < 200 || hop.status >= 300)
+      throw new AdapterCouldNotCheck(`The publish tier answered HTTP ${hop.status}.`);
+    if (hop.truncated === true)
+      throw new TooLarge("The publish tier's answer is larger than a page should be.");
+    let body: unknown;
+    try {
+      body = JSON.parse(hop.body ?? "");
+    } catch {
+      throw new AdapterCouldNotCheck("The publish tier answered with something that is not JSON.");
+    }
+    if (!isRecord(body))
+      throw new AdapterCouldNotCheck(
+        "The publish tier answered with something that is not an object.",
+      );
+    return body;
   };
 
-  const queryAddress = (document: string, variables: Record<string, unknown>): string =>
-    `${AEM_API}/graphql?query=${encodeURIComponent(readOnly(document))}&variables=${encodeURIComponent(JSON.stringify(variables))}`;
+  /** The persisted query's address, built from the validated origin, configuration and name only. */
+  const address = (query: string, after: string | undefined): string => {
+    const params =
+      after === undefined ? "" : `;first=${pageSize};after=${encodeURIComponent(after)}`;
+    return `${origin()}/graphql/execute.json/${config()}/${query}${params}`;
+  };
 
-  /** The `data` of a GraphQL answer. An answer with errors is could-not-check, and its messages (which may quote content) are not repeated. */
-  const dataOf = (body: Record<string, unknown>): Record<string, unknown> => {
+  /** The one list in a persisted query's answer: `items` (a list) or `edges` (paginated). */
+  const pageOf = (body: Record<string, unknown>): Page => {
     if (Array.isArray(body.errors) && body.errors.length > 0)
       throw new AdapterCouldNotCheck(
-        `Adobe Experience Manager answered with ${body.errors.length} error${body.errors.length === 1 ? "" : "s"}.`,
+        `The persisted query answered with ${body.errors.length} GraphQL error${body.errors.length === 1 ? "" : "s"}, so its list was not read.`,
       );
     if (!isRecord(body.data))
+      throw new AdapterCouldNotCheck("The persisted query's answer has no data.");
+    const roots = Object.values(body.data).filter(
+      (v): v is Record<string, unknown> =>
+        isRecord(v) && (Array.isArray(v.items) || Array.isArray(v.edges)),
+    );
+    if (roots.length !== 1)
       throw new AdapterCouldNotCheck(
-        "Adobe Experience Manager answered with something that has no data.",
+        "The persisted query must return exactly one list of fragments (an `items` list or `edges`).",
       );
-    return body.data;
-  };
-
-  const typeNames = async (partial: () => unknown): Promise<string[]> => {
-    const body = await get(queryAddress(TYPES_QUERY, {}), partial);
-    return namesOf(dataOf(body).types);
-  };
-
-  const pageOf = async (
-    type: string,
-    status: "published" | "all",
-    limit: number,
-    offset: number,
-    partial: () => unknown,
-  ): Promise<{ items: unknown[]; total: number }> => {
-    const body = await get(queryAddress(ITEMS_QUERY, { type, status, limit, offset }), partial);
-    const items = dataOf(body).items;
-    const page = isRecord(items) ? items : {};
-    return { items: itemsOf(page.nodes), total: totalOf(page.total) };
-  };
-
-  const namesOf = (list: unknown): string[] => {
-    if (!Array.isArray(list))
+    const root = roots[0] as Record<string, unknown>;
+    let items: unknown[];
+    if (Array.isArray(root.edges)) {
+      items = root.edges.map((e) => (isRecord(e) ? e.node : undefined));
+    } else {
+      items = root.items as unknown[];
+    }
+    const info = root.pageInfo;
+    if (info === undefined || info === null) return { items };
+    if (!isRecord(info) || typeof info.hasNextPage !== "boolean")
+      throw new AdapterCouldNotCheck("The persisted query's `pageInfo` has no `hasNextPage`.");
+    const cursor = info.endCursor;
+    if (info.hasNextPage && (typeof cursor !== "string" || !CURSOR.test(cursor)))
       throw new AdapterCouldNotCheck(
-        "Adobe Experience Manager answered with something that is not a list of types.",
+        "The persisted query says there is another page and gives no usable `endCursor`.",
       );
-    const names = list.map((t) => {
-      const slug = isRecord(t) ? t.slug : undefined;
-      if (typeof slug !== "string" || slug === "")
-        throw new AdapterCouldNotCheck(
-          "Adobe Experience Manager answered with a type that has no slug.",
-        );
-      return slug;
-    });
-    return names.sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+    return {
+      items,
+      next: { has: info.hasNextPage, cursor: typeof cursor === "string" ? cursor : undefined },
+    };
   };
 
-  const itemsOf = (list: unknown): unknown[] => {
-    if (!Array.isArray(list))
+  const parseItem = (raw: unknown): RawItem => {
+    const r = isRecord(raw) ? raw : {};
+    const path = damPath(r._path);
+    if (path === undefined)
       throw new AdapterCouldNotCheck(
-        "Adobe Experience Manager answered with something that is not a list of items.",
+        "A fragment in the persisted query has no usable `_path` (it must be /content/dam/ and plain path segments). Add `_path` to the query.",
       );
-    return list;
-  };
-
-  const totalOf = (total: unknown): number => {
-    if (typeof total !== "number" || !Number.isSafeInteger(total) || total < 0)
-      throw new AdapterCouldNotCheck(
-        "Adobe Experience Manager answered with something that is not a count of items.",
-      );
-    return total;
+    const updatedAt = modifiedOf(r);
+    return {
+      id: idOfPath(path),
+      slug: slugOfPath(path),
+      ...(updatedAt !== undefined ? { updatedAt } : {}),
+      data: r,
+    };
   };
 
   /**
-   * The items of one type, a page at a time, until every one is read. An answer over the size limit is
-   * asked again with half as many items, down to ten; a page that comes back short is not the end, and
-   * one that comes back empty before the total is could-not-check. `status` "published" asks for what
-   * is live; "all" asks for everything the key can see.
+   * The fragments of one persisted query, a page at a time until every one is read. A paginated query is
+   * followed by its `endCursor` (`;first=<n>;after=<cursor>`); the same cursor twice, an empty page that
+   * promises another, a repeated fragment, more pages than the bound or more fragments than the cap are
+   * could-not-check, never a short list taken for the whole. A list with no `pageInfo` that answers
+   * AEM_LIMITS.unpagedList fragments or more may have been cut short by a default limit: could-not-check.
    */
   async function* itemsOfType(
-    type: string,
-    status: "published" | "all",
+    query: string,
     enforceCap: boolean,
     partial: () => unknown,
   ): AsyncGenerator<RawItem> {
-    let offset = 0;
-    let size = pageSize;
-    for (;;) {
-      let page: { items: unknown[]; total: number };
-      try {
-        page = await pageOf(type, status, size, offset, partial);
-      } catch (err) {
-        if (!(err instanceof TooLarge)) throw err;
-        if (size > MIN_PAGE_SIZE) {
-          size = Math.max(MIN_PAGE_SIZE, Math.floor(size / 2));
-          continue;
-        }
+    const seenIds = new Set<string>();
+    const seenCursors = new Set<string>();
+    let after: string | undefined;
+    for (let pages = 0; ; pages++) {
+      if (pages >= pageCap)
         throw new AdapterCouldNotCheck(
-          `Adobe Experience Manager's answer for ${size} items is larger than Gaugeline reads at once, even after asking for fewer items at a time (down to ${MIN_PAGE_SIZE}). The type was not read.`,
+          `The persisted query has more than ${pageCap} pages, which is as many as Gaugeline reads for one query.`,
         );
+      const page = pageOf(await get(address(query, after), partial));
+      if (page.next === undefined && page.items.length >= AEM_LIMITS.unpagedList)
+        throw new AdapterCouldNotCheck(
+          `The persisted query returned ${page.items.length} fragments with no \`pageInfo\`, so the platform's own default limit may have cut the list short. Use the paginated form of the query (edges and pageInfo).`,
+        );
+      for (const raw of page.items) {
+        const item = parseItem(raw);
+        if (seenIds.has(item.id))
+          throw new AdapterCouldNotCheck(
+            "The persisted query listed the same fragment twice, so its list is not trusted.",
+          );
+        seenIds.add(item.id);
+        if (enforceCap && seenIds.size > itemCap)
+          throw new AdapterCouldNotCheck(
+            `The persisted query has more than ${itemCap} fragment${itemCap === 1 ? "" : "s"}, which is as many as Gaugeline reads from one query.`,
+          );
+        yield item;
       }
-      if (enforceCap && page.total > cap)
+      if (page.next === undefined || !page.next.has) return;
+      const cursor = page.next.cursor as string;
+      if (page.items.length === 0 || seenCursors.has(cursor) || cursor === after)
         throw new AdapterCouldNotCheck(
-          `The type has ${page.total} items, more than ${cap} item${cap === 1 ? "" : "s"}, which is as many as Gaugeline reads from one type.`,
+          "The persisted query's pages do not move on (an empty page or a cursor it already gave), so the rest was not read.",
         );
-      for (const raw of page.items) yield parseItem(raw);
-      offset += page.items.length;
-      if (offset >= page.total) return;
-      if (page.items.length === 0)
-        throw new AdapterCouldNotCheck(
-          `Adobe Experience Manager's list stopped after ${offset} of ${page.total} items, so the rest was not read.`,
-        );
+      seenCursors.add(cursor);
+      after = cursor;
     }
   }
 
@@ -306,16 +404,13 @@ export function createAemAdapter(options: AemAdapterOptions): ContentAdapter {
     return template === undefined ? "" : fillUrlTemplate(template, doc);
   };
 
-  const chosen = async (names: readonly string[] | undefined): Promise<string[]> => {
-    const all = await typeNames(() => []);
-    return names === undefined ? all : all.filter((n) => names.includes(n));
-  };
-
   const types = async (): Promise<TypeCount[]> => {
     const out: TypeCount[] = [];
-    for (const name of await typeNames(() => [])) {
-      const page = await pageOf(name, "published", 1, 0, () => out.slice());
-      out.push({ name, count: page.total });
+    for (const name of named()) {
+      let count = 0;
+      for await (const item of itemsOfType(name, true, () => out.slice()))
+        count += item.id === "" ? 0 : 1;
+      out.push({ name, count });
     }
     return out;
   };
@@ -324,11 +419,13 @@ export function createAemAdapter(options: AemAdapterOptions): ContentAdapter {
     type: string,
     fields: readonly string[],
   ): Promise<Record<string, number>> => {
+    if (!named().includes(type))
+      throw new AdapterCouldNotCheck(
+        `"${type}" is not a persisted query named in gaugeline.adapters.json, so it was not read.`,
+      );
     const out: Record<string, number> = Object.fromEntries(fields.map((f) => [f, 0]));
-    for (const name of await chosen([type]))
-      for await (const item of itemsOfType(name, "published", true, () => ({}))) {
-        for (const f of fields) if (hasValue(valueAt(item.data, f))) out[f] = (out[f] ?? 0) + 1;
-      }
+    for await (const item of itemsOfType(type, true, () => ({})))
+      for (const f of fields) if (hasValue(valueAt(item.data, f))) out[f] = (out[f] ?? 0) + 1;
     return out;
   };
 
@@ -340,32 +437,31 @@ export function createAemAdapter(options: AemAdapterOptions): ContentAdapter {
     }
     let delivered = 0;
     let remaining = opts.limit ?? Number.POSITIVE_INFINITY;
-    for (const type of await chosen(opts.types)) {
+    for (const type of chosen(opts.types)) {
       if (remaining <= 0) return;
       const fields = opts.fields?.[type] ?? settings?.fingerprint?.[type] ?? [];
-      const read = itemsOfType(type, "published", opts.limit === undefined, () => delivered);
-      for await (const item of read) {
-        if (!item.published) continue;
-        if (since !== undefined && Date.parse(item.updatedAt) < Date.parse(since)) continue;
+      for await (const item of itemsOfType(type, opts.limit === undefined, () => delivered)) {
+        // A fragment with no time cannot be placed before `since`; the reader counts it as undated.
+        if (
+          since !== undefined &&
+          item.updatedAt !== undefined &&
+          Date.parse(item.updatedAt) < Date.parse(since)
+        )
+          continue;
         const fieldHashes: Record<string, string> = {};
         for (const f of fields) {
           const h = hashValue(valueAt(item.data, f));
           if (h !== undefined) fieldHashes[f] = h;
         }
-        const url = resolveUrl({
-          id: item.id,
-          type,
-          ...(item.slug !== undefined ? { slug: item.slug } : {}),
-        });
+        const url = resolveUrl({ id: item.id, type, slug: item.slug });
         remaining--;
         delivered++;
         yield {
           id: item.id,
           type,
           ...(url !== "" ? { url } : {}),
-          ...(item.slug !== undefined ? { slug: item.slug } : {}),
-          ...(item.publishedAt !== undefined ? { publishedAt: item.publishedAt } : {}),
-          updatedAt: item.updatedAt,
+          slug: item.slug,
+          ...(item.updatedAt !== undefined ? { updatedAt: item.updatedAt } : {}),
           fieldHashes,
         };
         if (remaining <= 0) return;
@@ -373,7 +469,7 @@ export function createAemAdapter(options: AemAdapterOptions): ContentAdapter {
     }
   }
 
-  /** With no key only what is published can be seen, so there is no question to ask. */
+  /** The publish tier serves only what is published, and no author tier is asked: there is no question to ask. */
   const draftsReachable = (): Promise<"not-applicable"> => Promise.resolve("not-applicable");
 
   return {

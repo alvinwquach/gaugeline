@@ -24,6 +24,11 @@ export interface AdapterDescription {
    */
   noKey?: true;
   /**
+   * With `noKey`: the adapter reads content (ids, dates and field hashes) from a public API, not pages from a
+   * sitemap, so `--published` gives it the changed-since window and the fields to compare, like a keyed adapter.
+   */
+  fingerprintsFields?: true;
+  /**
    * The adapter is beta because the platform's own API is. The run header says "(beta)" after the name,
    * and the adapter's docs page says what may change.
    */

@@ -221,7 +221,7 @@ export function createPublished(
     const sources: Source[] = adapters.map((adapter, i) => ({
       adapter,
       settings: config?.adapters[i],
-      pages: adapter.describe().noKey === true,
+      pages: adapter.describe().noKey === true && adapter.describe().fingerprintsFields !== true,
     }));
 
     const todo: Todo[] = [];
