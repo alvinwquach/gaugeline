@@ -19,6 +19,7 @@ export function createChangeSources(args: {
 }): ChangeSources {
   const { config, adapter } = args;
   let deploys: ReturnType<typeof readDeploys> | undefined;
+  let asked: string | undefined;
   return {
     async revisions(path, since) {
       const doc = config.documents?.[path];
@@ -37,6 +38,13 @@ export function createChangeSources(args: {
         throw err;
       }
     },
-    deploys: () => (deploys ??= readDeploys(config.deploys, args.env, args.fetcher)),
+    deploys: (since) => {
+      // One question per invocation; the earliest window start asked about is what it covers.
+      if (deploys === undefined || (asked !== undefined && since < asked)) {
+        asked = since;
+        deploys = readDeploys(config.deploys, args.env, args.fetcher, since);
+      }
+      return deploys;
+    },
   };
 }

@@ -2,7 +2,7 @@ import { isRecord } from "../connectors/get-json.js";
 import { SANITY_TOKEN, sanitySettings } from "../connectors/sanity.js";
 import type { Env } from "../connectors/types.js";
 import type { Fetcher } from "../fetcher.js";
-import { getProviderJson, getProviderText, type ProviderAccess } from "../handoff/http.js";
+import { clip, getProviderJson, getProviderText, type ProviderAccess } from "../handoff/http.js";
 import type { Revision } from "../changes/types.js";
 import { AdapterCouldNotCheck } from "./types.js";
 
@@ -49,8 +49,13 @@ export async function readSanityRevisions(
   const got = await getProviderText(access, url, `the history of ${documentId}`);
   if (!got.ok) throw new AdapterCouldNotCheck(`Sanity history: ${got.reason}`);
   const rows: { time: string; author: string | undefined }[] = [];
-  for (const line of got.body.split("\n")) {
-    if (line.trim() === "") continue;
+  const lines = got.body.split("\n").filter((l) => l.trim() !== "");
+  // A full page may be a cut-off list: fail safe instead of reading it as the whole story.
+  if (lines.length >= MAX_TRANSACTIONS)
+    throw new AdapterCouldNotCheck(
+      `Sanity has more than ${MAX_TRANSACTIONS} transactions for ${clip(documentId, 80)} since ${since.slice(0, 10)}, so the window may be missing records`,
+    );
+  for (const line of lines) {
     let row: unknown;
     try {
       row = JSON.parse(line);
@@ -77,10 +82,14 @@ export async function readSanityRevisions(
     if (users.ok && Array.isArray(users.body))
       for (const u of users.body)
         if (isRecord(u) && text(u.id) && text(u.displayName))
-          names.set(text(u.id) as string, text(u.displayName) as string);
+          names.set(text(u.id) as string, clip(text(u.displayName) as string, 80));
   }
   return rows.map((r) => {
     const editor = r.author ? names.get(r.author) : undefined;
-    return { documentId, time: r.time, ...(editor !== undefined ? { editor } : {}) };
+    return {
+      documentId: clip(documentId, 80),
+      time: r.time,
+      ...(editor !== undefined ? { editor } : {}),
+    };
   });
 }

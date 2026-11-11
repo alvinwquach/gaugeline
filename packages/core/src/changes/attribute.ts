@@ -7,8 +7,10 @@ export interface Attribution {
   /** The deploys inside the window, oldest first, and the commit range they span when the host says it. */
   deploys: Deploy[];
   commitRange?: string;
-  /** Why the label is "unknown" or less than it could be: every source that could not be read. */
+  /** Why the label is "unknown": what each source said, in the words the report prints. */
   reasons: string[];
+  /** For a label that is not unknown: a source that was not read, so the label rules nothing out about it. */
+  notChecked: string[];
 }
 
 const inWindow = (time: string, after: string, upTo: string): boolean =>
@@ -16,13 +18,25 @@ const inWindow = (time: string, after: string, upTo: string): boolean =>
 
 const short = (sha: string): string => sha.slice(0, 7);
 
+/** What a source said, in words: read and empty, never asked, or asked and failed. */
+const EDITS = {
+  read: "no content edit is recorded in that time",
+  none: "content edits were not checked (no document is named for this page in gaugeline.changes.json)",
+  failed: (why: string) => `content edits could not be checked (${why})`,
+};
+const DEPLOYS = {
+  read: "no deploy is recorded in that time",
+  none: "deploys were not checked (no deploy host is set up in gaugeline.changes.json)",
+  failed: (why: string) => `deploys could not be checked (${why})`,
+};
+
 /**
  * The attribution table. Two sources, each read, not configured, or could not be checked:
  *   revisions in the window, deploys in the window -> both
- *   revisions only                                 -> content-edit (deploys read or not configured)
- *   deploys only                                   -> code-deploy (revisions read or not configured)
- *   nothing, and every configured source read      -> unknown ("nothing recorded")
- *   a source could not be read                     -> never rules out the other kind: unknown with the reason
+ *   revisions only                                 -> content-edit
+ *   deploys only, edits read or never asked        -> code-deploy (never asked is said, not assumed)
+ *   deploys only, edits could not be read          -> unknown: a content edit is not ruled out
+ *   nothing found                                  -> unknown, saying for each source whether it was read
  * The window is (previous run, run where the finding appeared]. Nothing is inferred from names or times.
  */
 export function attribute(args: {
@@ -31,42 +45,56 @@ export function attribute(args: {
   revisions: SourceRead<Revision>;
   deploys: SourceRead<Deploy>;
 }): Attribution {
-  const reasons: string[] = [];
+  const { revisions, deploys } = args;
   const revs =
-    args.revisions.state === "read"
-      ? args.revisions.items
+    revisions.state === "read"
+      ? revisions.items
           .filter((r) => inWindow(r.time, args.after, args.upTo))
           .sort((a, b) => a.time.localeCompare(b.time))
       : [];
-  if (args.revisions.state === "could-not-check") reasons.push(args.revisions.reason);
   const all =
-    args.deploys.state === "read"
-      ? [...args.deploys.items].sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+    deploys.state === "read"
+      ? [...deploys.items].sort((a, b) => a.createdAt.localeCompare(b.createdAt))
       : [];
   const deps = all.filter((d) => inWindow(d.createdAt, args.after, args.upTo));
-  if (args.deploys.state === "could-not-check") reasons.push(args.deploys.reason);
   // The deploy live at the earlier run is the base of the commit range.
   const base = [...all].reverse().find((d) => d.createdAt <= args.after && d.commit !== undefined);
   const last = [...deps].reverse().find((d) => d.commit !== undefined);
   const commitRange =
     base?.commit && last?.commit ? `${short(base.commit)}..${short(last.commit)}` : undefined;
-  const revisionsBlocked = args.revisions.state === "could-not-check";
 
+  const editsSaid =
+    revisions.state === "read"
+      ? EDITS.read
+      : revisions.state === "not-configured"
+        ? EDITS.none
+        : EDITS.failed(revisions.reason);
+  const deploysSaid =
+    deploys.state === "read"
+      ? DEPLOYS.read
+      : deploys.state === "not-configured"
+        ? DEPLOYS.none
+        : DEPLOYS.failed(deploys.reason);
+
+  const editsBlocked = revisions.state === "could-not-check";
   let label: ChangeLabel;
+  let reasons: string[] = [];
   if (revs.length > 0 && deps.length > 0) label = "both";
   else if (revs.length > 0) label = "content-edit";
-  else if (deps.length > 0 && !revisionsBlocked) label = "code-deploy";
+  else if (deps.length > 0 && !editsBlocked) label = "code-deploy";
   else {
     label = "unknown";
-    if (reasons.length === 0) {
-      if (args.revisions.state === "not-configured" && args.deploys.state === "not-configured")
-        reasons.push(
-          "no content system and no deploy host is set up in gaugeline.changes.json, so there is no record to read",
-        );
-      else reasons.push("no content revision and no deploy is recorded between the two runs");
-    }
-    if (deps.length > 0 && revisionsBlocked)
-      reasons.push("a deploy shipped, but a content edit is not ruled out");
+    reasons =
+      deps.length > 0
+        ? [editsSaid, "a deploy shipped in that time, but a content edit is not ruled out"]
+        : [editsSaid, deploysSaid];
+  }
+  const notChecked: string[] = [];
+  if (label !== "unknown") {
+    if (revisions.state !== "read" && label !== "content-edit" && label !== "both")
+      notChecked.push(editsSaid);
+    if (deploys.state !== "read" && label !== "code-deploy" && label !== "both")
+      notChecked.push(deploysSaid);
   }
   return {
     label,
@@ -74,5 +102,6 @@ export function attribute(args: {
     deploys: deps,
     ...(commitRange ? { commitRange } : {}),
     reasons,
+    notChecked,
   };
 }

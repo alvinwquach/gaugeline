@@ -1570,7 +1570,7 @@ export {
 export type { ChangeItem, ChangeSources, ChangesReport, Warranty } from "./changes/report.js";
 export { createChangeSources } from "./changes/sources.js";
 export { readDeploys } from "./changes/deploys.js";
-export { HISTORY_SCHEMA } from "./changes/types.js";
+export { HISTORY_SCHEMA, RUN_ID, isRunRecord } from "./changes/types.js";
 export type {
   ChangeLabel,
   Deploy,

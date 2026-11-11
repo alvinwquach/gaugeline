@@ -100,6 +100,7 @@ describe("docs/guides/what-changed.md", () => {
         ],
         deploys: [],
         reasons: [],
+        notChecked: [],
       },
       "/events",
     );

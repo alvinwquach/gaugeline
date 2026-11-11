@@ -1,7 +1,7 @@
 import { isRecord } from "../connectors/get-json.js";
 import type { Env } from "../connectors/types.js";
 import type { Fetcher } from "../fetcher.js";
-import { getProviderJson, type ProviderAccess } from "../handoff/http.js";
+import { clip, getProviderJson, type ProviderAccess } from "../handoff/http.js";
 import type { ChangesConfig } from "./config.js";
 import type { Deploy, SourceRead } from "./types.js";
 
@@ -26,6 +26,8 @@ export async function readDeploys(
   config: ChangesConfig["deploys"],
   env: Env,
   fetcher: Fetcher,
+  /** The start of the window the answer must cover (ISO): the earliest earlier run asked about. */
+  since: string,
 ): Promise<SourceRead<Deploy>> {
   if (!config) return { state: "not-configured" };
   const vercel = config.provider === "vercel";
@@ -55,16 +57,34 @@ export async function readDeploys(
       state: "could-not-check",
       reason: `${name} answered with something that is not a list of deployments`,
     };
+  // A full page that does not reach back to the start of the window may be missing the records
+  // that matter: say so instead of reading a cut-off list as "nothing shipped".
+  const times = rows.flatMap((r) => {
+    const t = isRecord(r) ? iso(vercel ? r.created : r.created_at) : undefined;
+    return t ? [t] : [];
+  });
+  const oldest = times.length > 0 ? times.reduce((a, b) => (a < b ? a : b)) : undefined;
+  if (rows.length >= DEPLOYS_MAX && (oldest === undefined || oldest > since))
+    return {
+      state: "could-not-check",
+      reason: `${name} has more than ${DEPLOYS_MAX} recent deployments and the list does not reach back to ${since.slice(0, 10)}, so the window may be missing records`,
+    };
   const items: Deploy[] = [];
   for (const r of rows) {
     if (!isRecord(r)) continue;
-    if (!vercel && text(r.context) !== undefined && r.context !== "production") continue;
+    // Only a finished production deployment counts: a failed, cancelled or still-building one never
+    // served the site, and a deployment with no state or no target is unverified.
+    if (vercel) {
+      if (r.state !== "READY" && r.readyState !== "READY") continue;
+      if (r.target !== "production") continue;
+    } else if (r.state !== "ready" || r.context !== "production") continue;
     const id = text(vercel ? r.uid : r.id);
     const createdAt = iso(vercel ? r.created : r.created_at);
     const commit = vercel
       ? text(isRecord(r.meta) ? r.meta.githubCommitSha : undefined)
       : text(r.commit_ref);
-    if (id && createdAt) items.push({ id, createdAt, ...(commit ? { commit } : {}) });
+    if (id && createdAt)
+      items.push({ id: clip(id, 80), createdAt, ...(commit ? { commit: clip(commit, 64) } : {}) });
   }
   return { state: "read", items };
 }

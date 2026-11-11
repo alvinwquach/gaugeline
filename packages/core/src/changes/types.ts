@@ -34,7 +34,49 @@ export interface RunRecord {
   takenAt: string;
   /** The pages this run read, by path. */
   pages: Record<string, PageRecord>;
+  /** Findings on those pages only. */
   findings: RecordedFinding[];
+  /** How many findings were on other pages: not compared, and said so. */
+  offPage?: number;
+}
+
+/** The only shape a run id has: it is also the file name, so it can never hold a path. */
+export const RUN_ID = /^r-\d{8}T\d{6}Z$/;
+
+const MAX_TEXT = 500;
+const MAX_PAGES = 200;
+const MAX_FINDINGS = 2000;
+const MAX_LIST = 300;
+
+const isText = (v: unknown, max = MAX_TEXT): v is string =>
+  typeof v === "string" && v.length <= max;
+const isList = (v: unknown): v is string[] =>
+  Array.isArray(v) && v.length <= MAX_LIST && v.every((x) => isText(x, 1000));
+const isObject = (v: unknown): v is Record<string, unknown> =>
+  v !== null && typeof v === "object" && !Array.isArray(v);
+
+/**
+ * Is this parsed JSON a run this version wrote: right schema, a run id, a real time, and every page
+ * and finding with the fields the diff reads, each bounded. A file that fails is skipped, never
+ * trusted and never deleted.
+ */
+export function isRunRecord(v: unknown): v is RunRecord {
+  if (!isObject(v) || v.schema !== HISTORY_SCHEMA) return false;
+  if (typeof v.id !== "string" || !RUN_ID.test(v.id)) return false;
+  if (typeof v.takenAt !== "string" || Number.isNaN(Date.parse(v.takenAt))) return false;
+  if (!isObject(v.pages) || Object.keys(v.pages).length > MAX_PAGES) return false;
+  for (const [path, p] of Object.entries(v.pages)) {
+    if (!isText(path) || !isObject(p)) return false;
+    if (!isText(p.mainHash, 64) || !isList(p.links) || !isList(p.types) || !isList(p.scripts))
+      return false;
+    for (const k of ["title", "canonical", "h1"])
+      if (p[k] !== undefined && !isText(p[k], 1000)) return false;
+  }
+  if (!Array.isArray(v.findings) || v.findings.length > MAX_FINDINGS) return false;
+  for (const f of v.findings)
+    if (!isObject(f) || !isText(f.checkId, 100) || !isText(f.path) || !isText(f.title))
+      return false;
+  return v.offPage === undefined || (Number.isSafeInteger(v.offPage) && (v.offPage as number) >= 0);
 }
 
 export type FieldName =

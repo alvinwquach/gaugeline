@@ -259,11 +259,15 @@ const world =
         deployments: [
           {
             uid: "dpl_2",
+            state: "READY",
+            target: "production",
             created: Date.parse("2026-10-03T09:00:00Z"),
             meta: { githubCommitSha: "bbbbbbb1111" },
           },
           {
             uid: "dpl_1",
+            state: "READY",
+            target: "production",
             created: Date.parse("2026-09-20T09:00:00Z"),
             meta: { githubCommitSha: "aaaaaaa0000" },
           },

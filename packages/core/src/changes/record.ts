@@ -26,14 +26,24 @@ function readMain(html: string, base: string): { text: string; links: string[] }
     try {
       const u = new URL($(a).attr("href") ?? "", base);
       if (u.protocol !== "http:" && u.protocol !== "https:") return;
-      u.hash = "";
+      // Where it goes, never who it names or what it carries: no userinfo, query or fragment.
       const sameSite = u.origin === new URL(base).origin;
-      links.push(sameSite ? `${u.pathname}${u.search}` : u.href);
+      links.push(sameSite ? u.pathname : `${u.origin}${u.pathname}`);
     } catch {
       /* not an address: not a link */
     }
   });
   return { text: root.text().replace(/\s+/g, " ").trim(), links };
+}
+
+/** An address without userinfo, query or fragment; what it was when it cannot be read. */
+function bare(href: string, base: string): string {
+  try {
+    const u = new URL(href, base);
+    return `${u.origin}${u.pathname}`;
+  } catch {
+    return clip(href);
+  }
 }
 
 /** The compact snapshot of one page: fields and hashes, never the HTML. */
@@ -59,7 +69,7 @@ export function buildPageRecord(page: PageSnapshot): PageRecord {
   });
   return {
     ...(page.title !== undefined ? { title: clip(page.title) } : {}),
-    ...(page.canonical !== undefined ? { canonical: page.canonical } : {}),
+    ...(page.canonical !== undefined ? { canonical: bare(page.canonical, page.finalUrl) } : {}),
     ...(h1 !== undefined ? { h1: clip(h1) } : {}),
     mainHash: createHash("sha256").update(main.text).digest("hex").slice(0, 16),
     links: sortedUnique(main.links).slice(0, LINKS_MAX),

@@ -11,8 +11,6 @@ import {
   buildRunSnapshot,
   buildPageRecord,
   DEFAULT_RETENTION_DAYS,
-  HISTORY_SCHEMA,
-  runId,
   createDnsReader,
   createPageRegistry,
   notifyAll,
@@ -139,7 +137,7 @@ import { runMigration } from "./migration.js";
 import { runAdvisory } from "./advisory.js";
 import { runInit } from "./init.js";
 import { runChanges } from "./changes.js";
-import { saveRun } from "./runs.js";
+import { buildRunRecord, saveRun } from "./runs.js";
 import { gateVerdict } from "./deploy-gate.js";
 import { runSnapshot } from "./snapshot.js";
 import { runVerify } from "./verify.js";
@@ -1797,21 +1795,10 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         );
         // The same run, kept as history for `gaugeline changes`: a few fields and hashes of the
         // page, and the findings' check, path and title.
-        const pagePath = new URL(snapshot.finalUrl).pathname;
         saveRun(
           cwd,
           host,
-          {
-            schema: HISTORY_SCHEMA,
-            id: runId(startedAt),
-            takenAt: startedAt.toISOString(),
-            pages: { [pagePath]: buildPageRecord(snapshot) },
-            findings: result.findings.map((f) => ({
-              checkId: f.checkId,
-              path: new URL(f.url, snapshot.finalUrl).pathname,
-              title: f.title,
-            })),
-          },
+          buildRunRecord(snapshot, buildPageRecord(snapshot), result.findings, startedAt),
           startedAt,
           readChangesConfig(cwd)?.retentionDays ?? DEFAULT_RETENTION_DAYS,
         );
