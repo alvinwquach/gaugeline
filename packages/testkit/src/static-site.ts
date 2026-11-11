@@ -20,10 +20,21 @@ function respond(status: number, type: string, body: Buffer): TransportResponse 
  * Serve a folder of files as one logical host, in memory: no socket, no DNS. A request for any
  * other host goes to `others`. `/` is index.html; a path with no extension tries .html; a missing
  * file is a 404. For tests that need a site on a name that is not 127.0.0.1 (listings compare the
- * site's host with the host a listing links to).
+ * site's host with the host a listing links to). With `origin`, {{origin}} in a page or sitemap is
+ * replaced by it, as the fixture server does.
  */
-export function staticSite(host: string, dir: string, others: Transport): Transport {
+export function staticSite(
+  host: string,
+  dir: string,
+  others: Transport,
+  options: { origin?: string } = {},
+): Transport {
   const root = resolve(dir);
+  // A page or sitemap that holds the {{origin}} placeholder (as the fixture server's files do) gets the origin asked for.
+  const filled = (type: string, body: Buffer): Buffer =>
+    options.origin !== undefined && /^(text|application\/xml)/.test(type)
+      ? Buffer.from(body.toString("utf8").replaceAll("{{origin}}", options.origin))
+      : body;
   return (url, req) => {
     if (url.hostname !== host) return others(url, req);
     const path = decodeURIComponent(url.pathname);
@@ -34,7 +45,10 @@ export function staticSite(host: string, dir: string, others: Transport): Transp
       try {
         if (statSync(file).isFile())
           return Promise.resolve(
-            respond(200, TYPES[extname(file)] ?? "application/octet-stream", readFileSync(file)),
+            (() => {
+              const type = TYPES[extname(file)] ?? "application/octet-stream";
+              return respond(200, type, filled(type, readFileSync(file)));
+            })(),
           );
       } catch {
         // not there: try the next candidate

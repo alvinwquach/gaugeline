@@ -31,6 +31,7 @@ import type { DatabasesRead } from "./connectors/postgres/read.js";
 import type { AssertionsRead } from "./assertions/read.js";
 import type { Freshness } from "./freshness/read.js";
 import type { ContentModel } from "./content-model/read.js";
+import type { SanityImageRead } from "./sanity-images/read.js";
 import type { StatePages } from "./switches/pages.js";
 import type { SwitchesRead } from "./switches/types.js";
 import type { ScriptRead } from "./scripts.js";
@@ -274,6 +275,12 @@ export interface CheckContext {
    * could not check.
    */
   model?: ContentModel;
+  /**
+   * What the dataset says about the Sanity uploads the page uses (size, and the crop, hotspot and alt text on
+   * the image values), read once on first use with GET and a Viewer token. Absent unless gaugeline.adapters.json
+   * names sanity: those checks are then not run.
+   */
+  sanityImages?: () => Promise<SanityImageRead>;
   /** Values the run was told to expect (for example the app's name). Until the config file, API only. */
   expect?: RunExpectations;
   /**

@@ -42,6 +42,16 @@ export type {
 } from "./sanity-counts.js";
 export { CONTENT_MARKER, NORTHFIELD_CONTENT, northfieldResources } from "./sanity-content.js";
 export { FENNEL_MEALS, MEALS_MARKER, mealsContent } from "./sanity-meals.js";
+export {
+  HARBOUR,
+  HARBOUR_ASSETS,
+  HARBOUR_MARKER,
+  HARBOUR_PROJECT,
+  OTHER_PROJECT,
+  harbourAssetId,
+  harbourContent,
+  harbourUrl,
+} from "./sanity-studio-images.js";
 export { FERNBROOK, FERNBROOK_MARKER, fernbrookContent } from "./sanity-model.js";
 export { startGraphqlServer } from "./graphql-server.js";
 export type { GraphqlServer, GraphqlServerOptions, SeenGraphqlRequest } from "./graphql-server.js";
