@@ -79,7 +79,7 @@ describe("gaugeline.adapters.json in gaugeline query: e2e", () => {
     const r = await query();
     expect(r.code).toBe(EXIT.couldNotRun);
     expect(r.err).toContain('the "webflow" adapter is planned (C-04)');
-    expect(r.err).toContain("Built adapters: sanity, wordpress");
+    expect(r.err).toContain("Built adapters: sanity, sitemap-feed, wordpress");
     expect(r.out).toBe("");
   });
 

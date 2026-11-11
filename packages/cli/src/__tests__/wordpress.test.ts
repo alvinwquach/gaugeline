@@ -121,10 +121,10 @@ describe("gaugeline check --wordpress: end to end (the invented bar, in memory)"
     const r = await run([BAR, "--wordpress", "--no-open", "--quiet"], folder());
     expect(r.code).toBe(EXIT.ok);
     expect(r.out).toContain(
-      "WordPress 6.2.1 is shown (read from the generator tag); the current release in the wordpress.org API is 6.8.3.",
+      "The page declares WordPress 6.2.1 (read from the generator tag); the current release in the wordpress.org API is 6.8.3.",
     );
     expect(r.out).toContain(
-      "The plugin easy-booking 2.1.3 is shown (read from the ?ver= on its files on this page); the current release in the wordpress.org directory is 2.4.0.",
+      "The page declares the plugin easy-booking 2.1.3 (read from the ?ver= on its files on this page); the current release in the wordpress.org directory is 2.4.0.",
     );
     expect(r.out).toContain("listed 2 users");
     expect(r.out).not.toContain("gallery-lite 1.3.0");
