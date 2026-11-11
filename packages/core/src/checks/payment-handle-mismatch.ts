@@ -7,6 +7,10 @@ const HANDLES: ReadonlySet<string> = new Set(HANDLE_KINDS);
 
 export const paymentHandleMismatch = defineCheck<PageSnapshot>({
   id: "payment-handle-mismatch",
+  size: "S",
+  done: "The handle is correct everywhere and opens your payment page on a phone.",
+  estimateChanges:
+    "One shared footer or CMS field is one edit. Handles typed into many pages are one edit each.",
   area: "Sales & prices",
   severity: "high",
   title: "A payment handle differs from yours",

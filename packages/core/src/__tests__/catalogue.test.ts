@@ -9,6 +9,9 @@ const base = {
   why: "y",
   fix: "Do the thing.",
   tech: "t",
+  size: "S",
+  done: "Done.",
+  estimateChanges: "Nothing.",
   run: () => [],
 } as const;
 const make = (id: string, severity: Severity, title = id): Check<unknown> =>
@@ -45,9 +48,12 @@ describe("catalogue: unit", () => {
     expect(JSON.parse(JSON.stringify(entries))).toEqual(entries);
     expect(Object.keys(entries[0] ?? {}).sort()).toEqual([
       "area",
+      "done",
+      "estimateChanges",
       "fix",
       "id",
       "severity",
+      "size",
       "tech",
       "title",
       "what",

@@ -8,6 +8,10 @@ const MAX_TYPES = 100;
 
 export const modelMissingRequired = defineCheck<PageSnapshot>({
   id: "model-missing-required",
+  size: "M",
+  done: "The documents named in the evidence have the field filled in and the schema check passes.",
+  estimateChanges:
+    "Many documents need a one-off migration. A few are filled in by hand in the Studio.",
   area: "Visitors",
   severity: "high",
   title: "Published documents are missing a field the schema now requires",

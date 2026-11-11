@@ -4,6 +4,9 @@ import { controlLabel, findPagination } from "./listing/pagination.js";
 
 export const paginationUnreachable = defineCheck<PageSnapshot>({
   id: "pagination-unreachable",
+  size: "S",
+  done: "The page 2 control is a real link and a rel next link is in the head.",
+  estimateChanges: "A custom pagination component fixed once covers every list that uses it.",
   area: "Search & sharing",
   severity: "high",
   title: "Page 2 of this list has no address",

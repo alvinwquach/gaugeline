@@ -9,6 +9,10 @@ const TECH =
 
 export const queryFieldUnused = defineCheck<QueryInput>({
   id: "query-field-unused",
+  size: "S",
+  done: "The field is out of the query, unless a script or another repository uses it.",
+  estimateChanges:
+    "Gaugeline cannot see other repositories, so someone has to check before the field is dropped.",
   area: "Visitors",
   severity: "medium",
   title: UNUSED_TITLE,

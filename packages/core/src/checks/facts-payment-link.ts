@@ -7,6 +7,10 @@ const PAYMENT_HOST = /^(?:www\.)?(?:cash\.app|venmo\.com)$/i;
 
 export const factsPaymentLink = defineCheck<PageSnapshot>({
   id: "facts-payment-link",
+  size: "S",
+  done: "The payment link opens the right payment page on a phone.",
+  estimateChanges:
+    "One link used in many places is one edit. Links typed into content are one edit each.",
   area: "Sales & prices",
   severity: "high",
   title: "A payment link goes nowhere",

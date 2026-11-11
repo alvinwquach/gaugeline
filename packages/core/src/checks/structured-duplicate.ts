@@ -4,6 +4,10 @@ import { jsonLdTypes, schemaType } from "./structured/collect.js";
 
 export const structuredDuplicate = defineCheck<PageSnapshot>({
   id: "structured-duplicate",
+  size: "S",
+  done: "The page carries one copy of the structured data, usually the JSON-LD.",
+  estimateChanges:
+    "A plugin or theme that adds microdata has to be configured or removed, which can change other pages.",
   area: "Search & sharing",
   severity: "medium",
   title: "The same structured data is on this page twice",

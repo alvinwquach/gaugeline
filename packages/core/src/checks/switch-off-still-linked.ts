@@ -12,6 +12,9 @@ import {
 
 export const switchOffStillLinked = defineCheck<PageSnapshot>({
   id: "switch-off-still-linked",
+  size: "S",
+  done: "Every link to the controlled page follows the same switch.",
+  estimateChanges: "Links in many templates are one edit each, and a cache needs purging.",
   area: "Sales & prices",
   severity: "high",
   title: "A switch is off but the site still links to what it controls",

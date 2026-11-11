@@ -5,6 +5,10 @@ import { finalStatus, firstFew, shortUrl } from "./site-helpers.js";
 
 export const sitemapDead = defineCheck<PageSnapshot>({
   id: "sitemap-dead",
+  size: "S",
+  done: "Every address in the sitemap loads.",
+  estimateChanges:
+    "A generated sitemap fed by deleted CMS entries is fixed at the source. A hand-edited one is edited by hand.",
   area: "Search & sharing",
   severity: "high",
   title: "Your sitemap lists pages that don't exist",

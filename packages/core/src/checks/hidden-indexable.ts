@@ -9,6 +9,9 @@ const NOINDEX = /\b(?:noindex|none)\b/i;
 
 export const hiddenIndexable = defineCheck<PageSnapshot>({
   id: "hidden-indexable",
+  size: "S",
+  done: "The hidden pages send noindex or sit behind a login.",
+  estimateChanges: "One shared layout is one edit. Hidden pages built separately need it each.",
   area: "Launch day",
   severity: "high",
   title: "An unlaunched page can be indexed",

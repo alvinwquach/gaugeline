@@ -73,6 +73,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     commands: [
       "check",
       "launch",
+      "brief",
       "plan",
       "printed",
       "snapshot",
@@ -90,14 +91,14 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     description:
       "Use a Stripe secret key, with a notice, instead of refusing it; a restricted key is safer",
     since: "0.2.0",
-    commands: ["check", "launch", "delivery", "platform"],
+    commands: ["check", "launch", "brief", "delivery", "platform"],
   },
   {
     name: "dns",
     type: "boolean",
     description: "Also read the domain's mail records (SPF and DMARC) from DNS",
     since: "0.2.0",
-    commands: ["check", "launch"],
+    commands: ["check", "launch", "brief"],
   },
   {
     name: "owner-consent",
@@ -105,7 +106,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     description:
       "Run the probing checks, which ask routes for what they protect with no login; only on sites you may test",
     since: "0.2.0",
-    commands: ["check"],
+    commands: ["check", "brief"],
   },
   {
     name: "routes",
@@ -331,9 +332,9 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     name: "force",
     type: "boolean",
     description:
-      "Let --annotate (plan), --page or --save (query) replace files that already exist, never a folder or a link",
+      "Let --annotate (plan), --page, --save (query) or --out (brief) replace files that exist, never a folder or link",
     since: "0.2.0",
-    commands: ["plan", "query"],
+    commands: ["plan", "query", "brief"],
   },
   {
     name: "progress",
@@ -448,9 +449,32 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     name: "out",
     type: "string",
     description:
-      "snapshot: the file to write (default before.json). query --page: the folder to write into",
+      "snapshot: the file to write (default before.json). query --page: the folder to write into. brief: the Markdown file",
     since: "0.2.0",
-    commands: ["snapshot", "query"],
+    commands: ["snapshot", "query", "brief"],
+  },
+  {
+    name: "business",
+    type: "string",
+    description: "brief: the business the work order is for, shown in its heading",
+    since: "0.2.0",
+    commands: ["brief"],
+  },
+  {
+    name: "rate",
+    type: "string",
+    description:
+      "brief: what an hour costs, in whole currency units such as 110; used with --hours-per-point",
+    since: "0.2.0",
+    commands: ["brief"],
+  },
+  {
+    name: "hours-per-point",
+    type: "string",
+    description:
+      "brief: how many hours one point takes, such as 1.5; prints a range of hours, never one number",
+    since: "0.2.0",
+    commands: ["brief"],
   },
   {
     name: "before",

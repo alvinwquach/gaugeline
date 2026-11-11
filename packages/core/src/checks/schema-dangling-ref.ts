@@ -5,6 +5,9 @@ import { firstFew } from "./site-helpers.js";
 
 export const schemaDanglingRef = defineCheck<PageSnapshot>({
   id: "schema-dangling-ref",
+  size: "S",
+  done: "The node the reference names is defined, or the @id is corrected.",
+  estimateChanges: "Structured data written by a plugin may not allow either change.",
   area: "Search & sharing",
   severity: "medium",
   title: "Structured data refers to something that isn't there",

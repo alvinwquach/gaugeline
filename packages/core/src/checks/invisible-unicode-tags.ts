@@ -7,6 +7,10 @@ import { isHtmlPage } from "./page.js";
 
 export const invisibleUnicodeTags = defineCheck<PageSnapshot>({
   id: "invisible-unicode-tags",
+  size: "M",
+  done: "The invisible characters are gone from their source and the content's history shows who or what put them there.",
+  estimateChanges:
+    "How they got in (a paste, a script, a compromise) matters more than removing them. Several fields multiply the cleanup.",
   area: "Security & email",
   severity: "high",
   title: "The page carries text in invisible characters",

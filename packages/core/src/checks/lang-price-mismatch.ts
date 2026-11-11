@@ -5,6 +5,10 @@ import { firstFew, shortUrl } from "./site-helpers.js";
 
 export const langPriceMismatch = defineCheck<PageSnapshot>({
   id: "lang-price-mismatch",
+  size: "M",
+  done: "Every language version shows the same price.",
+  estimateChanges:
+    "Versions kept as separate pages are edited one by one. One product record feeding all of them needs a template change.",
   area: "Sales & prices",
   severity: "high",
   title: "Prices differ between language versions",

@@ -5,6 +5,10 @@ import { isHtmlPage } from "./page.js";
 
 export const duplicateTitle = defineCheck<PageSnapshot>({
   id: "duplicate-title",
+  size: "S",
+  done: "The page's head holds one title tag.",
+  estimateChanges:
+    "The extra title often comes from a plugin or a theme, and removing a plugin can change other pages.",
   area: "Search & sharing",
   severity: "high",
   title: "This page has two titles",

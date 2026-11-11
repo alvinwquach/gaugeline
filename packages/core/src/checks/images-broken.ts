@@ -5,6 +5,10 @@ import { finalStatus, shortUrl } from "./site-helpers.js";
 
 export const imagesBroken = defineCheck<PageSnapshot>({
   id: "images-broken",
+  size: "S",
+  done: "Every image on the page loads.",
+  estimateChanges:
+    "Many images lost in a migration are re-uploaded one by one. One wrong folder is a single path change.",
   area: "Visitors",
   severity: "high",
   title: "Some images on this page don't load",

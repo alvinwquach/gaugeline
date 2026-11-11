@@ -14,6 +14,9 @@ function names(list: readonly string[], n = 5): string {
 
 export const adSoldOut = defineCheck<AdPagesInput>({
   id: "ad-sold-out",
+  size: "S",
+  done: "The ad points at an item in stock, or is paused until it is back.",
+  estimateChanges: "Ads in several campaigns each need the change.",
   area: "Sales & prices",
   severity: "high",
   title: TITLE,

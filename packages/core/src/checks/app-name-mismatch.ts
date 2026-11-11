@@ -4,6 +4,9 @@ import { sameName } from "./quotable-facts-disagree.js";
 
 export const appNameMismatch = defineCheck<PageSnapshot>({
   id: "app-name-mismatch",
+  size: "S",
+  done: "The link points at the right store listing, or the expected name is updated.",
+  estimateChanges: "Renaming the app in the store is a review by the store, which takes days.",
   area: "Visitors",
   severity: "low",
   title: "The store lists the app under a different name",

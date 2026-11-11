@@ -249,6 +249,9 @@ function scanPrintfulOrphan(i: ProductPresenceInput): Finding[] {
 
 export const stripeMissing = defineCheck<ProductPresenceInput>({
   id: "stripe-missing",
+  size: "S",
+  done: "The product exists in Stripe and is linked by id, or is unpublished.",
+  estimateChanges: "Setting up prices and tax in Stripe adds time when the product is new there.",
   area: "Sales & prices",
   severity: "high",
   title: TITLES["stripe-missing"],
@@ -261,6 +264,9 @@ export const stripeMissing = defineCheck<ProductPresenceInput>({
 
 export const stripeArchived = defineCheck<ProductPresenceInput>({
   id: "stripe-archived",
+  size: "S",
+  done: "The product is active in Stripe, or off the website.",
+  estimateChanges: "Several products archived together are one edit each.",
   area: "Sales & prices",
   severity: "high",
   title: TITLES["stripe-archived"],
@@ -273,6 +279,9 @@ export const stripeArchived = defineCheck<ProductPresenceInput>({
 
 export const stripeOrphan = defineCheck<ProductPresenceInput>({
   id: "stripe-orphan",
+  size: "S",
+  done: "The product is left as meant, archived, or linked by id to its website product.",
+  estimateChanges: "Subscriptions on it need care before it is archived.",
   area: "Sales & prices",
   severity: "low",
   title: TITLES["stripe-orphan"],
@@ -285,6 +294,9 @@ export const stripeOrphan = defineCheck<ProductPresenceInput>({
 
 export const printfulUnsynced = defineCheck<ProductPresenceInput>({
   id: "printful-unsynced",
+  size: "M",
+  done: "Every listed variant is synced in Printful, or removed from the store and the website.",
+  estimateChanges: "The number of variants, and whether the artwork for each exists.",
   area: "Sales & prices",
   severity: "high",
   title: TITLES["printful-unsynced"],
@@ -297,6 +309,9 @@ export const printfulUnsynced = defineCheck<ProductPresenceInput>({
 
 export const printfulMissing = defineCheck<ProductPresenceInput>({
   id: "printful-missing",
+  size: "S",
+  done: "The product exists in Printful and is linked by id, or is left as website-only on purpose.",
+  estimateChanges: "Setting up artwork and variants in Printful if the product is new there.",
   area: "Sales & prices",
   severity: "low",
   title: TITLES["printful-missing"],
@@ -309,6 +324,9 @@ export const printfulMissing = defineCheck<ProductPresenceInput>({
 
 export const printfulOrphan = defineCheck<ProductPresenceInput>({
   id: "printful-orphan",
+  size: "S",
+  done: "The leftover is deleted in Printful, or its id is saved on the website product it belongs to.",
+  estimateChanges: "Checking nothing still sells from it.",
   area: "Sales & prices",
   severity: "low",
   title: TITLES["printful-orphan"],

@@ -5,6 +5,9 @@ import { shortUrl } from "./site-helpers.js";
 
 export const feedDuplicate = defineCheck<PageSnapshot>({
   id: "feed-duplicate",
+  size: "S",
+  done: "Each feed serves its own collection.",
+  estimateChanges: "A filter copied between feeds is one edit each.",
   area: "Search & sharing",
   severity: "medium",
   title: "Two of your feeds serve the same posts",

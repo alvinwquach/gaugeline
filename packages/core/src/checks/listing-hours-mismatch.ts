@@ -5,6 +5,10 @@ import { aside, finding, startListingCheck } from "./listings/shared.js";
 
 export const listingHoursMismatch = defineCheck<PageSnapshot>({
   id: "listing-hours-mismatch",
+  size: "S",
+  done: "The listing and the site show the same opening hours.",
+  estimateChanges:
+    "Each listing (Google, Yelp, Apple) is edited in its own dashboard. Deciding which hours are right comes first.",
   area: "Search & sharing",
   severity: "high",
   title: "A listing shows different opening hours",

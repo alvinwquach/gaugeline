@@ -4,6 +4,10 @@ import { imageRefs } from "./images/refs.js";
 
 export const imagesAltEmpty = defineCheck<PageSnapshot>({
   id: "images-alt-empty",
+  size: "M",
+  done: "Each meaningful image has an alt that says what it shows.",
+  estimateChanges:
+    "Writing good descriptions takes time per image, and images inside CMS content are edited one by one.",
   area: "Visitors",
   severity: "medium",
   title: "None of the images on this page are described",

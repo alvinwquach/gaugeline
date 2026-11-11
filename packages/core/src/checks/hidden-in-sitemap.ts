@@ -5,6 +5,10 @@ import { firstFew, shortUrl } from "./site-helpers.js";
 
 export const hiddenInSitemap = defineCheck<PageSnapshot>({
   id: "hidden-in-sitemap",
+  size: "S",
+  done: "The sitemap no longer lists the pages of the hidden section.",
+  estimateChanges:
+    "A sitemap built by a plugin may need a filter on the same flag that hides the pages.",
   area: "Launch day",
   severity: "high",
   title: "Unlaunched pages are in your sitemap",

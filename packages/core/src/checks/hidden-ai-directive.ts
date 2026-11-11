@@ -7,6 +7,10 @@ import { isHtmlPage } from "./page.js";
 
 export const hiddenAiDirective = defineCheck<PageSnapshot>({
   id: "hidden-ai-directive",
+  size: "L",
+  done: "The hidden text is gone, the source that put it there is found and closed, and the passwords that could reach it are changed.",
+  estimateChanges:
+    "Finding how it got in (a plugin, a content field, an injected script) is the unknown. More than one way in multiplies the work.",
   area: "Security & email",
   severity: "high",
   title: "Hidden text on the page gives orders to AI assistants",

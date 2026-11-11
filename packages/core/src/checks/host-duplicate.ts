@@ -22,6 +22,10 @@ export function alternateHost(url: string): string | undefined {
 
 export const hostDuplicate = defineCheck<PageSnapshot>({
   id: "host-duplicate",
+  size: "S",
+  done: "One address answers and the other redirects to it with a 301.",
+  estimateChanges:
+    "Mail on the second address, or a host that needs a support request to change this, add time.",
   area: "Search & sharing",
   severity: "high",
   title: "Your whole site exists at two addresses",

@@ -7,6 +7,9 @@ const TECH =
 
 export const graphqlFieldNotInSchema = defineCheck<QueryInput>({
   id: "graphql-field-not-in-schema",
+  size: "S",
+  done: "Every field the query asks for is in the schema.",
+  estimateChanges: "Finding the field's new name, then every query that uses the old one.",
   area: "Visitors",
   severity: "high",
   title: GRAPHQL_TITLES.notInSchema,

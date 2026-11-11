@@ -5,6 +5,9 @@ import { aside, finding, startListingCheck } from "./listings/shared.js";
 
 export const listingWebsiteWrong = defineCheck<PageSnapshot>({
   id: "listing-website-wrong",
+  size: "S",
+  done: "The listing's website is the site's current address.",
+  estimateChanges: "Each listing is edited in its own dashboard or bio.",
   area: "Search & sharing",
   severity: "high",
   title: "A listing links to the wrong place",

@@ -215,21 +215,24 @@ export interface InspectedFile {
  */
 export async function inspectBaselineFile(
   typed: string,
-  opts: { force: boolean; cwd: string; fs?: ScaffoldFs },
+  opts: { force: boolean; cwd: string; fs?: ScaffoldFs; flag?: string; example?: string },
 ): Promise<InspectedFile> {
   const fs = opts.fs ?? nodeFs;
+  // Which flag named the file, for the messages: --save for a query baseline, --out for a work order.
+  const flag = opts.flag ?? "--save";
+  const example = opts.example ?? "before.json";
   const path = resolve(opts.cwd, typed);
   if (typed.includes("\0") || !inside(resolve(opts.cwd), path) || path === resolve(opts.cwd))
     throw new ConfigError(
-      `--save ${JSON.stringify(typed)} is not a file inside the folder you ran the command in, so nothing was written.`,
+      `${flag} ${JSON.stringify(typed)} is not a file inside the folder you ran the command in, so nothing was written.`,
       {
-        hint: "--save names a file in this folder or one inside it, for example --save before.json. Run the command from the root of your project.",
+        hint: `${flag} names a file in this folder or one inside it, for example ${flag} ${example}. Run the command from the root of your project.`,
       },
     );
   const real = await realAncestor(fs, dirname(path));
   if (!inside(await realAncestor(fs, resolve(opts.cwd)), real))
     throw new ConfigError(
-      `--save ${JSON.stringify(typed)} reaches outside the folder you ran the command in through a link, so nothing was written.`,
+      `${flag} ${JSON.stringify(typed)} reaches outside the folder you ran the command in through a link, so nothing was written.`,
       { hint: "Name a real file inside your project." },
     );
   const parent = await fs.lstat(dirname(path));
@@ -261,7 +264,7 @@ export async function inspectBaselineFile(
 export async function writeBaselineFile(
   typed: string,
   text: string,
-  opts: { force: boolean; cwd?: string; fs?: ScaffoldFs },
+  opts: { force: boolean; cwd?: string; fs?: ScaffoldFs; flag?: string; example?: string },
 ): Promise<string> {
   const fs = opts.fs ?? nodeFs;
   const cwd = opts.cwd ?? process.cwd();

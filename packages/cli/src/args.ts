@@ -1,5 +1,5 @@
 import { parseArgs } from "node:util";
-import { SECRET_FLAGS, parseAddress } from "@gaugeline/core";
+import { SECRET_FLAGS, minorExponent, parseAddress } from "@gaugeline/core";
 import { HELP } from "./help.js";
 import { FLAGS, nearestFlag, resolveFlags, toParseArgsOptions, type FlagDef } from "./flags.js";
 
@@ -8,6 +8,7 @@ export const COMMAND = "check";
 /** Subcommands, by their first word on the command line. "check" is the default. */
 export const SUBCOMMANDS = [
   "launch",
+  "brief",
   "view",
   "digest",
   "plan",
@@ -32,9 +33,22 @@ export const USAGE = HELP[""] ?? "";
 export const USAGE_HINT = `${USAGE_LINE}, for example: gaugeline example.com (see gaugeline --help)`;
 export const UNKNOWN_FLAG_HINT = "Run gaugeline --help to see every option.";
 
+/** The options of `gaugeline brief`, checked when the command line is read. */
+export interface BriefFlags {
+  business?: string;
+  /** --rate, whole currency units, as minor units: 110 is 11000. */
+  rateMinor?: number;
+  hoursPerPoint?: number;
+  /** --out: the Markdown file to write, as typed. Absent: print the work order. */
+  out?: string;
+  force: boolean;
+}
+
 export interface RunFlags {
-  /** Which command: the default page check, or launch. */
+  /** Which command: the default page check, launch or brief. */
   command: CliCommand;
+  /** gaugeline brief: what to write and where. Absent for every other command. */
+  brief?: BriefFlags;
   /** launch --dns: add the email record checks. */
   dns: boolean;
   /** --owner-consent: run the probing checks (they ask gated routes for what they protect, with no login). */
@@ -286,40 +300,11 @@ export function parseCliArgs(
   flags: readonly FlagDef[] = FLAGS,
 ): ParsedArgs {
   const verbose = argv.includes("--verbose");
+  const first = argv[0];
   const command: CliCommand =
-    argv[0] === "launch"
-      ? "launch"
-      : argv[0] === "view"
-        ? "view"
-        : argv[0] === "digest"
-          ? "digest"
-          : argv[0] === "plan"
-            ? "plan"
-            : argv[0] === "printed"
-              ? "printed"
-              : argv[0] === "snapshot"
-                ? "snapshot"
-                : argv[0] === "cutover"
-                  ? "cutover"
-                  : argv[0] === "verify"
-                    ? "verify"
-                    : argv[0] === "run"
-                      ? "run"
-                      : argv[0] === "open"
-                        ? "open"
-                        : argv[0] === "assert"
-                          ? "assert"
-                          : argv[0] === "ads"
-                            ? "ads"
-                            : argv[0] === "tags"
-                              ? "tags"
-                              : argv[0] === "delivery"
-                                ? "delivery"
-                                : argv[0] === "platform"
-                                  ? "platform"
-                                  : argv[0] === "query"
-                                    ? "query"
-                                    : COMMAND;
+    first !== undefined && (SUBCOMMANDS as readonly string[]).includes(first)
+      ? (first as CliCommand)
+      : COMMAND;
   // "check" is the default command, and may be written out: gaugeline check ./src --routes --base ...
   const given = command === COMMAND ? (argv[0] === "check" ? argv.slice(1) : argv) : argv.slice(1);
   // --annotate, --progress, --nav and --routes take an optional value: alone, or before another
@@ -1128,6 +1113,59 @@ export function parseCliArgs(
       hint: "Add --routes (with no glob) to ask a running site for the routes in a folder.",
       verbose,
     };
+  let brief: BriefFlags | undefined;
+  if (command === "brief") {
+    const problem = (message: string, hint: string): ParsedArgs => ({
+      kind: "error",
+      message,
+      hint,
+      verbose,
+    });
+    if (positionals.length !== 1)
+      return problem(
+        positionals.length === 0
+          ? "gaugeline brief needs the address of the site: gaugeline brief example.com"
+          : `gaugeline brief takes one address, got ${positionals.length}: ${positionals.join(", ")}.`,
+        'For example: gaugeline brief example.com --business "The Corner Bar" --out work-order.md',
+      );
+    const business = typeof values.business === "string" ? values.business.trim() : undefined;
+    if (business === "" || (business !== undefined && business.length > 120))
+      return problem(
+        "--business needs the business's name, up to 120 characters.",
+        'For example: --business "The Corner Bar".',
+      );
+    const rate = typeof values.rate === "string" ? values.rate.trim() : undefined;
+    if (rate !== undefined && !/^[1-9]\d{0,8}$/.test(rate))
+      return problem(
+        `--rate takes whole currency units above zero, such as 110, not "${String(values.rate)}".`,
+        "It is what an hour costs, in dollars: --rate 110 means $110 an hour. It is used together with --hours-per-point.",
+      );
+    const hours =
+      typeof values["hours-per-point"] === "string" ? values["hours-per-point"].trim() : undefined;
+    if (hours !== undefined && (!/^\d{1,3}(?:\.\d{1,2})?$/.test(hours) || Number(hours) <= 0))
+      return problem(
+        `--hours-per-point takes a number above zero with at most two decimals, such as 1.5, not "${String(values["hours-per-point"])}".`,
+        "It is how long one point takes you: take an item you finished, divide the hours it took by its points.",
+      );
+    const out = typeof values.out === "string" ? values.out.trim() : undefined;
+    if (out === "")
+      return problem(
+        "--out needs the name of the Markdown file to write.",
+        "For example: --out work-order.md. Leave it out to print the work order.",
+      );
+    if (values.force === true && out === undefined)
+      return problem(
+        "--force is for --out: it lets the work order replace a file that already exists.",
+        "For example: gaugeline brief example.com --out work-order.md --force",
+      );
+    brief = {
+      ...(business !== undefined ? { business } : {}),
+      ...(rate !== undefined ? { rateMinor: Number(rate) * 10 ** minorExponent("usd") } : {}),
+      ...(hours !== undefined ? { hoursPerPoint: Number(hours) } : {}),
+      ...(out !== undefined ? { out } : {}),
+      force: values.force === true,
+    };
+  }
   if (positionals.length === 0) {
     return { kind: "error", message: "No address given.", hint: USAGE_HINT, verbose };
   }
@@ -1152,6 +1190,7 @@ export function parseCliArgs(
   return {
     kind: "run",
     command,
+    ...(brief ? { brief } : {}),
     dns: values.dns === true,
     ownerConsent: values["owner-consent"] === true,
     routes: Array.isArray(values.routes)

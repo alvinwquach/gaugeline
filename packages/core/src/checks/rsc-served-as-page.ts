@@ -4,6 +4,10 @@ import { rscFindings } from "./rsc-shared.js";
 
 export const rscServedAsPage = defineCheck<PageSnapshot>({
   id: "rsc-served-as-page",
+  size: "M",
+  done: "A request without the RSC header returns HTML, and one with it returns app data.",
+  estimateChanges:
+    "A custom server, middleware and a CDN rule each fix differently, and finding the one that answers is the work.",
   area: "Search & sharing",
   severity: "high",
   title: "The page address returns app data, not a page",

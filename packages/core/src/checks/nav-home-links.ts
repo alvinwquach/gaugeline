@@ -29,6 +29,9 @@ function siteNames(page: PageSnapshot): Set<string> {
 
 export const navHomeLinks = defineCheck<PageSnapshot>({
   id: "nav-home-links",
+  size: "S",
+  done: "Each menu item goes to its own page, or is removed until the page exists.",
+  estimateChanges: "Items whose pages are not built yet need those pages first.",
   area: "Visitors",
   severity: "medium",
   title: "Menu items go to the homepage",

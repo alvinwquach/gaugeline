@@ -27,6 +27,10 @@ function pageText(body: string): string {
 
 export const paymentLinkDead = defineCheck<PageSnapshot>({
   id: "payment-link-dead",
+  size: "S",
+  done: "The new payment link works on a phone and the old one appears nowhere on the site.",
+  estimateChanges:
+    "One link used in many places is one edit. Links in emails and printed material are out of reach from here.",
   area: "Sales & prices",
   severity: "high",
   title: "A payment link no longer works",

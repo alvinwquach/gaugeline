@@ -5,6 +5,9 @@ import { comparePages, readPages } from "./page-shared.js";
 
 export const pageLostStructuredData = defineCheck<PageSnapshot>({
   id: "page-lost-structured-data",
+  size: "S",
+  done: "The structured data is back on the page, or the page is listed under expectedChanges.",
+  estimateChanges: "A template that lost it affects every page that uses the template.",
   area: "Search & sharing",
   severity: "medium",
   title: "A page lost its structured data since the last run",

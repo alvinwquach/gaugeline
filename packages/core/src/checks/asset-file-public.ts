@@ -9,6 +9,10 @@ const SHOWN = 5;
 
 export const assetFilePublic = defineCheck<PageSnapshot>({
   id: "asset-file-public",
+  size: "M",
+  done: "The file is served from a route that checks the purchase and hands back a short-lived link, or is left public on purpose.",
+  estimateChanges:
+    "A free file needs nothing. A file that will be sold means building the route and moving the file.",
   area: "Sales & prices",
   severity: "low",
   title: "A downloadable file is on a public asset address",

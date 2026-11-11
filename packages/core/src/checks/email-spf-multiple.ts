@@ -5,6 +5,9 @@ import { isSpf, receivesMail } from "./email/records.js";
 
 export const emailSpfMultiple = defineCheck<PageSnapshot>({
   id: "email-spf-multiple",
+  size: "S",
+  done: "The domain has one SPF record that holds every include from both.",
+  estimateChanges: "Each service in the two records has to be checked before the merge.",
   area: "Security & email",
   severity: "medium",
   title: "Your domain has two SPF records, which cancels both",

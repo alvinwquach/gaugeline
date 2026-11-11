@@ -5,6 +5,10 @@ import { HTML_HUGE_BYTES, describeSize, measurePage } from "./weight.js";
 
 export const htmlHuge = defineCheck<PageSnapshot>({
   id: "html-huge",
+  size: "M",
+  done: "The page's HTML is back under the size limit, with the bulky part loaded when needed.",
+  estimateChanges:
+    "A long list, a framework data payload and inlined SVG each need different work. A page filled by one big CMS field is quick.",
   area: "Visitors",
   severity: "high",
   title: "This page's HTML is enormous",

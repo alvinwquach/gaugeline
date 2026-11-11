@@ -10,6 +10,10 @@ export const MAX_IDS = 5;
 
 export const crmLeadSource = defineCheck<PageSnapshot>({
   id: "crm-lead-source",
+  size: "M",
+  done: "New leads arrive with a source and campaign, and the older records are filled in.",
+  estimateChanges:
+    "Several forms each need the hidden fields. Filling in old records is a separate data job.",
   area: "Leads",
   severity: "medium",
   title: "New leads are arriving without a source",

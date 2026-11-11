@@ -4,6 +4,9 @@ import { isHtmlPage } from "./page.js";
 
 export const ogImageMissing = defineCheck<PageSnapshot>({
   id: "og-image-missing",
+  size: "S",
+  done: "The page has an og:image with a full address, about 1200 by 630 pixels.",
+  estimateChanges: "Making the pictures is the cost if none exist.",
   area: "Search & sharing",
   severity: "low",
   title: "Shared links have no picture",

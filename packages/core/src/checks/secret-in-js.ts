@@ -18,6 +18,10 @@ function inlineScripts(page: PageSnapshot): string[] {
 
 export const secretInJs = defineCheck<PageSnapshot>({
   id: "secret-in-js",
+  size: "M",
+  done: "The old key is revoked, a new one lives on the server only, and the site's JavaScript holds no key.",
+  estimateChanges:
+    "Code that used the key in the browser has to move to a server route. A key exposed for long also means reading the provider's logs.",
   area: "Security & email",
   severity: "high",
   title: "A private key is in your site's JavaScript",

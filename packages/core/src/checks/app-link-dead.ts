@@ -10,6 +10,9 @@ function label(l: AppLookup): string {
 
 export const appLinkDead = defineCheck<PageSnapshot>({
   id: "app-link-dead",
+  size: "S",
+  done: "The link goes to the app's current store page, or is gone, and the store page loads.",
+  estimateChanges: "The same link in the header, the footer and old posts is one edit each.",
   area: "Visitors",
   severity: "high",
   title: "The app this page links to isn't in the store",

@@ -4,6 +4,10 @@ import { isHtmlPage } from "./page.js";
 
 export const viewport = defineCheck<PageSnapshot>({
   id: "viewport",
+  size: "S",
+  done: "The page head has a viewport meta tag.",
+  estimateChanges:
+    "A template shared by every page is one edit. Pages built with different templates are one each.",
   area: "Visitors",
   severity: "medium",
   title: "This page isn't set up for phone screens",

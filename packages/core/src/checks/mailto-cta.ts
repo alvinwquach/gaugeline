@@ -9,6 +9,10 @@ const SHOWN = 5;
 
 export const mailtoCta = defineCheck<PageSnapshot>({
   id: "mailto-cta",
+  size: "M",
+  done: "Each button opens a form or booking page whose enquiry reaches the CRM.",
+  estimateChanges:
+    "A form and its CRM connection are built first if there is none, then each button is repointed.",
   area: "Leads",
   severity: "medium",
   title: "Some buttons open an email instead of a form",

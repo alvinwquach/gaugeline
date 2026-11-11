@@ -14,6 +14,9 @@ const SEVERITY: Record<NavChange["kind"], Finding["severity"]> = {
 
 export const navChanged = defineCheck<PageSnapshot>({
   id: "nav-changed",
+  size: "S",
+  done: "Each menu change since the last run was meant, and a page that lost its link has another or a redirect.",
+  estimateChanges: "The count of changes since the last run.",
   area: "Visitors",
   severity: "medium",
   title: "The menu changed since the last run",

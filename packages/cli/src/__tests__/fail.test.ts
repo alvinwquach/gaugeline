@@ -114,6 +114,9 @@ describe("CLI errors: e2e (built bin)", () => {
       why: "y",
       fix: "f",
       tech: "t",
+      size: "S",
+      done: "Done.",
+      estimateChanges: "Nothing.",
     } as const;
     const checks = [
       defineCheck<PageSnapshot>({

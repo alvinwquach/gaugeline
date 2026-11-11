@@ -5,6 +5,9 @@ import { firstFew } from "./site-helpers.js";
 
 export const eventMissingFields = defineCheck<PageSnapshot>({
   id: "event-missing-fields",
+  size: "S",
+  done: "Every Event has a startDate, a location and an eventStatus.",
+  estimateChanges: "Events entered by hand are edited one by one.",
   area: "Visitors",
   severity: "low",
   title: "Some events are missing details search engines need",

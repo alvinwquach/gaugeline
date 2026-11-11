@@ -16,6 +16,10 @@ const DRAFT_COOKIE = /(?:^|[\s,;])(__prerender_bypass|__next_preview_data)=/;
 
 export const nextDraftPublic = defineCheck<PageSnapshot>({
   id: "next-draft-public",
+  size: "S",
+  done: "The draft mode route checks a secret and answers 401 without it.",
+  estimateChanges:
+    "Several draft routes, or preview tools that call the route, need the secret as well.",
   area: "Launch day",
   severity: "high",
   title: "Anyone can switch on draft mode",

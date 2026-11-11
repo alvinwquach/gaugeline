@@ -9,6 +9,10 @@ const SHOWN = 5;
 
 export const checkoutJsOnly = defineCheck<PageSnapshot>({
   id: "checkout-js-only",
+  size: "M",
+  done: "The page has a real link or a form that posts to checkout, and the script only improves it.",
+  estimateChanges:
+    "A buy button built entirely by a script means rebuilding that button, and each product page that uses it.",
   area: "Sales & prices",
   severity: "medium",
   title: "Nothing on the page can be linked to buy",

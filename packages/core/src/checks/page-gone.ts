@@ -4,6 +4,10 @@ import { comparePages } from "./page-shared.js";
 
 export const pageGone = defineCheck<PageSnapshot>({
   id: "page-gone",
+  size: "S",
+  done: "The page is back, or it redirects with a 301 to the page that replaces it.",
+  estimateChanges:
+    "A whole deleted section is one redirect rule. Pages removed on purpose are listed in gaugeline.pages.json.",
   area: "Visitors",
   severity: "high",
   title: "A page from the last run is gone",

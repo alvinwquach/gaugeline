@@ -95,6 +95,7 @@ import { useColor } from "./color.js";
 import { formatError, toOutcome } from "./fail.js";
 import { envIsOn, type FlagDef } from "./flags.js";
 import { createLogger } from "./logger.js";
+import { checkBriefTarget, emitBrief } from "./brief.js";
 import { runDigest } from "./digest.js";
 import { formatLegacyTable, formatPlanSummary } from "./plan.js";
 import { formatTerminal } from "./reporter.js";
@@ -117,6 +118,7 @@ import { runAds } from "./ads.js";
 import { runTags } from "./tags.js";
 import { runDeliveryCommand, runPlatformCommand } from "./delivery.js";
 import { runQuery } from "./query.js";
+import type { ScaffoldFs } from "./scaffold-write.js";
 import { runRoutes } from "./routes.js";
 import { formatRunAll, runAll, runAllExit } from "./run-all.js";
 import { readSites, selectSites, SITES_FILE } from "./sites.js";
@@ -227,6 +229,8 @@ export interface Deps {
   clientDir?: string;
   /** `gaugeline open --ads`: the ads command. Defaults to the one in this version; tests pass a stand-in. */
   ads?: AdsEngine;
+  /** `gaugeline brief --out`: the file system calls the work order is written with. Tests pass one that fails. */
+  briefFs?: ScaffoldFs;
   /**
    * How messages reach the CRM's MCP server (gaugeline.crm.json). Given the validated read-only
    * server address and only the variables the CRM needs. By default there is none: this version
@@ -1067,6 +1071,12 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       // --since last: read the stored run before checking, replace it after. Without it, nothing
       // is read or written.
       const cwd = deps.cwd ?? process.cwd();
+      // gaugeline brief --out: where the file would go is checked before the site is asked anything.
+      if (args.brief)
+        await checkBriefTarget(args.brief, {
+          cwd,
+          ...(deps.briefFs ? { fs: deps.briefFs } : {}),
+        });
       const host = new URL(args.address).host;
       const last = args.since ? readLastRun(cwd, host) : undefined;
       if (last?.kind === "none") io.stderr.write("nothing to compare yet\n");
@@ -1343,6 +1353,30 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           io.stderr.write(
             `${dismissed} finding${dismissed === 1 ? "" : "s"} dismissed in ${IGNORE_FILE}\n`,
           );
+      }
+      // gaugeline brief: the same run, written as a work order instead of a report. Nothing else is
+      // written or sent: no report file, no notification, no saved run.
+      if (args.brief) {
+        await emitBrief({
+          flags: args.brief,
+          result: buildResult({
+            url: snapshot.requestedUrl,
+            startedAt,
+            findings: result.findings,
+            passed: result.passed,
+            failed: [...result.failed.map((f) => f.id), ...dnsSkipped],
+            couldNotCheck: result.couldNotCheck,
+            sampled: result.sampled,
+          }),
+          registry,
+          cwd,
+          ...(deps.briefFs ? { fs: deps.briefFs } : {}),
+          stdout: io.stdout,
+          stderr: io.stderr,
+          quiet: args.quiet,
+        });
+        if (assertionProblems[0]) throw assertionProblems[0];
+        return { outcome: { kind: "ran", highFindings: 0, drift: false }, ci: false };
       }
       if (args.json) {
         const json = buildResult({

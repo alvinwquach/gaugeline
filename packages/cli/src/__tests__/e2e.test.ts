@@ -131,6 +131,9 @@ describe("cli: e2e (built bin against the fixture server)", () => {
         why: "y",
         fix: "f",
         tech: "t",
+        size: "S",
+        done: "Done.",
+        estimateChanges: "Nothing.",
         run: () => {
           throw new Error("boom");
         },

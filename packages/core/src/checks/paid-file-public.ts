@@ -6,6 +6,10 @@ import { publicFiles, showsPrice } from "./paid-files.js";
 
 export const paidFilePublic = defineCheck<PageSnapshot>({
   id: "paid-file-public",
+  size: "L",
+  done: "The paid file is no longer on a public address, and only a purchase check hands out a short-lived link.",
+  estimateChanges:
+    "A file already shared or indexed stays copied somewhere. Moving the files and building the download route is the bulk of it.",
   area: "Sales & prices",
   severity: "high",
   title: "A file people pay for is on a public address",

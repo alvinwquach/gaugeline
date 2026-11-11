@@ -4,6 +4,10 @@ import { shortUrl } from "./site-helpers.js";
 
 export const linksViaRedirect = defineCheck<PageSnapshot>({
   id: "links-via-redirect",
+  size: "S",
+  done: "Each link goes to the address it ends up at.",
+  estimateChanges:
+    "A move to new URLs changes every link at once, in the content as well as the templates.",
   area: "Visitors",
   severity: "low",
   title: "Links on this page go through a redirect",

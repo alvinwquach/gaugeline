@@ -6,6 +6,10 @@ import { firstFew } from "./site-helpers.js";
 
 export const emailSpfMissing = defineCheck<PageSnapshot>({
   id: "email-spf-missing",
+  size: "S",
+  done: "One TXT record starting v=spf1 lists every service that sends the domain's email.",
+  estimateChanges:
+    "Each sending service (newsletter tool, shop, booking system) has to be found and listed. Slow DNS changes add waiting, not work.",
   area: "Security & email",
   severity: "high",
   title: "Your domain doesn't say who may send its email",

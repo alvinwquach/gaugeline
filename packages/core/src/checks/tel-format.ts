@@ -4,6 +4,9 @@ import { badTelNumber } from "./mobile.js";
 
 export const telFormat = defineCheck<PageSnapshot>({
   id: "tel-format",
+  size: "S",
+  done: "Each tel: link is digits with a leading + and country code.",
+  estimateChanges: "Links typed into content are one edit each.",
   area: "Visitors",
   severity: "low",
   title: "A phone link may not dial correctly",

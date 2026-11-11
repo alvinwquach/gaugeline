@@ -4,6 +4,9 @@ import { duplicateTags } from "../tags/analyse.js";
 
 export const tagsDuplicate = defineCheck<PageSnapshot>({
   id: "tags-duplicate",
+  size: "S",
+  done: "One of the two tags is kept and the other is paused or deleted.",
+  estimateChanges: "Which copy is the real one has to be decided by someone who knows the account.",
   area: "Leads",
   severity: "medium",
   title: "Two tags send the same event at the same moment",

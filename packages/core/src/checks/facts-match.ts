@@ -54,6 +54,10 @@ export function compareFact(
 
 export const factsMatch = defineCheck<PageSnapshot>({
   id: "facts-match",
+  size: "S",
+  done: "The fact reads the same on every page the evidence names.",
+  estimateChanges:
+    "The number of pages that repeat the fact. A fact stored once and rendered everywhere takes a template change instead.",
   area: "Sales & prices",
   severity: "high",
   title: "A fact about your business differs between pages",

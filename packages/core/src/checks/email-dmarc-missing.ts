@@ -5,6 +5,10 @@ import { isDmarc } from "./email/records.js";
 
 export const emailDmarcMissing = defineCheck<PageSnapshot>({
   id: "email-dmarc-missing",
+  size: "S",
+  done: "A TXT record at _dmarc names a policy and an address you read.",
+  estimateChanges:
+    "The address that receives reports has to exist and be watched, which is the ongoing cost.",
   area: "Security & email",
   severity: "medium",
   title: "Your domain has no DMARC policy",

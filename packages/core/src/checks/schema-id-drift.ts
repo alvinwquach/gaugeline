@@ -6,6 +6,10 @@ import { firstFew } from "./site-helpers.js";
 
 export const schemaIdDrift = defineCheck<PageSnapshot>({
   id: "schema-id-drift",
+  size: "M",
+  done: "One fixed @id for the Organization and one for the WebSite appear on every page.",
+  estimateChanges:
+    "Templates that build the id from the page's address each need the change. Structured data written by a plugin may not allow it.",
   area: "Search & sharing",
   severity: "high",
   title: "Your organization has more than one identity in structured data",
