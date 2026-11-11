@@ -162,6 +162,16 @@
       "version",
       "webhook"
     ],
+    "migration": [
+      "allow-private",
+      "ci",
+      "help",
+      "old",
+      "old-file",
+      "quiet",
+      "verbose",
+      "version"
+    ],
     "open": [
       "ads",
       "demo",
