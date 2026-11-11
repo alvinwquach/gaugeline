@@ -1,0 +1,187 @@
+{
+  "$id": "https://gaugeline.dev/schema/advisory.v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "advisory": {
+      "additionalProperties": false,
+      "properties": {
+        "aliases": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "type": "string"
+        },
+        "packages": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "affectedVersions": {
+                "type": "string"
+              },
+              "ecosystem": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "affectedVersions",
+              "ecosystem",
+              "name"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "source": {
+          "enum": [
+            "osv",
+            "given"
+          ],
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "withdrawn": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "aliases",
+        "id",
+        "packages",
+        "source"
+      ],
+      "type": "object"
+    },
+    "checkInside": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "components": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "ecosystem": {
+            "type": "string"
+          },
+          "evidence": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "fixedIn": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "verdict": {
+            "enum": [
+              "likely-affected",
+              "likely-not-affected",
+              "cannot-tell"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "ecosystem",
+          "evidence",
+          "name",
+          "verdict"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "couldNotCheck": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "evidence": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "headline": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "const": 1,
+      "type": "number"
+    },
+    "site": {
+      "additionalProperties": false,
+      "properties": {
+        "address": {
+          "type": "string"
+        },
+        "checkedAt": {
+          "type": "string"
+        },
+        "hostnames": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "host": {
+                "type": "string"
+              },
+              "note": {
+                "type": "string"
+              },
+              "reached": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "host",
+              "reached"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "address",
+        "checkedAt",
+        "hostnames"
+      ],
+      "type": "object"
+    },
+    "verdict": {
+      "enum": [
+        "likely-affected",
+        "likely-not-affected",
+        "cannot-tell"
+      ],
+      "type": "string"
+    }
+  },
+  "required": [
+    "advisory",
+    "checkInside",
+    "components",
+    "couldNotCheck",
+    "evidence",
+    "headline",
+    "schemaVersion",
+    "site",
+    "verdict"
+  ],
+  "title": "Gaugeline advisory answer v1",
+  "type": "object"
+}

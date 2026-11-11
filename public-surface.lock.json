@@ -9,6 +9,19 @@
       "verbose",
       "version"
     ],
+    "advisory": [
+      "allow-private",
+      "ci",
+      "dns",
+      "help",
+      "host",
+      "json",
+      "note",
+      "package",
+      "quiet",
+      "verbose",
+      "version"
+    ],
     "assert": [
       "help",
       "list",

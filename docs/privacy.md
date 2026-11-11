@@ -381,6 +381,27 @@ site when you give `--old`.
   followed as instructions or sent anywhere, and a title that reads like an instruction changes nothing.
 - **No secrets, no model.** The checks are plain rules: the same two sites give the same findings.
 
+### Advisory check (gaugeline advisory)
+
+`gaugeline advisory <site> <advisory>` answers "is my client affected?" from outside
+([Advisory check](guides/advisory.md)). Every request is `GET`, through the fetcher.
+
+- **OSV.** For an advisory id, one `GET https://api.osv.dev/v1/vulns/<id>` (the public OSV database, no key,
+  once per run). That is a request to a public API and not to the checked site. OSV's query endpoint takes a
+  `POST`, which Gaugeline never sends, so there is no query or batch call: an id OSV does not list under that
+  name is answered with the way to give the package and range yourself (`--package`). What comes back is
+  data: it is clipped, its invisible characters shown as escapes, and never run or followed. With a package
+  and range typed, OSV is not asked at all, and nothing about the site is sent to OSV in either case.
+- **The site.** The home page, the same page on `www` or the bare domain, each hostname you give with
+  `--host` (up to five) and up to three other subdomains the home page links to: one `GET` each. Only when the
+  advisory needs them, the script files the home page names (a Next.js build's script for its version; the
+  scripts the served libraries check reads), at most 2 MiB of each, read as text and never run.
+- **DNS, only with `--dns`.** The name servers of each hostname.
+- **Nothing else.** No path is guessed, no `/.env`, `/wp-admin` or `readme.txt`, no form, no login, and no
+  request is built to trigger a flaw. A WordPress plugin's version comes from the file addresses already in
+  the page.
+- **No secrets, no model.** The same site and advisory give the same answer.
+
 ### Script and header baseline
 
 The script and header checks ([Script and header baseline](guides/script-baseline.md)) make no request

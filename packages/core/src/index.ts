@@ -1457,3 +1457,21 @@ export {
 export type { Advisory, AdvisoryMatch, AffectedRange, LibraryId } from "./libraries/advisories.js";
 export { compareVersions, parseVersion } from "./libraries/version.js";
 export type { ParsedVersion } from "./libraries/version.js";
+
+// F-09: "is my client affected?" (gaugeline advisory, and the MCP tool's definition)
+export { checkAdvisory } from "./advisory/run.js";
+export type { AdvisoryOptions } from "./advisory/run.js";
+export {
+  renderNote as renderAdvisoryNote,
+  renderTerminal as renderAdvisoryTerminal,
+} from "./advisory/render.js";
+export {
+  ADVISORY_SCHEMA_VERSION,
+  VERDICTS as ADVISORY_VERDICTS,
+  advisoryResultSchema,
+} from "./advisory/schema.js";
+export type { AdvisoryResult, Verdict as AdvisoryVerdict } from "./advisory/schema.js";
+export { ADVISORY_TOOL, advisoryToolInput, runAdvisoryTool } from "./advisory/tool.js";
+export type { AdvisoryToolDeps, AdvisoryToolInput } from "./advisory/tool.js";
+export { isAdvisoryId } from "./advisory/target.js";
+export type { WordPressData } from "./advisory/evidence.js";

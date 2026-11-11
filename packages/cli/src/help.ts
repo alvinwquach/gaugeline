@@ -26,6 +26,7 @@ export const COMMANDS = [
   "cost",
   "audit",
   "migration",
+  "advisory",
 ] as const;
 export type Command = (typeof COMMANDS)[number];
 
@@ -182,6 +183,18 @@ export const HELP: Record<string, string> = {
       "it is run.",
     ].join("\n"),
     footer: "Exit codes: 0 ran, 1 --ci and a fix-first finding, 2 could not run or read",
+  }),
+  advisory: renderHelp(FLAGS, "advisory", {
+    usage: "gaugeline advisory <site> <advisory-id | package@range> [options]",
+    summary: [
+      'A client asks "are we affected?" the day an advisory is announced. Give the',
+      "site and a CVE or GHSA id (read from OSV, with one GET of api.osv.dev) or a",
+      "package and affected versions. Answers likely-affected, likely-not-affected or",
+      "cannot-tell, from outside only, with the evidence and what to check inside.",
+      "Read only: GET requests; --dns also reads the name servers. It never says a",
+      "site is safe.",
+    ].join("\n"),
+    footer: "Exit codes: 0 ran, 1 --ci and likely-affected, 2 could not run",
   }),
   open: renderHelp(FLAGS, "open", {
     usage: "gaugeline open [address] [options]",
