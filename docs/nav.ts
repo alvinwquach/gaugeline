@@ -131,6 +131,7 @@ export const UNLISTED: NavPage[] = [
   // Each adapter's page comes from its entry file (pnpm gen:adapters), so a new adapter does not edit this list.
   ...ADAPTER_PAGES,
   { slug: "connectors/listings", title: "Listings off the site" },
+  { slug: "checks/documents-agree", title: "Documents agree with the site" },
   { slug: "connectors/postgres", title: "A database as a source: Postgres and Supabase" },
   { slug: "sources/shopify", title: "Shopify as a price source" },
   { slug: "sources/square", title: "Square as a price source" },

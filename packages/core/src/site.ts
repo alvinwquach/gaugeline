@@ -47,6 +47,7 @@ import {
   type ContentSnapshot,
 } from "./snapshot/page-snapshot.js";
 import { lazyDatasets } from "./sanity.js";
+import type { DocumentsContext } from "./documents/types.js";
 import { lazyListings, noListings, type ListingsSettings } from "./listings/read.js";
 import { lazyCrm, noCrm, type CrmSettings } from "./sources/crm-read.js";
 import { lazyDatabases, type DatabasesSettings } from "./connectors/postgres/read.js";
@@ -91,6 +92,11 @@ export interface SiteCheckOptions {
   payments?: PaymentsConfig;
   /** The business listings to compare with the site (gaugeline.listings.json), with their keys already read. */
   listings?: ListingsSettings;
+  /**
+   * The document checks' settings: gaugeline.documents.json, the prices the content and payment
+   * systems state, and a reader that replaces the optional @gaugeline/documents package.
+   */
+  documents?: DocumentsContext;
   /** The CRM to read leads from through its own read-only MCP server (gaugeline.crm.json). */
   crm?: CrmSettings;
   /** The databases to read named queries from (gaugeline.sources.json), with their variables already copied. */
@@ -341,6 +347,7 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
         : asked
           ? { listings: () => Promise.resolve(noListings()) }
           : {}),
+      ...(opts.documents ? { documents: opts.documents } : {}),
       ...(opts.crm
         ? {
             crm: lazyCrm(opts.crm, {

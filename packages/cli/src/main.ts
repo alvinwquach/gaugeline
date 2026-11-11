@@ -160,6 +160,7 @@ import { readSites, selectSites, SITES_FILE } from "./sites.js";
 import { appendStepSummary, planStepSummary } from "./step-summary.js";
 import {
   readAccess,
+  readDocumentsConfig,
   readFacts,
   readListingsConfig,
   readCrmConfig,
@@ -1206,6 +1207,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       const schemaRules = readSchemaRules(deps.cwd ?? process.cwd());
       const languageRules = readLanguageRules(deps.cwd ?? process.cwd());
       const facts = readFacts(deps.cwd ?? process.cwd());
+      const documents = readDocumentsConfig(deps.cwd ?? process.cwd());
       const payments = readPayments(deps.cwd ?? process.cwd());
       const hidden = readHidden(deps.cwd ?? process.cwd());
       const tags = readTags(deps.cwd ?? process.cwd());
@@ -1539,6 +1541,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         ...(schemaRules ? { schemaRules } : {}),
         ...(languageRules ? { languageRules } : {}),
         ...(facts ? { facts } : {}),
+        ...(documents ? { documents: { config: documents } } : {}),
         ...(payments ? { payments } : {}),
         ...(hidden ? { hidden } : {}),
         ...(navRules ? { nav: navRules } : {}),

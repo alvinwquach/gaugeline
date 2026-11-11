@@ -8,6 +8,7 @@ export interface DocumentLink {
 }
 
 const WORDS = /\b(?:menu|menus|price\s*list|prices|pricing|brochure|rates?)\b/i;
+const FILE_WORDS = /\b(?:pdf|download|printable|print)\b/i;
 const PAGE_END = /\.(?:html?|php|aspx?)$/i;
 
 /**
@@ -50,14 +51,22 @@ export function findDocumentLinks(
       }
   for (const p of pages)
     for (const l of p.links) {
-      let path: string;
+      let url: URL;
       try {
-        path = new URL(l.href, p.finalUrl).pathname;
+        url = new URL(l.href, p.finalUrl);
       } catch {
         continue;
       }
+      const path = url.pathname;
       if (PAGE_END.test(path) || path.toLowerCase().endsWith(".pdf")) continue;
-      if (WORDS.test(l.text) || WORDS.test(l.rel ?? "")) add(l.href, p.finalUrl, "words");
+      if (!WORDS.test(l.text) && !WORDS.test(l.rel ?? "")) continue;
+      // A same-site address with no file extension that does not say it is a download is a page
+      // ("/menu"), and the page checks read pages; a file host, an extension or "download" is a file.
+      const file =
+        url.host !== new URL(p.finalUrl).host ||
+        /\.[a-z0-9]{2,5}$/i.test(path) ||
+        FILE_WORDS.test(`${l.text} ${path}`);
+      if (file) add(l.href, p.finalUrl, "words");
     }
   return out;
 }

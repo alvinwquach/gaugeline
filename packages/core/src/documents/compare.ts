@@ -47,7 +47,7 @@ function namePattern(name: string): RegExp | undefined {
   const body = words
     .map((w) => (w === "&" || w.toLowerCase() === "and" ? "(?:&|and)" : escape(w)))
     .join("[^\\p{L}\\p{N}]{1,3}");
-  return new RegExp(`(?<![\\p{L}\\p{N}])${body}(?![\\p{L}\\p{N}])`, "iu");
+  return new RegExp(`(?<![\\p{L}\\p{N}])${body}(?![\\p{L}\\p{N}])`, "giu");
 }
 
 const SHOWN_PRICE = /[$€£]\s?(\d{1,4}(?:[.,]\d{1,2})?)|(?<![\d.,])(\d{1,4}[.,]\d{2})(?![\d])/g;
@@ -117,19 +117,25 @@ export function compareDocument(
     let found = false;
     if (pattern)
       for (const p of pages) {
-        const m = pattern.exec(p.text);
-        if (!m) continue;
-        found = true;
-        const prices = pricesAfter(p.text, m.index + m[0].length);
-        if (prices.length > 0 && !prices.includes(i.amount))
-          diffs.push({
-            name: i.name,
-            symbol: i.symbol ?? "$",
-            doc: i.amount,
-            site: prices[0] ?? 0,
-            source: `the page ${p.path}`,
-          });
-        break;
+        // Every mention of the name: the first one with a price after it is the item's price (a
+        // sentence that only names the dish says nothing about its price).
+        let priced = false;
+        for (const m of p.text.matchAll(pattern)) {
+          found = true;
+          const prices = pricesAfter(p.text, m.index + m[0].length);
+          if (prices.length === 0) continue;
+          priced = true;
+          if (!prices.includes(i.amount))
+            diffs.push({
+              name: i.name,
+              symbol: i.symbol ?? "$",
+              doc: i.amount,
+              site: prices[0] ?? 0,
+              source: `the page ${p.path}`,
+            });
+          break;
+        }
+        if (priced) break;
       }
     if (found) pageHits++;
     else unmatched.push(i);

@@ -51,3 +51,26 @@ describe("the name normaliser shared with the product matcher", () => {
     expect(normaliseName("Salt & Pepper Fries")).toBe(normaliseName("Salt and Pepper Fries"));
   });
 });
+
+describe("the reference from matched products", () => {
+  it("the content system's price comes before Stripe's, and a yen price is left out", async () => {
+    const { referenceFromGroups } = await import("../reference.js");
+    const stripe = (price: number | null, currency = "usd") => ({
+      id: "prod_1",
+      name: "Smash Burger",
+      active: true,
+      metadata: {},
+      defaultPriceId: "price_1",
+      prices: [{ id: "price_1", unitAmount: price, currency, active: true }],
+    });
+    expect(
+      referenceFromGroups([
+        { sanity: { _id: "a", name: "Smash Burger", price: 1600 }, stripe: stripe(1500) },
+        { stripe: stripe(900, "jpy") },
+      ]).map((r) => [r.source, r.amount]),
+    ).toEqual([
+      ["your content system", 1600],
+      ["Stripe", 1500],
+    ]);
+  });
+});

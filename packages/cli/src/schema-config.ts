@@ -13,6 +13,7 @@ import {
   adaptersConfigSchema,
   servicesConfigSchema,
   eventsConfigSchema,
+  documentsConfigSchema,
   factsConfigSchema,
   hiddenConfigSchema,
   navRulesSchema,
@@ -39,6 +40,7 @@ import {
   type ServicesConfig,
   type HandoffConfig,
   type EventsConfig,
+  type DocumentsConfig,
   type FactsConfig,
   type HiddenConfig,
   type NavRules,
@@ -62,6 +64,8 @@ export const SCHEMA_CONFIG_FILE = "gaugeline.schema.json";
 export const LANGUAGES_CONFIG_FILE = "gaugeline.languages.json";
 /** The business's declared facts, likewise. */
 export const FACTS_CONFIG_FILE = "gaugeline.facts.json";
+/** Which documents (PDF menus, price lists, brochures) to read besides the ones the pages link to, which to leave out, and the size limit. */
+export const DOCUMENTS_CONFIG_FILE = "gaugeline.documents.json";
 /** The business's payment handles and links, likewise. */
 export const PAYMENTS_CONFIG_FILE = "gaugeline.payments.json";
 /** What the project says about its rendered emails (a text version is expected, click-tracking patterns), likewise. */
@@ -145,6 +149,10 @@ export function readLanguageRules(dir: string): LanguageRules | undefined {
 
 export function readFacts(dir: string): FactsConfig | undefined {
   return readJsonConfig(dir, FACTS_CONFIG_FILE, factsConfigSchema, "declared facts");
+}
+
+export function readDocumentsConfig(dir: string): DocumentsConfig | undefined {
+  return readJsonConfig(dir, DOCUMENTS_CONFIG_FILE, documentsConfigSchema, "the document settings");
 }
 
 export function readPayments(dir: string): PaymentsConfig | undefined {

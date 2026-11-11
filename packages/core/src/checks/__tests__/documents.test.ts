@@ -280,12 +280,12 @@ describe("documents: edge cases", () => {
 
   it("a link that says menu but leads to an HTML page is not a document", async () => {
     const files = {
-      [`${SITE}/our-menu`]: {
+      [`${SITE}/download/menu`]: {
         body: Buffer.from("<html></html>"),
         headers: { "content-type": "text/html" },
       },
     };
-    const page = menuPage('<a href="/our-menu">See the menu</a>');
+    const page = menuPage('<a href="/download/menu">Download the menu</a>');
     const { ctx, notices } = context(files);
     expect(await documentUnreadable.run(page, { ...ctx, pages: async () => [page] })).toEqual([]);
     expect(notices).toEqual([]);
@@ -309,5 +309,31 @@ describe("documents: edge cases", () => {
     const { ctx, page } = context(files, { reference: [cms("__proto__ Wrap", 10)] });
     const found = await documentPriceMismatch.run(page, ctx);
     expect(found[0]?.evidence).toContain("$9.00");
+  });
+});
+
+describe("documents: which links are documents", () => {
+  it("a same-site 'Menu' link with no file extension is a page, not asked; a .pdf and a download link are", async () => {
+    const { findDocumentLinks } = await import("../../documents/links.js");
+    const page = menuPage(
+      '<a href="/menu">Menu</a> <a href="/prices.pdf">Prices</a> <a href="/download/rates">Download our rates</a> <a href="https://files.example/b.docx">Brochure</a> <a href="/about">About</a>',
+    );
+    expect(
+      findDocumentLinks([page], undefined).map((l) => [l.url.replace(SITE, ""), l.via]),
+    ).toEqual([
+      ["/prices.pdf", "pdf"],
+      ["/download/rates", "words"],
+      ["https://files.example/b.docx", "words"],
+    ]);
+  });
+
+  it("the config adds documents and leaves some out", async () => {
+    const { findDocumentLinks } = await import("../../documents/links.js");
+    const page = menuPage('<a href="/old/menu.pdf">Old menu</a> <a href="/menu.pdf">Menu</a>');
+    expect(
+      findDocumentLinks([page], { include: ["/catering.pdf"], exclude: ["/old/"] }).map((l) =>
+        l.url.replace(SITE, ""),
+      ),
+    ).toEqual(["/catering.pdf", "/menu.pdf"]);
   });
 });

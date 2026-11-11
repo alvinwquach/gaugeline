@@ -74,6 +74,7 @@ const TYPES: Record<string, string> = {
   ".png": "image/png",
   ".svg": "image/svg+xml",
   ".ics": "text/calendar",
+  ".pdf": "application/pdf",
 };
 
 /** Files whose text may hold the {{origin}} and {{planted:<name>}} placeholders. */
