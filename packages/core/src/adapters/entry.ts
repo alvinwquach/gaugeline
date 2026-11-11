@@ -8,6 +8,8 @@ export interface AdapterContext {
   sleep?: (ms: number) => Promise<void>;
   /** The address of the site being checked. The sitemap and feed adapter reads it unless its settings give one. */
   site?: string;
+  /** What a relative folder in an adapter's settings (the repository `path`) is relative to. Default: the working folder. */
+  cwd?: string;
 }
 
 /** Builds an adapter over this environment and fetcher: what a loader gives back. */
@@ -67,6 +69,8 @@ export interface AdapterEntry {
     pageReader?: true;
     /** The platform names its fields with hyphens. */
     hyphenFields?: true;
+    /** Reads content kept in a repository: takes `path` or `github`, and `folders`; `urls` is replaced by each folder's `permalink`. */
+    contentFolders?: true;
   };
   /** The row in docs/integrations/index.md: what key it asks for and what it reads (Markdown, one line). */
   docs: { key: string; reads: string };
