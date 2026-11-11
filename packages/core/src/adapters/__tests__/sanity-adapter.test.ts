@@ -262,8 +262,8 @@ describe("the adapters entry in gaugeline.adapters.json: unit", () => {
     const fetcher = createFetcher({ transport: sanityTransport(), timeoutMs: 5000 });
     const [built] = createAdapters(adaptersConfigSchema.parse(ok), { env: ENV, fetcher });
     expect(built?.id).toBe("sanity");
-    expect(() => createAdapters({ adapters: [{ id: "webflow" }] }, { env: ENV, fetcher })).toThrow(
-      /"webflow" adapter is planned \(C-04\)/,
+    expect(() => createAdapters({ adapters: [{ id: "framer" }] }, { env: ENV, fetcher })).toThrow(
+      /"framer" adapter is planned \(C-06\)/,
     );
     expect(() => createAdapters({ adapters: [{ id: "nope" }] }, { env: ENV, fetcher })).toThrow(
       ConfigError,

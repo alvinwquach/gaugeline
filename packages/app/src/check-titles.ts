@@ -176,6 +176,7 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "cutover-canonical-host": ["The bare domain and www don't settle on one address", "Launch day"],
   "cutover-mail-changed": ["The domain's mail records changed at cutover", "Security & email"],
   "migration-page-missing": ["A page from the old site is missing on the new one", "Launch day"],
+  "webflow-item-no-page": ["A published Webflow item has no page on the live site", "Launch day"],
   "app-smart-banner-mismatch": ["The iPhone app banner promotes a different app", "Visitors"],
   "checkout-js-only": ["Nothing on the page can be linked to buy", "Sales & prices"],
   "crm-field-names": ["A form sends fields the CRM doesn't have", "Leads"],
@@ -354,6 +355,7 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "A page lost a structured data type in the move",
     "Search & sharing",
   ],
+  "webflow-item-staged": ["Work saved in the Webflow CMS is not on the live site", "Launch day"],
   "ai-crawlers-blocked": ["Some AI assistants can't read your site", "Search & sharing"],
   "app-name-mismatch": ["The store lists the app under a different name", "Visitors"],
   "asset-file-public": ["A downloadable file is on a public asset address", "Sales & prices"],
@@ -1078,6 +1080,12 @@ export const CHECK_TEXT: Readonly<
     "Move the page's content to the new site, or add a permanent (301) redirect from the old address to the page that replaces it. Run it again to confirm.",
     "Each path in the old site's content list (the WordPress REST API's published posts and pages, a Wix or Webflow export, or the old sitemap) is requested with GET on the new site, redirects followed. A final 404 or 410 is the finding; a 5xx, a refusal, a password or a timeout is could-not-check for that page.",
   ],
+  "webflow-item-no-page": [
+    "The CMS says an item is published, and the address its page should have answers 404 or 410 on the live site.",
+    "Links, the sitemap and search results point at a page that is not there, and the client's announcement leads to an error page.",
+    "Check the collection's template page is published and its address matches the pattern in gaugeline.adapters.json, then publish the site. If the item should not be public, archive it in Webflow.",
+    "GET /v2/collections/{id}/items/live for each collection named in the `urls` settings, then one GET of the live address from the pattern (redirects followed). A final 404 or 410 is the finding; any other answer that is not a 2xx is could-not-check for that page. A collection with published items and no pattern, and an item whose slug the pattern cannot use, are could-not-check by name and are not asked.",
+  ],
   "app-smart-banner-mismatch": [
     "The page's Smart App Banner (the apple-itunes-app meta tag) names a different app id than the page's App Store link.",
     "Safari shows the banner at the top of the page on iPhone, so visitors install whichever app it names, which here is not the one the page links to.",
@@ -1713,6 +1721,12 @@ export const CHECK_TEXT: Readonly<
     "Structured data is what earns a page its rich result in search: the FAQ dropdown, the event date, the star rating. Without it the page appears as a plain link.",
     "Add the missing JSON-LD to the new page's template, filled from the page's own content, and test it with a rich results tester.",
     "The @type of every JSON-LD node (an @graph read through) and every microdata itemtype, on the old and the new page. Types that describe the whole site (WebSite, WebPage, Organization, Person, ImageObject, SearchAction) are left out. A type the old page had and the new one lacks is the finding; a new type is not. Needs the old page: with --old, the old site's own address.",
+  ],
+  "webflow-item-staged": [
+    "A collection item was saved as ready (not a draft) and has never been published, or it was changed after it was last published, so the live site still shows the old version or none.",
+    "The client believes the change is out. Customers see the old price, the old opening hours, or no page for the event they were told about.",
+    "In Webflow, review the staged items and publish the site. If an item should not go out yet, set it back to draft so it is not mistaken for finished work.",
+    "GET /v2/collections/{id}/items (the staged list) for each collection: isDraft false, isArchived false, and lastPublished absent (staged) or more than 2 seconds earlier than lastUpdated (changed). Drafts and archived items are never reported. Ids, slugs and dates only: no field is used for this.",
   ],
   "ai-crawlers-blocked": [
     "robots.txt stops one or more known AI crawlers from reading the home page. Gaugeline says which, and whether the block names them or comes from a rule for every crawler.",

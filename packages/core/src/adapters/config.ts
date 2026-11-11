@@ -3,13 +3,17 @@ import { isUrlTemplate } from "./fingerprint.js";
 
 const ID = /^[a-z][a-z0-9-]{0,30}$/;
 const TYPE = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/;
-const FIELD = /^[A-Za-z_][A-Za-z0-9_]{0,63}(?:\.[A-Za-z_][A-Za-z0-9_]{0,63}){0,4}$/;
+/** A field name, or names joined by dots. Hyphens are allowed here for Webflow's field names ("post-body"); the other adapters refuse them below. */
+const FIELD = /^[A-Za-z_][A-Za-z0-9_-]{0,63}(?:\.[A-Za-z_][A-Za-z0-9_-]{0,63}){0,4}$/;
 
 /** A path on the site ("/sitemap-pages.xml") or an https address. Nothing else: no scheme tricks, no spaces. */
 const SITE_FILE = /^(?:\/[^\s]*|https:\/\/[^\s]+)$/;
 
 /** The adapter that reads a site's sitemap and feeds, and takes no fields. */
 const SITEMAP_FEED = "sitemap-feed";
+
+/** The adapter whose platform names its fields with hyphens. */
+const WEBFLOW = "webflow";
 
 /**
  * gaugeline.adapters.json, read from the working folder like the other settings files (there is no
@@ -74,6 +78,15 @@ export const adaptersConfigSchema = z.strictObject({
                 path: [key],
                 message: `"${key}" belongs to the sitemap-feed adapter, not to ${entry.id}`,
               });
+          if (entry.id !== WEBFLOW)
+            for (const [type, fields] of Object.entries(entry.fingerprint ?? {}))
+              for (const field of fields)
+                if (field.includes("-"))
+                  ctx.addIssue({
+                    code: "custom",
+                    path: ["fingerprint", type],
+                    message: `"${field}" has a hyphen: only the Webflow adapter has field names like that, and ${entry.id} does not`,
+                  });
           for (const key of ["fingerprint", "urls"] as const)
             if (own && entry[key] !== undefined)
               ctx.addIssue({
