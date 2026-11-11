@@ -78,6 +78,7 @@ export type {
   JsonQueryShape,
   QueryBodyShape,
   ReadOnlyQueryAllow,
+  RegisteredQueryAllow,
 } from "./fetch/read-only-query.js";
 export { Semaphore } from "./semaphore.js";
 export { BUDGET_KINDS, LIMITS, createBudget, formatSampleSummary } from "./limits.js";
