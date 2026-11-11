@@ -1,0 +1,34 @@
+# Bitbucket Pipelines: check a site every night with Gaugeline.
+# Copy this into bitbucket-pipelines.yml.
+#
+# Variables: Repository settings > Pipelines > Repository variables.
+#   SITE_URL                 the site to check, for example https://example.com
+#   GAUGELINE_SLACK_WEBHOOK  optional: where a summary goes. Add it as Secured; never write it here.
+# Schedule: Repository settings > Pipelines > Schedules > New schedule, pick the custom
+# pipeline "gaugeline-nightly" and a time.
+#
+# Exit codes are kept: step 1 saves the code and the report, step 2 exits with that same
+# code (0 the check ran, 1 a "Fix this first" finding, 2 Gaugeline could not run).
+# Saving the report in its own step means it is kept even when the check finds something.
+image: node:24
+
+definitions:
+  caches:
+    npm: ~/.npm
+
+pipelines:
+  custom:
+    gaugeline-nightly:
+      - step:
+          name: Check the site
+          caches:
+            - npm
+          script:
+            - code=0; npx --yes gaugeline "$SITE_URL" --ci --no-open || code=$?; echo "$code" > gaugeline-exit-code
+          artifacts:
+            - gaugeline-report.html
+            - gaugeline-exit-code
+      - step:
+          name: Pass the result on
+          script:
+            - exit "$(cat gaugeline-exit-code)"
