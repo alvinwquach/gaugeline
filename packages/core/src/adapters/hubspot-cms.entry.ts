@@ -4,11 +4,9 @@ import { lazy } from "./load.js";
 
 /**
  * The HubSpot CMS adapter.
- * TODO(new:adapter) say which key the platform offers and why it is the narrowest (scoped). Write the
- * same sentence at the top of docs/integrations/hubspot-cms.md.
- *
- * If the platform's own API is in beta, add `beta: true` (as framer.entry.ts does): the run header then says
- * "(beta)" and the docs page says what may change.
+ * The narrowest key HubSpot offers is a private app token limited to the read scopes for pages, blog posts
+ * and HubDB: a private app's scopes are chosen one by one, but HubSpot has no read-only role, so the key is
+ * "scoped". The same sentence is at the top of docs/integrations/hubspot-cms.md.
  */
 export const HUBSPOT_CMS_DESCRIPTION: AdapterDescription = {
   name: "HubSpot CMS",
@@ -40,9 +38,9 @@ export const entries: readonly AdapterEntry[] = [
     }),
     // The row in docs/integrations/index.md is generated from this (pnpm gen:adapters).
     docs: {
-      key: "scoped (TODO(new:adapter) the narrowest key, in one clause)",
+      key: "scoped (a private app token with only the CMS read scopes)",
       reads:
-        "TODO(new:adapter) what it reads, in one sentence. [Endpoints and the key](/docs/integrations/hubspot-cms)",
+        "Site pages, landing pages, blog posts and HubDB tables through the CMS APIs. [Endpoints and the key](/docs/integrations/hubspot-cms)",
     },
     page: {
       slug: "integrations/hubspot-cms",
