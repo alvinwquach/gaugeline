@@ -10,6 +10,7 @@ import type { LanguageGroup, LanguageRules } from "./languages.js";
 import type { SchemaRules } from "./schema-rules.js";
 import type { AccessRead } from "./access/probe.js";
 import type { DnsReader } from "./dns.js";
+import type { Renewals } from "./renewals/reader.js";
 import type { HiddenConfig } from "./hidden.js";
 import type { NavRules } from "./nav/read-regions.js";
 import type { ContentNow, PagesConfig } from "./snapshot/compare.js";
@@ -182,6 +183,12 @@ export interface CheckContext {
   access?: () => Promise<AccessRead>;
   /** Public DNS (TXT and MX only), for the email record checks. Absent: those checks find nothing. */
   dns?: DnsReader;
+  /**
+   * What the renewals checks read (the domain's registration through RDAP, the certificates of the bare
+   * domain and www, the tokens and Vercel projects the user configured), once each on first use. Absent
+   * unless the run asked for renewals: those checks then do nothing.
+   */
+  renewals?: Renewals;
   /** The page's App Store and Google Play apps, looked up once on first use. */
   apps?: () => Promise<AppLookup[]>;
   /**

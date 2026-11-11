@@ -88,6 +88,11 @@ import {
   navTabLine,
   readNav,
   type NavResult,
+  createRenewals,
+  createRenewalsRegistry,
+  formatRenewalRows,
+  RENEWALS_CHECKS,
+  RENEWALS_ENV_VARS,
 } from "@gaugeline/core";
 import { parseCliArgs } from "./args.js";
 import { HELP } from "./help.js";
@@ -142,6 +147,7 @@ import {
   readHidden,
   readLanguageRules,
   readPayments,
+  readRenewalsConfig,
   readEvents,
   readSchemaRules,
   readTags,
@@ -218,6 +224,8 @@ export interface Deps {
   sleep?: (ms: number) => Promise<void>;
   /** `gaugeline delivery`: how many days Resend is taken to keep sent emails. Tests pass a short one. */
   retentionDays?: number;
+  /** `gaugeline renewals`, `--renewals`: where the registry's bootstrap file is and the port https answers on. Tests only. */
+  renewals?: { bootstrapUrl?: string; port?: number };
   /** Where gaugeline.schema.json is looked for. Defaults to the current directory. */
   cwd?: string;
   /** Opens the written report. Defaults to the system browser; tests pass a fake. */
@@ -915,6 +923,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         ...(io.now ? { now: io.now } : deps.now ? { now: deps.now } : {}),
         parallel: args.parallel,
         allowPrivate: args.allowPrivate,
+        renewals: args.renewals,
         runOne: (argv, siteIo, siteCwd) => main(argv, siteIo, { ...deps, cwd: siteCwd }),
       });
       io.stdout.write(`${formatRunAll(rows)}\n`);
@@ -1268,9 +1277,17 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       const skeleton = skeletonOnly(deps.version ?? VERSION);
       // launch: a preset of check ids through the runner's own `only` filter, not a second runner.
       const launch = args.command === "launch";
-      const registry = deps.registry ?? createPageRegistry();
+      // The renewals checks (the domain, the certificates of the bare domain and www, tokens, runtimes)
+      // are in the run only with --renewals or `gaugeline renewals`.
+      const renewing = args.renewals;
+      const registry =
+        deps.registry ?? (renewing ? createRenewalsRegistry() : createPageRegistry());
       let only: readonly string[] | undefined =
         deps.registry === undefined && skeleton ? skeleton : undefined;
+      if (args.command === "renewals")
+        only = ["certificate-expiring", ...RENEWALS_CHECKS.map((c) => c.id)].filter((id) =>
+          registry.has(id),
+        );
       if (launch) {
         const registered = new Set(registry.all().map((c) => c.id));
         const wanted = [...LAUNCH_PRESET, ...(args.dns ? EMAIL_PRESET : [])];
@@ -1283,17 +1300,33 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       const dns = args.dns ? (deps.dns ?? createDnsReader()) : undefined;
       const registeredIds = new Set(registry.all().map((c) => c.id));
       const dnsSkipped =
-        !launch && !args.dns ? EMAIL_PRESET.filter((id) => registeredIds.has(id)) : [];
+        !launch && args.command !== "renewals" && !args.dns
+          ? EMAIL_PRESET.filter((id) => registeredIds.has(id))
+          : [];
       // --save-requests: the file is claimed before the first request, so a path that cannot be
       // written is exit 2 now and not after a whole check.
       const requestsTarget =
         args.saveRequests === undefined
           ? undefined
           : reserveRequestsFile(args.saveRequests, resolve(cwd, args.saveRequests));
+      // What the renewals checks read, built here so the Renewals list can be printed from what they read.
+      const renewals = renewing
+        ? createRenewals(
+            {
+              config: readRenewalsConfig(cwd) ?? {},
+              env: freezeEnv(io.env ?? {}, RENEWALS_ENV_VARS),
+              ...(deps.renewals?.port !== undefined ? { port: deps.renewals.port } : {}),
+              ...(deps.renewals?.bootstrapUrl ? { bootstrapUrl: deps.renewals.bootstrapUrl } : {}),
+            },
+            fetcher,
+          )
+        : undefined;
       const checking = checkSite({
         address: args.input,
         fetcher,
         registry,
+        ...(renewals ? { renewals } : {}),
+        ...(args.command === "renewals" ? { tolerateUnreachable: true } : {}),
         // The walking skeleton (0.0.x) runs one check; an injected registry is used as given.
         ...(only ? { only } : {}),
         ...(dnsSkipped.length > 0 ? { skip: dnsSkipped } : {}),
@@ -1332,7 +1365,13 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         contentNotes,
         requests: requestLog,
         page: pageDeclared,
+        unreachable,
       } = await (requestsTarget ? requestsTarget.guard(checking) : checking);
+      // A site that does not answer is the usual sign of a lapsed domain: say so, and carry on.
+      if (unreachable !== undefined && !args.quiet)
+        io.stderr.write(
+          `The site did not answer (${unreachable.replace(/\.?\s*Check the spelling\.$/, "")}), which is what a lapsed domain looks like. The registration and the other renewals were still read.\n`,
+        );
       // The request log and page data go to their own file and nowhere else: not into the result,
       // the report or stdout. A failed write is exit 2 at the end, after everything else has run.
       let saveFailure: ConfigError | undefined;
@@ -1401,6 +1440,14 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         });
         io.stdout.write(`${JSON.stringify(json, null, 2)}\n`);
       } else {
+        // gaugeline renewals: the list by date first (every date read, healthy or not), then what to fix.
+        if (renewals && args.command === "renewals") {
+          const when = (deps.now ?? io.now ?? (() => new Date()))();
+          const lines = formatRenewalRows(await renewals.rows(when), when);
+          io.stdout.write(
+            `Renewals for ${new URL(snapshot.finalUrl).host}, by date\n${lines.length > 0 ? lines.join("\n") : "Nothing with a date could be read."}\n\n`,
+          );
+        }
         io.stdout.write(
           formatTerminal({
             result,

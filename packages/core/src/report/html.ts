@@ -8,6 +8,7 @@ import {
   type Severity,
 } from "../model.js";
 import type { RunResult } from "../run.js";
+import { renewalItems, renewalLine } from "../renewals/section.js";
 import type { CouldNotCheck } from "../runner.js";
 
 /** Text and attribute values, escaped for both (OWASP rule #1 and #2: & < > " '). */
@@ -133,6 +134,8 @@ export function renderReport({
     "</ul>",
   ];
   if (note) parts.push(`<p${look(mail, "meta", "meta")}>${e(note)}</p>`);
+  const renewals = renderRenewals(result.findings, mail);
+  if (renewals !== "") parts.push(renewals);
   if (result.findings.length === 0)
     parts.push(
       `<p${look(mail, "p")}><strong>Nothing to fix.</strong> Every check that ran passed.</p>`,
@@ -153,6 +156,26 @@ export function renderReport({
   if (sampled) parts.push(renderSampled(sampled, notChecked));
   parts.push(mail ? "</div></body>" : "</body>", "</html>", "");
   return parts.join("\n");
+}
+
+/**
+ * "Renewals": what lapses (a domain, a certificate, a token, a Vercel runtime), soonest first, each with
+ * its date written out ("3 Dec 2026: marlowe-bar.example expires 3 Dec 2026, 24 days"). The findings
+ * below carry the why and the fix; this is the list to read down by date. Empty when there are none.
+ */
+export function renderRenewals(findings: readonly Finding[], mail = false): string {
+  const items = renewalItems(findings);
+  if (items.length === 0) return "";
+  const e = escapeHtml;
+  return [
+    `<h2${look(mail, "h2")}>Renewals <span${look(mail, "muted")}>${items.length}</span></h2>`,
+    "<ul>",
+    ...items.map(
+      (i) =>
+        `<li><span style="color:${COLOR[i.severity]}">${e(SEVERITY_LABEL[i.severity])}</span>: ${e(renewalLine(i))}</li>`,
+    ),
+    "</ul>",
+  ].join("\n");
 }
 
 /**

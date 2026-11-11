@@ -1,0 +1,25 @@
+{
+  "about": "Node.js versions Vercel has announced it will stop building or running, by major version. Read by runtime-deprecated. Each entry names the page that announces the date. The dates were written from the announcements as remembered and have not been checked against the pages: confirm each one before relying on it, then set verified to true and lastChecked to the day.",
+  "written": "2026-11-11",
+  "lastChecked": null,
+  "retirements": [
+    {
+      "major": 14,
+      "retires": "2023-08-15",
+      "source": "https://vercel.com/docs/functions/runtimes/node-js/node-js-versions",
+      "verified": false
+    },
+    {
+      "major": 16,
+      "retires": "2024-02-06",
+      "source": "https://vercel.com/docs/functions/runtimes/node-js/node-js-versions",
+      "verified": false
+    },
+    {
+      "major": 18,
+      "retires": "2025-09-01",
+      "source": "https://vercel.com/docs/functions/runtimes/node-js/node-js-versions",
+      "verified": false
+    }
+  ]
+}
