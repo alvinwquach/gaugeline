@@ -49,3 +49,24 @@ export function fillUrlTemplate(template: string, doc: Pick<PublishedDoc, "id" |
   });
   return missing ? "" : out;
 }
+
+/** A field's value by name; a dotted name goes into objects. Never throws. */
+export function valueAt(data: Record<string, unknown>, path: string): unknown {
+  if (Object.hasOwn(data, path)) return data[path];
+  let at: unknown = data;
+  for (const part of path.split(".")) {
+    if (at === null || typeof at !== "object" || Array.isArray(at)) return undefined;
+    const own = at as Record<string, unknown>;
+    at = Object.hasOwn(own, part) ? own[part] : undefined;
+  }
+  return at;
+}
+
+/** A field counts as present when it has a value: not missing, null, an empty string, an empty list or an empty object. */
+export function hasValue(v: unknown): boolean {
+  if (v === undefined || v === null) return false;
+  if (typeof v === "string") return v.trim() !== "";
+  if (Array.isArray(v)) return v.length > 0;
+  if (typeof v === "object") return Object.keys(v).length > 0;
+  return true;
+}

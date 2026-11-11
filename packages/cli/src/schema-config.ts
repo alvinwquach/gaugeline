@@ -10,6 +10,7 @@ import {
   renewalsConfigSchema,
   handoffConfigSchema,
   costConfigSchema,
+  backupsConfigSchema,
   trackersConfigSchema,
   adaptersConfigSchema,
   servicesConfigSchema,
@@ -35,6 +36,7 @@ import {
   type EmailsConfig,
   type RenewalsConfig,
   type CostConfig,
+  type BackupsConfig,
   type TrackersConfig,
   type AdaptersConfig,
   type ServicesConfig,
@@ -74,6 +76,8 @@ export const RENEWALS_CONFIG_FILE = "gaugeline.renewals.json";
 export const HANDOFF_CONFIG_FILE = "gaugeline.handoff.json";
 /** What the project says about its hosting cost (the pages that should be cached, other pages to visit, the usage window), likewise. Tokens stay in the environment. */
 export const COST_CONFIG_FILE = "gaugeline.cost.json";
+/** Where a client's content and database are backed up (the Supabase project, the Sanity dataset, export folders, how old is too old), likewise. Tokens stay in the environment. */
+export const BACKUPS_CONFIG_FILE = "gaugeline.backups.json";
 /** The freelancer's own packages, prices and brand, for `gaugeline audit --pack`, likewise. No keys. */
 export const SERVICES_CONFIG_FILE = "gaugeline.services.json";
 /** The paths that count as sensitive for the tracker checks (--trackers), likewise. Nothing in it is a key. */
@@ -169,6 +173,10 @@ export function readHandoffConfig(dir: string): HandoffConfig | undefined {
 
 export function readCostConfig(dir: string): CostConfig | undefined {
   return readJsonConfig(dir, COST_CONFIG_FILE, costConfigSchema, "the hosting cost settings");
+}
+
+export function readBackupsConfig(dir: string): BackupsConfig | undefined {
+  return readJsonConfig(dir, BACKUPS_CONFIG_FILE, backupsConfigSchema, "the backup settings");
 }
 
 export function readServicesConfig(dir: string): ServicesConfig | undefined {

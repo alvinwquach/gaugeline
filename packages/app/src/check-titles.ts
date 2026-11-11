@@ -47,6 +47,20 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "feed-broken": ["The feed this page advertises is broken", "Search & sharing"],
   "form-provider-changed": ["A form now sends to a different service", "Leads"],
   "gated-download-open": ["A download meant for customers is handed to anyone", "Sales & prices"],
+  "gatsby-data-as-page": ["A page address returns Gatsby data, not a page", "Search & sharing"],
+  "gatsby-dev-server-live": ["The live Gatsby site is a development server", "Security & email"],
+  "gatsby-graphql-public": [
+    "The GraphQL explorer is reachable on the live site",
+    "Security & email",
+  ],
+  "gatsby-preview-canonical": [
+    "The live Gatsby site points search engines at a preview deployment",
+    "Launch day",
+  ],
+  "gatsby-private-fields": [
+    "The data sent with a Gatsby page has fields that look private",
+    "Security & email",
+  ],
   "hidden-ai-directive": [
     "Hidden text on the page gives orders to AI assistants",
     "Security & email",
@@ -57,14 +71,6 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "host-duplicate": ["Your whole site exists at two addresses", "Search & sharing"],
   "html-huge": ["This page's HTML is enormous", "Visitors"],
   "ics-floating-time": ["Your calendar shows the wrong hour on some phones", "Visitors"],
-  "image-optimizer-allowlist-wide": [
-    "Your image settings let the image address fetch from any website",
-    "Security & email",
-  ],
-  "image-optimizer-open": [
-    "Your image address fetched a picture from a website you did not list",
-    "Security & email",
-  ],
   "images-broken": ["Some images on this page don't load", "Visitors"],
   "invisible-unicode-tags": ["The page carries text in invisible characters", "Security & email"],
   "item-unavailable-shown": [
@@ -264,10 +270,6 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "hreflang-not-reciprocal": ["A language version doesn't link back", "Search & sharing"],
   "html-heavy": ["Most of this page's HTML is a data payload", "Visitors"],
   "ics-no-vtimezone": ["Your calendar names a time zone it doesn't describe", "Visitors"],
-  "image-optimizer-allowlist-unanchored": [
-    "An image allowlist expression is not anchored",
-    "Security & email",
-  ],
   "image-width-absurd": ["Images are requested at an enormous width", "Visitors"],
   "images-alt-empty": ["None of the images on this page are described", "Visitors"],
   "images-heavy": ["Some images are very large files", "Visitors"],
@@ -315,6 +317,11 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "placeholder-images": ["The page shows placeholder images", "Visitors"],
   "placeholder-text": ["The page still has placeholder text", "Visitors"],
   "redirect-chain": ["Your address takes several jumps to load", "Search & sharing"],
+  "sanity-image-original": ["Sanity images are served at the size they were uploaded", "Visitors"],
+  "sanity-image-oversized": [
+    "Sanity images are delivered far larger than they are shown",
+    "Visitors",
+  ],
   "schema-breadcrumb-mismatch": ["A breadcrumb ends on a different page", "Search & sharing"],
   "schema-dangling-ref": [
     "Structured data refers to something that isn't there",
@@ -446,6 +453,10 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "event-missing-fields": ["Some events are missing details search engines need", "Visitors"],
   "events-distinct": ["Two menu links report the same click", "Leads"],
   "forms-many-providers": ["Several form services on one page", "Leads"],
+  "gatsby-data-unshown": [
+    "The data sent with a Gatsby page has text the page does not show",
+    "Security & email",
+  ],
   "hidden-past-launch": ["A hidden section is past its launch date", "Launch day"],
   "hreflang-bad-code": ["Some language codes are not valid", "Search & sharing"],
   "images-alt-missing": ["Some images have no alt attribute", "Visitors"],
@@ -457,6 +468,10 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "nav-label-drift": ["One page has two names in your menus", "Visitors"],
   "og-image-missing": ["Shared links have no picture", "Search & sharing"],
   "price-changed": ["A price changed since the last run", "Sales & prices"],
+  "sanity-image-duplicate": [
+    "One Sanity image is processed and downloaded more than once",
+    "Visitors",
+  ],
   "schema-breadcrumb-start": ["Breadcrumbs don't start where your guide says", "Search & sharing"],
   "sveltekit-data-unshown": ["The page's data has text the page does not show", "Security & email"],
   "tel-format": ["A phone link may not dial correctly", "Visitors"],
@@ -656,6 +671,36 @@ export const CHECK_TEXT: Readonly<
     "Check the purchase inside the route before it answers, then hand back a short-lived signed link instead of the file itself. A route with no session should answer 401, 403 or a redirect to sign in.",
     "probing check, off without --owner-consent: one anonymous GET per route (no cookie, no Authorization, no Referer, no compression), the status and headers, then at most 1,024 bytes of the body and the connection is closed; the route is a same-site link whose path contains download, file, deliver or export or sits under /api/, or a route file given with --routes (app/**/route.ts, pages/api/**) whose path says the same; a dynamic segment is asked only for an address seen in a link and ids are never guessed; at most 10 routes, in sorted order, the rest named; a finding is status 200 with a file content type or Content-Disposition attachment and first bytes that are not HTML (%PDF, PK, ID3 and a few other signatures are read); 401, 403, 404, a redirect to a sign-in address and a 200 HTML page pass; a redirect elsewhere is followed one hop; the body and the query string are never stored, logged or printed",
   ],
+  "gatsby-data-as-page": [
+    "A page of this Gatsby site answers with the framework's page data (application/json starting with componentChunkName), or the sitemap lists page-data addresses.",
+    "Search engines and visitors get a JSON file instead of a page, or index the data files: the page can drop out of search while a browser that navigates inside the site looks fine.",
+    "Serve HTML at page addresses (look for a proxy, CDN or redirect rule that rewrites to page-data.json), and list only pages in the sitemap.",
+    'Gatsby sites only, from responses already read: the page\'s own answer with a JSON content type whose body starts {"componentChunkName"; sitemap entries under /page-data/ ending /page-data.json, /app-data.json or /sq/d/<hash>.json. No extra request',
+  ],
+  "gatsby-dev-server-live": [
+    "This page was served by `gatsby develop`: its scripts include /socket.io/socket.io.js, /commons.js or /framework.js, the unhashed files only the development server writes.",
+    "The development server exposes a GraphQL explorer over all your content, hot-reload endpoints and error overlays with file paths. It is not meant to face visitors.",
+    "Build the site (`gatsby build`) and serve the public folder (a static host, or `gatsby serve` for a quick check), not `gatsby develop`. Check the host's start command.",
+    "Gatsby sites only, read from the page already fetched, no extra request: a script address ending /socket.io/socket.io.js, /commons.js or /framework.js (a production build names its files with a content hash, as in framework-<hash>.js). Dev-only paths are not asked for",
+  ],
+  "gatsby-graphql-public": [
+    "The address /___graphql of this Gatsby site answers with the GraphiQL page (titled Gatsby - GraphiQL), which only `gatsby develop` serves.",
+    "That explorer can read every node in your content layer, drafts and private fields included, from any browser.",
+    "Serve the built site (`gatsby build`) on the live address and keep `gatsby develop` on your own machine. If a proxy forwards /___graphql, remove the rule.",
+    "Probing check: off unless --owner-consent or gaugeline.consent.json; run only on sites you own or have permission to test. Gatsby sites only: one GET of /___graphql per run, no query sent and no POST ever; a 2xx HTML answer whose title contains GraphiQL is a finding. A production build does not serve this address",
+  ],
+  "gatsby-preview-canonical": [
+    "A production page of this Gatsby site gives a preview domain as its canonical address, its og:url or og:image, or in its sitemap.",
+    "Search engines and social cards follow those addresses to the preview, which can show old content or vanish when the preview is cleaned up.",
+    "Set siteMetadata.siteUrl (and the sitemap plugin's site URL) from the production domain in every build, and rebuild.",
+    "Gatsby sites served from a non-temporary host: the canonical, og:url, og:image and sitemap entries whose host ends in .vercel.app, .netlify.app, .pages.dev, .gatsbyjs.io or .gtsb.io. The two Gatsby hosts are from memory of the hosted product (uncited)",
+  ],
+  "gatsby-private-fields": [
+    "The page-data file of this Gatsby page, a static query it lists, or the page data embedded in its HTML has fields named like something private (password, token, secret, apiKey, private notes).",
+    "Everything a page query returns is written to a public JSON file, whether or not the page shows it. A field used only at build time still travels to every visitor if the query selects it.",
+    "Select only the fields the page shows in its query. Keep secrets in environment variables read in gatsby-node or a Function, never in a query result.",
+    "Gatsby sites only. Names only, never values: the property names in the page's own /page-data/<path>/page-data.json (one GET, the file the framework's client fetches on every visit), in the /page-data/sq/d/<hash>.json files it lists (at most ten) and in an inline window.pageData literal, walked to depth 8 and capped, matched by word against password, passwd, secret, token, private, credential, ssn, salt, bearer, authorization, cvv, iban, apiKey, accessKey, secretKey, privateKey, internalNotes. A file that cannot be read in full is could not check. The word list is a guess (uncited)",
+  ],
   "hidden-ai-directive": [
     "Text that visitors can't see, or a comment in the page's code, speaks to an AI assistant (for example 'ignore previous instructions').",
     "It is one of the commonest signs a site has been tampered with. Assistants and crawlers read text that visitors never see, so whoever planted it can steer what they say about your business.",
@@ -697,18 +742,6 @@ export const CHECK_TEXT: Readonly<
     "Phones read such a time in the guest's own zone, so anyone in another zone, or travelling, sees the event at the wrong hour.",
     "Give each DTSTART a time zone, for example DTSTART;TZID=America/Los_Angeles:20261112T190000. Most calendar exports have a time zone setting.",
     "a VEVENT's DTSTART has neither TZID nor a trailing Z (a floating time, RFC 5545 \u00a73.3.5); all-day VALUE=DATE events are not reported",
-  ],
-  "image-optimizer-allowlist-wide": [
-    "The image settings you gave (next.config, nuxt.config, astro.config or netlify.toml) allow a wildcard host, a pattern with no host, or a match-everything expression, so the site's image address will fetch, resize and serve a picture from any address a visitor puts in it.",
-    "Anyone can then use your site to resize and serve images from any address. You pay for the bandwidth and the optimization, your cache fills with other people's pictures, and your site's name sits on an open relay.",
-    "List the exact hosts your pictures come from (and a path prefix where you can) in remotePatterns, domains or remote_images, and remove the wildcard.",
-    "Not a probing check: no request is made. Reads the files named in settingsFiles of gaugeline.images.json as text (never run) and reports a hostname that is only wildcards or a wildcard and a top-level name, a remotePatterns entry with no hostname (an https-only pattern), a domains list holding a wildcard, and a Netlify remote_images expression that matches every address. A page that uses /_next/image, /_vercel/image, /_ipx/, /_image or /.netlify/images with no settings given is could not check. A statement about the file, not about the running site",
-  ],
-  "image-optimizer-open": [
-    "The site's image address (/_next/image, /_vercel/image, /_ipx/, /_image or /.netlify/images) fetched an image from the address you chose for the test, on a host that is not one of your image hosts, and sent it back.",
-    "Anyone can then use your site to resize and serve images from any address. You pay for the bandwidth and the optimization, your cache fills with other people's pictures, and your site's name sits on an open relay.",
-    "Allow only the hosts your pictures come from: remotePatterns or domains in next.config, nuxt.config or astro.config, images in the Vercel project settings, remote_images in netlify.toml. Then rebuild and run the check again.",
-    "probing check, off without --owner-consent: needs imageOptimizerProbeUrl in gaugeline.images.json, an https address on a public host you control that is not your own host, not a host your image addresses already use and not a host in the settings files given, never an IP address or a private name; one GET per optimizer the page uses (at most 5 a run), to the site's own origin, with the width and quality the page itself used, no cookie, no redirect followed, 1,024 bytes of the answer read to see whether it is an image and then dropped; 200 with an image content type and image bytes is a finding, 400, 403 and 404 pass, anything else is could not check; the query string and the body are never stored, logged or printed",
   ],
   "images-broken": [
     "An image on the site (or the original behind a Next.js /_next/image address) returns an error.",
@@ -1418,12 +1451,6 @@ export const CHECK_TEXT: Readonly<
     "Export the calendar with time zone definitions included, or add a VTIMEZONE for each TZID the events use.",
     "a DTSTART or DTEND TZID has no matching VTIMEZONE component (RFC 5545 \u00a73.6.5)",
   ],
-  "image-optimizer-allowlist-unanchored": [
-    "A Netlify remote_images expression in the settings you gave does not start with ^ and end with $, so it matches when the allowed address appears anywhere in the image address.",
-    "An address such as https://evil.example/?x=https://images.yourshop.example/ then passes the allowlist, and the Image CDN fetches it for anyone who asks.",
-    "Anchor each expression and escape its dots: ^https://images\\\\.yourshop\\\\.example/.*$.",
-    "Not a probing check: no request is made. Reads settingsFiles of gaugeline.images.json as text and reports each remote_images entry that lacks a leading ^ or a trailing $ (an entry that matches every address is image-optimizer-allowlist-wide). A statement about the file, not about the running site",
-  ],
   "image-width-absurd": [
     "An image is offered or requested 3840 pixels wide or more, wider than almost any screen shows it.",
     "Phones and laptops may download a 4K-wide picture to show it a few hundred pixels across, which wastes data and slows the page.",
@@ -1597,6 +1624,18 @@ export const CHECK_TEXT: Readonly<
     "Each jump slows the first visit and can weaken how search engines credit the page.",
     "Point every redirect straight at the final address.",
     "more than one 3xx hop on the entered URL",
+  ],
+  "sanity-image-original": [
+    "An image from cdn.sanity.io is requested with no width or height, so the visitor gets the file as it was uploaded: often 3000 to 6000 pixels wide.",
+    "A phone photo from the shop owner is several megabytes. Shown a few hundred pixels across, it still downloads whole, and the page is slow on a phone for no visible gain.",
+    "Ask for the size you show: add w (and h with fit=crop if the shape is fixed) and auto=format to the address, or build it with @sanity/image-url: urlFor(image).width(800).auto('format').url().",
+    "an img src, srcset or picture source on cdn.sanity.io/images with none of w, h, max-w, max-h, min-w or min-h, whose upload is wider than 1200 px (the size is in the file name, so nothing is downloaded); other hosts, and addresses on a custom domain for Sanity's CDN, are not read; one finding per page; the page's own HTML only",
+  ],
+  "sanity-image-oversized": [
+    "An image from cdn.sanity.io is asked for at a width much greater than the width attribute on the page, and the page offers no smaller version.",
+    "The visitor downloads several times the pixels they can see. On a phone that is seconds of waiting and mobile data spent on detail the screen throws away.",
+    "Ask Sanity for about twice the width the image is shown at (for a 400 px slot, w=800), or give the image a srcset with smaller widths and a sizes attribute so each screen picks one.",
+    "an img with a width attribute whose smallest Sanity address (src, srcset or picture source) delivers more than 2 times that width and at least 200 px more; delivered is w times dpr, never above the upload, and the upload's own width when no w is given (read from the file name); an img with no width attribute is not judged; no rendering, so a width set only in CSS is not seen",
   ],
   "schema-breadcrumb-mismatch": [
     "The last item of a page's breadcrumb structured data points at an address other than the page's own canonical.",
@@ -2042,6 +2081,12 @@ export const CHECK_TEXT: Readonly<
     "Check that each form is meant to be there, and move the page to one service if you can.",
     "Sightings of more than one of Pardot, Web-to-Lead, HubSpot, Formstack, Marketo and Typeform on one page (form action, iframe src, embed script); the tracking code alone is not a sighting",
   ],
+  "gatsby-data-unshown": [
+    "This Gatsby page's page-data file, or a static query it lists, has text fields whose text is nowhere on the page a visitor reads.",
+    "Everything a page query returns is written to a public JSON file. A field the page does not show is either unused (so it can go) or used by a script (so it is worth a look): either way it is public.",
+    "Select only the fields the page needs in its query, or move the rest to a source that checks who is asking.",
+    "Gatsby sites only. The page's own /page-data/<path>/page-data.json and the /page-data/sq/d/<hash>.json files it lists (the files the framework's client fetches on every visit; one GET each, at most eleven, walked to depth 8, capped). Text fields of 4 or more characters whose first 40 characters are not in the page's visible text (tags taken out of html fields); addresses, ids, dates and image plumbing are left out; names only, never values. Fields named like something private are left to gatsby-private-fields. A file or page text that cannot be read in full is could not check. Fields used by scripts or other pages are shown too, so read the list as a prompt (uncited)",
+  ],
   "hidden-past-launch": [
     "Today is after the launch date set for a hidden section, and gaugeline.hidden.json still lists it as hidden.",
     "Either the launch slipped and nobody updated the plan, or it launched and the hidden checks are now guarding the wrong thing.",
@@ -2107,6 +2152,12 @@ export const CHECK_TEXT: Readonly<
     "Sometimes that is the plan. When it isn't (a sync from the shop, an edit to the wrong product), customers and search results see the wrong price.",
     "If the change wasn't meant, correct the price at its source (the shop or CMS) and rebuild; if it was, nothing to do.",
     "With --since last only: the JSON-LD Offer price (integer minor units; anything but 48 or 48.00 is unread) for a product key (sku or name plus currency) present in both runs",
+  ],
+  "sanity-image-duplicate": [
+    "The same uploaded image is requested with different parameters by different images on the page, such as one width in the header and another in a card.",
+    "Each variant is a separate file for Sanity's CDN to make and for the visitor to download, and none of them is in the browser's cache for the others.",
+    "Use one address for the image and let CSS size it, or give it one srcset the browser chooses from. If a card needs a different crop, that is a different picture: upload it as its own image.",
+    "the same asset id (the hash in the file name; the same bytes are the same asset) in two or more img elements with different parameter sets; an img's own srcset and picture sources are one image and are not compared with each other; parameter order is ignored; the page's own HTML only",
   ],
   "schema-breadcrumb-start": [
     "The first item of a page's breadcrumb structured data is not the Home name and address your schema guide sets.",

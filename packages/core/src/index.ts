@@ -1444,13 +1444,16 @@ export type { AuditPackFile } from "./audit/render.js";
 
 export { MIGRATION_CHECKS, createMigrationRegistry, unreadPages } from "./checks/migration.js";
 export { WEBFLOW_CHECKS, createWebflowRegistry } from "./checks/webflow.js";
+export { SHOPIFY_CHECKS, createShopifyRegistry } from "./checks/shopify.js";
 export { CONTENTFUL_CHECKS, createContentfulRegistry } from "./checks/contentful.js";
 export {
   SQUARESPACE_COMMERCE_CHECKS,
   createSquarespaceCommerceRegistry,
 } from "./checks/squarespace-commerce.js";
 export { STRAPI_CHECKS, createStrapiRegistry } from "./checks/strapi.js";
+export { CRAFT_CHECKS, createCraftRegistry } from "./checks/craft.js";
 export { UMBRACO_CHECKS, createUmbracoRegistry } from "./checks/umbraco.js";
+export { DATOCMS_CHECKS, createDatocmsRegistry } from "./checks/datocms.js";
 export { HUBSPOT_CMS_CHECKS, createHubspotCmsRegistry } from "./checks/hubspot-cms.js";
 export {
   ListBuilder,
@@ -1533,6 +1536,32 @@ export type { AdvisoryToolDeps, AdvisoryToolInput } from "./advisory/tool.js";
 export { isAdvisoryId } from "./advisory/target.js";
 export type { WordPressData } from "./advisory/evidence.js";
 export * from "./adapters/index.js";
+
+export { BACKUPS_CHECKS } from "./checks/backups.js";
+export { addBackupsChecks, createBackupsRegistry } from "./backups/registry.js";
+export {
+  backupsConfigSchema,
+  DEFAULT_MAX_AGE_DAYS,
+  DEFAULT_SHRINK_PERCENT,
+} from "./backups/config.js";
+export type { BackupsConfig } from "./backups/config.js";
+export { BACKUPS_ENV_VARS, readSanityBackups, readSupabaseBackups } from "./backups/providers.js";
+export { createBackups } from "./backups/reader.js";
+export type { Backups, BackupsSettings } from "./backups/reader.js";
+export { buildBackupsSummary, formatBackupsSummary } from "./backups/summary.js";
+export type { BackupsSummary } from "./backups/summary.js";
+export { manualBackups } from "./backups/manual.js";
+export type { ManualBackup } from "./backups/manual.js";
+export { exportDateOf, judgeExports, formatBytes } from "./backups/judge.js";
+export type {
+  BackupsReading,
+  ExportFile,
+  ExportLister,
+  ExportRead,
+  PlatformRead,
+  RawExportFile,
+  RawListing,
+} from "./backups/types.js";
 
 // gaugeline init: detect a site's stack from outside and propose starter settings files (F-07).
 export { detectAdapters, matchDetection, signsOf } from "./init/hints.js";
