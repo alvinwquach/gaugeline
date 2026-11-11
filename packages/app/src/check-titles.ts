@@ -10,18 +10,6 @@ export const AREA_ORDER: readonly string[] = [
 export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area: string]>> = {
   "access-public-read": ["Anyone can read a table you didn't make public", "Security & email"],
   "access-role-scope": ["A signed-in user can read other people's rows", "Security & email"],
-  "angular-dev-tools-public": [
-    "The live Angular site is serving its development tools",
-    "Launch day",
-  ],
-  "angular-preview-canonical": [
-    "The live Angular site points search engines at a preview deployment",
-    "Launch day",
-  ],
-  "angular-state-private-fields": [
-    "A page hands private-looking fields to the browser in its transfer state",
-    "Security & email",
-  ],
   "app-link-dead": ["The app this page links to isn't in the store", "Visitors"],
   "astro-dev-tools-public": ["The live Astro site is serving its development tools", "Launch day"],
   "astro-preview-canonical": [
@@ -59,6 +47,20 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "feed-broken": ["The feed this page advertises is broken", "Search & sharing"],
   "form-provider-changed": ["A form now sends to a different service", "Leads"],
   "gated-download-open": ["A download meant for customers is handed to anyone", "Sales & prices"],
+  "gatsby-data-as-page": ["A page address returns Gatsby data, not a page", "Search & sharing"],
+  "gatsby-dev-server-live": ["The live Gatsby site is a development server", "Security & email"],
+  "gatsby-graphql-public": [
+    "The GraphQL explorer is reachable on the live site",
+    "Security & email",
+  ],
+  "gatsby-preview-canonical": [
+    "The live Gatsby site points search engines at a preview deployment",
+    "Launch day",
+  ],
+  "gatsby-private-fields": [
+    "The data sent with a Gatsby page has fields that look private",
+    "Security & email",
+  ],
   "hidden-ai-directive": [
     "Hidden text on the page gives orders to AI assistants",
     "Security & email",
@@ -241,7 +243,6 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   ],
   "hubspot-page-404": ["A page published in HubSpot answers 404 on the live domain", "Launch day"],
   "hubspot-form-deleted": ["A page embeds a HubSpot form that has been deleted", "Launch day"],
-  "angular-ssr-error-200": ["An Angular error is served as a normal page", "Launch day"],
   "app-smart-banner-mismatch": ["The iPhone app banner promotes a different app", "Visitors"],
   "astro-draft-entry-public": [
     "A live page embeds a content entry marked as a draft",
@@ -316,6 +317,11 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "placeholder-images": ["The page shows placeholder images", "Visitors"],
   "placeholder-text": ["The page still has placeholder text", "Visitors"],
   "redirect-chain": ["Your address takes several jumps to load", "Search & sharing"],
+  "sanity-image-original": ["Sanity images are served at the size they were uploaded", "Visitors"],
+  "sanity-image-oversized": [
+    "Sanity images are delivered far larger than they are shown",
+    "Visitors",
+  ],
   "schema-breadcrumb-mismatch": ["A breadcrumb ends on a different page", "Search & sharing"],
   "schema-dangling-ref": [
     "Structured data refers to something that isn't there",
@@ -433,10 +439,6 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   ],
   "hubspot-hubdb-drift": ["A HubDB row differs from the page that shows it", "Visitors"],
   "ai-crawlers-blocked": ["Some AI assistants can't read your site", "Search & sharing"],
-  "angular-analog-endpoints-listed": [
-    "This Analog page calls public endpoints that need a second look",
-    "Security & email",
-  ],
   "app-name-mismatch": ["The store lists the app under a different name", "Visitors"],
   "asset-file-public": ["A downloadable file is on a public asset address", "Sales & prices"],
   "astro-endpoints-listed": [
@@ -451,6 +453,10 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "event-missing-fields": ["Some events are missing details search engines need", "Visitors"],
   "events-distinct": ["Two menu links report the same click", "Leads"],
   "forms-many-providers": ["Several form services on one page", "Leads"],
+  "gatsby-data-unshown": [
+    "The data sent with a Gatsby page has text the page does not show",
+    "Security & email",
+  ],
   "hidden-past-launch": ["A hidden section is past its launch date", "Launch day"],
   "hreflang-bad-code": ["Some language codes are not valid", "Search & sharing"],
   "images-alt-missing": ["Some images have no alt attribute", "Visitors"],
@@ -462,6 +468,10 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "nav-label-drift": ["One page has two names in your menus", "Visitors"],
   "og-image-missing": ["Shared links have no picture", "Search & sharing"],
   "price-changed": ["A price changed since the last run", "Sales & prices"],
+  "sanity-image-duplicate": [
+    "One Sanity image is processed and downloaded more than once",
+    "Visitors",
+  ],
   "schema-breadcrumb-start": ["Breadcrumbs don't start where your guide says", "Search & sharing"],
   "sveltekit-data-unshown": ["The page's data has text the page does not show", "Security & email"],
   "tel-format": ["A phone link may not dial correctly", "Visitors"],
@@ -510,24 +520,6 @@ export const CHECK_TEXT: Readonly<
     "Any customer who signs up can read every other customer's records, and nobody sees it from the site.",
     "Change the table's read policy so a user sees only rows where the owner column is their own id (auth.uid()).",
     "Supabase: per configured test user and per table with an owner column, one HEAD /rest/v1/<table>?select=*&<owner>=neq.<user id> with that user's token and Prefer: count=exact; a count above 0 is a finding. Tokens come from the environment and are only ever sent in the Authorization header",
-  ],
-  "angular-dev-tools-public": [
-    "A page of this Angular or Analog site loads the Vite dev client or the dev server's component update address. Those exist only when the site runs from `ng serve` or `analog dev`.",
-    "A development server is slow, serves unminified source and modules, and shows error overlays a built site never does. Visitors see an unfinished site and anyone can read how it is put together.",
-    "Deploy the output of `ng build` (or `analog build`) instead of running the dev server on the host.",
-    "Angular sites only, no extra request: the page's own HTML is searched for src=/@vite/client, /@ng/component (Angular's dev-server component updates) and /@analogjs/ module addresses",
-  ],
-  "angular-preview-canonical": [
-    "A production page of this Angular site gives a preview domain as its canonical address, its og:url or og:image, or in its sitemap.",
-    "Search engines and social cards follow those addresses to the preview, which can show old content or vanish when the preview is cleaned up.",
-    "Build the canonical link and the share tags from the production domain (a setting per environment, not the address a deployment host gives each build), and rebuild.",
-    "Angular sites served from a non-temporary host: the canonical, og:url, og:image and sitemap entries whose host ends in .vercel.app, .netlify.app or .pages.dev",
-  ],
-  "angular-state-private-fields": [
-    "The server-rendered state Angular embeds in this page (the ng-state script) has a field named like a secret, token, password, internal note or admin value.",
-    "Angular writes everything stored in TransferState, and every cached HttpClient response, into the page as readable JSON. Anyone can view source and read it, whatever the page shows.",
-    "Store only what the page displays: map an API response to the fields the template uses before it reaches TransferState, or turn off the HttpClient transfer cache for that request. Read the private value on the server and leave it out.",
-    "Angular sites only, no extra request: each application/json script whose id ends in -state (ng-state, serverApp-state) in the HTML is parsed (at most 5 scripts, 500,000 characters each) and its field names, not values, matched against secret, token, passw, api key, private, internal, credential, authorization, admin, wholesale and margin; a state that cannot be parsed is reported as unread",
   ],
   "app-link-dead": [
     "An App Store or Google Play link on the page names an app the store no longer has.",
@@ -678,6 +670,36 @@ export const CHECK_TEXT: Readonly<
     "A route that protects a paid file should refuse, or send the visitor to sign in. If it returns the file, everyone who has the address gets it for free, and the address is easy to find in the page, in a search engine or in a customer's email.",
     "Check the purchase inside the route before it answers, then hand back a short-lived signed link instead of the file itself. A route with no session should answer 401, 403 or a redirect to sign in.",
     "probing check, off without --owner-consent: one anonymous GET per route (no cookie, no Authorization, no Referer, no compression), the status and headers, then at most 1,024 bytes of the body and the connection is closed; the route is a same-site link whose path contains download, file, deliver or export or sits under /api/, or a route file given with --routes (app/**/route.ts, pages/api/**) whose path says the same; a dynamic segment is asked only for an address seen in a link and ids are never guessed; at most 10 routes, in sorted order, the rest named; a finding is status 200 with a file content type or Content-Disposition attachment and first bytes that are not HTML (%PDF, PK, ID3 and a few other signatures are read); 401, 403, 404, a redirect to a sign-in address and a 200 HTML page pass; a redirect elsewhere is followed one hop; the body and the query string are never stored, logged or printed",
+  ],
+  "gatsby-data-as-page": [
+    "A page of this Gatsby site answers with the framework's page data (application/json starting with componentChunkName), or the sitemap lists page-data addresses.",
+    "Search engines and visitors get a JSON file instead of a page, or index the data files: the page can drop out of search while a browser that navigates inside the site looks fine.",
+    "Serve HTML at page addresses (look for a proxy, CDN or redirect rule that rewrites to page-data.json), and list only pages in the sitemap.",
+    'Gatsby sites only, from responses already read: the page\'s own answer with a JSON content type whose body starts {"componentChunkName"; sitemap entries under /page-data/ ending /page-data.json, /app-data.json or /sq/d/<hash>.json. No extra request',
+  ],
+  "gatsby-dev-server-live": [
+    "This page was served by `gatsby develop`: its scripts include /socket.io/socket.io.js, /commons.js or /framework.js, the unhashed files only the development server writes.",
+    "The development server exposes a GraphQL explorer over all your content, hot-reload endpoints and error overlays with file paths. It is not meant to face visitors.",
+    "Build the site (`gatsby build`) and serve the public folder (a static host, or `gatsby serve` for a quick check), not `gatsby develop`. Check the host's start command.",
+    "Gatsby sites only, read from the page already fetched, no extra request: a script address ending /socket.io/socket.io.js, /commons.js or /framework.js (a production build names its files with a content hash, as in framework-<hash>.js). Dev-only paths are not asked for",
+  ],
+  "gatsby-graphql-public": [
+    "The address /___graphql of this Gatsby site answers with the GraphiQL page (titled Gatsby - GraphiQL), which only `gatsby develop` serves.",
+    "That explorer can read every node in your content layer, drafts and private fields included, from any browser.",
+    "Serve the built site (`gatsby build`) on the live address and keep `gatsby develop` on your own machine. If a proxy forwards /___graphql, remove the rule.",
+    "Probing check: off unless --owner-consent or gaugeline.consent.json; run only on sites you own or have permission to test. Gatsby sites only: one GET of /___graphql per run, no query sent and no POST ever; a 2xx HTML answer whose title contains GraphiQL is a finding. A production build does not serve this address",
+  ],
+  "gatsby-preview-canonical": [
+    "A production page of this Gatsby site gives a preview domain as its canonical address, its og:url or og:image, or in its sitemap.",
+    "Search engines and social cards follow those addresses to the preview, which can show old content or vanish when the preview is cleaned up.",
+    "Set siteMetadata.siteUrl (and the sitemap plugin's site URL) from the production domain in every build, and rebuild.",
+    "Gatsby sites served from a non-temporary host: the canonical, og:url, og:image and sitemap entries whose host ends in .vercel.app, .netlify.app, .pages.dev, .gatsbyjs.io or .gtsb.io. The two Gatsby hosts are from memory of the hosted product (uncited)",
+  ],
+  "gatsby-private-fields": [
+    "The page-data file of this Gatsby page, a static query it lists, or the page data embedded in its HTML has fields named like something private (password, token, secret, apiKey, private notes).",
+    "Everything a page query returns is written to a public JSON file, whether or not the page shows it. A field used only at build time still travels to every visitor if the query selects it.",
+    "Select only the fields the page shows in its query. Keep secrets in environment variables read in gatsby-node or a Function, never in a query result.",
+    "Gatsby sites only. Names only, never values: the property names in the page's own /page-data/<path>/page-data.json (one GET, the file the framework's client fetches on every visit), in the /page-data/sq/d/<hash>.json files it lists (at most ten) and in an inline window.pageData literal, walked to depth 8 and capped, matched by word against password, passwd, secret, token, private, credential, ssn, salt, bearer, authorization, cvv, iban, apiKey, accessKey, secretKey, privateKey, internalNotes. A file that cannot be read in full is could not check. The word list is a guess (uncited)",
   ],
   "hidden-ai-directive": [
     "Text that visitors can't see, or a comment in the page's code, speaks to an AI assistant (for example 'ignore previous instructions').",
@@ -1303,12 +1325,6 @@ export const CHECK_TEXT: Readonly<
     "Restore the form in HubSpot (Marketing, Forms, recently deleted), or edit the page or its template to embed a form that exists.",
     "The form ids and portal ids are read as text from the HTML of the published pages already asked for (data-form-id and portalId/formId in an hbspt.forms.create call; nothing is run); only forms of the portal the token belongs to (GET /account-info/v3/details) are asked about, one GET /marketing/v3/forms/{formId} for each different form (at most 50 a run); a 404, or a form marked archived, is the finding. A token without the forms scope, a page that names no portal or more than one, and a form of another portal are could-not-check or not counted, never a pass. Form ids and page paths only.",
   ],
-  "angular-ssr-error-200": [
-    "A page of this Angular or Analog site answers 200 OK but its text contains an Angular error code, an injector error, a browser-only ReferenceError or a stack trace through @angular.",
-    "Search engines index a page that answers 200, error text included, and visitors see a broken page that no monitor flags. The stack trace also shows how the server is built.",
-    "Find the server-side failure (code that uses window, document or localStorage must run only in the browser) and make the render error answer 500, or the 404 route answer 404, instead of returning the error as the page.",
-    "Angular sites only, no extra request: when the final response is 200, the page's text outside script and style elements is searched for NG0xxx: messages, NullInjectorError or R3InjectorError, a ReferenceError for window, document, localStorage, sessionStorage or navigator, and indented stack frames through node_modules/@angular/",
-  ],
   "app-smart-banner-mismatch": [
     "The page's Smart App Banner (the apple-itunes-app meta tag) names a different app id than the page's App Store link.",
     "Safari shows the banner at the top of the page on iPhone, so visitors install whichever app it names, which here is not the one the page links to.",
@@ -1608,6 +1624,18 @@ export const CHECK_TEXT: Readonly<
     "Each jump slows the first visit and can weaken how search engines credit the page.",
     "Point every redirect straight at the final address.",
     "more than one 3xx hop on the entered URL",
+  ],
+  "sanity-image-original": [
+    "An image from cdn.sanity.io is requested with no width or height, so the visitor gets the file as it was uploaded: often 3000 to 6000 pixels wide.",
+    "A phone photo from the shop owner is several megabytes. Shown a few hundred pixels across, it still downloads whole, and the page is slow on a phone for no visible gain.",
+    "Ask for the size you show: add w (and h with fit=crop if the shape is fixed) and auto=format to the address, or build it with @sanity/image-url: urlFor(image).width(800).auto('format').url().",
+    "an img src, srcset or picture source on cdn.sanity.io/images with none of w, h, max-w, max-h, min-w or min-h, whose upload is wider than 1200 px (the size is in the file name, so nothing is downloaded); other hosts, and addresses on a custom domain for Sanity's CDN, are not read; one finding per page; the page's own HTML only",
+  ],
+  "sanity-image-oversized": [
+    "An image from cdn.sanity.io is asked for at a width much greater than the width attribute on the page, and the page offers no smaller version.",
+    "The visitor downloads several times the pixels they can see. On a phone that is seconds of waiting and mobile data spent on detail the screen throws away.",
+    "Ask Sanity for about twice the width the image is shown at (for a 400 px slot, w=800), or give the image a srcset with smaller widths and a sizes attribute so each screen picks one.",
+    "an img with a width attribute whose smallest Sanity address (src, srcset or picture source) delivers more than 2 times that width and at least 200 px more; delivered is w times dpr, never above the upload, and the upload's own width when no w is given (read from the file name); an img with no width attribute is not judged; no rendering, so a width set only in CSS is not seen",
   ],
   "schema-breadcrumb-mismatch": [
     "The last item of a page's breadcrumb structured data points at an address other than the page's own canonical.",
@@ -1987,12 +2015,6 @@ export const CHECK_TEXT: Readonly<
     "If the block is on purpose, there is nothing to do. If it comes from a Disallow: / meant for a staging site, remove it, or add groups for the assistants you want to allow.",
     "known AI user-agent tokens (packages/core/src/data/ai-agents.json) are disallowed / by robots.txt",
   ],
-  "angular-analog-endpoints-listed": [
-    "A page of this Analog site names a server function (/_analog/fn/<id>) or a page endpoint (/api/_analog/pages/<path>). Both are addresses anyone can request, not only your page.",
-    "A server function runs for any visitor who calls it, signed in or not, and a page endpoint answers any GET with the page's server data. Treating them as part of the page, instead of as public endpoints, is how booking and patient-list handlers end up open.",
-    "Check each server function and page loader: validate the input, check the session inside it, and return only fields the page shows.",
-    "Analog sites only, no extra request (Gaugeline never calls a server function, which can be a POST): the names come from /_analog/fn/<id> and /api/_analog/pages/<path> in the page's HTML. They also show the site runs on the server, not as a static build",
-  ],
   "app-name-mismatch": [
     "The name the App Store or Google Play shows for a linked app differs from the name you expect.",
     "A renamed or replaced app can mean the link points at an old listing, or at someone else's app.",
@@ -2059,6 +2081,12 @@ export const CHECK_TEXT: Readonly<
     "Check that each form is meant to be there, and move the page to one service if you can.",
     "Sightings of more than one of Pardot, Web-to-Lead, HubSpot, Formstack, Marketo and Typeform on one page (form action, iframe src, embed script); the tracking code alone is not a sighting",
   ],
+  "gatsby-data-unshown": [
+    "This Gatsby page's page-data file, or a static query it lists, has text fields whose text is nowhere on the page a visitor reads.",
+    "Everything a page query returns is written to a public JSON file. A field the page does not show is either unused (so it can go) or used by a script (so it is worth a look): either way it is public.",
+    "Select only the fields the page needs in its query, or move the rest to a source that checks who is asking.",
+    "Gatsby sites only. The page's own /page-data/<path>/page-data.json and the /page-data/sq/d/<hash>.json files it lists (the files the framework's client fetches on every visit; one GET each, at most eleven, walked to depth 8, capped). Text fields of 4 or more characters whose first 40 characters are not in the page's visible text (tags taken out of html fields); addresses, ids, dates and image plumbing are left out; names only, never values. Fields named like something private are left to gatsby-private-fields. A file or page text that cannot be read in full is could not check. Fields used by scripts or other pages are shown too, so read the list as a prompt (uncited)",
+  ],
   "hidden-past-launch": [
     "Today is after the launch date set for a hidden section, and gaugeline.hidden.json still lists it as hidden.",
     "Either the launch slipped and nobody updated the plan, or it launched and the hidden checks are now guarding the wrong thing.",
@@ -2124,6 +2152,12 @@ export const CHECK_TEXT: Readonly<
     "Sometimes that is the plan. When it isn't (a sync from the shop, an edit to the wrong product), customers and search results see the wrong price.",
     "If the change wasn't meant, correct the price at its source (the shop or CMS) and rebuild; if it was, nothing to do.",
     "With --since last only: the JSON-LD Offer price (integer minor units; anything but 48 or 48.00 is unread) for a product key (sku or name plus currency) present in both runs",
+  ],
+  "sanity-image-duplicate": [
+    "The same uploaded image is requested with different parameters by different images on the page, such as one width in the header and another in a card.",
+    "Each variant is a separate file for Sanity's CDN to make and for the visitor to download, and none of them is in the browser's cache for the others.",
+    "Use one address for the image and let CSS size it, or give it one srcset the browser chooses from. If a card needs a different crop, that is a different picture: upload it as its own image.",
+    "the same asset id (the hash in the file name; the same bytes are the same asset) in two or more img elements with different parameter sets; an img's own srcset and picture sources are one image and are not compared with each other; parameter order is ignored; the page's own HTML only",
   ],
   "schema-breadcrumb-start": [
     "The first item of a page's breadcrumb structured data is not the Home name and address your schema guide sets.",
