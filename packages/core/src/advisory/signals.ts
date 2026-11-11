@@ -143,6 +143,24 @@ const CORE_FILE =
 const MAX_ASSETS = 40;
 
 /**
+ * A file a plugin or theme bundles from another project: a vendor, lib or fonts folder, or a well-known library's file
+ * name. Its ?ver= is that library's own number (Font Awesome 5.15.4), not the plugin's, so it is never read as the
+ * plugin's version. A library under a name not listed here is not recognised: a plugin with only such a file shows
+ * a number that is not its own, which is why the WordPress check compares nothing it cannot tie to the plugin's
+ * own release (see wp-outdated).
+ */
+const BUNDLED_DIR =
+  /\/(?:vendors?|libs?|library|libraries|third[-_]?party|node_modules|fonts?|webfonts)\//i;
+const BUNDLED_FILE =
+  /(?:^|\/)(?:font-?awesome|bootstrap|jquery|swiper|slick|select2|owl\.carousel|animate|aos|magnific-popup|fancybox|lightbox|flexslider|photoswipe|leaflet|chart|moment|popper|normalize)[^/]*$/i;
+
+const isBundled = (path: string): boolean => {
+  const inside =
+    path.replace(/^\/wp-content\/(?:plugins|themes)\/[^/]+/i, "").split(/[?#]/)[0] ?? "";
+  return BUNDLED_DIR.test(inside) || BUNDLED_FILE.test(inside);
+};
+
+/**
  * Whether a page is WordPress, which version, and which plugins and themes it serves files from, from the
  * page's own HTML and headers. A plugin's version is the ?ver= on its files, which most plugins set to their
  * own version; when it is WordPress's own number (what WordPress writes when a plugin gives none) it is not
@@ -177,7 +195,7 @@ export function wordpressOf(html: string, h: Headers): WordPressRead | undefined
   const everyAsset = /\/wp-content\/(?:plugins|themes)\/([a-z0-9][a-z0-9._-]{0,79})\/[^"'\s>]*/gi;
   for (let m = everyAsset.exec(html); m; m = everyAsset.exec(html)) {
     const v = verOf(m[0]).value;
-    if (!v) continue;
+    if (!v || isBundled(m[0])) continue;
     const on = seenOn.get(v) ?? new Set<string>();
     on.add((m[1] ?? "").toLowerCase());
     seenOn.set(v, on);
@@ -194,7 +212,7 @@ export function wordpressOf(html: string, h: Headers): WordPressRead | undefined
     const versions = into.get(slug) ?? new Set<string>();
     into.set(slug, versions);
     const v = verOf(m[0]).value;
-    if (v && v !== version?.value && !shared(v)) versions.add(v);
+    if (v && !isBundled(m[0]) && v !== version?.value && !shared(v)) versions.add(v);
   }
   const rows = (m: Map<string, Set<string>>): WordPressAsset[] =>
     [...m].map(([slug, v]) => ({ slug, versions: [...v] }));

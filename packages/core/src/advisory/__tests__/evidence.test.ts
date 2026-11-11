@@ -145,6 +145,29 @@ describe("evidence from one host: PHP and WordPress", () => {
     expect(evidence.hosts[0]?.wordpress?.plugins).toEqual([{ slug: "a-b", versions: [] }]);
   });
 
+  it("a ?ver= on a file the plugin bundles from another project is that project's number, not the plugin's", async () => {
+    const site: SiteDef = {
+      routes: {
+        "/": html({
+          scripts: [
+            "/wp-content/plugins/x-form/vendor/fontawesome/all.css?ver=5.15.4",
+            "/wp-content/plugins/x-form/assets/swiper.min.js?ver=8.4.5",
+            "/wp-content/plugins/y-form/css/style.css?ver=1.2.0",
+            "/wp-content/plugins/y-form/fonts/icons.css?ver=3.3.3",
+          ],
+        }),
+      },
+    };
+    const { evidence } = await gather(
+      { [BAR]: site },
+      { needs: { next: false, libraries: false } },
+    );
+    expect(evidence.hosts[0]?.wordpress?.plugins).toEqual([
+      { slug: "x-form", versions: [] },
+      { slug: "y-form", versions: ["1.2.0"] },
+    ]);
+  });
+
   it("a plugin whose files carry two different versions keeps both", async () => {
     const site: SiteDef = {
       routes: {
@@ -165,7 +188,7 @@ describe("evidence from one host: PHP and WordPress", () => {
     ]);
   });
 
-  it("uses C-01's WordPress read when it is given, and says where it came from", async () => {
+  it("uses the WordPress adapter's read when it is given, and says where it came from", async () => {
     const site: SiteDef = { routes: { "/": html() } };
     const { evidence } = await gather(
       { [BAR]: site },
@@ -175,7 +198,7 @@ describe("evidence from one host: PHP and WordPress", () => {
       },
     );
     const w = evidence.hosts[0]?.wordpress;
-    expect(w?.version).toEqual({ value: "6.2.0", how: "the WordPress read (C-01)" });
+    expect(w?.version).toEqual({ value: "6.2.0", how: "the WordPress adapter's read" });
     expect(w?.plugins).toEqual([{ slug: "easy-booking", versions: ["2.0.9"] }]);
   });
 });

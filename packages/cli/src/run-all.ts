@@ -81,6 +81,7 @@ async function runSite(
     cost: boolean;
     trackers: boolean;
     libraries: boolean;
+    wordpress: boolean;
     runOne: RunOne;
   },
 ): Promise<SiteOutcome> {
@@ -101,6 +102,7 @@ async function runSite(
         ...(opts.cost ? ["--cost"] : []),
         ...(opts.trackers ? ["--trackers"] : []),
         ...(opts.libraries ? ["--libraries"] : []),
+        ...(opts.wordpress ? ["--wordpress"] : []),
       ],
       {
         stdout: { write: (s: string) => out.push(s) },
@@ -148,6 +150,8 @@ export async function runAll(
     trackers?: boolean;
     /** Each site's run also checks the JavaScript libraries it serves (--libraries). */
     libraries?: boolean;
+    /** Each site's run also runs the WordPress checks (--wordpress). */
+    wordpress?: boolean;
     runOne: RunOne;
   },
 ): Promise<SiteOutcome[]> {
@@ -172,6 +176,7 @@ export async function runAll(
               cost: opts.cost ?? false,
               trackers: opts.trackers ?? false,
               libraries: opts.libraries ?? false,
+              wordpress: opts.wordpress ?? false,
               runOne: opts.runOne,
             }),
           );
