@@ -346,6 +346,23 @@ What it prints: the library, its version, the script's address with no query str
 a short description and the version that fixes it. Never script text beyond the version string, and never a
 verdict on whether the site is vulnerable. Nothing is submitted and no one is logged in.
 
+### WordPress (--wordpress)
+
+`--wordpress` on the page check compares a WordPress site's versions with the current releases and asks whether the
+site lists its users ([WordPress](integrations/wordpress.md)). It runs only on a page that shows WordPress, and
+every request is `GET`, through the fetcher, with no key and nothing sent.
+
+- **wordpress.org.** One `GET https://api.wordpress.org/core/version-check/1.7/`, and one `GET` of
+  `plugins/info/1.2/` or `themes/info/1.2/` for each plugin or theme slug the page's own file addresses show, at
+  most 15 of each in a run. The slug is the only thing about the site that leaves: a plugin or theme name, which
+  is public in the page's HTML.
+- **The site's REST API.** One `GET` of `/wp-json/wp/v2/users?per_page=100&_fields=id` on the page's own site (the
+  `/?rest_route=` form if `/wp-json/` is not found), asking for the id alone. No name, slug or address is
+  requested, and only how many users were listed is kept.
+
+What it prints: the versions the page shows, the current releases, and the count. Never a user's name, and never
+page text. Nothing is submitted, no one is logged in and no key is sent.
+
 ### Audit pack (gaugeline audit --pack)
 
 `gaugeline audit <address> --pack` runs the default page check on a prospect's site and writes a proposal

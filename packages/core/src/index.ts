@@ -1445,6 +1445,12 @@ export { sensitiveReason, collectsDetails } from "./trackers/sensitive.js";
 export { LIBRARY_CHECKS } from "./checks/libraries.js";
 export { addLibraryChecks } from "./libraries/registry.js";
 export { createLibraries, LIBRARY_SCRIPT_CAP } from "./libraries/reader.js";
+
+// C-01: the WordPress checks (wp-outdated, wp-users-exposed), off unless --wordpress
+export { WORDPRESS_CHECKS, WORDPRESS_LOOKUP_CAP, restRootOf } from "./checks/wordpress.js";
+export { addWordPressChecks } from "./wordpress/registry.js";
+export { createWordPress, WORDPRESS_API } from "./wordpress/reader.js";
+export type { Latest, UsersRead, WordPress } from "./wordpress/reader.js";
 export type { Libraries, ScriptReading } from "./libraries/reader.js";
 export { detect, looksMinified, MAX_SCRIPT_CHARS } from "./libraries/detect.js";
 export type { Detection, EvidenceKind } from "./libraries/detect.js";

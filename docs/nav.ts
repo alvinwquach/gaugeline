@@ -119,6 +119,10 @@ export const UNLISTED: NavPage[] = [
   },
   { slug: "guides/hidden-text", title: "Hidden text aimed at AI assistants" },
   {
+    slug: "integrations/wordpress",
+    title: "WordPress: what the client published, against the page",
+  },
+  {
     slug: "guides/script-baseline",
     title: "Script and header baseline: what loads on a payment page, and what changed",
   },

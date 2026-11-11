@@ -87,7 +87,8 @@
       "trackers",
       "verbose",
       "version",
-      "webhook"
+      "webhook",
+      "wordpress"
     ],
     "cost": [
       "allow-private",
@@ -294,7 +295,8 @@
       "tag",
       "trackers",
       "verbose",
-      "version"
+      "version",
+      "wordpress"
     ],
     "snapshot": [
       "allow-private",

@@ -28,6 +28,7 @@ import type { Handoff } from "./handoff/reader.js";
 import type { Cost } from "./cost/reader.js";
 import type { Trackers } from "./trackers/reader.js";
 import type { Libraries } from "./libraries/reader.js";
+import type { WordPress } from "./wordpress/reader.js";
 import type { HiddenConfig } from "./hidden.js";
 import { lazyEvents, type EventObserver } from "./events/observe.js";
 import type { EventsConfig } from "./events/types.js";
@@ -119,6 +120,8 @@ export interface SiteCheckOptions {
   trackers?: Trackers;
   /** What the library check reads (`--libraries`). Without it the check is not in the run. */
   libraries?: Libraries;
+  /** What the WordPress checks read (`--wordpress`). Without it they are not in the run. */
+  wordpress?: WordPress;
   /** Sections hidden until launch. */
   hidden?: HiddenConfig;
   /** Where the menus are and which footer links are required (gaugeline.nav.json). */
@@ -308,6 +311,7 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
       ...(opts.cost ? { cost: opts.cost } : {}),
       ...(opts.trackers ? { trackers: opts.trackers } : {}),
       ...(opts.libraries ? { libraries: opts.libraries } : {}),
+      ...(opts.wordpress ? { wordpress: opts.wordpress } : {}),
       ...(opts.hidden ? { hidden: opts.hidden } : {}),
       ...(opts.nav ? { navRules: opts.nav } : {}),
       ...(container && tagRules ? { tagContainer: container, tagRules } : {}),

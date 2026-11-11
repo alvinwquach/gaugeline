@@ -255,5 +255,7 @@
   "viewport",
   "webhook-disabled",
   "webhook-failing",
+  "wp-outdated",
+  "wp-users-exposed",
   "zero-width-in-text"
 ]

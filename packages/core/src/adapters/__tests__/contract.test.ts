@@ -150,7 +150,17 @@ describe.each(ENTRIES)("the adapter contract: $id", (entry) => {
       expect(seen.length).toBeGreaterThan(0);
       for (const s of seen) {
         expect(s.url).not.toContain(entry.key ?? "");
-        expect(s.headers.authorization ?? "").toBe(`Bearer ${entry.key}`);
+        expect(s.headers.authorization ?? "").toBe(entry.keyHeader ? "" : `Bearer ${entry.key}`);
+      }
+      if (!entry.keyHeader) return;
+      // The key is sent, in this header and only here, for what needs it.
+      const before = seen.length;
+      await adapter.draftsReachable();
+      const keyed = seen.slice(before);
+      expect(keyed.length).toBeGreaterThan(0);
+      for (const s of keyed) {
+        expect(s.url).not.toContain(entry.key ?? "");
+        expect(s.headers.authorization).toBe(entry.keyHeader.value);
       }
     },
   );
