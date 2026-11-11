@@ -41,6 +41,7 @@
     "docs:examples": "tsx scripts/docs-examples.ts",
     "dogfood": "tsx scripts/dogfood.ts",
     "surface": "tsx scripts/check-surface.ts",
+    "gen:all": "tsx scripts/gen-all.ts",
     "adr:check": "tsx scripts/check-adr.ts",
     "community:check": "tsx scripts/check-community.ts",
     "pr:check": "tsx scripts/reporting/check-pr-body.ts"
