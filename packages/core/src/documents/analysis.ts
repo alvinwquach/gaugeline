@@ -58,7 +58,11 @@ export interface Analysis {
   notes: { url: string; reason: string }[];
 }
 
-const cache = new WeakMap<CheckContext, Promise<Analysis>>();
+/**
+ * One analysis per run. The runner hands each check its own copy of the context, so the copy is not
+ * the key: the run's page reader and fetcher are the same object in every copy.
+ */
+const cache = new WeakMap<object, Promise<Analysis>>();
 
 function factsReference(ctx: CheckContext): ReferenceItem[] {
   const out: ReferenceItem[] = [];
@@ -192,10 +196,11 @@ async function analyse(page: PageSnapshot, ctx: CheckContext): Promise<Analysis>
 
 /** The documents of this run, read once for the four checks (the context is one run's). */
 export function analyseDocuments(page: PageSnapshot, ctx: CheckContext): Promise<Analysis> {
-  let pending = cache.get(ctx);
+  const key: object = ctx.pages ?? ctx.fetcher ?? ctx;
+  let pending = cache.get(key);
   if (!pending) {
     pending = analyse(page, ctx);
-    cache.set(ctx, pending);
+    cache.set(key, pending);
   }
   return pending;
 }

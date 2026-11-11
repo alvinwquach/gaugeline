@@ -48,6 +48,7 @@ const FIXTURES = [
   "paid-downloads",
   "gated-downloads",
   "checkout-after",
+  "printed-menu",
 ];
 
 /**
@@ -110,6 +111,11 @@ const NEEDS_LIVE_STORES = new Set([
   "model-listing-count",
   "model-dependents",
   "model-orphan-fields",
+  // PDF documents: the item list and the unreadable PDF need a menu that lists items the page lacks
+  // and a scan; confirmed in-process with invented PDFs (core checks/__tests__/documents.test.ts).
+  // The price and hours checks fire end to end on printed-menu.
+  "document-item-missing",
+  "document-unreadable",
   // Public DNS: the built-bin run resolves nothing; confirmed in-process with a fake reader.
   "email-dmarc-missing",
   "email-dmarc-none",
