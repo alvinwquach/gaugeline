@@ -19,6 +19,7 @@ const FIXTURES = [
   "ai-blanket",
   "ai-explicit",
   "llms-stale",
+  "ai-agents",
   "links",
   "images",
   "assorted",
@@ -179,6 +180,7 @@ async function findingsOf(name: string): Promise<string[]> {
       "gaugeline.tags.json",
       "gaugeline.events.json",
       "gaugeline.nav.json",
+      "gaugeline.ai.json",
       // The owner's agreement to the probing checks: this fixture's download route is asked.
       "gaugeline.consent.json",
     ].some((f) => existsSync(`${dir}/${f}`))
