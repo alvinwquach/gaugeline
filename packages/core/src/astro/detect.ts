@@ -117,12 +117,16 @@ function walk(node: unknown, path: string, out: IslandField[], depth: number): v
       );
     return;
   }
-  const kind =
+  const kind: IslandField["kind"] =
     value === null
       ? "null"
-      : typeof value === "string" || typeof value === "number" || typeof value === "boolean"
-        ? typeof value
-        : "other";
+      : typeof value === "string"
+        ? "string"
+        : typeof value === "number"
+          ? "number"
+          : typeof value === "boolean"
+            ? "boolean"
+            : "other";
   out.push({ name: path, kind, isTrue: value === true });
 }
 
