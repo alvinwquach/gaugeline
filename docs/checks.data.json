@@ -810,10 +810,10 @@
     "severity": "high",
     "area": "Security & email",
     "title": "A private key is in your site's JavaScript",
-    "what": "A secret key (a Stripe secret or restricted key, a Sanity token, or a long random value named like a secret) is in JavaScript the site sends to every visitor.",
+    "what": "A secret key (a Stripe secret or restricted key, a Sanity token, a Contentful preview token, or a long random value named like a secret) is in JavaScript the site sends to every visitor.",
     "why": "Anyone can read it in their browser and use it as you: take payments, read customer data or change your content.",
     "fix": "Revoke the key in the provider's dashboard now, make a new one, and keep it on the server: never in code the browser loads.",
-    "tech": "Inline scripts and up to 15 same-site script files (GET, first 5 MB each) matched against the detectors in checks/leaks/detectors.ts; publishable keys (pk_) are ignored; every value is redacted to its first 6 and last 2 characters before a finding exists",
+    "tech": "Inline scripts and up to 15 same-site script files (GET, first 5 MB each) matched against the detectors in checks/leaks/detectors.ts; publishable keys (pk_) are ignored; a Contentful preview token is a 43-character value named like a token or key next to the preview.contentful.com host, and a finding for it names the kind and the place only, with no character of the token; a 43-character Contentful delivery token (a value in a place that names Contentful or createClient, and not the Preview API) is public by design and is never reported; the other values are redacted to their first 6 and last 2 characters before a finding exists; names are capped at 40 characters each side of the word token or key, so a hostile file is scanned in linear time",
     "size": "M",
     "done": "The old key is revoked, a new one lives on the server only, and the site's JavaScript holds no key.",
     "estimateChanges": "Code that used the key in the browser has to move to a server route. A key exposed for long also means reading the provider's logs."
@@ -1157,6 +1157,32 @@
     "estimateChanges": "Minutes in the provider's members page if you are an owner. Longer when the account belongs to a former agency or a teammate who has to be reached to promote anyone."
   },
   {
+    "id": "published-not-live",
+    "severity": "high",
+    "area": "Visitors",
+    "title": "Content was published in the CMS and the live page still shows something else",
+    "what": "An item was changed in the content system more than the grace period ago, and its live page does not show the configured field (the title unless you chose others).",
+    "why": "The client published and believes the site changed. Visitors still see the old menu, the old price or the old opening hours, and nobody finds out until the client complains.",
+    "fix": "Look at the cache headers in the finding: an age close to the time since the change means the page is cached and not revalidated. Check the revalidation webhook (did the CMS call it, did the site answer 2xx), the path or tag it revalidates, and the page's cache lifetime. Then republish the item or purge the page.",
+    "tech": "Only with --published. For items the content system's published() lists as changed in the last N days (live.days, default 7) with an address on the site (the adapter's own, or the type's urls template), one GET of the page through the fetcher, on the site's own host only, at most live.maxPages pages (default 40, newest change first). The fingerprint of each configured field (live.fields, then the adapter's fingerprint settings, then title) is compared with the page's title, its parts around a site name, og:title and headings, ignoring case, entities, spacing and typographic quotes. It is a finding when a field differs and the item changed more than live.graceMinutes ago (default 15). Evidence is the item's update time, the page's Age, Last-Modified, Cache-Control and cache status headers, and the names of the fields that differ, never their text. Webhook delivery history is not read. The same input and clock give the same findings",
+    "size": "M",
+    "done": "Every item the client changed lately shows on its page within the grace period, and the cause of any delay (a failed revalidation, a cache set too long) is fixed.",
+    "estimateChanges": "An hour to find why the page was not rebuilt: a revalidation webhook that fails, a path that is not revalidated, a cache time that is too long. More when the hosting plan has to change."
+  },
+  {
+    "id": "live-page-missing",
+    "severity": "high",
+    "area": "Visitors",
+    "title": "A published item has no page on the live site",
+    "what": "An item that changed lately is published in the content system, and the address it should live at answers 404 (or 410).",
+    "why": "The client published a page and gave out the link. Visitors, and anyone the client sent it to, get a not-found page.",
+    "fix": "Check the address pattern (urls in gaugeline.adapters.json, or the platform's own) against the site's routes. If the pattern is right, the site did not build the page: trigger the build or revalidation, and look at the webhook that should have done it.",
+    "tech": "Only with --published. The same read as published-not-live: one GET of the address of each item changed in the last N days; a 404 or 410 on an item that changed more than live.graceMinutes ago is a finding. An address on another site is never asked for. A page that answers anything else than 2xx, 404 or 410 is could-not-check, never a finding",
+    "size": "M",
+    "done": "Every published item that is meant to have a page has one, and a run of Gaugeline finds no published item whose address answers 404.",
+    "estimateChanges": "Minutes when the address pattern in the settings is wrong. An hour or more when the site does not build pages for new items, or the route is missing."
+  },
+  {
     "id": "printful-unsynced",
     "severity": "high",
     "area": "Sales & prices",
@@ -1454,6 +1480,45 @@
     "size": "M",
     "done": "Every published item of the collections you named has a page that answers on the live site.",
     "estimateChanges": "A page that is gone for every item of a collection is one template or one address pattern. A single item is a slug that was changed or a page the client switched off. A collection with no pages of its own always shows as could not check, which is expected."
+  },
+  {
+    "id": "contentful-entry-no-page",
+    "severity": "high",
+    "area": "Launch day",
+    "title": "A published Contentful entry has no page on the live site",
+    "what": "Contentful says an entry is published, and the address its page should have answers 404 or 410 on the live site.",
+    "why": "Links, the sitemap and search results point at a page that is not there, and an announcement the client sent leads to an error page. On a statically built site this is often a build that has not run since the entry was published.",
+    "fix": "Check the site was rebuilt after the entry was published (a webhook from Contentful to your host can fail quietly) and that the address pattern in gaugeline.adapters.json matches the route. If the entry should not be public, unpublish it in Contentful.",
+    "tech": "GET /spaces/{space}/environments/{env}/content_types and /entries?content_type=... on cdn.contentful.com (Content Delivery API, delivery token in an Authorization header) for each content type, then one GET of the live address from the `urls` pattern (redirects followed). A final 404 or 410 is the finding; any other answer that is not a 2xx is could-not-check for that page. A content type with published entries and no pattern, and an entry whose slug the pattern cannot use, are could-not-check by name and are not asked.",
+    "size": "M",
+    "done": "Every published entry of the content types you named has a page that answers on the live site.",
+    "estimateChanges": "A page that is gone for every entry of a content type is one route or one address pattern. A single entry is a slug that was changed or a page the site no longer builds. A content type with no pages of its own always shows as could not check, which is expected."
+  },
+  {
+    "id": "strapi-entry-no-page",
+    "severity": "high",
+    "area": "Launch day",
+    "title": "A published Strapi entry has no page on the live site",
+    "what": "Strapi says an entry is published, and the address its page should have answers 404 or 410 on the live site.",
+    "why": "Links, the sitemap and search results point at a page that is not there, and the client's announcement leads to an error page.",
+    "fix": "Check the front end builds a page for the collection (a static site may need a rebuild or a revalidation after publishing) and that its address matches the pattern in gaugeline.adapters.json. If the entry should not be public, unpublish it in Strapi.",
+    "tech": "GET /api/{collection} for each collection named in the settings (published entries are the default list; a row marked as a draft is dropped), then one GET of the live address from the `urls` pattern (redirects followed). A final 404 or 410 is the finding; any other answer that is not a 2xx is could-not-check for that page. A collection with published entries and no pattern, and an entry whose slug the pattern cannot use, are could-not-check by name and are not asked. Ids, slugs and statuses only: no field is used for this.",
+    "size": "M",
+    "done": "Every published entry of the collections you named has a page that answers on the live site.",
+    "estimateChanges": "A page that is gone for every entry of a collection is one route or one address pattern in the front end. A single entry is a slug that was changed or a page the front end does not build. A collection with no pages of its own always shows as could not check, which is expected."
+  },
+  {
+    "id": "strapi-drafts-public",
+    "severity": "high",
+    "area": "Security & email",
+    "title": "Strapi lists unpublished entries to visitors with no token",
+    "what": "A visitor who sends no token and asks a collection for its drafts (status=draft, or publicationState=preview on Strapi 4) is given entries that have no published version.",
+    "why": "Unfinished work is public: prices before they are announced, an event before it is confirmed, a draft nobody has approved. Anyone who guesses the route can read it, and search engines or scrapers may already have.",
+    "fix": "In Strapi's settings, open Users & Permissions, then the Public role, and remove find and findOne from the collection, or give the front end a read-only API token and keep the Public role closed. If the front end previews drafts, send the token from the server, never from the browser.",
+    "tech": "probing check, off without --owner-consent: this check asks Strapi's public routes for entries that are not published, so it runs only with --owner-consent (or gaugeline.consent.json), on sites you own or have permission to test; per collection named in the settings, with no Authorization header and no cookie: GET /api/{collection} for the published total, GET /api/{collection}?status=draft and GET /api/{collection}?publicationState=preview for the draft total (the second is asked even when the first answers with no extra entries, because a Strapi that ignores a parameter it does not know answers with the published list), all with pagination[pageSize]=1 and fields[0]=updatedAt; when a draft total is larger, the ids of both lists are read (at most 500 each, each list stepped by the page size the answer reports, fields[0]=updatedAt only) and the entries only the draft list has are counted and named by id (Strapi 5 documentId, Strapi 4 id); a collection that answers 401 or 403 to the published list is not shown to visitors, and a 404 is could-not-check (most likely a mistyped name); a collection that refuses the draft list shows no drafts to visitors; one whose draft lists show no extra entries gives no sign of public drafts, which is not proof, since a Strapi that ignores both spellings looks the same as one with nothing unpublished; a finding is a count and ids, never a field; ids are held in a Set to subtract the published list from the draft list; the requests carry no header the fetcher adds per address",
+    "size": "S",
+    "done": "A visitor with no token cannot list a single entry that was never published, in any collection you named.",
+    "estimateChanges": "Usually one change in Strapi's Users & Permissions plugin: take the draft access away from the Public role, or stop sending drafts from the front end. Allow longer if the front end previews drafts through the public route and needs a preview token instead."
   },
   {
     "id": "app-smart-banner-mismatch",
@@ -2598,6 +2663,19 @@
     "size": "M",
     "done": "Yesterday's usage is back within the multiple of its recent average, or the jump is explained (a campaign, a launch) and the plan covers it.",
     "estimateChanges": "An hour to find the cause in the provider's usage page (a page that stopped caching, an image loop, a crawler). Longer if the fix is a plan change the client has to approve."
+  },
+  {
+    "id": "unpublished-still-live",
+    "severity": "medium",
+    "area": "Visitors",
+    "title": "An unpublished or deleted item still has a live page",
+    "what": "The site's sitemap lists a page that fits the address pattern of a content type, no published item has that address, and the page still answers 200.",
+    "why": "The client took the item down, perhaps because it was wrong, out of date or private, and visitors and search engines can still read it.",
+    "fix": "Purge or revalidate the page so it answers 404 or redirects, and check that the sitemap is rebuilt when an item is unpublished. If the page is meant to stay, publish the item again.",
+    "tech": "Only with --published, and only when the run has a list of the whole site (the sitemap and feed adapter, which is the default) and an adapter with urls templates in gaugeline.adapters.json. Every address in the site's own sitemap that fits a template and that no published item resolves to is asked for with one GET, within the page budget; a 2xx answer is a finding. A list of everything published that is cut short (a rate limit, or more than 2000 items) means this is not looked for, and the reason is could-not-check",
+    "size": "M",
+    "done": "A page for an item that was unpublished or deleted is gone from the site or redirects, and the site's sitemap no longer lists it.",
+    "estimateChanges": "Minutes to purge a page and fix its revalidation. An hour when the site never removes pages for deleted items."
   },
   {
     "id": "library-with-advisory",

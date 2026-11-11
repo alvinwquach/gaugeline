@@ -72,10 +72,27 @@ describe.each(ENTRIES)("the adapter contract: $id", (entry) => {
       expect(await world(entry).adapter.fieldCounts(type, [missing])).toEqual({ [missing]: 0 });
     });
 
-    it("a type with no items counts 0 for every field", async () => {
-      const got = await world(entry).adapter.fieldCounts("nothing-of-this-type", ["a", "b"]);
-      expect(got).toEqual({ a: 0, b: 0 });
-    });
+    it.runIf(entry.unknownType === undefined)(
+      "a type with no items counts 0 for every field",
+      async () => {
+        const got = await world(entry).adapter.fieldCounts("nothing-of-this-type", ["a", "b"]);
+        expect(got).toEqual({ a: 0, b: 0 });
+      },
+    );
+
+    it.runIf(entry.unknownType === "could-not-check")(
+      "a type the platform does not have is could-not-check and names the type, never zeros",
+      async () => {
+        const err: unknown = await world(entry)
+          .adapter.fieldCounts("nothing-of-this-type", ["a", "b"])
+          .then(
+            () => undefined,
+            (e: unknown) => e,
+          );
+        expect(err).toBeInstanceOf(AdapterCouldNotCheck);
+        expect((err as AdapterCouldNotCheck).reason).toContain("nothing-of-this-type");
+      },
+    );
   });
 
   it.runIf(entry.expected.fields === undefined)(

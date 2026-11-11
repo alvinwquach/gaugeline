@@ -75,11 +75,17 @@ describe("gaugeline.adapters.json in gaugeline query: e2e", () => {
   });
 
   it("an adapter that is planned is exit 2 and names the branch that builds it", async () => {
-    writeFileSync(join(dir, "gaugeline.adapters.json"), '{ "adapters": [{ "id": "wix" }] }');
+    writeFileSync(
+      join(dir, "gaugeline.adapters.json"),
+      '{ "adapters": [{ "id": "generic-api" }] }',
+    );
     const r = await query();
     expect(r.code).toBe(EXIT.couldNotRun);
-    expect(r.err).toContain('the "wix" adapter is planned (C-05)');
-    expect(r.err).toContain("Built adapters: sanity, sitemap-feed, wordpress");
+    expect(r.err).toContain('the "generic-api" adapter is planned (C-14)');
+    // The list grows with every adapter: check its shape (alphabetical, the ones this test needs), not the whole list.
+    const built = /Built adapters: ([a-z0-9, -]+)\./.exec(r.err)?.[1]?.split(", ") ?? [];
+    expect(built).toEqual([...built].sort());
+    expect(built).toEqual(expect.arrayContaining(["sanity", "sitemap-feed", "wordpress"]));
     expect(r.out).toBe("");
   });
 

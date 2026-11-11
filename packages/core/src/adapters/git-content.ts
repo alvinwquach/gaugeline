@@ -10,6 +10,7 @@ import type { Env } from "../connectors/types.js";
 import type { Fetcher } from "../fetcher.js";
 import { GITHUB_TOKEN_VAR } from "../renewals/tokens.js";
 import { hashValue } from "./fingerprint.js";
+import { GIT_CONTENT_DESCRIPTION } from "./git-content.entry.js";
 import {
   addressFromFrontMatter,
   expandPermalink,
@@ -17,8 +18,15 @@ import {
   nuxtPath,
   SLUG,
   type PermalinkValues,
-} from "./git-content-permalink.js";
-import { hasValue, isoOf, kindOf, parseContent, stateOf, valueAt } from "./git-content-parse.js";
+} from "./shared/permalink.js";
+import {
+  hasValue,
+  isoOf,
+  kindOf,
+  parseContent,
+  stateOf,
+  valueAt,
+} from "./git-content-parse-read.js";
 import {
   FileNotRead,
   GIT_CONTENT_LIMITS,
@@ -27,11 +35,10 @@ import {
   type ContentSource,
   type SourceFile,
   type Unread,
-} from "./git-content-source.js";
+} from "./git-content-source-read.js";
 import {
   AdapterCouldNotCheck,
   AdapterRateLimitedError,
-  type AdapterDescription,
   type AdapterSettings,
   type ContentAdapter,
   type PublishedDoc,
@@ -39,19 +46,7 @@ import {
   type TypeCount,
 } from "./types.js";
 
-/**
- * Content kept in a repository: Markdown and MDX with front matter, JSON and YAML files. It reads a
- * folder on this computer (no key at all) or a repository on GitHub (an optional token with Contents:
- * read). The line in a run header names the key kind for the GitHub token; a local folder sends nothing.
- */
-export const GIT_CONTENT_DESCRIPTION: AdapterDescription = {
-  name: "Content kept in git",
-  docsUrl: "https://gaugeline.dev/docs/integrations/git-content",
-  keyKind: "read-only",
-};
-
 export { GIT_CONTENT_LIMITS };
-export { GITHUB_TOKEN_VAR as GIT_CONTENT_TOKEN };
 
 /** A file that was there and was not read, with why. `reason` never quotes the file. */
 export type GitContentUnread = Unread;

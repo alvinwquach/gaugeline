@@ -1413,6 +1413,8 @@ export type { AuditPackFile } from "./audit/render.js";
 
 export { MIGRATION_CHECKS, createMigrationRegistry, unreadPages } from "./checks/migration.js";
 export { WEBFLOW_CHECKS, createWebflowRegistry } from "./checks/webflow.js";
+export { CONTENTFUL_CHECKS, createContentfulRegistry } from "./checks/contentful.js";
+export { STRAPI_CHECKS, createStrapiRegistry } from "./checks/strapi.js";
 export {
   ListBuilder,
   MIGRATION_ITEM_CAP,
@@ -1427,6 +1429,17 @@ export { SITE_WIDE_TYPES, factsOf, readMigration } from "./migration/read.js";
 export type { ItemRead, MigrationReading, NewRead, PageFacts } from "./migration/read.js";
 export { normaliseTitle, sameTitle, titleKept } from "./migration/titles.js";
 
+export { PUBLISHED_CHECKS } from "./checks/published-not-live.js";
+export { addPublishedChecks } from "./published/registry.js";
+export { PUBLISHED_DEFAULTS, createPublished } from "./published/reader.js";
+export type {
+  LiveItem,
+  PageOutcome,
+  Published,
+  PublishedReading,
+  StillLive,
+} from "./published/reader.js";
+export { differingFields, pageTexts, variantsOf } from "./published/compare.js";
 export { TRACKER_CHECKS } from "./checks/trackers.js";
 export { trackersConfigSchema, TRACKERS_CONFIG_FILE } from "./trackers/config.js";
 export type { TrackersConfig } from "./trackers/config.js";

@@ -5,7 +5,7 @@ import { getJson, isRecord } from "../connectors/get-json.js";
 import type { Fetcher } from "../fetcher.js";
 import { GITHUB_TOKEN_VAR } from "../renewals/tokens.js";
 import { AdapterCouldNotCheck } from "./types.js";
-import { kindOf } from "./git-content-parse.js";
+import { kindOf } from "./git-content-parse-read.js";
 
 /**
  * Where the files of a content folder are read from: a folder on this computer, or a repository on

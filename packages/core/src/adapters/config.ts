@@ -1,6 +1,7 @@
 import * as z from "zod";
+import { ADAPTER_ENTRIES } from "./entries.generated.js";
 import { isUrlTemplate } from "./fingerprint.js";
-import { isPermalinkPattern } from "./git-content-permalink.js";
+import { isPermalinkPattern } from "./shared/permalink.js";
 
 const ID = /^[a-z][a-z0-9-]{0,30}$/;
 const TYPE = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/;
@@ -10,21 +11,28 @@ const FIELD = /^[A-Za-z_][A-Za-z0-9_-]{0,63}(?:\.[A-Za-z_][A-Za-z0-9_-]{0,63}){0
 /** A path on the site ("/sitemap-pages.xml") or an https address. Nothing else: no scheme tricks, no spaces. */
 const SITE_FILE = /^(?:\/[^\s]*|https:\/\/[^\s]+)$/;
 
-/** The adapter that reads a site's sitemap and feeds, and takes no fields. */
-const SITEMAP_FEED = "sitemap-feed";
+/**
+ * What each adapter adds to these rules comes from its entry file (adapters/<id>.entry.ts `settings`), so a new
+ * adapter edits nothing here. The adapters that read the live site's sitemap and feeds take `site`, `sitemaps`
+ * and `feeds`, and no fields.
+ */
+const PAGE_READERS: readonly string[] = ADAPTER_ENTRIES.filter((e) => e.settings?.pageReader).map(
+  (e) => e.id,
+);
 
-/** The adapters whose fields may have hyphens in their names: Webflow's own, and front matter keys. */
-const HYPHENATED = new Set(["webflow", "git-content"]);
-
-/** The adapter that reads content kept in a repository. */
-const GIT_CONTENT = "git-content";
+/** The adapters that read content kept in a repository: they take `path` or `github`, and `folders`. */
+const CONTENT_FOLDERS: readonly string[] = ADAPTER_ENTRIES.filter(
+  (e) => e.settings?.contentFolders,
+).map((e) => e.id);
 
 /** A folder inside the repository: relative, "/" separators, no ".." or "." part, no spaces or odd characters. */
 const FOLDER =
   /^(?:\.|[A-Za-z0-9_@~+-][A-Za-z0-9_.@~+-]*(?:\/[A-Za-z0-9_@~+-][A-Za-z0-9_.@~+-]*){0,11})$/;
 
-/** The adapters that read the live site's sitemap and feeds: they take `site`, `sitemaps` and `feeds`, and no fields. */
-const PAGE_READERS: readonly string[] = [SITEMAP_FEED, "framer"];
+/** The adapters whose platform names its fields with hyphens (Webflow's own, and front matter keys). */
+const HYPHEN_FIELDS: readonly string[] = ADAPTER_ENTRIES.filter(
+  (e) => e.settings?.hyphenFields,
+).map((e) => e.id);
 
 /**
  * gaugeline.adapters.json, read from the working folder like the other settings files (there is no
@@ -62,14 +70,14 @@ export const adaptersConfigSchema = z.strictObject({
               }),
             )
             .optional(),
-          /** `git-content` only: the repository's folder on this computer, relative to where the run starts. */
+          /** Content kept in a repository only: the repository's folder on this computer, relative to where the run starts. */
           path: z
             .string()
             .min(1)
             .max(300)
             .refine((p) => !p.includes("\0"), "a folder path")
             .optional(),
-          /** `git-content` only: a repository on GitHub, read with GET. */
+          /** Content kept in a repository only: a repository on GitHub, read with GET. */
           github: z
             .strictObject({
               repo: z
@@ -85,7 +93,7 @@ export const adaptersConfigSchema = z.strictObject({
                 .optional(),
             })
             .optional(),
-          /** `git-content` only: the content folders, by type: where the files are and the pattern for an item's address. */
+          /** Content kept in a repository only: the content folders, by type: where the files are and the pattern for an item's address. */
           folders: z
             .record(
               z.string().regex(TYPE, "a content type name"),
@@ -129,9 +137,9 @@ export const adaptersConfigSchema = z.strictObject({
               ctx.addIssue({
                 code: "custom",
                 path: [key],
-                message: `"${key}" belongs to the sitemap-feed and framer adapters, not to ${entry.id}`,
+                message: `"${key}" belongs to the sitemap-feed, framer, wix and hosted-builder adapters, not to ${entry.id}`,
               });
-          if (!HYPHENATED.has(entry.id))
+          if (!HYPHEN_FIELDS.includes(entry.id))
             for (const [type, fields] of Object.entries(entry.fingerprint ?? {}))
               for (const field of fields)
                 if (field.includes("-"))
@@ -140,33 +148,32 @@ export const adaptersConfigSchema = z.strictObject({
                     path: ["fingerprint", type],
                     message: `"${field}" has a hyphen: only the Webflow and git-content adapters have field names like that, and ${entry.id} does not`,
                   });
-          const git = entry.id === GIT_CONTENT;
+          const repo = CONTENT_FOLDERS.includes(entry.id);
           for (const key of ["path", "github", "folders"] as const)
-            if (!git && entry[key] !== undefined)
+            if (!repo && entry[key] !== undefined)
               ctx.addIssue({
                 code: "custom",
                 path: [key],
-                message: `"${key}" belongs to the git-content adapter, not to ${entry.id}`,
+                message: `"${key}" belongs to the adapter that reads content kept in a repository (${CONTENT_FOLDERS.join(", ")}), not to ${entry.id}`,
               });
-          if (git) {
+          if (repo) {
             if ((entry.path === undefined) === (entry.github === undefined))
               ctx.addIssue({
                 code: "custom",
                 path: ["path"],
-                message:
-                  'git-content needs exactly one of "path" (a folder on this computer) and "github"',
+                message: `${entry.id} needs exactly one of "path" (a folder on this computer) and "github"`,
               });
             if (entry.folders === undefined || Object.keys(entry.folders).length === 0)
               ctx.addIssue({
                 code: "custom",
                 path: ["folders"],
-                message: 'git-content needs "folders": the content folders, by type',
+                message: `${entry.id} needs "folders": the content folders, by type`,
               });
             if (entry.urls !== undefined)
               ctx.addIssue({
                 code: "custom",
                 path: ["urls"],
-                message: '"urls" does nothing for git-content: use "permalink" in each folder',
+                message: `"urls" does nothing for ${entry.id}: use "permalink" in each folder`,
               });
           }
           for (const key of ["fingerprint", "urls"] as const)
@@ -180,6 +187,27 @@ export const adaptersConfigSchema = z.strictObject({
     )
     .min(1)
     .max(8),
+  /**
+   * `gaugeline --published`: how far back to look for changed items, how long a page may lag, how many
+   * pages to ask for, and the fields to compare by type. Every key is optional.
+   */
+  live: z
+    .strictObject({
+      /** Items changed in the last this many days are compared with their pages. Default 7. */
+      days: z.number().int().min(1).max(90).optional(),
+      /** A page may lag its item by this many minutes before it is reported. Default 15. */
+      graceMinutes: z.number().int().min(0).max(10080).optional(),
+      /** At most this many pages are asked for in one run. Default 40. */
+      maxPages: z.number().int().min(1).max(200).optional(),
+      /** The fields to compare with the page, by type. Default: `title`. */
+      fields: z
+        .record(
+          z.string().regex(TYPE, "a content type name"),
+          z.array(z.string().regex(FIELD, "a field name, or names joined by dots")).min(1).max(5),
+        )
+        .optional(),
+    })
+    .optional(),
 });
 
 export type AdaptersConfig = z.infer<typeof adaptersConfigSchema>;

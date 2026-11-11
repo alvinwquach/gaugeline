@@ -26,6 +26,12 @@ export interface ContractEntry {
    * published reads carry none, so the key never goes where it is not needed.
    */
   keyHeader?: { value: string };
+  /**
+   * What fieldCounts() does for a content type the platform does not have. Default: counts of 0 (a type with
+   * no items). "could-not-check": an AdapterCouldNotCheck that names the type, for a platform that lists its
+   * content types and so knows a name is wrong (Contentful); a typo is then not read as an empty type.
+   */
+  unknownType?: "could-not-check";
   /** Text that is in the platform's content, including an unpublished draft, and must never come back. */
   secrets: readonly string[];
   expected: {

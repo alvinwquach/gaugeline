@@ -54,21 +54,57 @@ Sanity (`adapters/sanity.ts`) is the worked example. The rules are the same for 
 - **Rate limits.** Wait once for a short Retry-After, then throw `AdapterRateLimitedError` carrying what
   was read, so the run reports a partial result.
 
-To add one, in this order:
+To add one, in this order. **Adding an adapter adds files and edits no shared one** (no `registry.ts`, no
+`config.ts`, no `adapters/index.ts`, no `entries.ts`, no `docs/integrations/index.md` row, no `docs/nav.ts`
+entry, no `PROGRESS.md`): that is what kept six adapter pull requests conflicting.
 
-1. Write the adapter in `packages/core/src/adapters/<cms>.ts`, and add it to `BUILT_ADAPTERS` in
-   `registry.ts` (and take it out of `PLANNED_ADAPTERS`).
-2. Add a recorded-response fixture (invented content, no real client data; the Sanity one is
-   `adapters/__tests__/sanity-fixture.ts`) and one `ContractEntry` for it in
-   `adapters/__tests__/entries.ts`. The contract suite (`contract.test.ts`, one `describe.each` over
-   every entry) then runs against it with no test of yours needed for these rules: counts and
-   fingerprints but never a value, a missing field counts 0, no request but GET or HEAD, a key that is
-   refused is could-not-check, a rate limit is waited out once and then reported as partial. A platform
-   that needs no key to read what is published (WordPress) sets `keyHeader` on its entry: the published
-   reads then must carry no key, and only the reads that need it carry exactly that header.
-3. Write `docs/integrations/<cms>.md` with a freelancer example, change the row in
-   `docs/integrations/index.md` from planned to built (a test keeps the table and the registry in step),
-   and add a changeset.
+1. Write the adapter in `packages/core/src/adapters/<id>.ts` (more files may start with `<id>`, such as
+   `<id>-read.ts`). It exports `create<Cms>Adapter(options)` and nothing else needs to leave the folder.
+2. Write its **entry file**, `packages/core/src/adapters/<id>.entry.ts`, the only thing the rest of Gaugeline
+   knows about it without loading it. It exports `entries: readonly AdapterEntry[]` (the type is in
+   `adapters/entry.ts`; `sanity.entry.ts` and `wordpress.entry.ts` are worked examples, and a planned adapter such
+   as `strapi.entry.ts` is the same file with `status: "planned"` and a `branch`, which you replace):
+   - `id` (lower case, digits, hyphens: the name in `gaugeline.adapters.json`), `name` (as a person writes it),
+     `status: "built"`;
+   - `describe`: the `AdapterDescription` (name, `docsUrl`, `keyKind`, `noKey`, `beta`). Export it as
+     `<CMS>_DESCRIPTION` from this file: the adapter module imports it from here and returns it from `describe()`,
+     so the run header and the adapter say one thing (a test compares them);
+   - `envVars`: the variables the adapter may read, when a caller must copy them before loading it;
+   - `settings`: what it adds to the `gaugeline.adapters.json` rules: `pageReader: true` if it reads the live site's
+     sitemap and takes `site`, `sitemaps` and `feeds`; `hyphenFields: true` if its field names have hyphens;
+   - `docs`: the row in `docs/integrations/index.md`: `key` (what key it asks for) and `reads` (what it reads,
+     one line of Markdown), and `page`: its docs page `{ slug, title }` in the sidebar;
+   - `load`: **the loader.** `load: lazy("<id>", async () => { const { create<Cms>Adapter } = await
+import("./<id>.js"); return (c, settings) => create<Cms>Adapter({ env: c.env, fetcher: c.fetcher, settings,
+...(c.sleep ? { sleep: c.sleep } : {}) }); })`. This dynamic `import()` is the only way the adapter's code is
+     reached, so the bundler gives it its own chunk and a WordPress-only run never loads the Shopify code.
+     An entry file imports only types, `lazy` (`load.ts`) and plain data, never the adapter module.
+3. Write its **contract file**, `packages/core/src/adapters/__tests__/<id>.contract.ts`, beside a recorded-response
+   fixture (`<id>-fixture.ts`; invented content, no real client data; `sanity.contract.ts` is the example). It
+   exports `contractEntries: readonly ContractEntry[]`. The contract suite (`contract.test.ts`, one `describe.each`
+   over every entry) then runs against it with no test of yours needed for these rules: counts and fingerprints
+   but never a value, a missing field counts 0, no request but GET or HEAD, a key that is refused is
+   could-not-check, a rate limit is waited out once and then reported as partial. A platform that needs no key to
+   read what is published (WordPress) sets `keyHeader` on its entry: the published reads then must carry no key,
+   and only the reads that need it carry exactly that header. Tests may import the adapter module directly.
+4. Run **`pnpm gen:adapters`**. It collects every `adapters/*.entry.ts` and `adapters/__tests__/*.contract.ts`
+   into `adapters/entries.generated.ts` and `adapters/__tests__/contracts.generated.ts`, rewrites the table
+   between the `adapters:start` and `adapters:end` markers in `docs/integrations/index.md`, and rewrites
+   `docs/adapter-pages.generated.ts` (the adapters' pages in `docs/nav.ts`). Commit what it writes; CI runs
+   `pnpm gen:adapters --check`. If two pull requests both add an adapter and the generated files conflict, run
+   `pnpm gen:adapters` again after the rebase.
+5. Write `docs/integrations/<id>.md` (the page named in `page.slug`) with a freelancer example, and add a changeset.
+
+Code outside `adapters/<id>*.ts` (the CLI, `core/src/index.ts`, the check registries, the docs scripts) gets an
+adapter with `createAdapter(built, context, settings)` or `createAdapters(config, context)` (both `async`), its
+description with `adapterDescription(id)` and its variables with `adapterEnvVars(id)`, and never with a static
+`import` of the adapter module; `adapters/__tests__/lazy.test.ts` fails the build if it does. A pull request that
+changes code does not edit `PROGRESS.md` either (the gate in `scripts/lib/gate.ts` fails it unless it carries the
+label `progress`): progress updates go in their own pull request after every five merges.
+
+**For the adapter generator (PR #171):** its templates must write `<id>.ts`, `<id>.entry.ts` (with the
+`lazy` loader), `__tests__/<id>-fixture.ts`, `__tests__/<id>.contract.ts` and `docs/integrations/<id>.md`, run
+`gen:adapters`, and edit no other tracked file.
 
 ## Add a connector
 

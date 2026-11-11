@@ -42,6 +42,7 @@ describe("leaks: unit (detectors)", () => {
     expect(DETECTORS.map((d) => d.id)).toEqual([
       "stripe-secret",
       "sanity-token",
+      "contentful-preview-token",
       "secret-assignment",
     ]);
   });
@@ -74,6 +75,96 @@ describe("leaks: unit (detectors)", () => {
       `"ask${MIXED}${MIXED}"`,
     ])
       expect(ids(miss), miss).toEqual([]);
+  });
+
+  it("contentful-preview-token: a 43-character token tied to the Preview API; never a delivery token or the SDK's own host", () => {
+    // Built at run time, like every key here. Both are 43 characters of base64url, as Contentful's are.
+    const tail = `${MIXED}Ec9Rt5Gb7XZ`.slice(0, 37);
+    const preview = `Qw4Xz8${tail}`;
+    const delivery = `Hk2Pm9${tail}`;
+    expect([preview.length, delivery.length]).toEqual([43, 43]);
+    for (const hit of [
+      `createClient({space:"abc123def456",accessToken:"${preview}",host:"preview.contentful.com"})`,
+      `const c = { host: 'preview.contentful.com', environment: 'master', accessToken: '${preview}' };`,
+      `fetch("https://preview.contentful.com/spaces/abc123def456/environments/master/entries?access_token=${preview}")`,
+      `const contentfulPreviewToken = "${preview}";`,
+    ])
+      expect(ids(hit), hit).toEqual(["contentful-preview-token"]);
+    // The label: the kind is named, and no character of the token is kept (the owner's rule: a key never
+    // appears in a finding, not as a prefix, a suffix or a hash).
+    const [leak] = findLeaks(`{accessToken:"${preview}",host:"preview.contentful.com"}`);
+    expect(leak?.label).toBe("Contentful preview token");
+    expect(leak?.redacted).toBe("");
+    const shown = JSON.stringify(leak);
+    for (const part of [preview, preview.slice(0, 6), preview.slice(-2)])
+      expect(shown).not.toContain(part);
+    // A delivery client next to a preview client: only the preview token is reported.
+    const both = `createClient({accessToken:"${delivery}",host:"cdn.contentful.com"});createClient({accessToken:"${preview}",host:"preview.contentful.com"})`;
+    const found = findLeaks(both).filter((l) => l.detector === "contentful-preview-token");
+    expect(found).toHaveLength(1);
+    expect(found[0]?.redacted).toBe("");
+    for (const miss of [
+      // The SDK's own host, with no token in the same object.
+      `var h="preview.contentful.com";function f(){return {host:h}}`,
+      // A delivery token for the published content, which is meant to be public.
+      `createClient({space:"abc123def456",accessToken:"${delivery}",host:"cdn.contentful.com"})`,
+      // A short value, a low-entropy value and a name without token or key.
+      `{accessToken:"${preview.slice(0, 30)}",host:"preview.contentful.com"}`,
+      `{accessToken:"${"a".repeat(43)}",host:"preview.contentful.com"}`,
+      `{space:"${preview}",host:"preview.contentful.com"}`,
+    ])
+      expect(ids(miss), miss).not.toContain("contentful-preview-token");
+  });
+
+  it("a Contentful delivery token is public by design: the whole result is empty; a preview token is exactly one finding", () => {
+    const tail = `${MIXED}Ec9Rt5Gb7XZ`.slice(0, 37);
+    const preview = `Qw4Xz8${tail}`;
+    const delivery = `Hk2Pm9${tail}`;
+    expect(entropy(delivery)).toBeGreaterThan(ENTROPY_MIN);
+    for (const text of [
+      `createClient({space:"abc123def456", accessToken:"${delivery}"})`,
+      `createClient({space:"abc123def456",accessToken:"${delivery}",host:"cdn.contentful.com"})`,
+      `const c = require("contentful").createClient({ space: "abc123def456", environment: "master", accessToken: '${delivery}' });`,
+      `fetch("https://cdn.contentful.com/spaces/abc123def456/entries?access_token=${delivery}")`,
+    ])
+      expect(findLeaks(text), text).toEqual([]);
+    const previewOnly = findLeaks(
+      `createClient({space:"abc123def456",accessToken:"${preview}",host:"preview.contentful.com"})`,
+    );
+    expect(previewOnly.map((l) => [l.detector, l.label, l.redacted])).toEqual([
+      ["contentful-preview-token", "Contentful preview token", ""],
+    ]);
+    // A delivery client and a preview client side by side: only the preview token is a finding.
+    const both = findLeaks(
+      `createClient({space:"abc123def456",accessToken:"${delivery}"});createClient({space:"abc123def456",accessToken:"${preview}",host:"preview.contentful.com"})`,
+    );
+    expect(both.map((l) => l.detector)).toEqual(["contentful-preview-token"]);
+    // Only a 43-character value is exempt: a longer random value in the same place is still a secret.
+    expect(ids(`createClient({space:"abc123def456",accessToken:"${delivery}Ab"})`)).toEqual([
+      "secret-assignment",
+    ]);
+  });
+
+  it("the key-name patterns cap the name, so a hostile 2 MiB file is scanned in linear time", () => {
+    const named = DETECTORS.filter((d) => /token\|key/i.test(d.pattern.source));
+    expect(named.map((d) => d.id)).toEqual(["contentful-preview-token", "secret-assignment"]);
+    for (const d of named) {
+      expect(d.pattern.source, d.id).not.toContain("]*(?:");
+      expect(d.pattern.source, d.id).toContain("{0,40}(?:");
+    }
+    const twoMiB = 2 * 1024 * 1024;
+    const hostile = [
+      '"key"'.repeat(Math.ceil(twoMiB / 5)),
+      '"accessToken"'.repeat(Math.ceil(twoMiB / 13)),
+      "key".repeat(Math.ceil(twoMiB / 3)),
+      "accessToken".repeat(Math.ceil(twoMiB / 11)),
+      `accessToken${"a".repeat(twoMiB)}`,
+    ];
+    for (const text of hostile) {
+      const t0 = performance.now();
+      expect(findLeaks(text)).toEqual([]);
+      expect(performance.now() - t0).toBeLessThan(2000);
+    }
   });
 
   it("secret-assignment: random values named SECRET, TOKEN or KEY; not public names, hashes, files or images", () => {
@@ -133,6 +224,31 @@ describe("leaks: unit (detectors)", () => {
       { projectId: "ab12cd34", dataset: "production" },
       { projectId: "ab12cd34", dataset: "blog" },
     ]);
+  });
+});
+
+describe("leaks: Contentful tokens in a page", () => {
+  const tail = `${MIXED}Ec9Rt5Gb7XZ`.slice(0, 37);
+  const preview = `Qw4Xz8${tail}`;
+  const delivery = `Hk2Pm9${tail}`;
+
+  it("a delivery token in an inline script is no finding; a preview token is one finding with no character of it", async () => {
+    const quiet = page(
+      "https://pop.example/",
+      `<script>createClient({space:"abc123def456", accessToken:"${delivery}"})</script>`,
+    );
+    expect(await secretInJs.run(quiet, { warn: () => undefined })).toEqual([]);
+    const loud = page(
+      "https://pop.example/",
+      `<script>createClient({space:"abc123def456", accessToken:"${preview}", host:"preview.contentful.com"})</script>`,
+    );
+    const findings = await secretInJs.run(loud, { warn: () => undefined });
+    expect(findings.map((f) => f.evidence)).toEqual([
+      expect.stringMatching(/^Contentful preview token in inline script 1 on .* at byte \d+$/),
+    ]);
+    const shown = JSON.stringify(findings);
+    for (const part of [preview, preview.slice(0, 6), preview.slice(-2)])
+      expect(shown).not.toContain(part);
   });
 });
 

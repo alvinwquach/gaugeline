@@ -112,6 +112,9 @@ import {
   addLibraryChecks,
   createLibraries,
   addWordPressChecks,
+  addPublishedChecks,
+  createPublished,
+  allAdapterEnvVars,
   createWordPress,
 } from "@gaugeline/core";
 import { parseCliArgs } from "./args.js";
@@ -176,6 +179,7 @@ import {
   readServicesConfig,
   readCostConfig,
   readTrackersConfig,
+  readAdaptersConfig,
   readEvents,
   readSchemaRules,
   readTags,
@@ -968,6 +972,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         trackers: args.trackers,
         libraries: args.libraries,
         wordpress: args.wordpress,
+        published: args.published,
         runOne: (argv, siteIo, siteCwd) => main(argv, siteIo, { ...deps, cwd: siteCwd }),
       });
       io.stdout.write(`${formatRunAll(rows)}\n`);
@@ -1388,10 +1393,16 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           : trackedRegistry;
       // The WordPress checks (versions against wordpress.org, the REST API's list of users), only with --wordpress.
       const wordpressChecking = args.wordpress;
-      const registry =
+      const wordpressRegistry =
         wordpressChecking && deps.registry === undefined
           ? addWordPressChecks(libraryRegistry)
           : libraryRegistry;
+      // The published-not-live checks (changed CMS items against their pages), only with --published.
+      const publishedChecking = args.published;
+      const registry =
+        publishedChecking && deps.registry === undefined
+          ? addPublishedChecks(wordpressRegistry)
+          : wordpressRegistry;
       // gaugeline audit --pack: the packages are read, and checked against the checks this run makes, before
       // any request: a package that names a check that never runs is a mistake in the file (exit 2).
       const services = args.audit ? readServicesConfig(cwd) : undefined;
@@ -1459,6 +1470,18 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       const libraries = libraryChecking ? createLibraries(fetcher) : undefined;
       // What the WordPress checks read: wordpress.org's current releases and the site's REST users route, GET only.
       const wordpress = wordpressChecking ? createWordPress(fetcher) : undefined;
+      // What the published-not-live checks read: the content systems in gaugeline.adapters.json (or the sitemap
+      // and feed adapter), and one GET of the page of each changed item, through the fetcher. Keys stay in the environment.
+      const published = publishedChecking
+        ? createPublished(
+            readAdaptersConfig(cwd),
+            {
+              env: freezeEnv(io.env ?? {}, [...SANITY_ENV_VARS, ...allAdapterEnvVars()]),
+              fetcher,
+            },
+            fetcher,
+          )
+        : undefined;
       // What the handoff checks read: the registry's record through the renewals reader (which only asks
       // RDAP here: no token goes to it), then the provider reads, each with its own key from the environment.
       const handoff = handing
@@ -1495,6 +1518,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         ...(trackers ? { trackers } : {}),
         ...(libraries ? { libraries } : {}),
         ...(wordpress ? { wordpress } : {}),
+        ...(published ? { published } : {}),
         ...(args.command === "renewals" || handing ? { tolerateUnreachable: true } : {}),
         // The walking skeleton (0.0.x) runs one check; an injected registry is used as given.
         ...(only ? { only } : {}),

@@ -258,16 +258,16 @@ describe("the adapters entry in gaugeline.adapters.json: unit", () => {
     for (const b of bad) expect(adaptersConfigSchema.safeParse(b).success).toBe(false);
   });
 
-  it("createAdapters builds Sanity and refuses a planned or unknown id with a hint", () => {
+  it("createAdapters builds Sanity and refuses a planned or unknown id with a hint", async () => {
     const fetcher = createFetcher({ transport: sanityTransport(), timeoutMs: 5000 });
-    const [built] = createAdapters(adaptersConfigSchema.parse(ok), { env: ENV, fetcher });
+    const [built] = await createAdapters(adaptersConfigSchema.parse(ok), { env: ENV, fetcher });
     expect(built?.id).toBe("sanity");
-    expect(() => createAdapters({ adapters: [{ id: "wix" }] }, { env: ENV, fetcher })).toThrow(
-      /"wix" adapter is planned \(C-05\)/,
-    );
-    expect(() => createAdapters({ adapters: [{ id: "nope" }] }, { env: ENV, fetcher })).toThrow(
-      ConfigError,
-    );
+    await expect(
+      createAdapters({ adapters: [{ id: "generic-api" }] }, { env: ENV, fetcher }),
+    ).rejects.toThrow(/"generic-api" adapter is planned \(C-14\)/);
+    await expect(
+      createAdapters({ adapters: [{ id: "nope" }] }, { env: ENV, fetcher }),
+    ).rejects.toThrow(ConfigError);
   });
 
   it("no id is both built and planned", () => {

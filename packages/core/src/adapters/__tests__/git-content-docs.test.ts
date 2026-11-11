@@ -2,8 +2,8 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { adaptersConfigSchema } from "../config.js";
-import { GIT_CONTENT_LIMITS } from "../git-content-source.js";
-import { JEKYLL_STYLES, PERMALINK_TOKENS } from "../git-content-permalink.js";
+import { GIT_CONTENT_LIMITS } from "../git-content-source-read.js";
+import { JEKYLL_STYLES, PERMALINK_TOKENS } from "../shared/permalink.js";
 import { BUILT_ADAPTERS } from "../registry.js";
 import { CONTENT_MARKERS } from "./git-content-fixture.js";
 import {

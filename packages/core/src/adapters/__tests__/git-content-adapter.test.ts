@@ -15,16 +15,17 @@ import { collectPublished } from "../collect.js";
 import { adaptersConfigSchema } from "../config.js";
 import { hashValue } from "../fingerprint.js";
 import { createGitContentAdapter } from "../git-content.js";
-import { parseContent, stateOf } from "../git-content-parse.js";
+import { parseContent, stateOf } from "../git-content-parse-read.js";
 import {
   PERMALINK_TOKENS,
   expandPermalink,
   isPermalinkPattern,
   namesOf,
   nuxtPath,
-} from "../git-content-permalink.js";
-import { GIT_CONTENT_LIMITS } from "../git-content-source.js";
-import { createAdapters, BUILT_ADAPTERS, PLANNED_ADAPTERS } from "../registry.js";
+} from "../shared/permalink.js";
+import { GIT_CONTENT_LIMITS } from "../git-content-source-read.js";
+import { GITHUB_TOKEN_VAR } from "../../renewals/tokens.js";
+import { adapterEnvVars, createAdapters, BUILT_ADAPTERS, PLANNED_ADAPTERS } from "../registry.js";
 import { AdapterCouldNotCheck, type AdapterSettings } from "../types.js";
 import {
   ASTRO_FILES,
@@ -673,11 +674,13 @@ describe("the settings and the registry: unit", () => {
     ).toBe(false);
   });
 
-  it("is registered as built, no longer planned, and builds from a settings file", () => {
+  it("is registered as built, no longer planned, and builds from a settings file", async () => {
     expect(BUILT_ADAPTERS.has("git-content")).toBe(true);
     expect(PLANNED_ADAPTERS.some((p) => p.id === "git-content")).toBe(false);
+    // The entry file writes the variable's name out (it imports no code); renewals read the same variable.
+    expect(adapterEnvVars("git-content")).toEqual([GITHUB_TOKEN_VAR]);
     writeTree(dir, ASTRO_FILES);
-    const [built] = createAdapters(
+    const [built] = await createAdapters(
       adaptersConfigSchema.parse({
         adapters: [{ ...ok, path: ".", folders: { blog: { dir: "src/content/blog" } } }],
       }),
