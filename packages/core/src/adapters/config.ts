@@ -2,6 +2,7 @@ import * as z from "zod";
 import { ADAPTER_ENTRIES } from "./entries.generated.js";
 import { isUrlTemplate } from "./fingerprint.js";
 import { PROTOTYPE_KEYS, genericApiSchema } from "./generic-api-config.js";
+import { isPermalinkPattern } from "./shared/permalink.js";
 
 const ID = /^[a-z][a-z0-9-]{0,30}$/;
 const TYPE = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/;
@@ -20,7 +21,16 @@ const PAGE_READERS: readonly string[] = ADAPTER_ENTRIES.filter((e) => e.settings
   (e) => e.id,
 );
 
-/** The adapters whose platform names its fields with hyphens (Webflow). */
+/** The adapters that read content kept in a repository: they take `path` or `github`, and `folders`. */
+const CONTENT_FOLDERS: readonly string[] = ADAPTER_ENTRIES.filter(
+  (e) => e.settings?.contentFolders,
+).map((e) => e.id);
+
+/** A folder inside the repository: relative, "/" separators, no ".." or "." part, no spaces or odd characters. */
+const FOLDER =
+  /^(?:\.|[A-Za-z0-9_@~+-][A-Za-z0-9_.@~+-]*(?:\/[A-Za-z0-9_@~+-][A-Za-z0-9_.@~+-]*){0,11})$/;
+
+/** The adapters whose platform names its fields with hyphens (Webflow's own, and front matter keys). */
 const HYPHEN_FIELDS: readonly string[] = ADAPTER_ENTRIES.filter(
   (e) => e.settings?.hyphenFields,
 ).map((e) => e.id);
@@ -61,6 +71,48 @@ export const adaptersConfigSchema = z.strictObject({
               z.string().refine(isUrlTemplate, {
                 message:
                   'a path starting with "/" or an https address; only {slug} and {id} may be filled in',
+              }),
+            )
+            .optional(),
+          /** Content kept in a repository only: the repository's folder on this computer, relative to where the run starts. */
+          path: z
+            .string()
+            .min(1)
+            .max(300)
+            .refine((p) => !p.includes("\0"), "a folder path")
+            .optional(),
+          /** Content kept in a repository only: a repository on GitHub, read with GET. */
+          github: z
+            .strictObject({
+              repo: z
+                .string()
+                .regex(
+                  /^[A-Za-z0-9_][A-Za-z0-9_.-]{0,99}\/[A-Za-z0-9_][A-Za-z0-9_.-]{0,99}$/,
+                  "owner/name",
+                ),
+              ref: z
+                .string()
+                .regex(/^[A-Za-z0-9_][A-Za-z0-9_./-]{0,199}$/, "a branch, tag or commit")
+                .refine((r) => !r.includes(".."), "a branch, tag or commit")
+                .optional(),
+            })
+            .optional(),
+          /** Content kept in a repository only: the content folders, by type: where the files are and the pattern for an item's address. */
+          folders: z
+            .record(
+              z.string().regex(TYPE, "a content type name"),
+              z.strictObject({
+                dir: z
+                  .string()
+                  .regex(FOLDER, "a folder inside the repository, such as src/content/posts")
+                  .refine((d) => !d.split("/").includes("node_modules"), "not node_modules"),
+                permalink: z
+                  .string()
+                  .refine(isPermalinkPattern, {
+                    message:
+                      'a path starting with "/" or an https address, or a Jekyll style (date, pretty, none); only the documented tokens may be filled in',
+                  })
+                  .optional(),
               }),
             )
             .optional(),
@@ -137,8 +189,36 @@ export const adaptersConfigSchema = z.strictObject({
                   ctx.addIssue({
                     code: "custom",
                     path: ["fingerprint", type],
-                    message: `"${field}" has a hyphen: only the Webflow adapter has field names like that, and ${entry.id} does not`,
+                    message: `"${field}" has a hyphen: only the Webflow and git-content adapters have field names like that, and ${entry.id} does not`,
                   });
+          const repo = CONTENT_FOLDERS.includes(entry.id);
+          for (const key of ["path", "github", "folders"] as const)
+            if (!repo && entry[key] !== undefined)
+              ctx.addIssue({
+                code: "custom",
+                path: [key],
+                message: `"${key}" belongs to the adapter that reads content kept in a repository (${CONTENT_FOLDERS.join(", ")}), not to ${entry.id}`,
+              });
+          if (repo) {
+            if ((entry.path === undefined) === (entry.github === undefined))
+              ctx.addIssue({
+                code: "custom",
+                path: ["path"],
+                message: `${entry.id} needs exactly one of "path" (a folder on this computer) and "github"`,
+              });
+            if (entry.folders === undefined || Object.keys(entry.folders).length === 0)
+              ctx.addIssue({
+                code: "custom",
+                path: ["folders"],
+                message: `${entry.id} needs "folders": the content folders, by type`,
+              });
+            if (entry.urls !== undefined)
+              ctx.addIssue({
+                code: "custom",
+                path: ["urls"],
+                message: `"urls" does nothing for ${entry.id}: use "permalink" in each folder`,
+              });
+          }
           for (const key of ["fingerprint", "urls"] as const)
             if (own && entry[key] !== undefined)
               ctx.addIssue({

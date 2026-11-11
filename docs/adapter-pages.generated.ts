@@ -15,6 +15,10 @@ export const ADAPTER_PAGES: { slug: string; title: string }[] = [
     title: "Generic API adapter: content checks for any headless CMS with a read API",
   },
   {
+    slug: "integrations/git-content",
+    title: "Content kept in git: content checks for sites whose content lives in the repo",
+  },
+  {
     slug: "integrations/sitemap-feed",
     title: "Sitemap and feeds: content checks for sites built on any CMS",
   },

@@ -27,6 +27,7 @@ export const COMMANDS = [
   "audit",
   "migration",
   "advisory",
+  "init",
 ] as const;
 export type Command = (typeof COMMANDS)[number];
 
@@ -195,6 +196,21 @@ export const HELP: Record<string, string> = {
       "site is safe.",
     ].join("\n"),
     footer: "Exit codes: 0 ran, 1 --ci and likely-affected, 2 could not run",
+  }),
+  init: renderHelp(FLAGS, "init", {
+    usage: "gaugeline init <site> [options]",
+    summary: [
+      "Point Gaugeline at a client's site and get starter settings for what it is",
+      "built on. Reads the home page and up to four pages it links to (GET only), and",
+      "recognises the content system, framework, host, forms, payment links, analytics",
+      "and listing links from what the pages show. Writes gaugeline.adapters.json and",
+      "the other settings files it can fill in, plus gaugeline.init.md with the",
+      "evidence for each setting, and prints what to set up next. It never writes a",
+      "key: it names the environment variables you set. A file that already exists is",
+      "left alone unless you add --force; --dry-run prints everything and writes",
+      "nothing.",
+    ].join("\n"),
+    footer: "Exit codes: 0 ran, 2 could not run",
   }),
   open: renderHelp(FLAGS, "open", {
     usage: "gaugeline open [address] [options]",

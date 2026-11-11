@@ -1,0 +1,8 @@
+{
+  "/": {
+    "headers": {
+      "server": "nginx",
+      "x-powered-by": "WP Engine"
+    }
+  }
+}

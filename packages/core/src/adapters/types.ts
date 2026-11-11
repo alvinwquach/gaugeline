@@ -144,4 +144,10 @@ export interface AdapterSettings {
   feeds?: readonly string[] | undefined;
   /** Only `generic-api`: the mapping from the platform's read API to items. */
   api?: GenericApiMapping | undefined;
+  /** Only `git-content`: the repository's folder on this computer, relative to where the run starts. */
+  path?: string | undefined;
+  /** Only `git-content`: a repository on GitHub, read with GET. Instead of `path`. */
+  github?: { repo: string; ref?: string | undefined } | undefined;
+  /** Only `git-content`: the content folders, by type, with the pattern that gives an item its address. */
+  folders?: Readonly<Record<string, { dir: string; permalink?: string | undefined }>> | undefined;
 }
