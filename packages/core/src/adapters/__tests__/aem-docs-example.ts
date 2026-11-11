@@ -4,18 +4,18 @@ import { createFetcher } from "../../fetcher.js";
 import { collectPublished } from "../collect.js";
 import { createAemAdapter } from "../aem.js";
 import { AdapterCouldNotCheck } from "../types.js";
-import { aemTransport } from "./aem-fixture.js";
+import { AEM_ENV, aemTransport } from "./aem-fixture.js";
 
 /**
- * What docs/integrations/aem.md shows for Larkspur Yoga Studio (an invented small studio whose Adobe Experience Manager site
- * a freelancer built): the settings entry, and what the adapter reads over the invented site. The docs test
- * compares the page's blocks with these, so the page cannot drift from the tool. To print the output for
- * the page: pnpm exec tsx packages/core/src/adapters/__tests__/aem-docs-example.ts
+ * What docs/integrations/aem.md shows for Harbourline Hotels (an invented hotel group whose Adobe Experience Manager
+ * site a freelancer's agency built): the settings entry, and what the adapter reads over the invented publish tier.
+ * The docs test compares the page's blocks with these, so the page cannot drift from the tool. To print the output
+ * for the page: pnpm exec tsx packages/core/src/adapters/__tests__/aem-docs-example.ts
  */
 export const AEM_SETTINGS = {
   id: "aem",
-  fingerprint: { classes: ["name", "summary"] },
-  urls: { classes: "/classes/{slug}", teachers: "/teachers/{slug}" },
+  fingerprint: { rooms: ["name", "summary"] },
+  urls: { rooms: "/rooms/{slug}", offers: "/offers/{slug}", venues: "/venues/{slug}" },
 } as const;
 
 export async function aemReads(): Promise<string> {
@@ -24,24 +24,24 @@ export async function aemReads(): Promise<string> {
     timeoutMs: 5000,
   });
   const adapter = createAemAdapter({
-    env: {},
+    env: AEM_ENV,
     fetcher,
     settings: AEM_SETTINGS,
     sleep: () => Promise.resolve(),
   });
   const types = await adapter.types();
-  const fields = await adapter.fieldCounts("classes", ["name", "summary", "seats"]);
-  const { docs } = await collectPublished(adapter, { types: ["classes"] });
+  const fields = await adapter.fieldCounts("rooms", ["name", "summary", "sleeps", "subtitle"]);
+  const { docs } = await collectPublished(adapter, { types: ["rooms"] });
   const other = await adapter
-    .fieldCounts("none", ["name"])
+    .fieldCounts("spa", ["name"])
     .catch((e: unknown) => (e instanceof AdapterCouldNotCheck ? e.reason : "failed"));
   return JSON.stringify(
     {
       types,
-      "class fields": fields,
-      "a type that does not exist": other,
+      "room fields": fields,
+      "a query that is not named": other,
       "drafts reachable": await adapter.draftsReachable(),
-      "published classes": docs,
+      "published rooms": docs,
     },
     null,
     2,

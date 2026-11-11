@@ -63,7 +63,7 @@ export const entries: readonly AdapterEntry[] = [
         });
     }),
     docs: {
-      key: "none (the public publish tier)",
+      key: "read-only (no key at all: it reads the public publish tier)",
       reads:
         "Content Fragments through the persisted GraphQL queries you name, over GET: counts, field counts and published fragments as fingerprints, fragments missing from the live site, and author-tier links on the live pages. [Endpoints and the key](/docs/integrations/aem)",
     },
