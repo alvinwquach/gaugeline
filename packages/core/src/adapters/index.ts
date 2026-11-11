@@ -14,7 +14,22 @@ export type { Collected, PartialRead } from "./collect.js";
 export { ADAPTERS_CONFIG_FILE, adaptersConfigSchema } from "./config.js";
 export type { AdaptersConfig } from "./config.js";
 export { fillUrlTemplate, hashValue, isUrlTemplate } from "./fingerprint.js";
-export { BUILT_ADAPTERS, PLANNED_ADAPTERS, createAdapters, resolveAdapters } from "./registry.js";
+export {
+  BUILT_ADAPTERS,
+  PLANNED_ADAPTERS,
+  adaptersOrDefault,
+  createAdapters,
+  resolveAdapters,
+} from "./registry.js";
 export type { AdapterContext, BuiltAdapter, PlannedAdapter } from "./registry.js";
+export {
+  SITEMAP_FEED_DESCRIPTION,
+  FEED_PATHS,
+  SITEMAP_FEED_LIMITS,
+  SITEMAP_PATHS,
+  TOP_LEVEL,
+  createSitemapFeedAdapter,
+} from "./sitemap-feed.js";
+export type { SitemapFeedOptions } from "./sitemap-feed.js";
 export { SANITY_DESCRIPTION, SANITY_PAGE_SIZE, createSanityAdapter } from "./sanity.js";
 export type { SanityAdapterOptions } from "./sanity.js";
