@@ -91,6 +91,8 @@ export interface RunFlags {
   cost: boolean;
   /** --trackers: add the tracker checks (trackers on pages with a form or a listed sensitive path, and what a Tag Manager container holds). */
   trackers: boolean;
+  /** --libraries: add the library check (JavaScript libraries the page loads, with the published advisories that name their version). */
+  libraries: boolean;
   /** --owner-consent: run the probing checks (they ask gated routes for what they protect, with no login). */
   ownerConsent: boolean;
   /** --routes: globs over the repository's route files, for the download route probe. */
@@ -204,6 +206,8 @@ export type ParsedArgs =
       cost: boolean;
       /** --trackers: each site's run also lists the trackers on pages with a form. */
       trackers: boolean;
+      /** --libraries: each site's run also checks the JavaScript libraries it serves. */
+      libraries: boolean;
       verbose: boolean;
       quiet: boolean;
     }
@@ -636,6 +640,7 @@ export function parseCliArgs(
       renewals: values.renewals === true,
       cost: values.cost === true,
       trackers: values.trackers === true,
+      libraries: values.libraries === true,
       verbose,
       quiet: values.quiet === true,
     };
@@ -1442,6 +1447,7 @@ export function parseCliArgs(
     renewals: values.renewals === true || command === "renewals",
     cost: values.cost === true || command === "cost",
     trackers: values.trackers === true,
+    libraries: values.libraries === true,
     ownerConsent: values["owner-consent"] === true,
     routes: Array.isArray(values.routes)
       ? values.routes

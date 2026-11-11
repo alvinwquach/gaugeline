@@ -156,6 +156,14 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     commands: ["check", "run"],
   },
   {
+    name: "libraries",
+    type: "boolean",
+    description:
+      "Also check the JavaScript files a page loads for libraries with a published advisory",
+    since: "0.2.0",
+    commands: ["check", "run"],
+  },
+  {
     name: "owner-consent",
     type: "boolean",
     description:
