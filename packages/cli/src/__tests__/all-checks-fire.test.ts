@@ -38,6 +38,8 @@ const FIXTURES = [
   "load-more",
   "hidden-library",
   "next-like",
+  "remix-like",
+  "remix-dev",
   "refusing",
   "tag-rules",
   "nav-events",
