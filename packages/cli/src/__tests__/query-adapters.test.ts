@@ -83,6 +83,37 @@ describe("gaugeline.adapters.json in gaugeline query: e2e", () => {
     expect(r.out).toBe("");
   });
 
+  it("a generic-api entry with a good mapping is read and changes nothing; one with a wrong path is exit 2 and names it", async () => {
+    const mapping = (items: string) => ({
+      endpoint: "https://cms.example/api",
+      collections: {
+        post: {
+          path: "/posts",
+          items,
+          pagination: { style: "none" },
+          fields: { id: "/id", updatedAt: "/updatedAt" },
+        },
+      },
+    });
+    const before = await query();
+    writeFileSync(
+      join(dir, "gaugeline.adapters.json"),
+      JSON.stringify({ adapters: [{ id: "generic-api", api: mapping("/docs") }] }),
+    );
+    const good = await query();
+    expect(good.code).toBe(EXIT.ok);
+    expect(good.out).toBe(before.out);
+    writeFileSync(
+      join(dir, "gaugeline.adapters.json"),
+      JSON.stringify({ adapters: [{ id: "generic-api", api: mapping("docs/no-slash") }] }),
+    );
+    const bad = await query();
+    expect(bad.code).toBe(EXIT.couldNotRun);
+    expect(bad.err).toContain("gaugeline.adapters.json");
+    expect(bad.err).toContain("items");
+    expect(bad.out).toBe("");
+  });
+
   it("an adapter nobody has heard of, a bad shape or bad JSON is exit 2 with the file named", async () => {
     for (const body of [
       '{ "adapters": [{ "id": "nope" }] }',

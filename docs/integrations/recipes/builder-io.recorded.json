@@ -1,0 +1,80 @@
+{
+  "format": 1,
+  "recipe": "builder-io",
+  "provenance": "Invented content in the shape Builder.io's documented API is remembered to answer. Not recorded from a live service; the shapes are uncited (the vendor's pages could not be read when this was written).",
+  "env": {},
+  "exchanges": [
+    {
+      "request": {
+        "url": "https://cdn.builder.io/api/v3/content/page",
+        "query": {
+          "offset": "0"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "id": "b1",
+              "lastUpdated": 1793000000000,
+              "createdDate": 1790000000000,
+              "data": {
+                "url": "/sale",
+                "title": "Sale"
+              }
+            },
+            {
+              "id": "b2",
+              "lastUpdated": 1792000000000,
+              "createdDate": 1789000000000,
+              "data": {
+                "url": "/menu"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "expect": {
+    "options": {
+      "fields": {
+        "page": ["title"]
+      }
+    },
+    "countType": "page",
+    "countFields": ["title", "subtitle"],
+    "drafts": false,
+    "types": [
+      {
+        "name": "page",
+        "count": 2
+      }
+    ],
+    "fieldCounts": {
+      "title": 1,
+      "subtitle": 0
+    },
+    "published": [
+      {
+        "id": "b1",
+        "type": "page",
+        "url": "/sale",
+        "publishedAt": "2026-09-21T14:13:20.000Z",
+        "updatedAt": "2026-10-26T07:33:20.000Z",
+        "fieldHashes": {
+          "title": "bbb4c643c303cbcf"
+        }
+      },
+      {
+        "id": "b2",
+        "type": "page",
+        "url": "/menu",
+        "publishedAt": "2026-09-10T00:26:40.000Z",
+        "updatedAt": "2026-10-14T17:46:40.000Z",
+        "fieldHashes": {}
+      }
+    ]
+  }
+}

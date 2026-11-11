@@ -1,0 +1,88 @@
+{
+  "format": 1,
+  "recipe": "datocms",
+  "provenance": "Invented content in the shape DatoCMS's documented API is remembered to answer. Not recorded from a live service; the shapes are uncited (the vendor's pages could not be read when this was written).",
+  "env": {
+    "GAUGELINE_DATOCMS_TOKEN": "recipe-test-value"
+  },
+  "exchanges": [
+    {
+      "request": {
+        "url": "https://graphql.datocms.com/",
+        "query": {},
+        "headers": {
+          "authorization": "Bearer {env:GAUGELINE_DATOCMS_TOKEN}"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "data": {
+            "allPosts": [
+              {
+                "id": "d1",
+                "slug": "tasting-night",
+                "_updatedAt": "2026-11-03T10:00:00+00:00",
+                "_firstPublishedAt": "2026-10-03T10:00:00+00:00",
+                "title": "Tasting night"
+              },
+              {
+                "id": "d2",
+                "slug": "about",
+                "_updatedAt": "2026-09-03T10:00:00+00:00",
+                "_firstPublishedAt": "2026-09-03T10:00:00+00:00",
+                "title": null
+              }
+            ],
+            "_allPostsMeta": {
+              "count": 2
+            }
+          }
+        }
+      }
+    }
+  ],
+  "expect": {
+    "options": {
+      "types": ["post"],
+      "fields": {
+        "post": ["title"]
+      }
+    },
+    "countType": "post",
+    "countFields": ["title", "subtitle"],
+    "drafts": false,
+    "types": [
+      {
+        "name": "post",
+        "count": 2
+      }
+    ],
+    "fieldCounts": {
+      "title": 1,
+      "subtitle": 0
+    },
+    "published": [
+      {
+        "id": "d1",
+        "type": "post",
+        "url": "/blog/tasting-night",
+        "slug": "tasting-night",
+        "publishedAt": "2026-10-03T10:00:00.000Z",
+        "updatedAt": "2026-11-03T10:00:00.000Z",
+        "fieldHashes": {
+          "title": "fd6a5f3ce77c1115"
+        }
+      },
+      {
+        "id": "d2",
+        "type": "post",
+        "url": "/blog/about",
+        "slug": "about",
+        "publishedAt": "2026-09-03T10:00:00.000Z",
+        "updatedAt": "2026-09-03T10:00:00.000Z",
+        "fieldHashes": {}
+      }
+    ]
+  }
+}
