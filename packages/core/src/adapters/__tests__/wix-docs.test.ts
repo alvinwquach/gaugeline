@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { adapterHeader } from "../collect.js";
 import { adaptersConfigSchema } from "../config.js";
 import { BUILT_ADAPTERS } from "../registry.js";
+import { entries } from "../wix.entry.js";
 import { WIX_CMS_READ_PATH, WIX_QUERY_ALLOW } from "../wix.js";
 import {
   marlowNativeReads,
@@ -97,7 +98,7 @@ describe("docs/integrations/wix.md", () => {
   });
 
   it("says a Wix Data query returns every item the key can read, not only published ones", () => {
-    const reads = (built?.docs?.reads ?? "").split("With the key:")[1] ?? "";
+    const reads = (entries[0]?.docs?.reads ?? "").split("With the key:")[1] ?? "";
     expect(reads).not.toMatch(/published items/i);
     expect(index).not.toMatch(/field counts and published items/);
     expect(page).not.toMatch(/published items/i);
