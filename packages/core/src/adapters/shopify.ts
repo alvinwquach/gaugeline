@@ -66,7 +66,9 @@ const TOKEN_HEADER = "x-shopify-storefront-access-token";
 
 /** A shop address: the spec's rule. Nothing else is ever a host the token is sent to. */
 const SHOP = /^[a-z0-9][a-z0-9-]{0,60}\.myshopify\.com$/;
-const VERSION = /^\d{4}-(?:01|04|07|10)$/;
+const VERSION = /^20\d\d-(?:01|04|07|10)$/;
+/** Admin API token prefixes: these can carry write scopes, so they are never sent anywhere. */
+const ADMIN_TOKEN = /^shp(?:at|ss|ca|pa)_/i;
 const GID = /^gid:\/\/shopify\/(Product|Collection|Page|Blog|Article)\/(\d{1,20})$/;
 const HANDLE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
 const SEGMENT = /^[A-Za-z0-9][A-Za-z0-9._~%-]{0,200}$/;
@@ -84,7 +86,8 @@ export function safePath(address: unknown): string | undefined {
   // Judged on the text as sent: a URL parser would quietly resolve a dot segment away.
   if (!/^https:\/\/[^/?#]+(?:[/?#]|$)/.test(address)) return undefined;
   // eslint-disable-next-line no-control-regex
-  if (/\.\.|%2e|%2f|%5c|\\|[\u0000-\u001f\u007f]/i.test(address)) return undefined;
+  if (/\.\.|%2e|%2f|%5c|%00|\\|[\u0000-\u001f\u007f]/i.test(address)) return undefined;
+  if (/\/\.(?:[/?#]|$)/.test(address)) return undefined;
   const afterHost = address.replace(/^https:\/\/[^/?#]+/, "");
   if (afterHost.startsWith("//")) return undefined;
   let path: string;
@@ -244,20 +247,29 @@ const KIND: Readonly<Record<string, string>> = {
   products: "Product",
 };
 
-function parseItem(raw: unknown, type: string): RawItem {
+/** An item that is left out and flagged, because one field of it is not usable. The rest of the type is still read. */
+interface SkippedItem {
+  type: string;
+  id: string;
+  reason: string;
+}
+
+function parseItem(raw: unknown, type: string): RawItem | SkippedItem {
   const r = isRecord(raw) ? raw : {};
   const gid = typeof r.id === "string" ? GID.exec(r.id) : null;
   if (gid === null || gid[2] === undefined || gid[1] !== KIND[type])
     throw new AdapterCouldNotCheck("Shopify answered with an item whose id is not a Shopify id.");
   if (typeof r.handle !== "string" || !HANDLE.test(r.handle))
-    throw new AdapterCouldNotCheck(
-      "Shopify answered with an item whose handle is not a plain handle.",
-    );
+    return {
+      type,
+      id: gid[2],
+      reason: "its handle is not a plain ASCII handle (letters, digits, dot, dash, underscore)",
+    };
   let path: string | undefined;
   if (r.onlineStoreUrl !== null && r.onlineStoreUrl !== undefined) {
     path = safePath(r.onlineStoreUrl);
     if (path === undefined)
-      throw new AdapterCouldNotCheck("Shopify answered with an address that is not a page path.");
+      return { type, id: gid[2], reason: "its address is not a plain page path" };
   }
   const spec = SHOPIFY_TYPES[type];
   const publishedAt = isoOf(r.publishedAt);
@@ -296,6 +308,8 @@ export interface ShopifyOffer {
 
 /** The adapter, with the one read the price check needs on top of ContentAdapter. */
 export interface ShopifyAdapter extends ContentAdapter {
+  /** Items left out because a field of one was not usable (a handle that is not plain ASCII, an address that is not a page path), with why. */
+  skipped(): readonly SkippedItem[];
   /** The published products' prices and availability, for comparing with their pages. Read in the same pages and bounds as everything else. */
   offers(): AsyncIterable<ShopifyOffer>;
 }
@@ -325,6 +339,8 @@ export function createShopifyAdapter(options: ShopifyAdapterOptions): ShopifyAda
   const cap = options.maxItemsPerType ?? SHOPIFY_LIMITS.itemsPerType;
   const settings = options.settings;
   const redact = createRedactor(env, [SHOPIFY_STOREFRONT_TOKEN]);
+  /** Keyed by type and id: reading again does not list an item twice. */
+  const skipped = new Map<string, SkippedItem>();
 
   /** What a failed read becomes: a rate limit carries what was read, anything else is could-not-check. */
   const translate = (err: unknown, partial: unknown): Error => {
@@ -356,6 +372,10 @@ export function createShopifyAdapter(options: ShopifyAdapterOptions): ShopifyAda
     if (token === "")
       throw new AdapterCouldNotCheck(
         `${SHOPIFY_STOREFRONT_TOKEN} is not set. Shopify's content needs a Storefront API access token.`,
+      );
+    if (ADMIN_TOKEN.test(token))
+      throw new AdapterCouldNotCheck(
+        `${SHOPIFY_STOREFRONT_TOKEN} looks like an Admin API token. Gaugeline does not use the Admin API: make a Storefront API access token instead. Nothing was sent.`,
       );
     if (!/^[\x21-\x7e]{1,256}$/.test(token))
       throw new AdapterCouldNotCheck(`${SHOPIFY_STOREFRONT_TOKEN} is not a plain token.`);
@@ -457,7 +477,6 @@ export function createShopifyAdapter(options: ShopifyAdapterOptions): ShopifyAda
   async function* itemsOfType(
     type: string,
     fields: readonly string[],
-    enforceCap: boolean,
     partial: () => unknown,
   ): AsyncGenerator<RawItem> {
     const spec = SHOPIFY_TYPES[type];
@@ -494,11 +513,18 @@ export function createShopifyAdapter(options: ShopifyAdapterOptions): ShopifyAda
           `Shopify sent more ${type} in a page than were asked for, so they were not read.`,
         );
       read += nodes.length;
-      if (read > cap && enforceCap)
+      if (read > cap)
         throw new AdapterCouldNotCheck(
           `Shopify has more than ${cap} ${type}, which is as many as Gaugeline reads from one type.`,
         );
-      for (const raw of nodes) yield parseItem(raw, type);
+      for (const raw of nodes) {
+        const item = parseItem(raw, type);
+        if ("reason" in item) {
+          if (skipped.size < 1000) skipped.set(`${item.type}:${item.id}`, item);
+          continue;
+        }
+        yield item;
+      }
       if (!info.hasNextPage) return;
       const cursor = info.endCursor;
       if (typeof cursor !== "string" || cursor === "" || cursor.length > SHOPIFY_LIMITS.cursorChars)
@@ -511,7 +537,6 @@ export function createShopifyAdapter(options: ShopifyAdapterOptions): ShopifyAda
         );
       seen.add(cursor);
       after = cursor;
-      if (read > cap) return;
     }
   }
 
@@ -527,7 +552,7 @@ export function createShopifyAdapter(options: ShopifyAdapterOptions): ShopifyAda
     const out: TypeCount[] = [];
     for (const name of chosen(undefined)) {
       let count = 0;
-      for await (const item of itemsOfType(name, [], true, () => out.slice()))
+      for await (const item of itemsOfType(name, [], () => out.slice()))
         if (item.published) count++;
       out.push({ name, count });
     }
@@ -540,7 +565,7 @@ export function createShopifyAdapter(options: ShopifyAdapterOptions): ShopifyAda
   ): Promise<Record<string, number>> => {
     const out: Record<string, number> = Object.fromEntries(fields.map((f) => [f, 0]));
     for (const name of chosen([type]))
-      for await (const item of itemsOfType(name, fields, true, () => ({ ...out }))) {
+      for await (const item of itemsOfType(name, fields, () => ({ ...out }))) {
         if (!item.published) continue;
         for (const f of fields) if (hasValue(valueAt(item.data, f))) out[f] = (out[f] ?? 0) + 1;
       }
@@ -558,7 +583,7 @@ export function createShopifyAdapter(options: ShopifyAdapterOptions): ShopifyAda
     for (const type of chosen(opts.types)) {
       if (remaining <= 0) return;
       const fields = opts.fields?.[type] ?? settings?.fingerprint?.[type] ?? [];
-      const read = itemsOfType(type, fields, opts.limit === undefined, () => delivered);
+      const read = itemsOfType(type, fields, () => delivered);
       for await (const item of read) {
         // Not published to the Online Store: hidden on purpose, never reported as missing.
         if (!item.published) continue;
@@ -593,7 +618,7 @@ export function createShopifyAdapter(options: ShopifyAdapterOptions): ShopifyAda
   }
 
   async function* offers(): AsyncGenerator<ShopifyOffer> {
-    for await (const item of itemsOfType("products", OFFER_FIELDS, true, () => [])) {
+    for await (const item of itemsOfType("products", OFFER_FIELDS, () => [])) {
       if (!item.published || item.path === undefined) continue;
       const code = valueAt(item.data, "priceRange.minVariantPrice.currencyCode");
       const currency =
@@ -635,5 +660,6 @@ export function createShopifyAdapter(options: ShopifyAdapterOptions): ShopifyAda
     draftsReachable,
     resolveUrl,
     offers,
+    skipped: () => [...skipped.values()],
   };
 }

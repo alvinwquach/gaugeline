@@ -21,7 +21,7 @@ import {
  * What is particular to the Shopify adapter. The rules every adapter shares are in the contract suite
  * (contract.test.ts); this file is the Storefront API's own behaviour and a hostile server.
  */
-const TOKEN = ["shpat", "test", "0123456789abcdef"].join("_");
+const TOKEN = ["sfapi", "test", "0123456789abcdef"].join("_");
 const ENV = { SHOPIFY_STOREFRONT_TOKEN: TOKEN, SHOPIFY_SHOP_DOMAIN: SHOPIFY_SHOP };
 const noWait = () => Promise.resolve();
 
@@ -393,8 +393,18 @@ describe("the Shopify adapter: answers that are not what they should be", () => 
   it.each([
     ["an id that is not a Shopify id", { ...good, id: "1" }],
     ["an id of another kind", { ...good, id: "gid://shopify/Product/1" }],
+    ["a missing update time", { ...good, updatedAt: null }],
+  ])("%s is could-not-check for the type, and never throws anything else", async (_name, node) => {
+    const err = await failure(
+      collectPublished(make({ transport: withNode(node) }).adapter, { types: ["pages"] }),
+    );
+    expect(err).toBeInstanceOf(AdapterCouldNotCheck);
+  });
+
+  it.each([
     ["a handle with a slash", { ...good, handle: "a/b" }],
     ["a handle that starts with a dot", { ...good, handle: "..x" }],
+    ["a handle that is not ASCII", { ...good, handle: "\u00fcber-uns" }],
     ["an address on another scheme", { ...good, onlineStoreUrl: "http://x.example/pages/a" }],
     [
       "a protocol-relative address",
@@ -405,13 +415,59 @@ describe("the Shopify adapter: answers that are not what they should be", () => 
       { ...good, onlineStoreUrl: "https://x.example/pages/%2e%2e/../a" },
     ],
     [
+      "an address with a single dot segment",
+      { ...good, onlineStoreUrl: "https://x.example/a/./b" },
+    ],
+    ["an address with a NUL", { ...good, onlineStoreUrl: "https://x.example/a%00b" }],
+    [
       "an address with a lone surrogate",
       { ...good, onlineStoreUrl: "https://x.example/pages/\ud800" },
     ],
-    ["a missing update time", { ...good, updatedAt: null }],
-  ])("%s is could-not-check, and never throws anything else", async (_name, node) => {
+  ])("%s skips that one item, flags it, and still reads the rest", async (_name, node) => {
+    const transport = connection(() => ({
+      data: {
+        pages: {
+          nodes: [node, { ...good, id: "gid://shopify/Page/2", handle: "fine" }],
+          pageInfo: { hasNextPage: false, endCursor: null },
+        },
+      },
+    }));
+    const { adapter } = make({ transport });
+    const { docs } = await collectPublished(adapter, { types: ["pages"] });
+    expect(docs.map((d) => d.slug)).toEqual(["fine"]);
+    expect(adapter.skipped()).toEqual([
+      { type: "pages", id: "1", reason: expect.stringMatching(/^its (handle|address)/) as string },
+    ]);
+  });
+
+  it("a Shopify Admin API token is refused before anything is sent, and never echoed", async () => {
+    for (const prefix of ["shpat_", "shpss_", "shpca_", "shppa_"]) {
+      const token = `${prefix}0123456789abcdef`;
+      const seen: string[] = [];
+      const transport = shopifyTransport(undefined, { onRequest: (_m, u) => seen.push(u.href) });
+      const err = await failure(
+        make({ env: { ...ENV, SHOPIFY_STOREFRONT_TOKEN: token }, transport }).adapter.types(),
+      );
+      expect(err).toBeInstanceOf(AdapterCouldNotCheck);
+      expect((err as AdapterCouldNotCheck).reason).toContain("Admin API");
+      expect((err as AdapterCouldNotCheck).reason).not.toContain(token);
+      expect(seen).toEqual([]);
+    }
+  });
+
+  it("a list that runs past the bound is could-not-check even when a limit was given, never a silent stop", async () => {
     const err = await failure(
-      collectPublished(make({ transport: withNode(node) }).adapter, { types: ["pages"] }),
+      collectPublished(make({ maxItemsPerType: 1, pageSize: 1 }).adapter, {
+        types: ["pages"],
+        limit: 5,
+      }),
+    );
+    expect(err).toBeInstanceOf(AdapterCouldNotCheck);
+  });
+
+  it("the API version must look like 20YY-01|04|07|10", async () => {
+    const err = await failure(
+      make({ env: { ...ENV, SHOPIFY_API_VERSION: "1999-01" } }).adapter.draftsReachable(),
     );
     expect(err).toBeInstanceOf(AdapterCouldNotCheck);
   });
@@ -428,6 +484,8 @@ describe("the Shopify adapter: answers that are not what they should be", () => 
       "https://x.example//a",
       "/a",
       "https://x.example/a/../b",
+      "https://x.example/a/./b",
+      "https://x.example/a%00",
     ])
       expect(safePath(bad)).toBeUndefined();
   });
