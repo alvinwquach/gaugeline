@@ -9,9 +9,15 @@ on:
 permissions:
   contents: read
 
+# A new push to the branch cancels the older run of this check.
+concurrency:
+  group: pr-body-${{ github.head_ref }}
+  cancel-in-progress: true
+
 jobs:
   pr-body:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0

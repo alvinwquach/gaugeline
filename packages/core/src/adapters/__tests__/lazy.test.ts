@@ -127,8 +127,8 @@ describe("the loader rule", () => {
     const loaders = entryFiles.map((f) => readFileSync(join(adaptersDir, f), "utf8")).join("\n");
     for (const module of adapterModules) {
       const name = relative(adaptersDir, module).replaceAll(sep, "/").replace(/\.ts$/, "");
-      // webflow-read.ts is part of the Webflow adapter and reached through webflow.ts.
-      if (name === "webflow-read") continue;
+      // <id>-read.ts is part of the adapter <id> (its reading for a check) and is reached through <id>.ts.
+      if (name.endsWith("-read")) continue;
       expect(loaders, name).toContain(`await import("./${name}.js")`);
     }
   });

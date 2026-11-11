@@ -25,10 +25,10 @@ export const secretInJs = defineCheck<PageSnapshot>({
   area: "Security & email",
   severity: "high",
   title: "A private key is in your site's JavaScript",
-  what: "A secret key (a Stripe secret or restricted key, a Sanity token, or a long random value named like a secret) is in JavaScript the site sends to every visitor.",
+  what: "A secret key (a Stripe secret or restricted key, a Sanity token, a Contentful preview token, or a long random value named like a secret) is in JavaScript the site sends to every visitor.",
   why: "Anyone can read it in their browser and use it as you: take payments, read customer data or change your content.",
   fix: "Revoke the key in the provider's dashboard now, make a new one, and keep it on the server: never in code the browser loads.",
-  tech: "Inline scripts and up to 15 same-site script files (GET, first 5 MB each) matched against the detectors in checks/leaks/detectors.ts; publishable keys (pk_) are ignored; every value is redacted to its first 6 and last 2 characters before a finding exists",
+  tech: "Inline scripts and up to 15 same-site script files (GET, first 5 MB each) matched against the detectors in checks/leaks/detectors.ts; publishable keys (pk_) are ignored; a Contentful preview token is a 43-character value named like a token or key next to the preview.contentful.com host, and a finding for it names the kind and the place only, with no character of the token; a 43-character Contentful delivery token (a value in a place that names Contentful or createClient, and not the Preview API) is public by design and is never reported; the other values are redacted to their first 6 and last 2 characters before a finding exists; names are capped at 40 characters each side of the word token or key, so a hostile file is scanned in linear time",
   async run(page, ctx) {
     const origin = new URL(page.finalUrl).origin;
     const sources: { where: string; text: string }[] = inlineScripts(page).map((text, i) => ({
@@ -42,7 +42,7 @@ export const secretInJs = defineCheck<PageSnapshot>({
         checkId: "secret-in-js",
         severity: "high" as const,
         title: this.title,
-        evidence: `${leak.label} ${leak.redacted} in ${where} at byte ${leak.offset}`,
+        evidence: `${leak.redacted === "" ? leak.label : `${leak.label} ${leak.redacted}`} in ${where} at byte ${leak.offset}`,
         url: page.finalUrl,
       })),
     );

@@ -66,6 +66,11 @@ export function adapterEnvVars(id: string): readonly string[] {
   return built.envVars;
 }
 
+/** Every environment variable any built adapter may read, for a caller that copies them before loading one. */
+export function allAdapterEnvVars(): string[] {
+  return [...new Set([...BUILT_ADAPTERS.values()].flatMap((b) => b.envVars))];
+}
+
 /**
  * The built adapter for each entry of a settings file, or a ConfigError: an id that is planned says
  * which branch builds it, one nobody has heard of lists the built ones. Nothing is requested.

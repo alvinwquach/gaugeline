@@ -108,6 +108,7 @@ export const UNLISTED: NavPage[] = [
   { slug: "guides/renewals", title: "Renewals: see what lapses before the site goes dark" },
   { slug: "guides/hosting-cost", title: "Hosting cost: find what runs up the bill" },
   { slug: "guides/trackers-on-sensitive-pages", title: "Trackers on sensitive pages" },
+  { slug: "guides/published-not-live", title: "Published but not live" },
   { slug: "guides/served-libraries", title: "Served libraries: the old jQuery nobody remembers" },
   { slug: "guides/advisory", title: "Advisory check: is my client affected?" },
   { slug: "guides/audit-pack", title: "Audit pack: turn a first run into a proposal" },

@@ -13,12 +13,16 @@ export const WEBFLOW_DESCRIPTION: AdapterDescription = {
   keyKind: "read-only",
 };
 
+export const WEBFLOW_TOKEN = "WEBFLOW_TOKEN";
+export const WEBFLOW_SITE_ID = "WEBFLOW_SITE_ID";
+
 export const entries: readonly AdapterEntry[] = [
   {
     id: "webflow",
     name: "Webflow",
     status: "built",
     describe: WEBFLOW_DESCRIPTION,
+    envVars: [WEBFLOW_TOKEN, WEBFLOW_SITE_ID],
     settings: { hyphenFields: true },
     load: lazy("webflow", async () => {
       const { createWebflowAdapter } = await import("./webflow.js");

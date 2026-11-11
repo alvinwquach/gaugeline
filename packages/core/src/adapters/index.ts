@@ -19,6 +19,7 @@ export {
   PLANNED_ADAPTERS,
   adapterDescription,
   adapterEnvVars,
+  allAdapterEnvVars,
   adaptersOrDefault,
   createAdapter,
   createAdapters,

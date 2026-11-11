@@ -5,6 +5,10 @@ export const ADAPTER_PAGES: { slug: string; title: string }[] = [
     slug: "integrations/builders",
     title: "Hosted builders: content checks for sites built on Squarespace and similar builders",
   },
+  {
+    slug: "integrations/contentful",
+    title: "Contentful: content checks for sites built on Contentful",
+  },
   { slug: "integrations/framer", title: "Framer: content checks for sites built on Framer (beta)" },
   {
     slug: "integrations/sitemap-feed",
