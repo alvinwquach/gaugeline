@@ -2,16 +2,25 @@
 import { Readable } from "node:stream";
 import type { Transport } from "../../fetcher.js";
 import { testKey } from "../../connectors/__tests__/fake.js";
+import { BUILDERS, createBuilderAdapter } from "../builders.js";
 import { createFramerAdapter } from "../framer.js";
 import { createSanityAdapter } from "../sanity.js";
 import { createSitemapFeedAdapter } from "../sitemap-feed.js";
 import { createWebflowAdapter } from "../webflow.js";
+import { createWixAdapter } from "../wix.js";
 import { createWordPressAdapter } from "../wordpress.js";
+import {
+  TIDEWATER,
+  TIDEWATER_MARKERS,
+  tidewaterRoutes,
+  tidewaterServe,
+} from "./builders-fixture.js";
 import type { ContractEntry } from "./contract.js";
 import { LANTERN, LANTERN_MARKERS, lanternRoutes, lanternServe } from "./framer-fixture.js";
 import { CONTENT_MARKERS, sanityTransport } from "./sanity-fixture.js";
 import { OAKLINE, OAKLINE_MARKERS, oaklineRoutes, serve } from "./sitemap-feed-fixture.js";
 import { SITE_ID, WEBFLOW_MARKERS, webflowTransport } from "./webflow-fixture.js";
+import { MARLOW, MARLOW_MARKERS, marlowRoutes, marlowServe } from "./wix-fixture.js";
 import { CONTENT_MARKERS as WP_MARKERS, wordpressTransport } from "./wordpress-fixture.js";
 
 /**
@@ -232,10 +241,74 @@ export const framerEntry: ContractEntry = {
   rateLimit: { options: { types: ["journal", "drops"] }, succeedFirst: 2, atLeast: 4 },
 };
 
+/**
+ * One entry for each hosted builder with no content API (adapters/builders.ts). All of them read the
+ * same invented site, Tidewater Pop-Up (builders-fixture.ts): the adapters differ in their words, not in
+ * what they request. No key, no fields, no drafts.
+ */
+export const builderEntries: readonly ContractEntry[] = BUILDERS.map((platform): ContractEntry => ({
+  id: platform.id,
+  make: ({ fetcher, sleep }) => createBuilderAdapter(platform, { fetcher, site: TIDEWATER, sleep }),
+  transport: () => tidewaterServe(tidewaterRoutes()),
+  secrets: Object.values(TIDEWATER_MARKERS),
+  expected: {
+    types: [
+      { name: "blog", count: 1 },
+      { name: "shop", count: 2 },
+      { name: "top-level", count: 3 },
+    ],
+    published: {
+      options: { types: ["blog", "shop"] },
+      ids: [
+        `${TIDEWATER}/shop/sea-glass-pendant`,
+        `${TIDEWATER}/shop/driftwood-studs`,
+        `${TIDEWATER}/blog/harbour-stall`,
+      ],
+    },
+    draftsReachable: "not-applicable",
+  },
+  // robots.txt and the sitemap are answered; the home page (for feed links) is the first refused.
+  rateLimit: { options: { types: ["blog", "shop"] }, succeedFirst: 2, atLeast: 3 },
+}));
+
+/**
+ * Marlow Coaching: a career coach on Wix. The live site's sitemap is all Gaugeline can read: Wix's CMS items are
+ * behind a POST query (Query Data Items), which Gaugeline never sends, so there are no fields, no key and no
+ * drafts (see wix-fixture.ts).
+ */
+export const wixEntry: ContractEntry = {
+  id: "wix",
+  make: ({ fetcher, sleep }) => createWixAdapter({ fetcher, site: MARLOW, sleep }),
+  transport: () => marlowServe(marlowRoutes()),
+  secrets: Object.values(MARLOW_MARKERS),
+  expected: {
+    types: [
+      { name: "post", count: 3 },
+      { name: "programs", count: 2 },
+      { name: "top-level", count: 3 },
+    ],
+    published: {
+      options: { types: ["programs", "post"] },
+      ids: [
+        `${MARLOW}/post/ninety-day-plan`,
+        `${MARLOW}/post/salary-first-call`,
+        `${MARLOW}/post/sunday-dread`,
+        `${MARLOW}/programs/spring-cohort`,
+        `${MARLOW}/programs/one-to-one`,
+      ],
+    },
+    draftsReachable: "not-applicable",
+  },
+  // robots.txt, the index, the pages sitemap and the blog sitemap are answered; the programs sitemap is the first refused.
+  rateLimit: { options: { types: ["post", "top-level"] }, succeedFirst: 4, atLeast: 6 },
+};
+
 export const ENTRIES: readonly ContractEntry[] = [
   sanityEntry,
   sitemapFeedEntry,
   wordpressEntry,
   webflowEntry,
   framerEntry,
+  wixEntry,
+  ...builderEntries,
 ];

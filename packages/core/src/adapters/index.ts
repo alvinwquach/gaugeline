@@ -31,10 +31,22 @@ export {
   createSitemapFeedAdapter,
 } from "./sitemap-feed.js";
 export type { SitemapFeedOptions } from "./sitemap-feed.js";
+export {
+  BUILDERS,
+  BUILDER_IDS,
+  builderById,
+  builderCannotRead,
+  builderDescription,
+  createBuilderAdapter,
+  suggestBuilder,
+} from "./builders.js";
+export type { BuilderAdapterOptions, BuilderPlatform, BuilderSuggestion } from "./builders.js";
 export { FRAMER_CMS_READ_PATH, FRAMER_DESCRIPTION, createFramerAdapter } from "./framer.js";
 export type { FramerAdapterOptions } from "./framer.js";
 export { SANITY_DESCRIPTION, SANITY_PAGE_SIZE, createSanityAdapter } from "./sanity.js";
 export type { SanityAdapterOptions } from "./sanity.js";
+export { WIX_CMS_READ_PATH, WIX_DESCRIPTION, createWixAdapter } from "./wix.js";
+export type { WixAdapterOptions } from "./wix.js";
 export {
   WORDPRESS_APP_PASSWORD,
   WORDPRESS_COUNT_CAP,
