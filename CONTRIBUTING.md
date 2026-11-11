@@ -54,9 +54,62 @@ Sanity (`adapters/sanity.ts`) is the worked example. The rules are the same for 
 - **Rate limits.** Wait once for a short Retry-After, then throw `AdapterRateLimitedError` carrying what
   was read, so the run reports a partial result.
 
-To add one, in this order. **Adding an adapter adds files and edits no shared one** (no `registry.ts`, no
-`config.ts`, no `adapters/index.ts`, no `entries.ts`, no `docs/integrations/index.md` row, no `docs/nav.ts`
-entry, no `PROGRESS.md`): that is what kept six adapter pull requests conflicting.
+**The quickest way is the generator.** Run it, fill in what it marks, and you are done: there is nothing else to edit.
+
+```bash
+pnpm new:adapter <id> [--name "<Name>"] [--read rest|graphql|live-site] [--key read-only|scoped|full-access|none]
+```
+
+`--read` and `--key` pick the shape the scaffold starts from, so the rules above are already in the code:
+
+| You pass                                                  | You get                                                                                                                                                                                                                                                             |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--read rest` (the default) `--key read-only` or `scoped` | An adapter with a key from `<ID>_TOKEN`, redaction, an address built from one origin so the key never goes elsewhere, pages read until the total, a page that is too big halved, and a rate limit waited out once (copied from the WordPress and Webflow adapters). |
+| `--read graphql`                                          | The same, with queries sent as GET parameters and a guard that refuses a document that is not a query.                                                                                                                                                              |
+| `--read rest` or `graphql` `--key none`                   | The same for a public API: no key, no `Authorization` header, `draftsReachable()` is `"not-applicable"`.                                                                                                                                                            |
+| `--read live-site` (`--key none`)                         | For a platform with no read API: the live site's sitemap through the sitemap and feed reader, fields and drafts answered "not applicable", and a reason in plain words for what is not read (`adapters/framer.ts` is the model).                                    |
+| `--key full-access`                                       | For a platform whose only key can also write. This means `--read live-site`: the scaffold does not ask for that key, and `--read rest` with it is refused (release plan in PROGRESS.md, Standing orders).                                                           |
+
+It writes **new files only**: `adapters/<id>.ts`, the entry file `adapters/<id>.entry.ts` (metadata, the loader,
+the settings rules and the docs row), `adapters/__tests__/<id>-fixture.ts` (a recorded-response fixture of an
+invented site), `<id>.contract.ts`, its own small test, a docs example and docs test, `docs/integrations/<id>.md`
+and a changeset. Then it runs what `pnpm gen:adapters` runs, so the new adapter is in the generated index, the
+docs table and the sidebar with no hand edit. If a planned entry for the id exists (`strapi.entry.ts` with
+`status: "planned"`), the generator replaces that one file with the built entry and keeps its name. It never
+touches `registry.ts`, `adapters/index.ts`, `entries.ts`, the docs index, `docs/nav.ts` or `PROGRESS.md`.
+
+The contract suite (`contract.test.ts`, one `describe.each` over every entry) then runs against the new adapter
+with no test of yours needed for its rules (counts and fingerprints but never a value, a missing field counts 0,
+no request but GET or HEAD, a key that is refused is could-not-check, a rate limit is waited out once and then
+reported as partial).
+
+Then make it real, in this order:
+
+1. Read the platform's documentation and fill in every `TODO(new:adapter)` (`grep -rn "TODO(new:adapter" .`).
+   They are in the adapter (its endpoints, the key's permissions, the mapping of an item), the entry (the docs
+   row), the fixture (change the answers to the shape of the platform's documented responses; keep every value
+   invented), the docs page and the changeset. Put the date you read the documentation on the docs page and
+   mark a detail you could not confirm `uncited`. The scaffold passes the contract suite with the markers in
+   place, so you can build step by step; `no-todo.test.ts` fails until the last one is gone, which is what keeps
+   unfinished text out of the docs, the changelog and the run header.
+2. Run `pnpm exec tsx packages/core/src/adapters/__tests__/<id>-docs-example.ts`, paste its output into the
+   page's `Output` block, and make the settings block match `<ID>_SETTINGS`. The docs test compares them.
+3. Add a test in `<id>-adapter.test.ts` for each thing this platform does that no other does. Do not repeat the
+   contract. After you change an entry file, run `pnpm gen:adapters` again (CI runs `--check`).
+4. A new environment variable changes the public surface: run `pnpm surface`.
+5. A check that is particular to the platform (WordPress and Webflow have two each) is a separate step:
+   `pnpm new:check`, then register it with the platform's other checks.
+
+POST is for a documented read-only query endpoint only, and only through the allowlist in ADR-0006
+(branch `adr/read-only-post`, not merged yet). Until it has merged the scaffold sends GET and HEAD and
+nothing else; it marks, in the adapter, where the `queryAllow` entry (method, path pattern, body shape) goes.
+Do not add a POST of your own, and do not invent a `query` method on the fetcher.
+
+By hand, the steps are the same files. **Adding an adapter adds files and edits no shared one** (no
+`registry.ts`, no `config.ts`, no `adapters/index.ts`, no `entries.ts`, no `docs/integrations/index.md` row, no
+`docs/nav.ts` entry, no `PROGRESS.md`): that is what kept six adapter pull requests conflicting.
+
+The steps, if you write the files yourself:
 
 1. Write the adapter in `packages/core/src/adapters/<id>.ts` (more files may start with `<id>`, such as
    `<id>-read.ts`). It exports `create<Cms>Adapter(options)` and nothing else needs to leave the folder.
@@ -102,9 +155,21 @@ description with `adapterDescription(id)` and its variables with `adapterEnvVars
 changes code does not edit `PROGRESS.md` either (the gate in `scripts/lib/gate.ts` fails it unless it carries the
 label `progress`): progress updates go in their own pull request after every five merges.
 
-**For the adapter generator (PR #171):** its templates must write `<id>.ts`, `<id>.entry.ts` (with the
-`lazy` loader), `__tests__/<id>-fixture.ts`, `__tests__/<id>.contract.ts` and `docs/integrations/<id>.md`, run
-`gen:adapters`, and edit no other tracked file.
+## Writing a recipe
+
+A recipe is a small mapping in `gaugeline.adapters.json` that points the generic adapter at a headless
+CMS's read API (Storyblok, Payload, Ghost, Drupal and others), so it needs no code. **Recipes arrive with
+C-14 (`c/generic-api`) and are not on `main` yet**, so there is no recipe format to follow today and
+`generic-api` is a planned adapter id that `gaugeline.adapters.json` refuses. Until C-14 has merged:
+
+- If the platform's content must be read now, write a native adapter with `pnpm new:adapter` above.
+- If you are preparing a recipe, write what C-14 will need and nothing more: the platform's documented
+  read endpoints (with the date you read them), the narrowest key and how to make it, how a list is paged,
+  where an item's id, slug, state, times and fields are in the answer, and an invented recorded response. The
+  same rules apply as for an adapter (read only, fingerprints never content, the key from the environment,
+  anything the platform does not expose is could-not-check).
+
+When C-14 has merged, this section will describe the recipe format and the test every recipe must pass.
 
 ## Add a connector
 
