@@ -1,4 +1,4 @@
-import { briefMarkdown, type CheckRegistry, type Result } from "@gaugeline/core";
+import { buildBrief, renderBriefMarkdown, type CheckRegistry, type Result } from "@gaugeline/core";
 import type { BriefFlags } from "./args.js";
 import { inspectBaselineFile, writeBaselineFile, type ScaffoldFs } from "./scaffold-write.js";
 
@@ -34,11 +34,13 @@ export async function emitBrief(opts: {
   quiet: boolean;
 }): Promise<void> {
   const { flags, result } = opts;
-  const text = briefMarkdown(result, opts.registry, {
-    ...(flags.business !== undefined ? { business: flags.business } : {}),
-    ...(flags.hoursPerPoint !== undefined ? { hoursPerPoint: flags.hoursPerPoint } : {}),
-    ...(flags.rateMinor !== undefined ? { rateMinor: flags.rateMinor } : {}),
-  });
+  const text = renderBriefMarkdown(
+    buildBrief(result, opts.registry, {
+      ...(flags.business !== undefined ? { business: flags.business } : {}),
+      ...(flags.hoursPerPoint !== undefined ? { hoursPerPoint: flags.hoursPerPoint } : {}),
+      ...(flags.rateMinor !== undefined ? { rateMinor: flags.rateMinor } : {}),
+    }),
+  );
   if (flags.rateMinor !== undefined && flags.hoursPerPoint === undefined && !opts.quiet)
     opts.stderr.write(
       "--rate is used only with --hours-per-point, so the work order shows points only.\n",

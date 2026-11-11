@@ -192,7 +192,7 @@ The last step is the point: the same check that found the problem proves the fix
 - **If you own the site:** This is the page for you. It turns "something feels wrong with the website" into a list with prices attached.
 - **If you run marketing:** Useful for scoping: you can see whether a problem is an afternoon or a project before asking for budget.
 - **If you edit content:** If you publish content and nobody maintains the site, run this monthly and send it on.
-- **If you build the site:** `gaugeline brief` is also an MCP tool, so an assistant can produce the work order and you can edit it before it goes out.
+- **If you build the site:** `gaugeline brief` is also an MCP tool, so an assistant can produce the work order and you can edit it before it goes out. The app and the tool call the same two functions the command does: see [Use the work order from code](#use-the-work-order-from-code).
 
 ## If you build sites for clients
 
@@ -203,6 +203,53 @@ $ npx gaugeline brief lakeside-physio.example --business "Lakeside Physio" --hou
 ```
 
 The clinic reads "7 items, 11 points, roughly 13–21 hours" and what each one is, instead of an invoice with one line. When you finish, run the same command again and send the new file: the items that are gone are the proof.
+
+## Use the work order from code
+
+The command is two steps with a result between them: the check, then the work order. The second step is two pure functions in `@gaugeline/core`, so the app, the MCP server and your own scripts make the same work order the command does, from a result you already have. Nothing is fetched and nothing is written; the same result and options give the same output.
+
+- `buildBrief(result, registry, options)` returns a `Brief`: the items as data (check id, size, points, what is wrong, why, what done looks like, the evidence lines and what changes the estimate), the total points and, when you give `hoursPerPoint`, the hours range, and the money range when you also give `rateMinor`. An app shows the items as rows, and an assistant can edit them before the text is made. Several findings from one check are one item with several evidence lines.
+- `renderBriefMarkdown(brief)` returns the Markdown text. It is the text `gaugeline brief` writes, character for character, and it is where page text is escaped, so a business name or a line of evidence cannot become a heading, a link or markup.
+
+`rateMinor` is a whole number of minor units (9500 is $95.00), and `currency` is an ISO 4217 code that defaults to `usd`. A result from another schema number is refused with a message naming both numbers, so run the check again instead of formatting an old file.
+
+A freelancer who built a stall's site for a night market keeps the result of each check and makes the work order from it when the stallholder asks:
+
+```ts title=work-order.ts untested="It runs the library, not the command line, and needs a saved result, so there is no site to run it against here. packages/core/src/report/__tests__/brief.test.ts checks this output."
+import { buildBrief, createPageRegistry, parseResult, renderBriefMarkdown } from "@gaugeline/core";
+import { readFileSync } from "node:fs";
+
+// The file `npx gaugeline lantern-popup.example --json > result.json` wrote.
+const result = parseResult(JSON.parse(readFileSync("result.json", "utf8")));
+const brief = buildBrief(result, createPageRegistry(), {
+  business: "Lantern Night Market",
+  hoursPerPoint: 1.5,
+  rateMinor: 9500,
+});
+
+console.log(brief.points, brief.hours, brief.cost);
+console.log(renderBriefMarkdown(brief));
+```
+
+For a result with one finding, two images with no alt text, the first line prints `1 { low: 1, high: 2 } { lowMinor: 11400, highMinor: 18500, currency: 'usd' }`, and the Markdown begins:
+
+```text title=Output
+# Work order: Lantern Night Market
+
+Checked https://lantern-popup.example/ at 2026-11-10T09:00:00.000Z.
+
+## What is worth paying to fix
+
+1 item is worth paying to fix, 1 point in all.
+
+| #   | Item                              | Size  | Points |
+| --- | --------------------------------- | ----- | -----: |
+| 1   | Some images have no alt attribute | Small |      1 |
+
+At 1.5 hours per point, that's roughly 1–2 hours (about $114–$185 at $95/hour).
+```
+
+The `Brief` is its own document, versioned apart from the `--json` result: it carries `schemaVersion` (`1`) and is published as `packages/core/schema/brief.v1.json`. It holds names, kinds, counts and the evidence lines the report already shows, never a key. `parseBrief` reads one that came from a file or a tool call and refuses a wrong shape.
 
 ## What it can't tell you
 

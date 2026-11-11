@@ -9,13 +9,23 @@ import {
   type Size,
 } from "../model.js";
 import { minorExponent } from "../products/money.js";
-import type { Result } from "../result.js";
+import { RESULT_SCHEMA_VERSION, type Result } from "../result.js";
+import {
+  BRIEF_SCHEMA_VERSION,
+  type Brief,
+  type BriefEvidencePart,
+  type BriefItem,
+  type BriefNotSized,
+} from "./brief-schema.js";
 
 /**
- * The work order (G28): a Markdown file that says how many items are worth paying to fix and how big
- * each is, then each item with what is wrong, why it matters, what "done" looks like, the evidence and
- * what changes the estimate. It is made from a finished result and the check registry, by templates:
- * no model, no clock, no request and no file. The same result and options give the same text.
+ * The work order (G28, split in G28a): a Markdown file that says how many items are worth paying to
+ * fix and how big each is, then each item with what is wrong, why it matters, what "done" looks like,
+ * the evidence and what changes the estimate. `buildBrief` turns a finished result and the check
+ * registry into a `Brief` (data an app can show as rows and an assistant can edit);
+ * `renderBriefMarkdown` turns a `Brief` into the text. Both are pure and made by templates: no model,
+ * no clock, no request and no file. The same input gives the same output, and neither changes its
+ * input. The command that makes the result is the caller's.
  *
  * Sizes are read from each check through the registry (the kind of fix, known when the check was
  * written), never guessed from how severe a finding is.
@@ -146,9 +156,6 @@ function escapeStartingLine(text: string): string {
 
 /** Text that came from a page: control, zero-width, bidirectional and tag characters shown as escapes, cut, then escaped. */
 const EVIDENCE_MAX = 300;
-const fromPage = (text: string): string => escapeMarkdown(escapeInvisible(text, EVIDENCE_MAX));
-const fromPageStartingLine = (text: string): string =>
-  escapeStartingLine(escapeInvisible(text, EVIDENCE_MAX));
 
 /** An address without its query string or fragment, which can carry a token. */
 function withoutQuery(address: string): string {
@@ -205,26 +212,37 @@ interface Item {
 
 const plural = (n: number, one: string, many = `${one}s`): string => `${n} ${n === 1 ? one : many}`;
 
-/**
- * One line of evidence for a finding: what it found, and where. The address is added only when the
- * evidence does not already name it, so a line never says the same address twice.
- */
-function evidenceLine(f: Finding): string {
-  const what = fromPageStartingLine(f.evidence);
+/** Text from a page as plain text: invisible characters as escapes, cut, runs of white space as one space. */
+const plainFromPage = (text: string): string =>
+  escapeInvisible(text, EVIDENCE_MAX).replace(/\s+/gu, " ").trim();
+
+/** Without its markup escapes and without a cut: for text that is already plain, as a Brief holds it. */
+const shown = (text: string): string => escapeInvisible(text, Infinity);
+
+/** One place to look: what a finding found, and where. The address is left out when the evidence already names it. */
+function evidencePart(f: Finding): BriefEvidencePart | undefined {
+  const what = plainFromPage(f.evidence);
   const address = f.url === "" ? "" : withoutQuery(f.url);
   const named = address !== "" && (f.evidence.includes(address) || f.evidence.includes(f.url));
-  const where = address === "" || named ? "" : escapeMarkdown(address);
-  if (what === "") return where;
-  return where === "" ? what : `${what} (${where})`;
+  const where = address === "" || named ? "" : address.replace(/\s+/gu, " ").trim();
+  return what === "" && where === "" ? undefined : { what, where };
 }
 
-function evidenceOf(group: Group): string[] {
-  const seen = new Set<string>();
+/** The line an app shows for one place to look. */
+function displayLine(p: BriefEvidencePart): string {
+  if (p.what === "") return p.where;
+  return p.where === "" ? p.what : `${p.what} (${p.where})`;
+}
+
+/** The places to look for a group, each listed once, in the order the findings came. */
+function evidenceOf(group: Group): { evidence: string[]; evidenceParts: BriefEvidencePart[] } {
+  const seen = new Map<string, BriefEvidencePart>();
   for (const f of group.findings) {
-    const line = evidenceLine(f);
-    if (line !== "") seen.add(line);
+    const part = evidencePart(f);
+    if (part !== undefined) seen.set(`${part.what}\u0000${part.where}`, part);
   }
-  return [...seen];
+  const evidenceParts = [...seen.values()];
+  return { evidence: evidenceParts.map(displayLine), evidenceParts };
 }
 
 /** The most severe level among a group's findings (high before medium before low). */
@@ -236,16 +254,25 @@ function severityOf(findings: readonly Finding[]): Severity {
 }
 
 /**
- * The work order as Markdown. Several findings from one check are one item with several evidence
- * lines (twelve images with no alt text are one job with twelve places to look), sized once. Items are
+ * The work order as data. Several findings from one check are one item with several evidence lines
+ * (twelve images with no alt text are one job with twelve places to look), sized once. Items are
  * ordered by severity, then by size with the smallest first. A finding whose check is not in the
  * registry (a removed custom check) is listed as not sized and left out of the total.
+ *
+ * It takes a finished result and never runs a check. A result of another schema number is refused,
+ * naming both numbers: the findings of an older shape cannot be read the way this one is.
  */
-export function briefMarkdown(
+export function buildBrief(
   result: Result,
   registry: CheckRegistry,
   opts: BriefOptions = {},
-): string {
+): Brief {
+  const schema: unknown = result.schema;
+  if (schema !== RESULT_SCHEMA_VERSION)
+    throw new RangeError(
+      `This result is schema ${String(schema)}; the work order reads schema ${RESULT_SCHEMA_VERSION}. Run the check again with this version of Gaugeline.`,
+    );
+
   const groups = new Map<string, Group>();
   const firstAt = new Map<string, number>();
   result.findings.forEach((f, i) => {
@@ -257,15 +284,19 @@ export function briefMarkdown(
     }
   });
 
-  const items: Item[] = [];
-  const unsized: Group[] = [];
+  const found: Item[] = [];
+  const notSized: BriefNotSized[] = [];
   for (const group of groups.values()) {
     const check = registry.get(group.checkId);
     if (check === undefined) {
-      unsized.push(group);
+      notSized.push({
+        checkId: escapeInvisible(group.checkId, EVIDENCE_MAX),
+        title: escapeInvisible(group.findings[0]?.title ?? group.checkId, EVIDENCE_MAX),
+        ...evidenceOf(group),
+      });
       continue;
     }
-    items.push({
+    found.push({
       check,
       group,
       severity: severityOf(group.findings),
@@ -274,19 +305,88 @@ export function briefMarkdown(
       first: firstAt.get(group.checkId) ?? 0,
     });
   }
-  items.sort(
+  found.sort(
     (a, b) =>
       SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity] ||
       a.points - b.points ||
       a.first - b.first,
   );
+  const items: BriefItem[] = found.map((item) => ({
+    checkId: item.group.checkId,
+    title: item.check.title,
+    severity: item.severity,
+    size: item.size,
+    points: item.points,
+    wrong: item.check.what,
+    why: item.check.why,
+    done: item.check.done,
+    ...evidenceOf(item.group),
+    estimateChanges: item.check.estimateChanges,
+  }));
   const points = items.reduce((sum, item) => sum + item.points, 0);
 
-  const name = escapeMarkdown(opts.business ?? "") || escapeMarkdown(hostOf(result.url));
+  const estimate: Pick<Brief, "hours" | "cost" | "hoursPerPoint" | "rateMinor"> = {};
+  if (opts.hoursPerPoint !== undefined && items.length > 0) {
+    estimate.hours = hoursRange(points, opts.hoursPerPoint);
+    if (opts.rateMinor !== undefined)
+      estimate.cost = costRange(points, opts.hoursPerPoint, opts.rateMinor, opts.currency ?? "usd");
+    estimate.hoursPerPoint = hundredths(opts.hoursPerPoint) / 100;
+    if (opts.rateMinor !== undefined) estimate.rateMinor = opts.rateMinor;
+  }
+  // Keys in the order of the schema, so the JSON reads the same way every time.
+  return {
+    schemaVersion: BRIEF_SCHEMA_VERSION,
+    ...(opts.business !== undefined && opts.business.trim() !== ""
+      ? { business: opts.business }
+      : {}),
+    url: withoutQuery(result.url),
+    host: hostOf(result.url),
+    checkedAt: result.startedAt,
+    items,
+    points,
+    ...estimate,
+    couldNotCheck: new Set(result.couldNotCheck.map((c) => c.id)).size,
+    notSized,
+  };
+}
+
+/**
+ * The lines of evidence as Markdown list text. Each stored part is escaped on its own, which is how
+ * the G28 text was made. A line that no longer matches its part (someone edited it), or a brief with
+ * no parts, is escaped whole.
+ */
+function evidenceMarkdown(
+  evidence: readonly string[],
+  parts: readonly BriefEvidencePart[] | undefined,
+): string[] {
+  const usable = parts !== undefined && parts.length === evidence.length;
+  const out: string[] = [];
+  evidence.forEach((line, i) => {
+    const part = usable ? parts[i] : undefined;
+    let text: string;
+    if (part !== undefined && displayLine(part) === line) {
+      const what = escapeStartingLine(shown(part.what));
+      const where = escapeMarkdown(shown(part.where));
+      text = what === "" ? where : where === "" ? what : `${what} (${where})`;
+    } else {
+      text = escapeStartingLine(shown(line));
+    }
+    if (text !== "") out.push(text);
+  });
+  return out;
+}
+
+/**
+ * The work order as Markdown, from a `Brief`. Page text in it is plain text and is escaped here, so a
+ * business name or a line of evidence cannot start a heading, a list, a link or markup of its own.
+ */
+export function renderBriefMarkdown(brief: Brief): string {
+  const { items, points } = brief;
+  const name = escapeMarkdown(brief.business ?? "") || escapeMarkdown(brief.host);
   const out: string[] = [
     `# Work order: ${name}`,
     "",
-    `Checked ${escapeMarkdown(withoutQuery(result.url))} at ${result.startedAt}.`,
+    `Checked ${escapeMarkdown(brief.url)} at ${brief.checkedAt}.`,
     "",
     "## What is worth paying to fix",
     "",
@@ -294,7 +394,7 @@ export function briefMarkdown(
 
   if (items.length === 0) {
     out.push(
-      unsized.length === 0
+      brief.notSized.length === 0
         ? "Nothing needs paying for. Gaugeline found nothing to fix on this site."
         : "Nothing needs paying for that Gaugeline can size. The findings that have no size are listed below.",
     );
@@ -306,24 +406,22 @@ export function briefMarkdown(
         ["#", "Item", "Size", "Points"],
         items.map((item, i) => [
           String(i + 1),
-          escapeMarkdown(item.check.title),
+          escapeMarkdown(item.title),
           SIZE_NAME[item.size],
           String(item.points),
         ]),
       ),
       "",
     );
-    if (opts.hoursPerPoint !== undefined) {
-      const hours = hoursRange(points, opts.hoursPerPoint);
-      const per = hundredths(opts.hoursPerPoint) / 100;
+    if (brief.hours !== undefined && brief.hoursPerPoint !== undefined) {
+      const per = brief.hoursPerPoint;
       let money = "";
-      if (opts.rateMinor !== undefined) {
-        const currency = opts.currency ?? "usd";
-        const cost = costRange(points, opts.hoursPerPoint, opts.rateMinor, currency);
-        money = ` (about ${formatCurrency(cost.lowMinor, currency)}\u2013${formatCurrency(cost.highMinor, currency)} at ${formatCurrency(opts.rateMinor, currency)}/hour)`;
+      if (brief.cost !== undefined && brief.rateMinor !== undefined) {
+        const { currency } = brief.cost;
+        money = ` (about ${formatCurrency(brief.cost.lowMinor, currency)}\u2013${formatCurrency(brief.cost.highMinor, currency)} at ${formatCurrency(brief.rateMinor, currency)}/hour)`;
       }
       out.push(
-        `At ${per} ${per === 1 ? "hour" : "hours"} per point, that's roughly ${hours.low}\u2013${hours.high} hours${money}.`,
+        `At ${per} ${per === 1 ? "hour" : "hours"} per point, that's roughly ${brief.hours.low}\u2013${brief.hours.high} hours${money}.`,
         "",
       );
     }
@@ -332,7 +430,7 @@ export function briefMarkdown(
     );
   }
 
-  const unread = new Set(result.couldNotCheck.map((c) => c.id)).size;
+  const unread = brief.couldNotCheck;
   if (unread > 0)
     out.push(
       "",
@@ -340,28 +438,27 @@ export function briefMarkdown(
     );
 
   items.forEach((item, i) => {
-    const { check } = item;
     out.push(
       "",
-      `## ${i + 1}. ${escapeMarkdown(check.title)}`,
+      `## ${i + 1}. ${escapeMarkdown(item.title)}`,
       "",
       `**Size:** ${SIZE_NAME[item.size]} (${plural(item.points, "point")}). **Priority:** ${SEVERITY_LABEL[item.severity]}.`,
       "",
-      `**What is wrong:** ${escapeMarkdown(check.what)}`,
+      `**What is wrong:** ${escapeMarkdown(item.wrong)}`,
       "",
-      `**Why it matters:** ${escapeMarkdown(check.why)}`,
+      `**Why it matters:** ${escapeMarkdown(item.why)}`,
       "",
-      `**What done looks like:** ${escapeMarkdown(check.done)}`,
+      `**What done looks like:** ${escapeMarkdown(item.done)}`,
       "",
       "**Evidence:**",
       "",
-      ...evidenceOf(item.group).map((line) => `- ${line}`),
+      ...evidenceMarkdown(item.evidence, item.evidenceParts).map((line) => `- ${line}`),
       "",
-      `**What changes the estimate:** ${escapeMarkdown(check.estimateChanges)}`,
+      `**What changes the estimate:** ${escapeMarkdown(item.estimateChanges)}`,
     );
   });
 
-  if (unsized.length > 0) {
+  if (brief.notSized.length > 0) {
     out.push(
       "",
       "## Not sized",
@@ -369,11 +466,10 @@ export function briefMarkdown(
       "These findings come from checks this version of Gaugeline does not have (a custom check that was removed, for example), so they have no size and are not in the total above.",
       "",
     );
-    for (const group of unsized) {
-      const first = group.findings[0];
+    for (const group of brief.notSized) {
       out.push(
-        `- **${fromPage(first?.title ?? group.checkId)}** (${fromPage(group.checkId)})`,
-        ...evidenceOf(group).map((line) => `  - ${line}`),
+        `- **${escapeMarkdown(shown(group.title))}** (${escapeMarkdown(shown(group.checkId))})`,
+        ...evidenceMarkdown(group.evidence, group.evidenceParts).map((line) => `  - ${line}`),
       );
     }
   }
