@@ -71,7 +71,13 @@ function changes(page: PageSnapshot, ctx: CheckContext, id: BaselineCheckId, tit
     return [];
   }
   if (!isHtmlPage(page)) return [];
-  return diffBaselines(before, buildBaseline(page))
+  const now = buildBaseline(page);
+  // What a limit cut from either run is not compared: say so, once for each reason.
+  const cuts = new Set(
+    [...(before.cut ?? []), ...(now.cut ?? [])].filter((c) => c.check === id).map((c) => c.reason),
+  );
+  for (const reason of cuts) ctx.couldNotCheck?.(page.finalUrl, reason);
+  return diffBaselines(before, now)
     .filter((c) => c.checkId === id)
     .slice(0, MAX)
     .map((c): Finding => ({

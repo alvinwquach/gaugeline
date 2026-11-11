@@ -51,9 +51,15 @@ describe("script and header baseline: e2e (the built bin, --since last across tw
     );
     expect(saved).toContain("js.stripe.example/v3/");
     expect(saved).not.toContain("GTM-DEMO123");
+    // The fixture's reporting address carries a key in its query: it is kept nowhere.
+    expect(saved).not.toContain("PLANTEDREPORTKEY");
     const after = await run("checkout-after", dir);
     expect(after.status).toBe(0);
     expect(after.out).toBe(expectedOutput("guides/script-baseline", "The next run"));
+    expect(
+      readFileSync(join(dir, ".gaugeline", "last-run", "harbourphysio.example.json"), "utf8"),
+    ).not.toContain("PLANTEDREPORTKEY");
+    expect(before.out + before.err + after.out + after.err).not.toContain("PLANTEDREPORTKEY");
     expect([...before.methods, ...after.methods].every((m) => m === "GET" || m === "HEAD")).toBe(
       true,
     );

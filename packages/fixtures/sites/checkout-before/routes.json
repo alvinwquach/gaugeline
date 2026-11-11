@@ -1,7 +1,7 @@
 {
   "/": {
     "headers": {
-      "content-security-policy": "default-src 'self'; script-src 'self' https://js.stripe.example https://tags.analytics.example; frame-src https://js.stripe.example; frame-ancestors 'none'",
+      "content-security-policy": "default-src 'self'; script-src 'self' https://js.stripe.example https://tags.analytics.example; frame-src https://js.stripe.example; frame-ancestors 'none'; report-uri https://reports.harbourphysio.example/csp?sentry_key=PLANTEDREPORTKEY",
       "strict-transport-security": "max-age=63072000; includeSubDomains",
       "x-content-type-options": "nosniff",
       "referrer-policy": "strict-origin-when-cross-origin"

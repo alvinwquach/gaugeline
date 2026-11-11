@@ -27,7 +27,8 @@ The nine headers are `Content-Security-Policy`, `Strict-Transport-Security`, `X-
 `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` and the three `Cross-Origin-` policies
 (opener, embedder, resource). A script is third party when its host is outside the page's own
 registrable domain, so `static.yourclinic.example` is the clinic's own and `js.stripe.example` is not.
-A page keeps at most 200 scripts.
+A page keeps at most 200 scripts, 100 directives and 500 sources in a directive; past a limit the
+run says "could not be checked" and names it, so a cut is never silent.
 
 ## The checks
 
@@ -42,9 +43,21 @@ A page keeps at most 200 scripts.
   checked", and that run saves the baseline. Without `--since last` they have nothing to compare.
 - Only a change toward allowing more is reported. A script that went away, a header that appeared, a
   policy that got stricter and a nonce that changed on every request are not changes.
-- `csp-loosened` is high when `'unsafe-inline'`, `'unsafe-eval'`, `*`, `data:`, `https:` or `http:` is
-  added to `default-src` or a script directive, or when the policy or a script directive is gone. Any
-  other added source is medium. Listing hosts where there was `*` is narrowing, not a change.
+- `csp-loosened` compares what each directive allows once its fallbacks are applied
+  (`script-src-elem`, then `script-src`, then `default-src`; `frame-src` then `child-src`; and so on).
+  A directive added or removed is a change only if the policy as a whole allows more: a new
+  `script-src-elem 'unsafe-inline'` is, and removing a `script-src` that `default-src` repeats is not.
+- It is high when `'unsafe-inline'`, `'unsafe-eval'`, `*`, `data:`, `https:` or `http:` is added to
+  `default-src` or a script directive, or when a script directive is gone and nothing covers it. Any
+  other added source is medium.
+- Sources are compared as sources. `'none'` allows nothing. A host under a wildcard
+  (`https://*.example.com` to `https://cdn.example.com`), a scheme added to a host that had none
+  (`example.com` to `https://example.com`), a path under a path and a listed host where there was `*`
+  or `https:` are narrowing. A new host, a wider wildcard, a new port, a shorter path or a new scheme is
+  looser. `'unsafe-inline'` beside a nonce or a hash is ignored by browsers and is not counted, but a
+  policy that drops its nonce and keeps `'unsafe-inline'` now allows inline code.
+- The address after `report-uri` and `report-to` is never saved (it often carries a key): only that the
+  directive is set.
 - A response with more than one policy keeps the first as written and names the others `script-src#2`,
   so dropping a second policy shows as its directives going.
 - `Strict-Transport-Security` is loosened by a smaller `max-age` or a dropped `includeSubDomains` or
@@ -69,8 +82,8 @@ host, the month its source dates the problem from, a one-sentence note and the s
 address). A host matches itself and its subdomains. The list starts with `polyfill.io`, whose scripts
 were reported in June 2024 to send some visitors to unrelated sites.
 
-An entry marked `"proposed": true` was written from a recollection of its source and has not been
-confirmed by a maintainer; the finding says so. A host is added with its source in a pull request, and
+Every entry is marked `"proposed": true` for now: it was written from a recollection of its source and
+has not been confirmed by a maintainer, and the finding says so. A host is added with its source in a pull request, and
 a test checks every entry names one. The list says what a named report says. It is not a judgement of
 any company, and a host that is missing from it is not safe.
 
@@ -110,7 +123,7 @@ A month later a developer adds a chat widget, a compatibility script from `polyf
 ✗ The Content-Security-Policy allows more than it did
     content-security-policy: script-src now allows 'unsafe-inline' https://widget.chatreply.example https://cdn.polyfill.io; last run it was 'self' https://js.stripe.example https://tags.analytics.example
 ✗ A script comes from a host on the known-bad list
-    cdn.polyfill.io/v3/polyfill.min.js: polyfill.io is on the list of hosts to avoid since 2024-06. Sold in February 2024; in June 2024 researchers reported its scripts sending some visitors to unrelated sites. The domain was later suspended. Source: Sansec: Polyfill supply chain attack hits 100K+ sites (https://sansec.io/research/polyfill-supply-chain-attack)
+    cdn.polyfill.io/v3/polyfill.min.js: polyfill.io is on the list of hosts to avoid since 2024-06. Sold in February 2024; in June 2024 researchers reported its scripts sending some visitors to unrelated sites. Source: Sansec: Polyfill supply chain attack hits 100K+ sites (https://sansec.io/research/polyfill-supply-chain-attack). This entry has not been confirmed by a maintainer
 ! A third-party script is new, or lost its integrity attribute
     widget.chatreply.example/loader.js is new since the last run (no integrity attribute)
 ! A third-party script is new, or lost its integrity attribute

@@ -15,6 +15,17 @@ export interface ScriptBaseline {
   scripts: Record<string, { sri: boolean }>;
   /** Lower-case header name -> its directives. Only the headers in SECURITY_HEADERS are kept. */
   headers: Record<string, Directives>;
+  /**
+   * Where a limit cut the inventory short, so what is past it is not compared. Each is reported as
+   * "could not check" by the check it belongs to, never dropped silently. Absent when nothing was cut.
+   */
+  cut?: Cut[];
+}
+
+/** One place the inventory was cut short, and the check that cannot compare what was left out. */
+export interface Cut {
+  check: "script-changed" | "csp-loosened" | "security-header-loosened";
+  reason: string;
 }
 
 export const SECURITY_HEADERS: readonly string[] = Object.freeze([
@@ -29,11 +40,14 @@ export const SECURITY_HEADERS: readonly string[] = Object.freeze([
   "cross-origin-resource-policy",
 ]);
 
-/** The most third-party scripts, directives and values kept, and the longest path or value. */
+/**
+ * The most third-party scripts, directives, and sources per directive kept, and the longest path or
+ * value. A real policy is far below these; a page past one gets a "could not check" naming it.
+ */
 export const BASELINE_LIMITS = Object.freeze({
   scripts: 200,
-  directives: 60,
-  values: 100,
+  directives: 100,
+  values: 500,
   text: 160,
 });
 
@@ -50,7 +64,8 @@ export function own<T>(record: Record<string, T>, key: string): T | undefined {
   return Object.hasOwn(record, key) ? record[key] : undefined;
 }
 
-const printable = (s: string) =>
+/** Text from a page or a saved file, as it may be printed: no control characters, cut to a line. */
+export const printable = (s: string) =>
   // eslint-disable-next-line no-control-regex -- control characters are removed on purpose
   s.replace(/[\u0000-\u001f\u007f]/g, "").slice(0, BASELINE_LIMITS.text);
 
@@ -74,33 +89,70 @@ export function thirdPartyKey(src: string, pageUrl: string): string | undefined 
   }
 }
 
+/** Directives whose value is an address that can carry a key: only that they are set is kept. */
+const VALUE_DROPPED = new Set(["report-uri", "report-to"]);
+
+/** A token with no userinfo, query or fragment: a source never has one, and a key could ride in it. */
+function bare(token: string): string {
+  return printable(
+    token
+      .replace(/\/\/[^/@\s]*@/, "//")
+      .replace(/[?#].*$/, "")
+      .toLowerCase(),
+  );
+}
+
+/** All the tokens of a text, bare. Capping is the caller's, so it can say so. */
 function tokens(text: string): string[] {
   return text
     .trim()
     .split(/\s+/)
     .filter((t) => t !== "")
-    .map((t) => printable(t.toLowerCase()))
-    .slice(0, BASELINE_LIMITS.values);
+    .map(bare);
 }
 
 const collapse = (t: string) => (/^'(?:nonce|sha256|sha384|sha512)-/.test(t) ? NONCE_OR_HASH : t);
 
+/** The first `values` entries, and a note in `cuts` (when the caller wants them) if there were more. */
+function capped(list: string[], where: string, check: Cut["check"], cuts?: Cut[]): string[] {
+  if (list.length <= BASELINE_LIMITS.values) return list;
+  cuts?.push({
+    check,
+    reason: `${where} has more than ${BASELINE_LIMITS.values} sources: only the first ${BASELINE_LIMITS.values} are compared`,
+  });
+  return list.slice(0, BASELINE_LIMITS.values);
+}
+
 /**
- * A Content-Security-Policy as directive -> sources. A nonce or hash becomes one marker. A response
- * with several policies (joined by commas) keeps the first as written and names the others
+ * A Content-Security-Policy as directive -> sources. A nonce or hash becomes one marker. The value of
+ * report-uri and report-to is dropped (a reporting address often carries a key). A response with
+ * several policies (joined by commas) keeps the first as written and names the others
  * "directive#2", "directive#3", so dropping a second policy reads as those directives going.
+ * What a limit cuts is added to `cuts`.
  */
-export function parseCsp(value: string): Directives {
+export function parseCsp(value: string, cuts?: Cut[]): Directives {
   const out: Directives = dict();
+  let cutDirectives = false;
   value.split(",").forEach((policy, i) => {
     for (const part of policy.split(";")) {
       const [name, ...rest] = tokens(part);
-      if (name === undefined || Object.keys(out).length >= BASELINE_LIMITS.directives) continue;
+      if (name === undefined) continue;
+      if (Object.keys(out).length >= BASELINE_LIMITS.directives) {
+        cutDirectives = true;
+        continue;
+      }
       const key = i === 0 ? name : `${name}#${i + 1}`;
       if (key in out) continue;
-      out[key] = [...new Set(rest.map(collapse))];
+      out[key] = VALUE_DROPPED.has(name)
+        ? []
+        : capped([...new Set(rest.map(collapse))], key, "csp-loosened", cuts);
     }
   });
+  if (cutDirectives)
+    cuts?.push({
+      check: "csp-loosened",
+      reason: `the policy has more than ${BASELINE_LIMITS.directives} directives: only the first ${BASELINE_LIMITS.directives} are compared`,
+    });
   return out;
 }
 
@@ -109,14 +161,18 @@ export function parseHsts(value: string): Directives {
   const out: Directives = dict();
   for (const part of value.split(";")) {
     const [name, ...rest] = printable(part.trim().toLowerCase()).split("=");
-    if (name && !(name.trim() in out))
-      out[name.trim()] = rest.join("=") ? [rest.join("=").trim()] : [];
+    // A quoted value (max-age="300") is read as the number inside the quotes.
+    const v = rest
+      .join("=")
+      .trim()
+      .replace(/^"(.*)"$/, "$1");
+    if (name && !(name.trim() in out)) out[name.trim()] = v ? [bare(v)] : [];
   }
   return out;
 }
 
 /** Permissions-Policy: "camera=(), geolocation=(self "https://x.example")" -> camera: [], geolocation: [self, https://x.example]. */
-export function parsePermissions(value: string): Directives {
+export function parsePermissions(value: string, cuts?: Cut[]): Directives {
   const out: Directives = dict();
   for (const part of value.split(/,(?![^(]*\))/)) {
     const eq = part.indexOf("=");
@@ -127,7 +183,7 @@ export function parsePermissions(value: string): Directives {
       .replace(/[()"]/g, " ")
       .replace(/\s+/g, " ");
     if (name && !(name in out) && Object.keys(out).length < BASELINE_LIMITS.directives)
-      out[name] = tokens(list);
+      out[name] = capped(tokens(list), name, "security-header-loosened", cuts);
   }
   return out;
 }
@@ -137,22 +193,23 @@ function parseWords(value: string): Directives {
   return {
     "": value
       .split(",")
-      .map((w) => printable(w.trim().toLowerCase()))
+      .map((w) => bare(w.trim()))
       .filter((w) => w !== "")
       .slice(0, BASELINE_LIMITS.values),
   };
 }
 
-export function parseHeader(name: string, value: string): Directives {
-  if (name === "content-security-policy") return parseCsp(value);
+export function parseHeader(name: string, value: string, cuts?: Cut[]): Directives {
+  if (name === "content-security-policy") return parseCsp(value, cuts);
   if (name === "strict-transport-security") return parseHsts(value);
-  if (name === "permissions-policy") return parsePermissions(value);
+  if (name === "permissions-policy") return parsePermissions(value, cuts);
   return parseWords(value);
 }
 
 /** The inventory of one page: its third-party scripts and the security headers of its final response. */
 export function buildBaseline(page: PageSnapshot): ScriptBaseline {
   const scripts: ScriptBaseline["scripts"] = dict();
+  let dropped = 0;
   for (const tag of page.scriptTags ?? []) {
     if (tag.src === undefined) continue;
     const key = thirdPartyKey(tag.src, page.finalUrl);
@@ -163,34 +220,73 @@ export function buildBaseline(page: PageSnapshot): ScriptBaseline {
       scripts[key] = { sri: (scripts[key]?.sri ?? false) && sri };
     } else if (Object.keys(scripts).length < BASELINE_LIMITS.scripts) {
       scripts[key] = { sri };
+    } else {
+      dropped += 1;
     }
   }
+  const cut: Cut[] = [];
+  if (dropped > 0)
+    cut.push({
+      check: "script-changed",
+      reason: `${dropped} third-party script${dropped === 1 ? "" : "s"} past the first ${BASELINE_LIMITS.scripts} ${dropped === 1 ? "is" : "are"} not compared`,
+    });
   const headers: ScriptBaseline["headers"] = dict();
   const sent = page.hops.at(-1)?.headers ?? {};
   for (const [rawName, value] of Object.entries(sent)) {
     const name = rawName.toLowerCase();
     if (SECURITY_HEADERS.includes(name) && typeof value === "string" && !(name in headers))
-      headers[name] = parseHeader(name, value);
+      headers[name] = parseHeader(name, value, cut);
   }
-  return { scripts, headers };
+  return { scripts, headers, ...(cut.length > 0 ? { cut } : {}) };
 }
 
 const isStrings = (v: unknown): v is string[] =>
   Array.isArray(v) && v.every((x) => typeof x === "string");
 
-/** A saved baseline, or undefined when the file's value is not one (a hand-edited or older file). */
+/** What a saved file may hold before it is not read: well above what buildBaseline writes. */
+const READ_LIMITS = Object.freeze({
+  scripts: 1000,
+  headers: 20,
+  directives: 400,
+  values: 2000,
+  text: 1000,
+});
+
+const isCut = (c: unknown): c is Cut =>
+  typeof c === "object" &&
+  c !== null &&
+  ["script-changed", "csp-loosened", "security-header-loosened"].includes((c as Cut).check) &&
+  typeof (c as Cut).reason === "string";
+
+/**
+ * A saved baseline, or undefined when the file's value is not one: a hand-edited or older file, or
+ * one larger than anything buildBaseline writes (it is read from disk and could be anything).
+ */
 export function readBaseline(value: unknown): ScriptBaseline | undefined {
   if (typeof value !== "object" || value === null) return undefined;
-  const v = value as { scripts?: unknown; headers?: unknown };
+  const v = value as { scripts?: unknown; headers?: unknown; cut?: unknown };
   if (typeof v.scripts !== "object" || v.scripts === null) return undefined;
   if (typeof v.headers !== "object" || v.headers === null) return undefined;
-  for (const s of Object.values(v.scripts)) {
+  const scripts = Object.entries(v.scripts);
+  const headers = Object.entries(v.headers);
+  if (scripts.length > READ_LIMITS.scripts || headers.length > READ_LIMITS.headers)
+    return undefined;
+  for (const [key, s] of scripts) {
+    if (key.length > READ_LIMITS.text) return undefined;
     if (typeof s !== "object" || s === null || typeof (s as { sri?: unknown }).sri !== "boolean")
       return undefined;
   }
-  for (const h of Object.values(v.headers)) {
-    if (typeof h !== "object" || h === null) return undefined;
-    if (!Object.values(h).every(isStrings)) return undefined;
+  for (const [name, h] of headers) {
+    if (name.length > READ_LIMITS.text || typeof h !== "object" || h === null) return undefined;
+    const dirs = Object.entries(h);
+    if (dirs.length > READ_LIMITS.directives) return undefined;
+    for (const [dir, list] of dirs) {
+      if (dir.length > READ_LIMITS.text || !isStrings(list) || list.length > READ_LIMITS.values)
+        return undefined;
+      if (list.some((t) => t.length > READ_LIMITS.text)) return undefined;
+    }
   }
+  if (v.cut !== undefined && !(Array.isArray(v.cut) && v.cut.length <= 20 && v.cut.every(isCut)))
+    return undefined;
   return value as ScriptBaseline;
 }

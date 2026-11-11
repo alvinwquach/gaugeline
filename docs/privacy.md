@@ -372,7 +372,9 @@ of their own. They read the page the run already loaded.
   headers of the page itself. No script is downloaded and nothing is sent to a script's host.
 - **Kept with `--since last`** in `.gaugeline/last-run/<host>.json`: the host and path of each
   third-party script (the query string is cut off), integrity present or not, and nine security
-  headers as header name and directive lists. A nonce or a hash in a policy is kept as one marker.
+  headers as header name and directive lists. A nonce or a hash in a policy is kept as one marker, and
+  the address after `report-uri` or `report-to` is not kept at all. A source or header value loses any
+  query string, fragment or user name.
 - **Never kept.** Page text, query strings, nonces, cookies, keys and every other header.
 - **The known-bad list** is a data file in the package. It is read on this computer and nothing is
   looked up online.

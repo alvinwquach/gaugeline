@@ -54,7 +54,9 @@ describe("script-known-bad-host", () => {
     expect(found[0]?.evidence).toContain("since 2024-06");
     expect(found[0]?.evidence).toContain("https://sansec.io/research/polyfill-supply-chain-attack");
     expect(found[0]?.evidence).not.toContain("features=fetch");
-    expect(found[0]?.evidence).not.toContain("not been confirmed");
+    // Its source was cited from memory, so it is proposed like the others.
+    expect(found[0]?.evidence).toContain("This entry has not been confirmed by a maintainer");
+    expect(found[0]?.evidence).not.toContain("suspended");
   });
 
   it("a proposed entry says it has not been confirmed", () => {
@@ -230,5 +232,50 @@ describe("what a snapshot keeps", () => {
     expect(text).not.toContain("Rivera");
     expect(text).not.toContain("n0nce");
     expect(saved(p).baseline?.scripts).toEqual({ "tags.example/gtm.js": { sri: false } });
+  });
+});
+
+describe("a cut inventory is could not check, never silent (review finding 5)", () => {
+  const many = (n: number) =>
+    Array.from(
+      { length: n },
+      (_, i) => `<script src="https://s${i}.cdn.example/a.js"></script>`,
+    ).join("");
+
+  it("scripts past the limit are named by script-changed, from this run and from the saved one", () => {
+    sent.length = 0;
+    const big = page(html(many(203)));
+    expect(scriptChanged.run(big, ctxWith({ previous: saved(big) }))).toEqual([]);
+    expect(sent).toEqual([`${URL0} 3 third-party scripts past the first 200 are not compared`]);
+    sent.length = 0;
+    // Only the saved run was cut: the page now has few scripts, and the comparison still says so.
+    void scriptChanged.run(page(html(many(2))), ctxWith({ previous: saved(big) }));
+    expect(sent).toEqual([`${URL0} 3 third-party scripts past the first 200 are not compared`]);
+  });
+
+  it("a source list past the limit is named by csp-loosened, and not by the other checks", () => {
+    sent.length = 0;
+    const hosts = Array.from({ length: 505 }, (_, i) => `https://h${i}.example`).join(" ");
+    const p = page(html(STRIPE), { "content-security-policy": `script-src ${hosts}` });
+    void cspLoosened.run(p, ctxWith({ previous: saved(p) }));
+    void scriptChanged.run(p, ctxWith({ previous: saved(p) }));
+    expect(sent).toEqual([
+      `${URL0} script-src has more than 500 sources: only the first 500 are compared`,
+    ]);
+  });
+});
+
+describe("a reporting address is never kept (review finding 1)", () => {
+  it("report-uri's value is in no saved baseline, finding or could-not-check line", () => {
+    sent.length = 0;
+    const before = page(html(STRIPE), {
+      "content-security-policy": `${CSP}; report-uri https://o1.ingest.sentry.example/api/2/security/?sentry_key=${KEY}`,
+    });
+    const after = page(html(STRIPE), {
+      "content-security-policy": `${CSP} 'unsafe-inline'; report-uri https://o2.ingest.sentry.example/api/3/security/?sentry_key=${KEY}`,
+    });
+    const found = cspLoosened.run(after, ctxWith({ previous: saved(before) }));
+    expect(JSON.stringify([saved(before), saved(after), found, sent])).not.toContain(KEY);
+    expect(found).toHaveLength(1);
   });
 });
