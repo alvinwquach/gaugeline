@@ -9,6 +9,10 @@ export const ADAPTER_PAGES: { slug: string; title: string }[] = [
     slug: "integrations/contentful",
     title: "Contentful: content checks for sites built on Contentful",
   },
+  {
+    slug: "integrations/contentstack",
+    title: "Contentstack: content checks for sites built on Contentstack",
+  },
   { slug: "integrations/framer", title: "Framer: content checks for sites built on Framer (beta)" },
   {
     slug: "integrations/git-content",
@@ -18,6 +22,10 @@ export const ADAPTER_PAGES: { slug: string; title: string }[] = [
   {
     slug: "integrations/sitemap-feed",
     title: "Sitemap and feeds: content checks for sites built on any CMS",
+  },
+  {
+    slug: "integrations/squarespace-commerce",
+    title: "Squarespace commerce: price and stock checks for stores built on Squarespace",
   },
   { slug: "integrations/strapi", title: "Strapi: content checks for sites built on Strapi" },
   { slug: "integrations/webflow", title: "Webflow: content checks for sites built on Webflow" },

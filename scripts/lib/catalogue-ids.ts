@@ -4,6 +4,7 @@ import {
   WEBFLOW_CHECKS,
   SHOPIFY_CHECKS,
   CONTENTFUL_CHECKS,
+  SQUARESPACE_COMMERCE_CHECKS,
   STRAPI_CHECKS,
   AD_LANDING_CHECKS,
   CAMPAIGN_CHECKS,
@@ -66,6 +67,7 @@ export function CATALOGUE_IDS(): string[] {
   for (const c of WEBFLOW_CHECKS) registry.register(c);
   for (const c of SHOPIFY_CHECKS) registry.register(c);
   for (const c of CONTENTFUL_CHECKS) registry.register(c);
+  for (const c of SQUARESPACE_COMMERCE_CHECKS) registry.register(c);
   for (const c of STRAPI_CHECKS) registry.register(c);
   return registry.all().map((c) => c.id);
 }

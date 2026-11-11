@@ -75,6 +75,20 @@ function isContentfulDeliveryToken(secret: string, m: RegExpExecArray): boolean 
   return !(/preview/i.test(name) || PREVIEW_HOST.test(scopeOf(m, false)));
 }
 
+/**
+ * The text of the object literal a value sits in and no nested one: after the last "{" before it, up to the
+ * next "{" or "}" after it. A nested `live_preview:{...}` after a delivery token is another object.
+ */
+function ownObject(m: RegExpExecArray): string {
+  const start = m.index;
+  const before = m.input.slice(Math.max(0, start - PREVIEW_WINDOW), start);
+  const after = m.input.slice(start + m[0].length, start + m[0].length + PREVIEW_WINDOW);
+  return `${before.slice(before.lastIndexOf("{") + 1)} ${after.split(/[{}]/)[0] ?? ""}`;
+}
+
+/** The Contentstack Live Preview host (rest-preview.contentstack.com and its regional spellings). */
+const CONTENTSTACK_PREVIEW_HOST = /preview\.contentstack\.(?:com|io)/i;
+
 export const DETECTORS: readonly Detector[] = Object.freeze([
   {
     id: "stripe-secret",
@@ -118,6 +132,20 @@ export const DETECTORS: readonly Detector[] = Object.freeze([
       }
       return /preview/i.test(name) && /contentful/i.test(m.input);
     },
+  },
+  {
+    id: "contentstack-preview-token",
+    label: "Contentstack preview token",
+    // A finding says the kind and the place only: no prefix, no suffix, no hash.
+    hideValue: true,
+    // A Contentstack token is "cs" and hex (uncited: the shape is from memory, so the name or the host must
+    // agree too). A delivery token is public by design and is never a match: a match needs the name to say
+    // "preview" in a file that names Contentstack, or the Live Preview host in the same object literal.
+    pattern:
+      /(?<![A-Za-z0-9_$])(?<name>[A-Za-z0-9_$]{0,40}(?:token|key)[A-Za-z0-9_$]{0,40})["']?\s*[:=]\s*["'`](?<secret>cs[0-9a-f]{20,60})(?![A-Za-z0-9_-])/gi,
+    verify: (_s, m) =>
+      CONTENTSTACK_PREVIEW_HOST.test(ownObject(m)) ||
+      (/preview/i.test(m.groups?.name ?? "") && /contentstack/i.test(m.input)),
   },
   {
     id: "secret-assignment",

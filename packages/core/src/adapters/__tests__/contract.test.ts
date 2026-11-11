@@ -183,13 +183,14 @@ describe.each(ENTRIES)("the adapter contract: $id", (entry) => {
       expect(seen.length).toBeGreaterThan(0);
       for (const s of seen) {
         expect(s.url).not.toContain(entry.key ?? "");
-        if (entry.keyHeaderName !== undefined) {
-          expect(s.headers[entry.keyHeaderName]).toBe(entry.key);
-          expect(s.headers.authorization).toBeUndefined();
+        if (entry.keyHeaders) {
+          expect(s.headers.authorization ?? "").toBe("");
+          for (const [name, value] of Object.entries(entry.keyHeaders))
+            expect(s.headers[name]).toBe(value);
+          for (const value of Object.values(entry.keyHeaders)) expect(s.url).not.toContain(value);
         } else
           expect(s.headers.authorization ?? "").toBe(entry.keyHeader ? "" : `Bearer ${entry.key}`);
       }
-      if (entry.keyHeaderName !== undefined) return;
       if (!entry.keyHeader) return;
       // The key is sent, in this header and only here, for what needs it.
       const before = seen.length;

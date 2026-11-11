@@ -20,7 +20,7 @@ export const shopifyEntry: ContractEntry = {
   transport: () => shopifyTransport(undefined, { token: SHOPIFY_KEY }),
   key: SHOPIFY_KEY,
   // The Storefront API reads its token from this header, not from Authorization.
-  keyHeaderName: "x-shopify-storefront-access-token",
+  keyHeaders: { "x-shopify-storefront-access-token": SHOPIFY_KEY },
   queryAllow: [SHOPIFY_STOREFRONT_QUERY],
   queryHosts: { [SHOPIFY_STOREFRONT_QUERY.id]: SHOPIFY_SHOP },
   secrets: Object.values(SHOPIFY_MARKERS),

@@ -34,11 +34,11 @@ export interface ContractEntry {
    */
   keyHeader?: { value: string };
   /**
-   * The platform reads its key from a header of its own, not Authorization (Shopify's
-   * `x-shopify-storefront-access-token`). Every request then carries the key in exactly this header
-   * (lower case), never in an address, and no Authorization header at all.
+   * For a platform that takes its key in headers other than Authorization (Contentstack's `api_key` and
+   * `access_token`): every request carries exactly these headers (lower-case names), and none carries an
+   * Authorization header. The values must not appear in an address, a result or a message.
    */
-  keyHeaderName?: string;
+  keyHeaders?: Readonly<Record<string, string>>;
   /**
    * The read-only query entries the adapter's own file EXPORTS (ADR-0006), if it sends any: the frozen
    * objects `registerQueryAllow` returned, imported here, not written out again. The suite checks
