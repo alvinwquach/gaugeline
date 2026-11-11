@@ -25,6 +25,7 @@ export const SUBCOMMANDS = [
   "platform",
   "query",
   "emails",
+  "renewals",
 ] as const;
 export type CliCommand = "check" | (typeof SUBCOMMANDS)[number];
 
@@ -52,6 +53,8 @@ export interface RunFlags {
   brief?: BriefFlags;
   /** launch --dns: add the email record checks. */
   dns: boolean;
+  /** --renewals (or the renewals command): add the renewals checks (domain, certificates, tokens, runtimes). */
+  renewals: boolean;
   /** --owner-consent: run the probing checks (they ask gated routes for what they protect, with no login). */
   ownerConsent: boolean;
   /** --routes: globs over the repository's route files, for the download route probe. */
@@ -146,6 +149,8 @@ export type ParsedArgs =
       tag?: string;
       parallel: number;
       allowPrivate: boolean;
+      /** --renewals: each site's run also checks what lapses. */
+      renewals: boolean;
       verbose: boolean;
       quiet: boolean;
     }
@@ -575,6 +580,7 @@ export function parseCliArgs(
       ...(tag !== undefined ? { tag } : {}),
       parallel: Number(p),
       allowPrivate: values["allow-private"] === true,
+      renewals: values.renewals === true,
       verbose,
       quiet: values.quiet === true,
     };
@@ -1239,6 +1245,7 @@ export function parseCliArgs(
     command,
     ...(brief ? { brief } : {}),
     dns: values.dns === true,
+    renewals: values.renewals === true || command === "renewals",
     ownerConsent: values["owner-consent"] === true,
     routes: Array.isArray(values.routes)
       ? values.routes

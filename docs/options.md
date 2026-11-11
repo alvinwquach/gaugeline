@@ -63,6 +63,9 @@ Options:
                                  of refusing it; a restricted key is safer
       --dns                      Also read the domain's mail records (SPF and
                                  DMARC) from DNS
+      --renewals                 Also check what lapses: the domain's
+                                 registration, the certificates and any token
+                                 you set up
       --owner-consent            Run the probing checks, which ask routes for
                                  what they protect with no login; only on sites
                                  you may test
@@ -322,6 +325,7 @@ between the markers; CI fails when it differs from the flag table.
 | `--allow-private`           | Allow addresses on this computer or a private network, such as 127.0.0.1 or 192.168.x.x                              |                      | 0.1.0 |
 | `--allow-secret-key`        | Use a Stripe secret key, with a notice, instead of refusing it; a restricted key is safer                            |                      | 0.2.0 |
 | `--dns`                     | Also read the domain's mail records (SPF and DMARC) from DNS                                                         |                      | 0.2.0 |
+| `--renewals`                | Also check what lapses: the domain's registration, the certificates and any token you set up                         |                      | 0.2.0 |
 | `--owner-consent`           | Run the probing checks, which ask routes for what they protect with no login; only on sites you may test             |                      | 0.2.0 |
 | `--routes <value>`          | With --owner-consent: download routes in files matching this glob (repeatable); no glob: a folder's signed-in routes |                      | 0.2.0 |
 | `--since <value>`           | Page check: compare with the last run (the only value is last). delivery: the window to read, such as 7d             |                      | 0.2.0 |
@@ -479,6 +483,26 @@ a "Fix this first" finding). A missing folder, a folder with no `.html` and a se
 read are exit 2. Settings: `gaugeline.emails.json`, and the payments, facts and languages files the
 page check reads. What runs on each email, how to get the folder from React Email or MJML, and two
 examples: [Transactional emails](guides/emails.md).
+
+### The renewals command
+
+`gaugeline renewals <address>` lists what lapses on a client's site, soonest first, with the date written
+out: the domain's registration (from the registry's public RDAP server, never WHOIS), the certificates of
+the bare domain and www, and, only for tokens you put in `GAUGELINE_GITHUB_TOKEN` and
+`GAUGELINE_VERCEL_TOKEN`, a token's expiry and a Vercel project's Node.js version. It does not need the
+site to answer: a lapsed domain is read all the same.
+
+```sh
+npx gaugeline renewals marlowe-bar.com
+npx gaugeline renewals marlowe-bar.com --ci
+```
+
+It takes `--ci` (exit 1 for a "Fix this first" finding), `--json` (the schema 2 result and nothing else),
+`--allow-private`, `--no-open` and the notification flags, like the page check. `--renewals` adds the same
+checks to the page check, and `gaugeline run --all --renewals` to every site of a nightly run. Settings:
+`gaugeline.renewals.json` (the Vercel projects, and the domain when its ending is unusual). What it reads,
+what keys to make and the thresholds: [Renewals](guides/renewals.md). What it sends:
+[Privacy and safety](privacy.md#renewals-gaugeline-renewals).
 
 ### The query command
 

@@ -35,6 +35,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     commands: [
       "check",
       "launch",
+      "renewals",
       "verify",
       "tags",
       "ads",
@@ -49,14 +50,14 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     type: "boolean",
     description: "Print the result as JSON on stdout, and nothing else",
     since: "0.1.0",
-    commands: ["check", "launch", "ads", "delivery", "platform", "query", "emails"],
+    commands: ["check", "launch", "renewals", "ads", "delivery", "platform", "query", "emails"],
   },
   {
     name: "no-open",
     type: "boolean",
     description: "Do not open anything in a browser",
     since: "0.1.0",
-    commands: ["check", "launch", "open"],
+    commands: ["check", "launch", "renewals", "open"],
   },
   {
     name: "demo",
@@ -83,6 +84,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     commands: [
       "check",
       "launch",
+      "renewals",
       "brief",
       "plan",
       "printed",
@@ -110,6 +112,14 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     description: "Also read the domain's mail records (SPF and DMARC) from DNS",
     since: "0.2.0",
     commands: ["check", "launch", "brief"],
+  },
+  {
+    name: "renewals",
+    type: "boolean",
+    description:
+      "Also check what lapses: the domain's registration, the certificates and any token you set up",
+    since: "0.2.0",
+    commands: ["check", "run"],
   },
   {
     name: "owner-consent",
@@ -270,28 +280,28 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     type: "string",
     description: "Send a summary to this Slack incoming webhook (or set GAUGELINE_SLACK_WEBHOOK)",
     since: "0.2.0",
-    commands: ["check", "launch", "plan"],
+    commands: ["check", "launch", "renewals", "plan"],
   },
   {
     name: "discord",
     type: "string",
     description: "Send an embed to this Discord webhook (or set GAUGELINE_DISCORD_WEBHOOK)",
     since: "0.2.0",
-    commands: ["check", "launch", "plan"],
+    commands: ["check", "launch", "renewals", "plan"],
   },
   {
     name: "webhook",
     type: "string",
     description: "POST the result as JSON to this address (or set GAUGELINE_WEBHOOK)",
     since: "0.2.0",
-    commands: ["check", "launch", "digest", "plan"],
+    commands: ["check", "launch", "renewals", "digest", "plan"],
   },
   {
     name: "email",
     type: "string",
     description: "Email the full report to these addresses through Resend (or set GAUGELINE_EMAIL)",
     since: "0.2.0",
-    commands: ["check", "launch", "digest"],
+    commands: ["check", "launch", "renewals", "digest"],
   },
   {
     name: "plan-only",
@@ -513,14 +523,14 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     type: "string",
     description: "When to send: any (something was found, the default), high or always",
     since: "0.2.0",
-    commands: ["check", "launch", "plan"],
+    commands: ["check", "launch", "renewals", "plan"],
   },
   {
     name: "report-url",
     type: "string",
     description: "Link each message to a hosted copy of the report at this address",
     since: "0.2.0",
-    commands: ["check", "launch"],
+    commands: ["check", "launch", "renewals"],
   },
   {
     name: "save-requests",
@@ -528,7 +538,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     description:
       "Save the requests made and the page's data to this JSON file; it may contain page content, so do not commit it",
     since: "0.2.0",
-    commands: ["check", "launch"],
+    commands: ["check", "launch", "renewals"],
   },
   {
     name: "list",

@@ -21,6 +21,7 @@ export const COMMANDS = [
   "platform",
   "query",
   "emails",
+  "renewals",
 ] as const;
 export type Command = (typeof COMMANDS)[number];
 
@@ -44,6 +45,20 @@ export const HELP: Record<string, string> = {
     summary: [
       "Run the launch-day checks: links to preview addresses, the share picture, an",
       "indexable staging site, noindex and robots.txt. Read-only.",
+    ].join("\n"),
+    footer: "Exit codes: 0 ran, 1 --ci with a fix-first finding, 2 could not run",
+  }),
+  renewals: renderHelp(FLAGS, "renewals", {
+    usage: "gaugeline renewals <address> [options]",
+    summary: [
+      "See when a client's domain, certificate or tokens expire, before the site goes",
+      "dark. Reads the domain's registration from the registry's public RDAP server",
+      "(never WHOIS), the certificates of the bare domain and www, and, only if you set",
+      "them up, a GitHub or Vercel token's expiry and a Vercel project's Node.js",
+      "version (GAUGELINE_GITHUB_TOKEN, GAUGELINE_VERCEL_TOKEN and",
+      "gaugeline.renewals.json). Prints one Renewals list by date, then what to fix.",
+      "Read-only: it never renews, buys, logs in or changes anything. The same checks",
+      "run in the page check with --renewals, and so in gaugeline run --all --renewals.",
     ].join("\n"),
     footer: "Exit codes: 0 ran, 1 --ci with a fix-first finding, 2 could not run",
   }),

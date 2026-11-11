@@ -246,6 +246,27 @@ a query string; text from an email is escaped, and a finding passes through the 
 other. The files you point it at should still be rendered from sample data, not exported from a real
 customer's send.
 
+### Renewals (gaugeline renewals)
+
+`gaugeline renewals <address>` (and `--renewals` on the page check) asks for the dates that decide when a
+site goes dark ([Renewals](guides/renewals.md)). Every request is `GET` or `HEAD`, through the fetcher.
+
+- **The domain's registry.** One `GET` of IANA's bootstrap file (`data.iana.org/rdap/dns.json`) and one
+  `GET` of the registry's public RDAP server for the domain's name. No key. The name of the domain you
+  check is sent to the registry, as it is by any RDAP lookup. Gaugeline never uses WHOIS.
+- **The site's own hosts.** One `HEAD` of the bare domain and of its www, not followed, to read the
+  certificate's names and dates off the connection. Nothing is downloaded.
+- **GitHub and Vercel, only for a token you set.** `GET https://api.github.com/rate_limit` with the token
+  in a header, and `GET https://api.vercel.com/v5/user/tokens/current` and `/v9/projects/<name>` for the
+  projects you list. The token goes in a request header to that host only, and is never put in an
+  address, a log, a finding or a report. Only a date and a Node.js version are read from the answers: not
+  a token's name or scopes, a project's repository or any other field.
+
+What it prints: dates, the registrar's name, the status words the registry uses (such as "client hold"),
+the host names, and the names of the variables that hold the tokens. Text from a registry is escaped, and
+a finding passes through the same redactor as every other. It never renews, buys, logs in or changes
+anything.
+
 ### Saving the requests (--save-requests)
 
 By default a run keeps what it asked for in memory and writes only the report. `--save-requests <file>`

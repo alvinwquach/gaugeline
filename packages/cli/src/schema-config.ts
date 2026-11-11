@@ -6,6 +6,7 @@ import {
   consentConfigSchema,
   cutoverConfigSchema,
   emailsConfigSchema,
+  renewalsConfigSchema,
   eventsConfigSchema,
   factsConfigSchema,
   hiddenConfigSchema,
@@ -26,6 +27,7 @@ import {
   type ConsentConfig,
   type CutoverConfig,
   type EmailsConfig,
+  type RenewalsConfig,
   type EventsConfig,
   type FactsConfig,
   type HiddenConfig,
@@ -54,6 +56,8 @@ export const FACTS_CONFIG_FILE = "gaugeline.facts.json";
 export const PAYMENTS_CONFIG_FILE = "gaugeline.payments.json";
 /** What the project says about its rendered emails (a text version is expected, click-tracking patterns), likewise. */
 export const EMAILS_CONFIG_FILE = "gaugeline.emails.json";
+/** What the project says about its renewals (the registered name when it is unusual, the Vercel projects), likewise. Tokens stay in the environment. */
+export const RENEWALS_CONFIG_FILE = "gaugeline.renewals.json";
 /** The database project and roles to test its access rules as, likewise. Keys stay in the environment. */
 export const ACCESS_CONFIG_FILE = "gaugeline.access.json";
 /** The business listings to compare with the site (Google, Yelp, Apple, bio links), likewise. Keys stay in the environment. */
@@ -129,6 +133,10 @@ export function readPayments(dir: string): PaymentsConfig | undefined {
 
 export function readEmailsConfig(dir: string): EmailsConfig | undefined {
   return readJsonConfig(dir, EMAILS_CONFIG_FILE, emailsConfigSchema, "the email settings");
+}
+
+export function readRenewalsConfig(dir: string): RenewalsConfig | undefined {
+  return readJsonConfig(dir, RENEWALS_CONFIG_FILE, renewalsConfigSchema, "the renewals settings");
 }
 
 export function readAccess(dir: string): AccessConfig | undefined {
