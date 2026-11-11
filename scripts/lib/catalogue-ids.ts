@@ -2,6 +2,7 @@ import {
   CUTOVER_ONLY_CHECKS,
   MIGRATION_CHECKS,
   WEBFLOW_CHECKS,
+  CONTENTFUL_CHECKS,
   AD_LANDING_CHECKS,
   CAMPAIGN_CHECKS,
   DUPLICATE_CHECKS,
@@ -61,5 +62,6 @@ export function CATALOGUE_IDS(): string[] {
   for (const c of CUTOVER_ONLY_CHECKS) registry.register(c);
   for (const c of MIGRATION_CHECKS) registry.register(c);
   for (const c of WEBFLOW_CHECKS) registry.register(c);
+  for (const c of CONTENTFUL_CHECKS) registry.register(c);
   return registry.all().map((c) => c.id);
 }

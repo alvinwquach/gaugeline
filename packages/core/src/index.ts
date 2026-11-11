@@ -1413,6 +1413,7 @@ export type { AuditPackFile } from "./audit/render.js";
 
 export { MIGRATION_CHECKS, createMigrationRegistry, unreadPages } from "./checks/migration.js";
 export { WEBFLOW_CHECKS, createWebflowRegistry } from "./checks/webflow.js";
+export { CONTENTFUL_CHECKS, createContentfulRegistry } from "./checks/contentful.js";
 export {
   ListBuilder,
   MIGRATION_ITEM_CAP,

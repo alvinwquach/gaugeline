@@ -662,7 +662,7 @@ never requested: they are not the site's to fix.
 
 A key that is found is cut down to its first 6 and last 2 characters before anything else sees it,
 so the whole key never reaches a finding, a log line or a report: `sk_liv…L2`. Publishable keys
-(`pk_live_`, `pk_test_`) are meant to be public and are not reported.
+(`pk_live_`, `pk_test_`) are meant to be public and are not reported. A Contentful preview token is reported by kind and place only, with no character of it; a Contentful delivery token is public by design and is not reported.
 
 ### Sanity datasets
 

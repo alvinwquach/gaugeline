@@ -10,6 +10,7 @@ import { WIX_DESCRIPTION, createWixAdapter } from "./wix.js";
 import { WORDPRESS_DESCRIPTION, createWordPressAdapter } from "./wordpress.js";
 import type { AdapterDescription, AdapterSettings, ContentAdapter } from "./types.js";
 import { WEBFLOW_DESCRIPTION, createWebflowAdapter } from "./webflow.js";
+import { CONTENTFUL_DESCRIPTION, createContentfulAdapter } from "./contentful.js";
 
 export interface AdapterContext {
   env: Env;
@@ -116,6 +117,20 @@ export const BUILT_ADAPTERS: ReadonlyMap<string, BuiltAdapter> = new Map<string,
         }),
     },
   ],
+  [
+    "contentful",
+    {
+      id: "contentful",
+      describe: CONTENTFUL_DESCRIPTION,
+      create: (c, settings) =>
+        createContentfulAdapter({
+          env: c.env,
+          fetcher: c.fetcher,
+          settings,
+          ...(c.sleep ? { sleep: c.sleep } : {}),
+        }),
+    },
+  ],
   // One adapter id per hosted builder with no content API (adapters/builders.ts): the live site only.
   ...BUILDERS.map((platform): [string, BuiltAdapter] => [
     platform.id,
@@ -150,7 +165,6 @@ export const PLANNED_ADAPTERS: readonly PlannedAdapter[] = [
   { id: "git-content", name: "Content kept in git", branch: "C-15" },
   { id: "strapi", name: "Strapi", branch: "C-02" },
   { id: "tina", name: "TinaCMS", branch: "C-03" },
-  { id: "contentful", name: "Contentful", branch: "C-07" },
 ];
 
 /**
