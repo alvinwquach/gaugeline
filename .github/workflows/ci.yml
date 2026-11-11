@@ -61,6 +61,7 @@ jobs:
       - run: pnpm docs:changelog --check
       - run: pnpm gen:checks --check
       - run: pnpm gen:adapters --check
+      - run: pnpm gen:skill --check
       - run: pnpm adr:check
       - run: pnpm community:check
       - name: Public surface (STABILITY.md)
