@@ -219,7 +219,7 @@ export function allowlistProblems(allows: readonly ReadOnlyQueryAllow[]): string
   for (const a of allows) {
     if (ids.has(a.id)) out.push(`${a.id}: the id is used twice`);
     ids.add(a.id);
-    for (const p of allowProblems(a)) out.push(`${a.id}: ${p}`);
+    for (const p of allowProblems(a, { stored: true })) out.push(`${a.id}: ${p}`);
     // The fetcher resolves an id from the registry; an entry written out here instead would be
     // refused at run time, so it must be the very object the adapter's file registered.
     if (resolveQueryAllow(a.id) !== a) out.push(`${a.id}: not the entry the adapter registered`);

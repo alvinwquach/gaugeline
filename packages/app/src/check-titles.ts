@@ -11,6 +11,15 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "access-public-read": ["Anyone can read a table you didn't make public", "Security & email"],
   "access-role-scope": ["A signed-in user can read other people's rows", "Security & email"],
   "app-link-dead": ["The app this page links to isn't in the store", "Visitors"],
+  "astro-dev-tools-public": ["The live Astro site is serving its development tools", "Launch day"],
+  "astro-preview-canonical": [
+    "The live Astro site points search engines at a preview deployment",
+    "Launch day",
+  ],
+  "astro-private-props": [
+    "A page hands private-looking fields to the browser in an island's props",
+    "Security & email",
+  ],
   "broken-links": ["Links on this page go nowhere", "Visitors"],
   "canonical-elsewhere": ["This page tells Google to show a different page", "Search & sharing"],
   "capacity-zero-not-sold-out": [
@@ -204,6 +213,10 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "hubspot-page-404": ["A page published in HubSpot answers 404 on the live domain", "Launch day"],
   "hubspot-form-deleted": ["A page embeds a HubSpot form that has been deleted", "Launch day"],
   "app-smart-banner-mismatch": ["The iPhone app banner promotes a different app", "Visitors"],
+  "astro-draft-entry-public": [
+    "A live page embeds a content entry marked as a draft",
+    "Launch day",
+  ],
   "checkout-js-only": ["Nothing on the page can be linked to buy", "Sales & prices"],
   "crm-field-names": ["A form sends fields the CRM doesn't have", "Leads"],
   "crm-late-tracking": ["Tracking starts after the form loads", "Leads"],
@@ -392,6 +405,10 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "ai-crawlers-blocked": ["Some AI assistants can't read your site", "Search & sharing"],
   "app-name-mismatch": ["The store lists the app under a different name", "Visitors"],
   "asset-file-public": ["A downloadable file is on a public asset address", "Sales & prices"],
+  "astro-endpoints-listed": [
+    "This Astro page calls public endpoints that need a second look",
+    "Security & email",
+  ],
   blocked: ["The site wouldn't let Gaugeline read the page", "Search & sharing"],
   "canonical-missing": ["The page doesn't say which address is the real one", "Search & sharing"],
   "data-no-stamp": ["A page of changing numbers does not say when they were updated", "Visitors"],
@@ -464,6 +481,24 @@ export const CHECK_TEXT: Readonly<
     'Visitors who tap "Get the app" land on an error page. Apps disappear when they are renamed, moved to a new developer account or pulled.',
     "Link to the app's current store page, or remove the link if the app is gone.",
     "the iTunes Lookup API returns no result for the id (in the link's storefront and in the US), or the Google Play listing answers 404. A 429 or a regional-only app is could-not-check, not dead",
+  ],
+  "astro-dev-tools-public": [
+    "A page of this Astro site loads the Vite dev client or the Astro dev toolbar, or carries data-astro-source-file attributes. Those exist only when the site runs from `astro dev`.",
+    "A development server is slow, exposes source file paths, and serves modules and errors that a built site never does. Visitors see an unfinished site and anyone can read how it is put together.",
+    "Deploy the output of `astro build` (a static folder, or the server adapter's output) instead of running `astro dev` on the host.",
+    "Astro sites only, no extra request: the page's own HTML is searched for src=/@vite/client, the dev-toolbar entrypoint under /@id/astro/runtime/client/dev-toolbar/, an astro-dev-toolbar element, or data-astro-source-file attributes",
+  ],
+  "astro-preview-canonical": [
+    "A production page of this Astro site gives a preview domain as its canonical address, its og:url or og:image, or in its sitemap.",
+    "Search engines and social cards follow those addresses to the preview, which can show old content or vanish when the preview is cleaned up.",
+    "Set `site` in astro.config.mjs to the production domain (not the preview address a deployment host gives each build), and rebuild.",
+    "Astro sites served from a non-temporary host: the canonical, og:url, og:image and sitemap entries whose host ends in .vercel.app, .netlify.app or .pages.dev",
+  ],
+  "astro-private-props": [
+    "An Astro island (a component with a client: directive) on this page has props with a field named like a secret, token, password, internal note or admin value.",
+    "Everything passed to a client island is written into the page as readable JSON. Anyone can view source and read it, whatever the component shows.",
+    "Pass the island only the fields it displays. Read the private value on the server (in the frontmatter or an Action) and leave it out of the props.",
+    "Astro sites only, no extra request: each astro-island's props attribute in the HTML is decoded and its field names (not values) matched against secret, token, passw, api key, private, internal, credential, authorization, admin, wholesale and margin; at most 100 islands, 200,000 characters of props each; the evidence lists names, never values",
   ],
   "broken-links": [
     "Links to other pages on the site return an error (404, 410 or 5xx).",
@@ -553,7 +588,7 @@ export const CHECK_TEXT: Readonly<
     'A page this run read answers 200 (success), but what it shows is an error: a framework\'s error page, or a title or heading such as "Page not found" or "Something went wrong".',
     "Google and other crawlers believe the status code. A broken page that says 200 can stay in search results, be treated as a soft 404, and wastes visits: a customer lands on the error and your monitoring, which looks at status codes, stays green.",
     "Make the page answer the status it shows: 404 (or 410) for a page that is gone, 500 for a failure, or fix the page so it shows its content. In Next.js call notFound() and let the not-found page set 404; in Nuxt, SvelteKit and Remix throw an error with the status instead of rendering a page with an error message.",
-    "no request of its own: it reads the checked page and the same-site pages the run already fetched (the shared sample other checks use), 2xx HTML only. Reads the first 200,000 characters of each body. A finding is a framework error page (Next.js html id __next_error__ or its client-side exception text, the Nuxt error page, the SvelteKit error template, the React Router and Remix default error boundary) or a title or first heading that is wholly an error phrase (English, Spanish, French, German, Italian, Portuguese, Dutch) on a page with under 150 visible words. The finding shows the address and the kind of marker, never page text. A body cut at the size cap with no marker is could not check. A page with no marker passes only for these markers",
+    "no request of its own: it reads the checked page and the run's shared sample of other same-site pages (up to 4, fetched once for every check that reads them), 2xx HTML only; pages outside the sample are not read, and the run says how many were. Reads the first 200,000 characters of each body. A finding is a framework error page (Next.js html id __next_error__ or its client-side exception text, the Nuxt error page, the SvelteKit error template, the React Router and Remix default error boundary) or a title or first heading that is wholly an error phrase (English, Spanish, French, German, Italian, Portuguese, Dutch) on a page with under 150 visible words. The finding shows the address and the kind of marker, never page text. A body cut at the size cap with no marker is could not check. A page with no marker passes only for these markers",
   ],
   "event-jsonld-mismatch": [
     "An event in the page's structured data has a different start time, name or place than the .ics calendar entry on the same day.",
@@ -1190,6 +1225,12 @@ export const CHECK_TEXT: Readonly<
     "Safari shows the banner at the top of the page on iPhone, so visitors install whichever app it names, which here is not the one the page links to.",
     "Set app-id in the apple-itunes-app meta tag to the same id as the App Store link.",
     '<meta name="apple-itunes-app" content="app-id=..."> differs from every apps.apple.com/.../id<digits> link on the page',
+  ],
+  "astro-draft-entry-public": [
+    "An island on this Astro page is handed data with a field named draft set to true: an entry the author marked as not ready.",
+    "Draft entries are meant to be hidden. When a page or island still receives one, its unfinished text is in the HTML for anyone to read.",
+    "Filter drafts out where you read the collection (for example `getCollection('posts', ({ data }) => !data.draft)`), and build the island's props from that filtered list only.",
+    "Astro sites only, no extra request: astro-island props in the HTML, a boolean field named draft or isDraft that is true; Astro has no built-in draft field, so this reads the common schema convention. The evidence gives the island and field name, never a value",
   ],
   "checkout-js-only": [
     "A page shows a price and a buy button, but no button is a link with an address or a submit button in a form with an action.",
@@ -1868,6 +1909,12 @@ export const CHECK_TEXT: Readonly<
     "That is fine for a brochure or a menu. It becomes a problem the day the file is something a customer bought, because anyone with the address can open it.",
     "If the file is free, nothing to do. If it will ever be sold, serve it from a download route that checks the purchase and hands back a short-lived signed link.",
     "a[href] to a file with a sold file type on a public asset store host, on a page with no price, or whose link text is terms, privacy or policy; one finding per page; the file is never requested; the query string is not printed; a signed address with an expiry is a pass",
+  ],
+  "astro-endpoints-listed": [
+    "A page of this Astro site calls Astro Actions (/_actions/<name>) or loads server islands (/_server-islands/<name>). Both are addresses anyone can request, not only your page.",
+    "An action runs for any visitor who posts to it, signed in or not, and a server island answers any GET. Treating them as part of the page, instead of as public endpoints, is how booking and contact handlers end up open.",
+    "Check each action handler: validate the input (an Astro Action takes a Zod schema), check the session inside it, and rate-limit it. For a server island, confirm it renders only what any visitor may see.",
+    "Astro sites only, no extra request (Gaugeline never calls an action, which is a POST): the names come from /_actions/<name> and ?_action=<name> in the page's HTML and /_server-islands/<name> in its scripts. They also show the site runs on the server (an adapter), not as a static build",
   ],
   blocked: [
     "The page answered with a refusal (401, 403, 429, 503 with Retry-After) or a bot-challenge page instead of its content.",

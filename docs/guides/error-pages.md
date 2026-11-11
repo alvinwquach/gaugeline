@@ -9,8 +9,11 @@ Two checks look at it from two sides.
 
 ## `error-shell-200`: a page the site serves that is an error
 
-It reads the checked page and the same-site pages the run already fetched, and asks of each page that
-answered 2xx with HTML: is this page an error? **It makes no request of its own.** A page counts when it
+It reads the checked page and the run's shared sample of other same-site pages (up to 4, the same
+sample the other page checks use), and asks of each page that answered 2xx with HTML: is this page an
+error? **It makes no request of its own**, but reading that sample is the one new request every run
+makes: when the site has more pages than the sample holds, the run says so ("Checked 4 of 10 other
+pages."), and the pages outside the sample are not looked at. A page counts when it
 carries one of these markers:
 
 - the Next.js error page: an `<html id="__next_error__">` element, or the "Application error: a

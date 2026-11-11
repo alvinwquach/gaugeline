@@ -118,6 +118,7 @@ and footer and a paint link that redirects, version 0.1.0 prints:
 ? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
     Mail records are read from DNS only with --dns. Rerun with --dns to check them.
 
+Checked 4 of 6 other pages.
 2 to look at, 1 to fix first.
 ```
 
@@ -155,6 +156,13 @@ Checked 20 of 41 images.
 
 Each check that passed also prints a `✓ <id>` line, left out above. The output is asserted by
 `packages/cli/src/__tests__/images.test.ts`.
+
+### Other pages of the same site
+
+The checks that compare or classify pages (such as `error-shell-200`, which is on by default) read a
+sample of at most 4 other same-site pages, found from the links on the page you checked, each with one
+`GET` and a body cap. The pages are fetched once and shared by every check that needs them. When the site
+has more, the run prints "Checked 4 of 10 other pages." and the rest are not requested.
 
 ### A made-up address (a probing check)
 
