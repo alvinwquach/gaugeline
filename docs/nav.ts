@@ -107,6 +107,10 @@ export const UNLISTED: NavPage[] = [
   { slug: "guides/hosting-cost", title: "Hosting cost: find what runs up the bill" },
   { slug: "guides/audit-pack", title: "Audit pack: turn a first run into a proposal" },
   {
+    slug: "guides/migration",
+    title: "Migration completeness: nothing from the old site goes missing",
+  },
+  {
     slug: "guides/handoff",
     title: "Handoff: who owns what, and can the client get in without you",
   },

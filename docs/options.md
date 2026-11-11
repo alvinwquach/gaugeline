@@ -382,6 +382,48 @@ Gaugeline does not run, a folder outside this one and a pack that is already the
 exit 2, before anything is requested. Settings, an example from a bar and one from a bakery:
 [Audit pack](guides/audit-pack.md). What it sends: [Privacy and safety](privacy.md#audit-pack-gaugeline-audit-pack).
 
+### The migration command
+
+`gaugeline migration --help` prints:
+
+```text title=Output
+Usage: gaugeline migration <address> (--old <site> | --old-file <file>)
+
+Moving a site? Read the old site's list of pages (its WordPress API, an export
+from Wix or Webflow, or its sitemap) and check that each one exists on the new
+site, redirects in one hop, and keeps its title, canonical and structured data
+type. Read only: GET requests, up to 500 pages. The list is data; nothing in
+it is run.
+
+Options:
+      --ci                  Exit 1 when a "Fix this first" finding is found [CI]
+      --allow-private       Allow addresses on this computer or a private
+                            network, such as 127.0.0.1 or 192.168.x.x
+      --old <value>         migration: the old site's address, to read its list
+                            of pages and the pages themselves
+      --old-file <value>    migration: a Wix, Webflow or other export (CSV or
+                            JSON) that lists the old site's pages, read from
+                            this file
+      --quiet               Print only results and errors
+      --verbose             Show each request, and technical detail when
+                            something goes wrong
+  -h, --help                Show this help and exit
+  -v, --version             Print the version and exit
+
+Exit codes: 0 ran, 1 --ci and a fix-first finding, 2 could not run or read
+```
+
+`gaugeline migration <new-address>` is for a site that is moving platform. It reads the old site's list of
+published pages, from its WordPress REST API (`--old`, the old site's address), from an export you saved
+from Wix or Webflow (`--old-file`, a CSV or JSON file read from this computer), or from the old site's
+sitemap, and checks each one on the new site: it exists, it gets there in one redirect, and it keeps its
+title, its canonical and its structured data types. `--ci` exits 1 when a page is missing. A page the new
+site would not give (a 503, a password, a timeout) is exit 2, never a quiet pass. Up to 500 pages, each one
+GET, nothing else. The old site's list is data: titles and addresses in it are compared and printed as
+text. Settings, an example from a bakery and what each check means:
+[Migration completeness](guides/migration.md). What it sends:
+[Privacy and safety](privacy.md#migration-completeness-gaugeline-migration).
+
 ### Flags
 
 The table below is generated from `packages/cli/src/flags.ts` (`pnpm docs:flags`). Do not edit
@@ -454,6 +496,8 @@ between the markers; CI fails when it differs from the flag table.
 | `--brand-logo <value>`      | audit: an https address for your logo; it is never fetched by Gaugeline, only by whoever opens the pack              |                      | 0.2.0 |
 | `--brand-contact <value>`   | audit: your contact line, shown under your name                                                                      |                      | 0.2.0 |
 | `--before <value>`          | The snapshot taken before cutover, written by gaugeline snapshot                                                     |                      | 0.2.0 |
+| `--old <value>`             | migration: the old site's address, to read its list of pages and the pages themselves                                |                      | 0.2.0 |
+| `--old-file <value>`        | migration: a Wix, Webflow or other export (CSV or JSON) that lists the old site's pages, read from this file         |                      | 0.2.0 |
 | `--runs <value>`            | The folder of saved runs (each one saved with --json) to read                                                        |                      | 0.2.0 |
 | `--time-zone <value>`       | The time zone for dates and ages, such as America/Los_Angeles (default UTC)                                          |                      | 0.2.0 |
 | `--notify-on <value>`       | When to send: any (something was found, the default), high or always                                                 |                      | 0.2.0 |
