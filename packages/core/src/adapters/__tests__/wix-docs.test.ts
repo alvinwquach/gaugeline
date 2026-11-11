@@ -49,7 +49,7 @@ describe("docs/integrations/wix.md", () => {
     expect(shown).toEqual([
       adapterHeader(built?.describe ?? { name: "", docsUrl: "", keyKind: "read-only" }),
     ]);
-    expect(shown[0]).toContain("Content system: Wix, with a read-only key when one is set");
+    expect(shown[0]).toContain("Content system: Wix (beta), with a read-only key when one is set");
   });
 
   it("the settings it shows are valid and are the ones the examples read with", () => {

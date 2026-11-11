@@ -59,11 +59,10 @@ export const WIX_QUERY_ALLOW = registerQueryAllow({
 /**
  * What the live-site read says about the CMS collections, in one place so the answer, the docs page and the
  * tests say the same thing. Without `WIX_API_KEY` the adapter reads only what the site publishes, and a sitemap
- * has no fields. The field is `queryVerb`, not `method`: it describes the platform's endpoint and builds no
- * request, and the boundary scan (post-scan.ts) reads a `method: "POST"` property as a request being built.
+ * has no fields. It names the endpoint and carries no request verb: no adapter file holds a verb literal
+ * (ADR-0006, Amendment 1), and the verb is the allowlist entry's business, not this object's.
  */
 export const WIX_CMS_READ_PATH = Object.freeze({
-  queryVerb: "POST",
   host: WIX_HOST,
   path: WIX_QUERY_PATH,
   reason:
@@ -72,7 +71,10 @@ export const WIX_CMS_READ_PATH = Object.freeze({
 
 export interface WixAdapterOptions {
   fetcher: Fetcher;
-  /** WIX_API_KEY, already copied (see freezeEnv). With no key the adapter reads the live site only. */
+  /**
+   * WIX_API_KEY, already copied (see freezeEnv). With no key, or with a key and no `siteId` or no named
+   * collection, the adapter reads the live site only, and `cmsNote()` says why the CMS was skipped.
+   */
   env?: Env | undefined;
   /** The site's address, from the run. The settings entry's `site` wins. */
   site?: string | undefined;
@@ -90,8 +92,13 @@ export type WixCollectionRead = { type: string; count: number } | { type: string
 
 /** The Wix adapter, plus the per-collection view that keeps one refused collection from hiding the others. */
 export interface WixAdapter extends ContentAdapter {
-  /** The collections the settings name (under `urls` or `fingerprint`), sorted. Empty without a key. */
+  /** The collections the settings name (under `urls` or `fingerprint`), sorted. Empty when the CMS is not read. */
   collections(): string[];
+  /**
+   * Why the CMS was not read although `WIX_API_KEY` is set (no `siteId`, or no collection named), in plain
+   * words with no key in them. Undefined when the CMS is read, and when there is no key (nothing was skipped).
+   */
+  cmsNote(): string | undefined;
   /**
    * Each named collection's item count, or the reason it could not be read: a key that may not read one
    * collection is could-not-check for that collection only, and the others are still counted. A rate limit
@@ -158,18 +165,29 @@ export function createWixAdapter(options: WixAdapterOptions): WixAdapter {
   const site = settings?.site ?? options.site;
   const sleep = options.sleep ?? wait;
   const key = (options.env?.[WIX_API_KEY] ?? "").trim();
-  const native = key !== "";
+  const siteIdSet = (settings?.siteId ?? "") !== "";
+  const candidates = [
+    ...new Set([...Object.keys(settings?.urls ?? {}), ...Object.keys(settings?.fingerprint ?? {})]),
+  ].sort();
+  // The CMS is read only when the key, the site id and at least one collection are all there. A key set for
+  // another reason (a script that also uses Wix) must not take away the live-site read.
+  const native = key !== "" && siteIdSet && candidates.length > 0;
   const redact = createRedactor(options.env ?? {}, [WIX_API_KEY]);
   const pageSize = Math.max(1, Math.min(options.pageSize ?? WIX_PAGE_SIZE, WIX_PAGE_SIZE));
   const cap = options.maxItemsPerType ?? WIX_LIMITS.itemsPerType;
-  const named = native
-    ? [
-        ...new Set([
-          ...Object.keys(settings?.urls ?? {}),
-          ...Object.keys(settings?.fingerprint ?? {}),
-        ]),
-      ].sort()
-    : [];
+  const named = native ? candidates : [];
+  const skipped: string[] = [];
+  if (!siteIdSet) skipped.push('"siteId" is not set on the wix entry in gaugeline.adapters.json');
+  if (candidates.length === 0)
+    skipped.push(
+      'no collection is named in gaugeline.adapters.json (under "urls" or "fingerprint"), and Gaugeline does not ask Wix to list them',
+    );
+  const cmsNote =
+    key !== "" && !native
+      ? `${WIX_API_KEY} is set but the CMS collections were not read, because ${skipped.join(" and ")}. Gaugeline read what the live site publishes instead, as it does with no key (docs/integrations/wix.md).`
+      : undefined;
+  /** The run-wide wait for Retry-After, in milliseconds: every collection and page draws on one budget. */
+  let waitedMs = 0;
 
   const pages = createSitemapFeedAdapter({
     fetcher,
@@ -192,7 +210,7 @@ export function createWixAdapter(options: WixAdapterOptions): WixAdapter {
       );
   };
 
-  /** Before anything is asked of Wix: the key, the site id and the collections are all usable. */
+  /** Before anything is asked of Wix: the key and the site id are usable (the collections are named, or the CMS is not read). */
   const ready = (): void => {
     if (!KEY_SHAPE.test(key))
       throw new AdapterCouldNotCheck(
@@ -201,11 +219,7 @@ export function createWixAdapter(options: WixAdapterOptions): WixAdapter {
     const siteId = settings?.siteId;
     if (siteId === undefined || !SITE_ID.test(siteId))
       throw new AdapterCouldNotCheck(
-        "No Wix site id. Set \"siteId\" on the wix entry in gaugeline.adapters.json (the site's id, a UUID, shown in the Wix dashboard's address).",
-      );
-    if (named.length === 0)
-      throw new AdapterCouldNotCheck(
-        'No collection is named in gaugeline.adapters.json (under "urls" or "fingerprint"), and Gaugeline does not ask Wix to list them: name the collection IDs to read.',
+        "The \"siteId\" on the wix entry in gaugeline.adapters.json is not a Wix site id (the site's id, a UUID, shown in the Wix dashboard's address).",
       );
     if (fetcher.query === undefined)
       throw new AdapterCouldNotCheck("This fetcher cannot send a read-only query.");
@@ -239,7 +253,8 @@ export function createWixAdapter(options: WixAdapterOptions): WixAdapter {
    * One query: the list page of one collection. The key goes in the Authorization header and the site id in
    * `wix-site-id`, never in the address or the body; `fetcher.query` sends to the allowlisted address only and
    * never follows a redirect, so neither goes anywhere else. A 429 (or a 403 that says Retry-After) with a wait
-   * of a minute or less is waited out and asked again once; a second one is the rate limit.
+   * of a minute or less is waited out and asked again once, while the run's total wait stays within
+   * WIX_LIMITS.retryWaitSeconds; a second one, or one that would pass the budget, is the rate limit.
    */
   async function queryPage(
     type: string,
@@ -268,7 +283,13 @@ export function createWixAdapter(options: WixAdapterOptions): WixAdapter {
         hop.status === 429 || (hop.status === 403 && hop.headers["retry-after"] !== undefined);
       if (limited) {
         const seconds = retryAfterSeconds(hop.headers);
-        if (attempt === 0 && seconds !== undefined && seconds <= MAX_RETRY_SECONDS) {
+        if (
+          attempt === 0 &&
+          seconds !== undefined &&
+          seconds <= MAX_RETRY_SECONDS &&
+          waitedMs + seconds * 1000 <= WIX_LIMITS.retryWaitSeconds * 1000
+        ) {
+          waitedMs += seconds * 1000;
           await sleep(seconds * 1000);
           continue;
         }
@@ -286,7 +307,16 @@ export function createWixAdapter(options: WixAdapterOptions): WixAdapter {
       }
       if (!isRecord(json) || !Array.isArray(json.dataItems))
         throw new AdapterCouldNotCheck("Wix answered with something that is not a list of items.");
-      const meta = isRecord(json.pagingMetadata) ? json.pagingMetadata : {};
+      const meta = json.pagingMetadata;
+      if (!isRecord(meta)) {
+        // No paging information at all: a page shorter than the limit asked for is the end, a full one could
+        // be the first of many and is never reported as the whole list.
+        if (json.dataItems.length >= size)
+          throw new AdapterCouldNotCheck(
+            `Wix answered for the "${type}" collection with a full page and no paging information, so it was not read to the end.`,
+          );
+        return { items: json.dataItems as unknown[], next: undefined, hasNext: undefined };
+      }
       const cursors = isRecord(meta.cursors) ? meta.cursors : {};
       const next =
         typeof cursors.next === "string" && cursors.next !== "" ? cursors.next : undefined;
@@ -417,8 +447,12 @@ export function createWixAdapter(options: WixAdapterOptions): WixAdapter {
   ): Promise<Record<string, number>> => {
     ready();
     const names = checkedFields(fields);
+    // A type that was not named is not an empty type: nothing was read for it, so it is never a count of 0.
+    if (!named.includes(type))
+      throw new AdapterCouldNotCheck(
+        `${SAFE_NAME.test(type) ? `"${type}"` : "That type"} is not one of the collections named in gaugeline.adapters.json (under "urls" or "fingerprint"), so it was not read.`,
+      );
     const out: Record<string, number> = Object.fromEntries(names.map((f) => [f, 0]));
-    if (!named.includes(type)) return out;
     for await (const item of itemsOf(type, selectFor(names), cap, () => ({})))
       for (const f of names) if (hasValue(valueAt(item.data, f))) out[f] = (out[f] ?? 0) + 1;
     return out;
@@ -487,14 +521,15 @@ export function createWixAdapter(options: WixAdapterOptions): WixAdapter {
         },
     fieldCounts: native
       ? fieldCounts
-      : () => Promise.reject(new AdapterCouldNotCheck(WIX_CMS_READ_PATH.reason)),
+      : () => Promise.reject(new AdapterCouldNotCheck(cmsNote ?? WIX_CMS_READ_PATH.reason)),
     published: native ? publishedNative : publishedPages,
     // Draft items are never asked for (the query has no option for them), so there is nothing to look at.
     draftsReachable: () => Promise.resolve("not-applicable"),
     ...(native ? { resolveUrl } : pages.resolveUrl ? { resolveUrl: pages.resolveUrl } : {}),
     collections: () => [...named],
+    cmsNote: () => cmsNote,
     readCollections: native
       ? readCollections
-      : () => Promise.reject(new AdapterCouldNotCheck(WIX_CMS_READ_PATH.reason)),
+      : () => Promise.reject(new AdapterCouldNotCheck(cmsNote ?? WIX_CMS_READ_PATH.reason)),
   };
 }
