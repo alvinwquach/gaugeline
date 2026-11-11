@@ -24,6 +24,11 @@ export interface AdapterDescription {
    */
   noKey?: true;
   /**
+   * The adapter reads without a key and reads more with one (a key in the environment turns it on). The run
+   * header says both. `keyKind` is the kind of the key it asks for when one is set.
+   */
+  optionalKey?: true;
+  /**
    * The adapter is beta because the platform's own API is. The run header says "(beta)" after the name,
    * and the adapter's docs page says what may change.
    */
@@ -83,6 +88,12 @@ export interface AdapterMember {
 export interface ContentAdapter {
   /** Lower case, digits and hyphens: the name used in gaugeline.adapters.json. */
   readonly id: string;
+  /**
+   * True when this instance reads the live site's pages (a sitemap or feed) instead of a platform's own
+   * collections: its items' addresses are pages and it has no fields. An adapter that reads pages in every
+   * mode says so with `describe().noKey`; one that does so only without a key (Wix) sets this on the instance.
+   */
+  readonly readsPages?: boolean;
   describe(): AdapterDescription;
   /** Every content type with how many published items it has. */
   types(): Promise<TypeCount[]>;
@@ -137,6 +148,8 @@ export interface AdapterSettings {
   urls?: Readonly<Record<string, string>> | undefined;
   /** Only `sitemap-feed`: the site's address, when the run was not given one. */
   site?: string | undefined;
+  /** Only `wix`: the Wix site's id, sent as the wix-site-id header with the API key. */
+  siteId?: string | undefined;
   /** Only `sitemap-feed`: sitemap files to read instead of looking (a path or an address on the site). */
   sitemaps?: readonly string[] | undefined;
   /** Only `sitemap-feed`: feeds to read instead of looking (a path or an address on the site). */

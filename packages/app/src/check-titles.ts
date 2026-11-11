@@ -47,6 +47,20 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "feed-broken": ["The feed this page advertises is broken", "Search & sharing"],
   "form-provider-changed": ["A form now sends to a different service", "Leads"],
   "gated-download-open": ["A download meant for customers is handed to anyone", "Sales & prices"],
+  "gatsby-data-as-page": ["A page address returns Gatsby data, not a page", "Search & sharing"],
+  "gatsby-dev-server-live": ["The live Gatsby site is a development server", "Security & email"],
+  "gatsby-graphql-public": [
+    "The GraphQL explorer is reachable on the live site",
+    "Security & email",
+  ],
+  "gatsby-preview-canonical": [
+    "The live Gatsby site points search engines at a preview deployment",
+    "Launch day",
+  ],
+  "gatsby-private-fields": [
+    "The data sent with a Gatsby page has fields that look private",
+    "Security & email",
+  ],
   "hidden-ai-directive": [
     "Hidden text on the page gives orders to AI assistants",
     "Security & email",
@@ -227,10 +241,6 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "The Umbraco Delivery API answers visitors with no key",
     "Security & email",
   ],
-  "datocms-drafts-reachable": [
-    "A DatoCMS token meant for published content can read drafts",
-    "Security & email",
-  ],
   "hubspot-page-404": ["A page published in HubSpot answers 404 on the live domain", "Launch day"],
   "hubspot-form-deleted": ["A page embeds a HubSpot form that has been deleted", "Launch day"],
   "app-smart-banner-mismatch": ["The iPhone app banner promotes a different app", "Visitors"],
@@ -307,6 +317,11 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "placeholder-images": ["The page shows placeholder images", "Visitors"],
   "placeholder-text": ["The page still has placeholder text", "Visitors"],
   "redirect-chain": ["Your address takes several jumps to load", "Search & sharing"],
+  "sanity-image-original": ["Sanity images are served at the size they were uploaded", "Visitors"],
+  "sanity-image-oversized": [
+    "Sanity images are delivered far larger than they are shown",
+    "Visitors",
+  ],
   "schema-breadcrumb-mismatch": ["A breadcrumb ends on a different page", "Search & sharing"],
   "schema-dangling-ref": [
     "Structured data refers to something that isn't there",
@@ -438,6 +453,10 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "event-missing-fields": ["Some events are missing details search engines need", "Visitors"],
   "events-distinct": ["Two menu links report the same click", "Leads"],
   "forms-many-providers": ["Several form services on one page", "Leads"],
+  "gatsby-data-unshown": [
+    "The data sent with a Gatsby page has text the page does not show",
+    "Security & email",
+  ],
   "hidden-past-launch": ["A hidden section is past its launch date", "Launch day"],
   "hreflang-bad-code": ["Some language codes are not valid", "Search & sharing"],
   "images-alt-missing": ["Some images have no alt attribute", "Visitors"],
@@ -449,6 +468,10 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "nav-label-drift": ["One page has two names in your menus", "Visitors"],
   "og-image-missing": ["Shared links have no picture", "Search & sharing"],
   "price-changed": ["A price changed since the last run", "Sales & prices"],
+  "sanity-image-duplicate": [
+    "One Sanity image is processed and downloaded more than once",
+    "Visitors",
+  ],
   "schema-breadcrumb-start": ["Breadcrumbs don't start where your guide says", "Search & sharing"],
   "sveltekit-data-unshown": ["The page's data has text the page does not show", "Security & email"],
   "tel-format": ["A phone link may not dial correctly", "Visitors"],
@@ -647,6 +670,36 @@ export const CHECK_TEXT: Readonly<
     "A route that protects a paid file should refuse, or send the visitor to sign in. If it returns the file, everyone who has the address gets it for free, and the address is easy to find in the page, in a search engine or in a customer's email.",
     "Check the purchase inside the route before it answers, then hand back a short-lived signed link instead of the file itself. A route with no session should answer 401, 403 or a redirect to sign in.",
     "probing check, off without --owner-consent: one anonymous GET per route (no cookie, no Authorization, no Referer, no compression), the status and headers, then at most 1,024 bytes of the body and the connection is closed; the route is a same-site link whose path contains download, file, deliver or export or sits under /api/, or a route file given with --routes (app/**/route.ts, pages/api/**) whose path says the same; a dynamic segment is asked only for an address seen in a link and ids are never guessed; at most 10 routes, in sorted order, the rest named; a finding is status 200 with a file content type or Content-Disposition attachment and first bytes that are not HTML (%PDF, PK, ID3 and a few other signatures are read); 401, 403, 404, a redirect to a sign-in address and a 200 HTML page pass; a redirect elsewhere is followed one hop; the body and the query string are never stored, logged or printed",
+  ],
+  "gatsby-data-as-page": [
+    "A page of this Gatsby site answers with the framework's page data (application/json starting with componentChunkName), or the sitemap lists page-data addresses.",
+    "Search engines and visitors get a JSON file instead of a page, or index the data files: the page can drop out of search while a browser that navigates inside the site looks fine.",
+    "Serve HTML at page addresses (look for a proxy, CDN or redirect rule that rewrites to page-data.json), and list only pages in the sitemap.",
+    'Gatsby sites only, from responses already read: the page\'s own answer with a JSON content type whose body starts {"componentChunkName"; sitemap entries under /page-data/ ending /page-data.json, /app-data.json or /sq/d/<hash>.json. No extra request',
+  ],
+  "gatsby-dev-server-live": [
+    "This page was served by `gatsby develop`: its scripts include /socket.io/socket.io.js, /commons.js or /framework.js, the unhashed files only the development server writes.",
+    "The development server exposes a GraphQL explorer over all your content, hot-reload endpoints and error overlays with file paths. It is not meant to face visitors.",
+    "Build the site (`gatsby build`) and serve the public folder (a static host, or `gatsby serve` for a quick check), not `gatsby develop`. Check the host's start command.",
+    "Gatsby sites only, read from the page already fetched, no extra request: a script address ending /socket.io/socket.io.js, /commons.js or /framework.js (a production build names its files with a content hash, as in framework-<hash>.js). Dev-only paths are not asked for",
+  ],
+  "gatsby-graphql-public": [
+    "The address /___graphql of this Gatsby site answers with the GraphiQL page (titled Gatsby - GraphiQL), which only `gatsby develop` serves.",
+    "That explorer can read every node in your content layer, drafts and private fields included, from any browser.",
+    "Serve the built site (`gatsby build`) on the live address and keep `gatsby develop` on your own machine. If a proxy forwards /___graphql, remove the rule.",
+    "Probing check: off unless --owner-consent or gaugeline.consent.json; run only on sites you own or have permission to test. Gatsby sites only: one GET of /___graphql per run, no query sent and no POST ever; a 2xx HTML answer whose title contains GraphiQL is a finding. A production build does not serve this address",
+  ],
+  "gatsby-preview-canonical": [
+    "A production page of this Gatsby site gives a preview domain as its canonical address, its og:url or og:image, or in its sitemap.",
+    "Search engines and social cards follow those addresses to the preview, which can show old content or vanish when the preview is cleaned up.",
+    "Set siteMetadata.siteUrl (and the sitemap plugin's site URL) from the production domain in every build, and rebuild.",
+    "Gatsby sites served from a non-temporary host: the canonical, og:url, og:image and sitemap entries whose host ends in .vercel.app, .netlify.app, .pages.dev, .gatsbyjs.io or .gtsb.io. The two Gatsby hosts are from memory of the hosted product (uncited)",
+  ],
+  "gatsby-private-fields": [
+    "The page-data file of this Gatsby page, a static query it lists, or the page data embedded in its HTML has fields named like something private (password, token, secret, apiKey, private notes).",
+    "Everything a page query returns is written to a public JSON file, whether or not the page shows it. A field used only at build time still travels to every visitor if the query selects it.",
+    "Select only the fields the page shows in its query. Keep secrets in environment variables read in gatsby-node or a Function, never in a query result.",
+    "Gatsby sites only. Names only, never values: the property names in the page's own /page-data/<path>/page-data.json (one GET, the file the framework's client fetches on every visit), in the /page-data/sq/d/<hash>.json files it lists (at most ten) and in an inline window.pageData literal, walked to depth 8 and capped, matched by word against password, passwd, secret, token, private, credential, ssn, salt, bearer, authorization, cvv, iban, apiKey, accessKey, secretKey, privateKey, internalNotes. A file that cannot be read in full is could not check. The word list is a guess (uncited)",
   ],
   "hidden-ai-directive": [
     "Text that visitors can't see, or a comment in the page's code, speaks to an AI assistant (for example 'ignore previous instructions').",
@@ -1260,12 +1313,6 @@ export const CHECK_TEXT: Readonly<
     "In appsettings.json set Umbraco:CMS:DeliveryApi:PublicAccess to false and keep an ApiKey, then send the key from the server only (never from the browser). If the API is meant to be public (a public API that also has a key, so that preview works, is a normal setup), remove expectPrivate from gaugeline.adapters.json: the key is not touched.",
     "probing check, off without --owner-consent: this check asks the Delivery API's public route as a visitor with no key, so it runs only with --owner-consent (or gaugeline.consent.json), on sites you own or have permission to test; only when the settings say expectPrivate: true (a key being set says nothing: Umbraco's preview needs the key on a public API too); one GET of /umbraco/delivery/api/v2/content?take=1 with no Api-Key header, no cookie and nothing the fetcher adds per address, fields=properties[] and expand=none; a 200 with a list and a numeric total is the finding (the total is a count, never a node); 401 or 403 is a protected API and 404 is an API that is off or not at that address, both with no finding; a 200 that is not the API's list (a page that answers every path) and any other status are could-not-check; the answer is read as a count and nothing else",
   ],
-  "datocms-drafts-reachable": [
-    "gaugeline.adapters.json says the token is meant for published content only (expectPublishedOnly: true), and a request that asks for drafts with it is answered with records that are not published.",
-    "A token for the live site is often placed in the front end or in a build setting. If it can read drafts, anyone who finds it can read unpublished work: prices not announced yet, a closure notice, a page that was pulled.",
-    "In the DatoCMS dashboard, open Settings, API tokens, and edit the token the live site uses: turn off access to the Content Delivery API with draft content (the preview flag), keep the Content Delivery API on for published content, and keep the Content Management API off. Give a preview site its own token. If the token is meant to preview drafts, remove expectPublishedOnly from gaugeline.adapters.json.",
-    "only when the settings say expectPublishedOnly: true for datocms and name the collections, since a token that may preview is a normal setup; per collection, two POSTs of one GraphQL query each, through fetcher.query and the registered allowlist entry datocms-cda-query (a document that parses as one query is the only body ever sent): the published list, then the same list with the header X-Include-Drafts: true, each asking for id only, first 100 and skip stepping by the number of records that came back, a page shorter than the page asked for ending the list; the ids of the first list are held in a Set and subtracted from the second, and a non-empty difference is the finding (a count and at most five ids, never a field); HTTP 401 or 403 to the draft request after the published one was answered means the token cannot read drafts, which is a pass for that collection; a draft request that is accepted with no extra record shows no sign of drafts, which is not proof since none may exist, so it is could-not-check; a collection that cannot be read, a list that moves while it is read, one over 10000 records and a rate limit that stays are could-not-check for that part",
-  ],
   "hubspot-page-404": [
     "HubSpot says a site page, landing page or blog post is published on this domain, and the address it gives for it answers 404 or 410 on the live site.",
     "Links, the sitemap, search results and the client's announcement point at a page that is not there, while the CMS shows it as live.",
@@ -1577,6 +1624,18 @@ export const CHECK_TEXT: Readonly<
     "Each jump slows the first visit and can weaken how search engines credit the page.",
     "Point every redirect straight at the final address.",
     "more than one 3xx hop on the entered URL",
+  ],
+  "sanity-image-original": [
+    "An image from cdn.sanity.io is requested with no width or height, so the visitor gets the file as it was uploaded: often 3000 to 6000 pixels wide.",
+    "A phone photo from the shop owner is several megabytes. Shown a few hundred pixels across, it still downloads whole, and the page is slow on a phone for no visible gain.",
+    "Ask for the size you show: add w (and h with fit=crop if the shape is fixed) and auto=format to the address, or build it with @sanity/image-url: urlFor(image).width(800).auto('format').url().",
+    "an img src, srcset or picture source on cdn.sanity.io/images with none of w, h, max-w, max-h, min-w or min-h, whose upload is wider than 1200 px (the size is in the file name, so nothing is downloaded); other hosts, and addresses on a custom domain for Sanity's CDN, are not read; one finding per page; the page's own HTML only",
+  ],
+  "sanity-image-oversized": [
+    "An image from cdn.sanity.io is asked for at a width much greater than the width attribute on the page, and the page offers no smaller version.",
+    "The visitor downloads several times the pixels they can see. On a phone that is seconds of waiting and mobile data spent on detail the screen throws away.",
+    "Ask Sanity for about twice the width the image is shown at (for a 400 px slot, w=800), or give the image a srcset with smaller widths and a sizes attribute so each screen picks one.",
+    "an img with a width attribute whose smallest Sanity address (src, srcset or picture source) delivers more than 2 times that width and at least 200 px more; delivered is w times dpr, never above the upload, and the upload's own width when no w is given (read from the file name); an img with no width attribute is not judged; no rendering, so a width set only in CSS is not seen",
   ],
   "schema-breadcrumb-mismatch": [
     "The last item of a page's breadcrumb structured data points at an address other than the page's own canonical.",
@@ -2022,6 +2081,12 @@ export const CHECK_TEXT: Readonly<
     "Check that each form is meant to be there, and move the page to one service if you can.",
     "Sightings of more than one of Pardot, Web-to-Lead, HubSpot, Formstack, Marketo and Typeform on one page (form action, iframe src, embed script); the tracking code alone is not a sighting",
   ],
+  "gatsby-data-unshown": [
+    "This Gatsby page's page-data file, or a static query it lists, has text fields whose text is nowhere on the page a visitor reads.",
+    "Everything a page query returns is written to a public JSON file. A field the page does not show is either unused (so it can go) or used by a script (so it is worth a look): either way it is public.",
+    "Select only the fields the page needs in its query, or move the rest to a source that checks who is asking.",
+    "Gatsby sites only. The page's own /page-data/<path>/page-data.json and the /page-data/sq/d/<hash>.json files it lists (the files the framework's client fetches on every visit; one GET each, at most eleven, walked to depth 8, capped). Text fields of 4 or more characters whose first 40 characters are not in the page's visible text (tags taken out of html fields); addresses, ids, dates and image plumbing are left out; names only, never values. Fields named like something private are left to gatsby-private-fields. A file or page text that cannot be read in full is could not check. Fields used by scripts or other pages are shown too, so read the list as a prompt (uncited)",
+  ],
   "hidden-past-launch": [
     "Today is after the launch date set for a hidden section, and gaugeline.hidden.json still lists it as hidden.",
     "Either the launch slipped and nobody updated the plan, or it launched and the hidden checks are now guarding the wrong thing.",
@@ -2087,6 +2152,12 @@ export const CHECK_TEXT: Readonly<
     "Sometimes that is the plan. When it isn't (a sync from the shop, an edit to the wrong product), customers and search results see the wrong price.",
     "If the change wasn't meant, correct the price at its source (the shop or CMS) and rebuild; if it was, nothing to do.",
     "With --since last only: the JSON-LD Offer price (integer minor units; anything but 48 or 48.00 is unread) for a product key (sku or name plus currency) present in both runs",
+  ],
+  "sanity-image-duplicate": [
+    "The same uploaded image is requested with different parameters by different images on the page, such as one width in the header and another in a card.",
+    "Each variant is a separate file for Sanity's CDN to make and for the visitor to download, and none of them is in the browser's cache for the others.",
+    "Use one address for the image and let CSS size it, or give it one srcset the browser chooses from. If a card needs a different crop, that is a different picture: upload it as its own image.",
+    "the same asset id (the hash in the file name; the same bytes are the same asset) in two or more img elements with different parameter sets; an img's own srcset and picture sources are one image and are not compared with each other; parameter order is ignored; the page's own HTML only",
   ],
   "schema-breadcrumb-start": [
     "The first item of a page's breadcrumb structured data is not the Home name and address your schema guide sets.",
