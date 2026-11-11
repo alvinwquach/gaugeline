@@ -854,9 +854,11 @@ to test.** Without either, nothing is asked and the check is not listed.
 `by` says who agreed and `on` says when, so a shared repository records it once. A run with consent
 prints one line on stderr saying probing checks are on.
 
-There are two probing checks: `gated-download-open`, described in
-[Paid downloads and delivery](delivery.md#a-download-route-that-hands-the-file-to-anyone), and
-`route-hidden-not-protected`, described in [Routes that are hidden, not protected](protected-routes.md).
+There are three probing checks: `gated-download-open`, described in
+[Paid downloads and delivery](delivery.md#a-download-route-that-hands-the-file-to-anyone),
+`route-hidden-not-protected`, described in [Routes that are hidden, not protected](protected-routes.md),
+and `strapi-drafts-public`, described in [Strapi](integrations/strapi.md#the-two-checks) (it runs from
+the adapter's reading, not from a page check).
 
 `--routes <glob>` (repeatable) points that check at your repository's route files, so it finds routes
 no page links to. Run Gaugeline from the repository's folder and give a glob such as
