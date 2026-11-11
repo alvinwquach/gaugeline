@@ -10,6 +10,18 @@ export const AREA_ORDER: readonly string[] = [
 export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area: string]>> = {
   "access-public-read": ["Anyone can read a table you didn't make public", "Security & email"],
   "access-role-scope": ["A signed-in user can read other people's rows", "Security & email"],
+  "angular-dev-tools-public": [
+    "The live Angular site is serving its development tools",
+    "Launch day",
+  ],
+  "angular-preview-canonical": [
+    "The live Angular site points search engines at a preview deployment",
+    "Launch day",
+  ],
+  "angular-state-private-fields": [
+    "A page hands private-looking fields to the browser in its transfer state",
+    "Security & email",
+  ],
   "app-link-dead": ["The app this page links to isn't in the store", "Visitors"],
   "broken-links": ["Links on this page go nowhere", "Visitors"],
   "canonical-elsewhere": ["This page tells Google to show a different page", "Search & sharing"],
@@ -202,6 +214,7 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   ],
   "hubspot-page-404": ["A page published in HubSpot answers 404 on the live domain", "Launch day"],
   "hubspot-form-deleted": ["A page embeds a HubSpot form that has been deleted", "Launch day"],
+  "angular-ssr-error-200": ["An Angular error is served as a normal page", "Launch day"],
   "app-smart-banner-mismatch": ["The iPhone app banner promotes a different app", "Visitors"],
   "checkout-js-only": ["Nothing on the page can be linked to buy", "Sales & prices"],
   "crm-field-names": ["A form sends fields the CRM doesn't have", "Leads"],
@@ -388,6 +401,10 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   ],
   "hubspot-hubdb-drift": ["A HubDB row differs from the page that shows it", "Visitors"],
   "ai-crawlers-blocked": ["Some AI assistants can't read your site", "Search & sharing"],
+  "angular-analog-endpoints-listed": [
+    "This Analog page calls public endpoints that need a second look",
+    "Security & email",
+  ],
   "app-name-mismatch": ["The store lists the app under a different name", "Visitors"],
   "asset-file-public": ["A downloadable file is on a public asset address", "Sales & prices"],
   blocked: ["The site wouldn't let Gaugeline read the page", "Search & sharing"],
@@ -456,6 +473,24 @@ export const CHECK_TEXT: Readonly<
     "Any customer who signs up can read every other customer's records, and nobody sees it from the site.",
     "Change the table's read policy so a user sees only rows where the owner column is their own id (auth.uid()).",
     "Supabase: per configured test user and per table with an owner column, one HEAD /rest/v1/<table>?select=*&<owner>=neq.<user id> with that user's token and Prefer: count=exact; a count above 0 is a finding. Tokens come from the environment and are only ever sent in the Authorization header",
+  ],
+  "angular-dev-tools-public": [
+    "A page of this Angular or Analog site loads the Vite dev client or the dev server's component update address. Those exist only when the site runs from `ng serve` or `analog dev`.",
+    "A development server is slow, serves unminified source and modules, and shows error overlays a built site never does. Visitors see an unfinished site and anyone can read how it is put together.",
+    "Deploy the output of `ng build` (or `analog build`) instead of running the dev server on the host.",
+    "Angular sites only, no extra request: the page's own HTML is searched for src=/@vite/client, /@ng/component (Angular's dev-server component updates) and /@analogjs/ module addresses",
+  ],
+  "angular-preview-canonical": [
+    "A production page of this Angular site gives a preview domain as its canonical address, its og:url or og:image, or in its sitemap.",
+    "Search engines and social cards follow those addresses to the preview, which can show old content or vanish when the preview is cleaned up.",
+    "Build the canonical link and the share tags from the production domain (a setting per environment, not the address a deployment host gives each build), and rebuild.",
+    "Angular sites served from a non-temporary host: the canonical, og:url, og:image and sitemap entries whose host ends in .vercel.app, .netlify.app or .pages.dev",
+  ],
+  "angular-state-private-fields": [
+    "The server-rendered state Angular embeds in this page (the ng-state script) has a field named like a secret, token, password, internal note or admin value.",
+    "Angular writes everything stored in TransferState, and every cached HttpClient response, into the page as readable JSON. Anyone can view source and read it, whatever the page shows.",
+    "Store only what the page displays: map an API response to the fields the template uses before it reaches TransferState, or turn off the HttpClient transfer cache for that request. Read the private value on the server and leave it out.",
+    "Angular sites only, no extra request: each application/json script whose id ends in -state (ng-state, serverApp-state) in the HTML is parsed (at most 5 scripts, 500,000 characters each) and its field names, not values, matched against secret, token, passw, api key, private, internal, credential, authorization, admin, wholesale and margin; a state that cannot be parsed is reported as unread",
   ],
   "app-link-dead": [
     "An App Store or Google Play link on the page names an app the store no longer has.",
@@ -1177,6 +1212,12 @@ export const CHECK_TEXT: Readonly<
     "Restore the form in HubSpot (Marketing, Forms, recently deleted), or edit the page or its template to embed a form that exists.",
     "The form ids and portal ids are read as text from the HTML of the published pages already asked for (data-form-id and portalId/formId in an hbspt.forms.create call; nothing is run); only forms of the portal the token belongs to (GET /account-info/v3/details) are asked about, one GET /marketing/v3/forms/{formId} for each different form (at most 50 a run); a 404, or a form marked archived, is the finding. A token without the forms scope, a page that names no portal or more than one, and a form of another portal are could-not-check or not counted, never a pass. Form ids and page paths only.",
   ],
+  "angular-ssr-error-200": [
+    "A page of this Angular or Analog site answers 200 OK but its text contains an Angular error code, an injector error, a browser-only ReferenceError or a stack trace through @angular.",
+    "Search engines index a page that answers 200, error text included, and visitors see a broken page that no monitor flags. The stack trace also shows how the server is built.",
+    "Find the server-side failure (code that uses window, document or localStorage must run only in the browser) and make the render error answer 500, or the 404 route answer 404, instead of returning the error as the page.",
+    "Angular sites only, no extra request: when the final response is 200, the page's text outside script and style elements is searched for NG0xxx: messages, NullInjectorError or R3InjectorError, a ReferenceError for window, document, localStorage, sessionStorage or navigator, and indented stack frames through node_modules/@angular/",
+  ],
   "app-smart-banner-mismatch": [
     "The page's Smart App Banner (the apple-itunes-app meta tag) names a different app id than the page's App Store link.",
     "Safari shows the banner at the top of the page on iPhone, so visitors install whichever app it names, which here is not the one the page links to.",
@@ -1842,6 +1883,12 @@ export const CHECK_TEXT: Readonly<
     "People ask assistants about a business before they open its site. Blocking AI crawlers is a fair choice; blocking them by accident means assistants answer from old or second-hand information.",
     "If the block is on purpose, there is nothing to do. If it comes from a Disallow: / meant for a staging site, remove it, or add groups for the assistants you want to allow.",
     "known AI user-agent tokens (packages/core/src/data/ai-agents.json) are disallowed / by robots.txt",
+  ],
+  "angular-analog-endpoints-listed": [
+    "A page of this Analog site names a server function (/_analog/fn/<id>) or a page endpoint (/api/_analog/pages/<path>). Both are addresses anyone can request, not only your page.",
+    "A server function runs for any visitor who calls it, signed in or not, and a page endpoint answers any GET with the page's server data. Treating them as part of the page, instead of as public endpoints, is how booking and patient-list handlers end up open.",
+    "Check each server function and page loader: validate the input, check the session inside it, and return only fields the page shows.",
+    "Analog sites only, no extra request (Gaugeline never calls a server function, which can be a POST): the names come from /_analog/fn/<id> and /api/_analog/pages/<path> in the page's HTML. They also show the site runs on the server, not as a static build",
   ],
   "app-name-mismatch": [
     "The name the App Store or Google Play shows for a linked app differs from the name you expect.",
