@@ -24,6 +24,11 @@ export interface AdapterDescription {
    */
   noKey?: true;
   /**
+   * With `noKey`: the adapter reads content (ids, dates and field hashes) from a public API, not pages from a
+   * sitemap, so `--published` gives it the changed-since window and the fields to compare, like a keyed adapter.
+   */
+  fingerprintsFields?: true;
+  /**
    * The adapter reads without a key and reads more with one (a key in the environment turns it on). The run
    * header says both. `keyKind` is the kind of the key it asks for when one is set.
    */
@@ -159,6 +164,23 @@ export interface AdapterSettings {
    * `umbraco-delivery-api-public` runs only when this is true; a key being set says nothing of it.
    */
   expectPrivate?: boolean | undefined;
+  /**
+   * Only `datocms`: the GraphQL collection to read for each content type, because the Content Delivery API has no
+   * list of types to ask: `{ "classes": { "collection": "allClasses", "slug": "slug" } }`. `slug` names the field
+   * that holds the item's slug; without it the item has none.
+   */
+  collections?:
+    Readonly<Record<string, { collection: string; slug?: string | undefined }>> | undefined;
+  /**
+   * Only `datocms`: the owner says the token is meant for published content only. Switches on the check that asks
+   * whether it can also read drafts.
+   */
+  expectPublishedOnly?: boolean | undefined;
+  /**
+   * Only `datocms`: the check names the ids of the unpublished records it finds (at most five). Without it a
+   * finding is a count.
+   */
+  showDraftIds?: boolean | undefined;
   /** Only `git-content`: the repository's folder on this computer, relative to where the run starts. */
   path?: string | undefined;
   /** Only `git-content`: a repository on GitHub, read with GET. Instead of `path`. */
