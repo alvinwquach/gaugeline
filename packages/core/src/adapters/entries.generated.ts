@@ -2,6 +2,7 @@
 import type { AdapterEntry } from "./entry.js";
 import { entries as builders } from "./builders.entry.js";
 import { entries as contentful } from "./contentful.entry.js";
+import { entries as craft } from "./craft.entry.js";
 import { entries as framer } from "./framer.entry.js";
 import { entries as genericApi } from "./generic-api.entry.js";
 import { entries as gitContent } from "./git-content.entry.js";
@@ -16,6 +17,7 @@ import { entries as wordpress } from "./wordpress.entry.js";
 export const ADAPTER_ENTRIES: readonly AdapterEntry[] = [
   ...builders,
   ...contentful,
+  ...craft,
   ...framer,
   ...genericApi,
   ...gitContent,
