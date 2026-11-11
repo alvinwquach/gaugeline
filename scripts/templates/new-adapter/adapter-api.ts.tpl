@@ -28,6 +28,8 @@ import {
  * It reads the platform's public API, which needs no key. TODO(new:adapter) say which endpoints are public.
 #end
  */
+// If the platform's own API is in beta, add `beta: true` (as adapters/framer.ts does): the run header then
+// says "(beta)" and the docs page says what may change.
 export const $P$_DESCRIPTION: AdapterDescription = {
   name: "$NAME$",
   docsUrl: "https://gaugeline.dev/docs/integrations/$ID$",

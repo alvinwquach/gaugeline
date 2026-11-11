@@ -12,7 +12,8 @@ import {
 /**
  * The $NAME$ adapter reads the live site only. It asks for no key: it reads what the site publishes, the
  * same files every visitor can read. `keyKind` is "read-only" because nothing it does can change anything;
- * `noKey` makes the run header say there is no key at all.
+ * `noKey` makes the run header say there is no key at all. If the platform's own API is in beta, add
+ * `beta: true` (as adapters/framer.ts does): the run header then says "(beta)" and the docs page says what may change.
  *
  * Why it reads the live site only (rule 6 of CLAUDE.md, and the release plan in PROGRESS.md):
 #if full-access
