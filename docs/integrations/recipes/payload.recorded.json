@@ -1,0 +1,93 @@
+{
+  "format": 1,
+  "recipe": "payload",
+  "provenance": "Invented content in the shape Payload's documented API is remembered to answer. Not recorded from a live service; the shapes are uncited (the vendor's pages could not be read when this was written).",
+  "env": {
+    "GAUGELINE_PAYLOAD_API_KEY": "recipe-test-value"
+  },
+  "exchanges": [
+    {
+      "request": {
+        "url": "https://studio.example/api/posts",
+        "query": {
+          "page": "1"
+        },
+        "headers": {
+          "authorization": "users API-Key {env:GAUGELINE_PAYLOAD_API_KEY}"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "docs": [
+            {
+              "id": "6650a1",
+              "slug": "autumn-classes",
+              "title": "Autumn classes",
+              "summary": "New timetable",
+              "updatedAt": "2026-11-02T10:00:00.000Z",
+              "createdAt": "2026-10-02T10:00:00.000Z"
+            },
+            {
+              "id": "6650a2",
+              "slug": "mat-care",
+              "title": "Mat care",
+              "updatedAt": "2026-10-10T10:00:00.000Z",
+              "createdAt": "2026-09-10T10:00:00.000Z"
+            }
+          ],
+          "totalDocs": 2,
+          "hasNextPage": false,
+          "page": 1
+        }
+      }
+    }
+  ],
+  "expect": {
+    "options": {
+      "types": ["post"],
+      "fields": {
+        "post": ["title", "summary"]
+      }
+    },
+    "countType": "post",
+    "countFields": ["title", "summary", "subtitle"],
+    "drafts": false,
+    "types": [
+      {
+        "name": "post",
+        "count": 2
+      }
+    ],
+    "fieldCounts": {
+      "title": 2,
+      "summary": 1,
+      "subtitle": 0
+    },
+    "published": [
+      {
+        "id": "6650a1",
+        "type": "post",
+        "url": "/blog/autumn-classes",
+        "slug": "autumn-classes",
+        "publishedAt": "2026-10-02T10:00:00.000Z",
+        "updatedAt": "2026-11-02T10:00:00.000Z",
+        "fieldHashes": {
+          "title": "2d6f9ee4ea456b2d",
+          "summary": "f85dae109f8ecb5a"
+        }
+      },
+      {
+        "id": "6650a2",
+        "type": "post",
+        "url": "/blog/mat-care",
+        "slug": "mat-care",
+        "publishedAt": "2026-09-10T10:00:00.000Z",
+        "updatedAt": "2026-10-10T10:00:00.000Z",
+        "fieldHashes": {
+          "title": "65ce34b592d42375"
+        }
+      }
+    ]
+  }
+}

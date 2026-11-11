@@ -71,3 +71,18 @@ export type {
   StagedRead,
   WebflowReading,
 } from "./webflow-read.js";
+export {
+  BLOCKED_REASONS,
+  GENERIC_API_LIMITS,
+  GENERIC_ENV,
+  GRAPHQL_FIELDS_MARKER,
+  genericApiSchema,
+  parsePointer,
+} from "./generic-api-config.js";
+export type { Blocked, GenericApiCollection, GenericApiMapping } from "./generic-api-config.js";
+export {
+  GENERIC_API_DESCRIPTION,
+  createGenericApiAdapter,
+  graphqlSelection,
+} from "./generic-api.js";
+export type { GenericApiAdapterOptions } from "./generic-api.js";

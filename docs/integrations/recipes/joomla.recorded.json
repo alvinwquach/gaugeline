@@ -1,0 +1,106 @@
+{
+  "format": 1,
+  "recipe": "joomla",
+  "provenance": "Invented content in the shape Joomla's documented API is remembered to answer. Not recorded from a live service; the shapes are uncited (the vendor's pages could not be read when this was written).",
+  "env": {
+    "GAUGELINE_JOOMLA_TOKEN": "recipe-test-value"
+  },
+  "exchanges": [
+    {
+      "request": {
+        "url": "https://clinic.example/api/index.php/v1/content/articles",
+        "query": {
+          "page[offset]": "0"
+        },
+        "headers": {
+          "x-joomla-token": "{env:GAUGELINE_JOOMLA_TOKEN}"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "data": [
+            {
+              "type": "articles",
+              "id": "11",
+              "attributes": {
+                "id": 11,
+                "title": "Flu clinic",
+                "alias": "flu-clinic",
+                "state": 1,
+                "modified": "2026-11-02 10:00:00",
+                "publish_up": "2026-10-20 08:00:00"
+              }
+            },
+            {
+              "type": "articles",
+              "id": "12",
+              "attributes": {
+                "id": 12,
+                "alias": "hours",
+                "state": 1,
+                "modified": "2026-09-02 10:00:00",
+                "publish_up": "2026-09-01 08:00:00"
+              }
+            },
+            {
+              "type": "articles",
+              "id": "13",
+              "attributes": {
+                "id": 13,
+                "title": "Draft notice",
+                "alias": "draft-notice",
+                "state": 0,
+                "modified": "2026-11-06 10:00:00",
+                "publish_up": "2026-11-06 08:00:00"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "expect": {
+    "options": {
+      "types": ["article"],
+      "fields": {
+        "article": ["title"]
+      }
+    },
+    "countType": "article",
+    "countFields": ["title", "subtitle"],
+    "drafts": false,
+    "types": [
+      {
+        "name": "article",
+        "count": 2
+      }
+    ],
+    "fieldCounts": {
+      "title": 1,
+      "subtitle": 0
+    },
+    "published": [
+      {
+        "id": "11",
+        "type": "article",
+        "url": "/flu-clinic",
+        "slug": "flu-clinic",
+        "publishedAt": "2026-10-20T08:00:00.000Z",
+        "updatedAt": "2026-11-02T10:00:00.000Z",
+        "fieldHashes": {
+          "title": "573bb1164dee3e9b"
+        }
+      },
+      {
+        "id": "12",
+        "type": "article",
+        "url": "/hours",
+        "slug": "hours",
+        "publishedAt": "2026-09-01T08:00:00.000Z",
+        "updatedAt": "2026-09-02T10:00:00.000Z",
+        "fieldHashes": {}
+      }
+    ]
+  }
+}

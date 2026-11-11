@@ -1,0 +1,95 @@
+{
+  "format": 1,
+  "recipe": "hygraph",
+  "provenance": "Invented content in the shape Hygraph's documented API is remembered to answer. Not recorded from a live service; the shapes are uncited (the vendor's pages could not be read when this was written).",
+  "env": {
+    "GAUGELINE_HYGRAPH_TOKEN": "recipe-test-value"
+  },
+  "exchanges": [
+    {
+      "request": {
+        "url": "https://eu-central-1.cdn.hygraph.com/content/cl0invented0project/master",
+        "query": {},
+        "headers": {
+          "authorization": "Bearer {env:GAUGELINE_HYGRAPH_TOKEN}"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "data": {
+            "postsConnection": {
+              "edges": [
+                {
+                  "node": {
+                    "id": "h1",
+                    "slug": "bar-snacks",
+                    "updatedAt": "2026-11-02T10:00:00.000Z",
+                    "publishedAt": "2026-10-02T10:00:00.000Z",
+                    "title": "Bar snacks"
+                  }
+                },
+                {
+                  "node": {
+                    "id": "h2",
+                    "slug": "hours",
+                    "updatedAt": "2026-10-02T10:00:00.000Z",
+                    "publishedAt": "2026-10-02T10:00:00.000Z",
+                    "title": null
+                  }
+                }
+              ],
+              "pageInfo": {
+                "endCursor": "cur-h2",
+                "hasNextPage": false
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "expect": {
+    "options": {
+      "types": ["post"],
+      "fields": {
+        "post": ["title"]
+      }
+    },
+    "countType": "post",
+    "countFields": ["title", "subtitle"],
+    "drafts": false,
+    "types": [
+      {
+        "name": "post",
+        "count": 2
+      }
+    ],
+    "fieldCounts": {
+      "title": 1,
+      "subtitle": 0
+    },
+    "published": [
+      {
+        "id": "h1",
+        "type": "post",
+        "url": "/blog/bar-snacks",
+        "slug": "bar-snacks",
+        "publishedAt": "2026-10-02T10:00:00.000Z",
+        "updatedAt": "2026-11-02T10:00:00.000Z",
+        "fieldHashes": {
+          "title": "d5de3ef43ca9304b"
+        }
+      },
+      {
+        "id": "h2",
+        "type": "post",
+        "url": "/blog/hours",
+        "slug": "hours",
+        "publishedAt": "2026-10-02T10:00:00.000Z",
+        "updatedAt": "2026-10-02T10:00:00.000Z",
+        "fieldHashes": {}
+      }
+    ]
+  }
+}

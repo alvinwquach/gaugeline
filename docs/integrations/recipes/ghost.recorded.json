@@ -1,0 +1,89 @@
+{
+  "format": 1,
+  "recipe": "ghost",
+  "provenance": "Invented content in the shape Ghost's documented API is remembered to answer. Not recorded from a live service; the shapes are uncited (the vendor's pages could not be read when this was written).",
+  "env": {},
+  "exchanges": [
+    {
+      "request": {
+        "url": "https://blog.example/ghost/api/content/posts/",
+        "query": {
+          "page": "1"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "posts": [
+            {
+              "id": "g1",
+              "slug": "welcome",
+              "url": "https://blog.example/welcome/",
+              "title": "Welcome to the blog",
+              "updated_at": "2026-11-01T08:00:00.000Z",
+              "published_at": "2026-10-01T08:00:00.000Z"
+            },
+            {
+              "id": "g2",
+              "slug": "second",
+              "url": "https://blog.example/second/",
+              "updated_at": "2026-10-05T08:00:00.000Z",
+              "published_at": "2026-10-05T08:00:00.000Z"
+            }
+          ],
+          "meta": {
+            "pagination": {
+              "page": 1,
+              "limit": 100,
+              "pages": 1,
+              "total": 2
+            }
+          }
+        }
+      }
+    }
+  ],
+  "expect": {
+    "options": {
+      "types": ["post"],
+      "fields": {
+        "post": ["title"]
+      }
+    },
+    "countType": "post",
+    "countFields": ["title", "subtitle"],
+    "drafts": false,
+    "types": [
+      {
+        "name": "post",
+        "count": 2
+      }
+    ],
+    "fieldCounts": {
+      "title": 1,
+      "subtitle": 0
+    },
+    "published": [
+      {
+        "id": "g1",
+        "type": "post",
+        "url": "/welcome/",
+        "slug": "welcome",
+        "publishedAt": "2026-10-01T08:00:00.000Z",
+        "updatedAt": "2026-11-01T08:00:00.000Z",
+        "fieldHashes": {
+          "title": "83f30c00a8040cf6"
+        }
+      },
+      {
+        "id": "g2",
+        "type": "post",
+        "url": "/second/",
+        "slug": "second",
+        "publishedAt": "2026-10-05T08:00:00.000Z",
+        "updatedAt": "2026-10-05T08:00:00.000Z",
+        "fieldHashes": {}
+      }
+    ]
+  }
+}
