@@ -23,6 +23,9 @@ const GIT_CONTENT = "git-content";
 const FOLDER =
   /^(?:\.|[A-Za-z0-9_@~+-][A-Za-z0-9_.@~+-]*(?:\/[A-Za-z0-9_@~+-][A-Za-z0-9_.@~+-]*){0,11})$/;
 
+/** The adapters that read the live site's sitemap and feeds: they take `site`, `sitemaps` and `feeds`, and no fields. */
+const PAGE_READERS: readonly string[] = [SITEMAP_FEED, "framer"];
+
 /**
  * gaugeline.adapters.json, read from the working folder like the other settings files (there is no
  * shared config file until phase 06). It names the content systems to read and, for each, the fields to
@@ -120,13 +123,13 @@ export const adaptersConfigSchema = z.strictObject({
             .optional(),
         })
         .superRefine((entry, ctx) => {
-          const own = entry.id === SITEMAP_FEED;
+          const own = PAGE_READERS.includes(entry.id);
           for (const key of ["site", "sitemaps", "feeds"] as const)
             if (!own && entry[key] !== undefined)
               ctx.addIssue({
                 code: "custom",
                 path: [key],
-                message: `"${key}" belongs to the sitemap-feed adapter, not to ${entry.id}`,
+                message: `"${key}" belongs to the sitemap-feed and framer adapters, not to ${entry.id}`,
               });
           if (!HYPHENATED.has(entry.id))
             for (const [type, fields] of Object.entries(entry.fingerprint ?? {}))
@@ -171,7 +174,7 @@ export const adaptersConfigSchema = z.strictObject({
               ctx.addIssue({
                 code: "custom",
                 path: [key],
-                message: `"${key}" does nothing for sitemap-feed: a sitemap or feed has no fields to hash, and its items are their own addresses`,
+                message: `"${key}" does nothing for ${entry.id}: a sitemap or feed has no fields to hash, and its items are their own addresses`,
               });
         }),
     )

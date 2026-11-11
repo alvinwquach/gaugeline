@@ -23,6 +23,11 @@ export interface AdapterDescription {
    * nothing it does can change anything.
    */
   noKey?: true;
+  /**
+   * The adapter is beta because the platform's own API is. The run header says "(beta)" after the name,
+   * and the adapter's docs page says what may change.
+   */
+  beta?: true;
 }
 
 /** How many published documents a type has. A count, never a document. */
