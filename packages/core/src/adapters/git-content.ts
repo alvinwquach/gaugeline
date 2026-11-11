@@ -278,7 +278,10 @@ export function createGitContentAdapter(options: GitContentOptions): GitContentA
    */
   async function* itemsOf(type: string, partial: () => unknown): AsyncGenerator<Item> {
     const nowMs = now().getTime();
-    const accept = options.accept?.[type];
+    const accept =
+      options.accept !== undefined && Object.hasOwn(options.accept, type)
+        ? options.accept[type]
+        : undefined;
     let listing;
     try {
       listing = await source().list(dirOf(type));

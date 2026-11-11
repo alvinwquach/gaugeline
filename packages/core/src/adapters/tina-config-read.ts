@@ -15,6 +15,8 @@ export const TINA_CONFIG_LIMITS = {
   tokens: 200_000,
   depth: 40,
   collections: 200,
+  /** Folders deep in a collection's `path`, as in gaugeline.adapters.json. */
+  dirParts: 12,
 } as const;
 
 /** One collection the config defines, read from its text. */
@@ -409,7 +411,8 @@ function dirOf(value: string): string | undefined {
   const dir = value.replace(/^\.\//, "").replace(/\/+$/, "");
   if (dir === "" || dir.length > 300) return undefined;
   const parts = dir.split("/");
-  return parts.length <= 12 && parts.every((p) => DIR_PART.test(p) && p !== "node_modules")
+  return parts.length <= TINA_CONFIG_LIMITS.dirParts &&
+    parts.every((p) => DIR_PART.test(p) && p !== "node_modules")
     ? dir
     : undefined;
 }

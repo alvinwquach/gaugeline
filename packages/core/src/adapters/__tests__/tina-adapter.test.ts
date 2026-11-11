@@ -222,6 +222,21 @@ describe("the TinaCMS adapter: a local clone", () => {
     expect(docs.map((d) => d.url)).toEqual(["/blog/saturday-hours", "/blog/sourdough-class"]);
   });
 
+  it("a collection named like an Object method is an ordinary collection", async () => {
+    const adapter = local(
+      withConfig(
+        `[{ name: "constructor", path: "content/a", format: "md" }, { name: "toString", path: "content/b", format: "mdx" }]`,
+        { "content/a/x.md": "---\ntitle: X\n---\n", "content/b/y.mdx": "---\ntitle: Y\n---\n" },
+      ),
+      { folders: { hasOwnProperty: { dir: "content/a" } } },
+    );
+    expect(await adapter.types()).toEqual([
+      { name: "constructor", count: 1 },
+      { name: "hasOwnProperty", count: 1 },
+      { name: "toString", count: 1 },
+    ]);
+  });
+
   it("reports TinaCloud as not read when the config names a client, and makes no request", async () => {
     const adapter = local(TINA_FILES);
     expect(await adapter.notRead()).toEqual([
