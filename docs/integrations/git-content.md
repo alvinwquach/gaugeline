@@ -54,7 +54,7 @@ The run's clock decides "future" and "past". A file with none of these is publis
 
 **Dates** are the front matter's: `publishedAt` is the first of `publishDate`, `publishedAt`, `pubDate`, `datePublished`, `date`, and `updatedAt` is the first of `lastmod`, `updatedDate`, `updatedAt`, `updated`, `dateModified`, `modified`, `lastUpdated`, or else the published date. A file's modification time is never used: a checkout sets it to the time of the checkout, so it says nothing about the content. An item with no date has none, and a `since` filter keeps it, because it cannot be shown to be older.
 
-**Address**, from the folder's `permalink` pattern, or from the file's own front matter when it gives a plain address (Hugo's `url`, Jekyll's and Eleventy's `permalink`). An address that is a template (`{{ ... }}`) cannot be run without the generator, so the folder's pattern is used for it. Nothing is made up: an item that lacks a value its pattern needs gets no address, and its page is not checked.
+**Address**, from the folder's `permalink` pattern, or from the file's own front matter when it gives a plain address (Hugo's `url`, Jekyll's and Eleventy's `permalink`). An address that is a template (written with double curly braces, as Liquid and Nunjucks do) cannot be run without the generator, so the folder's pattern is used for it. Nothing is made up: an item that lacks a value its pattern needs gets no address, and its page is not checked.
 
 A token is written `{slug}` or, as Hugo and Jekyll write it, `:slug`.
 
@@ -233,7 +233,7 @@ Two posts are live. The two files that could not be read are named with a reason
 - **Drafts reachable**: not applicable. A draft is a file in the same folder, not a place a key can or cannot reach.
 - **Members**: a repository's collaborators are not listed by this adapter.
 - **Fields of a file that cannot be read**: TOML front matter, invalid YAML, an oversized file, a link.
-- **Templates in front matter**: a `permalink` written with `{{ ... }}` needs the generator to run it.
+- **Templates in front matter**: a `permalink` written with double curly braces needs the generator to run it.
 - **Generator settings outside the front matter**: a site-wide permalink in `_config.yml` or `hugo.toml` is not read. Put the pattern in the folder's `permalink`.
 
 ## When it cannot check
