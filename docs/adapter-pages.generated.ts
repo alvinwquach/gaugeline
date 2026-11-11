@@ -13,6 +13,7 @@ export const ADAPTER_PAGES: { slug: string; title: string }[] = [
     slug: "integrations/contentstack",
     title: "Contentstack: content checks for sites built on Contentstack",
   },
+  { slug: "integrations/datocms", title: "DatoCMS: content checks for sites built on DatoCMS" },
   { slug: "integrations/framer", title: "Framer: content checks for sites built on Framer (beta)" },
   {
     slug: "integrations/git-content",
