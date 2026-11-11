@@ -1,2 +1,13 @@
 * text=auto eol=lf
 packages/fixtures/sites/crlf/** -text
+
+# Files a script owns (pnpm gen:all; CONTRIBUTING.md, "Generated files"). GitHub folds their diff in a pull
+# request. Files that hold hand-written text beside a generated block (README.md, docs/options.md, the skill)
+# are not marked, so a hand edit stays visible in review.
+docs/checks.data.json linguist-generated=true
+docs/check-ids.lock.json linguist-generated=true
+packages/app/src/check-titles.ts linguist-generated=true
+public-surface.lock.json linguist-generated=true
+docs/adapter-pages.generated.ts linguist-generated=true
+packages/core/src/adapters/entries.generated.ts linguist-generated=true
+packages/core/src/adapters/__tests__/contracts.generated.ts linguist-generated=true

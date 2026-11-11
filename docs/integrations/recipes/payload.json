@@ -1,0 +1,45 @@
+{
+  "format": 1,
+  "recipe": "payload",
+  "name": "Payload",
+  "settings": {
+    "id": "generic-api",
+    "fingerprint": {
+      "post": ["title", "summary"]
+    },
+    "urls": {
+      "post": "/blog/{slug}"
+    },
+    "api": {
+      "endpoint": "https://studio.example/api",
+      "auth": {
+        "header": "Authorization",
+        "env": "GAUGELINE_API_PAYLOAD_API_KEY",
+        "prefix": "users API-Key "
+      },
+      "collections": {
+        "post": {
+          "path": "/posts",
+          "query": {
+            "depth": "0"
+          },
+          "items": "/docs",
+          "total": "/totalDocs",
+          "pagination": {
+            "style": "page",
+            "page": "page",
+            "size": "limit",
+            "pageSize": 100,
+            "more": "/hasNextPage"
+          },
+          "fields": {
+            "id": "/id",
+            "slug": "/slug",
+            "updatedAt": "/updatedAt",
+            "publishedAt": "/createdAt"
+          }
+        }
+      }
+    }
+  }
+}
