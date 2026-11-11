@@ -1475,3 +1475,4 @@ export { ADVISORY_TOOL, advisoryToolInput, runAdvisoryTool } from "./advisory/to
 export type { AdvisoryToolDeps, AdvisoryToolInput } from "./advisory/tool.js";
 export { isAdvisoryId } from "./advisory/target.js";
 export type { WordPressData } from "./advisory/evidence.js";
+export * from "./adapters/index.js";
