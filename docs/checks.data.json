@@ -893,7 +893,7 @@
     "fix": "Build the site (`vite build`) and serve the adapter's output (or `vite preview` for a quick check), not `vite dev`. Check the host's start command.",
     "tech": "Read from the page already fetched, no extra request: the inline script assigns __sveltekit_dev (the name SvelteKit gives its global only under vite dev), or a script or the HTML names /@vite/client, /.svelte-kit/ or /node_modules/.vite/. Paths such as /__inspect are not asked for",
     "size": "S",
-    "done": "The live address serves the built site (adapter output or `vite preview`), not `vite dev`.",
+    "done": "The live address serves the built site (adapter output or vite preview), not vite dev.",
     "estimateChanges": "A host that runs the dev command as its start command needs the build and start commands set."
   },
   {

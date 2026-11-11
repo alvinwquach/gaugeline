@@ -5,7 +5,7 @@ import { devMarkers } from "../sveltekit/detect.js";
 export const sveltekitDevServerLive = defineCheck<PageSnapshot>({
   id: "sveltekit-dev-server-live",
   size: "S",
-  done: "The live address serves the built site (adapter output or `vite preview`), not `vite dev`.",
+  done: "The live address serves the built site (adapter output or vite preview), not vite dev.",
   estimateChanges:
     "A host that runs the dev command as its start command needs the build and start commands set.",
   area: "Security & email",
