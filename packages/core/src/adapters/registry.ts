@@ -2,6 +2,7 @@ import type { Env } from "../connectors/types.js";
 import { ConfigError } from "../errors.js";
 import type { Fetcher } from "../fetcher.js";
 import type { AdaptersConfig } from "./config.js";
+import { BUILDERS, builderDescription, createBuilderAdapter } from "./builders.js";
 import { FRAMER_DESCRIPTION, createFramerAdapter } from "./framer.js";
 import { SANITY_DESCRIPTION, createSanityAdapter } from "./sanity.js";
 import { SITEMAP_FEED_DESCRIPTION, createSitemapFeedAdapter } from "./sitemap-feed.js";
@@ -100,6 +101,21 @@ export const BUILT_ADAPTERS: ReadonlyMap<string, BuiltAdapter> = new Map<string,
         }),
     },
   ],
+  // One adapter id per hosted builder with no content API (adapters/builders.ts): the live site only.
+  ...BUILDERS.map((platform): [string, BuiltAdapter] => [
+    platform.id,
+    {
+      id: platform.id,
+      describe: builderDescription(platform),
+      create: (c, settings) =>
+        createBuilderAdapter(platform, {
+          fetcher: c.fetcher,
+          site: c.site,
+          settings,
+          ...(c.sleep ? { sleep: c.sleep } : {}),
+        }),
+    },
+  ]),
 ]);
 
 /** A content system the docs list and the build order names, and no adapter yet. */
@@ -118,7 +134,6 @@ export const PLANNED_ADAPTERS: readonly PlannedAdapter[] = [
   { id: "wix", name: "Wix", branch: "C-05" },
   { id: "generic-api", name: "Any headless CMS with a read API", branch: "C-14" },
   { id: "git-content", name: "Content kept in git", branch: "C-15" },
-  { id: "builders", name: "Squarespace and other builders without a content API", branch: "C-12" },
   { id: "strapi", name: "Strapi", branch: "C-02" },
   { id: "tina", name: "TinaCMS", branch: "C-03" },
   { id: "contentful", name: "Contentful", branch: "C-07" },
