@@ -28,6 +28,16 @@ class Done extends Error {
 /** Added to the statement timeout before the client gives up on a server that stopped answering. */
 const DEADLINE_SLACK_MS = 10_000;
 
+/** How long a new connection may take to open, in seconds. */
+const CONNECT_TIMEOUT_SECONDS = 10;
+
+export interface SessionOptions {
+  /** The driver's own limit for opening a connection, in seconds. */
+  connectTimeoutSeconds?: number;
+  /** Time the server gets, on top of the statement timeout, to say the statement was stopped. For the tests. */
+  deadlineSlackMs?: number;
+}
+
 function cell(value: unknown): Cell {
   if (value === null || value === undefined) return null;
   if (typeof value === "string" || typeof value === "number" || typeof value === "boolean")
@@ -64,10 +74,16 @@ function deadline<T>(work: Promise<T>, ms: number): Promise<T> {
 export class ReadOnlySession {
   private sql: postgres.Sql | undefined;
 
+  private readonly connectTimeoutSeconds: number;
+  private readonly deadlineSlackMs: number;
+
   constructor(
     private readonly connection: Connection,
-    private readonly connectTimeoutSeconds = 10,
-  ) {}
+    options: SessionOptions = {},
+  ) {
+    this.connectTimeoutSeconds = options.connectTimeoutSeconds ?? CONNECT_TIMEOUT_SECONDS;
+    this.deadlineSlackMs = options.deadlineSlackMs ?? DEADLINE_SLACK_MS;
+  }
 
   private open(): postgres.Sql {
     if (this.sql) return this.sql;
@@ -144,7 +160,12 @@ export class ReadOnlySession {
       throw new Error("unreachable: the transaction callback always throws");
     };
     try {
-      return await deadline(work(), timeout + DEADLINE_SLACK_MS);
+      // The work starts with opening the connection (the first query on a session pays for it), so the
+      // deadline includes the whole connect allowance. Counting only the statement timeout plus the
+      // slack let a slow connection use up the slack, and the client then gave up before the server's
+      // own "statement timeout" error could arrive (FIX-1).
+      const budget = this.connectTimeoutSeconds * 1000 + timeout + this.deadlineSlackMs;
+      return await deadline(work(), budget);
     } catch (err) {
       if ((err as { code?: unknown }).code === "GAUGELINE_DEADLINE") await this.close(true);
       throw err;
