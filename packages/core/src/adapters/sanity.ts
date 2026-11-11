@@ -10,6 +10,7 @@ import {
 import type { Env } from "../connectors/types.js";
 import type { Fetcher } from "../fetcher.js";
 import { readSanity } from "../handoff/sanity.js";
+import { readSanityRevisions } from "./sanity-revisions.js";
 import { maskEmail } from "../handoff/people.js";
 import { accessor, countPaths, countedPath, countedPaths } from "../query/counts.js";
 import { fillUrlTemplate, hashValue } from "./fingerprint.js";
@@ -233,5 +234,6 @@ export function createSanityAdapter(options: SanityAdapterOptions): ContentAdapt
     draftsReachable,
     members,
     resolveUrl,
+    revisions: (documentId, since) => readSanityRevisions(env, fetcher, documentId, since),
   };
 }
