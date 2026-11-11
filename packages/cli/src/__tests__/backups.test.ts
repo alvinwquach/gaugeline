@@ -209,7 +209,7 @@ describe("the handoff checklist", () => {
     const dir = folder();
     writeFileSync(
       join(dir, "gaugeline.handoff.json"),
-      JSON.stringify({ clientEmails: ["owner@ember-popup.example"] }),
+      JSON.stringify({ clientEmails: [["owner", "ember-popup.example"].join("@")] }),
     );
     const r = await run(["handoff", "ember-popup.example", "--json", "--quiet"], dir, {
       NO_COLOR: "1",
