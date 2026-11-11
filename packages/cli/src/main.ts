@@ -114,8 +114,16 @@ import {
   addWordPressChecks,
   addPublishedChecks,
   createPublished,
+  addBackupsChecks,
+  createBackups,
+  BACKUPS_CHECKS,
+  BACKUPS_ENV_VARS,
+  buildBackupsSummary,
+  formatBackupsSummary,
+  manualBackups,
   allAdapterEnvVars,
   createWordPress,
+  type ExportLister,
 } from "@gaugeline/core";
 import { parseCliArgs } from "./args.js";
 import { HELP } from "./help.js";
@@ -126,6 +134,7 @@ import { createLogger } from "./logger.js";
 import { checkAuditTarget, checkServices, emitAuditPack } from "./audit.js";
 import { checkBriefTarget, emitBrief } from "./brief.js";
 import { checkHandoffTarget, writeHandoff } from "./handoff.js";
+import { folderLister } from "./export-folder.js";
 import { runDigest } from "./digest.js";
 import { formatLegacyTable, formatPlanSummary } from "./plan.js";
 import { formatTerminal } from "./reporter.js";
@@ -180,6 +189,7 @@ import {
   readCostConfig,
   readTrackersConfig,
   readAdaptersConfig,
+  readBackupsConfig,
   readEvents,
   readSchemaRules,
   readTags,
@@ -266,6 +276,8 @@ export interface Deps {
   renewals?: { bootstrapUrl?: string; port?: number };
   /** `gaugeline cost`, `--cost`: how long to wait between the two visits to a page, and how the wait is made. Tests pass one that does not wait. */
   cost?: { delayMs?: number; sleep?: (ms: number) => Promise<void> };
+  /** `gaugeline backups`, `--backups`: how an export folder is listed. Defaults to reading the disk. */
+  backups?: { lister?: ExportLister };
   /** Where gaugeline.schema.json is looked for. Defaults to the current directory. */
   cwd?: string;
   /** Opens the written report. Defaults to the system browser; tests pass a fake. */
@@ -972,6 +984,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         trackers: args.trackers,
         libraries: args.libraries,
         wordpress: args.wordpress,
+        backups: args.backups,
         published: args.published,
         runOne: (argv, siteIo, siteCwd) => main(argv, siteIo, { ...deps, cwd: siteCwd }),
       });
@@ -1399,10 +1412,17 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           : libraryRegistry;
       // The published-not-live checks (changed CMS items against their pages), only with --published.
       const publishedChecking = args.published;
-      const registry =
+      const publishedRegistry =
         publishedChecking && deps.registry === undefined
           ? addPublishedChecks(wordpressRegistry)
           : wordpressRegistry;
+      // The backups checks (no recent backup, backups not enabled, an export far smaller than the one before),
+      // only with --backups or `gaugeline backups`.
+      const backupsChecking = args.backups;
+      const registry =
+        backupsChecking && deps.registry === undefined
+          ? addBackupsChecks(publishedRegistry)
+          : publishedRegistry;
       // gaugeline audit --pack: the packages are read, and checked against the checks this run makes, before
       // any request: a package that names a check that never runs is a mistake in the file (exit 2).
       const services = args.audit ? readServicesConfig(cwd) : undefined;
@@ -1415,6 +1435,8 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         );
       if (args.command === "cost")
         only = COST_CHECKS.map((c) => c.id).filter((id) => registry.has(id));
+      if (args.command === "backups")
+        only = BACKUPS_CHECKS.map((c) => c.id).filter((id) => registry.has(id));
       if (handing) only = HANDOFF_CHECKS.map((c) => c.id).filter((id) => registry.has(id));
       if (launch) {
         const registered = new Set(registry.all().map((c) => c.id));
@@ -1428,7 +1450,12 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       const dns = args.dns ? (deps.dns ?? createDnsReader()) : undefined;
       const registeredIds = new Set(registry.all().map((c) => c.id));
       const dnsSkipped =
-        !launch && args.command !== "renewals" && args.command !== "cost" && !handing && !args.dns
+        !launch &&
+        args.command !== "renewals" &&
+        args.command !== "cost" &&
+        args.command !== "backups" &&
+        !handing &&
+        !args.dns
           ? EMAIL_PRESET.filter((id) => registeredIds.has(id))
           : [];
       // --save-requests: the file is claimed before the first request, so a path that cannot be
@@ -1470,6 +1497,18 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       const libraries = libraryChecking ? createLibraries(fetcher) : undefined;
       // What the WordPress checks read: wordpress.org's current releases and the site's REST users route, GET only.
       const wordpress = wordpressChecking ? createWordPress(fetcher) : undefined;
+      // What the backups checks read: Supabase's and Sanity's backup status with the tokens in the environment
+      // (GET only), and the files of each export folder named in gaugeline.backups.json (listed, never opened).
+      const backups = backupsChecking
+        ? createBackups(
+            {
+              config: readBackupsConfig(cwd) ?? {},
+              env: freezeEnv(io.env ?? {}, BACKUPS_ENV_VARS),
+              lister: deps.backups?.lister ?? folderLister(cwd),
+            },
+            fetcher,
+          )
+        : undefined;
       // What the published-not-live checks read: the content systems in gaugeline.adapters.json (or the sitemap
       // and feed adapter), and one GET of the page of each changed item, through the fetcher. Keys stay in the environment.
       const published = publishedChecking
@@ -1519,6 +1558,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         ...(libraries ? { libraries } : {}),
         ...(wordpress ? { wordpress } : {}),
         ...(published ? { published } : {}),
+        ...(backups ? { backups } : {}),
         ...(args.command === "renewals" || handing ? { tolerateUnreachable: true } : {}),
         // The walking skeleton (0.0.x) runs one check; an injected registry is used as given.
         ...(only ? { only } : {}),
@@ -1734,6 +1774,19 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
               usageSettings: cost.usageSettings,
               builder,
               staticListed: (config.static?.length ?? 0) > 0,
+            }),
+          );
+          io.stdout.write(`${lines.join("\n")}\n\n`);
+        }
+        // gaugeline backups: each source's state and the systems to check by hand first, then what to fix.
+        if (backups && args.command === "backups") {
+          const when = (deps.now ?? io.now ?? (() => new Date()))();
+          const lines = formatBackupsSummary(
+            buildBackupsSummary({
+              site: new URL(snapshot.finalUrl).host,
+              reading: await backups.read(when),
+              page: snapshot,
+              now: when,
             }),
           );
           io.stdout.write(`${lines.join("\n")}\n\n`);
