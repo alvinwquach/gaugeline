@@ -1,5 +1,6 @@
 import { escapeMarkdown } from "../report/brief.js";
 import type { AdvisoryResult, Verdict } from "./schema.js";
+import { OUTSIDE } from "./verdict.js";
 
 const LABEL: Record<Verdict, string> = {
   "likely-affected": "Likely affected",
@@ -43,11 +44,15 @@ const NOTE_LINES = 6;
  */
 export function renderNote(r: AdvisoryResult): string {
   const what = r.advisory.summary ? ` (${md(r.advisory.summary)})` : "";
+  const seenOutside = r.components.some(
+    (c) => c.verdict === "likely-not-affected" && c.evidence.some((l) => l.includes(OUTSIDE)),
+  );
   const answer: Record<Verdict, string> = {
     "likely-affected":
       "From the outside I found signs that the site is likely affected, so I am treating it as affected until I have checked inside.",
-    "likely-not-affected":
-      "From the outside I found no sign of the affected component on the site, so it is likely not affected. That is what a visitor can see, so I will confirm it inside.",
+    "likely-not-affected": seenOutside
+      ? "From the outside I found the affected package on the site, at a version outside the affected versions, so it is likely not affected. That is what a visitor can see, so I will confirm it inside."
+      : "From the outside I found no sign of the affected component on the site, so it is likely not affected. That is what a visitor can see, so I will confirm it inside.",
     "cannot-tell":
       "From the outside I cannot tell yet. What a visitor can see does not settle it, so I will check inside.",
   };

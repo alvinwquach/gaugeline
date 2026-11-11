@@ -20,7 +20,10 @@ export interface Version {
 
 const NPM =
   /^v?(\d{1,9})\.(\d{1,9})(?:\.(\d{1,9}))?(?:-([0-9A-Za-z.-]{1,40}))?(?:\+[0-9A-Za-z.-]{1,40})?$/;
-const LOOSE = /^v?(\d{1,9}(?:\.\d{1,9}){0,3})(?:[-_.+]?([A-Za-z][0-9A-Za-z.]{0,20}))?$/;
+// A suffix is a stability tag composer knows (dev, alpha, beta, RC, patch), never an arbitrary word:
+// 8f3a2 is a hash and not 8 with a pre-release.
+const LOOSE =
+  /^v?(\d{1,9}(?:\.\d{1,9}){0,3})(?:[-_.+]?((?:dev|alpha|beta|rc|patch|pl|a|b|p)\d{0,4}(?:\.\d{1,4})?))?$/i;
 
 const pad = (n: readonly number[]): [number, number, number, number] => [
   n[0] ?? 0,
@@ -198,9 +201,14 @@ export function parseRange(family: Family, text: string): RangeSet | undefined {
     const comps: Comparator[] = [];
     if (hyphen) {
       const lo = token(family, `>=${hyphen[1]}`);
-      const hi = token(family, `<=${hyphen[2]}`);
-      if (!lo || !hi) return undefined;
-      comps.push(...lo, ...hi);
+      // A partial upper bound takes in everything under it, in every family: 1.0 - 2.0 is >=1.0.0 <2.1.
+      const part = readPartial(family, hyphen[2] ?? "");
+      if (!lo || !part || part.parts.length === 0) return undefined;
+      const hi: Comparator =
+        part.parts.length < 3 || part.wild
+          ? { op: "<", v: built(bump(part.parts, Math.max(0, part.parts.length - 1))) }
+          : { op: "<=", v: built(part.parts, part.pre) };
+      comps.push(...lo, hi);
     } else {
       g = g.replace(/,/g, " ").replace(/(<=|>=|<|>|=|\^|~)\s+/g, "$1");
       for (const tok of g.split(/\s+/)) {

@@ -76,7 +76,7 @@ describe("a Next.js site inside, outside and unreadable (advisory resolved throu
   });
 
   it("outside the range: likely-not-affected, saying the version is outside, never 'safe'", async () => {
-    const { result } = await run({ [BAR]: next("16.2.1") }, "GHSA-abcd-2345-wxyz");
+    const { result } = await run({ [BAR]: next("16.2.1") }, "CVE-2026-00123");
     expect(result.verdict).toBe("likely-not-affected");
     expect(text(result)).toMatch(
       /Next\.js 16\.2\.1 .*outside the affected versions >=15\.0\.0 <15\.2\.3/,
@@ -201,7 +201,11 @@ describe("a component the site does not use", () => {
   });
 
   it("a composer package on a site with no PHP seen says so; with PHP in use it cannot tell", async () => {
-    const off = await run({ [BAR]: next("16.2.1") }, "laravel/framework@>=10.0,<10.48.4");
+    const hugo: SiteDef = {
+      headers: { server: "Netlify", "x-nf-request-id": "q" },
+      routes: { "/": html({ head: '<meta name="generator" content="Hugo 0.120.4">' }) },
+    };
+    const off = await run({ [BAR]: hugo }, "laravel/framework@>=10.0,<10.48.4");
     expect(off.result.verdict).toBe("likely-not-affected");
     expect(text(off.result)).toMatch(/No PHP seen on 1 hostname/);
     const on = await run({ [BAR]: wordpress("2.4.0") }, "laravel/framework@>=10.0,<10.48.4");
@@ -224,9 +228,10 @@ describe("a component the site does not use", () => {
     expect(result.checkInside.join("\n")).toMatch(/express/);
   });
 
-  it("a multi-ecosystem advisory is judged on what can be seen; the rest is 'check inside'", async () => {
+  it("a multi-ecosystem advisory: a package only the inside can show keeps the answer from being clean, and is listed", async () => {
     const { result } = await run({ [BAR]: next("16.2.1") }, "GHSA-abcd-2345-wxyz");
-    expect(result.verdict).toBe("likely-not-affected");
+    expect(result.verdict).toBe("cannot-tell");
+    expect(text(result)).toMatch(/next-py/);
     expect(result.checkInside.join("\n")).toMatch(/next-py/);
     expect(result.components.map((c) => c.name)).toEqual(["next", "acme/next-bridge", "next-py"]);
   });

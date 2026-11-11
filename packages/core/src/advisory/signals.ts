@@ -54,12 +54,34 @@ export function hostingOf(h: Headers): { hosting?: string; cdn?: string } {
   return { ...(hosting ? { hosting } : {}), ...(cdn ? { cdn } : {}) };
 }
 
-/** PHP's version from X-Powered-By or Server ("PHP/8.1.27", "PHP/8.1.2-1ubuntu2" is 8.1.2). */
-export function phpFromHeaders(h: Headers): { version?: string; how: string } | undefined {
-  const power = /\bPHP\/(\d+(?:\.\d+){1,3})/i.exec(h["x-powered-by"] ?? "");
-  if (power) return { version: power[1] ?? "", how: "the X-Powered-By header" };
-  const srv = /\bPHP\/(\d+(?:\.\d+){1,3})/i.exec(h.server ?? "");
-  if (srv) return { version: srv[1] ?? "", how: "the Server header" };
+export interface PhpRead {
+  version?: string;
+  how: string;
+  /** The number is a distribution's build ("8.1.2-1ubuntu2.14", "8.3.1+deb12u1"): backported fixes do not change it. */
+  distro?: string;
+}
+
+const PHP_VERSION = /\bPHP\/(\d+(?:\.\d+){1,3})([^\s;,]*)/i;
+
+/** An upstream pre-release tag (8.4.0RC1, 8.4.0-dev) is not a distribution's suffix. */
+const PRE_TAG = /^[-~]?(?:alpha|beta|rc|dev)\d*$/i;
+
+function phpIn(value: string, how: string): PhpRead | undefined {
+  const m = PHP_VERSION.exec(value);
+  if (!m) return undefined;
+  const suffix = m[2] ?? "";
+  if (suffix === "") return { version: m[1] ?? "", how };
+  if (PRE_TAG.test(suffix)) return { version: `${m[1] ?? ""}-${suffix.replace(/^[-~]/, "")}`, how };
+  // Anything else after the number (-1ubuntu2.14, +deb12u1, ~focal) is a build by a distribution.
+  return { version: m[1] ?? "", how, distro: suffix.slice(0, 40) };
+}
+
+/** PHP's version from X-Powered-By or Server, with the distribution suffix kept apart. */
+export function phpFromHeaders(h: Headers): PhpRead | undefined {
+  const power = phpIn(h["x-powered-by"] ?? "", "the X-Powered-By header");
+  if (power) return power;
+  const srv = phpIn(h.server ?? "", "the Server header");
+  if (srv) return srv;
   if (/^PHP\b/i.test(h["x-powered-by"] ?? "")) return { how: "the X-Powered-By header" };
   if (/(?:^|[,;\s])PHPSESSID=/.test(h["set-cookie"] ?? "")) return { how: "a PHPSESSID cookie" };
   return undefined;
@@ -100,7 +122,19 @@ export interface WordPressRead {
   themes: WordPressAsset[];
 }
 
-const VER = /[?&](?:#038;|amp;)*ver=(\d[0-9A-Za-z._-]{0,20})/;
+/**
+ * The value of a ?ver= query. It is a version only when it is a release number written with dots: 2.1.3,
+ * 5.8, 1.0.0-beta2. A date (20231105, 2023.11.05), a hash (8f3a2), a build id or a timestamp is a
+ * cache-buster, not a version.
+ */
+const VER_ANY = /[?&](?:#038;|amp;)*ver=([0-9A-Za-z._-]{1,40})/;
+const RELEASE = /^\d{1,3}(?:\.\d{1,4}){1,3}(?:-(?:alpha|beta|rc|dev)\d{0,3})?$/;
+
+function verOf(text: string): { value?: string; present: boolean } {
+  const v = VER_ANY.exec(text)?.[1];
+  if (v === undefined) return { present: false };
+  return RELEASE.test(v) ? { value: v, present: true } : { present: true };
+}
 
 /** The core files whose ?ver= is WordPress's own number (the bundled libraries, jQuery among them, carry theirs). */
 const CORE_FILE =
@@ -128,9 +162,28 @@ export function wordpressOf(html: string, h: Headers): WordPressRead | undefined
   let version = gen ? { value: gen[1] ?? "", how: "the generator tag" } : undefined;
   if (!version) {
     const core = CORE_FILE.exec(html);
-    const v = VER.exec(core?.[1] ?? "")?.[1];
+    const v = verOf(core?.[1] ?? "").value;
     if (v) version = { value: v, how: "the version on the site's wp-includes files" };
   }
+  // Where the same number is on the files of every plugin and theme it is WordPress's own (what it writes
+  // when none is given). With the core version unknown, such a number is not read as any plugin's.
+  const seenOn = new Map<string, Set<string>>();
+  const coreFileVers = new Set<string>();
+  const inc = /\/wp-includes\/[^"'\s>]*/gi;
+  for (let m = inc.exec(html); m; m = inc.exec(html)) {
+    const v = verOf(m[0]).value;
+    if (v) coreFileVers.add(v);
+  }
+  const everyAsset = /\/wp-content\/(?:plugins|themes)\/([a-z0-9][a-z0-9._-]{0,79})\/[^"'\s>]*/gi;
+  for (let m = everyAsset.exec(html); m; m = everyAsset.exec(html)) {
+    const v = verOf(m[0]).value;
+    if (!v) continue;
+    const on = seenOn.get(v) ?? new Set<string>();
+    on.add((m[1] ?? "").toLowerCase());
+    seenOn.set(v, on);
+  }
+  const shared = (v: string): boolean =>
+    version === undefined && ((seenOn.get(v)?.size ?? 0) > 1 || coreFileVers.has(v));
   const plugins = new Map<string, Set<string>>();
   const themes = new Map<string, Set<string>>();
   const asset = /\/wp-content\/(plugins|themes)\/([a-z0-9][a-z0-9._-]{0,79})\/[^"'\s>]*/gi;
@@ -140,8 +193,8 @@ export function wordpressOf(html: string, h: Headers): WordPressRead | undefined
     if (!into.has(slug) && into.size >= MAX_ASSETS) continue;
     const versions = into.get(slug) ?? new Set<string>();
     into.set(slug, versions);
-    const v = VER.exec(m[0])?.[1];
-    if (v && v !== version?.value) versions.add(v);
+    const v = verOf(m[0]).value;
+    if (v && v !== version?.value && !shared(v)) versions.add(v);
   }
   const rows = (m: Map<string, Set<string>>): WordPressAsset[] =>
     [...m].map(([slug, v]) => ({ slug, versions: [...v] }));

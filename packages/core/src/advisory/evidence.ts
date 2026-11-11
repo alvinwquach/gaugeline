@@ -1,7 +1,7 @@
 import { escapeInvisible } from "../checks/hidden-text/escape.js";
 import { dnsName, registrableDomain, type DnsReader } from "../dns.js";
 import { NetworkError } from "../errors.js";
-import type { Fetcher, Hop } from "../fetcher.js";
+import { FetchError, type Fetcher, type Hop } from "../fetcher.js";
 import { dnsProviderOf } from "../handoff/providers.js";
 import { detect, looksMinified, MAX_SCRIPT_CHARS } from "../libraries/detect.js";
 import { LIBRARY_SCRIPT_CAP, MAX_SCRIPT_BYTES } from "../libraries/reader.js";
@@ -15,6 +15,7 @@ import {
   hostingOf,
   nextVersionOf,
   phpFromHeaders,
+  type PhpRead,
   wordpressOf,
   type WordPressAsset,
   type WordPressRead,
@@ -57,20 +58,25 @@ export interface HostEvidence {
   host: string;
   /** Asked for by the person: a host that does not answer then stops a "not seen" from being a verdict. */
   required: boolean;
-  read: { ok: true; origin: string; status: number } | { ok: false; reason: string };
+  read:
+    | { ok: true; origin: string; status: number }
+    /** `missing`: the name does not exist (no DNS answer), so there is nothing there to read. */
+    | { ok: false; reason: string; missing?: boolean };
   hosting?: string;
   cdn?: string;
   /** What the host positively is: Next.js, WordPress, PHP, a generator, an X-Powered-By value. */
   stacks: string[];
   generator?: string;
   next?: { version?: string; how?: string };
-  php?: { version?: string; how: string };
+  php?: PhpRead;
   wordpress?: WordPressRead;
   libraries: ServedLibrary[];
   scriptsRead: number;
   scriptsUnread: number;
   /** Minified scripts with no library name or version in them. */
   scriptsUnidentified: number;
+  /** Scripts the page names that were not asked for because of the cap on one page. */
+  scriptsCapped: number;
   /** Set when what this host sent cannot show what is behind it, and why. */
   opaque?: string;
   dns?: { nameservers: string[]; provider?: string };
@@ -88,6 +94,8 @@ export interface Evidence {
 const MAX_HOSTS = 6;
 const MAX_LINKED_HOSTS = 3;
 const NEXT_SCRIPT_CAP = 8;
+/** A script longer than this is read as a bundle even when its lines are short. */
+const BUNDLE_CHARS = 100_000;
 
 const isHttp = (u: string): boolean => /^https?:\/\//i.test(u);
 const withoutQuery = (u: string): string => {
@@ -174,6 +182,7 @@ async function readHost(
     scriptsRead: 0,
     scriptsUnread: 0,
     scriptsUnidentified: 0,
+    scriptsCapped: 0,
     limits: [],
   };
   let hops: Hop[];
@@ -186,7 +195,13 @@ async function readHost(
           url,
           ...(err.hint ? { hint: err.hint } : {}),
         });
-      return { evidence: { ...empty, read: { ok: false, reason: err.message } } };
+      const missing = err instanceof FetchError && err.reason === "not-found";
+      return {
+        evidence: {
+          ...empty,
+          read: { ok: false, reason: err.message, ...(missing ? { missing } : {}) },
+        },
+      };
     }
     throw err;
   }
@@ -257,7 +272,9 @@ async function readHost(
           how: d.evidence.how,
           script: withoutQuery(r.url),
         });
-      if (found.length === 0 && looksMinified(r.text)) unidentified++;
+      // A minified file, or one too long to be hand-written, with no library name in it could hold one.
+      if (found.length === 0 && (looksMinified(r.text) || r.text.length > BUNDLE_CHARS))
+        unidentified++;
     }
   }
   if (nextVersion && !stacks.includes("Next.js")) stacks.push("Next.js");
@@ -284,6 +301,7 @@ async function readHost(
     scriptsRead: reads.filter((r) => r.text !== undefined).length,
     scriptsUnread: reads.filter((r) => r.text === undefined).length,
     scriptsUnidentified: unidentified,
+    scriptsCapped: opts.needs.libraries ? Math.max(0, named.length - LIBRARY_SCRIPT_CAP) : 0,
     ...(opaque ? { opaque } : {}),
     limits,
   };

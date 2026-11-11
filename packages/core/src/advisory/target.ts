@@ -30,6 +30,8 @@ export interface Advisory {
   withdrawn?: string;
   source: "osv" | "given";
   components: Component[];
+  /** Packages the advisory lists that were not read because of the cap on one advisory. */
+  omitted?: number;
 }
 
 const CVE = /^CVE-\d{4}-\d{4,7}$/i;

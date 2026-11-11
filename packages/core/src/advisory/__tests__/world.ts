@@ -122,6 +122,8 @@ export interface SiteDef {
   headers?: Record<string, string>;
   /** Path to a page (a string is HTML at 200). A path that is not here is a 404. */
   routes: Record<string, Route | string>;
+  /** The host resolves but the connection fails with this code (ECONNREFUSED, ETIMEDOUT). */
+  fail?: string;
 }
 
 /**
@@ -139,6 +141,7 @@ export function worldTransport(
     seen.push({ method: req.method, url: url.href });
     const site = sites[url.hostname];
     if (!site) return Promise.reject(down("ENOTFOUND"));
+    if (site.fail) return Promise.reject(down(site.fail));
     const route = site.routes[url.pathname];
     if (route === undefined)
       return Promise.resolve(

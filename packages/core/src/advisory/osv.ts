@@ -70,15 +70,23 @@ export function parseOsv(json: unknown): Advisory {
   if (id === undefined) throw new OsvError("bad-answer", "OSV's answer had no advisory id.");
   const summary = text(json.summary, SUMMARY_MAX + 1);
   const withdrawn = text(json.withdrawn, 40);
-  const byPackage = new Map<string, Component & { groups: RangeSet; unreadable?: string }>();
+  const byPackage = new Map<
+    string,
+    Component & { groups: RangeSet; unreadable?: string; commitsOnly?: boolean }
+  >();
+  let omitted = 0;
   for (const a of list(json.affected)) {
-    if (!isRecord(a) || !isRecord(a.package) || byPackage.size >= MAX_COMPONENTS) continue;
+    if (!isRecord(a) || !isRecord(a.package)) continue;
     const ecosystem = text(a.package.ecosystem, 60);
     const name = text(a.package.name, 120);
     if (ecosystem === undefined || name === undefined) continue;
     const c = classify(ecosystem, name);
     const key = `${c.kind}\n${c.name}\n${c.label}`;
     let entry = byPackage.get(key);
+    if (!entry && byPackage.size >= MAX_COMPONENTS) {
+      omitted++;
+      continue;
+    }
     if (!entry) {
       const family = familyOf(c.kind);
       entry = { ...c, ...(family ? { family } : {}), rangeText: "", groups: [] };
@@ -88,9 +96,9 @@ export function parseOsv(json: unknown): Advisory {
     for (const r of list(a.ranges)) {
       if (!isRecord(r)) continue;
       const type = text(r.type, 20)?.toUpperCase();
+      // A GIT range is commits, not versions: beside a readable range it is ignored, alone it is no range.
       if (type === "GIT") {
-        entry.unreadable ??=
-          "the advisory lists commit ranges only, which cannot be compared with a version";
+        entry.commitsOnly = true;
         continue;
       }
       const set = rangeFromEvents(entry.family, events(r.events));
@@ -102,17 +110,23 @@ export function parseOsv(json: unknown): Advisory {
       if (one) entry.groups.push(...one);
     }
   }
-  const components: Component[] = [...byPackage.values()].map(({ groups, ...c }) => {
-    if (c.family === undefined) return { ...c, rangeText: "" };
-    if (groups.length === 0)
-      return {
-        ...c,
-        rangeText: "",
-        unreadable: c.unreadable ?? "the advisory lists no versions",
-      };
-    const { unreadable: _drop, ...rest } = c;
-    return { ...rest, set: groups, rangeText: describeRange(groups) };
-  });
+  const components: Component[] = [...byPackage.values()].map(
+    ({ groups, commitsOnly, unreadable, ...c }) => {
+      if (c.family === undefined) return { ...c, rangeText: "" };
+      // One range that cannot be read means the versions are not known: the ones that parsed are not all of
+      // them, so a version outside them is not "outside the affected versions".
+      if (unreadable !== undefined) return { ...c, rangeText: "", unreadable };
+      if (groups.length === 0)
+        return {
+          ...c,
+          rangeText: "",
+          unreadable: commitsOnly
+            ? "the advisory lists commit ranges only, which cannot be compared with a version"
+            : "the advisory lists no versions",
+        };
+      return { ...c, set: groups, rangeText: describeRange(groups) };
+    },
+  );
   return {
     id,
     aliases: list(json.aliases)
@@ -126,6 +140,7 @@ export function parseOsv(json: unknown): Advisory {
     ...(withdrawn !== undefined ? { withdrawn } : {}),
     source: "osv",
     components,
+    ...(omitted > 0 ? { omitted } : {}),
   };
 }
 

@@ -7,11 +7,11 @@ the site and what the pages load, and that is an hour for each client.
 `gaugeline advisory` does the looking from outside. Give it the client's site and an advisory, and it says
 one of three things, with the evidence it used and a note you can paste into a reply:
 
-| Verdict               | What it means                                                                                                                                        |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `likely-affected`     | The site shows the package, at a version inside the affected versions                                                                                |
-| `likely-not-affected` | The site shows the package at a version outside them, or shows no sign of the affected component from outside                                        |
-| `cannot-tell`         | The package is there and its version cannot be read, or what the site sends cannot show what is behind it, or only the repository or server can show |
+| Verdict               | What it means                                                                                                                                  |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `likely-affected`     | The site shows the package, at a version inside the affected versions                                                                          |
+| `likely-not-affected` | The site shows the package at a version outside them, or names what it is built on and shows no sign of the affected component from outside    |
+| `cannot-tell`         | The package is there and its version cannot be read, or what was read cannot show what is behind it, or only the repository or server can show |
 
 It never says a site is safe. Looking from outside cannot show that, so the best answer is "no sign of the
 affected component from outside", and everything only the repository or the server can show is listed under
@@ -65,19 +65,39 @@ The patterns for Next.js and WordPress were written from what those builds are k
 have not been compared with real builds in this release, so a version is read only from a whole shape and is
 never guessed.
 
-## What it says when it cannot see
+## When it says no sign, and when it cannot tell
 
-- A **CDN that removes the headers** (CloudFront or Cloudflare in front, nothing in the page naming the
-  framework) is `cannot-tell`, with the CDN named. "Not seen" is believed only when what was looked at could
-  have shown it.
-- A page that answered an error (403, 503) is the same: what it says about itself is limited.
-- A package only a server or a build can show (a Python or Go package, an npm package that is not shipped to
-  the browser) is `cannot-tell` and appears under "check inside".
-- A WordPress plugin that serves no file on the home page can still be installed and active, so a plugin
-  that is not in the page's files is `cannot-tell` on a WordPress site, and "no sign" only on a site that is
-  not WordPress at all.
-- An advisory with several packages (an npm one and a PyPI one) is judged on the ones that can be seen. The
-  rest are listed under "check inside".
+Not finding a component is only an answer when the component would have shown if it were there. Gaugeline
+says `likely-not-affected` for a component it did not see only in these cases, and otherwise says
+`cannot-tell` and gives the reason:
+
+- **The site names what it is built on, and it is something else.** A page that carries a generator tag, a
+  recognisable framework or a PHP header is positive evidence for the question "is it Next.js?" or "is it
+  WordPress?". A page that names nothing is not: `cannot-tell`. For PHP and Composer packages the evidence
+  has to be stronger, because PHP runs out of sight: a host that cannot run PHP (Netlify, GitHub Pages,
+  Squarespace, Wix, Shopify) or a static site generator (Hugo, Jekyll, Eleventy, Astro). A Next.js front end
+  does not rule out a WordPress or PHP back end behind it.
+- **Every host that was looked at answered.** A hostname you named, or one the home page links to, that
+  refused the connection, timed out or answered an error is unread evidence and stops a "not seen". A name
+  that does not exist at all (a `www` nobody set up) is nothing to read.
+- **No CDN is hiding the headers.** CloudFront or Cloudflare in front, with a page that names nothing, is
+  `cannot-tell` with the CDN named. A page that answered 403 or 503 is the same.
+- **For libraries, every script was read and named.** Scripts past the limit of 20 for one page, scripts
+  that could not be read and bundles (minified, or longer than 100,000 characters) with no library name in
+  them could hold the library: `cannot-tell`.
+- **A WordPress plugin or theme that serves no file on the home page** can still be installed, and an
+  inactive theme can still be exploited, so on a WordPress site it is `cannot-tell`, and "no sign" only on a
+  site that is not WordPress.
+- **A package only a server or a build can show** (a Python or Go package, an npm package that is not shipped
+  to the browser, a Composer package) is listed under "check inside", and an advisory that names one never
+  comes out clean: it is `cannot-tell` unless a visible package is affected. An advisory that lists more than
+  50 packages, or a range Gaugeline cannot read, is `cannot-tell` for the same reason.
+
+A version is only a version when it is one. A `?ver=` on a WordPress file that is a date, a hash or a build
+number (`20231105`, `8f3a2`) is a cache-buster and not the plugin's version, and a number that every plugin
+shares is WordPress's own. A PHP number from a distribution build (`PHP/8.1.2-1ubuntu2.14`) inside the
+affected versions is `cannot-tell`: distributions backport fixes without changing the number, so check the
+package changelog.
 
 ## Example: a pop-up bar the morning a Next.js advisory lands
 
@@ -100,8 +120,8 @@ Affects: next (npm) >=15.0.0 <15.2.3
 Site: https://lantern-yard.example, looked at 2026-11-11
 
 Likely affected. What was found:
-  - https://lantern-yard.example: served by Vercel; identified as Next.js.
   - Next.js 15.1.0 on https://lantern-yard.example (window.next.version in the script main-app-3f2a.js) is inside the affected versions >=15.0.0 <15.2.3.
+  - https://lantern-yard.example: served by Vercel; identified as Next.js.
 
 Check inside (only the repository or the server can show this):
   - the project's lockfile (package-lock.json, pnpm-lock.yaml or yarn.lock): which version of next is installed, including as a dependency of another package.
@@ -136,8 +156,8 @@ You asked whether the site is affected by next@\>=15.0.0 \<15.2.3.
 **Short answer: Likely affected.** From the outside I found signs that the site is likely affected, so I am treating it as affected until I have checked inside.
 
 **What I found**
-- https://lantern-yard.example: served by Vercel; identified as Next.js.
 - Next.js 15.1.0 on https://lantern-yard.example \(window.next.version in the script main-app-3f2a.js\) is inside the affected versions \>=15.0.0 \<15.2.3.
+- https://lantern-yard.example: served by Vercel; identified as Next.js.
 
 **The fix:** update to next 15.2.3 or later, then I will check the live site again.
 
@@ -164,8 +184,8 @@ Affects: next (npm) >=15.0.0 <15.2.3
 Site: https://lantern-yard.example, looked at 2026-11-11
 
 Likely not affected. What was found:
-  - https://lantern-yard.example: served by Vercel; identified as Next.js.
   - Next.js 16.2.1 on https://lantern-yard.example (window.next.version in the script main-app-3f2a.js) is outside the affected versions >=15.0.0 <15.2.3.
+  - https://lantern-yard.example: served by Vercel; identified as Next.js.
 
 Check inside (only the repository or the server can show this):
   - the project's lockfile (package-lock.json, pnpm-lock.yaml or yarn.lock): which version of next is installed, including as a dependency of another package.
@@ -199,8 +219,8 @@ Affects: easy-booking (WordPress plugin) <2.4.0
 Site: https://ashgrove-physio.example, looked at 2026-11-11
 
 Likely affected. What was found:
-  - https://ashgrove-physio.example: identified as WordPress 6.4.2, PHP 8.1.27.
   - easy-booking 2.1.3 on https://ashgrove-physio.example (from the version on its file addresses) is inside the affected versions <2.4.0.
+  - https://ashgrove-physio.example: identified as WordPress 6.4.2, PHP 8.1.27.
 
 Check inside (only the repository or the server can show this):
   - the Plugins page in wp-admin, or `wp plugin list`: whether easy-booking is installed or active, and which version.
@@ -232,8 +252,8 @@ Affects: next (npm) >=15.0.0 <15.2.3
 Site: https://fernhill-roasters.example, looked at 2026-11-11
 
 Cannot tell. What was found:
-  - https://fernhill-roasters.example: behind CloudFront.
   - Next.js was not seen, and that cannot be relied on: https://fernhill-roasters.example: CloudFront is in front of the site and removes the headers that would name what is behind it, and the page names nothing.
+  - https://fernhill-roasters.example: behind CloudFront.
 
 Check inside (only the repository or the server can show this):
   - the project's lockfile (package-lock.json, pnpm-lock.yaml or yarn.lock): which version of next is installed, including as a dependency of another package.
@@ -262,8 +282,9 @@ repository is a job for Dependabot or Snyk.
 - `--json`: print the answer as JSON, with its own `schemaVersion` (1) and its own schema,
   `packages/core/schema/advisory.v1.json`. It is not the `--json` result of a page check, whose version is
   unchanged.
-- `--ci`: exit 1 when the answer is `likely-affected`. `cannot-tell` exits 0, so read the answer when a script
-  runs it.
+- `--ci`: exit 1 when the answer is `likely-affected`. A run that ends in `cannot-tell` still exits 0 and
+  passes a pipeline, and that does not mean the site is not affected: read the verdict (`--json`) and do not
+  rely on the exit code alone.
 
 Exit codes: 0 ran, 1 with `--ci` and `likely-affected`, 2 could not run (the site could not be reached, the id
 was not found, OSV could not be reached, or a range could not be read).
