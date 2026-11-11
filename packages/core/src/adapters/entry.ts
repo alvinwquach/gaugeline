@@ -67,10 +67,17 @@ export interface AdapterEntry {
   settings?: {
     /** Reads the live site's sitemap and feeds: takes `site`, `sitemaps` and `feeds`, and no fields. */
     pageReader?: true;
+    /**
+     * A page reader that also reads the platform's own collections when a key is set: it takes `fingerprint`
+     * and `urls` (the collections it reads are the names under them) and `siteId`.
+     */
+    fields?: true;
     /** The platform names its fields with hyphens. */
     hyphenFields?: true;
     /** Takes `expectPrivate`: the owner says the platform's public API is meant to be private (Umbraco's Delivery API, Joomla's Web Services API). */
     expectPrivate?: true;
+    /** Takes `collections` (the GraphQL collection of each content type) and `expectPublishedOnly` (DatoCMS). */
+    graphqlCollections?: true;
     /**
      * Reads content kept in a repository: takes `path` or `github`, and `folders`; `urls` is replaced by each folder's
      * `permalink`. `true`: `folders` is required. "from-config": the platform's own config file names the folders (TinaCMS),

@@ -34,6 +34,8 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # Generated files are not committed on branches: regenerate them in this checkout first.
+      - run: pnpm gen:all --no-surface
       - run: pnpm docs:check
       # The changelog feed uses absolute links. DOCS_URL (a repository variable) is the site address;
       # unset, the feed keeps the address in docs/site.ts.

@@ -1742,32 +1742,6 @@
     "estimateChanges": "One setting in appsettings.json: Umbraco:CMS:DeliveryApi:PublicAccess to false (and an ApiKey set). Allow longer if the public front end calls the API from the browser and needs to move that call to the server."
   },
   {
-    "id": "joomla-article-no-page",
-    "severity": "high",
-    "area": "Launch day",
-    "title": "A published Joomla article has no page on the live site",
-    "what": "Joomla says an article is published for every visitor, and the address its page should have answers 404 or 410 on the live site.",
-    "why": "Links, the sitemap and search results point at a page that is not there, and the client's announcement leads to an error page.",
-    "fix": "Check that a menu item or a category menu item shows the article, that the menu item is published and its access is Public, and that the article's category is published. If the article should not be public, unpublish it in the Joomla administrator. If every article fails, the address pattern in gaugeline.adapters.json (urls, articles) does not match the site's menu.",
-    "tech": "GET /api/index.php/v1/content/articles?filter[state]=1 (Accept: application/vnd.api+json, X-Joomla-Token) in windows of up to 100, stepped by the number that came back; the count is taken first with a window of one article (meta.total-pages is a page count) and checked with a window of two, and a list is complete only when every counted article was seen; articles at a view level other than Public (access 1), with a start time in the future, with a finish time in the past, or in one language (not All) are counted and not asked; then one GET of the live address, which is the settings' urls pattern filled with the alias or id (Joomla's API gives no address), redirects followed. A final 404 or 410 is the finding; any other answer that is not a 2xx is could-not-check for that page. With no pattern for articles nothing is asked and that is could-not-check. Ids and aliases only: a field is requested only when the settings name it in fingerprint, and none is used for this.",
-    "size": "M",
-    "done": "Every published article of the Joomla site has a page that answers on the live site.",
-    "estimateChanges": "One article is usually a menu item that was unpublished or an alias that was renamed. Every article missing means the address pattern in the settings does not match the site menu, so fix the pattern first."
-  },
-  {
-    "id": "joomla-api-public",
-    "severity": "high",
-    "area": "Security & email",
-    "title": "The Joomla Web Services API answers visitors with no token",
-    "what": "gaugeline.adapters.json says the Web Services API is meant to be private (expectPrivate: true), and a plain GET of its article list with no token is answered with a list of articles.",
-    "why": "Anyone who finds the route can read every article the Public view level can see as data, including articles that are not linked from the site, and can page through all of them. If the API was meant to be private, its protection is off.",
-    "fix": "In the Joomla administrator open System, Plugins and switch off the Web Services plugins you do not use (Web Services - Content, for articles), or find the extension that registered a public route (Joomla's own routes need a token). Send the token from the server only, never from the browser. If the API is meant to be public, remove expectPrivate from gaugeline.adapters.json: the token is not touched.",
-    "tech": "probing check, off without --owner-consent: this check asks the Web Services API's article list as a visitor with no token, so it runs only with --owner-consent (or gaugeline.consent.json), on sites you own or have permission to test; only when the settings say expectPrivate: true (a token being set says nothing); one GET of /api/index.php/v1/content/articles?page[limit]=1 with Accept: application/vnd.api+json and no X-Joomla-Token, no cookie and nothing the fetcher adds per address; a 200 with a JSON:API list (data) and a numeric meta.total-pages is the finding (the number is a count, never an article); 401 or 403 is a route that needs a token and 404 is an API that is off or not at that address, both with no finding; a 200 that is not the API's list (a page that answers every path) and any other status are could-not-check; the answer is read as a count and nothing else",
-    "size": "S",
-    "done": "A visitor who sends no token is refused by the Joomla article list, because you said the API is private.",
-    "estimateChanges": "Usually one plugin to switch off or one route to make private, then a re-run. Allow longer if a headless front end calls the API from the browser and needs to move that call to the server."
-  },
-  {
     "id": "hubspot-page-404",
     "severity": "high",
     "area": "Launch day",
@@ -2442,6 +2416,32 @@
     "size": "S",
     "done": "Every redirect points straight at the final address.",
     "estimateChanges": "Rules in the host, a CDN and the app each need checking."
+  },
+  {
+    "id": "sanity-image-original",
+    "severity": "medium",
+    "area": "Visitors",
+    "title": "Sanity images are served at the size they were uploaded",
+    "what": "An image from cdn.sanity.io is requested with no width or height, so the visitor gets the file as it was uploaded: often 3000 to 6000 pixels wide.",
+    "why": "A phone photo from the shop owner is several megabytes. Shown a few hundred pixels across, it still downloads whole, and the page is slow on a phone for no visible gain.",
+    "fix": "Ask for the size you show: add w (and h with fit=crop if the shape is fixed) and auto=format to the address, or build it with @sanity/image-url: urlFor(image).width(800).auto('format').url().",
+    "tech": "an img src, srcset or picture source on cdn.sanity.io/images with none of w, h, max-w, max-h, min-w or min-h, whose upload is wider than 1200 px (the size is in the file name, so nothing is downloaded); other hosts, and addresses on a custom domain for Sanity's CDN, are not read; one finding per page; the page's own HTML only",
+    "size": "S",
+    "done": "Every Sanity image on the page asks for a width, and for auto format, in its address.",
+    "estimateChanges": "Usually one image helper in the front end. Images written by hand into rich text are edited one by one."
+  },
+  {
+    "id": "sanity-image-oversized",
+    "severity": "medium",
+    "area": "Visitors",
+    "title": "Sanity images are delivered far larger than they are shown",
+    "what": "An image from cdn.sanity.io is asked for at a width much greater than the width attribute on the page, and the page offers no smaller version.",
+    "why": "The visitor downloads several times the pixels they can see. On a phone that is seconds of waiting and mobile data spent on detail the screen throws away.",
+    "fix": "Ask Sanity for about twice the width the image is shown at (for a 400 px slot, w=800), or give the image a srcset with smaller widths and a sizes attribute so each screen picks one.",
+    "tech": "an img with a width attribute whose smallest Sanity address (src, srcset or picture source) delivers more than 2 times that width and at least 200 px more; delivered is w times dpr, never above the upload, and the upload's own width when no w is given (read from the file name); an img with no width attribute is not judged; no rendering, so a width set only in CSS is not seen",
+    "size": "S",
+    "done": "No Sanity image is delivered at more than twice the width its slot shows.",
+    "estimateChanges": "One width in the image helper, or the sizes list in a responsive image component."
   },
   {
     "id": "schema-breadcrumb-mismatch",
@@ -3560,6 +3560,19 @@
     "size": "S",
     "done": "The price is corrected at its source and the site rebuilt, or the change is accepted as meant.",
     "estimateChanges": "A price kept in several places is edited in each."
+  },
+  {
+    "id": "sanity-image-duplicate",
+    "severity": "low",
+    "area": "Visitors",
+    "title": "One Sanity image is processed and downloaded more than once",
+    "what": "The same uploaded image is requested with different parameters by different images on the page, such as one width in the header and another in a card.",
+    "why": "Each variant is a separate file for Sanity's CDN to make and for the visitor to download, and none of them is in the browser's cache for the others.",
+    "fix": "Use one address for the image and let CSS size it, or give it one srcset the browser chooses from. If a card needs a different crop, that is a different picture: upload it as its own image.",
+    "tech": "the same asset id (the hash in the file name; the same bytes are the same asset) in two or more img elements with different parameter sets; an img's own srcset and picture sources are one image and are not compared with each other; parameter order is ignored; the page's own HTML only",
+    "size": "S",
+    "done": "Each Sanity asset on a page is requested with one set of parameters, and differing sizes come from one srcset.",
+    "estimateChanges": "Usually one shared image helper used by every component that shows the image."
   },
   {
     "id": "schema-breadcrumb-start",

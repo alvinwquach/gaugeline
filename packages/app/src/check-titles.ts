@@ -241,14 +241,6 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "The Umbraco Delivery API answers visitors with no key",
     "Security & email",
   ],
-  "joomla-article-no-page": [
-    "A published Joomla article has no page on the live site",
-    "Launch day",
-  ],
-  "joomla-api-public": [
-    "The Joomla Web Services API answers visitors with no token",
-    "Security & email",
-  ],
   "hubspot-page-404": ["A page published in HubSpot answers 404 on the live domain", "Launch day"],
   "hubspot-form-deleted": ["A page embeds a HubSpot form that has been deleted", "Launch day"],
   "app-smart-banner-mismatch": ["The iPhone app banner promotes a different app", "Visitors"],
@@ -325,6 +317,11 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "placeholder-images": ["The page shows placeholder images", "Visitors"],
   "placeholder-text": ["The page still has placeholder text", "Visitors"],
   "redirect-chain": ["Your address takes several jumps to load", "Search & sharing"],
+  "sanity-image-original": ["Sanity images are served at the size they were uploaded", "Visitors"],
+  "sanity-image-oversized": [
+    "Sanity images are delivered far larger than they are shown",
+    "Visitors",
+  ],
   "schema-breadcrumb-mismatch": ["A breadcrumb ends on a different page", "Search & sharing"],
   "schema-dangling-ref": [
     "Structured data refers to something that isn't there",
@@ -471,6 +468,10 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "nav-label-drift": ["One page has two names in your menus", "Visitors"],
   "og-image-missing": ["Shared links have no picture", "Search & sharing"],
   "price-changed": ["A price changed since the last run", "Sales & prices"],
+  "sanity-image-duplicate": [
+    "One Sanity image is processed and downloaded more than once",
+    "Visitors",
+  ],
   "schema-breadcrumb-start": ["Breadcrumbs don't start where your guide says", "Search & sharing"],
   "sveltekit-data-unshown": ["The page's data has text the page does not show", "Security & email"],
   "tel-format": ["A phone link may not dial correctly", "Visitors"],
@@ -1312,18 +1313,6 @@ export const CHECK_TEXT: Readonly<
     "In appsettings.json set Umbraco:CMS:DeliveryApi:PublicAccess to false and keep an ApiKey, then send the key from the server only (never from the browser). If the API is meant to be public (a public API that also has a key, so that preview works, is a normal setup), remove expectPrivate from gaugeline.adapters.json: the key is not touched.",
     "probing check, off without --owner-consent: this check asks the Delivery API's public route as a visitor with no key, so it runs only with --owner-consent (or gaugeline.consent.json), on sites you own or have permission to test; only when the settings say expectPrivate: true (a key being set says nothing: Umbraco's preview needs the key on a public API too); one GET of /umbraco/delivery/api/v2/content?take=1 with no Api-Key header, no cookie and nothing the fetcher adds per address, fields=properties[] and expand=none; a 200 with a list and a numeric total is the finding (the total is a count, never a node); 401 or 403 is a protected API and 404 is an API that is off or not at that address, both with no finding; a 200 that is not the API's list (a page that answers every path) and any other status are could-not-check; the answer is read as a count and nothing else",
   ],
-  "joomla-article-no-page": [
-    "Joomla says an article is published for every visitor, and the address its page should have answers 404 or 410 on the live site.",
-    "Links, the sitemap and search results point at a page that is not there, and the client's announcement leads to an error page.",
-    "Check that a menu item or a category menu item shows the article, that the menu item is published and its access is Public, and that the article's category is published. If the article should not be public, unpublish it in the Joomla administrator. If every article fails, the address pattern in gaugeline.adapters.json (urls, articles) does not match the site's menu.",
-    "GET /api/index.php/v1/content/articles?filter[state]=1 (Accept: application/vnd.api+json, X-Joomla-Token) in windows of up to 100, stepped by the number that came back; the count is taken first with a window of one article (meta.total-pages is a page count) and checked with a window of two, and a list is complete only when every counted article was seen; articles at a view level other than Public (access 1), with a start time in the future, with a finish time in the past, or in one language (not All) are counted and not asked; then one GET of the live address, which is the settings' urls pattern filled with the alias or id (Joomla's API gives no address), redirects followed. A final 404 or 410 is the finding; any other answer that is not a 2xx is could-not-check for that page. With no pattern for articles nothing is asked and that is could-not-check. Ids and aliases only: a field is requested only when the settings name it in fingerprint, and none is used for this.",
-  ],
-  "joomla-api-public": [
-    "gaugeline.adapters.json says the Web Services API is meant to be private (expectPrivate: true), and a plain GET of its article list with no token is answered with a list of articles.",
-    "Anyone who finds the route can read every article the Public view level can see as data, including articles that are not linked from the site, and can page through all of them. If the API was meant to be private, its protection is off.",
-    "In the Joomla administrator open System, Plugins and switch off the Web Services plugins you do not use (Web Services - Content, for articles), or find the extension that registered a public route (Joomla's own routes need a token). Send the token from the server only, never from the browser. If the API is meant to be public, remove expectPrivate from gaugeline.adapters.json: the token is not touched.",
-    "probing check, off without --owner-consent: this check asks the Web Services API's article list as a visitor with no token, so it runs only with --owner-consent (or gaugeline.consent.json), on sites you own or have permission to test; only when the settings say expectPrivate: true (a token being set says nothing); one GET of /api/index.php/v1/content/articles?page[limit]=1 with Accept: application/vnd.api+json and no X-Joomla-Token, no cookie and nothing the fetcher adds per address; a 200 with a JSON:API list (data) and a numeric meta.total-pages is the finding (the number is a count, never an article); 401 or 403 is a route that needs a token and 404 is an API that is off or not at that address, both with no finding; a 200 that is not the API's list (a page that answers every path) and any other status are could-not-check; the answer is read as a count and nothing else",
-  ],
   "hubspot-page-404": [
     "HubSpot says a site page, landing page or blog post is published on this domain, and the address it gives for it answers 404 or 410 on the live site.",
     "Links, the sitemap, search results and the client's announcement point at a page that is not there, while the CMS shows it as live.",
@@ -1635,6 +1624,18 @@ export const CHECK_TEXT: Readonly<
     "Each jump slows the first visit and can weaken how search engines credit the page.",
     "Point every redirect straight at the final address.",
     "more than one 3xx hop on the entered URL",
+  ],
+  "sanity-image-original": [
+    "An image from cdn.sanity.io is requested with no width or height, so the visitor gets the file as it was uploaded: often 3000 to 6000 pixels wide.",
+    "A phone photo from the shop owner is several megabytes. Shown a few hundred pixels across, it still downloads whole, and the page is slow on a phone for no visible gain.",
+    "Ask for the size you show: add w (and h with fit=crop if the shape is fixed) and auto=format to the address, or build it with @sanity/image-url: urlFor(image).width(800).auto('format').url().",
+    "an img src, srcset or picture source on cdn.sanity.io/images with none of w, h, max-w, max-h, min-w or min-h, whose upload is wider than 1200 px (the size is in the file name, so nothing is downloaded); other hosts, and addresses on a custom domain for Sanity's CDN, are not read; one finding per page; the page's own HTML only",
+  ],
+  "sanity-image-oversized": [
+    "An image from cdn.sanity.io is asked for at a width much greater than the width attribute on the page, and the page offers no smaller version.",
+    "The visitor downloads several times the pixels they can see. On a phone that is seconds of waiting and mobile data spent on detail the screen throws away.",
+    "Ask Sanity for about twice the width the image is shown at (for a 400 px slot, w=800), or give the image a srcset with smaller widths and a sizes attribute so each screen picks one.",
+    "an img with a width attribute whose smallest Sanity address (src, srcset or picture source) delivers more than 2 times that width and at least 200 px more; delivered is w times dpr, never above the upload, and the upload's own width when no w is given (read from the file name); an img with no width attribute is not judged; no rendering, so a width set only in CSS is not seen",
   ],
   "schema-breadcrumb-mismatch": [
     "The last item of a page's breadcrumb structured data points at an address other than the page's own canonical.",
@@ -2151,6 +2152,12 @@ export const CHECK_TEXT: Readonly<
     "Sometimes that is the plan. When it isn't (a sync from the shop, an edit to the wrong product), customers and search results see the wrong price.",
     "If the change wasn't meant, correct the price at its source (the shop or CMS) and rebuild; if it was, nothing to do.",
     "With --since last only: the JSON-LD Offer price (integer minor units; anything but 48 or 48.00 is unread) for a product key (sku or name plus currency) present in both runs",
+  ],
+  "sanity-image-duplicate": [
+    "The same uploaded image is requested with different parameters by different images on the page, such as one width in the header and another in a card.",
+    "Each variant is a separate file for Sanity's CDN to make and for the visitor to download, and none of them is in the browser's cache for the others.",
+    "Use one address for the image and let CSS size it, or give it one srcset the browser chooses from. If a card needs a different crop, that is a different picture: upload it as its own image.",
+    "the same asset id (the hash in the file name; the same bytes are the same asset) in two or more img elements with different parameter sets; an img's own srcset and picture sources are one image and are not compared with each other; parameter order is ignored; the page's own HTML only",
   ],
   "schema-breadcrumb-start": [
     "The first item of a page's breadcrumb structured data is not the Home name and address your schema guide sets.",

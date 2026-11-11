@@ -7,7 +7,6 @@ import { entries as framer } from "./framer.entry.js";
 import { entries as genericApi } from "./generic-api.entry.js";
 import { entries as gitContent } from "./git-content.entry.js";
 import { entries as hubspotCms } from "./hubspot-cms.entry.js";
-import { entries as joomla } from "./joomla.entry.js";
 import { entries as sanity } from "./sanity.entry.js";
 import { entries as sitemapFeed } from "./sitemap-feed.entry.js";
 import { entries as squarespaceCommerce } from "./squarespace-commerce.entry.js";
@@ -26,7 +25,6 @@ export const ADAPTER_ENTRIES: readonly AdapterEntry[] = [
   ...genericApi,
   ...gitContent,
   ...hubspotCms,
-  ...joomla,
   ...sanity,
   ...sitemapFeed,
   ...squarespaceCommerce,
