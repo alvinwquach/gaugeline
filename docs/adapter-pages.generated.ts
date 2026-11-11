@@ -14,6 +14,10 @@ export const ADAPTER_PAGES: { slug: string; title: string }[] = [
     slug: "integrations/sitemap-feed",
     title: "Sitemap and feeds: content checks for sites built on any CMS",
   },
+  {
+    slug: "integrations/squarespace-commerce",
+    title: "Squarespace commerce: content checks for sites built on Squarespace commerce",
+  },
   { slug: "integrations/strapi", title: "Strapi: content checks for sites built on Strapi" },
   { slug: "integrations/webflow", title: "Webflow: content checks for sites built on Webflow" },
   { slug: "integrations/wix", title: "Wix: content checks for sites built on Wix" },
