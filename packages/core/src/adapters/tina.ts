@@ -152,12 +152,18 @@ export function createTinaAdapter(options: TinaAdapterOptions): TinaAdapter {
       };
       accept[c.name] = c.accepts;
     }
-    // A collection named by hand replaces the one read from the config, and brings no file filter: it is read as a folder.
+    // A collection named by hand replaces the one read from the config. It keeps the config's format and match filter
+    // only when it names the same folder; a collection that is only in the settings is read as a plain folder.
     for (const [name, f] of Object.entries(byHand)) {
+      if (collections.get(name)?.dir !== f.dir) delete accept[name];
       folders[name] = f;
-      delete accept[name];
-      const at = notRead.findIndex((n) => n.name === name);
-      if (at >= 0) notRead.splice(at, 1);
+      for (
+        let at = notRead.findIndex((n) => n.name === name);
+        at >= 0;
+        at = notRead.findIndex((n) => n.name === name)
+      )
+        if (notRead[at]?.kind === "address" && f.permalink === undefined) break;
+        else notRead.splice(at, 1);
     }
     if (Object.keys(folders).length === 0)
       throw new AdapterCouldNotCheck(
