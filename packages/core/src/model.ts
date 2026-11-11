@@ -11,6 +11,7 @@ import type { SchemaRules } from "./schema-rules.js";
 import type { AccessRead } from "./access/probe.js";
 import type { DnsReader } from "./dns.js";
 import type { Renewals } from "./renewals/reader.js";
+import type { Handoff } from "./handoff/reader.js";
 import type { HiddenConfig } from "./hidden.js";
 import type { NavRules } from "./nav/read-regions.js";
 import type { ContentNow, PagesConfig } from "./snapshot/compare.js";
@@ -189,6 +190,12 @@ export interface CheckContext {
    * unless the run asked for renewals: those checks then do nothing.
    */
   renewals?: Renewals;
+  /**
+   * What the handoff checks read (who holds the domain, the hosting, the content studio and the listing,
+   * from the public record and the tokens the freelancer already has), once each on first use. Absent
+   * unless the run is `gaugeline handoff`: those checks then do nothing.
+   */
+  handoff?: Handoff;
   /** The page's App Store and Google Play apps, looked up once on first use. */
   apps?: () => Promise<AppLookup[]>;
   /**

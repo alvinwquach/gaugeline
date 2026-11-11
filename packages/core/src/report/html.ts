@@ -39,14 +39,14 @@ export interface ReportInput {
   note?: string;
 }
 
-const COLOR: Readonly<Record<Severity, string>> = {
+export const COLOR: Readonly<Record<Severity, string>> = {
   high: "#b42318",
   medium: "#b54708",
   low: "#475467",
 };
 
 /** Inline styles only: the file must read the same opened from an email, with no network. */
-const STYLE = `
+export const STYLE = `
 body{font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;color:#101828;max-width:52rem;margin:2rem auto;padding:0 1rem}
 h1{font-size:1.5rem;margin:0 0 .25rem}h2{font-size:1.15rem;margin:2rem 0 .5rem}h2 span{color:#667085;font-weight:400}
 .meta{color:#667085;margin:0 0 1.5rem}.counts{display:flex;gap:1rem;flex-wrap:wrap;padding:0;list-style:none}

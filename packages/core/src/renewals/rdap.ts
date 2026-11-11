@@ -14,6 +14,13 @@ export interface Registration {
   registrar?: string;
   /** The RDAP status values as the registry wrote them ("client hold"). */
   statuses: string[];
+  /** The name servers the registry lists (lower case, sorted). Absent when it lists none. */
+  nameservers?: string[];
+  /**
+   * What the registry shows of the registrant, never the registrant: "redacted" (the entity or a
+   * redaction notice says so) or "published". Absent when the answer has no registrant entity.
+   */
+  registrant?: "redacted" | "published";
 }
 
 export type RegistrationRead =
@@ -45,6 +52,39 @@ function registrarName(entities: unknown): string | undefined {
   return undefined;
 }
 
+/** The name servers' host names, lower case and sorted, from the domain's nameservers list. */
+function nameserverNames(list: unknown): string[] {
+  if (!Array.isArray(list)) return [];
+  const names = list.flatMap((n) =>
+    isRecord(n) && typeof n.ldhName === "string" && n.ldhName.trim() !== ""
+      ? [n.ldhName.trim().toLowerCase().replace(/\.$/, "")]
+      : [],
+  );
+  return [...new Set(names)].sort();
+}
+
+/** True when a value, a remark or a notice says the data was removed ("REDACTED FOR PRIVACY"). */
+const saysRedacted = (v: unknown): boolean => /redact/i.test(JSON.stringify(v ?? ""));
+
+/**
+ * Whether the registry shows the registrant: an entity with the role "registrant" whose card or remarks
+ * say "redacted" is redacted, one with a name is published, and a domain with no registrant entity says
+ * nothing (undefined). Only the fact is kept: the registrant's name or contact never leaves this function.
+ */
+function registrantState(body: Record<string, unknown>): "redacted" | "published" | undefined {
+  const entities = Array.isArray(body.entities) ? body.entities : [];
+  const registrant = entities.find(
+    (e): e is Record<string, unknown> =>
+      isRecord(e) && Array.isArray(e.roles) && e.roles.includes("registrant"),
+  );
+  if (registrant) return saysRedacted(registrant) ? "redacted" : "published";
+  // RFC 9537's redacted array names the fields a registry removed.
+  return Array.isArray(body.redacted) &&
+    body.redacted.some((r) => /registrant/i.test(JSON.stringify(r)))
+    ? "redacted"
+    : undefined;
+}
+
 /**
  * An RDAP domain object (RFC 9083) reduced to what the renewals checks use: the "expiration" event
  * (the earliest, if the registry lists more than one), the registrar's name and the statuses. Any
@@ -60,9 +100,13 @@ export function parseRdapDomain(body: unknown): RdapDomain | undefined {
     .map((e) => ({ at: isoOf(e.eventDate) }));
   const dates = expirations.flatMap((e) => (e.at ? [e.at] : [])).sort();
   const registrar = registrarName(body.entities);
+  const nameservers = nameserverNames(body.nameservers);
+  const registrant = registrantState(body);
   return {
     ...(dates[0] ? { expiresAt: dates[0] } : {}),
     ...(registrar ? { registrar } : {}),
+    ...(nameservers.length > 0 ? { nameservers } : {}),
+    ...(registrant ? { registrant } : {}),
     statuses: Array.isArray(body.status)
       ? body.status.filter((s): s is string => typeof s === "string")
       : [],
