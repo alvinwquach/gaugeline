@@ -51,6 +51,7 @@ jobs:
     needs: ci-gate
     if: vars.RELEASE_PR_ENABLED == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: write
       pull-requests: write
@@ -86,6 +87,7 @@ jobs:
     needs: release
     if: needs.release.outputs.published == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - run: |
