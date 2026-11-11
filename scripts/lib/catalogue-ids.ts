@@ -2,6 +2,7 @@ import {
   CUTOVER_ONLY_CHECKS,
   MIGRATION_CHECKS,
   WEBFLOW_CHECKS,
+  SHOPIFY_CHECKS,
   CONTENTFUL_CHECKS,
   SQUARESPACE_COMMERCE_CHECKS,
   STRAPI_CHECKS,
@@ -69,6 +70,7 @@ export function CATALOGUE_IDS(): string[] {
   for (const c of CUTOVER_ONLY_CHECKS) registry.register(c);
   for (const c of MIGRATION_CHECKS) registry.register(c);
   for (const c of WEBFLOW_CHECKS) registry.register(c);
+  for (const c of SHOPIFY_CHECKS) registry.register(c);
   for (const c of CONTENTFUL_CHECKS) registry.register(c);
   for (const c of SQUARESPACE_COMMERCE_CHECKS) registry.register(c);
   for (const c of STRAPI_CHECKS) registry.register(c);
