@@ -30,7 +30,8 @@ A `POST` is allowed only when all four of these hold:
    the text that is checked, parsed back, is the text that is sent.
 2. **To a registered endpoint on that adapter's allowlist.** Each entry (`ReadOnlyQueryAllow`) is
    written once, in the adapter's own file, and registered at module load with `registerQueryAllow`
-   (`packages/core/src/fetch/query-registry.ts`), which checks it and freezes it. The fetcher looks
+   (`packages/core/src/fetch/query-registry.ts`), which checks it, fixes its method to `POST`
+   itself (Amendment 1) and freezes it. The fetcher looks
    the id up in that registry and refuses an id nobody registered, so code that merely holds a
    fetcher cannot invent an endpoint. A scan of the source fails if any file but an adapter's
    registers an entry or calls `.query(` with one. An entry names:
@@ -39,7 +40,7 @@ A `POST` is allowed only when all four of these hold:
      the validated host with each request; the fetcher accepts one exact host name, and the path and
      body rules below still apply. This is the one value the caller supplies, and the reason the
      private-address refusal stays on;
-   - the method (`POST`) and a path pattern (literal segments, and `*` for one whole segment; no
+   - a path pattern (literal segments, and `*` for one whole segment; no
      segment is named like a write, so `/orders/delete` cannot be registered);
    - a body shape:
      - `graphql-query`: one operation that parses as a `query`. A `mutation`, a `subscription`, a
@@ -147,3 +148,41 @@ fetcher or `notify/post.ts` builds.
   and proof it is not vacuous)
 - `packages/core/src/__tests__/requests-file.test.ts` (queries reach the saved requests file,
   schema 2, with the allowlist id and no body)
+
+## Amendment 1 (11 November 2026): the registry fixes the method
+
+**Status:** accepted. **Decided by:** the owner, 11 November 2026 ("decide any ADR that only
+tightens or keeps the read-only rule yourself").
+
+**What changed.** An entry no longer has a `method` field. `registerQueryAllow` stores every entry
+with the method `POST` itself; the `method` field is removed from `ReadOnlyQueryAllow`, and the
+stored entry type (`RegisteredQueryAllow`) carries it read-only. An entry that still passes a
+`method` key, with any value (`"POST"` included), is a type error, and `registerQueryAllow` throws
+at run time: "the method is fixed by the registry". `allowProblems` reports the same.
+
+```ts
+export const WIX_ITEMS_QUERY = registerQueryAllow({
+  id: "wix-data-query",
+  host: "www.wixapis.com",
+  path: "/wix-data/v2/items/query",
+  body: { kind: "json-query", keys: ["dataCollectionId", "query"] },
+  docs: { url: "https://dev.wix.com/docs/rest/...", checked: "2026-11-11" },
+});
+```
+
+**Why.** The AST scan (`post-scan.ts`, run by `post-boundary.test.ts`) fails any adapter file that
+writes `POST`, `PUT`, `PATCH` or `DELETE` as a method. The original design asked every entry to
+write `method: "POST"`, which the scan flagged: the Wix and Shopify adapters hit it (found by their
+builders, PR 189 and PR 193). The options were to carve the entry out of the scan, which would weaken
+a safeguard, or to remove the literal from the entry. The second was chosen: no adapter file contains
+a verb, so the scan keeps flagging every verb literal in an adapter file without an exception.
+
+**This tightens the rule; it does not loosen it.** Before, an adapter chose the method and the
+registry refused anything but `POST`. Now an adapter cannot choose it at all: the one method is
+`POST`, set in one place, and `PUT`, `PATCH` and `DELETE` cannot be expressed. The scan, its
+self-test, the fetcher's checks and the contract suite's guard are unchanged. All four conditions
+of the Decision stand.
+
+**Cost.** The verb appears in one more file (`query-registry.ts`, as a typed constant, not a
+`method:` property), and the stored entry differs in shape from the entry written (it has `method`).
+A test that rebuilds an entry from a stored one must leave `method` out.
