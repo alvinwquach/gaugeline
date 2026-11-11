@@ -71,6 +71,8 @@ export interface ConnectorRequest {
   headers?: Record<string, string>;
   /** Ask again even if this address was already asked in this run (a retry; the fetcher remembers answers). */
   fresh?: boolean;
+  /** Send nothing the fetcher adds per address (a protected preview's headers): a visitor with no session. */
+  anonymous?: boolean;
 }
 
 /**
@@ -95,6 +97,7 @@ export async function connectorGet(
     },
     headersSameOrigin: true,
     ...(request.fresh === true ? { fresh: true } : {}),
+    ...(request.anonymous === true ? { anonymous: true } : {}),
   });
   const last = hops.at(-1);
   if (!last) throw new Error("No answer.");

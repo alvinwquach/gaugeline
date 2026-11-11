@@ -5,6 +5,7 @@ import { contractEntries as contentful } from "./contentful.contract.js";
 import { contractEntries as framer } from "./framer.contract.js";
 import { contractEntries as sanity } from "./sanity.contract.js";
 import { contractEntries as sitemapFeed } from "./sitemap-feed.contract.js";
+import { contractEntries as strapi } from "./strapi.contract.js";
 import { contractEntries as webflow } from "./webflow.contract.js";
 import { contractEntries as wix } from "./wix.contract.js";
 import { contractEntries as wordpress } from "./wordpress.contract.js";
@@ -15,6 +16,7 @@ export const CONTRACT_ENTRIES: readonly ContractEntry[] = [
   ...framer,
   ...sanity,
   ...sitemapFeed,
+  ...strapi,
   ...webflow,
   ...wix,
   ...wordpress,
