@@ -84,6 +84,8 @@ and exits 1, for the new fix-first finding on `fern-and-kiln`.
 runs `gaugeline run --all` every night in GitHub Actions, commits the run files back so each night
 compares with the last, and builds each site's [weekly digest](/docs/guides/weekly-digest) from them.
 Each key comes from a secret named with the site's prefix (`HARBOUR_GAUGELINE_BASIC_AUTH`).
+Add `--renewals` to the command to also read each site's domain registration, certificates and
+tokens, so a date drifting closer is caught the night it crosses a threshold: [Renewals](renewals.md).
 
 ::: warning
 Run files hold findings and their evidence. Keep the repository that stores them **private**.
