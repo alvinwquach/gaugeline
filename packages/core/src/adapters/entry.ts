@@ -46,6 +46,11 @@ export interface AdapterEntry {
   settings?: {
     /** Reads the live site's sitemap and feeds: takes `site`, `sitemaps` and `feeds`, and no fields. */
     pageReader?: true;
+    /**
+     * A page reader that also reads the platform's own collections when a key is set: it takes `fingerprint`
+     * and `urls` (the collections it reads are the names under them) and `siteId`.
+     */
+    fields?: true;
     /** The platform names its fields with hyphens. */
     hyphenFields?: true;
   };
