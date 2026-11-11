@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ENTRIES } from "../../adapters/__tests__/entries.js";
-import { recording, type Seen } from "../../adapters/__tests__/contract.js";
+import { recording, requestProblems, type Seen } from "../../adapters/__tests__/contract.js";
 import { TIDEWATER } from "../../adapters/__tests__/builders-fixture.js";
 import { LANTERN } from "../../adapters/__tests__/framer-fixture.js";
 import { OAKLINE } from "../../adapters/__tests__/sitemap-feed-fixture.js";
@@ -79,10 +79,11 @@ describe.each(ENTRIES.map((e) => [e.id, e] as const))(
       }
     });
 
-    it("sends only GET or HEAD", async () => {
+    it("sends only GET, HEAD, or a POST that is a read-only query on the adapter's allowlist (ADR-0006)", async () => {
       const { seen } = await run();
       expect(seen.length).toBeGreaterThan(0);
-      expect(seen.every((s) => s.method === "GET" || s.method === "HEAD")).toBe(true);
+      // An adapter with no `queryAllow` may send no POST at all: requestProblems refuses every one.
+      expect(requestProblems(seen, entry.queryAllow ?? [], entry.queryHosts ?? {})).toEqual([]);
     });
 
     it("never puts the key or a secret text of the content system into a finding or a note", async () => {

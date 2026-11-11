@@ -65,5 +65,7 @@ export function adapterHeader(d: AdapterDescription): string {
   const name = d.beta === true ? `${d.name} (beta)` : d.name;
   if (d.noKey === true)
     return `Content system: ${name}, with no key (it only reads pages the site already publishes). How it reads them: ${d.docsUrl}`;
+  if (d.optionalKey === true)
+    return `Content system: ${name}, with ${KEY_WORDS[d.keyKind]} when one is set, and with no key otherwise (it then only reads pages the site already publishes). Endpoints and how to make the key: ${d.docsUrl}`;
   return `Content system: ${name}, with ${KEY_WORDS[d.keyKind]}. Endpoints and how to make the key: ${d.docsUrl}`;
 }

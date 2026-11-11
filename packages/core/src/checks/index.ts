@@ -62,6 +62,12 @@ import { formDestinationChanged } from "./form-destination-changed.js";
 import { formProviderChanged } from "./form-provider-changed.js";
 import { formsManyProviders } from "./forms-many-providers.js";
 import { gatedDownloadOpen } from "./gated-download-open.js";
+import { gatsbyDataAsPage } from "./gatsby-data-as-page.js";
+import { gatsbyDataUnshown } from "./gatsby-data-unshown.js";
+import { gatsbyDevServerLive } from "./gatsby-dev-server-live.js";
+import { gatsbyGraphqlPublic } from "./gatsby-graphql-public.js";
+import { gatsbyPreviewCanonical } from "./gatsby-preview-canonical.js";
+import { gatsbyPrivateFields } from "./gatsby-private-fields.js";
 import { hiddenAiDirective } from "./hidden-ai-directive.js";
 import { hiddenInSitemap } from "./hidden-in-sitemap.js";
 import { hiddenIndexable } from "./hidden-indexable.js";
@@ -141,6 +147,9 @@ import { redirectChain } from "./redirect-chain.js";
 import { robotsBlock } from "./robots-block.js";
 import { rscServedAsPage } from "./rsc-served-as-page.js";
 import { rscVaryMissing } from "./rsc-vary-missing.js";
+import { sanityImageDuplicate } from "./sanity-image-duplicate.js";
+import { sanityImageOriginal } from "./sanity-image-original.js";
+import { sanityImageOversized } from "./sanity-image-oversized.js";
 import { schemaBreadcrumbMismatch } from "./schema-breadcrumb-mismatch.js";
 import { schemaBreadcrumbStart } from "./schema-breadcrumb-start.js";
 import { schemaDanglingRef } from "./schema-dangling-ref.js";
@@ -234,6 +243,12 @@ export const PAGE_CHECKS = [
   formProviderChanged,
   formsManyProviders,
   gatedDownloadOpen,
+  gatsbyDataAsPage,
+  gatsbyDataUnshown,
+  gatsbyDevServerLive,
+  gatsbyGraphqlPublic,
+  gatsbyPreviewCanonical,
+  gatsbyPrivateFields,
   hiddenAiDirective,
   hiddenInSitemap,
   hiddenIndexable,
@@ -313,6 +328,9 @@ export const PAGE_CHECKS = [
   robotsBlock,
   rscServedAsPage,
   rscVaryMissing,
+  sanityImageDuplicate,
+  sanityImageOriginal,
+  sanityImageOversized,
   schemaBreadcrumbMismatch,
   schemaBreadcrumbStart,
   schemaDanglingRef,
