@@ -118,10 +118,38 @@ describe("the Joomla adapter: reading a list", () => {
     // A server that always answers 4 pages: one article a page and two a page cannot both be.
     const reason = await reasonOf(
       make({
-        transport: hostile(() => ({ data: [], meta: { "total-pages": 4 } })),
+        transport: hostile(({ limit }) => ({
+          data: [article(1), article(2)].slice(0, limit),
+          meta: { "total-pages": 4 },
+        })),
       }).adapter.types(),
     );
     expect(reason).toMatch(/do not agree/);
+  });
+
+  it("a server that ignores page[limit] and reports one page is could-not-check, not a count of 1", async () => {
+    // Seven articles come back whatever the window, and the page count is 1: a caching proxy does this.
+    const t = hostile(() => ({
+      data: [1, 2, 3, 4, 5, 6, 7].map((n) => article(n)),
+      meta: { "total-pages": 1 },
+    }));
+    expect(await reasonOf(make({ transport: t }).adapter.types())).toMatch(
+      /more articles than the window|do not agree/,
+    );
+  });
+
+  it("a page count with no article in the window, or articles with a count of 0, is could-not-check", async () => {
+    const empty = hostile(() => ({ data: [], meta: { "total-pages": 3 } }));
+    expect(await reasonOf(make({ transport: empty }).adapter.types())).toMatch(
+      /no article in the window/,
+    );
+    const stray = hostile(({ limit }) => ({
+      data: [article(1)].slice(0, limit),
+      meta: { "total-pages": 0 },
+    }));
+    expect(await reasonOf(make({ transport: stray }).adapter.types())).toMatch(
+      /articles but a count of 0/,
+    );
   });
 
   it("an answer with no page count, or data that is not a list, is could-not-check", async () => {
@@ -140,7 +168,10 @@ describe("the Joomla adapter: reading a list", () => {
   it("a page that comes back empty before the count is could-not-check", async () => {
     const t = hostile(({ limit }) =>
       limit <= 2
-        ? { data: [], meta: { "total-pages": limit === 1 ? 4 : 2 } }
+        ? {
+            data: [article(1), article(2)].slice(0, limit),
+            meta: { "total-pages": limit === 1 ? 4 : 2 },
+          }
         : { data: [], meta: { "total-pages": 1 } },
     );
     expect(await reasonOf(collectPublished(make({ transport: t }).adapter))).toMatch(
@@ -269,6 +300,13 @@ describe("the Joomla adapter: what it asks for", () => {
     const [first] = (await collectPublished(make().adapter)).docs;
     expect(first?.publishedAt).toBe("2026-10-01T09:00:00.000Z");
     expect(first?.updatedAt).toBe("2026-10-20T08:30:00.000Z");
+  });
+
+  it("the left-out counts are for one read: a second published() call does not add to them", async () => {
+    const { adapter } = make();
+    await collectPublished(adapter);
+    await collectPublished(adapter);
+    expect(adapter.skipped()).toEqual({ notPublic: 1, scheduled: 1, expired: 1, otherLanguage: 1 });
   });
 
   it("only articles changed since a date are given", async () => {

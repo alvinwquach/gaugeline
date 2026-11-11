@@ -381,7 +381,22 @@ export function createJoomlaAdapter(options: JoomlaAdapterOptions): JoomlaAdapte
         throw new AdapterCouldNotCheck(
           "Joomla answered with something that is not a list of articles.",
         );
-      return pagesOf(body.meta);
+      const pages = pagesOf(body.meta);
+      // The window and the page count must tell the same story: a server or a cache that ignores page[limit]
+      // gives more articles than were asked for, and one page, which would be read as a count of 1.
+      if (body.data.length > limit)
+        throw new AdapterCouldNotCheck(
+          `Joomla answered with more articles than the window of ${limit} that was asked for, so the number of articles is not known (something between Gaugeline and Joomla ignores the page size).`,
+        );
+      if (pages > 0 && body.data.length === 0)
+        throw new AdapterCouldNotCheck(
+          "Joomla reported pages of articles but gave no article in the window, so the number of articles is not known.",
+        );
+      if (pages === 0 && body.data.length > 0)
+        throw new AdapterCouldNotCheck(
+          "Joomla gave articles but a count of 0 pages, so the number of articles is not known.",
+        );
+      return pages;
     };
     const count = await pagesFor(1);
     if ((await pagesFor(2)) !== Math.ceil(count / 2))
@@ -489,6 +504,8 @@ export function createJoomlaAdapter(options: JoomlaAdapterOptions): JoomlaAdapte
       if (since === undefined) throw new TypeError("since must be a date and time (ISO 8601).");
     }
     if (opts.types !== undefined && !opts.types.includes(JOOMLA_TYPE)) return;
+    // The left-out counts are for this read only: a second call starts again from zero.
+    skipped.notPublic = skipped.scheduled = skipped.expired = skipped.otherLanguage = 0;
     let delivered = 0;
     let remaining = opts.limit ?? Number.POSITIVE_INFINITY;
     if (remaining <= 0) return;

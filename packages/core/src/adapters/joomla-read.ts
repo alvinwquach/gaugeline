@@ -40,8 +40,10 @@ export interface JoomlaReading {
   pageBudget: number;
   /** Published articles left out because no page is expected for a visitor, or the address is not known. */
   skipped: JoomlaSkipped;
-  /** Present when a rate limit stopped the read: what is listed is not everything. */
+  /** Present when a rate limit stopped the read of the article list: what is listed is not everything. */
   partial?: PartialRead;
+  /** Present when a rate limit stopped the visitor read only. The list was complete: only joomla-api-public says so. */
+  publicApiPartial?: PartialRead;
 }
 
 export interface ReadJoomlaOptions {
@@ -145,10 +147,10 @@ export async function readJoomla(options: ReadJoomlaOptions): Promise<JoomlaRead
       if (err instanceof AdapterCouldNotCheck) {
         reading.publicApi = { state: "unread", reason: err.reason };
       } else if (err instanceof AdapterRateLimitedError) {
-        reading.partial = {
+        reading.publicApiPartial = {
           reason: "rate-limited",
           ...(err.retry !== undefined ? { retry: err.retry } : {}),
-          delivered: reading.pages.length,
+          delivered: 0,
         };
       } else throw err;
     }

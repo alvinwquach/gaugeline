@@ -1,6 +1,6 @@
 import { describePartial } from "../adapters/collect.js";
 import type { JoomlaReading } from "../adapters/joomla-read.js";
-import { CheckRegistry, defineCheck, type CheckContext, type Finding } from "../model.js";
+import { CheckRegistry, defineCheck, type Finding } from "../model.js";
 
 /**
  * The checks that need Joomla's own answers: which published articles have no page on the live site, and whether
@@ -10,15 +10,15 @@ import { CheckRegistry, defineCheck, type CheckContext, type Finding } from "../
  */
 
 /** What no check can say when the read itself fell short: a token Joomla refused, or a rate limit that stayed. */
-function unfinished(r: JoomlaReading, ctx: CheckContext): void {
+function unfinished(r: JoomlaReading, say: (where: string, why: string) => void): void {
   if (r.unreadable !== undefined)
-    ctx.couldNotCheck?.(r.site, `Joomla would not give its articles (${r.unreadable})`);
+    say(r.site, `Joomla would not give its articles (${r.unreadable})`);
   for (const name of r.unknownTypes)
-    ctx.couldNotCheck?.(
+    say(
       r.site,
       `${JSON.stringify(name.slice(0, 40))} in gaugeline.adapters.json is not read: the Joomla adapter reads articles only.`,
     );
-  if (r.partial) ctx.couldNotCheck?.(r.site, describePartial(r.partial));
+  if (r.partial) say(r.site, describePartial(r.partial));
 }
 
 export const joomlaArticleNoPage = defineCheck<JoomlaReading>({
@@ -35,33 +35,38 @@ export const joomlaArticleNoPage = defineCheck<JoomlaReading>({
   fix: "Check that a menu item or a category menu item shows the article, that the menu item is published and its access is Public, and that the article's category is published. If the article should not be public, unpublish it in the Joomla administrator. If every article fails, the address pattern in gaugeline.adapters.json (urls, articles) does not match the site's menu.",
   tech: "GET /api/index.php/v1/content/articles?filter[state]=1 (Accept: application/vnd.api+json, X-Joomla-Token) in windows of up to 100, stepped by the number that came back; the count is taken first with a window of one article (meta.total-pages is a page count) and checked with a window of two, and a list is complete only when every counted article was seen; articles at a view level other than Public (access 1), with a start time in the future, with a finish time in the past, or in one language (not All) are counted and not asked; then one GET of the live address, which is the settings' urls pattern filled with the alias or id (Joomla's API gives no address), redirects followed. A final 404 or 410 is the finding; any other answer that is not a 2xx is could-not-check for that page. With no pattern for articles nothing is asked and that is could-not-check. Ids and aliases only: a field is requested only when the settings name it in fingerprint, and none is used for this.",
   run(r, ctx) {
-    unfinished(r, ctx);
+    let said = 0;
+    const say = (where: string, why: string): void => {
+      said++;
+      ctx.couldNotCheck?.(where, why);
+    };
+    unfinished(r, say);
     if (r.noArticles)
-      ctx.couldNotCheck?.(
+      say(
         r.site,
         "no published article was read, so no page was checked. The site may have no articles, or the token's user may not be able to list them.",
       );
     if (r.noPattern && r.unreadable === undefined)
-      ctx.couldNotCheck?.(
+      say(
         r.site,
         'no address pattern for articles in gaugeline.adapters.json (urls, for example "/blog/{slug}"), and the Joomla API gives no address for an article, so no page was asked.',
       );
     for (const u of r.unaddressed)
-      ctx.couldNotCheck?.(r.site, `article ${u.id} was not checked, because ${u.reason}.`);
+      say(r.site, `article ${u.id} was not checked, because ${u.reason}.`);
     if (r.skipped.otherLanguage > 0)
-      ctx.couldNotCheck?.(
+      say(
         r.site,
         `${r.skipped.otherLanguage} published ${r.skipped.otherLanguage === 1 ? "article is" : "articles are"} in one language, not All, so ${r.skipped.otherLanguage === 1 ? "its address carries" : "their addresses carry"} a language prefix the settings cannot say; ${r.skipped.otherLanguage === 1 ? "it was" : "they were"} not asked.`,
       );
     if (r.pagesSkipped > 0)
-      ctx.couldNotCheck?.(
+      say(
         r.site,
         `${r.pagesSkipped} ${r.pagesSkipped === 1 ? "page was" : "pages were"} not asked for, because a run asks for at most ${r.pageBudget}.`,
       );
     const out: Finding[] = [];
     for (const p of r.pages) {
       if (p.answer.kind === "unread") {
-        ctx.couldNotCheck?.(p.url, `the page was not read (${p.answer.reason})`);
+        say(p.url, `the page was not read (${p.answer.reason})`);
         continue;
       }
       if (p.answer.kind !== "missing") continue;
@@ -73,6 +78,15 @@ export const joomlaArticleNoPage = defineCheck<JoomlaReading>({
         url: p.url,
       });
     }
+    // Nothing was asked and nothing said why: a run with no page to check is never a pass.
+    if (r.pages.length === 0 && said === 0) {
+      const left =
+        r.skipped.notPublic + r.skipped.scheduled + r.skipped.expired + r.skipped.otherLanguage;
+      say(
+        r.site,
+        `no article was eligible for a page check (${left} left out: ${r.skipped.notPublic} not for the public, ${r.skipped.scheduled} not yet live, ${r.skipped.expired} past their finish time, ${r.skipped.otherLanguage} in one language).`,
+      );
+    }
     return out;
   },
 });
@@ -83,7 +97,7 @@ const PROBING_NOTE =
 export const joomlaApiPublic = defineCheck<JoomlaReading>({
   id: "joomla-api-public",
   size: "S",
-  done: "The Joomla article list answers a visitor who sends no token with 401, and nothing else, because gaugeline.adapters.json says it is private (expectPrivate).",
+  done: "A visitor who sends no token is refused by the Joomla article list, because you said the API is private.",
   estimateChanges:
     "Usually one plugin to switch off or one route to make private, then a re-run. Allow longer if a headless front end calls the API from the browser and needs to move that call to the server.",
   area: "Security & email",
@@ -101,7 +115,11 @@ export const joomlaApiPublic = defineCheck<JoomlaReading>({
       );
       return [];
     }
-    unfinished(r, ctx);
+    unfinished(r, (where, why) => ctx.couldNotCheck?.(where, why));
+    if (r.publicApiPartial) {
+      ctx.couldNotCheck?.(r.site, describePartial(r.publicApiPartial));
+      return [];
+    }
     if (!r.expectedPrivate) {
       ctx.couldNotCheck?.(
         r.site,

@@ -179,6 +179,17 @@ describe("Joomla checks: article published but no page", () => {
     );
   });
 
+  it("when every published article is left out, no page is asked and nothing passes", async () => {
+    const { reading: r } = await reading({
+      articles: JOOMLA_ARTICLES.filter((a) => a.id === 5 || a.id === 6 || a.id === 7),
+    });
+    expect(r.pages).toEqual([]);
+    expect(r.noArticles).toBe(false);
+    const out = await run(r);
+    expect(out.passed).not.toContain("joomla-article-no-page");
+    expect(reasons(out)).toMatch(/no article was eligible for a page check \(3 left out: /);
+  });
+
   it("a name in the settings that is not articles is said to be unread", async () => {
     const { reading: r } = await reading({
       settings: { urls: { ...URLS, categories: "/c/{slug}" } },
@@ -266,6 +277,37 @@ describe("Joomla checks: the API answers visitors with no token (probing)", () =
     expect(evidence(await run(r), "joomla-api-public")).toEqual([]);
   });
 
+  it("a 429 on the visitor read is reported by joomla-api-public only, not by the page check", async () => {
+    const base = joomlaTransport(undefined, { token: KEY });
+    const fetcher = createFetcher({
+      transport: (url, req) =>
+        url.pathname.startsWith("/api") && req.headers["x-joomla-token"] === undefined
+          ? (Promise.resolve({
+              status: 429,
+              headers: { "retry-after": "3600" },
+              body: Readable.from([]),
+            }) as ReturnType<typeof base>)
+          : base(url, req),
+      timeoutMs: 5000,
+    });
+    const adapter = createJoomlaAdapter({
+      env: { JOOMLA_URL: JOOMLA_SITE, JOOMLA_TOKEN: KEY },
+      fetcher,
+      settings: { id: "joomla", urls: URLS, expectPrivate: true },
+      sleep: () => Promise.resolve(),
+      now: () => JOOMLA_NOW,
+    });
+    const r = await readJoomla({ adapter, fetcher, site: JOOMLA_SITE, ownerConsent: true });
+    expect(r.partial).toBeUndefined();
+    expect(r.publicApiPartial?.reason).toBe("rate-limited");
+    const out = await run(r);
+    const slow = out.couldNotCheck.filter((c) => /slow down/.test(c.reason));
+    expect(slow.map((c) => c.id)).toHaveLength(1);
+    expect(reasons(out)).toMatch(/slow down/);
+    // The page check still has its own say, and nothing says its list was cut short.
+    expect(out.findings).toEqual([]);
+  });
+
   it("a page that answers every path with 200 is could-not-check, never a finding", async () => {
     const { reading: r } = await reading({
       ownerConsent: true,
@@ -323,6 +365,14 @@ describe("the Joomla checks are registered and documented", () => {
       expect(c.tech).not.toBe("");
     }
     expect(JOOMLA_CHECKS[1]?.tech).toContain("--owner-consent");
+    // The sentences brief.test.ts holds to: plain, one line, no backticks or angle brackets, a full stop.
+    for (const c of JOOMLA_CHECKS) {
+      expect(c.done).not.toMatch(/[`<>\n]/);
+      expect(c.done).toMatch(/\.$/);
+    }
+    expect(JOOMLA_CHECKS[1]?.done).toBe(
+      "A visitor who sends no token is refused by the Joomla article list, because you said the API is private.",
+    );
     expect(JOOMLA_CHECKS[1]?.fix).not.toMatch(/remove (the )?token/i);
   });
 });
