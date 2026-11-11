@@ -96,7 +96,7 @@ describe("docs/guides/what-changed.md", () => {
       {
         label: "content-edit",
         revisions: [
-          { documentId: "events-page", time: "2026-10-03T14:00:00.000Z", editor: "Sam Ortiz" },
+          { documentId: "events-page", time: "2026-11-03T08:00:00.000Z", editor: "Sam Ortiz" },
         ],
         deploys: [],
         reasons: [],

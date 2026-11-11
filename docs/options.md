@@ -545,8 +545,8 @@ or a run id such as r-20261101T100000Z.
 
 Options:
       --json             Print the result as JSON on stdout, and nothing else
-      --since <value>    Page check: compare with the last run (the only value
-                         is last). delivery: the window to read, such as 7d
+      --since <value>    Findings that appeared after this date (2026-11-01) or
+                         run id (r-20261101T100000Z)
       --quiet            Print only results and errors
       --verbose          Show each request, and technical detail when something
                          goes wrong

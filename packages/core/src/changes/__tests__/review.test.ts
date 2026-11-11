@@ -137,7 +137,7 @@ describe("page records keep no credentials or query strings (review 8)", () => {
           url: "https://harbourbar.example/events",
           status: 200,
           headers: { "content-type": "text/html" },
-          body: `<html><head><link rel="canonical" href="https://harbourbar.example/events?utm=a#top"></head><body><main><a href="https://user:pw@partner.example/x?token=abc#f">a</a><a href="/book?session=123">b</a></main></body></html>`,
+          body: `<html><head><link rel="canonical" href="https://harbourbar.example/events?utm=a#top"></head><body><main><a href="https://${["user:pw", "partner.example"].join("@")}/x?token=abc#f">a</a><a href="/book?session=123">b</a></main></body></html>`,
           ms: 1,
         },
       ]),

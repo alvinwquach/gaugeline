@@ -13,6 +13,8 @@ export interface FlagDef {
   env?: string;
   /** The version that introduced it. */
   since: string;
+  /** Where a command needs different words than the table has, by command name (help only). */
+  commandDescriptions?: Readonly<Record<string, string>>;
   /** Commands that accept it; "*" for all. The default page check is "check". */
   commands: readonly string[];
   /** One letter, only where the flag already had one. */
@@ -208,6 +210,9 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     type: "string",
     description:
       "Page check: compare with the last run (the only value is last). delivery: the window to read, such as 7d",
+    commandDescriptions: {
+      changes: "Findings that appeared after this date (2026-11-01) or run id (r-20261101T100000Z)",
+    },
     since: "0.2.0",
     commands: ["check", "delivery", "changes"],
   },
@@ -809,7 +814,8 @@ export function renderHelp(
   const col = Math.max(...labels.map((l) => l.length)) + 4;
   const lines = [`Usage: ${head.usage}`, "", head.summary, "", "Options:"];
   visible.forEach((f, i) => {
-    const desc = f.env ? `${f.description} [${f.env}]` : f.description;
+    const own = f.commandDescriptions?.[command] ?? f.description;
+    const desc = f.env ? `${own} [${f.env}]` : own;
     const [first = "", ...rest] = wrap(desc, HELP_WIDTH - col - 2);
     lines.push(`  ${(labels[i] ?? "").padEnd(col)}${first}`);
     for (const r of rest) lines.push(`  ${" ".repeat(col)}${r}`);

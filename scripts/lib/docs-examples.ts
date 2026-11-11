@@ -1,7 +1,9 @@
 import { spawn } from "node:child_process";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
-import { readdirSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { SITES_DIR, startFixture } from "../../packages/fixtures/src/index.js";
 
 export interface Example {
@@ -249,9 +251,20 @@ export async function runExample(
         ? []
         : ["--no-open"]),
     ];
+    // A fixture with a runs/ folder carries saved runs for `gaugeline changes`: they are copied into
+    // .gaugeline/runs/<host>/ of a temporary working folder, so the example reads real history.
+    const saved = join(SITES_DIR, e.fixture, "runs");
+    let cwd: string | undefined;
+    if (existsSync(saved)) {
+      cwd = mkdtempSync(join(tmpdir(), "gaugeline-docs-runs-"));
+      const host = new URL(site.origin).host.toLowerCase().replace(/[^a-z0-9.-]/g, "_");
+      mkdirSync(join(cwd, ".gaugeline", "runs"), { recursive: true });
+      cpSync(saved, join(cwd, ".gaugeline", "runs", host), { recursive: true });
+    }
     const result = await new Promise<{ stdout: string; stderr: string; code: number }>(
       (resolve) => {
         const child = spawn(process.execPath, argv, {
+          ...(cwd ? { cwd } : {}),
           env: childProcessEnv({ ...extraEnv, ...childEnv }),
         });
         let stdout = "";
@@ -261,6 +274,7 @@ export async function runExample(
         child.on("close", (code) => resolve({ stdout, stderr, code: code ?? -1 }));
       },
     );
+    if (cwd) rmSync(cwd, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
     return {
       ...result,
       origin: site.origin,
