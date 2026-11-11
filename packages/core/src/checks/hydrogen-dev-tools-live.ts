@@ -7,7 +7,7 @@ export const hydrogenDevToolsLive = defineCheck<PageSnapshot>({
   size: "S",
   done: "The live address serves the built storefront on Oxygen, not the dev server.",
   estimateChanges:
-    "A tunnel or host that runs `shopify hydrogen dev` as its start command needs a deployment.",
+    "A tunnel or host that runs shopify hydrogen dev as its start command needs a deployment.",
   area: "Security & email",
   severity: "high",
   title: "The live Hydrogen store is a development server",

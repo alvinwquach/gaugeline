@@ -400,7 +400,7 @@
     "tech": "Hydrogen storefronts (or React Router pages that load Vite's dev client), read from the page already fetched, no extra request: the HTML or a script address names /@vite/client, /@react-refresh, inject-hmr-runtime, __vite_plugin_react_preamble_installed__ or /node_modules/.vite/. Dev-only paths are not asked for. The dev server is Vite, as run by @shopify/cli-hydrogen 13.0.6",
     "size": "S",
     "done": "The live address serves the built storefront on Oxygen, not the dev server.",
-    "estimateChanges": "A tunnel or host that runs `shopify hydrogen dev` as its start command needs a deployment."
+    "estimateChanges": "A tunnel or host that runs shopify hydrogen dev as its start command needs a deployment."
   },
   {
     "id": "hydrogen-preview-canonical",
