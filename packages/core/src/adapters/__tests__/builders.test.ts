@@ -13,7 +13,7 @@ import {
 } from "../builders.js";
 import { adapterHeader, collectPublished } from "../collect.js";
 import { adaptersConfigSchema } from "../config.js";
-import { BUILT_ADAPTERS, PLANNED_ADAPTERS, resolveAdapters } from "../registry.js";
+import { BUILT_ADAPTERS, PLANNED_ADAPTERS, createAdapter, resolveAdapters } from "../registry.js";
 import { AdapterCouldNotCheck } from "../types.js";
 import {
   TIDEWATER,
@@ -241,15 +241,18 @@ describe("no key is read, sent or logged", () => {
       timeoutMs: 5000,
     });
     const built = BUILT_ADAPTERS.get("squarespace");
-    const adapter = built?.create(
-      {
-        env: { SQUARESPACE_API_KEY: key, SQUARESPACE_TOKEN: key },
-        fetcher,
-        site: TIDEWATER,
-        sleep: () => Promise.resolve(),
-      },
-      { id: "squarespace" },
-    );
+    const adapter = built
+      ? await createAdapter(
+          built,
+          {
+            env: { SQUARESPACE_API_KEY: key, SQUARESPACE_TOKEN: key },
+            fetcher,
+            site: TIDEWATER,
+            sleep: () => Promise.resolve(),
+          },
+          { id: "squarespace" },
+        )
+      : undefined;
     if (!adapter) throw new Error("not built");
     const out = [
       JSON.stringify(adapter.describe()),

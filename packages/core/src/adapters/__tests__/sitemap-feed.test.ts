@@ -778,22 +778,24 @@ describe("sitemap and feed: the settings and the default", () => {
       transport: recording(serve(oaklineRoutes(), HOST), seen),
       timeoutMs: 5000,
     });
-    const adapters = adaptersOrDefault(undefined, { env: {}, fetcher, site: OAKLINE });
+    const adapters = await adaptersOrDefault(undefined, { env: {}, fetcher, site: OAKLINE });
     expect(adapters.map((a) => a.id)).toEqual(["sitemap-feed"]);
     expect((await adapters[0]?.types())?.length).toBeGreaterThan(0);
-    expect(adaptersOrDefault(undefined, { env: {}, fetcher })).toEqual([]);
+    expect(await adaptersOrDefault(undefined, { env: {}, fetcher })).toEqual([]);
     expect(seen.length).toBeGreaterThan(0);
   });
 
-  it("a settings file that names an adapter gets that one and no default beside it", () => {
+  it("a settings file that names an adapter gets that one and no default beside it", async () => {
     const fetcher = createFetcher({ transport: serve({}, HOST) });
     const config = adaptersConfigSchema.parse({ adapters: [{ id: "sanity" }] });
-    const adapters = adaptersOrDefault(config, { env: {}, fetcher, site: OAKLINE });
+    const adapters = await adaptersOrDefault(config, { env: {}, fetcher, site: OAKLINE });
     expect(adapters.map((a) => a.id)).toEqual(["sanity"]);
-    expect(createAdapters(config, { env: {}, fetcher }).map((a) => a.id)).toEqual(["sanity"]);
+    expect((await createAdapters(config, { env: {}, fetcher })).map((a) => a.id)).toEqual([
+      "sanity",
+    ]);
   });
 
-  it("it needs no key: it says so, and the environment is never read", () => {
+  it("it needs no key: it says so, and the environment is never read", async () => {
     const fetcher = createFetcher({ transport: serve({}, HOST) });
     const env = new Proxy(
       {},
@@ -803,7 +805,7 @@ describe("sitemap and feed: the settings and the default", () => {
         },
       },
     );
-    const [adapter] = adaptersOrDefault(undefined, { env, fetcher, site: OAKLINE });
+    const [adapter] = await adaptersOrDefault(undefined, { env, fetcher, site: OAKLINE });
     expect(adapter?.describe()).toMatchObject({
       name: "Sitemap and feeds",
       keyKind: "read-only",

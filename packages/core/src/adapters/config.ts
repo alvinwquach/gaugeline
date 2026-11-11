@@ -1,5 +1,5 @@
 import * as z from "zod";
-import { BUILDER_IDS } from "./builders.js";
+import { ADAPTER_ENTRIES } from "./entries.generated.js";
 import { isUrlTemplate } from "./fingerprint.js";
 
 const ID = /^[a-z][a-z0-9-]{0,30}$/;
@@ -10,14 +10,19 @@ const FIELD = /^[A-Za-z_][A-Za-z0-9_-]{0,63}(?:\.[A-Za-z_][A-Za-z0-9_-]{0,63}){0
 /** A path on the site ("/sitemap-pages.xml") or an https address. Nothing else: no scheme tricks, no spaces. */
 const SITE_FILE = /^(?:\/[^\s]*|https:\/\/[^\s]+)$/;
 
-/** The adapter that reads a site's sitemap and feeds, and takes no fields. */
-const SITEMAP_FEED = "sitemap-feed";
+/**
+ * What each adapter adds to these rules comes from its entry file (adapters/<id>.entry.ts `settings`), so a new
+ * adapter edits nothing here. The adapters that read the live site's sitemap and feeds take `site`, `sitemaps`
+ * and `feeds`, and no fields.
+ */
+const PAGE_READERS: readonly string[] = ADAPTER_ENTRIES.filter((e) => e.settings?.pageReader).map(
+  (e) => e.id,
+);
 
-/** The adapter whose platform names its fields with hyphens. */
-const WEBFLOW = "webflow";
-
-/** The adapters that read the live site's sitemap and feeds: they take `site`, `sitemaps` and `feeds`, and no fields. */
-const PAGE_READERS: readonly string[] = [SITEMAP_FEED, "framer", "wix", ...BUILDER_IDS];
+/** The adapters whose platform names its fields with hyphens (Webflow). */
+const HYPHEN_FIELDS: readonly string[] = ADAPTER_ENTRIES.filter(
+  (e) => e.settings?.hyphenFields,
+).map((e) => e.id);
 
 /**
  * gaugeline.adapters.json, read from the working folder like the other settings files (there is no
@@ -82,7 +87,7 @@ export const adaptersConfigSchema = z.strictObject({
                 path: [key],
                 message: `"${key}" belongs to the sitemap-feed, framer, wix and hosted-builder adapters, not to ${entry.id}`,
               });
-          if (entry.id !== WEBFLOW)
+          if (!HYPHEN_FIELDS.includes(entry.id))
             for (const [type, fields] of Object.entries(entry.fingerprint ?? {}))
               for (const field of fields)
                 if (field.includes("-"))

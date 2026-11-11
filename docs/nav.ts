@@ -2,6 +2,8 @@
  * The docs sidebar, as data. Groups and slugs are exactly the published site's window.DOCS: slugs are
  * public addresses, so never rename one without a redirect (docs/slugs.lock.json pins them).
  */
+import { ADAPTER_PAGES } from "./adapter-pages.generated.js";
+
 export interface NavPage {
   slug: string;
   title: string;
@@ -119,31 +121,12 @@ export const UNLISTED: NavPage[] = [
   },
   { slug: "guides/hidden-text", title: "Hidden text aimed at AI assistants" },
   {
-    slug: "integrations/wordpress",
-    title: "WordPress: what the client published, against the page",
-  },
-  {
     slug: "guides/script-baseline",
     title: "Script and header baseline: what loads on a payment page, and what changed",
   },
   { slug: "integrations/index", title: "Content systems: one interface for every CMS" },
-  {
-    slug: "integrations/sitemap-feed",
-    title: "Sitemap and feeds: content checks for sites built on any CMS",
-  },
-  {
-    slug: "integrations/webflow",
-    title: "Webflow: content checks for sites built on Webflow",
-  },
-  { slug: "integrations/wix", title: "Wix: content checks for sites built on Wix" },
-  {
-    slug: "integrations/framer",
-    title: "Framer: content checks for sites built on Framer (beta)",
-  },
-  {
-    slug: "integrations/builders",
-    title: "Hosted builders: content checks for sites built on Squarespace and similar builders",
-  },
+  // Each adapter's page comes from its entry file (pnpm gen:adapters), so a new adapter does not edit this list.
+  ...ADAPTER_PAGES,
   { slug: "connectors/listings", title: "Listings off the site" },
   { slug: "connectors/postgres", title: "A database as a source: Postgres and Supabase" },
   { slug: "sources/shopify", title: "Shopify as a price source" },
