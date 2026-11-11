@@ -86,6 +86,24 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "Assistants find two different names for your business",
     "Search & sharing",
   ],
+  "qwik-solid-data-as-page": [
+    "A page address returns Qwik City data, not a page",
+    "Search & sharing",
+  ],
+  "qwik-solid-dev-server-live": ["The live site is a development server", "Security & email"],
+  "qwik-solid-draft-public": ["Anyone can switch on preview mode", "Launch day"],
+  "qwik-solid-preview-canonical": [
+    "The live Qwik or SolidStart site points search engines at a preview deployment",
+    "Launch day",
+  ],
+  "qwik-solid-private-fields": [
+    "The data sent with a page has fields that look private",
+    "Security & email",
+  ],
+  "qwik-solid-vary-missing": [
+    "One address serves a page and JSON, and caches aren't told",
+    "Search & sharing",
+  ],
   "robots-block": ["Your robots.txt tells every search engine to stay away", "Search & sharing"],
   "rsc-served-as-page": ["The page address returns app data, not a page", "Search & sharing"],
   "rsc-vary-missing": [
@@ -409,6 +427,10 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "nav-label-drift": ["One page has two names in your menus", "Visitors"],
   "og-image-missing": ["Shared links have no picture", "Search & sharing"],
   "price-changed": ["A price changed since the last run", "Sales & prices"],
+  "qwik-solid-server-endpoints": [
+    "This page calls server functions that anyone can address",
+    "Security & email",
+  ],
   "schema-breadcrumb-start": ["Breadcrumbs don't start where your guide says", "Search & sharing"],
   "tel-format": ["A phone link may not dial correctly", "Visitors"],
   "temp-host-canonical": ["A temporary address doesn't name the real one", "Launch day"],
@@ -786,6 +808,42 @@ export const CHECK_TEXT: Readonly<
     "Assistants match a question to a business by name. Two names can make them treat one business as two, or quote the wrong one.",
     "Use the same business name in the LocalBusiness structured data and as the first heading of llms.txt.",
     'LocalBusiness JSON-LD name and the llms.txt H1 disagree (case, punctuation and a leading "The" ignored)',
+  ],
+  "qwik-solid-data-as-page": [
+    "A page of this Qwik or SolidStart site answers with the framework's route data (Qwik City's q-data.json payload), or the sitemap lists q-data.json or /_server addresses.",
+    "Search engines and visitors get a JSON payload instead of a page, or index the payloads: the page can drop out of search while a browser that navigates inside the app looks fine.",
+    "Serve HTML at page addresses (look for a proxy, CDN or adapter rule that rewrites to q-data.json), and list only pages in the sitemap.",
+    'Qwik and SolidStart sites, from responses already read: the page\'s own answer with a JSON content type whose body starts {"_entry":"..","_objs": (Qwik City\'s q-data format); sitemap entries ending /q-data.json or starting /_server. No extra request',
+  ],
+  "qwik-solid-dev-server-live": [
+    "This page was served by the Vite development server of a Qwik or SolidStart site: it loads /@vite/client, /@qwik-city-plan or /_build/@fs/ files, or its Qwik container says it was rendered in dev mode.",
+    "The dev server serves source files, can expose files from the project folder and is slow and unsupervised. It is not meant to face visitors.",
+    "Build the site and serve the build's output with the adapter or start command of your host, not the dev command. Check the host's start command.",
+    "Read from the page already fetched, no extra request: q:render ending -dev or a q:manifest-hash starting dev on the Qwik container, or a script or the HTML naming /@vite/client, /@qwik-city-plan (Qwik) or /_build/@fs/ (SolidStart). Paths such as /__inspect are not asked for",
+  ],
+  "qwik-solid-draft-public": [
+    "A preview or draft route on this Qwik or SolidStart site sets a preview or draft cookie for a request that carries no secret.",
+    "Anyone who visits that address sees unpublished content (prices, announcements, pages nobody approved) as if it were live.",
+    "Make the route check a secret (compare a token from the request with one from your environment) before it sets the cookie, and answer 401 otherwise.",
+    "Probing check: off unless --owner-consent or gaugeline.consent.json; run only on sites you own or have permission to test. Qwik and SolidStart sites only: one GET per conventional route (/api/preview, /api/draft, /preview, /draft), no secret sent or guessed; a Set-Cookie whose name contains preview or draft on any hop is a finding, and only its name is shown. The routes and the cookie rule are conventions, not the frameworks' own (uncited)",
+  ],
+  "qwik-solid-preview-canonical": [
+    "A production page of this Qwik or SolidStart site gives a preview domain as its canonical address, its og:url or og:image, or in its sitemap.",
+    "Search engines and social cards follow those addresses to the preview, which can show old content or vanish when the preview is cleaned up.",
+    "Build the site's base address from the production domain (often an environment variable that is set only for preview builds, or an origin taken from the request behind a proxy), and rebuild.",
+    "Qwik and SolidStart sites served from a non-temporary host: the canonical, og:url, og:image and sitemap entries whose host ends in .vercel.app, .netlify.app or .pages.dev",
+  ],
+  "qwik-solid-private-fields": [
+    "The state Qwik or SolidStart embeds in this page (Qwik's qwik/json script, SolidStart's _$HY hydration data), or this Qwik page's q-data.json, has fields named like something private (password, token, secret, apiKey, private notes).",
+    "Everything a loader or a hydrated component holds is sent to every visitor, whether or not the page shows it. A field that is only used on the server still travels with the page.",
+    "Return only the fields the page shows from the routeLoader$ or the server function. Keep secrets in server-only environment variables and read them only in server code.",
+    "Qwik and SolidStart sites only. Names only, never values: the property names of the objects in the embedded state (Qwik: the objs list of <script type=\"qwik/json\">; SolidStart: the literals of the inline scripts that write to _$HY.r, read as text, strings skipped) and, for Qwik, in the page's own q-data.json (one GET of <page>/q-data.json, _objs list, capped), matched by word against password, passwd, secret, token, private, credential, ssn, salt, bearer, authorization, cvv, iban, apiKey, accessKey, secretKey, privateKey, internalNotes. A state that cannot be read (including Qwik 2's format, uncited) is could not check. The names are matched by their words, which is a guess (uncited)",
+  ],
+  "qwik-solid-vary-missing": [
+    "The same address of this Qwik or SolidStart site returns HTML to a browser and JSON to a request with Accept: application/json (an endpoint and a page sharing a route), and neither response lists Accept in its Vary header.",
+    "A shared cache (a CDN, a proxy) then keys both on the address alone and can hand the JSON to a visitor or a search engine: an outage that returns 200.",
+    "Send Vary: Accept on both answers (in the middleware or endpoint that negotiates), keep Vary in the CDN's cache key, or give the endpoint its own address.",
+    "Qwik and SolidStart pages only. One extra GET of the same address with Accept: application/json, the only header added, sent on same-origin hops only. Vary tokens from both answers, lower case; Vary: * counts as covering Accept. A 429 or 5xx answer is could not check. Neither framework negotiates a successful page on Accept by itself (Qwik City only answers an error as application/qwik-json when Accept lacks text/html, from the package source), so this catches custom endpoints and middleware: the check itself is uncited",
   ],
   "robots-block": [
     "robots.txt has a group for every crawler (User-agent: *) that disallows the whole site.",
@@ -1968,6 +2026,12 @@ export const CHECK_TEXT: Readonly<
     "Sometimes that is the plan. When it isn't (a sync from the shop, an edit to the wrong product), customers and search results see the wrong price.",
     "If the change wasn't meant, correct the price at its source (the shop or CMS) and rebuild; if it was, nothing to do.",
     "With --since last only: the JSON-LD Offer price (integer minor units; anything but 48 or 48.00 is unread) for a product key (sku or name plus currency) present in both runs",
+  ],
+  "qwik-solid-server-endpoints": [
+    "The markup of this Qwik or SolidStart page names a server-function address: Qwik's ?qfunc= (a server$ call) or ?qaction= (a routeAction$ form) or SolidStart's /_server (a \"use server\" function).",
+    "A server function is a public address: anyone can call it with their own input, whether or not your page has a button for it. It is worth knowing which ones exist and what each one lets a stranger do.",
+    'For each server$ or "use server" function, check the caller (session, role) and validate the input before it reads or writes anything, and return only what the page shows. Gaugeline does not call these addresses.',
+    "Qwik and SolidStart pages only, from the page already read, no extra request and never a call: counts occurrences of qfunc= and qaction= (Qwik) or /_server (SolidStart) in the page's markup. Whether a function is safe is not something a read can tell, so this is a heads-up, not a verdict; ?qfunc=, ?qaction= and /_server are from the package source (request-handler runServerFunction; server-runtime.js)",
   ],
   "schema-breadcrumb-start": [
     "The first item of a page's breadcrumb structured data is not the Home name and address your schema guide sets.",
