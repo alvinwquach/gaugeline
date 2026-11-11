@@ -226,6 +226,7 @@ branch; this section links to it then. Not yet.
   and examples in the docs run in CI ([docs/contributing/docs-examples.md](docs/contributing/docs-examples.md)).
 - Add a changeset with `pnpm changeset` (see "Add a changeset" below).
 - If the PR gate fails, see "Why did pr-gate fail?" below.
+- What runs on a pull request, and what only runs on main: see "What CI runs" below.
 
 ## Docs requirements for every release
 
@@ -325,7 +326,9 @@ licence goes into `packages/cli/THIRD_PARTY_LICENSES.md`.
    - **Architecture notes**: what was chosen, what it was chosen over, and what it costs.
    - **Tests**: what was added, and the counts.
 4. Write the tests first: unit, integration, end-to-end, then edge cases.
-   A change is done when they pass on Node 22 and 24 in CI.
+   A change is done when they pass on Node 22 in the pull request's CI and on Node 24 in the run on main
+   after the merge (see "What CI runs" below). Run Node 24 locally before you push when you touch
+   anything version-sensitive.
 5. A user-facing change ships its docs page and a changeset file in the same pull request.
 
 ## Exit codes
@@ -438,9 +441,28 @@ release's headline on the changelog page. The Release pull request collects thes
 `packages/cli/CHANGELOG.md`; `pnpm docs:changelog` turns that into `docs/changelog.data.json` and
 `docs/changelog.md`.
 
+## What CI runs
+
+To keep the queue short, a pull request runs three checks:
+
+| Check                           | What it does                                                       |
+| ------------------------------- | ------------------------------------------------------------------ |
+| `test (node 22, ubuntu-latest)` | build, typecheck and the full test suite on Linux, Node 22         |
+| `lint`                          | lint, formatting and every generated-file and registry `--check`   |
+| `pr-checks`                     | the PR gate (changeset, docs, label rules), then the PR body check |
+
+The Docs workflow (`build`) also runs on a pull request, but only when the change touches `docs/**`,
+`e2e/**`, the check registry or the docs build scripts.
+
+Node 24, Windows, macOS, the docs examples and `pack and smoke (node 22)` run on every push to main (a
+newer merge cancels an older run still in progress) and, in full, on the Release pull request
+(`changeset-release/main`). The release workflow publishes nothing until the full matrix is green for
+the exact commit it releases. A problem that only shows on Node 24, Windows or macOS therefore appears
+after the merge: fix it in a follow-up pull request straight away.
+
 ## Why did pr-gate fail?
 
-The `PR gate` workflow checks every pull request against three rules. The fixes:
+The `pr-checks` job (the PR gate step) checks every pull request against three rules. The fixes:
 
 1. **"This changes source but has no changeset."** Run `pnpm changeset` (or `pnpm changeset --empty`
    for internal work, with a summary starting "(internal)") and commit the file.

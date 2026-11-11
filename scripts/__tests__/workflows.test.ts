@@ -124,39 +124,53 @@ describe("faster pull request runs", () => {
   const read = (f: string) => readFileSync(join(dir, f), "utf8");
 
   // The two JSON strings the CI matrix chooses between, read out of the workflow file itself.
-  function matrices(): { pullRequest: unknown; main: unknown } {
-    const m = /fromJSON\(github\.event_name == 'pull_request' && '(.*?)' \|\| '(.*?)'\)/.exec(
-      read("ci.yml"),
-    );
-    if (!m) throw new Error("ci.yml does not choose its matrix from the event");
-    return { pullRequest: JSON.parse(m[1] ?? ""), main: JSON.parse(m[2] ?? "") };
+  // OWNER POLICY (11 Nov 2026, "CI diet"): a pull request runs Node 22 on Linux only; the full matrix runs on
+  // pushes to main and on the Release pull request (head ref changeset-release/main).
+  function matrices(): { pullRequest: unknown; full: unknown } {
+    const m =
+      /fromJSON\(github\.event_name == 'pull_request' && github\.head_ref != 'changeset-release\/main' && '(.*?)' \|\| '(.*?)'\)/.exec(
+        read("ci.yml"),
+      );
+    if (!m) throw new Error("ci.yml does not choose its matrix from the event and the head ref");
+    return { pullRequest: JSON.parse(m[1] ?? ""), full: JSON.parse(m[2] ?? "") };
   }
 
-  it("a pull request runs Linux on Node 22 and 24 and Windows on Node 24, nothing else", () => {
-    expect(matrices().pullRequest).toEqual({
-      include: [
-        { os: "ubuntu-latest", node: "22" },
-        { os: "ubuntu-latest", node: "24" },
-        { os: "windows-latest", node: "24" },
-      ],
-    });
+  it("a pull request runs Linux on Node 22, nothing else", () => {
+    expect(matrices().pullRequest).toEqual({ include: [{ os: "ubuntu-latest", node: "22" }] });
   });
 
-  it("main runs the full matrix: three systems on Node 22 and 24", () => {
-    expect(matrices().main).toEqual({
+  it("main and the Release pull request run the full matrix: three systems on Node 22 and 24", () => {
+    expect(matrices().full).toEqual({
       os: ["ubuntu-latest", "windows-latest", "macos-latest"],
       node: ["22", "24"],
     });
   });
 
-  it("a new push cancels the older pull request run and never cancels a run on main", () => {
-    for (const f of ["ci.yml", "docs.yml"]) {
-      const text = read(f);
-      expect(text).toContain("cancel-in-progress: ${{ github.event_name == 'pull_request' }}");
-      expect(text).toMatch(
-        /concurrency:\n\s+group: .*\$\{\{ github\.head_ref \|\| github\.sha \}\}/,
-      );
+  it("build-heavy jobs (docs examples, pack and smoke) run on pushes to main and the Release pull request only", () => {
+    const ci = parse(read("ci.yml")) as { jobs: Record<string, { if?: string }> };
+    for (const job of ["docs-examples", "pack"]) {
+      const cond = ci.jobs[job]?.if ?? "";
+      expect(cond, job).toContain("github.event_name == 'push'");
+      expect(cond, job).toContain("github.head_ref == 'changeset-release/main'");
     }
+    // lint and test are the two jobs every pull request runs.
+    expect(ci.jobs.lint?.if).not.toContain("changeset-release");
+    expect(ci.jobs.test?.if).not.toContain("changeset-release");
+  });
+
+  it("a new push cancels the older pull request run and a new merge cancels the older run on main", () => {
+    const ci = parse(read("ci.yml")) as {
+      concurrency: { group: string; "cancel-in-progress": unknown };
+    };
+    expect(ci.concurrency["cancel-in-progress"]).toBe(true);
+    // One group for every push to main, one group per pull request branch.
+    expect(ci.concurrency.group).toContain("ci-main");
+    expect(ci.concurrency.group).toContain("github.head_ref");
+    expect(ci.concurrency.group).not.toContain("github.sha");
+    // The docs workflow keeps its own rule: a pull request run is cancelled, a run on main finishes (it deploys).
+    const docs = read("docs.yml");
+    expect(docs).toContain("cancel-in-progress: ${{ github.event_name == 'pull_request' }}");
+    expect(docs).toMatch(/concurrency:\n\s+group: .*\$\{\{ github\.head_ref \|\| github\.sha \}\}/);
   });
 
   it("every job has a timeout of at most 15 minutes (the release wait for the full matrix is the one longer job)", () => {
@@ -189,19 +203,57 @@ describe("faster pull request runs", () => {
     expect(problems).toEqual([]);
   });
 
-  it("the pull request checks cancel an older run of the same branch", () => {
-    for (const f of ["pr-gate.yml", "pr-body.yml"]) {
-      expect(read(f), f).toMatch(
-        /concurrency:\n {2}group: [\w-]+-\$\{\{ github\.head_ref \}\}\n {2}cancel-in-progress: true/,
-      );
-    }
+  it("the pull request checks are ONE job, pr-checks, that runs the PR gate and then the PR body check", () => {
+    const files = readdirSync(dir);
+    expect(files).not.toContain("pr-gate.yml");
+    expect(files).not.toContain("pr-body.yml");
+    const text = read("pr-checks.yml");
+    const wf = parse(text) as {
+      on: { pull_request: { types: string[] } };
+      jobs: Record<string, { name?: string; steps: { run?: string; if?: string }[] }>;
+    };
+    expect(Object.keys(wf.jobs)).toEqual(["pr-checks"]);
+    expect(wf.jobs["pr-checks"]?.name).toBeUndefined(); // the check is reported as "pr-checks"
+    const runs = (wf.jobs["pr-checks"]?.steps ?? []).map((s) => s.run ?? "");
+    const gate = runs.findIndex((r) => r.startsWith("pnpm pr-gate"));
+    const body = runs.findIndex((r) => r === "pnpm pr:check");
+    expect(gate).toBeGreaterThan(-1);
+    expect(body).toBeGreaterThan(gate);
+    // The Release pull request deletes changesets by design, so the gate step skips it; the body check does not.
+    expect(wf.jobs["pr-checks"]?.steps[gate]?.if).toContain("changeset-release/main");
+    expect(wf.jobs["pr-checks"]?.steps[body]?.if).toBeUndefined();
+    expect(text).toMatch(
+      /concurrency:\n {2}group: pr-checks-\$\{\{ github\.head_ref \}\}\n {2}cancel-in-progress: true/,
+    );
   });
 
-  it("the release workflow waits for the full matrix of its own commit before it does anything", () => {
+  it("the docs workflow runs on a pull request only when the docs or what the docs build reads change; it still runs on every push to main", () => {
+    const wf = parse(read("docs.yml")) as {
+      on: { pull_request: { paths: string[] }; push: { branches: string[]; paths?: unknown } };
+    };
+    const paths = wf.on.pull_request.paths;
+    for (const p of [
+      "docs/**",
+      "e2e/**",
+      "packages/core/src/checks/**",
+      "scripts/gen-*",
+      "scripts/lib/**",
+      ".github/workflows/docs.yml",
+    ])
+      expect(paths, p).toContain(p);
+    expect(wf.on.push.branches).toEqual(["main"]);
+    expect(wf.on.push.paths).toBeUndefined();
+  });
+
+  it("the release workflow waits for the full matrix of its own commit before it does anything, and never releases a cancelled one", () => {
     const text = read("release-pr.yml");
     expect(text).toContain("ci-gate:");
     expect(text).toContain("actions/workflows/ci.yml/runs?head_sha=$SHA&event=push");
     expect(text).toMatch(/release:\n\s+needs: ci-gate/);
+    // A newer merge cancels the older run on main. The gate then fails that commit (it never releases it);
+    // the newer commit's own gate waits for its own full matrix and releases everything from there.
+    expect(text).toContain('"$conclusion" = "cancelled"');
+    expect(text).toContain("success");
   });
 
   it("the browser tests run only on the decision of scripts/needs-browser-tests.sh", () => {
@@ -314,22 +366,17 @@ describe("draft pull requests do not run CI", () => {
   });
 
   it("every workflow that runs on a pull request lists ready_for_review, so a ready pull request gets CI at once", () => {
-    expect(prWorkflows.map((w) => w.f).sort()).toEqual([
-      "ci.yml",
-      "docs.yml",
-      "pr-body.yml",
-      "pr-gate.yml",
-    ]);
+    expect(prWorkflows.map((w) => w.f).sort()).toEqual(["ci.yml", "docs.yml", "pr-checks.yml"]);
     for (const { f, wf } of prWorkflows) {
       const types = (wf.on.pull_request as { types?: string[] } | null)?.types ?? [];
       for (const t of ["opened", "synchronize", "reopened", "ready_for_review"])
         expect(types, `${f} types`).toContain(t);
     }
-    // The labels and edits that pr-gate and pr-body react to are kept.
-    const typesOf = (f: string) =>
-      (prWorkflows.find((w) => w.f === f)?.wf.on.pull_request as { types: string[] }).types;
-    expect(typesOf("pr-gate.yml")).toEqual(expect.arrayContaining(["labeled", "unlabeled"]));
-    expect(typesOf("pr-body.yml")).toContain("edited");
+    // The labels and edits that pr-gate and pr-body reacted to are kept by the merged job.
+    const types = (
+      prWorkflows.find((w) => w.f === "pr-checks.yml")?.wf.on.pull_request as { types: string[] }
+    ).types;
+    expect(types).toEqual(expect.arrayContaining(["edited", "labeled", "unlabeled"]));
   });
 
   it("every job that runs on a pull request is skipped while the pull request is a draft", () => {
@@ -364,23 +411,25 @@ describe("draft pull requests do not run CI", () => {
       }
   });
 
-  it("the three required checks keep their names: test (node 22, ubuntu-latest), test (node 24, ubuntu-latest), test (node 24, windows-latest)", () => {
+  it("the checks a pull request reports are exactly: test (node 22, ubuntu-latest), lint, pr-checks (and build for docs-only changes)", () => {
     const ci = workflows.find((w) => w.f === "ci.yml")?.wf;
     expect(Object.keys(ci?.jobs ?? {})).toEqual(
       expect.arrayContaining(["test", "lint", "docs-examples", "pack"]),
     );
     expect(ci?.jobs.test?.name).toBe("test (node ${{ matrix.node }}, ${{ matrix.os }})");
     expect(ci?.jobs.pack?.name).toBe("pack and smoke (node 22)");
-    const matrix = /fromJSON\(github\.event_name == 'pull_request' && '(.*?)' \|\|/.exec(
-      readFileSync(join(dir, "ci.yml"), "utf8"),
-    );
-    const { include } = JSON.parse(matrix?.[1] ?? "{}") as {
-      include: { os: string; node: string }[];
-    };
+    const { include } = (() => {
+      const m =
+        /fromJSON\(github\.event_name == 'pull_request' && github\.head_ref != 'changeset-release\/main' && '(.*?)' \|\|/.exec(
+          readFileSync(join(dir, "ci.yml"), "utf8"),
+        );
+      return JSON.parse(m?.[1] ?? "{}") as { include: { os: string; node: string }[] };
+    })();
     expect(include.map((m) => `test (node ${m.node}, ${m.os})`)).toEqual([
       "test (node 22, ubuntu-latest)",
-      "test (node 24, ubuntu-latest)",
-      "test (node 24, windows-latest)",
+    ]);
+    expect(Object.keys(workflows.find((w) => w.f === "pr-checks.yml")?.wf.jobs ?? {})).toEqual([
+      "pr-checks",
     ]);
   });
 });
