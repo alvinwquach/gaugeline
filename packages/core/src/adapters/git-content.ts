@@ -79,6 +79,48 @@ export interface GitContentOptions {
   site?: string | undefined;
   /** Replaces GIT_CONTENT_LIMITS. For tests. */
   limits?: typeof GIT_CONTENT_LIMITS | undefined;
+  /**
+   * A source already made (by `contentSourceOf`), so an adapter built on this one (TinaCMS) reads the
+   * repository through one source and one GitHub tree. Default: made from the settings.
+   */
+  source?: ContentSource | undefined;
+  /**
+   * By type: whether a file belongs to it, given its path inside the folder. A file it refuses is not
+   * an item and is not counted as unread (TinaCMS's `match` and `format`).
+   */
+  accept?: Readonly<Record<string, (pathInFolder: string) => boolean>> | undefined;
+}
+
+/**
+ * The source the settings name: a repository on GitHub (the token from GAUGELINE_GITHUB_TOKEN, sent to
+ * api.github.com only) or a folder on this computer. Shared with the adapters built on this one.
+ */
+export function contentSourceOf(
+  options: Pick<GitContentOptions, "env" | "fetcher" | "cwd" | "limits"> & {
+    settings: AdapterSettings | undefined;
+    sleep: (ms: number) => Promise<void>;
+    adapterId?: string;
+    /** For a GitHub source: a folder that is not in the repository is could-not-check, not zero items. */
+    missingFolderIsError?: boolean;
+  },
+): ContentSource {
+  const { settings } = options;
+  const limits = options.limits ?? GIT_CONTENT_LIMITS;
+  if (settings?.github !== undefined)
+    return githubSource({
+      fetcher: options.fetcher,
+      repo: settings.github.repo,
+      ref: settings.github.ref,
+      token: options.env[GITHUB_TOKEN_VAR],
+      sleep: options.sleep,
+      limits,
+      ...(options.missingFolderIsError ? { missingFolderIsError: true } : {}),
+    });
+  if (settings?.path !== undefined)
+    return localSource(path.resolve(options.cwd ?? process.cwd(), settings.path), limits);
+  throw new AdapterCouldNotCheck(
+    `gaugeline.adapters.json: the ${options.adapterId ?? "git-content"} adapter needs "path" (a folder on this computer) or "github".`,
+  );
 }
 
 /** An item whose own value stops it being an item: noted as unread with this reason (no text from the file). */
@@ -93,6 +135,34 @@ interface Item {
   url?: string;
   publishedAt?: string;
   updatedAt?: string;
+}
+
+/**
+ * What a failed read of a source becomes: a rate limit carries what was read, anything else is
+ * could-not-check, with the reason in plain words (a token is blanked from it by `redact`).
+ */
+export function sourceErrorOf(
+  err: unknown,
+  partial: unknown,
+  redact: (text: string) => string,
+): Error {
+  if (err instanceof AdapterCouldNotCheck || err instanceof AdapterRateLimitedError) return err;
+  if (err instanceof ConnectorRateLimitedError)
+    return new AdapterRateLimitedError(partial, err.retry);
+  if (err instanceof ResponseTooLargeError) return new AdapterCouldNotCheck(err.message);
+  if (err instanceof ConnectorRefusedError)
+    return new AdapterCouldNotCheck(
+      err.status === 401
+        ? `GitHub did not accept ${GITHUB_TOKEN_VAR} (HTTP 401). Check that the token is current.`
+        : `GitHub did not let this read the repository (HTTP ${err.status}). A token needs Contents: read on it, and an unauthenticated read is limited to 60 requests an hour.`,
+    );
+  if (err instanceof ConnectorStatusError)
+    return new AdapterCouldNotCheck(
+      err.status === 404
+        ? `GitHub answered HTTP 404: there is no such repository or branch, or it is private and ${GITHUB_TOKEN_VAR} is not set or cannot read it.`
+        : `GitHub answered HTTP ${err.status}.`,
+    );
+  return new AdapterCouldNotCheck(redact(err instanceof Error ? err.message : String(err)));
 }
 
 export function createGitContentAdapter(options: GitContentOptions): GitContentAdapter {
@@ -120,44 +190,21 @@ export function createGitContentAdapter(options: GitContentOptions): GitContentA
   let sourceMade: ContentSource | undefined;
   const source = (): ContentSource => {
     if (sourceMade) return sourceMade;
-    if (settings?.github !== undefined)
-      sourceMade = githubSource({
+    sourceMade =
+      options.source ??
+      contentSourceOf({
+        env,
         fetcher,
-        repo: settings.github.repo,
-        ref: settings.github.ref,
-        token: env[GITHUB_TOKEN_VAR],
+        settings,
         sleep,
         limits,
+        ...(options.cwd !== undefined ? { cwd: options.cwd } : {}),
       });
-    else if (settings?.path !== undefined)
-      sourceMade = localSource(path.resolve(options.cwd ?? process.cwd(), settings.path), limits);
-    else
-      throw new AdapterCouldNotCheck(
-        'gaugeline.adapters.json: the git-content adapter needs "path" (a folder on this computer) or "github".',
-      );
     return sourceMade;
   };
 
   /** What a failed read becomes: a rate limit carries what was read, anything else is could-not-check. */
-  const translate = (err: unknown, partial: unknown): Error => {
-    if (err instanceof AdapterCouldNotCheck || err instanceof AdapterRateLimitedError) return err;
-    if (err instanceof ConnectorRateLimitedError)
-      return new AdapterRateLimitedError(partial, err.retry);
-    if (err instanceof ResponseTooLargeError) return new AdapterCouldNotCheck(err.message);
-    if (err instanceof ConnectorRefusedError)
-      return new AdapterCouldNotCheck(
-        err.status === 401
-          ? `GitHub did not accept ${GITHUB_TOKEN_VAR} (HTTP 401). Check that the token is current.`
-          : `GitHub did not let this read the repository (HTTP ${err.status}). A token needs Contents: read on it, and an unauthenticated read is limited to 60 requests an hour.`,
-      );
-    if (err instanceof ConnectorStatusError)
-      return new AdapterCouldNotCheck(
-        err.status === 404
-          ? `GitHub answered HTTP 404: there is no such repository or branch, or it is private and ${GITHUB_TOKEN_VAR} is not set or cannot read it.`
-          : `GitHub answered HTTP ${err.status}.`,
-      );
-    return new AdapterCouldNotCheck(redact(err instanceof Error ? err.message : String(err)));
-  };
+  const translate = (err: unknown, partial: unknown): Error => sourceErrorOf(err, partial, redact);
 
   const dirOf = (type: string): string => {
     const d = folders[type]?.dir ?? ".";
@@ -234,6 +281,10 @@ export function createGitContentAdapter(options: GitContentOptions): GitContentA
    */
   async function* itemsOf(type: string, partial: () => unknown): AsyncGenerator<Item> {
     const nowMs = now().getTime();
+    const accept =
+      options.accept !== undefined && Object.hasOwn(options.accept, type)
+        ? options.accept[type]
+        : undefined;
     let listing;
     try {
       listing = await source().list(dirOf(type));
@@ -244,6 +295,8 @@ export function createGitContentAdapter(options: GitContentOptions): GitContentA
     for (const file of listing.files) {
       const kind = kindOf(file.path);
       if (kind === undefined) continue;
+      const dir = dirOf(type);
+      if (accept && !accept(dir === "" ? file.path : file.path.slice(dir.length + 1))) continue;
       let text: string;
       try {
         text = await source().read(file);
