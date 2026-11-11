@@ -14,7 +14,7 @@
       "endpoint": "https://graphql.datocms.com",
       "auth": {
         "header": "Authorization",
-        "env": "GAUGELINE_DATOCMS_TOKEN",
+        "env": "GAUGELINE_API_DATOCMS_TOKEN",
         "prefix": "Bearer "
       },
       "collections": {

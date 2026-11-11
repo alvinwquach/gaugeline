@@ -13,6 +13,7 @@ import {
   BLOCKED_REASONS,
   GENERIC_API_LIMITS,
   GRAPHQL_FIELDS_MARKER,
+  IDENTIFIER,
   genericApiSchema,
   parsePointer,
   type GenericApiCollection,
@@ -387,11 +388,22 @@ export function createGenericApiAdapter(options: GenericApiAdapterOptions): Cont
         throw new AdapterCouldNotCheck(
           `${host}: no list of items at ${c.items === "" ? "the top of the answer" : c.items} for "${key}". Check "items" in the mapping.`,
         );
+      if (raw.length > GENERIC_API_LIMITS.itemsPerPage)
+        throw new AdapterCouldNotCheck(
+          `${host} gave more items than a page can hold (${GENERIC_API_LIMITS.itemsPerPage}) for "${key}": check the page size and the paging parameters in the mapping.`,
+        );
       const items = raw.map((x) => {
         if (!isRecord(x))
           throw new AdapterCouldNotCheck(`${host}: an item in "${key}" is not an object.`);
         return x;
       });
+      if (c.published !== undefined && reading.extra === undefined && items.length > 0) {
+        const where = parsePointer(c.published.path) ?? [];
+        if (!items.some((i) => at(i, where) !== undefined))
+          throw new AdapterCouldNotCheck(
+            `${host}: the published path matched no item of "${key}" on a page of ${items.length}, so none could be told apart as published. Check "published.path" in the mapping.`,
+          );
+      }
       const total = totalAt === undefined ? undefined : intOf(at(body, totalAt));
       if (items.length > 0) {
         const ids = items.map((i) => textOf(firstAt(i, idPaths)));
@@ -433,6 +445,13 @@ export function createGenericApiAdapter(options: GenericApiAdapterOptions): Cont
         page++;
       } else {
         const next = textOf(at(body, parsePointer(p.next) ?? []));
+        if (
+          next !== undefined &&
+          (next.length > GENERIC_API_LIMITS.cursor || !/^[\x21-\x7E]+$/.test(next))
+        )
+          throw new AdapterCouldNotCheck(
+            `${host} gave a cursor for "${key}" that is too long or not plain text, so it was not followed.`,
+          );
         more =
           next !== undefined &&
           (p.more === undefined || truthy(at(body, parsePointer(p.more) ?? []), p.more));
@@ -450,13 +469,33 @@ export function createGenericApiAdapter(options: GenericApiAdapterOptions): Cont
   }
 
   /** An item the mapping's `published` guard lets through (every item when there is none). */
-  const live = (c: GenericApiCollection, item: Record<string, unknown>): boolean =>
-    c.published === undefined ||
-    String(at(item, parsePointer(c.published.path) ?? [])) === String(c.published.equals);
+  const live = (c: GenericApiCollection, item: Record<string, unknown>): boolean => {
+    if (c.published === undefined) return true;
+    const v = at(item, parsePointer(c.published.path) ?? []);
+    // Primitives only, the same kind and the same text as configured: ["published"] and "Published" are not "published".
+    return (
+      (typeof v === "string" || typeof v === "number" || typeof v === "boolean") &&
+      v === c.published.equals
+    );
+  };
+
+  /**
+   * An id, a slug or a type from an answer: URL-safe characters, no whitespace, at most 128. Anything else is could-not-check,
+   * and the reason never carries the value: the mapping probably points at a field of the client's text.
+   */
+  const identifier = (v: unknown, what: string, key: string): string | undefined => {
+    const t = textOf(v);
+    if (t === undefined) return undefined;
+    if (!IDENTIFIER.test(t))
+      throw new AdapterCouldNotCheck(
+        `${host}: the ${what} of an item in "${key}" is not a plain identifier (letters, digits and . _ ~ : @ -, at most ${GENERIC_API_LIMITS.identifier}), so it was not read. The mapping may point at the wrong field.`,
+      );
+    return t;
+  };
 
   const typeOf = (key: string, c: GenericApiCollection, item: Record<string, unknown>): string => {
     if (c.fields.type === undefined) return key;
-    const t = textOf(firstAt(item, c.fields.type));
+    const t = identifier(firstAt(item, c.fields.type), "content type", key);
     if (t === undefined)
       throw new AdapterCouldNotCheck(
         `${host}: an item in "${key}" has no content type at ${JSON.stringify(c.fields.type)}.`,
@@ -480,19 +519,35 @@ export function createGenericApiAdapter(options: GenericApiAdapterOptions): Cont
     return template === undefined ? "" : fillUrlTemplate(template, doc);
   };
 
-  /** A path from what the platform gave as an address: a path stays, an absolute address keeps its path and query. */
-  const pathOf = (v: unknown): string | undefined => {
+  /**
+   * A path from what the platform gave as an address: a path stays, an absolute address keeps its path and query. It must start
+   * with one slash (never `//host` or `/\host`, plain or percent-encoded) and use address characters only; anything else is
+   * could-not-check, since an address that leaves the site must not become a finding's address.
+   */
+  const pathOf = (v: unknown, key: string): string | undefined => {
     const t = textOf(v);
-    if (t === undefined || /\s/.test(t)) return undefined;
+    if (t === undefined) return undefined;
+    const bad = (): AdapterCouldNotCheck =>
+      new AdapterCouldNotCheck(
+        `${host}: the address of an item in "${key}" is not a path on the site (one slash, then address characters), so it was not read. The mapping may point at the wrong field.`,
+      );
+    let path: string;
     if (/^https?:\/\//i.test(t)) {
       try {
         const u = new URL(t);
-        return `${u.pathname}${u.search}`;
+        path = `${u.pathname}${u.search}`;
       } catch {
-        return undefined;
+        throw bad();
       }
-    }
-    return t.startsWith("/") ? t : /^[A-Za-z0-9_~.%-]/.test(t) ? `/${t}` : undefined;
+    } else if (t.startsWith("/")) path = t;
+    else if (/^[A-Za-z0-9_~.%-]/.test(t) && !/^[a-z][a-z0-9+.-]*:/i.test(t)) path = `/${t}`;
+    else throw bad();
+    if (
+      path.length > GENERIC_API_LIMITS.address ||
+      !/^\/(?![/\\])(?!%2f|%5c)[A-Za-z0-9._~%!$&'()*+,;=:@/?-]*$/i.test(path)
+    )
+      throw bad();
+    return path;
   };
 
   const types = async (): Promise<TypeCount[]> => {
@@ -587,7 +642,7 @@ export function createGenericApiAdapter(options: GenericApiAdapterOptions): Cont
           if (!live(c, item)) continue;
           const type = typeOf(key, c, item);
           if (wanted !== undefined && !wanted.has(type)) continue;
-          const id = textOf(firstAt(item, c.fields.id));
+          const id = identifier(firstAt(item, c.fields.id), "id", key);
           const updatedAt =
             c.fields.updatedAt === undefined
               ? undefined
@@ -602,11 +657,11 @@ export function createGenericApiAdapter(options: GenericApiAdapterOptions): Cont
             const h = hashValue(fieldAt(c, item, f));
             if (h !== undefined) fieldHashes[f] = h;
           }
-          const slug = textOf(firstAt(item, c.fields.slug));
+          const slug = identifier(firstAt(item, c.fields.slug), "slug", key);
           const publishedAt = timeOf(firstAt(item, c.fields.publishedAt));
           let url = resolveUrl({ id, type, ...(slug !== undefined ? { slug } : {}) });
           if (url === "" && templateFor(type) === undefined)
-            url = pathOf(firstAt(item, c.fields.url)) ?? "";
+            url = pathOf(firstAt(item, c.fields.url), key) ?? "";
           remaining--;
           delivered++;
           yield {

@@ -166,7 +166,7 @@ const WORKSHOPS: HeronWorkshop[] = [
 /** The mapping the contract entry and the tests read the studio with. */
 export const HERON_API: GenericApiMapping = {
   endpoint: HERON,
-  auth: { header: "Authorization", env: "GAUGELINE_HERON_TOKEN", prefix: "Bearer " },
+  auth: { header: "Authorization", env: "GAUGELINE_API_HERON_TOKEN", prefix: "Bearer " },
   collections: {
     post: {
       path: "/api/posts",

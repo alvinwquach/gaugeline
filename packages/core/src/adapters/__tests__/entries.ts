@@ -246,7 +246,7 @@ export const genericApiEntry: ContractEntry = {
   id: "generic-api",
   make: ({ fetcher, sleep }) =>
     createGenericApiAdapter({
-      env: { GAUGELINE_HERON_TOKEN: HERON_KEY },
+      env: { GAUGELINE_API_HERON_TOKEN: HERON_KEY },
       fetcher,
       sleep,
       settings: { id: "generic-api", api: HERON_API, urls: HERON_URLS },

@@ -14,7 +14,7 @@
       "endpoint": "https://eu-central-1.cdn.hygraph.com/content/cl0invented0project/master",
       "auth": {
         "header": "Authorization",
-        "env": "GAUGELINE_HYGRAPH_TOKEN",
+        "env": "GAUGELINE_API_HYGRAPH_TOKEN",
         "prefix": "Bearer "
       },
       "collections": {

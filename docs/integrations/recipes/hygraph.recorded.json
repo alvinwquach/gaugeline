@@ -3,7 +3,7 @@
   "recipe": "hygraph",
   "provenance": "Invented content in the shape Hygraph's documented API is remembered to answer. Not recorded from a live service; the shapes are uncited (the vendor's pages could not be read when this was written).",
   "env": {
-    "GAUGELINE_HYGRAPH_TOKEN": "recipe-test-value"
+    "GAUGELINE_API_HYGRAPH_TOKEN": "recipe-test-value"
   },
   "exchanges": [
     {
@@ -11,7 +11,7 @@
         "url": "https://eu-central-1.cdn.hygraph.com/content/cl0invented0project/master",
         "query": {},
         "headers": {
-          "authorization": "Bearer {env:GAUGELINE_HYGRAPH_TOKEN}"
+          "authorization": "Bearer {env:GAUGELINE_API_HYGRAPH_TOKEN}"
         }
       },
       "response": {

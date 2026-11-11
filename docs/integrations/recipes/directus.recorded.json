@@ -3,7 +3,7 @@
   "recipe": "directus",
   "provenance": "Invented content in the shape Directus's documented API is remembered to answer. Not recorded from a live service; the shapes are uncited (the vendor's pages could not be read when this was written).",
   "env": {
-    "GAUGELINE_DIRECTUS_TOKEN": "recipe-test-value"
+    "GAUGELINE_API_DIRECTUS_TOKEN": "recipe-test-value"
   },
   "exchanges": [
     {
@@ -14,7 +14,7 @@
           "filter[status][_eq]": "published"
         },
         "headers": {
-          "authorization": "Bearer {env:GAUGELINE_DIRECTUS_TOKEN}"
+          "authorization": "Bearer {env:GAUGELINE_API_DIRECTUS_TOKEN}"
         }
       },
       "response": {
@@ -53,7 +53,7 @@
           "filter[status][_eq]": "draft"
         },
         "headers": {
-          "authorization": "Bearer {env:GAUGELINE_DIRECTUS_TOKEN}"
+          "authorization": "Bearer {env:GAUGELINE_API_DIRECTUS_TOKEN}"
         }
       },
       "response": {

@@ -3,7 +3,7 @@
   "recipe": "payload",
   "provenance": "Invented content in the shape Payload's documented API is remembered to answer. Not recorded from a live service; the shapes are uncited (the vendor's pages could not be read when this was written).",
   "env": {
-    "GAUGELINE_PAYLOAD_API_KEY": "recipe-test-value"
+    "GAUGELINE_API_PAYLOAD_API_KEY": "recipe-test-value"
   },
   "exchanges": [
     {
@@ -13,7 +13,7 @@
           "page": "1"
         },
         "headers": {
-          "authorization": "users API-Key {env:GAUGELINE_PAYLOAD_API_KEY}"
+          "authorization": "users API-Key {env:GAUGELINE_API_PAYLOAD_API_KEY}"
         }
       },
       "response": {

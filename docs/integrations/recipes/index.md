@@ -14,6 +14,8 @@ To add a recipe: add the two files, a section here, and nothing else.
 
 Docs: [Payload](https://payloadcms.com/docs/rest-api/overview) [docs].
 
+**Uncited:** the page above is where to check this recipe; it could not be read when the recipe was written, so every endpoint, parameter and answer shape in this section is from memory.
+
 - **Narrowest key:** An API key on a user of an `api-keys` enabled collection, whose access rules allow only `read` on the collections in the mapping. Scoped: Payload has no read-only key type, so the narrowest key is a dedicated user with read access only.
 - **What it reads:** `GET /api/<collection>?page=&limit=&depth=0`; the answer is `docs`, `totalDocs`, `hasNextPage`. The key goes in `Authorization: users API-Key <key>`.
 - **Example:** Heron-style studio sites built with Payload and Next.js on Vercel: the mapping lists `posts` and fingerprints `title` and `summary`.
@@ -35,7 +37,7 @@ Docs: [Payload](https://payloadcms.com/docs/rest-api/overview) [docs].
       "endpoint": "https://studio.example/api",
       "auth": {
         "header": "Authorization",
-        "env": "GAUGELINE_PAYLOAD_API_KEY",
+        "env": "GAUGELINE_API_PAYLOAD_API_KEY",
         "prefix": "users API-Key "
       },
       "collections": {
@@ -70,6 +72,8 @@ Docs: [Payload](https://payloadcms.com/docs/rest-api/overview) [docs].
 
 Docs: [Directus](https://docs.directus.io/reference/items.html) [docs].
 
+**Uncited:** the page above is where to check this recipe; it could not be read when the recipe was written, so every endpoint, parameter and answer shape in this section is from memory.
+
 - **Narrowest key:** A static token on a user whose role can only read the collections in the mapping (Directus roles are per collection, so this is a scoped key). Drafts are asked for with `drafts` and counted, never listed.
 - **What it reads:** `GET /items/<collection>?limit=&offset=&sort=id&meta=filter_count&filter[status][_eq]=published&fields=...`; the answer is `data` and `meta.filter_count`. The token goes in `Authorization: Bearer <token>`. Field names (`status`, `slug`, `date_updated`) are the defaults of a collection with the system fields; change the paths if yours differ.
 - **Example:** A pop-up restaurant whose `articles` collection holds the lunch menu and event notices; `date_updated` is empty until a first edit, so the mapping falls back to `date_created`.
@@ -91,7 +95,7 @@ Docs: [Directus](https://docs.directus.io/reference/items.html) [docs].
       "endpoint": "https://cms.example",
       "auth": {
         "header": "Authorization",
-        "env": "GAUGELINE_DIRECTUS_TOKEN",
+        "env": "GAUGELINE_API_DIRECTUS_TOKEN",
         "prefix": "Bearer "
       },
       "collections": {
@@ -140,6 +144,8 @@ Docs: [Directus](https://docs.directus.io/reference/items.html) [docs].
 ## Drupal JSON:API
 
 Docs: [Drupal JSON:API](https://www.drupal.org/docs/core-modules-and-themes/core-modules/jsonapi-module) [docs].
+
+**Uncited:** the page above is where to check this recipe; it could not be read when the recipe was written, so every endpoint, parameter and answer shape in this section is from memory.
 
 - **Narrowest key:** None for published content: the JSON:API module serves published nodes to anonymous visitors. If the site restricts it, add `auth` with the header the site accepts (for HTTP Basic, `Authorization` with prefix `Basic ` and the base64 of user and password in the variable); use a user whose role may only view published content.
 - **What it reads:** `GET /jsonapi/node/<bundle>?page[limit]=50&page[offset]=&filter[status]=1`; the answer is `data`, each item with `attributes`. 50 is JSON:API's own maximum page size. The mapping asks the answer for `attributes.status` too.
@@ -195,6 +201,8 @@ Docs: [Drupal JSON:API](https://www.drupal.org/docs/core-modules-and-themes/core
 ## Prismic
 
 Docs: [Prismic](https://prismic.io/docs/rest-api-technical-reference) [docs].
+
+**Uncited:** the page above is where to check this recipe; it could not be read when the recipe was written, so every endpoint, parameter and answer shape in this section is from memory.
 
 - **Narrowest key:** None for a public repository. A private repository needs an access token that Prismic reads from the address, which Gaugeline does not send (see Not yet).
 - **What it reads:** `GET /api/v2` once, for the master ref; then `GET /api/v2/documents/search?ref=&page=&pageSize=`. The mapping reads the ref from `refs/0/ref` and checks `refs/0/isMasterRef` first.
@@ -257,6 +265,8 @@ Docs: [Prismic](https://prismic.io/docs/rest-api-technical-reference) [docs].
 
 Docs: [Hygraph](https://hygraph.com/docs/api-reference/content-api) [docs].
 
+**Uncited:** the page above is where to check this recipe; it could not be read when the recipe was written, so every endpoint, parameter and answer shape in this section is from memory.
+
 - **Narrowest key:** A permanent auth token whose permissions allow reading the PUBLISHED stage only.
 - **What it reads:** A GraphQL query sent as a GET, paged by cursor (`postsConnection`). Hygraph's own pages could not be read: that its Content API answers a GET is uncited. If it answers 405, the adapter says so (could-not-check, open question 53) and never sends a POST.
 - **Example:** A bar's menu posts on Hygraph.
@@ -278,7 +288,7 @@ Docs: [Hygraph](https://hygraph.com/docs/api-reference/content-api) [docs].
       "endpoint": "https://eu-central-1.cdn.hygraph.com/content/cl0invented0project/master",
       "auth": {
         "header": "Authorization",
-        "env": "GAUGELINE_HYGRAPH_TOKEN",
+        "env": "GAUGELINE_API_HYGRAPH_TOKEN",
         "prefix": "Bearer "
       },
       "collections": {
@@ -311,6 +321,8 @@ Docs: [Hygraph](https://hygraph.com/docs/api-reference/content-api) [docs].
 
 Docs: [DatoCMS](https://www.datocms.com/docs/content-delivery-api) [docs].
 
+**Uncited:** the page above is where to check this recipe; it could not be read when the recipe was written, so every endpoint, parameter and answer shape in this section is from memory.
+
 - **Narrowest key:** A read-only API token for the published environment.
 - **What it reads:** A GraphQL query sent as a GET, paged by `first` and `skip`, with the count from `_allPostsMeta`. That the Content Delivery API answers a GET is uncited (the pages could not be read); a 405 is reported, and no POST is sent.
 - **Example:** A florist's blog on DatoCMS.
@@ -332,7 +344,7 @@ Docs: [DatoCMS](https://www.datocms.com/docs/content-delivery-api) [docs].
       "endpoint": "https://graphql.datocms.com",
       "auth": {
         "header": "Authorization",
-        "env": "GAUGELINE_DATOCMS_TOKEN",
+        "env": "GAUGELINE_API_DATOCMS_TOKEN",
         "prefix": "Bearer "
       },
       "collections": {
@@ -362,6 +374,8 @@ Docs: [DatoCMS](https://www.datocms.com/docs/content-delivery-api) [docs].
 ## Kontent.ai
 
 Docs: [Kontent.ai](https://kontent.ai/learn/docs/apis/openapi/delivery-api/) [docs].
+
+**Uncited:** the page above is where to check this recipe; it could not be read when the recipe was written, so every endpoint, parameter and answer shape in this section is from memory.
 
 - **Narrowest key:** None for a public project. A project with secure access needs a key in `Authorization: Bearer <key>`: add `auth`.
 - **What it reads:** `GET /<environment id>/items?limit=&skip=&includeTotalCount=true`; the answer is `items` and `pagination`. The slug is the element named `url`: change `/elements/url/value` to the codename of yours.
@@ -411,6 +425,8 @@ Docs: [Kontent.ai](https://kontent.ai/learn/docs/apis/openapi/delivery-api/) [do
 
 Docs: [Joomla](https://docs.joomla.org/J4.x:Joomla_Core_APIs) [docs].
 
+**Uncited:** the page above is where to check this recipe; it could not be read when the recipe was written, so every endpoint, parameter and answer shape in this section is from memory.
+
 - **Narrowest key:** An API token (Joomla 4 and 5, Users, Edit, API token) for a user in a group that can only view content. Sent in `X-Joomla-Token`.
 - **What it reads:** `GET /api/index.php/v1/content/articles?page[limit]=&page[offset]=`; the answer is `data`, each item with `attributes`. The mapping asks the item back for `state` 1 (published). Times have no zone and are read as UTC.
 - **Example:** A physio clinic still on Joomla.
@@ -432,7 +448,7 @@ Docs: [Joomla](https://docs.joomla.org/J4.x:Joomla_Core_APIs) [docs].
       "endpoint": "https://clinic.example/api/index.php/v1",
       "auth": {
         "header": "X-Joomla-Token",
-        "env": "GAUGELINE_JOOMLA_TOKEN"
+        "env": "GAUGELINE_API_JOOMLA_TOKEN"
       },
       "collections": {
         "article": {
@@ -465,6 +481,8 @@ Docs: [Joomla](https://docs.joomla.org/J4.x:Joomla_Core_APIs) [docs].
 ## Storyblok
 
 Docs: [Storyblok](https://www.storyblok.com/docs/api/content-delivery/v2) [docs].
+
+**Uncited:** the page above is where to check this recipe; it could not be read when the recipe was written, so every endpoint, parameter and answer shape in this section is from memory.
 
 - **Narrowest key:** The space's public access token (read-only by design).
 - **What it reads:** `GET /v2/cdn/stories?version=published&page=&per_page=100`; the answer is `stories`, each with a `content` object whose `component` is the type.
@@ -521,6 +539,8 @@ Docs: [Storyblok](https://www.storyblok.com/docs/api/content-delivery/v2) [docs]
 
 Docs: [Ghost](https://ghost.org/docs/content-api/) [docs].
 
+**Uncited:** the page above is where to check this recipe; it could not be read when the recipe was written, so every endpoint, parameter and answer shape in this section is from memory.
+
 - **Narrowest key:** A Content API key (read-only by design).
 - **What it reads:** `GET /ghost/api/content/posts/?page=&limit=&fields=...`; the answer is `posts` and `meta.pagination`.
 - **Example:** A newsletter site on Ghost.
@@ -576,6 +596,8 @@ Docs: [Ghost](https://ghost.org/docs/content-api/) [docs].
 ## Builder.io
 
 Docs: [Builder.io](https://www.builder.io/c/docs/content-api) [docs].
+
+**Uncited:** the page above is where to check this recipe; it could not be read when the recipe was written, so every endpoint, parameter and answer shape in this section is from memory.
 
 - **Narrowest key:** The space's public API key (read-only by design).
 - **What it reads:** `GET /api/v3/content/<model>?limit=&offset=&includeUnpublished=false`; the answer is `results`, with `lastUpdated` in milliseconds.

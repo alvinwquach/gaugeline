@@ -26,13 +26,57 @@ export const GENERIC_API_LIMITS = {
   graphql: 4000,
   queryParams: 20,
   bootstrap: 3,
+  /** Items in one answer; a page with more is could-not-check. */
+  itemsPerPage: 1000,
+  /** Characters in an id, a slug or a type from an answer. */
+  identifier: 128,
+  /** Characters in a cursor from an answer. */
+  cursor: 500,
+  /** Characters in an address from an answer. */
+  address: 512,
 } as const;
+
+/** What an id, a slug or a type from an answer may look like: URL-safe, no whitespace. */
+export const IDENTIFIER = /^[A-Za-z0-9][A-Za-z0-9._~:@-]{0,127}$/;
+
+/** Words that mean a write when they are a part of a path or a value. */
+const WRITE_VERBS = new Set([
+  "delete",
+  "remove",
+  "update",
+  "create",
+  "publish",
+  "unpublish",
+  "destroy",
+  "purge",
+  "archive",
+  "restore",
+  "import",
+  "send",
+  "submit",
+]);
+
+/** HTTP verbs that are not GET or HEAD. */
+const HTTP_WRITES = new Set(["post", "put", "patch", "delete"]);
+
+const words = (text: string): string[] =>
+  text
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+
+const hasWriteVerb = (text: string): boolean => words(text).some((w) => WRITE_VERBS.has(w));
 
 /** The marker a GraphQL document may hold once: the fields to fingerprint go there (and nothing is asked for with none). */
 export const GRAPHQL_FIELDS_MARKER = "__FIELDS__";
 
-/** The only environment variables a mapping may name: a copied recipe cannot send GITHUB_TOKEN to someone's server. */
-export const GENERIC_ENV = /^GAUGELINE_[A-Z0-9_]{1,56}$/;
+/**
+ * The only environment variables a mapping may name: GAUGELINE_API_<NAME>. Gaugeline's own variables (GAUGELINE_SLACK_WEBHOOK,
+ * GAUGELINE_GITHUB_TOKEN, GAUGELINE_VERCEL_TOKEN, GAUGELINE_BASIC_AUTH, GAUGELINE_POSTGRES_URL...) never start with
+ * GAUGELINE_API_, and a test reads every GAUGELINE_ name in the source to keep it so. A copied mapping therefore cannot send
+ * one of them, or any other secret, to someone's server.
+ */
+export const GENERIC_ENV = /^GAUGELINE_API_[A-Z0-9][A-Z0-9_]{0,45}$/;
 
 /** Names that cannot be pointer segments or field names: they would reach into an object's prototype. */
 export const PROTOTYPE_KEYS: ReadonlySet<string> = new Set([
@@ -77,17 +121,35 @@ const pathOnEndpoint = z
   .max(200)
   .refine((v) => PATH.test(v) && !v.split("/").some((s) => s === ".." || s === "."), {
     message: 'a path on the endpoint such as "/api/posts" (no "..", no query string)',
+  })
+  .refine((v) => !hasWriteVerb(v), {
+    message:
+      "a path with no write verb in it (delete, update, create, publish, unpublish, send...): Gaugeline only reads, and will not ask for an address that sounds like a change",
   });
 
 /** A query parameter name, brackets allowed (`page[limit]`). */
 const PARAM = /^[A-Za-z][A-Za-z0-9_.[\]-]{0,63}$/;
-const param = z.string().regex(PARAM, 'a parameter name such as "limit" or "page[limit]"');
+
+/** A parameter name that looks like it carries a key: keys go in `auth`, in a header, never in the address. */
+const KEY_LIKE =
+  /token|secret|passw|signature|jwt|bearer|private[_-]?key|api[_-]?key|access[_-]?key|(^|[^a-z])pat($|[^a-z])|^key$|^auth|^sig$/i;
+
+/** A name that asks the server to treat the request as another method. */
+const METHOD_LIKE = /method|override|verb/i;
+
+/** Every name that goes into an address: a parameter, a pagination parameter, a select parameter. */
+export const safeName = (v: string): boolean => !KEY_LIKE.test(v) && !METHOD_LIKE.test(v);
+
+export const SAFE_NAME_MESSAGE =
+  'a parameter name that is not a method override and not a key: a name that looks like a key goes in "auth" (a header), never in the address';
+
+const param = z
+  .string()
+  .regex(PARAM, 'a parameter name such as "limit" or "page[limit]"')
+  .refine(safeName, { message: SAFE_NAME_MESSAGE });
 
 /** A GraphQL variable name. */
 const VARIABLE = /^[A-Za-z_][A-Za-z0-9_]{0,63}$/;
-
-/** A parameter name that looks like it carries a key: keys go in `auth`, in a header, never in the address. */
-const KEY_LIKE = /token|secret|passw|signature|api[_-]?key|access[_-]?key|^key$|^auth|^sig$/i;
 
 const staticQuery = z
   .record(
@@ -95,7 +157,11 @@ const staticQuery = z
     z
       .string()
       .max(200)
-      .regex(/^[\x20-\x7E]*$/, "plain printable characters"),
+      .regex(/^[\x20-\x7E]*$/, "plain printable characters")
+      .refine((v) => !HTTP_WRITES.has(v.toLowerCase()) && !WRITE_VERBS.has(v.toLowerCase()), {
+        message:
+          "a value that is not an HTTP verb or a write verb (a method override is never sent)",
+      }),
   )
   .refine((q) => Object.keys(q).length <= GENERIC_API_LIMITS.queryParams, {
     message: `at most ${GENERIC_API_LIMITS.queryParams} parameters`,
@@ -103,6 +169,10 @@ const staticQuery = z
   .refine((q) => !Object.keys(q).some((name) => KEY_LIKE.test(name)), {
     message:
       'a parameter that looks like a key. Put the key in "auth" (an environment variable sent in a header); a key is never written into the mapping or the address',
+  })
+  .refine((q) => !Object.keys(q).some((name) => METHOD_LIKE.test(name)), {
+    message:
+      "a parameter that is not a method override (a name with method, override or verb in it)",
   });
 
 const FORBIDDEN_HEADERS = new Set([
@@ -121,6 +191,12 @@ const FORBIDDEN_HEADERS = new Set([
   "referer",
   "user-agent",
   "accept",
+  "accept-encoding",
+  "range",
+  "proxy-authorization",
+  "x-http-method-override",
+  "x-method-override",
+  "x-http-method",
 ]);
 
 const auth = z.strictObject({
@@ -128,7 +204,7 @@ const auth = z.strictObject({
   header: z
     .string()
     .regex(/^[A-Za-z][A-Za-z0-9-]{0,39}$/, 'a header name such as "Authorization" or "X-API-Key"')
-    .refine((h) => !FORBIDDEN_HEADERS.has(h.toLowerCase()), {
+    .refine((h) => !FORBIDDEN_HEADERS.has(h.toLowerCase()) && !/^x-forwarded-/i.test(h), {
       message: "a header Gaugeline sets itself or that carries no key",
     }),
   /** The environment variable that holds the key. It must start with GAUGELINE_. */
@@ -136,7 +212,7 @@ const auth = z.strictObject({
     .string()
     .regex(
       GENERIC_ENV,
-      "an environment variable starting with GAUGELINE_ (such as GAUGELINE_DIRECTUS_TOKEN), so a copied mapping cannot read your other secrets",
+      "an environment variable named GAUGELINE_API_<NAME> (such as GAUGELINE_API_DIRECTUS_TOKEN). Gaugeline's own variables (GAUGELINE_SLACK_WEBHOOK, GAUGELINE_GITHUB_TOKEN...) are never accepted, so a copied mapping cannot send your other secrets to someone's server",
     ),
   /** Text put before the key in the header's value: "Bearer ", "users API-Key ". */
   prefix: z
@@ -233,7 +309,10 @@ const collection = z.strictObject({
   select: z
     .strictObject({
       /** The parameter. `{type}` is replaced by the collection's name (Drupal: `fields[{type}]`). */
-      param: z.string().regex(/^[A-Za-z][A-Za-z0-9_.[\]{}-]{0,63}$/, "a parameter name"),
+      param: z
+        .string()
+        .regex(/^[A-Za-z][A-Za-z0-9_.[\]{}-]{0,63}$/, "a parameter name")
+        .refine(safeName, { message: SAFE_NAME_MESSAGE }),
       /** Fields always asked for, whatever the settings fingerprint: the ones the paths above read. */
       always: z.array(z.string().regex(/^[A-Za-z_][A-Za-z0-9_.-]{0,63}$/)).max(12),
       join: z.string().max(2).optional(),
@@ -302,6 +381,18 @@ export const genericApiSchema = z
       url = undefined;
     }
     if (url === undefined) bad(["endpoint"], "an address such as https://cms.example/api");
+    else if (
+      /%2e|%2f|%5c|\\/i.test(api.endpoint) ||
+      new URL(api.endpoint).pathname.split("/").some((s) => s === "." || s === "..") ||
+      api.endpoint
+        .split("/")
+        .slice(3)
+        .some((s) => s === "." || s === "..")
+    )
+      bad(
+        ["endpoint"],
+        'an address with no dot segment ("..", or its encoded forms %2e) and no encoded slash or backslash in its path',
+      );
     else {
       const loopback = url.protocol === "http:" && url.hostname === "127.0.0.1";
       if (url.protocol !== "https:" && !loopback)
@@ -371,8 +462,28 @@ export const genericApiSchema = z
       }
     }
 
-    if (api.drafts !== undefined && api.collections[api.drafts.collection] === undefined)
-      bad(["drafts", "collection"], "a collection named in `collections`");
+    if (api.drafts !== undefined) {
+      const target = api.collections[api.drafts.collection];
+      if (target === undefined)
+        bad(["drafts", "collection"], "a collection named in `collections`");
+      else if (target.graphql !== undefined)
+        bad(
+          ["drafts", "collection"],
+          "a REST collection: the drafts parameters are sent as an address query, which a GraphQL collection does not take",
+        );
+    }
+    if (
+      api.bootstrap !== undefined &&
+      api.bootstrap.length > 0 &&
+      Object.values(api.collections).some((c) => c.graphql !== undefined)
+    )
+      bad(
+        ["bootstrap"],
+        "left out when a collection is GraphQL: a bootstrap value is added to REST addresses only",
+      );
+    for (const [i, step] of (api.bootstrap ?? []).entries())
+      if (step.path !== "" && hasWriteVerb(step.path))
+        bad(["bootstrap", i, "path"], "a path with no write verb in it");
   });
 
 export type GenericApiMapping = z.infer<typeof genericApiSchema>;

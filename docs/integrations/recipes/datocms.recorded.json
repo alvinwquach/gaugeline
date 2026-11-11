@@ -3,7 +3,7 @@
   "recipe": "datocms",
   "provenance": "Invented content in the shape DatoCMS's documented API is remembered to answer. Not recorded from a live service; the shapes are uncited (the vendor's pages could not be read when this was written).",
   "env": {
-    "GAUGELINE_DATOCMS_TOKEN": "recipe-test-value"
+    "GAUGELINE_API_DATOCMS_TOKEN": "recipe-test-value"
   },
   "exchanges": [
     {
@@ -11,7 +11,7 @@
         "url": "https://graphql.datocms.com/",
         "query": {},
         "headers": {
-          "authorization": "Bearer {env:GAUGELINE_DATOCMS_TOKEN}"
+          "authorization": "Bearer {env:GAUGELINE_API_DATOCMS_TOKEN}"
         }
       },
       "response": {

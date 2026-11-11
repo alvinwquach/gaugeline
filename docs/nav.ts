@@ -139,6 +139,7 @@ export const UNLISTED: NavPage[] = [
     slug: "integrations/framer",
     title: "Framer: content checks for sites built on Framer (beta)",
   },
+  {
     slug: "integrations/generic-api",
     title: "Generic API adapter: content checks for any headless CMS with a read API",
   },

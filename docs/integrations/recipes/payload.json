@@ -14,7 +14,7 @@
       "endpoint": "https://studio.example/api",
       "auth": {
         "header": "Authorization",
-        "env": "GAUGELINE_PAYLOAD_API_KEY",
+        "env": "GAUGELINE_API_PAYLOAD_API_KEY",
         "prefix": "users API-Key "
       },
       "collections": {

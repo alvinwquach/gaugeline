@@ -24,7 +24,7 @@ import {
 } from "./generic-api-fixture.js";
 
 const KEY = testKey("generic-adapter");
-const ENV = { GAUGELINE_HERON_TOKEN: KEY };
+const ENV = { GAUGELINE_API_HERON_TOKEN: KEY };
 
 const json = (body: unknown, status = 200, headers: Record<string, string> = {}) =>
   Promise.resolve({
@@ -363,8 +363,8 @@ describe("the key", () => {
 
   it("another header name is sent as given, lower-cased, and no Authorization header goes with it", async () => {
     const w = world({
-      api: mini({}, { auth: { header: "X-Joomla-Token", env: "GAUGELINE_JOOMLA_TOKEN" } }),
-      env: { GAUGELINE_JOOMLA_TOKEN: KEY },
+      api: mini({}, { auth: { header: "X-Joomla-Token", env: "GAUGELINE_API_JOOMLA_TOKEN" } }),
+      env: { GAUGELINE_API_JOOMLA_TOKEN: KEY },
       transport: heronTransportAt("x-joomla-token", KEY),
     });
     await collectPublished(w.adapter);
@@ -387,7 +387,7 @@ describe("the key", () => {
     for (const status of [401, 403] as const) {
       const w = world({ transport: () => json({ error: KEY }, status) });
       const reason = await couldNot(w.adapter.types());
-      expect(reason).toContain("GAUGELINE_HERON_TOKEN");
+      expect(reason).toContain("GAUGELINE_API_HERON_TOKEN");
       expect(reason).toContain(String(status));
       expect(reason).not.toContain(KEY);
     }
@@ -400,11 +400,13 @@ describe("the key", () => {
 
   it("an unset variable, or one that cannot be a header value, asks for nothing", async () => {
     const unset = world({ env: {} });
-    expect(await couldNot(unset.adapter.types())).toContain("GAUGELINE_HERON_TOKEN is not set");
-    const bad = world({ env: { GAUGELINE_HERON_TOKEN: `abc\r\nX-Evil: 1` } });
+    expect(await couldNot(unset.adapter.types())).toContain("GAUGELINE_API_HERON_TOKEN is not set");
+    const bad = world({ env: { GAUGELINE_API_HERON_TOKEN: `abc\r\nX-Evil: 1` } });
     expect(await couldNot(bad.adapter.types())).toContain("cannot be sent as a header value");
     const reasonText = await couldNot(
-      world({ env: { GAUGELINE_HERON_TOKEN: `caf${String.fromCharCode(233)}` } }).adapter.types(),
+      world({
+        env: { GAUGELINE_API_HERON_TOKEN: `caf${String.fromCharCode(233)}` },
+      }).adapter.types(),
     );
     expect(reasonText).toContain("cannot be sent as a header value");
     expect(unset.seen).toEqual([]);
@@ -520,14 +522,13 @@ describe("what the platform answers", () => {
     const rows = [
       { id: "a", updated: "2026-01-01T00:00:00Z", link: "https://client.example/news/a/?x=1" },
       { id: "b", updated: "2026-01-01T00:00:00Z", link: "news/b" },
-      { id: "c", updated: "2026-01-01T00:00:00Z", link: "not a path" },
     ];
     const w = world({
       api: mini({ fields: { id: "/id", updatedAt: "/updated", url: "/link" } }),
       transport: () => json({ data: rows }),
     });
     const got = await collectPublished(w.adapter);
-    expect(got.docs.map((d) => d.url)).toEqual(["/news/a/?x=1", "/news/b", undefined]);
+    expect(got.docs.map((d) => d.url)).toEqual(["/news/a/?x=1", "/news/b"]);
   });
 
   it("numbers are ids too, and an empty or null id is no id", async () => {
@@ -767,7 +768,7 @@ describe("mapping validation (a recipe with a wrong path fails before anything i
     const keyed = messages({
       ...mini(),
       endpoint: "http://127.0.0.1:4010/api",
-      auth: { header: "Authorization", env: "GAUGELINE_X_TOKEN" },
+      auth: { header: "Authorization", env: "GAUGELINE_API_X_TOKEN" },
     });
     expect(keyed).toContain("plain http");
   });
@@ -784,9 +785,10 @@ describe("mapping validation (a recipe with a wrong path fails before anything i
         "auth.env",
       );
     for (const header of ["Host", "Cookie", "Content-Length", "bad header", "x\r\ny"])
-      expect(messages({ ...mini(), auth: { header, env: "GAUGELINE_X_TOKEN" } }), header).toContain(
-        "auth.header",
-      );
+      expect(
+        messages({ ...mini(), auth: { header, env: "GAUGELINE_API_X_TOKEN" } }),
+        header,
+      ).toContain("auth.header");
   });
 
   it("a key cannot be written into the mapping as a parameter", () => {

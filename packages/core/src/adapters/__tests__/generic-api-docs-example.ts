@@ -20,7 +20,7 @@ export const HERON_SETTINGS = {
 export async function heronReads(): Promise<string> {
   const fetcher = createFetcher({ transport: heronTransport({ key: KEY }), timeoutMs: 5000 });
   const adapter = createGenericApiAdapter({
-    env: { GAUGELINE_HERON_TOKEN: KEY },
+    env: { GAUGELINE_API_HERON_TOKEN: KEY },
     fetcher,
     settings: HERON_SETTINGS,
     sleep: () => Promise.resolve(),

@@ -14,7 +14,7 @@
       "endpoint": "https://clinic.example/api/index.php/v1",
       "auth": {
         "header": "X-Joomla-Token",
-        "env": "GAUGELINE_JOOMLA_TOKEN"
+        "env": "GAUGELINE_API_JOOMLA_TOKEN"
       },
       "collections": {
         "article": {

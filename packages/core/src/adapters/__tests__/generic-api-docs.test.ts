@@ -61,6 +61,10 @@ describe("docs/integrations/recipes/index.md", () => {
     }
   });
 
+  it("carries an inline uncited note in every recipe's section", () => {
+    expect(recipesPage.match(/\*\*Uncited:\*\*/g)).toHaveLength(loadRecipeFiles().length);
+  });
+
   it("is honest that the shapes are uncited, and says which recipes are blocked", () => {
     expect(recipesPage).toContain("**uncited**");
     expect(recipesPage.match(/\*\*Not usable yet\.\*\*/g)).toHaveLength(
