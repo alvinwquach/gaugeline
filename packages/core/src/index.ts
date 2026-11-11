@@ -1427,6 +1427,17 @@ export { SITE_WIDE_TYPES, factsOf, readMigration } from "./migration/read.js";
 export type { ItemRead, MigrationReading, NewRead, PageFacts } from "./migration/read.js";
 export { normaliseTitle, sameTitle, titleKept } from "./migration/titles.js";
 
+export { PUBLISHED_CHECKS } from "./checks/published-not-live.js";
+export { addPublishedChecks } from "./published/registry.js";
+export { PUBLISHED_DEFAULTS, createPublished } from "./published/reader.js";
+export type {
+  LiveItem,
+  PageOutcome,
+  Published,
+  PublishedReading,
+  StillLive,
+} from "./published/reader.js";
+export { differingFields, pageTexts, variantsOf } from "./published/compare.js";
 export { TRACKER_CHECKS } from "./checks/trackers.js";
 export { trackersConfigSchema, TRACKERS_CONFIG_FILE } from "./trackers/config.js";
 export type { TrackersConfig } from "./trackers/config.js";

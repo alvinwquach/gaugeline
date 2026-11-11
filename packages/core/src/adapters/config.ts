@@ -101,6 +101,27 @@ export const adaptersConfigSchema = z.strictObject({
     )
     .min(1)
     .max(8),
+  /**
+   * `gaugeline --published`: how far back to look for changed items, how long a page may lag, how many
+   * pages to ask for, and the fields to compare by type. Every key is optional.
+   */
+  live: z
+    .strictObject({
+      /** Items changed in the last this many days are compared with their pages. Default 7. */
+      days: z.number().int().min(1).max(90).optional(),
+      /** A page may lag its item by this many minutes before it is reported. Default 15. */
+      graceMinutes: z.number().int().min(0).max(10080).optional(),
+      /** At most this many pages are asked for in one run. Default 40. */
+      maxPages: z.number().int().min(1).max(200).optional(),
+      /** The fields to compare with the page, by type. Default: `title`. */
+      fields: z
+        .record(
+          z.string().regex(TYPE, "a content type name"),
+          z.array(z.string().regex(FIELD, "a field name, or names joined by dots")).min(1).max(5),
+        )
+        .optional(),
+    })
+    .optional(),
 });
 
 export type AdaptersConfig = z.infer<typeof adaptersConfigSchema>;
