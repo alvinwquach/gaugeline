@@ -33,6 +33,8 @@ export {
 export type { SitemapFeedOptions } from "./sitemap-feed.js";
 export { SANITY_DESCRIPTION, SANITY_PAGE_SIZE, createSanityAdapter } from "./sanity.js";
 export type { SanityAdapterOptions } from "./sanity.js";
+export { WIX_CMS_READ_PATH, WIX_DESCRIPTION, createWixAdapter } from "./wix.js";
+export type { WixAdapterOptions } from "./wix.js";
 export {
   WORDPRESS_APP_PASSWORD,
   WORDPRESS_COUNT_CAP,
