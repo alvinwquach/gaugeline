@@ -244,6 +244,8 @@
   "temp-host-links",
   "thin-html",
   "token-expires-soon",
+  "tracker-in-tag-manager",
+  "tracker-on-sensitive-page",
   "usage-jump",
   "viewport",
   "webhook-disabled",
