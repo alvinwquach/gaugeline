@@ -61,13 +61,13 @@ build, run with `--owner-consent` because the owner agreed to it, version 0.1.0 
     <link rel="canonical" href="https://spokeandchain-git-main-team.vercel.app/"> on http://spokeandchain.test/ (differs by scheme, host)
 ✗ A page address returns Qwik City data, not a page
     the sitemap lists 1 data address
-✗ Anyone can switch on preview mode
+✗ Anyone can switch on preview mode on a Qwik or SolidStart site
     /api/preview set preview_session with no secret
 ✗ The live Qwik or SolidStart site points search engines at a preview deployment
     canonical https://spokeandchain-git-main-team.vercel.app/ is on a preview domain
-✗ The data sent with a page has fields that look private
+✗ The data a Qwik or SolidStart page sends has fields that look private
     the embedded state has apiToken; /q-data.json has apiToken (field names only)
-✗ One address serves a page and JSON, and caches aren't told
+✗ One Qwik or SolidStart address serves a page and JSON, and caches aren't told
     The address returns HTML to a browser and JSON to Accept: application/json, and neither response lists Accept in Vary: a shared cache can hand the JSON to a visitor
 · This page calls server functions that anyone can address
     the page names ?qfunc= or ?qaction= 1 time (not called)

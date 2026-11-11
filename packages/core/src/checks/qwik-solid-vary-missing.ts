@@ -14,7 +14,7 @@ export const qwikSolidVaryMissing = defineCheck<PageSnapshot>({
   estimateChanges: "A CDN setting that is not editable on your plan adds a support request.",
   area: "Search & sharing",
   severity: "high",
-  title: "One address serves a page and JSON, and caches aren't told",
+  title: "One Qwik or SolidStart address serves a page and JSON, and caches aren't told",
   what: "The same address of this Qwik or SolidStart site returns HTML to a browser and JSON to a request with Accept: application/json (an endpoint and a page sharing a route), and neither response lists Accept in its Vary header.",
   why: "A shared cache (a CDN, a proxy) then keys both on the address alone and can hand the JSON to a visitor or a search engine: an outage that returns 200.",
   fix: "Send Vary: Accept on both answers (in the middleware or endpoint that negotiates), keep Vary in the CDN's cache key, or give the endpoint its own address.",

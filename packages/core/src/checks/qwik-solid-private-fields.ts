@@ -14,7 +14,7 @@ export const qwikSolidPrivateFields = defineCheck<PageSnapshot>({
     "Each field is dropped in the loader or server function that returns it; a field several pages read needs each of them checked.",
   area: "Security & email",
   severity: "high",
-  title: "The data sent with a page has fields that look private",
+  title: "The data a Qwik or SolidStart page sends has fields that look private",
   what: "The state Qwik or SolidStart embeds in this page (Qwik's qwik/json script, SolidStart's _$HY hydration data), or this Qwik page's q-data.json, has fields named like something private (password, token, secret, apiKey, private notes).",
   why: "Everything a loader or a hydrated component holds is sent to every visitor, whether or not the page shows it. A field that is only used on the server still travels with the page.",
   fix: "Return only the fields the page shows from the routeLoader$ or the server function. Keep secrets in server-only environment variables and read them only in server code.",

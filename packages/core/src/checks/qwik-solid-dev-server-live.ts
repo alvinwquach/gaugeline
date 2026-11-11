@@ -12,7 +12,7 @@ export const qwikSolidDevServerLive = defineCheck<PageSnapshot>({
     "A host that runs the dev command as its start command needs the build and start commands set.",
   area: "Security & email",
   severity: "high",
-  title: "The live site is a development server",
+  title: "The live Qwik or SolidStart site is a development server",
   what: "This page was served by the Vite development server of a Qwik or SolidStart site: it loads /@vite/client, /@qwik-city-plan or /_build/@fs/ files, or its Qwik container says it was rendered in dev mode.",
   why: "The dev server serves source files, can expose files from the project folder and is slow and unsupervised. It is not meant to face visitors.",
   fix: "Build the site and serve the build's output with the adapter or start command of your host, not the dev command. Check the host's start command.",

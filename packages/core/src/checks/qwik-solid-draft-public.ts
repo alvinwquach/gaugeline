@@ -34,7 +34,7 @@ export const qwikSolidDraftPublic = defineCheck<PageSnapshot>({
     "Several preview routes, or preview tools in the CMS that call the route, need the secret as well.",
   area: "Launch day",
   severity: "high",
-  title: "Anyone can switch on preview mode",
+  title: "Anyone can switch on preview mode on a Qwik or SolidStart site",
   what: "A preview or draft route on this Qwik or SolidStart site sets a preview or draft cookie for a request that carries no secret.",
   why: "Anyone who visits that address sees unpublished content (prices, announcements, pages nobody approved) as if it were live.",
   fix: "Make the route check a secret (compare a token from the request with one from your environment) before it sets the cookie, and answer 401 otherwise.",

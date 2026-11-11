@@ -1,38 +1,54 @@
-// check-community: allow-email (invented addresses at reserved example domains, for the members fixture)
-import { createWixAdapter } from "../wix.js";
+import { testKey } from "../../connectors/__tests__/fake.js";
+import { WIX_QUERY_ALLOW, createWixAdapter } from "../wix.js";
 import type { ContractEntry } from "./contract.js";
-import { MARLOW, MARLOW_MARKERS, marlowRoutes, marlowServe } from "./wix-fixture.js";
+import { MARLOW_SITE_ID, WIX_NATIVE_MARKERS, wixTransport } from "./wix-native-fixture.js";
 
 /**
- * Marlow Coaching: a career coach on Wix. The live site's sitemap is all Gaugeline can read: Wix's CMS items are
- * behind a POST query (Query Data Items), which Gaugeline never sends, so there are no fields, no key and no
- * drafts (see wix-fixture.ts).
+ * Marlow Coaching: a career coach on Wix, read through Wix Data's Query Data Items with an API key that may only
+ * read (the one POST, ADR-0006; see wix-native-fixture.ts). The live-site read with no key (the sitemap) has its
+ * own tests in wix.test.ts. Wix lists no collections to the adapter, so the settings name them. The key is the
+ * whole Authorization header value.
  */
+const WIX_KEY = testKey("wix-api");
+
 export const wixEntry: ContractEntry = {
   id: "wix",
-  make: ({ fetcher, sleep }) => createWixAdapter({ fetcher, site: MARLOW, sleep }),
-  transport: () => marlowServe(marlowRoutes()),
-  secrets: Object.values(MARLOW_MARKERS),
+  make: ({ fetcher, sleep }) =>
+    createWixAdapter({
+      env: { WIX_API_KEY: WIX_KEY },
+      fetcher,
+      sleep,
+      // Two items to a page, so a collection of three is read across two requests.
+      pageSize: 2,
+      settings: {
+        id: "wix",
+        siteId: MARLOW_SITE_ID,
+        urls: { Programs: "/programs/{slug}", Testimonials: "/testimonials/{id}" },
+      },
+    }),
+  transport: () => wixTransport({ key: WIX_KEY }),
+  key: WIX_KEY,
+  keyRaw: true,
+  queryAllow: [WIX_QUERY_ALLOW],
+  secrets: Object.values(WIX_NATIVE_MARKERS),
   expected: {
     types: [
-      { name: "post", count: 3 },
-      { name: "programs", count: 2 },
-      { name: "top-level", count: 3 },
+      { name: "Programs", count: 3 },
+      { name: "Testimonials", count: 2 },
     ],
+    fields: {
+      type: "Programs",
+      counts: { title: 3, blurb: 1, slug: 3 },
+      missing: "subtitle",
+    },
     published: {
-      options: { types: ["programs", "post"] },
-      ids: [
-        `${MARLOW}/post/ninety-day-plan`,
-        `${MARLOW}/post/salary-first-call`,
-        `${MARLOW}/post/sunday-dread`,
-        `${MARLOW}/programs/spring-cohort`,
-        `${MARLOW}/programs/one-to-one`,
-      ],
+      options: { types: ["Programs"], fields: { Programs: ["title", "blurb"] } },
+      ids: ["prog-spring-cohort", "prog-one-to-one", "prog-summer-intensive"],
     },
     draftsReachable: "not-applicable",
   },
-  // robots.txt, the index, the pages sitemap and the blog sitemap are answered; the programs sitemap is the first refused.
-  rateLimit: { options: { types: ["post", "top-level"] }, succeedFirst: 4, atLeast: 6 },
+  // Programs is read in two requests; the Testimonials request is the first refused.
+  rateLimit: { options: { types: ["Programs", "Testimonials"] }, succeedFirst: 2, atLeast: 3 },
 };
 
 /** The contract suite's entries for this adapter (collected by pnpm gen:adapters). */

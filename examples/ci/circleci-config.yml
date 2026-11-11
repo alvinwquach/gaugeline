@@ -1,0 +1,45 @@
+# CircleCI: check a site every night with Gaugeline.
+# Copy this into .circleci/config.yml.
+#
+# Variables: Project Settings > Environment Variables.
+#   SITE_URL                 the site to check, for example https://example.com
+#   GAUGELINE_SLACK_WEBHOOK  optional: where a summary goes. CircleCI hides the value; never write it here.
+# The nightly run is the workflow below (a scheduled workflow, 04:43 UTC, on main).
+#
+# Exit codes are kept: the check step saves its code, the report and the cache are stored,
+# and the last step exits with that same code (0 the check ran, 1 a "Fix this first"
+# finding, 2 Gaugeline could not run).
+version: 2.1
+
+jobs:
+  gaugeline:
+    docker:
+      - image: cimg/node:24.11
+    steps:
+      - restore_cache:
+          keys:
+            - gaugeline-npm-v1
+      - run:
+          name: Check the site
+          command: |
+            code=0; npx --yes gaugeline "$SITE_URL" --ci --no-open || code=$?; echo "$code" > gaugeline-exit-code
+      - save_cache:
+          key: gaugeline-npm-v1
+          paths:
+            - ~/.npm
+      - store_artifacts:
+          path: gaugeline-report.html
+      - run:
+          name: Pass the result on
+          command: exit "$(cat gaugeline-exit-code)"
+
+workflows:
+  nightly:
+    triggers:
+      - schedule:
+          cron: "43 4 * * *"
+          filters:
+            branches:
+              only: main
+    jobs:
+      - gaugeline
