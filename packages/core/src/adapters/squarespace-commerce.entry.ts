@@ -3,12 +3,11 @@ import type { AdapterEntry } from "./entry.js";
 import { lazy } from "./load.js";
 
 /**
- * The Squarespace commerce adapter.
- * TODO(new:adapter) say which key the platform offers and why it is the narrowest (read-only). Write the
- * same sentence at the top of docs/integrations/squarespace-commerce.md.
- *
- * If the platform's own API is in beta, add `beta: true` (as framer.entry.ts does): the run header then says
- * "(beta)" and the docs page says what may change.
+ * Squarespace's Commerce APIs (Products and Inventory) take an API key made in the site's Developer API
+ * Keys settings, with a permission chosen per API. Gaugeline asks for "Products" and "Inventory" set to
+ * read, and nothing else: the key then cannot change a product or an order. Pages and blog posts have no
+ * read API, so they stay with the live-site adapter (`builders`). The page is Gaugeline's own: it lists the
+ * endpoints used and how to make the key.
  */
 export const SQUARESPACE_COMMERCE_DESCRIPTION: AdapterDescription = {
   name: "Squarespace commerce",
@@ -18,6 +17,22 @@ export const SQUARESPACE_COMMERCE_DESCRIPTION: AdapterDescription = {
 
 /** The variable the key comes from. The adapter imports it from here. */
 export const SQUARESPACE_COMMERCE_TOKEN = "SQUARESPACE_COMMERCE_TOKEN";
+
+/** The one content type this adapter has: the store's products. */
+export const SQUARESPACE_COMMERCE_TYPE = "products";
+
+/**
+ * Bounds a run keeps to, in the platform's terms. There are no flags to raise them. They live here, in
+ * plain data, because the checks quote them and a check may not import the adapter module.
+ */
+export const SQUARESPACE_COMMERCE_LIMITS = {
+  /** Items read from one list. A bigger one is could-not-check, never a count of part of it. */
+  itemsPerType: 10_000,
+  /** Pages read from one list (the API's page size is fixed, so this bounds a server that never says "last"). */
+  pagesPerList: 400,
+  /** Product pages asked for on the live site in one run (one GET each). More are could-not-check, never skipped quietly. */
+  pages: 300,
+} as const;
 
 export const entries: readonly AdapterEntry[] = [
   {
@@ -40,13 +55,13 @@ export const entries: readonly AdapterEntry[] = [
     }),
     // The row in docs/integrations/index.md is generated from this (pnpm gen:adapters).
     docs: {
-      key: "read-only (TODO(new:adapter) the narrowest key, in one clause)",
+      key: "read-only (an API key with Products and Inventory set to read)",
       reads:
-        "TODO(new:adapter) what it reads, in one sentence. [Endpoints and the key](/docs/integrations/squarespace-commerce)",
+        "The Commerce Products and Inventory APIs: product prices and stock, compared with the product pages. Pages and blogs have no read API. [Endpoints and the key](/docs/integrations/squarespace-commerce)",
     },
     page: {
       slug: "integrations/squarespace-commerce",
-      title: "Squarespace commerce: content checks for sites built on Squarespace commerce",
+      title: "Squarespace commerce: price and stock checks for stores built on Squarespace",
     },
   },
 ];

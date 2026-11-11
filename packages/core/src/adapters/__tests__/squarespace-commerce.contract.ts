@@ -7,8 +7,8 @@ import {
 } from "./squarespace-commerce-fixture.js";
 
 /**
- * Larkspur Yoga Studio: a small studio on Squarespace commerce, with classes (one a draft), notices and teachers (see
- * squarespace-commerce-fixture.ts). TODO(new:adapter) describe the invented site in terms of the platform.
+ * Tideline Print Shop: a pop-up shop on Squarespace with four products, one of them hidden (a draft), read
+ * two to a page by cursor (see squarespace-commerce-fixture.ts).
  */
 const SQUARESPACE_COMMERCE_KEY = testKey("squarespace-commerce-adapter");
 
@@ -22,26 +22,24 @@ export const squarespaceCommerceEntry: ContractEntry = {
     }),
   transport: () => squarespaceCommerceTransport(undefined, { token: SQUARESPACE_COMMERCE_KEY }),
   key: SQUARESPACE_COMMERCE_KEY,
+  // The adapter has one type, so a name it does not have is could-not-check, not a count of zero.
+  unknownType: "could-not-check",
   secrets: Object.values(SQUARESPACE_COMMERCE_MARKERS),
   expected: {
-    types: [
-      { name: "classes", count: 2 },
-      { name: "notices", count: 1 },
-      { name: "teachers", count: 2 },
-    ],
+    types: [{ name: "products", count: 3 }],
     fields: {
-      type: "classes",
-      counts: { name: 2, summary: 1 },
+      type: "products",
+      counts: { name: 3, description: 2 },
       missing: "subtitle",
     },
     published: {
-      options: { types: ["classes"], fields: { classes: ["name", "summary"] } },
-      ids: ["c-morning", "c-evening"],
+      options: { types: ["products"], fields: { products: ["name", "description"] } },
+      ids: ["p-dawn", "p-tote", "p-zine"],
     },
     draftsReachable: true,
   },
-  // The types and the first type's page are answered; the second type's page is the first refused.
-  rateLimit: { options: { types: ["classes", "teachers"] }, succeedFirst: 2, atLeast: 2 },
+  // The first products page (two items) is answered; the second page is the first refused.
+  rateLimit: { options: { types: ["products"] }, succeedFirst: 1, atLeast: 2 },
 };
 
 /** The contract suite's entries for this adapter (collected by pnpm gen:adapters). */
