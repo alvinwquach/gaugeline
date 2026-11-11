@@ -1,5 +1,11 @@
 import { Readable } from "node:stream";
 import { createFetcher, type Fetcher, type Transport } from "../../fetcher.js";
+import {
+  addressProblem,
+  allowProblems,
+  bodyProblem,
+  type ReadOnlyQueryAllow,
+} from "../../fetch/read-only-query.js";
 import type { AdapterMember, ContentAdapter, PublishedOptions, TypeCount } from "../types.js";
 
 /**
@@ -26,6 +32,13 @@ export interface ContractEntry {
    * published reads carry none, so the key never goes where it is not needed.
    */
   keyHeader?: { value: string };
+  /**
+   * The read-only query endpoints this adapter may POST to (ADR-0006), if it sends any. Leave it out
+   * for an adapter that only GETs: the suite then fails on the first POST it builds. Each entry is
+   * checked as written (a documented endpoint, a body shape, no write-looking key) and every POST the
+   * adapter builds must match one entry and carry a body that is a query.
+   */
+  queryAllow?: readonly ReadOnlyQueryAllow[];
   /** Text that is in the platform's content, including an unpublished draft, and must never come back. */
   secrets: readonly string[];
   expected: {
@@ -57,12 +70,19 @@ export interface Seen {
   method: string;
   url: string;
   headers: Record<string, string>;
+  /** The JSON text of a POST's body. */
+  body?: string;
 }
 
 /** Every request the transport is asked to send, in order. */
 export function recording(base: Transport, seen: Seen[]): Transport {
   return (url, req) => {
-    seen.push({ method: req.method, url: url.href, headers: req.headers });
+    seen.push({
+      method: req.method,
+      url: url.href,
+      headers: req.headers,
+      ...(req.body === undefined ? {} : { body: req.body }),
+    });
     return base(url, req);
   };
 }
@@ -102,19 +122,60 @@ const READ_ONLY = new Set(["GET", "HEAD"]);
 const GRAPHQL_WRITE = /(^|[\s{}(),])(mutation|subscription)\b/i;
 
 /**
- * What is wrong with the requests an adapter built: a method other than GET or HEAD, or a GraphQL
- * document that is not a query (a mutation or a subscription) in the address. An empty list is
- * the contract's "no request that could write is ever built".
+ * Why a POST is not a read-only query under these allowlist entries, or undefined when it is one.
+ * The reason never repeats the body.
  */
-export function requestProblems(seen: readonly Seen[]): string[] {
+function postProblem(r: Seen, allows: readonly ReadOnlyQueryAllow[]): string | undefined {
+  const url = new URL(r.url);
+  const candidates = allows.filter((a) => addressProblem(url, a) === undefined);
+  if (candidates.length === 0)
+    return `POST ${r.url}: matches no allowlist entry (https, host, path, no query string)`;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(r.body ?? "");
+  } catch {
+    return `POST ${r.url}: the body is not JSON`;
+  }
+  const reasons = candidates.map((a) => bodyProblem(a, parsed));
+  if (reasons.some((why) => why === undefined)) return undefined;
+  return `POST ${r.url}: the body is not a read-only query (${reasons[0]})`;
+}
+
+/**
+ * What is wrong with the requests an adapter built: a PUT, PATCH, DELETE or any other method (never
+ * allowed); a POST that matches no entry of the adapter's `queryAllow` or whose body is not a query
+ * of that entry's shape (ADR-0006); or a GraphQL document that is not a query (a mutation or a
+ * subscription) in the address. An empty list is the contract's "no request that could write is
+ * ever built".
+ */
+export function requestProblems(
+  seen: readonly Seen[],
+  allows: readonly ReadOnlyQueryAllow[] = [],
+): string[] {
   const out: string[] = [];
   for (const r of seen) {
-    if (!READ_ONLY.has(r.method.toUpperCase()))
-      out.push(`${r.method} ${r.url}: only GET and HEAD are ever built`);
+    const method = r.method.toUpperCase();
+    if (method === "POST") {
+      const why = postProblem(r, allows);
+      if (why !== undefined) out.push(why);
+    } else if (!READ_ONLY.has(method))
+      out.push(`${r.method} ${r.url}: only GET, HEAD and an allowlisted query POST are ever built`);
     const url = new URL(r.url);
     for (const [name, value] of url.searchParams)
       if (["query", "variables", "operationName"].includes(name) && GRAPHQL_WRITE.test(value))
         out.push(`${r.url}: the ${name} parameter holds a GraphQL mutation or subscription`);
+  }
+  return out;
+}
+
+/** What is wrong with the allowlist entries an adapter declares (none is fine for an adapter that only GETs). */
+export function allowlistProblems(allows: readonly ReadOnlyQueryAllow[]): string[] {
+  const out: string[] = [];
+  const ids = new Set<string>();
+  for (const a of allows) {
+    if (ids.has(a.id)) out.push(`${a.id}: the id is used twice`);
+    ids.add(a.id);
+    for (const p of allowProblems(a)) out.push(`${a.id}: ${p}`);
   }
   return out;
 }

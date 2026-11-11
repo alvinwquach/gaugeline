@@ -3,7 +3,16 @@ import { collectPublished } from "../collect.js";
 import { BUILT_ADAPTERS } from "../registry.js";
 import { AdapterCouldNotCheck, AdapterRateLimitedError, KEY_KINDS } from "../types.js";
 import type { PublishedDoc } from "../types.js";
-import { rateLimited, refusing, requestProblems, world, type ContractEntry } from "./contract.js";
+import { isVerified } from "../../fetch/read-only-query.js";
+import {
+  allowlistProblems,
+  rateLimited,
+  refusing,
+  requestProblems,
+  world,
+  type ContractEntry,
+  type Seen,
+} from "./contract.js";
 import { ENTRIES } from "./entries.js";
 
 afterEach(() => vi.restoreAllMocks());
@@ -12,7 +21,9 @@ const HEX = /^[0-9a-f]{16}$/;
 const DOC_KEYS = new Set(["id", "type", "url", "slug", "publishedAt", "updatedAt", "fieldHashes"]);
 
 /** Everything an adapter says in one run, as text: results and the messages of what it throws. */
-async function everything(entry: ContractEntry): Promise<{ text: string; seen: string[] }> {
+async function everything(
+  entry: ContractEntry,
+): Promise<{ text: string; seen: string[]; requests: Seen[] }> {
   const { adapter, seen } = world(entry);
   const parts: unknown[] = [adapter.describe(), await adapter.types()];
   const fields = entry.expected.fields;
@@ -27,7 +38,11 @@ async function everything(entry: ContractEntry): Promise<{ text: string; seen: s
   parts.push((await collectPublished(adapter, entry.expected.published.options)).docs);
   parts.push((await collectPublished(adapter)).docs);
   parts.push(await adapter.draftsReachable());
-  return { text: JSON.stringify(parts), seen: seen.map((s) => `${s.method} ${s.url}`) };
+  return {
+    text: JSON.stringify(parts),
+    seen: seen.map((s) => `${s.method} ${s.url}`),
+    requests: seen,
+  };
 }
 
 describe.each(ENTRIES)("the adapter contract: $id", (entry) => {
@@ -191,13 +206,24 @@ describe.each(ENTRIES)("the adapter contract: $id", (entry) => {
     expect(await world(entry).adapter.draftsReachable()).toBe(entry.expected.draftsReachable);
   });
 
-  it("builds no request but GET or HEAD, and no GraphQL mutation, whatever it is asked", async () => {
+  it("declares an allowlist that is well formed and documented (none is fine for a GET-only adapter)", () => {
+    const allows = entry.queryAllow ?? [];
+    expect(allowlistProblems(allows)).toEqual([]);
+    for (const a of allows) {
+      expect(new URL(a.docs.url).protocol).toBe("https:");
+      // An entry the vendor's page was not read for is allowed, and says so (docs.checked: null).
+      expect(isVerified(a)).toBe(a.docs.checked !== null);
+    }
+  });
+
+  it("builds no request but GET or HEAD, a POST only to its allowlist, and no GraphQL mutation, whatever it is asked", async () => {
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("an adapter must use the fetcher"));
-    const { seen } = await everything(entry);
+    const { seen, requests } = await everything(entry);
     expect(seen.length).toBeGreaterThan(0);
+    expect(requestProblems(requests, entry.queryAllow)).toEqual([]);
     const w = world(entry);
     await w.adapter.types();
-    expect(requestProblems(w.seen)).toEqual([]);
+    expect(requestProblems(w.seen, entry.queryAllow)).toEqual([]);
     expect(globalThis.fetch).not.toHaveBeenCalled();
   });
 
@@ -273,7 +299,7 @@ describe.each(ENTRIES)("the adapter contract: $id", (entry) => {
       expect(got).toEqual(members.expected);
       const text = JSON.stringify(got);
       for (const address of members.addresses) expect(text).not.toContain(address);
-      expect(requestProblems(w.seen)).toEqual([]);
+      expect(requestProblems(w.seen, entry.queryAllow)).toEqual([]);
     },
   );
 });

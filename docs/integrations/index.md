@@ -51,7 +51,7 @@ An adapter returns counts and fingerprints, never the client's text:
 - **Drafts reachable**: whether the key can see unpublished work. It asks for a count, never for a draft.
 - **Members**, where the platform lists them and the key may read them: a masked address and a role ("r***@client.example", admin). The [handoff report](/docs/guides/handoff) reads the same list through its own reader, with more detail, and is unchanged.
 
-Reports show field names and the mismatch, never the client's words. Anything an adapter reads is only ever read with GET or HEAD (or a GraphQL query, never a mutation), through the same fetcher as every other request, which refuses private and metadata addresses. Anything the platform does not expose is reported as could not check with the reason; nothing is ever scraped from an admin screen.
+Reports show field names and the mismatch, never the client's words. Anything an adapter reads is only ever read with GET or HEAD (or, where the platform answers a read only to a POST, a documented read-only query on the adapter's allowlist: a GraphQL query, never a mutation, or a JSON query with the vendor's documented keys; see ADR-0006), through the same fetcher as every other request, which refuses private and metadata addresses. Anything the platform does not expose is reported as could not check with the reason; nothing is ever scraped from an admin screen.
 
 A platform that asks Gaugeline to slow down (HTTP 429) is waited for once when it says how long and the wait is a minute or less. If it still refuses, the run keeps what it had read and says it is partial: "Read 2 items, then the platform asked Gaugeline to slow down. Try again in 120 seconds. The rest was not read, so what is listed is not everything."
 

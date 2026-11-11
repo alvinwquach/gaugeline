@@ -52,7 +52,25 @@ export type {
   FetcherOptions,
   GetOptions,
   Hop,
+  QueryOptions,
 } from "./fetcher.js";
+export {
+  MAX_QUERY_BODY_BYTES,
+  QueryRefusedError,
+  allowProblems,
+  bodyProblem,
+  isReadOnlyBody,
+  isVerified,
+  isWriteKey,
+  matchesPath,
+  queryRefusal,
+} from "./fetch/read-only-query.js";
+export type {
+  GraphqlQueryShape,
+  JsonQueryShape,
+  QueryBodyShape,
+  ReadOnlyQueryAllow,
+} from "./fetch/read-only-query.js";
 export { Semaphore } from "./semaphore.js";
 export { BUDGET_KINDS, LIMITS, createBudget, formatSampleSummary } from "./limits.js";
 export type { Budget, BudgetKind, BudgetSummary, BudgetTally, Limits } from "./limits.js";
@@ -622,7 +640,7 @@ export type { LiveResult, LiveRow } from "./tools/check-redirects.js";
 export { classifyAddress, createAddressPolicy, isTarget } from "./net/address-policy.js";
 export type { AddressClass } from "./net/address-policy.js";
 export { REQUEST_KINDS, requestRows } from "./request-log.js";
-export type { RequestKind, RequestRow } from "./request-log.js";
+export type { QueryRecord, RequestKind, RequestRow } from "./request-log.js";
 export {
   MAX_SAVED_PAGE_BYTES,
   MAX_SAVED_REQUESTS,

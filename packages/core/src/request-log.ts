@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from "node:async_hooks";
+import type { QueryMethod } from "./fetch/read-only-query.js";
 import { redact } from "./redact.js";
 
 /**
@@ -36,6 +37,22 @@ export interface RequestRecord {
   /** Which get() call this belongs to, in call order, and which hop of its redirects. */
   chain: number;
   hop: number;
+}
+
+/**
+ * A read-only query (ADR-0006) as the fetcher keeps it: the address and the id of the allowlist
+ * entry that let it through, the status and the time. Never the body, never a header. Kept apart
+ * from `RequestRecord` so the published requests file (schema v1: GET and HEAD) does not change.
+ */
+export interface QueryRecord {
+  url: string;
+  kind: "query";
+  method: QueryMethod;
+  /** The id of the ReadOnlyQueryAllow entry. */
+  allow: string;
+  status: number | null;
+  error?: RequestError;
+  ms: number;
 }
 
 /** A request as the result carries it: the order is the order of the list. */

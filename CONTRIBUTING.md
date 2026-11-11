@@ -32,10 +32,35 @@ An adapter puts one content system (a CMS) behind `ContentAdapter` (`packages/co
 so every check that compares "what the CMS says is published" with "what the page shows" works on it.
 Sanity (`adapters/sanity.ts`) is the worked example. The rules are the same for every platform:
 
-- **Read only.** Every request is a GET or HEAD (or a GraphQL query, never a mutation) through the
+- **Read only.** Every request is a GET or HEAD (or a POST for a documented read-only query, below;
+  a GraphQL query, never a mutation) through the
   fetcher you are given. Start your docs page by listing, with links, the platform's documented read
   endpoints and how to make its narrowest key. If the platform has no read-only key, say so in the first
   paragraph and recommend the narrowest option (a dedicated low-role user, a scoped key).
+- **POST for a documented read-only query.** Some platforms answer a read only to a POST (Wix Data
+  `POST /wix-data/v2/items/query`, a GraphQL API that takes no GET). The only way to send one is
+  `fetcher.query(url, { allow, body })` ([ADR-0006](docs/adr/0006-read-only-post-queries.md)).
+  Declare the endpoint in your adapter's allowlist and in its `ContractEntry.queryAllow`; the host comes
+  from the adapter's configuration, the rest from the vendor's documentation, which the entry links
+  with the date you read it (`checked: null` marks an entry you did not verify):
+
+  ```ts
+  const WIX_ITEMS_QUERY: ReadOnlyQueryAllow = {
+    id: "wix-data-query",
+    method: "POST",
+    host: "www.wixapis.com",
+    path: "/wix-data/v2/items/query",
+    body: { kind: "json-query", keys: ["dataCollectionId", "query", "returnTotalCount"] },
+    docs: { url: "https://dev.wix.com/docs/rest/...", checked: "2026-11-11" },
+  };
+  ```
+
+  A body is a query or it is refused: one GraphQL `query` (no `mutation`, no `subscription`, one
+  operation), or a JSON object of the listed keys, none named like a write. A redirect is never
+  followed and a key goes to the entry's host only. The contract suite fails the adapter on a POST that
+  matches no entry, a body that is not a query, and any PUT, PATCH or DELETE. Do not add a file to the
+  list in `packages/core/src/__tests__/post-boundary.test.ts`.
+
 - **Fingerprints, never content.** Return ids, types, slugs or addresses, times, counts and a hash of
   each field the settings name (`hashValue`). A field's value is read only to be hashed. With no fields
   named, ask for none. Reports show field names and the mismatch, never the client's words.
@@ -62,7 +87,8 @@ To add one, in this order:
    `adapters/__tests__/sanity-fixture.ts`) and one `ContractEntry` for it in
    `adapters/__tests__/entries.ts`. The contract suite (`contract.test.ts`, one `describe.each` over
    every entry) then runs against it with no test of yours needed for these rules: counts and
-   fingerprints but never a value, a missing field counts 0, no request but GET or HEAD, a key that is
+   fingerprints but never a value, a missing field counts 0, no request but GET or HEAD (or a POST that
+   matches the entry's `queryAllow` with a body that is a query), a key that is
    refused is could-not-check, a rate limit is waited out once and then reported as partial. A platform
    that needs no key to read what is published (WordPress) sets `keyHeader` on its entry: the published
    reads then must carry no key, and only the reads that need it carry exactly that header.
