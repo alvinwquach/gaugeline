@@ -376,6 +376,8 @@ export { isNuxtFrameworkUrl } from "./nuxt/framework-urls.js";
 export { frameworkLinks } from "./links.js";
 export { consentConfigSchema } from "./consent.js";
 export type { ConsentConfig } from "./consent.js";
+export { staleDatesConfigSchema } from "./stale-dates/config.js";
+export type { StaleDatesConfig } from "./stale-dates/config.js";
 export { hiddenConfigSchema, isHidden, matchesGlob, overdue } from "./hidden.js";
 export type { HiddenConfig, HiddenSection } from "./hidden.js";
 export { eventRuleSchema, eventsConfigSchema, REGIONS } from "./events/types.js";

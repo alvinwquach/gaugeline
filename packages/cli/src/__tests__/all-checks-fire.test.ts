@@ -62,6 +62,8 @@ const FIXTURES = [
   "paid-downloads",
   "gated-downloads",
   "checkout-after",
+  "copy-date-passed",
+  "copyright-stale",
 ];
 
 /**
