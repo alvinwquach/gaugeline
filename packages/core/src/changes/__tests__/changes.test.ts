@@ -9,7 +9,7 @@ import { newFindings, parseSince, pruneRuns, runId } from "../history.js";
 import { buildPageRecord, diffRecords } from "../record.js";
 import { buildChanges, formatChanges, warrantyNote } from "../report.js";
 import { createChangeSources } from "../sources.js";
-import type { PageRecord, RunRecord } from "../types.js";
+import type { ChangeLabel, Deploy, PageRecord, Revision, RunRecord, SourceRead } from "../types.js";
 
 const html = (body: string, head = "<title>Events</title>") =>
   `<html><head>${head}</head><body><header><nav><a href="/menu">Menu</a></nav></header><main>${body}</main><footer>Open 5pm</footer></body></html>`;
@@ -75,7 +75,7 @@ describe("attribution table: unit", () => {
   const rev = { documentId: "events-page", time: "2026-10-03T14:00:00.000Z", editor: "Sam Ortiz" };
   const dep = { id: "dpl_2", createdAt: "2026-10-03T12:00:00.000Z", commit: "bbbbbbb1111" };
   const old = { id: "dpl_1", createdAt: "2026-10-01T12:00:00.000Z", commit: "aaaaaaa0000" };
-  const rows = [
+  const rows: [string, SourceRead<Revision>, SourceRead<Deploy>, ChangeLabel][] = [
     [
       "revision only",
       { state: "read", items: [rev] },
@@ -90,7 +90,7 @@ describe("attribution table: unit", () => {
     ],
     ["both", { state: "read", items: [rev] }, { state: "read", items: [old, dep] }, "both"],
     ["neither", { state: "read", items: [] }, { state: "read", items: [old] }, "unknown"],
-  ] as const;
+  ];
   it.each(rows)("%s", (_n, revisions, deploys, label) => {
     const a = attribute({ after, upTo, revisions, deploys });
     expect(a.label).toBe(label);

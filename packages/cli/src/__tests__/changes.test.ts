@@ -24,13 +24,13 @@ const tmp = () => {
 };
 
 /** Harbour Bar's events page: the owner can drop the booking link and the price changes between runs. */
-async function bar(state: { price: string; book: boolean }) {
+async function bar(state: { markup: boolean; book: boolean }) {
   const server = await startServer({
     "/": (_req: IncomingMessage, res: ServerResponse) => {
       res
         .writeHead(200, { "content-type": "text/html" })
         .end(
-          `<html><head><title>Events</title><script type="application/ld+json">${JSON.stringify({ "@type": "Product", sku: "QUIZ-TICKET", offers: { price: state.price, priceCurrency: "USD" } })}</script></head><body><main><h1>Events</h1><p>Quiz night</p>${state.book ? '<a href="/book">Book a table</a>' : ""}</main></body></html>`,
+          `<html><head><title>Events</title>${state.markup ? `<script type="application/ld+json">${JSON.stringify({ "@type": "Event", name: "Quiz night", startDate: "2026-11-12T19:00:00" })}</script>` : ""}</head><body><main><h1>Events</h1><p>Quiz night</p>${state.book ? '<a href="/book">Book a table</a>' : ""}</main></body></html>`,
         );
     },
   });
@@ -91,7 +91,7 @@ describe("gaugeline changes: arguments and help", () => {
 
 describe("gaugeline changes: end to end", () => {
   it("--since last keeps each run; changes names the link that went and says the records cannot say who", async () => {
-    const state = { price: "12.00", book: true };
+    const state = { markup: true, book: true };
     const server = await bar(state);
     const cwd = tmp();
     await run(
@@ -99,7 +99,7 @@ describe("gaugeline changes: end to end", () => {
       cwd,
       "2026-11-01T10:00:00Z",
     );
-    state.price = "14.00";
+    state.markup = false;
     state.book = false;
     await run(
       [server.origin, "--no-open", "--allow-private", "--since", "last"],
@@ -116,7 +116,7 @@ describe("gaugeline changes: end to end", () => {
 
     const text = await run(["changes", server.origin], cwd, "2026-11-04T10:00:00Z");
     expect(text.code).toBe(0);
-    expect(text.out).toContain("price-changed on /");
+    expect(text.out).toContain("page-lost-structured-data on /");
     expect(text.out).toContain("link removed: /book");
     expect(text.out).toContain("unknown: Gaugeline cannot tell what changed it");
     expect(text.out).not.toMatch(/fault|blame/i);
@@ -126,16 +126,16 @@ describe("gaugeline changes: end to end", () => {
     );
     expect(
       json.items.find(
-        (i: { finding: { checkId: string } }) => i.finding.checkId === "price-changed",
+        (i: { finding: { checkId: string } }) => i.finding.checkId === "page-lost-structured-data",
       ),
     ).toMatchObject({
       label: "unknown",
-      finding: { checkId: "price-changed", path: "/" },
+      finding: { checkId: "page-lost-structured-data", path: "/" },
     });
   });
 
   it("with a warranty in gaugeline.changes.json the note says inside or after, and no price", async () => {
-    const state = { price: "12.00", book: true };
+    const state = { markup: true, book: true };
     const server = await bar(state);
     const cwd = tmp();
     writeFileSync(
@@ -147,7 +147,7 @@ describe("gaugeline changes: end to end", () => {
       cwd,
       "2026-11-01T10:00:00Z",
     );
-    state.price = "14.00";
+    state.markup = false;
     await run(
       [server.origin, "--no-open", "--allow-private", "--since", "last"],
       cwd,
@@ -164,7 +164,7 @@ describe("gaugeline changes: end to end", () => {
   });
 
   it("a first run says so, with no section; a site never run says to run it", async () => {
-    const server = await bar({ price: "12.00", book: true });
+    const server = await bar({ markup: true, book: true });
     const cwd = tmp();
     expect((await run(["changes", server.origin], cwd, "2026-11-01T10:00:00Z")).out).toContain(
       "No runs are stored",
@@ -180,7 +180,7 @@ describe("gaugeline changes: end to end", () => {
   });
 
   it("history older than the retention is dropped and the date kept", async () => {
-    const state = { price: "12.00", book: true };
+    const state = { markup: true, book: true };
     const server = await bar(state);
     const cwd = tmp();
     writeFileSync(join(cwd, "gaugeline.changes.json"), JSON.stringify({ retentionDays: 7 }));
@@ -189,7 +189,7 @@ describe("gaugeline changes: end to end", () => {
       cwd,
       "2026-10-01T10:00:00Z",
     );
-    state.price = "14.00";
+    state.markup = false;
     await run(
       [server.origin, "--no-open", "--allow-private", "--since", "last"],
       cwd,

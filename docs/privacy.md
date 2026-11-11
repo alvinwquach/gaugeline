@@ -368,6 +368,22 @@ document), and then:
   the page's `Age`, `Last-Modified`, `Cache-Control` and cache status headers. Never a field's text from the
   content system or from the page, and no key.
 
+### What changed, and who changed it (gaugeline changes)
+
+`gaugeline changes` and the run history behind it ([What changed, and who changed it](guides/what-changed.md)) keep a
+small record of each page when a run uses `--since last`, in `.gaugeline/runs/` on your computer.
+
+- **What is kept.** Per page: the title and first h1 (cut at 120 characters), the canonical address, a hash of the main
+  content's text, the paths of the links in it, the structured-data type names and the script addresses. Per finding:
+  the check, the path and the title. Never the page's text, never the evidence line. Runs older than 90 days are
+  deleted (`retentionDays`).
+- **What it asks.** Only when `gaugeline.changes.json` names them, and only with `GET`: Sanity's edit history of the
+  document named for a page and the names of its editors, and the production deployments of a Vercel or Netlify
+  project. Tokens come from the environment and are blanked from every message.
+- **Personal data.** The one kind is an editor's name as the content system shows it. It is printed in the output of
+  the command and never written to the runs store. Without a name, the output says "an editor"; an email address is
+  never read into the output. Gaugeline never infers an author.
+
 ### WordPress (--wordpress)
 
 `--wordpress` on the page check compares a WordPress site's versions with the current releases and asks whether the
