@@ -90,7 +90,7 @@ the files older than 90 days (`retentionDays` in `gaugeline.changes.json`, 7 to 
 | Structured data | The `@type` names in the page's JSON-LD                                    |
 | Scripts         | Script addresses served, without query strings                             |
 
-Per finding it keeps the check, the path and the title, never the evidence text. When history was pruned,
+At most the newest 500 run files of a host are read, and pruning looks at the same 500, so older files beyond that stay on disk until you remove them. Per finding it keeps the check, the path and the title, never the evidence text. When history was pruned,
 a finding says `Changed before <date>, history not kept.` A finding on a page that has no earlier run is
 counted, not explained.
 
