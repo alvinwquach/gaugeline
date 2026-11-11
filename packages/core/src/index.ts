@@ -1384,3 +1384,23 @@ export type { Cause, Judgement, Observation, PageRead } from "./cost/judge.js";
 export { detectJumps, formatQuantity } from "./cost/usage.js";
 export type { Jump, Metric, UsageProviderRead, UsageRead } from "./cost/usage.js";
 export { readSanityUsage, readVercelUsage } from "./cost/providers.js";
+
+export { brandSchema, safeLogoUrl, servicesConfigSchema, servicesProblem } from "./audit/config.js";
+export type { Brand, Service, ServicesConfig } from "./audit/config.js";
+export { buildAuditPack, EVIDENCE_LINES, forProspect, joinNames, TOP } from "./audit/pack.js";
+export type {
+  AuditPack,
+  PackFinding,
+  PackGroup,
+  PackOptions,
+  PackRange,
+  PackTotals,
+} from "./audit/pack.js";
+export {
+  AUDIT_PACK_FILES,
+  auditPackFiles,
+  packBlocks,
+  renderPackHtml,
+  renderPackMarkdown,
+} from "./audit/render.js";
+export type { AuditPackFile } from "./audit/render.js";
