@@ -38,6 +38,8 @@ const FIXTURES = [
   "load-more",
   "hidden-library",
   "next-like",
+  "sveltekit-like",
+  "sveltekit-dev",
   "refusing",
   "tag-rules",
   "nav-events",
