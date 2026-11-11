@@ -24,10 +24,12 @@ export const COMMANDS = [
   "renewals",
   "handoff",
   "cost",
+  "backups",
   "audit",
   "migration",
   "advisory",
   "init",
+  "deploy-gate",
 ] as const;
 export type Command = (typeof COMMANDS)[number];
 
@@ -99,6 +101,22 @@ export const HELP: Record<string, string> = {
       "the pages by likely cause, then what to fix. Read-only: GET only, it never",
       "buys, upgrades or changes anything. The same checks run in the page check with",
       "--cost, and so in gaugeline run --all --cost.",
+    ].join("\n"),
+    footer: "Exit codes: 0 ran, 1 --ci with a fix-first finding, 2 could not run",
+  }),
+  backups: renderHelp(FLAGS, "backups", {
+    usage: "gaugeline backups <address> [options]",
+    summary: [
+      "Find out when a client's content and database were last backed up, before",
+      "something is wiped. Reads, where a documented read-only API exists, Supabase's",
+      "backups and point-in-time recovery (SUPABASE_ACCESS_TOKEN and a project in",
+      "gaugeline.backups.json), Sanity's dataset backups (SANITY_TOKEN) and any folder",
+      "of dated export files you list in gaugeline.backups.json. Flags no recent",
+      "backup (older than 7 days unless you set maxAgeDays), backups not enabled and",
+      "an export far smaller than the one before. Platforms whose backup status",
+      "cannot be read become a checklist line. Read-only: GET only, it never starts a",
+      "backup or an export, and never opens an export file. The same checks run in",
+      "the page check with --backups, and so in gaugeline run --all --backups.",
     ].join("\n"),
     footer: "Exit codes: 0 ran, 1 --ci with a fix-first finding, 2 could not run",
   }),
@@ -211,6 +229,19 @@ export const HELP: Record<string, string> = {
       "nothing.",
     ].join("\n"),
     footer: "Exit codes: 0 ran, 2 could not run",
+  }),
+  "deploy-gate": renderHelp(FLAGS, "deploy-gate", {
+    usage: "gaugeline deploy-gate [<address>] [options]",
+    summary: [
+      "Check a preview deployment on Vercel, Netlify or Cloudflare Pages before it",
+      "goes to production. Type the preview's address, or leave it out and Gaugeline",
+      "reads it from the host's environment (VERCEL_URL, DEPLOY_PRIME_URL,",
+      "CF_PAGES_URL). It refuses to run when the environment says production. Runs the",
+      "normal checks (GET only; probing checks stay off without --owner-consent) and",
+      "ends with one line: gate: clear, or gate: would block. Report only: the exit",
+      "code stays 0 until you add --block.",
+    ].join("\n"),
+    footer: "Exit codes: 0 ran, 1 --block and a fix-first finding, 2 could not run",
   }),
   open: renderHelp(FLAGS, "open", {
     usage: "gaugeline open [address] [options]",

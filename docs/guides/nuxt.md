@@ -119,7 +119,7 @@ The same site with `--owner-consent`, as the bakery's owner has agreed to:
     /__nuxt_devtools__/client/ answered 200 with the Nuxt DevTools page
 ✗ The live Nuxt site points search engines at a preview or local address
     canonical https://marrow-rye-git-main.vercel.app/; hreflang alternates https://marrow-rye-git-main.vercel.app/, https://marrow-rye-git-main.vercel.app/fr are on a preview or local address
-✗ Anyone can switch on preview mode
+✗ Anyone can switch on Nuxt preview mode
     asked with ?preview=true and no secret, the page was rendered with preview mode on (enabled: true)
 ✗ A Nuxt page sends fields that look private to every visitor
     3 fields in the page's embedded state look private: mailgunApiKey (an API key, in the public config), stripeSecretKey (a secret, in the payload), supabaseServiceRole (a service role key, in the payload). Values are not shown

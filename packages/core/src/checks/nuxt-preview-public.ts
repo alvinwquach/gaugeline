@@ -21,7 +21,7 @@ export const nuxtPreviewPublic = defineCheck<PageSnapshot>({
     "Often one shouldEnable function that compares a token from the request with one in runtimeConfig. Allow longer if preview links are shared with editors who then need the token.",
   area: "Launch day",
   severity: "high",
-  title: "Anyone can switch on preview mode",
+  title: "Anyone can switch on Nuxt preview mode",
   what: "This Nuxt page, asked with ?preview=true and no secret, is rendered on the server with preview mode switched on (the page's own state says enabled: true).",
   why: "Pages that show unpublished content in preview mode (prices before an announcement, drafts nobody approved) show it to anyone who adds the query to the address.",
   fix: "Give usePreviewMode a shouldEnable that checks a secret (compare a token from the request with one from runtimeConfig, server side) and returns false otherwise, and fetch draft content only from server routes that check the same secret.",
