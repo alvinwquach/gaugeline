@@ -316,13 +316,22 @@ export { NOTIFY_TIMEOUT_MS, postJson, providerMessage, safeTarget } from "./noti
 export { escapeHtml, renderLookedRight, renderReport, renderSampled } from "./report/html.js";
 export type { ReportInput } from "./report/html.js";
 export {
-  briefMarkdown,
+  buildBrief,
   costRange,
   escapeMarkdown,
   formatCurrency,
   hoursRange,
+  renderBriefMarkdown,
 } from "./report/brief.js";
 export type { BriefOptions } from "./report/brief.js";
+export {
+  BRIEF_SCHEMA_VERSION,
+  BRIEF_SCHEMA_VERSION as BRIEF_SCHEMA,
+  briefItemSchema,
+  briefSchema,
+  parseBrief,
+} from "./report/brief-schema.js";
+export type { Brief, BriefEvidencePart, BriefItem, BriefNotSized } from "./report/brief-schema.js";
 export {
   RUN_SNAPSHOT_SCHEMA,
   buildRunSnapshot,

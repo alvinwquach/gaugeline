@@ -33,3 +33,7 @@ The request log and the page's data are not part of `--json`. With `--save-reque
 written to a separate file with its own `schemaVersion` and its own schema,
 `packages/core/schema/requests.v1.json`; see
 [Privacy and safety](../privacy.md#saving-the-requests-save-requests).
+
+## The work order is its own document
+
+`buildBrief` in `@gaugeline/core` returns the work order as data (the same items `gaugeline brief` writes as Markdown). It has its own `schemaVersion` and its own schema, `packages/core/schema/brief.v1.json`, and changing it never changes the `--json` result. See [Use the work order from code](../no-developer.md#use-the-work-order-from-code).
