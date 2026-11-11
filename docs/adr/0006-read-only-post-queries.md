@@ -107,6 +107,6 @@ fetcher or `notify/post.ts` builds.
 - `packages/core/src/__tests__/fetcher-query.test.ts` (`fetcher.query` refuses everything else, never
   follows a redirect, and logs the allowlist id and never the body)
 - `packages/core/src/__tests__/post-boundary.test.ts` (no other file builds a `POST`, `PUT`, `PATCH`
-  or `DELETE`; the allowed files are `fetcher.ts`, `notify/post.ts` and the app's own page)
-- `packages/core/src/adapters/__tests__/contract.ts` and `contract-post-guard.test.ts` (the contract
+  or `DELETE`; the allowed files are `packages/core/src/fetcher.ts`, `packages/core/src/notify/post.ts` and the app page `packages/app/src/api.ts`)
+- `packages/core/src/adapters/__tests__/contract.ts` and `packages/core/src/adapters/__tests__/contract-post-guard.test.ts` (the contract
   suite's guard, and proof it is not vacuous)
