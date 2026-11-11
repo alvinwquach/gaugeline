@@ -262,9 +262,9 @@ describe("the adapters entry in gaugeline.adapters.json: unit", () => {
     const fetcher = createFetcher({ transport: sanityTransport(), timeoutMs: 5000 });
     const [built] = createAdapters(adaptersConfigSchema.parse(ok), { env: ENV, fetcher });
     expect(built?.id).toBe("sanity");
-    expect(() => createAdapters({ adapters: [{ id: "wix" }] }, { env: ENV, fetcher })).toThrow(
-      /"wix" adapter is planned \(C-05\)/,
-    );
+    expect(() =>
+      createAdapters({ adapters: [{ id: "generic-api" }] }, { env: ENV, fetcher }),
+    ).toThrow(/"generic-api" adapter is planned \(C-14\)/);
     expect(() => createAdapters({ adapters: [{ id: "nope" }] }, { env: ENV, fetcher })).toThrow(
       ConfigError,
     );
