@@ -533,6 +533,12 @@ export {
 export type { NavCheckId, NavItem, NavLabelRow, NavResult, NavTab } from "./plan/nav.js";
 export { destinationKey, navRulesSchema, readRegions } from "./nav/read-regions.js";
 export type { NavEntry, NavRegion, NavRules, PageNav } from "./nav/read-regions.js";
+export { buildBaseline, readBaseline, SECURITY_HEADERS } from "./script-baseline/inventory.js";
+export type { Directives, ScriptBaseline } from "./script-baseline/inventory.js";
+export { diffBaselines } from "./script-baseline/diff.js";
+export type { BaselineChange } from "./script-baseline/diff.js";
+export { KNOWN_BAD_HOSTS, knownBadHost } from "./script-baseline/known-bad.js";
+export type { KnownBadHost } from "./script-baseline/known-bad.js";
 export { COMPARED, diffNav, inboundLinks, orphans } from "./nav/graph.js";
 export type { NavChange, NavChangeKind } from "./nav/graph.js";
 export { buildContentSnapshot, contentKey } from "./snapshot/page-snapshot.js";

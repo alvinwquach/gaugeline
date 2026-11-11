@@ -55,11 +55,14 @@ Checked with `gaugeline ryeember.example --since last`, which saves the menu:
 ```text title=Output
 · Shared links have no picture
     no og:image on http://ryeember.example/
+? csp-loosened could not be checked: no saved scripts and headers to compare with yet: this run saves them (/)
 ? nav-changed could not be checked: no saved menu to compare with yet: this run saves one (/)
 ? page-gone could not be checked: no saved pages to compare with yet: this run saves them (/)
 ? page-lost-content could not be checked: no saved pages to compare with yet: this run saves them (/)
 ? page-lost-items could not be checked: no saved pages to compare with yet: this run saves them (/)
 ? page-lost-structured-data could not be checked: no saved pages to compare with yet: this run saves them (/)
+? script-changed could not be checked: no saved scripts and headers to compare with yet: this run saves them (/)
+? security-header-loosened could not be checked: no saved scripts and headers to compare with yet: this run saves them (/)
 ? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
     Mail records are read from DNS only with --dns. Rerun with --dns to check them.
 

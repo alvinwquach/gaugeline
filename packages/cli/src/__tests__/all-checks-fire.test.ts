@@ -47,6 +47,7 @@ const FIXTURES = [
   "form-checks",
   "paid-downloads",
   "gated-downloads",
+  "checkout-after",
 ];
 
 /**
@@ -129,6 +130,12 @@ const NEEDS_LIVE_STORES = new Set([
   "crm-insecure",
   // A menu compared with the last run's: confirmed in-process (nav.test.ts, nav-before then nav-after).
   "nav-changed",
+  // A page's third-party scripts and security headers compared with the last run's: confirmed in-process
+  // (core checks/__tests__/script-baseline.test.ts) and end to end (script-baseline.test.ts, checkout-before
+  // then checkout-after). script-known-bad-host needs no earlier run and fires on checkout-after.
+  "script-changed",
+  "csp-loosened",
+  "security-header-loosened",
   // A page compared with its own last-run snapshot: confirmed in-process (snapshot.test.ts,
   // snap-before then snap-after) and end to end (page-snapshots.test.ts).
   "page-gone",

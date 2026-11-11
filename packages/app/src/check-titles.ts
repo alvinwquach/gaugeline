@@ -21,6 +21,7 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "crm-insecure": ["A form sends details over an insecure connection", "Leads"],
   "crm-no-tracking": ["Leads from this form arrive without where they came from", "Leads"],
   "crm-went-quiet": ["Leads have stopped arriving", "Leads"],
+  "csp-loosened": ["The Content-Security-Policy allows more than it did", "Security & email"],
   "data-assertion-failed": ["A data assertion found rows that should not exist", "Visitors"],
   "data-stale": ["The numbers on this page are older than they should be", "Visitors"],
   "dataset-private-types": [
@@ -95,6 +96,7 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "Your organization has more than one identity in structured data",
     "Search & sharing",
   ],
+  "script-known-bad-host": ["A script comes from a host on the known-bad list", "Security & email"],
   "secret-in-js": ["A private key is in your site's JavaScript", "Security & email"],
   "sitemap-dead": ["Your sitemap lists pages that don't exist", "Search & sharing"],
   "staging-indexable": ["Your staging site can be found by search engines", "Launch day"],
@@ -256,6 +258,14 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "schema-template-missing-type": [
     "A page is missing structured data its template requires",
     "Search & sharing",
+  ],
+  "script-changed": [
+    "A third-party script is new, or lost its integrity attribute",
+    "Security & email",
+  ],
+  "security-header-loosened": [
+    "A security header sends less protection than before",
+    "Security & email",
   ],
   "sitemap-host": ["Your sitemap lists pages on a different address", "Search & sharing"],
   "sitemap-missing": ["Search engines can't find a list of your pages", "Search & sharing"],
@@ -452,6 +462,12 @@ export const CHECK_TEXT: Readonly<
     "A form can load, accept the visitor's details and thank them while the lead goes nowhere: a changed field, an expired integration user, a full queue. Nobody sees it until the phone stays quiet.",
     "Submit the form yourself with a test lead (your own, in a sandbox if you have one), see whether it reaches the CRM, and check the form's connection to Salesforce and the integration user's access.",
     "Through Salesforce's read-only MCP server (soqlQuery on Lead: COUNT and MAX(CreatedDate) since 14 days ago, or four times quietDays if longer): no lead created for quietDays whole days (default 3) after at least 5 in the lookback, on a page that has a form or embed from Pardot, Web-to-Lead, HubSpot, Formstack, Marketo or Typeform; a page with no recognised form, or too few leads to call it quiet, is could-not-check",
+  ],
+  "csp-loosened": [
+    "Against the last run saved with --since last, the Content-Security-Policy header is gone, a directive is gone, or a directive lists a source it did not before (for example 'unsafe-inline').",
+    "The policy decides which scripts and frames the browser will run. A looser one lets more code in, and a deploy can loosen it without anyone deciding to.",
+    "Find the deploy or the setting that changed it. If the change was meant, keep it; if not, restore the line. A new source is better as a nonce or a host than as 'unsafe-inline'.",
+    "With --since last only. The header of the page's final response, split into directives. A source added, a directive removed or the header removed is reported; a source removed or a directive added is not. Nonces and hashes are one word, so a new nonce per request is not a change. A risky source ('unsafe-inline', 'unsafe-eval', *, data:, https:) added to default-src or a script directive is high. Meta-tag policies and Content-Security-Policy-Report-Only are not read. On a first run: could not check",
   ],
   "data-assertion-failed": [
     "A query you wrote in gaugeline.sources.json to return nothing returned rows: two bookings in one slot, a paid order with no matching payment, a product with no price id.",
@@ -752,6 +768,12 @@ export const CHECK_TEXT: Readonly<
     "Search engines join structured data across pages by @id. Two ids make two organizations, splitting what is known about yours.",
     "Use one fixed @id for the Organization and one for the WebSite on every page, for example https://example.com/#organization.",
     "an Organization or WebSite @id (compared after resolving and trimming a trailing slash) differs from organizationId/websiteId, or, with no guide, differs between the sampled pages",
+  ],
+  "script-known-bad-host": [
+    "The page loads a script from a host that a published report says served injected or malicious code.",
+    "A script runs with the page's full access, including a checkout form. Whoever controls the host controls what it does to your visitors.",
+    "Remove the script tag, or point it at a copy you host or at a service you trust. Then ask whoever added it why it was there.",
+    "a script src whose host, or a parent domain of it, is in data/known-bad-script-hosts.json. The list names its source for every host. Nothing is requested: the address is read from the page",
   ],
   "secret-in-js": [
     "A secret key (a Stripe secret or restricted key, a Sanity token, or a long random value named like a secret) is in JavaScript the site sends to every visitor.",
@@ -1364,6 +1386,18 @@ export const CHECK_TEXT: Readonly<
     "Rich results for that kind of page depend on the type, and one template that drifted usually means every page built from it did.",
     "Add the missing type to the template's structured data component.",
     "the most specific matching template's require list has a type missing from the page's JSON-LD (@type anywhere, @graph included); common subtypes count (an AboutPage is a WebPage, a BlogPosting an Article); needs templates in gaugeline.schema.json",
+  ],
+  "script-changed": [
+    "Against the last run saved with --since last, the page loads a third-party script it did not load before, or one that had an integrity attribute no longer has it.",
+    "Any script on a checkout page can read what customers type. Knowing exactly which ones load, and noticing a new one, is what PCI DSS 11.6.1 asks of a payment page.",
+    "Confirm the script was added on purpose and by whom. Remove it if not. For one you keep, add its integrity attribute so a changed file stops loading.",
+    "With --since last only. Third-party means a host outside the page's registrable domain. A script is its host and path with no query string; the integrity attribute is present or not. Scripts that went away are not reported. On a first run: could not check",
+  ],
+  "security-header-loosened": [
+    "Against the last run saved with --since last, one of these headers is gone or weaker: Strict-Transport-Security, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy, Cross-Origin-Opener-Policy, Cross-Origin-Embedder-Policy, Cross-Origin-Resource-Policy.",
+    "These headers switch browser protections on. They vanish when a host, a CDN or a framework setting changes, and the site looks the same.",
+    "Find what changed in the hosting or header settings and put the header back, or confirm the change was meant.",
+    "With --since last only. The final response's headers. Reported: a header gone; Strict-Transport-Security with a smaller max-age or without includeSubDomains or preload; X-Content-Type-Options no longer nosniff; X-Frame-Options, Referrer-Policy and the Cross-Origin policies with a less strict value; a Permissions-Policy feature removed or given a new origin. On a first run: could not check",
   ],
   "sitemap-host": [
     "Every entry in the sitemap uses a different host than the site, for example a staging domain or the other of www and the bare domain.",

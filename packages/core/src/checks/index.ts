@@ -21,6 +21,12 @@ import { crmLateTracking } from "./crm-late-tracking.js";
 import { crmNoCampaignFields } from "./crm-no-campaign-fields.js";
 import { crmNoTracking } from "./crm-no-tracking.js";
 import { crmWentQuiet } from "./crm-went-quiet.js";
+import {
+  cspLoosened,
+  scriptChanged,
+  scriptKnownBadHost,
+  securityHeaderLoosened,
+} from "./script-baseline.js";
 import { dataAssertionFailed } from "./data-assertion-failed.js";
 import { dataBehindSource } from "./data-behind-source.js";
 import { dataNoStamp } from "./data-no-stamp.js";
@@ -179,6 +185,7 @@ export const PAGE_CHECKS = [
   crmNoCampaignFields,
   crmNoTracking,
   crmWentQuiet,
+  cspLoosened,
   dataAssertionFailed,
   dataBehindSource,
   dataNoStamp,
@@ -294,7 +301,10 @@ export const PAGE_CHECKS = [
   schemaIdDrift,
   schemaOrgRedefined,
   schemaTemplateMissingType,
+  scriptChanged,
+  scriptKnownBadHost,
   secretInJs,
+  securityHeaderLoosened,
   sitemapDead,
   sitemapHost,
   sitemapMissing,

@@ -116,6 +116,10 @@ export const UNLISTED: NavPage[] = [
     title: "Handoff: who owns what, and can the client get in without you",
   },
   { slug: "guides/hidden-text", title: "Hidden text aimed at AI assistants" },
+  {
+    slug: "guides/script-baseline",
+    title: "Script and header baseline: what loads on a payment page, and what changed",
+  },
   { slug: "connectors/listings", title: "Listings off the site" },
   { slug: "connectors/postgres", title: "A database as a source: Postgres and Supabase" },
   { slug: "sources/shopify", title: "Shopify as a price source" },
