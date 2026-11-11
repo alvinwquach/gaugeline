@@ -2,6 +2,7 @@ import type { Env } from "../connectors/types.js";
 import { ConfigError } from "../errors.js";
 import type { Fetcher } from "../fetcher.js";
 import type { AdaptersConfig } from "./config.js";
+import { FRAMER_DESCRIPTION, createFramerAdapter } from "./framer.js";
 import { SANITY_DESCRIPTION, createSanityAdapter } from "./sanity.js";
 import { SITEMAP_FEED_DESCRIPTION, createSitemapFeedAdapter } from "./sitemap-feed.js";
 import { WORDPRESS_DESCRIPTION, createWordPressAdapter } from "./wordpress.js";
@@ -100,6 +101,20 @@ export const BUILT_ADAPTERS: ReadonlyMap<string, BuiltAdapter> = new Map<string,
         }),
     },
   ],
+  [
+    "framer",
+    {
+      id: "framer",
+      describe: FRAMER_DESCRIPTION,
+      create: (c, settings) =>
+        createFramerAdapter({
+          fetcher: c.fetcher,
+          site: c.site,
+          settings,
+          ...(c.sleep ? { sleep: c.sleep } : {}),
+        }),
+    },
+  ],
 ]);
 
 /** A content system the docs list and the build order names, and no adapter yet. */
@@ -115,7 +130,6 @@ export interface PlannedAdapter {
  * Drupal ship first as C-14 recipes; a native adapter for them is built when someone asks.
  */
 export const PLANNED_ADAPTERS: readonly PlannedAdapter[] = [
-  { id: "framer", name: "Framer", branch: "C-06" },
   { id: "wix", name: "Wix", branch: "C-05" },
   { id: "generic-api", name: "Any headless CMS with a read API", branch: "C-14" },
   { id: "git-content", name: "Content kept in git", branch: "C-15" },

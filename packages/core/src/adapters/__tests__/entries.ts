@@ -2,12 +2,14 @@
 import { Readable } from "node:stream";
 import type { Transport } from "../../fetcher.js";
 import { testKey } from "../../connectors/__tests__/fake.js";
+import { createFramerAdapter } from "../framer.js";
 import { createSanityAdapter } from "../sanity.js";
 import { createSitemapFeedAdapter } from "../sitemap-feed.js";
 import { createStrapiAdapter } from "../strapi.js";
 import { createWebflowAdapter } from "../webflow.js";
 import { createWordPressAdapter } from "../wordpress.js";
 import type { ContractEntry } from "./contract.js";
+import { LANTERN, LANTERN_MARKERS, lanternRoutes, lanternServe } from "./framer-fixture.js";
 import { CONTENT_MARKERS, sanityTransport } from "./sanity-fixture.js";
 import { OAKLINE, OAKLINE_MARKERS, oaklineRoutes, serve } from "./sitemap-feed-fixture.js";
 import { CMS_URL, STRAPI_MARKERS, strapiTransport } from "./strapi-fixture.js";
@@ -248,10 +250,42 @@ export const strapiEntry: ContractEntry = {
   rateLimit: { options: { types: ["events", "menu-items"] }, succeedFirst: 1, atLeast: 2 },
 };
 
+/**
+ * Lantern Row: a ceramics pop-up on Framer. The live site's sitemap is all Gaugeline can read: Framer's
+ * CMS collections are behind the Server API (a WebSocket library, a key that can also change the
+ * project), so there are no fields, no key and no drafts (see framer-fixture.ts).
+ */
+export const framerEntry: ContractEntry = {
+  id: "framer",
+  make: ({ fetcher, sleep }) => createFramerAdapter({ fetcher, site: LANTERN, sleep }),
+  transport: () => lanternServe(lanternRoutes()),
+  secrets: Object.values(LANTERN_MARKERS),
+  expected: {
+    types: [
+      { name: "drops", count: 2 },
+      { name: "journal", count: 2 },
+      { name: "top-level", count: 3 },
+    ],
+    published: {
+      options: { types: ["journal", "drops"] },
+      ids: [
+        `${LANTERN}/journal/kiln-firing`,
+        `${LANTERN}/journal/glaze-notes`,
+        `${LANTERN}/drops/moonglaze-mugs`,
+        `${LANTERN}/drops/ember-bowls`,
+      ],
+    },
+    draftsReachable: "not-applicable",
+  },
+  // robots.txt and the sitemap are answered; the home page (looked at for feed links) is the first refused.
+  rateLimit: { options: { types: ["journal", "drops"] }, succeedFirst: 2, atLeast: 4 },
+};
+
 export const ENTRIES: readonly ContractEntry[] = [
   sanityEntry,
   sitemapFeedEntry,
   wordpressEntry,
   webflowEntry,
   strapiEntry,
+  framerEntry,
 ];

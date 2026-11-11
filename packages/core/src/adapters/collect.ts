@@ -62,7 +62,8 @@ const KEY_WORDS = {
  * used: "Content system: Sanity, with a read-only key. Endpoints and how to make the key: <docs>".
  */
 export function adapterHeader(d: AdapterDescription): string {
+  const name = d.beta === true ? `${d.name} (beta)` : d.name;
   if (d.noKey === true)
-    return `Content system: ${d.name}, with no key (it only reads pages the site already publishes). How it reads them: ${d.docsUrl}`;
-  return `Content system: ${d.name}, with ${KEY_WORDS[d.keyKind]}. Endpoints and how to make the key: ${d.docsUrl}`;
+    return `Content system: ${name}, with no key (it only reads pages the site already publishes). How it reads them: ${d.docsUrl}`;
+  return `Content system: ${name}, with ${KEY_WORDS[d.keyKind]}. Endpoints and how to make the key: ${d.docsUrl}`;
 }
