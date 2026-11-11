@@ -15,6 +15,7 @@ import type { Handoff } from "./handoff/reader.js";
 import type { Cost } from "./cost/reader.js";
 import type { Trackers } from "./trackers/reader.js";
 import type { Published } from "./published/reader.js";
+import type { Backups } from "./backups/reader.js";
 import type { Libraries } from "./libraries/reader.js";
 import type { WordPress } from "./wordpress/reader.js";
 import type { HiddenConfig } from "./hidden.js";
@@ -218,6 +219,11 @@ export interface CheckContext {
    * the page of each, once per site. Absent unless the run has --published: those checks then do nothing.
    */
   published?: Published;
+  /**
+   * What the backups checks read: each platform's backup status and each export folder's files, once per site.
+   * Absent unless the run has --backups or is `gaugeline backups`: those checks then do nothing.
+   */
+  backups?: Backups;
   /**
    * What the library check reads: the script files a page names, once each on first use. Absent unless the run
    * has --libraries: that check then does nothing.

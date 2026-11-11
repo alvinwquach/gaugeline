@@ -62,11 +62,11 @@ $ npx gaugeline marrowlane-ceramics.example --owner-consent
     <link rel="canonical" href="https://marrowlane-git-main-studio.vercel.app/"> on https://marrowlane-ceramics.example/ (differs by scheme, host, port)
 ✗ A page address returns Remix data, not a page
     the sitemap lists 1 data address
-✗ Anyone can switch on preview mode
+✗ Anyone can switch on Remix preview mode
     /preview set preview_session with no secret
 ✗ The live Remix site points search engines at a preview deployment
     canonical https://marrowlane-git-main-studio.vercel.app/ is on a preview domain
-✗ The data sent with a page has fields that look private
+✗ The data sent with a Remix page has fields that look private
     __reactRouterContext has wholesaleToken (field names only)
 ? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
     Mail records are read from DNS only with --dns. Rerun with --dns to check them.

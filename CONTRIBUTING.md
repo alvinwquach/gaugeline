@@ -16,9 +16,44 @@ network and no keys.
 ## Add a check
 
 Run `pnpm new:check <id> --area <area> --severity <level>`, fill in the four texts (what it catches,
-why it matters, how to fix it, the technical line) and the rule, then run `pnpm gen:checks` to
-regenerate the checks reference and `pnpm gen:skill` to regenerate the agent skill's table of findings. The whole walkthrough is in
+why it matters, how to fix it, the technical line) and the rule, then run `pnpm gen:all` to
+see the checks reference and the agent skill's table of findings with your check in them (do not commit what it writes: see
+[Generated files](#generated-files)). The whole walkthrough is in
 [docs/contributing/adding-a-check.md](docs/contributing/adding-a-check.md).
+
+## Generated files
+
+Some files are written by a script from the code: the check tables in `README.md` and `packages/cli/README.md`, the
+checks reference (`docs/checks.data.json`), the check-id lock (`docs/check-ids.lock.json`), the app's titles
+(`packages/app/src/check-titles.ts`), the flags table in `docs/options.md`, the adapter index
+(`docs/integrations/index.md`, `docs/adapter-pages.generated.ts` and the two `*.generated.ts` files in
+`packages/core/src/adapters`), the agent skill's tables, and `public-surface.lock.json`. The full list is
+`GENERATED_FILES` in `scripts/lib/gen-all.ts`. They used to change in every pull request that added a check, an
+adapter or a flag, so every other open pull request conflicted on them. Now:
+
+- **Your branch does not commit them.** Change the source (the check, the entry file, `flags.ts`), write the docs page and the
+  changeset, and leave the generated files as they are on `main`.
+- **CI regenerates them in its own checkout** (`pnpm gen:all`) before it builds, tests, lints and builds the docs. A pull request fails if
+  generation fails or breaks a rule (a TODO left in a check's text, a check id removed from the lock, a breaking change to the
+  public surface without its changeset), never because your committed copy differs from the generated one.
+- **One job on `main`** (`.github/workflows/regenerate.yml`) regenerates them after each merge and commits
+  `chore: regenerate generated files [skip ci]` as the github-actions bot. Its runs are serialised by a
+  concurrency group, and it skips its own commit.
+
+To run the tests on your machine, run `pnpm gen:all` first: it writes all of them in your working tree (`--no-surface` skips the
+public-surface rules). Before you commit, put them back:
+
+```bash
+pnpm gen:all --restore            # git restore --source=origin/main on the generated files only
+# the same by hand, for a rebase that stopped on one of them:
+git checkout origin/main -- docs/checks.data.json docs/check-ids.lock.json README.md   # and the others on the list
+```
+
+`pnpm new:check` also appends the id to `docs/check-ids.lock.json`: restore that file too.
+
+A few lists are still written by hand and can still conflict: the pages in `docs/nav.ts`, the sorted id lists in
+`packages/core/src/checks/__tests__/runner.test.ts`, the fixture list in `packages/cli/src/__tests__/all-checks-fire.test.ts`
+and the `// checks:start` block of `packages/core/src/checks/index.ts`. Keep both sides when they conflict.
 
 ## Add a fixture
 
@@ -43,13 +78,13 @@ Sanity (`adapters/sanity.ts`) is the worked example. The rules are the same for 
   Write the entry in your adapter's own file with `registerQueryAllow` and export what it returns;
   `fetcher.query` takes the entry's id, and an id nobody registered is refused. Put the same exported
   entry in your `ContractEntry.queryAllow`, in `adapters/__tests__/<id>.contract.ts`. The host is the vendor's (or `{ configured }` for a host
-  the person set, passed with each request); the rest comes from the vendor's documentation, which
+  the person set, passed with each request); the method is not written (the registry fixes it to POST; an entry with a `method` key is a type
+  error and refused); the rest comes from the vendor's documentation, which
   the entry links with the date you read it (`checked: null` marks an entry you did not verify):
 
   ```ts
   export const WIX_ITEMS_QUERY = registerQueryAllow({
     id: "wix-data-query",
-    method: "POST",
     host: "www.wixapis.com",
     path: "/wix-data/v2/items/query",
     body: {
@@ -134,14 +169,14 @@ Then make it real, in this order:
 2. Run `pnpm exec tsx packages/core/src/adapters/__tests__/<id>-docs-example.ts`, paste its output into the
    page's `Output` block, and make the settings block match `<ID>_SETTINGS`. The docs test compares them.
 3. Add a test in `<id>-adapter.test.ts` for each thing this platform does that no other does. Do not repeat the
-   contract. After you change an entry file, run `pnpm gen:adapters` again (CI runs `--check`).
-4. A new environment variable changes the public surface: run `pnpm surface`.
+   contract. After you change an entry file, run `pnpm gen:adapters` to try it (do not commit its output: see [Generated files](#generated-files)).
+4. A new environment variable changes the public surface: `pnpm gen:all` shows what the rules say. Do not commit `public-surface.lock.json`.
 5. A check that is particular to the platform (WordPress and Webflow have two each) is a separate step:
    `pnpm new:check`, then register it with the platform's other checks.
 
 POST is for a documented read-only query endpoint only, and only through the allowlist in ADR-0006
 (branch `adr/read-only-post`, not merged yet). Until it has merged the scaffold sends GET and HEAD and
-nothing else; it marks, in the adapter, where the `queryAllow` entry (method, path pattern, body shape) goes.
+nothing else; it marks, in the adapter, where the `queryAllow` entry (path pattern, body shape; never a method) goes.
 Do not add a POST of your own, and do not invent a `query` method on the fetcher.
 
 By hand, the steps are the same files. **Adding an adapter adds files and edits no shared one** (no
@@ -185,9 +220,8 @@ import("./<id>.js"); return (c, settings) => create<Cms>Adapter({ env: c.env, fe
 4. Run **`pnpm gen:adapters`**. It collects every `adapters/*.entry.ts` and `adapters/__tests__/*.contract.ts`
    into `adapters/entries.generated.ts` and `adapters/__tests__/contracts.generated.ts`, rewrites the table
    between the `adapters:start` and `adapters:end` markers in `docs/integrations/index.md`, and rewrites
-   `docs/adapter-pages.generated.ts` (the adapters' pages in `docs/nav.ts`). Commit what it writes; CI runs
-   `pnpm gen:adapters --check`. If two pull requests both add an adapter and the generated files conflict, run
-   `pnpm gen:adapters` again after the rebase.
+   `docs/adapter-pages.generated.ts` (the adapters' pages in `docs/nav.ts`). Do not commit what it writes: CI
+   regenerates it, and a job on main commits it after the merge (see [Generated files](#generated-files)).
 5. Write `docs/integrations/<id>.md` (the page named in `page.slug`) with a freelancer example, and add a changeset.
 
 Code outside `adapters/<id>*.ts` (the CLI, `core/src/index.ts`, the check registries, the docs scripts) gets an
@@ -291,7 +325,7 @@ A view reads the run it is given (`RunState`, from `store.ts`) and draws every v
 page as a text child, never as HTML. Component tests run with Vitest and Testing Library
 (`// @vitest-environment jsdom` at the top of the file); the browser tests are in `e2e/`.
 `packages/app/src/check-titles.ts` (check titles, each check's plain-English text and the sample nouns, so the app can
-name what passed and explain a finding from the result's ids alone) is generated by `pnpm gen:checks`, which `--check` keeps in step.
+name what passed and explain a finding from the result's ids alone) is generated by `pnpm gen:checks` (part of `pnpm gen:all`) and committed by the job on main, not by branches.
 
 ### Reading the size report
 

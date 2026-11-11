@@ -10,7 +10,7 @@ export const remixDevToolsLive = defineCheck<PageSnapshot>({
     "A host that runs the dev command as its start command needs the build and start commands set.",
   area: "Security & email",
   severity: "high",
-  title: "The live site is a development server",
+  title: "The live Remix site is a development server",
   what: "This page was served by the Remix or React Router dev server: it loads /@vite/client, /@react-refresh, the inject-hmr-runtime module or the live-reload script.",
   why: "The dev server serves source files, can expose files from the project folder and is slow and unsupervised. It is not meant to face visitors.",
   fix: "Build the site (`react-router build` or `remix vite:build`) and serve the build with `react-router-serve` or your host's adapter, not `vite dev`. Check the host's start command.",

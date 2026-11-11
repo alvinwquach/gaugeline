@@ -36,6 +36,8 @@ jobs:
           node-version: ${{ matrix.node }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # Generated files are not committed on branches: regenerate them in this checkout first.
+      - run: pnpm gen:all --no-surface
       - run: pnpm build
       - run: pnpm typecheck
       - run: pnpm test
@@ -54,22 +56,20 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: git fetch --depth=1 origin "${{ github.base_ref || 'main' }}"
+      # Generated files are not committed on branches. Regenerate them here (README tables, options, check ids,
+      # skill, adapter index, public surface): the job fails if generation fails or its rules are broken (an
+      # unfinished check text, a check id removed, a breaking surface change without its changeset), not
+      # because the committed copy differs. The surface is compared with the base's lock file.
+      - run: pnpm gen:all --base FETCH_HEAD
       - run: pnpm lint
       - run: pnpm format:check
       - run: pnpm schema:check
-      - run: pnpm docs:flags:check
       - run: pnpm docs:changelog --check
-      - run: pnpm gen:checks --check
-      - run: pnpm gen:adapters --check
-      - run: pnpm gen:skill --check
       - run: pnpm adr:check
       - run: pnpm community:check
-      - name: Public surface (STABILITY.md)
-        run: |
-          git fetch --depth=1 origin "${{ github.base_ref || 'main' }}"
-          pnpm surface --check --base FETCH_HEAD
-          # A released check's "Since" version never changes (docs/check-since.lock.json).
-          pnpm since --base FETCH_HEAD
+      # A released check's "Since" version never changes (docs/check-since.lock.json).
+      - run: pnpm since --base FETCH_HEAD
 
   docs-examples:
     # Runs every "$ npx gaugeline" example in the docs against its fixture and compares the output.
@@ -85,6 +85,8 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # Generated files are not committed on branches: regenerate them in this checkout first.
+      - run: pnpm gen:all --no-surface
       - run: pnpm build
       - run: pnpm docs:examples
 
@@ -103,5 +105,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # Generated files are not committed on branches: regenerate them in this checkout first.
+      - run: pnpm gen:all --no-surface
       - run: pnpm build
       - run: pnpm smoke

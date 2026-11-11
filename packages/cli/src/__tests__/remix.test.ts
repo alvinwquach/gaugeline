@@ -9,7 +9,7 @@ describe("remix: e2e", () => {
       const env = { GAUGELINE_TEST_OFFLINE: "1", NO_COLOR: "1" };
       const off = await runBin([site.origin, "--allow-private", "--no-open"], env);
       expect(off.status, off.stderr).toBe(0);
-      expect(off.stdout).not.toMatch(/Anyone can switch on preview mode/);
+      expect(off.stdout).not.toMatch(/Anyone can switch on Remix preview mode/);
       expect(off.stdout).toMatch(/__reactRouterContext has wholesaleToken \(field names only\)/);
       expect(site.hits.has("/preview")).toBe(false);
       const on = await runBin(

@@ -13,7 +13,7 @@ export const remixPrivateFields = defineCheck<PageSnapshot>({
     "Each field is dropped in the loader that returns it; a field several routes read needs each of them checked.",
   area: "Security & email",
   severity: "high",
-  title: "The data sent with a page has fields that look private",
+  title: "The data sent with a Remix page has fields that look private",
   what: "The state this Remix or React Router page embeds for the browser (window.__remixContext, window.__reactRouterContext or window.__staticRouterHydrationData) has fields named like something private (password, token, secret, apiKey, private notes).",
   why: "Everything a loader returns is sent to every visitor, whether or not the page shows it. A field that is only used on the server still travels with the page.",
   fix: "Return only the fields the page shows from the loader, and keep secrets in server-only code (process.env in a loader or action, or a .server module) that never returns them.",
