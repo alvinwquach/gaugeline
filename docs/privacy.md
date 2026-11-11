@@ -346,6 +346,20 @@ What it prints: the library, its version, the script's address with no query str
 a short description and the version that fixes it. Never script text beyond the version string, and never a
 verdict on whether the site is vulnerable. Nothing is submitted and no one is logged in.
 
+### Published but not live (--published)
+
+`--published` on the page check compares the items your content system says changed lately with their pages
+([Published but not live](guides/published-not-live.md)). It adds no request to the content system beyond what
+the adapters already make to list published items (ids, types, slugs, times and field fingerprints, never a
+document), and then:
+
+- **The live pages.** One `GET` of the address of each changed item, on the site being checked only (an address on
+  another host is never asked for), at most 40 in a run, and one `GET` of each page the site's sitemap lists that
+  fits an item address and that no published item has. Nothing is submitted, revalidated or purged.
+- **What is kept.** The item's type and slug or id, the time it changed, the names of the fields that differ, and
+  the page's `Age`, `Last-Modified`, `Cache-Control` and cache status headers. Never a field's text from the
+  content system or from the page, and no key.
+
 ### WordPress (--wordpress)
 
 `--wordpress` on the page check compares a WordPress site's versions with the current releases and asks whether the

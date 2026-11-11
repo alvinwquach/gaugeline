@@ -142,6 +142,11 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "The client is not an owner or admin of a system their site depends on",
     "Security & email",
   ],
+  "published-not-live": [
+    "Content was published in the CMS and the live page still shows something else",
+    "Visitors",
+  ],
+  "live-page-missing": ["A published item has no page on the live site", "Visitors"],
   "printful-unsynced": ["A fulfillment product has variants that cannot be made", "Sales & prices"],
   "stripe-archived": ["A website product is archived in checkout", "Sales & prices"],
   "stripe-missing": ["A website product is missing from checkout", "Sales & prices"],
@@ -323,6 +328,7 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   ],
   "output-changes-every-request": ["The page's HTML is different on every request", "Visitors"],
   "usage-jump": ["Hosting usage jumped", "Visitors"],
+  "unpublished-still-live": ["An unpublished or deleted item still has a live page", "Visitors"],
   "library-with-advisory": [
     "A JavaScript library the site serves has a published advisory",
     "Security & email",
@@ -951,6 +957,18 @@ export const CHECK_TEXT: Readonly<
     "If you are away, or the relationship ends, the client cannot add a new developer, change a plan or recover the account without asking you, and a lockout can take days to undo while the site's content is out of reach.",
     "Ask a current owner to invite the client's own address as an owner or admin and have them accept it, or promote them if they are already a member. Then run the handoff again.",
     "Read-only, GET only, with the tokens already in the environment: Vercel (GAUGELINE_VERCEL_TOKEN: the project, its team and the team's members), Sanity (SANITY_TOKEN: the project's members and their profiles) and Google Business Profile (GOOGLE_BUSINESS_PROFILE_TOKEN: the location's administrators). Each provider's role is mapped to owner, admin, member or viewer; an invitation not yet accepted is not a role. Addresses are compared in lower case and shown only as their first letter and domain. A system whose token may not list members, or whose members' addresses are hidden, is could-not-check for that system alone; no client address in the settings is could-not-check for all",
+  ],
+  "published-not-live": [
+    "An item was changed in the content system more than the grace period ago, and its live page does not show the configured field (the title unless you chose others).",
+    "The client published and believes the site changed. Visitors still see the old menu, the old price or the old opening hours, and nobody finds out until the client complains.",
+    "Look at the cache headers in the finding: an age close to the time since the change means the page is cached and not revalidated. Check the revalidation webhook (did the CMS call it, did the site answer 2xx), the path or tag it revalidates, and the page's cache lifetime. Then republish the item or purge the page.",
+    "Only with --published. For items the content system's published() lists as changed in the last N days (live.days, default 7) with an address on the site (the adapter's own, or the type's urls template), one GET of the page through the fetcher, on the site's own host only, at most live.maxPages pages (default 40, newest change first). The fingerprint of each configured field (live.fields, then the adapter's fingerprint settings, then title) is compared with the page's title, its parts around a site name, og:title and headings, ignoring case, entities, spacing and typographic quotes. It is a finding when a field differs and the item changed more than live.graceMinutes ago (default 15). Evidence is the item's update time, the page's Age, Last-Modified, Cache-Control and cache status headers, and the names of the fields that differ, never their text. Webhook delivery history is not read. The same input and clock give the same findings",
+  ],
+  "live-page-missing": [
+    "An item that changed lately is published in the content system, and the address it should live at answers 404 (or 410).",
+    "The client published a page and gave out the link. Visitors, and anyone the client sent it to, get a not-found page.",
+    "Check the address pattern (urls in gaugeline.adapters.json, or the platform's own) against the site's routes. If the pattern is right, the site did not build the page: trigger the build or revalidation, and look at the webhook that should have done it.",
+    "Only with --published. The same read as published-not-live: one GET of the address of each item changed in the last N days; a 404 or 410 on an item that changed more than live.graceMinutes ago is a finding. An address on another site is never asked for. A page that answers anything else than 2xx, 404 or 410 is could-not-check, never a finding",
   ],
   "printful-unsynced": [
     "A Printful product matched to a product on your website has a variant that is not synced.",
@@ -1623,6 +1641,12 @@ export const CHECK_TEXT: Readonly<
     "A site can quietly multiply its hosting bill when a page stops caching or a loop starts. The jump shows up in the usage figures days before the invoice, which is the time to fix it, and to tell the client before they find out.",
     "Open the provider's usage page for the metric named, and look for the day it started: a deploy, a page that began changing on every visit (see output-changes-every-request), a new image or API call. Fix the cause, then run again tomorrow.",
     "Read-only, one GET of the provider's usage with the token in the environment: Vercel's billing charges (GAUGELINE_VERCEL_TOKEN; Vercel has no read-only token type, so use one scoped to the team). Each service and unit is a metric, and the billed cost one more, summed by UTC day in thousandths (integers). The latest complete day before today by the injected clock is compared with the mean of the days before it (window and multiple in gaugeline.cost.json): flagged when more than the multiple, ignoring a day under one whole unit and a metric with no earlier usage. Sanity's usage has no documented read API, so it is could-not-check. Not applicable to a site on Wix, Squarespace, Webflow or Framer: a fixed plan. No token is could-not-check; the page checks still run",
+  ],
+  "unpublished-still-live": [
+    "The site's sitemap lists a page that fits the address pattern of a content type, no published item has that address, and the page still answers 200.",
+    "The client took the item down, perhaps because it was wrong, out of date or private, and visitors and search engines can still read it.",
+    "Purge or revalidate the page so it answers 404 or redirects, and check that the sitemap is rebuilt when an item is unpublished. If the page is meant to stay, publish the item again.",
+    "Only with --published, and only when the run has a list of the whole site (the sitemap and feed adapter, which is the default) and an adapter with urls templates in gaugeline.adapters.json. Every address in the site's own sitemap that fits a template and that no published item resolves to is asked for with one GET, within the page budget; a 2xx answer is a finding. A list of everything published that is cut short (a rate limit, or more than 2000 items) means this is not looked for, and the reason is could-not-check",
   ],
   "library-with-advisory": [
     "Gaugeline reads the JavaScript files a page loads, finds the version of jQuery, jQuery UI, Lodash, Moment.js, Bootstrap or AngularJS in them, and lists the published advisories that name that version, with the version that fixes each.",
