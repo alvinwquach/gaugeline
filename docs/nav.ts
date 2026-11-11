@@ -111,8 +111,10 @@ export const UNLISTED: NavPage[] = [
   { slug: "guides/published-not-live", title: "Published but not live" },
   { slug: "guides/served-libraries", title: "Served libraries: the old jQuery nobody remembers" },
   { slug: "guides/init", title: "gaugeline init: start from what the site is built on" },
+  { slug: "guides/deploy-gates", title: "Deploy gates: check a preview before it goes live" },
   { slug: "guides/advisory", title: "Advisory check: is my client affected?" },
   { slug: "guides/audit-pack", title: "Audit pack: turn a first run into a proposal" },
+  { slug: "guides/agent-skill", title: "The agent skill: let a coding agent run Gaugeline" },
   {
     slug: "guides/migration",
     title: "Migration completeness: nothing from the old site goes missing",
