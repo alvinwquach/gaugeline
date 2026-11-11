@@ -35,6 +35,7 @@ import type { HiddenConfig } from "./hidden.js";
 import { lazyEvents, type EventObserver } from "./events/observe.js";
 import type { EventsConfig } from "./events/types.js";
 import type { NavRules } from "./nav/read-regions.js";
+import type { StaleDatesConfig } from "./stale-dates/config.js";
 import { lazyTagAnalysis, summarise, type TagSummary } from "./tags/analyse.js";
 import type { TagContainer } from "./tags/read-container.js";
 import type { RunSnapshot } from "./run-snapshot.js";
@@ -132,6 +133,8 @@ export interface SiteCheckOptions {
   hidden?: HiddenConfig;
   /** Where the menus are and which footer links are required (gaugeline.nav.json). */
   nav?: NavRules;
+  /** The out-of-date copy settings (gaugeline.stale-dates.json). */
+  staleDates?: StaleDatesConfig;
   /** The tracking plan: elements whose clicks must push an event (gaugeline.events.json). */
   events?: EventsConfig;
   /** Clicks the plan's elements in a rendered page. None until rendered reads (G39): could not check. */
@@ -322,6 +325,7 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
       ...(opts.wordpress ? { wordpress: opts.wordpress } : {}),
       ...(opts.hidden ? { hidden: opts.hidden } : {}),
       ...(opts.nav ? { navRules: opts.nav } : {}),
+      ...(opts.staleDates ? { staleDates: opts.staleDates } : {}),
       ...(container && tagRules ? { tagContainer: container, tagRules } : {}),
       ...(opts.events
         ? {

@@ -25,6 +25,8 @@ import { canonicalMissing } from "./canonical-missing.js";
 import { capacityZeroNotSoldOut } from "./capacity-zero-not-sold-out.js";
 import { certificateExpiring } from "./certificate-expiring.js";
 import { checkoutJsOnly } from "./checkout-js-only.js";
+import { copyDatePassed } from "./copy-date-passed.js";
+import { copyrightStale } from "./copyright-stale.js";
 import { crmFieldNames } from "./crm-field-names.js";
 import { crmInsecure } from "./crm-insecure.js";
 import { crmLeadSource } from "./crm-lead-source.js";
@@ -228,6 +230,8 @@ export const PAGE_CHECKS = [
   capacityZeroNotSoldOut,
   certificateExpiring,
   checkoutJsOnly,
+  copyDatePassed,
+  copyrightStale,
   crmFieldNames,
   crmInsecure,
   crmLateTracking,
