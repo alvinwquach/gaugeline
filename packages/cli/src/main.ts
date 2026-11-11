@@ -121,6 +121,7 @@ import { runDigest } from "./digest.js";
 import { formatLegacyTable, formatPlanSummary } from "./plan.js";
 import { formatTerminal } from "./reporter.js";
 import { runCutover } from "./cutover.js";
+import { runMigration } from "./migration.js";
 import { runSnapshot } from "./snapshot.js";
 import { runVerify } from "./verify.js";
 import { runAssert } from "./assert.js";
@@ -1034,6 +1035,18 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           { ...deps, ...(deps.now ? {} : io.now ? { now: io.now } : {}) },
         ),
         ci: true,
+      };
+    case "migration":
+      return {
+        outcome: await runMigration(
+          args,
+          { ...io, color: useColor(io.stdout, io.env ?? {}) },
+          {
+            ...(deps.cwd ? { cwd: deps.cwd } : {}),
+            ...(deps.fetcher ? { fetcher: deps.fetcher } : {}),
+          },
+        ),
+        ci: args.ci,
       };
     case "digest": {
       await runDigest(
