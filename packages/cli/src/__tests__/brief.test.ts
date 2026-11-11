@@ -11,7 +11,8 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
-import { briefMarkdown, createPageRegistry, parseResult } from "@gaugeline/core";
+import { fileURLToPath } from "node:url";
+import { buildBrief, createPageRegistry, parseResult, renderBriefMarkdown } from "@gaugeline/core";
 import { startFixture } from "@gaugeline/fixtures";
 import { afterEach, describe, expect, it } from "vitest";
 import { parseCliArgs } from "../args.js";
@@ -179,6 +180,38 @@ describe("brief: arguments", () => {
   });
 });
 
+/**
+ * The work order the command wrote before G28a split it into buildBrief and renderBriefMarkdown,
+ * kept as files made by that version (the fixture's own address swapped for ORIGIN). The split must
+ * not change one character of it.
+ */
+describe("brief: output is unchanged by the formatter split (G28a)", () => {
+  const golden = (name: string): string =>
+    fileURLToPath(new URL(`./__snapshots__/${name}`, import.meta.url));
+  /** Line ends as LF, and the fixture's mail address as ADDRESS (the repository keeps no address in a file). */
+  const plain = (text: string, origin: string): string =>
+    text
+      .replaceAll("\r\n", "\n")
+      .replaceAll(origin, "ORIGIN")
+      .replaceAll(/[\w.+-]+@[\w.-]+/g, "ADDRESS");
+
+  it("with a business, an hours-per-point and a rate, byte for byte", async () => {
+    const r = await brief(
+      "corner-bar",
+      ["--business", "The Corner Bar", "--rate", "110", "--hours-per-point", "1.5"],
+      folder(),
+    );
+    expect(r.code).toBe(0);
+    await expect(plain(r.out, r.origin)).toMatchFileSnapshot(golden("brief-corner-bar-priced.md"));
+  });
+
+  it("with points only and the host as the name, byte for byte", async () => {
+    const r = await brief("corner-bar", [], folder());
+    expect(r.code).toBe(0);
+    await expect(plain(r.out, r.origin)).toMatchFileSnapshot(golden("brief-corner-bar-points.md"));
+  });
+});
+
 describe("brief: e2e (CLI against the Corner Bar fixture)", () => {
   it("prints the work order on stdout when there is no --out, and writes no file", async () => {
     const cwd = folder();
@@ -192,11 +225,13 @@ describe("brief: e2e (CLI against the Corner Bar fixture)", () => {
 
   it("is the same text the core function makes from the same result", async () => {
     const cwd = folder();
-    const expected = briefMarkdown(await resultOf("corner-bar", cwd), createPageRegistry(), {
-      business: "The Corner Bar",
-      hoursPerPoint: 1.5,
-      rateMinor: 11000,
-    });
+    const expected = renderBriefMarkdown(
+      buildBrief(await resultOf("corner-bar", cwd), createPageRegistry(), {
+        business: "The Corner Bar",
+        hoursPerPoint: 1.5,
+        rateMinor: 11000,
+      }),
+    );
     const r = await brief(
       "corner-bar",
       ["--business", "The Corner Bar", "--rate", "110", "--hours-per-point", "1.5"],
