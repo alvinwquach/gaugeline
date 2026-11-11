@@ -1,3 +1,4 @@
+// check-community: allow-email (invented addresses at a reserved example domain, and the public github-actions bot noreply address the commit must carry)
 import { spawnSync } from "node:child_process";
 import {
   chmodSync,

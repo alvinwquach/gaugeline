@@ -1,3 +1,4 @@
+// check-community: allow-email (an invented address at a reserved example domain, used for a throwaway git commit)
 import { spawnSync } from "node:child_process";
 import {
   cpSync,
