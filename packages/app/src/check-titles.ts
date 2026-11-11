@@ -28,6 +28,14 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "Private-looking content is in a public Sanity dataset",
     "Security & email",
   ],
+  "document-hours-mismatch": [
+    "A PDF shows different opening hours than the site or a listing",
+    "Search & sharing",
+  ],
+  "document-price-mismatch": [
+    "A PDF menu or price list shows a different price than the site",
+    "Sales & prices",
+  ],
   "drafts-live": ["Unpublished work is in the live page", "Launch day"],
   "duplicate-title": ["This page has two titles", "Search & sharing"],
   "email-spf-missing": ["Your domain doesn't say who may send its email", "Security & email"],
@@ -209,6 +217,10 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "crm-lead-source": ["New leads are arriving without a source", "Leads"],
   "crm-no-campaign-fields": ["A form has nowhere to put campaign details", "Leads"],
   "data-behind-source": ["The page is behind the data it is built from", "Visitors"],
+  "document-item-missing": [
+    "A PDF menu or price list and the site list different items",
+    "Sales & prices",
+  ],
   "email-dmarc-missing": ["Your domain has no DMARC policy", "Security & email"],
   "email-spf-multiple": ["Your domain has two SPF records, which cancels both", "Security & email"],
   "event-location-mismatch": ["An event at your venue lists a different address", "Visitors"],
@@ -394,6 +406,10 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "canonical-missing": ["The page doesn't say which address is the real one", "Search & sharing"],
   "data-no-stamp": ["A page of changing numbers does not say when they were updated", "Visitors"],
   "dataset-public": ["Your Sanity content can be read by anyone", "Security & email"],
+  "document-unreadable": [
+    "A PDF could not be read, so it was not compared with the site",
+    "Sales & prices",
+  ],
   "email-dmarc-none": ["Your DMARC policy only watches", "Security & email"],
   "event-missing-fields": ["Some events are missing details search engines need", "Visitors"],
   "events-distinct": ["Two menu links report the same click", "Leads"],
@@ -528,6 +544,18 @@ export const CHECK_TEXT: Readonly<
     "Anyone can download those documents with one request: names, emails and whatever else the forms collect.",
     "Make the dataset private in sanity.io/manage today and give the site a read token, or move those types to a private dataset.",
     "As dataset-public, and a type name whose last word is in checks/leaks/private-types.ts (order, inquiry, submission, customer and others); only the type names are read, never the documents. dataset-public is not also reported",
+  ],
+  "document-hours-mismatch": [
+    "A PDF linked from your site states opening hours that differ from the hours on your site or on a business listing.",
+    "People plan the evening from the printed menu. Hours that are an hour off in the PDF send them to a closed door, or turn them away from a kitchen that is still open.",
+    "Decide which hours are right, then fix the others: re-export the PDF, or update the site and the listings.",
+    "the PDF's opening hours are read by the same parser the listing checks use (per-day intervals in the venue's local time; a close after midnight belongs to the day it opens; a day given two answers is not compared); only days the PDF states are compared, against the hours fact in gaugeline.facts.json or LocalBusiness structured data, and against each configured listing that has hours; a PDF that states hours when the site states none is could-not-check, never a pass",
+  ],
+  "document-price-mismatch": [
+    "A PDF linked from your site (a menu, price list or brochure) gives an item a different price than the site does.",
+    "People screenshot the PDF. A burger that is $16 on the page and $14 in the printable menu is a price you either honour at a loss or argue about at the counter.",
+    "Decide which price is right, then change the other. If the PDF is last season's, re-export it from the current menu, or remove the link until you can.",
+    "GET of each linked PDF (HEAD first for size, type and Last-Modified; redirects followed, the final address reported; files over 10 MB skipped with the reason), text read by the optional @gaugeline/documents package, item-and-price lines parsed (name, price in cents, optional size) and compared by normalised name and size with the first source that names the item: the content system and Stripe or Square, then the facts in gaugeline.facts.json, then the words of the pages; both values are quoted; an item that appears twice in the PDF with two prices is not compared; without the package the check says it could not check",
   ],
   "drafts-live": [
     "The published HTML carries Sanity draft document ids (drafts.\u2026) or a preview-mode banner.",
@@ -1219,6 +1247,12 @@ export const CHECK_TEXT: Readonly<
     "Look at how the page is rebuilt after the data changes: its revalidate time, an on-demand revalidation that the sync should call, or a CDN that keeps the old copy. The evidence shows the Age header when a cache served it.",
     "for each rule with a source and maxLag in gaugeline.freshness.json, the newest time is read from the source (a one-row query or a Sanity field) and compared with the page's stamp: reported only when the page is older than the source by more than maxLag at every instant the stamp could mean; for each spot check (up to five per rule) the figure at the selector is compared with the source's figure for the page (a one-row query, or the row whose key column is the last part of the page's address) with exact decimal arithmetic and the tolerance given (an amount or a percentage of the source's figure); an unreadable source, stamp or figure is could not check; the evidence adds the Age and Cache-Control headers when a cache served the page",
   ],
+  "document-item-missing": [
+    "An item is on the site but not in the linked PDF, or the PDF still lists an item the site no longer has.",
+    "A dish removed from the site that is still on the printed menu is one you get asked for. A new one missing from the PDF is one nobody orders from it.",
+    "Update the PDF or the site so both list the same items, or remove the PDF link until the PDF is current.",
+    "same reading and matching as document-price-mismatch (normalised names, '&' and 'and' alike); items the site's structured sources name that the PDF does not, and PDF items found nowhere on the site; the second list is reported only when the two are shown to be the same menu (a structured source names one of the PDF's items, or the pages carry at least half of them), so a page listing a few dishes does not make every dish missing; both lists name at most five items and count the rest",
+  ],
   "email-dmarc-missing": [
     "There is no DMARC record at _dmarc.<your domain>, so receiving servers have no instruction for mail that fails SPF or DKIM.",
     "Mail pretending to be from you is delivered like any other, and large mail providers increasingly expect a DMARC record from anyone who sends.",
@@ -1879,6 +1913,12 @@ export const CHECK_TEXT: Readonly<
     "If nothing in it is private, nothing to do. Otherwise make the dataset private in sanity.io/manage and give the site a read token.",
     'Project and dataset read from cdn.sanity.io image addresses; one GET to <project>.api.sanity.io with the query {"count": count(*), "types": array::unique(*[]._type)} and no token, at most 2 datasets; never document contents',
   ],
+  "document-unreadable": [
+    "A PDF linked from your site has no text Gaugeline can read (a scan or a picture of a page, an encrypted file, or fonts that do not say which letters they are).",
+    "Nothing in it was compared with your site, so a wrong price in it would go unseen. Search engines and screen readers cannot read a scan either.",
+    "Export the PDF from the original menu or price list as text, not from a scan, and leave it unencrypted. Gaugeline never reads images (no OCR): a guessed price would be a false finding.",
+    "the linked PDF is read by the optional @gaugeline/documents package, text layer only, no OCR; a file with no text operators, an encrypted file, fonts without a ToUnicode map and streams of an unsupported kind are reported here (low severity) with the reason; a file that is too big, cut short, refused or not a PDF is could-not-check instead; limits: 10 MB per file (config documents.maxMegabytes up to 25), 200 pages, 4 MiB inflated per stream, 48 MiB in all",
+  ],
   "email-dmarc-none": [
     "The domain's DMARC record has p=none: receiving servers report mail that fails, and deliver it anyway.",
     "That is the right first step, and it doesn't stop anyone sending mail as you. Left at none, it never will.",
@@ -2109,6 +2149,7 @@ export const SAMPLE_NOUNS: Readonly<Record<string, readonly [one: string, many: 
   statePages: ["switch page", "switch pages"],
   draftRoutes: ["draft route", "draft routes"],
   downloadRoutes: ["download route", "download routes"],
+  documents: ["document", "documents"],
   frameworkAddresses: ["framework address", "framework addresses"],
   structuredDataAddresses: ["address in structured data", "addresses in structured data"],
 };

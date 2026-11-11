@@ -182,6 +182,32 @@
     "estimateChanges": "A site that reads the dataset from the browser needs those queries moved to the server, which can take a day."
   },
   {
+    "id": "document-hours-mismatch",
+    "severity": "high",
+    "area": "Search & sharing",
+    "title": "A PDF shows different opening hours than the site or a listing",
+    "what": "A PDF linked from your site states opening hours that differ from the hours on your site or on a business listing.",
+    "why": "People plan the evening from the printed menu. Hours that are an hour off in the PDF send them to a closed door, or turn them away from a kitchen that is still open.",
+    "fix": "Decide which hours are right, then fix the others: re-export the PDF, or update the site and the listings.",
+    "tech": "the PDF's opening hours are read by the same parser the listing checks use (per-day intervals in the venue's local time; a close after midnight belongs to the day it opens; a day given two answers is not compared); only days the PDF states are compared, against the hours fact in gaugeline.facts.json or LocalBusiness structured data, and against each configured listing that has hours; a PDF that states hours when the site states none is could-not-check, never a pass",
+    "size": "S",
+    "done": "The opening hours in the PDF are the hours on the site and its listings.",
+    "estimateChanges": "Update the hours in the PDF, or on the site and listings, after deciding which are right."
+  },
+  {
+    "id": "document-price-mismatch",
+    "severity": "high",
+    "area": "Sales & prices",
+    "title": "A PDF menu or price list shows a different price than the site",
+    "what": "A PDF linked from your site (a menu, price list or brochure) gives an item a different price than the site does.",
+    "why": "People screenshot the PDF. A burger that is $16 on the page and $14 in the printable menu is a price you either honour at a loss or argue about at the counter.",
+    "fix": "Decide which price is right, then change the other. If the PDF is last season's, re-export it from the current menu, or remove the link until you can.",
+    "tech": "GET of each linked PDF (HEAD first for size, type and Last-Modified; redirects followed, the final address reported; files over 10 MB skipped with the reason), text read by the optional @gaugeline/documents package, item-and-price lines parsed (name, price in cents, optional size) and compared by normalised name and size with the first source that names the item: the content system and Stripe or Square, then the facts in gaugeline.facts.json, then the words of the pages; both values are quoted; an item that appears twice in the PDF with two prices is not compared; without the package the check says it could not check",
+    "size": "S",
+    "done": "The prices in the PDF menu or price list are the prices on the site.",
+    "estimateChanges": "Re-export the PDF from the updated menu (or price list), or take it down. Decide which price is right first."
+  },
+  {
     "id": "drafts-live",
     "severity": "high",
     "area": "Launch day",
@@ -1677,6 +1703,19 @@
     "estimateChanges": "An on-demand revalidation call from the sync, a revalidate time and a CDN each need different work."
   },
   {
+    "id": "document-item-missing",
+    "severity": "medium",
+    "area": "Sales & prices",
+    "title": "A PDF menu or price list and the site list different items",
+    "what": "An item is on the site but not in the linked PDF, or the PDF still lists an item the site no longer has.",
+    "why": "A dish removed from the site that is still on the printed menu is one you get asked for. A new one missing from the PDF is one nobody orders from it.",
+    "fix": "Update the PDF or the site so both list the same items, or remove the PDF link until the PDF is current.",
+    "tech": "same reading and matching as document-price-mismatch (normalised names, '&' and 'and' alike); items the site's structured sources name that the PDF does not, and PDF items found nowhere on the site; the second list is reported only when the two are shown to be the same menu (a structured source names one of the PDF's items, or the pages carry at least half of them), so a page listing a few dishes does not make every dish missing; both lists name at most five items and count the rest",
+    "size": "S",
+    "done": "The PDF and the site list the same items.",
+    "estimateChanges": "Add or remove the items in the PDF or on the site so the two lists match."
+  },
+  {
     "id": "email-dmarc-missing",
     "severity": "medium",
     "area": "Security & email",
@@ -3105,6 +3144,19 @@
     "size": "S",
     "done": "The dataset is private with a token for the site, or left public on purpose.",
     "estimateChanges": "A site that reads the dataset from the browser needs those queries moved to the server."
+  },
+  {
+    "id": "document-unreadable",
+    "severity": "low",
+    "area": "Sales & prices",
+    "title": "A PDF could not be read, so it was not compared with the site",
+    "what": "A PDF linked from your site has no text Gaugeline can read (a scan or a picture of a page, an encrypted file, or fonts that do not say which letters they are).",
+    "why": "Nothing in it was compared with your site, so a wrong price in it would go unseen. Search engines and screen readers cannot read a scan either.",
+    "fix": "Export the PDF from the original menu or price list as text, not from a scan, and leave it unencrypted. Gaugeline never reads images (no OCR): a guessed price would be a false finding.",
+    "tech": "the linked PDF is read by the optional @gaugeline/documents package, text layer only, no OCR; a file with no text operators, an encrypted file, fonts without a ToUnicode map and streams of an unsupported kind are reported here (low severity) with the reason; a file that is too big, cut short, refused or not a PDF is could-not-check instead; limits: 10 MB per file (config documents.maxMegabytes up to 25), 200 pages, 4 MiB inflated per stream, 48 MiB in all",
+    "size": "S",
+    "done": "Every PDF menu or price list linked from the site has a text layer Gaugeline can read.",
+    "estimateChanges": "Re-export the PDF as text (not a scan) if you want it checked, or ignore this note."
   },
   {
     "id": "email-dmarc-none",
