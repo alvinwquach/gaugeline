@@ -4,7 +4,7 @@ import { createFetcher } from "../../fetcher.js";
 import { collectPublished } from "../collect.js";
 import { createDatocmsAdapter } from "../datocms.js";
 import { AdapterCouldNotCheck } from "../types.js";
-import { datocmsTransport } from "./datocms-fixture.js";
+import { DATOCMS_COLLECTIONS, datocmsTransport } from "./datocms-fixture.js";
 
 /**
  * What docs/integrations/datocms.md shows for Larkspur Yoga Studio (an invented small studio whose DatoCMS site
@@ -14,6 +14,8 @@ import { datocmsTransport } from "./datocms-fixture.js";
  */
 export const DATOCMS_SETTINGS = {
   id: "datocms",
+  collections: DATOCMS_COLLECTIONS,
+  expectPublishedOnly: true,
   fingerprint: { classes: ["name", "summary"] },
   urls: { classes: "/classes/{slug}", teachers: "/teachers/{slug}" },
 } as const;
@@ -44,6 +46,10 @@ export async function datocmsReads(): Promise<string> {
       "class fields": fields,
       "a type that does not exist": other,
       "drafts reachable": await adapter.draftsReachable(),
+      "draft reading": (await adapter.draftReading()).map(
+        (d) =>
+          `${d.type}: ${d.state}, ${d.published} published, ${d.extra} not published${d.extraIds.length > 0 ? ` (ids ${d.extraIds.join(", ")})` : ""}`,
+      ),
       "published classes": docs,
     },
     null,

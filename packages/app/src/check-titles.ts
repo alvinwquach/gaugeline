@@ -227,6 +227,10 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "The Umbraco Delivery API answers visitors with no key",
     "Security & email",
   ],
+  "datocms-drafts-reachable": [
+    "A DatoCMS token meant for published content can read drafts",
+    "Security & email",
+  ],
   "hubspot-page-404": ["A page published in HubSpot answers 404 on the live domain", "Launch day"],
   "hubspot-form-deleted": ["A page embeds a HubSpot form that has been deleted", "Launch day"],
   "app-smart-banner-mismatch": ["The iPhone app banner promotes a different app", "Visitors"],
@@ -1255,6 +1259,12 @@ export const CHECK_TEXT: Readonly<
     "Anyone who finds the route can read every published node as data, including nodes that are published but not linked from the site, and can page through the whole content tree. If the API was meant to be private, its protection is off.",
     "In appsettings.json set Umbraco:CMS:DeliveryApi:PublicAccess to false and keep an ApiKey, then send the key from the server only (never from the browser). If the API is meant to be public (a public API that also has a key, so that preview works, is a normal setup), remove expectPrivate from gaugeline.adapters.json: the key is not touched.",
     "probing check, off without --owner-consent: this check asks the Delivery API's public route as a visitor with no key, so it runs only with --owner-consent (or gaugeline.consent.json), on sites you own or have permission to test; only when the settings say expectPrivate: true (a key being set says nothing: Umbraco's preview needs the key on a public API too); one GET of /umbraco/delivery/api/v2/content?take=1 with no Api-Key header, no cookie and nothing the fetcher adds per address, fields=properties[] and expand=none; a 200 with a list and a numeric total is the finding (the total is a count, never a node); 401 or 403 is a protected API and 404 is an API that is off or not at that address, both with no finding; a 200 that is not the API's list (a page that answers every path) and any other status are could-not-check; the answer is read as a count and nothing else",
+  ],
+  "datocms-drafts-reachable": [
+    "gaugeline.adapters.json says the token is meant for published content only (expectPublishedOnly: true), and a request that asks for drafts with it is answered with records that are not published.",
+    "A token for the live site is often placed in the front end or in a build setting. If it can read drafts, anyone who finds it can read unpublished work: prices not announced yet, a closure notice, a page that was pulled.",
+    "In the DatoCMS dashboard, open Settings, API tokens, and edit the token the live site uses: turn off access to the Content Delivery API with draft content (the preview flag), keep the Content Delivery API on for published content, and keep the Content Management API off. Give a preview site its own token. If the token is meant to preview drafts, remove expectPublishedOnly from gaugeline.adapters.json.",
+    "only when the settings say expectPublishedOnly: true for datocms and name the collections, since a token that may preview is a normal setup; per collection, two POSTs of one GraphQL query each, through fetcher.query and the registered allowlist entry datocms-cda-query (a document that parses as one query is the only body ever sent): the published list, then the same list with the header X-Include-Drafts: true, each asking for id only, first 100 and skip stepping by the number of records that came back, a page shorter than the page asked for ending the list; the ids of the first list are held in a Set and subtracted from the second, and a non-empty difference is the finding (a count and at most five ids, never a field); HTTP 401 or 403 to the draft request after the published one was answered means the token cannot read drafts, which is a pass for that collection; a draft request that is accepted with no extra record shows no sign of drafts, which is not proof since none may exist, so it is could-not-check; a collection that cannot be read, a list that moves while it is read, one over 10000 records and a rate limit that stays are could-not-check for that part",
   ],
   "hubspot-page-404": [
     "HubSpot says a site page, landing page or blog post is published on this domain, and the address it gives for it answers 404 or 410 on the live site.",

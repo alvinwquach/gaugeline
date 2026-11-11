@@ -74,6 +74,19 @@ describe("docs/integrations/datocms.md", () => {
     if (!TODO.test(outputs[0] ?? "")) expect(outputs[0]).toBe(await datocmsReads());
   });
 
+  it("names the check, says it needs expectPublishedOnly, and that it asks for ids only", () => {
+    expect(page).toContain("datocms-drafts-reachable");
+    expect(page).toContain("expectPublishedOnly");
+    expect(page).toMatch(/Ids only: no field of a draft is ever asked for/);
+    expect(page).toContain("ADR-0006");
+  });
+
+  it("says which token flags are the narrowest key", () => {
+    const top = page.split("## ")[1] ?? "";
+    for (const flag of ["can_access_cda", "can_access_cda_preview", "can_access_cma"])
+      expect(top).toContain(flag);
+  });
+
   it("shows no text from the site's content", () => {
     for (const marker of Object.values(DATOCMS_MARKERS)) expect(page).not.toContain(marker);
   });
