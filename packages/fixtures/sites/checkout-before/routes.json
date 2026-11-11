@@ -1,0 +1,10 @@
+{
+  "/": {
+    "headers": {
+      "content-security-policy": "default-src 'self'; script-src 'self' https://js.stripe.example https://tags.analytics.example; frame-src https://js.stripe.example; frame-ancestors 'none'",
+      "strict-transport-security": "max-age=63072000; includeSubDomains",
+      "x-content-type-options": "nosniff",
+      "referrer-policy": "strict-origin-when-cross-origin"
+    }
+  }
+}

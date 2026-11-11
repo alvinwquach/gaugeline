@@ -1,0 +1,9 @@
+{
+  "/": {
+    "headers": {
+      "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://js.stripe.example https://tags.analytics.example https://widget.chatreply.example https://cdn.polyfill.io; frame-src https://js.stripe.example; frame-ancestors 'none'",
+      "x-content-type-options": "nosniff",
+      "referrer-policy": "strict-origin-when-cross-origin"
+    }
+  }
+}
