@@ -13,7 +13,7 @@ describe("aem-author-links", () => {
         "https://shop.example/libs-of-the-trade",
         "https://shop.example/editor-picks",
         "https://www.other.example/editor.html",
-        "mailto:hello@shop.example",
+        "tel:+441234567890",
       ),
     });
     expect(await aemAuthorLinks.run(p, ctx)).toEqual([]);

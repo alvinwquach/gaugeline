@@ -339,6 +339,7 @@
   "checkIds": [
     "access-public-read",
     "access-role-scope",
+    "aem-author-links",
     "ai-crawlers-blocked",
     "app-link-dead",
     "app-name-mismatch",
@@ -500,6 +501,7 @@
   "severities": {
     "access-public-read": "high",
     "access-role-scope": "high",
+    "aem-author-links": "medium",
     "ai-crawlers-blocked": "low",
     "app-link-dead": "high",
     "app-name-mismatch": "low",

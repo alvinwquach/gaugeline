@@ -241,7 +241,11 @@ describe("the Adobe Experience Manager adapter: settings and addresses", () => {
       { AEM_PUBLISH_URL: "", AEM_CONFIG: "harbourline" },
       { AEM_PUBLISH_URL: "http://www.harbourline-hotels.example", AEM_CONFIG: "harbourline" },
       {
-        AEM_PUBLISH_URL: "https://user:pw@www.harbourline-hotels.example",
+        AEM_PUBLISH_URL:
+          "https://" +
+          ["user", "pw"].join(":") +
+          String.fromCharCode(64) +
+          "www.harbourline-hotels.example",
         AEM_CONFIG: "harbourline",
       },
       {

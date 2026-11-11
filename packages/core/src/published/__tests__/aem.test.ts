@@ -6,7 +6,6 @@ import {
   aemTransport,
 } from "../../adapters/__tests__/aem-fixture.js";
 import { createAemAdapter } from "../../adapters/aem.js";
-import type { AdapterSettings } from "../../adapters/types.js";
 import { createFetcher } from "../../fetcher.js";
 import { PUBLISHED_CHECKS } from "../../checks/published-not-live.js";
 import { page } from "../../checks/__tests__/helpers.js";
@@ -19,7 +18,7 @@ import { barSite, NOW } from "./world.js";
  * It is the generic live-page-missing check (F-05) over the AEM adapter, so this is the proof that the adapter
  * gives it what it needs: addresses from the settings' patterns, the fragment's time, and fingerprints of a field.
  */
-const SETTINGS: AdapterSettings = {
+const SETTINGS = {
   id: "aem",
   fingerprint: { rooms: ["name"], offers: ["name"], venues: ["name"] },
   urls: { rooms: "/rooms/{slug}", offers: "/offers/{slug}", venues: "/venues/{slug}" },
