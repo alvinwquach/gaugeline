@@ -115,6 +115,7 @@ import {
   addWordPressChecks,
   addPublishedChecks,
   createPublished,
+  copyAdapterEnv,
   addBackupsChecks,
   createBackups,
   BACKUPS_CHECKS,
@@ -122,7 +123,6 @@ import {
   buildBackupsSummary,
   formatBackupsSummary,
   manualBackups,
-  allAdapterEnvVars,
   createWordPress,
   type ExportLister,
 } from "@gaugeline/core";
@@ -1529,7 +1529,10 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         ? createPublished(
             readAdaptersConfig(cwd),
             {
-              env: freezeEnv(io.env ?? {}, [...SANITY_ENV_VARS, ...allAdapterEnvVars()]),
+              env: {
+                ...freezeEnv(io.env ?? {}, SANITY_ENV_VARS),
+                ...copyAdapterEnv(io.env ?? {}),
+              },
               fetcher,
             },
             fetcher,

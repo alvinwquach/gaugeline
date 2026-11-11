@@ -1,4 +1,5 @@
 import type { Role } from "../handoff/types.js";
+import type { GenericApiMapping } from "./generic-api-config.js";
 
 /**
  * The kind of key an adapter asks for, which is the narrowest the platform offers:
@@ -159,6 +160,8 @@ export interface AdapterSettings {
   sitemaps?: readonly string[] | undefined;
   /** Only `sitemap-feed`: feeds to read instead of looking (a path or an address on the site). */
   feeds?: readonly string[] | undefined;
+  /** Only `generic-api`: the mapping from the platform's read API to items. */
+  api?: GenericApiMapping | undefined;
   /**
    * Only `umbraco`: the owner says the Delivery API is meant to be private. The probing check
    * `umbraco-delivery-api-public` runs only when this is true; a key being set says nothing of it.

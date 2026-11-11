@@ -1,0 +1,37 @@
+{
+  "format": 1,
+  "recipe": "kontent-ai",
+  "name": "Kontent.ai",
+  "settings": {
+    "id": "generic-api",
+    "fingerprint": {
+      "article": ["title"]
+    },
+    "api": {
+      "endpoint": "https://deliver.kontent.ai/00000000-0000-4000-8000-000000000000",
+      "collections": {
+        "items": {
+          "path": "/items",
+          "query": {
+            "includeTotalCount": "true"
+          },
+          "items": "/items",
+          "total": "/pagination/total_count",
+          "fieldRoot": "/elements",
+          "pagination": {
+            "style": "offset",
+            "limit": "limit",
+            "offset": "skip",
+            "pageSize": 100
+          },
+          "fields": {
+            "id": "/system/id",
+            "type": "/system/type",
+            "slug": "/elements/url/value",
+            "updatedAt": "/system/last_modified"
+          }
+        }
+      }
+    }
+  }
+}

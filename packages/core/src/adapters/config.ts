@@ -1,6 +1,7 @@
 import * as z from "zod";
 import { ADAPTER_ENTRIES } from "./entries.generated.js";
 import { isUrlTemplate } from "./fingerprint.js";
+import { PROTOTYPE_KEYS, genericApiSchema } from "./generic-api-config.js";
 import { isPermalinkPattern } from "./shared/permalink.js";
 
 const ID = /^[a-z][a-z0-9-]{0,30}$/;
@@ -56,6 +57,9 @@ const FOLDER =
 const HYPHEN_FIELDS: readonly string[] = ADAPTER_ENTRIES.filter(
   (e) => e.settings?.hyphenFields,
 ).map((e) => e.id);
+
+/** The adapter driven by a mapping in the settings (`api`). */
+const GENERIC_API = "generic-api";
 
 /**
  * gaugeline.adapters.json, read from the working folder like the other settings files (there is no
@@ -187,9 +191,48 @@ export const adaptersConfigSchema = z.strictObject({
             .min(1)
             .max(5)
             .optional(),
+          /** `generic-api` only: the mapping from a platform's read API to items (docs/integrations/generic-api). */
+          api: genericApiSchema.optional(),
         })
         .superRefine((entry, ctx) => {
           const own = PAGE_READERS.includes(entry.id);
+          if (entry.id !== GENERIC_API && entry.api !== undefined)
+            ctx.addIssue({
+              code: "custom",
+              path: ["api"],
+              message: `"api" belongs to the generic-api adapter, not to ${entry.id}`,
+            });
+          if (entry.id === GENERIC_API) {
+            if (entry.api === undefined)
+              ctx.addIssue({
+                code: "custom",
+                path: ["api"],
+                message:
+                  'the generic-api adapter needs an "api" mapping: its endpoint, how it pages and where the fields are (see docs/integrations/recipes)',
+              });
+            else {
+              const named = Object.keys(entry.api.collections);
+              const typed = Object.values(entry.api.collections).some(
+                (c) => c.fields.type !== undefined,
+              );
+              for (const key of ["fingerprint", "urls"] as const)
+                for (const type of Object.keys(entry[key] ?? {}))
+                  if (!typed && !named.includes(type))
+                    ctx.addIssue({
+                      code: "custom",
+                      path: [key, type],
+                      message: `"${type}" is not a collection in "api" (${named.join(", ")}): nothing would be read for it`,
+                    });
+            }
+            for (const [type, fields] of Object.entries(entry.fingerprint ?? {}))
+              for (const field of fields)
+                if (field.split(".").some((part) => PROTOTYPE_KEYS.has(part)))
+                  ctx.addIssue({
+                    code: "custom",
+                    path: ["fingerprint", type],
+                    message: `"${field}" reaches into an object's prototype, which is never read`,
+                  });
+          }
           for (const key of ["site", "sitemaps", "feeds"] as const)
             if (!own && entry[key] !== undefined)
               ctx.addIssue({
