@@ -8,6 +8,10 @@ export const entries: readonly AdapterEntry[] = BUILDERS.map((platform, i): Adap
   name: platform.name,
   status: "built",
   describe: builderDescription(platform),
+  detect: {
+    hosts: platform.hints.hosts,
+    ...(platform.hints.generator ? { generator: platform.hints.generator } : {}),
+  },
   settings: { pageReader: true },
   load: lazy(platform.id, async () => {
     const { createBuilderAdapter } = await import("./builders.js");

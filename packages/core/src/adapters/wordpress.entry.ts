@@ -28,6 +28,11 @@ export const entries: readonly AdapterEntry[] = [
     status: "built",
     describe: WORDPRESS_DESCRIPTION,
     envVars: WORDPRESS_ENV_VARS,
+    detect: {
+      generator: ["wordpress"],
+      paths: ["/wp-content/", "/wp-includes/"],
+      headers: { link: "api.w.org" },
+    },
     load: lazy("wordpress", async () => {
       const { createWordPressAdapter } = await import("./wordpress.js");
       return (c, settings) =>

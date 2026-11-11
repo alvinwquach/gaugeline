@@ -7,6 +7,7 @@ import { isVerified } from "../../fetch/read-only-query.js";
 import {
   allowlistProblems,
   rateLimited,
+  rateLimitedAs403,
   refusing,
   requestProblems,
   world,
@@ -288,6 +289,25 @@ describe.each(ENTRIES)("the adapter contract: $id", (entry) => {
       expect(got.docs.length).toBeGreaterThanOrEqual(atLeast);
       expect(w.sleeps).toEqual([2000]);
     });
+
+    it.runIf(entry.rateLimit.alsoAs403 === true)(
+      "a limit sent as a 403 with x-ratelimit-remaining 0 is a rate limit with what was read, not a refused key",
+      async () => {
+        const { options, succeedFirst, atLeast } = entry.rateLimit;
+        const w = world(entry, (t) => rateLimitedAs403(t, succeedFirst));
+        const got = await collectPublished(w.adapter, options);
+        expect(got.partial?.reason).toBe("rate-limited");
+        expect(got.partial?.retry).toMatch(/^in \d+ seconds$/);
+        expect(got.docs.length).toBeGreaterThanOrEqual(atLeast);
+        const err: unknown = await world(entry, (t) => rateLimitedAs403(t, 1))
+          .adapter.types()
+          .then(
+            () => undefined,
+            (e: unknown) => e,
+          );
+        expect(err).toBeInstanceOf(AdapterRateLimitedError);
+      },
+    );
 
     it("types() and fieldCounts() throw the rate limit with what they had", async () => {
       const w = world(entry, (t) => rateLimited(t, { after: 1, times: 1000 }));
