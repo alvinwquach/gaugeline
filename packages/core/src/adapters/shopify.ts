@@ -80,6 +80,12 @@ export function shopHost(input: string): string | undefined {
 /** A path from an address the platform gave: one leading "/", no "//", no "..", plain segments. Else undefined. */
 export function safePath(address: unknown): string | undefined {
   if (typeof address !== "string" || address.length > 2000) return undefined;
+  // Judged on the text as sent: a URL parser would quietly resolve a dot segment away.
+  if (!/^https:\/\/[^/?#]+(?:[/?#]|$)/.test(address)) return undefined;
+  // eslint-disable-next-line no-control-regex
+  if (/\.\.|%2e|%2f|%5c|\\|[\u0000-\u001f\u007f]/i.test(address)) return undefined;
+  const afterHost = address.replace(/^https:\/\/[^/?#]+/, "");
+  if (afterHost.startsWith("//")) return undefined;
   let path: string;
   try {
     const u = new URL(address, "https://shop.invalid");
@@ -227,10 +233,19 @@ interface RawItem {
   data: Record<string, unknown>;
 }
 
+/** The kind of id each type's items have: a product id in the pages list is not an id of this type. */
+const KIND: Readonly<Record<string, string>> = {
+  articles: "Article",
+  blogs: "Blog",
+  collections: "Collection",
+  pages: "Page",
+  products: "Product",
+};
+
 function parseItem(raw: unknown, type: string): RawItem {
   const r = isRecord(raw) ? raw : {};
   const gid = typeof r.id === "string" ? GID.exec(r.id) : null;
-  if (gid === null || gid[2] === undefined)
+  if (gid === null || gid[2] === undefined || gid[1] !== KIND[type])
     throw new AdapterCouldNotCheck("Shopify answered with an item whose id is not a Shopify id.");
   if (typeof r.handle !== "string" || !HANDLE.test(r.handle))
     throw new AdapterCouldNotCheck(
