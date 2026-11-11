@@ -4,11 +4,13 @@ import type { PageSnapshot } from "../snapshot.js";
 import { isHtmlPage } from "./page.js";
 
 const YEAR = 31_536_000;
+/** More directives than this in one header are not read. */
+const MAX_DIRECTIVES = 40;
 
 /** Cache-Control as a Map from lower-case directive to its number (or true when it has none). */
 export function parseCacheControl(value: string): Map<string, number | true> {
   const out = new Map<string, number | true>();
-  for (const part of value.split(",").slice(0, 30)) {
+  for (const part of value.split(",").slice(0, MAX_DIRECTIVES)) {
     const [name, arg] = part.trim().toLowerCase().split("=", 2);
     if (!name) continue;
     const n = arg === undefined ? NaN : Number(arg.replace(/^"|"$/g, ""));
