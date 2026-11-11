@@ -155,23 +155,30 @@ describe.skipIf(!bin)(
       await session.close();
     });
 
-    it("statement_timeout stops a slow query; the run goes on with could-not-check and the next query", async () => {
-      const { results, run } = await runSource(
-        source({
-          type: "postgres",
-          timeoutMs: 300,
-          queries: {
-            slow: "select count(*) from generate_series(1, 100000000000)",
-            fast: "select 1 as one",
-          },
-        }),
-        { [DB_VAR]: url() },
-      );
-      expect(results[0]).toMatchObject({ status: "could-not-check" });
-      expect(results[0]?.message).toMatch(/longer than the statement timeout/);
-      expect(results[1]).toMatchObject({ status: "ok", rows: [{ one: 1 }] });
-      expect(run.notices.filter((n) => n.kind !== "advice")).toEqual([]);
-    });
+    // Quarantined (owner speed rule, 10 Nov 2026): this test failed once on an Ubuntu runner on #131 and
+    // again on #151 and passed on rerun both times, so it retries once on CI. Follow-up row FIX-1 in
+    // PROGRESS.md finds the cause: the failure message is the client's 10 s deadline, not the server's 300 ms.
+    it(
+      "statement_timeout stops a slow query; the run goes on with could-not-check and the next query",
+      { retry: process.env.CI ? 1 : 0 },
+      async () => {
+        const { results, run } = await runSource(
+          source({
+            type: "postgres",
+            timeoutMs: 300,
+            queries: {
+              slow: "select count(*) from generate_series(1, 100000000000)",
+              fast: "select 1 as one",
+            },
+          }),
+          { [DB_VAR]: url() },
+        );
+        expect(results[0]).toMatchObject({ status: "could-not-check" });
+        expect(results[0]?.message).toMatch(/longer than the statement timeout/);
+        expect(results[1]).toMatchObject({ status: "ok", rows: [{ one: 1 }] });
+        expect(run.notices.filter((n) => n.kind !== "advice")).toEqual([]);
+      },
+    );
 
     it("6,000 rows are cut at 5,000 with a notice, and the connection is still usable afterwards", async () => {
       const { results, run } = await runSource(
