@@ -45,7 +45,7 @@ and it is for **sites you own or have permission to test**. It also needs an add
 ```json title=gaugeline.images.json
 {
   "imageOptimizerProbeUrl": "https://test-pictures.example/gaugeline-probe.png",
-  "settingsFiles": ["next.config.js"]
+  "settingsFiles": ["next.config.js", "netlify.toml"]
 }
 ```
 
@@ -69,7 +69,8 @@ say whether the list is open.
 ## Example: a bakery whose image settings allow every host
 
 Cedar and Crumb is an invented neighbourhood bakery. The freelancer who built its Next.js site added
-`hostname: "**"` to `next.config.js` when the loaf photos would not load. The owner agreed to the probing
+`hostname: "**"` to `next.config.js` when the loaf photos would not load, and its `netlify.toml` lists an
+expression with no anchors. The owner agreed to the probing
 checks, and the folder holds the `gaugeline.images.json` shown above.
 
 <!-- fixture: image-optimizer -->
@@ -83,17 +84,19 @@ $ npx gaugeline cedar-crumb.example --owner-consent
     next.config.js line 4: hostname: "**" lets the image address fetch from any host
 ✗ Your image address fetched a picture from a website you did not list
     The Next.js image address answered 200 with an image fetched from test-pictures.example/gaugeline-probe.png, a host that is not in your image list: anyone can use your site to resize and serve images from any address
+! An image allowlist expression is not anchored
+    netlify.toml line 4: "https://images\\.cedar-crumb\\.example/.*" is not anchored with ^ and $
 · Shared links have no picture
     no og:image on https://cedar-crumb.example/
 ? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
     Mail records are read from DNS only with --dns. Rerun with --dns to check them.
 
-3 to look at, 2 to fix first.
+4 to look at, 2 to fix first.
 ```
 
 Each check that passed also prints a `✓ <id>` line, left out above. The output is run by `pnpm docs:examples`.
 
-The first finding is the file, found without a request. The second is the proof: the image address fetched
+The first and third findings are the files, found without a request. The second is the proof: the image address fetched
 the picture you chose, from a host that is not in your list. The fix is the same for both: list the exact
 hosts your pictures come from (and a path prefix where you can) in `remotePatterns`, `domains` or
 `remote_images`, remove the wildcard, rebuild, and run the check again.
@@ -114,4 +117,4 @@ result next to this report. Gaugeline does not generate attack traffic.
   finding, so a change makes a check say "could not be checked", not guess.
 
 Sources: the Next.js `images.remotePatterns`, Vercel image optimization, Nuxt Image IPX, Astro images and
-Netlify Image CDN documentation, as read in [ADR-0007](../adr/0007-open-image-optimizers.md).
+Netlify Image CDN documentation, as read for ADR-0007 (the decision record, PR 214).

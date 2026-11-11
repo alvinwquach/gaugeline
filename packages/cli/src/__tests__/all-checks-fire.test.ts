@@ -38,6 +38,9 @@ const FIXTURES = [
   "load-more",
   "hidden-library",
   "next-like",
+  "sveltekit-like",
+  "sveltekit-dev",
+  "astro-like",
   "refusing",
   "tag-rules",
   "nav-events",
@@ -47,6 +50,7 @@ const FIXTURES = [
   "form-checks",
   "paid-downloads",
   "gated-downloads",
+  "image-optimizer",
   "checkout-after",
 ];
 

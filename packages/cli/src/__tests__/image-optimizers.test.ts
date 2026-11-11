@@ -41,7 +41,7 @@ const optimizerGets = (site: Fixture) =>
 describe("open image optimizers: end to end", () => {
   it("without consent the settings file is read, nothing is sent to the optimizer", async () => {
     const site = await start();
-    const cwd = folder("gaugeline.images.json", "next.config.js");
+    const cwd = folder("gaugeline.images.json", "next.config.js", "netlify.toml");
     const r = await runBin([site.origin, "--allow-private", "--no-open"], {}, { cwd });
     expect(r.stdout).toContain("Your image settings let the image address fetch from any website");
     expect(r.stdout).toContain(
@@ -61,7 +61,7 @@ describe("open image optimizers: end to end", () => {
 
   it("with consent and the owner's address exactly one GET is sent and it is a finding", async () => {
     const site = await start();
-    const cwd = folder("gaugeline.images.json", "next.config.js");
+    const cwd = folder("gaugeline.images.json", "next.config.js", "netlify.toml");
     const r = await runBin(
       [site.origin, "--allow-private", "--no-open", "--owner-consent"],
       {},
@@ -137,7 +137,7 @@ describe("open image optimizers: end to end", () => {
 
   it("the probe address in the file is ignored without consent", async () => {
     const site = await start();
-    const cwd = folder("gaugeline.images.json", "next.config.js");
+    const cwd = folder("gaugeline.images.json", "next.config.js", "netlify.toml");
     await runBin([site.origin, "--allow-private", "--no-open"], {}, { cwd });
     expect(site.requests.map((q) => q.path).join(" ")).not.toContain("test-pictures");
   });
