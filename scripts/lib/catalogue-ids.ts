@@ -19,6 +19,7 @@ import {
   COST_CHECKS,
   TRACKER_CHECKS,
   PUBLISHED_CHECKS,
+  BACKUPS_CHECKS,
   LIBRARY_CHECKS,
   WORDPRESS_CHECKS,
   PRINTED_CHECKS,
@@ -49,6 +50,7 @@ export function CATALOGUE_IDS(): string[] {
   for (const c of COST_CHECKS) registry.register(c);
   for (const c of TRACKER_CHECKS) registry.register(c);
   for (const c of PUBLISHED_CHECKS) registry.register(c);
+  for (const c of BACKUPS_CHECKS) registry.register(c);
   for (const c of LIBRARY_CHECKS) registry.register(c);
   for (const c of WORDPRESS_CHECKS) registry.register(c);
   for (const c of PRESENCE_CHECKS) registry.register(c);
