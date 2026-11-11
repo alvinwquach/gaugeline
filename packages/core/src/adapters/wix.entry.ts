@@ -22,6 +22,11 @@ export const entries: readonly AdapterEntry[] = [
     name: "Wix",
     status: "built",
     describe: WIX_DESCRIPTION,
+    detect: {
+      generator: ["wix.com website builder"],
+      hosts: ["parastorage.com", "wixstatic.com"],
+      headers: { "x-wix-request-id": "" },
+    },
     settings: { pageReader: true },
     load: lazy("wix", async () => {
       const { createWixAdapter } = await import("./wix.js");

@@ -17,6 +17,23 @@ export type AdapterFactory = (
 ) => ContentAdapter;
 
 /**
+ * How a page shows that a site is built on a platform, as plain data (`gaugeline init` reads it; nothing else
+ * does). Every list is optional and every match is a HINT: the first one that matches says why, and no hint
+ * switches an adapter on. Lower case throughout. An entry must not import its adapter to detect it (the loader
+ * rule), which is why this is data and not a function.
+ */
+export interface AdapterDetection {
+  /** The start of the generator meta tag's content, such as "wordpress". */
+  generator?: readonly string[];
+  /** Hosts the page loads scripts, styles or images from; a subdomain of one matches. */
+  hosts?: readonly string[];
+  /** A fragment of the path of a file the page loads, on any host, such as "/wp-content/". */
+  paths?: readonly string[];
+  /** A response header: its name, and a fragment of its value ("" for any value). */
+  headers?: Readonly<Record<string, string>>;
+}
+
+/**
  * Everything the rest of Gaugeline needs to know about one adapter without loading it. Each adapter has one
  * small file, `adapters/<id>.entry.ts`, that exports `entries: readonly AdapterEntry[]` (the builders file
  * exports one for each platform). `pnpm gen:adapters` collects every `*.entry.ts` into
@@ -42,6 +59,8 @@ export interface AdapterEntry {
   load?: () => Promise<AdapterFactory>;
   /** Built only: the environment variables the adapter may read, for a caller that copies them before loading it. */
   envVars?: readonly string[];
+  /** Built only: what a page shows when a site is built on this platform, for `gaugeline init`. Absent: never detected. */
+  detect?: AdapterDetection;
   /** What this adapter adds to the settings file's rules (config.ts). */
   settings?: {
     /** Reads the live site's sitemap and feeds: takes `site`, `sitemaps` and `feeds`, and no fields. */

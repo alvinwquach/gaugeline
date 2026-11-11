@@ -1495,3 +1495,19 @@ export type { AdvisoryToolDeps, AdvisoryToolInput } from "./advisory/tool.js";
 export { isAdvisoryId } from "./advisory/target.js";
 export type { WordPressData } from "./advisory/evidence.js";
 export * from "./adapters/index.js";
+
+// gaugeline init: detect a site's stack from outside and propose starter settings files (F-07).
+export { detectAdapters, matchDetection, signsOf } from "./adapters/detect.js";
+export type { AdapterSigns, AdapterSighting } from "./adapters/detect.js";
+export type { AdapterDetection } from "./adapters/entry.js";
+export { LINKED_PAGES, detectStack, linkedPaths } from "./init/stack.js";
+export type { DetectOptions, PaymentSighting, Sighting, StackReport } from "./init/stack.js";
+export {
+  ADAPTERS_FILE as INIT_ADAPTERS_FILE,
+  NOTES_FILE as INIT_NOTES_FILE,
+  planInit,
+  renderNotes as renderInitNotes,
+} from "./init/plan.js";
+export type { InitEnvVar, InitFile, InitPlan, NextStep } from "./init/plan.js";
+export { renderInit } from "./init/render.js";
+export type { InitOutput } from "./init/render.js";
