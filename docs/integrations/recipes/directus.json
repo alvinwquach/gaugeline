@@ -1,0 +1,60 @@
+{
+  "format": 1,
+  "recipe": "directus",
+  "name": "Directus",
+  "settings": {
+    "id": "generic-api",
+    "fingerprint": {
+      "article": ["title", "summary"]
+    },
+    "urls": {
+      "article": "/news/{slug}"
+    },
+    "api": {
+      "endpoint": "https://cms.example",
+      "auth": {
+        "header": "Authorization",
+        "env": "GAUGELINE_API_DIRECTUS_TOKEN",
+        "prefix": "Bearer "
+      },
+      "collections": {
+        "article": {
+          "path": "/items/articles",
+          "query": {
+            "filter[status][_eq]": "published",
+            "meta": "filter_count",
+            "sort": "id"
+          },
+          "items": "/data",
+          "total": "/meta/filter_count",
+          "pagination": {
+            "style": "offset",
+            "limit": "limit",
+            "offset": "offset",
+            "pageSize": 100
+          },
+          "published": {
+            "path": "/status",
+            "equals": "published"
+          },
+          "select": {
+            "param": "fields",
+            "always": ["id", "slug", "status", "date_updated", "date_created"]
+          },
+          "fields": {
+            "id": "/id",
+            "slug": "/slug",
+            "updatedAt": ["/date_updated", "/date_created"],
+            "publishedAt": "/date_created"
+          }
+        }
+      },
+      "drafts": {
+        "collection": "article",
+        "query": {
+          "filter[status][_eq]": "draft"
+        }
+      }
+    }
+  }
+}

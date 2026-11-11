@@ -1,0 +1,41 @@
+{
+  "format": 1,
+  "recipe": "datocms",
+  "name": "DatoCMS",
+  "settings": {
+    "id": "generic-api",
+    "fingerprint": {
+      "post": ["title"]
+    },
+    "urls": {
+      "post": "/blog/{slug}"
+    },
+    "api": {
+      "endpoint": "https://graphql.datocms.com",
+      "auth": {
+        "header": "Authorization",
+        "env": "GAUGELINE_API_DATOCMS_TOKEN",
+        "prefix": "Bearer "
+      },
+      "collections": {
+        "post": {
+          "graphql": "query Posts($first: IntType, $skip: IntType) { allPosts(first: $first, skip: $skip, orderBy: [_firstPublishedAt_ASC]) { id slug _updatedAt _firstPublishedAt __FIELDS__ } _allPostsMeta { count } }",
+          "items": "/data/allPosts",
+          "total": "/data/_allPostsMeta/count",
+          "pagination": {
+            "style": "offset",
+            "limit": "first",
+            "offset": "skip",
+            "pageSize": 100
+          },
+          "fields": {
+            "id": "/id",
+            "slug": "/slug",
+            "updatedAt": "/_updatedAt",
+            "publishedAt": "/_firstPublishedAt"
+          }
+        }
+      }
+    }
+  }
+}
