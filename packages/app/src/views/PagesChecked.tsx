@@ -13,6 +13,7 @@ const KIND_NAME = {
   script: "JavaScript file",
   "extra-page": "Other page",
   other: "Other",
+  query: "Read-only query",
 } as const;
 
 /**
@@ -131,7 +132,15 @@ function RowView({ row }: { row: Row }) {
       <th scope="row">
         <code dir="auto">{row.address}</code>
       </th>
-      <td>{KIND_NAME[row.kind]}</td>
+      <td>
+        {KIND_NAME[row.kind]}
+        {row.allow === undefined ? null : (
+          <>
+            {" "}
+            <code>{row.allow}</code>
+          </>
+        )}
+      </td>
       <td>{row.method}</td>
       <td className="answer">
         {row.redirectedTo === undefined ? (

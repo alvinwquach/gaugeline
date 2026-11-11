@@ -33,6 +33,9 @@ Gaugeline is polite to the site it checks:
 
 - **Read-only.** Every request is a `GET` or a `HEAD`. Anything else is refused in code before it is
   sent (`assertReadOnly` in `packages/core/src/fetcher.ts`, the only module that touches the network).
+  The one exception for reads is a documented read-only query endpoint on an adapter's allowlist
+  (ADR-0006): a `POST` whose body is a query, never a write, sent to the platform's own API. A page
+  check sends none.
 - **Five at a time.** At most five requests are in flight at once. The rest wait their turn in the
   order they were asked for.
 - **A named user agent.** Requests say who they are: `Gaugeline/0.1 (read-only site check)`.

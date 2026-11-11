@@ -13,6 +13,7 @@
 6. Gaugeline is read-only. Requests to a checked site are GET or HEAD only and go through the fetcher, which refuses
    private, loopback, link-local and metadata addresses unless --allow-private is set.
    The one exception is ADR-0005: notifications to the user's own channels are POSTs, from one file only.
+   That makes two exceptions, not one: the owner decided on 11 Nov 2026 (ADR-0006) that an adapter may also POST a read-only query to an endpoint on its registered allowlist, through `fetcher.query` only; any other POST, PUT, PATCH or DELETE stays forbidden.
    Keys come from the environment and never reach a log, a finding or a report.
 7. Checks are plain rules. No model calls in a check. The same input gives the same findings.
 8. `packages/core` never imports from the CLI and never calls process.exit.

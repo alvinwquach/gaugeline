@@ -52,7 +52,33 @@ export type {
   FetcherOptions,
   GetOptions,
   Hop,
+  QueryOptions,
 } from "./fetcher.js";
+export {
+  registerQueryAllow,
+  registeredQueryAllows,
+  resolveQueryAllow,
+} from "./fetch/query-registry.js";
+export {
+  MAX_QUERY_BODY_BYTES,
+  QueryRefusedError,
+  allowProblems,
+  bodyProblem,
+  isExactHost,
+  isReadOnlyBody,
+  isVerified,
+  isWriteKey,
+  isWriteText,
+  matchesPath,
+  queryRefusal,
+} from "./fetch/read-only-query.js";
+export type {
+  ConfiguredHost,
+  GraphqlQueryShape,
+  JsonQueryShape,
+  QueryBodyShape,
+  ReadOnlyQueryAllow,
+} from "./fetch/read-only-query.js";
 export { Semaphore } from "./semaphore.js";
 export { BUDGET_KINDS, LIMITS, createBudget, formatSampleSummary } from "./limits.js";
 export type { Budget, BudgetKind, BudgetSummary, BudgetTally, Limits } from "./limits.js";
@@ -631,8 +657,9 @@ export {
   buildRequestsFile,
   parseRequestsFile,
   requestsFileSchema,
+  requestsFileSchemaV1,
 } from "./requests-file.js";
-export type { RequestsFile, RequestsFileCaps } from "./requests-file.js";
+export type { RequestsFile, RequestsFileCaps, RequestsFileV1 } from "./requests-file.js";
 export { leaksView, MAX_PREVIEWS } from "./leaks-view.js";
 export type { DatasetView, LeaksView, ScriptView } from "./leaks-view.js";
 export { pageData } from "./run-view.js";

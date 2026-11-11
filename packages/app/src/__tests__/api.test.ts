@@ -149,6 +149,17 @@ describe("readChecked and getRun: the addresses and the page's data", () => {
     expect(readChecked(value)).toBeUndefined();
   });
 
+  it("a read-only query row (POST, with the allowlist id) is read", () => {
+    const row = { ...request(), kind: "query", method: "POST", allow: "wix-data-query" };
+    expect(readChecked({ ...checkedOf(), requests: [row] })?.requests?.[0]).toMatchObject({
+      kind: "query",
+      method: "POST",
+      allow: "wix-data-query",
+    });
+    expect(readChecked({ ...checkedOf(), requests: [{ ...row, method: "PUT" }] })).toBeUndefined();
+    expect(readChecked({ ...checkedOf(), requests: [{ ...row, allow: 5 }] })).toBeUndefined();
+  });
+
   it("a page without a list of requests is read, with none", () => {
     const { requests: _r, ...rest } = checkedOf();
     expect(readChecked(rest)?.requests).toBeUndefined();
