@@ -195,6 +195,10 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "Strapi lists unpublished entries to visitors with no token",
     "Security & email",
   ],
+  "aem-author-links": [
+    "A published page links to the editors' side of Adobe Experience Manager",
+    "Security & email",
+  ],
   "app-smart-banner-mismatch": ["The iPhone app banner promotes a different app", "Visitors"],
   "checkout-js-only": ["Nothing on the page can be linked to buy", "Sales & prices"],
   "crm-field-names": ["A form sends fields the CRM doesn't have", "Leads"],
@@ -1144,6 +1148,12 @@ export const CHECK_TEXT: Readonly<
     "Unfinished work is public: prices before they are announced, an event before it is confirmed, a draft nobody has approved. Anyone who guesses the route can read it, and search engines or scrapers may already have.",
     "In Strapi's settings, open Users & Permissions, then the Public role, and remove find and findOne from the collection, or give the front end a read-only API token and keep the Public role closed. If the front end previews drafts, send the token from the server, never from the browser.",
     "probing check, off without --owner-consent: this check asks Strapi's public routes for entries that are not published, so it runs only with --owner-consent (or gaugeline.consent.json), on sites you own or have permission to test; per collection named in the settings, with no Authorization header and no cookie: GET /api/{collection} for the published total, GET /api/{collection}?status=draft and GET /api/{collection}?publicationState=preview for the draft total (the second is asked even when the first answers with no extra entries, because a Strapi that ignores a parameter it does not know answers with the published list), all with pagination[pageSize]=1 and fields[0]=updatedAt; when a draft total is larger, the ids of both lists are read (at most 500 each, each list stepped by the page size the answer reports, fields[0]=updatedAt only) and the entries only the draft list has are counted and named by id (Strapi 5 documentId, Strapi 4 id); a collection that answers 401 or 403 to the published list is not shown to visitors, and a 404 is could-not-check (most likely a mistyped name); a collection that refuses the draft list shows no drafts to visitors; one whose draft lists show no extra entries gives no sign of public drafts, which is not proof, since a Strapi that ignores both spellings looks the same as one with nothing unpublished; a finding is a count and ids, never a field; ids are held in a Set to subtract the published list from the draft list; the requests carry no header the fetcher adds per address",
+  ],
+  "aem-author-links": [
+    "The live page links to Adobe Experience Manager's author tier: an author host, or the editor, the CRX or the libraries path on the site itself.",
+    "Visitors land on a login screen or an error, and the link tells anyone where the editors' tier is and that the site runs Adobe Experience Manager. Editors who paste an address from their own browser into a page are the usual cause.",
+    "Change each link to the page's public address on the publish host. In the page's component, use a link field that stores the content path and let the site's link rewriting build the public address, instead of pasting the editor's address.",
+    "a[href] on the page whose host is author.<domain> or author-p<n>-e<n>.adobeaemcloud.com (any path), or whose path on the page's own host starts /editor.html, /crx/ or /libs/, or is /ui with a #/aem fragment (adapters/aem-author.ts). Only the links the page already serves are read; nothing else is requested. Evidence shows host and path, never a query string.",
   ],
   "app-smart-banner-mismatch": [
     "The page's Smart App Banner (the apple-itunes-app meta tag) names a different app id than the page's App Store link.",
