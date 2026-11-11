@@ -70,6 +70,9 @@ entry, no `PROGRESS.md`): that is what kept six adapter pull requests conflictin
      `<CMS>_DESCRIPTION` from this file: the adapter module imports it from here and returns it from `describe()`,
      so the run header and the adapter say one thing (a test compares them);
    - `envVars`: the variables the adapter may read, when a caller must copy them before loading it;
+   - `detect` (optional): how `gaugeline init` recognises the platform from a page, as plain data: the generator tag, hosts
+     and path fragments its files come from, response headers (`AdapterDetection` in `entry.ts`). Without it the platform is
+     never suggested;
    - `settings`: what it adds to the `gaugeline.adapters.json` rules: `pageReader: true` if it reads the live site's
      sitemap and takes `site`, `sitemaps` and `feeds`; `hyphenFields: true` if its field names have hyphens;
    - `docs`: the row in `docs/integrations/index.md`: `key` (what key it asks for) and `reads` (what it reads,

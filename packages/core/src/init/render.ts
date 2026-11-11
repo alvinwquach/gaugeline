@@ -30,7 +30,7 @@ export function renderInit(o: InitOutput): string {
   out.push("Detected");
   if (rows.length === 0) out.push("  Nothing it could name from the public pages.");
   for (const [k, v] of rows) out.push(`  ${pad(k, 16)}${v}`);
-  for (const n of report.notes) out.push(`  Not read: ${n}`);
+  for (const n of report.notes) out.push(`  Note: ${n}`);
   out.push("");
 
   out.push(o.dryRun ? "Would write (--dry-run: nothing was written)" : "Wrote");

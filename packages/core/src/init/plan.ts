@@ -204,8 +204,7 @@ export function renderNotes(report: StackReport, plan: InitPlan, typedAddress: s
     for (const v of plan.envVars) lines.push(`- \`${v.name}\`: ${v.for}`);
     lines.push("");
   }
-  if (report.notes.length > 0)
-    lines.push("## Not read", "", ...report.notes.map((n) => `- ${n}`), "");
+  if (report.notes.length > 0) lines.push("## Notes", "", ...report.notes.map((n) => `- ${n}`), "");
   lines.push("## Next, in order of value", "");
   plan.next.forEach((n, i) =>
     lines.push(`${i + 1}. ${n.title}${n.command ? ` (\`${n.command}\`)` : ""}: ${n.docs}`),
