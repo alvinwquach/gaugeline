@@ -5,6 +5,7 @@ name: Docs
 # repository variable DOCS_DEPLOY_ENABLED=true and the Netlify settings in scripts/deploy-docs.sh.
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: [main]
 
@@ -18,6 +19,8 @@ concurrency:
 
 jobs:
   build:
+    # A draft pull request runs no CI; marking it ready starts it (ready_for_review). Other events are unaffected.
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -63,6 +66,7 @@ jobs:
     # Forks get no secrets, so the preview is skipped for them; the build and artifact above still run.
     if: >-
       github.event_name == 'pull_request' &&
+      github.event.pull_request.draft == false &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       vars.DOCS_DEPLOY_ENABLED == 'true'
     runs-on: ubuntu-latest

@@ -2,6 +2,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { parse } from "yaml";
 
 const dir = fileURLToPath(new URL("../../.github/workflows/", import.meta.url));
 
@@ -213,5 +214,173 @@ describe("faster pull request runs", () => {
         ),
       );
     }
+  });
+});
+
+describe("draft pull requests do not run CI", () => {
+  type Job = { if?: string | boolean; name?: string };
+  type Workflow = { on: Record<string, unknown>; jobs: Record<string, Job> };
+  const workflows = readdirSync(dir)
+    .filter((f) => /\.ya?ml$/.test(f))
+    .map((f) => ({ f, wf: parse(readFileSync(join(dir, f), "utf8")) as Workflow }));
+  // A workflow that only reacts to a pull request closing (on-merge.yml) is not a draft concern.
+  const prWorkflows = workflows.filter(({ wf }) => {
+    const pr = wf.on.pull_request as { types?: string[] } | null | undefined;
+    return pr !== undefined && !(pr?.types && !pr.types.includes("opened"));
+  });
+
+  // A conservative evaluator for the small subset of expressions we use: == and != between a context
+  // value, a string, true, false or null, joined by && and || with parentheses. It returns the set of
+  // outcomes that are possible: a context it does not know makes the comparison undecided. Anything
+  // outside the subset throws, so the test fails instead of guessing.
+  type Outcomes = Set<boolean>;
+  const known = (ctx: Record<string, string | null>, name: string): string | null | undefined =>
+    name in ctx ? ctx[name] : undefined;
+  function evaluate(source: string, ctx: Record<string, string | null>): Outcomes {
+    const text = source.replace(/^\s*\$\{\{|\}\}\s*$/g, "").trim();
+    const tokens =
+      text.match(/'[^']*'|==|!=|&&|\|\||\(|\)|[A-Za-z_][\w.-]*|\S/g)?.map((t) => t) ?? [];
+    let pos = 0;
+    const peek = () => tokens[pos];
+    const take = () => tokens[pos++];
+    const operand = (): string | null | undefined | "?" => {
+      const t = take();
+      if (t === undefined) throw new Error(`unexpected end of: ${source}`);
+      if (t.startsWith("'")) return t.slice(1, -1);
+      if (t === "true" || t === "false") return t;
+      if (t === "null") return null;
+      if (/^[A-Za-z_][\w.-]*$/.test(t)) {
+        const v = known(ctx, t);
+        return v === undefined ? "?" : v;
+      }
+      throw new Error(`cannot parse ${t} in: ${source}`);
+    };
+    const atom = (): Outcomes => {
+      if (peek() === "(") {
+        take();
+        const inner = or();
+        if (take() !== ")") throw new Error(`missing ) in: ${source}`);
+        return inner;
+      }
+      const a = operand();
+      const op = take();
+      if (op !== "==" && op !== "!=") throw new Error(`expected == or != in: ${source}`);
+      const b = operand();
+      if (a === "?" || b === "?") return new Set([true, false]);
+      return new Set([op === "==" ? a === b : a !== b]);
+    };
+    const combine = (x: Outcomes, y: Outcomes, f: (p: boolean, q: boolean) => boolean) =>
+      new Set([...x].flatMap((p) => [...y].map((q) => f(p, q))));
+    const and = (): Outcomes => {
+      let r = atom();
+      while (peek() === "&&") {
+        take();
+        r = combine(r, atom(), (p, q) => p && q);
+      }
+      return r;
+    };
+    function or(): Outcomes {
+      let r = and();
+      while (peek() === "||") {
+        take();
+        r = combine(r, and(), (p, q) => p || q);
+      }
+      return r;
+    }
+    const result = or();
+    if (pos !== tokens.length) throw new Error(`trailing input in: ${source}`);
+    return result;
+  }
+  const condition = (job: Job): string => (typeof job.if === "string" ? job.if : "true == true");
+  const DRAFT = "github.event.pull_request.draft";
+  const ctxFor = (event: string, draft: "true" | "false" | null) => ({
+    "github.event_name": event,
+    [DRAFT]: draft,
+  });
+
+  it("the evaluator knows the expressions it is used for", () => {
+    const safe = "github.event_name != 'pull_request' || github.event.pull_request.draft == false";
+    expect(evaluate(safe, ctxFor("pull_request", "true"))).toEqual(new Set([false]));
+    expect(evaluate(safe, ctxFor("pull_request", "false"))).toEqual(new Set([true]));
+    expect(evaluate(safe, ctxFor("push", null))).toEqual(new Set([true]));
+    // A bare draft test is false on a push (the draft field is null there), which is what we must not ship.
+    expect(evaluate("github.event.pull_request.draft == false", ctxFor("push", null))).toEqual(
+      new Set([false]),
+    );
+    expect(evaluate("vars.X == 'true' && " + safe, ctxFor("push", null))).toEqual(
+      new Set([true, false]),
+    );
+    expect(() => evaluate("contains(github.ref, 'x')", ctxFor("push", null))).toThrow();
+  });
+
+  it("every workflow that runs on a pull request lists ready_for_review, so a ready pull request gets CI at once", () => {
+    expect(prWorkflows.map((w) => w.f).sort()).toEqual([
+      "ci.yml",
+      "docs.yml",
+      "pr-body.yml",
+      "pr-gate.yml",
+    ]);
+    for (const { f, wf } of prWorkflows) {
+      const types = (wf.on.pull_request as { types?: string[] } | null)?.types ?? [];
+      for (const t of ["opened", "synchronize", "reopened", "ready_for_review"])
+        expect(types, `${f} types`).toContain(t);
+    }
+    // The labels and edits that pr-gate and pr-body react to are kept.
+    const typesOf = (f: string) =>
+      (prWorkflows.find((w) => w.f === f)?.wf.on.pull_request as { types: string[] }).types;
+    expect(typesOf("pr-gate.yml")).toEqual(expect.arrayContaining(["labeled", "unlabeled"]));
+    expect(typesOf("pr-body.yml")).toContain("edited");
+  });
+
+  it("every job that runs on a pull request is skipped while the pull request is a draft", () => {
+    for (const { f, wf } of prWorkflows)
+      for (const [name, job] of Object.entries(wf.jobs))
+        expect(evaluate(condition(job), ctxFor("pull_request", "true")), `${f}: ${name}`).toEqual(
+          new Set([false]),
+        );
+  });
+
+  it("a ready pull request still runs the jobs that were running before", () => {
+    for (const { f, wf } of prWorkflows)
+      for (const [name, job] of Object.entries(wf.jobs)) {
+        if (/^(production)$/.test(name)) continue; // main only
+        expect(
+          evaluate(condition(job), ctxFor("pull_request", "false")).has(true),
+          `${f}: ${name}`,
+        ).toBe(true);
+      }
+  });
+
+  it("the condition is true for pushes to main, merge groups, schedules, releases and manual runs", () => {
+    for (const { f, wf } of prWorkflows)
+      for (const [name, job] of Object.entries(wf.jobs)) {
+        // preview (pull requests only) and production (main only) are gated by event on purpose.
+        if (f === "docs.yml" && (name === "preview" || name === "production")) continue;
+        for (const event of ["push", "merge_group", "schedule", "release", "workflow_dispatch"])
+          expect(
+            evaluate(condition(job), ctxFor(event, null)).has(true),
+            `${f}: ${name} on ${event}`,
+          ).toBe(true);
+      }
+  });
+
+  it("the three required checks keep their names: test (node 22, ubuntu-latest), test (node 24, ubuntu-latest), test (node 24, windows-latest)", () => {
+    const ci = workflows.find((w) => w.f === "ci.yml")?.wf;
+    expect(Object.keys(ci?.jobs ?? {})).toEqual(
+      expect.arrayContaining(["test", "lint", "docs-examples", "pack"]),
+    );
+    expect(ci?.jobs.test?.name).toBe("test (node ${{ matrix.node }}, ${{ matrix.os }})");
+    expect(ci?.jobs.pack?.name).toBe("pack and smoke (node 22)");
+    const matrix = /fromJSON\(github\.event_name == 'pull_request' && '(.*?)' \|\|/.exec(
+      readFileSync(join(dir, "ci.yml"), "utf8"),
+    );
+    const { include } = JSON.parse(matrix?.[1] ?? "{}") as {
+      include: { os: string; node: string }[];
+    };
+    expect(include.map((m) => `test (node ${m.node}, ${m.os})`)).toEqual([
+      "test (node 22, ubuntu-latest)",
+      "test (node 24, ubuntu-latest)",
+      "test (node 24, windows-latest)",
+    ]);
   });
 });
