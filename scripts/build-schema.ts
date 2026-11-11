@@ -1,7 +1,8 @@
 /**
  * Generate the published JSON Schema files in packages/core/schema/ from their zod definitions:
  * result.v<N>.json (the --json result), requests.v<N>.json (the --save-requests file) and
- * brief.v<N>.json (the work order the brief formatter returns). Each has
+ * brief.v<N>.json (the work order the brief formatter returns) and advisory.v<N>.json (the answer of
+ * `gaugeline advisory --json`). Each has
  * its own version number and its own hash map, so the two shapes change independently.
  *   pnpm schema:build          write the files (and their hashes, for a version not yet in the map)
  *   pnpm schema:check          compare only; exit 1 on any difference
@@ -10,6 +11,10 @@ import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type * as z from "zod";
+import {
+  ADVISORY_SCHEMA_VERSION,
+  advisoryResultSchema,
+} from "../packages/core/src/advisory/schema.js";
 import { BRIEF_SCHEMA_VERSION, briefSchema } from "../packages/core/src/report/brief-schema.js";
 import {
   REQUESTS_FILE_SCHEMA_VERSION,
@@ -32,6 +37,7 @@ const SHAPES: ReadonlyArray<{ kind: SchemaKind; schema: z.ZodType; version: numb
   { kind: "result", schema: resultSchema, version: RESULT_SCHEMA_VERSION },
   { kind: "requests", schema: requestsFileSchema, version: REQUESTS_FILE_SCHEMA_VERSION },
   { kind: "brief", schema: briefSchema, version: BRIEF_SCHEMA_VERSION },
+  { kind: "advisory", schema: advisoryResultSchema, version: ADVISORY_SCHEMA_VERSION },
 ];
 
 const check = process.argv.includes("--check");

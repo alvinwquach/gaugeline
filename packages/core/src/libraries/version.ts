@@ -28,7 +28,7 @@ function tokens(pre: string): (string | number)[] {
   return (pre.match(/\d+|[A-Za-z]+/g) ?? []).map((t) => (/^\d/.test(t) ? Number(t) : t));
 }
 
-function comparePre(a: string, b: string): number {
+export function comparePre(a: string, b: string): number {
   const x = tokens(a);
   const y = tokens(b);
   for (let i = 0; i < Math.max(x.length, y.length); i++) {
