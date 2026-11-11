@@ -13,7 +13,7 @@ permissions:
 
 # A new push, edit or label change cancels the older run of this check.
 concurrency:
-  group: pr-checks-${{ github.head_ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:

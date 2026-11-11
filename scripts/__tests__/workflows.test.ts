@@ -173,19 +173,38 @@ describe("faster pull request runs", () => {
     expect(ci.jobs.test?.if).not.toContain("changeset-release");
   });
 
-  it("a new push cancels the older pull request run and a new merge cancels the older run on main", () => {
-    const ci = parse(read("ci.yml")) as {
-      concurrency: { group: string; "cancel-in-progress": unknown };
-    };
-    expect(ci.concurrency["cancel-in-progress"]).toBe(true);
-    // One group for every push to main, one group per pull request branch.
-    expect(ci.concurrency.group).toContain("ci-main");
-    expect(ci.concurrency.group).toContain("github.head_ref");
-    expect(ci.concurrency.group).not.toContain("github.sha");
-    // The docs workflow keeps its own rule: a pull request run is cancelled, a run on main finishes (it deploys).
-    const docs = read("docs.yml");
-    expect(docs).toContain("cancel-in-progress: ${{ github.event_name == 'pull_request' }}");
-    expect(docs).toMatch(/concurrency:\n\s+group: .*\$\{\{ github\.head_ref \|\| github\.sha \}\}/);
+  it("every workflow that runs on pull_request shares one concurrency rule: one group per pull request, a newer run cancels the older, and a run on main is never cancelled", () => {
+    // Owner order, 11 Nov 2026. github.workflow keeps the workflows apart; the pull request number keeps
+    // the pull requests apart; on a push the ref (refs/heads/main) is main's own group in each workflow.
+    const group = "${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}";
+    const onPullRequest: string[] = [];
+    for (const f of readdirSync(dir).filter((n) => /\.ya?ml$/.test(n))) {
+      const wf = parse(read(f)) as {
+        on: Record<string, unknown>;
+        concurrency?: { group: string; "cancel-in-progress": unknown } | string;
+      };
+      const events = Object.keys(wf.on);
+      if (!events.includes("pull_request")) {
+        // A workflow that never runs on a pull request must not cancel a run on main either.
+        if (typeof wf.concurrency === "object")
+          expect(wf.concurrency["cancel-in-progress"], f).not.toBe(true);
+        continue;
+      }
+      onPullRequest.push(f);
+      expect(typeof wf.concurrency, `${f} has a concurrency block`).toBe("object");
+      const c = wf.concurrency as { group: string; "cancel-in-progress": unknown };
+      expect(c.group, f).toBe(group);
+      // Pull request only: cancel the older run. Pull request and push: cancel on a pull request, never on main.
+      expect(c["cancel-in-progress"], f).toBe(
+        events.includes("push") ? "${{ github.event_name == 'pull_request' }}" : true,
+      );
+      // The earlier shared "ci-main" group (cancel-in-progress: true) is gone.
+      expect(read(f), f).not.toContain("ci-main");
+    }
+    // The workflows this rule was written for are all covered; a new pull request workflow is covered too.
+    expect(onPullRequest).toEqual(
+      expect.arrayContaining(["ci.yml", "docs.yml", "pr-checks.yml", "on-merge.yml"]),
+    );
   });
 
   it("every job has a timeout of at most 15 minutes (the release wait for the full matrix is the one longer job)", () => {
@@ -237,9 +256,6 @@ describe("faster pull request runs", () => {
     // The Release pull request deletes changesets by design, so the gate step skips it; the body check does not.
     expect(wf.jobs["pr-checks"]?.steps[gate]?.if).toContain("changeset-release/main");
     expect(wf.jobs["pr-checks"]?.steps[body]?.if).toBeUndefined();
-    expect(text).toMatch(
-      /concurrency:\n {2}group: pr-checks-\$\{\{ github\.head_ref \}\}\n {2}cancel-in-progress: true/,
-    );
   });
 
   it("the docs workflow runs on a pull request only when the docs or what the docs build reads change; it still runs on every push to main", () => {
