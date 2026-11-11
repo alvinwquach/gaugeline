@@ -3,7 +3,13 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { adaptersConfigSchema } from "../config.js";
 import { BUILT_ADAPTERS } from "../registry.js";
-import { hubspotCmsReads, HUBSPOT_CMS_SETTINGS } from "./hubspot-cms-docs-example.js";
+import { HUBSPOT_CMS_LIMITS, HUBSPOT_CMS_PAGE_SIZE } from "../hubspot-cms.js";
+import { HUBSPOT_READ_LIMITS } from "../hubspot-cms-read.js";
+import {
+  hubspotCmsFindings,
+  hubspotCmsReads,
+  HUBSPOT_CMS_SETTINGS,
+} from "./hubspot-cms-docs-example.js";
 import { HUBSPOT_CMS_MARKERS } from "./hubspot-cms-fixture.js";
 
 const root = new URL("../../../../../", import.meta.url);
@@ -61,17 +67,57 @@ describe("docs/integrations/hubspot-cms.md", () => {
     const shown = block("json", "gaugeline\\.adapters\\.json");
     expect(shown).toHaveLength(1);
     const parsed = adaptersConfigSchema.parse(JSON.parse(shown[0] ?? "null"));
-    if (
-      !TODO.test(shown[0] ?? "") &&
-      JSON.stringify(parsed) !== JSON.stringify({ adapters: [{ id: "hubspot-cms" }] })
-    )
-      expect(parsed).toEqual({ adapters: [HUBSPOT_CMS_SETTINGS] });
+    expect(parsed).toEqual({ adapters: [HUBSPOT_CMS_SETTINGS] });
   });
 
-  it("the read it shows is what the adapter reads, once pasted", async () => {
+  it("the read it shows is what the adapter reads", async () => {
     const outputs = block("json", "Output");
     expect(outputs).toHaveLength(1);
-    if (!TODO.test(outputs[0] ?? "")) expect(outputs[0]).toBe(await hubspotCmsReads());
+    expect(outputs[0]).toBe(await hubspotCmsReads());
+  });
+
+  it("the findings it shows are what the three checks find", async () => {
+    const found = block("json", "Findings");
+    expect(found).toHaveLength(1);
+    expect(found[0]).toBe(await hubspotCmsFindings());
+  });
+
+  it("lists every endpoint the adapter uses, and the bounds it keeps", () => {
+    for (const endpoint of [
+      "GET /cms/v3/pages/site-pages",
+      "GET /cms/v3/pages/landing-pages",
+      "GET /cms/v3/blogs/posts",
+      "GET /cms/v3/hubdb/tables",
+      "GET /cms/v3/hubdb/tables/{table}/rows",
+      "GET /account-info/v3/details",
+      "GET /marketing/v3/forms/{formId}",
+    ])
+      expect(page).toContain(`\`${endpoint}\``);
+    const bounds = rows(page, "Limit");
+    const value = (name: string): string | undefined =>
+      bounds.find((r) => r[0]?.startsWith(name))?.[1];
+    expect(value("Items in one page")).toBe(String(HUBSPOT_CMS_PAGE_SIZE));
+    expect(value("Items read from one list")).toBe(
+      HUBSPOT_CMS_LIMITS.itemsPerType.toLocaleString("en-US"),
+    );
+    expect(value("Live pages")).toBe(String(HUBSPOT_READ_LIMITS.pages));
+    expect(value("Different forms")).toBe(String(HUBSPOT_READ_LIMITS.forms));
+    expect(value("Form embeds")).toBe(String(HUBSPOT_READ_LIMITS.formsPerPage));
+  });
+
+  it("is marked uncited where the platform's documentation could not be read", () => {
+    expect(page).toContain("Documentation checked on: 2026-11-11");
+    expect(page).toContain("`uncited`");
+  });
+
+  it("names every check, and none is a probing check", () => {
+    for (const id of ["hubspot-page-404", "hubspot-hubdb-drift", "hubspot-form-deleted"])
+      expect(page).toContain(`\`${id}\``);
+    expect(page).toContain("None is a probing check");
+  });
+
+  it("has no unfinished text", () => {
+    expect(TODO.test(page)).toBe(false);
   });
 
   it("shows no text from the site's content", () => {
