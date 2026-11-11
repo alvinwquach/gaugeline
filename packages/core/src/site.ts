@@ -19,6 +19,7 @@ import { runChecks, type RunOptions, type RunResult } from "./run.js";
 import { dedupeUrls } from "./sample.js";
 import { lazyAppLookups } from "./apps.js";
 import { lazyCalendars } from "./calendars.js";
+import type { AiConfig } from "./ai-intent.js";
 import { lazyLanguageGroup, type LanguageRules } from "./languages.js";
 import { lazyAccess } from "./access/probe.js";
 import type { AccessSettings } from "./access/types.js";
@@ -87,6 +88,8 @@ export interface SiteCheckOptions {
   languageRules?: LanguageRules;
   /** The business's declared facts. */
   facts?: FactsConfig;
+  /** What AI crawlers should be able to do (gaugeline.ai.json). */
+  ai?: AiConfig;
   /** The business's payment handles and links. */
   payments?: PaymentsConfig;
   /** The business listings to compare with the site (gaugeline.listings.json), with their keys already read. */
@@ -307,6 +310,7 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
       }),
       ...(opts.languageRules ? { languageRules: opts.languageRules } : {}),
       ...(opts.facts ? { facts: opts.facts } : {}),
+      ...(opts.ai ? { ai: opts.ai } : {}),
       ...(opts.payments ? { payments: opts.payments } : {}),
       ...(opts.dns ? { dns: opts.dns } : {}),
       ...(opts.renewals ? { renewals: opts.renewals } : {}),

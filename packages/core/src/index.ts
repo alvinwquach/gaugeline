@@ -1545,3 +1545,11 @@ export {
 export type { InitEnvVar, InitFile, InitPlan, NextStep } from "./init/plan.js";
 export { renderInit } from "./init/render.js";
 export type { InitOutput } from "./init/render.js";
+export {
+  aiConfigSchema,
+  AI_CONFIG_FILE,
+  AI_INTENTS,
+  wantsAllowed,
+  intentMismatches,
+} from "./ai-intent.js";
+export type { AiConfig, AiIntent } from "./ai-intent.js";

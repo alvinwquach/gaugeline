@@ -3,6 +3,7 @@ import { CheckRegistry } from "../model.js";
 import { accessPublicRead } from "./access-public-read.js";
 import { accessRoleScope } from "./access-role-scope.js";
 import { aiCrawlersBlocked } from "./ai-crawlers-blocked.js";
+import { aiCrawlersIntent } from "./ai-crawlers-intent.js";
 import { appLinkDead } from "./app-link-dead.js";
 import { appNameMismatch } from "./app-name-mismatch.js";
 import { appSmartBannerMismatch } from "./app-smart-banner-mismatch.js";
@@ -94,6 +95,7 @@ import { listingPhoneMismatch } from "./listing-phone-mismatch.js";
 import { listingSpecialHoursMissing } from "./listing-special-hours-missing.js";
 import { listingWebsiteWrong } from "./listing-website-wrong.js";
 import { llmsTxtBrokenLinks } from "./llms-txt-broken-links.js";
+import { llmsTxtMalformed } from "./llms-txt-malformed.js";
 import { llmsTxtStaleFacts } from "./llms-txt-stale-facts.js";
 import { mailtoCta } from "./mailto-cta.js";
 import { mockContentLive } from "./mock-content-live.js";
@@ -132,6 +134,7 @@ import { placeholderImages } from "./placeholder-images.js";
 import { placeholderText } from "./placeholder-text.js";
 import { priceChanged } from "./price-changed.js";
 import { quotableFactsDisagree } from "./quotable-facts-disagree.js";
+import { quotableFactsInDataOnly } from "./quotable-facts-in-data-only.js";
 import { redirectChain } from "./redirect-chain.js";
 import { robotsBlock } from "./robots-block.js";
 import { rscServedAsPage } from "./rsc-served-as-page.js";
@@ -160,6 +163,7 @@ import { tempHostCanonical } from "./temp-host-canonical.js";
 import { tempHostLinks } from "./temp-host-links.js";
 import { thinHtml } from "./thin-html.js";
 import { viewport } from "./viewport.js";
+import { wellKnownInvalid } from "./well-known-invalid.js";
 import { zeroWidthInText } from "./zero-width-in-text.js";
 
 /** Page checks in registration order (sorted by id): within a severity, findings follow this order. */
@@ -167,6 +171,7 @@ export const PAGE_CHECKS = [
   accessPublicRead,
   accessRoleScope,
   aiCrawlersBlocked,
+  aiCrawlersIntent,
   appLinkDead,
   appNameMismatch,
   appSmartBannerMismatch,
@@ -253,6 +258,7 @@ export const PAGE_CHECKS = [
   listingSpecialHoursMissing,
   listingWebsiteWrong,
   llmsTxtBrokenLinks,
+  llmsTxtMalformed,
   llmsTxtStaleFacts,
   mailtoCta,
   mockContentLive,
@@ -291,6 +297,7 @@ export const PAGE_CHECKS = [
   placeholderText,
   priceChanged,
   quotableFactsDisagree,
+  quotableFactsInDataOnly,
   redirectChain,
   robotsBlock,
   rscServedAsPage,
@@ -322,6 +329,7 @@ export const PAGE_CHECKS = [
   tempHostLinks,
   thinHtml,
   viewport,
+  wellKnownInvalid,
   zeroWidthInText,
 ] as const;
 // checks:end

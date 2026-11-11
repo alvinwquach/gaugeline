@@ -174,6 +174,7 @@ import {
   readAppleExport,
   readConsent,
   readHidden,
+  readAiConfig,
   readLanguageRules,
   readPayments,
   readRenewalsConfig,
@@ -1205,6 +1206,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         );
       const schemaRules = readSchemaRules(deps.cwd ?? process.cwd());
       const languageRules = readLanguageRules(deps.cwd ?? process.cwd());
+      const ai = readAiConfig(deps.cwd ?? process.cwd());
       const facts = readFacts(deps.cwd ?? process.cwd());
       const payments = readPayments(deps.cwd ?? process.cwd());
       const hidden = readHidden(deps.cwd ?? process.cwd());
@@ -1538,6 +1540,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         ...(deps.now ? { now: deps.now } : {}),
         ...(schemaRules ? { schemaRules } : {}),
         ...(languageRules ? { languageRules } : {}),
+        ...(ai ? { ai } : {}),
         ...(facts ? { facts } : {}),
         ...(payments ? { payments } : {}),
         ...(hidden ? { hidden } : {}),

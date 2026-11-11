@@ -4,6 +4,7 @@ import type { Budget } from "./limits.js";
 import type { findingSchema } from "./result.js";
 import type { AppLookup } from "./apps.js";
 import type { CalendarRead } from "./calendars.js";
+import type { AiConfig } from "./ai-intent.js";
 import type { FactsConfig } from "./facts/types.js";
 import type { PaymentsConfig } from "./payments/types.js";
 import type { LanguageGroup, LanguageRules } from "./languages.js";
@@ -144,6 +145,8 @@ export interface CheckContext {
   languageRules?: LanguageRules;
   /** The business's declared facts (gaugeline.facts.json). */
   facts?: FactsConfig;
+  /** What AI crawlers should be able to do (gaugeline.ai.json). */
+  ai?: AiConfig;
   /**
    * When documents last changed in a connected content source, by page address. Absent until a
    * source is connected (branch 30): next-stale-after-publish is then unchecked.
