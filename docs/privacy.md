@@ -328,6 +328,24 @@ What it prints: the kind of tracker, the id it carries (a public identifier in t
 page's path and why the page counts. Never page text, a form field name or a form value, and never a verdict
 on whether a tracker is allowed. Nothing is submitted and no one is logged in.
 
+### Served libraries (--libraries)
+
+`--libraries` on the page check lists the JavaScript libraries a page serves that a published advisory names
+([Served libraries](guides/served-libraries.md)). Every request is `GET`, through the fetcher, which refuses
+private, loopback, link-local and metadata addresses unless `--allow-private` is set.
+
+- **The scripts the page names.** One `GET` per `script src` in the page's own HTML, on the site or on another
+  host such as a CDN, at most 20 for one page, never an address the page does not name. Each file is read as
+  text in memory, at most 2 MiB of it is searched (for another site's script the fetcher is told to stop there; a file of the
+  site's own is asked for once, as the secret check asks for it) for a banner comment, a
+  version shape and a file name, and it is dropped. It is never run, and no key or cookie is sent.
+- **The advisories.** Read from a file in the package, not from another service: nothing about the site is
+  sent to anyone to look them up.
+
+What it prints: the library, its version, the script's address with no query string, and each advisory's id,
+a short description and the version that fixes it. Never script text beyond the version string, and never a
+verdict on whether the site is vulnerable. Nothing is submitted and no one is logged in.
+
 ### Audit pack (gaugeline audit --pack)
 
 `gaugeline audit <address> --pack` runs the default page check on a prospect's site and writes a proposal

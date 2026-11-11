@@ -189,6 +189,11 @@ export interface GetOptions {
    * is a visitor with no session. Asked separately from the same address without it.
    */
   anonymous?: boolean;
+  /**
+   * Read at most this many bytes of the body, then stop; the hop is flagged `truncated` when it was cut. It can
+   * only lower the fetcher's own cap (`maxBodyBytes`), never raise it.
+   */
+  maxBytes?: number;
   /** Read only the first bytes of the body (see PeekOptions). The body of a HEAD or a redirect is never read. */
   peek?: PeekOptions;
   /**
@@ -496,7 +501,7 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
     method: "GET" | "HEAD",
     headers: Record<string, string>,
     at: { kind: RequestKind; chain: number; hop: number },
-    extra: { anonymous?: boolean; peek?: PeekOptions } = {},
+    extra: { anonymous?: boolean; peek?: PeekOptions; maxBytes?: number } = {},
   ): Promise<{ hop: Hop; location: string | null }> {
     assertReadOnly(method);
     return gate.run(async () => {
@@ -570,7 +575,7 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
         try {
           const { body, truncated, bytes } = await readCapped(
             res.body,
-            maxBodyBytes,
+            extra.maxBytes === undefined ? maxBodyBytes : Math.min(extra.maxBytes, maxBodyBytes),
             res.headers["content-type"],
           );
           hop.body = body;
@@ -616,6 +621,7 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
           {
             ...(opts.anonymous ? { anonymous: true } : {}),
             ...(opts.peek ? { peek: opts.peek } : {}),
+            ...(opts.maxBytes === undefined ? {} : { maxBytes: opts.maxBytes }),
           },
         );
       } catch (err) {
@@ -665,7 +671,7 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
     const method = opts.method ?? "GET";
     assertReadOnly(method);
     const normal = normaliseUrl(url);
-    const key = `${method} ${normal}${opts.headers ? ` ${JSON.stringify(Object.entries(opts.headers).sort())}` : ""}${opts.headersSameOrigin ? " same-origin" : ""}${opts.anonymous ? " anonymous" : ""}${opts.peek ? ` peek:${opts.peek.maxBytes}` : ""}${opts.maxRedirects === undefined ? "" : ` redirects:${opts.maxRedirects}`}`;
+    const key = `${method} ${normal}${opts.headers ? ` ${JSON.stringify(Object.entries(opts.headers).sort())}` : ""}${opts.headersSameOrigin ? " same-origin" : ""}${opts.anonymous ? " anonymous" : ""}${opts.peek ? ` peek:${opts.peek.maxBytes}` : ""}${opts.maxBytes === undefined ? "" : ` max:${opts.maxBytes}`}${opts.maxRedirects === undefined ? "" : ` redirects:${opts.maxRedirects}`}`;
     if (opts.fresh) memo.delete(key);
     let pending = memo.get(key);
     if (!pending) {

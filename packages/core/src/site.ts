@@ -27,6 +27,7 @@ import type { Renewals } from "./renewals/reader.js";
 import type { Handoff } from "./handoff/reader.js";
 import type { Cost } from "./cost/reader.js";
 import type { Trackers } from "./trackers/reader.js";
+import type { Libraries } from "./libraries/reader.js";
 import type { HiddenConfig } from "./hidden.js";
 import { lazyEvents, type EventObserver } from "./events/observe.js";
 import type { EventsConfig } from "./events/types.js";
@@ -116,6 +117,8 @@ export interface SiteCheckOptions {
   cost?: Cost;
   /** What the tracker checks read (`--trackers`). Without it they are not in the run. */
   trackers?: Trackers;
+  /** What the library check reads (`--libraries`). Without it the check is not in the run. */
+  libraries?: Libraries;
   /** Sections hidden until launch. */
   hidden?: HiddenConfig;
   /** Where the menus are and which footer links are required (gaugeline.nav.json). */
@@ -304,6 +307,7 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
       ...(opts.handoff ? { handoff: opts.handoff } : {}),
       ...(opts.cost ? { cost: opts.cost } : {}),
       ...(opts.trackers ? { trackers: opts.trackers } : {}),
+      ...(opts.libraries ? { libraries: opts.libraries } : {}),
       ...(opts.hidden ? { hidden: opts.hidden } : {}),
       ...(opts.nav ? { navRules: opts.nav } : {}),
       ...(container && tagRules ? { tagContainer: container, tagRules } : {}),

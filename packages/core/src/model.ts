@@ -14,6 +14,7 @@ import type { Renewals } from "./renewals/reader.js";
 import type { Handoff } from "./handoff/reader.js";
 import type { Cost } from "./cost/reader.js";
 import type { Trackers } from "./trackers/reader.js";
+import type { Libraries } from "./libraries/reader.js";
 import type { HiddenConfig } from "./hidden.js";
 import type { NavRules } from "./nav/read-regions.js";
 import type { ContentNow, PagesConfig } from "./snapshot/compare.js";
@@ -210,6 +211,11 @@ export interface CheckContext {
    * those checks then do nothing.
    */
   trackers?: Trackers;
+  /**
+   * What the library check reads: the script files a page names, once each on first use. Absent unless the run
+   * has --libraries: that check then does nothing.
+   */
+  libraries?: Libraries;
   /** The page's App Store and Google Play apps, looked up once on first use. */
   apps?: () => Promise<AppLookup[]>;
   /**

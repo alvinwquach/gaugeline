@@ -80,6 +80,7 @@ async function runSite(
     renewals: boolean;
     cost: boolean;
     trackers: boolean;
+    libraries: boolean;
     runOne: RunOne;
   },
 ): Promise<SiteOutcome> {
@@ -99,6 +100,7 @@ async function runSite(
         ...(opts.renewals ? ["--renewals"] : []),
         ...(opts.cost ? ["--cost"] : []),
         ...(opts.trackers ? ["--trackers"] : []),
+        ...(opts.libraries ? ["--libraries"] : []),
       ],
       {
         stdout: { write: (s: string) => out.push(s) },
@@ -144,6 +146,8 @@ export async function runAll(
     cost?: boolean;
     /** Each site's run also lists the trackers on pages with a form (--trackers). */
     trackers?: boolean;
+    /** Each site's run also checks the JavaScript libraries it serves (--libraries). */
+    libraries?: boolean;
     runOne: RunOne;
   },
 ): Promise<SiteOutcome[]> {
@@ -167,6 +171,7 @@ export async function runAll(
               renewals: opts.renewals ?? false,
               cost: opts.cost ?? false,
               trackers: opts.trackers ?? false,
+              libraries: opts.libraries ?? false,
               runOne: opts.runOne,
             }),
           );
