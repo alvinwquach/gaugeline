@@ -47,6 +47,20 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "feed-broken": ["The feed this page advertises is broken", "Search & sharing"],
   "form-provider-changed": ["A form now sends to a different service", "Leads"],
   "gated-download-open": ["A download meant for customers is handed to anyone", "Sales & prices"],
+  "gatsby-data-as-page": ["A page address returns Gatsby data, not a page", "Search & sharing"],
+  "gatsby-dev-server-live": ["The live Gatsby site is a development server", "Security & email"],
+  "gatsby-graphql-public": [
+    "The GraphQL explorer is reachable on the live site",
+    "Security & email",
+  ],
+  "gatsby-preview-canonical": [
+    "The live Gatsby site points search engines at a preview deployment",
+    "Launch day",
+  ],
+  "gatsby-private-fields": [
+    "The data sent with a Gatsby page has fields that look private",
+    "Security & email",
+  ],
   "hidden-ai-directive": [
     "Hidden text on the page gives orders to AI assistants",
     "Security & email",
@@ -56,23 +70,6 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "hidden-linked": ["A public page links to an unlaunched section", "Launch day"],
   "host-duplicate": ["Your whole site exists at two addresses", "Search & sharing"],
   "html-huge": ["This page's HTML is enormous", "Visitors"],
-  "hydrogen-dev-tools-live": [
-    "The live Hydrogen store is a development server",
-    "Security & email",
-  ],
-  "hydrogen-preview-canonical": [
-    "The live Hydrogen store points search engines at a preview deployment",
-    "Launch day",
-  ],
-  "hydrogen-preview-indexable": [
-    "A Hydrogen preview deployment can be found by search engines",
-    "Launch day",
-  ],
-  "hydrogen-prices-disagree": ["This Hydrogen product's prices disagree", "Sales & prices"],
-  "hydrogen-private-fields": [
-    "The data sent with a Hydrogen page has fields that look private",
-    "Security & email",
-  ],
   "ics-floating-time": ["Your calendar shows the wrong hour on some phones", "Visitors"],
   "images-broken": ["Some images on this page don't load", "Visitors"],
   "invisible-unicode-tags": ["The page carries text in invisible characters", "Security & email"],
@@ -320,6 +317,11 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "placeholder-images": ["The page shows placeholder images", "Visitors"],
   "placeholder-text": ["The page still has placeholder text", "Visitors"],
   "redirect-chain": ["Your address takes several jumps to load", "Search & sharing"],
+  "sanity-image-original": ["Sanity images are served at the size they were uploaded", "Visitors"],
+  "sanity-image-oversized": [
+    "Sanity images are delivered far larger than they are shown",
+    "Visitors",
+  ],
   "schema-breadcrumb-mismatch": ["A breadcrumb ends on a different page", "Search & sharing"],
   "schema-dangling-ref": [
     "Structured data refers to something that isn't there",
@@ -451,6 +453,10 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "event-missing-fields": ["Some events are missing details search engines need", "Visitors"],
   "events-distinct": ["Two menu links report the same click", "Leads"],
   "forms-many-providers": ["Several form services on one page", "Leads"],
+  "gatsby-data-unshown": [
+    "The data sent with a Gatsby page has text the page does not show",
+    "Security & email",
+  ],
   "hidden-past-launch": ["A hidden section is past its launch date", "Launch day"],
   "hreflang-bad-code": ["Some language codes are not valid", "Search & sharing"],
   "images-alt-missing": ["Some images have no alt attribute", "Visitors"],
@@ -462,6 +468,10 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "nav-label-drift": ["One page has two names in your menus", "Visitors"],
   "og-image-missing": ["Shared links have no picture", "Search & sharing"],
   "price-changed": ["A price changed since the last run", "Sales & prices"],
+  "sanity-image-duplicate": [
+    "One Sanity image is processed and downloaded more than once",
+    "Visitors",
+  ],
   "schema-breadcrumb-start": ["Breadcrumbs don't start where your guide says", "Search & sharing"],
   "sveltekit-data-unshown": ["The page's data has text the page does not show", "Security & email"],
   "tel-format": ["A phone link may not dial correctly", "Visitors"],
@@ -661,6 +671,36 @@ export const CHECK_TEXT: Readonly<
     "Check the purchase inside the route before it answers, then hand back a short-lived signed link instead of the file itself. A route with no session should answer 401, 403 or a redirect to sign in.",
     "probing check, off without --owner-consent: one anonymous GET per route (no cookie, no Authorization, no Referer, no compression), the status and headers, then at most 1,024 bytes of the body and the connection is closed; the route is a same-site link whose path contains download, file, deliver or export or sits under /api/, or a route file given with --routes (app/**/route.ts, pages/api/**) whose path says the same; a dynamic segment is asked only for an address seen in a link and ids are never guessed; at most 10 routes, in sorted order, the rest named; a finding is status 200 with a file content type or Content-Disposition attachment and first bytes that are not HTML (%PDF, PK, ID3 and a few other signatures are read); 401, 403, 404, a redirect to a sign-in address and a 200 HTML page pass; a redirect elsewhere is followed one hop; the body and the query string are never stored, logged or printed",
   ],
+  "gatsby-data-as-page": [
+    "A page of this Gatsby site answers with the framework's page data (application/json starting with componentChunkName), or the sitemap lists page-data addresses.",
+    "Search engines and visitors get a JSON file instead of a page, or index the data files: the page can drop out of search while a browser that navigates inside the site looks fine.",
+    "Serve HTML at page addresses (look for a proxy, CDN or redirect rule that rewrites to page-data.json), and list only pages in the sitemap.",
+    'Gatsby sites only, from responses already read: the page\'s own answer with a JSON content type whose body starts {"componentChunkName"; sitemap entries under /page-data/ ending /page-data.json, /app-data.json or /sq/d/<hash>.json. No extra request',
+  ],
+  "gatsby-dev-server-live": [
+    "This page was served by `gatsby develop`: its scripts include /socket.io/socket.io.js, /commons.js or /framework.js, the unhashed files only the development server writes.",
+    "The development server exposes a GraphQL explorer over all your content, hot-reload endpoints and error overlays with file paths. It is not meant to face visitors.",
+    "Build the site (`gatsby build`) and serve the public folder (a static host, or `gatsby serve` for a quick check), not `gatsby develop`. Check the host's start command.",
+    "Gatsby sites only, read from the page already fetched, no extra request: a script address ending /socket.io/socket.io.js, /commons.js or /framework.js (a production build names its files with a content hash, as in framework-<hash>.js). Dev-only paths are not asked for",
+  ],
+  "gatsby-graphql-public": [
+    "The address /___graphql of this Gatsby site answers with the GraphiQL page (titled Gatsby - GraphiQL), which only `gatsby develop` serves.",
+    "That explorer can read every node in your content layer, drafts and private fields included, from any browser.",
+    "Serve the built site (`gatsby build`) on the live address and keep `gatsby develop` on your own machine. If a proxy forwards /___graphql, remove the rule.",
+    "Probing check: off unless --owner-consent or gaugeline.consent.json; run only on sites you own or have permission to test. Gatsby sites only: one GET of /___graphql per run, no query sent and no POST ever; a 2xx HTML answer whose title contains GraphiQL is a finding. A production build does not serve this address",
+  ],
+  "gatsby-preview-canonical": [
+    "A production page of this Gatsby site gives a preview domain as its canonical address, its og:url or og:image, or in its sitemap.",
+    "Search engines and social cards follow those addresses to the preview, which can show old content or vanish when the preview is cleaned up.",
+    "Set siteMetadata.siteUrl (and the sitemap plugin's site URL) from the production domain in every build, and rebuild.",
+    "Gatsby sites served from a non-temporary host: the canonical, og:url, og:image and sitemap entries whose host ends in .vercel.app, .netlify.app, .pages.dev, .gatsbyjs.io or .gtsb.io. The two Gatsby hosts are from memory of the hosted product (uncited)",
+  ],
+  "gatsby-private-fields": [
+    "The page-data file of this Gatsby page, a static query it lists, or the page data embedded in its HTML has fields named like something private (password, token, secret, apiKey, private notes).",
+    "Everything a page query returns is written to a public JSON file, whether or not the page shows it. A field used only at build time still travels to every visitor if the query selects it.",
+    "Select only the fields the page shows in its query. Keep secrets in environment variables read in gatsby-node or a Function, never in a query result.",
+    "Gatsby sites only. Names only, never values: the property names in the page's own /page-data/<path>/page-data.json (one GET, the file the framework's client fetches on every visit), in the /page-data/sq/d/<hash>.json files it lists (at most ten) and in an inline window.pageData literal, walked to depth 8 and capped, matched by word against password, passwd, secret, token, private, credential, ssn, salt, bearer, authorization, cvv, iban, apiKey, accessKey, secretKey, privateKey, internalNotes. A file that cannot be read in full is could not check. The word list is a guess (uncited)",
+  ],
   "hidden-ai-directive": [
     "Text that visitors can't see, or a comment in the page's code, speaks to an AI assistant (for example 'ignore previous instructions').",
     "It is one of the commonest signs a site has been tampered with. Assistants and crawlers read text that visitors never see, so whoever planted it can steer what they say about your business.",
@@ -696,36 +736,6 @@ export const CHECK_TEXT: Readonly<
     "Phones on slow connections wait seconds before anything shows, and search engines may stop reading the page before the end.",
     "Find what fills the HTML: usually a framework data payload, inlined SVG or CSS, or a long list rendered in full. Load it on demand or paginate it.",
     "the UTF-8 HTML body is over 2 MB (2,097,152 bytes); html-heavy is not reported for the same page",
-  ],
-  "hydrogen-dev-tools-live": [
-    "This page was served by the Hydrogen dev server: it loads /@vite/client, /@react-refresh, the inject-hmr-runtime module or the Vite preamble.",
-    "The dev server serves source files, can expose files from the project folder and is slow and unsupervised. It is not meant to face shoppers.",
-    "Deploy the storefront to Oxygen (`shopify hydrogen deploy`) and point the domain at the deployment, not at a machine running `shopify hydrogen dev`.",
-    "Hydrogen storefronts (or React Router pages that load Vite's dev client), read from the page already fetched, no extra request: the HTML or a script address names /@vite/client, /@react-refresh, inject-hmr-runtime, __vite_plugin_react_preamble_installed__ or /node_modules/.vite/. Dev-only paths are not asked for. The dev server is Vite, as run by @shopify/cli-hydrogen 13.0.6",
-  ],
-  "hydrogen-preview-canonical": [
-    "A production page of this Hydrogen storefront gives an Oxygen preview or other temporary address as its canonical, its og:url or og:image, or in its sitemap.",
-    "Search engines and social cards follow those addresses to the preview, which can show old products and prices or vanish when the preview is deleted.",
-    "Build the storefront's base address from the production domain (an environment variable set per Oxygen environment, or the request's own origin), and redeploy.",
-    "Hydrogen storefronts (the powered-by: Shopify, Hydrogen header) served from a non-preview host: the canonical, og:url, og:image and sitemap entries whose host ends in myshopify.dev, o2.myshopify.dev, vercel.app, netlify.app or pages.dev. The two myshopify.dev suffixes are the owner's note, not confirmed in Shopify's documentation (uncited)",
-  ],
-  "hydrogen-preview-indexable": [
-    "A preview deployment of this Hydrogen storefront (an Oxygen preview address, or another temporary host) answers with a public page that carries no noindex, in a header or a robots meta tag.",
-    "A preview shows work in progress, old prices and products that are not for sale. Once a search engine finds its address (from a link on the live site, a sitemap or a share) it can list it beside, or instead of, the real store.",
-    "Send `X-Robots-Tag: noindex` from every non-production deployment (check the environment in the server entry), serve a disallow-all robots.txt there, take the preview's address out of the live site's links and sitemap, and turn off the deployment's shared link when it is not needed.",
-    "Hydrogen storefronts. Only addresses the site itself reveals are asked for, with one GET each and at most the run's hiddenPages budget: the page's own address when it is on a preview host, and links and sitemap entries (the canonical and og:url are reported by hydrogen-preview-canonical and not asked for) of a production page whose host ends in myshopify.dev, o2.myshopify.dev, vercel.app, netlify.app or pages.dev. A 200 HTML answer without noindex is a finding; a sign-in redirect, 401, 403 or 404 is not (Shopify documents that only signed-in staff can open a deployment until a shared link is made). No other path is asked for. The two myshopify.dev suffixes are the owner's note and not confirmed in Shopify's documentation (uncited)",
-  ],
-  "hydrogen-prices-disagree": [
-    "On a product page of this Hydrogen storefront, the price shown to the shopper, the price in the page's structured data (JSON-LD offer, product:price:amount or og:price:amount) and the variant price in the page's embedded state are not all the same, or are in different currencies.",
-    "Shoppers see one price and the cart can start from another, and Google shows the structured data's price in results: a mismatch costs trust and can get listings pulled.",
-    "Build the JSON-LD and meta tags from the same selected variant the page shows (selectedOrFirstAvailableVariant, after the ?option= choices are applied) rather than the product's first variant or a cached copy.",
-    "Hydrogen storefronts, no extra request. Amounts are integers in minor units with the currency's own exponent (JPY 0, USD 2, BHD 3), read digit by digit, never as floats; currencies are compared, never converted. Shown: the text of the .product-price element (or aria-label Price), compare-at (s, del) left out. Structured: the JSON-LD Product offer for ?variant= or the first, product:price:amount with product:price:currency, og:price:amount with og:price:currency. Embedded: product.selectedOrFirstAvailableVariant.price (MoneyV2) in the streamed state. What a cart or checkout would charge is not compared: it needs a cart, which Gaugeline never creates, and the Storefront API is POST only; the check says so under could not run. The product and price fields are those of the @shopify/cli-hydrogen 13.0.6 starter; JSON-LD and the meta names are schema.org and Open Graph conventions (uncited for Hydrogen)",
-  ],
-  "hydrogen-private-fields": [
-    "The state this Hydrogen page embeds for the browser (window.__reactRouterContext, with the storefront data its loaders return) has fields named like something private (password, private token, secret, apiKey, private notes).",
-    "Everything a loader returns is sent to every shopper, whether or not the page shows it. A server-only value such as the private Storefront API token or the session secret travels with the page.",
-    "Return only the fields the page shows from the loader, and keep PRIVATE_STOREFRONT_API_TOKEN, SESSION_SECRET and other secrets in server-only code (context.env in a loader or action) that never returns them.",
-    "Hydrogen storefronts. Names only, never values: the property names in the page's own embedded context and in its first streamed turbo-stream chunk (a flat JSON array, each index decoded once, capped), matched by word against password, passwd, secret, token, private, credential, ssn, salt, bearer, authorization, cvv, iban, apiKey, accessKey, secretKey, privateKey, internalNotes. The public Storefront token (storefrontAccessToken, which the starter's root loader sends for the consent banner) and checkoutDomain are public by design and are not flagged. No extra request. A state that cannot be read in full, or deferred chunks after the first, are could not check. The header, globals and starter fields are read from @shopify/hydrogen 2026.10.3 and @shopify/cli-hydrogen 13.0.6 on npm; matching names by their words is a guess (uncited)",
   ],
   "ics-floating-time": [
     "Events in your .ics calendar have a start time with no time zone (no TZID and no Z).",
@@ -1615,6 +1625,18 @@ export const CHECK_TEXT: Readonly<
     "Point every redirect straight at the final address.",
     "more than one 3xx hop on the entered URL",
   ],
+  "sanity-image-original": [
+    "An image from cdn.sanity.io is requested with no width or height, so the visitor gets the file as it was uploaded: often 3000 to 6000 pixels wide.",
+    "A phone photo from the shop owner is several megabytes. Shown a few hundred pixels across, it still downloads whole, and the page is slow on a phone for no visible gain.",
+    "Ask for the size you show: add w (and h with fit=crop if the shape is fixed) and auto=format to the address, or build it with @sanity/image-url: urlFor(image).width(800).auto('format').url().",
+    "an img src, srcset or picture source on cdn.sanity.io/images with none of w, h, max-w, max-h, min-w or min-h, whose upload is wider than 1200 px (the size is in the file name, so nothing is downloaded); other hosts, and addresses on a custom domain for Sanity's CDN, are not read; one finding per page; the page's own HTML only",
+  ],
+  "sanity-image-oversized": [
+    "An image from cdn.sanity.io is asked for at a width much greater than the width attribute on the page, and the page offers no smaller version.",
+    "The visitor downloads several times the pixels they can see. On a phone that is seconds of waiting and mobile data spent on detail the screen throws away.",
+    "Ask Sanity for about twice the width the image is shown at (for a 400 px slot, w=800), or give the image a srcset with smaller widths and a sizes attribute so each screen picks one.",
+    "an img with a width attribute whose smallest Sanity address (src, srcset or picture source) delivers more than 2 times that width and at least 200 px more; delivered is w times dpr, never above the upload, and the upload's own width when no w is given (read from the file name); an img with no width attribute is not judged; no rendering, so a width set only in CSS is not seen",
+  ],
   "schema-breadcrumb-mismatch": [
     "The last item of a page's breadcrumb structured data points at an address other than the page's own canonical.",
     "The trail should end where the visitor is. One that ends elsewhere usually means the breadcrumb was copied from another page.",
@@ -2059,6 +2081,12 @@ export const CHECK_TEXT: Readonly<
     "Check that each form is meant to be there, and move the page to one service if you can.",
     "Sightings of more than one of Pardot, Web-to-Lead, HubSpot, Formstack, Marketo and Typeform on one page (form action, iframe src, embed script); the tracking code alone is not a sighting",
   ],
+  "gatsby-data-unshown": [
+    "This Gatsby page's page-data file, or a static query it lists, has text fields whose text is nowhere on the page a visitor reads.",
+    "Everything a page query returns is written to a public JSON file. A field the page does not show is either unused (so it can go) or used by a script (so it is worth a look): either way it is public.",
+    "Select only the fields the page needs in its query, or move the rest to a source that checks who is asking.",
+    "Gatsby sites only. The page's own /page-data/<path>/page-data.json and the /page-data/sq/d/<hash>.json files it lists (the files the framework's client fetches on every visit; one GET each, at most eleven, walked to depth 8, capped). Text fields of 4 or more characters whose first 40 characters are not in the page's visible text (tags taken out of html fields); addresses, ids, dates and image plumbing are left out; names only, never values. Fields named like something private are left to gatsby-private-fields. A file or page text that cannot be read in full is could not check. Fields used by scripts or other pages are shown too, so read the list as a prompt (uncited)",
+  ],
   "hidden-past-launch": [
     "Today is after the launch date set for a hidden section, and gaugeline.hidden.json still lists it as hidden.",
     "Either the launch slipped and nobody updated the plan, or it launched and the hidden checks are now guarding the wrong thing.",
@@ -2124,6 +2152,12 @@ export const CHECK_TEXT: Readonly<
     "Sometimes that is the plan. When it isn't (a sync from the shop, an edit to the wrong product), customers and search results see the wrong price.",
     "If the change wasn't meant, correct the price at its source (the shop or CMS) and rebuild; if it was, nothing to do.",
     "With --since last only: the JSON-LD Offer price (integer minor units; anything but 48 or 48.00 is unread) for a product key (sku or name plus currency) present in both runs",
+  ],
+  "sanity-image-duplicate": [
+    "The same uploaded image is requested with different parameters by different images on the page, such as one width in the header and another in a card.",
+    "Each variant is a separate file for Sanity's CDN to make and for the visitor to download, and none of them is in the browser's cache for the others.",
+    "Use one address for the image and let CSS size it, or give it one srcset the browser chooses from. If a card needs a different crop, that is a different picture: upload it as its own image.",
+    "the same asset id (the hash in the file name; the same bytes are the same asset) in two or more img elements with different parameter sets; an img's own srcset and picture sources are one image and are not compared with each other; parameter order is ignored; the page's own HTML only",
   ],
   "schema-breadcrumb-start": [
     "The first item of a page's breadcrumb structured data is not the Home name and address your schema guide sets.",

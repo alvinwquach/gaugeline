@@ -24,6 +24,16 @@ export interface AdapterDescription {
    */
   noKey?: true;
   /**
+   * With `noKey`: the adapter reads content (ids, dates and field hashes) from a public API, not pages from a
+   * sitemap, so `--published` gives it the changed-since window and the fields to compare, like a keyed adapter.
+   */
+  fingerprintsFields?: true;
+  /**
+   * The adapter reads without a key and reads more with one (a key in the environment turns it on). The run
+   * header says both. `keyKind` is the kind of the key it asks for when one is set.
+   */
+  optionalKey?: true;
+  /**
    * The adapter is beta because the platform's own API is. The run header says "(beta)" after the name,
    * and the adapter's docs page says what may change.
    */
@@ -83,6 +93,12 @@ export interface AdapterMember {
 export interface ContentAdapter {
   /** Lower case, digits and hyphens: the name used in gaugeline.adapters.json. */
   readonly id: string;
+  /**
+   * True when this instance reads the live site's pages (a sitemap or feed) instead of a platform's own
+   * collections: its items' addresses are pages and it has no fields. An adapter that reads pages in every
+   * mode says so with `describe().noKey`; one that does so only without a key (Wix) sets this on the instance.
+   */
+  readonly readsPages?: boolean;
   describe(): AdapterDescription;
   /** Every content type with how many published items it has. */
   types(): Promise<TypeCount[]>;
@@ -137,6 +153,8 @@ export interface AdapterSettings {
   urls?: Readonly<Record<string, string>> | undefined;
   /** Only `sitemap-feed`: the site's address, when the run was not given one. */
   site?: string | undefined;
+  /** Only `wix`: the Wix site's id, sent as the wix-site-id header with the API key. */
+  siteId?: string | undefined;
   /** Only `sitemap-feed`: sitemap files to read instead of looking (a path or an address on the site). */
   sitemaps?: readonly string[] | undefined;
   /** Only `sitemap-feed`: feeds to read instead of looking (a path or an address on the site). */
@@ -146,6 +164,23 @@ export interface AdapterSettings {
    * `umbraco-delivery-api-public` runs only when this is true; a key being set says nothing of it.
    */
   expectPrivate?: boolean | undefined;
+  /**
+   * Only `datocms`: the GraphQL collection to read for each content type, because the Content Delivery API has no
+   * list of types to ask: `{ "classes": { "collection": "allClasses", "slug": "slug" } }`. `slug` names the field
+   * that holds the item's slug; without it the item has none.
+   */
+  collections?:
+    Readonly<Record<string, { collection: string; slug?: string | undefined }>> | undefined;
+  /**
+   * Only `datocms`: the owner says the token is meant for published content only. Switches on the check that asks
+   * whether it can also read drafts.
+   */
+  expectPublishedOnly?: boolean | undefined;
+  /**
+   * Only `datocms`: the check names the ids of the unpublished records it finds (at most five). Without it a
+   * finding is a count.
+   */
+  showDraftIds?: boolean | undefined;
   /** Only `git-content`: the repository's folder on this computer, relative to where the run starts. */
   path?: string | undefined;
   /** Only `git-content`: a repository on GitHub, read with GET. Instead of `path`. */
