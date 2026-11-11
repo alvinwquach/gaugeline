@@ -46,7 +46,7 @@ async function detect(site: SiteDef, opts: { dns?: string[] } = {}) {
 }
 
 describe("adapter entries: detect hints", () => {
-  const signs = (over: Partial<Parameters<typeof signsOf>[2]> = {}, markup = "") =>
+  const signs = (over: Record<string, string> = {}, markup = "") =>
     signsOf(`<!doctype html><head>${markup}</head>`, `https://${SITE}/`, over);
 
   const rows: [string, string, Record<string, string>][] = [
