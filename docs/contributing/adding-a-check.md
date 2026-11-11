@@ -39,4 +39,4 @@ Areas: `search`, `visitors`, `sales`, `leads`, `security`, `launch`. Severities:
 
 The scaffold's tests pass and it typechecks, so you can work in small steps. But every text field
 starts with `TODO`, and `pnpm gen:checks` refuses TODO text, so the scaffold cannot reach `main`
-unfinished. When the text is written, run `pnpm gen:checks` to regenerate `docs/checks.data.json`.
+unfinished. When the text is written, run `pnpm gen:checks` to see `docs/checks.data.json` regenerate (do not commit it: CI and the job on main do; see CONTRIBUTING.md, "Generated files").
