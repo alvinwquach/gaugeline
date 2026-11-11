@@ -351,6 +351,71 @@
     "estimateChanges": "Several download routes, no purchase record to check, or files in public folders mean building the check and moving files."
   },
   {
+    "id": "gatsby-data-as-page",
+    "severity": "high",
+    "area": "Search & sharing",
+    "title": "A page address returns Gatsby data, not a page",
+    "what": "A page of this Gatsby site answers with the framework's page data (application/json starting with componentChunkName), or the sitemap lists page-data addresses.",
+    "why": "Search engines and visitors get a JSON file instead of a page, or index the data files: the page can drop out of search while a browser that navigates inside the site looks fine.",
+    "fix": "Serve HTML at page addresses (look for a proxy, CDN or redirect rule that rewrites to page-data.json), and list only pages in the sitemap.",
+    "tech": "Gatsby sites only, from responses already read: the page's own answer with a JSON content type whose body starts {\"componentChunkName\"; sitemap entries under /page-data/ ending /page-data.json, /app-data.json or /sq/d/<hash>.json. No extra request",
+    "size": "M",
+    "done": "The page address returns HTML, and the sitemap lists pages only.",
+    "estimateChanges": "A proxy or CDN rule that rewrites page addresses to the data file is one change; a sitemap built from every file under public may need its own filter."
+  },
+  {
+    "id": "gatsby-dev-server-live",
+    "severity": "high",
+    "area": "Security & email",
+    "title": "The live Gatsby site is a development server",
+    "what": "This page was served by `gatsby develop`: its scripts include /socket.io/socket.io.js, /commons.js or /framework.js, the unhashed files only the development server writes.",
+    "why": "The development server exposes a GraphQL explorer over all your content, hot-reload endpoints and error overlays with file paths. It is not meant to face visitors.",
+    "fix": "Build the site (`gatsby build`) and serve the public folder (a static host, or `gatsby serve` for a quick check), not `gatsby develop`. Check the host's start command.",
+    "tech": "Gatsby sites only, read from the page already fetched, no extra request: a script address ending /socket.io/socket.io.js, /commons.js or /framework.js (a production build names its files with a content hash, as in framework-<hash>.js). Dev-only paths are not asked for",
+    "size": "S",
+    "done": "The live address serves the built site (public/ from gatsby build), not gatsby develop.",
+    "estimateChanges": "A host that runs the develop command as its start command needs the build and serve commands set."
+  },
+  {
+    "id": "gatsby-graphql-public",
+    "severity": "high",
+    "area": "Security & email",
+    "title": "The GraphQL explorer is reachable on the live site",
+    "what": "The address /___graphql of this Gatsby site answers with the GraphiQL page (titled Gatsby - GraphiQL), which only `gatsby develop` serves.",
+    "why": "That explorer can read every node in your content layer, drafts and private fields included, from any browser.",
+    "fix": "Serve the built site (`gatsby build`) on the live address and keep `gatsby develop` on your own machine. If a proxy forwards /___graphql, remove the rule.",
+    "tech": "Probing check: off unless --owner-consent or gaugeline.consent.json; run only on sites you own or have permission to test. Gatsby sites only: one GET of /___graphql per run, no query sent and no POST ever; a 2xx HTML answer whose title contains GraphiQL is a finding. A production build does not serve this address",
+    "size": "S",
+    "done": "/___graphql answers 404 on the live address.",
+    "estimateChanges": "A host that runs gatsby develop needs to be moved to the built site; a proxy rule that forwards /___graphql needs removing."
+  },
+  {
+    "id": "gatsby-preview-canonical",
+    "severity": "high",
+    "area": "Launch day",
+    "title": "The live Gatsby site points search engines at a preview deployment",
+    "what": "A production page of this Gatsby site gives a preview domain as its canonical address, its og:url or og:image, or in its sitemap.",
+    "why": "Search engines and social cards follow those addresses to the preview, which can show old content or vanish when the preview is cleaned up.",
+    "fix": "Set siteMetadata.siteUrl (and the sitemap plugin's site URL) from the production domain in every build, and rebuild.",
+    "tech": "Gatsby sites served from a non-temporary host: the canonical, og:url, og:image and sitemap entries whose host ends in .vercel.app, .netlify.app, .pages.dev, .gatsbyjs.io or .gtsb.io. The two Gatsby hosts are from memory of the hosted product (uncited)",
+    "size": "S",
+    "done": "The live site builds its canonical and share addresses from the production domain.",
+    "estimateChanges": "A siteUrl set wrong only in some deployments means checking each environment, then rebuilding."
+  },
+  {
+    "id": "gatsby-private-fields",
+    "severity": "high",
+    "area": "Security & email",
+    "title": "The data sent with a Gatsby page has fields that look private",
+    "what": "The page-data file of this Gatsby page, a static query it lists, or the page data embedded in its HTML has fields named like something private (password, token, secret, apiKey, private notes).",
+    "why": "Everything a page query returns is written to a public JSON file, whether or not the page shows it. A field used only at build time still travels to every visitor if the query selects it.",
+    "fix": "Select only the fields the page shows in its query. Keep secrets in environment variables read in gatsby-node or a Function, never in a query result.",
+    "tech": "Gatsby sites only. Names only, never values: the property names in the page's own /page-data/<path>/page-data.json (one GET, the file the framework's client fetches on every visit), in the /page-data/sq/d/<hash>.json files it lists (at most ten) and in an inline window.pageData literal, walked to depth 8 and capped, matched by word against password, passwd, secret, token, private, credential, ssn, salt, bearer, authorization, cvv, iban, apiKey, accessKey, secretKey, privateKey, internalNotes. A file that cannot be read in full is could not check. The word list is a guess (uncited)",
+    "size": "M",
+    "done": "The page's data holds only what the page shows: no field named for a password, token, secret or private note.",
+    "estimateChanges": "Each field is dropped from the GraphQL query that returns it; a field several pages query needs each of them checked."
+  },
+  {
     "id": "hidden-ai-directive",
     "severity": "high",
     "area": "Security & email",
@@ -3339,6 +3404,19 @@
     "size": "S",
     "done": "Each form on the page is meant to be there, or the page uses one service.",
     "estimateChanges": "Moving forms to one service means rebuilding each of them."
+  },
+  {
+    "id": "gatsby-data-unshown",
+    "severity": "low",
+    "area": "Security & email",
+    "title": "The data sent with a Gatsby page has text the page does not show",
+    "what": "This Gatsby page's page-data file, or a static query it lists, has text fields whose text is nowhere on the page a visitor reads.",
+    "why": "Everything a page query returns is written to a public JSON file. A field the page does not show is either unused (so it can go) or used by a script (so it is worth a look): either way it is public.",
+    "fix": "Select only the fields the page needs in its query, or move the rest to a source that checks who is asking.",
+    "tech": "Gatsby sites only. The page's own /page-data/<path>/page-data.json and the /page-data/sq/d/<hash>.json files it lists (the files the framework's client fetches on every visit; one GET each, at most eleven, walked to depth 8, capped). Text fields of 4 or more characters whose first 40 characters are not in the page's visible text (tags taken out of html fields); addresses, ids, dates and image plumbing are left out; names only, never values. Fields named like something private are left to gatsby-private-fields. A file or page text that cannot be read in full is could not check. Fields used by scripts or other pages are shown too, so read the list as a prompt (uncited)",
+    "size": "M",
+    "done": "The page's data files hold only fields the page shows, or the rest is deliberate.",
+    "estimateChanges": "Each unused field is dropped from the query that returns it; fields used only by scripts or by other pages may be deliberate."
   },
   {
     "id": "hidden-past-launch",
