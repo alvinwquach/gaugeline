@@ -84,7 +84,10 @@ export const CRM_CHECKS: readonly string[] = Object.freeze([
  * they are not run (so not passed either), unless a caller asked for one by id: that one says it
  * did not ask.
  */
-export const PROBING_CHECKS: readonly string[] = Object.freeze(["gated-download-open"]);
+export const PROBING_CHECKS: readonly string[] = Object.freeze([
+  "gated-download-open",
+  "not-found-200",
+]);
 
 /**
  * The content model checks: they compare a Sanity schema, its documents and the pages built from

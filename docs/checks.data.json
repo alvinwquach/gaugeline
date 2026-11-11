@@ -221,6 +221,19 @@
     "estimateChanges": "Each sending service (newsletter tool, shop, booking system) has to be found and listed. Slow DNS changes add waiting, not work."
   },
   {
+    "id": "error-shell-200",
+    "severity": "high",
+    "area": "Search & sharing",
+    "title": "A page that is an error says everything is fine",
+    "what": "A page this run read answers 200 (success), but what it shows is an error: a framework's error page, or a title or heading such as \"Page not found\" or \"Something went wrong\".",
+    "why": "Google and other crawlers believe the status code. A broken page that says 200 can stay in search results, be treated as a soft 404, and wastes visits: a customer lands on the error and your monitoring, which looks at status codes, stays green.",
+    "fix": "Make the page answer the status it shows: 404 (or 410) for a page that is gone, 500 for a failure, or fix the page so it shows its content. In Next.js call notFound() and let the not-found page set 404; in Nuxt, SvelteKit and Remix throw an error with the status instead of rendering a page with an error message.",
+    "tech": "no request of its own: it reads the checked page and the same-site pages the run already fetched (the shared sample other checks use), 2xx HTML only. Reads the first 200,000 characters of each body. A finding is a framework error page (Next.js html id __next_error__ or its client-side exception text, the Nuxt error page, the SvelteKit error template, the React Router and Remix default error boundary) or a title or first heading that is wholly an error phrase (English, Spanish, French, German, Italian, Portuguese, Dutch) on a page with under 150 visible words. The finding shows the address and the kind of marker, never page text. A body cut at the size cap with no marker is could not check. A page with no marker passes only for these markers",
+    "size": "S",
+    "done": "Every page that shows an error answers 404, 410 or 500, and a page that answers 200 shows its content.",
+    "estimateChanges": "One shared layout that renders an error for every missing record is one fix. Pages that each catch their own errors and render a message are one fix each."
+  },
+  {
     "id": "event-jsonld-mismatch",
     "severity": "high",
     "area": "Visitors",
@@ -2091,6 +2104,19 @@
     "size": "M",
     "done": "An edit in the CMS shows on the live page without a redeploy.",
     "estimateChanges": "An on-demand revalidation webhook is set up in the CMS and the app. A revalidate time is one line but gives slower updates."
+  },
+  {
+    "id": "not-found-200",
+    "severity": "medium",
+    "area": "Search & sharing",
+    "title": "Pages that do not exist answer 200",
+    "what": "An address that cannot exist on this site (made up from the site's own address) answers 200, or sends the visitor to another page that answers 200, instead of 404 or 410.",
+    "why": "Google calls this a soft 404: every mistyped or deleted address looks like a real page, search engines spend visits on it and may index the empty result, and you never hear about dead links because nothing reports an error.",
+    "fix": "Make the not-found route answer 404 (410 for pages removed on purpose). In Next.js use notFound() and a not-found page, in Nuxt createError with statusCode 404, in SvelteKit error(404), and on a host with a catch-all rewrite (a single-page app) add a 404 rule for unknown paths.",
+    "tech": "probing check, off without --owner-consent: one GET of /gaugeline-not-found-3f9c2a71 on the checked page's own origin, no cookie, no Authorization, no query, at most 4096 bytes of the answer read and never kept. A final status of 200 is a finding, also after a redirect (a redirect to the home page is the same soft 404); 404 and 410 pass; 401, 403, 429, 5xx and an unreachable site are could not check. The fetcher refuses private addresses unless --allow-private",
+    "size": "S",
+    "done": "The made-up address answers 404 or 410 and the page it shows says so.",
+    "estimateChanges": "A framework's not-found route is one change. A host rewrite that sends every path to one file is a rule in the host's settings, and a single-page app may need a server answer for the first time."
   },
   {
     "id": "og-image-broken",

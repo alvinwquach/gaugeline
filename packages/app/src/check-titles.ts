@@ -31,6 +31,7 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "drafts-live": ["Unpublished work is in the live page", "Launch day"],
   "duplicate-title": ["This page has two titles", "Search & sharing"],
   "email-spf-missing": ["Your domain doesn't say who may send its email", "Security & email"],
+  "error-shell-200": ["A page that is an error says everything is fine", "Search & sharing"],
   "event-jsonld-mismatch": ["The page and the calendar disagree about an event", "Visitors"],
   "event-past-upcoming": ["The page still promotes an event that already happened", "Visitors"],
   "facts-match": ["A fact about your business differs between pages", "Sales & prices"],
@@ -253,6 +254,7 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "nav-orphans": ["Pages in the sitemap that no page links to", "Visitors"],
   "nav-parity": ["The mobile menu is missing links the desktop menu has", "Visitors"],
   "next-stale-after-publish": ["The page still shows an old copy after an edit", "Launch day"],
+  "not-found-200": ["Pages that do not exist answer 200", "Search & sharing"],
   "og-image-broken": ["The share picture doesn't load", "Launch day"],
   "og-image-relative": ["Shared links may show no picture", "Search & sharing"],
   "og-url-mismatch": [
@@ -546,6 +548,12 @@ export const CHECK_TEXT: Readonly<
     "Mail you send (receipts, booking confirmations) is more likely to land in spam, and anyone can send mail that claims to be from you.",
     "Add one TXT record at the domain starting v=spf1 that includes each service that sends your mail (your email host, your newsletter tool), ending -all or ~all.",
     "Public DNS only (node:dns/promises, TXT and MX): MX records exist and are not a null MX, and no TXT record at the host (without www.) starts with v=spf1. No mail server is contacted",
+  ],
+  "error-shell-200": [
+    'A page this run read answers 200 (success), but what it shows is an error: a framework\'s error page, or a title or heading such as "Page not found" or "Something went wrong".',
+    "Google and other crawlers believe the status code. A broken page that says 200 can stay in search results, be treated as a soft 404, and wastes visits: a customer lands on the error and your monitoring, which looks at status codes, stays green.",
+    "Make the page answer the status it shows: 404 (or 410) for a page that is gone, 500 for a failure, or fix the page so it shows its content. In Next.js call notFound() and let the not-found page set 404; in Nuxt, SvelteKit and Remix throw an error with the status instead of rendering a page with an error message.",
+    "no request of its own: it reads the checked page and the same-site pages the run already fetched (the shared sample other checks use), 2xx HTML only. Reads the first 200,000 characters of each body. A finding is a framework error page (Next.js html id __next_error__ or its client-side exception text, the Nuxt error page, the SvelteKit error template, the React Router and Remix default error boundary) or a title or first heading that is wholly an error phrase (English, Spanish, French, German, Italian, Portuguese, Dutch) on a page with under 150 visible words. The finding shows the address and the kind of marker, never page text. A body cut at the size cap with no marker is could not check. A page with no marker passes only for these markers",
   ],
   "event-jsonld-mismatch": [
     "An event in the page's structured data has a different start time, name or place than the .ics calendar entry on the same day.",
@@ -1410,6 +1418,12 @@ export const CHECK_TEXT: Readonly<
     "Editors publish a fix and visitors keep seeing the old version, so the fix looks broken.",
     "Revalidate the page when its document changes (an on-demand revalidation webhook from the CMS), or lower its revalidate time.",
     "Next.js sites with a content source (branch 30) only, otherwise unchecked: x-nextjs-cache or x-vercel-cache HIT or STALE with an Age header, the copy's age older than the document's last change, and the change more than 10 minutes ago. Without an Age header nothing is reported",
+  ],
+  "not-found-200": [
+    "An address that cannot exist on this site (made up from the site's own address) answers 200, or sends the visitor to another page that answers 200, instead of 404 or 410.",
+    "Google calls this a soft 404: every mistyped or deleted address looks like a real page, search engines spend visits on it and may index the empty result, and you never hear about dead links because nothing reports an error.",
+    "Make the not-found route answer 404 (410 for pages removed on purpose). In Next.js use notFound() and a not-found page, in Nuxt createError with statusCode 404, in SvelteKit error(404), and on a host with a catch-all rewrite (a single-page app) add a 404 rule for unknown paths.",
+    "probing check, off without --owner-consent: one GET of /gaugeline-not-found-3f9c2a71 on the checked page's own origin, no cookie, no Authorization, no query, at most 4096 bytes of the answer read and never kept. A final status of 200 is a finding, also after a redirect (a redirect to the home page is the same soft 404); 404 and 410 pass; 401, 403, 429, 5xx and an unreachable site are could not check. The fetcher refuses private addresses unless --allow-private",
   ],
   "og-image-broken": [
     "The og:image the page names answers with an error, or can't be reached.",

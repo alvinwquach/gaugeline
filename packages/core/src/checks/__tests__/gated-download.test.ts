@@ -303,7 +303,7 @@ describe("gated-download-open: a probing check", () => {
   });
 
   it("is on the probing list, so a run without consent leaves it out and with consent runs it", async () => {
-    expect(PROBING_CHECKS).toEqual(["gated-download-open"]);
+    expect(PROBING_CHECKS).toEqual(["gated-download-open", "not-found-200"]);
     expect(PAGE_CHECKS.some((c) => c.id === "gated-download-open")).toBe(true);
     for (const consent of [false, true]) {
       const server = await startServer({
