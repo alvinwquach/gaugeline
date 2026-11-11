@@ -329,6 +329,23 @@ probing checks (non-public paths, a site's own keys) are off unless you pass `--
 - **No model.** The pack is made from templates. Prices and hours are only those in
   `gaugeline.services.json`.
 
+### Migration completeness (gaugeline migration)
+
+`gaugeline migration <new-address>` compares an old site's list of pages with a new site
+([Migration completeness](guides/migration.md)). Every request is `GET`, through the fetcher, and there
+are at most two for each of up to 500 pages: the page's path on the new site, and the same path on the old
+site when you give `--old`.
+
+- **The old site's list.** With `--old`, the WordPress REST API's public, documented list of published
+  posts and pages (`/wp-json/wp/v2/posts` and `/wp-json/wp/v2/pages`, no key, no login, published status
+  only), then the sitemap, then the links on the home page if there is no API. With `--old-file` nothing
+  is requested for the list: the file is read from this computer.
+- **Nothing private is asked for.** No `/wp-admin`, no login, no form, no draft, no path that is not in the
+  public list. A password-protected page is could-not-check.
+- **The list is data.** Titles and addresses in it are compared and printed as text. They are never run,
+  followed as instructions or sent anywhere, and a title that reads like an instruction changes nothing.
+- **No secrets, no model.** The checks are plain rules: the same two sites give the same findings.
+
 ### Saving the requests (--save-requests)
 
 By default a run keeps what it asked for in memory and writes only the report. `--save-requests <file>`

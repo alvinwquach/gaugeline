@@ -1404,3 +1404,18 @@ export {
   renderPackMarkdown,
 } from "./audit/render.js";
 export type { AuditPackFile } from "./audit/render.js";
+
+export { MIGRATION_CHECKS, createMigrationRegistry, unreadPages } from "./checks/migration.js";
+export {
+  ListBuilder,
+  MIGRATION_ITEM_CAP,
+  itemPath,
+  parseWordPress,
+  plainText,
+  readExportFile,
+} from "./migration/list.js";
+export type { ListSource, OldItem, OldList } from "./migration/list.js";
+export { readOldSite } from "./migration/old-site.js";
+export { SITE_WIDE_TYPES, factsOf, readMigration } from "./migration/read.js";
+export type { ItemRead, MigrationReading, NewRead, PageFacts } from "./migration/read.js";
+export { normaliseTitle, sameTitle, titleKept } from "./migration/titles.js";

@@ -29,6 +29,7 @@ export const SUBCOMMANDS = [
   "handoff",
   "cost",
   "audit",
+  "migration",
 ] as const;
 export type CliCommand = "check" | (typeof SUBCOMMANDS)[number];
 
@@ -164,6 +165,19 @@ export type ParsedArgs =
       quiet: boolean;
     }
   | { kind: "cutover"; before: string; allowPrivate: boolean; verbose: boolean; quiet: boolean }
+  | {
+      kind: "migration";
+      /** The new site's address, https unless it was typed with http. */
+      address: string;
+      /** --old: the old site's address, to read its list and its pages. */
+      old?: string;
+      /** --old-file: an export listing the old site's pages. */
+      oldFile?: string;
+      ci: boolean;
+      allowPrivate: boolean;
+      verbose: boolean;
+      quiet: boolean;
+    }
   | {
       kind: "open";
       address?: string;
@@ -1104,6 +1118,59 @@ export function parseCliArgs(
     return {
       kind: "cutover",
       before: values.before,
+      allowPrivate: values["allow-private"] === true,
+      verbose,
+      quiet: values.quiet === true,
+    };
+  }
+  if (command === "migration") {
+    const problem = (message: string, hint: string): ParsedArgs => ({
+      kind: "error",
+      message,
+      hint,
+      verbose,
+    });
+    if (positionals.length !== 1)
+      return problem(
+        positionals.length === 0
+          ? "gaugeline migration needs the address of the new site: gaugeline migration preview.example.com --old example.com"
+          : `gaugeline migration takes one address, got ${positionals.length}: ${positionals.join(", ")}.`,
+        "The new site comes first; the old site's list comes from --old (its address) or --old-file (an export).",
+      );
+    const parsedNew = parseAddress(positionals[0] ?? "");
+    if (!parsedNew.ok)
+      return problem(
+        `The new site's address: ${parsedNew.reason}`,
+        "Type the new site's address like preview.example.com or https://example.com.",
+      );
+    const old = typeof values.old === "string" ? values.old.trim() : undefined;
+    const oldFile = typeof values["old-file"] === "string" ? values["old-file"].trim() : undefined;
+    if (old === undefined && oldFile === undefined)
+      return problem(
+        "gaugeline migration needs the old site: --old <address> or --old-file <export>.",
+        "For example: gaugeline migration preview.example.com --old example.com",
+      );
+    if (oldFile === "")
+      return problem(
+        "--old-file needs the export file: --old-file wix-pages.csv.",
+        "Export the old site's pages as CSV or JSON, with a column for each page's address or path.",
+      );
+    let oldAddress: string | undefined;
+    if (old !== undefined) {
+      const parsedOld = parseAddress(old);
+      if (!parsedOld.ok)
+        return problem(
+          `--old: ${parsedOld.reason}`,
+          "Type the old site's address, like example.com.",
+        );
+      oldAddress = parsedOld.url.href;
+    }
+    return {
+      kind: "migration",
+      address: parsedNew.url.href,
+      ...(oldAddress !== undefined ? { old: oldAddress } : {}),
+      ...(oldFile !== undefined ? { oldFile } : {}),
+      ci: values.ci === true,
       allowPrivate: values["allow-private"] === true,
       verbose,
       quiet: values.quiet === true,
