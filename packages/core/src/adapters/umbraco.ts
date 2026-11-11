@@ -17,42 +17,112 @@ import {
   type PublishedOptions,
   type TypeCount,
 } from "./types.js";
+import {
+  UMBRACO_API_KEY,
+  UMBRACO_DESCRIPTION,
+  UMBRACO_ENV_VARS,
+  UMBRACO_LIMITS,
+  UMBRACO_PAGE_SIZE,
+  UMBRACO_URL,
+} from "./umbraco.entry.js";
+export {
+  UMBRACO_API_KEY,
+  UMBRACO_DESCRIPTION,
+  UMBRACO_ENV_VARS,
+  UMBRACO_LIMITS,
+  UMBRACO_PAGE_SIZE,
+  UMBRACO_URL,
+};
 
-import { UMBRACO_DESCRIPTION } from "./umbraco.entry.js";
-export { UMBRACO_DESCRIPTION };
-
-import { UMBRACO_TOKEN } from "./umbraco.entry.js";
-export { UMBRACO_TOKEN };
-
-/** TODO(new:adapter) the platform's API base, from its documentation (the date you checked it goes on the docs page). */
-export const UMBRACO_API = "https://api.umbraco.example/v1";
-
-/** Items asked for in one request: the API's own maximum. TODO(new:adapter) confirm it. */
-export const UMBRACO_PAGE_SIZE = 100;
-
-/** Bounds a run keeps to, in the platform's terms. There are no flags to raise them. */
-export const UMBRACO_LIMITS = {
-  /** Items read from one type. A bigger one is could-not-check, never a count of part of it. */
-  itemsPerType: 10_000,
-} as const;
+/** The Content Delivery API's list route (Umbraco 13 and newer, version 2 of the API). [docs] */
+export const UMBRACO_CONTENT_PATH = "/umbraco/delivery/api/v2/content";
 
 /** The smallest page asked for when an answer is too big: the page is halved down to this and no further. */
 const MIN_PAGE_SIZE = 10;
 
-/** Every address is built from this origin and no other: a key is never sent anywhere else. */
-const API_ORIGIN = new URL(UMBRACO_API).origin;
+/** A content type's alias. It goes into a filter, so nothing outside these characters is ever sent. */
+const TYPE_ALIAS = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/;
+/** A property alias (the first part of a field name). */
+const FIELD_ALIAS = /^[A-Za-z][A-Za-z0-9_-]{0,63}$/;
+/** A node id: the GUID the API gives, or any id of this shape. */
+const ITEM_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
+/** What a route path may be made of: unreserved and sub-delimiter characters, ":" and "@", "/" and well-formed "%" escapes. */
+const ROUTE_CHARS = /^\/(?:[A-Za-z0-9\-._~!$&'()*+,;=:@/]|%[0-9A-Fa-f]{2})*$/;
+const SLUG = /^[A-Za-z0-9][A-Za-z0-9._~-]{0,127}$/;
+
+/**
+ * A route path from an answer, or undefined when it is not a plain path on the site: one leading "/", never
+ * "//" (a host), a scheme, a backslash, a query or a fragment, a "." or ".." segment, or an escaped dot, slash or
+ * backslash ("%2e", "%2f", "%5c"). Linear-time (one anchored pass), and a lone surrogate is simply not a match.
+ */
+export function safeRoutePath(value: unknown): string | undefined {
+  if (typeof value !== "string" || value.length > 512) return undefined;
+  if (value.startsWith("//") || !ROUTE_CHARS.test(value)) return undefined;
+  if (/%2[eEfF]|%5[cC]/.test(value)) return undefined;
+  for (const part of value.split("/")) if (part === "." || part === "..") return undefined;
+  return value;
+}
+
+/**
+ * The site's own address from UMBRACO_URL, or undefined: https only, a host, no sign-in details, no path beyond "/",
+ * no query and no fragment. Anything else is not the Umbraco site's origin, and a key is never sent to it.
+ */
+export function umbracoOrigin(raw: string): string | undefined {
+  let url: URL;
+  try {
+    url = new URL(raw.trim());
+  } catch {
+    return undefined;
+  }
+  if (url.protocol !== "https:" || url.hostname === "") return undefined;
+  if (url.username !== "" || url.password !== "") return undefined;
+  if (url.pathname !== "/" || url.search !== "" || url.hash !== "") return undefined;
+  return url.origin;
+}
+
+/**
+ * What an anonymous visitor (no key) is told by the Delivery API's list route:
+ * - `public`: it answered with a list. `total` is how many nodes the API says it has.
+ * - `protected`: it answered 401 or 403, which is what a protected API does.
+ * - `closed`: it answered 404: the API is off, or this is not where it is.
+ * - `unread`: the answer could not be read; `reason` says why.
+ */
+export type UmbracoPublicState = "public" | "protected" | "closed" | "unread";
+
+export interface UmbracoPublicApi {
+  state: UmbracoPublicState;
+  /** The node count the API reported to a visitor with no key. Only when `public`. */
+  total?: number;
+  reason?: string;
+}
+
+/** The Umbraco adapter: ContentAdapter, plus the reads the two Umbraco checks need. */
+export interface UmbracoAdapter extends ContentAdapter {
+  /** The content types the settings name (under `urls` or `fingerprint`), in order. The API lists none. */
+  collections(): string[];
+  /** Whether UMBRACO_API_KEY is set: the owner says the API is meant to be protected. */
+  keyConfigured(): boolean;
+  /**
+   * What a visitor with NO key is told by the Delivery API's list route: one GET, sent with no key, no cookie and
+   * nothing the fetcher adds per address. It asks a route a visitor is not meant to be sent to when the API is
+   * private, so a caller runs it only with the owner's consent (CLAUDE.md rule 14).
+   */
+  publicApi(): Promise<UmbracoPublicApi>;
+}
 
 export interface UmbracoAdapterOptions {
-  /** UMBRACO_TOKEN, already copied (see freezeEnv). */
+  /** UMBRACO_URL and, optionally, UMBRACO_API_KEY, already copied (see freezeEnv). */
   env: Env;
   fetcher: Fetcher;
-  /** The settings entry (`fingerprint`, `urls`). With none, no field value is hashed. */
+  /** The settings entry. Its `urls` and `fingerprint` keys name the content types to read. */
   settings?: AdapterSettings | undefined;
   /** How a wait for Retry-After is made. Tests pass a stand-in that does not wait. */
   sleep?: ((ms: number) => Promise<void>) | undefined;
   pageSize?: number | undefined;
   /** Replaces UMBRACO_LIMITS.itemsPerType. For tests. */
   maxItemsPerType?: number | undefined;
+  /** Replaces UMBRACO_LIMITS.requestsPerList. For tests. */
+  maxRequestsPerList?: number | undefined;
 }
 
 const wait = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
@@ -66,10 +136,10 @@ function isoOf(value: unknown): string | undefined {
 
 /** A field's value by name; a dotted name goes into objects. */
 function valueAt(data: Record<string, unknown>, path: string): unknown {
-  if (path in data) return data[path];
+  if (Object.hasOwn(data, path)) return data[path];
   let at: unknown = data;
   for (const part of path.split(".")) {
-    if (!isRecord(at)) return undefined;
+    if (!isRecord(at) || !Object.hasOwn(at, part)) return undefined;
     at = at[part];
   }
   return at;
@@ -87,45 +157,71 @@ function hasValue(v: unknown): boolean {
 /** An answer over the size limit: asked again with a smaller page before it becomes could-not-check. */
 class TooLarge extends AdapterCouldNotCheck {}
 
-/** An item as the adapter keeps it: ids, state and times, and the field data only until it is hashed or counted. */
+/** A node as the adapter keeps it: ids, times and its path, and the property values only until they are hashed or counted. */
 interface RawItem {
   id: string;
+  type: string;
   slug?: string;
-  published: boolean;
-  publishedAt?: string;
+  /** The node's route path from the API, when it is a plain path. */
+  path?: string;
   updatedAt: string;
   data: Record<string, unknown>;
 }
 
+/** The first part of each field name: the property alias the API is asked for. */
+function aliasesOf(fields: readonly string[]): string[] {
+  const out = new Set<string>();
+  for (const f of fields) {
+    const first = f.split(".")[0] ?? "";
+    if (FIELD_ALIAS.test(first)) out.add(first);
+  }
+  return [...out].sort();
+}
+
 /**
- * TODO(new:adapter) map the platform's item to RawItem: where its id, slug, state, times and field data are.
- * Throw AdapterCouldNotCheck for an item that has no id or no time; never make one up.
+ * One node of a list. The Delivery API's item has `id`, `contentType`, `name`, `createDate`, `updateDate`,
+ * `route.path` and `properties`. Only the id, the type, the update time, the route and the requested
+ * properties are kept: the name and every other property are dropped here. [docs]
  */
-function parseItem(raw: unknown): RawItem {
+function parseItem(raw: unknown, aliases: readonly string[]): RawItem {
   const r = isRecord(raw) ? raw : {};
-  const publishedAt = isoOf(r.publishedAt);
-  const updatedAt = isoOf(r.updatedAt) ?? publishedAt;
-  if (typeof r.id !== "string" || r.id === "" || updatedAt === undefined)
+  const updatedAt = isoOf(r.updateDate);
+  if (typeof r.id !== "string" || !ITEM_ID.test(r.id) || updatedAt === undefined)
     throw new AdapterCouldNotCheck(
-      "Umbraco answered with items that have no id or no update time.",
+      "Umbraco answered with nodes that have no usable id or no update time.",
     );
+  if (typeof r.contentType !== "string" || !TYPE_ALIAS.test(r.contentType))
+    throw new AdapterCouldNotCheck("Umbraco answered with a node that has no content type.");
+  const route = isRecord(r.route) ? r.route : {};
+  const path = safeRoutePath(route.path);
+  const last =
+    path === undefined
+      ? undefined
+      : path
+          .split("/")
+          .filter((s) => s !== "")
+          .at(-1);
+  const props = isRecord(r.properties) ? r.properties : {};
+  const data: Record<string, unknown> = {};
+  for (const a of aliases) if (Object.hasOwn(props, a)) data[a] = props[a];
   return {
     id: r.id,
-    ...(typeof r.slug === "string" && r.slug !== "" ? { slug: r.slug } : {}),
-    published: r.status === "published",
-    ...(publishedAt !== undefined ? { publishedAt } : {}),
+    type: r.contentType,
+    ...(last !== undefined && SLUG.test(last) ? { slug: last } : {}),
+    ...(path !== undefined ? { path } : {}),
     updatedAt,
-    data: isRecord(r.fields) ? r.fields : {},
+    data,
   };
 }
 
-export function createUmbracoAdapter(options: UmbracoAdapterOptions): ContentAdapter {
+export function createUmbracoAdapter(options: UmbracoAdapterOptions): UmbracoAdapter {
   const { env, fetcher } = options;
   const sleep = options.sleep ?? wait;
   const pageSize = Math.max(1, Math.min(options.pageSize ?? UMBRACO_PAGE_SIZE, UMBRACO_PAGE_SIZE));
   const cap = options.maxItemsPerType ?? UMBRACO_LIMITS.itemsPerType;
+  const requestBudget = options.maxRequestsPerList ?? UMBRACO_LIMITS.requestsPerList;
   const settings = options.settings;
-  const redact = createRedactor(env, [UMBRACO_TOKEN]);
+  const redact = createRedactor(env, [UMBRACO_API_KEY]);
 
   /** What a failed read becomes: a rate limit carries what was read, anything else is could-not-check. */
   const translate = (err: unknown, partial: unknown): Error => {
@@ -136,46 +232,79 @@ export function createUmbracoAdapter(options: UmbracoAdapterOptions): ContentAda
     if (err instanceof ConnectorRefusedError)
       return new AdapterCouldNotCheck(
         err.status === 401
-          ? "Umbraco did not accept UMBRACO_TOKEN (HTTP 401). Check that it is a current key."
-          : `Umbraco did not let the key read this (HTTP ${err.status}). TODO(new:adapter) name the permission the key needs.`,
+          ? `Umbraco did not accept the request (HTTP 401). If the Delivery API is protected, check that ${UMBRACO_API_KEY} is the key in the site's DeliveryApi ApiKey setting.`
+          : "Umbraco did not let the key read this (HTTP 403).",
       );
     if (err instanceof ConnectorStatusError)
       return new AdapterCouldNotCheck(
         err.status === 404
-          ? "Umbraco answered HTTP 404: it has no such type or item."
+          ? `Umbraco answered HTTP 404: the Delivery API is not at this address. It may be switched off, or ${UMBRACO_URL} is not the Umbraco site.`
           : `Umbraco answered HTTP ${err.status}.`,
       );
     return new AdapterCouldNotCheck(redact(err instanceof Error ? err.message : String(err)));
   };
 
-  const keyOrThrow = (): string => {
-    const key = (env[UMBRACO_TOKEN] ?? "").trim();
-    if (key === "")
-      throw new AdapterCouldNotCheck(`${UMBRACO_TOKEN} is not set. Umbraco's content needs a key.`);
-    return key;
+  /** The site's origin, or could-not-check naming the variable (never its value). */
+  const originOrThrow = (): string => {
+    const raw = (env[UMBRACO_URL] ?? "").trim();
+    if (raw === "")
+      throw new AdapterCouldNotCheck(
+        `${UMBRACO_URL} is not set. Set it to the Umbraco site's address, such as https://example.com.`,
+      );
+    const origin = umbracoOrigin(raw);
+    if (origin === undefined)
+      throw new AdapterCouldNotCheck(
+        `${UMBRACO_URL} must be the site's address with https and no path, such as https://example.com.`,
+      );
+    return origin;
+  };
+
+  const keyOrUndefined = (): string | undefined => {
+    const key = (env[UMBRACO_API_KEY] ?? "").trim();
+    return key === "" ? undefined : key;
   };
 
   /**
-   * One GET, parsed as a JSON object, to this API's origin and no other.
-   * The key goes in a header, never in the address.
+   * One GET of the list route, parsed as a JSON object, to the site's origin and no other. The key, when there is
+   * one, goes in the Api-Key header, never in the address; `preview` adds the Preview header, which the API honours
+   * only with the key. `visitor` sends neither (and nothing the fetcher adds per address).
    */
-  const get = async (address: string, partial: () => unknown): Promise<Record<string, unknown>> => {
-    if (new URL(address).origin !== API_ORIGIN)
-      throw new AdapterCouldNotCheck("Umbraco pointed at another address, which is not asked.");
-    const key = keyOrThrow();
-    try {
-      const { body } = await getJson(
-        {
-          fetcher,
-          request: {
-            authorization: `Bearer ${key}`,
-            headers: { accept: "application/json" },
-          },
-          sleep,
-          system: "Umbraco",
-        },
-        address,
+  const rawGet = async (
+    query: string,
+    mode: { preview?: boolean; visitor?: boolean },
+  ): Promise<unknown> => {
+    const origin = originOrThrow();
+    const key = mode.visitor === true ? undefined : keyOrUndefined();
+    if (mode.preview === true && key === undefined)
+      throw new AdapterCouldNotCheck(
+        `${UMBRACO_API_KEY} is not set. Umbraco shows unpublished work only to a request that carries the Delivery API key and asks for preview.`,
       );
+    const { body } = await getJson(
+      {
+        fetcher,
+        request: {
+          headers: {
+            accept: "application/json",
+            ...(key !== undefined ? { "api-key": key } : {}),
+            ...(mode.preview === true ? { preview: "true" } : {}),
+          },
+          ...(mode.visitor === true ? { anonymous: true } : {}),
+        },
+        sleep,
+        system: "Umbraco",
+      },
+      `${origin}${UMBRACO_CONTENT_PATH}${query}`,
+    );
+    return body;
+  };
+
+  const get = async (
+    query: string,
+    mode: { preview?: boolean; visitor?: boolean },
+    partial: () => unknown,
+  ): Promise<Record<string, unknown>> => {
+    try {
+      const body = await rawGet(query, mode);
       if (!isRecord(body))
         throw new AdapterCouldNotCheck("Umbraco answered with something that is not an object.");
       return body;
@@ -184,88 +313,92 @@ export function createUmbracoAdapter(options: UmbracoAdapterOptions): ContentAda
     }
   };
 
-  /**
-   * TODO(new:adapter) the platform's real read endpoints. Every one is a GET. Add each to the table in
-   * docs/integrations/umbraco.md with its documentation link.
-   *
-   * POST is allowed only for a documented read-only query endpoint, through ADR-0006's allowlist
-   * (branch adr/read-only-post; not merged yet). TODO(new:adapter, after ADR-0006 has merged) add the
-   * `queryAllow` entry (method, path pattern, body shape) in this adapter's registry row. Until then this
-   * adapter sends GET and HEAD only.
-   */
-  const typesAddress = (): string => `${UMBRACO_API}/types`;
-  const itemsAddress = (
-    type: string,
-    status: "published" | "all",
-    limit: number,
-    offset: number,
-  ): string =>
-    `${UMBRACO_API}/types/${encodeURIComponent(type)}/items?status=${status}&limit=${limit}&offset=${offset}`;
+  /** The query for one page of one type: the type filter, a stable order, the window, only the properties asked for, nothing expanded. */
+  const listQuery = (type: string, aliases: readonly string[], skip: number, take: number) =>
+    `?filter=${encodeURIComponent(`contentType:${type}`)}&sort=${encodeURIComponent("createDate:asc")}` +
+    `&skip=${skip}&take=${take}&fields=${encodeURIComponent(`properties[${aliases.join(",")}]`)}&expand=none`;
 
-  const typeNames = async (partial: () => unknown): Promise<string[]> => {
-    const body = await get(typesAddress(), partial);
-    return namesOf(body.types);
+  const collections = (): string[] => {
+    const names = new Set<string>([
+      ...Object.keys(settings?.urls ?? {}),
+      ...Object.keys(settings?.fingerprint ?? {}),
+    ]);
+    return [...names].filter((n) => TYPE_ALIAS.test(n)).sort();
   };
 
-  const pageOf = async (
-    type: string,
-    status: "published" | "all",
-    limit: number,
-    offset: number,
-    partial: () => unknown,
-  ): Promise<{ items: unknown[]; total: number }> => {
-    const body = await get(itemsAddress(type, status, limit, offset), partial);
-    return { items: itemsOf(body.items), total: totalOf(body.total) };
-  };
-
-  const namesOf = (list: unknown): string[] => {
-    if (!Array.isArray(list))
+  const named = (): string[] => {
+    const all = collections();
+    if (all.length === 0)
       throw new AdapterCouldNotCheck(
-        "Umbraco answered with something that is not a list of types.",
+        'No content type is named in gaugeline.adapters.json (under "urls" or "fingerprint"), and the Umbraco Delivery API does not list its content types, so nothing was read.',
       );
-    const names = list.map((t) => {
-      const slug = isRecord(t) ? t.slug : undefined;
-      if (typeof slug !== "string" || slug === "")
-        throw new AdapterCouldNotCheck("Umbraco answered with a type that has no slug.");
-      return slug;
-    });
-    return names.sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+    return all;
   };
 
-  const itemsOf = (list: unknown): unknown[] => {
-    if (!Array.isArray(list))
-      throw new AdapterCouldNotCheck(
-        "Umbraco answered with something that is not a list of items.",
-      );
-    return list;
+  const typeOrThrow = (type: string): string => {
+    if (!TYPE_ALIAS.test(type))
+      throw new AdapterCouldNotCheck("That is not a content type alias Gaugeline will ask for.");
+    return type;
   };
 
   const totalOf = (total: unknown): number => {
     if (typeof total !== "number" || !Number.isSafeInteger(total) || total < 0)
       throw new AdapterCouldNotCheck(
-        "Umbraco answered with something that is not a count of items.",
+        "Umbraco answered with something that is not a count of nodes.",
       );
     return total;
   };
 
-  /**
-   * The items of one type, a page at a time, until every one is read. An answer over the size limit is
-   * asked again with half as many items, down to ten; a page that comes back short is not the end, and
-   * one that comes back empty before the total is could-not-check. `status` "published" asks for what
-   * is live; "all" asks for everything the key can see.
-   */
-  async function* itemsOfType(
+  const pageOf = async (
     type: string,
-    status: "published" | "all",
-    enforceCap: boolean,
+    mode: { preview?: boolean },
+    skip: number,
+    take: number,
+    aliases: readonly string[],
     partial: () => unknown,
+  ): Promise<{ items: unknown[]; total: number }> => {
+    const body = await get(listQuery(typeOrThrow(type), aliases, skip, take), mode, partial);
+    if (!Array.isArray(body.items))
+      throw new AdapterCouldNotCheck(
+        "Umbraco answered with something that is not a list of nodes.",
+      );
+    return { items: body.items, total: totalOf(body.total) };
+  };
+
+  /** How many nodes a type has: a one-node page and its total. */
+  const countOf = async (
+    type: string,
+    mode: { preview?: boolean },
+    partial: () => unknown,
+  ): Promise<number> => (await pageOf(type, mode, 0, 1, [], partial)).total;
+
+  /**
+   * The nodes of one type, a window at a time, until every one is read. The window moves by the number of nodes
+   * that came back (the API may give fewer than asked), never by the number asked for. A list is complete only
+   * when the position reaches the total it reports: an empty window, a window with nothing new in it, or a
+   * list that needs more requests than the budget is could-not-check, never a short list taken for the whole.
+   */
+  async function* nodesOfType(
+    type: string,
+    o: {
+      preview: boolean;
+      enforceCap: boolean;
+      aliases: readonly string[];
+      partial: () => unknown;
+    },
   ): AsyncGenerator<RawItem> {
-    let offset = 0;
+    let skip = 0;
     let size = pageSize;
+    let requests = 0;
+    const seen = new Set<string>();
     for (;;) {
+      if (++requests > requestBudget)
+        throw new AdapterCouldNotCheck(
+          `Umbraco's list of this type needed more than ${requestBudget} requests, so the rest was not read.`,
+        );
       let page: { items: unknown[]; total: number };
       try {
-        page = await pageOf(type, status, size, offset, partial);
+        page = await pageOf(type, { preview: o.preview }, skip, size, o.aliases, o.partial);
       } catch (err) {
         if (!(err instanceof TooLarge)) throw err;
         if (size > MIN_PAGE_SIZE) {
@@ -273,19 +406,34 @@ export function createUmbracoAdapter(options: UmbracoAdapterOptions): ContentAda
           continue;
         }
         throw new AdapterCouldNotCheck(
-          `Umbraco's answer for ${size} items is larger than Gaugeline reads at once, even after asking for fewer items at a time (down to ${MIN_PAGE_SIZE}). The type was not read.`,
+          `Umbraco's answer for ${size} nodes is larger than Gaugeline reads at once, even after asking for fewer nodes at a time (down to ${MIN_PAGE_SIZE}). The type was not read.`,
         );
       }
-      if (enforceCap && page.total > cap)
+      if (o.enforceCap && page.total > cap)
         throw new AdapterCouldNotCheck(
-          `The type has ${page.total} items, more than ${cap} item${cap === 1 ? "" : "s"}, which is as many as Gaugeline reads from one type.`,
+          `The type has ${page.total} nodes, more than ${cap} node${cap === 1 ? "" : "s"}, which is as many as Gaugeline reads from one type.`,
         );
-      for (const raw of page.items) yield parseItem(raw);
-      offset += page.items.length;
-      if (offset >= page.total) return;
+      let fresh = 0;
+      for (const raw of page.items) {
+        const item = parseItem(raw, o.aliases);
+        if (item.type !== type)
+          throw new AdapterCouldNotCheck(
+            "Umbraco answered with a node of another content type than the one asked for.",
+          );
+        if (seen.has(item.id)) continue;
+        seen.add(item.id);
+        fresh++;
+        yield item;
+      }
+      skip += page.items.length;
+      if (skip >= page.total) return;
       if (page.items.length === 0)
         throw new AdapterCouldNotCheck(
-          `Umbraco's list stopped after ${offset} of ${page.total} items, so the rest was not read.`,
+          `Umbraco's list stopped after ${skip} of ${page.total} nodes, so the rest was not read.`,
+        );
+      if (fresh === 0)
+        throw new AdapterCouldNotCheck(
+          "Umbraco's list gave the same nodes again instead of the next ones, so the rest was not read.",
         );
     }
   }
@@ -295,17 +443,10 @@ export function createUmbracoAdapter(options: UmbracoAdapterOptions): ContentAda
     return template === undefined ? "" : fillUrlTemplate(template, doc);
   };
 
-  const chosen = async (names: readonly string[] | undefined): Promise<string[]> => {
-    const all = await typeNames(() => []);
-    return names === undefined ? all : all.filter((n) => names.includes(n));
-  };
-
   const types = async (): Promise<TypeCount[]> => {
     const out: TypeCount[] = [];
-    for (const name of await typeNames(() => [])) {
-      const page = await pageOf(name, "published", 1, 0, () => out.slice());
-      out.push({ name, count: page.total });
-    }
+    for (const name of named())
+      out.push({ name, count: await countOf(name, {}, () => out.slice()) });
     return out;
   };
 
@@ -314,10 +455,15 @@ export function createUmbracoAdapter(options: UmbracoAdapterOptions): ContentAda
     fields: readonly string[],
   ): Promise<Record<string, number>> => {
     const out: Record<string, number> = Object.fromEntries(fields.map((f) => [f, 0]));
-    for (const name of await chosen([type]))
-      for await (const item of itemsOfType(name, "published", true, () => ({}))) {
-        for (const f of fields) if (hasValue(valueAt(item.data, f))) out[f] = (out[f] ?? 0) + 1;
-      }
+    const aliases = aliasesOf(fields);
+    for await (const item of nodesOfType(typeOrThrow(type), {
+      preview: false,
+      enforceCap: true,
+      aliases,
+      partial: () => out,
+    })) {
+      for (const f of fields) if (hasValue(valueAt(item.data, f))) out[f] = (out[f] ?? 0) + 1;
+    }
     return out;
   };
 
@@ -329,23 +475,30 @@ export function createUmbracoAdapter(options: UmbracoAdapterOptions): ContentAda
     }
     let delivered = 0;
     let remaining = opts.limit ?? Number.POSITIVE_INFINITY;
-    for (const type of await chosen(opts.types)) {
+    const wanted = opts.types === undefined ? named() : opts.types.map(typeOrThrow);
+    for (const type of wanted) {
       if (remaining <= 0) return;
       const fields = opts.fields?.[type] ?? settings?.fingerprint?.[type] ?? [];
-      const read = itemsOfType(type, "published", opts.limit === undefined, () => delivered);
+      const read = nodesOfType(type, {
+        preview: false,
+        enforceCap: opts.limit === undefined,
+        aliases: aliasesOf(fields),
+        partial: () => delivered,
+      });
       for await (const item of read) {
-        if (!item.published) continue;
         if (since !== undefined && Date.parse(item.updatedAt) < Date.parse(since)) continue;
         const fieldHashes: Record<string, string> = {};
         for (const f of fields) {
           const h = hashValue(valueAt(item.data, f));
           if (h !== undefined) fieldHashes[f] = h;
         }
-        const url = resolveUrl({
+        // The settings' pattern wins; without one, the route the API gave the node.
+        const given = resolveUrl({
           id: item.id,
           type,
           ...(item.slug !== undefined ? { slug: item.slug } : {}),
         });
+        const url = given !== "" ? given : (item.path ?? "");
         remaining--;
         delivered++;
         yield {
@@ -353,7 +506,6 @@ export function createUmbracoAdapter(options: UmbracoAdapterOptions): ContentAda
           type,
           ...(url !== "" ? { url } : {}),
           ...(item.slug !== undefined ? { slug: item.slug } : {}),
-          ...(item.publishedAt !== undefined ? { publishedAt: item.publishedAt } : {}),
           updatedAt: item.updatedAt,
           fieldHashes,
         };
@@ -363,16 +515,50 @@ export function createUmbracoAdapter(options: UmbracoAdapterOptions): ContentAda
   }
 
   /**
-   * True when the list of everything the key can see holds an item the published list does not: a draft
-   * or an item never published. Two counts per type and no item is asked for beyond the first.
+   * True when a request with the key that asks for preview is shown more nodes than the published list holds: a
+   * draft, or a node never published. Two counts per type and no node is asked for beyond the first.
    */
   const draftsReachable = async (): Promise<boolean> => {
-    for (const name of await typeNames(() => undefined)) {
-      const every = (await pageOf(name, "all", 1, 0, () => undefined)).total;
-      const live = (await pageOf(name, "published", 1, 0, () => undefined)).total;
-      if (every > live) return true;
+    for (const name of named()) {
+      const live = await countOf(name, {}, () => undefined);
+      const preview = await countOf(name, { preview: true }, () => undefined);
+      if (preview > live) return true;
     }
     return false;
+  };
+
+  const publicApi = async (): Promise<UmbracoPublicApi> => {
+    try {
+      const body = await rawGet(
+        `?take=1&fields=${encodeURIComponent("properties[]")}&expand=none`,
+        {
+          visitor: true,
+        },
+      );
+      if (!isRecord(body) || !Array.isArray(body.items) || typeof body.total !== "number")
+        return {
+          state: "unread",
+          reason: "the route answered, but not with the Delivery API's list of nodes",
+        };
+      return Number.isSafeInteger(body.total) && body.total >= 0
+        ? { state: "public", total: body.total }
+        : {
+            state: "unread",
+            reason: "the route answered with a count that is not a number of nodes",
+          };
+    } catch (err) {
+      if (err instanceof AdapterCouldNotCheck) throw err;
+      if (err instanceof ConnectorRefusedError) return { state: "protected" };
+      if (err instanceof ConnectorRateLimitedError)
+        throw new AdapterRateLimitedError([], err.retry);
+      if (err instanceof ConnectorStatusError)
+        return err.status === 404
+          ? { state: "closed" }
+          : { state: "unread", reason: `the route answered HTTP ${err.status}` };
+      if (err instanceof ResponseTooLargeError)
+        return { state: "unread", reason: "the answer was larger than a response may be" };
+      return { state: "unread", reason: redact(err instanceof Error ? err.message : String(err)) };
+    }
   };
 
   return {
@@ -383,5 +569,8 @@ export function createUmbracoAdapter(options: UmbracoAdapterOptions): ContentAda
     published,
     draftsReachable,
     resolveUrl,
+    collections,
+    keyConfigured: () => keyOrUndefined() !== undefined,
+    publicApi,
   };
 }

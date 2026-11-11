@@ -2,120 +2,138 @@ import { Readable } from "node:stream";
 import type { Transport } from "../../fetcher.js";
 
 /**
- * Larkspur Yoga Studio's invented Umbraco site: a small studio whose site a freelancer built on Umbraco, with
- * classes, teachers and notices. Nothing here was recorded from a real site, and every address is on a
- * reserved `.example` domain.
- *
- * TODO(new:adapter) the answers are in the shape the scaffold's adapter expects, not the platform's.
- * Change them to the shape of the platform's documented responses (copy the shape from its reference page,
- * not a real answer: invent every value) and keep these four things true, because the contract suite
- * relies on them: a draft in the first type, an item that lacks a field the others have, at least two types
- * with two published items each, and a text in every item that is the client's words (the markers).
+ * Marigold Lane Community Theatre's invented Umbraco site: a volunteer-run theatre whose site a freelancer built on
+ * Umbraco, with shows, cast members and news. Nothing here was recorded from a real site, and every address is on a
+ * reserved `.example` domain. The answers have the shape of the Content Delivery API's list route (a `total` and
+ * `items`, each with `id`, `contentType`, `name`, `createDate`, `updateDate`, `route` and `properties`); every
+ * value is invented. The API is read from the same origin as the live site, as it is on a site Umbraco serves itself.
  */
-export const UMBRACO_SITE = "https://larkspur-yoga.example";
-export const UMBRACO_HOST = "api.umbraco.example";
+export const UMBRACO_SITE = "https://marigold-lane.example";
+export const UMBRACO_HOST = "marigold-lane.example";
 
 /** Text that is in the client's content, drafts included, and must never reach a report, a log or a hash input. */
 export const UMBRACO_MARKERS = {
-  morning: "Morning flow: slow breathing, then one long sun salutation",
-  morningSummary: "Forty minutes, no experience needed, mats provided",
-  evening: "Evening stretch for people who sit all day",
-  retreat: "Autumn retreat, deposit not yet announced",
-  ana: "Ana teaches the early classes and runs the retreat",
-  ben: "Ben took over the Saturday workshop in October",
-  notice: "The studio is closed on the last Friday of November",
+  lantern: "The Lantern Keeper: a ghost story told with paper lanterns",
+  lanternBlurb: "Seven nights in the village hall, tickets on the door",
+  panto: "Winter panto: Jack and the Biscuit Tin",
+  springDraft: "Spring show, cast not yet announced to the company",
+  ines: "Ines plays the lantern keeper and chairs the committee",
+  tomas: "Tomas runs the box office on Saturdays",
+  closed: "The hall is closed for the whole of January",
 } as const;
 
-export interface FixtureItem {
+export interface FixtureNode {
   id: string;
+  /** false: saved but never published. The public list never holds it; preview does. */
+  published: boolean;
   slug: string;
-  status: "published" | "draft";
-  updatedAt: string;
-  publishedAt?: string;
-  fields: Record<string, unknown>;
+  createDate: string;
+  updateDate: string;
+  /** Left out of the route when absent (a node with no page of its own). */
+  routePath?: string | undefined;
+  properties: Record<string, unknown>;
 }
 
 export interface FixtureType {
-  slug: string;
-  items: FixtureItem[];
+  alias: string;
+  nodes: FixtureNode[];
 }
+
+const route = (path: string) => `/${path}/`;
 
 export const UMBRACO_CONTENT: FixtureType[] = [
   {
-    slug: "classes",
-    items: [
+    alias: "show",
+    nodes: [
       {
-        id: "c-morning",
-        slug: "morning-flow",
-        status: "published",
-        publishedAt: "2026-10-01T09:00:00.000Z",
-        updatedAt: "2026-10-20T08:30:00.000Z",
-        fields: {
-          name: UMBRACO_MARKERS.morning,
-          summary: UMBRACO_MARKERS.morningSummary,
-          seats: 14,
+        id: "3f6c8a10-5b7e-4c21-9d34-a1b2c3d4e5f6",
+        published: true,
+        slug: "the-lantern-keeper",
+        createDate: "2026-09-01T09:00:00.000Z",
+        updateDate: "2026-10-20T08:30:00.000Z",
+        routePath: route("whats-on/the-lantern-keeper"),
+        properties: {
+          title: UMBRACO_MARKERS.lantern,
+          blurb: UMBRACO_MARKERS.lanternBlurb,
+          seats: 90,
         },
       },
-      // No summary: a field an item lacks is left out of its hashes, never hashed as empty.
+      // No blurb: a field a node lacks is left out of its hashes, never hashed as empty.
       {
-        id: "c-evening",
-        slug: "evening-stretch",
-        status: "published",
-        publishedAt: "2026-10-05T09:00:00.000Z",
-        updatedAt: "2026-11-02T17:00:00.000Z",
-        fields: { name: UMBRACO_MARKERS.evening, seats: 20 },
+        id: "7a1e9b52-0c3d-4f68-8e47-b2c3d4e5f6a7",
+        published: true,
+        slug: "winter-panto",
+        createDate: "2026-09-20T09:00:00.000Z",
+        updateDate: "2026-11-02T17:00:00.000Z",
+        routePath: route("whats-on/winter-panto"),
+        properties: { title: UMBRACO_MARKERS.panto, seats: 120 },
       },
       // A draft: saved and not published. The published list never holds it.
       {
-        id: "c-retreat",
-        slug: "autumn-retreat",
-        status: "draft",
-        updatedAt: "2026-11-09T10:00:00.000Z",
-        fields: { name: UMBRACO_MARKERS.retreat },
+        id: "c9d2e4f6-1a3b-4c5d-9e7f-c3d4e5f6a7b8",
+        published: false,
+        slug: "spring-show",
+        createDate: "2026-11-09T10:00:00.000Z",
+        updateDate: "2026-11-09T10:00:00.000Z",
+        routePath: route("whats-on/spring-show"),
+        properties: { title: UMBRACO_MARKERS.springDraft },
       },
     ],
   },
   {
-    slug: "notices",
-    items: [
+    alias: "notice",
+    nodes: [
       {
-        id: "n-closed",
-        slug: "closed-last-friday",
-        status: "published",
-        publishedAt: "2026-11-03T12:00:00.000Z",
-        updatedAt: "2026-11-03T12:00:00.000Z",
-        fields: { name: UMBRACO_MARKERS.notice },
+        id: "d4e5f6a7-2b3c-4d5e-8f60-d4e5f6a7b8c9",
+        published: true,
+        slug: "closed-in-january",
+        createDate: "2026-11-03T12:00:00.000Z",
+        updateDate: "2026-11-03T12:00:00.000Z",
+        routePath: route("news/closed-in-january"),
+        properties: { title: UMBRACO_MARKERS.closed },
       },
     ],
   },
   {
-    slug: "teachers",
-    items: [
+    alias: "castMember",
+    nodes: [
       {
-        id: "t-ana",
-        slug: "ana",
-        status: "published",
-        publishedAt: "2026-06-01T09:00:00.000Z",
-        updatedAt: "2026-09-01T09:00:00.000Z",
-        fields: { name: "Ana", bio: UMBRACO_MARKERS.ana },
+        id: "e5f6a7b8-3c4d-4e5f-9061-e5f6a7b8c9d0",
+        published: true,
+        slug: "ines",
+        createDate: "2026-06-01T09:00:00.000Z",
+        updateDate: "2026-09-01T09:00:00.000Z",
+        routePath: route("company/ines"),
+        properties: { title: "Ines", bio: UMBRACO_MARKERS.ines },
       },
       {
-        id: "t-ben",
-        slug: "ben",
-        status: "published",
-        publishedAt: "2026-10-10T09:00:00.000Z",
-        updatedAt: "2026-10-10T09:00:00.000Z",
-        fields: { name: "Ben", bio: UMBRACO_MARKERS.ben },
+        id: "f6a7b8c9-4d5e-4f60-a172-f6a7b8c9d0e1",
+        published: true,
+        slug: "tomas",
+        createDate: "2026-10-10T09:00:00.000Z",
+        updateDate: "2026-10-10T09:00:00.000Z",
+        routePath: route("company/tomas"),
+        properties: { title: "Tomas", bio: UMBRACO_MARKERS.tomas },
       },
     ],
   },
 ];
 
 export interface UmbracoFixtureOptions {
-  /** When set, a request without `Authorization: Bearer <token>` is answered 401. */
-  token?: string;
+  /** The Delivery API key. With `protectedApi`, a request without it is answered 401; preview always needs it. */
+  apiKey?: string;
+  /** The API's PublicAccess is off: every request needs the key. Default: public. */
+  protectedApi?: boolean;
+  /** The API is not switched on: every route answers 404. */
+  off?: boolean;
+  /** The most nodes one answer holds, whatever `take` asks for (the API may clamp). */
+  maxTake?: number;
+  /** Replace what the list route answers (a hostile or broken server). Called with the parsed query. */
+  list?: (q: { filter: string; skip: number; take: number }) => unknown;
+  /** Paths on the live site that answer 404 (a page that was never built). */
+  missingPages?: readonly string[];
   /** Called with every request, to see what was asked. */
-  onRequest?: (method: string, url: URL) => void;
+  onRequest?: (method: string, url: URL, headers: Record<string, string>) => void;
 }
 
 const json = (status: number, body: unknown, headers: Record<string, string> = {}) =>
@@ -125,40 +143,81 @@ const json = (status: number, body: unknown, headers: Record<string, string> = {
     body: Readable.from([Buffer.from(JSON.stringify(body))]),
   });
 
+const html = (status: number) =>
+  Promise.resolve({
+    status,
+    headers: { "content-type": "text/html" },
+    body: Readable.from([
+      Buffer.from(status === 200 ? "<html><title>Page</title></html>" : "gone"),
+    ]),
+  });
+
+/** The route's fields: only the properties a `fields=properties[a,b]` parameter names (`properties[]` names none). */
+function wanted(fields: string | null, all: Record<string, unknown>): Record<string, unknown> {
+  const m = /^properties\[(.*)\]$/.exec(fields ?? "");
+  if (!m) return all;
+  const names = (m[1] ?? "").split(",").filter((n) => n !== "");
+  return Object.fromEntries(Object.entries(all).filter(([k]) => names.includes(k)));
+}
+
 /**
- * Umbraco's API over the invented site. Every list answers at most 100 items a page (a larger `limit` is 400)
- * with the total, and nothing but a GET is answered. TODO(new:adapter) match the platform's paths and shapes.
+ * The Content Delivery API over the invented site, and its live pages. The list route answers a `filter` on
+ * `contentType:<alias>`, `skip` and `take`, and only the requested properties. With the key and a `Preview: true`
+ * header it also lists nodes that are not published; without them, only what is. Nothing but a GET is answered.
  */
 export function umbracoTransport(
   content: readonly FixtureType[] = UMBRACO_CONTENT,
   options: UmbracoFixtureOptions = {},
 ): Transport {
+  const pagePaths = new Set(
+    content.flatMap((t) => t.nodes.flatMap((n) => (n.routePath ? [n.routePath] : []))),
+  );
   return (url, req) => {
-    options.onRequest?.(req.method, url);
+    options.onRequest?.(req.method, url, req.headers);
     if (url.host !== UMBRACO_HOST) return json(404, { message: "not here" });
     if (req.method !== "GET") return json(405, { message: "method not allowed" });
-    if (options.token !== undefined && req.headers.authorization !== `Bearer ${options.token}`)
-      return json(401, { message: "Request not authorized" });
-
-    /** The items a list holds: with a key, "all" includes drafts; without one, only what is published. */
-    const listed = (slug: string, status: string | null) => {
-      const type = content.find((t) => t.slug === slug);
-      if (!type) return undefined;
-      return status === "all" ? type.items : type.items.filter((i) => i.status === "published");
-    };
-
-    if (url.pathname === "/v1/types")
-      return json(200, { types: content.map((t) => ({ slug: t.slug })) });
-    const items = /^\/v1\/types\/([^/]+)\/items$/.exec(url.pathname);
-    if (items) {
-      const all = listed(decodeURIComponent(items[1] ?? ""), url.searchParams.get("status"));
-      if (!all) return json(404, { message: "no such type" });
-      const limit = Number(url.searchParams.get("limit") ?? "100");
-      const offset = Number(url.searchParams.get("offset") ?? "0");
-      if (!Number.isInteger(limit) || limit < 1 || limit > 100)
-        return json(400, { message: "limit must be 1 to 100" });
-      return json(200, { items: all.slice(offset, offset + limit), total: all.length });
+    if (url.pathname === "/umbraco/delivery/api/v2/content") {
+      if (options.off === true) return html(404);
+      const key = req.headers["api-key"];
+      const hasKey = options.apiKey !== undefined && key === options.apiKey;
+      if (key !== undefined && !hasKey) return json(401, { title: "Unauthorized" });
+      const preview = (req.headers.preview ?? "") === "true";
+      if (preview && !hasKey) return json(401, { title: "Unauthorized" });
+      if (options.protectedApi === true && !hasKey) return json(401, { title: "Unauthorized" });
+      const filter = url.searchParams.get("filter") ?? "";
+      const skip = Number(url.searchParams.get("skip") ?? "0");
+      const take = Number(url.searchParams.get("take") ?? "10");
+      if (options.list) return json(200, options.list({ filter, skip, take }));
+      const alias = /^contentType:(.+)$/.exec(filter)?.[1];
+      const type = alias === undefined ? undefined : content.find((t) => t.alias === alias);
+      const nodes = (
+        alias === undefined ? content.flatMap((t) => t.nodes) : (type?.nodes ?? [])
+      ).filter((n) => preview || n.published);
+      const size = Math.min(take, options.maxTake ?? take);
+      const typeOf = (n: FixtureNode) => content.find((t) => t.nodes.includes(n))?.alias ?? "";
+      return json(200, {
+        total: nodes.length,
+        items: nodes.slice(skip, skip + size).map((n) => ({
+          id: n.id,
+          contentType: typeOf(n),
+          name: String(n.properties.title ?? n.slug),
+          createDate: n.createDate,
+          updateDate: n.updateDate,
+          route:
+            n.routePath === undefined
+              ? null
+              : {
+                  path: n.routePath,
+                  startItem: { id: "00000000-0000-4000-8000-000000000001", path: "home" },
+                },
+          properties: wanted(url.searchParams.get("fields"), n.properties),
+          cultures: {},
+        })),
+      });
     }
-    return json(404, { message: "no such route" });
+    // The live site: a page the content gives an address for answers, unless it is listed as missing.
+    if ((options.missingPages ?? []).includes(url.pathname)) return html(404);
+    if (pagePaths.has(url.pathname) || url.pathname === "/") return html(200);
+    return html(404);
   };
 }

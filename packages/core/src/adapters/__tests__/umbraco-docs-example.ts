@@ -27,7 +27,7 @@ export async function umbracoReads(): Promise<string> {
     timeoutMs: 5000,
   });
   const adapter = createUmbracoAdapter({
-    env: { UMBRACO_TOKEN: KEY },
+    env: { UMBRACO_API_KEY: KEY },
     fetcher,
     settings: UMBRACO_SETTINGS,
     sleep: () => Promise.resolve(),

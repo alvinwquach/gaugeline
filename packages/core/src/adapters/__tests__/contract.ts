@@ -34,6 +34,12 @@ export interface ContractEntry {
    */
   keyHeader?: { value: string };
   /**
+   * The key travels in this header, with the bare key as its value, instead of "Authorization: Bearer <key>"
+   * (Umbraco's `Api-Key`). Lower case. The suite then checks that header carries the key on every request, that the
+   * Authorization header is absent, and that the key is in no address.
+   */
+  keyHeaderName?: string;
+  /**
    * The read-only query entries the adapter's own file EXPORTS (ADR-0006), if it sends any: the frozen
    * objects `registerQueryAllow` returned, imported here, not written out again. The suite checks
    * each is registered (the fetcher only sends to a registered id) and well formed, and that every
