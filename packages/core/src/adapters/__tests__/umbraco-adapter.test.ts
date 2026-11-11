@@ -4,6 +4,7 @@ import { testKey } from "../../connectors/__tests__/fake.js";
 import { createFetcher, type Transport } from "../../fetcher.js";
 import { collectPublished } from "../collect.js";
 import { AdapterCouldNotCheck, AdapterRateLimitedError } from "../types.js";
+import { adaptersConfigSchema } from "../config.js";
 import { createUmbracoAdapter, safeRoutePath, umbracoOrigin } from "../umbraco.js";
 import {
   UMBRACO_CONTENT,
@@ -495,5 +496,97 @@ describe("safeRoutePath", () => {
     safeRoutePath(`/${"%".repeat(100_000)}`);
     safeRoutePath(`/${"%2".repeat(100_000)}`);
     expect(Date.now() - start).toBeLessThan(500);
+  });
+});
+
+describe("the Umbraco adapter: a list is complete only when every node was seen", () => {
+  it("a window that repeats a node and so leaves one out is could-not-check, not a clean list", async () => {
+    const { adapter } = make({
+      transport: hostile(({ skip }) =>
+        skip === 0
+          ? { total: 4, items: [node("a"), node("b")] }
+          : { total: 4, items: [node("a"), node("c")] },
+      ),
+    });
+    expect(await reasonOf(collectPublished(adapter, { types: ["show"] }))).toMatch(
+      /repeated nodes and did not give all of them/,
+    );
+  });
+
+  it("a total of 2 filled with the same node three times is could-not-check", async () => {
+    const { adapter } = make({
+      transport: hostile(() => ({ total: 2, items: [node("a"), node("a"), node("a")] })),
+    });
+    expect(await reasonOf(adapter.fieldCounts("show", ["title"]))).toMatch(
+      /repeated nodes and did not give all of them/,
+    );
+  });
+
+  it("a healthy list still completes", async () => {
+    const docs = (await collectPublished(make({ fixture: { maxTake: 1 } }).adapter)).docs;
+    expect(docs.length).toBeGreaterThan(0);
+  });
+});
+
+describe("the Umbraco adapter: start items and settings that were ignored", () => {
+  it("keeps no route-derived address for a node with no start item, and says how many roots it saw", async () => {
+    const content = structuredClone(UMBRACO_CONTENT);
+    const first = content[0]?.nodes[0];
+    if (first) first.startPath = null;
+    const t = umbracoTransport(content, { apiKey: KEY, protectedApi: true });
+    const { adapter } = make({
+      transport: t,
+      settings: { id: "umbraco", fingerprint: { show: ["title"] } },
+    });
+    const docs = (await collectPublished(adapter, { types: ["show"] })).docs;
+    expect(docs[0]?.url).toBeUndefined();
+    expect(docs[1]?.url).toBe("/whats-on/winter-panto/");
+    expect(adapter.rootsSeen()).toBe(1);
+  });
+
+  it("counts the different start items seen", async () => {
+    const content = structuredClone(UMBRACO_CONTENT);
+    const second = content[0]?.nodes[1];
+    if (second) second.startPath = "other-site";
+    const t = umbracoTransport(content, { apiKey: KEY, protectedApi: true });
+    const { adapter } = make({
+      transport: t,
+      settings: { id: "umbraco", fingerprint: { show: ["title"] } },
+    });
+    await collectPublished(adapter, { types: ["show"] });
+    expect(adapter.rootsSeen()).toBe(2);
+  });
+
+  it("a content type alias in the settings that is not valid is could-not-check, never dropped silently", async () => {
+    const { adapter, seen } = make({
+      settings: { id: "umbraco", urls: { show: "/x/{slug}", "bad alias": "/y/{slug}" } },
+    });
+    expect(adapter.invalidAliases()).toEqual(["bad alias"]);
+    expect(await reasonOf(adapter.types())).toMatch(/not a valid content type alias/);
+    expect(seen).toEqual([]);
+  });
+
+  it("preview showing no more nodes than the public list is could-not-check, not false", async () => {
+    const noDrafts = UMBRACO_CONTENT.map((t) => ({
+      ...t,
+      nodes: t.nodes.filter((n) => n.published),
+    }));
+    const { adapter } = make({
+      transport: umbracoTransport(noDrafts, { apiKey: KEY, protectedApi: true }),
+    });
+    expect(await reasonOf(adapter.draftsReachable())).toMatch(
+      /no more nodes with preview than without/,
+    );
+  });
+
+  it("expectPrivate is accepted in the settings for umbraco and refused for another adapter", () => {
+    const ok = adaptersConfigSchema.safeParse({
+      adapters: [{ id: "umbraco", urls: { show: "/x/{slug}" }, expectPrivate: true }],
+    });
+    expect(ok.success).toBe(true);
+    const bad = adaptersConfigSchema.safeParse({
+      adapters: [{ id: "strapi", urls: { events: "/x/{slug}" }, expectPrivate: true }],
+    });
+    expect(bad.success).toBe(false);
   });
 });

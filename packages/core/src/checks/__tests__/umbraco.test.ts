@@ -20,7 +20,11 @@ async function reading(
   options: {
     fixture?: UmbracoFixtureOptions;
     env?: Record<string, string>;
-    settings?: { urls?: Record<string, string>; fingerprint?: Record<string, string[]> };
+    settings?: {
+      urls?: Record<string, string>;
+      fingerprint?: Record<string, string[]>;
+      expectPrivate?: boolean;
+    };
     ownerConsent?: boolean;
     maxPages?: number;
   } = {},
@@ -61,7 +65,11 @@ const reasons = (r: Awaited<ReturnType<typeof run>>): string =>
 
 describe("Umbraco checks: node published but no page", () => {
   it("a healthy site has no finding from either check", async () => {
-    const { reading: r } = await reading({ ownerConsent: true, fixture: { protectedApi: true } });
+    const { reading: r } = await reading({
+      ownerConsent: true,
+      settings: { expectPrivate: true },
+      fixture: { protectedApi: true },
+    });
     const out = await run(r);
     expect(out.findings).toEqual([]);
     expect(out.passed.sort()).toEqual(["umbraco-delivery-api-public", "umbraco-node-no-page"]);
@@ -206,12 +214,13 @@ describe("Umbraco checks: the Delivery API answers visitors with no key (probing
   it("positive: a public API with a key configured is a finding with a count and nothing else", async () => {
     const { reading: r, seen } = await reading({
       ownerConsent: true,
+      settings: { expectPrivate: true },
       fixture: { protectedApi: false },
     });
     expect(r.publicApi).toEqual({ state: "public", total: 5 });
     const out = await run(r);
     expect(evidence(out, "umbraco-delivery-api-public")).toEqual([
-      "a request with no key to /umbraco/delivery/api/v2/content was answered with a list of 5 nodes, and UMBRACO_API_KEY says the API is private",
+      "a request with no key to /umbraco/delivery/api/v2/content was answered with a list of 5 nodes, and gaugeline.adapters.json says the API is private (expectPrivate)",
     ]);
     expect(out.findings.find((f) => f.checkId === "umbraco-delivery-api-public")?.severity).toBe(
       "high",
@@ -221,7 +230,11 @@ describe("Umbraco checks: the Delivery API answers visitors with no key (probing
   });
 
   it("negative: a protected API answers 401 to a visitor, and there is no finding", async () => {
-    const { reading: r } = await reading({ ownerConsent: true, fixture: { protectedApi: true } });
+    const { reading: r } = await reading({
+      ownerConsent: true,
+      settings: { expectPrivate: true },
+      fixture: { protectedApi: true },
+    });
     expect(r.publicApi).toEqual({ state: "protected" });
     const out = await run(r);
     expect(out.findings).toEqual([]);
@@ -229,14 +242,22 @@ describe("Umbraco checks: the Delivery API answers visitors with no key (probing
   });
 
   it("negative: an API that is off (404) is no finding", async () => {
-    const { reading: r } = await reading({ ownerConsent: true, fixture: { off: true } });
+    const { reading: r } = await reading({
+      ownerConsent: true,
+      settings: { expectPrivate: true },
+      fixture: { off: true },
+    });
     expect(r.unreadable.length).toBeGreaterThan(0);
     expect(r.publicApi).toEqual({ state: "closed" });
     expect(evidence(await run(r), "umbraco-delivery-api-public")).toEqual([]);
   });
 
   it("a page that answers every path with 200 is could-not-check, never a finding", async () => {
-    const { reading: r } = await reading({ ownerConsent: true, fixture: { catchAll: true } });
+    const { reading: r } = await reading({
+      ownerConsent: true,
+      settings: { expectPrivate: true },
+      fixture: { catchAll: true },
+    });
     const out = await run(r);
     expect(evidence(out, "umbraco-delivery-api-public")).toEqual([]);
     expect(reasons(out)).toMatch(
@@ -244,9 +265,8 @@ describe("Umbraco checks: the Delivery API answers visitors with no key (probing
     );
   });
 
-  it("with no key set, the owner has not said the API is private: could-not-check, no visitor request", async () => {
+  it("a public API with a key and no stated expectation is NOT a finding: could-not-check, and no visitor request", async () => {
     const { reading: r, seen } = await reading({
-      env: { UMBRACO_URL: UMBRACO_SITE },
       ownerConsent: true,
       fixture: { protectedApi: false },
     });
@@ -254,11 +274,17 @@ describe("Umbraco checks: the Delivery API answers visitors with no key (probing
     expect(r.publicApi).toBeUndefined();
     const out = await run(r);
     expect(out.findings).toEqual([]);
-    expect(reasons(out)).toMatch(/UMBRACO_API_KEY is not set, so Gaugeline cannot know/);
-    // The published lists were read with no key at all.
-    expect(seen.filter((s) => s.includes("/umbraco/")).every((s) => s.endsWith("key=false"))).toBe(
+    expect(reasons(out)).toMatch(/no privacy expectation given.*expectPrivate/);
+    expect(out.passed).not.toContain("umbraco-delivery-api-public");
+    expect(seen.filter((s) => s.includes("/umbraco/")).every((s) => s.endsWith("key=true"))).toBe(
       true,
     );
+  });
+
+  it("the fix text never tells anyone to remove the key", () => {
+    const c = UMBRACO_CHECKS.find((x) => x.id === "umbraco-delivery-api-public");
+    expect(c?.fix).not.toMatch(/remove UMBRACO_API_KEY/);
+    expect(c?.what).not.toMatch(/UMBRACO_API_KEY, which says/);
   });
 
   it("the visitor request carries no key, no cookie and no preview header", async () => {
@@ -297,5 +323,76 @@ describe("the Umbraco checks are registered and documented", () => {
     const probing = UMBRACO_CHECKS.find((c) => c.id === "umbraco-delivery-api-public");
     expect(probing?.tech).toContain("--owner-consent");
     expect(probing?.tech).toContain("sites you own or have permission to test");
+  });
+});
+
+describe("Umbraco checks: a read of zero nodes is never a pass", () => {
+  it("a named type with no published nodes is could-not-check by name (a mistyped alias, a hidden type, another language)", async () => {
+    const { reading: r } = await reading({
+      settings: { urls: { ...URLS, shwo: "/whats-on/{slug}" } },
+    });
+    expect(r.emptyTypes).toEqual(["shwo"]);
+    const out = await run(r);
+    expect(reasons(out)).toMatch(/umbraco-node-no-page: shwo: no published nodes/);
+    expect(out.passed).not.toContain("umbraco-node-no-page");
+  });
+
+  it("when every named type is empty the check passes nothing", async () => {
+    const { reading: r } = await reading({ settings: { urls: { shwo: "/x/{slug}" } } });
+    const out = await run(r);
+    expect(out.findings).toEqual([]);
+    expect(out.passed).not.toContain("umbraco-node-no-page");
+    expect(reasons(out)).toMatch(/no published nodes/);
+  });
+
+  it("types asked for that the settings do not name leave nothing read, and say so", async () => {
+    const fetcher = createFetcher({
+      transport: umbracoTransport(undefined, { apiKey: KEY }),
+      timeoutMs: 5000,
+    });
+    const adapter = createUmbracoAdapter({
+      env: { UMBRACO_URL: UMBRACO_SITE, UMBRACO_API_KEY: KEY },
+      fetcher,
+      settings: { id: "umbraco", urls: URLS },
+      sleep: () => Promise.resolve(),
+    });
+    const r = await readUmbraco({ adapter, fetcher, site: UMBRACO_SITE, types: ["nothing"] });
+    expect(r.noTypeSelected).toBe(true);
+    const out = await run(r);
+    expect(out.passed).not.toContain("umbraco-node-no-page");
+    expect(reasons(out)).toMatch(/none of the content types asked for is named in the settings/);
+  });
+});
+
+describe("Umbraco checks: nodes under another root are not asked on this site", () => {
+  it("a node under another start item, with no pattern, is could-not-check, not a 404 finding", async () => {
+    const content = structuredClone(UMBRACO_CONTENT);
+    const second = content[0]?.nodes[1];
+    if (second) second.startPath = "other-site";
+    const fetcher = createFetcher({
+      transport: umbracoTransport(content, { apiKey: KEY }),
+      timeoutMs: 5000,
+    });
+    const adapter = createUmbracoAdapter({
+      env: { UMBRACO_URL: UMBRACO_SITE, UMBRACO_API_KEY: KEY },
+      fetcher,
+      settings: { id: "umbraco", fingerprint: { show: ["title"] } },
+      sleep: () => Promise.resolve(),
+    });
+    const r = await readUmbraco({ adapter, fetcher, site: UMBRACO_SITE });
+    expect(r.pages).toEqual([]);
+    expect(r.unaddressed.map((u) => u.id)).toHaveLength(2);
+    const out = await run(r);
+    expect(out.findings).toEqual([]);
+    expect(reasons(out)).toMatch(/more than one root node/);
+  });
+
+  it("with a pattern for the type the root does not matter", async () => {
+    const content = structuredClone(UMBRACO_CONTENT);
+    const second = content[0]?.nodes[1];
+    if (second) second.startPath = "other-site";
+    const { reading: r } = await reading({ settings: { urls: URLS } });
+    expect(r.unaddressed).toEqual([]);
+    void content;
   });
 });
