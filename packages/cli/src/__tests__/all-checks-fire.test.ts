@@ -38,6 +38,7 @@ const FIXTURES = [
   "load-more",
   "hidden-library",
   "next-like",
+  "angular-like",
   "gatsby-like",
   "gatsby-dev",
   "sveltekit-like",
