@@ -83,11 +83,9 @@ prints:
 ✗ This Nuxt site is running its development server
     the page loads /_nuxt/@vite/client
 ✗ The live Nuxt site points search engines at a preview or local address
-    canonical https://marrow-rye-git-main.vercel.app/; hreflang alternates https://marrow-rye-git-main.vercel.app/, https://marrow-rye-git-main.vercel.app/fr are on a preview or local address
+    canonical https://marrow-rye-git-main.vercel.app/ is on a preview or local address
 ✗ A Nuxt page sends fields that look private to every visitor
     3 fields in the page's embedded state look private: mailgunApiKey (an API key, in the public config), stripeSecretKey (a secret, in the payload), supabaseServiceRole (a service role key, in the payload). Values are not shown
-! A language version of this page is missing
-    2 of 2 language versions are missing: en https://marrow-rye-git-main.vercel.app/ did not answer, fr https://marrow-rye-git-main.vercel.app/fr did not answer
 ! Menu items go to the homepage
     1 menu item goes to /: "Marrow & Rye"
 ! A Nuxt data file is named as a page
@@ -100,7 +98,7 @@ prints:
     Mail records are read from DNS only with --dns. Rerun with --dns to check them.
 
 2 framework addresses ignored.
-9 to look at, 4 to fix first.
+8 to look at, 4 to fix first.
 ```
 
 `canonical-elsewhere` reports the same canonical from the search side. Each check that passed also
@@ -118,13 +116,11 @@ The same site with `--owner-consent`, as the bakery's owner has agreed to:
 ✗ The Nuxt DevTools are reachable
     /__nuxt_devtools__/client/ answered 200 with the Nuxt DevTools page
 ✗ The live Nuxt site points search engines at a preview or local address
-    canonical https://marrow-rye-git-main.vercel.app/; hreflang alternates https://marrow-rye-git-main.vercel.app/, https://marrow-rye-git-main.vercel.app/fr are on a preview or local address
+    canonical https://marrow-rye-git-main.vercel.app/ is on a preview or local address
 ✗ Anyone can switch on Nuxt preview mode
     asked with ?preview=true and no secret, the page was rendered with preview mode on (enabled: true)
 ✗ A Nuxt page sends fields that look private to every visitor
     3 fields in the page's embedded state look private: mailgunApiKey (an API key, in the public config), stripeSecretKey (a secret, in the payload), supabaseServiceRole (a service role key, in the payload). Values are not shown
-! A language version of this page is missing
-    2 of 2 language versions are missing: en https://marrow-rye-git-main.vercel.app/ did not answer, fr https://marrow-rye-git-main.vercel.app/fr did not answer
 ! Menu items go to the homepage
     1 menu item goes to /: "Marrow & Rye"
 ! A Nuxt data file is named as a page
@@ -137,7 +133,7 @@ The same site with `--owner-consent`, as the bakery's owner has agreed to:
     Mail records are read from DNS only with --dns. Rerun with --dns to check them.
 
 2 framework addresses ignored.
-11 to look at, 6 to fix first.
+10 to look at, 6 to fix first.
 ```
 
 The two probing checks add the DevTools page and the preview query. The outputs are asserted by

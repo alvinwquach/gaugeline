@@ -153,6 +153,7 @@ export const UNLISTED: NavPage[] = [
   { slug: "guides/static-generators", title: "Static site generators" },
   { slug: "guides/angular", title: "Angular sites" },
   { slug: "guides/gatsby", title: "Gatsby sites" },
+  { slug: "guides/hydrogen", title: "Shopify Hydrogen sites" },
   { slug: "guides/sveltekit", title: "SvelteKit sites" },
   { slug: "guides/astro", title: "Astro sites" },
   { slug: "guides/sanity-images", title: "Sanity images: sizes, crops and duplicates" },

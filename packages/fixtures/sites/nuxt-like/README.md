@@ -5,7 +5,7 @@ An invented neighbourhood bakery that looks like a Nuxt site from the outside (`
 a real business or deployment. The markup follows the shapes Nuxt's own renderer writes (read from
 its published source), with invented content.
 
-- The canonical and the hreflang alternates point at `marrow-rye-git-main.vercel.app`:
+- The canonical points at `marrow-rye-git-main.vercel.app`:
   `nuxt-preview-canonical`.
 - The sitemap lists two `_payload.json` addresses: `nuxt-framework-file-listed`.
 - The payload has `stripeSecretKey` and `supabaseServiceRole` with values (and an empty

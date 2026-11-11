@@ -219,7 +219,7 @@ describe("nuxt: integration (the nuxt-like fixture)", () => {
         [
           "nuxt-preview-canonical",
           "high",
-          "canonical https://marrow-rye-git-main.vercel.app/; hreflang alternates https://marrow-rye-git-main.vercel.app/, https://marrow-rye-git-main.vercel.app/fr are on a preview or local address",
+          "canonical https://marrow-rye-git-main.vercel.app/ is on a preview or local address",
         ],
         [
           "nuxt-private-state",

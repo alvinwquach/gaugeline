@@ -965,10 +965,12 @@ to test.** Without either, nothing is asked and the check is not listed.
 `by` says who agreed and `on` says when, so a shared repository records it once. A run with consent
 prints one line on stderr saying probing checks are on.
 
-There are five probing checks: `gated-download-open`, described in
+There are seven probing checks: `gated-download-open`, described in
 [Paid downloads and delivery](delivery.md#a-download-route-that-hands-the-file-to-anyone),
 `route-hidden-not-protected`, described in [Routes that are hidden, not protected](protected-routes.md),
-`strapi-drafts-public`, described in [Strapi](integrations/strapi.md#the-two-checks),
+`nuxt-devtools-public` and `nuxt-preview-public`, described in
+[Nuxt sites](guides/nuxt.md#probing-checks-run-only-on-sites-you-own-or-have-permission-to-test) (page checks, for
+Nuxt sites only), `strapi-drafts-public`, described in [Strapi](integrations/strapi.md#the-two-checks),
 `umbraco-delivery-api-public`, described in [Umbraco](integrations/umbraco.md#the-two-checks), and
 `datocms-drafts-reachable`, described in [DatoCMS](integrations/datocms.md#the-check) (the last three run
 from an adapter's reading, not from a page check).
