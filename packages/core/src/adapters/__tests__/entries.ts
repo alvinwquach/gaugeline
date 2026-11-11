@@ -3,8 +3,10 @@ import { Readable } from "node:stream";
 import type { Transport } from "../../fetcher.js";
 import { testKey } from "../../connectors/__tests__/fake.js";
 import { createSanityAdapter } from "../sanity.js";
+import { createSitemapFeedAdapter } from "../sitemap-feed.js";
 import type { ContractEntry } from "./contract.js";
 import { CONTENT_MARKERS, sanityTransport } from "./sanity-fixture.js";
+import { OAKLINE, OAKLINE_MARKERS, oaklineRoutes, serve } from "./sitemap-feed-fixture.js";
 
 /**
  * One entry per adapter. A new adapter's branch adds its entry here (its recorded answers go in a
@@ -75,4 +77,35 @@ export const sanityEntry: ContractEntry = {
   },
 };
 
-export const ENTRIES: readonly ContractEntry[] = [sanityEntry];
+/**
+ * Oakline Bakery: a Squarespace-style site with a sitemap index, a gzip child, a feed with a missing
+ * date and a recipe that is in the feed only. No key, no fields, no drafts (see sitemap-feed-fixture.ts).
+ */
+export const sitemapFeedEntry: ContractEntry = {
+  id: "sitemap-feed",
+  make: ({ fetcher, sleep }) => createSitemapFeedAdapter({ fetcher, site: OAKLINE, sleep }),
+  transport: () => serve(oaklineRoutes()),
+  secrets: Object.values(OAKLINE_MARKERS),
+  expected: {
+    types: [
+      { name: "blog", count: 3 },
+      { name: "recipes", count: 1 },
+      { name: "shop", count: 2 },
+      { name: "top-level", count: 3 },
+    ],
+    published: {
+      options: { types: ["blog", "recipes"] },
+      ids: [
+        `${OAKLINE}/blog/spring-loaf`,
+        `${OAKLINE}/blog/winter-hours`,
+        `${OAKLINE}/blog/pop-up-saturday`,
+        `${OAKLINE}/rye-recipe`,
+      ],
+    },
+    draftsReachable: "not-applicable",
+  },
+  // robots.txt, the index and the pages sitemap are answered; the blog sitemap is the first refused.
+  rateLimit: { options: { types: ["blog", "top-level"] }, succeedFirst: 3, atLeast: 3 },
+};
+
+export const ENTRIES: readonly ContractEntry[] = [sanityEntry, sitemapFeedEntry];

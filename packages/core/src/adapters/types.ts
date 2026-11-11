@@ -17,6 +17,12 @@ export interface AdapterDescription {
   /** The page that lists the read endpoints used and how to make the narrowest key. */
   docsUrl: string;
   keyKind: KeyKind;
+  /**
+   * The adapter asks for no key at all: it reads what the site already shows every visitor. The run
+   * header then says "with no key" instead of naming a kind. `keyKind` stays "read-only", because
+   * nothing it does can change anything.
+   */
+  noKey?: true;
 }
 
 /** How many published documents a type has. A count, never a document. */
@@ -38,8 +44,11 @@ export interface PublishedDoc {
   slug?: string;
   /** ISO 8601, UTC, when the platform gives a publish date. */
   publishedAt?: string;
-  /** ISO 8601, UTC. */
-  updatedAt: string;
+  /**
+   * ISO 8601, UTC. Absent when the platform does not say, which only an adapter reading public pages
+   * (the sitemap and feed adapter) can be asked for: a made-up date would be worse than none.
+   */
+  updatedAt?: string;
   fieldHashes: Record<string, string>;
 }
 
@@ -121,4 +130,10 @@ export interface AdapterSettings {
   fingerprint?: Readonly<Record<string, readonly string[]>> | undefined;
   /** Where an item lives, by type: "/blog/{slug}". `{slug}` and `{id}` are filled in. */
   urls?: Readonly<Record<string, string>> | undefined;
+  /** Only `sitemap-feed`: the site's address, when the run was not given one. */
+  site?: string | undefined;
+  /** Only `sitemap-feed`: sitemap files to read instead of looking (a path or an address on the site). */
+  sitemaps?: readonly string[] | undefined;
+  /** Only `sitemap-feed`: feeds to read instead of looking (a path or an address on the site). */
+  feeds?: readonly string[] | undefined;
 }

@@ -123,6 +123,10 @@ export const UNLISTED: NavPage[] = [
     title: "Script and header baseline: what loads on a payment page, and what changed",
   },
   { slug: "integrations/index", title: "Content systems: one interface for every CMS" },
+  {
+    slug: "integrations/sitemap-feed",
+    title: "Sitemap and feeds: content checks for sites built on any CMS",
+  },
   { slug: "connectors/listings", title: "Listings off the site" },
   { slug: "connectors/postgres", title: "A database as a source: Postgres and Supabase" },
   { slug: "sources/shopify", title: "Shopify as a price source" },

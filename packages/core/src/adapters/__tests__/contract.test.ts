@@ -15,9 +15,15 @@ const DOC_KEYS = new Set(["id", "type", "url", "slug", "publishedAt", "updatedAt
 async function everything(entry: ContractEntry): Promise<{ text: string; seen: string[] }> {
   const { adapter, seen } = world(entry);
   const parts: unknown[] = [adapter.describe(), await adapter.types()];
-  parts.push(
-    await adapter.fieldCounts(entry.expected.fields.type, [entry.expected.fields.missing]),
-  );
+  const fields = entry.expected.fields;
+  if (fields) parts.push(await adapter.fieldCounts(fields.type, [fields.missing]));
+  else
+    parts.push(
+      await adapter.fieldCounts("any", ["a"]).then(
+        () => "answered",
+        (e: unknown) => (e instanceof AdapterCouldNotCheck ? e.reason : "failed"),
+      ),
+    );
   parts.push((await collectPublished(adapter, entry.expected.published.options)).docs);
   parts.push((await collectPublished(adapter)).docs);
   parts.push(await adapter.draftsReachable());
@@ -48,20 +54,36 @@ describe.each(ENTRIES)("the adapter contract: $id", (entry) => {
     }
   });
 
-  it("fieldCounts() counts the items that have each field", async () => {
-    const { type, counts } = entry.expected.fields;
-    expect(await world(entry).adapter.fieldCounts(type, Object.keys(counts))).toEqual(counts);
+  describe.runIf(entry.expected.fields !== undefined)("fields", () => {
+    it("fieldCounts() counts the items that have each field", async () => {
+      const { type, counts } = entry.expected.fields ?? { type: "", counts: {} };
+      expect(await world(entry).adapter.fieldCounts(type, Object.keys(counts))).toEqual(counts);
+    });
+
+    it("a missing field counts 0, not an error", async () => {
+      const { type, missing } = entry.expected.fields ?? { type: "", missing: "" };
+      expect(await world(entry).adapter.fieldCounts(type, [missing])).toEqual({ [missing]: 0 });
+    });
+
+    it("a type with no items counts 0 for every field", async () => {
+      const got = await world(entry).adapter.fieldCounts("nothing-of-this-type", ["a", "b"]);
+      expect(got).toEqual({ a: 0, b: 0 });
+    });
   });
 
-  it("a missing field counts 0, not an error", async () => {
-    const { type, missing } = entry.expected.fields;
-    expect(await world(entry).adapter.fieldCounts(type, [missing])).toEqual({ [missing]: 0 });
-  });
-
-  it("a type with no items counts 0 for every field", async () => {
-    const got = await world(entry).adapter.fieldCounts("nothing-of-this-type", ["a", "b"]);
-    expect(got).toEqual({ a: 0, b: 0 });
-  });
+  it.runIf(entry.expected.fields === undefined)(
+    "a platform with no fields: fieldCounts() is could-not-check, not applicable, and asks for nothing",
+    async () => {
+      const w = world(entry);
+      const err: unknown = await w.adapter.fieldCounts("any", ["a"]).then(
+        () => undefined,
+        (e: unknown) => e,
+      );
+      expect(err).toBeInstanceOf(AdapterCouldNotCheck);
+      expect((err as AdapterCouldNotCheck).reason).toMatch(/^Not applicable/);
+      expect(w.seen).toEqual([]);
+    },
+  );
 
   it("published() gives fingerprints: ids, times and hashes, in a stable order", async () => {
     const { options, ids } = entry.expected.published;
@@ -69,7 +91,9 @@ describe.each(ENTRIES)("the adapter contract: $id", (entry) => {
     expect(docs.map((d) => d.id)).toEqual(ids);
     for (const d of docs) {
       expect(Object.keys(d).every((k) => DOC_KEYS.has(k))).toBe(true);
-      expect(Number.isNaN(Date.parse(d.updatedAt))).toBe(false);
+      // A platform that does not say when an item changed (a sitemap with no lastmod) leaves it out.
+      if (d.updatedAt !== undefined) expect(Number.isNaN(Date.parse(d.updatedAt))).toBe(false);
+      else expect(entry.expected.fields).toBeUndefined();
       for (const [field, hash] of Object.entries(d.fieldHashes)) {
         expect(hash).toMatch(HEX);
         expect(Object.values(options.fields ?? {}).flat()).toContain(field);
@@ -88,8 +112,16 @@ describe.each(ENTRIES)("the adapter contract: $id", (entry) => {
     const { options } = entry.expected.published;
     const docs = (await collectPublished(world(entry).adapter, options)).docs;
     const sizes = new Set(docs.map((d) => Object.keys(d.fieldHashes).length));
-    // Some item lacks a configured field in every recorded dataset: the sizes differ.
-    expect(sizes.size).toBeGreaterThan(1);
+    // A platform with fields: some item lacks a configured field in every recorded dataset, so the
+    // sizes differ. A platform with none: every fieldHashes is empty, even when fields are asked for.
+    if (entry.expected.fields === undefined) {
+      const asked = Object.fromEntries(
+        (await world(entry).adapter.types()).map((t) => [t.name, ["title"]]),
+      );
+      const again = (await collectPublished(world(entry).adapter, { ...options, fields: asked }))
+        .docs;
+      for (const d of [...docs, ...again]) expect(d.fieldHashes).toEqual({});
+    } else expect(sizes.size).toBeGreaterThan(1);
   });
 
   it("with no fields configured, no field value is asked for at all", async () => {
@@ -104,19 +136,46 @@ describe.each(ENTRIES)("the adapter contract: $id", (entry) => {
   it("never returns or sends a field value, a draft, or the key", async () => {
     const { text, seen } = await everything(entry);
     for (const secret of entry.secrets) expect(text).not.toContain(secret);
-    expect(text).not.toContain(entry.key);
-    for (const line of seen) expect(line).not.toContain(entry.key);
-  });
-
-  it("the key travels in a header, never in an address", async () => {
-    const { adapter, seen } = world(entry);
-    await adapter.types();
-    expect(seen.length).toBeGreaterThan(0);
-    for (const s of seen) {
-      expect(s.url).not.toContain(entry.key);
-      expect(s.headers.authorization ?? "").toBe(`Bearer ${entry.key}`);
+    if (entry.key !== undefined) {
+      expect(text).not.toContain(entry.key);
+      for (const line of seen) expect(line).not.toContain(entry.key);
     }
   });
+
+  it.runIf(entry.key !== undefined)(
+    "the key travels in a header, never in an address",
+    async () => {
+      const { adapter, seen } = world(entry);
+      await adapter.types();
+      expect(seen.length).toBeGreaterThan(0);
+      for (const s of seen) {
+        expect(s.url).not.toContain(entry.key ?? "");
+        expect(s.headers.authorization ?? "").toBe(`Bearer ${entry.key}`);
+      }
+    },
+  );
+
+  it.runIf(entry.key === undefined)(
+    "an adapter with no key says so, and sends no Authorization header and no cookie",
+    async () => {
+      expect(world(entry).adapter.describe().noKey).toBe(true);
+      const { adapter, seen } = world(entry);
+      await adapter.types();
+      await collectPublished(adapter);
+      expect(seen.length).toBeGreaterThan(0);
+      for (const s of seen) {
+        expect(Object.keys(s.headers).map((h) => h.toLowerCase())).not.toContain("authorization");
+        expect(Object.keys(s.headers).map((h) => h.toLowerCase())).not.toContain("cookie");
+      }
+    },
+  );
+
+  it.runIf(entry.key !== undefined)(
+    "an adapter that takes a key does not claim to have none",
+    () => {
+      expect(world(entry).adapter.describe().noKey).toBeUndefined();
+    },
+  );
 
   it("draftsReachable() says whether the key can reach unpublished work", async () => {
     expect(await world(entry).adapter.draftsReachable()).toBe(entry.expected.draftsReachable);
@@ -136,10 +195,12 @@ describe.each(ENTRIES)("the adapter contract: $id", (entry) => {
     const { adapter } = world(entry, () => refusing(401));
     const calls: Array<() => Promise<unknown>> = [
       () => adapter.types(),
-      () => adapter.fieldCounts(entry.expected.fields.type, ["a"]),
+      () => adapter.fieldCounts(entry.expected.fields?.type ?? "any", ["a"]),
       () => collectPublished(adapter, entry.expected.published.options),
-      () => adapter.draftsReachable(),
     ];
+    // "not-applicable" is answered without asking anything, so a refusal never reaches it.
+    if (entry.expected.draftsReachable !== "not-applicable")
+      calls.push(() => adapter.draftsReachable());
     for (const call of calls) {
       const err: unknown = await call().then(
         () => undefined,
@@ -148,7 +209,7 @@ describe.each(ENTRIES)("the adapter contract: $id", (entry) => {
       expect(err).toBeInstanceOf(AdapterCouldNotCheck);
       const reason = (err as AdapterCouldNotCheck).reason;
       expect(reason.trim()).not.toBe("");
-      expect(reason).not.toContain(entry.key);
+      if (entry.key !== undefined) expect(reason).not.toContain(entry.key);
     }
   });
 
