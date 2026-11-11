@@ -1,0 +1,1 @@
+{"version":3,"file":"app-4c9d.js","sources":["src/order.ts","src/menu.ts"],"sourcesContent":["export const invented = 1;","export const alsoInvented = 2;"],"names":[],"mappings":"AAAA,SAAS"}
