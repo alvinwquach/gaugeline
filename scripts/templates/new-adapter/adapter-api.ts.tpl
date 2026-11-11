@@ -213,7 +213,7 @@ export function create$PASCAL$Adapter(options: $PASCAL$AdapterOptions): ContentA
    *
    * POST is allowed only for a documented read-only query endpoint, through ADR-0006's allowlist
    * (branch adr/read-only-post; not merged yet). TODO(new:adapter, after ADR-0006 has merged) add the
-   * `queryAllow` entry (method, path pattern, body shape) in this adapter's registry row. Until then this
+   * `queryAllow` entry (path pattern, body shape; the registry fixes the method) in this adapter's registry row. Until then this
    * adapter sends GET and HEAD only.
    */
   const typesAddress = (): string => `${$P$_API}/types`;
@@ -248,7 +248,7 @@ export function create$PASCAL$Adapter(options: $PASCAL$AdapterOptions): ContentA
    *
    * POST is allowed only for a documented read-only query endpoint, through ADR-0006's allowlist
    * (branch adr/read-only-post; not merged yet). TODO(new:adapter, after ADR-0006 has merged) add the
-   * `queryAllow` entry (method, path pattern, body shape) in this adapter's registry row. Until then this
+   * `queryAllow` entry (path pattern, body shape; the registry fixes the method) in this adapter's registry row. Until then this
    * adapter sends GET and HEAD only.
    */
   const TYPES_QUERY = "query Types { types { slug } }";
