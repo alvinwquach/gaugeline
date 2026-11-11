@@ -75,11 +75,16 @@ describe("gaugeline.adapters.json in gaugeline query: e2e", () => {
   });
 
   it("an adapter that is planned is exit 2 and names the branch that builds it", async () => {
-    writeFileSync(join(dir, "gaugeline.adapters.json"), '{ "adapters": [{ "id": "wix" }] }');
+    writeFileSync(
+      join(dir, "gaugeline.adapters.json"),
+      '{ "adapters": [{ "id": "generic-api" }] }',
+    );
     const r = await query();
     expect(r.code).toBe(EXIT.couldNotRun);
-    expect(r.err).toContain('the "wix" adapter is planned (C-05)');
-    expect(r.err).toContain("Built adapters: sanity, sitemap-feed, wordpress");
+    expect(r.err).toContain('the "generic-api" adapter is planned (C-14)');
+    expect(r.err).toContain(
+      "Built adapters: sanity, sitemap-feed, wix, wordpress, webflow, framer",
+    );
     expect(r.out).toBe("");
   });
 
