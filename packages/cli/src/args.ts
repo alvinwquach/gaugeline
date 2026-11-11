@@ -27,6 +27,7 @@ export const SUBCOMMANDS = [
   "emails",
   "renewals",
   "handoff",
+  "cost",
 ] as const;
 export type CliCommand = "check" | (typeof SUBCOMMANDS)[number];
 
@@ -68,6 +69,8 @@ export interface RunFlags {
   dns: boolean;
   /** --renewals (or the renewals command): add the renewals checks (domain, certificates, tokens, runtimes). */
   renewals: boolean;
+  /** --cost (or the cost command): add the cost checks (pages that rebuild on every visit, never-cached pages, usage jumps). */
+  cost: boolean;
   /** --owner-consent: run the probing checks (they ask gated routes for what they protect, with no login). */
   ownerConsent: boolean;
   /** --routes: globs over the repository's route files, for the download route probe. */
@@ -164,6 +167,8 @@ export type ParsedArgs =
       allowPrivate: boolean;
       /** --renewals: each site's run also checks what lapses. */
       renewals: boolean;
+      /** --cost: each site's run also checks what runs up the hosting bill. */
+      cost: boolean;
       verbose: boolean;
       quiet: boolean;
     }
@@ -594,6 +599,7 @@ export function parseCliArgs(
       parallel: Number(p),
       allowPrivate: values["allow-private"] === true,
       renewals: values.renewals === true,
+      cost: values.cost === true,
       verbose,
       quiet: values.quiet === true,
     };
@@ -1288,6 +1294,7 @@ export function parseCliArgs(
     ...(handoff ? { handoff } : {}),
     dns: values.dns === true,
     renewals: values.renewals === true || command === "renewals",
+    cost: values.cost === true || command === "cost",
     ownerConsent: values["owner-consent"] === true,
     routes: Array.isArray(values.routes)
       ? values.routes

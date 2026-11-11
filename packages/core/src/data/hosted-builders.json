@@ -1,0 +1,34 @@
+{
+  "written": "2026-11-11",
+  "verified": false,
+  "note": "Signs that a page is served by a hosted website builder with a fixed plan price: host names its assets come from, the generator tag, and response headers. Written without a connected documentation source (uncited): each entry is a sign the builder's own pages show, and a wrong or missing entry only means the account-level usage check runs where it need not.",
+  "builders": [
+    {
+      "id": "wix",
+      "name": "Wix",
+      "hosts": ["wixstatic.com", "parastorage.com", "wixsite.com"],
+      "generator": ["wix.com website builder"],
+      "headers": ["x-wix-request-id"]
+    },
+    {
+      "id": "squarespace",
+      "name": "Squarespace",
+      "hosts": ["squarespace.com", "sqspcdn.com", "squarespace-cdn.com"],
+      "generator": ["squarespace"],
+      "serverHeader": ["squarespace"]
+    },
+    {
+      "id": "webflow",
+      "name": "Webflow",
+      "hosts": ["website-files.com", "webflow.io"],
+      "generator": ["webflow"],
+      "htmlAttributes": ["data-wf-site", "data-wf-domain"]
+    },
+    {
+      "id": "framer",
+      "name": "Framer",
+      "hosts": ["framerusercontent.com", "framer.website"],
+      "generator": ["framer"]
+    }
+  ]
+}

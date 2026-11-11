@@ -21,33 +21,28 @@ export interface ProviderAccess {
 }
 
 export type JsonRead = { ok: true; body: unknown } | { ok: false; reason: string };
+export type TextRead = { ok: true; body: string } | { ok: false; reason: string };
 
 /** Text from a provider, made safe to print in a report: invisible characters written out, cut at `max`. */
 export const clip = (text: string, max = 120): string => escapeInvisible(text, max);
 
 /**
- * One GET through the fetcher, parsed as JSON, or the plain reason it could not be had. A refusal
- * (401, 403) says the token may not read this, a 429 says when to try again, any other status names
- * itself, and nothing from an answer's body is ever put in a message. Every message is redacted.
+ * One GET through the fetcher, as text, or the plain reason it could not be had. A refusal (401, 403)
+ * says the token may not read this, a 429 says when to try again, any other status names itself, and
+ * nothing from an answer's body is ever put in a message. Every message is redacted.
  */
-export async function getProviderJson(
+export async function getProviderText(
   access: ProviderAccess,
   url: string,
   what: string,
-): Promise<JsonRead> {
+): Promise<TextRead> {
   const redact = createRedactor(access.env, access.secretVars);
-  const fail = (reason: string): JsonRead => ({ ok: false, reason: redact(reason) });
+  const fail = (reason: string): TextRead => ({ ok: false, reason: redact(reason) });
   try {
     const hop = await connectorGet(access.fetcher, url, { authorization: access.authorization });
     if (hop.truncated)
       return fail(`${access.provider}'s answer about ${what} is larger than Gaugeline reads`);
-    try {
-      return { ok: true, body: JSON.parse(hop.body ?? "") as unknown };
-    } catch {
-      return fail(
-        `${access.provider} answered with something that is not JSON when asked for ${what}`,
-      );
-    }
+    return { ok: true, body: hop.body ?? "" };
   } catch (err) {
     if (err instanceof ConnectorRefusedError)
       return fail(
@@ -62,5 +57,26 @@ export async function getProviderJson(
     return fail(
       `${access.provider} could not be read (${what}): ${err instanceof Error ? err.message : "the read failed"}`,
     );
+  }
+}
+
+/** The same read, parsed as JSON. */
+export async function getProviderJson(
+  access: ProviderAccess,
+  url: string,
+  what: string,
+): Promise<JsonRead> {
+  const text = await getProviderText(access, url, what);
+  if (!text.ok) return text;
+  try {
+    return { ok: true, body: JSON.parse(text.body) as unknown };
+  } catch {
+    const redact = createRedactor(access.env, access.secretVars);
+    return {
+      ok: false,
+      reason: redact(
+        `${access.provider} answered with something that is not JSON when asked for ${what}`,
+      ),
+    };
   }
 }

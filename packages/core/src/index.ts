@@ -1366,3 +1366,21 @@ export type {
   System as HandoffSystem,
   UnreadSystem,
 } from "./handoff/types.js";
+
+export { createCostRegistry } from "./cost/registry.js";
+export { COST_CHECKS } from "./checks/cost.js";
+export { costConfigSchema, DEFAULT_DELAY_MS, DEFAULT_MINIMUM_SECONDS } from "./cost/config.js";
+export type { CostConfig } from "./cost/config.js";
+export { COST_ENV_VARS, createCost, isMarkedStatic } from "./cost/reader.js";
+export type { Cost, CostSettings } from "./cost/reader.js";
+export { buildCostSummary, formatCostSummary } from "./cost/summary.js";
+export type { CostSummary, ProviderSummary } from "./cost/summary.js";
+export { detectBuilder, HOSTED_BUILDERS } from "./cost/builders.js";
+export type { HostedBuilder } from "./cost/builders.js";
+export { stripVolatile, firstDifference, VOLATILE_RULES } from "./cost/volatile.js";
+export { cacheRead, lifetimeOf } from "./cost/cache.js";
+export { judgePage, causesOf, compareVisits } from "./cost/judge.js";
+export type { Cause, Judgement, Observation, PageRead } from "./cost/judge.js";
+export { detectJumps, formatQuantity } from "./cost/usage.js";
+export type { Jump, Metric, UsageProviderRead, UsageRead } from "./cost/usage.js";
+export { readSanityUsage, readVercelUsage } from "./cost/providers.js";
