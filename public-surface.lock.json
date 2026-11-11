@@ -146,6 +146,17 @@
       "verbose",
       "version"
     ],
+    "deploy-gate": [
+      "allow-private",
+      "block",
+      "dns",
+      "help",
+      "json",
+      "owner-consent",
+      "quiet",
+      "verbose",
+      "version"
+    ],
     "digest": [
       "email",
       "help",
@@ -680,6 +691,7 @@
   "envVars": [
     "CI",
     "FORCE_COLOR",
+    "GAUGELINE_GATE_BLOCK",
     "NO_COLOR"
   ],
   "exitCodes": [

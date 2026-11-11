@@ -29,6 +29,7 @@ export const COMMANDS = [
   "migration",
   "advisory",
   "init",
+  "deploy-gate",
 ] as const;
 export type Command = (typeof COMMANDS)[number];
 
@@ -228,6 +229,19 @@ export const HELP: Record<string, string> = {
       "nothing.",
     ].join("\n"),
     footer: "Exit codes: 0 ran, 2 could not run",
+  }),
+  "deploy-gate": renderHelp(FLAGS, "deploy-gate", {
+    usage: "gaugeline deploy-gate [<address>] [options]",
+    summary: [
+      "Check a preview deployment on Vercel, Netlify or Cloudflare Pages before it",
+      "goes to production. Type the preview's address, or leave it out and Gaugeline",
+      "reads it from the host's environment (VERCEL_URL, DEPLOY_PRIME_URL,",
+      "CF_PAGES_URL). It refuses to run when the environment says production. Runs the",
+      "normal checks (GET only; probing checks stay off without --owner-consent) and",
+      "ends with one line: gate: clear, or gate: would block. Report only: the exit",
+      "code stays 0 until you add --block.",
+    ].join("\n"),
+    footer: "Exit codes: 0 ran, 1 --block and a fix-first finding, 2 could not run",
   }),
   open: renderHelp(FLAGS, "open", {
     usage: "gaugeline open [address] [options]",

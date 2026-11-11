@@ -1,5 +1,6 @@
 import { parseArgs } from "node:util";
 import { SECRET_FLAGS, minorExponent, parseAddress, safeLogoUrl } from "@gaugeline/core";
+import { resolveDeployGate, type GateHost } from "./deploy-gate.js";
 import { HELP } from "./help.js";
 import { FLAGS, nearestFlag, resolveFlags, toParseArgsOptions, type FlagDef } from "./flags.js";
 
@@ -33,6 +34,7 @@ export const SUBCOMMANDS = [
   "migration",
   "advisory",
   "init",
+  "deploy-gate",
 ] as const;
 export type CliCommand = "check" | (typeof SUBCOMMANDS)[number];
 
@@ -77,9 +79,19 @@ export interface AuditFlags {
 /** Where `gaugeline audit --pack` writes when --out is not given. */
 export const AUDIT_DEFAULT_OUT = "gaugeline-audit";
 
+/** gaugeline deploy-gate: which host's preview was found (if any), where the address came from, and whether it blocks. */
+export interface GateFlags {
+  host?: GateHost;
+  source: "argument" | "environment";
+  /** --block: exit 1 when a "Fix this first" finding is found. Off: the exit code is 0 unless the run could not complete. */
+  block: boolean;
+}
+
 export interface RunFlags {
   /** Which command: the default page check, launch or brief. */
   command: CliCommand;
+  /** gaugeline deploy-gate: set only for that command. */
+  gate?: GateFlags;
   /** gaugeline brief: what to write and where. Absent for every other command. */
   brief?: BriefFlags;
   /** gaugeline handoff: where to write the report. Absent for every other command. */
@@ -436,6 +448,15 @@ export function parseCliArgs(
       ? `${a}=`
       : a,
   );
+  // The gate is report only until blocking is turned on. CI is set in every CI job, so --ci (which the CI
+  // variable also turns on) would make every gate block: the gate has its own switch.
+  if (command === "deploy-gate" && rest.some((a) => a === "--ci" || a.startsWith("--ci=")))
+    return {
+      kind: "error",
+      message: "gaugeline deploy-gate has no --ci: it only reports until you turn blocking on.",
+      hint: "Add --block (or set GAUGELINE_GATE_BLOCK=1) to exit 1 when a finding needs fixing first.",
+      verbose,
+    };
   // No flag takes a secret: a value on the command line lands in shell history and CI logs.
   for (const a of rest) {
     const name = /^--([a-z-]+)(?:=|$)/.exec(a)?.[1];
@@ -1557,10 +1578,32 @@ export function parseCliArgs(
       force: values.force === true,
     };
   }
-  if (positionals.length === 0) {
+  let gate: GateFlags | undefined;
+  let gateInput: string | undefined;
+  if (command === "deploy-gate") {
+    if (positionals.length > 1)
+      return {
+        kind: "error",
+        message: `gaugeline deploy-gate takes one address, got ${positionals.length}: ${positionals.join(", ")}.`,
+        hint: "Type the preview's address, or leave it out to read it from the host's environment.",
+        verbose,
+      };
+    const resolved = resolveDeployGate(env, positionals[0], {
+      allowPrivate: values["allow-private"] === true,
+    });
+    if (!resolved.ok)
+      return { kind: "error", message: resolved.message, hint: resolved.hint, verbose };
+    gate = {
+      source: resolved.source,
+      block: values.block === true,
+      ...(resolved.host ? { host: resolved.host } : {}),
+    };
+    gateInput = resolved.address;
+  }
+  if (gateInput === undefined && positionals.length === 0) {
     return { kind: "error", message: "No address given.", hint: USAGE_HINT, verbose };
   }
-  if (positionals.length > 1) {
+  if (gateInput === undefined && positionals.length > 1) {
     return {
       kind: "error",
       message: `Expected one address, got ${positionals.length}: ${positionals.join(", ")}.`,
@@ -1568,7 +1611,7 @@ export function parseCliArgs(
       verbose,
     };
   }
-  const input = positionals[0] ?? "";
+  const input = gateInput ?? positionals[0] ?? "";
   const address = parseAddress(input);
   if (!address.ok) {
     return {
@@ -1584,6 +1627,7 @@ export function parseCliArgs(
     ...(brief ? { brief } : {}),
     ...(handoff ? { handoff } : {}),
     ...(audit ? { audit } : {}),
+    ...(gate ? { gate } : {}),
     dns: values.dns === true,
     renewals: values.renewals === true || command === "renewals",
     cost: values.cost === true || command === "cost",
@@ -1618,8 +1662,9 @@ export function parseCliArgs(
     verbose,
     quiet: values.quiet === true,
     allowPrivate: values["allow-private"] === true,
-    ci: values.ci === true,
+    // The gate blocks only with --block; the CI variable alone does not turn it on.
+    ci: gate ? gate.block : values.ci === true,
     json: values.json === true,
-    noOpen: values["no-open"] === true,
+    noOpen: gate ? true : values["no-open"] === true,
   };
 }
