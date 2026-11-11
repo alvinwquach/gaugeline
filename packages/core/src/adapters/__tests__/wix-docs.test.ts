@@ -96,6 +96,33 @@ describe("docs/integrations/wix.md", () => {
     expect(page).toContain("open question 52");
   });
 
+  it("says a Wix Data query returns every item the key can read, not only published ones", () => {
+    const reads = (built?.docs?.reads ?? "").split("With the key:")[1] ?? "";
+    expect(reads).not.toMatch(/published items/i);
+    expect(index).not.toMatch(/field counts and published items/);
+    expect(page).not.toMatch(/published items/i);
+    expect(page).toContain("every item the key can read");
+  });
+
+  it("says Gaugeline cannot check that a key is read-only, and that making one is the owner's job", () => {
+    expect(page).toMatch(/cannot (see|check) (what|whether)[^.]*key/i);
+    expect(page).toContain("you make");
+  });
+
+  it("is marked beta, with the reason: the endpoint shapes are not confirmed", () => {
+    expect(built?.describe.beta).toBe(true);
+    expect(page.split("\n")[0]).toContain("(beta)");
+    expect(page).toContain("This adapter is beta");
+    expect(page).toContain("Content system: Wix (beta)");
+  });
+
+  it("states the limits on ids, slugs, field names and the site id, and that the CMS read is skipped without a site id or a collection", () => {
+    expect(page).toContain("## Limits on names and ids");
+    for (const needle of ["128", "letters, digits", "siteId", "120 seconds", "one leading"])
+      expect(page).toContain(needle);
+    expect(page).toContain("WIX_API_KEY is set but");
+  });
+
   it("marks what it could not confirm: the sources note and the uncited endpoint shapes", () => {
     expect(page).toContain("could not be reached");
     expect(page).toContain("[docs]");
