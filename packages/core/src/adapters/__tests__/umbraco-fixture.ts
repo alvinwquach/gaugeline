@@ -31,6 +31,8 @@ export interface FixtureNode {
   updateDate: string;
   /** Left out of the route when absent (a node with no page of its own). */
   routePath?: string | undefined;
+  /** The route's start item path (the root node the path is relative to). Default "home"; null leaves the start item out. */
+  startPath?: string | null | undefined;
   properties: Record<string, unknown>;
 }
 
@@ -217,7 +219,14 @@ export function umbracoTransport(
               ? null
               : {
                   path: n.routePath,
-                  startItem: { id: "00000000-0000-4000-8000-000000000001", path: "home" },
+                  ...(n.startPath === null
+                    ? {}
+                    : {
+                        startItem: {
+                          id: "00000000-0000-4000-8000-000000000001",
+                          path: n.startPath ?? "home",
+                        },
+                      }),
                 },
           properties: wanted(url.searchParams.get("fields"), n.properties),
           cultures: {},
