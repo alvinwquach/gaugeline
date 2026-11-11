@@ -76,6 +76,8 @@ export interface AdapterEntry {
     hyphenFields?: true;
     /** Takes `expectPrivate`: the owner says the platform's public API is meant to be private (Umbraco's Delivery API). */
     expectPrivate?: true;
+    /** Reads one named site of a multi-site platform, in some languages: takes `siteName` and `languages` (Sitecore). */
+    edgeSite?: true;
     /**
      * Reads content kept in a repository: takes `path` or `github`, and `folders`; `urls` is replaced by each folder's
      * `permalink`. `true`: `folders` is required. "from-config": the platform's own config file names the folders (TinaCMS),

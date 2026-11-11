@@ -159,6 +159,10 @@ export interface AdapterSettings {
    * `umbraco-delivery-api-public` runs only when this is true; a key being set says nothing of it.
    */
   expectPrivate?: boolean | undefined;
+  /** Only `sitecore`: the Sitecore site's name, as the platform names it (the `site` argument of its GraphQL API). */
+  siteName?: string | undefined;
+  /** Only `sitecore`: the languages to read, such as `["en", "fr-CA"]`. Default: `["en"]`. */
+  languages?: readonly string[] | undefined;
   /** Only `git-content`: the repository's folder on this computer, relative to where the run starts. */
   path?: string | undefined;
   /** Only `git-content`: a repository on GitHub, read with GET. Instead of `path`. */

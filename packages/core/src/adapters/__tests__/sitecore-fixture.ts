@@ -2,170 +2,218 @@ import { Readable } from "node:stream";
 import type { Transport } from "../../fetcher.js";
 
 /**
- * Larkspur Yoga Studio's invented Sitecore XM Cloud site: a small studio whose site a freelancer built on Sitecore XM Cloud, with
- * classes, teachers and notices. Nothing here was recorded from a real site, and every address is on a
- * reserved `.example` domain.
- *
- * TODO(new:adapter) the answers are in the shape the scaffold's adapter expects, not the platform's.
- * Change them to the shape of the platform's documented responses (copy the shape from its reference page,
- * not a real answer: invent every value) and keep these four things true, because the contract suite
- * relies on them: a draft in the first type, an item that lacks a field the others have, at least two types
- * with two published items each, and a text in every item that is the client's words (the markers).
+ * Larkspur Yoga Studio's invented Sitecore XM Cloud site: a small studio whose site a freelancer built on XM Cloud,
+ * with a Sitecore site named `larkspur` in two languages (en and fr-CA). Nothing here was recorded from a real
+ * site: the answers are in the shape of the Experience Edge Delivery API (a POST to /api/graphql/v1 with the token
+ * in the sc_apikey header; `site { siteInfo(site) { routes(language, first, after) { total pageInfo { endCursor
+ * hasNext } results { routePath } } } }`), with invented values on reserved `.example` domains. The Delivery API
+ * only answers for content published to Edge, so a draft is not in the answer at all.
  */
-export const SITECORE_SITE = "https://larkspur-yoga.example";
-export const SITECORE_HOST = "api.sitecore.example";
+export const LARKSPUR_SITE = "https://larkspur-yoga.example";
+export const EDGE_HOST = "edge.sitecorecloud.io";
+export const EDGE_URL = `https://${EDGE_HOST}/api/graphql/v1`;
+export const SITE_NAME = "larkspur";
 
-/** Text that is in the client's content, drafts included, and must never reach a report, a log or a hash input. */
+/** Text that is in the client's content and must never reach a report, a log or a hash input. */
 export const SITECORE_MARKERS = {
   morning: "Morning flow: slow breathing, then one long sun salutation",
-  morningSummary: "Forty minutes, no experience needed, mats provided",
   evening: "Evening stretch for people who sit all day",
   retreat: "Autumn retreat, deposit not yet announced",
   ana: "Ana teaches the early classes and runs the retreat",
-  ben: "Ben took over the Saturday workshop in October",
   notice: "The studio is closed on the last Friday of November",
 } as const;
 
-export interface FixtureItem {
-  id: string;
-  slug: string;
-  status: "published" | "draft";
-  updatedAt: string;
-  publishedAt?: string;
-  fields: Record<string, unknown>;
+/** The routes Experience Edge says are published for each language. Paths are the same in every language. */
+export interface FixtureRoute {
+  routePath: string;
+  /** Text of the page. The route query never asks for it, so a healthy answer never carries it. */
+  displayName: string;
 }
 
-export interface FixtureType {
-  slug: string;
-  items: FixtureItem[];
-}
+export const SITECORE_CONTENT: Readonly<Record<string, readonly FixtureRoute[]>> = {
+  en: [
+    { routePath: "/", displayName: "Larkspur Yoga Studio" },
+    { routePath: "/classes", displayName: "Classes" },
+    { routePath: "/classes/morning-flow", displayName: SITECORE_MARKERS.morning },
+    { routePath: "/classes/evening-stretch", displayName: SITECORE_MARKERS.evening },
+    { routePath: "/teachers/ana", displayName: SITECORE_MARKERS.ana },
+    { routePath: "/notices/closed-last-friday", displayName: SITECORE_MARKERS.notice },
+  ],
+  // The retreat page exists in the CMS in French only as a draft: Edge does not have it.
+  "fr-CA": [
+    { routePath: "/", displayName: "Studio de yoga Larkspur" },
+    { routePath: "/classes", displayName: "Cours" },
+    { routePath: "/classes/morning-flow", displayName: "Flux du matin" },
+  ],
+};
 
-export const SITECORE_CONTENT: FixtureType[] = [
-  {
-    slug: "classes",
-    items: [
-      {
-        id: "c-morning",
-        slug: "morning-flow",
-        status: "published",
-        publishedAt: "2026-10-01T09:00:00.000Z",
-        updatedAt: "2026-10-20T08:30:00.000Z",
-        fields: {
-          name: SITECORE_MARKERS.morning,
-          summary: SITECORE_MARKERS.morningSummary,
-          seats: 14,
-        },
-      },
-      // No summary: a field an item lacks is left out of its hashes, never hashed as empty.
-      {
-        id: "c-evening",
-        slug: "evening-stretch",
-        status: "published",
-        publishedAt: "2026-10-05T09:00:00.000Z",
-        updatedAt: "2026-11-02T17:00:00.000Z",
-        fields: { name: SITECORE_MARKERS.evening, seats: 20 },
-      },
-      // A draft: saved and not published. The published list never holds it.
-      {
-        id: "c-retreat",
-        slug: "autumn-retreat",
-        status: "draft",
-        updatedAt: "2026-11-09T10:00:00.000Z",
-        fields: { name: SITECORE_MARKERS.retreat },
-      },
-    ],
-  },
-  {
-    slug: "notices",
-    items: [
-      {
-        id: "n-closed",
-        slug: "closed-last-friday",
-        status: "published",
-        publishedAt: "2026-11-03T12:00:00.000Z",
-        updatedAt: "2026-11-03T12:00:00.000Z",
-        fields: { name: SITECORE_MARKERS.notice },
-      },
-    ],
-  },
-  {
-    slug: "teachers",
-    items: [
-      {
-        id: "t-ana",
-        slug: "ana",
-        status: "published",
-        publishedAt: "2026-06-01T09:00:00.000Z",
-        updatedAt: "2026-09-01T09:00:00.000Z",
-        fields: { name: "Ana", bio: SITECORE_MARKERS.ana },
-      },
-      {
-        id: "t-ben",
-        slug: "ben",
-        status: "published",
-        publishedAt: "2026-10-10T09:00:00.000Z",
-        updatedAt: "2026-10-10T09:00:00.000Z",
-        fields: { name: "Ben", bio: SITECORE_MARKERS.ben },
-      },
-    ],
-  },
-];
+/** What the live site answers, by address: 200 for a page that is there. Anything not listed is 404. */
+export const PAGES_HEALTHY: Readonly<Record<string, number>> = {
+  [`${LARKSPUR_SITE}/`]: 200,
+  [`${LARKSPUR_SITE}/classes`]: 200,
+  [`${LARKSPUR_SITE}/classes/morning-flow`]: 200,
+  [`${LARKSPUR_SITE}/classes/evening-stretch`]: 200,
+  [`${LARKSPUR_SITE}/teachers/ana`]: 200,
+  [`${LARKSPUR_SITE}/notices/closed-last-friday`]: 200,
+  [`${LARKSPUR_SITE}/fr-ca/`]: 200,
+  [`${LARKSPUR_SITE}/fr-ca/classes`]: 200,
+  [`${LARKSPUR_SITE}/fr-ca/classes/morning-flow`]: 200,
+};
+
+/** The same site after the front end lost two pages: published to Edge, not on the live site. */
+export const PAGES_DRIFT: Readonly<Record<string, number>> = {
+  ...PAGES_HEALTHY,
+  [`${LARKSPUR_SITE}/classes/evening-stretch`]: 404,
+  [`${LARKSPUR_SITE}/fr-ca/classes/morning-flow`]: 410,
+};
+
+/** What the preview path answers on the live site's own host. */
+export type PreviewState =
+  "absent" | "protected" | "graphql" | "graphql-bad-request" | "soft-200" | "error";
+
+/** One request to the Delivery API, as the fixture parsed it. */
+export interface EdgeCall {
+  site: string;
+  language: string;
+  first: number;
+  after: string;
+  /** The key as sent in the sc_apikey header, or undefined. */
+  key: string | undefined;
+}
 
 export interface SitecoreFixtureOptions {
-  /** When set, a request without `Authorization: Bearer <token>` is answered 401. */
+  /** When set, a request without this `sc_apikey` is answered 401. */
   token?: string;
   /** Called with every request, to see what was asked. */
-  onRequest?: (method: string, url: URL) => void;
+  onRequest?: (method: string, url: URL, headers: Record<string, string>, body?: string) => void;
+  /** Largest page the fixture gives, whatever `first` says. Default 1000, the platform's own maximum. */
+  maxPage?: number;
+  /** What the live site's pages answer. Default: nothing is there (404). */
+  pages?: Readonly<Record<string, number>>;
+  /** What the preview path (/sitecore/api/graph/edge) answers on the live site. Default: absent (404). */
+  preview?: PreviewState;
+  /** Take over an Edge answer: return a JSON body (status 200), or `{ status, body }`, or undefined for the normal answer. */
+  respond?: (call: EdgeCall, n: number) => unknown;
 }
 
-const json = (status: number, body: unknown, headers: Record<string, string> = {}) =>
+const reply = (status: number, body: string, headers: Record<string, string> = {}) =>
   Promise.resolve({
     status,
-    headers: { "content-type": "application/json", ...headers },
-    body: Readable.from([Buffer.from(JSON.stringify(body))]),
+    headers,
+    body: Readable.from([Buffer.from(body)]),
   });
 
+const json = (status: number, body: unknown, headers: Record<string, string> = {}) =>
+  reply(status, JSON.stringify(body), { "content-type": "application/json", ...headers });
+
+const cursorOf = (n: number): string => Buffer.from(`offset:${n}`).toString("base64");
+const offsetOf = (cursor: string): number => {
+  if (cursor === "") return 0;
+  const m = /^offset:(\d+)$/.exec(Buffer.from(cursor, "base64").toString("utf8"));
+  return m ? Number(m[1]) : -1;
+};
+
 /**
- * Sitecore XM Cloud's API over the invented site. Every list answers at most 100 items a page (a larger `limit` is 400)
- * with the total, and nothing but a GET is answered. TODO(new:adapter) match the platform's paths and shapes.
+ * Experience Edge's Delivery API over the invented site, and the live site's pages. The Delivery API answers a POST
+ * and nothing else, needs the sc_apikey header, gives at most `maxPage` routes a page with `total`, `pageInfo` and
+ * `results`, and answers 200 with `errors` for a query it rejects (the way a GraphQL server does).
  */
 export function sitecoreTransport(
-  content: readonly FixtureType[] = SITECORE_CONTENT,
+  content: Readonly<Record<string, readonly FixtureRoute[]>> = SITECORE_CONTENT,
   options: SitecoreFixtureOptions = {},
 ): Transport {
+  let calls = 0;
   return (url, req) => {
-    options.onRequest?.(req.method, url);
-    if (url.host !== SITECORE_HOST) return json(404, { message: "not here" });
-    if (req.method !== "GET") return json(405, { message: "method not allowed" });
-    if (options.token !== undefined && req.headers.authorization !== `Bearer ${options.token}`)
-      return json(401, { message: "Request not authorized" });
-
-    /** The items a list holds: with a key, "all" includes drafts; without one, only what is published. */
-    const listed = (slug: string, status: string | null) => {
-      const type = content.find((t) => t.slug === slug);
-      if (!type) return undefined;
-      return status === "all" ? type.items : type.items.filter((i) => i.status === "published");
-    };
-
-    if (url.pathname !== "/v1/graphql") return json(404, { message: "no such route" });
-    const query = url.searchParams.get("query") ?? "";
-    const variables = JSON.parse(url.searchParams.get("variables") ?? "{}") as Record<
-      string,
-      unknown
-    >;
-    if (/^query Types\b/.test(query))
-      return json(200, { data: { types: content.map((t) => ({ slug: t.slug })) } });
-    if (/^query Items\b/.test(query)) {
-      const all = listed(String(variables.type), String(variables.status));
-      if (!all) return json(200, { errors: [{ message: "no such type" }] });
-      const limit = Number(variables.limit);
-      const offset = Number(variables.offset);
-      if (!Number.isInteger(limit) || limit < 1 || limit > 100)
-        return json(200, { errors: [{ message: "limit must be 1 to 100" }] });
+    options.onRequest?.(req.method, url, req.headers, req.body);
+    if (url.host === EDGE_HOST) {
+      if (url.pathname !== "/api/graphql/v1") return json(404, { message: "no such route" });
+      if (req.method !== "POST") return json(405, { message: "method not allowed" });
+      const key = req.headers["sc_apikey"];
+      if (options.token !== undefined && key !== options.token)
+        return json(401, { message: "Unauthorized" });
+      let parsed: {
+        query?: string;
+        variables?: { site?: string; language?: string; pageSize?: number; after?: string };
+      };
+      try {
+        parsed = JSON.parse(req.body ?? "") as typeof parsed;
+      } catch {
+        return json(400, { errors: [{ message: "bad body" }] });
+      }
+      const v = parsed.variables ?? {};
+      if (!/^query /.test(parsed.query ?? ""))
+        return json(200, { errors: [{ message: "not a query" }] });
+      const call: EdgeCall = {
+        site: String(v.site),
+        language: String(v.language),
+        first: Number(v.pageSize),
+        after: String(v.after ?? ""),
+        key,
+      };
+      const custom = options.respond?.(call, calls++);
+      if (custom !== undefined) {
+        const c = custom as { status?: number; body?: unknown; headers?: Record<string, string> };
+        return typeof c.status === "number"
+          ? json(c.status, c.body ?? {}, c.headers ?? {})
+          : json(200, custom);
+      }
+      if (call.site !== SITE_NAME) return json(200, { data: { site: { siteInfo: null } } });
+      const routes = content[call.language];
+      if (routes === undefined)
+        return json(200, {
+          data: {
+            site: {
+              siteInfo: {
+                routes: { total: 0, pageInfo: { endCursor: "", hasNext: false }, results: [] },
+              },
+            },
+          },
+        });
+      const limit = Math.min(call.first, options.maxPage ?? 1000);
+      if (!Number.isInteger(call.first) || call.first < 1 || call.first > 1000)
+        return json(200, { errors: [{ message: "first must be 1 to 1000" }] });
+      const at = offsetOf(call.after);
+      if (at < 0) return json(200, { errors: [{ message: "bad cursor" }] });
+      const page = routes.slice(at, at + limit);
+      const next = at + page.length;
+      const hasNext = next < routes.length;
       return json(200, {
-        data: { items: { total: all.length, nodes: all.slice(offset, offset + limit) } },
+        data: {
+          site: {
+            siteInfo: {
+              routes: {
+                total: routes.length,
+                pageInfo: { endCursor: cursorOf(next), hasNext },
+                results: page.map((r) => ({ routePath: r.routePath })),
+              },
+            },
+          },
+        },
       });
     }
-    return json(200, { errors: [{ message: "unknown query" }] });
+    if (url.host === new URL(LARKSPUR_SITE).host) {
+      if (req.method !== "GET" && req.method !== "HEAD") return json(405, {});
+      if (url.pathname === "/sitecore/api/graph/edge") {
+        switch (options.preview ?? "absent") {
+          case "absent":
+            return reply(404, "not found", { "content-type": "text/html" });
+          case "protected":
+            return json(401, { errors: [{ message: "An API key is required" }] });
+          case "graphql":
+            return json(200, { data: null, errors: [{ message: "Must provide query string." }] });
+          case "graphql-bad-request":
+            return json(400, { errors: [{ message: "Must provide query string." }] });
+          case "soft-200":
+            return reply(200, "<html><body>Welcome</body></html>", { "content-type": "text/html" });
+          case "error":
+            return reply(503, "unavailable", { "content-type": "text/plain" });
+        }
+      }
+      const status = options.pages?.[url.href] ?? 404;
+      return reply(status, status < 300 ? "<html><body>page</body></html>" : "not found", {
+        "content-type": "text/html",
+      });
+    }
+    return json(404, { message: "not here" });
   };
 }

@@ -1,44 +1,50 @@
 import { testKey } from "../../connectors/__tests__/fake.js";
-import { createSitecoreAdapter } from "../sitecore.js";
+import { SITECORE_QUERY_ALLOW, createSitecoreAdapter } from "../sitecore.js";
 import type { ContractEntry } from "./contract.js";
-import { sitecoreTransport, SITECORE_MARKERS } from "./sitecore-fixture.js";
+import { SITECORE_MARKERS, SITE_NAME, sitecoreTransport } from "./sitecore-fixture.js";
 
 /**
- * Larkspur Yoga Studio: a small studio on Sitecore XM Cloud, with classes (one a draft), notices and teachers (see
- * sitecore-fixture.ts). TODO(new:adapter) describe the invented site in terms of the platform.
+ * Larkspur Yoga Studio: a small studio on Sitecore XM Cloud, one site (larkspur) in two languages (see
+ * sitecore-fixture.ts). The Delivery API token reads what is published to Experience Edge and nothing else, so a
+ * draft is never in an answer. The token goes in the sc_apikey header and is never an Authorization header.
  */
-const SITECORE_KEY = testKey("sitecore-adapter");
+const SITECORE_KEY = testKey("sitecore-delivery");
+
+export const SITECORE_SETTINGS = {
+  id: "sitecore",
+  siteName: SITE_NAME,
+  languages: ["en", "fr-CA"],
+  urls: { "fr-CA": "/fr-ca" },
+};
 
 export const sitecoreEntry: ContractEntry = {
   id: "sitecore",
   make: ({ fetcher, sleep }) =>
     createSitecoreAdapter({
-      env: { SITECORE_TOKEN: SITECORE_KEY },
+      env: { SITECORE_API_KEY: SITECORE_KEY },
       fetcher,
+      settings: SITECORE_SETTINGS,
       sleep,
     }),
   transport: () => sitecoreTransport(undefined, { token: SITECORE_KEY }),
   key: SITECORE_KEY,
+  keyHeaders: { sc_apikey: SITECORE_KEY },
+  queryAllow: [SITECORE_QUERY_ALLOW],
   secrets: Object.values(SITECORE_MARKERS),
   expected: {
     types: [
-      { name: "classes", count: 2 },
-      { name: "notices", count: 1 },
-      { name: "teachers", count: 2 },
+      { name: "en", count: 6 },
+      { name: "fr-CA", count: 3 },
     ],
-    fields: {
-      type: "classes",
-      counts: { name: 2, summary: 1 },
-      missing: "subtitle",
-    },
+    // A route list has no fields: fieldCounts is could-not-check, not applicable.
     published: {
-      options: { types: ["classes"], fields: { classes: ["name", "summary"] } },
-      ids: ["c-morning", "c-evening"],
+      options: { types: ["fr-CA"] },
+      ids: ["fr-CA:/", "fr-CA:/classes", "fr-CA:/classes/morning-flow"],
     },
-    draftsReachable: true,
+    draftsReachable: "not-applicable",
   },
-  // The types and the first type's page are answered; the second type's page is the first refused.
-  rateLimit: { options: { types: ["classes", "teachers"] }, succeedFirst: 2, atLeast: 2 },
+  // The first language's list is answered; the second language's is the first refused.
+  rateLimit: { options: { types: ["en", "fr-CA"] }, succeedFirst: 1, atLeast: 6 },
 };
 
 /** The contract suite's entries for this adapter (collected by pnpm gen:adapters). */
