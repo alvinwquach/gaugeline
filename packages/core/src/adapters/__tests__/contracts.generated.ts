@@ -2,10 +2,12 @@
 import type { ContractEntry } from "./contract.js";
 import { contractEntries as builders } from "./builders.contract.js";
 import { contractEntries as contentful } from "./contentful.contract.js";
+import { contractEntries as contentstack } from "./contentstack.contract.js";
 import { contractEntries as framer } from "./framer.contract.js";
 import { contractEntries as gitContent } from "./git-content.contract.js";
 import { contractEntries as sanity } from "./sanity.contract.js";
 import { contractEntries as sitemapFeed } from "./sitemap-feed.contract.js";
+import { contractEntries as squarespaceCommerce } from "./squarespace-commerce.contract.js";
 import { contractEntries as strapi } from "./strapi.contract.js";
 import { contractEntries as umbraco } from "./umbraco.contract.js";
 import { contractEntries as webflow } from "./webflow.contract.js";
@@ -15,10 +17,12 @@ import { contractEntries as wordpress } from "./wordpress.contract.js";
 export const CONTRACT_ENTRIES: readonly ContractEntry[] = [
   ...builders,
   ...contentful,
+  ...contentstack,
   ...framer,
   ...gitContent,
   ...sanity,
   ...sitemapFeed,
+  ...squarespaceCommerce,
   ...strapi,
   ...umbraco,
   ...webflow,

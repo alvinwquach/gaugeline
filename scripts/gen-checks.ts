@@ -38,6 +38,7 @@ import {
   MIGRATION_CHECKS,
   WEBFLOW_CHECKS,
   CONTENTFUL_CHECKS,
+  SQUARESPACE_COMMERCE_CHECKS,
   STRAPI_CHECKS,
   UMBRACO_CHECKS,
   catalogue,
@@ -97,6 +98,7 @@ for (const c of CUTOVER_ONLY_CHECKS) registry.register(c);
 for (const c of MIGRATION_CHECKS) registry.register(c);
 for (const c of WEBFLOW_CHECKS) registry.register(c);
 for (const c of CONTENTFUL_CHECKS) registry.register(c);
+for (const c of SQUARESPACE_COMMERCE_CHECKS) registry.register(c);
 for (const c of STRAPI_CHECKS) registry.register(c);
 for (const c of UMBRACO_CHECKS) registry.register(c);
 const entries = catalogue(registry);

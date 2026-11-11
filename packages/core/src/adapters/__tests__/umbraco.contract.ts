@@ -28,7 +28,7 @@ export const umbracoEntry: ContractEntry = {
     }),
   transport: () => umbracoTransport(undefined, { apiKey: UMBRACO_KEY, protectedApi: true }),
   key: UMBRACO_KEY,
-  keyHeaderName: "api-key",
+  keyHeaders: { "api-key": UMBRACO_KEY },
   secrets: Object.values(UMBRACO_MARKERS),
   expected: {
     types: [
