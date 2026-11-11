@@ -79,8 +79,9 @@ export interface PageSnapshot {
    * Every script element in document order: its address, or for an inline script the start of its
    * body (JavaScript types only, cut at INLINE_SCRIPT_MAX characters). `position` is counted as for
    * `iframes`, so a form and a tracking script can be put in order. `scripts` keeps the addresses alone.
+   * `integrity` is set on a script with an address whose tag has a non-empty integrity attribute (SRI).
    */
-  scriptTags?: { src?: string; inline?: string; position: number }[];
+  scriptTags?: { src?: string; inline?: string; integrity?: true; position: number }[];
   /**
    * Every button a visitor could press and every link, as written, in document order (at most
    * BUTTONS_MAX): a, button, input type submit, button or image, any role="button", and any element
@@ -452,7 +453,8 @@ export function buildSnapshot(hops: Hop[]): PageSnapshot {
     } else {
       const src = resolve($(el).attr("src"), base);
       if (src !== undefined) {
-        scriptTags.push({ src, position });
+        const integrity = ($(el).attr("integrity") ?? "").trim() !== "";
+        scriptTags.push({ src, ...(integrity ? { integrity: true as const } : {}), position });
         return;
       }
       const type = ($(el).attr("type") ?? "").toLowerCase().split(";")[0]?.trim() ?? "";

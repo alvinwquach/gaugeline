@@ -71,6 +71,8 @@ describe("run snapshot: unit", () => {
       forms: { "#signup": { provider: "HubSpot", actionHost: "forms.hsforms.com" } },
       // The header and footer menus (nav-changed): this page has none.
       nav: [],
+      // Third-party scripts and security headers (script-changed and the header checks): none here.
+      baseline: { scripts: {}, headers: {} },
     });
   });
 

@@ -1,0 +1,55 @@
+{
+  "about": "Hosts a page should not load scripts from, because the named source reports they served injected or malicious code. Read by script-known-bad-host. A host matches itself and every subdomain. Each entry names its source. \"proposed\" means the entry was written from a recollection of the source, not from a copy of it opened by the maintainer, so confirm it before relying on it.",
+  "hosts": [
+    {
+      "host": "polyfill.io",
+      "since": "2024-06",
+      "note": "Sold in February 2024; in June 2024 researchers reported its scripts sending some visitors to unrelated sites. The domain was later suspended.",
+      "source": {
+        "title": "Sansec: Polyfill supply chain attack hits 100K+ sites",
+        "url": "https://sansec.io/research/polyfill-supply-chain-attack"
+      },
+      "proposed": false
+    },
+    {
+      "host": "bootcdn.net",
+      "since": "2024-06",
+      "note": "Reported in June 2024 as serving the same injected code as polyfill.io.",
+      "source": {
+        "title": "Sansec: Polyfill supply chain attack hits 100K+ sites",
+        "url": "https://sansec.io/research/polyfill-supply-chain-attack"
+      },
+      "proposed": true
+    },
+    {
+      "host": "bootcss.com",
+      "since": "2024-06",
+      "note": "Reported in June 2024 as serving the same injected code as polyfill.io.",
+      "source": {
+        "title": "Sansec: Polyfill supply chain attack hits 100K+ sites",
+        "url": "https://sansec.io/research/polyfill-supply-chain-attack"
+      },
+      "proposed": true
+    },
+    {
+      "host": "staticfile.net",
+      "since": "2024-06",
+      "note": "Reported in June 2024 as serving the same injected code as polyfill.io.",
+      "source": {
+        "title": "Sansec: Polyfill supply chain attack hits 100K+ sites",
+        "url": "https://sansec.io/research/polyfill-supply-chain-attack"
+      },
+      "proposed": true
+    },
+    {
+      "host": "unionadjs.com",
+      "since": "2024-06",
+      "note": "Reported in June 2024 as a host of the same operator's injected code.",
+      "source": {
+        "title": "Sansec: Polyfill supply chain attack hits 100K+ sites",
+        "url": "https://sansec.io/research/polyfill-supply-chain-attack"
+      },
+      "proposed": true
+    }
+  ]
+}
