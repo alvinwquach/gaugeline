@@ -139,6 +139,10 @@ export const UNLISTED: NavPage[] = [
     slug: "integrations/framer",
     title: "Framer: content checks for sites built on Framer (beta)",
   },
+  {
+    slug: "integrations/builders",
+    title: "Hosted builders: content checks for sites built on Squarespace and similar builders",
+  },
   { slug: "connectors/listings", title: "Listings off the site" },
   { slug: "connectors/postgres", title: "A database as a source: Postgres and Supabase" },
   { slug: "sources/shopify", title: "Shopify as a price source" },

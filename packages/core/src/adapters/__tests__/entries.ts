@@ -2,11 +2,18 @@
 import { Readable } from "node:stream";
 import type { Transport } from "../../fetcher.js";
 import { testKey } from "../../connectors/__tests__/fake.js";
+import { BUILDERS, createBuilderAdapter } from "../builders.js";
 import { createFramerAdapter } from "../framer.js";
 import { createSanityAdapter } from "../sanity.js";
 import { createSitemapFeedAdapter } from "../sitemap-feed.js";
 import { createWebflowAdapter } from "../webflow.js";
 import { createWordPressAdapter } from "../wordpress.js";
+import {
+  TIDEWATER,
+  TIDEWATER_MARKERS,
+  tidewaterRoutes,
+  tidewaterServe,
+} from "./builders-fixture.js";
 import type { ContractEntry } from "./contract.js";
 import { LANTERN, LANTERN_MARKERS, lanternRoutes, lanternServe } from "./framer-fixture.js";
 import { CONTENT_MARKERS, sanityTransport } from "./sanity-fixture.js";
@@ -232,10 +239,41 @@ export const framerEntry: ContractEntry = {
   rateLimit: { options: { types: ["journal", "drops"] }, succeedFirst: 2, atLeast: 4 },
 };
 
+/**
+ * One entry for each hosted builder with no content API (adapters/builders.ts). All of them read the
+ * same invented site, Tidewater Pop-Up (builders-fixture.ts): the adapters differ in their words, not in
+ * what they request. No key, no fields, no drafts.
+ */
+export const builderEntries: readonly ContractEntry[] = BUILDERS.map((platform): ContractEntry => ({
+  id: platform.id,
+  make: ({ fetcher, sleep }) => createBuilderAdapter(platform, { fetcher, site: TIDEWATER, sleep }),
+  transport: () => tidewaterServe(tidewaterRoutes()),
+  secrets: Object.values(TIDEWATER_MARKERS),
+  expected: {
+    types: [
+      { name: "blog", count: 1 },
+      { name: "shop", count: 2 },
+      { name: "top-level", count: 3 },
+    ],
+    published: {
+      options: { types: ["blog", "shop"] },
+      ids: [
+        `${TIDEWATER}/shop/sea-glass-pendant`,
+        `${TIDEWATER}/shop/driftwood-studs`,
+        `${TIDEWATER}/blog/harbour-stall`,
+      ],
+    },
+    draftsReachable: "not-applicable",
+  },
+  // robots.txt and the sitemap are answered; the home page (for feed links) is the first refused.
+  rateLimit: { options: { types: ["blog", "shop"] }, succeedFirst: 2, atLeast: 3 },
+}));
+
 export const ENTRIES: readonly ContractEntry[] = [
   sanityEntry,
   sitemapFeedEntry,
   wordpressEntry,
   webflowEntry,
   framerEntry,
+  ...builderEntries,
 ];
