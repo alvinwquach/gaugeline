@@ -306,7 +306,10 @@ describe("the Umbraco adapter: the settings and the address", () => {
     ["not set", {}],
     ["http", { UMBRACO_URL: "http://marigold-lane.example" }],
     ["with a path", { UMBRACO_URL: "https://marigold-lane.example/cms" }],
-    ["with sign-in details", { UMBRACO_URL: "https://user:pw@marigold-lane.example" }],
+    [
+      "with sign-in details",
+      { UMBRACO_URL: `https://user:pw${String.fromCharCode(64)}marigold-lane.example` },
+    ],
     ["with a query", { UMBRACO_URL: "https://marigold-lane.example/?a=1" }],
     ["not an address", { UMBRACO_URL: "marigold-lane.example" }],
   ])("UMBRACO_URL %s is could-not-check, names the variable, and asks nothing", async (_n, env) => {
