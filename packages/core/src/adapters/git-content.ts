@@ -100,6 +100,8 @@ export function contentSourceOf(
     settings: AdapterSettings | undefined;
     sleep: (ms: number) => Promise<void>;
     adapterId?: string;
+    /** For a GitHub source: a folder that is not in the repository is could-not-check, not zero items. */
+    missingFolderIsError?: boolean;
   },
 ): ContentSource {
   const { settings } = options;
@@ -112,6 +114,7 @@ export function contentSourceOf(
       token: options.env[GITHUB_TOKEN_VAR],
       sleep: options.sleep,
       limits,
+      ...(options.missingFolderIsError ? { missingFolderIsError: true } : {}),
     });
   if (settings?.path !== undefined)
     return localSource(path.resolve(options.cwd ?? process.cwd(), settings.path), limits);

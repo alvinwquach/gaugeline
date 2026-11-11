@@ -97,6 +97,8 @@ export function createTinaAdapter(options: TinaAdapterOptions): TinaAdapter {
       sleep,
       limits,
       adapterId: "tina",
+      // A collection folder the repository does not have is could-not-check, as for a local clone.
+      missingFolderIsError: true,
       ...(options.cwd !== undefined ? { cwd: options.cwd } : {}),
     });
 

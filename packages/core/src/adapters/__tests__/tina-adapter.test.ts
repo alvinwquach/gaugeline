@@ -405,6 +405,20 @@ describe("the TinaCMS adapter: a repository on GitHub", () => {
     await expect(adapter.types()).rejects.toThrow(/no tina\/config\.ts/i);
   });
 
+  it("a collection folder that is missing from the repository is could-not-check, not zero items", async () => {
+    const files = {
+      ...TINA_FILES,
+      "tina/config.ts": `export default defineConfig({ schema: { collections: [{ name: "a", path: "content/missing" }] } });`,
+    };
+    const adapter = createTinaAdapter({
+      env: {},
+      fetcher: createFetcher({ transport: githubTransport(files), timeoutMs: 5000 }),
+      sleep: noWait,
+      settings: { id: "tina", github: { repo: REPO } },
+    });
+    await expect(adapter.types()).rejects.toThrow(/does not exist/);
+  });
+
   it("a repository that is not found is could-not-check, with GitHub's answer in plain words", async () => {
     const adapter = createTinaAdapter({
       env: {},
