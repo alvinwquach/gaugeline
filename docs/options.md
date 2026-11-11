@@ -66,6 +66,9 @@ Options:
       --renewals                 Also check what lapses: the domain's
                                  registration, the certificates and any token
                                  you set up
+      --cost                     Also check what runs up the hosting bill: pages
+                                 that change on every visit, the cache and usage
+                                 jumps
       --owner-consent            Run the probing checks, which ask routes for
                                  what they protect with no login; only on sites
                                  you may test
@@ -326,6 +329,7 @@ between the markers; CI fails when it differs from the flag table.
 | `--allow-secret-key`        | Use a Stripe secret key, with a notice, instead of refusing it; a restricted key is safer                            |                      | 0.2.0 |
 | `--dns`                     | Also read the domain's mail records (SPF and DMARC) from DNS                                                         |                      | 0.2.0 |
 | `--renewals`                | Also check what lapses: the domain's registration, the certificates and any token you set up                         |                      | 0.2.0 |
+| `--cost`                    | Also check what runs up the hosting bill: pages that change on every visit, the cache and usage jumps                |                      | 0.2.0 |
 | `--owner-consent`           | Run the probing checks, which ask routes for what they protect with no login; only on sites you may test             |                      | 0.2.0 |
 | `--routes <value>`          | With --owner-consent: download routes in files matching this glob (repeatable); no glob: a folder's signed-in routes |                      | 0.2.0 |
 | `--since <value>`           | Page check: compare with the last run (the only value is last). delivery: the window to read, such as 7d             |                      | 0.2.0 |
@@ -527,6 +531,29 @@ are exit 2, before anything is requested where they can be. Settings: `gaugeline
 client's and your addresses, the Vercel project, the Sanity project, extra checklist lines). What it
 reads, what keys to make, the three checks and two examples: [Handoff](guides/handoff.md). What it
 sends: [Privacy and safety](privacy.md#handoff-gaugeline-handoff).
+
+### The cost command
+
+`gaugeline cost <address>` finds what runs up a client's hosting bill. It visits the page twice, a few
+seconds apart and with no cookies, and says whether the HTML changes on every visit, and, for the pages you
+mark static in `gaugeline.cost.json`, whether the CDN ever serves them from its cache and whether their
+cache lifetime is too short. With `GAUGELINE_VERCEL_TOKEN` set it also reads the account's usage and flags a
+figure that jumped past a multiple of its recent average. A site on Wix, Squarespace, Webflow or Framer has a
+fixed plan, so usage is "not applicable" there and the page checks still run. It prints the pages by likely
+cause in plain sentences, then what to fix.
+
+```sh
+npx gaugeline cost marlowe-bar.com
+npx gaugeline cost marlowe-bar.com --ci
+```
+
+It takes `--ci` (exit 1 for a "Fix this first" finding; these checks are never that), `--json` (the schema 2
+result and nothing else), `--allow-private`, `--no-open` and the notification flags, like the page check.
+`--cost` adds the same checks to the page check, and `gaugeline run --all --cost` to every site of a nightly
+run. Settings: `gaugeline.cost.json` (the pages that should be cached, other pages to visit, the minimum
+lifetime, the Vercel team, the usage window and multiple). What it reads, what key to make and the four
+checks: [Hosting cost](guides/hosting-cost.md). What it sends:
+[Privacy and safety](privacy.md#hosting-cost-gaugeline-cost).
 
 ### The query command
 
