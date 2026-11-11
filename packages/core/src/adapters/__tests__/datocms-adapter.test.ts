@@ -331,7 +331,7 @@ describe("the DatoCMS adapter: what the read must get right", () => {
     const reason = await reasonOf(
       make({ fixture: { countOverride: () => 5 } }).fieldCounts("classes", ["name"]),
     );
-    expect(reason).toMatch(/said 5 records and 2 were read/);
+    expect(reason).toMatch(/has 5 records and 2 were read/);
   });
 
   it("a count that is not a whole number is could-not-check", async () => {

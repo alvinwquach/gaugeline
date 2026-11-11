@@ -7,6 +7,9 @@ import { CheckRegistry, defineCheck, type Finding } from "../model.js";
  * records. Pure over a DatocmsReading (ids and counts, never a field or a name), so the same project gives the same
  * findings. Everything in a reading came from a platform: it is printed as text and never acted on.
  */
+const PROBING_NOTE =
+  "this check asks DatoCMS for draft content with the token you gave Gaugeline, so it runs only with --owner-consent (or gaugeline.consent.json), on sites you own or have permission to test";
+
 export const datocmsDraftsReachable = defineCheck<DatocmsReading>({
   id: "datocms-drafts-reachable",
   size: "S",
@@ -19,8 +22,15 @@ export const datocmsDraftsReachable = defineCheck<DatocmsReading>({
   what: "gaugeline.adapters.json says the token is meant for published content only (expectPublishedOnly: true), and a request that asks for drafts with it is answered with records that are not published.",
   why: "A token for the live site is often placed in the front end or in a build setting. If it can read drafts, anyone who finds it can read unpublished work: prices not announced yet, a closure notice, a page that was pulled.",
   fix: "In the DatoCMS dashboard, open Settings, API tokens, and edit the token the live site uses: turn off access to the Content Delivery API with draft content (the preview flag), keep the Content Delivery API on for published content, and keep the Content Management API off. Give a preview site its own token. If the token is meant to preview drafts, remove expectPublishedOnly from gaugeline.adapters.json.",
-  tech: "only when the settings say expectPublishedOnly: true for datocms and name the collections, since a token that may preview is a normal setup; per collection, two POSTs of one GraphQL query each, through fetcher.query and the registered allowlist entry datocms-cda-query (a document that parses as one query is the only body ever sent): the published list, then the same list with the header X-Include-Drafts: true, each asking for id only, first 100 and skip stepping by the number of records that came back, a page shorter than the page asked for ending the list; the ids of the first list are held in a Set and subtracted from the second, and a non-empty difference is the finding (a count and at most five ids, never a field); HTTP 401 or 403 to the draft request after the published one was answered means the token cannot read drafts, which is a pass for that collection; a draft request that is accepted with no extra record shows no sign of drafts, which is not proof since none may exist, so it is could-not-check; a collection that cannot be read, a list that moves while it is read, one over 10000 records and a rate limit that stays are could-not-check for that part",
+  tech: `probing check, off without --owner-consent: ${PROBING_NOTE}; run only on sites you own or have permission to test; only when the settings say expectPublishedOnly: true for datocms and name the collections, since a token that may preview is a normal setup; per collection, POSTs of one GraphQL query each, through fetcher.query and the registered allowlist entry datocms-cda-query (a document that parses as one query is the only body ever sent): the published list, then the same list with the header X-Include-Drafts: true, each asking for id only, first 100, an explicit orderBy: [id_ASC], skip stepping by the number of records that came back, a page shorter than the page asked for ending the list, and the first page also asking the collection's count (a list that ends with another number of records is could-not-check, and a count over 10000 fails on the first page); the ids of the first list are held in a Set and subtracted from the second, and a non-empty difference is the finding (a count; ids only when the settings say showDraftIds, at most five; never a field); when there is a difference the published list is read once more and a list that changed in between is could-not-check; HTTP 401 or 403 to the first page of the draft request, after the published one was answered, means the token cannot read drafts, which is a pass for that collection, while a refusal on a later page is could-not-check; a draft request that is accepted with no extra record shows no sign of drafts, which is not proof since none may exist, so it is could-not-check; the check judges the token you give Gaugeline, so to test the live site's token give Gaugeline that token; a collection that cannot be read, a list that moves while it is read, one over 10000 records scanned and a rate limit that stays are could-not-check for that part`,
   run(r, ctx) {
+    if (!r.ownerConsent) {
+      ctx.couldNotCheck?.(
+        r.site,
+        `not asked: ${PROBING_NOTE}. Run with --owner-consent to check whether the DatoCMS token can read drafts.`,
+      );
+      return [];
+    }
     if (!r.expectedPublishedOnly) {
       ctx.couldNotCheck?.(
         r.site,

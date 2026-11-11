@@ -101,7 +101,7 @@ describe("DatoCMS checks: drafts reachable with the published-only token", () =>
     expect(out.findings).toEqual([]);
     expect(out.passed).toEqual([]);
     expect(reasons(out)).toMatch(
-      /not asked: .*--owner-consent.*only on sites you own or have permission to test/,
+      /not asked: .*--owner-consent.*sites you own or have permission to test/,
     );
   });
 

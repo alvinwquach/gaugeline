@@ -347,24 +347,33 @@ export function createDatocmsAdapter(options: DatocmsAdapterOptions): DatocmsAda
     return Object.keys(named ?? {}).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
   };
 
+  /**
+   * One page. The order is explicit (`orderBy: [id_ASC]`), so `skip` walks one stable list. The first page also
+   * asks the collection's count (`_allXMeta { count }`), which the whole read is checked against. The spelling of
+   * `orderBy`, `id_ASC` and `count` is uncited (the @datocms/cda-client source only shows that `_allXXXMeta` fields
+   * exist); a wrong one is a GraphQL error and could-not-check, never a pass.
+   */
   const document = (collection: string, first: number, skip: number, selection: string): string =>
-    `query Page { ${collection}(first: ${first}, skip: ${skip}) { ${selection} } }`;
+    `query Page { ${skip === 0 ? `_${collection}Meta { count } ` : ""}${collection}(first: ${first}, skip: ${skip}, orderBy: [id_ASC]) { ${selection} } }`;
 
   /**
    * The records of one collection, a page at a time, until the first page that comes back short (the API's own
    * `first` and `skip`). An answer over the size limit is asked again with half as many records, down to ten. A
    * record seen twice means the list moved while it was read: could-not-check, never a count of a shifting list.
-   * `drafts` asks as a token that may preview.
+   * `drafts` asks as a token that may preview. Records scanned count against the bound whatever the caller does
+   * with them; `countCap` also refuses, on the first page, a collection whose count is over the bound. A list that
+   * ends with a different number of records than its count said is could-not-check.
    */
   async function* pagesOf(
     type: string,
     selection: string,
     drafts: boolean,
-    enforceCap: boolean,
+    countCap: boolean,
     partial: () => unknown,
   ): AsyncGenerator<unknown[]> {
     const { collection } = target(type);
     const seen = new Set<string>();
+    let counted: number | undefined;
     let skip = 0;
     let size = pageSize;
     for (;;) {
@@ -377,7 +386,26 @@ export function createDatocmsAdapter(options: DatocmsAdapterOptions): DatocmsAda
             "DatoCMS answered with something that is not a list of records.",
           );
         rows = got;
+        if (skip === 0) {
+          const meta = data[`_${collection}Meta`];
+          const count = isRecord(meta) ? meta.count : undefined;
+          if (typeof count !== "number" || !Number.isSafeInteger(count) || count < 0)
+            throw new AdapterCouldNotCheck(
+              "DatoCMS answered with something that is not a count of records.",
+            );
+          counted = count;
+          if (countCap && count > cap)
+            throw new AdapterCouldNotCheck(
+              `The type has more than ${cap} record${cap === 1 ? "" : "s"}, which is as many as Gaugeline reads from one type.`,
+            );
+        }
       } catch (err) {
+        // A refusal means "this token cannot read drafts" only on the first page. After a page was answered it
+        // says nothing about the token, and what came before must not be thrown away as a pass.
+        if (err instanceof Refused && drafts && skip > 0)
+          throw new AdapterCouldNotCheck(
+            "DatoCMS refused the draft read after answering its first page, so the draft list was not read in full and nothing is concluded from it.",
+          );
         if (!(err instanceof TooLarge)) throw err;
         if (size > MIN_PAGE_SIZE) {
           size = Math.max(MIN_PAGE_SIZE, Math.floor(size / 2));
@@ -399,14 +427,20 @@ export function createDatocmsAdapter(options: DatocmsAdapterOptions): DatocmsAda
           );
         seen.add(id);
       }
-      if (enforceCap && seen.size > cap)
+      if (seen.size > cap)
         throw new AdapterCouldNotCheck(
           `The type has more than ${cap} record${cap === 1 ? "" : "s"}, which is as many as Gaugeline reads from one type.`,
         );
       yield rows;
       skip += rows.length;
       // A page shorter than the page asked for is the end of the list; a full one is asked past.
-      if (rows.length < size) return;
+      if (rows.length < size) {
+        if (counted !== undefined && counted !== seen.size)
+          throw new AdapterCouldNotCheck(
+            `DatoCMS said the collection has ${counted} record${counted === 1 ? "" : "s"} and ${seen.size} ${seen.size === 1 ? "was" : "were"} read, so the list was not read as it stood.`,
+          );
+        return;
+      }
     }
   }
 
@@ -535,12 +569,25 @@ export function createDatocmsAdapter(options: DatocmsAdapterOptions): DatocmsAda
           throw err;
         }
         const extra = [...every].filter((id) => !live.has(id));
+        // Drafts found: read the published list once more. A record published (or unpublished) while the lists were
+        // read would look like a draft or hide one, so a list that moved is could-not-check.
+        if (extra.length > 0) {
+          const again = await idsOf(type, false, () => out.slice());
+          if (again.size !== live.size || [...again].some((id) => !live.has(id)))
+            throw new AdapterCouldNotCheck(
+              "The published list changed during the read, so which records are drafts cannot be told from this read. Run it again.",
+            );
+        }
         out.push({
           type,
           state: extra.length > 0 ? "reachable" : "accepted-no-drafts",
           published: live.size,
           extra: extra.length,
-          extraIds: extra.filter((id) => ID_TEXT.test(id)).slice(0, DATOCMS_LIMITS.idsShown),
+          // Ids are named only when the settings ask for them (showDraftIds); a count is the default.
+          extraIds:
+            settings?.showDraftIds === true
+              ? extra.filter((id) => ID_TEXT.test(id)).slice(0, DATOCMS_LIMITS.idsShown)
+              : [],
         });
       } catch (err) {
         if (err instanceof AdapterCouldNotCheck)

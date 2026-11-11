@@ -171,6 +171,11 @@ export interface AdapterSettings {
    * whether it can also read drafts.
    */
   expectPublishedOnly?: boolean | undefined;
+  /**
+   * Only `datocms`: the check names the ids of the unpublished records it finds (at most five). Without it a
+   * finding is a count.
+   */
+  showDraftIds?: boolean | undefined;
   /** Only `git-content`: the repository's folder on this computer, relative to where the run starts. */
   path?: string | undefined;
   /** Only `git-content`: a repository on GitHub, read with GET. Instead of `path`. */

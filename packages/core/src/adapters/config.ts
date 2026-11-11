@@ -121,6 +121,8 @@ export const adaptersConfigSchema = z.strictObject({
            * it can also read drafts (it sends the token to DatoCMS's own API, as every read does).
            */
           expectPublishedOnly: z.boolean().optional(),
+          /** DatoCMS only: the check names the ids of the unpublished records it finds (at most five). Default: a count. */
+          showDraftIds: z.boolean().optional(),
           /** Content kept in a repository only: the repository's folder on this computer, relative to where the run starts. */
           path: z
             .string()
@@ -216,7 +218,7 @@ export const adaptersConfigSchema = z.strictObject({
               path: ["expectPrivate"],
               message: `"expectPrivate" belongs to the Umbraco adapter, not to ${entry.id}`,
             });
-          for (const key of ["collections", "expectPublishedOnly"] as const)
+          for (const key of ["collections", "expectPublishedOnly", "showDraftIds"] as const)
             if (entry[key] !== undefined && !GRAPHQL_COLLECTIONS.includes(entry.id))
               ctx.addIssue({
                 code: "custom",
