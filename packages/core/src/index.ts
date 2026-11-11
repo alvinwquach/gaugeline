@@ -371,6 +371,8 @@ export type { CacheRead } from "./next/detect.js";
 export { isFrameworkUrl } from "./next/framework-urls.js";
 export { frameworkLinks } from "./links.js";
 export { consentConfigSchema } from "./consent.js";
+export { imagesConfigSchema } from "./images/config.js";
+export type { ImageSettings, ImagesConfig } from "./images/config.js";
 export type { ConsentConfig } from "./consent.js";
 export { hiddenConfigSchema, isHidden, matchesGlob, overdue } from "./hidden.js";
 export type { HiddenConfig, HiddenSection } from "./hidden.js";

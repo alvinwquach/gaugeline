@@ -69,6 +69,9 @@ import { htmlHeavy } from "./html-heavy.js";
 import { htmlHuge } from "./html-huge.js";
 import { icsFloatingTime } from "./ics-floating-time.js";
 import { icsNoVtimezone } from "./ics-no-vtimezone.js";
+import { imageOptimizerAllowlistUnanchored } from "./image-optimizer-allowlist-unanchored.js";
+import { imageOptimizerAllowlistWide } from "./image-optimizer-allowlist-wide.js";
+import { imageOptimizerOpen } from "./image-optimizer-open.js";
 import { imageWidthAbsurd } from "./image-width-absurd.js";
 import { imagesAltEmpty } from "./images-alt-empty.js";
 import { imagesAltMissing } from "./images-alt-missing.js";
@@ -228,6 +231,9 @@ export const PAGE_CHECKS = [
   htmlHuge,
   icsFloatingTime,
   icsNoVtimezone,
+  imageOptimizerAllowlistUnanchored,
+  imageOptimizerAllowlistWide,
+  imageOptimizerOpen,
   imageWidthAbsurd,
   imagesAltEmpty,
   imagesAltMissing,
