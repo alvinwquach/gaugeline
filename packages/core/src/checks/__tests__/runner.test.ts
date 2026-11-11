@@ -306,6 +306,8 @@ describe("runner: edge cases", () => {
       "hidden-indexable",
       "hidden-linked",
       "hidden-past-launch",
+      "host-preview-indexable",
+      "host-preview-named",
       "hreflang-bad-code",
       "hreflang-not-reciprocal",
       "html-heavy",
