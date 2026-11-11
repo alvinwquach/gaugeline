@@ -33,3 +33,14 @@ export {
 export type { SitemapFeedOptions } from "./sitemap-feed.js";
 export { SANITY_DESCRIPTION, SANITY_PAGE_SIZE, createSanityAdapter } from "./sanity.js";
 export type { SanityAdapterOptions } from "./sanity.js";
+export {
+  WORDPRESS_APP_PASSWORD,
+  WORDPRESS_COUNT_CAP,
+  WORDPRESS_DESCRIPTION,
+  WORDPRESS_ENV_VARS,
+  WORDPRESS_PAGE_SIZE,
+  WORDPRESS_URL,
+  WORDPRESS_USER,
+  createWordPressAdapter,
+} from "./wordpress.js";
+export type { WordPressAdapter, WordPressAdapterOptions } from "./wordpress.js";

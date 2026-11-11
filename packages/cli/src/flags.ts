@@ -167,6 +167,14 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     commands: ["check", "run"],
   },
   {
+    name: "wordpress",
+    type: "boolean",
+    description:
+      "Also check a WordPress site's versions against the current releases, and whether it lists its users",
+    since: "0.2.0",
+    commands: ["check", "run"],
+  },
+  {
     name: "owner-consent",
     type: "boolean",
     description:

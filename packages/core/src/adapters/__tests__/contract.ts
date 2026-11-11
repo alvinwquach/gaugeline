@@ -20,6 +20,12 @@ export interface ContractEntry {
    * no request carries an Authorization header or a cookie.
    */
   key?: string;
+  /**
+   * How the key is sent when it is not "Bearer <key>" on every request. For a platform that needs no key to read
+   * what is published (WordPress): the exact header value, which only the requests that need the key carry. The
+   * published reads carry none, so the key never goes where it is not needed.
+   */
+  keyHeader?: { value: string };
   /** Text that is in the platform's content, including an unpublished draft, and must never come back. */
   secrets: readonly string[];
   expected: {

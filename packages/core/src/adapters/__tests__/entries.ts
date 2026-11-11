@@ -4,9 +4,11 @@ import type { Transport } from "../../fetcher.js";
 import { testKey } from "../../connectors/__tests__/fake.js";
 import { createSanityAdapter } from "../sanity.js";
 import { createSitemapFeedAdapter } from "../sitemap-feed.js";
+import { createWordPressAdapter } from "../wordpress.js";
 import type { ContractEntry } from "./contract.js";
 import { CONTENT_MARKERS, sanityTransport } from "./sanity-fixture.js";
 import { OAKLINE, OAKLINE_MARKERS, oaklineRoutes, serve } from "./sitemap-feed-fixture.js";
+import { CONTENT_MARKERS as WP_MARKERS, wordpressTransport } from "./wordpress-fixture.js";
 
 /**
  * One entry per adapter. A new adapter's branch adds its entry here (its recorded answers go in a
@@ -108,4 +110,52 @@ export const sitemapFeedEntry: ContractEntry = {
   rateLimit: { options: { types: ["blog", "top-level"] }, succeedFirst: 3, atLeast: 3 },
 };
 
-export const ENTRIES: readonly ContractEntry[] = [sanityEntry, sitemapFeedEntry];
+/** The Copper Lantern's WordPress: a dedicated user whose application password reads drafts and users. */
+const WP_KEY = testKey("wordpress-adapter");
+export const WP_USER = "gaugeline-reader";
+export const WP_ENV = {
+  WORDPRESS_URL: "https://copper-lantern.example",
+  WORDPRESS_USER: WP_USER,
+  WORDPRESS_APP_PASSWORD: WP_KEY,
+};
+const wpTransport = () =>
+  wordpressTransport(undefined, { app: { user: WP_USER, password: WP_KEY } });
+
+export const wordpressEntry: ContractEntry = {
+  id: "wordpress",
+  make: ({ fetcher, sleep }) => createWordPressAdapter({ env: WP_ENV, fetcher, sleep }),
+  transport: wpTransport,
+  key: WP_KEY,
+  keyHeader: { value: `Basic ${Buffer.from(`${WP_USER}:${WP_KEY}`).toString("base64")}` },
+  secrets: Object.values(WP_MARKERS),
+  expected: {
+    types: [
+      { name: "event", count: 2 },
+      { name: "page", count: 3 },
+      { name: "post", count: 3 },
+    ],
+    fields: {
+      type: "post",
+      counts: { title: 3, excerpt: 2, slug: 3 },
+      missing: "subtitle",
+    },
+    published: {
+      options: { types: ["post"], fields: { post: ["title", "excerpt"] } },
+      ids: ["11", "12", "13"],
+    },
+    draftsReachable: true,
+  },
+  // The first request lists the types and the second reads the pages; the posts are the third.
+  rateLimit: { options: { types: ["page", "post"] }, succeedFirst: 2, atLeast: 3 },
+  members: {
+    transport: wpTransport,
+    expected: [
+      { emailMasked: "r***@copper-lantern.example", role: "admin" },
+      { emailMasked: "d***@freelancer.example", role: "member" },
+      { emailMasked: "(address not shown by WordPress)", role: "viewer" },
+    ],
+    addresses: ["Rosa.Ferrer", "rosa.ferrer", "dev@freelancer"],
+  },
+};
+
+export const ENTRIES: readonly ContractEntry[] = [sanityEntry, sitemapFeedEntry, wordpressEntry];

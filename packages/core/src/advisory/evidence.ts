@@ -23,7 +23,7 @@ import {
 
 const clip = (s: string, n = 80): string => escapeInvisible(s, n);
 
-/** WordPress facts another part of Gaugeline has read (C-01), used in place of the page's own signs when given. */
+/** WordPress facts the WordPress adapter has read (installed()), used in place of the page's own signs when given. */
 export interface WordPressData {
   version?: string;
   plugins?: { slug: string; version?: string }[];
@@ -155,9 +155,9 @@ function mergeWordPress(read: WordPressRead | undefined, data: WordPressData): W
     return out;
   };
   return {
-    signs: [...base.signs, "the WordPress read (C-01)"],
+    signs: [...base.signs, "the WordPress adapter's read"],
     ...(data.version
-      ? { version: { value: data.version, how: "the WordPress read (C-01)" } }
+      ? { version: { value: data.version, how: "the WordPress adapter's read" } }
       : base.version
         ? { version: base.version }
         : {}),

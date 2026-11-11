@@ -15,6 +15,7 @@ import type { Handoff } from "./handoff/reader.js";
 import type { Cost } from "./cost/reader.js";
 import type { Trackers } from "./trackers/reader.js";
 import type { Libraries } from "./libraries/reader.js";
+import type { WordPress } from "./wordpress/reader.js";
 import type { HiddenConfig } from "./hidden.js";
 import type { NavRules } from "./nav/read-regions.js";
 import type { ContentNow, PagesConfig } from "./snapshot/compare.js";
@@ -216,6 +217,11 @@ export interface CheckContext {
    * has --libraries: that check then does nothing.
    */
   libraries?: Libraries;
+  /**
+   * What the WordPress checks read: the current releases from wordpress.org and the site's own list of users,
+   * once each. Absent unless the run has --wordpress: those checks then do nothing.
+   */
+  wordpress?: WordPress;
   /** The page's App Store and Google Play apps, looked up once on first use. */
   apps?: () => Promise<AppLookup[]>;
   /**

@@ -301,8 +301,8 @@ function judge(c: Component, e: Evidence): ComponentVerdict {
       const rows = (c.kind === "wp-plugin" ? h.wordpress?.plugins : h.wordpress?.themes) ?? [];
       const row = rows.find((r) => r.slug === c.name);
       if (!row) return [];
-      const how = h.wordpress?.signs.includes("the WordPress read (C-01)")
-        ? "from the WordPress read (C-01)"
+      const how = h.wordpress?.signs.includes("the WordPress adapter's read")
+        ? "from the WordPress adapter's read"
         : `from the version on its file addresses`;
       return row.versions.length === 0
         ? [{ host: h, how: "its files are on the page with no version of their own" }]

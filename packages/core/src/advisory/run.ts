@@ -23,7 +23,7 @@ export interface AdvisoryOptions {
   hosts?: readonly string[];
   /** With DNS: the name servers are read. */
   dns?: DnsReader;
-  /** The WordPress read of C-01, when it exists, in place of the page's own signs. */
+  /** The WordPress adapter's read (adapters/wordpress.ts installed()), when there is one, in place of the page's own signs. */
   wordpress?: WordPressData;
   now?: () => Date;
 }

@@ -3,6 +3,10 @@ import { ConfigError } from "../../errors.js";
 import { createFetcher } from "../../fetcher.js";
 import { checkAdvisory, type AdvisoryOptions } from "../run.js";
 import { renderNote, renderTerminal } from "../render.js";
+import { WP_ENV, WP_USER } from "../../adapters/__tests__/entries.js";
+import { wordpressTransport } from "../../adapters/__tests__/wordpress-fixture.js";
+import { AdapterCouldNotCheck } from "../../adapters/types.js";
+import { createWordPressAdapter } from "../../adapters/wordpress.js";
 import { html, worldTransport, type SiteDef } from "./world.js";
 
 const NOW = () => new Date("2026-11-11T09:00:00.000Z");
@@ -169,17 +173,39 @@ describe("WordPress: a plugin in served assets", () => {
     expect(result.checkInside.join("\n")).toMatch(/wp plugin list|Plugins page/);
   });
 
-  it("when the C-01 WordPress read is given it is used, and the answer changes", async () => {
+  it("when the WordPress adapter's read is given it is used, and the answer changes", async () => {
     const { result } = await run({ [BAR]: wordpress(null) }, "wp-plugin:easy-booking@<2.4.0", {
       wordpress: { plugins: [{ slug: "easy-booking", version: "2.1.3" }] },
     });
     expect(result.verdict).toBe("likely-affected");
-    expect(text(result)).toMatch(/WordPress read \(C-01\)/);
+    expect(text(result)).toMatch(/the WordPress adapter's read/);
   });
 
-  it.todo(
-    "C-01 and F-07 merge: the CLI passes their WordPress read to checkAdvisory (the seam is `wordpress`)",
-  );
+  it("the WordPress adapter's own read of a recorded site switches the seam on, and a key that may not read it leaves the answer as it was", async () => {
+    // The adapter reads the installed plugins through the REST API, as an administrator's application password may.
+    const read = (role: "administrator" | "editor") =>
+      createWordPressAdapter({
+        env: WP_ENV,
+        fetcher: createFetcher({
+          transport: wordpressTransport(undefined, {
+            app: { user: WP_USER, password: WP_ENV.WORDPRESS_APP_PASSWORD },
+            role,
+          }),
+        }),
+      }).installed();
+    const spec = "wp-plugin:easy-booking@<2.4.0";
+    // On the page alone the plugin's files carry no version: cannot-tell.
+    expect((await run({ [BAR]: wordpress(null) }, spec)).result.verdict).toBe("cannot-tell");
+    // The adapter's list (easy-booking 2.1.3 active) is what is handed to checkAdvisory.
+    const seen = await run({ [BAR]: wordpress(null) }, spec, {
+      wordpress: await read("administrator"),
+    });
+    expect(seen.result.verdict).toBe("likely-affected");
+    expect(text(seen.result)).toMatch(/2\.1\.3/);
+    expect(text(seen.result)).toMatch(/the WordPress adapter's read/);
+    // An editor may not list plugins: the adapter says so, and nothing is handed over.
+    await expect(read("editor")).rejects.toBeInstanceOf(AdapterCouldNotCheck);
+  });
 
   it("WordPress core by version", async () => {
     expect((await run({ [BAR]: wordpress("2.4.0") }, "wordpress@<6.4.3")).result.verdict).toBe(

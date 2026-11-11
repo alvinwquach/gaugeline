@@ -165,7 +165,7 @@ describe("evidence from one host: PHP and WordPress", () => {
     ]);
   });
 
-  it("uses C-01's WordPress read when it is given, and says where it came from", async () => {
+  it("uses the WordPress adapter's read when it is given, and says where it came from", async () => {
     const site: SiteDef = { routes: { "/": html() } };
     const { evidence } = await gather(
       { [BAR]: site },
@@ -175,7 +175,7 @@ describe("evidence from one host: PHP and WordPress", () => {
       },
     );
     const w = evidence.hosts[0]?.wordpress;
-    expect(w?.version).toEqual({ value: "6.2.0", how: "the WordPress read (C-01)" });
+    expect(w?.version).toEqual({ value: "6.2.0", how: "the WordPress adapter's read" });
     expect(w?.plugins).toEqual([{ slug: "easy-booking", versions: ["2.0.9"] }]);
   });
 });
