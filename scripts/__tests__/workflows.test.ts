@@ -143,15 +143,18 @@ describe("faster pull request runs", () => {
     const ci = parse(read("ci.yml")) as {
       jobs: { lint: { steps: { name?: string; run?: string; env?: Record<string, string> }[] } };
     };
-    const step = ci.jobs.lint.steps.find((s) => s.name?.startsWith("Public surface"));
-    expect(step).toBeDefined();
+    const steps = ci.jobs.lint.steps;
+    const fetchIdx = steps.findIndex((s) => s.name === "Fetch the base commit");
+    expect(fetchIdx).toBeGreaterThan(-1);
+    const step = steps[fetchIdx];
     // A pull request fetches its base commit; any other event keeps fetching the tip of main.
     expect(step?.env?.BASE_SHA).toBe("${{ github.event.pull_request.base.sha }}");
     expect(step?.env?.BASE_REF).toBe("${{ github.base_ref || 'main' }}");
     expect(step?.run).toContain('git fetch --depth=1 origin "${BASE_SHA:-$BASE_REF}"');
-    // The comparison is as strict as before: both checks still run against what was fetched.
-    expect(step?.run).toContain("pnpm surface --check --base FETCH_HEAD");
-    expect(step?.run).toContain("pnpm since --base FETCH_HEAD");
+    // Both comparisons run against what was fetched: the surface rules inside gen:all, and the since lock.
+    const after = steps.slice(fetchIdx + 1).flatMap((s) => (s.run ? [s.run] : []));
+    expect(after).toContain("pnpm gen:all --base FETCH_HEAD");
+    expect(after).toContain("pnpm since --base FETCH_HEAD");
   });
 
   it("main and the Release pull request run the full matrix: three systems on Node 22 and 24", () => {
@@ -462,5 +465,165 @@ describe("draft pull requests do not run CI", () => {
     expect(Object.keys(workflows.find((w) => w.f === "pr-checks.yml")?.wf.jobs ?? {})).toEqual([
       "pr-checks",
     ]);
+  });
+});
+
+describe("generated files are regenerated, not committed on branches", () => {
+  type Step = {
+    name?: string;
+    run?: string;
+    uses?: string;
+    if?: string;
+    with?: Record<string, unknown>;
+  };
+  type Job = {
+    name?: string;
+    if?: string;
+    "timeout-minutes"?: number;
+    permissions?: Record<string, string>;
+    steps: Step[];
+  };
+  type Wf = {
+    on: Record<string, unknown>;
+    permissions?: Record<string, string>;
+    concurrency?: { group: string; "cancel-in-progress": boolean };
+    jobs: Record<string, Job>;
+  };
+  const load = (f: string): Wf => parse(readFileSync(join(dir, f), "utf8")) as Wf;
+  const runs = (job: Job): string[] => job.steps.flatMap((s) => (s.run ? [s.run] : []));
+  const index = (job: Job, pattern: RegExp): number => runs(job).findIndex((r) => pattern.test(r));
+
+  it("ci.yml: every job that builds or tests regenerates first, in the checkout, and never in --check mode", () => {
+    const ci = load("ci.yml");
+    for (const name of ["test", "docs-examples", "pack"]) {
+      const job = ci.jobs[name] as Job;
+      const gen = index(job, /^pnpm gen:all --no-surface$/);
+      expect(gen, `${name} runs pnpm gen:all --no-surface`).toBeGreaterThan(-1);
+      expect(gen, `${name}: after install`).toBeGreaterThan(index(job, /pnpm install/));
+      expect(gen, `${name}: before build`).toBeLessThan(index(job, /^pnpm build$/));
+    }
+    const lint = ci.jobs.lint as Job;
+    const lintRuns = runs(lint).join("\n");
+    expect(lintRuns).toMatch(/pnpm gen:all --base FETCH_HEAD/);
+    // The committed copy is no longer compared with the generated one.
+    for (const checkCmd of [
+      "docs:flags:check",
+      "gen:checks --check",
+      "gen:adapters --check",
+      "gen:skill --check",
+      "surface --check",
+    ])
+      expect(lintRuns, checkCmd).not.toContain(checkCmd);
+    // What is still checked on the branch's own files.
+    for (const keep of [
+      "pnpm lint",
+      "pnpm format:check",
+      "pnpm schema:check",
+      "pnpm docs:changelog --check",
+      "pnpm adr:check",
+      "pnpm community:check",
+      "pnpm since --base FETCH_HEAD",
+    ])
+      expect(lintRuns, keep).toContain(keep);
+    // The base is fetched before gen:all asks for it, and lint runs on the regenerated tree.
+    expect(index(lint, /git fetch --depth=1 origin/)).toBeLessThan(index(lint, /pnpm gen:all/));
+    expect(index(lint, /pnpm gen:all/)).toBeLessThan(index(lint, /^pnpm lint$/));
+  });
+
+  it("ci.yml stays read-only: the job that writes lives in its own workflow, so CI and the release gate never see it", () => {
+    const text = readFileSync(join(dir, "ci.yml"), "utf8");
+    expect(text).not.toMatch(/contents: write/);
+    expect(text).not.toContain("regenerate.yml");
+  });
+
+  it("docs.yml regenerates before it checks and builds the docs", () => {
+    const build = load("docs.yml").jobs.build as Job;
+    const gen = index(build, /^pnpm gen:all --no-surface$/);
+    expect(gen).toBeGreaterThan(index(build, /pnpm install/));
+    expect(gen).toBeLessThan(index(build, /^pnpm docs:check$/));
+  });
+
+  describe("regenerate.yml", () => {
+    const wf = load("regenerate.yml");
+    const text = readFileSync(join(dir, "regenerate.yml"), "utf8");
+    const job = Object.values(wf.jobs)[0] as Job;
+
+    it("runs on pushes to main only: no pull request, no pull_request_target, no schedule", () => {
+      expect(Object.keys(wf.on)).toEqual(["push"]);
+      expect(wf.on.push).toEqual({ branches: ["main"] });
+    });
+
+    it("has one job, and only that job may write: contents: write there, contents: read for the rest", () => {
+      expect(Object.keys(wf.jobs)).toHaveLength(1);
+      expect(wf.permissions).toEqual({ contents: "read" });
+      expect(job.permissions).toEqual({ contents: "write" });
+      expect(text.match(/: write\b/g)).toHaveLength(1);
+    });
+
+    it("is serialised in one concurrency group and never cancels a run in progress", () => {
+      expect(wf.concurrency).toEqual({
+        group: "regenerate-generated-files",
+        "cancel-in-progress": false,
+      });
+    });
+
+    it("cannot loop on its own commit: skips the bot and the commit message it writes", () => {
+      expect(job.if).toContain("github.actor != 'github-actions[bot]'");
+      expect(job.if).toContain(
+        "startsWith(github.event.head_commit.message, 'chore: regenerate generated files')",
+      );
+    });
+
+    it("checks out main with the token, installs from the lockfile, and runs the script (nothing else commits)", () => {
+      const checkout = job.steps.find((s) => s.uses?.startsWith("actions/checkout@"));
+      expect(checkout?.with?.ref).toBe("main");
+      expect(runs(job)).toEqual([
+        "pnpm install --frozen-lockfile",
+        "pnpm exec tsx scripts/regenerate-generated.ts",
+      ]);
+      expect(text).not.toMatch(/git (push|commit|config)/);
+      expect(text).not.toContain("--force");
+    });
+
+    it("has a timeout of at most 15 minutes, reads no secret and uses no personal token", () => {
+      expect(job["timeout-minutes"]).toBeLessThanOrEqual(15);
+      expect(text).not.toMatch(/secrets\./);
+    });
+
+    it("says in a comment what the owner must allow, so a red run explains itself", () => {
+      expect(text).toContain("bypass actor");
+    });
+  });
+
+  it("the required checks keep their job names: the new workflow adds none", () => {
+    const names = Object.values(load("regenerate.yml").jobs).map((j) => j.name ?? "");
+    for (const n of names) expect(n).not.toMatch(/^(test|lint|pr-checks)\b/);
+    expect((load("ci.yml").jobs.lint as Job).name).toBeUndefined(); // job id "lint"
+    expect((load("ci.yml").jobs.test as Job).name).toBe(
+      "test (node ${{ matrix.node }}, ${{ matrix.os }})",
+    );
+  });
+
+  it(".gitattributes marks the files a script owns as generated, so a pull request's diff collapses them", () => {
+    const attrs = readFileSync(
+      fileURLToPath(new URL("../../.gitattributes", import.meta.url)),
+      "utf8",
+    );
+    for (const f of [
+      "docs/checks.data.json",
+      "docs/check-ids.lock.json",
+      "packages/app/src/check-titles.ts",
+      "public-surface.lock.json",
+      "docs/adapter-pages.generated.ts",
+      "packages/core/src/adapters/entries.generated.ts",
+      "packages/core/src/adapters/__tests__/contracts.generated.ts",
+    ])
+      expect(attrs).toMatch(
+        new RegExp(`^${f.replace(/[./]/g, "\\$&")} linguist-generated=true$`, "m"),
+      );
+    // Files that hold hand-written text beside a generated block are not marked: their hand edits must stay visible.
+    for (const f of ["README.md", "docs/options.md", "skills/gaugeline/SKILL.md"])
+      expect(attrs).not.toContain(`${f} linguist-generated`);
+    expect(attrs).toContain("* text=auto eol=lf");
   });
 });

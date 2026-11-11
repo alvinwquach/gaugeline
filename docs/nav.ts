@@ -148,7 +148,10 @@ export const UNLISTED: NavPage[] = [
   },
   { slug: "guides/access-rules", title: "Database access rules, tested from outside" },
   { slug: "guides/nextjs", title: "Next.js sites" },
+  { slug: "guides/gatsby", title: "Gatsby sites" },
+  { slug: "guides/sveltekit", title: "SvelteKit sites" },
   { slug: "guides/astro", title: "Astro sites" },
+  { slug: "guides/sanity-images", title: "Sanity images: sizes, crops and duplicates" },
   { slug: "guides/weekly-digest", title: "The weekly digest" },
   { slug: "guides/click-events", title: "Click events: the tracking plan, checked" },
   { slug: "guides/tag-rules", title: "Tracking rules that point at things that no longer exist" },
@@ -157,4 +160,5 @@ export const UNLISTED: NavPage[] = [
   { slug: "guides/page-snapshots", title: "Page snapshots: what each page lost" },
   { slug: "guides/cutover", title: "Cutover: what changed on the day" },
   { slug: "guides/many-sites", title: "Many sites from one file" },
+  { slug: "guides/ci-templates", title: "CI templates: GitLab CI, Bitbucket Pipelines, CircleCI" },
 ];

@@ -45,15 +45,19 @@ const reasonOf = async (p: Promise<unknown>): Promise<string> => {
 };
 
 describe("the Wix adapter describes itself", () => {
-  it("asks for no key and says so in the run header", () => {
+  it("reads with no key and with a read-only key when one is set, and says both in the run header", () => {
     const d = build().adapter.describe();
     expect(d).toEqual(WIX_DESCRIPTION);
     expect(d.name).toBe("Wix");
-    expect(d.noKey).toBe(true);
+    expect(d.optionalKey).toBe(true);
     expect(d.keyKind).toBe("read-only");
     expect(adapterHeader(d)).toBe(
-      "Content system: Wix, with no key (it only reads pages the site already publishes). How it reads them: https://gaugeline.dev/docs/integrations/wix",
+      "Content system: Wix, with a read-only key when one is set, and with no key otherwise (it then only reads pages the site already publishes). Endpoints and how to make the key: https://gaugeline.dev/docs/integrations/wix",
     );
+  });
+
+  it("without a key it reads pages, and says so for the live reader", () => {
+    expect(build().adapter.readsPages).toBe(true);
   });
 
   it("is built, not planned, and a settings file can name it", () => {
@@ -190,9 +194,8 @@ describe("the CMS collections: could-not-check, with the reason, for that part o
     const { adapter, seen } = build();
     const reason = await reasonOf(adapter.fieldCounts("programs", ["title"]));
     expect(reason).toMatch(/^Not applicable/);
-    expect(reason).toContain("Query Data Items");
-    expect(reason).toContain("POST");
-    expect(reason).toContain("GET and HEAD");
+    expect(reason).toContain("WIX_API_KEY");
+    expect(reason).toContain("read permission");
     expect(reason).toBe(WIX_CMS_READ_PATH.reason);
     expect(seen).toEqual([]);
   });
@@ -224,10 +227,10 @@ describe("the CMS collections: could-not-check, with the reason, for that part o
   });
 });
 
-describe("a Wix API key is never read, sent or logged", () => {
+describe("a Wix API key set without the rest of the settings", () => {
   const key = testKey("wix-api");
 
-  it("a key in the environment reaches no request and no message", async () => {
+  it("is could-not-check naming what is missing, sends nothing, and never repeats the key", async () => {
     const seen: Seen[] = [];
     const fetcher = createFetcher({
       transport: recording(marlowServe(marlowRoutes()), seen),
@@ -238,39 +241,33 @@ describe("a Wix API key is never read, sent or logged", () => {
     const adapter = built
       ? await createAdapter(
           built,
-          {
-            env: { WIX_API_KEY: key, WIX_SITE_ID: key, GAUGELINE_WIX_KEY: key },
-            fetcher,
-            site: MARLOW,
-            sleep: () => Promise.resolve(),
-          },
+          { env: { WIX_API_KEY: key }, fetcher, site: MARLOW, sleep: () => Promise.resolve() },
           { id: "wix" },
         )
       : undefined;
     expect(adapter).toBeDefined();
     if (!adapter) return;
-    const out = [
-      JSON.stringify(adapter.describe()),
-      JSON.stringify(await adapter.types()),
-      JSON.stringify((await collectPublished(adapter)).docs),
-      await reasonOf(adapter.fieldCounts("programs", ["title"])),
-      String(await adapter.draftsReachable()),
-    ].join("\n");
-    expect(out).not.toContain(key);
-    expect(seen.length).toBeGreaterThan(0);
-    for (const s of seen) {
-      expect(JSON.stringify(s)).not.toContain(key);
-      expect(Object.keys(s.headers).map((h) => h.toLowerCase())).not.toContain("authorization");
+    expect(adapter.readsPages).toBe(false);
+    for (const reason of [
+      await reasonOf(adapter.types()),
+      await reasonOf(adapter.fieldCounts("Programs", ["title"])),
+      await reasonOf(collectPublished(adapter)),
+    ]) {
+      expect(reason).toContain("siteId");
+      expect(reason).not.toContain(key);
     }
+    expect(seen).toEqual([]);
   });
 
-  it("the adapter's source reads no environment and builds no request of its own", () => {
+  it("the adapter's source reads one environment variable, builds no request of its own, and sends no key to the site", () => {
     const source = readFileSync(fileURLToPath(new URL("../wix.ts", import.meta.url)), "utf8");
-    expect(source).not.toMatch(/\benv\b\s*[.[]/);
     expect(source).not.toMatch(/process\./);
     expect(source).not.toMatch(/\bfetch\(/);
     expect(source).not.toMatch(/\bgetJson\b|\bconnectorGet\b|\bpostJson\b/);
     expect(source).not.toMatch(/\.request\(|\.post\(|\.put\(|\.delete\(/);
+    expect([...source.matchAll(/options\.env\?*\.?\[(\w+)\]/g)].map((m) => m[1])).toEqual([
+      "WIX_API_KEY",
+    ]);
   });
 });
 
@@ -325,15 +322,30 @@ describe("settings", () => {
     expect(parsed.adapters[0]?.id).toBe("wix");
   });
 
-  it("fingerprint and urls are refused for wix: there are no fields it can read", () => {
+  it("fingerprint, urls and siteId are accepted for wix, for the CMS read, and refused for the sitemap adapter", () => {
+    const own = {
+      fingerprint: { Programs: ["title"] },
+      urls: { Programs: "/programs/{slug}" },
+      siteId: "6b1f0c2e-3d4a-4e5f-9a8b-7c6d5e4f3a2b",
+    };
+    expect(adaptersConfigSchema.safeParse({ adapters: [{ id: "wix", ...own }] }).success).toBe(
+      true,
+    );
     for (const bad of [
-      { fingerprint: { programs: ["title"] } },
-      { urls: { programs: "/programs/{slug}" } },
+      { fingerprint: own.fingerprint },
+      { urls: own.urls },
+      { siteId: own.siteId },
     ]) {
-      const r = adaptersConfigSchema.safeParse({ adapters: [{ id: "wix", ...bad }] });
+      const r = adaptersConfigSchema.safeParse({ adapters: [{ id: "sitemap-feed", ...bad }] });
       expect(r.success).toBe(false);
-      expect(JSON.stringify(r.error?.issues)).toContain("wix");
     }
+  });
+
+  it("a site id that is not a plain id is refused", () => {
+    for (const siteId of ["short", "has space in it 123", "../../etc/passwd", "x".repeat(65)])
+      expect(adaptersConfigSchema.safeParse({ adapters: [{ id: "wix", siteId }] }).success).toBe(
+        false,
+      );
   });
 
   it("site is still refused for an adapter that does not read pages", () => {
