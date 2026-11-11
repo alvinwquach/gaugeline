@@ -6,6 +6,7 @@ import { entries as framer } from "./framer.entry.js";
 import { entries as genericApi } from "./generic-api.entry.js";
 import { entries as gitContent } from "./git-content.entry.js";
 import { entries as sanity } from "./sanity.entry.js";
+import { entries as shopify } from "./shopify.entry.js";
 import { entries as sitemapFeed } from "./sitemap-feed.entry.js";
 import { entries as strapi } from "./strapi.entry.js";
 import { entries as tina } from "./tina.entry.js";
@@ -20,6 +21,7 @@ export const ADAPTER_ENTRIES: readonly AdapterEntry[] = [
   ...genericApi,
   ...gitContent,
   ...sanity,
+  ...shopify,
   ...sitemapFeed,
   ...strapi,
   ...tina,

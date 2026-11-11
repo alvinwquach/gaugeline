@@ -14,6 +14,7 @@ export const ADAPTER_PAGES: { slug: string; title: string }[] = [
     slug: "integrations/git-content",
     title: "Content kept in git: content checks for sites whose content lives in the repo",
   },
+  { slug: "integrations/shopify", title: "Shopify: content checks for sites built on Shopify" },
   {
     slug: "integrations/sitemap-feed",
     title: "Sitemap and feeds: content checks for sites built on any CMS",
