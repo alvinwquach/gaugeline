@@ -1,0 +1,37 @@
+{
+  "format": 1,
+  "recipe": "builder-io",
+  "name": "Builder.io",
+  "settings": {
+    "id": "generic-api",
+    "fingerprint": {
+      "page": ["title"]
+    },
+    "api": {
+      "endpoint": "https://cdn.builder.io/api/v3",
+      "blocked": "key-in-address",
+      "collections": {
+        "page": {
+          "path": "/content/page",
+          "query": {
+            "includeUnpublished": "false"
+          },
+          "items": "/results",
+          "fieldRoot": "/data",
+          "pagination": {
+            "style": "offset",
+            "limit": "limit",
+            "offset": "offset",
+            "pageSize": 100
+          },
+          "fields": {
+            "id": "/id",
+            "url": "/data/url",
+            "updatedAt": "/lastUpdated",
+            "publishedAt": "/createdDate"
+          }
+        }
+      }
+    }
+  }
+}
