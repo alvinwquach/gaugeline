@@ -7,6 +7,10 @@ const WP = /\/wp-content\/uploads\//;
 
 export const imagesLegacyWp = defineCheck<PageSnapshot>({
   id: "images-legacy-wp",
+  size: "M",
+  done: "The images live in the new site's own media library and no address points at the old site.",
+  estimateChanges:
+    "The number of images, and links inside CMS content that still name the old address.",
   area: "Visitors",
   severity: "medium",
   title: "Images still load from an old WordPress site",

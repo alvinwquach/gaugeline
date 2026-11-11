@@ -20,6 +20,12 @@ Areas: `search`, `visitors`, `sales`, `leads`, `security`, `launch`. Severities:
 1. **The check** (`packages/core/src/checks/<id>.ts`): its title, what it catches, why it matters, how
    to fix it, and the technical line. These five strings _are_ the docs entry: the checks reference
    is generated from them. The scaffold's rule flags a placeholder page; replace it with the real rule.
+   It also needs a **size** (`"S"`, `"M"` or `"L"`: 1, 3 or 8 points, by the kind of fix and not by
+   severity), a `done` sentence (what fixed looks like, as Gaugeline would see it when it runs again) and
+   an `estimateChanges` sentence (what makes the fix smaller or bigger than its size says). The work order
+   (`gaugeline brief`) reads all three through the registry, and `defineCheck` throws when the size is missing.
+   Small is a contained change in one place, Medium touches a component, a setting or another system, and
+   Large changes something shared or needs a decision or content from someone else first.
 2. **Its test**: one page that passes and one that fails, with the evidence string asserted exactly.
 3. **A fixture site** (`packages/fixtures/sites/<id>/`): `index.html` shows the problem,
    `clean.html` does not. See CONTRIBUTING → Adding a fixture site.

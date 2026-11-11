@@ -4,6 +4,9 @@ import { rscFindings } from "./rsc-shared.js";
 
 export const rscVaryMissing = defineCheck<PageSnapshot>({
   id: "rsc-vary-missing",
+  size: "S",
+  done: "Both responses send Vary: RSC and the CDN keeps it in its cache key.",
+  estimateChanges: "A CDN setting that is not editable on your plan adds a support request.",
   area: "Search & sharing",
   severity: "high",
   title: "One address serves a page and app data, and caches aren't told",

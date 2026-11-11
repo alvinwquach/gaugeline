@@ -5,6 +5,10 @@ import { ANY_LISTING, aside, finding, startListingCheck } from "./listings/share
 
 export const listingAddressMismatch = defineCheck<PageSnapshot>({
   id: "listing-address-mismatch",
+  size: "S",
+  done: "The listing and the site show the same address.",
+  estimateChanges:
+    "Each listing is edited in its own dashboard, and an address change that needs verification can take days.",
   area: "Search & sharing",
   severity: "medium",
   title: "A listing shows a different address",

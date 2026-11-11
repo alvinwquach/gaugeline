@@ -34,6 +34,9 @@ const TECH =
 
 export const queryFieldAbsent = defineCheck<QueryInput>({
   id: "query-field-absent",
+  size: "S",
+  done: "The query asks for a field that exists on documents, and Gaugeline finds it.",
+  estimateChanges: "Finding what the field is called now, then every query that uses the old name.",
   area: "Visitors",
   severity: "high",
   title: TITLES.absent,
@@ -46,6 +49,10 @@ export const queryFieldAbsent = defineCheck<QueryInput>({
 
 export const queryTypeEmpty = defineCheck<QueryInput>({
   id: "query-type-empty",
+  size: "S",
+  done: "The type named in the query has published documents.",
+  estimateChanges:
+    "A wrong type name is one edit. Documents that were never published need an editor.",
   area: "Visitors",
   severity: "high",
   title: TITLES.empty,
@@ -61,6 +68,9 @@ export const queryTypeEmpty = defineCheck<QueryInput>({
 
 export const queryFieldPartial = defineCheck<QueryInput>({
   id: "query-field-partial",
+  size: "S",
+  done: "The template copes with the field being missing, or every document has it, or the field is marked required.",
+  estimateChanges: "Filling in many documents is a data job. A template change is one edit.",
   area: "Visitors",
   severity: "low",
   title: TITLES.partial,
@@ -73,6 +83,9 @@ export const queryFieldPartial = defineCheck<QueryInput>({
 
 export const queryNoDraftsFilter = defineCheck<QueryInput>({
   id: "query-no-drafts-filter",
+  size: "S",
+  done: "The query filters out drafts, or the client always asks for the published perspective.",
+  estimateChanges: "The same query pattern repeated in many files is one edit each.",
   area: "Security & email",
   severity: "medium",
   title: TITLES.drafts,

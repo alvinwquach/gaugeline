@@ -25,6 +25,9 @@ function check(
     why: "why",
     fix: "fix",
     tech: "tech",
+    size: "S",
+    done: "Done.",
+    estimateChanges: "Nothing.",
     run,
   });
 }

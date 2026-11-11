@@ -8,6 +8,10 @@ const NOINDEX = /\b(?:noindex|none)\b/i;
 
 export const stagingIndexable = defineCheck<PageSnapshot>({
   id: "staging-indexable",
+  size: "S",
+  done: "The staging site sits behind a password or sends noindex on every page.",
+  estimateChanges:
+    "Several staging or preview hosts each need the setting, and pages already indexed need removal requests.",
   area: "Launch day",
   severity: "high",
   title: "Your staging site can be found by search engines",

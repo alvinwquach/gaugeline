@@ -11,6 +11,9 @@ interface Entry {
   why: string;
   fix: string;
   tech: string;
+  size: "S" | "M" | "L";
+  done: string;
+  estimateChanges: string;
 }
 
 /** Set at build time by docs/.vitepress/config.ts: released checks' versions and the next version. */
@@ -28,6 +31,12 @@ const LEVEL: Record<Entry["severity"], string> = {
   high: "Fix this first",
   medium: "Fix soon",
   low: "Worth knowing",
+};
+/** Sizes as the work order (gaugeline brief) names them, with their points. */
+const SIZE: Record<Entry["size"], string> = {
+  S: "Small (1 point)",
+  M: "Medium (3 points)",
+  L: "Large (8 points)",
 };
 const checks = entries as Entry[];
 /** The six areas from the report, in its order, whether or not a check is in each yet. */
@@ -100,6 +109,9 @@ onMounted(async () => {
       <p><strong>What it catches:</strong> {{ c.what }}</p>
       <p><strong>Why it matters:</strong> {{ c.why }}</p>
       <p><strong>How to fix it:</strong> {{ c.fix }}</p>
+      <p><strong>Size:</strong> {{ SIZE[c.size] }}</p>
+      <p><strong>What done looks like:</strong> {{ c.done }}</p>
+      <p><strong>What changes the estimate:</strong> {{ c.estimateChanges }}</p>
       <p>
         <strong>Technical line:</strong> <code>{{ c.tech }}</code>
       </p>

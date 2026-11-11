@@ -13,6 +13,10 @@ const MAX_NAMES = 8;
 
 export const crmFieldNames = defineCheck<PageSnapshot>({
   id: "crm-field-names",
+  size: "S",
+  done: "Every form field the CRM did not know now exists there, or the input is removed from the form.",
+  estimateChanges:
+    "New fields in the CRM need someone with admin rights, and each form that sends them needs the same name.",
   area: "Leads",
   severity: "medium",
   title: "A form sends fields the CRM doesn't have",

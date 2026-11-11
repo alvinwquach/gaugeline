@@ -76,7 +76,7 @@ for (const c of CUTOVER_ONLY_CHECKS) registry.register(c);
 const entries = catalogue(registry);
 // A scaffold from pnpm new:check imports and runs, but its TODO text must never reach the docs.
 const unfinished = entries.flatMap((e) =>
-  (["title", "what", "why", "fix", "tech"] as const)
+  (["title", "what", "why", "fix", "tech", "done", "estimateChanges"] as const)
     .filter((f) => e[f].trim().startsWith("TODO"))
     .map((f) => `${e.id} (${f})`),
 );

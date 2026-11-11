@@ -6,6 +6,10 @@ import { cacheNote, says, visibleLines } from "../switches/text.js";
 
 export const capacityZeroNotSoldOut = defineCheck<PageSnapshot>({
   id: "capacity-zero-not-sold-out",
+  size: "M",
+  done: "When the count reaches zero the page shows the sold-out message and no order button, in the visible page and in its structured data.",
+  estimateChanges:
+    "A cache or a static build between the count and the page adds work. Two systems that each keep a count need one chosen as the source.",
   area: "Sales & prices",
   severity: "high",
   title: "Nothing is left, but the page still looks open for orders",

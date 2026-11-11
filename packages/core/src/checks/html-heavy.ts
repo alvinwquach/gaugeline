@@ -5,6 +5,10 @@ import { HTML_HUGE_BYTES, INLINE_DATA_HEAVY_BYTES, describeSize, measurePage } f
 
 export const htmlHeavy = defineCheck<PageSnapshot>({
   id: "html-heavy",
+  size: "M",
+  done: "The page sends only the fields it renders.",
+  estimateChanges:
+    "A framework data payload shared by many pages is trimmed in one place. Pages that pass whole records to the browser need one edit each.",
   area: "Visitors",
   severity: "medium",
   title: "Most of this page's HTML is a data payload",

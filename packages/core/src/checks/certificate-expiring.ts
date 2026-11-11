@@ -52,6 +52,10 @@ export function expiryFinding(
 
 export const certificateExpiring = defineCheck<CertInput>({
   id: "certificate-expiring",
+  size: "S",
+  done: "The certificate is renewed with a date well ahead, and automatic renewal is working again.",
+  estimateChanges:
+    "If renewal stopped after a DNS or host change, finding the cause can take an afternoon. A certificate installed by hand takes minutes.",
   area: "Security & email",
   severity: "high",
   title: "The site's certificate expires soon",

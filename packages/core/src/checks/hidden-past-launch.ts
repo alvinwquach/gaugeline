@@ -4,6 +4,9 @@ import type { PageSnapshot } from "../snapshot.js";
 
 export const hiddenPastLaunch = defineCheck<PageSnapshot>({
   id: "hidden-past-launch",
+  size: "S",
+  done: "The until date is moved, or the section is removed from gaugeline.hidden.json.",
+  estimateChanges: "One entry in one file.",
   area: "Launch day",
   severity: "low",
   title: "A hidden section is past its launch date",

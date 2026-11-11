@@ -6,6 +6,9 @@ import { firstFew, shortUrl } from "./site-helpers.js";
 
 export const navOrphans = defineCheck<PageSnapshot>({
   id: "nav-orphans",
+  size: "S",
+  done: "Each page in the sitemap has a link from its section or a related page, or is out of the sitemap.",
+  estimateChanges: "Many orphans from one section are one menu change.",
   area: "Visitors",
   severity: "medium",
   title: "Pages in the sitemap that no page links to",

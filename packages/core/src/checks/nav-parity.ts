@@ -5,6 +5,10 @@ import { firstFew, shortUrl } from "./site-helpers.js";
 
 export const navParity = defineCheck<PageSnapshot>({
   id: "nav-parity",
+  size: "S",
+  done: "The mobile menu has every link the desktop menu has.",
+  estimateChanges:
+    "Two menus kept by hand are edited twice. One list feeding both needs a code change.",
   area: "Visitors",
   severity: "medium",
   title: "The mobile menu is missing links the desktop menu has",

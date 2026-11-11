@@ -19,6 +19,10 @@ function few(lines: string[]): string {
 
 export const itemUnavailableShown = defineCheck<PageSnapshot>({
   id: "item-unavailable-shown",
+  size: "M",
+  done: "An item marked off or sold out no longer appears on the menu pages or in the Menu structured data.",
+  estimateChanges:
+    "A cache between the data and the page adds work. Menus kept as separate hand-edited pages are edited one by one.",
   area: "Sales & prices",
   severity: "high",
   title: "An item that is sold out or off the menu is still listed",

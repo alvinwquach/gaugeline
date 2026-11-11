@@ -14,6 +14,9 @@ function daysBetween(from: string, to: string): number {
 
 export const listingSpecialHoursMissing = defineCheck<PageSnapshot>({
   id: "listing-special-hours-missing",
+  size: "S",
+  done: "The holiday closure is in the listing's special hours.",
+  estimateChanges: "Each listing (Google, Yelp, Apple) is its own dashboard.",
   area: "Search & sharing",
   severity: "medium",
   title: "A listing doesn't know about a holiday closure",

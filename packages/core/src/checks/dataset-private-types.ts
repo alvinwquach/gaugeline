@@ -4,6 +4,10 @@ import { isPrivateType } from "./leaks/private-types.js";
 
 export const datasetPrivateTypes = defineCheck<PageSnapshot>({
   id: "dataset-private-types",
+  size: "M",
+  done: "The dataset is private, the site reads it with a token, and those types cannot be read without one.",
+  estimateChanges:
+    "A site that reads the dataset from the browser needs those queries moved to the server, which can take a day.",
   area: "Security & email",
   severity: "high",
   title: "Private-looking content is in a public Sanity dataset",

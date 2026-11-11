@@ -158,10 +158,15 @@ export interface RunResult {
 }
 
 /** Split `A=1 B=2 npx gaugeline shop.example --ci` into env, the address and the flags. */
+/** Commands that take an address after their name, so an example can run them against a fixture site. */
+const SUBCOMMANDS_WITH_ADDRESS: readonly string[] = ["brief"];
+
 export function parseCommand(command: string): {
   env: Record<string, string>;
   address: string;
   args: string[];
+  /** A command word before the address (`brief`); absent for the page check. */
+  subcommand?: string;
 } {
   const tokens = command.match(/"[^"]*"|\S+/g) ?? [];
   const env: Record<string, string> = {};
@@ -172,8 +177,14 @@ export function parseCommand(command: string): {
   if (tokens[0] !== "npx" || tokens[1] !== "gaugeline")
     throw new DocsExampleError(`Not a gaugeline example: ${command}`);
   const rest = tokens.slice(2).map((t) => t.replace(/^"|"$/g, ""));
+  const subcommand = SUBCOMMANDS_WITH_ADDRESS.includes(rest[0] ?? "") ? rest.shift() : undefined;
   const at = rest.findIndex((t) => !t.startsWith("-"));
-  return { env, address: at === -1 ? "" : (rest[at] ?? ""), args: rest.filter((_, i) => i !== at) };
+  return {
+    env,
+    address: at === -1 ? "" : (rest[at] ?? ""),
+    args: rest.filter((_, i) => i !== at),
+    ...(subcommand ? { subcommand } : {}),
+  };
 }
 
 export function availableFixtures(): string[] {
@@ -194,7 +205,7 @@ export async function runExample(
       `${e.file}:${e.line}: no fixture "${e.fixture}". Available: ${availableFixtures().join(", ")}.`,
     );
   }
-  const { env, address, args } = parseCommand(e.command);
+  const { env, address, args, subcommand } = parseCommand(e.command);
   const sinkHits: string[] = [];
   const sink = createServer((req, res) => {
     sinkHits.push(req.method ?? "");
@@ -215,12 +226,14 @@ export async function runExample(
         )
       : "/";
     const target = `${site.origin}${path.startsWith("/") ? path : "/"}`;
+    // brief opens nothing, so it does not take --no-open.
     const argv = [
       bin,
+      ...(subcommand ? [subcommand] : []),
       target,
       ...args,
       "--allow-private",
-      ...(args.includes("--json") ? [] : ["--no-open"]),
+      ...(args.includes("--json") || subcommand === "brief" ? [] : ["--no-open"]),
     ];
     const result = await new Promise<{ stdout: string; stderr: string; code: number }>(
       (resolve) => {

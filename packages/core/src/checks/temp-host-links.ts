@@ -5,6 +5,10 @@ import { firstFew } from "./site-helpers.js";
 
 export const tempHostLinks = defineCheck<PageSnapshot>({
   id: "temp-host-links",
+  size: "S",
+  done: "No link points at the temporary address any more.",
+  estimateChanges:
+    "Links in the menu, in buttons, in CMS content and in an environment variable are separate places.",
   area: "Launch day",
   severity: "high",
   title: "Links still point at a temporary address",

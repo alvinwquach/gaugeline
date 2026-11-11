@@ -19,6 +19,9 @@ export function startsLikeFeed(body: string): boolean {
 
 export const feedInvalid = defineCheck<PageSnapshot>({
   id: "feed-invalid",
+  size: "S",
+  done: "The feed address serves a feed, or the page's link points at the one that does.",
+  estimateChanges: "A feed made by a plugin that errors takes longer than correcting a link.",
   area: "Search & sharing",
   severity: "medium",
   title: "The feed this page advertises is not a feed",

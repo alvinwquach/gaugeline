@@ -12,6 +12,9 @@ const BRACKETED =
 
 export const placeholderText = defineCheck<PageSnapshot>({
   id: "placeholder-text",
+  size: "S",
+  done: "The placeholder is replaced with the real copy.",
+  estimateChanges: "Copy that has not been written is the real cost.",
   area: "Visitors",
   severity: "medium",
   title: "The page still has placeholder text",

@@ -307,6 +307,9 @@ function notify(ctx: CheckContext, notices: readonly Notice[]): void {
 
 export const planArchived = defineCheck<SubscriptionCheckInput>({
   id: "plan-archived",
+  size: "S",
+  done: "The page points at a current Stripe price, or the plan is off the page.",
+  estimateChanges: "Several pages that sell the same plan are one edit each.",
   area: "Sales & prices",
   severity: "high",
   title: TITLES["plan-archived"],
@@ -321,6 +324,9 @@ export const planArchived = defineCheck<SubscriptionCheckInput>({
 
 export const planIntervalMismatch = defineCheck<SubscriptionCheckInput>({
   id: "plan-interval-mismatch",
+  size: "S",
+  done: "The page and the Stripe price bill on the same schedule.",
+  estimateChanges: "A missing price in Stripe has to be created first.",
   area: "Sales & prices",
   severity: "high",
   title: TITLES["plan-interval-mismatch"],
@@ -337,6 +343,9 @@ export const planIntervalMismatch = defineCheck<SubscriptionCheckInput>({
 
 export const planMissingOnPage = defineCheck<SubscriptionCheckInput>({
   id: "plan-missing-on-page",
+  size: "S",
+  done: "The plan is on the page, or its price is archived in Stripe.",
+  estimateChanges: "Page design for the plan if it is shown for the first time.",
   area: "Sales & prices",
   severity: "low",
   title: TITLES["plan-missing-on-page"],
@@ -353,6 +362,9 @@ export const planMissingOnPage = defineCheck<SubscriptionCheckInput>({
 
 export const planPriceMismatch = defineCheck<SubscriptionCheckInput>({
   id: "plan-price-mismatch",
+  size: "S",
+  done: "The page and checkout show the same plan price, with tax stated on the page if it differs.",
+  estimateChanges: "Deciding which price is meant comes first.",
   area: "Sales & prices",
   severity: "high",
   title: TITLES["plan-price-mismatch"],
@@ -369,6 +381,9 @@ export const planPriceMismatch = defineCheck<SubscriptionCheckInput>({
 
 export const planTrialMismatch = defineCheck<SubscriptionCheckInput>({
   id: "plan-trial-mismatch",
+  size: "S",
+  done: "The page and the Stripe price agree on the trial length, or the promise is removed.",
+  estimateChanges: "A trial changed in Stripe affects customers who are already on it.",
   area: "Sales & prices",
   severity: "medium",
   title: TITLES["plan-trial-mismatch"],

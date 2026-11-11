@@ -4,6 +4,7 @@ import { FLAGS, renderHelp } from "./flags.js";
 export const COMMANDS = [
   "",
   "launch",
+  "brief",
   "view",
   "digest",
   "plan",
@@ -44,6 +45,19 @@ export const HELP: Record<string, string> = {
       "indexable staging site, noindex and robots.txt. Read-only.",
     ].join("\n"),
     footer: "Exit codes: 0 ran, 1 --ci with a fix-first finding, 2 could not run",
+  }),
+  brief: renderHelp(FLAGS, "brief", {
+    usage: "gaugeline brief <address> [options]",
+    summary: [
+      "Check the site, then write a work order in plain English: how many items are",
+      "worth paying to fix and how big each is (Small 1 point, Medium 3, Large 8),",
+      "then each item with what is wrong, why it matters, what done looks like, the",
+      "evidence and what changes the estimate. With --hours-per-point it adds a range",
+      "of hours (never one number), and with --rate the range in money. It prints the",
+      "Markdown, or writes it to --out inside this folder, never over a file that is",
+      "there unless --force. Read-only: it checks the site exactly as the page check.",
+    ].join("\n"),
+    footer: "Exit codes: 0 wrote the work order, 2 could not run",
   }),
   view: renderHelp(FLAGS, "view", {
     usage: "gaugeline view <run.json> [options]",

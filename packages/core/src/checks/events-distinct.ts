@@ -5,6 +5,9 @@ import { shortUrl } from "./site-helpers.js";
 
 export const eventsDistinct = defineCheck<PageSnapshot>({
   id: "events-distinct",
+  size: "S",
+  done: "The two menu links report different events, told apart by the parent menu.",
+  estimateChanges: "One shared menu component is one edit.",
   area: "Leads",
   severity: "low",
   title: "Two menu links report the same click",

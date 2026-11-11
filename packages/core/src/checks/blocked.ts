@@ -4,6 +4,10 @@ import type { PageSnapshot } from "../snapshot.js";
 
 export const blocked = defineCheck<PageSnapshot>({
   id: "blocked",
+  size: "S",
+  done: "The site lets crawlers read the page, or the block is accepted as on purpose.",
+  estimateChanges:
+    "A firewall or bot-protection setting on a host you do not control is a support request.",
   area: "Search & sharing",
   severity: "low",
   title: "The site wouldn't let Gaugeline read the page",

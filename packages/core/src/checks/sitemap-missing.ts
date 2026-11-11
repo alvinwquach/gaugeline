@@ -3,6 +3,10 @@ import type { PageSnapshot } from "../snapshot.js";
 
 export const sitemapMissing = defineCheck<PageSnapshot>({
   id: "sitemap-missing",
+  size: "S",
+  done: "A sitemap loads at /sitemap.xml and robots.txt names it.",
+  estimateChanges:
+    "A framework or plugin that generates one is a setting. Without one it is built from the page list.",
   area: "Search & sharing",
   severity: "medium",
   title: "Search engines can't find a list of your pages",

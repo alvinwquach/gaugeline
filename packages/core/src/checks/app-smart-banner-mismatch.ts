@@ -4,6 +4,9 @@ import type { PageSnapshot } from "../snapshot.js";
 
 export const appSmartBannerMismatch = defineCheck<PageSnapshot>({
   id: "app-smart-banner-mismatch",
+  size: "S",
+  done: "The iPhone banner's app-id is the same as the id in the App Store link.",
+  estimateChanges: "The banner set in more than one template is one edit each.",
   area: "Visitors",
   severity: "medium",
   title: "The iPhone app banner promotes a different app",

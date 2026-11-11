@@ -4,6 +4,9 @@ import { findings, noCampaignFields } from "./forms.js";
 
 export const crmNoCampaignFields = defineCheck<PageSnapshot>({
   id: "crm-no-campaign-fields",
+  size: "S",
+  done: "The form has hidden utm_source, utm_medium, utm_campaign and gclid fields, filled from the address and mapped in the handler.",
+  estimateChanges: "Several forms and a handler that needs a code change each add to it.",
   area: "Leads",
   severity: "medium",
   title: "A form has nowhere to put campaign details",

@@ -14,6 +14,9 @@ const only = (id: string, input: QueryInput) =>
 
 export const mutationUndeclaredField = defineCheck<QueryInput>({
   id: "mutation-undeclared-field",
+  size: "S",
+  done: "Every field the write sets is declared by the document type.",
+  estimateChanges: "Declaring a field is a schema change that also needs a deploy.",
   area: "Visitors",
   severity: "high",
   title: MUTATION_TITLES.undeclared,
@@ -26,6 +29,9 @@ export const mutationUndeclaredField = defineCheck<QueryInput>({
 
 export const mutationMissingRequired = defineCheck<QueryInput>({
   id: "mutation-missing-required",
+  size: "S",
+  done: "Each create sets every required field.",
+  estimateChanges: "Creates in several routes are one edit each.",
   area: "Visitors",
   severity: "high",
   title: MUTATION_TITLES.missing,
@@ -38,6 +44,9 @@ export const mutationMissingRequired = defineCheck<QueryInput>({
 
 export const mutationRefAsString = defineCheck<QueryInput>({
   id: "mutation-ref-as-string",
+  size: "S",
+  done: "Each reference is written as a reference object.",
+  estimateChanges: "Existing documents that already hold a string need a one-off fix.",
   area: "Visitors",
   severity: "high",
   title: MUTATION_TITLES.refAsString,
@@ -50,6 +59,10 @@ export const mutationRefAsString = defineCheck<QueryInput>({
 
 export const mutationNoDrafts = defineCheck<QueryInput>({
   id: "mutation-no-drafts",
+  size: "M",
+  done: "The write patches the draft and an editor publishes, or writing to the published document is recorded as intended.",
+  estimateChanges:
+    "Routes that write in several places each need the change, and editors need a publish step.",
   area: "Security & email",
   severity: "medium",
   title: MUTATION_TITLES.noDrafts,
@@ -62,6 +75,9 @@ export const mutationNoDrafts = defineCheck<QueryInput>({
 
 export const mutationSharedField = defineCheck<QueryInput>({
   id: "mutation-shared-field",
+  size: "S",
+  done: "One route owns the field and the others call it, or the sharing is recorded as intended.",
+  estimateChanges: "Deciding which route owns it comes first.",
   area: "Visitors",
   severity: "medium",
   title: MUTATION_TITLES.shared,

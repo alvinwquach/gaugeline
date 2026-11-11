@@ -245,6 +245,10 @@ export function comparePrices(r: PriceReading): PriceDisagreement[] {
 /** The free tool's price check. It is not in the default registry: gaugeline-free runs it. */
 export const pricesDisagree = defineCheck<PageSnapshot>({
   id: "prices-disagree",
+  size: "M",
+  done: "The price on the page, in the product data and in the store are the same, and availability follows stock.",
+  estimateChanges:
+    "Prices kept by hand in several places are edited one by one. One product record feeding all of them needs a template change.",
   area: "Sales & prices",
   severity: "high",
   title: "This product's prices disagree",

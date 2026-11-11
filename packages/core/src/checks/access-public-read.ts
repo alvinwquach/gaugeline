@@ -7,6 +7,10 @@ const COLUMNS_SHOWN = 8;
 
 export const accessPublicRead = defineCheck<PageSnapshot>({
   id: "access-public-read",
+  size: "M",
+  done: "Every table the site does not mean to publish has row level security on, and a request with no login gets no rows from it.",
+  estimateChanges:
+    "More tables than the evidence lists, or policies that depend on how people sign in, add time. A table that really is public takes one line in gaugeline.access.json.",
   area: "Security & email",
   severity: "high",
   title: "Anyone can read a table you didn't make public",

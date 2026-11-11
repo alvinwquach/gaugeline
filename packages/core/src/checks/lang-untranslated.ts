@@ -5,6 +5,10 @@ import { firstFew, shortUrl } from "./site-helpers.js";
 
 export const langUntranslated = defineCheck<PageSnapshot>({
   id: "lang-untranslated",
+  size: "M",
+  done: "The strings that were left in the other language are translated.",
+  estimateChanges:
+    "Strings hard-coded in shared components are found and moved to the translations, then translated by someone who knows the language.",
   area: "Visitors",
   severity: "low",
   title: "Some text wasn't translated",

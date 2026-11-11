@@ -4,6 +4,9 @@ import { findings, manyProviders } from "./forms.js";
 
 export const formsManyProviders = defineCheck<PageSnapshot>({
   id: "forms-many-providers",
+  size: "S",
+  done: "Each form on the page is meant to be there, or the page uses one service.",
+  estimateChanges: "Moving forms to one service means rebuilding each of them.",
   area: "Leads",
   severity: "low",
   title: "Several form services on one page",

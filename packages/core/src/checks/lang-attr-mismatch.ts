@@ -5,6 +5,9 @@ import { firstFew, shortUrl } from "./site-helpers.js";
 
 export const langAttrMismatch = defineCheck<PageSnapshot>({
   id: "lang-attr-mismatch",
+  size: "S",
+  done: "Each version's html lang matches the language of its content.",
+  estimateChanges: "One layout component usually sets it for every version.",
   area: "Visitors",
   severity: "low",
   title: "A language version declares the wrong language",

@@ -17,6 +17,10 @@ import { cacheNote, duration } from "../switches/text.js";
 
 export const dataStale = defineCheck<PageSnapshot>({
   id: "data-stale",
+  size: "M",
+  done: "The numbers on the page match their source and the stamp shows a recent time.",
+  estimateChanges:
+    "A stopped sync, a missing rebuild and a cache each have a different fix. The evidence says whether the source is just as old.",
   area: "Visitors",
   severity: "high",
   title: "The numbers on this page are older than they should be",

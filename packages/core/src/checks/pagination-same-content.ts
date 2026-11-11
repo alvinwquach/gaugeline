@@ -9,6 +9,10 @@ const EXTRA_PAGES = 2;
 
 export const paginationSameContent = defineCheck<PageSnapshot>({
   id: "pagination-same-content",
+  size: "M",
+  done: "Page 2 of the list shows different items from page 1.",
+  estimateChanges:
+    "A cache that ignores the query string and a framework that drops the parameter have different fixes.",
   area: "Search & sharing",
   severity: "high",
   title: "Page 2 of this list shows page 1 again",

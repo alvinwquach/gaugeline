@@ -4,6 +4,10 @@ import { findings, noTracking } from "./forms.js";
 
 export const crmNoTracking = defineCheck<PageSnapshot>({
   id: "crm-no-tracking",
+  size: "M",
+  done: "The tracking code is on every page that has the form, and a test lead shows where it came from in the CRM.",
+  estimateChanges:
+    "Pages built from several templates each need the snippet. A cookie banner that blocks the script adds setup.",
   area: "Leads",
   severity: "high",
   title: "Leads from this form arrive without where they came from",

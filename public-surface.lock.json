@@ -16,6 +16,21 @@
       "verbose",
       "version"
     ],
+    "brief": [
+      "allow-private",
+      "allow-secret-key",
+      "business",
+      "dns",
+      "force",
+      "help",
+      "hours-per-point",
+      "out",
+      "owner-consent",
+      "quiet",
+      "rate",
+      "verbose",
+      "version"
+    ],
     "check": [
       "allow-private",
       "allow-secret-key",

@@ -35,6 +35,10 @@ function daysAbove(r: Reconciled): string {
 
 export const deliveryReceiptMissing = defineCheck<ReceiptInput>({
   id: "delivery-receipt-missing",
+  size: "M",
+  done: "Every paid order in the window has a receipt sent, and the missing ones are sent.",
+  estimateChanges:
+    "The cause may be the code, the sender setup or the provider, and resending takes care with customers' email.",
   area: "Sales & prices",
   severity: "high",
   title: "Orders were paid and no receipt went out",
@@ -58,6 +62,10 @@ export const deliveryReceiptMissing = defineCheck<ReceiptInput>({
 
 export const webhookFailing = defineCheck<WebhookInput>({
   id: "webhook-failing",
+  size: "M",
+  done: "The endpoint answers the provider's events with 2xx and the failed events are resent.",
+  estimateChanges:
+    "The fault may be in the route, the host or the signing secret, and events missed in the meantime have to be replayed.",
   area: "Sales & prices",
   severity: "high",
   title: "A webhook endpoint is not receiving its events",
@@ -84,6 +92,10 @@ export const webhookFailing = defineCheck<WebhookInput>({
 
 export const webhookDisabled = defineCheck<WebhookInput>({
   id: "webhook-disabled",
+  size: "S",
+  done: "The endpoint is enabled in the Stripe dashboard, or deleted if it is no longer needed.",
+  estimateChanges:
+    "Stripe disables an endpoint after days of failures, so the failures need reading first.",
   area: "Sales & prices",
   severity: "medium",
   title: "A webhook endpoint is switched off",

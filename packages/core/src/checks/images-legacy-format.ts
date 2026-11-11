@@ -7,6 +7,9 @@ const LEGACY = /^image\/(?:jpeg|jpg|pjpeg|png|gif)\b/i;
 
 export const imagesLegacyFormat = defineCheck<PageSnapshot>({
   id: "images-legacy-format",
+  size: "S",
+  done: "Images are offered as WebP or AVIF through a picture element, srcset or the image component.",
+  estimateChanges: "A site with no image pipeline needs one set up first.",
   area: "Visitors",
   severity: "low",
   title: "Images use older, heavier file formats",

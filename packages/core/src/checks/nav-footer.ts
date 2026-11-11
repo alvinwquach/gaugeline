@@ -5,6 +5,9 @@ import { firstFew, shortUrl } from "./site-helpers.js";
 
 export const navFooter = defineCheck<PageSnapshot>({
   id: "nav-footer",
+  size: "S",
+  done: "Every page shows the same footer with every required link.",
+  estimateChanges: "Templates that each carry their own footer are edited one by one.",
   area: "Visitors",
   severity: "medium",
   title: "The footer isn't the same on every page",

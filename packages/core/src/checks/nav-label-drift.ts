@@ -5,6 +5,9 @@ import { firstFew, shortUrl } from "./site-helpers.js";
 
 export const navLabelDrift = defineCheck<PageSnapshot>({
   id: "nav-label-drift",
+  size: "S",
+  done: "Each page has one name in every menu.",
+  estimateChanges: "Menus kept in two components are edited twice.",
   area: "Visitors",
   severity: "low",
   title: "One page has two names in your menus",

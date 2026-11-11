@@ -5,6 +5,10 @@ import { compareFact } from "./facts-match.js";
 
 export const factsPresent = defineCheck<PageSnapshot>({
   id: "facts-present",
+  size: "S",
+  done: "The fact appears as visible text in the page's server-rendered HTML.",
+  estimateChanges:
+    "A fact that only lives in an image needs the text written out, one page at a time.",
   area: "Sales & prices",
   severity: "medium",
   title: "A page is missing a fact it should show",

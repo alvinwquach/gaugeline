@@ -4,6 +4,9 @@ import type { PageSnapshot } from "../snapshot.js";
 
 export const priceChanged = defineCheck<PageSnapshot>({
   id: "price-changed",
+  size: "S",
+  done: "The price is corrected at its source and the site rebuilt, or the change is accepted as meant.",
+  estimateChanges: "A price kept in several places is edited in each.",
   area: "Sales & prices",
   severity: "low",
   title: "A price changed since the last run",

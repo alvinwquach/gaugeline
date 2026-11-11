@@ -8,6 +8,10 @@ import { pathOf, unreadable } from "../switches/shared.js";
 
 export const modelDependents = defineCheck<PageSnapshot>({
   id: "model-dependents",
+  size: "M",
+  done: "The block shows entries again, or is empty on purpose and listed as such.",
+  estimateChanges:
+    "A renamed field in the query, a filter on a field older documents lack and a type that is now empty each fix differently.",
   area: "Visitors",
   severity: "medium",
   title: "A block that shows entries of a type is empty",

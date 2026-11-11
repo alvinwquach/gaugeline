@@ -7,6 +7,10 @@ import { collectUrls } from "./structured/collect.js";
 
 export const jsonld404 = defineCheck<PageSnapshot>({
   id: "jsonld-404",
+  size: "S",
+  done: "Every address in the page's structured data loads.",
+  estimateChanges:
+    "A stale CMS field is one fix. Addresses written into templates are edited one by one.",
   area: "Search & sharing",
   severity: "high",
   title: "Structured data points at pages that don't exist",

@@ -8,6 +8,10 @@ export const THIN_HTML_MIN_WORDS = 60;
 
 export const thinHtml = defineCheck<PageSnapshot>({
   id: "thin-html",
+  size: "L",
+  done: "The main content is in the HTML the server sends, not built in the browser.",
+  estimateChanges:
+    "One client-only component is an afternoon. A page built entirely in the browser means restructuring its components.",
   area: "Search & sharing",
   severity: "high",
   title: "Google sees an almost empty page",

@@ -12,6 +12,10 @@ export const NO_CONSENT_REASON =
 
 export const gatedDownloadOpen = defineCheck<PageSnapshot>({
   id: "gated-download-open",
+  size: "L",
+  done: "A request with no session to the download route gets 401 or 403, and a paying customer gets a short-lived link.",
+  estimateChanges:
+    "Several download routes, no purchase record to check, or files in public folders mean building the check and moving files.",
   area: "Sales & prices",
   severity: "high",
   title: "A download meant for customers is handed to anyone",

@@ -7,6 +7,10 @@ const MAX_TYPES = 100;
 
 export const modelOrphanFields = defineCheck<PageSnapshot>({
   id: "model-orphan-fields",
+  size: "M",
+  done: "Each field no longer in the schema is put back, copied across and removed, or left on purpose.",
+  estimateChanges:
+    "The number of documents and fields. Unsetting values is a data migration that needs a backup first.",
   area: "Visitors",
   severity: "medium",
   title: "Documents still hold a field the schema no longer has",

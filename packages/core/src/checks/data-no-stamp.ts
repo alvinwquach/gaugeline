@@ -6,6 +6,9 @@ import { pathOf, safe } from "../switches/shared.js";
 
 export const dataNoStamp = defineCheck<PageSnapshot>({
   id: "data-no-stamp",
+  size: "S",
+  done: "The page prints when its numbers were last updated, from the same record.",
+  estimateChanges: "Several pages with changing numbers each need the stamp.",
   area: "Visitors",
   severity: "low",
   title: "A page of changing numbers does not say when they were updated",

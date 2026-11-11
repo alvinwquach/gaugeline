@@ -17,6 +17,10 @@ function plural(n: number, word: string): string {
 
 export const forecastForPastEvent = defineCheck<PageSnapshot>({
   id: "forecast-for-past-event",
+  size: "S",
+  done: "Items for events that already happened are gone from the list, or show their result.",
+  estimateChanges:
+    "A list built by hand is edited by hand. One built from the schedule fixes itself but needs code, and a cache needs purging.",
   area: "Visitors",
   severity: "medium",
   title: "The page still shows a prediction for something that already happened",

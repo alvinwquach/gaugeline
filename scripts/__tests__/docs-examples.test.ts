@@ -92,9 +92,9 @@ describe("extractExamples: unit", () => {
 describe("normalise: unit", () => {
   it("replaces the origin, the version, ANSI codes and absolute paths, and leaves everything else byte for byte", () => {
     const raw =
-      "Gaugeline 0.0.2 checking http://127.0.0.1:4567/\n\u001b[31m✗\u001b[39m Title  \nReport written to /tmp/run-1/gaugeline-report.html\nKeep: 1 of 2 · (x)";
+      "Gaugeline 0.0.2 checking http://127.0.0.1:4567/\n\u001b[31m\u2717\u001b[39m Title  \nReport written to /tmp/run-1/gaugeline-report.html\nKeep: 1 of 2 \u00B7 (x)";
     expect(normalise(raw, "http://127.0.0.1:4567", "shop.example")).toBe(
-      "Gaugeline X.Y.Z checking https://shop.example/\n✗ Title\nReport written to ./gaugeline-report.html\nKeep: 1 of 2 · (x)",
+      "Gaugeline X.Y.Z checking https://shop.example/\n\u2717 Title\nReport written to ./gaugeline-report.html\nKeep: 1 of 2 \u00B7 (x)",
     );
     expect(
       normalise("see https://other.example/a/b and /tools", "http://127.0.0.1:1", "shop.example"),
@@ -241,6 +241,30 @@ describe("docs examples: edge cases", () => {
     expect(r.env.GAUGELINE_SLACK_WEBHOOK).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/sink$/);
   }, 30_000);
 
+  it("a command word before the address (gaugeline brief) is kept, and the example runs it against its fixture with GET and HEAD only", async () => {
+    expect(parseCommand('npx gaugeline brief shop.example --business "The Bar"')).toEqual({
+      env: {},
+      address: "shop.example",
+      args: ["--business", "The Bar"],
+      subcommand: "brief",
+    });
+    // The page check has no command word.
+    expect(parseCommand("npx gaugeline shop.example --ci")).not.toHaveProperty("subcommand");
+    const e: Example = {
+      file: "p.md",
+      line: 1,
+      outputLine: 2,
+      command: 'npx gaugeline brief shop.example --business "The Corner Bar"',
+      fixture: "corner-bar",
+      exit: 0,
+      expected: "",
+    };
+    const r = await runExample(e, bin);
+    expect(r.code).toBe(0);
+    expect(r.stdout.split("\n")[0]).toBe("# Work order: The Corner Bar");
+    expect([...r.methods.keys()].every((m) => m === "GET" || m === "HEAD")).toBe(true);
+  }, 30_000);
+
   it("two Terminal blocks before one Output block is an error: the pairing is ambiguous", () => {
     const md = page(
       `<!-- fixture: clean -->\n${F}sh title=Terminal\n$ npx gaugeline a.example\n${F}\n\n<!-- fixture: clean -->\n${F}sh title=Terminal\n$ npx gaugeline b.example\n${F}\n\n${F}text title=Output\nx\n${F}`,
@@ -252,7 +276,7 @@ describe("docs examples: edge cases", () => {
 
   it("an expected exit code other than 0 is declared with <!-- exit: 1 --> and asserted", async () => {
     const md = page(
-      `<!-- fixture: quick-start -->\n<!-- exit: 1 -->\n${F}sh title=Terminal\n$ npx gaugeline shop.example --ci\n${F}\n\n${F}text title=Output\n✗ This page tells Google to show a different page\n    <link rel="canonical" href="https://shop.example/tools"> on https://shop.example/ (differs by path)\n? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none\n    Mail records are read from DNS only with --dns. Rerun with --dns to check them.\n\n1 to look at, 1 to fix first.\n${F}`,
+      `<!-- fixture: quick-start -->\n<!-- exit: 1 -->\n${F}sh title=Terminal\n$ npx gaugeline shop.example --ci\n${F}\n\n${F}text title=Output\n\u2717 This page tells Google to show a different page\n    <link rel="canonical" href="https://shop.example/tools"> on https://shop.example/ (differs by path)\n? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none\n    Mail records are read from DNS only with --dns. Rerun with --dns to check them.\n\n1 to look at, 1 to fix first.\n${F}`,
     );
     const [e] = extractExamples(md, "p.md");
     expect(e?.exit).toBe(1);

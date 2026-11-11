@@ -3,9 +3,11 @@ export type { AddressResult } from "./address.js";
 export {
   AREAS,
   CheckRegistry,
+  POINTS,
   SEVERITIES,
   SEVERITY_LABEL,
   SEVERITY_ORDER,
+  SIZES,
   defineCheck,
   isKebabCase,
 } from "./model.js";
@@ -313,6 +315,14 @@ export { discordPayload, slackPayload, webhookPayload } from "./notify/payloads.
 export { NOTIFY_TIMEOUT_MS, postJson, providerMessage, safeTarget } from "./notify/post.js";
 export { escapeHtml, renderLookedRight, renderReport, renderSampled } from "./report/html.js";
 export type { ReportInput } from "./report/html.js";
+export {
+  briefMarkdown,
+  costRange,
+  escapeMarkdown,
+  formatCurrency,
+  hoursRange,
+} from "./report/brief.js";
+export type { BriefOptions } from "./report/brief.js";
 export {
   RUN_SNAPSHOT_SCHEMA,
   buildRunSnapshot,

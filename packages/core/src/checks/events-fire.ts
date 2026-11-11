@@ -5,6 +5,10 @@ import { shortUrl } from "./site-helpers.js";
 
 export const eventsFire = defineCheck<PageSnapshot>({
   id: "events-fire",
+  size: "M",
+  done: "The click handler or tag fires for that element with every parameter the plan names.",
+  estimateChanges:
+    "The element may have been rebuilt, and the tag manager and the code both need checking.",
   area: "Leads",
   severity: "medium",
   title: "A click your tracking plan expects isn't reported",

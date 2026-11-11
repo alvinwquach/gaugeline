@@ -14,6 +14,10 @@ const onPreview = (url: string | undefined): boolean => {
 
 export const nextPreviewCanonical = defineCheck<PageSnapshot>({
   id: "next-preview-canonical",
+  size: "S",
+  done: "The live site builds its canonical and share addresses from the production domain.",
+  estimateChanges:
+    "A variable set wrong only in some deployments means checking each environment, then rebuilding.",
   area: "Launch day",
   severity: "high",
   title: "The live site points search engines at a preview deployment",

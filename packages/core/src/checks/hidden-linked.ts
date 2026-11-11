@@ -5,6 +5,9 @@ import { firstFew, shortUrl } from "./site-helpers.js";
 
 export const hiddenLinked = defineCheck<PageSnapshot>({
   id: "hidden-linked",
+  size: "S",
+  done: "No public page links to the unlaunched section.",
+  estimateChanges: "Links in the menu, the footer and body content are separate edits.",
   area: "Launch day",
   severity: "high",
   title: "A public page links to an unlaunched section",

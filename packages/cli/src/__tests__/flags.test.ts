@@ -45,6 +45,10 @@ const SAMPLE_VALUES: Record<string, string> = {
   schema: "schema.json",
   nav: "Footer",
   rank: `${fileURLToPath(new URL("../../../fixtures/plans/live/gsc-pages.csv", import.meta.url))}`,
+  // brief: a name, whole dollars an hour and hours a point.
+  business: "The Corner Bar",
+  rate: "110",
+  "hours-per-point": "1.5",
 };
 
 const repoRoot = fileURLToPath(new URL("../../../../", import.meta.url));
@@ -372,10 +376,13 @@ describe("flag table: e2e", () => {
       const platformOnly = f.commands.length === 1 && f.commands[0] === "platform";
       // query --dupes reads a dataset (SANITY_PROJECT_ID), so it is proved the same way, with --help.
       const queryOnly = f.commands.length === 1 && f.commands[0] === "query";
+      // brief runs the page check and writes a work order: its own flags are proved on a run.
+      const briefOnly = f.commands.length === 1 && f.commands[0] === "brief";
       const digestOnly =
         !deliveryOnly &&
         !platformOnly &&
         !queryOnly &&
+        !briefOnly &&
         !planOnly &&
         !printedOnly &&
         !snapshotOnly &&
@@ -401,72 +408,74 @@ describe("flag table: e2e", () => {
               "--owner-consent",
               "--allow-private",
             ]
-          : planOnly
-            ? [
-                "plan",
-                // --nav reads menu tabs: a workbook that has them.
-                f.name === "nav" ? `${repoRoot}packages/fixtures/plans/nav-workbook.txt` : plan,
-                ...(f.name === "legacy-review" ? ["--legacy-from", "SEO Notes"] : []),
-                // --progress and --all compare runs against a preview: they need --base.
-                // --rank joins traffic numbers to --live's list: it needs --live.
-                ...(f.name === "rank" ? ["--live", SAMPLE_VALUES.live ?? ""] : []),
-                ...(f.name === "progress" ||
-                f.name === "all" ||
-                f.name === "printed" ||
-                f.name === "watch"
-                  ? ["--base", `${site.origin}/`, "--allow-private"]
-                  : []),
-                `--${f.name}`,
-                ...(f.name === "base"
-                  ? [`${site.origin}/`, "--allow-private"]
-                  : f.name === "printed"
-                    ? [register]
-                    : value),
-              ]
-            : snapshotOnly
-              ? ["snapshot", "fernkiln.invalid", `--${f.name}`, join(scratch, "snapshot.json")]
-              : deliveryOnly || platformOnly || queryOnly
-                ? [
-                    deliveryOnly ? "delivery" : platformOnly ? "platform" : "query",
-                    `--${f.name}`,
-                    ...value,
-                    "--help",
-                  ]
-                : cutoverOnly
-                  ? ["cutover", `--${f.name}`, before]
-                  : assertOnly
-                    ? ["assert", `--${f.name}`]
-                    : verifyOnly
-                      ? ["verify", crawl, `--${f.name}`, "0"]
-                      : runOnly
-                        ? f.name === "tag"
-                          ? ["run", "--tag", "nobody"]
-                          : f.name === "site"
-                            ? ["run", "--site", "x", "--allow-private"]
-                            : ["run", "--tag", "nobody", `--${f.name}`, "2"]
-                        : printedOnly
-                          ? [
-                              "printed",
-                              register,
-                              "--allow-private",
-                              `--${f.name}`,
-                              ...(f.name === "decode" ? [join(scratch, "no-images")] : value),
-                            ]
-                          : digestOnly
+          : briefOnly
+            ? ["brief", `${site.origin}/`, "--allow-private", `--${f.name}`, ...value]
+            : planOnly
+              ? [
+                  "plan",
+                  // --nav reads menu tabs: a workbook that has them.
+                  f.name === "nav" ? `${repoRoot}packages/fixtures/plans/nav-workbook.txt` : plan,
+                  ...(f.name === "legacy-review" ? ["--legacy-from", "SEO Notes"] : []),
+                  // --progress and --all compare runs against a preview: they need --base.
+                  // --rank joins traffic numbers to --live's list: it needs --live.
+                  ...(f.name === "rank" ? ["--live", SAMPLE_VALUES.live ?? ""] : []),
+                  ...(f.name === "progress" ||
+                  f.name === "all" ||
+                  f.name === "printed" ||
+                  f.name === "watch"
+                    ? ["--base", `${site.origin}/`, "--allow-private"]
+                    : []),
+                  `--${f.name}`,
+                  ...(f.name === "base"
+                    ? [`${site.origin}/`, "--allow-private"]
+                    : f.name === "printed"
+                      ? [register]
+                      : value),
+                ]
+              : snapshotOnly
+                ? ["snapshot", "fernkiln.invalid", `--${f.name}`, join(scratch, "snapshot.json")]
+                : deliveryOnly || platformOnly || queryOnly
+                  ? [
+                      deliveryOnly ? "delivery" : platformOnly ? "platform" : "query",
+                      `--${f.name}`,
+                      ...value,
+                      "--help",
+                    ]
+                  : cutoverOnly
+                    ? ["cutover", `--${f.name}`, before]
+                    : assertOnly
+                      ? ["assert", `--${f.name}`]
+                      : verifyOnly
+                        ? ["verify", crawl, `--${f.name}`, "0"]
+                        : runOnly
+                          ? f.name === "tag"
+                            ? ["run", "--tag", "nobody"]
+                            : f.name === "site"
+                              ? ["run", "--site", "x", "--allow-private"]
+                              : ["run", "--tag", "nobody", `--${f.name}`, "2"]
+                          : printedOnly
                             ? [
-                                "digest",
-                                ...(f.name === "runs" ? [] : ["--runs", runs]),
+                                "printed",
+                                register,
+                                "--allow-private",
                                 `--${f.name}`,
-                                ...value,
+                                ...(f.name === "decode" ? [join(scratch, "no-images")] : value),
                               ]
-                            : [
-                                ...(flagsFor(FLAGS, "check").includes(f) ? [] : ["launch"]),
-                                `${site.origin}/`,
-                                // --routes is read by a probing check: it needs the owner's consent.
-                                ...(f.name === "routes" ? ["--owner-consent"] : []),
-                                `--${f.name}`,
-                                ...value,
-                              ];
+                            : digestOnly
+                              ? [
+                                  "digest",
+                                  ...(f.name === "runs" ? [] : ["--runs", runs]),
+                                  `--${f.name}`,
+                                  ...value,
+                                ]
+                              : [
+                                  ...(flagsFor(FLAGS, "check").includes(f) ? [] : ["launch"]),
+                                  `${site.origin}/`,
+                                  // --routes is read by a probing check: it needs the owner's consent.
+                                  ...(f.name === "routes" ? ["--owner-consent"] : []),
+                                  `--${f.name}`,
+                                  ...value,
+                                ];
       const r = await runBin(args, {}, { cwd: scratch });
       expect(r.stderr, f.name).not.toContain("Unknown option");
       expect([0, 1], f.name).toContain(r.status);

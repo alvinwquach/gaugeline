@@ -1,4 +1,10 @@
-import { SEVERITY_ORDER, type Area, type CheckRegistry, type Severity } from "./model.js";
+import {
+  SEVERITY_ORDER,
+  type Area,
+  type CheckRegistry,
+  type Severity,
+  type Size,
+} from "./model.js";
 
 /** One check as the checks reference shows it. Plain data: it serialises to JSON unchanged. */
 export interface CatalogueEntry {
@@ -10,6 +16,12 @@ export interface CatalogueEntry {
   why: string;
   fix: string;
   tech: string;
+  /** Effort to fix: S, M or L (1, 3 or 8 points in the work order). */
+  size: Size;
+  /** What fixed looks like. */
+  done: string;
+  /** What makes the fix smaller or bigger than its size says. */
+  estimateChanges: string;
 }
 
 /**
@@ -37,5 +49,8 @@ export function catalogue(registry: CheckRegistry): CatalogueEntry[] {
       why: c.why,
       fix: c.fix,
       tech: c.tech,
+      size: c.size,
+      done: c.done,
+      estimateChanges: c.estimateChanges,
     }));
 }

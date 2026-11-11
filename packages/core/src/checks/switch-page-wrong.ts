@@ -6,6 +6,10 @@ import { cacheNote, says, visibleLines } from "../switches/text.js";
 
 export const switchPageWrong = defineCheck<PageSnapshot>({
   id: "switch-page-wrong",
+  size: "M",
+  done: "The page shows the message from the same switch that turns the feature off.",
+  estimateChanges:
+    "A cache needs purging, and each page that reads the switch needs the same source.",
   area: "Sales & prices",
   severity: "medium",
   title: "A page does not say what it should for the current switch",

@@ -6,6 +6,9 @@ const same = (a: string, b: string) => a.replace(/\/+$/, "") === b.replace(/\/+$
 
 export const hreflangNotReciprocal = defineCheck<PageSnapshot>({
   id: "hreflang-not-reciprocal",
+  size: "M",
+  done: "Every language version carries the same full set of hreflang links, including one to itself.",
+  estimateChanges: "The number of language versions and whether the links come from one component.",
   area: "Search & sharing",
   severity: "medium",
   title: "A language version doesn't link back",

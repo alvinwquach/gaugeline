@@ -3,6 +3,10 @@ import type { PageSnapshot } from "../snapshot.js";
 
 export const jsonldInvalid = defineCheck<PageSnapshot>({
   id: "jsonld-invalid",
+  size: "S",
+  done: "The structured data parses as valid JSON and a rich results test can read it.",
+  estimateChanges:
+    "A template that prints nothing for an empty field needs a guard, and several templates each need it.",
   area: "Search & sharing",
   severity: "high",
   title: "This page's structured data is broken",

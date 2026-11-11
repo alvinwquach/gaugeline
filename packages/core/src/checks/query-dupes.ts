@@ -10,6 +10,9 @@ const only = (id: string, input: QueryInput) =>
 
 export const queryDupeSlug = defineCheck<QueryInput>({
   id: "query-dupe-slug",
+  size: "S",
+  done: "Each document has its own slug.",
+  estimateChanges: "A copy that is already linked from elsewhere needs a redirect.",
   area: "Visitors",
   severity: "high",
   title: DUPE_TITLES.slug,
@@ -22,6 +25,9 @@ export const queryDupeSlug = defineCheck<QueryInput>({
 
 export const queryDupeTitle = defineCheck<QueryInput>({
   id: "query-dupe-title",
+  size: "S",
+  done: "Each document has its own title, or the copy is deleted with a redirect.",
+  estimateChanges: "A copy already linked from elsewhere needs a redirect.",
   area: "Search & sharing",
   severity: "medium",
   title: DUPE_TITLES.title,

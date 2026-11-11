@@ -43,6 +43,9 @@ function hasType(types: ReadonlySet<string>, required: string): boolean {
 
 export const schemaTemplateMissingType = defineCheck<PageSnapshot>({
   id: "schema-template-missing-type",
+  size: "S",
+  done: "The template's structured data includes the required type.",
+  estimateChanges: "Several templates that share the component are fixed once.",
   area: "Search & sharing",
   severity: "medium",
   title: "A page is missing structured data its template requires",

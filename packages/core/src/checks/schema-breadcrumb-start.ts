@@ -6,6 +6,9 @@ import { idPath, schemaPages } from "./schema/common.js";
 
 export const schemaBreadcrumbStart = defineCheck<PageSnapshot>({
   id: "schema-breadcrumb-start",
+  size: "S",
+  done: "Every BreadcrumbList starts with the configured first item.",
+  estimateChanges: "A shared breadcrumb component is one edit.",
   area: "Search & sharing",
   severity: "low",
   title: "Breadcrumbs don't start where your guide says",

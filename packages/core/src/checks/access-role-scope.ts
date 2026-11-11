@@ -6,6 +6,10 @@ const COLUMNS_SHOWN = 8;
 
 export const accessRoleScope = defineCheck<PageSnapshot>({
   id: "access-role-scope",
+  size: "M",
+  done: "A signed-in user asking for the table gets only their own rows, checked with two test accounts.",
+  estimateChanges:
+    "Time grows with the number of tables that share the pattern, and with whether an owner column exists yet: adding one to old rows is a data migration.",
   area: "Security & email",
   severity: "high",
   title: "A signed-in user can read other people's rows",
