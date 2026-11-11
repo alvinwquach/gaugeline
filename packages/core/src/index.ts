@@ -55,17 +55,25 @@ export type {
   QueryOptions,
 } from "./fetcher.js";
 export {
+  registerQueryAllow,
+  registeredQueryAllows,
+  resolveQueryAllow,
+} from "./fetch/query-registry.js";
+export {
   MAX_QUERY_BODY_BYTES,
   QueryRefusedError,
   allowProblems,
   bodyProblem,
+  isExactHost,
   isReadOnlyBody,
   isVerified,
   isWriteKey,
+  isWriteText,
   matchesPath,
   queryRefusal,
 } from "./fetch/read-only-query.js";
 export type {
+  ConfiguredHost,
   GraphqlQueryShape,
   JsonQueryShape,
   QueryBodyShape,
@@ -640,7 +648,7 @@ export type { LiveResult, LiveRow } from "./tools/check-redirects.js";
 export { classifyAddress, createAddressPolicy, isTarget } from "./net/address-policy.js";
 export type { AddressClass } from "./net/address-policy.js";
 export { REQUEST_KINDS, requestRows } from "./request-log.js";
-export type { QueryRecord, RequestKind, RequestRow } from "./request-log.js";
+export type { RequestKind, RequestRow } from "./request-log.js";
 export {
   MAX_SAVED_PAGE_BYTES,
   MAX_SAVED_REQUESTS,
@@ -649,8 +657,9 @@ export {
   buildRequestsFile,
   parseRequestsFile,
   requestsFileSchema,
+  requestsFileSchemaV1,
 } from "./requests-file.js";
-export type { RequestsFile, RequestsFileCaps } from "./requests-file.js";
+export type { RequestsFile, RequestsFileCaps, RequestsFileV1 } from "./requests-file.js";
 export { leaksView, MAX_PREVIEWS } from "./leaks-view.js";
 export type { DatasetView, LeaksView, ScriptView } from "./leaks-view.js";
 export { pageData } from "./run-view.js";

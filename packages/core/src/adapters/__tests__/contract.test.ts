@@ -220,10 +220,10 @@ describe.each(ENTRIES)("the adapter contract: $id", (entry) => {
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("an adapter must use the fetcher"));
     const { seen, requests } = await everything(entry);
     expect(seen.length).toBeGreaterThan(0);
-    expect(requestProblems(requests, entry.queryAllow)).toEqual([]);
+    expect(requestProblems(requests, entry.queryAllow, entry.queryHosts)).toEqual([]);
     const w = world(entry);
     await w.adapter.types();
-    expect(requestProblems(w.seen, entry.queryAllow)).toEqual([]);
+    expect(requestProblems(w.seen, entry.queryAllow, entry.queryHosts)).toEqual([]);
     expect(globalThis.fetch).not.toHaveBeenCalled();
   });
 
@@ -299,7 +299,7 @@ describe.each(ENTRIES)("the adapter contract: $id", (entry) => {
       expect(got).toEqual(members.expected);
       const text = JSON.stringify(got);
       for (const address of members.addresses) expect(text).not.toContain(address);
-      expect(requestProblems(w.seen, entry.queryAllow)).toEqual([]);
+      expect(requestProblems(w.seen, entry.queryAllow, entry.queryHosts)).toEqual([]);
     },
   );
 });

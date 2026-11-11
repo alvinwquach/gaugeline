@@ -23,39 +23,65 @@ never a write."
 
 A `POST` is allowed only when all four of these hold:
 
-1. **From an adapter, through one fetcher method.** `fetcher.query(url, { allow, body })` in
+1. **From an adapter, through one fetcher method, by id.** `fetcher.query(url, { allow, body })` in
    `packages/core/src/fetcher.ts` is the only code that sends a `POST` to a vendor's API. It is
-   not a general `post()`: the method is fixed, the body is an object the fetcher serialises, and the
-   content type is set by the fetcher.
-2. **To an endpoint on that adapter's allowlist.** Each entry (`ReadOnlyQueryAllow`) names the exact
-   host (from the adapter's configuration, never a wildcard), the method (`POST`), a path pattern
-   (literal segments, and `*` for one whole segment) and a body shape:
-   - `graphql-query`: one operation that parses as a `query`. A `mutation`, a `subscription`, a
-     second operation and anything that is not a query document is refused. A persisted-query id (no
-     document) is accepted only where the entry says persisted queries are allowed.
-   - `json-query`: a JSON object whose top-level keys are all in the entry's list of query keys, and
-     none is named like a write (`insert`, `update`, `delete`, `$set`, `mutation` and the like).
+   not a general `post()`: the method is fixed, the content type is set by the fetcher, and `allow`
+   is the id of an entry the caller cannot write itself (next point). The body is serialised once;
+   the text that is checked, parsed back, is the text that is sent.
+2. **To a registered endpoint on that adapter's allowlist.** Each entry (`ReadOnlyQueryAllow`) is
+   written once, in the adapter's own file, and registered at module load with `registerQueryAllow`
+   (`packages/core/src/fetch/query-registry.ts`), which checks it and freezes it. The fetcher looks
+   the id up in that registry and refuses an id nobody registered, so code that merely holds a
+   fetcher cannot invent an endpoint. A scan of the source fails if any file but an adapter's
+   registers an entry or calls `.query(` with one. An entry names:
+   - the host: the vendor's exact host (no wildcard), or `{ configured }` for a host the person set
+     in the adapter's configuration (a GraphQL endpoint). For a configured host the adapter passes
+     the validated host with each request; the fetcher accepts one exact host name, and the path and
+     body rules below still apply. This is the one value the caller supplies, and the reason the
+     private-address refusal stays on;
+   - the method (`POST`) and a path pattern (literal segments, and `*` for one whole segment; no
+     segment is named like a write, so `/orders/delete` cannot be registered);
+   - a body shape:
+     - `graphql-query`: one operation that parses as a `query`. A `mutation`, a `subscription`, a
+       second operation and anything that is not a query document is refused. A persisted-query id
+       is accepted only alone and only when the entry names that id (`persisted`); an id beside a
+       document is refused, because the id could name a stored mutation.
+     - `json-query`: a JSON object whose top-level keys are all in the entry's list of query keys.
+       The whole body is walked: a key starting with `$` must be one of the entry's `operators`, no
+       nested key is named like a write (`insert`, `update`, `deleteitem`, `bulkDelete`, `$set`,
+       `purge`...), no string value reads as a write statement (`DELETE FROM x`), and a key with
+       `enums` takes only those values. The entry's lists are the boundary; the word list is a
+       second screen.
 3. **The vendor documents that endpoint as a read, query or search endpoint.** The entry carries the
    documentation URL and the date it was checked. An entry whose page was not read is marked
    (`checked: null`), so a reviewer sees it.
 4. **Every other rule is unchanged.** Keys come from the environment and never reach a log, a
    finding or a report. Private, loopback, link-local and metadata addresses are refused. A redirect
-   is never followed, so the body and headers go to one origin only (a 3xx is refused). The answer is
-   read under the same size cap, timeout and in-flight limit as a `GET`.
+   is never followed, so the body and headers go to one origin only (a 3xx is refused). The headers
+   a caller may add exclude anything that changes the method or the framing (`x-http-method*`,
+   `x-method-override`, `x-original-method`, `content-length`, `cookie`, `expect`, `upgrade`, `te`,
+   `range`, `user-agent`, `accept-encoding`...). The answer is read under the same size cap,
+   timeout and in-flight limit as a `GET`.
 
-The request log records a query with its address and the id of the allowlist entry, marked `query`,
-and never the body or a header.
+The request log (`fetcher.history()`, the app's Pages checked view and the saved requests file,
+schema 2) records a query with its address and the id of the allowlist entry, as kind `query`,
+method `POST`, and never the body, a header or the key. A saved file of schema 1 is still read.
 
 ## Consequences
 
 - The fetcher can now send a `POST`, and a `POST` is checked three times: by the fetcher before it is
-  sent, by the contract suite for every adapter (each entry declares `queryAllow`, any `POST` must
-  match one, and the body is checked by the shared `isReadOnlyBody`), and by a scan of the source
-  that fails if any other file builds a `POST`, `PUT`, `PATCH` or `DELETE`.
+  sent, by the contract suite for every adapter (each entry lists the frozen entries its file
+  exports as `queryAllow`, the suite checks they are the registered objects, any `POST` must match
+  one, and the body is checked by the shared `isReadOnlyBody`), and by an AST scan of the source
+  that fails if any other file builds a `POST`, `PUT`, `PATCH` or `DELETE`, opens a connection as a
+  client, or registers an endpoint.
 - Wix's native read (C-05b), the GraphQL adapters and the Salesforce MCP source can be built on the
   allowlist. Each is a separate branch that adds its own entries and its own docs.
 - A cassette (the recorded-answers transport) still refuses a `POST`; recording a query is a later
   decision.
+- `packages/app/src/api.ts` is on the scan's allowed list for the app's own page: it makes one POST
+  (to start a run) and opens the event stream, both to relative `/api/*` addresses on the local
+  server that served the page, never to a checked site.
 
 ## What is still forbidden
 
@@ -102,11 +128,22 @@ fetcher or `notify/post.ts` builds.
 
 ## Enforced by
 
-- `packages/core/src/fetch/read-only-query.ts` (`queryRefusal`: address, entry and body, pure)
-- `packages/core/src/fetch/__tests__/read-only-query.test.ts` (the body shapes and the refusals)
-- `packages/core/src/__tests__/fetcher-query.test.ts` (`fetcher.query` refuses everything else, never
-  follows a redirect, and logs the allowlist id and never the body)
-- `packages/core/src/__tests__/post-boundary.test.ts` (no other file builds a `POST`, `PUT`, `PATCH`
-  or `DELETE`; the allowed files are `packages/core/src/fetcher.ts`, `packages/core/src/notify/post.ts` and the app page `packages/app/src/api.ts`)
-- `packages/core/src/adapters/__tests__/contract.ts` and `packages/core/src/adapters/__tests__/contract-post-guard.test.ts` (the contract
-  suite's guard, and proof it is not vacuous)
+- `packages/core/src/fetch/read-only-query.ts` (`queryRefusal`: address, entry and body, pure) and
+  `packages/core/src/fetch/query-registry.ts` (entries are checked, frozen and looked up by id)
+- `packages/core/src/fetch/__tests__/read-only-query.test.ts` (the body shapes, the word screen and
+  the refusals)
+- `packages/core/src/__tests__/fetcher-query.test.ts` (`fetcher.query` refuses an unregistered id,
+  an entry the caller wrote, a stored id beside a document, a body that changed between the check and
+  the send, nested writes and method-override headers; never follows a redirect; logs the allowlist
+  id and never the body)
+- `packages/core/src/__tests__/post-boundary.test.ts` and `packages/core/src/__tests__/post-scan.ts`
+  (a TypeScript-AST scan: no other file builds a `POST`, `PUT`, `PATCH` or `DELETE`, opens a
+  connection as a client or registers an endpoint; the allowed files are
+  `packages/core/src/fetcher.ts`, `packages/core/src/notify/post.ts`,
+  `packages/core/src/transport.ts` for the socket, and the app page `packages/app/src/api.ts`; a
+  self-test runs each way of evading it)
+- `packages/core/src/adapters/__tests__/contract.ts` and
+  `packages/core/src/adapters/__tests__/contract-post-guard.test.ts` (the contract suite's guard,
+  and proof it is not vacuous)
+- `packages/core/src/__tests__/requests-file.test.ts` (queries reach the saved requests file,
+  schema 2, with the allowlist id and no body)

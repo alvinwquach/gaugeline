@@ -4,28 +4,47 @@ import {
   createFetcher,
   FetchError,
   type Fetcher,
+  type QueryOptions,
   type Transport,
   type TransportRequest,
 } from "../fetcher.js";
+import { registerQueryAllow } from "../fetch/query-registry.js";
 import { QueryRefusedError, type ReadOnlyQueryAllow } from "../fetch/read-only-query.js";
 
-const allow: ReadOnlyQueryAllow = {
-  id: "items-query",
+const DOCS = { url: "https://dev.vendor.example/query-items", checked: "2026-11-11" } as const;
+
+const items = registerQueryAllow({
+  id: "test-items-query",
   method: "POST",
   host: "api.vendor.example",
   path: "/v2/items/query",
-  body: { kind: "json-query", keys: ["collection", "query"] },
-  docs: { url: "https://dev.vendor.example/query-items", checked: "2026-11-11" },
-};
-const gql: ReadOnlyQueryAllow = {
-  id: "shop-graphql",
+  body: {
+    kind: "json-query",
+    keys: ["collection", "query", "sort"],
+    operators: ["$eq", "$and"],
+    enums: { sort: ["asc", "desc"] },
+  },
+  docs: DOCS,
+});
+const gql = registerQueryAllow({
+  id: "test-shop-graphql",
   method: "POST",
   host: "api.vendor.example",
   path: "/graphql",
+  body: { kind: "graphql-query", persisted: ["StoredProducts"] },
+  docs: { ...DOCS, checked: null },
+});
+const configured = registerQueryAllow({
+  id: "test-configured-graphql",
+  method: "POST",
+  host: { configured: "SHOP_GRAPHQL_URL" },
+  path: "/graphql",
   body: { kind: "graphql-query" },
-  docs: { url: "https://dev.vendor.example/graphql", checked: null },
-};
+  docs: DOCS,
+});
+
 const URL_OK = "https://api.vendor.example/v2/items/query";
+const GQL_URL = "https://api.vendor.example/graphql";
 const KEY = ["sk", "live", "abcdefghijkl"].join("_");
 
 interface Sent {
@@ -52,20 +71,21 @@ function answering(
 
 const q = (f: Fetcher) => {
   if (f.query === undefined) throw new Error("the real fetcher has query()");
-  return f.query;
+  return f.query.bind(f);
 };
 const rejects = async (p: Promise<unknown>) =>
   p.then(
     () => undefined,
     (e: unknown) => e,
   );
+const ask = (f: Fetcher, url: string, opts: QueryOptions) => rejects(q(f)(url, opts));
 
-describe("fetcher.query: a POST only to an allowlisted read-only query", () => {
+describe("fetcher.query: a POST only to a registered, documented read-only query", () => {
   it("sends the JSON body as a POST with the fetcher's content type, and returns the hop", async () => {
     const { transport, sent } = answering(200);
     const f = createFetcher({ transport });
-    const hop = await q(f).call(f, URL_OK, {
-      allow,
+    const hop = await q(f)(URL_OK, {
+      allow: items.id,
       body: { collection: "Menu", query: { limit: 5 } },
     });
     expect(hop.status).toBe(200);
@@ -90,93 +110,322 @@ describe("fetcher.query: a POST only to an allowlisted read-only query", () => {
     expect(sent).toEqual([]);
   });
 
+  describe("the allowlist is not self-attested", () => {
+    it("refuses an id nobody registered", async () => {
+      const { transport, sent } = answering(200);
+      const f = createFetcher({ transport });
+      const err = await ask(f, URL_OK, { allow: "never-registered", body: { collection: "x" } });
+      expect(err).toBeInstanceOf(QueryRefusedError);
+      expect(String(err)).toMatch(/no allowlist entry/);
+      expect(sent).toEqual([]);
+    });
+
+    it("refuses an entry the caller wrote itself, whatever it says", async () => {
+      const { transport, sent } = answering(200);
+      const f = createFetcher({ transport });
+      const own: ReadOnlyQueryAllow = {
+        id: "shop-everything",
+        method: "POST",
+        host: "shop.example",
+        path: "/*",
+        body: { kind: "json-query", keys: ["name"] },
+        docs: DOCS,
+      };
+      for (const allow of [own, { ...items, host: "shop.example" }])
+        expect(
+          await ask(f, "https://shop.example/anything", {
+            allow: allow as unknown as string,
+            body: { name: "x" },
+          }),
+        ).toBeInstanceOf(QueryRefusedError);
+      // Naming a registered entry does not widen it either.
+      expect(
+        await ask(f, "https://shop.example/v2/items/query", {
+          allow: items.id,
+          body: { collection: "x" },
+        }),
+      ).toBeInstanceOf(QueryRefusedError);
+      expect(sent).toEqual([]);
+    });
+
+    it("an entry with a configured host takes one exact host from the adapter, and no other", async () => {
+      const { transport, sent } = answering(200);
+      const f = createFetcher({ transport });
+      const body = { query: "{ products { id } }" };
+      const url = "https://shop.client.example/graphql";
+      expect(
+        (await q(f)(url, { allow: configured.id, host: "shop.client.example", body })).status,
+      ).toBe(200);
+      for (const host of [
+        undefined,
+        "*.client.example",
+        "other.example",
+        "https://shop.client.example",
+      ])
+        expect(
+          await ask(f, url, {
+            allow: configured.id,
+            body,
+            ...(host === undefined ? {} : { host }),
+          }),
+          String(host),
+        ).toBeInstanceOf(QueryRefusedError);
+      // A fixed-host entry is not given another host to use.
+      expect(
+        await ask(f, "https://other.example/v2/items/query", {
+          allow: items.id,
+          host: "other.example",
+          body: { collection: "x" },
+        }),
+      ).toBeInstanceOf(QueryRefusedError);
+      expect(sent).toHaveLength(1);
+    });
+
+    it("refuses a registration that is malformed, a path named like a write, or a clash", () => {
+      const base = {
+        method: "POST",
+        host: "api.vendor.example",
+        body: { kind: "graphql-query" },
+        docs: DOCS,
+      } as const;
+      expect(() =>
+        registerQueryAllow({ ...base, id: "bad-orders", path: "/orders/delete" }),
+      ).toThrow(/named like a write/);
+      expect(() => registerQueryAllow({ ...base, id: "bad-star", path: "/a/**" })).toThrow();
+      expect(() =>
+        registerQueryAllow({ ...base, id: "test-shop-graphql", path: "/other" }),
+      ).toThrow(/already registered/);
+      // The same entry again (a module loaded twice) is fine and gives back the frozen one.
+      expect(registerQueryAllow({ ...gql })).toBe(gql);
+      expect(Object.isFrozen(gql) && Object.isFrozen(gql.body) && Object.isFrozen(gql.docs)).toBe(
+        true,
+      );
+    });
+  });
+
   it("refuses a mutation, a subscription and a second operation, and sends nothing", async () => {
     const { transport, sent } = answering(200);
     const f = createFetcher({ transport });
-    const url = "https://api.vendor.example/graphql";
     for (const query of [
       "mutation { deleteItem(id: 1) { id } }",
       "subscription { items { id } }",
       "query A { a } mutation B { b }",
     ]) {
-      const err = await rejects(q(f).call(f, url, { allow: gql, body: { query } }));
+      const err = await ask(f, GQL_URL, { allow: gql.id, body: { query } });
       expect(err, query).toBeInstanceOf(QueryRefusedError);
       expect(String(err)).not.toContain("deleteItem");
     }
     expect(sent).toEqual([]);
-    expect(
-      (await q(f).call(f, url, { allow: gql, body: { query: "{ items { id } }" } })).status,
-    ).toBe(200);
+    const ok = await q(f)(GQL_URL, { allow: gql.id, body: { query: "{ items { id } }" } });
+    expect(ok.status).toBe(200);
   });
 
-  it("refuses a body with a key that is not a query key or is named like a write", async () => {
-    const { transport, sent } = answering(200);
-    const f = createFetcher({ transport });
-    for (const body of [
-      { collection: "Menu", insert: { name: "x" } },
-      { collection: "Menu", dataItem: {} },
-      { collection: "Menu", $set: { a: 1 } },
-    ])
-      expect(await rejects(q(f).call(f, URL_OK, { allow, body }))).toBeInstanceOf(
-        QueryRefusedError,
+  describe("persisted queries", () => {
+    it("refuses a document together with any id or hash (the id could name a stored mutation)", async () => {
+      const { transport, sent } = answering(200);
+      const f = createFetcher({ transport });
+      for (const extra of [
+        { id: "StoredMutation" },
+        { id: "StoredProducts" },
+        { documentId: "x" },
+        { queryId: "x" },
+        { extensions: { persistedQuery: { version: 1, sha256Hash: "ab".repeat(32) } } },
+      ])
+        expect(
+          await ask(f, GQL_URL, { allow: gql.id, body: { query: "{ a }", ...extra } }),
+          JSON.stringify(extra),
+        ).toBeInstanceOf(QueryRefusedError);
+      expect(sent).toEqual([]);
+    });
+
+    it("accepts an id alone only when the entry names it", async () => {
+      const { transport, sent } = answering(200);
+      const f = createFetcher({ transport });
+      expect((await q(f)(GQL_URL, { allow: gql.id, body: { id: "StoredProducts" } })).status).toBe(
+        200,
       );
-    expect(sent).toEqual([]);
+      for (const body of [
+        { id: "StoredMutation" },
+        { id: 7 },
+        {},
+        { id: "StoredProducts", documentId: "StoredProducts" },
+      ])
+        expect(await ask(f, GQL_URL, { allow: gql.id, body }), JSON.stringify(body)).toBeInstanceOf(
+          QueryRefusedError,
+        );
+      // An entry with no persisted list takes no stored query at all.
+      expect(
+        await ask(f, "https://shop.client.example/graphql", {
+          allow: configured.id,
+          host: "shop.client.example",
+          body: { id: "StoredProducts" },
+        }),
+      ).toBeInstanceOf(QueryRefusedError);
+      expect(sent).toHaveLength(1);
+    });
   });
 
-  it("refuses a path outside the entry, another host, an entry with PUT, and a bad entry", async () => {
+  describe("the checked body is the sent body", () => {
+    it("serialises once: a getter or toJSON that changes its answer cannot slip a write past the check", async () => {
+      const { transport, sent } = answering(200);
+      const f = createFetcher({ transport });
+      let reads = 0;
+      const sly = {
+        get query() {
+          reads += 1;
+          return reads === 1 ? "{ a }" : "mutation { x }";
+        },
+      };
+      await q(f)(GQL_URL, { allow: gql.id, body: sly });
+      expect(JSON.parse(sent[0]?.req.body ?? "")).toEqual({ query: "{ a }" });
+      let calls = 0;
+      const toJson = {
+        toJSON: () => (++calls === 1 ? { query: "{ a }" } : { query: "mutation { x }" }),
+      };
+      await q(f)(GQL_URL, { allow: gql.id, body: toJson as never });
+      expect(JSON.parse(sent[1]?.req.body ?? "")).toEqual({ query: "{ a }" });
+      expect(calls).toBe(1);
+    });
+
+    it("refuses a body that is not JSON", async () => {
+      const { transport, sent } = answering(200);
+      const f = createFetcher({ transport });
+      const circular: Record<string, unknown> = {};
+      circular.self = circular;
+      for (const body of [circular, { query: 10n }])
+        expect(await ask(f, GQL_URL, { allow: gql.id, body: body as never })).toBeInstanceOf(
+          QueryRefusedError,
+        );
+      expect(sent).toEqual([]);
+    });
+  });
+
+  describe("a JSON query is checked all the way down", () => {
+    it("refuses an operator that is not on the entry's list, a nested write key and a statement as a value", async () => {
+      const { transport, sent } = answering(200);
+      const f = createFetcher({ transport });
+      const bad: Record<string, unknown>[] = [
+        { collection: "Menu", query: { $set: { price: 0 } } },
+        { collection: "Menu", query: { filter: { $where: "1" } } },
+        { collection: "Menu", query: { filter: { $or: [] } } },
+        { collection: "Menu", query: { filter: { insert: 1 } } },
+        { collection: "Menu", query: { deleteitem: 1 } },
+        { collection: "Menu", query: { bulkdelete: 1 } },
+        { collection: "Menu", query: { UPDATEITEM: 1 } },
+        { collection: "Menu", query: { items: [{ nested: { purge: true } }] } },
+        { collection: "Menu", query: "DELETE FROM menu" },
+        { collection: "Menu", query: { text: "update menu set price = 0" } },
+        { collection: "Menu", query: "mutation { x }" },
+        { collection: "Menu", sort: "sideways" },
+      ];
+      for (const body of bad)
+        expect(
+          await ask(f, URL_OK, { allow: items.id, body }),
+          JSON.stringify(body),
+        ).toBeInstanceOf(QueryRefusedError);
+      expect(sent).toEqual([]);
+    });
+
+    it("accepts the vendor's operators and ordinary field names that hold a verb as a part", async () => {
+      const { transport, sent } = answering(200);
+      const f = createFetcher({ transport });
+      const body = {
+        collection: "Menu",
+        sort: "asc",
+        query: {
+          filter: {
+            $and: [
+              { _createdDate: { $eq: "2026-01-01" } },
+              { updatedBy: { $eq: "a" } },
+              { address: "12 Elm" },
+              { settings: { offset: 1 } },
+            ],
+          },
+          text: "Updated menu for the winter",
+        },
+      };
+      expect((await q(f)(URL_OK, { allow: items.id, body })).status).toBe(200);
+      expect(sent).toHaveLength(1);
+    });
+  });
+
+  it("refuses a key that is not a query key, a path outside the entry, another host, http and a query string", async () => {
     const { transport, sent } = answering(200);
     const f = createFetcher({ transport });
-    const body = { collection: "Menu" };
+    expect(
+      await ask(f, URL_OK, { allow: items.id, body: { collection: "x", extra: 1 } }),
+    ).toBeInstanceOf(QueryRefusedError);
     for (const url of [
       "https://api.vendor.example/v2/items/insert",
       "https://api.vendor.example/v2/items/query/extra",
       "https://other.example/v2/items/query",
       "http://api.vendor.example/v2/items/query",
       "https://api.vendor.example/v2/items/query?x=1",
-      "not a url",
     ])
-      expect(await rejects(q(f).call(f, url, { allow, body })), url).toBeInstanceOf(
+      expect(await ask(f, url, { allow: items.id, body: { collection: "x" } }), url).toBeInstanceOf(
         QueryRefusedError,
       );
-    const put = { ...allow, method: "PUT" } as unknown as ReadOnlyQueryAllow;
-    expect(await rejects(q(f).call(f, URL_OK, { allow: put, body }))).toBeInstanceOf(
-      QueryRefusedError,
-    );
-    const wild = { ...allow, host: "*.vendor.example" };
-    expect(await rejects(q(f).call(f, URL_OK, { allow: wild, body }))).toBeInstanceOf(
-      QueryRefusedError,
-    );
     expect(sent).toEqual([]);
   });
 
-  it("refuses headers that change the method or the framing of the body", async () => {
+  it("an address that does not parse is refused without repeating it (it may hold a key)", async () => {
+    const { transport } = answering(200);
+    const f = createFetcher({ transport });
+    const err = await ask(f, `not a url ${KEY}`, { allow: items.id, body: { collection: "x" } });
+    expect(err).toBeInstanceOf(QueryRefusedError);
+    expect(String(err)).not.toContain(KEY);
+  });
+
+  it("refuses headers that change the method, the framing, the identity or the answer", async () => {
     const { transport, sent } = answering(200);
     const f = createFetcher({ transport });
-    for (const name of ["X-HTTP-Method-Override", "x-method-override", "Content-Length", "Host"])
+    const names = [
+      "X-HTTP-Method-Override",
+      "x-http-method",
+      "x-method-override",
+      "X-Original-Method",
+      "_method",
+      "Content-Length",
+      "Content-Type",
+      "Host",
+      "Cookie",
+      "Expect",
+      "Upgrade",
+      "TE",
+      "Proxy-Authorization",
+      "Range",
+      "User-Agent",
+      "Accept-Encoding",
+      "Transfer-Encoding",
+    ];
+    for (const name of names)
       expect(
-        await rejects(
-          q(f).call(f, URL_OK, {
-            allow,
-            body: { collection: "Menu" },
-            headers: { [name]: "DELETE" },
-          }),
-        ),
+        await ask(f, URL_OK, {
+          allow: items.id,
+          body: { collection: "x" },
+          headers: { [name]: "DELETE" },
+        }),
         name,
       ).toBeInstanceOf(QueryRefusedError);
     expect(sent).toEqual([]);
+    // An ordinary key header is fine.
+    await q(f)(URL_OK, {
+      allow: items.id,
+      body: { collection: "x" },
+      headers: { Authorization: `Bearer ${KEY}`, "x-account-id": "a1" },
+    });
+    expect(sent).toHaveLength(1);
   });
 
   it("never follows a redirect: the body and headers go to one origin, and a 3xx is refused", async () => {
     for (const location of ["https://evil.example/collect", "/v2/items/other"]) {
       const { transport, sent } = answering(307, { location });
       const f = createFetcher({ transport });
-      const err = await rejects(
-        q(f).call(f, URL_OK, {
-          allow,
-          body: { collection: "Menu" },
-          headers: { authorization: `Bearer ${KEY}` },
-        }),
-      );
+      const err = await ask(f, URL_OK, {
+        allow: items.id,
+        body: { collection: "x" },
+        headers: { authorization: `Bearer ${KEY}` },
+      });
       expect(err).toBeInstanceOf(FetchError);
       expect((err as FetchError).reason).toBe("refused");
       expect(String(err)).not.toContain(KEY);
@@ -184,35 +433,33 @@ describe("fetcher.query: a POST only to an allowlisted read-only query", () => {
     }
   });
 
-  it("records the query with its allowlist id, and never the body or the key", async () => {
+  it("records the query in the request log with its allowlist id, and never the body or the key", async () => {
     const { transport } = answering(200);
     const f = createFetcher({ transport });
-    await q(f).call(f, URL_OK, {
-      allow,
+    await q(f)(URL_OK, {
+      allow: items.id,
       body: { collection: "SecretCollection" },
       headers: { authorization: `Bearer ${KEY}` },
     });
-    const log = f.queryHistory?.() ?? [];
+    const log = f.history?.() ?? [];
     expect(log).toHaveLength(1);
     expect(log[0]).toMatchObject({
       kind: "query",
       method: "POST",
-      allow: "items-query",
+      allow: "test-items-query",
       status: 200,
       url: URL_OK,
     });
     expect(JSON.stringify(log)).not.toContain(KEY);
     expect(JSON.stringify(log)).not.toContain("SecretCollection");
-    // The page-request log (the published requests file: GET and HEAD) is unchanged.
-    expect(f.history?.()).toEqual([]);
   });
 
   it("sends the key only in the header the caller gave, and not the protected-preview headers", async () => {
     const { transport, sent } = answering(200);
     const f = createFetcher({ transport, headersFor: () => ({ "x-preview-secret": "shh" }) });
-    await q(f).call(f, URL_OK, {
-      allow,
-      body: { collection: "Menu" },
+    await q(f)(URL_OK, {
+      allow: items.id,
+      body: { collection: "x" },
       headers: { Authorization: `Bearer ${KEY}` },
     });
     expect(sent[0]?.req.headers.authorization).toBe(`Bearer ${KEY}`);
@@ -222,8 +469,8 @@ describe("fetcher.query: a POST only to an allowlisted read-only query", () => {
   it("is not remembered: the same query twice is two requests", async () => {
     const { transport, sent } = answering(200);
     const f = createFetcher({ transport });
-    await q(f).call(f, URL_OK, { allow, body: { collection: "Menu" } });
-    await q(f).call(f, URL_OK, { allow, body: { collection: "Menu" } });
+    await q(f)(URL_OK, { allow: items.id, body: { collection: "x" } });
+    await q(f)(URL_OK, { allow: items.id, body: { collection: "x" } });
     expect(sent).toHaveLength(2);
     expect(f.stats.requests).toBe(2);
   });
@@ -231,14 +478,10 @@ describe("fetcher.query: a POST only to an allowlisted read-only query", () => {
   it("keeps the answer under the body cap, and the concurrency limit", async () => {
     const { transport } = answering(200, {}, "x".repeat(5000));
     const f = createFetcher({ transport, maxBodyBytes: 1000 });
-    const hop = await q(f).call(f, URL_OK, { allow, body: { collection: "Menu" } });
+    const hop = await q(f)(URL_OK, { allow: items.id, body: { collection: "x" } });
     expect(hop.truncated).toBe(true);
     expect(hop.bytes).toBe(1000);
-    const lower = await q(f).call(f, URL_OK, {
-      allow,
-      body: { collection: "Menu" },
-      maxBytes: 100,
-    });
+    const lower = await q(f)(URL_OK, { allow: items.id, body: { collection: "x" }, maxBytes: 100 });
     expect(lower.bytes).toBe(100);
     let flight = 0;
     let most = 0;
@@ -251,21 +494,23 @@ describe("fetcher.query: a POST only to an allowlisted read-only query", () => {
     };
     const g = createFetcher({ transport: slow, concurrency: 2 });
     await Promise.all(
-      Array.from({ length: 6 }, () =>
-        q(g).call(g, URL_OK, { allow, body: { collection: "Menu" } }),
-      ),
+      Array.from({ length: 6 }, () => q(g)(URL_OK, { allow: items.id, body: { collection: "x" } })),
     );
     expect(most).toBe(2);
   });
 
-  it("a refused address (private) is still refused by the transport's rules, recorded as a query", async () => {
+  it("a refused address (private) is still refused by the transport's rules, and logged as a query", async () => {
     const transport: Transport = () =>
       Promise.reject(
         new FetchError("private-address-refused", "api.vendor.example is private", URL_OK, []),
       );
     const f = createFetcher({ transport });
-    const err = await rejects(q(f).call(f, URL_OK, { allow, body: { collection: "Menu" } }));
+    const err = await ask(f, URL_OK, { allow: items.id, body: { collection: "x" } });
     expect((err as FetchError).reason).toBe("private-address-refused");
-    expect(f.queryHistory?.()[0]).toMatchObject({ status: null, error: "private-address-refused" });
+    expect(f.history?.()[0]).toMatchObject({
+      kind: "query",
+      status: null,
+      error: "private-address-refused",
+    });
   });
 });

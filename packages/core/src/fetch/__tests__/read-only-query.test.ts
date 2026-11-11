@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  isWriteKey,
   allowProblems,
   bodyProblem,
   isReadOnlyBody,
@@ -96,18 +97,85 @@ describe("graphql-query bodies", () => {
     expect(ok("{ a }", { operationName: 3 })).toBe(false);
   });
 
-  it("a persisted query id is refused unless the entry says persisted queries are allowed", () => {
-    const body = { id: "abc123", variables: { n: 1 } };
+  it("a stored query id is refused unless the entry names it, and never with a document", () => {
+    const body = { id: "StoredProducts", variables: { n: 1 } };
     expect(isReadOnlyBody(graphql, body)).toBe(false);
-    const persisted = { ...graphql, body: { kind: "graphql-query", persistedQueries: true } };
-    expect(isReadOnlyBody(persisted as ReadOnlyQueryAllow, body)).toBe(true);
-    expect(
-      isReadOnlyBody(persisted as ReadOnlyQueryAllow, {
-        extensions: { persistedQuery: { version: 1, sha256Hash: "ab".repeat(32) } },
-      }),
-    ).toBe(true);
-    expect(isReadOnlyBody(persisted as ReadOnlyQueryAllow, { id: 5 })).toBe(false);
-    expect(isReadOnlyBody(persisted as ReadOnlyQueryAllow, {})).toBe(false);
+    const stored = { ...graphql, body: { kind: "graphql-query", persisted: ["StoredProducts"] } };
+    const allow = stored as ReadOnlyQueryAllow;
+    expect(isReadOnlyBody(allow, body)).toBe(true);
+    expect(isReadOnlyBody(allow, { id: "StoredMutation" })).toBe(false);
+    expect(isReadOnlyBody(allow, { id: 5 })).toBe(false);
+    expect(isReadOnlyBody(allow, {})).toBe(false);
+    expect(isReadOnlyBody(allow, { query: "{ a }", id: "StoredProducts" })).toBe(false);
+    expect(isReadOnlyBody(allow, { query: "{ a }", documentId: "x" })).toBe(false);
+    const hash = "ab".repeat(32);
+    const ext = { persistedQuery: { version: 1, sha256Hash: hash } };
+    expect(isReadOnlyBody(allow, { extensions: ext })).toBe(false);
+    const byHash = { ...graphql, body: { kind: "graphql-query", persisted: [hash] } };
+    expect(isReadOnlyBody(byHash as ReadOnlyQueryAllow, { extensions: ext })).toBe(true);
+    expect(isReadOnlyBody(byHash as ReadOnlyQueryAllow, { query: "{ a }", extensions: ext })).toBe(
+      false,
+    );
+  });
+});
+
+describe("isWriteKey", () => {
+  it("catches a verb as a word, in camel, snake, kebab, upper and run-together forms", () => {
+    for (const key of [
+      "insert",
+      "updateItem",
+      "UPDATEItem",
+      "UPDATEITEM",
+      "update_item",
+      "delete-item",
+      "deleteitem",
+      "bulkdelete",
+      "bulkDelete",
+      "$set",
+      "$unset",
+      "purge",
+      "wipe",
+      "erase",
+      "archive",
+      "import",
+      "submit",
+      "cancel",
+      "publish",
+      "unpublish",
+      "restore",
+      "send",
+      "charge",
+      "pay",
+      "checkout",
+      "mutation",
+      "overwrite",
+    ])
+      expect(isWriteKey(key), key).toBe(true);
+  });
+
+  it("leaves ordinary field names alone, including ones that hold a verb as a part", () => {
+    for (const key of [
+      "query",
+      "filter",
+      "sort",
+      "paging",
+      "offset",
+      "limit",
+      "address",
+      "settings",
+      "dataset",
+      "fieldsets",
+      "_createdDate",
+      "_updatedDate",
+      "createdBy",
+      "updatedAt",
+      "removedAt",
+      "returnTotalCount",
+      "dataCollectionId",
+      "includeDrafts",
+      "importance",
+    ])
+      expect(isWriteKey(key), key).toBe(false);
   });
 });
 
@@ -129,6 +197,36 @@ describe("json-query bodies", () => {
       if (key === "dataItem") expect(problem).toBeUndefined();
       else expect(problem, key).toMatch(/write/);
     }
+  });
+
+  it("checks nested keys, operators and string values, not only the top level", () => {
+    const withOps = {
+      ...json,
+      body: { kind: "json-query", keys: ["query"], operators: ["$eq", "$and"] },
+    } as ReadOnlyQueryAllow;
+    const ok = (body: unknown) => isReadOnlyBody(withOps, body);
+    expect(ok({ query: { filter: { $and: [{ name: { $eq: "a" } }] } } })).toBe(true);
+    expect(ok({ query: { $set: { a: 1 } } })).toBe(false);
+    expect(ok({ query: { filter: { $where: "x" } } })).toBe(false);
+    expect(ok({ query: { a: [{ b: { deleteitem: 1 } }] } })).toBe(false);
+    expect(ok({ query: "DELETE FROM menu" })).toBe(false);
+    expect(ok({ query: { text: "insert into menu values (1)" } })).toBe(false);
+    expect(ok({ query: { text: "Updated menu" } })).toBe(true);
+    // No operators listed: no $ key at all.
+    expect(isReadOnlyBody(json, { query: { $eq: 1 } })).toBe(false);
+    // Too deep.
+    let deep: unknown = 1;
+    for (let i = 0; i < 20; i += 1) deep = { a: deep };
+    expect(ok({ query: deep })).toBe(false);
+  });
+
+  it("an enum on a key limits its value", () => {
+    const sorted = {
+      ...json,
+      body: { kind: "json-query", keys: ["sort"], enums: { sort: ["asc", "desc"] } },
+    } as ReadOnlyQueryAllow;
+    expect(isReadOnlyBody(sorted, { sort: "asc" })).toBe(true);
+    expect(isReadOnlyBody(sorted, { sort: "sideways" })).toBe(false);
   });
 
   it("refuses an array, a string, null and a value that is not JSON", () => {
@@ -158,6 +256,20 @@ describe("allowProblems", () => {
     expect(allowProblems({ ...json, path: "wix-data" })).not.toEqual([]);
     expect(allowProblems({ ...json, path: "/a/**" })).not.toEqual([]);
     expect(allowProblems({ ...json, path: "/a/b*" })).not.toEqual([]);
+  });
+
+  it("refuses a path segment named like a write, a bad operator list and a host that is neither exact nor configured", () => {
+    expect(allowProblems({ ...json, path: "/orders/delete" })).not.toEqual([]);
+    expect(allowProblems({ ...json, path: "/v2/bulkUpdate/query" })).not.toEqual([]);
+    expect(allowProblems({ ...json, path: "/v2/*/query" })).toEqual([]);
+    const ops = (operators: unknown) =>
+      ({ ...json, body: { kind: "json-query", keys: ["query"], operators } }) as never;
+    expect(allowProblems(ops(["$eq"]))).toEqual([]);
+    expect(allowProblems(ops(["eq"]))).not.toEqual([]);
+    expect(allowProblems(ops(["$set"]))).not.toEqual([]);
+    expect(allowProblems({ ...json, host: { configured: "" } })).not.toEqual([]);
+    expect(allowProblems({ ...json, host: { configured: "WIX_HOST" } })).toEqual([]);
+    expect(allowProblems({ ...json, host: 5 } as never)).not.toEqual([]);
   });
 
   it("needs an id, an https documentation page and a date or null", () => {

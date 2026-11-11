@@ -40,26 +40,40 @@ Sanity (`adapters/sanity.ts`) is the worked example. The rules are the same for 
 - **POST for a documented read-only query.** Some platforms answer a read only to a POST (Wix Data
   `POST /wix-data/v2/items/query`, a GraphQL API that takes no GET). The only way to send one is
   `fetcher.query(url, { allow, body })` ([ADR-0006](docs/adr/0006-read-only-post-queries.md)).
-  Declare the endpoint in your adapter's allowlist and in its `ContractEntry.queryAllow`; the host comes
-  from the adapter's configuration, the rest from the vendor's documentation, which the entry links
-  with the date you read it (`checked: null` marks an entry you did not verify):
+  Write the entry in your adapter's own file with `registerQueryAllow` and export what it returns;
+  `fetcher.query` takes the entry's id, and an id nobody registered is refused. Put the same exported
+  entry in your `ContractEntry.queryAllow`. The host is the vendor's (or `{ configured }` for a host
+  the person set, passed with each request); the rest comes from the vendor's documentation, which
+  the entry links with the date you read it (`checked: null` marks an entry you did not verify):
 
   ```ts
-  const WIX_ITEMS_QUERY: ReadOnlyQueryAllow = {
+  export const WIX_ITEMS_QUERY = registerQueryAllow({
     id: "wix-data-query",
     method: "POST",
     host: "www.wixapis.com",
     path: "/wix-data/v2/items/query",
-    body: { kind: "json-query", keys: ["dataCollectionId", "query", "returnTotalCount"] },
+    body: {
+      kind: "json-query",
+      keys: ["dataCollectionId", "query", "returnTotalCount"],
+      operators: ["$eq", "$and", "$hasSome"],
+    },
     docs: { url: "https://dev.wix.com/docs/rest/...", checked: "2026-11-11" },
-  };
+  });
+
+  await fetcher.query("https://www.wixapis.com/wix-data/v2/items/query", {
+    allow: WIX_ITEMS_QUERY.id,
+    body: { dataCollectionId: "Menu", query: { paging: { limit: 50 } } },
+    headers: { authorization: token },
+  });
   ```
 
   A body is a query or it is refused: one GraphQL `query` (no `mutation`, no `subscription`, one
-  operation), or a JSON object of the listed keys, none named like a write. A redirect is never
+  operation, no stored-query id beside it), or a JSON object of the listed keys and operators, none
+  named like a write at any depth. A redirect is never
   followed and a key goes to the entry's host only. The contract suite fails the adapter on a POST that
-  matches no entry, a body that is not a query, and any PUT, PATCH or DELETE. Do not add a file to the
-  list in `packages/core/src/__tests__/post-boundary.test.ts`.
+  matches no entry, a body that is not a query, and any PUT, PATCH or DELETE. Only an adapter's file
+  (`packages/core/src/adapters/<cms>.ts`) may register an entry or call `fetcher.query`; a scan fails
+  any other file. Do not add a file to the list in `packages/core/src/__tests__/post-boundary.test.ts`.
 
 - **Fingerprints, never content.** Return ids, types, slugs or addresses, times, counts and a hash of
   each field the settings name (`hashValue`). A field's value is read only to be hashed. With no fields

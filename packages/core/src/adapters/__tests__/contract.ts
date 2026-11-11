@@ -1,5 +1,6 @@
 import { Readable } from "node:stream";
 import { createFetcher, type Fetcher, type Transport } from "../../fetcher.js";
+import { resolveQueryAllow } from "../../fetch/query-registry.js";
 import {
   addressProblem,
   allowProblems,
@@ -33,12 +34,15 @@ export interface ContractEntry {
    */
   keyHeader?: { value: string };
   /**
-   * The read-only query endpoints this adapter may POST to (ADR-0006), if it sends any. Leave it out
-   * for an adapter that only GETs: the suite then fails on the first POST it builds. Each entry is
-   * checked as written (a documented endpoint, a body shape, no write-looking key) and every POST the
-   * adapter builds must match one entry and carry a body that is a query.
+   * The read-only query entries the adapter's own file EXPORTS (ADR-0006), if it sends any: the frozen
+   * objects `registerQueryAllow` returned, imported here, not written out again. The suite checks
+   * each is registered (the fetcher only sends to a registered id) and well formed, and that every
+   * POST the adapter builds matches one entry and carries a body that is a query. Leave it out for an
+   * adapter that only GETs: the suite then fails on the first POST it builds.
    */
   queryAllow?: readonly ReadOnlyQueryAllow[];
+  /** For an entry whose host is `{ configured }`: the host the adapter's configuration gives, by entry id. */
+  queryHosts?: Readonly<Record<string, string>>;
   /** Text that is in the platform's content, including an unpublished draft, and must never come back. */
   secrets: readonly string[];
   expected: {
@@ -125,9 +129,13 @@ const GRAPHQL_WRITE = /(^|[\s{}(),])(mutation|subscription)\b/i;
  * Why a POST is not a read-only query under these allowlist entries, or undefined when it is one.
  * The reason never repeats the body.
  */
-function postProblem(r: Seen, allows: readonly ReadOnlyQueryAllow[]): string | undefined {
+function postProblem(
+  r: Seen,
+  allows: readonly ReadOnlyQueryAllow[],
+  hosts: Readonly<Record<string, string>>,
+): string | undefined {
   const url = new URL(r.url);
-  const candidates = allows.filter((a) => addressProblem(url, a) === undefined);
+  const candidates = allows.filter((a) => addressProblem(url, a, hosts[a.id]) === undefined);
   if (candidates.length === 0)
     return `POST ${r.url}: matches no allowlist entry (https, host, path, no query string)`;
   let parsed: unknown;
@@ -151,12 +159,13 @@ function postProblem(r: Seen, allows: readonly ReadOnlyQueryAllow[]): string | u
 export function requestProblems(
   seen: readonly Seen[],
   allows: readonly ReadOnlyQueryAllow[] = [],
+  hosts: Readonly<Record<string, string>> = {},
 ): string[] {
   const out: string[] = [];
   for (const r of seen) {
     const method = r.method.toUpperCase();
     if (method === "POST") {
-      const why = postProblem(r, allows);
+      const why = postProblem(r, allows, hosts);
       if (why !== undefined) out.push(why);
     } else if (!READ_ONLY.has(method))
       out.push(`${r.method} ${r.url}: only GET, HEAD and an allowlisted query POST are ever built`);
@@ -176,6 +185,10 @@ export function allowlistProblems(allows: readonly ReadOnlyQueryAllow[]): string
     if (ids.has(a.id)) out.push(`${a.id}: the id is used twice`);
     ids.add(a.id);
     for (const p of allowProblems(a)) out.push(`${a.id}: ${p}`);
+    // The fetcher resolves an id from the registry; an entry written out here instead would be
+    // refused at run time, so it must be the very object the adapter's file registered.
+    if (resolveQueryAllow(a.id) !== a) out.push(`${a.id}: not the entry the adapter registered`);
+    if (!Object.isFrozen(a)) out.push(`${a.id}: not frozen`);
   }
   return out;
 }

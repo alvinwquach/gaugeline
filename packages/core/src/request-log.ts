@@ -17,6 +17,8 @@ export const REQUEST_KINDS = [
   "script",
   "extra-page",
   "other",
+  /** A POST to a documented read-only query endpoint (ADR-0006). Always last. */
+  "query",
 ] as const;
 export type RequestKind = (typeof REQUEST_KINDS)[number];
 
@@ -27,7 +29,12 @@ export type RequestError = "timeout" | "private-address-refused" | "no-answer";
 export interface RequestRecord {
   url: string;
   kind: RequestKind;
-  method: "GET" | "HEAD";
+  method: "GET" | "HEAD" | QueryMethod;
+  /**
+   * Only on a query (kind "query", method POST): the id of the allowlist entry that let it through.
+   * The body, the headers and the key are never kept.
+   */
+  allow?: string;
   /** null when nothing answered. */
   status: number | null;
   error?: RequestError;
@@ -37,22 +44,6 @@ export interface RequestRecord {
   /** Which get() call this belongs to, in call order, and which hop of its redirects. */
   chain: number;
   hop: number;
-}
-
-/**
- * A read-only query (ADR-0006) as the fetcher keeps it: the address and the id of the allowlist
- * entry that let it through, the status and the time. Never the body, never a header. Kept apart
- * from `RequestRecord` so the published requests file (schema v1: GET and HEAD) does not change.
- */
-export interface QueryRecord {
-  url: string;
-  kind: "query";
-  method: QueryMethod;
-  /** The id of the ReadOnlyQueryAllow entry. */
-  allow: string;
-  status: number | null;
-  error?: RequestError;
-  ms: number;
 }
 
 /** A request as the result carries it: the order is the order of the list. */
