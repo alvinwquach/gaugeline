@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { adaptersConfigSchema } from "../../adapters/config.js";
-import { detectAdapters, matchDetection, signsOf } from "../../adapters/detect.js";
+import { detectAdapters, matchDetection, signsOf } from "../hints.js";
 import { ADAPTER_ENTRIES } from "../../adapters/entries.generated.js";
 import { createFetcher } from "../../fetcher.js";
 import { costConfigSchema } from "../../cost/config.js";

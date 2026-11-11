@@ -1,6 +1,6 @@
 import { load } from "cheerio/slim";
-import { ADAPTER_ENTRIES } from "./entries.generated.js";
-import type { AdapterDetection, AdapterEntry } from "./entry.js";
+import { ADAPTER_ENTRIES } from "../adapters/entries.generated.js";
+import type { AdapterDetection, AdapterEntry } from "../adapters/entry.js";
 
 /** What a response and its HTML show of the platform behind them. Plain data, so a test can write one by hand. */
 export interface AdapterSigns {

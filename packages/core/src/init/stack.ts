@@ -1,4 +1,4 @@
-import { detectAdapters, signsOf, type AdapterSighting } from "../adapters/detect.js";
+import { detectAdapters, signsOf, type AdapterSighting } from "./hints.js";
 import { dnsName, registrableDomain, type DnsReader } from "../dns.js";
 import { NetworkError } from "../errors.js";
 import type { Fetcher, Hop } from "../fetcher.js";

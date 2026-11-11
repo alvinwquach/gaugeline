@@ -1525,8 +1525,8 @@ export type { WordPressData } from "./advisory/evidence.js";
 export * from "./adapters/index.js";
 
 // gaugeline init: detect a site's stack from outside and propose starter settings files (F-07).
-export { detectAdapters, matchDetection, signsOf } from "./adapters/detect.js";
-export type { AdapterSigns, AdapterSighting } from "./adapters/detect.js";
+export { detectAdapters, matchDetection, signsOf } from "./init/hints.js";
+export type { AdapterSigns, AdapterSighting } from "./init/hints.js";
 export type { AdapterDetection } from "./adapters/entry.js";
 export { LINKED_PAGES, detectStack, linkedPaths } from "./init/stack.js";
 export type { DetectOptions, PaymentSighting, Sighting, StackReport } from "./init/stack.js";
