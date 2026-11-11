@@ -32,7 +32,7 @@ export const TINA_CONFIG_FILES = [
 
 /** Why TinaCloud is not read, in plain words (shown when the config names a TinaCloud client). */
 export const TINACLOUD_NOT_READ =
-  "TinaCloud is configured, but its content API is not read: this adapter reads the content files in the repository, which TinaCloud mirrors from git, and does not use the TinaCloud client token.";
+  "TinaCloud is configured, but its content API is not read: this adapter reads the content files in the repository, which TinaCloud indexes from git, and does not use the TinaCloud client token.";
 
 export interface TinaAdapter extends ContentAdapter {
   /**
@@ -139,7 +139,7 @@ export function createTinaAdapter(options: TinaAdapterOptions): TinaAdapter {
         for (const c of read.collections) collections.set(c.name, c);
         notRead.push(...read.notRead);
         if (read.tinaCloud)
-          notRead.push({ name: "TinaCloud", reason: TINACLOUD_NOT_READ, kind: "collection" });
+          notRead.push({ name: "TinaCloud", reason: TINACLOUD_NOT_READ, kind: "tinacloud" });
       }
     }
 
@@ -158,9 +158,9 @@ export function createTinaAdapter(options: TinaAdapterOptions): TinaAdapter {
       if (collections.get(name)?.dir !== f.dir) delete accept[name];
       folders[name] = f;
       for (
-        let at = notRead.findIndex((n) => n.name === name);
+        let at = notRead.findIndex((n) => n.name === name && n.kind !== "tinacloud");
         at >= 0;
-        at = notRead.findIndex((n) => n.name === name)
+        at = notRead.findIndex((n) => n.name === name && n.kind !== "tinacloud")
       )
         if (notRead[at]?.kind === "address" && f.permalink === undefined) break;
         else notRead.splice(at, 1);

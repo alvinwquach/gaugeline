@@ -15,7 +15,7 @@ export const TINA_MARKERS = {
   hours: "Open seven days a week",
 } as const;
 
-/** tina/config.ts as a freelancer writes it: three collections, one with a custom address, one matching a single file. */
+/** tina/config.ts as a freelancer writes it: three collections, one with a custom address, one matching two files. */
 export const TINA_CONFIG = `import { defineConfig } from "tinacms";
 
 // collections: [ not a real list, this is a comment ]
@@ -68,7 +68,7 @@ export default defineConfig({
         path: "content/pages",
         format: "json",
         match: { include: "{home,hours}" },
-        ui: { router: () => "/" },
+        ui: { router: ({ document }) => \`/\${document._sys.filename}\` },
         fields: [{ type: "string", name: "headline" }],
       },
     ],

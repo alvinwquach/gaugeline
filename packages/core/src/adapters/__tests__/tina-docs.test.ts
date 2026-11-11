@@ -12,9 +12,6 @@ const read = (path: string): string =>
 const page = read("docs/integrations/tina.md");
 const index = read("docs/integrations/index.md");
 
-/** A marker for text still to be written. The scaffold has them; the no-TODO test refuses them at merge. */
-const TODO = /TODO\(new:adapter\)/;
-
 const block = (lang: string, title: string): string[] =>
   [
     ...page.matchAll(new RegExp("```" + lang + " title=" + title + "\\n([\\s\\S]*?)\\n```", "g")),
@@ -47,8 +44,9 @@ describe("docs/integrations/tina.md", () => {
   });
 
   it("says when the documentation was checked, and marks the citation [docs]", () => {
-    expect(page).toMatch(/Documentation checked on: (\d{4}-\d{2}-\d{2}|TODO\(new:adapter\))/);
+    expect(page).toMatch(/Documentation checked on: \d{4}-\d{2}-\d{2}/);
     expect(page).toContain("[docs]");
+    expect(page).toContain("uncited");
   });
 
   it("has a freelancer example and a list of what could not be checked", () => {
@@ -61,17 +59,22 @@ describe("docs/integrations/tina.md", () => {
     const shown = block("json", "gaugeline\\.adapters\\.json");
     expect(shown).toHaveLength(1);
     const parsed = adaptersConfigSchema.parse(JSON.parse(shown[0] ?? "null"));
-    if (
-      !TODO.test(shown[0] ?? "") &&
-      JSON.stringify(parsed) !== JSON.stringify({ adapters: [{ id: "tina" }] })
-    )
-      expect(parsed).toEqual({ adapters: [TINA_SETTINGS] });
+    expect(parsed).toEqual({ adapters: [TINA_SETTINGS] });
   });
 
   it("the read it shows is what the adapter reads, once pasted", async () => {
     const outputs = block("json", "Output");
     expect(outputs).toHaveLength(1);
-    if (!TODO.test(outputs[0] ?? "")) expect(outputs[0]).toBe(await tinaReads());
+    expect(outputs[0]).toBe(await tinaReads());
+  });
+
+  it("names the variable the token comes from, and says the TinaCloud token is never used", () => {
+    expect(page).toContain("GAUGELINE_GITHUB_TOKEN");
+    expect(page).toMatch(/TinaCloud client token[^.]*never read/);
+  });
+
+  it("is an example for a freelancer's client, not for everyone", () => {
+    expect(page).toMatch(/^## Example: a bakery on Next\.js and TinaCMS$/m);
   });
 
   it("shows no text from the site's content", () => {

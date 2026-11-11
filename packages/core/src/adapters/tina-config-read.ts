@@ -36,7 +36,7 @@ export interface TinaNotRead {
   name: string;
   reason: string;
   /** "collection": not read at all. "address": read, but its items have no address. */
-  kind: "collection" | "address";
+  kind: "collection" | "address" | "tinacloud";
 }
 
 export type TinaConfigRead =

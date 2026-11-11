@@ -76,13 +76,13 @@ describe("the TinaCMS adapter: a local clone", () => {
     expect(await adapter.draftsReachable()).toBe("not-applicable");
   });
 
-  it("gives each item the address ui.router names: a file name, a custom slug field, a fixed page", async () => {
+  it("gives each item the address ui.router names: a file name, a custom slug field, a page's own name", async () => {
     const { docs } = await collectPublished(local(TINA_FILES));
     expect(docs.map((d) => [d.id.split("/").at(-1), d.url])).toEqual([
       ["cardamom-bun.md", "/bread/cardamom-bun"],
       ["dark-rye.md", "/bread/rye"],
-      ["home.json", "/"],
-      ["hours.json", "/"],
+      ["home.json", "/home"],
+      ["hours.json", "/hours"],
       ["saturday-hours.mdx", "/news/saturday-hours"],
       ["sourdough-class.mdx", "/news/sourdough-class"],
     ]);

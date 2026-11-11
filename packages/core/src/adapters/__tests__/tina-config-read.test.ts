@@ -17,7 +17,7 @@ describe("reading tina/config.ts as text", () => {
     expect(r.collections.map((c) => [c.name, c.dir, c.format, c.permalink])).toEqual([
       ["post", "content/posts", "mdx", "/news/{filename}"],
       ["bread", "content/bread", "md", "/bread/{slug}"],
-      ["page", "content/pages", "json", "/"],
+      ["page", "content/pages", "json", "/{filename}"],
     ]);
     expect(r.notRead).toEqual([]);
     // The commented-out `collections: [` and the variables above the config are not mistaken for it.

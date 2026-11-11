@@ -1,51 +1,64 @@
+import { mkdtempSync, realpathSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { createFetcher } from "../../fetcher.js";
 import { collectPublished } from "../collect.js";
 import { createTinaAdapter } from "../tina.js";
-import { AdapterCouldNotCheck } from "../types.js";
-import { tinaTransport } from "./tina-fixture.js";
+import { removeTree, writeTree } from "./git-content-fixture.js";
+import { TINA_FILES, TINA_NOW } from "./tina-fixture.js";
 
 /**
- * What docs/integrations/tina.md shows for Larkspur Yoga Studio (an invented small studio whose TinaCMS site
- * a freelancer built): the settings entry, and what the adapter reads over the invented site. The docs test
- * compares the page's blocks with these, so the page cannot drift from the tool. To print the output for
- * the page: pnpm exec tsx packages/core/src/adapters/__tests__/tina-docs-example.ts
+ * What docs/integrations/tina.md shows for Rye & Ember Bakery (an invented neighbourhood bakery whose Next.js
+ * site a freelancer built on TinaCMS): the settings entry, and what the adapter reads over the invented
+ * repository. The docs test compares the page's blocks with these, so the page cannot drift from the tool. To
+ * print the output for the page: pnpm exec tsx packages/core/src/adapters/__tests__/tina-docs-example.ts
  */
 export const TINA_SETTINGS = {
   id: "tina",
-  fingerprint: { classes: ["name", "summary"] },
-  urls: { classes: "/classes/{slug}", teachers: "/teachers/{slug}" },
+  path: ".",
+  fingerprint: { post: ["title", "summary"] },
 } as const;
 
+const never = createFetcher({
+  transport: () => Promise.reject(new Error("a local read makes no request")),
+  timeoutMs: 5000,
+});
+
 export async function tinaReads(): Promise<string> {
-  const fetcher = createFetcher({
-    transport: tinaTransport(),
-    timeoutMs: 5000,
-  });
-  const adapter = createTinaAdapter({
-    env: {},
-    fetcher,
-    settings: TINA_SETTINGS,
-    sleep: () => Promise.resolve(),
-  });
-  const types = await adapter.types();
-  const fields = await adapter.fieldCounts("classes", ["name", "summary", "seats"]);
-  const { docs } = await collectPublished(adapter, { types: ["classes"] });
-  const other = await adapter
-    .fieldCounts("none", ["name"])
-    .catch((e: unknown) => (e instanceof AdapterCouldNotCheck ? e.reason : "failed"));
-  return JSON.stringify(
-    {
-      types,
-      "class fields": fields,
-      "a type that does not exist": other,
-      "drafts reachable": await adapter.draftsReachable(),
-      "published classes": docs,
-    },
-    null,
-    2,
-  );
+  const cwd = realpathSync(mkdtempSync(path.join(tmpdir(), "gaugeline-docs-")));
+  try {
+    writeTree(cwd, TINA_FILES);
+    const adapter = createTinaAdapter({
+      env: {},
+      fetcher: never,
+      settings: TINA_SETTINGS,
+      cwd,
+      now: () => TINA_NOW,
+    });
+    const types = await adapter.types();
+    const fields = await adapter.fieldCounts("post", ["title", "summary", "subtitle"]);
+    const { docs } = await collectPublished(adapter);
+    return JSON.stringify(
+      {
+        types,
+        "post fields": fields,
+        "published items": docs.map((d) => ({
+          type: d.type,
+          id: d.id,
+          url: d.url ?? null,
+          ...(d.type === "post" ? { fieldHashes: d.fieldHashes } : {}),
+        })),
+        "not read": await adapter.notRead(),
+        "drafts reachable": await adapter.draftsReachable(),
+      },
+      null,
+      2,
+    );
+  } finally {
+    removeTree(cwd);
+  }
 }
 
 if (
