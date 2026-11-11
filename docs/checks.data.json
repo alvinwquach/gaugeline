@@ -2444,6 +2444,32 @@
     "estimateChanges": "Rules in the host, a CDN and the app each need checking."
   },
   {
+    "id": "sanity-image-original",
+    "severity": "medium",
+    "area": "Visitors",
+    "title": "Sanity images are served at the size they were uploaded",
+    "what": "An image from cdn.sanity.io is requested with no width or height, so the visitor gets the file as it was uploaded: often 3000 to 6000 pixels wide.",
+    "why": "A phone photo from the shop owner is several megabytes. Shown a few hundred pixels across, it still downloads whole, and the page is slow on a phone for no visible gain.",
+    "fix": "Ask for the size you show: add w (and h with fit=crop if the shape is fixed) and auto=format to the address, or build it with @sanity/image-url: urlFor(image).width(800).auto('format').url().",
+    "tech": "an img src, srcset or picture source on cdn.sanity.io/images with none of w, h, max-w, max-h, min-w or min-h, whose upload is wider than 1200 px (the size is in the file name, so nothing is downloaded); other hosts, and addresses on a custom domain for Sanity's CDN, are not read; one finding per page; the page's own HTML only",
+    "size": "S",
+    "done": "Every Sanity image on the page asks for a width, and for auto format, in its address.",
+    "estimateChanges": "Usually one image helper in the front end. Images written by hand into rich text are edited one by one."
+  },
+  {
+    "id": "sanity-image-oversized",
+    "severity": "medium",
+    "area": "Visitors",
+    "title": "Sanity images are delivered far larger than they are shown",
+    "what": "An image from cdn.sanity.io is asked for at a width much greater than the width attribute on the page, and the page offers no smaller version.",
+    "why": "The visitor downloads several times the pixels they can see. On a phone that is seconds of waiting and mobile data spent on detail the screen throws away.",
+    "fix": "Ask Sanity for about twice the width the image is shown at (for a 400 px slot, w=800), or give the image a srcset with smaller widths and a sizes attribute so each screen picks one.",
+    "tech": "an img with a width attribute whose smallest Sanity address (src, srcset or picture source) delivers more than 2 times that width and at least 200 px more; delivered is w times dpr, never above the upload, and the upload's own width when no w is given (read from the file name); an img with no width attribute is not judged; no rendering, so a width set only in CSS is not seen",
+    "size": "S",
+    "done": "No Sanity image is delivered at more than twice the width its slot shows.",
+    "estimateChanges": "One width in the image helper, or the sizes list in a responsive image component."
+  },
+  {
     "id": "schema-breadcrumb-mismatch",
     "severity": "medium",
     "area": "Search & sharing",
@@ -3573,6 +3599,19 @@
     "size": "S",
     "done": "The price is corrected at its source and the site rebuilt, or the change is accepted as meant.",
     "estimateChanges": "A price kept in several places is edited in each."
+  },
+  {
+    "id": "sanity-image-duplicate",
+    "severity": "low",
+    "area": "Visitors",
+    "title": "One Sanity image is processed and downloaded more than once",
+    "what": "The same uploaded image is requested with different parameters by different images on the page, such as one width in the header and another in a card.",
+    "why": "Each variant is a separate file for Sanity's CDN to make and for the visitor to download, and none of them is in the browser's cache for the others.",
+    "fix": "Use one address for the image and let CSS size it, or give it one srcset the browser chooses from. If a card needs a different crop, that is a different picture: upload it as its own image.",
+    "tech": "the same asset id (the hash in the file name; the same bytes are the same asset) in two or more img elements with different parameter sets; an img's own srcset and picture sources are one image and are not compared with each other; parameter order is ignored; the page's own HTML only",
+    "size": "S",
+    "done": "Each Sanity asset on a page is requested with one set of parameters, and differing sizes come from one srcset.",
+    "estimateChanges": "Usually one shared image helper used by every component that shows the image."
   },
   {
     "id": "schema-breadcrumb-start",

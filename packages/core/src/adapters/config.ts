@@ -20,6 +20,11 @@ const PAGE_READERS: readonly string[] = ADAPTER_ENTRIES.filter((e) => e.settings
   (e) => e.id,
 );
 
+/** The page readers that also read their platform's collections with a key: they take fingerprint, urls and siteId. */
+const FIELD_READERS: readonly string[] = ADAPTER_ENTRIES.filter((e) => e.settings?.fields).map(
+  (e) => e.id,
+);
+
 /** The adapters that take `expectPrivate`: the owner says their public API is meant to be private. */
 const EXPECT_PRIVATE: readonly string[] = ADAPTER_ENTRIES.filter(
   (e) => e.settings?.expectPrivate,
@@ -132,6 +137,11 @@ export const adaptersConfigSchema = z.strictObject({
             .string()
             .regex(/^https?:\/\/[^\s/]+\/?$/, "a site address such as https://example.com")
             .optional(),
+          /** `wix` only: the Wix site's id (a UUID), sent as the wix-site-id header with the API key. */
+          siteId: z
+            .string()
+            .regex(/^[A-Za-z0-9][A-Za-z0-9-]{7,63}$/, "a Wix site id, such as a UUID")
+            .optional(),
           /** `sitemap-feed` only: sitemap files to read instead of looking for them. */
           sitemaps: z
             .array(z.string().regex(SITE_FILE, "a path on the site, or an https address"))
@@ -163,6 +173,12 @@ export const adaptersConfigSchema = z.strictObject({
                     path: ["fingerprint", type],
                     message: `"${field}" has a hyphen: only the Webflow and git-content adapters have field names like that, and ${entry.id} does not`,
                   });
+          if (!FIELD_READERS.includes(entry.id) && entry.siteId !== undefined)
+            ctx.addIssue({
+              code: "custom",
+              path: ["siteId"],
+              message: `"siteId" belongs to the wix adapter, not to ${entry.id}`,
+            });
           if (entry.expectPrivate !== undefined && !EXPECT_PRIVATE.includes(entry.id))
             ctx.addIssue({
               code: "custom",
@@ -201,7 +217,7 @@ export const adaptersConfigSchema = z.strictObject({
               });
           }
           for (const key of ["fingerprint", "urls"] as const)
-            if (own && entry[key] !== undefined)
+            if (own && !FIELD_READERS.includes(entry.id) && entry[key] !== undefined)
               ctx.addIssue({
                 code: "custom",
                 path: [key],

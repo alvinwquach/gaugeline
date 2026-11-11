@@ -43,6 +43,7 @@ const FIXTURES = [
   "sveltekit-like",
   "sveltekit-dev",
   "astro-like",
+  "sanity-images",
   "refusing",
   "tag-rules",
   "nav-events",
