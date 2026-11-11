@@ -210,7 +210,8 @@ export function createPublished(
       stillLive: [],
       notes: [],
     };
-    const adapters = build?.(origin) ?? adaptersOrDefault(config, { ...context, site: origin });
+    const adapters =
+      build?.(origin) ?? (await adaptersOrDefault(config, { ...context, site: origin }));
     if (adapters.length === 0) {
       reading.notes.push(
         "There is no content system to read: give a site address, or name an adapter in gaugeline.adapters.json.",

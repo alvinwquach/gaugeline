@@ -114,9 +114,7 @@ import {
   addWordPressChecks,
   addPublishedChecks,
   createPublished,
-  WORDPRESS_ENV_VARS,
-  WEBFLOW_TOKEN,
-  WEBFLOW_SITE_ID,
+  allAdapterEnvVars,
   createWordPress,
 } from "@gaugeline/core";
 import { parseCliArgs } from "./args.js";
@@ -1478,12 +1476,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         ? createPublished(
             readAdaptersConfig(cwd),
             {
-              env: freezeEnv(io.env ?? {}, [
-                ...SANITY_ENV_VARS,
-                ...WORDPRESS_ENV_VARS,
-                WEBFLOW_TOKEN,
-                WEBFLOW_SITE_ID,
-              ]),
+              env: freezeEnv(io.env ?? {}, [...SANITY_ENV_VARS, ...allAdapterEnvVars()]),
               fetcher,
             },
             fetcher,

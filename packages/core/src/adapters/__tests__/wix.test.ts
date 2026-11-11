@@ -5,7 +5,7 @@ import { testKey } from "../../connectors/__tests__/fake.js";
 import { createFetcher } from "../../fetcher.js";
 import { adapterHeader, collectPublished } from "../collect.js";
 import { adaptersConfigSchema } from "../config.js";
-import { BUILT_ADAPTERS, PLANNED_ADAPTERS, resolveAdapters } from "../registry.js";
+import { BUILT_ADAPTERS, PLANNED_ADAPTERS, createAdapter, resolveAdapters } from "../registry.js";
 import { AdapterCouldNotCheck } from "../types.js";
 import { WIX_CMS_READ_PATH, WIX_DESCRIPTION, createWixAdapter } from "../wix.js";
 import { recording, requestProblems, type Seen } from "./contract.js";
@@ -235,15 +235,18 @@ describe("a Wix API key is never read, sent or logged", () => {
     });
     const built = BUILT_ADAPTERS.get("wix");
     expect(built).toBeDefined();
-    const adapter = built?.create(
-      {
-        env: { WIX_API_KEY: key, WIX_SITE_ID: key, GAUGELINE_WIX_KEY: key },
-        fetcher,
-        site: MARLOW,
-        sleep: () => Promise.resolve(),
-      },
-      { id: "wix" },
-    );
+    const adapter = built
+      ? await createAdapter(
+          built,
+          {
+            env: { WIX_API_KEY: key, WIX_SITE_ID: key, GAUGELINE_WIX_KEY: key },
+            fetcher,
+            site: MARLOW,
+            sleep: () => Promise.resolve(),
+          },
+          { id: "wix" },
+        )
+      : undefined;
     expect(adapter).toBeDefined();
     if (!adapter) return;
     const out = [

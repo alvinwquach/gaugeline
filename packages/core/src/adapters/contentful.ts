@@ -11,7 +11,6 @@ import { fillUrlTemplate, hashValue } from "./fingerprint.js";
 import {
   AdapterCouldNotCheck,
   AdapterRateLimitedError,
-  type AdapterDescription,
   type AdapterSettings,
   type ContentAdapter,
   type PublishedDoc,
@@ -19,21 +18,21 @@ import {
   type TypeCount,
 } from "./types.js";
 
-/**
- * Contentful's delivery token can only read published content: the Content Delivery API has no
- * write endpoint at all, so the narrowest key is also the one Gaugeline needs. The page is
- * Gaugeline's own: it lists the endpoints used and how to make the token.
- */
-export const CONTENTFUL_DESCRIPTION: AdapterDescription = {
-  name: "Contentful",
-  docsUrl: "https://gaugeline.dev/docs/integrations/contentful",
-  keyKind: "read-only",
-};
+import { CONTENTFUL_DESCRIPTION } from "./contentful.entry.js";
+export { CONTENTFUL_DESCRIPTION };
 
-export const CONTENTFUL_SPACE_ID = "CONTENTFUL_SPACE_ID";
-export const CONTENTFUL_ENVIRONMENT = "CONTENTFUL_ENVIRONMENT";
-export const CONTENTFUL_DELIVERY_TOKEN = "CONTENTFUL_DELIVERY_TOKEN";
-export const CONTENTFUL_PREVIEW_TOKEN = "CONTENTFUL_PREVIEW_TOKEN";
+import {
+  CONTENTFUL_DELIVERY_TOKEN,
+  CONTENTFUL_ENVIRONMENT,
+  CONTENTFUL_PREVIEW_TOKEN,
+  CONTENTFUL_SPACE_ID,
+} from "./contentful.entry.js";
+export {
+  CONTENTFUL_DELIVERY_TOKEN,
+  CONTENTFUL_ENVIRONMENT,
+  CONTENTFUL_PREVIEW_TOKEN,
+  CONTENTFUL_SPACE_ID,
+};
 
 /** The Content Delivery API (published content) and the Content Preview API (drafts too). */
 export const CONTENTFUL_CDA = "https://cdn.contentful.com";
