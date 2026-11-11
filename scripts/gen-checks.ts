@@ -20,6 +20,7 @@ import {
   HANDOFF_CHECKS,
   COST_CHECKS,
   TRACKER_CHECKS,
+  LIBRARY_CHECKS,
   PRINTED_CHECKS,
   GRAPHQL_CHECKS,
   MUTATION_CHECKS,
@@ -71,6 +72,7 @@ for (const c of RENEWALS_CHECKS) registry.register(c);
 for (const c of HANDOFF_CHECKS) registry.register(c);
 for (const c of COST_CHECKS) registry.register(c);
 for (const c of TRACKER_CHECKS) registry.register(c);
+for (const c of LIBRARY_CHECKS) registry.register(c);
 for (const c of PRESENCE_CHECKS) registry.register(c);
 for (const c of PRICE_CHECKS) registry.register(c);
 for (const c of SUBSCRIPTION_CHECKS) registry.register(c);

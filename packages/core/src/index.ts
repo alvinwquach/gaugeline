@@ -1441,3 +1441,19 @@ export {
 } from "./trackers/fingerprints.js";
 export type { Fingerprint, Tracker, TrackerGroup } from "./trackers/fingerprints.js";
 export { sensitiveReason, collectsDetails } from "./trackers/sensitive.js";
+
+export { LIBRARY_CHECKS } from "./checks/libraries.js";
+export { addLibraryChecks } from "./libraries/registry.js";
+export { createLibraries, LIBRARY_SCRIPT_CAP } from "./libraries/reader.js";
+export type { Libraries, ScriptReading } from "./libraries/reader.js";
+export { detect, looksMinified, MAX_SCRIPT_CHARS } from "./libraries/detect.js";
+export type { Detection, EvidenceKind } from "./libraries/detect.js";
+export {
+  advisoriesFor,
+  LIBRARY_ADVISORIES,
+  LIBRARY_ADVISORIES_WRITTEN,
+  LIBRARY_NAMES,
+} from "./libraries/advisories.js";
+export type { Advisory, AdvisoryMatch, AffectedRange, LibraryId } from "./libraries/advisories.js";
+export { compareVersions, parseVersion } from "./libraries/version.js";
+export type { ParsedVersion } from "./libraries/version.js";

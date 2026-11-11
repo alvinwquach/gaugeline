@@ -318,6 +318,10 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   ],
   "output-changes-every-request": ["The page's HTML is different on every request", "Visitors"],
   "usage-jump": ["Hosting usage jumped", "Visitors"],
+  "library-with-advisory": [
+    "A JavaScript library the site serves has a published advisory",
+    "Security & email",
+  ],
   "printful-price": ["Fulfillment lists a different price", "Sales & prices"],
   "stripe-no-price": ["No default price in checkout", "Sales & prices"],
   "plan-trial-mismatch": ["A plan's free trial differs from checkout", "Sales & prices"],
@@ -1596,6 +1600,12 @@ export const CHECK_TEXT: Readonly<
     "A site can quietly multiply its hosting bill when a page stops caching or a loop starts. The jump shows up in the usage figures days before the invoice, which is the time to fix it, and to tell the client before they find out.",
     "Open the provider's usage page for the metric named, and look for the day it started: a deploy, a page that began changing on every visit (see output-changes-every-request), a new image or API call. Fix the cause, then run again tomorrow.",
     "Read-only, one GET of the provider's usage with the token in the environment: Vercel's billing charges (GAUGELINE_VERCEL_TOKEN; Vercel has no read-only token type, so use one scoped to the team). Each service and unit is a metric, and the billed cost one more, summed by UTC day in thousandths (integers). The latest complete day before today by the injected clock is compared with the mean of the days before it (window and multiple in gaugeline.cost.json): flagged when more than the multiple, ignoring a day under one whole unit and a metric with no earlier usage. Sanity's usage has no documented read API, so it is could-not-check. Not applicable to a site on Wix, Squarespace, Webflow or Framer: a fixed plan. No token is could-not-check; the page checks still run",
+  ],
+  "library-with-advisory": [
+    "Gaugeline reads the JavaScript files a page loads, finds the version of jQuery, jQuery UI, Lodash, Moment.js, Bootstrap or AngularJS in them, and lists the published advisories that name that version, with the version that fixes each.",
+    "Libraries in an old theme or plugin stay at the version they were installed at, and advisories are published about versions long after. This is a list of facts: which version is served and which advisories name it. Whether an advisory matters for this site depends on how the site uses the library, which Gaugeline cannot see, and it does not say.",
+    "Look at where the file comes from: the theme, a plugin, a package in the project or a CDN address. Update it to a version past the fixes the finding lists, or take the library out when nothing uses it, then test the pages that use it. If it is bundled into code you cannot change, tell the client who maintains it.",
+    "Only with --libraries. The script files the page's own HTML names (script src, same site or another, at most 20, each fetched once with GET, never any address the page does not name) are read as text and never run; the first 2 MiB of each is searched. The version comes from a banner comment, a version string in the code or the file name and path of the address (for example /jquery/1.12.4/ or lodash@4.17.21), the file's own text first. It is compared with packages/core/src/data/library-advisories.json: for each advisory, the affected versions and the page that publishes it, with a verified flag that is false until someone has compared the entry with its page. A finding shows the library, its version, the script's address (with no query), and each advisory with its id, a short description and the fixed-in version, never script text beyond the version. A library recognised by name with no version, a script that cannot be read or is longer than what is read, and minified files with no library name or version are could-not-check. A library bundled into one minified file with its banner removed is not seen. The same files give the same findings",
   ],
   "printful-price": [
     "A synced Printful variant's retail price is different from the price Stripe charges for the product.",

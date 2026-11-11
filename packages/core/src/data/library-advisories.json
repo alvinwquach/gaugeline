@@ -1,0 +1,225 @@
+{
+  "about": "Published security advisories for the JavaScript libraries Gaugeline can recognise in a served file, read by library-with-advisory. Each advisory names the versions it affects (introduced is the first affected version, fixed the first version that is not; fixed is null when no fixed version is listed) and the page that publishes it. The entries were written from the public advisories as remembered and have not been compared with their pages: confirm each one before relying on it, then set verified to true and lastChecked to the day. Only advisories known to exist are listed; a library or version missing here is not a statement that it is safe.",
+  "written": "2026-11-11",
+  "lastChecked": null,
+  "libraries": [
+    {
+      "id": "jquery",
+      "name": "jQuery",
+      "advisories": [
+        {
+          "id": "CVE-2020-11023",
+          "summary": "cross-site scripting through HTML with option elements",
+          "affects": [{ "introduced": "1.0.3", "fixed": "3.5.0" }],
+          "source": "https://nvd.nist.gov/vuln/detail/CVE-2020-11023",
+          "verified": false
+        },
+        {
+          "id": "CVE-2020-11022",
+          "summary": "cross-site scripting through htmlPrefilter",
+          "affects": [{ "introduced": "1.2.0", "fixed": "3.5.0" }],
+          "source": "https://nvd.nist.gov/vuln/detail/CVE-2020-11022",
+          "verified": false
+        },
+        {
+          "id": "CVE-2019-11358",
+          "summary": "prototype pollution through extend",
+          "affects": [{ "fixed": "3.4.0" }],
+          "source": "https://nvd.nist.gov/vuln/detail/CVE-2019-11358",
+          "verified": false
+        },
+        {
+          "id": "CVE-2015-9251",
+          "summary": "cross-site scripting in cross-domain Ajax requests",
+          "affects": [{ "fixed": "3.0.0" }],
+          "source": "https://nvd.nist.gov/vuln/detail/CVE-2015-9251",
+          "verified": false
+        },
+        {
+          "id": "CVE-2012-6708",
+          "summary": "cross-site scripting through selectors",
+          "affects": [{ "fixed": "1.9.0" }],
+          "source": "https://nvd.nist.gov/vuln/detail/CVE-2012-6708",
+          "verified": false
+        }
+      ]
+    },
+    {
+      "id": "jquery-ui",
+      "name": "jQuery UI",
+      "advisories": [
+        {
+          "id": "CVE-2022-31160",
+          "summary": "cross-site scripting in the checkboxradio widget",
+          "affects": [{ "fixed": "1.13.2" }],
+          "source": "https://nvd.nist.gov/vuln/detail/CVE-2022-31160",
+          "verified": false
+        },
+        {
+          "id": "CVE-2021-41184",
+          "summary": "cross-site scripting in the of option of position",
+          "affects": [{ "fixed": "1.13.0" }],
+          "source": "https://nvd.nist.gov/vuln/detail/CVE-2021-41184",
+          "verified": false
+        },
+        {
+          "id": "CVE-2021-41183",
+          "summary": "cross-site scripting in the datepicker text options",
+          "affects": [{ "fixed": "1.13.0" }],
+          "source": "https://nvd.nist.gov/vuln/detail/CVE-2021-41183",
+          "verified": false
+        },
+        {
+          "id": "CVE-2021-41182",
+          "summary": "cross-site scripting in the datepicker altField option",
+          "affects": [{ "fixed": "1.13.0" }],
+          "source": "https://nvd.nist.gov/vuln/detail/CVE-2021-41182",
+          "verified": false
+        },
+        {
+          "id": "CVE-2016-7103",
+          "summary": "cross-site scripting in the dialog closeText option",
+          "affects": [{ "fixed": "1.12.0" }],
+          "source": "https://nvd.nist.gov/vuln/detail/CVE-2016-7103",
+          "verified": false
+        }
+      ]
+    },
+    {
+      "id": "lodash",
+      "name": "Lodash",
+      "advisories": [
+        {
+          "id": "CVE-2021-23337",
+          "summary": "command injection through the template function",
+          "affects": [{ "fixed": "4.17.21" }],
+          "source": "https://nvd.nist.gov/vuln/detail/CVE-2021-23337",
+          "verified": false
+        },
+        {
+          "id": "CVE-2020-28500",
+          "summary": "regular expression denial of service in toNumber and trim",
+          "affects": [{ "fixed": "4.17.21" }],
+          "source": "https://nvd.nist.gov/vuln/detail/CVE-2020-28500",
+          "verified": false
+        },
+        {
+          "id": "CVE-2020-8203",
+          "summary": "prototype pollution in zipObjectDeep",
+          "affects": [{ "fixed": "4.17.19" }],
+          "source": "https://nvd.nist.gov/vuln/detail/CVE-2020-8203",
+          "verified": false
+        },
+        {
+          "id": "CVE-2019-10744",
+          "summary": "prototype pollution in defaultsDeep",
+          "affects": [{ "fixed": "4.17.12" }],
+          "source": "https://nvd.nist.gov/vuln/detail/CVE-2019-10744",
+          "verified": false
+        },
+        {
+          "id": "CVE-2018-16487",
+          "summary": "prototype pollution in merge, mergeWith and defaultsDeep",
+          "affects": [{ "fixed": "4.17.11" }],
+          "source": "https://nvd.nist.gov/vuln/detail/CVE-2018-16487",
+          "verified": false
+        }
+      ]
+    },
+    {
+      "id": "moment",
+      "name": "Moment.js",
+      "advisories": [
+        {
+          "id": "CVE-2022-31129",
+          "summary": "regular expression denial of service when parsing dates",
+          "affects": [{ "introduced": "2.18.0", "fixed": "2.29.4" }],
+          "source": "https://nvd.nist.gov/vuln/detail/CVE-2022-31129",
+          "verified": false
+        },
+        {
+          "id": "CVE-2017-18214",
+          "summary": "regular expression denial of service in date parsing",
+          "affects": [{ "fixed": "2.19.3" }],
+          "source": "https://nvd.nist.gov/vuln/detail/CVE-2017-18214",
+          "verified": false
+        },
+        {
+          "id": "CVE-2016-4055",
+          "summary": "regular expression denial of service in durations",
+          "affects": [{ "fixed": "2.11.2" }],
+          "source": "https://nvd.nist.gov/vuln/detail/CVE-2016-4055",
+          "verified": false
+        }
+      ]
+    },
+    {
+      "id": "bootstrap",
+      "name": "Bootstrap",
+      "advisories": [
+        {
+          "id": "CVE-2019-8331",
+          "summary": "cross-site scripting in the tooltip and popover template",
+          "affects": [{ "fixed": "3.4.1" }, { "introduced": "4.0.0", "fixed": "4.3.1" }],
+          "source": "https://nvd.nist.gov/vuln/detail/CVE-2019-8331",
+          "verified": false
+        },
+        {
+          "id": "CVE-2018-20677",
+          "summary": "cross-site scripting in the affix target option",
+          "affects": [{ "fixed": "3.4.0" }],
+          "source": "https://nvd.nist.gov/vuln/detail/CVE-2018-20677",
+          "verified": false
+        },
+        {
+          "id": "CVE-2018-20676",
+          "summary": "cross-site scripting in the tooltip viewport option",
+          "affects": [{ "fixed": "3.4.0" }],
+          "source": "https://nvd.nist.gov/vuln/detail/CVE-2018-20676",
+          "verified": false
+        },
+        {
+          "id": "CVE-2018-14042",
+          "summary": "cross-site scripting in the tooltip container option",
+          "affects": [{ "fixed": "3.4.0" }, { "introduced": "4.0.0", "fixed": "4.1.2" }],
+          "source": "https://nvd.nist.gov/vuln/detail/CVE-2018-14042",
+          "verified": false
+        },
+        {
+          "id": "CVE-2018-14041",
+          "summary": "cross-site scripting in the scrollspy target option",
+          "affects": [{ "fixed": "3.4.0" }, { "introduced": "4.0.0", "fixed": "4.1.2" }],
+          "source": "https://nvd.nist.gov/vuln/detail/CVE-2018-14041",
+          "verified": false
+        },
+        {
+          "id": "CVE-2018-14040",
+          "summary": "cross-site scripting in the collapse parent option",
+          "affects": [{ "fixed": "3.4.0" }, { "introduced": "4.0.0", "fixed": "4.1.2" }],
+          "source": "https://nvd.nist.gov/vuln/detail/CVE-2018-14040",
+          "verified": false
+        }
+      ]
+    },
+    {
+      "id": "angularjs",
+      "name": "AngularJS",
+      "advisories": [
+        {
+          "id": "CVE-2020-7676",
+          "summary": "cross-site scripting in the HTML sanitiser",
+          "affects": [{ "fixed": "1.8.0" }],
+          "source": "https://nvd.nist.gov/vuln/detail/CVE-2020-7676",
+          "verified": false
+        },
+        {
+          "id": "CVE-2019-10768",
+          "summary": "prototype pollution in merge",
+          "affects": [{ "fixed": "1.7.9" }],
+          "source": "https://nvd.nist.gov/vuln/detail/CVE-2019-10768",
+          "verified": false
+        }
+      ]
+    }
+  ]
+}
