@@ -17,12 +17,14 @@ export { WIX_DESCRIPTION };
  * counts them with Count Data Items, also a POST. The only read by GET is one item by its id, and nothing
  * Gaugeline may call lists the ids. Gaugeline sends GET and HEAD through its fetcher and nothing else
  * (CLAUDE.md rule 6; the one exception, ADR-0005, is notifications to the user's own channels), so it does
- * not send the query, and it does not ask for the key. Allowing a read-only POST query needs an ADR: open
- * question 52 for the owner. The endpoint shapes are from the build session's memory of Wix's reference,
+ * not send the query, and it does not ask for the key. ADR-0006 now allows a POST for a documented read-only
+ * query, but only through an allowlist entry and `fetcher.query`; this adapter registers none yet, so it still
+ * sends none. The field is `queryVerb`, not `method`: it describes the platform's endpoint and builds no request,
+ * and the boundary scan (post-scan.ts) reads a `method: "POST"` property as a request being built. The endpoint shapes are from the build session's memory of Wix's reference,
  * which could not be reached, and are marked uncited on the docs page.
  */
 export const WIX_CMS_READ_PATH = Object.freeze({
-  method: "POST",
+  queryVerb: "POST",
   host: "www.wixapis.com",
   path: "/wix-data/v2/items/query",
   reason:

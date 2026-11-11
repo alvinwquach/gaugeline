@@ -32,6 +32,7 @@ export const SUBCOMMANDS = [
   "audit",
   "migration",
   "advisory",
+  "init",
 ] as const;
 export type CliCommand = "check" | (typeof SUBCOMMANDS)[number];
 
@@ -191,6 +192,19 @@ export type ParsedArgs =
       note: boolean;
       json: boolean;
       ci: boolean;
+      allowPrivate: boolean;
+      verbose: boolean;
+      quiet: boolean;
+    }
+  | {
+      kind: "init";
+      /** The client's site, https unless it was typed with http. */
+      address: string;
+      /** The address as typed, for the commands the output suggests. */
+      typed: string;
+      dryRun: boolean;
+      force: boolean;
+      dns: boolean;
       allowPrivate: boolean;
       verbose: boolean;
       quiet: boolean;
@@ -1216,6 +1230,37 @@ export function parseCliArgs(
       ...(oldAddress !== undefined ? { old: oldAddress } : {}),
       ...(oldFile !== undefined ? { oldFile } : {}),
       ci: values.ci === true,
+      allowPrivate: values["allow-private"] === true,
+      verbose,
+      quiet: values.quiet === true,
+    };
+  }
+  if (command === "init") {
+    if (positionals.length !== 1)
+      return {
+        kind: "error",
+        message:
+          positionals.length === 0
+            ? "gaugeline init needs the site: gaugeline init harbourbar.example"
+            : `gaugeline init takes one site, got ${positionals.length} words: ${positionals.join(", ")}.`,
+        hint: "Type the site like harbourbar.example or https://harbourbar.example.",
+        verbose,
+      };
+    const parsedSite = parseAddress(positionals[0] ?? "");
+    if (!parsedSite.ok)
+      return {
+        kind: "error",
+        message: `The site's address: ${parsedSite.reason}`,
+        hint: "Type the site like harbourbar.example or https://harbourbar.example.",
+        verbose,
+      };
+    return {
+      kind: "init",
+      address: parsedSite.url.href,
+      typed: (positionals[0] ?? "").trim(),
+      dryRun: values["dry-run"] === true,
+      force: values.force === true,
+      dns: values.dns === true,
       allowPrivate: values["allow-private"] === true,
       verbose,
       quiet: values.quiet === true,

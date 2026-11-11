@@ -110,6 +110,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
       "audit",
       "migration",
       "advisory",
+      "init",
       "plan",
       "printed",
       "snapshot",
@@ -135,7 +136,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     type: "boolean",
     description: "Also read the domain's mail records (SPF and DMARC) from DNS",
     since: "0.2.0",
-    commands: ["check", "launch", "brief", "audit", "handoff", "advisory"],
+    commands: ["check", "launch", "brief", "audit", "handoff", "advisory", "init"],
   },
   {
     name: "renewals",
@@ -427,7 +428,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     description:
       "Let --annotate (plan), --page, --save (query), --out (brief), handoff or audit replace files, never a folder or link",
     since: "0.2.0",
-    commands: ["plan", "query", "brief", "handoff", "audit"],
+    commands: ["plan", "query", "brief", "handoff", "audit", "init"],
   },
   {
     name: "progress",
@@ -640,6 +641,13 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     since: "0.2.0",
     commands: ["advisory"],
     multiple: true,
+  },
+  {
+    name: "dry-run",
+    type: "boolean",
+    description: "init: print the settings files it would write, and write nothing",
+    since: "0.2.0",
+    commands: ["init"],
   },
   {
     name: "note",

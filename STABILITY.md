@@ -9,8 +9,9 @@ what will not change without a major version, and what can change at any time.
 - **Exit codes**: 0 (ran), 1 (`--ci` and a "Fix this first" finding), 2 (could not run).
 - **The `--json` shape**, identified by its schema number (`"schema": 2`, published as
   `packages/core/schema/result.v2.json`).
-- **The `--save-requests` file shape**, identified by its own `schemaVersion` (`1`, published as
-  `packages/core/schema/requests.v1.json`). It changes independently of the `--json` shape.
+- **The `--save-requests` file shape**, identified by its own `schemaVersion` (`2`, published as
+  `packages/core/schema/requests.v2.json`; version 1 is still published and still read). Version 2 adds
+  read-only queries (ADR-0006) as requests of kind `query`. It changes independently of the `--json` shape.
 - **The work order data** (`Brief`, returned by `buildBrief` in `@gaugeline/core`), identified by its
   own `schemaVersion` (`1`, published as `packages/core/schema/brief.v1.json`). It changes
   independently of the `--json` shape and of the requests file.

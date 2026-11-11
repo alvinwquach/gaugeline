@@ -484,6 +484,48 @@ and `--ci` exits 1 on `likely-affected`. An example from a pop-up bar, one from 
 roaster behind a CDN: [Advisory check](guides/advisory.md). What it sends:
 [Privacy and safety](privacy.md#advisory-check-gaugeline-advisory).
 
+### The init command
+
+`gaugeline init --help` prints:
+
+```text title=Output
+Usage: gaugeline init <site> [options]
+
+Point Gaugeline at a client's site and get starter settings for what it is
+built on. Reads the home page and up to four pages it links to (GET only), and
+recognises the content system, framework, host, forms, payment links, analytics
+and listing links from what the pages show. Writes gaugeline.adapters.json and
+the other settings files it can fill in, plus gaugeline.init.md with the
+evidence for each setting, and prints what to set up next. It never writes a
+key: it names the environment variables you set. A file that already exists is
+left alone unless you add --force; --dry-run prints everything and writes
+nothing.
+
+Options:
+      --allow-private    Allow addresses on this computer or a private network,
+                         such as 127.0.0.1 or 192.168.x.x
+      --dns              Also read the domain's mail records (SPF and DMARC)
+                         from DNS
+      --force            Let --annotate (plan), --page, --save (query), --out
+                         (brief), handoff or audit replace files, never a folder
+                         or link
+      --dry-run          init: print the settings files it would write, and
+                         write nothing
+      --quiet            Print only results and errors
+      --verbose          Show each request, and technical detail when something
+                         goes wrong
+  -h, --help             Show this help and exit
+  -v, --version          Print the version and exit
+
+Exit codes: 0 ran, 2 could not run
+```
+
+`gaugeline init <site>` reads the home page and up to four pages it links to, with `GET` only, and writes
+starter settings for what the site is built on, so setup starts from what is already there. It never
+writes a key, never replaces a file that exists unless you add `--force`, and writes only inside the folder
+you ran it in. `--dry-run` prints the files and writes nothing. An example from a pop-up bar on WordPress
+with a Formspree form: [gaugeline init](guides/init.md).
+
 ### Flags
 
 The table below is generated from `packages/cli/src/flags.ts` (`pnpm docs:flags`). Do not edit
@@ -565,6 +607,7 @@ between the markers; CI fails when it differs from the flag table.
 | `--old-file <value>`        | migration: a Wix, Webflow or other export (CSV or JSON) that lists the old site's pages, read from this file         |                      | 0.2.0 |
 | `--package <value>`         | advisory: a package@range to use instead of looking the id up in OSV (repeatable)                                    |                      | 0.2.0 |
 | `--host <value>`            | advisory: another hostname of the client to look at, such as an old subdomain (up to 5)                              |                      | 0.2.0 |
+| `--dry-run`                 | init: print the settings files it would write, and write nothing                                                     |                      | 0.2.0 |
 | `--note`                    | advisory: print the short note for the client (Markdown) instead of the report                                       |                      | 0.2.0 |
 | `--runs <value>`            | The folder of saved runs (each one saved with --json) to read                                                        |                      | 0.2.0 |
 | `--time-zone <value>`       | The time zone for dates and ages, such as America/Los_Angeles (default UTC)                                          |                      | 0.2.0 |

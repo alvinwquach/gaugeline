@@ -52,7 +52,33 @@ export type {
   FetcherOptions,
   GetOptions,
   Hop,
+  QueryOptions,
 } from "./fetcher.js";
+export {
+  registerQueryAllow,
+  registeredQueryAllows,
+  resolveQueryAllow,
+} from "./fetch/query-registry.js";
+export {
+  MAX_QUERY_BODY_BYTES,
+  QueryRefusedError,
+  allowProblems,
+  bodyProblem,
+  isExactHost,
+  isReadOnlyBody,
+  isVerified,
+  isWriteKey,
+  isWriteText,
+  matchesPath,
+  queryRefusal,
+} from "./fetch/read-only-query.js";
+export type {
+  ConfiguredHost,
+  GraphqlQueryShape,
+  JsonQueryShape,
+  QueryBodyShape,
+  ReadOnlyQueryAllow,
+} from "./fetch/read-only-query.js";
 export { Semaphore } from "./semaphore.js";
 export { BUDGET_KINDS, LIMITS, createBudget, formatSampleSummary } from "./limits.js";
 export type { Budget, BudgetKind, BudgetSummary, BudgetTally, Limits } from "./limits.js";
@@ -631,8 +657,9 @@ export {
   buildRequestsFile,
   parseRequestsFile,
   requestsFileSchema,
+  requestsFileSchemaV1,
 } from "./requests-file.js";
-export type { RequestsFile, RequestsFileCaps } from "./requests-file.js";
+export type { RequestsFile, RequestsFileCaps, RequestsFileV1 } from "./requests-file.js";
 export { leaksView, MAX_PREVIEWS } from "./leaks-view.js";
 export type { DatasetView, LeaksView, ScriptView } from "./leaks-view.js";
 export { pageData } from "./run-view.js";
@@ -1521,3 +1548,19 @@ export type {
   PlatformRead,
   RawExportFile,
 } from "./backups/types.js";
+
+// gaugeline init: detect a site's stack from outside and propose starter settings files (F-07).
+export { detectAdapters, matchDetection, signsOf } from "./init/hints.js";
+export type { AdapterSigns, AdapterSighting } from "./init/hints.js";
+export type { AdapterDetection } from "./adapters/entry.js";
+export { LINKED_PAGES, detectStack, linkedPaths } from "./init/stack.js";
+export type { DetectOptions, PaymentSighting, Sighting, StackReport } from "./init/stack.js";
+export {
+  ADAPTERS_FILE as INIT_ADAPTERS_FILE,
+  NOTES_FILE as INIT_NOTES_FILE,
+  planInit,
+  renderNotes as renderInitNotes,
+} from "./init/plan.js";
+export type { InitEnvVar, InitFile, InitPlan, NextStep } from "./init/plan.js";
+export { renderInit } from "./init/render.js";
+export type { InitOutput } from "./init/render.js";

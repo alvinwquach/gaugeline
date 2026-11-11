@@ -37,7 +37,7 @@ async function run(
   cwd: string,
   env: Record<string, string | undefined> = BAR_ENV,
   over: Parameters<typeof backupsWorld>[0] = {},
-  lister: typeof barLister | undefined = barLister,
+  lister: typeof barLister | null = barLister,
 ) {
   const w = backupsWorld(over);
   const out: string[] = [];
@@ -143,7 +143,7 @@ describe("the export folder on disk", () => {
       folder({ exports: [{ name: "database", folder: "nowhere" }] }),
       { NO_COLOR: "1" },
       {},
-      undefined,
+      null,
     );
     expect(r.code).toBe(EXIT.ok);
     expect(r.out).toContain(

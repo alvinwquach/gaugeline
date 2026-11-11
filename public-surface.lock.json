@@ -178,6 +178,16 @@
       "verbose",
       "version"
     ],
+    "init": [
+      "allow-private",
+      "dns",
+      "dry-run",
+      "force",
+      "help",
+      "quiet",
+      "verbose",
+      "version"
+    ],
     "launch": [
       "allow-private",
       "allow-secret-key",

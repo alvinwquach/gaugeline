@@ -1,8 +1,10 @@
 # gaugeline
 
 Check a website the way search engines and visitors see it, and get a plain-English list of what to
-fix first. Gaugeline only reads: every request is a `GET` or a `HEAD`, five at a time, and it never
-requests addresses on your own computer or network unless you pass `--allow-private`.
+fix first. Gaugeline only reads: every request is a `GET` or a `HEAD` (the one exception for reads is a
+documented read-only query endpoint on an adapter's allowlist, and notifications to your own
+channels), five at a time, and it never requests addresses on your own computer or network unless
+you pass `--allow-private`.
 
 ```bash
 npx gaugeline example.com
