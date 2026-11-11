@@ -2,6 +2,7 @@ import type { Env } from "../connectors/types.js";
 import { ConfigError } from "../errors.js";
 import type { Fetcher } from "../fetcher.js";
 import type { AdaptersConfig } from "./config.js";
+import { GIT_CONTENT_DESCRIPTION, createGitContentAdapter } from "./git-content.js";
 import { SANITY_DESCRIPTION, createSanityAdapter } from "./sanity.js";
 import { SITEMAP_FEED_DESCRIPTION, createSitemapFeedAdapter } from "./sitemap-feed.js";
 import { WORDPRESS_DESCRIPTION, createWordPressAdapter } from "./wordpress.js";
@@ -14,6 +15,8 @@ export interface AdapterContext {
   sleep?: (ms: number) => Promise<void>;
   /** The address of the site being checked. The sitemap and feed adapter reads it unless its settings give one. */
   site?: string;
+  /** What a relative `path` in the git-content settings is relative to. Default: the working folder. */
+  cwd?: string;
 }
 
 /** An adapter that is built. Its row in docs/integrations is "built" and a test keeps the two in step. */
@@ -72,6 +75,21 @@ export const BUILT_ADAPTERS: ReadonlyMap<string, BuiltAdapter> = new Map<string,
     },
   ],
   [
+    "git-content",
+    {
+      id: "git-content",
+      describe: GIT_CONTENT_DESCRIPTION,
+      create: (c, settings) =>
+        createGitContentAdapter({
+          env: c.env,
+          fetcher: c.fetcher,
+          settings,
+          ...(c.cwd !== undefined ? { cwd: c.cwd } : {}),
+          ...(c.sleep ? { sleep: c.sleep } : {}),
+        }),
+    },
+  ],
+  [
     "webflow",
     {
       id: "webflow",
@@ -103,7 +121,6 @@ export const PLANNED_ADAPTERS: readonly PlannedAdapter[] = [
   { id: "framer", name: "Framer", branch: "C-06" },
   { id: "wix", name: "Wix", branch: "C-05" },
   { id: "generic-api", name: "Any headless CMS with a read API", branch: "C-14" },
-  { id: "git-content", name: "Content kept in git", branch: "C-15" },
   { id: "builders", name: "Squarespace and other builders without a content API", branch: "C-12" },
   { id: "strapi", name: "Strapi", branch: "C-02" },
   { id: "tina", name: "TinaCMS", branch: "C-03" },

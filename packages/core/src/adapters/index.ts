@@ -69,3 +69,11 @@ export type {
   StagedRead,
   WebflowReading,
 } from "./webflow-read.js";
+export {
+  GIT_CONTENT_DESCRIPTION,
+  GIT_CONTENT_LIMITS,
+  GIT_CONTENT_TOKEN,
+  createGitContentAdapter,
+} from "./git-content.js";
+export type { GitContentAdapter, GitContentOptions, GitContentUnread } from "./git-content.js";
+export { JEKYLL_STYLES, PERMALINK_TOKENS } from "./git-content-permalink.js";
