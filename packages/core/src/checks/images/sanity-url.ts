@@ -90,6 +90,8 @@ export interface SanityCandidate {
 /** One img: every Sanity address it names, and the width its markup declares. */
 export interface SanityImageUse {
   declaredWidth?: number;
+  /** The img's alt attribute as written: null when the attribute is missing. */
+  alt: string | null;
   /** Every address on the img, src first, then its srcset, then its picture sources. */
   candidates: SanityCandidate[];
 }
@@ -114,7 +116,7 @@ export function sanityImageUses(page: Pick<PageSnapshot, "images" | "finalUrl">)
     for (const s of img.sources ?? [])
       for (const c of parseSrcset(s.srcset)) take("source", c.url, candidates);
     if (candidates.length > 0)
-      uses.push({ ...(img.width ? { declaredWidth: img.width } : {}), candidates });
+      uses.push({ ...(img.width ? { declaredWidth: img.width } : {}), alt: img.alt, candidates });
   }
   return uses;
 }

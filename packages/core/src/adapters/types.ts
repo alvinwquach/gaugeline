@@ -1,3 +1,4 @@
+import type { Revision } from "../changes/types.js";
 import type { Role } from "../handoff/types.js";
 import type { GenericApiMapping } from "./generic-api-config.js";
 
@@ -112,6 +113,13 @@ export interface ContentAdapter {
   members?(): Promise<AdapterMember[]>;
   /** The address of an item, from its id, type and slug and the settings. */
   resolveUrl?(doc: Pick<PublishedDoc, "id" | "type" | "slug">): string;
+  /**
+   * Who changed a document since a time, as the platform's own history records it (F-10, "what
+   * changed"). Optional: an adapter without it is could-not-check for attribution, never guessed.
+   * Throws AdapterCouldNotCheck when the platform will not say. Reads only. Editors are named as the
+   * platform shows them; with no name, the revision has no `editor`.
+   */
+  revisions?(documentId: string, since: string): Promise<Revision[]>;
 }
 
 /**
@@ -163,8 +171,8 @@ export interface AdapterSettings {
   /** Only `generic-api`: the mapping from the platform's read API to items. */
   api?: GenericApiMapping | undefined;
   /**
-   * Only `umbraco`: the owner says the Delivery API is meant to be private. The probing check
-   * `umbraco-delivery-api-public` runs only when this is true; a key being set says nothing of it.
+   * Only `umbraco` and `joomla`: the owner says the platform's API is meant to be private. The probing checks
+   * `umbraco-delivery-api-public` and `joomla-api-public` run only when this is true; a key being set says nothing of it.
    */
   expectPrivate?: boolean | undefined;
   /**

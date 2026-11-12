@@ -9,6 +9,8 @@ import {
   renewalsConfigSchema,
   handoffConfigSchema,
   costConfigSchema,
+  changesConfigSchema,
+  type ChangesConfig,
   backupsConfigSchema,
   trackersConfigSchema,
   adaptersConfigSchema,
@@ -193,6 +195,12 @@ export function readAiConfig(dir: string): AiConfig | undefined {
 
 export function readTrackersConfig(dir: string): TrackersConfig | undefined {
   return readJsonConfig(dir, TRACKERS_CONFIG_FILE, trackersConfigSchema, "the tracker settings");
+}
+
+export const CHANGES_CONFIG_FILE = "gaugeline.changes.json";
+
+export function readChangesConfig(dir: string): ChangesConfig | undefined {
+  return readJsonConfig(dir, CHANGES_CONFIG_FILE, changesConfigSchema, "the what-changed settings");
 }
 
 export function readAdaptersConfig(dir: string): AdaptersConfig | undefined {
