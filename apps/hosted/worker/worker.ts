@@ -19,16 +19,23 @@ import {
   type Fetcher,
   PROBING_CHECKS,
   type Result,
-  sanitise,
-  UNTRUSTED_CAPS,
 } from "@gaugeline/core";
-import { type Sql, withService } from "../lib/api/db.js";
+import { type Sql, type Tx, withService } from "../lib/api/db.js";
 import { storeRun } from "../lib/api/handlers.js";
 import { parseUpload, type Upload } from "../lib/api/schema.js";
-import { secretsInValue, stringsOf } from "../lib/api/secrets.js";
+import { secretsInValue } from "../lib/api/secrets.js";
 import { openDatabase } from "../lib/api/startup.js";
-import { diffFingerprints } from "./diff.js";
-import { claimJobs, completeJob, failJob, type Job, releaseExpired } from "./queue.js";
+import { cleanFindings, cleanReason, stripNul } from "./clean.js";
+import { bounded, DeadlineError, guardFetcher } from "./deadline.js";
+import { diffRuns } from "./diff.js";
+import {
+  claimJobs,
+  completeJob,
+  failJob,
+  JOB_DEADLINE_MS,
+  type Job,
+  releaseExpired,
+} from "./queue.js";
 
 /** The consent wording a site owner must have agreed to for probing checks to run. */
 export const CONSENT_WORDING_VERSION = "2026-11-12";
@@ -40,6 +47,8 @@ export interface SiteToCheck {
   url: string;
   /** The job asked for probing checks and the site has current consent. */
   probing: boolean;
+  /** Aborts at the job's deadline. A stand-in may watch it; the real checks reach it through their fetcher. */
+  signal: AbortSignal;
 }
 
 export type RunSite = (site: SiteToCheck) => Promise<Result>;
@@ -50,6 +59,8 @@ export interface WorkerDeps {
   random?: () => number;
   /** Defaults to publicChecks(): core's checkSite through core's fetcher. */
   runSite?: RunSite;
+  /** How long the checks of one job may run; JOB_DEADLINE_MS unless a test shortens it. */
+  deadlineMs?: number;
 }
 
 /** The worker's database: the app login, refused when it could read around row-level security. */
@@ -64,7 +75,7 @@ export function publicChecks(makeFetcher: () => Fetcher = () => createFetcher())
     const startedAt = new Date();
     const { result, snapshot } = await checkSite({
       address: site.url,
-      fetcher: makeFetcher(),
+      fetcher: guardFetcher(makeFetcher(), site.signal),
       ownerConsent: site.probing,
     });
     return buildResult({
@@ -84,47 +95,101 @@ class Refused extends Error {}
 
 /** A short code for a job row and the log: an error's class or a fetch refusal, never its message. */
 function errorCode(e: unknown): { code: string; permanent: boolean } {
-  for (let c: unknown = e, i = 0; c instanceof Error && i < 5; c = c.cause, i++)
+  for (let c: unknown = e, i = 0; c instanceof Error && i < 5; c = c.cause, i++) {
+    if (c instanceof DeadlineError) return { code: "deadline", permanent: false };
     if (c instanceof FetchError)
       return {
         code: c.reason,
         permanent: c.reason === "private-address-refused" || c.reason === "blocked-address",
       };
+  }
   if (e instanceof Refused) return { code: e.message, permanent: true };
   const name = e instanceof Error ? e.name.toLowerCase().replace(/[^a-z0-9_-]/g, "") : "";
   return { code: /^[a-z]/.test(name) ? name.slice(0, 64) : "error", permanent: false };
 }
 
 /**
- * The result as the runs API would store it, with page text cleaned (N17) and nothing shaped like a key.
- * The scan is the runs API's: key shapes in every decoded string, never the worker's own environment.
+ * The result as the runs API would store it, with page text cleaned and nothing shaped like a key.
+ *
+ * A NUL byte or a key-shaped string in a title, an evidence line, an address or a reason is page text, so
+ * it is cleaned (clean.ts), not a reason to lose the night; the run notes how many fields were touched
+ * (`redactedFields`, a count only). The fingerprint is core's, taken from the finding before cleaning.
+ * The last scan is the runs API's, unchanged: key shapes in every decoded string, never the worker's own
+ * environment. It is a net, not the plan: only a string the cleaning could not make safe reaches it.
  */
-function toUpload(result: Result): Upload {
-  if (stringsOf(result).some((x) => x.includes("\u0000"))) throw new Refused("invalid-result");
-  const parsed = parseUpload(result);
+export function toUpload(result: Result): Upload {
+  const clean = stripNul(result);
+  let reasons = 0;
+  clean.couldNotCheck = clean.couldNotCheck.map((c) => {
+    const reason = cleanReason(c.reason);
+    reasons += Number(reason.touched);
+    return { ...c, reason: reason.text };
+  });
+  const parsed = parseUpload(clean);
   if (!parsed.ok) throw new Refused("invalid-result");
   const upload = parsed.value;
-  // The fingerprint was taken from the finding as core made it; only the stored words are cleaned.
-  upload.findings = upload.findings.map((f) => ({
-    ...f,
-    title: sanitise(f.title, UNTRUSTED_CAPS.title).text,
-    evidence: sanitise(f.evidence, UNTRUSTED_CAPS.evidence).text,
-  }));
+  const redacted = cleanFindings(upload) + reasons;
+  if (redacted > 0) upload.summary.redactedFields = redacted;
   if (secretsInValue(upload).length > 0) throw new Refused("secret-in-result");
   return upload;
 }
 
-/** Run one claimed job to its end. Never throws: a failure is recorded on the job. */
+/** The result as if the probing checks had not been asked for: no finding of theirs, each one listed as not run. */
+function withoutProbing(result: Result, siteUrl: string): Result {
+  const probing = new Set<string>(PROBING_CHECKS);
+  return {
+    ...result,
+    findings: result.findings.filter((f) => !probing.has(f.checkId)),
+    passed: result.passed.filter((id) => !probing.has(id)),
+    failed: result.failed.filter((id) => !probing.has(id)),
+    couldNotCheck: [
+      ...result.couldNotCheck.filter((c) => !probing.has(c.id)),
+      ...[...PROBING_CHECKS].sort().map((id) => ({
+        id,
+        reason:
+          "Probing checks need the site owner's current consent on record; there is none, so they were not run.",
+        url: siteUrl,
+      })),
+    ],
+  };
+}
+
+/** Whether the site has consent on record for the wording the worker knows. */
+const consentedNow = async (tx: Tx, siteId: string): Promise<boolean> =>
+  (
+    await tx`select exists (
+        select 1 from public.site_consent_current c
+        where c.site_id = ${siteId} and c.wording_version = ${CONSENT_WORDING_VERSION}
+      ) as consented`
+  )[0]!.consented === true;
+
+/** What a run's summary says did not give an answer: checks that threw or could not check. */
+const notRunIn = (summary: unknown): string[] => {
+  const s = (summary ?? {}) as { failed?: unknown; couldNotCheck?: unknown };
+  const ids = (xs: unknown, pick: (x: unknown) => unknown) =>
+    (Array.isArray(xs) ? xs : []).map(pick).filter((x): x is string => typeof x === "string");
+  return [
+    ...ids(s.failed, (x) => x),
+    ...ids(s.couldNotCheck, (x) => (x as { id?: unknown } | null)?.id),
+  ];
+};
+
+/**
+ * Run one claimed job to its end. Never throws: a failure is recorded on the job.
+ *
+ * "skipped" is a job whose site was paused after the job was queued: it ends as `done` with no run, and the
+ * site is not requested.
+ */
 export async function processJob(
   deps: WorkerDeps,
   job: Job,
-): Promise<"done" | "queued" | "failed" | "lost"> {
+): Promise<"done" | "skipped" | "queued" | "failed" | "lost"> {
   const clock = deps.now ?? (() => new Date());
   const { sql } = deps;
   try {
     const rows = await withService(
       sql,
-      (tx) => tx`select s.url, exists (
+      (tx) => tx`select s.url, s.active, exists (
           select 1 from public.site_consent_current c
           where c.site_id = s.id and c.wording_version = ${CONSENT_WORDING_VERSION}
         ) as consented
@@ -132,23 +197,39 @@ export async function processJob(
     );
     const site = rows[0];
     if (!site) throw new Refused("site-gone");
+    if (site.active !== true)
+      return (await withService(sql, (tx) => completeJob(tx, job, clock(), null)))
+        ? "skipped"
+        : "lost";
     const probing = job.probing && site.consented === true;
     const runSite = deps.runSite ?? publicChecks();
-    const result = await runSite({ jobId: job.id, siteId: job.siteId, url: site.url, probing });
-    if (job.probing && !probing)
-      result.couldNotCheck = [
-        ...result.couldNotCheck.filter((c) => !PROBING_CHECKS.includes(c.id)),
-        ...[...PROBING_CHECKS].sort().map((id) => ({
-          id,
-          reason:
-            "Probing checks need the site owner's current consent on record; there is none, so they were not run.",
+    // The checks have until the deadline, which is well under the lease: past it the job's slot is freed
+    // and its fetcher stops, so a slow site cannot outlive the claim and be run twice.
+    const stop = new AbortController();
+    const timer = setTimeout(() => stop.abort(), deps.deadlineMs ?? JOB_DEADLINE_MS);
+    let result: Result;
+    try {
+      result = await bounded(stop.signal, () =>
+        runSite({
+          jobId: job.id,
+          siteId: job.siteId,
           url: site.url as string,
-        })),
-      ];
-    const upload = toUpload(result);
-    const hash = createHash("sha256").update(JSON.stringify(upload)).digest("hex");
+          probing,
+          signal: stop.signal,
+        }),
+      );
+    } finally {
+      clearTimeout(timer);
+    }
 
     await withService(sql, async (tx) => {
+      // Consent is read again here, in the transaction that stores the run: one withdrawn while the checks
+      // ran keeps its probing findings out of the run.
+      const keepProbing = probing && (await consentedNow(tx, job.siteId));
+      const upload = toUpload(
+        job.probing && !keepProbing ? withoutProbing(result, site.url as string) : result,
+      );
+      const hash = createHash("sha256").update(JSON.stringify(upload)).digest("hex");
       const stored = await storeRun(
         tx,
         { orgId: job.orgId, siteId: job.siteId },
@@ -159,19 +240,23 @@ export async function processJob(
       if (stored.kind !== "created") throw new Error("the run was not created");
       // Ours only while the claim is: another worker that took the job after our lease ended wins.
       if (!(await completeJob(tx, job, clock(), stored.id))) throw new LostLease();
-      const prev = await tx`select r.id from public.runs r, public.runs cur
+      // The previous run is the last one a worker made for this site. An upload from the customer's CI is
+      // never "last night": its time is the customer's clock, and it has run other checks.
+      const prev = await tx`select r.id, r.summary from public.runs r, public.runs cur
         where cur.id = ${stored.id} and r.site_id = cur.site_id and r.id <> cur.id
           and (r.started_at, r.id) < (cur.started_at, cur.id)
+          and exists (select 1 from public.jobs j
+            where j.run_id = r.id and j.site_id = r.site_id and j.status = 'done')
         order by r.started_at desc, r.id desc limit 1`;
       const previousRunId = (prev[0]?.id as string | undefined) ?? null;
       const before = previousRunId
-        ? (await tx`select fingerprint from public.findings where run_id = ${previousRunId}`).map(
-            (r) => r.fingerprint as string,
-          )
+        ? (
+            await tx`select check_id, fingerprint from public.findings where run_id = ${previousRunId}`
+          ).map((r) => ({ checkId: r.check_id as string, fingerprint: r.fingerprint as string }))
         : [];
-      const d = diffFingerprints(
-        before,
-        upload.findings.map((f) => f.fingerprint),
+      const d = diffRuns(
+        { findings: before, notRun: notRunIn(prev[0]?.summary) },
+        { findings: upload.findings, notRun: notRunIn(upload.summary) },
       );
       // An unchanged site gets no row, so it gets no message.
       if (d.opened.length + d.closed.length > 0)
@@ -197,7 +282,7 @@ export async function processJob(
   }
 }
 
-/** Release expired leases, claim up to `limit` jobs and run them. Returns how many were claimed. */
+/** Release expired leases, claim up to `limit` jobs and run them all. Returns how many were claimed. */
 export async function workOnce(deps: WorkerDeps, limit = 4): Promise<number> {
   const now = (deps.now ?? (() => new Date()))();
   await releaseExpired(deps.sql, now);
@@ -206,18 +291,47 @@ export async function workOnce(deps: WorkerDeps, limit = 4): Promise<number> {
   return jobs.length;
 }
 
-/** Work until `signal` aborts: claim, run, and wait `idleMs` when the queue is empty. */
+/**
+ * Work until `signal` aborts, as a pool: at most `limit` jobs run at once, and the moment one finishes its
+ * slot claims the next job that is due, so one slow site never holds the others back. When the queue is
+ * empty it looks again after `idleMs`. On abort it claims nothing more and waits for the jobs it holds.
+ */
 export async function runWorker(
   deps: WorkerDeps,
   options: { signal: AbortSignal; limit?: number; idleMs?: number },
 ): Promise<void> {
+  const { signal } = options;
+  const limit = options.limit ?? 4;
   const idle = options.idleMs ?? 30_000;
-  while (!options.signal.aborted) {
-    if ((await workOnce(deps, options.limit)) > 0) continue;
-    await new Promise<void>((resolve) => {
-      const t = setTimeout(resolve, idle);
-      options.signal.addEventListener("abort", () => (clearTimeout(t), resolve()), { once: true });
-    });
+  const running = new Set<Promise<unknown>>();
+  const pause = new Promise<void>((resolve) =>
+    signal.addEventListener("abort", () => resolve(), { once: true }),
+  );
+  try {
+    while (!signal.aborted) {
+      const free = limit - running.size;
+      let claimed = 0;
+      if (free > 0) {
+        const now = (deps.now ?? (() => new Date()))();
+        await releaseExpired(deps.sql, now);
+        const jobs = await claimJobs(deps.sql, free, now);
+        claimed = jobs.length;
+        for (const job of jobs) {
+          const p = processJob(deps, job).finally(() => running.delete(p));
+          running.add(p);
+        }
+      }
+      // Slots full: wait for one to free. Queue drained: wait for the next look, or a freed slot.
+      if (claimed > 0 && claimed === free) await Promise.race([pause, ...running]);
+      else {
+        let timer: NodeJS.Timeout | undefined;
+        const tick = new Promise<void>((resolve) => (timer = setTimeout(resolve, idle)));
+        await Promise.race([pause, tick, ...running]);
+        clearTimeout(timer);
+      }
+    }
+  } finally {
+    await Promise.allSettled(running);
   }
 }
 

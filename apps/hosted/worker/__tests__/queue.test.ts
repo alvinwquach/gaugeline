@@ -12,7 +12,7 @@ import {
   type Result,
 } from "@gaugeline/core";
 import { startFixture } from "@gaugeline/fixtures";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   freshDatabase,
   HAS_DATABASE,
@@ -27,7 +27,7 @@ import {
   type TestDatabase,
 } from "../../db/__tests__/harness.js";
 import { appLogin } from "../../app/api/__tests__/app-login.js";
-import { claimJobs } from "../queue.js";
+import { claimJobs, JOB_DEADLINE_MS } from "../queue.js";
 import {
   CONSENT_WORDING_VERSION,
   openWorkerDatabase,
@@ -35,6 +35,7 @@ import {
   publicChecks,
   type SiteToCheck,
   type WorkerDeps,
+  runWorker,
   workOnce,
 } from "../worker.js";
 
@@ -292,6 +293,147 @@ describe.skipIf(!HAS_DATABASE)("nightly queue and worker", () => {
       const rows = await owner`select title, evidence from public.findings where run_id = ${runId}`;
       expect(rows).toEqual([{ title: "Menu link broken", evidence: "/menu 404" }]);
     });
+    /** A run the customer's CI uploaded (the runs API's path): not one of the worker's. */
+    async function ciUpload(startedAt: Date, f: Finding) {
+      const run = (
+        await owner`insert into public.runs (org_id, site_id, started_at, finished_at, summary)
+          values (${ORG_A}, ${SITE_A2}, ${startedAt}, ${startedAt}, '{}'::jsonb) returning id`
+      )[0]!;
+      await owner`insert into public.findings (org_id, site_id, run_id, check_id, severity, title, evidence, url, fingerprint)
+        values (${ORG_A}, ${SITE_A2}, ${run.id as string}, ${f.checkId}, ${f.severity}, ${f.title}, ${f.evidence}, ${f.url}, ${fp(f)})`;
+    }
+
+    it("compares a night with the worker's own previous run, not with an upload from CI between them", async () => {
+      const n = finding(1);
+      const c = finding(5);
+      let night: Finding[] = [n];
+      const s = standIn(() => night);
+      const deps = (minutes: number): WorkerDeps => ({
+        sql: one.sql,
+        now: at(minutes),
+        runSite: s.runSite,
+      });
+      await enqueue(SITE_A2);
+      await workOnce(deps(0));
+      // CI uploads a run with a different finding between the two nights.
+      await ciUpload(new Date(T0 + 1500), c);
+      night = [n];
+      await enqueue(SITE_A2);
+      await workOnce(deps(1));
+      // Nothing changed between the worker's runs: only the first night has a row.
+      expect(await changes()).toEqual([expect.objectContaining({ opened: 1, closed: 0 })]);
+    });
+
+    it("a check that did not run tonight does not close its findings, and one that did not run last night does not open them", async () => {
+      const a = finding(1);
+      const b = { ...finding(2), checkId: "headings" };
+      let tonight: { findings: Finding[]; failed: string[] } = { findings: [a, b], failed: [] };
+      const runSite = async (site: SiteToCheck): Promise<Result> =>
+        buildResult({
+          url: site.url,
+          startedAt: new Date(),
+          findings: tonight.findings,
+          passed: [],
+          failed: tonight.failed,
+        });
+      const go = async (minutes: number) => {
+        await enqueue(SITE_A2);
+        await workOnce({ sql: one.sql, now: at(minutes), runSite });
+      };
+      await go(0);
+      // The headings check crashed tonight: its finding is missing, not fixed.
+      tonight = { findings: [a], failed: ["headings"] };
+      await go(1);
+      expect(await changes()).toHaveLength(1);
+      // It runs again and still finds b: last night it did not run, so b is not new.
+      tonight = { findings: [a, b], failed: [] };
+      await go(2);
+      expect(await changes()).toHaveLength(1);
+    });
+
+    it("the first night counts every finding as opened", async () => {
+      const s = standIn(() => [finding(1), finding(2), finding(3)]);
+      await enqueue(SITE_A2);
+      await workOnce({ sql: one.sql, now: at(0), runSite: s.runSite });
+      expect(await changes()).toEqual([
+        expect.objectContaining({ opened: 3, still_open: 0, closed: 0, previous_run_id: null }),
+      ]);
+    });
+
+    describe("page text that would otherwise stop the night", () => {
+      const key = ["sk", "live", "Zx81Qw".repeat(4)].join("_");
+      const nul = String.fromCharCode(0);
+      const stored = async (runId: string) =>
+        (
+          await owner`select (select coalesce(string_agg(to_jsonb(f)::text, ' '), '') from public.findings f where f.run_id = r.id) || ' ' || r.summary::text as t
+            from public.runs r where r.id = ${runId}`
+        )[0]!.t as string;
+
+      it("a key-shaped string or a NUL in a finding is cleaned: the run is stored, the finding kept, the count noted", async () => {
+        const dirty: Finding = {
+          ...finding(6),
+          title: `Pay page ${key}`,
+          evidence: `/pay?k=${key} and a stray ${nul} byte, token ${"0123456789abcdef".repeat(2)}`,
+          url: `https://tidewater-bar.test/pay?k=${key}`,
+        };
+        const s = standIn(() => [dirty, finding(7)]);
+        const [id] = await enqueue(SITE_A2);
+        await workOnce({ sql: one.sql, now: at(0), runSite: s.runSite });
+        const j = await job(id!);
+        expect(j).toMatchObject({ status: "done", last_error: null });
+        const runId = j.run_id as string;
+        const rows = await owner`select title, evidence, url, fingerprint from public.findings
+          where run_id = ${runId} order by title`;
+        expect(rows).toHaveLength(2);
+        const cleaned = rows.find((r) => (r.title as string).startsWith("Pay page"))!;
+        expect(cleaned.title).toBe("Pay page [removed]");
+        expect(cleaned.url).toBe("https://tidewater-bar.test/pay?k=[removed]");
+        expect(cleaned.evidence).not.toContain(key);
+        expect(cleaned.evidence).not.toContain(nul);
+        // The identity of the finding is the one core made, so it matches across nights.
+        expect(cleaned.fingerprint).toBe(
+          fp({ ...dirty, evidence: dirty.evidence.replaceAll(nul, "") }),
+        );
+        expect(await stored(runId)).not.toContain(key);
+        const summary = (await owner`select summary from public.runs where id = ${runId}`)[0]!
+          .summary as { redactedFields: number };
+        expect(summary.redactedFields).toBe(3);
+      });
+
+      it("the same finding two nights running is still one finding (no change row on the second)", async () => {
+        const s = standIn(() => [
+          { ...finding(6), url: `https://tidewater-bar.test/pay?k=${key}` },
+        ]);
+        await enqueue(SITE_A2);
+        await workOnce({ sql: one.sql, now: at(0), runSite: s.runSite });
+        await enqueue(SITE_A2);
+        await workOnce({ sql: one.sql, now: at(1), runSite: s.runSite });
+        expect(await changes()).toHaveLength(1);
+      });
+
+      it("a could-not-check reason is cleaned like the rest of the page text (N17), and holds no key", async () => {
+        const reason = `\u001b[31mRED\u001b[0m \u202eevil\u202c ${String.fromCodePoint(0xe0041, 0xe0042)} ${key}`;
+        const runSite = async (site: SiteToCheck): Promise<Result> =>
+          buildResult({
+            url: site.url,
+            startedAt: new Date(),
+            findings: [],
+            passed: [],
+            failed: [],
+            couldNotCheck: [{ id: "broken-links", reason, url: `${site.url}/a\u202eb` }],
+          });
+        const [id] = await enqueue(SITE_A2);
+        await workOnce({ sql: one.sql, now: at(0), runSite });
+        const j = await job(id!);
+        expect(j.status).toBe("done");
+        const summary = (
+          await owner`select summary from public.runs where id = ${j.run_id as string}`
+        )[0]!.summary as { couldNotCheck: { id: string; reason: string }[] };
+        const out = summary.couldNotCheck[0]!.reason;
+        expect(out).toBe("\\u{1B}[31mRED\\u{1B}[0m evil [removed]");
+        expect(await stored(j.run_id as string)).not.toContain(key);
+      });
+    });
   });
 
   describe("probing checks", () => {
@@ -346,6 +488,146 @@ describe.skipIf(!HAS_DATABASE)("nightly queue and worker", () => {
     expect(new Set(done.map((r) => r.id as string))).toEqual(new Set(ids));
     expect(s.calls).toHaveLength(20);
     expect(await runsOf(SITE_A2)).toBe(20);
+  });
+
+  describe("deadline and pool", () => {
+    const empty = (site: SiteToCheck) =>
+      buildResult({ url: site.url, startedAt: new Date(), findings: [], passed: [], failed: [] });
+
+    it("a job past its deadline is stopped, recorded as 'deadline' and retried like any failure", async () => {
+      const [id] = await enqueue(SITE_A2);
+      let signal: AbortSignal | undefined;
+      const deps = (minutes: number): WorkerDeps => ({
+        sql: one.sql,
+        now: at(minutes),
+        random: () => 0,
+        deadlineMs: 150,
+        // The checks hang for seconds and ignore everything: the deadline must still free the slot.
+        runSite: async (site) => {
+          signal = site.signal;
+          await new Promise((r) => setTimeout(r, 3000));
+          return empty(site);
+        },
+      });
+      const started = Date.now();
+      expect(await workOnce(deps(0))).toBe(1);
+      expect(Date.now() - started).toBeLessThan(5000);
+      expect(signal?.aborted).toBe(true);
+      expect(await job(id!)).toMatchObject({
+        status: "queued",
+        attempts: 1,
+        last_error: "deadline",
+      });
+      await workOnce(deps(1));
+      await workOnce(deps(3));
+      expect(await job(id!)).toMatchObject({
+        status: "failed",
+        attempts: 3,
+        last_error: "deadline",
+      });
+      expect(await runsOf(SITE_A2)).toBe(0);
+    });
+
+    it("the default deadline is under the lease", () => {
+      expect(JOB_DEADLINE_MS).toBeLessThan(15 * 60_000);
+    });
+
+    it("one slow job does not hold up the others: a job queued meanwhile starts at once", async () => {
+      const [slow] = await enqueue(SITE_B1);
+      await enqueue(SITE_A2, 3);
+      const stop = new AbortController();
+      const finished = new Map<string, number>();
+      const started = Date.now();
+      const deps: WorkerDeps = {
+        sql: one.sql,
+        now: at(0),
+        runSite: async (site) => {
+          if (site.siteId === SITE_B1) await new Promise((r) => setTimeout(r, 3000));
+          finished.set(site.jobId, Date.now() - started);
+          return empty(site);
+        },
+      };
+      const worker = runWorker(deps, { signal: stop.signal, limit: 2, idleMs: 50 });
+      try {
+        await vi.waitFor(
+          async () => {
+            expect(
+              (await owner`select count(*)::int as n from public.jobs where status = 'done'`)[0]!.n,
+            ).toBe(3);
+          },
+          { timeout: 2500, interval: 50 },
+        );
+        expect((await job(slow!)).status).toBe("running");
+        // A job arrives while the slow one still runs.
+        const [late] = await enqueue(SITE_A2);
+        await vi.waitFor(async () => expect((await job(late!)).status).toBe("done"), {
+          timeout: 2500,
+          interval: 50,
+        });
+        expect((await job(slow!)).status).toBe("running");
+        expect(finished.get(late!)!).toBeLessThan(3000);
+      } finally {
+        stop.abort();
+        await worker;
+      }
+      // Stopping waits for the job in hand: the slow one finished and was stored.
+      expect((await job(slow!)).status).toBe("done");
+    });
+  });
+
+  describe("consent and pausing", () => {
+    const probingId = [...PROBING_CHECKS].sort()[0]!;
+    const writeConsent = (action: "granted" | "withdrawn") =>
+      owner`insert into public.site_consents (org_id, site_id, action, wording_version, recorded_by)
+        values (${ORG_A}, ${SITE_A1}, ${action}, ${CONSENT_WORDING_VERSION}, '11111111-0000-4000-8000-000000000001')`;
+
+    it("consent withdrawn while the checks run: the probing findings are dropped, not stored", async () => {
+      const [id] = await enqueue(SITE_A1, 1, { probing: true });
+      const probe: Finding = { ...finding(8), checkId: probingId };
+      try {
+        await workOnce({
+          sql: one.sql,
+          now: at(0),
+          runSite: async (site) => {
+            expect(site.probing).toBe(true);
+            await writeConsent("withdrawn");
+            return buildResult({
+              url: site.url,
+              startedAt: new Date(),
+              findings: [probe, finding(9)],
+              passed: [],
+              failed: [],
+            });
+          },
+        });
+        const j = await job(id!);
+        expect(j.status).toBe("done");
+        const rows =
+          await owner`select check_id from public.findings where run_id = ${j.run_id as string}`;
+        expect(rows.map((r) => r.check_id)).toEqual(["broken-links"]);
+        const summary = (
+          await owner`select summary from public.runs where id = ${j.run_id as string}`
+        )[0]!.summary as { total: number; couldNotCheck: { id: string }[] };
+        expect(summary.total).toBe(1);
+        expect(summary.couldNotCheck.map((c) => c.id)).toContain(probingId);
+      } finally {
+        await writeConsent("granted");
+      }
+    });
+
+    it("a site paused after its job was queued is not checked: the job ends as done with no run", async () => {
+      const [id] = await enqueue(SITE_A2);
+      await owner`update public.sites set active = false where id = ${SITE_A2}`;
+      try {
+        const s = standIn();
+        expect(await workOnce({ sql: one.sql, now: at(0), runSite: s.runSite })).toBe(1);
+        expect(s.calls).toHaveLength(0);
+        expect(await job(id!)).toMatchObject({ status: "done", run_id: null, last_error: null });
+        expect(await runsOf(SITE_A2)).toBe(0);
+      } finally {
+        await owner`update public.sites set active = true where id = ${SITE_A2}`;
+      }
+    });
   });
 
   it("no secret reaches a job row: an error is stored as its class, never its message", async () => {

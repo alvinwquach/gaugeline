@@ -11,6 +11,11 @@ import { type Sql, type Tx, withService } from "../lib/api/db.js";
 
 export const MAX_ATTEMPTS = 3;
 export const LEASE_MS = 15 * 60_000;
+/**
+ * How long the checks of one job may run. Well under the lease, so a slow site is stopped and recorded
+ * (`deadline`) while the claim is still ours, instead of outliving it and being run again by another worker.
+ */
+export const JOB_DEADLINE_MS = 10 * 60_000;
 const BACKOFF_BASE_MS = 60_000;
 const BACKOFF_CAP_MS = 30 * 60_000;
 

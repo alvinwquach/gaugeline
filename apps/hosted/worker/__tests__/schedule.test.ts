@@ -4,6 +4,7 @@
  * time and look at the jobs it made. No extension is enabled anywhere (0004 registers with pg_cron only
  * when the extension is there).
  */
+import postgres from "postgres";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
   as,
@@ -127,6 +128,30 @@ describe.skipIf(!HAS_DATABASE)("nightly fan-out (pg_cron stand-in)", () => {
     await sql`update public.sites set active = true where id = ${paused}`;
   });
 
+  it("a zone spelled in the wrong case still gets its night; a name Postgres does not know is counted, not guessed", async () => {
+    const skipped = async () =>
+      Number((await sql`select private.skipped_nightly_sites() as n`)[0]!.n);
+    const before = await skipped();
+    const lower = await addSite("Kiln Lane Pottery", "europe/london");
+    const utc = await addSite("Dockside Fish Bar", "utc");
+    const nonsense = await addSite("Atlantis Spa", "Atlantis/Lost_City");
+    expect(await skipped()).toBe(before + 1);
+    await sql`select private.enqueue_nightly(${new Date("2026-11-12T03:00:00Z")})`;
+    expect(await nights(lower)).toEqual([{ night: "2026-11-12", local: "03:00" }]);
+    expect(await nights(utc)).toHaveLength(1);
+    expect(await nights(nonsense)).toEqual([]);
+    // The fan-out says how many it left out, in the database's log, without naming a zone.
+    const notices: string[] = [];
+    const watching = postgres(db.url, { max: 1, onnotice: (n) => notices.push(String(n.message)) });
+    try {
+      await watching`select private.enqueue_nightly(${new Date("2026-11-12T03:15:00Z")})`;
+    } finally {
+      await watching.end();
+    }
+    expect(notices.join("\n")).toMatch(/\d+ active site\(s\) skipped/);
+    expect(notices.join("\n")).not.toMatch(/Atlantis/);
+  });
+
   it("the stand-in for pg_cron receives one schedule: every 15 minutes, the fan-out", async () => {
     // 0004 calls private.schedule_nightly() itself when pg_cron is installed. Here a stand-in cron.schedule
     // records what it is given, the way the real one stores a job (job name, schedule, command).
@@ -151,6 +176,10 @@ describe.skipIf(!HAS_DATABASE)("nightly fan-out (pg_cron stand-in)", () => {
     for (const role of ["anon", "authenticated", "service_role"] as const) {
       expect(
         await errorOf(as(sql, { role }, (tx) => tx`select private.enqueue_nightly()`)),
+        role,
+      ).toMatch(/permission denied/);
+      expect(
+        await errorOf(as(sql, { role }, (tx) => tx`select private.skipped_nightly_sites()`)),
         role,
       ).toMatch(/permission denied/);
     }

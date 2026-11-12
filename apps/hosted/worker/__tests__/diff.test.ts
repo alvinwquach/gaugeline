@@ -1,7 +1,7 @@
 /** Unit: opened, still open and closed are Set differences of two runs' fingerprints. */
 import { describe, expect, it } from "vitest";
-import { backoffMs, MAX_ATTEMPTS } from "../queue.js";
-import { diffFingerprints } from "../diff.js";
+import { backoffMs, JOB_DEADLINE_MS, LEASE_MS, MAX_ATTEMPTS } from "../queue.js";
+import { diffFingerprints, diffRuns } from "../diff.js";
 
 describe("diffFingerprints", () => {
   it("opened, still open and closed, each sorted", () => {
@@ -30,6 +30,29 @@ describe("diffFingerprints", () => {
   });
 });
 
+describe("diffRuns", () => {
+  const f = (checkId: string, fingerprint: string) => ({ checkId, fingerprint });
+
+  it("a check that did not run in one of the two runs opens and closes nothing", () => {
+    const prev = { findings: [f("a", "a1"), f("b", "b1")], notRun: [] };
+    // Tonight check b threw and check c could not be checked; c's finding appears only because it ran before.
+    const cur = { findings: [f("a", "a1"), f("c", "c1")], notRun: ["b"] };
+    expect(diffRuns(prev, cur)).toEqual({ opened: ["c1"], stillOpen: ["a1"], closed: [] });
+    // And the other way: c was not run last time, so its finding is not new tonight.
+    expect(diffRuns({ ...prev, notRun: ["c"] }, { findings: cur.findings, notRun: ["b"] })).toEqual(
+      { opened: [], stillOpen: ["a1"], closed: [] },
+    );
+  });
+
+  it("with every check run in both, it is the plain fingerprint difference", () => {
+    const d = diffRuns(
+      { findings: [f("a", "a1")], notRun: [] },
+      { findings: [f("a", "a2")], notRun: [] },
+    );
+    expect(d).toEqual({ opened: ["a2"], stillOpen: [], closed: ["a1"] });
+  });
+});
+
 describe("backoffMs", () => {
   it("doubles per attempt, with jitter between half and the whole step", () => {
     expect(backoffMs(1, () => 0)).toBe(30_000);
@@ -46,5 +69,9 @@ describe("backoffMs", () => {
 
   it("three attempts in all", () => {
     expect(MAX_ATTEMPTS).toBe(3);
+  });
+
+  it("a job's deadline ends well before its lease, so no other worker runs it while this one still does", () => {
+    expect(JOB_DEADLINE_MS).toBeLessThanOrEqual(LEASE_MS - 5 * 60_000);
   });
 });

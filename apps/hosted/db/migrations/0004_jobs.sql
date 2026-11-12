@@ -78,29 +78,51 @@ grant select, insert on public.run_changes to service_role;
 -- site's own zone. The first call in that window makes the night's job; later calls find it there (the
 -- unique key on site, kind and local date). Spring forward cannot skip a night and fall back cannot run
 -- one twice, a site added at 02:59 is picked up at 03:00, and a missed call is caught up until 07:00.
--- A site whose zone Postgres does not know is left out instead of failing the fan-out for every site.
+-- A site's zone is matched against pg_timezone_names without regard to case ('europe/london' finds
+-- 'Europe/London'). A site whose zone Postgres still does not know is left out instead of failing the
+-- fan-out for every site, and is counted: the fan-out raises a warning with the count (never the zone text)
+-- and private.skipped_nightly_sites() returns it, so a mistyped zone does not silently stop a site.
 create function private.enqueue_nightly(p_now timestamptz default now()) returns integer
 language plpgsql security definer set search_path = ''
 as $$
 declare
   made integer;
+  skipped integer;
 begin
   insert into public.jobs (org_id, site_id, kind, scheduled_for, run_after)
   select s.org_id, s.id, 'nightly', s.local_now::date, p_now
   from (
-    select v.org_id, v.id, (p_now at time zone v.timezone) as local_now
+    select v.org_id, v.id, (p_now at time zone v.zone) as local_now
     from (
-      select s0.org_id, s0.id, s0.timezone from public.sites s0
+      select s0.org_id, s0.id, z.name as zone
+      from public.sites s0
+      cross join lateral (
+        select n.name from pg_catalog.pg_timezone_names n
+        where lower(n.name) = lower(s0.timezone) order by n.name limit 1
+      ) z
       where s0.active
-        and s0.timezone in (select z.name from pg_catalog.pg_timezone_names z)
-      offset 0  -- keeps the zone filter ahead of "at time zone", which fails on an unknown zone
+      offset 0  -- keeps the zone lookup ahead of "at time zone", which fails on an unknown zone
     ) v
   ) s
   where s.local_now::time >= time '03:00' and s.local_now::time < time '07:00'
   on conflict (site_id, kind, scheduled_for) do nothing;
   get diagnostics made = row_count;
+  skipped := private.skipped_nightly_sites();
+  if skipped > 0 then
+    raise warning 'enqueue_nightly: % active site(s) skipped: time zone not in pg_timezone_names', skipped;
+  end if;
   return made;
 end
+$$;
+
+-- How many active sites have a time zone Postgres does not know, so no nightly job is ever made for them.
+create function private.skipped_nightly_sites() returns integer
+language sql stable security definer set search_path = ''
+as $$
+  select count(*)::integer from public.sites s
+  where s.active and not exists (
+    select 1 from pg_catalog.pg_timezone_names n where lower(n.name) = lower(s.timezone)
+  )
 $$;
 
 -- Registers the fan-out with pg_cron. Called below when the extension is there; otherwise the owner
@@ -113,7 +135,8 @@ begin
 end
 $$;
 
-revoke all on function private.enqueue_nightly(timestamptz), private.schedule_nightly()
+revoke all on function private.enqueue_nightly(timestamptz), private.skipped_nightly_sites(),
+  private.schedule_nightly()
   from public, anon, authenticated, service_role;
 
 do $$
