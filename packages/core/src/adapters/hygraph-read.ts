@@ -26,6 +26,11 @@ export interface HygraphReading {
   pages: HygraphPageRead[];
   /** Unpublished entries whose page was not asked, and why (no address pattern, no slug, the address is shared with a published entry, or another site's). */
   unaddressed: { type: string; id: string; reason: string }[];
+  /**
+   * Unpublished entries the adapter found and did not hand on (more than the run's cap per model, or an id Gaugeline
+   * will not name): never asked, so never a pass. One row per model, with the number.
+   */
+  unlisted: { type: string; count: number }[];
   /** Unpublished entries with an address that were not asked for, because the page budget was used. */
   pagesSkipped: number;
   pageBudget: number;
@@ -75,6 +80,7 @@ export async function readHygraph(options: ReadHygraphOptions): Promise<HygraphR
     models: [],
     pages: [],
     unaddressed: [],
+    unlisted: [],
     pagesSkipped: 0,
     pageBudget: budget,
   };
@@ -107,6 +113,8 @@ export async function readHygraph(options: ReadHygraphOptions): Promise<HygraphR
   const todo: Omit<HygraphPageRead, "answer">[] = [];
   for (const m of reading.models) {
     if (m.state !== "read") continue;
+    if (m.unpublished > m.entries.length)
+      reading.unlisted.push({ type: m.type, count: m.unpublished - m.entries.length });
     for (const e of m.entries) {
       if (e.slug !== undefined && m.sharedSlugs.includes(e.slug)) {
         reading.unaddressed.push({
@@ -179,7 +187,7 @@ export async function readHygraph(options: ReadHygraphOptions): Promise<HygraphR
   reading.pages = await Promise.all(
     asked.map(async (p): Promise<HygraphPageRead> => ({
       ...p,
-      answer: await askPage(fetcher, p.url),
+      answer: await askPage(fetcher, p.url, { sameAddress: true }),
     })),
   );
   return reading;

@@ -115,6 +115,11 @@ export function parseHygraphEndpoint(value: string): HygraphEndpoint | string {
   const m = HYGRAPH_PATH.exec(url.pathname);
   if (m === null)
     return `${HYGRAPH_ENDPOINT} does not have the Content API's path (/v2/<project>/<environment> or /content/<project>/<environment>), so the token was not sent.`;
+  // The two shapes go together in every endpoint Hygraph's own repositories show: the registry cannot tie a host
+  // to a path, so the pairing is checked here, and a mismatch is refused. (Observed, not documented: uncited.)
+  const cdn = url.hostname.endsWith(".cdn.hygraph.com");
+  if ((m[1] === "content") !== cdn)
+    return `${HYGRAPH_ENDPOINT} pairs a ${cdn ? "cdn" : "api"} host with the wrong path (api-REGION.hygraph.com uses /v2/..., REGION.cdn.hygraph.com uses /content/...), so the token was not sent.`;
   return {
     host: url.host,
     path: url.pathname,
@@ -147,7 +152,7 @@ export interface UnpublishedRead {
   type: string;
   /**
    * read: both stages were read in full.
-   * refused: the PUBLISHED stage was read, and Hygraph would not give the DRAFT stage to this token (HTTP 401 or 403, or a GraphQL error on its first page): nothing is known about unpublished entries.
+   * refused: the PUBLISHED stage was read, and Hygraph would not give the DRAFT stage to this token (HTTP 401 or 403, or a GraphQL error on its first page: refused or errored): nothing is known about unpublished entries.
    * unread: the model could not be read; `reason` says why.
    */
   state: "read" | "refused" | "unread";
@@ -650,6 +655,14 @@ export function createHygraphAdapter(options: HygraphAdapterOptions): HygraphAda
           }
           throw err;
         }
+        // The DRAFT stage holds every published entry. A DRAFT list that lacks one is not the DRAFT stage (a token
+        // limited to PUBLISHED may be given an empty list instead of an error), and "nothing is unpublished" from it
+        // would be a pass built on nothing.
+        const inDraft = new Set(rows.map((r) => r.id));
+        if ([...live].some((id) => !inDraft.has(id)))
+          throw new AdapterCouldNotCheck(
+            "The DRAFT list did not contain published entries, so it is not the DRAFT stage and nothing is concluded from it.",
+          );
         const extra = rows.filter((r) => !live.has(r.id));
         // Unpublished entries found: read the PUBLISHED list once more. An entry published (or unpublished) while the
         // lists were read would look unpublished or hide one, so a list that moved is could-not-check.

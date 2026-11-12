@@ -258,10 +258,14 @@ export function siteTransport(
   live: readonly string[],
   broken: readonly string[] = [],
   onRequest?: (path: string, method: string) => void,
+  /** A path that answers 301 to another path on the same site (the other path is answered as any path is). */
+  redirects: Readonly<Record<string, string>> = {},
 ): Transport {
   return (url, req) => {
     onRequest?.(url.pathname, req.method);
     if (url.host !== new URL(HYGRAPH_SITE).host) return json(404, { message: "not here" });
+    const to = redirects[url.pathname];
+    if (to !== undefined) return json(301, { message: "moved" }, { location: to });
     if (broken.includes(url.pathname)) return json(500, { message: "broken" });
     return live.includes(url.pathname)
       ? Promise.resolve({

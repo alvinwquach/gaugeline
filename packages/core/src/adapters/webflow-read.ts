@@ -87,11 +87,26 @@ export function onSite(raw: string, origin: string): URL | undefined {
 }
 
 /** One page, asked with GET through the fetcher: a 2xx is there, 404 and 410 are gone, anything else is not an answer. */
-export async function askPage(fetcher: Fetcher, url: string): Promise<PageAnswer> {
+export async function askPage(
+  fetcher: Fetcher,
+  url: string,
+  options: {
+    /**
+     * The address is the page: an answer reached through a redirect to another path (not just a trailing slash)
+     * is not that page, so it is "unread". Without it a redirect is followed and its final answer counts.
+     */
+    sameAddress?: boolean;
+  } = {},
+): Promise<PageAnswer> {
   try {
     const hops = await fetcher.get(url);
     const last = hops.at(-1);
     if (!last) return { kind: "unread", reason: "no answer" };
+    if (options.sameAddress === true && hops.length > 1) {
+      const trim = (u: string): string => new URL(u).pathname.replace(/\/+$/, "") || "/";
+      if (trim(last.url) !== trim(url))
+        return { kind: "unread", reason: `the address redirects to ${new URL(last.url).pathname}` };
+    }
     if (last.status >= 200 && last.status < 300) return { kind: "page", status: last.status };
     if (last.status === 404 || last.status === 410) return { kind: "missing", status: last.status };
     return { kind: "unread", reason: `the site answered ${last.status}` };

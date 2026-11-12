@@ -1,3 +1,4 @@
+import { Readable } from "node:stream";
 import { describe, expect, it } from "vitest";
 import { createFetcher } from "../../fetcher.js";
 import { adaptersConfigSchema } from "../config.js";
@@ -567,14 +568,88 @@ describe("the Hygraph adapter: the DRAFT stage", () => {
       fixture: {
         override: (c, _s, stage) =>
           c === "pages" && stage === "DRAFT"
-            ? [{ id: "bad id with spaces", slug: "x y" }]
+            ? [
+                { id: "cm1page000000000home001", slug: "home" },
+                { id: "cm1page000000000menu002", slug: "menu" },
+                { id: "bad id with spaces", slug: "x y" },
+              ]
             : undefined,
-        countOverride: (c, stage) => (c === "pages" && stage === "DRAFT" ? 1 : undefined),
+        countOverride: (c, stage) => (c === "pages" && stage === "DRAFT" ? 3 : undefined),
       },
     }).unpublishedReading();
     const pages = reads.find((r) => r.type === "pages");
     expect(pages?.unpublished).toBe(1);
     expect(pages?.entries).toEqual([]);
+  });
+});
+
+describe("the Hygraph adapter: the DRAFT stage must contain the PUBLISHED one", () => {
+  const draft = { settings: { readDraftStage: true } };
+
+  it("a DRAFT list that is empty while PUBLISHED has entries is could-not-check, never 'nothing is unpublished'", async () => {
+    const reads = await make({
+      ...draft,
+      fixture: {
+        override: (_c, _skip, stage) => (stage === "DRAFT" ? [] : undefined),
+        countOverride: (_c, stage) => (stage === "DRAFT" ? 0 : undefined),
+      },
+    }).unpublishedReading();
+    for (const r of reads) {
+      expect(r.state).toBe("unread");
+      expect(r.reason).toContain("did not contain published entries");
+    }
+  });
+
+  it("a DRAFT list that lacks one published entry is the same", async () => {
+    const reads = await make({
+      ...draft,
+      fixture: {
+        override: (c, _skip, stage) =>
+          c === "pages" && stage === "DRAFT"
+            ? [{ id: "cm1page000000000home001", slug: "home" }]
+            : undefined,
+        countOverride: (c, stage) => (c === "pages" && stage === "DRAFT" ? 1 : undefined),
+      },
+    }).unpublishedReading();
+    expect(reads.find((r) => r.type === "pages")?.state).toBe("unread");
+    expect(reads.find((r) => r.type === "events")?.state).toBe("read");
+  });
+});
+
+describe("the Hygraph adapter: the endpoint pairs a host with a path", () => {
+  it("an api host with the /content path, or a cdn host with the /v2 path, is refused", () => {
+    expect(
+      typeof parseHygraphEndpoint(
+        "https://api-eu-central-1.hygraph.com/content/cm1pennywhistle0000bake01/master",
+      ),
+    ).toBe("string");
+    expect(
+      typeof parseHygraphEndpoint(
+        "https://ap-south-1.cdn.hygraph.com/v2/cm1pennywhistle0000bake01/master",
+      ),
+    ).toBe("string");
+  });
+
+  it("an answer that is a redirect is could-not-check, and is not followed", async () => {
+    const seen: string[] = [];
+    const adapter = createHygraphAdapter({
+      env: { HYGRAPH_TOKEN: KEY, HYGRAPH_ENDPOINT: HYGRAPH_URL },
+      fetcher: createFetcher({
+        transport: (url) => {
+          seen.push(url.href);
+          return Promise.resolve({
+            status: 302,
+            headers: { location: "https://elsewhere.example/" },
+            body: Readable.from([Buffer.from("")]),
+          });
+        },
+        timeoutMs: 5000,
+      }),
+      settings: { id: "hygraph", collections: HYGRAPH_COLLECTIONS },
+      sleep: noWait,
+    });
+    await reasonOf(adapter.types());
+    expect(seen).toEqual([HYGRAPH_URL]);
   });
 });
 

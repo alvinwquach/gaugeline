@@ -7,6 +7,7 @@ import {
   HYGRAPH_MARKERS,
   HYGRAPH_SITE,
   HYGRAPH_URL,
+  HYGRAPH_CONTENT,
   bothTransport,
   hygraphTransport,
   siteTransport,
@@ -36,14 +37,19 @@ async function reading(
     ownerConsent?: boolean;
     maxPages?: number;
     pageSize?: number;
+    content?: Parameters<typeof hygraphTransport>[0];
+    redirects?: Readonly<Record<string, string>>;
     wrap?: (t: Transport) => Transport;
   } = {},
 ): Promise<{ reading: HygraphReading; seen: string[] }> {
   const seen: string[] = [];
   const both = bothTransport(
-    hygraphTransport(undefined, { token: KEY, ...options.fixture }),
-    siteTransport(options.live ?? [], options.broken ?? [], (path, method) =>
-      seen.push(`${method} ${path}`),
+    hygraphTransport(options.content, { token: KEY, ...options.fixture }),
+    siteTransport(
+      options.live ?? [],
+      options.broken ?? [],
+      (path, method) => seen.push(`${method} ${path}`),
+      options.redirects,
     ),
   );
   const fetcher = createFetcher({
@@ -142,8 +148,8 @@ describe("Hygraph checks: an entry that is not published has a live page", () =>
     const out = await run(r);
     expect(out.findings).toEqual([]);
     expect(out.passed).toEqual([]);
-    expect(reasons(out)).toMatch(/pages: the token cannot read the DRAFT stage/);
-    expect(reasons(out)).toMatch(/events: the token cannot read the DRAFT stage/);
+    expect(reasons(out)).toMatch(/pages: the DRAFT stage was refused or errored/);
+    expect(reasons(out)).toMatch(/events: the DRAFT stage was refused or errored/);
     expect(seen).toEqual([]);
   });
 
@@ -151,7 +157,7 @@ describe("Hygraph checks: an entry that is not published has a live page", () =>
     const { reading: r } = await reading({ fixture: { draftStage: "refused-http" } });
     const out = await run(r);
     expect(out.passed).toEqual([]);
-    expect(reasons(out)).toContain("cannot read the DRAFT stage");
+    expect(reasons(out)).toContain("the DRAFT stage was refused or errored");
   });
 
   it("a refusal after the first DRAFT page is could-not-check for that model, never 'the token cannot read DRAFT'", async () => {
@@ -163,7 +169,7 @@ describe("Hygraph checks: an entry that is not published has a live page", () =>
     expect(out.findings).toEqual([]);
     expect(out.passed).toEqual([]);
     expect(reasons(out)).toContain("after answering its first page");
-    expect(reasons(out)).not.toContain("cannot read the DRAFT stage");
+    expect(reasons(out)).not.toContain("the DRAFT stage was refused or errored");
   });
 
   it("a model Hygraph will not give is could-not-check and the others are still read", async () => {
@@ -266,6 +272,76 @@ describe("Hygraph checks: an entry that is not published has a live page", () =>
     const out = await run(r);
     expect(out.passed).toEqual([]);
     expect(reasons(out)).toContain("No model is named");
+  });
+});
+
+/** The fixture's content with this many more pages that were never published. */
+function withUnpublished(
+  count: number,
+  idOf = (i: number) => `cm1page00000000extra${String(i).padStart(4, "0")}`,
+) {
+  const content = structuredClone(HYGRAPH_CONTENT);
+  const pages = content[0];
+  if (pages === undefined) throw new Error("fixture");
+  for (let i = 0; i < count; i++)
+    pages.entries.push({
+      id: idOf(i),
+      slug: `draft-${i}`,
+      published: false,
+      updatedAt: "2026-11-09T10:00:00.000Z",
+      fields: {},
+    });
+  return content;
+}
+
+describe("Hygraph checks: unpublished entries that were not asked about are never a pass", () => {
+  it("60 never-published pages, all 404: 40 are asked and the other 20 are could-not-check, not a pass", async () => {
+    // The fixture has one unpublished page already, so 59 more make 60.
+    const { reading: r, seen } = await reading({ content: withUnpublished(59) });
+    expect(seen).toHaveLength(40);
+    expect(r.unlisted).toEqual([{ type: "pages", count: 20 }]);
+    const out = await run(r);
+    expect(out.findings).toEqual([]);
+    expect(out.passed).toEqual([]);
+    expect(reasons(out)).toMatch(/pages: 20 unpublished entries were not asked about/);
+  });
+
+  it("exactly 40 unpublished pages are all asked and the check passes when they are all 404", async () => {
+    const { reading: r, seen } = await reading({ content: withUnpublished(39) });
+    expect(seen).toHaveLength(40);
+    expect(r.unlisted).toEqual([]);
+    expect((await run(r)).passed).toEqual(["hygraph-draft-live"]);
+  });
+
+  it("an unpublished entry whose id Gaugeline will not name is counted as not asked about, not dropped", async () => {
+    const { reading: r } = await reading({
+      content: withUnpublished(1, () => "an id with spaces"),
+    });
+    expect(r.unlisted).toEqual([{ type: "pages", count: 1 }]);
+    const out = await run(r);
+    expect(out.passed).toEqual([]);
+    expect(reasons(out)).toMatch(/pages: 1 unpublished entry was not asked about/);
+  });
+});
+
+describe("Hygraph checks: a redirect is not a live unpublished page", () => {
+  it("an unpublished slug that redirects to the home page is could-not-check, never a finding", async () => {
+    const { reading: r } = await reading({
+      live: ["/"],
+      redirects: { "/winter-supper-club": "/" },
+    });
+    const out = await run(r);
+    expect(out.findings).toEqual([]);
+    expect(out.passed).toEqual([]);
+    expect(reasons(out)).toMatch(/redirects to \//);
+  });
+
+  it("a trailing-slash redirect to the same page is still a live page", async () => {
+    const { reading: r } = await reading({
+      live: ["/winter-supper-club/"],
+      redirects: { "/winter-supper-club": "/winter-supper-club/" },
+    });
+    expect((await run(r)).findings).toHaveLength(1);
   });
 });
 
