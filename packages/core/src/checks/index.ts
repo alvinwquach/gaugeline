@@ -148,6 +148,13 @@ import { navParity } from "./nav-parity.js";
 import { nextDraftPublic } from "./next-draft-public.js";
 import { nextPreviewCanonical } from "./next-preview-canonical.js";
 import { nextStaleAfterPublish } from "./next-stale-after-publish.js";
+import { nuxtDevBuildLive } from "./nuxt-dev-build-live.js";
+import { nuxtDevtoolsPublic } from "./nuxt-devtools-public.js";
+import { nuxtFrameworkFileListed } from "./nuxt-framework-file-listed.js";
+import { nuxtPageCacheHeader } from "./nuxt-page-cache-header.js";
+import { nuxtPreviewCanonical } from "./nuxt-preview-canonical.js";
+import { nuxtPreviewPublic } from "./nuxt-preview-public.js";
+import { nuxtPrivateState } from "./nuxt-private-state.js";
 import { noindex } from "./noindex.js";
 import { notFound200 } from "./not-found-200.js";
 import { ogImageBroken } from "./og-image-broken.js";
@@ -382,6 +389,13 @@ export const PAGE_CHECKS = [
   nextStaleAfterPublish,
   noindex,
   notFound200,
+  nuxtDevBuildLive,
+  nuxtDevtoolsPublic,
+  nuxtFrameworkFileListed,
+  nuxtPageCacheHeader,
+  nuxtPreviewCanonical,
+  nuxtPreviewPublic,
+  nuxtPrivateState,
   ogImageBroken,
   ogImageMissing,
   ogImageRelative,

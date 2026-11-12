@@ -22,6 +22,11 @@ export interface RouteDef {
    * `then` instead: the same address serving another format (a framework's RSC: 1 request).
    */
   ifHeader?: { name: string; value: string; then: RouteDef };
+  /**
+   * When the request's query string carries this parameter with this value, answer with `then`
+   * instead: the same page behind a switch (a framework's preview mode).
+   */
+  ifQuery?: { name: string; value: string; then: RouteDef };
 }
 
 /** Optional fixture.json: extra hosts served by the same files, one origin each. */
@@ -202,8 +207,14 @@ export async function startFixture(name: string): Promise<Fixture> {
     }
     const listed = routes[path];
     const variant = listed?.ifHeader;
+    const queried = listed?.ifQuery;
+    const query = new URL(req.url ?? "/", "http://fixture.invalid").searchParams;
     const route =
-      variant && req.headers[variant.name.toLowerCase()] === variant.value ? variant.then : listed;
+      variant && req.headers[variant.name.toLowerCase()] === variant.value
+        ? variant.then
+        : queried && query.get(queried.name) === queried.value
+          ? queried.then
+          : listed;
     const answer = () => {
       if (route?.hang) return;
       const headers: Record<string, string> = { ...(route?.headers ?? {}) };
