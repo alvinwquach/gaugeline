@@ -169,7 +169,10 @@ import { remixPrivateFields } from "./remix-private-fields.js";
 import { robotsBlock } from "./robots-block.js";
 import { rscServedAsPage } from "./rsc-served-as-page.js";
 import { rscVaryMissing } from "./rsc-vary-missing.js";
+import { sanityImageAltUnrendered } from "./sanity-image-alt-unrendered.js";
+import { sanityImageCropIgnored } from "./sanity-image-crop-ignored.js";
 import { sanityImageDuplicate } from "./sanity-image-duplicate.js";
+import { sanityImageHeavy } from "./sanity-image-heavy.js";
 import { sanityImageOriginal } from "./sanity-image-original.js";
 import { sanityImageOversized } from "./sanity-image-oversized.js";
 import { schemaBreadcrumbMismatch } from "./schema-breadcrumb-mismatch.js";
@@ -378,7 +381,10 @@ export const PAGE_CHECKS = [
   robotsBlock,
   rscServedAsPage,
   rscVaryMissing,
+  sanityImageAltUnrendered,
+  sanityImageCropIgnored,
   sanityImageDuplicate,
+  sanityImageHeavy,
   sanityImageOriginal,
   sanityImageOversized,
   schemaBreadcrumbMismatch,
