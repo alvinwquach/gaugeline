@@ -28,6 +28,7 @@ import { openDatabase } from "../lib/api/startup.js";
 import { cleanFindings, cleanReason, fitLimits, settleCrossField, stripNul } from "./clean.js";
 import { bounded, DeadlineError, guardFetcher } from "./deadline.js";
 import { diffRuns } from "./diff.js";
+import { runPool } from "./pool.js";
 import {
   claimJobs,
   completeJob,
@@ -303,39 +304,17 @@ export async function runWorker(
   deps: WorkerDeps,
   options: { signal: AbortSignal; limit?: number; idleMs?: number },
 ): Promise<void> {
-  const { signal } = options;
-  const limit = options.limit ?? 4;
-  const idle = options.idleMs ?? 30_000;
-  const running = new Set<Promise<unknown>>();
-  const pause = new Promise<void>((resolve) =>
-    signal.addEventListener("abort", () => resolve(), { once: true }),
-  );
-  try {
-    while (!signal.aborted) {
-      const free = limit - running.size;
-      let claimed = 0;
-      if (free > 0) {
-        const now = (deps.now ?? (() => new Date()))();
-        await releaseExpired(deps.sql, now);
-        const jobs = await claimJobs(deps.sql, free, now);
-        claimed = jobs.length;
-        for (const job of jobs) {
-          const p = processJob(deps, job).finally(() => running.delete(p));
-          running.add(p);
-        }
-      }
-      // Slots full: wait for one to free. Queue drained: wait for the next look, or a freed slot.
-      if (claimed > 0 && claimed === free) await Promise.race([pause, ...running]);
-      else {
-        let timer: NodeJS.Timeout | undefined;
-        const tick = new Promise<void>((resolve) => (timer = setTimeout(resolve, idle)));
-        await Promise.race([pause, tick, ...running]);
-        clearTimeout(timer);
-      }
-    }
-  } finally {
-    await Promise.allSettled(running);
-  }
+  const now = () => (deps.now ?? (() => new Date()))();
+  await runPool({
+    signal: options.signal,
+    limit: options.limit ?? 4,
+    idleMs: options.idleMs ?? 30_000,
+    claim: async (free) => {
+      await releaseExpired(deps.sql, now());
+      return claimJobs(deps.sql, free, now());
+    },
+    work: (job) => processJob(deps, job),
+  });
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
