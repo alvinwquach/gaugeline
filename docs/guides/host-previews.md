@@ -102,8 +102,13 @@ was already indexed, ask for its removal in Search Console and keep the protecti
 
 - A preview address that is only in a setting (not named by the live site) is not read in this
   version: Gaugeline does not request an address it was not given by the site.
-- A preview used as a canonical on a Next.js site is also reported by `next-preview-canonical`;
-  `host-preview-named` leaves that site's canonical, `og:url` and sitemap to it, and leaves links to
-  `temp-host-links`.
+- A preview used as a canonical on a Next.js, Astro, SvelteKit, Angular, Gatsby or static-generator
+  site (Hugo, Jekyll, Eleventy, Docusaurus, VitePress) is also reported by that framework's own
+  check (`next-preview-canonical`, `astro-preview-canonical`, `sveltekit-preview-canonical`,
+  `angular-preview-canonical`, `gatsby-preview-canonical`, `static-preview-canonical`). So that the
+  site is not told twice, `host-preview-named` and `host-preview-indexable` leave that site's
+  canonical, `og:url` and sitemap entries on `vercel.app`, `netlify.app` and `pages.dev` to it, and
+  leave links to `temp-host-links`. They still read language versions, scripts, feeds and Amplify
+  addresses on those sites.
 - `amplifyapp.com` is not in the list `temp-host-links` and `temp-host-canonical` use for
   `vercel.app`, `netlify.app` and `pages.dev`; these two checks cover Amplify addresses by pattern.

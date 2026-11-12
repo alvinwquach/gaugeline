@@ -17,6 +17,7 @@
  * A project's own address (`project.vercel.app`, `site.netlify.app`) is not a preview address, and
  * neither is a branch named main, master, prod or production: those are the live copy's aliases.
  */
+import { isTemporaryHost } from "./checks/launch/hosts.js";
 import type { SiteContext } from "./site-context.js";
 import type { PageSnapshot } from "./snapshot.js";
 
@@ -149,7 +150,11 @@ export interface PreviewMention {
 const MAX_PER_SOURCE = 2000;
 
 export interface MentionOptions {
-  /** Leave out what next-preview-canonical already reports: canonical, og:url and the sitemap. */
+  /**
+   * Leave out what a framework pack's own preview-canonical check already reports: the canonical,
+   * og:url and sitemap entries on a vercel.app, netlify.app or pages.dev host. Amplify addresses
+   * stay, because those checks do not read them.
+   */
   skipCovered?: boolean;
   /** Also take page links (temp-host-links reports those, so the "named" check leaves them). */
   links?: boolean;
@@ -167,10 +172,11 @@ export function previewMentions(
 ): PreviewMention[] {
   const out: PreviewMention[] = [];
   const seen = new Set<string>();
-  const add = (where: string, url: string | undefined) => {
+  const add = (where: string, url: string | undefined, covered = false) => {
     if (!url) return;
     const address = previewAddressOf(url);
     if (!address) return;
+    if (covered && opts.skipCovered && isTemporaryHost(address.host)) return;
     const key = `${where}\n${hostAndPath(url)}`;
     if (seen.has(key)) return;
     seen.add(key);
@@ -179,16 +185,14 @@ export function previewMentions(
   const each = <T>(list: readonly T[] | undefined, f: (x: T) => void) => {
     for (const x of (list ?? []).slice(0, MAX_PER_SOURCE)) f(x);
   };
-  if (!opts.skipCovered) {
-    each(page.canonicals, (c) => add("canonical", c));
-    add("og:url", page.og["og:url"]);
-  }
+  each(page.canonicals, (c) => add("canonical", c, true));
+  add("og:url", page.og["og:url"], true);
   each(page.hreflang, (h) => add(`hreflang ${h.hreflang}`, h.href));
   each(page.scripts, (s) => add("script", s));
   each(page.feeds, (f) => add("feed link", f.href));
   if (opts.links) each(page.links, (l) => add("link", l.href));
   if (site) {
-    if (!opts.skipCovered) each(site.sitemapUrls, (u) => add("sitemap", u));
+    each(site.sitemapUrls, (u) => add("sitemap", u, true));
     each(site.sitemapAlternates, (a) => add(`sitemap hreflang ${a.hreflang}`, a.href));
     for (const feed of site.feeds.slice(0, 50)) each(feed.itemLinks, (u) => add("feed item", u));
   }

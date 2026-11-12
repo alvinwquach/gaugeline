@@ -53,4 +53,32 @@ describe("host previews: end to end", () => {
       await site.close();
     }
   });
+
+  // Each of these fixtures names a preview address as its canonical, and its framework pack's own
+  // check already reports that: the generic checks must not say the same thing a second time.
+  it.each(["next-like", "astro-like", "sveltekit-like", "angular-like", "gatsby-like"])(
+    "%s: the framework's own preview check reports the canonical and the generic checks stay quiet",
+    async (name) => {
+      const site = await startFixture(name);
+      try {
+        const out: string[] = [];
+        const io = {
+          stdout: { write: (s: string) => out.push(s) },
+          stderr: { write: () => true },
+          env: { NO_COLOR: "1" },
+        };
+        const code = await main([site.origin, "--no-open"], io, {
+          version: "0.1.0",
+          fetcher: { hosts: site.hosts },
+        });
+        expect(code).toBe(0);
+        const text = withoutPassed(out.join(""));
+        expect(text).toContain("points search engines at a preview deployment");
+        expect(text).not.toContain("names a preview address");
+        expect(text).not.toContain("host-preview-indexable");
+      } finally {
+        await site.close();
+      }
+    },
+  );
 });

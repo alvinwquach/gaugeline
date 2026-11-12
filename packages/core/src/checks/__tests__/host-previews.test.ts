@@ -187,6 +187,60 @@ describe("host-preview-named: unit", () => {
     expect(await hostPreviewNamed.run(p, ctx())).toEqual([]);
   });
 
+  const COVERED: [string, string, Record<string, string>][] = [
+    ["Astro", '<astro-island uid="1"></astro-island>', {}],
+    ["SvelteKit", "<main>Hi</main>", { "x-sveltekit-page": "true" }],
+    ["Angular", '<app-root ng-version="18.2.0"></app-root>', {}],
+    ["Gatsby", '<div id="___gatsby"></div>', {}],
+    ["Hugo", '<meta name="generator" content="Hugo 0.121.0">', {}],
+  ];
+
+  it.each(COVERED)(
+    "a %s site's canonical, og:url and sitemap are left to its own preview check",
+    async (_name, marker, headers) => {
+      const p = page(
+        "https://fernlight-cafe.example/",
+        `${marker}<link rel="canonical" href="https://${NETLIFY}/"><meta property="og:url" content="https://${NETLIFY}/">`,
+        headers,
+      );
+      expect(
+        await hostPreviewNamed.run(p, ctx({ sitemapUrls: [`https://${NETLIFY}/menu`] })),
+      ).toEqual([]);
+    },
+  );
+
+  it("a framework site still gets a finding for what its own check does not read", async () => {
+    const p = page(
+      "https://fernlight-cafe.example/",
+      `<link rel="alternate" hreflang="fr" href="https://${AMPLIFY}/fr/">`,
+      { "x-sveltekit-page": "true" },
+    );
+    const out = await hostPreviewNamed.run(p, ctx());
+    expect(out[0]?.evidence).toContain(`hreflang fr ${AMPLIFY}/fr/`);
+  });
+
+  it("an Amplify canonical on a framework site is still reported: the framework's check does not read amplifyapp.com", async () => {
+    const p = page(
+      "https://fernlight-cafe.example/",
+      `<link rel="canonical" href="https://${AMPLIFY}/"><meta property="og:url" content="https://${NETLIFY}/">`,
+      { "x-sveltekit-page": "true" },
+    );
+    const out = await hostPreviewNamed.run(p, ctx({ sitemapUrls: [`https://${AMPLIFY}/menu`] }));
+    expect(out[0]?.evidence).toBe(
+      `2 places name a preview address (AWS Amplify pull request preview): canonical ${AMPLIFY}/, sitemap ${AMPLIFY}/menu`,
+    );
+  });
+
+  it("a plain site with the same preview canonical and sitemap still gets the finding", async () => {
+    const p = page(
+      "https://fernlight-cafe.example/",
+      `<link rel="canonical" href="https://${NETLIFY}/"><meta property="og:url" content="https://${NETLIFY}/">`,
+    );
+    const out = await hostPreviewNamed.run(p, ctx({ sitemapUrls: [`https://${NETLIFY}/menu`] }));
+    expect(out).toHaveLength(1);
+    expect(out[0]?.evidence).toContain("3 places name a preview address");
+  });
+
   it("a Next.js site's canonical, og:url and sitemap are left to next-preview-canonical", async () => {
     const p = page(
       "https://fernlight-cafe.example/",
@@ -317,6 +371,38 @@ describe("host-preview-indexable: unit", () => {
     const quiet = stub({});
     await hostPreviewIndexable.run(page("https://fernlight-cafe.example/"), ctxSite(quiet.ctx));
     expect(quiet.calls).toEqual([]);
+  });
+
+  it("a framework site's preview canonical and sitemap are not asked about: its own check reports them", async () => {
+    const s = stub({});
+    const p = page(
+      "https://fernlight-cafe.example/",
+      `<link rel="canonical" href="${url}"><meta property="og:url" content="${url}">`,
+      { "x-sveltekit-page": "true" },
+    );
+    expect(await hostPreviewIndexable.run(p, ctxSite(s.ctx, [url]))).toEqual([]);
+    expect(s.calls).toEqual([]);
+    expect(s.unread).toEqual([]);
+  });
+
+  it("a framework site's other preview addresses are still asked about", async () => {
+    const s = stub({ [url]: {} });
+    const p = page(
+      "https://fernlight-cafe.example/",
+      `<link rel="canonical" href="https://${PAGES}/"><link rel="alternate" hreflang="fr" href="${url}">`,
+      { "x-sveltekit-page": "true" },
+    );
+    const out = await hostPreviewIndexable.run(p, ctxSite(s.ctx));
+    expect(s.calls.map((c) => c.url)).toEqual([url]);
+    expect(out).toHaveLength(1);
+  });
+
+  it("a plain site with a preview canonical is still asked about", async () => {
+    const s = stub({ [url]: null });
+    const p = page("https://fernlight-cafe.example/", `<link rel="canonical" href="${url}">`);
+    await hostPreviewIndexable.run(p, ctxSite(s.ctx));
+    expect(s.calls.map((c) => c.url)).toEqual([url]);
+    expect(s.unread).toEqual([[url, `${NETLIFY}/menu did not answer`]]);
   });
 
   it("a page on a temporary host, or a run without a fetcher, asks nothing", async () => {
