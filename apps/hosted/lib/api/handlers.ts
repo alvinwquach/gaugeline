@@ -127,7 +127,7 @@ export async function postRun(req: Request, deps: ApiDeps): Promise<Response> {
 
     const hash = createHash("sha256").update(text).digest("hex");
     const outcome = await withService(deps.sql, (tx) =>
-      store(tx, auth, parsed.value, key.key, hash),
+      storeRun(tx, auth, parsed.value, key.key, hash),
     );
     if (outcome.kind === "conflict")
       return problem(
@@ -149,16 +149,19 @@ export async function postRun(req: Request, deps: ApiDeps): Promise<Response> {
   }
 }
 
-type Stored =
+export type Stored =
   | { kind: "created" | "replay"; id: string; startedAt: string; findings: number }
   | { kind: "conflict" };
 
 const ISO = `to_char(started_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')`;
 
-/** The run and all its findings, or nothing: one transaction (the caller's), one advisory lock per key. */
-async function store(
+/**
+ * The run and all its findings, or nothing: one transaction (the caller's), one advisory lock per key.
+ * The one way a run is written: POST /runs and the nightly worker (G36) both call it.
+ */
+export async function storeRun(
   tx: Tx,
-  auth: Authorised,
+  auth: Pick<Authorised, "orgId" | "siteId">,
   upload: Upload,
   key: string | null,
   requestHash: string,

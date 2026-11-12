@@ -48,9 +48,12 @@ const TENANT_TABLES = [
   // Server-only (0003): no grant for anon or authenticated at all.
   "tokens",
   "idempotency_keys",
+  // 0004: the queue is server-only; what changed is read like runs.
+  "jobs",
+  "run_changes",
 ];
 
-const SERVER_ONLY = new Set(["tokens", "idempotency_keys"]);
+const SERVER_ONLY = new Set(["tokens", "idempotency_keys", "jobs"]);
 
 describe.skipIf(!HAS_DATABASE)("hosted database: row-level security", () => {
   let db: TestDatabase;
