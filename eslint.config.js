@@ -48,6 +48,9 @@ const NETWORK_IMPORTS = [
   })),
 ];
 
+/** ADR-0010: the writer's one connection is packages/writer/src/github/send.ts, through fetch. */
+const WRITER_NETWORK_GLOBALS = ["fetch", "XMLHttpRequest", "WebSocket", "EventSource"];
+
 export default tseslint.config(
   { ignores: ["**/dist/**", "**/node_modules/**", "**/coverage/**", "packages/fixtures/sites/**"] },
   js.configs.recommended,
@@ -129,6 +132,44 @@ export default tseslint.config(
     // Notifications POST to the person's own channels, never to the checked site (ADR-0005).
     files: ["packages/core/src/notify/post.ts"],
     rules: { "no-restricted-imports": ["error", CORE_RESTRICTED_IMPORTS] },
+  },
+  {
+    // ADR-0010: in the writer, only github/send.ts may open a connection. An added restriction: it
+    // changes nothing for any other package.
+    files: ["packages/writer/src/**/*.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: ["node:http", "http", "node:https", "https", "node:http2", "http2"].map(
+            (name) => ({
+              name,
+              message: "Only packages/writer/src/github/send.ts may make requests (ADR-0010).",
+            }),
+          ),
+        },
+      ],
+      "no-restricted-globals": [
+        "error",
+        ...WRITER_NETWORK_GLOBALS.map((name) => ({
+          name,
+          message: "Only packages/writer/src/github/send.ts may make requests (ADR-0010).",
+        })),
+      ],
+    },
+  },
+  {
+    // The sender calls fetch (and nothing else that opens a connection).
+    files: ["packages/writer/src/github/send.ts"],
+    rules: {
+      "no-restricted-globals": [
+        "error",
+        ...WRITER_NETWORK_GLOBALS.filter((name) => name !== "fetch").map((name) => ({
+          name,
+          message: "Only fetch, in packages/writer/src/github/send.ts (ADR-0010).",
+        })),
+      ],
+    },
   },
   {
     // Tests may print and may reach repository scripts; the walker skips them too.

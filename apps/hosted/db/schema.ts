@@ -13,6 +13,7 @@ import {
   primaryKey,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 
@@ -97,7 +98,8 @@ export const drafts = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     orgId: uuid("org_id").notNull(),
     siteId: uuid("site_id").notNull(),
-    kind: text("kind").notNull(),
+    /** pull_request | email | sanity_draft (0005; the shapes are apps/hosted/inbox/kinds.ts). */
+    kind: text("kind").$type<"pull_request" | "email" | "sanity_draft">().notNull(),
     payload: jsonb("payload").$type<Record<string, unknown>>().notNull(),
     findingIds: uuid("finding_ids")
       .array()
@@ -123,8 +125,16 @@ export const decisions = pgTable(
     reason: text("reason"),
     decidedBy: uuid("decided_by").notNull(),
     decidedAt: timestamp("decided_at", { withTimezone: true }).notNull().defaultNow(),
+    /** SHA-256 of the approved payload's jsonb text, set by a trigger (0005); null for a decline. */
+    payloadSha256: text("payload_sha256"),
   },
-  (t) => [index("decisions_draft_idx").on(t.draftId, t.id.desc())],
+  (t) => [
+    index("decisions_draft_idx").on(t.draftId, t.id.desc()),
+    // One person's choice per draft (0005).
+    uniqueIndex("decisions_one_choice_per_draft")
+      .on(t.draftId)
+      .where(sql`decision in ('approved', 'edited', 'declined')`),
+  ],
 ).enableRLS();
 
 /** Append-only like decisions. The latest row per site is the current consent to probing checks. */

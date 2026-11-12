@@ -59,7 +59,10 @@ describe("writer never merges: the scan reads the package's files", () => {
 
 describe("writer never merges: the repository", () => {
   it(`no file in ${WRITER_DIR} can ask for a merge`, () => {
-    const problems = writerSources(join(repoRoot, WRITER_DIR)).flatMap((f) =>
+    const files = writerSources(join(repoRoot, WRITER_DIR));
+    // A missing or empty package would pass every line below: the writer exists, so the scan reads it.
+    expect(files.filter((f) => /[\\/]src[\\/].+\.ts$/.test(f)).length).toBeGreaterThanOrEqual(5);
+    const problems = files.flatMap((f) =>
       mergeProblems(relative(repoRoot, f), readFileSync(f, "utf8")),
     );
     expect(problems).toEqual([]);
