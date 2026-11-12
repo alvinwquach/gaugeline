@@ -2,8 +2,8 @@
 
 The hosted version of Gaugeline (in progress, not released) opens with an email link. There are no
 passwords. This page covers the first part of "Sign in, and the dashboard": signing in, switching
-organisation, and the page every signed-in person lands on. The dashboard itself (sites worst first,
-and what happened last night) comes in the next two changes.
+organisation, and the page every signed-in person lands on. The dashboard itself is on [its own page](/hosted/dashboard); "what happened last night" comes in the next
+change.
 
 ## An example: two agencies, one login
 
@@ -35,17 +35,50 @@ $ curl -X POST -d 'email=maya@northgate.test' http://127.0.0.1:3101/sign-in
 ```
 
 Opening the link shows one button, "Sign in", and the button's POST signs in, so a mail scanner that opens
-the link does not use it up. After that, the home page is the organisation's name, your role and the list of its sites (the
-dashboard, in a later change, turns it into a table); it shows only what the database lets Maya read:
+the link does not use it up. After that, the home page is the organisation's name, your role and the table of its sites (see
+[the dashboard](/hosted/dashboard)); it shows only what the database lets Maya read:
 
 ```html
 <main id="main">
   <h1>Northgate Studio</h1>
   <p class="muted">You are signed in as Owner.</p>
-  <ul>
-    <li>Juniper Pop-up Kitchen</li>
-    <li>The Tidewater Bar</li>
-  </ul>
+  <table class="sites">
+    <caption>
+      Sites, worst first
+    </caption>
+    <thead>
+      <tr>
+        <th scope="col">Site</th>
+        <th scope="col" class="num">Fix this first</th>
+        <th scope="col" class="num">Fix soon</th>
+        <th scope="col">Since the run before</th>
+        <th scope="col">Last checked</th>
+        <th scope="col">New since then</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <th scope="row">
+          Juniper Pop-up Kitchen<br /><span class="muted">https://juniper-popup.test</span>
+        </th>
+        <td class="num">-</td>
+        <td class="num">-</td>
+        <td><span class="trend trend-unchecked">Not checked yet</span></td>
+        <td>-</td>
+        <td></td>
+      </tr>
+      <tr>
+        <th scope="row">
+          The Tidewater Bar<br /><span class="muted">https://tidewater-bar.test</span>
+        </th>
+        <td class="num">-</td>
+        <td class="num">-</td>
+        <td><span class="trend trend-unchecked">Not checked yet</span></td>
+        <td>-</td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
 </main>
 ```
 
@@ -100,7 +133,7 @@ are a member of it, so a forged cookie changes nothing.
 - Text a checked site chose (a finding's title or evidence line) is shown as text: cleaned with the same
   helper the CLI uses before anything leaves the engine (`sanitise` in `@gaugeline/core`: hidden tag
   characters and bidirectional controls removed, control characters shown, capped), then escaped. It is
-  never markup. The first change shows no findings yet; the next ones do.
+  never markup.
 - Nothing secret is in a page. The signing secret, the database address and the session token never
   appear in a response (a test checks every page for all three).
 
