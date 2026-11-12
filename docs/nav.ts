@@ -179,4 +179,6 @@ export const UNLISTED: NavPage[] = [
   { slug: "guides/cutover", title: "Cutover: what changed on the day" },
   { slug: "guides/many-sites", title: "Many sites from one file" },
   { slug: "guides/ci-templates", title: "CI templates: GitLab CI, Bitbucket Pipelines, CircleCI" },
+  { slug: "hosted/data-model", title: "Hosted: data model and tenancy" },
+  { slug: "hosted/plan", title: "Hosted app plan" },
 ];

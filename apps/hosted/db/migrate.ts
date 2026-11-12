@@ -85,7 +85,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     process.stderr.write("GAUGELINE_DATABASE_URL is not set.\n");
     process.exitCode = 2;
   } else {
-    const sql = postgres(url, { max: 1 });
+    const sql = postgres(url, { max: 1, onnotice: () => {} });
     migrate(sql)
       .then((names) => {
         process.stdout.write(names.length ? `applied: ${names.join(", ")}\n` : "up to date\n");
