@@ -156,7 +156,7 @@ describe("a custom check is not a way round the probing rule (rule 14)", () => {
   function asked(urls: string[], consent: boolean, headers?: Record<string, string>) {
     const calls: string[] = [];
     const fetcher = {
-      get: async (url: string) => {
+      get: async (url: string, _opts?: unknown) => {
         calls.push(url);
         return [];
       },
