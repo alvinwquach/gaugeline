@@ -78,6 +78,8 @@ describe("check-adr: integration", () => {
       "0006-read-only-post-queries.md",
       "0007-open-image-optimizers.md",
       "0008-platform-reads-through-mcp-servers-and-clis.md",
+      "0009-rendered-checks.md",
+      "0010-approve-then-act-writes.md",
       "0011-listing-watch.md",
       "0012-platform-checks.md",
       "0013-self-hosting.md",

@@ -9,8 +9,10 @@ import {
   CRAFT_CHECKS,
   HYGRAPH_CHECKS,
   UMBRACO_CHECKS,
+  SITECORE_CHECKS,
   JOOMLA_CHECKS,
   DATOCMS_CHECKS,
+  PRISMIC_CHECKS,
   DIRECTUS_CHECKS,
   HUBSPOT_CMS_CHECKS,
   AD_LANDING_CHECKS,
@@ -81,8 +83,10 @@ export function CATALOGUE_IDS(): string[] {
   for (const c of CRAFT_CHECKS) registry.register(c);
   for (const c of HYGRAPH_CHECKS) registry.register(c);
   for (const c of UMBRACO_CHECKS) registry.register(c);
+  for (const c of SITECORE_CHECKS) registry.register(c);
   for (const c of JOOMLA_CHECKS) registry.register(c);
   for (const c of DATOCMS_CHECKS) registry.register(c);
+  for (const c of PRISMIC_CHECKS) registry.register(c);
   for (const c of DIRECTUS_CHECKS) registry.register(c);
   for (const c of HUBSPOT_CMS_CHECKS) registry.register(c);
   return registry.all().map((c) => c.id);

@@ -329,17 +329,40 @@ export async function runExample(
   }
 }
 
-/** The parent's environment without CI and colour settings, plus NO_COLOR, the fixed clock and the example's own. */
+const OFFLINE_PRELOAD = fileURLToPath(
+  new URL("../../packages/cli/src/__tests__/helpers/map-hosts.cjs", import.meta.url),
+);
+
+/**
+ * An example runs offline: a host that is not an IP address does not resolve (the same preload the
+ * CLI's own tests use), so a fixture page that links a real address (a CDN file, say) gives the same
+ * output on a developer machine and on CI, where the real host would answer differently.
+ */
+export function offlineEnv(preload: string = OFFLINE_PRELOAD): Record<string, string> {
+  const inherited = process.env.NODE_OPTIONS ? `${process.env.NODE_OPTIONS} ` : "";
+  // JSON.stringify doubles a Windows path's backslashes: Node reads a backslash inside quotes as an escape.
+  return {
+    NODE_OPTIONS: `${inherited}--require=${JSON.stringify(preload)}`,
+    GAUGELINE_TEST_OFFLINE: "1",
+  };
+}
+
+/**
+ * The parent's environment without CI and colour settings, plus NO_COLOR, the fixed clock, the offline
+ * preload and the example's own.
+ */
 function childProcessEnv(extra: Record<string, string>): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = { ...process.env };
   for (const k of ["CI", "FORCE_COLOR", "GITHUB_ACTIONS"]) delete env[k];
+  const offline = offlineEnv();
   const preload = `--require=${JSON.stringify(CLOCK_PRELOAD)}`;
   return {
     ...env,
     NO_COLOR: "1",
     GAUGELINE_TEST_NOW: DOCS_CLOCK,
+    ...offline,
     ...extra,
-    NODE_OPTIONS: [env.NODE_OPTIONS, extra.NODE_OPTIONS, preload].filter(Boolean).join(" "),
+    NODE_OPTIONS: [offline.NODE_OPTIONS, extra.NODE_OPTIONS, preload].filter(Boolean).join(" "),
   };
 }
 

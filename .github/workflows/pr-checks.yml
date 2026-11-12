@@ -1,0 +1,39 @@
+name: PR checks
+
+# One job instead of two (CI diet, owner policy, 11 Nov 2026): the PR gate (changeset, docs change and
+# label rules) and the PR body check (Changelog section) are both cheap, so they share one runner and
+# one install. Separate from ci.yml so a label or an edit re-runs only this job, not the tests.
+# Make "pr-checks" a required check in the branch protection rules.
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, ready_for_review, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+# A new push, edit or label change cancels the older run of this check.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pr-checks:
+    # A draft pull request runs no CI; marking it ready starts it (ready_for_review).
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # The Release pull request deletes changesets by design, so the gate does not run on it.
+      - if: github.head_ref != 'changeset-release/main'
+        run: pnpm pr-gate --base "origin/${{ github.base_ref }}"
+      # A pull request whose Changelog section is missing or still holds a placeholder cannot merge.
+      - run: pnpm pr:check

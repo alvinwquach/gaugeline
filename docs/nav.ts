@@ -91,6 +91,7 @@ export const UNLISTED: NavPage[] = [
   { slug: "tools/redirects", title: "Check a redirect list" },
   { slug: "tools/plan", title: "Check a launch plan" },
   { slug: "security", title: "Security" },
+  { slug: "security/untrusted-content", title: "Text from the sites you check" },
   { slug: "changelog", title: "Changelog" },
   { slug: "reference/json-schema", title: "JSON output reference" },
   { slug: "contributing/docs-first", title: "Docs first" },
@@ -114,6 +115,7 @@ export const UNLISTED: NavPage[] = [
   { slug: "guides/served-libraries", title: "Served libraries: the old jQuery nobody remembers" },
   { slug: "guides/init", title: "gaugeline init: start from what the site is built on" },
   { slug: "guides/deploy-gates", title: "Deploy gates: check a preview before it goes live" },
+  { slug: "guides/vercel-gate", title: "Hold a Vercel deploy on Gaugeline's result" },
   {
     slug: "guides/image-optimizers",
     title: "Open image optimizers: who can use your site to resize images",
@@ -140,6 +142,7 @@ export const UNLISTED: NavPage[] = [
   ...ADAPTER_PAGES,
   { slug: "integrations/recipes/index", title: "Recipes for the generic API adapter" },
   { slug: "connectors/listings", title: "Listings off the site" },
+  { slug: "checks/documents-agree", title: "Documents agree with the site" },
   { slug: "connectors/postgres", title: "A database as a source: Postgres and Supabase" },
   { slug: "sources/shopify", title: "Shopify as a price source" },
   { slug: "sources/square", title: "Square as a price source" },
@@ -180,4 +183,6 @@ export const UNLISTED: NavPage[] = [
   { slug: "guides/cutover", title: "Cutover: what changed on the day" },
   { slug: "guides/many-sites", title: "Many sites from one file" },
   { slug: "guides/ci-templates", title: "CI templates: GitLab CI, Bitbucket Pipelines, CircleCI" },
+  { slug: "hosted/data-model", title: "Hosted: data model and tenancy" },
+  { slug: "hosted/plan", title: "Hosted app plan" },
 ];

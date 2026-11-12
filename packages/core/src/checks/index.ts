@@ -48,6 +48,12 @@ import { dataStale } from "./data-stale.js";
 import { datasetPrivateTypes } from "./dataset-private-types.js";
 import { datasetPublic } from "./dataset-public.js";
 import { devToolsInProduction } from "./dev-tools-in-production.js";
+import {
+  documentHoursMismatch,
+  documentItemMissing,
+  documentPriceMismatch,
+  documentUnreadable,
+} from "./documents.js";
 import { draftsLive } from "./drafts-live.js";
 import { duplicateTitle } from "./duplicate-title.js";
 import { emailDmarcMissing } from "./email-dmarc-missing.js";
@@ -287,6 +293,10 @@ export const PAGE_CHECKS = [
   datasetPrivateTypes,
   datasetPublic,
   devToolsInProduction,
+  documentHoursMismatch,
+  documentItemMissing,
+  documentPriceMismatch,
+  documentUnreadable,
   draftsLive,
   duplicateTitle,
   emailDmarcMissing,

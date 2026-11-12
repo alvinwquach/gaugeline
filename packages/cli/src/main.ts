@@ -100,6 +100,8 @@ import {
   HANDOFF_CHECKS,
   HANDOFF_ENV_VARS,
   formatRenewalRows,
+  formatJunit,
+  formatSarif,
   RENEWALS_CHECKS,
   RENEWALS_ENV_VARS,
   COST_CHECKS,
@@ -175,6 +177,7 @@ import { readSites, selectSites, SITES_FILE } from "./sites.js";
 import { appendStepSummary, planStepSummary } from "./step-summary.js";
 import {
   readAccess,
+  readDocumentsConfig,
   readFacts,
   readListingsConfig,
   readCrmConfig,
@@ -230,6 +233,13 @@ import { basename, join, resolve } from "node:path";
 /** The report file, in the folder the run starts from. */
 export const REPORT_FILE = "gaugeline-report.html";
 import { VERSION } from "./version.js";
+
+/**
+ * Off until a real upload to GitHub code scanning says a result with no file is rejected: then
+ * change this to true (one line) and every page finding in --format sarif also carries a placeholder
+ * file. See docs/ci.md, "If GitHub rejects the upload".
+ */
+const SARIF_PHYSICAL_LOCATION_FALLBACK = false;
 
 /** Shown under the mail record checks a run without --dns leaves out. */
 export const DNS_HINT =
@@ -1246,6 +1256,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       const languageRules = readLanguageRules(deps.cwd ?? process.cwd());
       const ai = readAiConfig(deps.cwd ?? process.cwd());
       const facts = readFacts(deps.cwd ?? process.cwd());
+      const documents = readDocumentsConfig(deps.cwd ?? process.cwd());
       const payments = readPayments(deps.cwd ?? process.cwd());
       const hidden = readHidden(deps.cwd ?? process.cwd());
       const tags = readTags(deps.cwd ?? process.cwd());
@@ -1622,6 +1633,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         ...(languageRules ? { languageRules } : {}),
         ...(ai ? { ai } : {}),
         ...(facts ? { facts } : {}),
+        ...(documents ? { documents: { config: documents } } : {}),
         ...(payments ? { payments } : {}),
         ...(hidden ? { hidden } : {}),
         ...(navRules ? { nav: navRules } : {}),
@@ -1804,7 +1816,22 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           couldNotCheck: result.couldNotCheck,
           sampled: result.sampled,
         });
-        io.stdout.write(`${JSON.stringify(json, null, 2)}\n`);
+        // --format sarif and junit are views of this same result; any muted findings go in as
+        // `suppressed` once G29's --baseline and --suppress are on main. A check left out on
+        // purpose (DNS without --dns) is a skip there, not a check that could not run.
+        const view = {
+          registry,
+          version: deps.version ?? VERSION,
+          notRun: dnsSkipped,
+          physicalLocationFallback: SARIF_PHYSICAL_LOCATION_FALLBACK,
+        };
+        io.stdout.write(
+          args.format === "sarif"
+            ? formatSarif({ ...json, failed: result.failed.map((f) => f.id) }, view)
+            : args.format === "junit"
+              ? formatJunit({ ...json, failed: result.failed.map((f) => f.id) }, view)
+              : `${JSON.stringify(json, null, 2)}\n`,
+        );
       } else {
         // gaugeline renewals: the list by date first (every date read, healthy or not), then what to fix.
         if (renewals && args.command === "renewals") {
