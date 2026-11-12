@@ -8,6 +8,8 @@ export interface MemoryPage {
   status?: number;
   body: string;
   type?: string;
+  /** Sent as the Location header, for a 3xx. */
+  location?: string;
 }
 
 const HEAD =
@@ -66,7 +68,10 @@ export function memorySite(
       req.method === "HEAD" ? "" : (hit?.body ?? "<!doctype html><title>Not found</title>");
     return Promise.resolve({
       status,
-      headers: { "content-type": hit?.type ?? "text/html; charset=utf-8" },
+      headers: {
+        "content-type": hit?.type ?? "text/html; charset=utf-8",
+        ...(hit?.location ? { location: hit.location } : {}),
+      },
       body: Readable.from([Buffer.from(body)]),
     });
   };

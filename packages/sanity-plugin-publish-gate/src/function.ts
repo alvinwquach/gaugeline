@@ -67,6 +67,9 @@ export interface GateOptions {
   wait?: (ms: number) => Promise<void>;
 }
 
+/** Format and control characters: zero-width, bidi, tag characters. */
+const INVISIBLE = /[\p{Cf}\p{Cc}]/gu;
+
 const NOTHING = { documentId: "", type: "" } as const;
 
 function isDocument(data: unknown): data is GateDocument {
@@ -83,20 +86,19 @@ export async function checkDocument(data: unknown, options: GateOptions): Promis
       ...NOTHING,
       reason: "The event held no document with an _id and a _type.",
     };
-  // Both come from the dataset and reach a log or a sink: cleaned and capped like page text.
+  // Rules and the draft test see the id and type exactly as the dataset has them (a type with a
+  // hidden character is not the type it imitates); only what is output is cleaned and capped.
   const documentId = sanitise(data._id, 200).text;
   const type = sanitise(data._type, 100).text;
-  if (documentId.startsWith("drafts.") || documentId.startsWith("versions."))
+  // Invisible characters in front of the prefix must not hide a draft.
+  if (/^(?:drafts|versions)\./.test(data._id.replace(INVISIBLE, "")))
     return {
       status: "not-gated",
       documentId,
       type,
       reason: "A draft or a release version is not published.",
     };
-  const resolved = resolvePage(
-    { ...data, _type: type },
-    { site: options.site, pages: options.pages },
-  );
+  const resolved = resolvePage(data, { site: options.site, pages: options.pages });
   if (resolved.kind === "no-page")
     return { status: "not-gated", documentId, type, reason: resolved.reason };
   if (resolved.kind === "unresolved")

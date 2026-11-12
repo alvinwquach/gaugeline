@@ -96,6 +96,26 @@ describe("the post-publish Function", () => {
     expect(seen).toEqual([]);
   });
 
+  it("a document typed with a hidden character is not gated as the page type it imitates", async () => {
+    const { options, seen } = world("<p>x</p>");
+    const outcome = await checkDocument({ ...menuDoc, _type: "\u202epage" }, options);
+    expect(outcome.status).toBe("not-gated");
+    expect(seen).toEqual([]);
+  });
+
+  it("an id with a hidden character in front of drafts. or versions. is still a draft", async () => {
+    const { options, seen } = world("<p>x</p>");
+    for (const id of [
+      "\u200bdrafts.menu-page",
+      "\ufeffversions.r.menu-page",
+      "\u202edrafts.menu-page",
+    ]) {
+      const outcome = await checkDocument({ ...menuDoc, _id: id }, options);
+      expect(outcome.status, id).toBe("not-gated");
+    }
+    expect(seen).toEqual([]);
+  });
+
   it("an envelope with no event is could-not-check, not a TypeError", async () => {
     const { options, reported } = world("<p>x</p>");
     const handler = gateHandler(options) as (e: unknown) => Promise<void>;

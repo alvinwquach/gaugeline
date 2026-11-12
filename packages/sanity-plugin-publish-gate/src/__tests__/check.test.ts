@@ -6,7 +6,14 @@ import {
   readOnlyTransport,
   type GateTransport,
 } from "../check.js";
-import { SITE, barSite, downSite, hasHiddenCharacters, memorySite } from "./helpers.js";
+import {
+  SITE,
+  barSite,
+  downSite,
+  hasHiddenCharacters,
+  memorySite,
+  type MemoryPage,
+} from "./helpers.js";
 
 const now = () => new Date("2026-11-12T10:00:00Z");
 
@@ -202,7 +209,9 @@ describe("checkPage: the address rules of the core fetcher apply", () => {
       "http://169.254.169.254/latest/meta-data/",
     ]) {
       const report = await checkPage({ url, now });
-      expect(report.unreachable, url).toEqual(expect.any(String));
+      // The reason is the fetcher's refusal, not a failed connection: nothing was sent.
+      expect(report.unreachable, url).toMatch(/private|loopback|link-local/);
+      expect(report.unreachable, url).toMatch(/does not request/);
       expect(report.findings, url).toEqual([]);
     }
   });
@@ -220,5 +229,53 @@ describe("checkPage: the address rules of the core fetcher apply", () => {
     expect(called).toBe(0);
     await wrapped(new URL(`${SITE}/menu`), { method: "GET", headers: {}, timeoutMs: 1000 });
     expect(called).toBe(1);
+  });
+});
+
+describe("checkPage: links never lead the gate off the configured host", () => {
+  const out = (page: string) => {
+    const seen: { method: string; url: string }[] = [];
+    const transport = memorySite(
+      barSite(page, {
+        "/out": { status: 301, location: "https://evil.example/z", body: "" },
+        "/in": { status: 301, location: "/menu", body: "" },
+      }),
+      seen,
+    );
+    return { transport, seen };
+  };
+
+  it("a same-site link that redirects to another site is not followed, and the report says so", async () => {
+    const { transport, seen } = out('<a href="/out">Out</a><a href="/in">In</a>');
+    const report = await checkPage({ url: `${SITE}/menu`, transport, now });
+    expect(seen.map((s) => new URL(s.url).host)).not.toContain("evil.example");
+    // A redirect that stays on the site is followed as before.
+    expect(seen.some((s) => s.url === `${SITE}/in`)).toBe(true);
+    expect(report.couldNotCheck.map((c) => c.id)).toContain("redirect-off-site");
+    expect(report.couldNotCheck.find((c) => c.id === "redirect-off-site")?.reason).not.toContain(
+      "evil.example",
+    );
+    expect(report.unreachable).toBeUndefined();
+  });
+
+  it("a link to www. of the site, or to any other host, is not requested", async () => {
+    const { transport, seen } = out(
+      '<a href="https://www.lantern-yard.example/w">www</a><a href="https://other.example/o">o</a><a href="http://lantern-yard.example:8443/p">port</a>',
+    );
+    await checkPage({ url: `${SITE}/menu`, transport, now });
+    const hosts = new Set(seen.map((s) => new URL(s.url).host));
+    expect(hosts).toEqual(new Set(["lantern-yard.example"]));
+  });
+
+  it("a page that itself redirects to another host is could-not-check, and the target is not requested", async () => {
+    const { transport, seen } = out("<p>x</p>");
+    const moved = memorySite(
+      { "/menu": { status: 302, location: "https://www.lantern-yard.example/menu", body: "" } },
+      seen,
+    );
+    const report = await checkPage({ url: `${SITE}/menu`, transport: moved, now });
+    expect(report.unreachable).toMatch(/redirect/);
+    expect(seen.map((s) => new URL(s.url).host)).toEqual(["lantern-yard.example"]);
+    void transport;
   });
 });

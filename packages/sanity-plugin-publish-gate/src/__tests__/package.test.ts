@@ -32,11 +32,33 @@ describe("the built package", () => {
     expect(readFileSync(dist("function.js"), "utf8")).toMatch(/createRequire/);
   });
 
+  it("carries a licence notice for every package the Function bundle inlines", () => {
+    const notice = readFileSync(root("THIRD_PARTY_LICENSES.md"), "utf8");
+    for (const name of [
+      "boolbase",
+      "cheerio",
+      "cheerio-select",
+      "css-select",
+      "css-what",
+      "dom-serializer",
+      "domelementtype",
+      "domhandler",
+      "domutils",
+      "entities",
+      "htmlparser2",
+      "jsqr",
+      "nth-check",
+      "yaml",
+      "zod",
+    ])
+      expect(notice, name).toMatch(new RegExp(`^## ${name} \\d`, "m"));
+  });
+
   it("ships the notice for the Apache-2.0 code the bundled engine includes", () => {
     const pkg = JSON.parse(readFileSync(root("package.json"), "utf8")) as { files: string[] };
     expect(pkg.files).toContain("THIRD_PARTY_LICENSES.md");
     expect(readFileSync(root("THIRD_PARTY_LICENSES.md"), "utf8")).toMatch(
-      /jsQR 1\.4\.0[\s\S]*Apache License/,
+      /## jsqr 1\.4\.0[\s\S]*Apache License/,
     );
   });
 });

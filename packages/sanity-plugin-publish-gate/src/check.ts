@@ -6,7 +6,7 @@
  * Nothing here writes. The page is read through the core fetcher (GET and HEAD, private addresses
  * refused); no DNS check runs and no probing check runs, because the gate has no owner-consent flag.
  */
-import type { Readable } from "node:stream";
+import { Readable } from "node:stream";
 import {
   EMAIL_PRESET,
   checkSite,
@@ -14,6 +14,7 @@ import {
   sanitise,
   UNTRUSTED_CAPS,
   createFetcher,
+  createNetworkTransport,
   type Transport,
 } from "@gaugeline/core";
 
@@ -134,11 +135,27 @@ export function readOnlyTransport(transport: GateTransport): Transport {
   };
 }
 
-/** The core fetcher (private addresses refused), with a stand-in network when one is given. */
-export function gateFetcher(transport?: GateTransport) {
-  return transport === undefined
-    ? createFetcher()
-    : createFetcher({ transport: readOnlyTransport(transport) });
+/**
+ * Keeps every request on the page's own host. A request to any other host (a link to www., a
+ * redirect to another site) is not made: the caller gets a bare 302, which the fetcher takes as the
+ * end of the chain, and the refusal is counted so the report can say so. www. is another host.
+ */
+export function confineToHost(
+  inner: Transport,
+  host: string,
+  refused: { count: number },
+): Transport {
+  return (url, req) => {
+    if (url.host === host) return inner(url, req);
+    refused.count += 1;
+    return Promise.resolve({ status: 302, headers: {}, body: Readable.from([]) });
+  };
+}
+
+/** The core fetcher over the real network (private addresses refused) or a stand-in, confined to one host. */
+export function gateFetcher(host: string, refused: { count: number }, transport?: GateTransport) {
+  const inner = transport === undefined ? createNetworkTransport() : readOnlyTransport(transport);
+  return createFetcher({ transport: confineToHost(inner, host, refused) });
 }
 
 export async function checkPage(options: CheckPageOptions): Promise<GateReport> {
@@ -146,6 +163,7 @@ export async function checkPage(options: CheckPageOptions): Promise<GateReport> 
     throw new Error("The page to check must be a full http or https address.");
   const now = options.now ?? (() => new Date());
   const registry = createPageRegistry();
+  const refused = { count: 0 };
   const {
     result,
     snapshot,
@@ -153,14 +171,20 @@ export async function checkPage(options: CheckPageOptions): Promise<GateReport> 
   } = await checkSite({
     tolerateUnreachable: true,
     address: options.url,
-    fetcher: gateFetcher(options.transport),
+    fetcher: gateFetcher(new URL(options.url).host, refused, options.transport),
     registry,
     skip: [...PAGE_CHECK_SKIP, ...EMAIL_PRESET].filter((id) => registry.has(id)),
     now,
   });
   // A page that answers with an error is not a page that passed: checks over an error page find nothing.
   const status = snapshot.hops.at(-1)?.status ?? 0;
-  const unreachable = unread ?? (status >= 400 ? `The page answered ${status}.` : undefined);
+  const unreachable =
+    unread ??
+    (status >= 400
+      ? `The page answered ${status}.`
+      : status >= 300
+        ? "The page redirects to another host, which the gate does not follow."
+        : undefined);
   const base = { url: options.url, checkedAt: now().toISOString() };
   if (unreachable !== undefined)
     return {
@@ -172,10 +196,20 @@ export async function checkPage(options: CheckPageOptions): Promise<GateReport> 
   return {
     ...base,
     findings: result.findings.map(gateFinding).sort((a, b) => RANK[a.severity] - RANK[b.severity]),
-    couldNotCheck: result.couldNotCheck.map((c) => ({
-      id: c.id,
-      reason: text(c.reason, UNTRUSTED_CAPS.evidence),
-    })),
+    couldNotCheck: [
+      ...result.couldNotCheck.map((c) => ({
+        id: c.id,
+        reason: text(c.reason, UNTRUSTED_CAPS.evidence),
+      })),
+      ...(refused.count > 0
+        ? [
+            {
+              id: "redirect-off-site",
+              reason: `${refused.count} request${refused.count === 1 ? " was" : "s were"} not made: a link or redirect led to another host (www. counts as another host).`,
+            },
+          ]
+        : []),
+    ],
   };
 }
 
