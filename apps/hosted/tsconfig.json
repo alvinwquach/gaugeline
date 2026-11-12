@@ -6,6 +6,7 @@
     "lib/**/*.ts",
     "server/**/*.ts",
     "worker/**/*.ts",
+    "inbox/**/*.ts",
     "instrumentation.ts"
   ]
 }
