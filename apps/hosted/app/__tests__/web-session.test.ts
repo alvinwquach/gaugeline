@@ -1,3 +1,4 @@
+// check-community: allow-email (invented people at reserved example domains: the sign-in tests need addresses)
 /**
  * The web app's database access, against a real Postgres (X63, part 1): it starts only on a login that
  * respects row-level security, every user query runs as `authenticated` with the person's claims, and two
