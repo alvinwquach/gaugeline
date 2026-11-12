@@ -178,7 +178,7 @@ export function previewLinks(page: PageSnapshot, max = 3): string[] {
 export function describeAddress(href: string): string {
   try {
     const u = new URL(href);
-    const names = [...new Set(u.searchParams.keys())].map((n) => n.slice(0, 30));
+    const names = [...new Set(u.searchParams.keys())].map((n) => n.slice(0, NAME_MAX));
     return `${u.pathname.slice(0, 80)}${names.length ? ` (query: ${names.slice(0, 6).join(", ")})` : ""}`;
   } catch {
     return "a preview address";

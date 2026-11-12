@@ -153,14 +153,14 @@ describe("headless wordpress: unit", () => {
 
   it("scans the state: private names, a User's private fields, unpublished counts; names only", () => {
     const s = scanState({
-      a: { __typename: "User", email: "x@y.test", name: "N", roles: ["editor"] },
+      a: { __typename: "User", email: "private-value-one", name: "N", roles: ["editor"] },
       b: [{ status: "draft" }, { status: "draft" }, { status: "publish" }],
       c: { apiToken: "v" },
-      d: { __typename: "Post", email: "reply@shop.test" },
+      d: { __typename: "Post", email: "private-value-two" },
     });
     expect(s.names).toEqual(["User.email", "User.roles", "apiToken"]);
     expect([...s.unpublished]).toEqual([["draft", 2]]);
-    expect(JSON.stringify(s)).not.toMatch(/x@y|reply@/);
+    expect(JSON.stringify(s)).not.toMatch(/private-value-/);
   });
 });
 
