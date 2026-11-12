@@ -39,3 +39,18 @@ export async function viewsWithoutSecurityInvoker(
     order by 1`;
   return rows.map((r) => r.relname as string);
 }
+
+/**
+ * True when the current role skips row-level security: a superuser, a role with BYPASSRLS other than
+ * service_role, or the owner of a table in `schema`. The app must never query as such a role; it runs
+ * queries under `set local role authenticated` with the request's claims, or as service_role.
+ */
+export async function connectionSkipsRls(sql: Query, schema = "public"): Promise<boolean> {
+  const rows = await sql`select
+      r.rolsuper or (r.rolbypassrls and r.rolname <> 'service_role')
+      or exists (select 1 from pg_class c join pg_namespace n on n.oid = c.relnamespace
+                 where n.nspname = ${schema} and c.relkind in ('r', 'p')
+                   and pg_has_role(current_user, c.relowner, 'USAGE')) as skips
+    from pg_roles r where r.rolname = current_user`;
+  return rows[0]?.skips === true;
+}

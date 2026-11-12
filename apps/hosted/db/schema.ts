@@ -90,6 +90,7 @@ export const findings = pgTable(
   ],
 ).enableRLS();
 
+/** Append-only: a draft never changes after it is written; an edit is a decision of kind "edited". */
 export const drafts = pgTable(
   "drafts",
   {

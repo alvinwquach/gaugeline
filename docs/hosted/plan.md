@@ -24,7 +24,7 @@ Status: plan, 12 Nov 2026. Sources: master spec entries G34-G37 (lines 10235-104
 
 ## Roles
 
-`owner`, `admin`, `member` (read + approve), `client` (read-only, one site), plus DB roles `app` (RLS), `agent` (INSERT on `drafts` only), `service` (worker). `decisions` is INSERT/SELECT only with a trigger that raises on UPDATE/DELETE for every role.
+`owner`, `admin`, `member` (read + approve), `client` (read-only, one site), plus DB roles `app` (Supabase's `authenticated`, under RLS), `agent` (INSERT on `drafts` only; not created yet, G37) and `service` (Supabase's `service_role`, the server and worker). `drafts`, `decisions` and `site_consents` are INSERT/SELECT only (column grants: no client-chosen id or time) with a trigger that raises on UPDATE/DELETE/TRUNCATE; the table owner can still disable it, so it is used only for reviewed migrations (G34).
 
 ## Data stored (no page content, no keys)
 

@@ -3,7 +3,12 @@
  * role, the way a Supabase request would, and is rolled back.
  */
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { tablesWithoutOrgId, tablesWithoutRls, viewsWithoutSecurityInvoker } from "../audit.js";
+import {
+  connectionSkipsRls,
+  tablesWithoutOrgId,
+  tablesWithoutRls,
+  viewsWithoutSecurityInvoker,
+} from "../audit.js";
 import {
   as,
   DRAFT_A1,
@@ -28,6 +33,8 @@ import {
   USER_B_OWNER,
   USER_BOTH,
 } from "./harness.js";
+
+type Tx = Parameters<Parameters<typeof as>[2]>[0];
 
 const TENANT_TABLES = [
   "organisations",
@@ -100,12 +107,13 @@ describe.skipIf(!HAS_DATABASE)("hosted database: row-level security", () => {
             values (${ORG_B}, ${SITE_B1}, ${RUN_B1}, 'broken-links', 'high', 'x', 'https://maple-physio.test/', '0000000000000000')`,
         ),
       );
-      expect(asB).toMatch(/row-level security/);
-      // Claiming org A with org B's site: the composite foreign key refuses it.
+      // A signed-in person cannot insert findings at all (uploads come through the server, G35).
+      expect(asB).toMatch(/permission denied/);
+      // Even the server, which bypasses RLS, cannot pair org A with org B's site: the composite key refuses.
       const mixed = await errorOf(
         as(
           sql,
-          userA,
+          service,
           (
             tx,
           ) => tx`insert into public.findings (org_id, site_id, run_id, check_id, severity, title, url, fingerprint)
@@ -115,13 +123,22 @@ describe.skipIf(!HAS_DATABASE)("hosted database: row-level security", () => {
       expect(mixed).toMatch(/foreign key/);
     });
 
-    it("can insert a finding for its own site (the insert policy allows the right rows)", async () => {
-      const n = await as(sql, userA, async (tx) => {
+    it("a signed-in member cannot insert runs or findings; the server can, for the right site", async () => {
+      for (const attempt of [
+        (tx: Tx) =>
+          tx`insert into public.runs (org_id, site_id, started_at) values (${ORG_A}, ${SITE_A1}, now())`,
+        (tx: Tx) =>
+          tx`insert into public.findings (org_id, site_id, run_id, check_id, severity, title, url, fingerprint)
+             values (${ORG_A}, ${SITE_A1}, ${RUN_A1}, 'broken-links', 'high', 'x', 'https://tidewater-bar.test/', '4444444444444444')`,
+      ]) {
+        expect(await errorOf(as(sql, userA, attempt))).toMatch(/permission denied/);
+      }
+      const n = await as(sql, service, async (tx) => {
         await tx`insert into public.findings (org_id, site_id, run_id, check_id, severity, title, url, fingerprint)
           values (${ORG_A}, ${SITE_A1}, ${RUN_A1}, 'canonical-missing', 'low', 'No canonical address', 'https://tidewater-bar.test/', '1111111111111111')`;
         return (await tx`select count(*)::int as n from public.findings`)[0]!.n as number;
       });
-      expect(n).toBe(2);
+      expect(n).toBe(3);
     });
 
     it("cannot update or delete another organisation's site", async () => {
@@ -168,7 +185,9 @@ describe.skipIf(!HAS_DATABASE)("hosted database: row-level security", () => {
              values (${ORG_A}, ${SITE_A1}, 'granted', '2026-11-12', ${USER_A_CLIENT})`,
       ];
       for (const attempt of attempts) {
-        expect(await errorOf(as(sql, client, attempt))).toMatch(/row-level security/);
+        expect(await errorOf(as(sql, client, attempt))).toMatch(
+          /row-level security|permission denied/,
+        );
       }
     });
 
@@ -183,8 +202,8 @@ describe.skipIf(!HAS_DATABASE)("hosted database: row-level security", () => {
     });
   });
 
-  describe("decisions and site_consents are append-only", () => {
-    for (const table of ["decisions", "site_consents"]) {
+  describe("decisions, site_consents and drafts are append-only", () => {
+    for (const table of ["decisions", "site_consents", "drafts"]) {
       it(`UPDATE and DELETE on ${table} fail for the app role and the service role`, async () => {
         for (const who of [ownerA, service]) {
           const upd = await errorOf(
@@ -255,7 +274,220 @@ describe.skipIf(!HAS_DATABASE)("hosted database: row-level security", () => {
     });
   });
 
+  describe("the logs cannot be reordered, backdated or jammed", () => {
+    const logs = [
+      {
+        table: "decisions",
+        at: "decided_at",
+        cols: `org_id, draft_id, decision, decided_by`,
+        vals: (user: string) => `'${ORG_A}', '${DRAFT_A1}', 'approved', '${user}'`,
+      },
+      {
+        table: "site_consents",
+        at: "recorded_at",
+        cols: `org_id, site_id, action, wording_version, recorded_by`,
+        vals: (user: string) => `'${ORG_A}', '${SITE_A2}', 'granted', '2026-11-12', '${user}'`,
+      },
+    ];
+    for (const log of logs) {
+      it(`${log.table}: nobody but the owner chooses the id (OVERRIDING SYSTEM VALUE)`, async () => {
+        for (const who of [ownerA, service]) {
+          const msg = await errorOf(
+            as(sql, who, (tx) =>
+              tx.unsafe(
+                `insert into public.${log.table} (id, ${log.cols}) overriding system value
+                 values (9223372036854775000, ${log.vals(USER_A_OWNER)})`,
+              ),
+            ),
+          );
+          expect(msg, who.role).toMatch(/permission denied/);
+        }
+      });
+
+      it(`${log.table}: nobody but the owner sets the time (${log.at})`, async () => {
+        for (const who of [ownerA, service]) {
+          const msg = await errorOf(
+            as(sql, who, (tx) =>
+              tx.unsafe(
+                `insert into public.${log.table} (${log.at}, ${log.cols})
+                 values ('2020-01-01', ${log.vals(USER_A_OWNER)})`,
+              ),
+            ),
+          );
+          expect(msg, who.role).toMatch(/permission denied/);
+        }
+      });
+
+      it(`${log.table}: the shared id sequence cannot be moved, so one tenant cannot jam another`, async () => {
+        for (const who of [ownerA, service]) {
+          const moved = await errorOf(
+            as(sql, who, (tx) =>
+              tx.unsafe(`select setval(pg_get_serial_sequence('public.${log.table}', 'id'), 3)`),
+            ),
+          );
+          expect(moved, who.role).toMatch(/permission denied/);
+        }
+        // Org B's next ordinary insert still works after org A's attempts.
+        const ok = await as(sql, { role: "authenticated", userId: USER_B_OWNER }, async (tx) =>
+          log.table === "decisions"
+            ? tx`insert into public.decisions (org_id, draft_id, decision, decided_by)
+                 values (${ORG_B}, ${DRAFT_B1}, 'approved', ${USER_B_OWNER}) returning id`
+            : tx`insert into public.site_consents (org_id, site_id, action, wording_version, recorded_by)
+                 values (${ORG_B}, ${SITE_B1}, 'granted', '2026-11-12', ${USER_B_OWNER}) returning id`,
+        );
+        expect(ok).toHaveLength(1);
+      });
+    }
+
+    it("a withdrawal always wins over an earlier grant (the reviewer's repro)", async () => {
+      const current = await as(sql, ownerA, async (tx) => {
+        await tx`insert into public.site_consents (org_id, site_id, action, wording_version, recorded_by)
+          values (${ORG_A}, ${SITE_A2}, 'granted', '2026-11-12', ${USER_A_OWNER})`;
+        await tx`insert into public.site_consents (org_id, site_id, action, wording_version, recorded_by)
+          values (${ORG_A}, ${SITE_A2}, 'withdrawn', '2026-11-12', ${USER_A_OWNER})`;
+        return tx`select site_id from public.site_consent_current where site_id = ${SITE_A2}`;
+      });
+      expect(current).toHaveLength(0);
+    });
+
+    it("a draft cannot change after it is decided, not even by the server", async () => {
+      const msg = await errorOf(
+        as(
+          sql,
+          service,
+          (tx) =>
+            tx`update public.drafts set payload = '{"to":"https://evil.test/"}' where id = ${DRAFT_A1}`,
+        ),
+      );
+      expect(msg).toMatch(/permission denied|append-only/);
+    });
+
+    it("a member creates a draft in their own name only", async () => {
+      const own = await as(
+        sql,
+        userA,
+        (tx) =>
+          tx`insert into public.drafts (org_id, site_id, kind, payload, created_by)
+           values (${ORG_A}, ${SITE_A1}, 'redirect', '{}', ${USER_A_MEMBER}) returning id`,
+      );
+      expect(own).toHaveLength(1);
+      const forged = await errorOf(
+        as(
+          sql,
+          userA,
+          (tx) =>
+            tx`insert into public.drafts (org_id, site_id, kind, payload, created_by)
+             values (${ORG_A}, ${SITE_A1}, 'redirect', '{}', ${USER_A_OWNER})`,
+        ),
+      );
+      expect(forged).toMatch(/row-level security/);
+    });
+  });
+
+  describe("owners", () => {
+    const adminB = { role: "authenticated" as const, userId: USER_BOTH };
+    const ownerB = { role: "authenticated" as const, userId: USER_B_OWNER };
+
+    it("an admin cannot make anyone an owner, themselves included", async () => {
+      const self = await errorOf(
+        as(
+          sql,
+          adminB,
+          (tx) =>
+            tx`update public.members set role = 'owner' where org_id = ${ORG_B} and user_id = ${USER_BOTH}`,
+        ),
+      );
+      expect(self).toMatch(/row-level security/);
+      const added = await errorOf(
+        as(
+          sql,
+          adminB,
+          (tx) =>
+            tx`insert into public.members (org_id, user_id, role)
+             values (${ORG_B}, '55555555-0000-4000-8000-000000000001', 'owner')`,
+        ),
+      );
+      expect(added).toMatch(/row-level security/);
+    });
+
+    it("an admin cannot remove or demote an owner", async () => {
+      const r = await as(sql, adminB, async (tx) => ({
+        deleted: (
+          await tx`delete from public.members where org_id = ${ORG_B} and user_id = ${USER_B_OWNER} returning user_id`
+        ).length,
+        demoted: (
+          await tx`update public.members set role = 'member' where org_id = ${ORG_B} and user_id = ${USER_B_OWNER} returning user_id`
+        ).length,
+      }));
+      expect(r).toEqual({ deleted: 0, demoted: 0 });
+    });
+
+    it("the last owner cannot leave or step down; with a second owner they can", async () => {
+      const leave = await errorOf(
+        as(
+          sql,
+          ownerB,
+          (tx) =>
+            tx`delete from public.members where org_id = ${ORG_B} and user_id = ${USER_B_OWNER}`,
+        ),
+      );
+      expect(leave).toMatch(/last owner/);
+      const demote = await errorOf(
+        as(
+          sql,
+          ownerB,
+          (tx) =>
+            tx`update public.members set role = 'admin' where org_id = ${ORG_B} and user_id = ${USER_B_OWNER}`,
+        ),
+      );
+      expect(demote).toMatch(/last owner/);
+      const handover = await as(sql, ownerB, async (tx) => {
+        await tx`update public.members set role = 'owner' where org_id = ${ORG_B} and user_id = ${USER_BOTH}`;
+        return (
+          await tx`delete from public.members where org_id = ${ORG_B} and user_id = ${USER_B_OWNER} returning user_id`
+        ).length;
+      });
+      expect(handover).toBe(1);
+    });
+
+    it("deleting a whole organisation is not stopped by the last-owner rule", async () => {
+      await rolledBack(sql, async (tx) => {
+        const org = "0c000000-0000-4000-8000-00000000000c";
+        await tx`insert into public.organisations (org_id, name) values (${org}, 'Corner Coaching')`;
+        await tx`insert into public.members (org_id, user_id, role)
+          values (${org}, '66666666-0000-4000-8000-000000000001', 'owner')`;
+        const gone =
+          await tx`delete from public.organisations where org_id = ${org} returning org_id`;
+        expect(gone).toHaveLength(1);
+      });
+    });
+  });
+
   describe("edge cases", () => {
+    it("a connection that skips row-level security is reported, so the app never queries as the owner", async () => {
+      expect(await connectionSkipsRls(sql)).toBe(true);
+      expect(await as(sql, userA, (tx) => connectionSkipsRls(tx))).toBe(false);
+    });
+
+    it("roles get no privilege on sequences, and only SELECT on views", async () => {
+      const seq = await sql`select grantee, object_name from information_schema.role_usage_grants
+        where object_schema = 'public' and object_type = 'SEQUENCE'
+          and grantee in ('anon', 'authenticated', 'service_role')`;
+      expect(seq).toEqual([]);
+      const seqUpdate =
+        await sql`select c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace
+        where n.nspname = 'public' and c.relkind = 'S'
+          and (has_sequence_privilege('authenticated', c.oid, 'UPDATE')
+            or has_sequence_privilege('service_role', c.oid, 'UPDATE')
+            or has_sequence_privilege('service_role', c.oid, 'USAGE'))`;
+      expect(seqUpdate).toEqual([]);
+      const views =
+        await sql`select table_name, grantee, privilege_type from information_schema.role_table_grants
+        where table_schema = 'public' and table_name in ('draft_state', 'site_consent_current')
+          and grantee in ('anon', 'authenticated', 'service_role') and privilege_type <> 'SELECT'`;
+      expect(views).toEqual([]);
+    });
+
     it("every table has row-level security on, an org_id column, and is one the tests know", async () => {
       expect(await tablesWithoutRls(sql)).toEqual([]);
       expect(await tablesWithoutOrgId(sql)).toEqual([]);
