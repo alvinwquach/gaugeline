@@ -215,8 +215,19 @@ export {
   LISTING_CHECKS,
   CRM_CHECKS,
   PROBING_CHECKS,
+  SANITY_IMAGE_CHECKS,
   SWITCH_CHECKS,
 } from "./presets.js";
+export {
+  SANITY_ASSET_CAP,
+  USES_BATCH,
+  SIZE_BATCH,
+  assetDocumentId,
+  readSanityImages,
+  sizeQuery,
+  usesQuery,
+} from "./sanity-images/read.js";
+export type { AssetRead, SanityImageRead, StudioUse } from "./sanity-images/read.js";
 export {
   CHANNELS,
   EMAIL_ENV,
