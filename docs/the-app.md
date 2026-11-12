@@ -67,6 +67,7 @@ $ npx gaugeline shop.example
     2 images have no alt: ./swatch-0.png, ./swatch-1.png
 · Images use older, heavier file formats
     16 of 20 sampled images are JPEG, PNG or GIF only: ./heavy.jpg, ./old-sign.jpg, ./divider.png and 13 more
+? image-optimizer-allowlist-wide could not be checked: this page resizes images through the Next.js image address, and whether that address fetches only the hosts you listed is not visible from the page; add settingsFiles to gaugeline.images.json (the images settings of your framework), or run the probe on a site you own (./image)
 ? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
     Mail records are read from DNS only with --dns. Rerun with --dns to check them.
 
@@ -160,28 +161,32 @@ This is the table for a small pottery studio, as the app lists it (the time of e
 the app and left out here, because it is different every run):
 
 ```text title=Pages checked rows
-Page             GET   https://studio.example/                 Loaded
-Link             HEAD  https://studio.example/moved            Moved to https://studio.example/moved-again
-Link             HEAD  https://studio.example/moved-again      Moved to https://studio.example/about
-Link             HEAD  https://studio.example/about            Loaded
-Link             HEAD  https://studio.example/gone             Not found
-Link             HEAD  https://studio.example/busy             Server error
-Image            HEAD  https://studio.example/img/mug.png      Loaded
-Image            HEAD  https://studio.example/img/missing.png  Not found
-Sitemap page     HEAD  https://studio.example/                 Loaded
-Sitemap page     HEAD  https://studio.example/about            Loaded
-Sitemap page     HEAD  https://studio.example/shop             Loaded
-Feed             GET   https://studio.example/feed.xml         Loaded
-JavaScript file  GET   https://studio.example/app.js           Loaded
-Other page       GET   https://studio.example/about            Loaded
-Other page       GET   https://studio.example/shop             Loaded
-Other page       GET   https://studio.example/moved            Moved to https://studio.example/moved-again
-Other page       GET   https://studio.example/moved-again      Moved to https://studio.example/about
-Other page       GET   https://studio.example/about            Loaded
-Other page       GET   https://studio.example/gone             Not found
-Other            GET   https://studio.example/llms.txt         Not found
-Other            GET   https://studio.example/robots.txt       Loaded
-Other            GET   https://studio.example/sitemap.xml      Loaded
+Page             GET   https://studio.example/                                      Loaded
+Link             HEAD  https://studio.example/moved                                 Moved to https://studio.example/moved-again
+Link             HEAD  https://studio.example/moved-again                           Moved to https://studio.example/about
+Link             HEAD  https://studio.example/about                                 Loaded
+Link             HEAD  https://studio.example/gone                                  Not found
+Link             HEAD  https://studio.example/busy                                  Server error
+Image            HEAD  https://studio.example/img/mug.png                           Loaded
+Image            HEAD  https://studio.example/img/missing.png                       Not found
+Sitemap page     HEAD  https://studio.example/                                      Loaded
+Sitemap page     HEAD  https://studio.example/about                                 Loaded
+Sitemap page     HEAD  https://studio.example/shop                                  Loaded
+Feed             GET   https://studio.example/feed.xml                              Loaded
+JavaScript file  GET   https://studio.example/app.js                                Loaded
+Other page       GET   https://studio.example/about                                 Loaded
+Other page       GET   https://studio.example/shop                                  Loaded
+Other page       GET   https://studio.example/moved                                 Moved to https://studio.example/moved-again
+Other page       GET   https://studio.example/moved-again                           Moved to https://studio.example/about
+Other page       GET   https://studio.example/about                                 Loaded
+Other page       GET   https://studio.example/gone                                  Not found
+Other            GET   https://studio.example/llms.txt                              Not found
+Other            GET   https://studio.example/robots.txt                            Loaded
+Other            GET   https://studio.example/sitemap.xml                           Loaded
+Other            GET   https://studio.example/.well-known/oauth-protected-resource  Not found
+Other            GET   https://studio.example/.well-known/agent-card.json           Not found
+Other            GET   https://studio.example/.well-known/agent.json                Not found
+Other            GET   https://studio.example/.well-known/ai-plugin.json            Not found
 ```
 
 The rows are what the check really requested: for this site, the server behind it saw exactly

@@ -1,10 +1,29 @@
 import { spawn } from "node:child_process";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
+import {
+  copyFileSync,
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  rmSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { SITES_DIR, startFixture } from "../../packages/fixtures/src/index.js";
+
+/**
+ * The clock every example runs with, so a page's dates (an advisory's "looked at 2026-11-11") never
+ * go stale. The pages show this date; change both together, never one of them. It is the existing
+ * test preload (GAUGELINE_TEST_NOW in map-hosts.cjs) that pins Date in the built bin: no product code.
+ */
+export const DOCS_CLOCK = "2026-11-11T12:00:00Z";
+const CLOCK_PRELOAD = fileURLToPath(
+  new URL("../../packages/cli/src/__tests__/helpers/map-hosts.cjs", import.meta.url),
+);
 
 export interface Example {
   file: string;
@@ -251,12 +270,19 @@ export async function runExample(
         ? []
         : ["--no-open"]),
     ];
+    // A fixture that ships settings files (gaugeline.*.json) runs from a temporary copy of them, as a
+    // person would run from their project folder; other examples keep the working folder as it was.
     // A fixture with a runs/ folder carries saved runs for `gaugeline changes`: they are copied into
-    // .gaugeline/runs/<host>/ of a temporary working folder, so the example reads real history.
-    const saved = join(SITES_DIR, e.fixture, "runs");
-    let cwd: string | undefined;
-    if (existsSync(saved)) {
-      cwd = mkdtempSync(join(tmpdir(), "gaugeline-docs-runs-"));
+    // .gaugeline/runs/<host>/ of the same temporary folder, so the example reads real history.
+    const dir = join(SITES_DIR, e.fixture);
+    const settings = readdirSync(dir).filter((n) => /^gaugeline\.[a-z-]+\.json$/.test(n));
+    const saved = join(dir, "runs");
+    const cwd =
+      settings.length > 0 || existsSync(saved)
+        ? mkdtempSync(join(tmpdir(), "gaugeline-example-"))
+        : undefined;
+    for (const n of settings) copyFileSync(join(dir, n), join(cwd ?? "", n));
+    if (cwd && existsSync(saved)) {
       const host = new URL(site.origin).host.toLowerCase().replace(/[^a-z0-9.-]/g, "_");
       mkdirSync(join(cwd, ".gaugeline", "runs"), { recursive: true });
       cpSync(saved, join(cwd, ".gaugeline", "runs", host), { recursive: true });
@@ -274,7 +300,8 @@ export async function runExample(
         child.on("close", (code) => resolve({ stdout, stderr, code: code ?? -1 }));
       },
     );
-    if (cwd) rmSync(cwd, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+    if (cwd && cwd !== dir)
+      rmSync(cwd, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
     return {
       ...result,
       origin: site.origin,
@@ -289,11 +316,18 @@ export async function runExample(
   }
 }
 
-/** The parent's environment without CI and colour settings, plus NO_COLOR and the example's own. */
+/** The parent's environment without CI and colour settings, plus NO_COLOR, the fixed clock and the example's own. */
 function childProcessEnv(extra: Record<string, string>): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = { ...process.env };
   for (const k of ["CI", "FORCE_COLOR", "GITHUB_ACTIONS"]) delete env[k];
-  return { ...env, NO_COLOR: "1", ...extra };
+  const preload = `--require=${JSON.stringify(CLOCK_PRELOAD)}`;
+  return {
+    ...env,
+    NO_COLOR: "1",
+    GAUGELINE_TEST_NOW: DOCS_CLOCK,
+    ...extra,
+    NODE_OPTIONS: [env.NODE_OPTIONS, extra.NODE_OPTIONS, preload].filter(Boolean).join(" "),
+  };
 }
 
 /** A small unified diff of two texts, line by line (LCS). */

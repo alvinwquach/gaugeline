@@ -4,6 +4,7 @@ import { accessPublicRead } from "./access-public-read.js";
 import { accessRoleScope } from "./access-role-scope.js";
 import { aemAuthorLinks } from "./aem-author-links.js";
 import { aiCrawlersBlocked } from "./ai-crawlers-blocked.js";
+import { aiCrawlersIntent } from "./ai-crawlers-intent.js";
 import { angularAnalogEndpointsListed } from "./angular-analog-endpoints-listed.js";
 import { angularDevToolsPublic } from "./angular-dev-tools-public.js";
 import { angularPreviewCanonical } from "./angular-preview-canonical.js";
@@ -46,12 +47,14 @@ import { dataNoStamp } from "./data-no-stamp.js";
 import { dataStale } from "./data-stale.js";
 import { datasetPrivateTypes } from "./dataset-private-types.js";
 import { datasetPublic } from "./dataset-public.js";
+import { devToolsInProduction } from "./dev-tools-in-production.js";
 import { draftsLive } from "./drafts-live.js";
 import { duplicateTitle } from "./duplicate-title.js";
 import { emailDmarcMissing } from "./email-dmarc-missing.js";
 import { emailDmarcNone } from "./email-dmarc-none.js";
 import { emailSpfMissing } from "./email-spf-missing.js";
 import { emailSpfMultiple } from "./email-spf-multiple.js";
+import { errorShell200 } from "./error-shell-200.js";
 import { eventJsonldMismatch } from "./event-jsonld-mismatch.js";
 import { eventLocationMismatch } from "./event-location-mismatch.js";
 import { eventMissingFields } from "./event-missing-fields.js";
@@ -76,12 +79,18 @@ import { gatsbyDevServerLive } from "./gatsby-dev-server-live.js";
 import { gatsbyGraphqlPublic } from "./gatsby-graphql-public.js";
 import { gatsbyPreviewCanonical } from "./gatsby-preview-canonical.js";
 import { gatsbyPrivateFields } from "./gatsby-private-fields.js";
+import { headlessWpIntrospectionOpen } from "./headless-wp-introspection-open.js";
+import { headlessWpPreviewCanonical } from "./headless-wp-preview-canonical.js";
+import { headlessWpPreviewOpen } from "./headless-wp-preview-open.js";
+import { headlessWpPrivateFields } from "./headless-wp-private-fields.js";
 import { hiddenAiDirective } from "./hidden-ai-directive.js";
 import { hiddenInSitemap } from "./hidden-in-sitemap.js";
 import { hiddenIndexable } from "./hidden-indexable.js";
 import { hiddenLinked } from "./hidden-linked.js";
 import { hiddenPastLaunch } from "./hidden-past-launch.js";
 import { hostDuplicate } from "./host-duplicate.js";
+import { hostPreviewIndexable } from "./host-preview-indexable.js";
+import { hostPreviewNamed } from "./host-preview-named.js";
 import { hreflangBadCode } from "./hreflang-bad-code.js";
 import { hreflangNotReciprocal } from "./hreflang-not-reciprocal.js";
 import { htmlHeavy } from "./html-heavy.js";
@@ -93,6 +102,9 @@ import { hydrogenPricesDisagree } from "./hydrogen-prices-disagree.js";
 import { hydrogenPrivateFields } from "./hydrogen-private-fields.js";
 import { icsFloatingTime } from "./ics-floating-time.js";
 import { icsNoVtimezone } from "./ics-no-vtimezone.js";
+import { imageOptimizerAllowlistUnanchored } from "./image-optimizer-allowlist-unanchored.js";
+import { imageOptimizerAllowlistWide } from "./image-optimizer-allowlist-wide.js";
+import { imageOptimizerOpen } from "./image-optimizer-open.js";
 import { imageWidthAbsurd } from "./image-width-absurd.js";
 import { imagesAltEmpty } from "./images-alt-empty.js";
 import { imagesAltMissing } from "./images-alt-missing.js";
@@ -118,6 +130,7 @@ import { listingPhoneMismatch } from "./listing-phone-mismatch.js";
 import { listingSpecialHoursMissing } from "./listing-special-hours-missing.js";
 import { listingWebsiteWrong } from "./listing-website-wrong.js";
 import { llmsTxtBrokenLinks } from "./llms-txt-broken-links.js";
+import { llmsTxtMalformed } from "./llms-txt-malformed.js";
 import { llmsTxtStaleFacts } from "./llms-txt-stale-facts.js";
 import { mailtoCta } from "./mailto-cta.js";
 import { mockContentLive } from "./mock-content-live.js";
@@ -136,6 +149,7 @@ import { nextDraftPublic } from "./next-draft-public.js";
 import { nextPreviewCanonical } from "./next-preview-canonical.js";
 import { nextStaleAfterPublish } from "./next-stale-after-publish.js";
 import { noindex } from "./noindex.js";
+import { notFound200 } from "./not-found-200.js";
 import { ogImageBroken } from "./og-image-broken.js";
 import { ogImageMissing } from "./og-image-missing.js";
 import { ogImageRelative } from "./og-image-relative.js";
@@ -156,6 +170,7 @@ import { placeholderImages } from "./placeholder-images.js";
 import { placeholderText } from "./placeholder-text.js";
 import { priceChanged } from "./price-changed.js";
 import { quotableFactsDisagree } from "./quotable-facts-disagree.js";
+import { quotableFactsInDataOnly } from "./quotable-facts-in-data-only.js";
 import { qwikSolidDataAsPage } from "./qwik-solid-data-as-page.js";
 import { qwikSolidDevServerLive } from "./qwik-solid-dev-server-live.js";
 import { qwikSolidDraftPublic } from "./qwik-solid-draft-public.js";
@@ -189,6 +204,7 @@ import { sitemapDead } from "./sitemap-dead.js";
 import { sitemapHost } from "./sitemap-host.js";
 import { sitemapMissing } from "./sitemap-missing.js";
 import { sitemapRedirects } from "./sitemap-redirects.js";
+import { sourceMapsPublic } from "./source-maps-public.js";
 import { stagingIndexable } from "./staging-indexable.js";
 import { staticDevServerLive } from "./static-dev-server-live.js";
 import { staticDraftMarkerLive } from "./static-draft-marker-live.js";
@@ -216,6 +232,7 @@ import { tempHostCanonical } from "./temp-host-canonical.js";
 import { tempHostLinks } from "./temp-host-links.js";
 import { thinHtml } from "./thin-html.js";
 import { viewport } from "./viewport.js";
+import { wellKnownInvalid } from "./well-known-invalid.js";
 import { zeroWidthInText } from "./zero-width-in-text.js";
 
 /** Page checks in registration order (sorted by id): within a severity, findings follow this order. */
@@ -224,6 +241,7 @@ export const PAGE_CHECKS = [
   accessRoleScope,
   aemAuthorLinks,
   aiCrawlersBlocked,
+  aiCrawlersIntent,
   angularAnalogEndpointsListed,
   angularDevToolsPublic,
   angularPreviewCanonical,
@@ -261,12 +279,14 @@ export const PAGE_CHECKS = [
   dataStale,
   datasetPrivateTypes,
   datasetPublic,
+  devToolsInProduction,
   draftsLive,
   duplicateTitle,
   emailDmarcMissing,
   emailDmarcNone,
   emailSpfMissing,
   emailSpfMultiple,
+  errorShell200,
   eventJsonldMismatch,
   eventLocationMismatch,
   eventMissingFields,
@@ -291,12 +311,18 @@ export const PAGE_CHECKS = [
   gatsbyGraphqlPublic,
   gatsbyPreviewCanonical,
   gatsbyPrivateFields,
+  headlessWpIntrospectionOpen,
+  headlessWpPreviewCanonical,
+  headlessWpPreviewOpen,
+  headlessWpPrivateFields,
   hiddenAiDirective,
   hiddenInSitemap,
   hiddenIndexable,
   hiddenLinked,
   hiddenPastLaunch,
   hostDuplicate,
+  hostPreviewIndexable,
+  hostPreviewNamed,
   hreflangBadCode,
   hreflangNotReciprocal,
   htmlHeavy,
@@ -308,6 +334,9 @@ export const PAGE_CHECKS = [
   hydrogenPrivateFields,
   icsFloatingTime,
   icsNoVtimezone,
+  imageOptimizerAllowlistUnanchored,
+  imageOptimizerAllowlistWide,
+  imageOptimizerOpen,
   imageWidthAbsurd,
   imagesAltEmpty,
   imagesAltMissing,
@@ -333,6 +362,7 @@ export const PAGE_CHECKS = [
   listingSpecialHoursMissing,
   listingWebsiteWrong,
   llmsTxtBrokenLinks,
+  llmsTxtMalformed,
   llmsTxtStaleFacts,
   mailtoCta,
   mockContentLive,
@@ -351,6 +381,7 @@ export const PAGE_CHECKS = [
   nextPreviewCanonical,
   nextStaleAfterPublish,
   noindex,
+  notFound200,
   ogImageBroken,
   ogImageMissing,
   ogImageRelative,
@@ -371,6 +402,7 @@ export const PAGE_CHECKS = [
   placeholderText,
   priceChanged,
   quotableFactsDisagree,
+  quotableFactsInDataOnly,
   qwikSolidDataAsPage,
   qwikSolidDevServerLive,
   qwikSolidDraftPublic,
@@ -407,6 +439,7 @@ export const PAGE_CHECKS = [
   sitemapHost,
   sitemapMissing,
   sitemapRedirects,
+  sourceMapsPublic,
   stagingIndexable,
   staticDevServerLive,
   staticDraftMarkerLive,
@@ -434,6 +467,7 @@ export const PAGE_CHECKS = [
   tempHostLinks,
   thinHtml,
   viewport,
+  wellKnownInvalid,
   zeroWidthInText,
 ] as const;
 // checks:end

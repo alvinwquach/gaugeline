@@ -196,6 +196,11 @@ export interface AdapterSettings {
    * finding is a count.
    */
   showDraftIds?: boolean | undefined;
+  /**
+   * Only `directus`: collections the owner says visitors with no token must not be able to read. Switches on the
+   * check that asks, as a visitor, whether the Public role can list them (still only with --owner-consent).
+   */
+  privateCollections?: readonly string[] | undefined;
   /** Only `git-content`: the repository's folder on this computer, relative to where the run starts. */
   path?: string | undefined;
   /** Only `git-content`: a repository on GitHub, read with GET. Instead of `path`. */

@@ -384,6 +384,8 @@ export { isSveltekitSite, dataAddress as sveltekitDataAddress } from "./svelteki
 export { isFrameworkUrl } from "./next/framework-urls.js";
 export { frameworkLinks } from "./links.js";
 export { consentConfigSchema } from "./consent.js";
+export { imagesConfigSchema } from "./images/config.js";
+export type { ImageSettings, ImagesConfig } from "./images/config.js";
 export type { ConsentConfig } from "./consent.js";
 export { staleDatesConfigSchema } from "./stale-dates/config.js";
 export type { StaleDatesConfig } from "./stale-dates/config.js";
@@ -1467,6 +1469,7 @@ export { UMBRACO_CHECKS, createUmbracoRegistry } from "./checks/umbraco.js";
 export { SITECORE_CHECKS, createSitecoreRegistry } from "./checks/sitecore.js";
 export { JOOMLA_CHECKS, createJoomlaRegistry } from "./checks/joomla.js";
 export { DATOCMS_CHECKS, createDatocmsRegistry } from "./checks/datocms.js";
+export { DIRECTUS_CHECKS, createDirectusRegistry } from "./checks/directus.js";
 export { HUBSPOT_CMS_CHECKS, createHubspotCmsRegistry } from "./checks/hubspot-cms.js";
 export {
   ListBuilder,
@@ -1591,6 +1594,14 @@ export {
 export type { InitEnvVar, InitFile, InitPlan, NextStep } from "./init/plan.js";
 export { renderInit } from "./init/render.js";
 export type { InitOutput } from "./init/render.js";
+export {
+  aiConfigSchema,
+  AI_CONFIG_FILE,
+  AI_INTENTS,
+  wantsAllowed,
+  intentMismatches,
+} from "./ai-intent.js";
+export type { AiConfig, AiIntent } from "./ai-intent.js";
 
 export { changesConfigSchema, DEFAULT_RETENTION_DAYS } from "./changes/config.js";
 export type { ChangesConfig } from "./changes/config.js";

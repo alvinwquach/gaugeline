@@ -1,0 +1,4 @@
+{
+  "imageOptimizerProbeUrl": "https://test-pictures.example/gaugeline-probe.png",
+  "settingsFiles": ["next.config.js", "netlify.toml"]
+}

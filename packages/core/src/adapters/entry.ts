@@ -76,8 +76,8 @@ export interface AdapterEntry {
     hyphenFields?: true;
     /** Takes `expectPrivate`: the owner says the platform's public API is meant to be private (Umbraco's Delivery API, Joomla's Web Services API). */
     expectPrivate?: true;
-    /** Reads one named site of a multi-site platform, in some languages: takes `siteName` and `languages` (Sitecore). */
-    edgeSite?: true;
+    /** Takes `privateCollections`: collections the owner says the Public role must not read (Directus). */
+    privateCollections?: true;
     /** Takes `collections` (the GraphQL collection of each content type) and `expectPublishedOnly` (DatoCMS). */
     graphqlCollections?: true;
     /**
