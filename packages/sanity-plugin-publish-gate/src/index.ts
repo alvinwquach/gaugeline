@@ -5,3 +5,8 @@ export type { GateAnswer, GateAnswerStatus, ParsedAnswer } from "./answer.js";
 export { DEFAULT_MAX_BYTES, DEFAULT_TIMEOUT_MS, gateEndpoint, requestGate } from "./request.js";
 export type { RequestGateOptions } from "./request.js";
 export type { GateFinding, GateSeverity } from "./check.js";
+export { publishGate } from "./plugin.js";
+export type { PublishGateOptions } from "./plugin.js";
+export { GATE_STATES, IDLE, canPublish, gateReduce } from "./gate-state.js";
+export type { GateEvent, GateState } from "./gate-state.js";
+export type { GateAction, GateActionProps, GateDescription } from "./publish-action.js";

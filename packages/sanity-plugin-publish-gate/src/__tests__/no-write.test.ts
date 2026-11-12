@@ -41,6 +41,13 @@ describe("the package cannot write", () => {
       expect(readFileSync(join(src, f), "utf8"), f).not.toMatch(/globalThis\.fetch|\bsend\(/);
   });
 
+  it("the Studio side stores nothing and parses no markup", () => {
+    for (const f of ["publish-action.ts", "gate-state.ts", "held-message.ts", "plugin.ts"])
+      expect(readFileSync(join(src, f), "utf8"), f).not.toMatch(
+        /localStorage|sessionStorage|indexedDB|document\.cookie|dangerouslySetInnerHTML|innerHTML|insertAdjacentHTML|eval\(|new Function/,
+      );
+  });
+
   it("the endpoint answers a GET and never reads a request body", () => {
     const endpoint = readFileSync(join(src, "endpoint.ts"), "utf8");
     expect(endpoint).toMatch(/request\.method !== "GET"/);
