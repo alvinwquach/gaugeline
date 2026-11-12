@@ -52,6 +52,7 @@ import { emailDmarcMissing } from "./email-dmarc-missing.js";
 import { emailDmarcNone } from "./email-dmarc-none.js";
 import { emailSpfMissing } from "./email-spf-missing.js";
 import { emailSpfMultiple } from "./email-spf-multiple.js";
+import { errorShell200 } from "./error-shell-200.js";
 import { eventJsonldMismatch } from "./event-jsonld-mismatch.js";
 import { eventLocationMismatch } from "./event-location-mismatch.js";
 import { eventMissingFields } from "./event-missing-fields.js";
@@ -76,6 +77,10 @@ import { gatsbyDevServerLive } from "./gatsby-dev-server-live.js";
 import { gatsbyGraphqlPublic } from "./gatsby-graphql-public.js";
 import { gatsbyPreviewCanonical } from "./gatsby-preview-canonical.js";
 import { gatsbyPrivateFields } from "./gatsby-private-fields.js";
+import { headlessWpIntrospectionOpen } from "./headless-wp-introspection-open.js";
+import { headlessWpPreviewCanonical } from "./headless-wp-preview-canonical.js";
+import { headlessWpPreviewOpen } from "./headless-wp-preview-open.js";
+import { headlessWpPrivateFields } from "./headless-wp-private-fields.js";
 import { hiddenAiDirective } from "./hidden-ai-directive.js";
 import { hiddenInSitemap } from "./hidden-in-sitemap.js";
 import { hiddenIndexable } from "./hidden-indexable.js";
@@ -93,6 +98,9 @@ import { hydrogenPricesDisagree } from "./hydrogen-prices-disagree.js";
 import { hydrogenPrivateFields } from "./hydrogen-private-fields.js";
 import { icsFloatingTime } from "./ics-floating-time.js";
 import { icsNoVtimezone } from "./ics-no-vtimezone.js";
+import { imageOptimizerAllowlistUnanchored } from "./image-optimizer-allowlist-unanchored.js";
+import { imageOptimizerAllowlistWide } from "./image-optimizer-allowlist-wide.js";
+import { imageOptimizerOpen } from "./image-optimizer-open.js";
 import { imageWidthAbsurd } from "./image-width-absurd.js";
 import { imagesAltEmpty } from "./images-alt-empty.js";
 import { imagesAltMissing } from "./images-alt-missing.js";
@@ -136,6 +144,7 @@ import { nextDraftPublic } from "./next-draft-public.js";
 import { nextPreviewCanonical } from "./next-preview-canonical.js";
 import { nextStaleAfterPublish } from "./next-stale-after-publish.js";
 import { noindex } from "./noindex.js";
+import { notFound200 } from "./not-found-200.js";
 import { ogImageBroken } from "./og-image-broken.js";
 import { ogImageMissing } from "./og-image-missing.js";
 import { ogImageRelative } from "./og-image-relative.js";
@@ -267,6 +276,7 @@ export const PAGE_CHECKS = [
   emailDmarcNone,
   emailSpfMissing,
   emailSpfMultiple,
+  errorShell200,
   eventJsonldMismatch,
   eventLocationMismatch,
   eventMissingFields,
@@ -291,6 +301,10 @@ export const PAGE_CHECKS = [
   gatsbyGraphqlPublic,
   gatsbyPreviewCanonical,
   gatsbyPrivateFields,
+  headlessWpIntrospectionOpen,
+  headlessWpPreviewCanonical,
+  headlessWpPreviewOpen,
+  headlessWpPrivateFields,
   hiddenAiDirective,
   hiddenInSitemap,
   hiddenIndexable,
@@ -308,6 +322,9 @@ export const PAGE_CHECKS = [
   hydrogenPrivateFields,
   icsFloatingTime,
   icsNoVtimezone,
+  imageOptimizerAllowlistUnanchored,
+  imageOptimizerAllowlistWide,
+  imageOptimizerOpen,
   imageWidthAbsurd,
   imagesAltEmpty,
   imagesAltMissing,
@@ -351,6 +368,7 @@ export const PAGE_CHECKS = [
   nextPreviewCanonical,
   nextStaleAfterPublish,
   noindex,
+  notFound200,
   ogImageBroken,
   ogImageMissing,
   ogImageRelative,
