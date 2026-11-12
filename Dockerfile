@@ -1,12 +1,19 @@
 # Gaugeline in a container: the published CLI, run as an unprivileged user, nothing else.
 #
-#   docker build --build-arg GAUGELINE_VERSION=<x.y.z> -t gaugeline .
-#   docker run --rm --read-only --tmpfs /tmp gaugeline https://your-preview.example --format sarif --ci
+#   docker build --build-arg GAUGELINE_VERSION=<x.y.z> -t ghcr.io/alvinwquach/gaugeline:<x.y.z> .
+#   docker run --rm --read-only --tmpfs /tmp ghcr.io/alvinwquach/gaugeline:<x.y.z> https://your-preview.example --format sarif --ci
 #
 # The base image is pinned by digest (node:22-slim, a multi-architecture index). Gaugeline needs
 # Node 22 or later (packages/cli/package.json "engines"), so this is not Node 20. Refresh the digest
 # with a pull request, never in a build: docker buildx imagetools inspect node:22-slim
 FROM node:22-slim@sha256:e9f565d32859f0cbfb52125eafe8be39390f24dac302dc3cdf566e8ba3ab21ee
+
+# Where the image lives: the GitHub Container Registry, under this repository (ghcr.io links a
+# package to its repository by this label).
+LABEL org.opencontainers.image.source="https://github.com/alvinwquach/gaugeline" \
+      org.opencontainers.image.title="Gaugeline" \
+      org.opencontainers.image.description="Checks a live site or a preview deployment. Read only." \
+      org.opencontainers.image.licenses="MIT"
 
 # The version is required, so an image is always one known release and never "whatever is latest".
 ARG GAUGELINE_VERSION

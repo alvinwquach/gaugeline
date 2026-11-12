@@ -31,6 +31,15 @@ describe("Dockerfile (static: nothing is built in CI)", () => {
     expect(Number(/^node:(\d+)/.exec(of("FROM")[0] ?? "")?.[1])).toBeGreaterThanOrEqual(major);
   });
 
+  it("links the image to this repository for the GitHub Container Registry, and states the licence", () => {
+    const labels = of("LABEL").join(" ");
+    expect(labels).toContain(
+      'org.opencontainers.image.source="https://github.com/alvinwquach/gaugeline"',
+    );
+    expect(labels).toContain('org.opencontainers.image.licenses="MIT"');
+    expect(dockerfile).toContain("ghcr.io/alvinwquach/gaugeline");
+  });
+
   it("ends as a non-root user", () => {
     const users = of("USER");
     expect(users.length).toBeGreaterThan(0);

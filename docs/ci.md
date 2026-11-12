@@ -153,11 +153,11 @@ Before you rely on it, run one upload in a repository you can throw away. On Git
 
 ## Docker
 
-For a team that does not want to argue about Node versions, the repository has a `Dockerfile`: a pinned `node:22-slim` image (Gaugeline needs Node 22 or later), the published CLI at one exact version, and an unprivileged user. It holds no key; pass keys at run time with `-e NAME`. Build it from a release:
+For a team that does not want to argue about Node versions, the repository has a `Dockerfile`: a pinned `node:22-slim` image (Gaugeline needs Node 22 or later), the published CLI at one exact version, and an unprivileged user. It holds no key; pass keys at run time with `-e NAME`. Each release is meant to be published to the GitHub Container Registry as `ghcr.io/alvinwquach/gaugeline:<version>`; until the first one is, build it from a release yourself:
 
 ```sh title=Terminal untested="Needs Docker and a published release of gaugeline (the image installs it from npm), so it cannot run in the docs build. scripts/__tests__/docker-image.test.ts checks the Dockerfile and the entrypoint without building."
-$ docker build --build-arg GAUGELINE_VERSION=0.1.0 -t gaugeline .
-$ docker run --rm --read-only --tmpfs /tmp gaugeline https://brightside-preview.example --format junit --ci > gaugeline.xml
+$ docker build --build-arg GAUGELINE_VERSION=0.1.0 -t ghcr.io/alvinwquach/gaugeline:0.1.0 .
+$ docker run --rm --read-only --tmpfs /tmp ghcr.io/alvinwquach/gaugeline:0.1.0 https://brightside-preview.example --format junit --ci > gaugeline.xml
 ```
 
 The container's exit code is the CLI's: 0, 1 with `--ci` and a "Fix this first" finding, 2 when the check could not run. With `--read-only --tmpfs /tmp` it writes nowhere else, and `--format` (or `--json`) keeps stdout to the result and writes no report file. Mount a folder at `/work` (`-v "$PWD:/work"`) to give it a `gaugeline.config.json` or a baseline.
@@ -283,12 +283,6 @@ jobs:
 - GitHub turns off scheduled workflows in a repository with no activity for 60 days. A 30-day
   watch ends before that.
 - The Slack address comes from the secrets context; no address or token is written in the file.
-
-## Docker
-
-```sh title=Terminal
-$ docker run --rm node:20 npx gaugeline yoursite.com --ci
-```
 
 ::: info
 Tests check your code and run when code changes. Gaugeline checks the content your code renders. See [the FAQ](/docs/faq) for how they fit together.
