@@ -22,6 +22,8 @@ export const aiCrawlersBlocked = defineCheck<PageSnapshot>({
   fix: "If the block is on purpose, there is nothing to do. If it comes from a Disallow: / meant for a staging site, remove it, or add groups for the assistants you want to allow.",
   tech: "known AI user-agent tokens (packages/core/src/data/ai-agents.json) are disallowed / by robots.txt",
   async run(page, ctx) {
+    // With a stated intent, ai-crawlers-intent judges the rules; this check only reports.
+    if (ctx.ai?.aiCrawlers) return [];
     const site = await ctx.site?.();
     if (!site) return [];
     if (site.robotsState === "unknown") {

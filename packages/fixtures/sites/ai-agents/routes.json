@@ -1,0 +1,8 @@
+{
+  "/.well-known/agent.json": {
+    "body": "{ \"name\": \"Larkspur Family Law\", ",
+    "headers": {
+      "content-type": "application/json"
+    }
+  }
+}

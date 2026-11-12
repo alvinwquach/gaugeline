@@ -4,6 +4,7 @@ import { accessPublicRead } from "./access-public-read.js";
 import { accessRoleScope } from "./access-role-scope.js";
 import { aemAuthorLinks } from "./aem-author-links.js";
 import { aiCrawlersBlocked } from "./ai-crawlers-blocked.js";
+import { aiCrawlersIntent } from "./ai-crawlers-intent.js";
 import { angularAnalogEndpointsListed } from "./angular-analog-endpoints-listed.js";
 import { angularDevToolsPublic } from "./angular-dev-tools-public.js";
 import { angularPreviewCanonical } from "./angular-preview-canonical.js";
@@ -129,6 +130,7 @@ import { listingPhoneMismatch } from "./listing-phone-mismatch.js";
 import { listingSpecialHoursMissing } from "./listing-special-hours-missing.js";
 import { listingWebsiteWrong } from "./listing-website-wrong.js";
 import { llmsTxtBrokenLinks } from "./llms-txt-broken-links.js";
+import { llmsTxtMalformed } from "./llms-txt-malformed.js";
 import { llmsTxtStaleFacts } from "./llms-txt-stale-facts.js";
 import { mailtoCta } from "./mailto-cta.js";
 import { mockContentLive } from "./mock-content-live.js";
@@ -175,6 +177,7 @@ import { placeholderImages } from "./placeholder-images.js";
 import { placeholderText } from "./placeholder-text.js";
 import { priceChanged } from "./price-changed.js";
 import { quotableFactsDisagree } from "./quotable-facts-disagree.js";
+import { quotableFactsInDataOnly } from "./quotable-facts-in-data-only.js";
 import { qwikSolidDataAsPage } from "./qwik-solid-data-as-page.js";
 import { qwikSolidDevServerLive } from "./qwik-solid-dev-server-live.js";
 import { qwikSolidDraftPublic } from "./qwik-solid-draft-public.js";
@@ -236,6 +239,7 @@ import { tempHostCanonical } from "./temp-host-canonical.js";
 import { tempHostLinks } from "./temp-host-links.js";
 import { thinHtml } from "./thin-html.js";
 import { viewport } from "./viewport.js";
+import { wellKnownInvalid } from "./well-known-invalid.js";
 import { zeroWidthInText } from "./zero-width-in-text.js";
 
 /** Page checks in registration order (sorted by id): within a severity, findings follow this order. */
@@ -244,6 +248,7 @@ export const PAGE_CHECKS = [
   accessRoleScope,
   aemAuthorLinks,
   aiCrawlersBlocked,
+  aiCrawlersIntent,
   angularAnalogEndpointsListed,
   angularDevToolsPublic,
   angularPreviewCanonical,
@@ -364,6 +369,7 @@ export const PAGE_CHECKS = [
   listingSpecialHoursMissing,
   listingWebsiteWrong,
   llmsTxtBrokenLinks,
+  llmsTxtMalformed,
   llmsTxtStaleFacts,
   mailtoCta,
   mockContentLive,
@@ -410,6 +416,7 @@ export const PAGE_CHECKS = [
   placeholderText,
   priceChanged,
   quotableFactsDisagree,
+  quotableFactsInDataOnly,
   qwikSolidDataAsPage,
   qwikSolidDevServerLive,
   qwikSolidDraftPublic,
@@ -474,6 +481,7 @@ export const PAGE_CHECKS = [
   tempHostLinks,
   thinHtml,
   viewport,
+  wellKnownInvalid,
   zeroWidthInText,
 ] as const;
 // checks:end

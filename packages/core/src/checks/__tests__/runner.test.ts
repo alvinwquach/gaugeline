@@ -67,6 +67,7 @@ describe("runner: unit", () => {
       "access-role-scope",
       "aem-author-links",
       "ai-crawlers-blocked",
+      "ai-crawlers-intent",
       "angular-analog-endpoints-listed",
       "angular-dev-tools-public",
       "angular-preview-canonical",
@@ -187,6 +188,7 @@ describe("runner: unit", () => {
       "listing-special-hours-missing",
       "listing-website-wrong",
       "llms-txt-broken-links",
+      "llms-txt-malformed",
       "llms-txt-stale-facts",
       "mailto-cta",
       "mock-content-live",
@@ -233,6 +235,7 @@ describe("runner: unit", () => {
       "placeholder-text",
       "price-changed",
       "quotable-facts-disagree",
+      "quotable-facts-in-data-only",
       "qwik-solid-data-as-page",
       "qwik-solid-dev-server-live",
       "qwik-solid-draft-public",
@@ -297,6 +300,7 @@ describe("runner: unit", () => {
       "temp-host-links",
       "thin-html",
       "viewport",
+      "well-known-invalid",
       "zero-width-in-text",
     ]);
     for (const c of PAGE_CHECKS) expect(c.what && c.why && c.fix && c.tech).toBeTruthy();
@@ -334,6 +338,7 @@ describe("runner: edge cases", () => {
       "access-role-scope",
       "aem-author-links",
       "ai-crawlers-blocked",
+      "ai-crawlers-intent",
       "angular-analog-endpoints-listed",
       "angular-dev-tools-public",
       "angular-preview-canonical",
@@ -445,6 +450,7 @@ describe("runner: edge cases", () => {
       "listing-special-hours-missing",
       "listing-website-wrong",
       "llms-txt-broken-links",
+      "llms-txt-malformed",
       "llms-txt-stale-facts",
       "mailto-cta",
       "mock-content-live",
@@ -483,6 +489,7 @@ describe("runner: edge cases", () => {
       "placeholder-text",
       "price-changed",
       "quotable-facts-disagree",
+      "quotable-facts-in-data-only",
       "qwik-solid-data-as-page",
       "qwik-solid-dev-server-live",
       "qwik-solid-draft-public",
@@ -543,6 +550,7 @@ describe("runner: edge cases", () => {
       "tel-format",
       "temp-host-canonical",
       "temp-host-links",
+      "well-known-invalid",
       "zero-width-in-text",
     ]);
   });

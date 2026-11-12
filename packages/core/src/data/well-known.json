@@ -1,0 +1,29 @@
+{
+  "note": "Standard discovery paths for AI agents. Gaugeline asks for only these (GET, once each) and only reads whether a file that is served is valid JSON. source is where the path is documented; \"uncited\" means it could not be confirmed against its specification when this list was written (the specification sites were unreachable) and a reviewer should confirm it. Add a path only with its specification.",
+  "paths": [
+    {
+      "path": "/.well-known/oauth-protected-resource",
+      "name": "OAuth protected resource metadata",
+      "source": "RFC 9728 (https://www.rfc-editor.org/rfc/rfc9728) [docs] uncited: not re-read",
+      "lastVerified": null
+    },
+    {
+      "path": "/.well-known/agent-card.json",
+      "name": "A2A agent card",
+      "source": "uncited",
+      "lastVerified": null
+    },
+    {
+      "path": "/.well-known/agent.json",
+      "name": "A2A agent card (earlier path)",
+      "source": "uncited",
+      "lastVerified": null
+    },
+    {
+      "path": "/.well-known/ai-plugin.json",
+      "name": "ChatGPT plugin manifest (legacy)",
+      "source": "uncited",
+      "lastVerified": null
+    }
+  ]
+}
