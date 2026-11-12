@@ -1,5 +1,8 @@
 import {
   formatSampleSummary,
+  forTerminal,
+  TERMINAL_EVIDENCE_MAX,
+  UNTRUSTED_CAPS,
   type BudgetSummary,
   type Finding,
   type RunResult,
@@ -63,8 +66,8 @@ export function formatTerminal({
         : f.severity === "medium"
           ? p.yellow(MARK.medium)
           : p.grey(MARK.low);
-    lines.push(`${mark} ${f.title}`);
-    lines.push(`    ${p.grey(f.evidence)}`);
+    lines.push(`${mark} ${forTerminal(f.title, UNTRUSTED_CAPS.title)}`);
+    lines.push(`    ${p.grey(forTerminal(f.evidence, TERMINAL_EVIDENCE_MAX))}`);
     // A plan finding covers a group of rows: every line once, so the owner can find them.
     // A live page the plan misses has no plan line to name.
     if (f.group && f.group.lines.length > 0)

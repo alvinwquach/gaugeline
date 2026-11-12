@@ -75,6 +75,14 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     ],
   },
   {
+    name: "format",
+    type: "string",
+    description:
+      "What stdout carries: json (the same as --json), sarif (GitHub code scanning) or junit (any CI's test results)",
+    since: "0.2.0",
+    commands: ["check", "deploy-gate", "launch", "renewals", "cost", "backups"],
+  },
+  {
     name: "no-open",
     type: "boolean",
     description: "Do not open anything in a browser",
@@ -702,12 +710,65 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     commands: ["check", "launch", "renewals", "cost", "backups"],
   },
   {
+    name: "upload",
+    type: "boolean",
+    description:
+      "Upload the result to your hosted workspace; needs GAUGELINE_TOKEN and GAUGELINE_UPLOAD_URL (see the API page)",
+    since: "0.2.0",
+    commands: ["check", "launch"],
+  },
+  {
     name: "save-requests",
     type: "string",
     description:
       "Save the requests made and the page's data to this JSON file; it may contain page content, so do not commit it",
     since: "0.2.0",
     commands: ["check", "launch", "renewals", "cost", "backups"],
+  },
+  {
+    name: "baseline",
+    type: "string",
+    description: "Read or write a file of known findings; with it a run reports only new ones",
+    since: "0.2.0",
+    commands: ["check", "launch"],
+  },
+  {
+    name: "update-baseline",
+    type: "boolean",
+    description: "With --baseline, write the file again from this run",
+    since: "0.2.0",
+    commands: ["check", "launch"],
+  },
+  {
+    name: "config-json-only",
+    type: "boolean",
+    description:
+      "Refuse a gaugeline.config.mjs, .js or .ts, which runs code; read gaugeline.config.json only",
+    env: "GAUGELINE_NO_EXEC_CONFIG",
+    since: "0.2.0",
+    commands: ["check", "launch"],
+  },
+  {
+    name: "suppress",
+    type: "string",
+    description: "Snooze a check id for this run, with an expiry and a reason (repeatable)",
+    since: "0.2.0",
+    commands: ["check", "launch"],
+    multiple: true,
+  },
+  {
+    name: "suppress-until",
+    type: "string",
+    description: "With --suppress, the last day it applies, YYYY-MM-DD; a past date is refused",
+    since: "0.2.0",
+    commands: ["check", "launch"],
+  },
+  {
+    name: "suppress-reason",
+    type: "string",
+    description: "With --suppress, why the finding is accepted for now",
+    since: "0.2.0",
+    commands: ["check", "launch"],
   },
   {
     name: "list",

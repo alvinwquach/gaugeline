@@ -83,12 +83,12 @@ then id.
 
 | Area             | Fix this first | Fix soon | Worth knowing |
 | ---------------- | -------------- | -------- | ------------- |
-| Search & sharing | 24             | 24       | 6             |
-| Visitors         | 28             | 32       | 16            |
-| Sales & prices   | 24             | 13       | 7             |
+| Search & sharing | 29             | 29       | 9             |
+| Visitors         | 28             | 36       | 17            |
+| Sales & prices   | 27             | 14       | 8             |
 | Leads            | 4              | 9        | 2             |
-| Security & email | 24             | 17       | 9             |
-| Launch day       | 32             | 19       | 6             |
+| Security & email | 44             | 23       | 11            |
+| Launch day       | 58             | 23       | 6             |
 
 <!-- skill-areas:end -->
 

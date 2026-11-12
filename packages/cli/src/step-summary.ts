@@ -1,16 +1,31 @@
 import { appendFileSync } from "node:fs";
-import { SEVERITY_LABEL, type Finding, type Severity } from "@gaugeline/core";
+import {
+  SEVERITY_LABEL,
+  forMarkdown,
+  type Finding,
+  type SafeText,
+  type Severity,
+} from "@gaugeline/core";
 
 /** How many findings the summary lists before saying how many more there are. */
 export const SUMMARY_LIMIT = 10;
 
-/** A Markdown table cell: pipes and backslashes escaped, line breaks flattened. */
-export function cell(text: string): string {
-  return text
-    .replace(/\\/g, "\\\\")
-    .replace(/\|/g, "\\|")
-    .replace(/\r?\n|\r/g, " ")
-    .trim();
+/**
+ * A Markdown table cell: page text sanitised and Markdown-escaped (forMarkdown also escapes pipes
+ * and backslashes and flattens line breaks), so it can't make a link, an image or another column.
+ */
+export function cell(text: string): SafeText<"markdown"> {
+  return forMarkdown(text);
+}
+
+/** One finding row of the summary table. Escaped text only. */
+export function summaryRow(
+  lines: string,
+  severity: Severity,
+  title: SafeText<"markdown">,
+  evidence: SafeText<"markdown">,
+): string {
+  return `| ${lines} | ${SEVERITY_LABEL[severity]} | ${title} | ${evidence} |`;
 }
 
 const n = (v: number) => v.toLocaleString("en-US");
@@ -38,7 +53,7 @@ export function planStepSummary(input: {
     out.push("", "| Line | Level | Finding | Evidence |", "| ---: | --- | --- | --- |");
     for (const f of input.findings.slice(0, SUMMARY_LIMIT))
       out.push(
-        `| ${f.group?.lines.join(", ") ?? ""} | ${SEVERITY_LABEL[f.severity]} | ${cell(f.title)} | ${cell(f.evidence)} |`,
+        summaryRow(f.group?.lines.join(", ") ?? "", f.severity, cell(f.title), cell(f.evidence)),
       );
     const rest = input.findings.length - SUMMARY_LIMIT;
     if (rest > 0) out.push("", `…and ${n(rest)} more: run the plan check locally to see them all.`);
