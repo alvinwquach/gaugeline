@@ -324,10 +324,11 @@ const OFFLINE_PRELOAD = fileURLToPath(
  * CLI's own tests use), so a fixture page that links a real address (a CDN file, say) gives the same
  * output on a developer machine and on CI, where the real host would answer differently.
  */
-export function offlineEnv(): Record<string, string> {
+export function offlineEnv(preload: string = OFFLINE_PRELOAD): Record<string, string> {
   const inherited = process.env.NODE_OPTIONS ? `${process.env.NODE_OPTIONS} ` : "";
+  // JSON.stringify doubles a Windows path's backslashes: Node reads a backslash inside quotes as an escape.
   return {
-    NODE_OPTIONS: `${inherited}--require "${OFFLINE_PRELOAD}"`,
+    NODE_OPTIONS: `${inherited}--require=${JSON.stringify(preload)}`,
     GAUGELINE_TEST_OFFLINE: "1",
   };
 }

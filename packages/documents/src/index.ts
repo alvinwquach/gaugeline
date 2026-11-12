@@ -52,7 +52,7 @@ const DEFAULTS = {
 
 const MESSAGES: Record<UnreadableReason, string> = {
   "not-a-pdf": "the file is not a PDF",
-  truncated: "the file ends early (no end-of-file marker), so it was not read",
+  truncated: "the file ends early (no end-of-file marker)",
   encrypted: "the PDF is encrypted",
   "no-text-layer": "the PDF has no text layer (a scan or a picture of a page); it is never OCRed",
   "undecodable-fonts": "the PDF's fonts do not say which letters their characters are",

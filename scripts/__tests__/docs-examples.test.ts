@@ -349,4 +349,29 @@ describe("an example never reaches the live internet: unit", () => {
     );
     expect(r.status, r.stderr).toBe(0);
   });
+
+  it("the preload path survives NODE_OPTIONS parsing, whatever its separators (a Windows path has backslashes)", () => {
+    // Node reads NODE_OPTIONS as words split on spaces; inside double quotes a backslash escapes the next character.
+    const words = (text: string): string[] => {
+      const out: string[] = [];
+      let word = "";
+      let quoted = false;
+      for (let i = 0; i < text.length; i++) {
+        const c = text[i] as string;
+        if (c === "\\" && quoted) word += text[++i] ?? "";
+        else if (c === '"') quoted = !quoted;
+        else if (c === " " && !quoted) {
+          if (word) out.push(word);
+          word = "";
+        } else word += c;
+      }
+      if (word) out.push(word);
+      return out;
+    };
+    const winPath = "D:\\a\\gaugeline\\my repo\\helpers\\map-hosts.cjs";
+    const found = words(offlineEnv(winPath).NODE_OPTIONS ?? "");
+    const at = found.indexOf("--require");
+    const path = at >= 0 ? found[at + 1] : found.find((w) => w.startsWith("--require="))?.slice(10);
+    expect(path).toBe(winPath);
+  });
 });
