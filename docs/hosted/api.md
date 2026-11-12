@@ -210,6 +210,12 @@ What the code in this repository does today.
   it, and the database holds only the hash.
 - There is no rate limit yet. The size cap, the 10,000-finding cap and the token are the limits.
 - Server Actions for what a signed-in person owns (rename a site, invite a member) need sign-in and are not part of this page.
-- The API reads and writes the database as the `service_role` role inside a transaction, and checks that it
-  is that role: never as the table owner, which would skip every row-level security policy. Runs and
-  findings are written only through this token path.
+- Two database logins, two variables, both secrets that stay on the server. `GAUGELINE_MIGRATE_URL` is the
+  owner (the role that creates the tables) and only `db:migrate` reads it. `GAUGELINE_DATABASE_URL` is the
+  app login: a separate role that is not the owner, not a superuser, `NOINHERIT`, and a member of
+  `service_role` and `authenticated` only (like Supabase's `authenticator`). The server checks the app login
+  once, when it starts (`instrumentation.ts`, outside any transaction), and **refuses to start** if it skips
+  row-level security, which is what a login as the owner does.
+- Each request then works as `service_role` for one transaction (`set local role`, which ends with the
+  transaction) and checks that it is that role. Nothing in the API issues `reset role`; a test scans for it.
+  Runs and findings are written only through this token path.

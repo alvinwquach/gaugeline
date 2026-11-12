@@ -109,6 +109,9 @@ Options:
                                  default), high or always
       --report-url <value>       Link each message to a hosted copy of the
                                  report at this address
+      --upload                   Upload the result to your hosted workspace;
+                                 needs GAUGELINE_TOKEN and GAUGELINE_UPLOAD_URL
+                                 (see the API page)
       --save-requests <value>    Save the requests made and the page's data to
                                  this JSON file; it may contain page content, so
                                  do not commit it
@@ -258,6 +261,9 @@ Options:
                                  default), high or always
       --report-url <value>       Link each message to a hosted copy of the
                                  report at this address
+      --upload                   Upload the result to your hosted workspace;
+                                 needs GAUGELINE_TOKEN and GAUGELINE_UPLOAD_URL
+                                 (see the API page)
       --save-requests <value>    Save the requests made and the page's data to
                                  this JSON file; it may contain page content, so
                                  do not commit it
