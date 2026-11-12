@@ -35,8 +35,8 @@ $ curl -X POST -d 'email=maya@northgate.test' http://127.0.0.1:3101/sign-in
 ```
 
 Opening the link shows one button, "Sign in", and the button's POST signs in, so a mail scanner that opens
-the link does not use it up. After that, the home page is the organisation's name, your role and the list of its sites (the
-dashboard, in a later change, turns it into a table); it shows only what the database lets Maya read:
+the link does not use it up. After that, the home page is the organisation's name, your role and the table of its sites (see
+[the dashboard](/hosted/dashboard)); it shows only what the database lets Maya read:
 
 ```html
 <main id="main">
