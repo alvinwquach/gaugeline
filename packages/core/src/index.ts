@@ -1481,6 +1481,7 @@ export { CRAFT_CHECKS, createCraftRegistry } from "./checks/craft.js";
 export { UMBRACO_CHECKS, createUmbracoRegistry } from "./checks/umbraco.js";
 export { JOOMLA_CHECKS, createJoomlaRegistry } from "./checks/joomla.js";
 export { DATOCMS_CHECKS, createDatocmsRegistry } from "./checks/datocms.js";
+export { DIRECTUS_CHECKS, createDirectusRegistry } from "./checks/directus.js";
 export { HUBSPOT_CMS_CHECKS, createHubspotCmsRegistry } from "./checks/hubspot-cms.js";
 export {
   ListBuilder,
