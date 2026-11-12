@@ -3,7 +3,12 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import { createPageRegistry } from "../checks/index.js";
 import type { Finding } from "../model.js";
-import { discordPayload, slackPayload } from "../notify/payloads.js";
+import {
+  discordField,
+  discordPayload,
+  slackFindingText,
+  slackPayload,
+} from "../notify/payloads.js";
 import type { Result } from "../result.js";
 import { buildSnapshot } from "../snapshot.js";
 import { UNTRUSTED_CAPS, markUntrusted, type UntrustedText } from "../untrusted.js";
@@ -11,6 +16,7 @@ import {
   forDiscord,
   forMarkdown,
   forSlack,
+  forSlackPlain,
   forTerminal,
   stripAnsi,
   type SafeText,
@@ -58,6 +64,9 @@ describe("output escapers: unit (one table per format)", () => {
           "\\*\\*bold\\*\\* \\[x\\]\\(https://evil.example\\)",
         ],
         ["`code` ||spoiler||", "\\`code\\` \\|\\|spoiler\\|\\|"],
+        ["# Big heading", "\\# Big heading"],
+        ["-# small print", "\\-# small print"],
+        ["1. list", "1\\. list"],
       ],
     ],
     [
@@ -88,8 +97,29 @@ describe("output escapers: unit (one table per format)", () => {
     );
   });
 
+  it("Slack text outside a code span: bold, italic and strike can't be turned on", () => {
+    expect(forSlackPlain("*Free* _drinks_ ~today~ <!here>")).toBe(
+      "\u2217Free\u2217 \uFF3Fdrinks\uFF3F \u223Ctoday\u223C &lt;!here&gt;",
+    );
+  });
+
   it("stripAnsi leaves text without escapes alone, emoji included", () => {
     expect(stripAnsi("Happy hour \u{1F378} 5-7")).toBe("Happy hour \u{1F378} 5-7");
+  });
+});
+
+describe("raw sinks: type test on the real Slack and Discord builders", () => {
+  it("a raw or wrongly escaped string does not compile at the payload builders", () => {
+    // @ts-expect-error a plain string from a page cannot reach the Slack builder
+    slackFindingText("high", "<!channel>", forSlack("e"));
+    // @ts-expect-error text escaped for Discord is not escaped for Slack
+    slackFindingText("high", forSlackPlain("t"), forDiscord("e"));
+    // @ts-expect-error page text that was only sanitised cannot reach the Discord builder
+    discordField("high", forDiscord("t"), markUntrusted("@everyone", { source: "x" }).text);
+    expect(slackFindingText("high", forSlackPlain("*t*"), forSlack("`e`"))).toBe(
+      "*Fix this first:* \u2217t\u2217\n`'e'`",
+    );
+    expect(discordField("low", forDiscord("t"), forDiscord("@here")).value).toBe("\\@here");
   });
 });
 

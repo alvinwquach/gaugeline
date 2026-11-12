@@ -73,6 +73,20 @@ export function forSlack(
     .replace(/`/gu, "'") as SafeText<"slack">;
 }
 
+/**
+ * For Slack text outside a code span: as forSlack, and *, _ and ~ (Slack has no escape for them)
+ * become the look-alikes U+2217, U+FF3F and U+223C, so page text can't turn on bold, italic or strike.
+ */
+export function forSlackPlain(
+  text: string,
+  max: number = DEFAULT_UNTRUSTED_MAX_CHARS,
+): SafeText<"slack"> {
+  return forSlack(text, max)
+    .replace(/\*/gu, "\u2217")
+    .replace(/_/gu, "\uFF3F")
+    .replace(/~/gu, "\u223C") as SafeText<"slack">;
+}
+
 /** Discord markdown: emphasis, code, spoilers, links, quotes and the < of a mention. */
 const DISCORD_MARKUP = /(\\u\{[0-9A-F]+\})|[\\*_~`|<>[\]()]/gu;
 
@@ -84,7 +98,12 @@ export function forDiscord(
   text: string,
   max: number = DEFAULT_UNTRUSTED_MAX_CHARS,
 ): SafeText<"discord"> {
-  return sanitise(stripAnsi(text), max)
-    .text.replace(DISCORD_MARKUP, (m, shown: string | undefined) => (shown ? m : `\\${m}`))
-    .replace(/@(everyone|here)\b/gu, "\\@$1") as SafeText<"discord">;
+  return (
+    sanitise(stripAnsi(text), max)
+      .text.replace(DISCORD_MARKUP, (m, shown: string | undefined) => (shown ? m : `\\${m}`))
+      .replace(/@(everyone|here)\b/gu, "\\@$1")
+      // A heading, subtext or numbered list at the start of a field.
+      .replace(/^(#|-#|-)/u, "\\$1")
+      .replace(/^(\d+)\./u, "$1\\.") as SafeText<"discord">
+  );
 }

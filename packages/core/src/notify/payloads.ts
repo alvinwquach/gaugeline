@@ -1,7 +1,7 @@
 import { SEVERITY_LABEL, SEVERITY_ORDER, type Finding, type Severity } from "../model.js";
 import type { Result } from "../result.js";
 import { UNTRUSTED_CAPS } from "../untrusted.js";
-import { forDiscord, forSlack } from "../untrusted-output.js";
+import { forDiscord, forSlack, forSlackPlain, type SafeText } from "../untrusted-output.js";
 
 /** Slack's limit for one section's text (Block Kit). Longer text is trimmed, never rejected. */
 export const SLACK_SECTION_MAX = 3000;
@@ -25,6 +25,24 @@ function counts(result: Result): string {
     .join(" · ");
 }
 
+/** One finding's Slack text: the title as plain mrkdwn, the evidence in a code span. Escaped text only. */
+export function slackFindingText(
+  severity: Severity,
+  title: SafeText<"slack">,
+  evidence: SafeText<"slack">,
+): string {
+  return `*${SEVERITY_LABEL[severity]}:* ${title}\n\`${evidence}\``;
+}
+
+/** One finding as a Discord embed field. Escaped text only. */
+export function discordField(
+  severity: Severity,
+  title: SafeText<"discord">,
+  evidence: SafeText<"discord">,
+): { name: string; value: string } {
+  return { name: trim(`${SEVERITY_LABEL[severity]}: ${title}`, 256), value: trim(evidence, 1024) };
+}
+
 export interface SlackPayload {
   text: string;
   blocks: { type: string; text?: { type: string; text: string } }[];
@@ -42,7 +60,11 @@ export function slackPayload(result: Result, reportUrl?: string): SlackPayload {
       text: {
         type: "mrkdwn",
         text: trim(
-          `*${SEVERITY_LABEL[f.severity]}:* ${forSlack(f.title, UNTRUSTED_CAPS.title)}\n\`${forSlack(f.evidence)}\``,
+          slackFindingText(
+            f.severity,
+            forSlackPlain(f.title, UNTRUSTED_CAPS.title),
+            forSlack(f.evidence),
+          ),
           SLACK_SECTION_MAX,
         ),
       },
@@ -94,13 +116,15 @@ export function discordPayload(result: Result, reportUrl?: string): DiscordPaylo
         ),
         color: DISCORD_COLOR[worst],
         ...(reportUrl ? { url: reportUrl } : {}),
-        fields: list.slice(0, MESSAGE_FINDINGS).map((f) => ({
-          name: trim(
-            `${SEVERITY_LABEL[f.severity]}: ${forDiscord(f.title, UNTRUSTED_CAPS.title)}`,
-            256,
+        fields: list
+          .slice(0, MESSAGE_FINDINGS)
+          .map((f) =>
+            discordField(
+              f.severity,
+              forDiscord(f.title, UNTRUSTED_CAPS.title),
+              forDiscord(f.evidence),
+            ),
           ),
-          value: trim(forDiscord(f.evidence), 1024),
-        })),
       },
     ],
   };

@@ -35,9 +35,9 @@ describe("sanitise: unit", () => {
     expect(r.text).not.toMatch(RAW);
   });
 
-  it("removes bidi controls (U+202A to U+202E, U+2066 to U+2069)", () => {
-    const r = sanitise("Open \u202Etxet desrever\u202C late \u2066Fri\u2069");
-    expect(r.text).toBe("Open txet desrever late Fri");
+  it("removes bidi controls (U+202A to U+202E, U+2066 to U+2069, marks U+200E, U+200F, U+061C)", () => {
+    const r = sanitise("Open \u202Etxet desrever\u202C late \u2066Fri\u2069 \u200Ea\u200Fb\u061Cc");
+    expect(r.text).toBe("Open txet desrever late Fri abc");
   });
 
   it("shows zero-width characters inside words as escapes, so a split instruction stays visible", () => {

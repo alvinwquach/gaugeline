@@ -63,8 +63,8 @@ export type AgentFinding = Omit<Finding, "title" | "evidence" | "url"> & {
 
 /** A subdivision flag emoji (kept), or a run of tag characters (removed). */
 const TAGS = new RegExp(`(${FLAG_SEQUENCE.source})|[\\u{E0000}-\\u{E007F}]+`, "gu");
-/** Bidirectional embeddings, overrides and isolates: they reorder what a reader sees. */
-const BIDI = /[\u202A-\u202E\u2066-\u2069]/gu;
+/** Bidirectional embeddings, overrides, isolates and marks (LRM, RLM, ALM): they reorder what a reader sees. */
+const BIDI = /[\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069]/gu;
 /** Whitespace runs, other than the byte order mark (escaped below, not collapsed). */
 const SPACE = /[^\S\uFEFF]+/gu;
 /** Control characters (an ANSI escape starts with U+001B) and the byte order mark. */

@@ -97,13 +97,20 @@ After cleaning, page text is escaped for where it is shown:
 
 - **Terminal:** escape sequences are removed (colours, clear screen, window titles, hyperlinks), so
   a page can't rewrite your terminal.
-- **Markdown** (digest, work order, step summaries): Markdown punctuation is escaped, so `<script>`
-  and links stay text.
+- **Markdown** (work order, GitHub job summaries, the self-check issue): Markdown punctuation is
+  escaped, so `<script>`, images and links stay text. A bare address such as `https://bar.example`
+  is still turned into a link by GitHub and Slack; it is shown, never hidden behind other words.
 - **Slack:** `&`, `<` and `>` become entities, so `<!channel>`, `<@U...>` and `<url|text>` can't
-  ping anyone or make a link.
-- **Discord:** Markdown is escaped, `@everyone` and `@here` are written `\@everyone`, and every
-  message is sent with mentions turned off (`allowed_mentions` with no types).
-- **HTML report:** every value is escaped, as before. **JSON:** cleaned text only.
+  ping anyone or make a link. Slack has no escape for `*`, `_` and `~`, so in a title they are shown
+  as look-alike characters (`∗`, `＿`, `∼`) and can't turn on bold, italic or strike.
+- **Discord:** Markdown is escaped (including a heading, subtext or numbered list at the start of
+  a field), `@everyone` and `@here` are written `\@everyone`, and every message is sent with
+  mentions turned off (`allowed_mentions` with no types).
+- **HTML report:** every value is escaped, as before.
+- **JSON** (`--json`) **and the webhook body** are the data as read: page text in them is not
+  cleaned, cut or escaped, so a long title or an escape code arrives as the page had it. Treat them as
+  untrusted in whatever reads them. Gaugeline's own paths to AI assistants label them, as described
+  above.
 
 Against the invented `hostile` fixture, a cocktail bar whose page has a 52 KB title, ANSI codes,
 `<script>`, a `@everyone <!channel>` link, tag characters and a hidden instruction, version 0.1.0
@@ -145,7 +152,9 @@ Each check that passed also prints a `✓ <id>` line, left out above.
   severity and source file are Gaugeline's own and are left as they are.
 - `UNTRUSTED_FIELD_NOTE` is the fixed sentence for tool descriptions.
 - `forTerminal`, `forMarkdown`, `forSlack` and `forDiscord` (in `untrusted-output.ts`) escape for
-  each format and return a `SafeText` branded with it: a function that takes Slack text accepts
-  only `forSlack`'s output, so passing raw page text there is a compile error.
+  each format and return a `SafeText` branded with it. The Slack and Discord finding builders
+  (`slackFindingText`, `discordField`) and the job summary's table row (`summaryRow`) take only
+  that format's `SafeText`, so passing raw page text to them is a compile error. The terminal
+  reporter, the HTML report and the email body take plain strings and escape inside.
 
 The same input always gives the same output: no model is called.

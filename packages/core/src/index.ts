@@ -1667,6 +1667,7 @@ export {
   forDiscord,
   forMarkdown,
   forSlack,
+  forSlackPlain,
   forTerminal,
   stripAnsi,
 } from "./untrusted-output.js";
