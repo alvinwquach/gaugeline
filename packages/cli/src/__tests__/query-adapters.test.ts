@@ -1,3 +1,4 @@
+import { PLANNED_ADAPTERS } from "@gaugeline/core";
 import { COPPERHILL_COUNTS, sanityCountsTransport } from "@gaugeline/testkit";
 import { mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -75,18 +76,49 @@ describe("gaugeline.adapters.json in gaugeline query: e2e", () => {
   });
 
   it("an adapter that is planned is exit 2 and names the branch that builds it", async () => {
-    writeFileSync(
-      join(dir, "gaugeline.adapters.json"),
-      '{ "adapters": [{ "id": "generic-api" }] }',
-    );
+    // Which adapters are planned changes with every merge (none may be left): use the first planned one, or an unknown id.
+    const planned = PLANNED_ADAPTERS[0];
+    const id = planned?.id ?? "no-such-adapter";
+    writeFileSync(join(dir, "gaugeline.adapters.json"), `{ "adapters": [{ "id": "${id}" }] }`);
     const r = await query();
     expect(r.code).toBe(EXIT.couldNotRun);
-    expect(r.err).toContain('the "generic-api" adapter is planned (C-14)');
+    if (planned) expect(r.err).toContain(`the "${id}" adapter is planned (${planned.branch})`);
     // The list grows with every adapter: check its shape (alphabetical, the ones this test needs), not the whole list.
     const built = /Built adapters: ([a-z0-9, -]+)\./.exec(r.err)?.[1]?.split(", ") ?? [];
     expect(built).toEqual([...built].sort());
     expect(built).toEqual(expect.arrayContaining(["sanity", "sitemap-feed", "wordpress"]));
     expect(r.out).toBe("");
+  });
+
+  it("a generic-api entry with a good mapping is read and changes nothing; one with a wrong path is exit 2 and names it", async () => {
+    const mapping = (items: string) => ({
+      endpoint: "https://cms.example/api",
+      collections: {
+        post: {
+          path: "/posts",
+          items,
+          pagination: { style: "none" },
+          fields: { id: "/id", updatedAt: "/updatedAt" },
+        },
+      },
+    });
+    const before = await query();
+    writeFileSync(
+      join(dir, "gaugeline.adapters.json"),
+      JSON.stringify({ adapters: [{ id: "generic-api", api: mapping("/docs") }] }),
+    );
+    const good = await query();
+    expect(good.code).toBe(EXIT.ok);
+    expect(good.out).toBe(before.out);
+    writeFileSync(
+      join(dir, "gaugeline.adapters.json"),
+      JSON.stringify({ adapters: [{ id: "generic-api", api: mapping("docs/no-slash") }] }),
+    );
+    const bad = await query();
+    expect(bad.code).toBe(EXIT.couldNotRun);
+    expect(bad.err).toContain("gaugeline.adapters.json");
+    expect(bad.err).toContain("items");
+    expect(bad.out).toBe("");
   });
 
   it("an adapter nobody has heard of, a bad shape or bad JSON is exit 2 with the file named", async () => {

@@ -9,6 +9,8 @@ import {
   EMAIL_PRESET,
   LAUNCH_PRESET,
   buildRunSnapshot,
+  buildPageRecord,
+  DEFAULT_RETENTION_DAYS,
   createDnsReader,
   createPageRegistry,
   notifyAll,
@@ -115,6 +117,7 @@ import {
   addWordPressChecks,
   addPublishedChecks,
   createPublished,
+  copyAdapterEnv,
   addBackupsChecks,
   createBackups,
   BACKUPS_CHECKS,
@@ -122,7 +125,6 @@ import {
   buildBackupsSummary,
   formatBackupsSummary,
   manualBackups,
-  allAdapterEnvVars,
   createWordPress,
   type ExportLister,
 } from "@gaugeline/core";
@@ -143,6 +145,8 @@ import { runCutover } from "./cutover.js";
 import { runMigration } from "./migration.js";
 import { runAdvisory } from "./advisory.js";
 import { runInit } from "./init.js";
+import { runChanges } from "./changes.js";
+import { buildRunRecord, saveRun } from "./runs.js";
 import { gateVerdict } from "./deploy-gate.js";
 import { runSnapshot } from "./snapshot.js";
 import { runVerify } from "./verify.js";
@@ -192,11 +196,13 @@ import {
   readCostConfig,
   readTrackersConfig,
   readAdaptersConfig,
+  readChangesConfig,
   readBackupsConfig,
   readEvents,
   readSchemaRules,
   readTags,
   readNavRules,
+  readStaleDates,
   readPagesConfig,
 } from "./schema-config.js";
 import { listRouteFiles } from "./route-files.js";
@@ -1099,6 +1105,23 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         }),
         ci: false,
       };
+    case "changes":
+      return {
+        outcome: await runChanges(
+          {
+            address: args.address,
+            ...(args.since ? { since: args.since } : {}),
+            json: args.json,
+            quiet: args.quiet,
+          },
+          { stdout: io.stdout, stderr: io.stderr, ...(io.env ? { env: io.env } : {}) },
+          {
+            ...(deps.cwd ? { cwd: deps.cwd } : {}),
+            ...(deps.fetcher ? { fetcher: deps.fetcher } : {}),
+          },
+        ),
+        ci: false,
+      };
     case "digest": {
       await runDigest(
         {
@@ -1225,6 +1248,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       const tags = readTags(deps.cwd ?? process.cwd());
       const events = readEvents(deps.cwd ?? process.cwd());
       const navRules = readNavRules(deps.cwd ?? process.cwd());
+      const staleDates = readStaleDates(deps.cwd ?? process.cwd());
       const pagesConfig = readPagesConfig(deps.cwd ?? process.cwd());
       // Probing checks (CLAUDE.md rule 14) ask a route that should be protected for what it protects,
       // with no login. They are off unless the owner agreed: --owner-consent, or gaugeline.consent.json.
@@ -1529,7 +1553,10 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         ? createPublished(
             readAdaptersConfig(cwd),
             {
-              env: freezeEnv(io.env ?? {}, [...SANITY_ENV_VARS, ...allAdapterEnvVars()]),
+              env: {
+                ...freezeEnv(io.env ?? {}, SANITY_ENV_VARS),
+                ...copyAdapterEnv(io.env ?? {}),
+              },
               fetcher,
             },
             fetcher,
@@ -1585,6 +1612,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         ...(payments ? { payments } : {}),
         ...(hidden ? { hidden } : {}),
         ...(navRules ? { nav: navRules } : {}),
+        ...(staleDates ? { staleDates } : {}),
         ...(tags ? { tags } : {}),
         // No observer until rendered reads (G39): the click event checks are could not check.
         ...(events ? { events } : {}),
@@ -1821,13 +1849,23 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       // Gains since the last run: information on stderr, never findings.
       if (contentNotes && contentNotes.length > 0 && !args.json && !args.quiet)
         io.stderr.write(`Since the last run:\n${contentNotes.map((l) => `  ${l}`).join("\n")}\n`);
-      if (args.since && last?.kind !== "newer")
+      if (args.since && last?.kind !== "newer") {
         writeLastRun(
           cwd,
           host,
           buildRunSnapshot(snapshot, () => startedAt, contents),
           `Gaugeline ${deps.version ?? VERSION}`,
         );
+        // The same run, kept as history for `gaugeline changes`: a few fields and hashes of the
+        // page, and the findings' check, path and title.
+        saveRun(
+          cwd,
+          host,
+          buildRunRecord(snapshot, buildPageRecord(snapshot), result.findings, startedAt),
+          startedAt,
+          readChangesConfig(cwd)?.retentionDays ?? DEFAULT_RETENTION_DAYS,
+        );
+      }
       // The report: one self-contained file, written on every run that isn't --json, opened only
       // for a person at a terminal (not with --no-open, not in CI, not when piped).
       if (!args.json) {
