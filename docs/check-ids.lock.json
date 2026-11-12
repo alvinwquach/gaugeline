@@ -219,6 +219,7 @@
   "pagination-same-content",
   "pagination-unreachable",
   "paid-file-public",
+  "payload-collection-public",
   "payment-handle-inconsistent",
   "payment-handle-mismatch",
   "payment-handle-unknown",

@@ -2431,6 +2431,19 @@
     "estimateChanges": "Usually one change in Directus: open Settings, then Access Policies, then the Public policy, and remove read access from the collection. Allow longer if the front end reads that collection with no token and needs a server-side token instead."
   },
   {
+    "id": "payload-collection-public",
+    "severity": "high",
+    "area": "Security & email",
+    "title": "A Payload collection marked private is readable by visitors with no key",
+    "what": "gaugeline.adapters.json marks a collection private (privateCollections), and a plain GET of its list with no key is answered with documents.",
+    "why": "Anyone who guesses the route can read the collection as data: orders, enquiries, customer notes, prices before they are announced. A search engine or scraper may already have it.",
+    "fix": "In the collection's config, change access.read from a function that returns true to one that requires a signed-in user (it checks req.user), or narrow it with a query that returns only what is public. If the front end needs the data, read it on the server with the Local API. If the collection is meant to be public, take it out of privateCollections.",
+    "tech": "probing check, off without --owner-consent: this check asks Payload for collections you marked private, as a visitor with no key, so it runs only with --owner-consent (or gaugeline.consent.json), on sites you own or have permission to test; only for the collections named in the settings' privateCollections; per collection one GET of {PAYLOAD_URL}/{slug}?limit=1&page=1&depth=0&select[id]=true with no Authorization header, no cookie and nothing the fetcher adds per address, redirects not followed; a 200 whose body has a docs list with at least one document is the finding (its count is the reported totalDocs, or \"at least 1\" when none is reported); a 200 with no documents is could-not-check (a visitor may read it and there is nothing to count); a 403 is a closed collection only when its body is Payload's own refusal (errors[0].message is \"You are not allowed to perform this action.\"), otherwise it is could-not-check (a firewall or CDN page answers 403 too, and a site in another language answers with a translated message); Payload looks a collection up before it looks at access, so a collection that does not exist is a 404 and is could-not-check with the spelling named, never closed; a pass means no public read of the list was seen, not that nothing is public (a collection can allow single documents by id, or other routes, and a closed list can still be open through GraphQL); any other answer is could-not-check; the answer is read as a count and nothing else, and a finding is a collection slug and a count, never a document",
+    "size": "S",
+    "done": "A visitor with no key cannot list a single document of any collection you marked private.",
+    "estimateChanges": "Usually one change in the collection's config: replace a read rule that returns true with one that needs a signed-in user. Allow longer if the front end reads that collection with no key and needs a server-side read first."
+  },
+  {
     "id": "hubspot-page-404",
     "severity": "high",
     "area": "Launch day",
