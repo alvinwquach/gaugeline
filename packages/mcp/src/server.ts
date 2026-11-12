@@ -16,6 +16,10 @@ export function createGaugelineServer(options: ServerOptions = {}): McpServer {
   const ctx = contextFor(options, state);
   const server = new McpServer({ name: SERVER_NAME, version: SERVER_VERSION });
   const limit = options.maxActiveCalls ?? 16;
+  // The operator's own plan bases stay readable in an error; every other address is withheld.
+  const keep = (options.planBases ?? []).flatMap((b) =>
+    URL.canParse(b) ? [new URL(b).origin, new URL(b).host] : [],
+  );
   for (const [name, def] of Object.entries(TOOLS) as [string, ToolDef][]) {
     if (def.enabled && !def.enabled(options)) continue;
     server.registerTool(
@@ -52,7 +56,7 @@ export function createGaugelineServer(options: ServerOptions = {}): McpServer {
           const data = await def.run(args as never, ctx);
           return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
         } catch (err) {
-          const e = asToolError(err);
+          const e = asToolError(err, keep);
           return { isError: true, content: [{ type: "text" as const, text: e.message }] };
         } finally {
           if (def.requests) state.active--;

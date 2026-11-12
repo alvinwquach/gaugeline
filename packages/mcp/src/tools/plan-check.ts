@@ -6,9 +6,13 @@ import {
   checkBuilt,
   checkRedirects,
   createPlanRegistry,
+  legacyPath,
   readPlan,
   runChecks,
+  splitLegacy,
+  type PlanRow,
 } from "@gaugeline/core";
+import { onlyOrigin } from "../net-guard.js";
 import { ToolError, remember, type ToolContext } from "../state.js";
 import { couldNotCheckForAgent, findingsForAgent, urlSchema } from "./shared.js";
 
@@ -68,6 +72,45 @@ function allowedBase(ctx: ToolContext, url: string): string {
   return origin;
 }
 
+/** Whether an address from a plan cell, joined onto the base the way core joins it, stays on the base. */
+function staysOnBase(address: string, origin: string): boolean {
+  if (address.includes("\\")) return false;
+  try {
+    const u = new URL(address, origin);
+    return u.origin === origin && u.username === "" && u.password === "";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * A plan cell is page-like text: "//evil.example/x" and "/\\evil.example/x" are protocol-relative and would
+ * REPLACE the host when core joins them onto the base. Every row whose path leaves the base is dropped, and
+ * every legacy address that would is cleared from its row, before anything is requested. What is dropped is
+ * reported by line number and a fixed sentence, never by the cell's text.
+ */
+function onBaseOnly(rows: readonly PlanRow[], origin: string) {
+  const kept: PlanRow[] = [];
+  const skipped: { line: number; what: string }[] = [];
+  for (const row of rows) {
+    if (!staysOnBase(row.path, origin)) {
+      skipped.push({ line: row.line, what: "this row points off the preview" });
+      continue;
+    }
+    const legacy = splitLegacy(row.legacyUrl);
+    const off = legacy.some((l) => {
+      const p = legacyPath(l);
+      return !p || !staysOnBase(`${p.path}${p.search}`, origin);
+    });
+    if (off) {
+      skipped.push({ line: row.line, what: "an old address in this row points off the preview" });
+      const { legacyUrl: _dropped, ...rest } = row;
+      kept.push(rest);
+    } else kept.push(row);
+  }
+  return { kept, skipped };
+}
+
 export async function planCheck(
   args: z.infer<z.ZodObject<typeof planCheckInput>>,
   ctx: ToolContext,
@@ -88,15 +131,22 @@ export async function planCheck(
       "That file could not be read as a launch plan: it needs a URL column and at least one row. Its contents are not shown.",
     );
   }
-  const fetcher = ctx.fetcherFor(base);
+  // Requests go to the configured origin and nowhere else: the rows are checked first, and the fetcher
+  // refuses any other address as well.
+  const { kept, skipped } = onBaseOnly(plan.rows, base);
+  const fetcher = onlyOrigin(ctx.fetcherFor(base), base);
   const startedAt = ctx.now();
   // The same calls as `gaugeline plan --base`: each planned path with GET, each legacy address once.
-  const built = await checkBuilt(plan.rows, { base, fetcher, file: name });
-  const redirects = await checkRedirects(plan.rows, { base, fetcher, file: name });
+  const built = await checkBuilt(kept, { base, fetcher, file: name });
+  const redirects = await checkRedirects(kept, { base, fetcher, file: name });
   const registry = createPlanRegistry();
-  const result = await runChecks({ plan, legacy: [], file: name, built, redirects }, registry, {
-    skip: [...NAV_CHECK_IDS, "plan-uncovered-page", "plan-rank-unknown-address"],
-  });
+  const result = await runChecks(
+    { plan: { ...plan, rows: kept }, legacy: [], file: name, built, redirects },
+    registry,
+    {
+      skip: [...NAV_CHECK_IDS, "plan-uncovered-page", "plan-rank-unknown-address"],
+    },
+  );
   const run = remember(ctx.state, {
     kind: "plan",
     url: base,
@@ -115,5 +165,14 @@ export async function planCheck(
     summary: { findings: result.findings.length, couldNotCheck: result.couldNotCheck.length },
     ...findingsForAgent(run, ctx.maxFindings),
     ...couldNotCheckForAgent(result.couldNotCheck),
+    ...(skipped.length > 0
+      ? {
+          skippedRows: {
+            count: skipped.length,
+            note: "These rows were not requested: an address in them points off the preview. Only the line number is shown.",
+            rows: skipped.slice(0, 20),
+          },
+        }
+      : {}),
   };
 }

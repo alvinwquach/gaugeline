@@ -15,6 +15,7 @@ import {
   hostPortOf,
   normaliseHostPort,
 } from "./net-guard.js";
+import { ToolError } from "./errors.js";
 
 /** What the server needs from whoever starts it. None of it can be changed by a tool call. */
 export interface ServerOptions {
@@ -121,5 +122,4 @@ export function contextFor(options: ServerOptions, state: ServerState): ToolCont
   };
 }
 
-/** A problem the caller can fix: returned as a tool error with this text, not as a crash. */
-export class ToolError extends Error {}
+export { ToolError } from "./errors.js";

@@ -36,14 +36,19 @@ const IPV6 = /\b[0-9a-f]{0,4}(?::[0-9a-f]{0,4}){2,7}\b/gi;
  * link-local address is never reported), and what is left is labelled as text from outside, because a
  * host name, a redirect target or a plan cell in it was chosen by someone else.
  */
-export function labelDetail(text: string, source = "could-not-check reason", maxChars = 200) {
-  return markUntrusted(
-    text.replace(IPV4, "[address withheld]").replace(IPV6, "[address withheld]"),
-    {
-      source,
-      maxChars,
-    },
-  );
+export function labelDetail(
+  text: string,
+  source = "could-not-check reason",
+  maxChars = 200,
+  keep: readonly string[] = [],
+) {
+  // The operator's own configured addresses stay readable; every other address is withheld.
+  const kept = keep.filter((k) => k !== "");
+  let work = text;
+  kept.forEach((k, i) => (work = work.split(k).join(`\u0001${i}\u0001`)));
+  work = work.replace(IPV4, "[address withheld]").replace(IPV6, "[address withheld]");
+  kept.forEach((k, i) => (work = work.split(`\u0001${i}\u0001`).join(k)));
+  return markUntrusted(work, { source, maxChars });
 }
 
 /** At most this many could-not-check entries are returned; the count says how many more there are. */
@@ -71,14 +76,14 @@ export function couldNotCheckForAgent(list: readonly { id: string; reason: strin
  * passed on raw: its message may carry a host a redirect named, a resolved address or a plan cell, so it
  * becomes a fixed sentence plus a labelled, address-free detail.
  */
-export function asToolError(err: unknown): Error {
+export function asToolError(err: unknown, keep: readonly string[] = []): Error {
   if (err instanceof ToolError) return err;
   if (err instanceof GaugelineError)
     return new ToolError(
       JSON.stringify({
         error: "Gaugeline could not complete this request.",
         code: err.code,
-        detail: labelDetail(err.message, "error detail", 300),
+        detail: labelDetail(err.message, "error detail", 300, keep),
       }),
     );
   return new ToolError("The tool failed unexpectedly. Nothing was changed.");

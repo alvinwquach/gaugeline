@@ -1,7 +1,7 @@
 import * as z from "zod";
 import { POINTS } from "@gaugeline/core";
 import { ToolError, type ToolContext } from "../state.js";
-import { findingForAgent } from "../agent-text.js";
+import { findingForAgent, markUntrusted } from "../agent-text.js";
 import { buildPatch } from "../patch.js";
 import { checkById, findFinding } from "./explain-finding.js";
 
@@ -34,7 +34,8 @@ export async function draftFix(args: z.infer<z.ZodObject<typeof draftFixInput>>,
       applied: false,
       format: "text/x-diff",
       patchKind: "unified-diff",
-      file: built.file,
+      // The file name comes from the page's address (a redirect can choose it): labelled like the diff.
+      file: markUntrusted(built.file, { source: "file name from the page address", maxChars: 200 }),
       // The diff quotes lines of the page as served (and its address): it is page text, so it is labelled
       // as a whole, even though it applies cleanly. The lines were cleaned first (patch.ts).
       patch: {
