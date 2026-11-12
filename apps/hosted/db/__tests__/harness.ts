@@ -159,8 +159,8 @@ export async function seed(sql: Sql): Promise<void> {
       ('${ORG_A}', '${SITE_A1}', '${RUN_A1}', 'broken-links', 'high', 'Broken link on the menu page', '/menu links to /drinks-2025 (404)', 'https://tidewater-bar.test/menu', '0123456789abcdef'),
       ('${ORG_B}', '${SITE_B1}', '${RUN_B1}', 'canonical-missing', 'medium', 'No canonical address', '/book has no canonical link', 'https://maple-physio.test/book', 'fedcba9876543210');
     insert into public.drafts (id, org_id, site_id, kind, payload, finding_ids) values
-      ('${DRAFT_A1}', '${ORG_A}', '${SITE_A1}', 'redirect', '{"from":"/drinks-2025","to":"/drinks"}', '{}'),
-      ('${DRAFT_B1}', '${ORG_B}', '${SITE_B1}', 'field', '{"field":"canonical"}', '{}');
+      ('${DRAFT_A1}', '${ORG_A}', '${SITE_A1}', 'email', '{"subject":"Your menu link is fixed","body":"The drinks page is back."}', '{}'),
+      ('${DRAFT_B1}', '${ORG_B}', '${SITE_B1}', 'email', '{"subject":"Booking page canonical","body":"We added the canonical address."}', '{}');
     insert into public.decisions (org_id, draft_id, decision, decided_by) values
       ('${ORG_A}', '${DRAFT_A1}', 'approved', '${USER_A_OWNER}'),
       ('${ORG_B}', '${DRAFT_B1}', 'declined', '${USER_B_OWNER}');
