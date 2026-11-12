@@ -57,6 +57,7 @@ const FIXTURES = [
   "sanity-images",
   "headless-wp",
   "aem-author-links",
+  "nuxt-like",
   "remix-like",
   "remix-dev",
   "refusing",

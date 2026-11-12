@@ -168,6 +168,7 @@ export const UNLISTED: NavPage[] = [
   { slug: "guides/sveltekit", title: "SvelteKit sites" },
   { slug: "guides/astro", title: "Astro sites" },
   { slug: "guides/sanity-images", title: "Sanity images: sizes, crops and duplicates" },
+  { slug: "guides/nuxt", title: "Nuxt sites" },
   { slug: "guides/source-maps", title: "Source maps and development tools left on" },
   { slug: "guides/headless-wordpress", title: "Headless WordPress sites" },
   { slug: "guides/remix", title: "Remix and React Router sites" },

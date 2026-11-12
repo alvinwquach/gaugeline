@@ -406,6 +406,8 @@ export { NEXT_RENDERED_NOTE, isNextSite, readCache } from "./next/detect.js";
 export type { CacheRead } from "./next/detect.js";
 export { isSveltekitSite, dataAddress as sveltekitDataAddress } from "./sveltekit/detect.js";
 export { isFrameworkUrl } from "./next/framework-urls.js";
+export { NUXT_RENDERED_NOTE, isNuxtSite } from "./nuxt/detect.js";
+export { isNuxtFrameworkUrl } from "./nuxt/framework-urls.js";
 export { frameworkLinks } from "./links.js";
 export { consentConfigSchema } from "./consent.js";
 export { imagesConfigSchema } from "./images/config.js";
@@ -1489,6 +1491,7 @@ export {
 } from "./checks/squarespace-commerce.js";
 export { STRAPI_CHECKS, createStrapiRegistry } from "./checks/strapi.js";
 export { CRAFT_CHECKS, createCraftRegistry } from "./checks/craft.js";
+export { HYGRAPH_CHECKS, createHygraphRegistry } from "./checks/hygraph.js";
 export { UMBRACO_CHECKS, createUmbracoRegistry } from "./checks/umbraco.js";
 export { JOOMLA_CHECKS, createJoomlaRegistry } from "./checks/joomla.js";
 export { DATOCMS_CHECKS, createDatocmsRegistry } from "./checks/datocms.js";

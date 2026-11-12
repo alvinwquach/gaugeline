@@ -8,10 +8,11 @@ import {
   mkdirSync,
   mkdtempSync,
   readdirSync,
+  readFileSync,
   rmSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { SITES_DIR, startFixture } from "../../packages/fixtures/src/index.js";
 
@@ -282,6 +283,18 @@ export async function runExample(
         ? mkdtempSync(join(tmpdir(), "gaugeline-example-"))
         : undefined;
     for (const n of settings) copyFileSync(join(dir, n), join(cwd ?? "", n));
+    // gaugeline.images.json names the framework settings files it reads (next.config.js, netlify.toml):
+    // they sit beside it in the fixture and are copied too, or the run reports a file that is not there.
+    if (cwd && settings.includes("gaugeline.images.json")) {
+      const named: unknown = (
+        JSON.parse(readFileSync(join(dir, "gaugeline.images.json"), "utf8")) as {
+          settingsFiles?: unknown;
+        }
+      ).settingsFiles;
+      for (const n of Array.isArray(named) ? named : [])
+        if (typeof n === "string" && n === basename(n) && existsSync(join(dir, n)))
+          copyFileSync(join(dir, n), join(cwd, n));
+    }
     if (cwd && existsSync(saved)) {
       const host = new URL(site.origin).host.toLowerCase().replace(/[^a-z0-9.-]/g, "_");
       mkdirSync(join(cwd, ".gaugeline", "runs"), { recursive: true });
