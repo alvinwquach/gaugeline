@@ -13,6 +13,7 @@ import { contractEntries as gitContent } from "./git-content.contract.js";
 import { contractEntries as hubspotCms } from "./hubspot-cms.contract.js";
 import { contractEntries as hygraph } from "./hygraph.contract.js";
 import { contractEntries as joomla } from "./joomla.contract.js";
+import { contractEntries as payload } from "./payload.contract.js";
 import { contractEntries as prismic } from "./prismic.contract.js";
 import { contractEntries as sanity } from "./sanity.contract.js";
 import { contractEntries as shopify } from "./shopify.contract.js";
@@ -40,6 +41,7 @@ export const CONTRACT_ENTRIES: readonly ContractEntry[] = [
   ...hubspotCms,
   ...hygraph,
   ...joomla,
+  ...payload,
   ...prismic,
   ...sanity,
   ...shopify,
