@@ -1242,19 +1242,17 @@ export function parseCliArgs(
     };
   }
   if (command === "platform") {
-    if (positionals.length > 0 || values.webhooks !== true)
+    if (positionals.length > 0)
       return {
         kind: "error",
         message:
-          positionals.length > 0
-            ? "gaugeline platform takes no address: it reads your Stripe account."
-            : "gaugeline platform needs --webhooks: gaugeline platform --webhooks",
-        hint: "Set STRIPE_API_KEY in the environment; the steps are in docs/delivery.",
+          "gaugeline platform takes no address: it reads your Stripe account (--webhooks) or the platforms in gaugeline.platforms.json.",
+        hint: "The steps are in docs/delivery and docs/sources/supabase-mcp.",
         verbose,
       };
     return {
       kind: "platform",
-      webhooks: true,
+      webhooks: values.webhooks === true,
       allowSecretKey: values["allow-secret-key"] === true,
       json: values.json === true,
       ci: values.ci === true,

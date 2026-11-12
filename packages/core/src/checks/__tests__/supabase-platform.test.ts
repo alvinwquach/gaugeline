@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { SupabaseRead } from "../../adapters/supabase-mcp-read.js";
-import { fakeSupabase } from "../../adapters/__tests__/supabase-mcp-fake.js";
+import { fakeSupabase } from "@gaugeline/testkit";
 import { createFetcher } from "../../fetcher.js";
 import { runChecks } from "../../run.js";
 import { COULD_NOT_CHECK } from "../../sources/mcp-guard.js";
