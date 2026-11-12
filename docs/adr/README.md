@@ -14,5 +14,8 @@ with a new record.
 | [0006](0006-read-only-post-queries.md)                      | A POST is allowed for a documented read-only query                                                           | accepted | 2026-11-11 |
 | [0007](0007-open-image-optimizers.md)                       | Open image optimizers: read the config, probe only with consent and your own address                         | proposed | 2026-11-11 |
 | [0008](0008-platform-reads-through-mcp-servers-and-clis.md) | Platform reads through MCP servers and CLIs: a named allowlist, a read-only credential, never the hint alone | proposed | 2026-11-11 |
+| [0011](0011-listing-watch.md)                               | Listing watch is the listings checks on a schedule, not a new reader                                         | proposed | 2026-11-12 |
+| [0012](0012-platform-checks.md)                             | Creator platform checks: one adapter per room, and a test account before a line is written                   | proposed | 2026-11-12 |
+| [0013](0013-self-hosting.md)                                | Self-hosting waits for a hosted schema that has stopped moving                                               | proposed | 2026-11-12 |
 
 Start a new record from [0000-template.md](0000-template.md).
