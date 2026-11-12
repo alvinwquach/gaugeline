@@ -25,6 +25,10 @@ export const LIMITS = Object.freeze({
   /** Square and Stripe payment links read (GET, nothing submitted). */
   checkoutLinks: 5,
   scripts: 15,
+  /** Linked stylesheets read for a source map comment (same site, GET). */
+  stylesheets: 5,
+  /** Source map files asked, named by a file the page loads (GET, same origin only, never guessed). */
+  sourceMaps: 10,
   /** Sanity datasets asked for their document count and type names (no token, no contents). */
   sanityDatasets: 2,
   /** Tables of the configured database project counted (HEAD, counts only). */

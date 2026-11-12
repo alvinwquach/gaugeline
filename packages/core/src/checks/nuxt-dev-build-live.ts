@@ -1,12 +1,9 @@
 import { defineCheck } from "../model.js";
-import { isNuxtSite } from "../nuxt/detect.js";
+import { isNuxtSite, NUXT_DEV_SCRIPT } from "../nuxt/detect.js";
 import { readNuxtState } from "../nuxt/read.js";
 import { hasDevtoolsState } from "../nuxt/state.js";
 import type { PageSnapshot } from "../snapshot.js";
 import { isHtmlPage } from "./page.js";
-
-/** Vite's dev server serves these under the build assets folder; a production build never references them. */
-const DEV_SCRIPT = /\/@vite\/client|\/_nuxt\/@id\/|\/_nuxt\/@fs\/|\/__nuxt_devtools__\//;
 
 export const nuxtDevBuildLive = defineCheck<PageSnapshot>({
   id: "nuxt-dev-build-live",
@@ -24,7 +21,7 @@ export const nuxtDevBuildLive = defineCheck<PageSnapshot>({
   async run(page, ctx) {
     if (!isNuxtSite(page) || !isHtmlPage(page)) return [];
     const signs: string[] = [];
-    const dev = page.scripts.find((s) => DEV_SCRIPT.test(s));
+    const dev = page.scripts.find((s) => NUXT_DEV_SCRIPT.test(s));
     if (dev !== undefined) {
       let path = dev;
       try {

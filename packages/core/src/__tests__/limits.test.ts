@@ -52,6 +52,8 @@ describe("LIMITS and Budget: unit", () => {
       frameworkAddresses: 0,
       nuxtAddresses: 6,
       scripts: 15,
+      stylesheets: 5,
+      sourceMaps: 10,
       structuredDataAddresses: 12,
       concurrency: 5,
       redirectHops: 10,

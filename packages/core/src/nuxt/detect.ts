@@ -21,3 +21,7 @@ export function isNuxtSite(page: PageSnapshot): boolean {
 /** Added to a rendered-versus-sent finding on a Nuxt site. */
 export const NUXT_RENDERED_NOTE =
   "On this Nuxt site the content may arrive only after the page's scripts run (a route set to ssr: false, or a client-only page).";
+
+/** Vite's dev server serves these under the build assets folder; a production build never references them. */
+export const NUXT_DEV_SCRIPT =
+  /\/@vite\/client|\/_nuxt\/@id\/|\/_nuxt\/@fs\/|\/__nuxt_devtools__\//;

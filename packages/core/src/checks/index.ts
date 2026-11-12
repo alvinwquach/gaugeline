@@ -46,6 +46,7 @@ import { dataNoStamp } from "./data-no-stamp.js";
 import { dataStale } from "./data-stale.js";
 import { datasetPrivateTypes } from "./dataset-private-types.js";
 import { datasetPublic } from "./dataset-public.js";
+import { devToolsInProduction } from "./dev-tools-in-production.js";
 import { draftsLive } from "./drafts-live.js";
 import { duplicateTitle } from "./duplicate-title.js";
 import { emailDmarcMissing } from "./email-dmarc-missing.js";
@@ -87,6 +88,8 @@ import { hiddenIndexable } from "./hidden-indexable.js";
 import { hiddenLinked } from "./hidden-linked.js";
 import { hiddenPastLaunch } from "./hidden-past-launch.js";
 import { hostDuplicate } from "./host-duplicate.js";
+import { hostPreviewIndexable } from "./host-preview-indexable.js";
+import { hostPreviewNamed } from "./host-preview-named.js";
 import { hreflangBadCode } from "./hreflang-bad-code.js";
 import { hreflangNotReciprocal } from "./hreflang-not-reciprocal.js";
 import { htmlHeavy } from "./html-heavy.js";
@@ -205,6 +208,7 @@ import { sitemapDead } from "./sitemap-dead.js";
 import { sitemapHost } from "./sitemap-host.js";
 import { sitemapMissing } from "./sitemap-missing.js";
 import { sitemapRedirects } from "./sitemap-redirects.js";
+import { sourceMapsPublic } from "./source-maps-public.js";
 import { stagingIndexable } from "./staging-indexable.js";
 import { staticDevServerLive } from "./static-dev-server-live.js";
 import { staticDraftMarkerLive } from "./static-draft-marker-live.js";
@@ -277,6 +281,7 @@ export const PAGE_CHECKS = [
   dataStale,
   datasetPrivateTypes,
   datasetPublic,
+  devToolsInProduction,
   draftsLive,
   duplicateTitle,
   emailDmarcMissing,
@@ -318,6 +323,8 @@ export const PAGE_CHECKS = [
   hiddenLinked,
   hiddenPastLaunch,
   hostDuplicate,
+  hostPreviewIndexable,
+  hostPreviewNamed,
   hreflangBadCode,
   hreflangNotReciprocal,
   htmlHeavy,
@@ -439,6 +446,7 @@ export const PAGE_CHECKS = [
   sitemapHost,
   sitemapMissing,
   sitemapRedirects,
+  sourceMapsPublic,
   stagingIndexable,
   staticDevServerLive,
   staticDraftMarkerLive,
