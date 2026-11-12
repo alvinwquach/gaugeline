@@ -1,4 +1,9 @@
-import { parseResult, UNTRUSTED_CAPS, wrapFindingForAgent } from "@gaugeline/core";
+import {
+  parseResult,
+  TERMINAL_EVIDENCE_MAX,
+  UNTRUSTED_CAPS,
+  wrapFindingForAgent,
+} from "@gaugeline/core";
 import { startFixture } from "@gaugeline/fixtures";
 import { describe, expect, it } from "vitest";
 import { runBin } from "./helpers/bin.js";
@@ -14,7 +19,7 @@ describe("the built CLI against the hostile fixture: e2e", () => {
       expect(r.status).toBe(0);
       expect(r.stdout).not.toMatch(CONTROL);
       for (const line of r.stdout.split("\n"))
-        expect(line.length).toBeLessThanOrEqual(UNTRUSTED_CAPS.evidence + 8);
+        expect(line.length).toBeLessThanOrEqual(TERMINAL_EVIDENCE_MAX + 8);
       expect(r.stdout).toContain("Hidden text on the page gives orders to AI assistants");
       expect(r.stdout).toContain("This page has two titles");
       expect(r.stdout).toContain("[cut]");

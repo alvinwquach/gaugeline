@@ -30,6 +30,13 @@ const ANSI = new RegExp(
   "gu",
 );
 
+/**
+ * The most characters of one evidence line the terminal prints. Higher than the evidence cap
+ * because some evidence Gaugeline writes itself is long (a library's advisory list); a 50 KB page
+ * title is still cut here.
+ */
+export const TERMINAL_EVIDENCE_MAX = 2000;
+
 /** Removes terminal escape sequences, so a page can't recolour, clear or retitle a terminal. */
 export function stripAnsi(text: string): string {
   return text.replace(ANSI, "");
