@@ -41,10 +41,12 @@ run's clock set to 5 November 2026, version 0.1.0 prints:
     1 of 3 events in /calendar.ics have no time zone: "Darts league" DTSTART:20261119T200000
 · Some events are missing details search engines need
     "Karaoke" has no eventStatus
+· Your phone number or address is in structured data but not written on the page
+    phone in structured data, not found as text on 2 pages read
 ? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
     Mail records are read from DNS only with --dns. Rerun with --dns to check them.
 
-4 to look at, 3 to fix first.
+5 to look at, 3 to fix first.
 ```
 
 Each check that passed also prints a `✓ <id>` line, left out above. The output is asserted by
