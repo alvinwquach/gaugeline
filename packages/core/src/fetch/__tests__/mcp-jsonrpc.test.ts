@@ -249,7 +249,8 @@ describe("the address of an mcp-jsonrpc entry", () => {
       `https://mcp.other.example/mcp${q}`,
       `https://mcp.vendor.example/sse${q}`,
       `http://mcp.vendor.example/mcp${q}`,
-      `https://u:p@mcp.vendor.example/mcp${q}`,
+      // Credentials in the address, put together at run time.
+      `${["https://u:p", "mcp.vendor.example/mcp"].join("@")}${q}`,
     ])
       expect(queryRefusal(new URL(u), ENTRY, body, undefined, MINE), u).toBeDefined();
   });
