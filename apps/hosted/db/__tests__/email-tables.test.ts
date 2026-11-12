@@ -1,3 +1,4 @@
+// check-community: allow-email (invented addresses on the reserved .test domain, for the mail sink)
 /**
  * The morning email's two tables (migration 0006): a person reads and changes only their own setting, the
  * send log is the server's alone, the address shape is checked by the database, and removing a member
