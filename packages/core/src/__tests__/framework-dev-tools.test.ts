@@ -29,6 +29,17 @@ describe("frameworkCoversDevTools", () => {
       ),
     ],
     [
+      "Remix",
+      page(`<script>window.__reactRouterContext = {"basename":"/","ssr":true};</script>${VITE}`),
+    ],
+    ["Qwik", page('<html q:container="paused" q:render="ssr-dev"><body>Hi</body></html>')],
+    [
+      "SolidStart",
+      page(
+        '<script>window._$HY||(_$HY={events:[]});</script><script src="/_build/@fs/app/entry-client.tsx"></script>',
+      ),
+    ],
+    [
       "Eleventy",
       page(
         '<meta name="generator" content="Eleventy v3.0.0"><script src="/.11ty/reload-client.js"></script>',

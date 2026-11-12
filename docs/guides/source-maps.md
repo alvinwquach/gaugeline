@@ -39,8 +39,8 @@ Gaugeline reads what the live page already says. It never guesses an address.
 A file cut at the size cap, a map that answers 401, 403, 429 or a server error, and a map larger than
 the cap are listed as could not check. They are never a pass.
 
-The framework packs keep their own dev-tool checks (Astro, SvelteKit, Gatsby, Angular, Hydrogen and the
-static site generators) for markers that only mean something on that framework. These two are the
+The framework packs keep their own dev-tool checks (Astro, SvelteKit, Gatsby, Angular, Hydrogen, Remix,
+Qwik, SolidStart and the static site generators) for markers that only mean something on that framework. These two are the
 generic ones. So that a site is not told the same thing twice, `dev-tools-in-production` stays quiet
 on a page where one of those checks already reports the development server or its tools; on every
 other page (a plain site, a Next.js site, or a framework page that check finds nothing on) it still

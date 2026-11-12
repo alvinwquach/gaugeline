@@ -31,6 +31,8 @@ describe("development tools: the generic check steps aside for a framework's own
     ["astro-like", "The live Astro site is serving its development tools"],
     ["sveltekit-dev", "The live site is a development server"],
     ["hydrogen-dev", "The live Hydrogen store is a development server"],
+    ["remix-dev", "The live Remix site is a development server"],
+    ["qwik-dev", "The live Qwik or SolidStart site is a development server"],
   ])("%s: the pack's own check reports it once", async (name, title) => {
     const text = await run(name);
     expect(text).toContain(`✗ ${title}\n`);
