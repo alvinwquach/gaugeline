@@ -529,6 +529,42 @@ writes a key, never replaces a file that exists unless you add `--force`, and wr
 you ran it in. `--dry-run` prints the files and writes nothing. An example from a pop-up bar on WordPress
 with a Formspree form: [gaugeline init](guides/init.md).
 
+### The changes command
+
+`gaugeline changes --help` prints:
+
+```text title=Output
+Usage: gaugeline changes <site> [--since <date|run-id>] [options]
+
+For each finding that is new since the run before (or since a date or run id),
+show what changed on the page and what the records say changed it: a content
+edit in the content system (with the editor's name as it shows it), a deploy on
+Vercel or Netlify (with the commit range), both, or unknown. The label is
+evidence, never a verdict. Reads the runs that --since last saves in
+.gaugeline/runs, and GETs the content system's history and the host's
+deployment list when gaugeline.changes.json names them. Read only; never
+guesses an author. For this command --since takes a date such as 2026-11-01
+or a run id such as r-20261101T100000Z.
+
+Options:
+      --json             Print the result as JSON on stdout, and nothing else
+      --since <value>    Findings that appeared after this date (2026-11-01) or
+                         run id (r-20261101T100000Z)
+      --quiet            Print only results and errors
+      --verbose          Show each request, and technical detail when something
+                         goes wrong
+  -h, --help             Show this help and exit
+  -v, --version          Print the version and exit
+
+Exit codes: 0 ran, 2 could not run
+```
+
+`gaugeline changes <site>` lists the findings that are new since the run before, or since a date or run id, and for each
+what changed on the page and what the content system's history and the host's deployments say about when. It reads the
+runs that `--since last` saves and, only when `gaugeline.changes.json` names them, makes `GET` requests to Sanity's history
+and to Vercel or Netlify. The label is evidence, never a verdict. An example from a pop-up bar:
+[What changed, and who changed it](guides/what-changed.md).
+
 ### The deploy-gate command
 
 `gaugeline deploy-gate --help` prints:
