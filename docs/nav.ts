@@ -115,6 +115,7 @@ export const UNLISTED: NavPage[] = [
   { slug: "guides/served-libraries", title: "Served libraries: the old jQuery nobody remembers" },
   { slug: "guides/init", title: "gaugeline init: start from what the site is built on" },
   { slug: "guides/deploy-gates", title: "Deploy gates: check a preview before it goes live" },
+  { slug: "guides/vercel-gate", title: "Hold a Vercel deploy on Gaugeline's result" },
   {
     slug: "guides/image-optimizers",
     title: "Open image optimizers: who can use your site to resize images",
