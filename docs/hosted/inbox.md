@@ -130,7 +130,7 @@ job carries that payload text, its hash and the decision's id, and the worker re
 does not hash to the approval. Your worker claims it and runs the writer
 package with your own credentials. The writer may only open a pull request on a new branch, create a
 content-system draft, or create a mailbox draft; it never merges, publishes or sends. See
-[What it can and can't write](../writes.md#drafts-it-writes-after-you-approve).
+[What it can and can't write](../writes.md#fixes-you-approve-hosted).
 
 Status: the inbox, the decision log and the enqueue are built (`apps/hosted/inbox/inbox.ts`). The jobs
 table arrives with the nightly queue (G36); until then the enqueue is an interface with an in-memory

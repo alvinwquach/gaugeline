@@ -16,22 +16,6 @@ A fair question, asked early by anyone who has handed a tool credentials before:
 | SQL                 | yes  | never                  | SELECT and catalogue reads only: counts, constraints, indexes, row-level security state, migration state. No DDL, no DML. A configured Postgres or Supabase source is read through a read-only transaction ([how](./connectors/postgres.md)).                                                                                                                               |
 | Webhooks and queues | yes  | never                  | Reads delivery history and queue depth: `gaugeline platform --webhooks` reads Stripe's webhook endpoints and the events that were never delivered ([Paid downloads and delivery](delivery.md#webhooks-that-quietly-stopped)). It never enqueues, replays or retries on your behalf.                                                                                         |
 
-## Drafts it writes after you approve
-
-The checker never writes. In the hosted version, an agent may propose a change as a draft, and a person in
-your agency approves it in [the inbox](hosted/inbox.md). Only then does a job in **your own worker, with
-your own credentials**, create one draft in your own system (ADR-0010, "approve-then-act writes"):
-
-| Kind           | What it creates                                 | What it never does                 |
-| -------------- | ----------------------------------------------- | ---------------------------------- |
-| `pull_request` | A new branch and a pull request on GitHub       | Merge, push to your default branch |
-| `sanity_draft` | A Sanity draft document (`drafts.` id)          | Publish, unpublish, delete         |
-| `email`        | A Gmail draft (the `gmail.drafts.create` scope) | Send                               |
-
-Nothing changes a live field. The hosted service never holds a write credential, the agent's database
-role cannot record an approval, and a client viewer cannot approve. Protect your default branch on
-GitHub: the token that opens a pull request can also merge one, and Gaugeline never asks it to.
-
 ## What it does instead of writing
 
 - **Static checks on the write path.** A patch setting a field no type declares, a create missing a required field, a migration with no rollback, writes that aren't idempotent, two routes writing the same field.
@@ -101,7 +85,7 @@ The test (`packages/cli/src/__tests__/page.e2e.test.ts`) records every request, 
 
 The test (`packages/cli/src/__tests__/query-baseline.test.ts`) fails if the file holds the token or any id, slug or title of a seeded dataset, and checks that a failed write leaves the folder as it was.
 
-## Fixes you approve (hosted, coming with the drafts inbox)
+## Fixes you approve (hosted)
 
 The hosted inbox will turn an approved fix into a draft in your own systems, never a live change ([ADR-0010](https://github.com/alvinwquach/gaugeline/blob/main/docs/adr/0010-approve-then-act-writes.md)). A person approves each one; a job in your own worker applies it with your own key; the hosted service never holds a key that can write. A clinic's wrong opening hours become a Sanity draft your editor publishes; a missing redirect for a bar's old menu page becomes a pull request your developer merges.
 
@@ -112,3 +96,7 @@ The hosted inbox will turn an approved fix into a draft in your own systems, nev
 | An email draft to your client | Your own Gmail mailbox | Edits and presses Send   |
 
 It never merges, publishes, sends or deletes. On GitHub it pushes one new branch and opens a pull request, and nothing else. **Protect your default branch first** (required reviews and required status checks): a token that can open a pull request can also merge one unless branch protection forbids it.
+
+Approvals happen in [the inbox](hosted/inbox.md). The agent's database role cannot record an approval, a
+client viewer cannot approve, a draft is decided once, and the approval row carries the SHA-256 of the
+exact payload approved, which the worker checks before it writes.
