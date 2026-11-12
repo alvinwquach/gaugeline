@@ -56,7 +56,7 @@ describe("the body", () => {
     expect(out).toContain("`@acme/owners`");
     expect(outsideCode).not.toContain("@");
     expect(prBody("thanks @octocat, and @a-b/c_d.e!")).not.toMatch(/(^|[^`])@octocat/u);
-    expect(prBody("x@y.example").replace(/`[^`]*`/gu, "")).not.toContain("@");
+    expect(prBody("ping@desk").replace(/`[^`]*`/gu, "")).not.toContain("@");
   });
 
   it("shows an HTML comment as text and leaves no raw HTML", () => {

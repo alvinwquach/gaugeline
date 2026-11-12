@@ -16,7 +16,7 @@ describe("isSafeRepoPath: what a draft may name", () => {
     "public/robots.txt",
     "next.config.js",
     "src/pages/[slug].tsx",
-    "docs/guide@2.md",
+    "docs/guide@v2/notes.md",
     "a.b/c.d",
     "README.md",
     "lib/shell.ts",
