@@ -223,7 +223,7 @@ describe("Kontent.ai: what is never sent", () => {
     expect(seen).toEqual([]);
   });
 
-  it.each(["abc def", "abc\r\nX-Evil: 1", "café", "abc\tdef"])(
+  it.each(["abc def", "abc\r\nX-Evil: 1", "caf\u00E9", "abc\tdef"])(
     "a secure access key of %j asks nothing",
     async (key) => {
       const { adapter, seen } = over({ env: { ...ENV, KONTENT_SECURE_ACCESS_KEY: key } });
@@ -682,6 +682,26 @@ describe("Kontent.ai: the preview read (a probing read)", () => {
     expect(got.entries).toHaveLength(1);
     expect(got.unlisted).toBe(1);
     expect(got.withoutPattern).toEqual([{ type: "offer", count: 1 }]);
+  });
+
+  it("a slug that is not plain, or a type that is not a codename, never reaches a finding", async () => {
+    const odd = FERNHILL.map((i) =>
+      i.codename === "closing_sale"
+        ? {
+            ...i,
+            elements: { ...i.elements, url: { type: "url_slug", value: "sale\u001b[2J\nrow" } },
+          }
+        : i.codename === "old_price_list"
+          ? { ...i, type: "Odd Type\n" }
+          : i,
+    );
+    const got = await over({ env: WITH_KEYS, fixture, items: odd }).adapter.unpublishedReading();
+    expect(got.state).toBe("read");
+    expect(got.entries.find((e) => e.id.endsWith("0004"))?.slug).toBeUndefined();
+    expect(got.unclear).toBe(1);
+    const text = JSON.stringify(got);
+    expect([...text].some((c) => c.charCodeAt(0) < 0x20)).toBe(false);
+    expect(text).not.toContain("Odd Type");
   });
 
   it("a slug a published item of the same type also has is recorded as shared", async () => {

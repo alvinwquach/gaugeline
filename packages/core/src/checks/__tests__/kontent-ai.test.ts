@@ -194,14 +194,15 @@ describe("Kontent.ai check: an item that is not published has a live page", () =
   });
 
   it("no Preview key, or a refused one, is could-not-check and never a pass, and no page is asked", async () => {
-    for (const env of [
+    const envs: Record<string, string>[] = [
       { KONTENT_ENVIRONMENT_ID: ENVIRONMENT_ID, KONTENT_SECURE_ACCESS_KEY: SECURE },
       {
         KONTENT_ENVIRONMENT_ID: ENVIRONMENT_ID,
         KONTENT_SECURE_ACCESS_KEY: SECURE,
         KONTENT_PREVIEW_API_KEY: testKey("kontent-wrong-preview"),
       },
-    ]) {
+    ];
+    for (const env of envs) {
       const { reading: r, seen } = await reading({ env, live: ["/journal/closing-sale"] });
       const out = await run(r);
       expect(seen).toEqual([]);
