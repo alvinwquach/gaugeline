@@ -84,3 +84,15 @@ The test (`packages/cli/src/__tests__/page.e2e.test.ts`) records every request, 
 - **The path is printed**, and nothing is created unless you pass `--save`. `--against` only reads.
 
 The test (`packages/cli/src/__tests__/query-baseline.test.ts`) fails if the file holds the token or any id, slug or title of a seeded dataset, and checks that a failed write leaves the folder as it was.
+
+## Fixes you approve (hosted, coming with the drafts inbox)
+
+The hosted inbox will turn an approved fix into a draft in your own systems, never a live change ([ADR-0010](https://github.com/alvinwquach/gaugeline/blob/main/docs/adr/0010-approve-then-act-writes.md)). A person approves each one; a job in your own worker applies it with your own key; the hosted service never holds a key that can write. A clinic's wrong opening hours become a Sanity draft your editor publishes; a missing redirect for a bar's old menu page becomes a pull request your developer merges.
+
+| What it writes                | Where                  | What a person still does |
+| ----------------------------- | ---------------------- | ------------------------ |
+| A branch and a pull request   | Your GitHub repository | Reviews and merges       |
+| A draft of one document       | Your Sanity dataset    | Reads and publishes      |
+| An email draft to your client | Your own Gmail mailbox | Edits and presses Send   |
+
+It never merges, publishes, sends or deletes. On GitHub it pushes one new branch and opens a pull request, and nothing else. **Protect your default branch first** (required reviews and required status checks): a token that can open a pull request can also merge one unless branch protection forbids it.

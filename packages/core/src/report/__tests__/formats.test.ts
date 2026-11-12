@@ -199,6 +199,33 @@ describe("formatSarif", () => {
     ]);
   });
 
+  it("physicalLocationFallback (off by default): every page finding gets a placeholder file, still valid SARIF", () => {
+    const f = [
+      finding(),
+      finding({ url: "https://tapas.example:8443/" }),
+      finding({
+        url: "https://tapas.example/a b/?x=1",
+        checkId: "title-short",
+        severity: "medium",
+        title: "The page title is short",
+      }),
+      finding({ source: { file: "src/app/page.tsx", line: 4 } }),
+    ];
+    const off = JSON.parse(formatSarif(result(f), opts));
+    expect(off.runs[0].results[0].locations[0].physicalLocation).toBeUndefined();
+    const text = formatSarif(result(f), { ...opts, physicalLocationFallback: true });
+    expect(validSarif(text).errors).toBe("");
+    const results = JSON.parse(text).runs[0].results;
+    const uri = (i: number) => results[i].locations[0].physicalLocation.artifactLocation.uri;
+    expect(uri(0)).toBe("gaugeline-pages/tapas.example/menu");
+    expect(uri(1)).toBe("gaugeline-pages/tapas.example/index");
+    expect(uri(2)).toBe("gaugeline-pages/tapas.example/a%20b/index");
+    expect(results[0].locations[0].physicalLocation.region).toEqual({ startLine: 1 });
+    // A real source file is never replaced, and the address stays as a logical location.
+    expect(uri(3)).toBe("src/app/page.tsx");
+    expect(results[0].locations[0].logicalLocations).toHaveLength(1);
+  });
+
   it("is the same text every time, and gives a finding the same fingerprint across runs", () => {
     const f = finding({ evidence: "GET https://tapas.example/menu answered 404 in 120 ms" });
     const a = formatSarif(result([f]), opts);
