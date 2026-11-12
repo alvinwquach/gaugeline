@@ -31,14 +31,28 @@ const EXPECT_PRIVATE: readonly string[] = ADAPTER_ENTRIES.filter(
   (e) => e.settings?.expectPrivate,
 ).map((e) => e.id);
 
+/** The adapters that take `siteName` and `languages`: they read one named site of a multi-site platform. */
+const EDGE_SITES: readonly string[] = ADAPTER_ENTRIES.filter((e) => e.settings?.edgeSite).map(
+  (e) => e.id,
+);
+
+/** A site's name as Sitecore keeps it in its configuration, and a language as Sitecore names it (en, fr-CA). */
+const SITE_NAME = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/;
+const LANGUAGE = /^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8}){0,2}$/;
+
 /** The adapters that take `privateCollections`: collections the owner says the Public role must not read. */
 const PRIVATE_COLLECTIONS: readonly string[] = ADAPTER_ENTRIES.filter(
   (e) => e.settings?.privateCollections,
 ).map((e) => e.id);
 
-/** The adapters that name a GraphQL collection for each content type (`collections`) and take `expectPublishedOnly`. */
+/** The adapters that name a GraphQL collection for each content type (`collections`): DatoCMS and Hygraph; DatoCMS also takes `expectPublishedOnly`. */
 const GRAPHQL_COLLECTIONS: readonly string[] = ADAPTER_ENTRIES.filter(
   (e) => e.settings?.graphqlCollections,
+).map((e) => e.id);
+
+/** The adapters that take `readDraftStage` (Hygraph) and not DatoCMS's `expectPublishedOnly` and `showDraftIds`. */
+const DRAFT_STAGE: readonly string[] = ADAPTER_ENTRIES.filter(
+  (e) => e.settings?.draftStageRead,
 ).map((e) => e.id);
 
 /** A GraphQL name: letters, digits and underscores, not starting with a digit. It is put into a query document, so nothing else is accepted. */
@@ -149,6 +163,11 @@ export const adaptersConfigSchema = z.strictObject({
           expectPublishedOnly: z.boolean().optional(),
           /** DatoCMS only: the check names the ids of the unpublished records it finds (at most five). Default: a count. */
           showDraftIds: z.boolean().optional(),
+          /**
+           * Hygraph only: lets the draft-stage check read the DRAFT stage (ids and slugs). A probing check: it also needs
+           * --owner-consent, a token that may read DRAFT, and a site you own or have permission to test.
+           */
+          readDraftStage: z.boolean().optional(),
           /** Content kept in a repository only: the repository's folder on this computer, relative to where the run starts. */
           path: z
             .string()
@@ -283,6 +302,13 @@ export const adaptersConfigSchema = z.strictObject({
               path: ["expectPrivate"],
               message: `"expectPrivate" belongs to the Umbraco, Joomla and Sitecore adapters, not to ${entry.id}`,
             });
+          for (const key of ["siteName", "languages"] as const)
+            if (entry[key] !== undefined && !EDGE_SITES.includes(entry.id))
+              ctx.addIssue({
+                code: "custom",
+                path: [key],
+                message: `"${key}" belongs to the Sitecore adapter, not to ${entry.id}`,
+              });
           if (entry.privateCollections !== undefined && !PRIVATE_COLLECTIONS.includes(entry.id))
             ctx.addIssue({
               code: "custom",
@@ -291,6 +317,19 @@ export const adaptersConfigSchema = z.strictObject({
             });
           for (const key of ["collections", "expectPublishedOnly", "showDraftIds"] as const)
             if (entry[key] !== undefined && !GRAPHQL_COLLECTIONS.includes(entry.id))
+              ctx.addIssue({
+                code: "custom",
+                path: [key],
+                message: `"${key}" belongs to the DatoCMS adapter, not to ${entry.id}`,
+              });
+          if (entry.readDraftStage !== undefined && !DRAFT_STAGE.includes(entry.id))
+            ctx.addIssue({
+              code: "custom",
+              path: ["readDraftStage"],
+              message: `"readDraftStage" belongs to the Hygraph adapter, not to ${entry.id}`,
+            });
+          for (const key of ["expectPublishedOnly", "showDraftIds"] as const)
+            if (entry[key] !== undefined && DRAFT_STAGE.includes(entry.id))
               ctx.addIssue({
                 code: "custom",
                 path: [key],
