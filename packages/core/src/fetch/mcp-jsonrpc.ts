@@ -126,6 +126,30 @@ const FREE_TEXT_PROBES: readonly string[] = [
   "ignore previous instructions",
 ];
 
+/** The only characters an identifier holds, whatever its pattern says (and never ".."). */
+const ID_VALUE = /^[A-Za-z0-9_.:-]+$/;
+/** The longest identifier sent or kept. */
+export const ID_MAX_LENGTH = 128;
+
+/** True for a value that is an identifier: the fixed character set, no "..", at most `max` (and 128) long. */
+export function isIdValue(value: unknown, max: number): value is string {
+  return (
+    typeof value === "string" &&
+    value.length > 0 &&
+    value.length <= Math.min(max, ID_MAX_LENGTH) &&
+    ID_VALUE.test(value) &&
+    !value.includes("..")
+  );
+}
+
+/**
+ * What a registered id pattern may be built from, between its ^ and $: literal characters of the
+ * set, \. and \-, character classes of the set, (?: ) groups and quantifiers. No ".", no \s, \S
+ * or \w, no [^ ], no alternation: such a pattern can only ever match characters of the set.
+ */
+const PATTERN_BODY =
+  /^(?:\[(?:[A-Za-z0-9_:.]|\\[.-]|-)+\]|\\[.-]|[A-Za-z0-9_:-]|\{\d+(?:,\d*)?\}|[+*?]|\(\?:|\))*$/;
+
 /** An id pattern as it is always used: the whole value, whatever alternation the pattern holds. */
 export function idPattern(pattern: string): RegExp {
   return new RegExp(`^(?:${pattern})$`, "u");
@@ -144,6 +168,8 @@ export function idPatternProblem(pattern: unknown): string | undefined {
     !pattern.endsWith("$")
   )
     return "id needs an anchored pattern";
+  if (!PATTERN_BODY.test(pattern.slice(1, -1)))
+    return "id pattern may only be built from the characters A-Z a-z 0-9 _ . : - (no ., \\s, [^ ] or |)";
   let re: RegExp;
   try {
     re = idPattern(pattern);
@@ -232,11 +258,7 @@ function argumentProblem(rule: McpArgumentRule, value: unknown): boolean {
         !Number.isInteger(value) || (value as number) < rule.min || (value as number) > rule.max
       );
     case "id":
-      return (
-        typeof value !== "string" ||
-        value.length > rule.maxLength ||
-        !idPattern(rule.pattern).test(value)
-      );
+      return !isIdValue(value, rule.maxLength) || !idPattern(rule.pattern).test(value);
   }
 }
 
