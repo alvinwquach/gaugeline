@@ -87,7 +87,14 @@ export function agreedAlt(uses: readonly StudioUse[] | undefined): Agreed<boolea
   if (uses === undefined) return { ok: false, reason: "its use in the dataset was not read" };
   if (uses.length === 0)
     return { ok: false, reason: "no published document uses it as an image value" };
-  const withAlt = uses.filter((u) => u.alt).length;
+  // Alt text stored as a localized or structured value is not read: never taken for none, never for text.
+  if (uses.some((u) => u.alt === "unknown"))
+    return {
+      ok: false,
+      reason:
+        "its alt text is stored as a localized or structured value, which Gaugeline does not read",
+    };
+  const withAlt = uses.filter((u) => u.alt === "text").length;
   if (withAlt !== 0 && withAlt !== uses.length)
     return {
       ok: false,
@@ -95,6 +102,24 @@ export function agreedAlt(uses: readonly StudioUse[] | undefined): Agreed<boolea
         "it is used in several places and only some have alt text, so Gaugeline cannot tell which one this picture is",
     };
   return { ok: true, value: withAlt > 0 };
+}
+
+/**
+ * Whether asking for `w` by `h` cuts the picture (after the editor's crop) to a different shape: true when the
+ * aspect ratios differ by more than ASPECT_DIFFERS. Undefined when it cannot be judged: a crop that leaves no
+ * width or height (its edges add up to the whole picture or more), or a size that is not positive.
+ */
+export function shapeDiffers(
+  image: { width: number; height: number },
+  crop: { left: number; top: number; right: number; bottom: number } | undefined,
+  w: number,
+  h: number,
+): boolean | undefined {
+  const shownW = image.width * (1 - (crop ? crop.left + crop.right : 0));
+  const shownH = image.height * (1 - (crop ? crop.top + crop.bottom : 0));
+  if (!(shownW > 0) || !(shownH > 0) || !(w > 0) || !(h > 0)) return undefined;
+  const have = shownW / shownH;
+  return Math.abs(w / h - have) / have > ASPECT_DIFFERS;
 }
 
 export const cropIsSet = (u: StudioUse): boolean =>
@@ -141,7 +166,7 @@ export function reportUnread(
   return true;
 }
 
-/** An upload of 500 KB (512,000 bytes) or more is heavy; of 1 MB (1,048,576 bytes) or more, huge. Whole bytes. */
+/** An upload of more than 500 KB (512,000 bytes) is heavy; of more than 1 MB (1,048,576 bytes), huge: strictly over, as images-heavy has it. 1024-based, whole bytes. */
 export const SANITY_HEAVY_BYTES = 500 * 1024;
 export const SANITY_HUGE_BYTES = 1024 * 1024;
 
@@ -173,7 +198,7 @@ export function heavyUploads(
   const sizes = new Map<string, number>();
   for (const id of uploads.keys()) {
     const size = read.assets.get(id)?.size;
-    if (size !== undefined && size >= SANITY_HEAVY_BYTES) sizes.set(id, size);
+    if (size !== undefined && size > SANITY_HEAVY_BYTES) sizes.set(id, size);
   }
   return [...sizes]
     .sort(([ia, a], [ib, b]) => b - a || (ia < ib ? -1 : ia > ib ? 1 : 0))

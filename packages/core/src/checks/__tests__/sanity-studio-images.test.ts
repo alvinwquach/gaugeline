@@ -28,6 +28,7 @@ import {
   heavyUploads,
   hotspotIsSet,
   pageUploads,
+  shapeDiffers,
 } from "../images/sanity-studio.js";
 import { sanityImageAltUnrendered } from "../sanity-image-alt-unrendered.js";
 import { sanityImageCropIgnored } from "../sanity-image-crop-ignored.js";
@@ -61,19 +62,35 @@ function ctxWith(r: SanityImageRead | undefined) {
   return { ctx, notes };
 }
 
-const hotspotAt = (x: number, y: number): StudioUse => ({ hotspot: { x, y }, alt: false });
+const hotspotAt = (x: number, y: number): StudioUse => ({ hotspot: { x, y }, alt: "none" });
 const cropOf = (left: number, right: number): StudioUse => ({
   crop: { left, top: 0, right, bottom: 0 },
-  alt: false,
+  alt: "none",
 });
 
 describe("studio helpers: unit", () => {
   it("a crop edge under 1 percent and a hotspot within 2 percent of the middle are not set", () => {
     expect(cropIsSet(cropOf(0.009, 0))).toBe(false);
     expect(cropIsSet(cropOf(0.01, 0))).toBe(true);
-    expect(cropIsSet({ alt: true })).toBe(false);
+    expect(cropIsSet({ alt: "text" })).toBe(false);
     expect(hotspotIsSet(hotspotAt(0.51, 0.49))).toBe(false);
     expect(hotspotIsSet(hotspotAt(0.5, 0.52))).toBe(true);
+  });
+
+  it("shapeDiffers: the asked shape against the cropped picture; a crop that leaves nothing is undefined, not a guess", () => {
+    const img = { width: 4000, height: 3000 };
+    expect(shapeDiffers(img, undefined, 800, 800)).toBe(true);
+    expect(shapeDiffers(img, undefined, 800, 600)).toBe(false);
+    expect(shapeDiffers(img, { left: 0.25, top: 0, right: 0.25, bottom: 0 }, 400, 600)).toBe(false);
+    for (const crop of [
+      { left: 0.5, top: 0, right: 0.5, bottom: 0 },
+      { left: 0.7, top: 0, right: 0.5, bottom: 0 },
+      { left: 0, top: 0.6, right: 0, bottom: 0.4 },
+      { left: 0, top: 1, right: 0, bottom: 1 },
+    ])
+      expect(shapeDiffers(img, crop, 800, 800)).toBeUndefined();
+    expect(shapeDiffers({ width: 0, height: 3000 }, undefined, 800, 800)).toBeUndefined();
+    expect(shapeDiffers(img, undefined, 0, 800)).toBeUndefined();
   });
 
   it("agreedUse: none, one, identical and conflicting placements", () => {
@@ -84,10 +101,13 @@ describe("studio helpers: unit", () => {
   });
 
   it("agreedAlt: all, none, and mixed", () => {
-    expect(agreedAlt([{ alt: true }, { alt: true }])).toEqual({ ok: true, value: true });
-    expect(agreedAlt([{ alt: false }])).toEqual({ ok: true, value: false });
-    expect(agreedAlt([{ alt: true }, { alt: false }]).ok).toBe(false);
+    expect(agreedAlt([{ alt: "text" }, { alt: "text" }])).toEqual({ ok: true, value: true });
+    expect(agreedAlt([{ alt: "none" }])).toEqual({ ok: true, value: false });
+    expect(agreedAlt([{ alt: "text" }, { alt: "none" }]).ok).toBe(false);
     expect(agreedAlt([]).ok).toBe(false);
+    const unknown = agreedAlt([{ alt: "unknown" }, { alt: "text" }]);
+    expect(unknown).toMatchObject({ ok: false });
+    expect(agreedAlt([{ alt: "unknown" }])).toMatchObject({ ok: false });
   });
 
   it("formatBytes uses whole numbers and tenths by integer arithmetic", () => {
@@ -136,7 +156,7 @@ describe("sanity-image-heavy: unit", () => {
       ["team", 1_480_000],
       ["banner", 1_480_000],
       ["gallery", 180_000],
-      ["split", 512_000],
+      ["split", 512_001],
     );
     const { ctx, notes } = ctxWith(r);
     const out = await sanityImageHeavy.run(p, ctx);
@@ -147,6 +167,31 @@ describe("sanity-image-heavy: unit", () => {
     );
     expect(out[0]?.severity).toBe("medium");
     expect(notes).toEqual([]);
+  });
+
+  it("the thresholds are strictly over, as images-heavy has them: 512,000 and 1,048,576 bytes are not heavy or huge", async () => {
+    const p = page({
+      images: [
+        img(harbourUrl("menu", "?w=1")),
+        img(harbourUrl("team", "?w=1")),
+        img(harbourUrl("banner", "?w=1")),
+      ],
+    });
+    const at = ctxWith(sizes(["menu", 512_000], ["team", 1_048_576], ["banner", 511_999]));
+    const out = await sanityImageHeavy.run(p, at.ctx);
+    // 1,048,576 is over 500 KB but not over 1 MB; 512,000 is not over 500 KB; 511,999 is neither.
+    expect(out[0]?.evidence).toBe(
+      "1 Sanity upload used on this page is heavy (1 between 500 KB and 1 MB), largest first: 3a9f0c1d-4000x3000.jpg 1.0 MB",
+    );
+    const above = ctxWith(sizes(["menu", 512_001], ["team", 1_048_577], ["banner", 511_999]));
+    const out2 = await sanityImageHeavy.run(p, above.ctx);
+    expect(out2[0]?.evidence).toContain("(1 over 1 MB, 1 between 500 KB and 1 MB)");
+    expect(
+      await sanityImageHeavy.run(
+        page({ images: [img(harbourUrl("menu", "?w=1"))] }),
+        ctxWith(sizes(["menu", 512_000])).ctx,
+      ),
+    ).toEqual([]);
   });
 
   it("an upload just under 500 KB, and one with no size, do not count; the one with no size is could-not-check", async () => {
@@ -276,7 +321,7 @@ describe("sanity-image-crop-ignored: unit", () => {
         {
           crop: { left: 0.25, top: 0, right: 0.25, bottom: 0 },
           hotspot: { x: 0.25, y: 0.3 },
-          alt: false,
+          alt: "none",
         },
       ],
     };
@@ -294,7 +339,7 @@ describe("sanity-image-crop-ignored: unit", () => {
         img(harbourUrl("gone", "?w=400")),
       ],
       {
-        logo: { uses: [{ alt: true }] },
+        logo: { uses: [{ alt: "text" }] },
         split: { uses: [cropOf(0.2, 0.2), cropOf(0, 0)] },
         gone: { uses: [] },
       },
@@ -352,9 +397,9 @@ describe("sanity-image-alt-unrendered: unit", () => {
         img(harbourUrl("gallery", "?w=600"), "Crowd"),
       ],
       {
-        menu: { uses: [{ alt: true }] },
-        team: { uses: [{ alt: true }] },
-        gallery: { uses: [{ alt: true }] },
+        menu: { uses: [{ alt: "text" }] },
+        team: { uses: [{ alt: "text" }] },
+        gallery: { uses: [{ alt: "text" }] },
       },
     );
     expect(r.out[0]?.evidence).toBe(
@@ -364,7 +409,7 @@ describe("sanity-image-alt-unrendered: unit", () => {
   });
 
   it("a blank alt on the page (spaces) counts as not rendered; alt written on the page passes", async () => {
-    const studio = { uses: [{ alt: true }] };
+    const studio: AssetRead = { uses: [{ alt: "text" }] };
     expect(
       (await run([img(harbourUrl("menu", "?w=1"), "   ")], { menu: studio })).out,
     ).toHaveLength(1);
@@ -375,13 +420,26 @@ describe("sanity-image-alt-unrendered: unit", () => {
 
   it("no alt in Studio means nothing is unrendered, even when the page has none", async () => {
     expect(
-      (await run([img(harbourUrl("logo", "?w=1"), "")], { logo: { uses: [{ alt: false }] } })).out,
+      (await run([img(harbourUrl("logo", "?w=1"), "")], { logo: { uses: [{ alt: "none" }] } })).out,
     ).toEqual([]);
+  });
+
+  it("alt stored as a localized or structured value is could-not-check, never a finding and never a pass", async () => {
+    const r = await run([img(harbourUrl("menu", "?w=1"), "")], {
+      menu: { uses: [{ alt: "unknown" }] },
+    });
+    expect(r.out).toEqual([]);
+    expect(r.notes).toEqual([
+      [
+        URL_PAGE,
+        "1 upload: its alt text is stored as a localized or structured value, which Gaugeline does not read",
+      ],
+    ]);
   });
 
   it("an upload used in several places where only some have alt text is could-not-check", async () => {
     const r = await run([img(harbourUrl("split", "?w=1"), "")], {
-      split: { uses: [{ alt: true }, { alt: false }] },
+      split: { uses: [{ alt: "text" }, { alt: "none" }] },
     });
     expect(r.out).toEqual([]);
     expect(r.notes[0]?.[1]).toContain("only some have alt text");

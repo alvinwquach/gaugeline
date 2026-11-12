@@ -51,10 +51,12 @@ token, a private one does, and a token with more than the Viewer role is used as
   Sanity cuts around the middle and the heads of a team photo go. Fix: build the address with the image value
   (`urlFor(image).width(800).height(600).url()`), not just its asset.
 - `sanity-image-alt-unrendered`: the editor wrote alt text in Studio and the page's `img` has no `alt` attribute or
-  an empty one. Only a field named `alt` on the image value is read. Fix: load the field and pass it on, or clear
-  it in Studio if the picture is decoration.
-- `sanity-image-heavy`: how many of the uploads the page uses are over 500 KB (512,000 bytes) and over 1 MB
-  (1,048,576 bytes), with the list, largest first. The size is the upload's `size` in bytes, not what the visitor
+  an empty one. Only the fields `alt` and `altText` on the image value are read, and only as plain text: alt text
+  stored as a localized value (`{en, fr}`) or any other structure is could not check, never a finding and never a pass.
+  Fix: load the field and pass it on, or clear it in Studio if the picture is decoration.
+- `sanity-image-heavy`: how many of the uploads the page uses are over 500 KB and over 1 MB, with the list, largest
+  first. The sizes are 1024-based, as in `images-heavy`: 500 KB is 512,000 bytes and 1 MB is 1,048,576 bytes, and a
+  file of exactly that size is not over. The size is the upload's `size` in bytes, not what the visitor
   downloads: a resized address is much smaller, and the list says which uploads the page serves whole.
 
 ### What is read, and how
@@ -65,7 +67,7 @@ against the shape `image-<hash>-<width>x<height>-<format>` first; nothing else f
 
 - the `size` of the asset documents (40 uploads to a request);
 - the published documents that refer to each upload (10 uploads to a request, at most 30 documents a request), from
-  which only the image values' crop, hotspot and a yes or no for "has alt text" are kept. The alt text itself is
+  which only the image values' crop, hotspot and one of "text", "none" or "unknown" for the alt text are kept. The alt text itself is
   never kept, printed or stored, and neither is any other field.
 
 A run reads at most 100 uploads of the page. Anything it cannot read is `could not check`, never a pass: an
@@ -114,7 +116,7 @@ board and put the hotspot on the faces in the team photo, but the front end writ
 6 to look at, none to fix first.
 ```
 
-Each check that passed also prints a `✓ <id>` line, left out above. Run with the `gaugeline.adapters.json` above
+In the heavy line the sizes are 1024-based: "over 500 KB" is over 512,000 bytes and "over 1 MB" is over 1,048,576 bytes. Each check that passed also prints a `✓ <id>` line, left out above. Run with the `gaugeline.adapters.json` above
 and `SANITY_PROJECT_ID`, `SANITY_DATASET` and `SANITY_TOKEN` set. The page's command needs a Sanity project, so the
 docs runner cannot run it; `packages/cli/src/__tests__/sanity-studio-images.test.ts` runs it against the invented
 dataset and asserts the block above.

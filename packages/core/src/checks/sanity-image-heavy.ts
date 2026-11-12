@@ -25,7 +25,7 @@ export const sanityImageHeavy = defineCheck<PageSnapshot>({
   what: "Pictures the page uses are stored in Sanity at more than 500 KB, and some at more than 1 MB: a count, and the list, largest first.",
   why: "The upload is what an unresized address delivers whole, what every new size is made from, and what the client's Sanity plan stores and serves. A 4 MB phone photo in a hero costs the visitor seconds on mobile data and the client bandwidth on every view.",
   fix: "Re-export the largest files at the width the site needs (about 2000 px for a full-width banner) and re-upload them, and ask for a width and auto=format in every address so the visitor never downloads the upload as it was. Ask editors to resize before they upload.",
-  tech: `reads the Sanity dataset named by SANITY_PROJECT_ID and SANITY_DATASET with GET (published perspective, a Viewer token in a header): the size field, in whole bytes, of the asset document of each upload the page's image addresses name (at most 100 per run, in groups of 40); an upload is heavy at ${SANITY_HEAVY_BYTES} bytes (500 KB) or more and huge at ${SANITY_HUGE_BYTES} bytes (1 MB) or more; the list is sorted by size, largest first, then by asset id; it is the upload's size, not the size delivered, so a resized address is much smaller (the evidence says which uploads the page serves whole)`,
+  tech: `reads the Sanity dataset named by SANITY_PROJECT_ID and SANITY_DATASET with GET (published perspective, a Viewer token in a header): the size field, in whole bytes, of the asset document of each upload the page's image addresses name (at most 100 per run, in groups of 40); an upload is heavy when it is more than ${SANITY_HEAVY_BYTES} bytes (500 KB, 1024-based, the threshold images-heavy uses) and huge when it is more than ${SANITY_HUGE_BYTES} bytes (1 MB, 1024-based), so a file of exactly 512,000 bytes is not heavy; the list is sorted by size, largest first, then by asset id; it is the upload's size, not the size delivered, so a resized address is much smaller (the evidence says which uploads the page serves whole)`,
   async run(page, ctx) {
     const uploads = pageUploads(page);
     if (uploads.size === 0) return [];
@@ -34,7 +34,7 @@ export const sanityImageHeavy = defineCheck<PageSnapshot>({
     if (!reportUnread(ctx, page, read, "size")) return [];
     const heavy = heavyUploads(uploads, read);
     if (heavy.length === 0) return [];
-    const huge = heavy.filter((h) => h.size >= SANITY_HUGE_BYTES).length;
+    const huge = heavy.filter((h) => h.size > SANITY_HUGE_BYTES).length;
     const heavyOnly = heavy.length - huge;
     const named = heavy.slice(0, LISTED).map((h) => {
       const first = uploads.get(h.id)?.images[0]?.candidates[0]?.image;

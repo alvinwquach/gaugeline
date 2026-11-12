@@ -49,8 +49,12 @@ export interface StudioUse {
   crop?: { left: number; top: number; right: number; bottom: number };
   /** The hotspot's centre, as fractions of the width and height (0 to 1), when there is one. */
   hotspot?: { x: number; y: number };
-  /** Whether the value has an `alt` field with text in it. The text itself is never kept. */
-  alt: boolean;
+  /**
+   * Whether the value has alt text: "text" for a non-blank string in `alt` or `altText`, "none" when neither is
+   * there (or blank), "unknown" when one holds something that is not plain text (a localized `{en, fr}` object,
+   * a list, a number): that is not read, and it is never taken for no alt text. The text itself is never kept.
+   */
+  alt: "text" | "none" | "unknown";
 }
 
 /** What was read of one upload. A part that could not be read has its reason and no value. */
@@ -90,6 +94,18 @@ const wait = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms)
 
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   v !== null && typeof v === "object" && !Array.isArray(v);
+
+/** The alt state of an image value: its `alt` and `altText` fields, reduced at once to one of three words. */
+function altOf(value: Record<string, unknown>): StudioUse["alt"] {
+  let unknown = false;
+  for (const key of ["alt", "altText"] as const) {
+    const v = value[key];
+    if (typeof v === "string") {
+      if (v.trim() !== "") return "text";
+    } else if (v !== undefined && v !== null) unknown = true;
+  }
+  return unknown ? "unknown" : "none";
+}
 
 const fraction = (v: unknown): number | undefined =>
   typeof v === "number" && Number.isFinite(v) && v >= 0 && v <= 1 ? v : undefined;
@@ -147,7 +163,7 @@ export function studioUses(
             ? { crop: { left, top, right, bottom } }
             : {}),
           ...(x !== undefined && y !== undefined ? { hotspot: { x, y } } : {}),
-          alt: typeof value.alt === "string" && value.alt.trim() !== "",
+          alt: altOf(value),
         },
       });
     }

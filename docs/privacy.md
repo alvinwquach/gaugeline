@@ -737,7 +737,7 @@ GET https://<project>.api.sanity.io/v2021-10-21/data/query/<dataset>?query=*[_ty
 GET https://<project>.api.sanity.io/v2021-10-21/data/query/<dataset>?query=*[_type != "sanity.imageAsset" && (references("image-...") || ...)][0...31]&perspective=published
 ```
 
-The second answer holds whole documents, because an image value can sit at any depth. Gaugeline reads each one in memory, keeps only the crop and hotspot numbers of the image values that point at the uploads and a yes or no for whether the value has alt text, and drops the document. No text, no title and no other field is kept, printed or stored. The asset ids put into a query are rebuilt from the page's image addresses and tested against a strict pattern first. What the findings mean: [Sanity images](/docs/guides/sanity-images#the-checks-that-read-your-dataset).
+The second answer holds whole documents, because an image value can sit at any depth. The reader looks through each one for the image values that point at the uploads and keeps only, in its own state, the crop numbers, the hotspot numbers and one of "text", "none" or "unknown" for the alt text: no text, no title and no other field is kept, printed or stored by the reader. The fetcher holds the raw answers in memory for the length of the run, as it does for every request, and they are never written to disk or logged; at most 30 documents of at most 5 MB in all are asked for in one request. The asset ids put into a query are rebuilt from the page's image addresses and tested against a strict pattern first. What the findings mean: [Sanity images](/docs/guides/sanity-images#the-checks-that-read-your-dataset).
 
 ### Generated content (gaugeline query --totals and --refs)
 

@@ -9,6 +9,7 @@ import {
   hotspotIsSet,
   pageUploads,
   reportUnread,
+  shapeDiffers,
   usesStudioParams,
 } from "./images/sanity-studio.js";
 import { assetLabel } from "./images/sanity-url.js";
@@ -66,13 +67,14 @@ export const sanityImageCropIgnored = defineCheck<PageSnapshot>({
           cssOnly.push(label);
           break;
         }
-        const image = asked.c.image;
-        const crop = studio.crop;
-        const shownW = image.width * (1 - (crop ? crop.left + crop.right : 0));
-        const shownH = image.height * (1 - (crop ? crop.top + crop.bottom : 0));
-        const want = asked.w / asked.h;
-        const have = shownW / shownH;
-        if (Math.abs(want - have) / have > ASPECT_DIFFERS) {
+        const differs = shapeDiffers(asked.c.image, studio.crop, asked.w, asked.h);
+        if (differs === undefined) {
+          const reason =
+            "its crop in Studio leaves no width or height, so Gaugeline cannot judge the shape";
+          unclear.set(reason, (unclear.get(reason) ?? 0) + 1);
+          break;
+        }
+        if (differs) {
           found.push(
             `${label} (hotspot set in Studio, cut to ${asked.w} by ${asked.h} around the middle)`,
           );

@@ -98,7 +98,7 @@ describe("studioUses: unit", () => {
         use: {
           crop: { left: 0.1, top: 0, right: 0.1, bottom: 0 },
           hotspot: { x: 0.25, y: 0.3 },
-          alt: true,
+          alt: "text",
         },
       },
     ]);
@@ -116,7 +116,7 @@ describe("studioUses: unit", () => {
   it("alt: blank or missing is false; crop and hotspot outside 0 to 1 or not numbers are dropped", () => {
     const base = { asset: { _ref: harbourAssetId("team") } };
     const a = studioUses({ x: { ...base, alt: "  " } }, want)?.[0]?.use;
-    expect(a).toEqual({ alt: false });
+    expect(a).toEqual({ alt: "none" });
     const b = studioUses(
       {
         x: {
@@ -127,7 +127,23 @@ describe("studioUses: unit", () => {
       },
       want,
     )?.[0]?.use;
-    expect(b).toEqual({ alt: false });
+    expect(b).toEqual({ alt: "none" });
+  });
+
+  it("alt that is not plain text (a localized or structured value, altText too) is unknown, never none", () => {
+    const base = { asset: { _ref: harbourAssetId("team") } };
+    const alt = (value: Record<string, unknown>) =>
+      studioUses({ x: { ...base, ...value } }, want)?.[0]?.use.alt;
+    expect(alt({ alt: { en: `${HARBOUR_MARKER} team`, fr: "equipe" } })).toBe("unknown");
+    expect(alt({ alt: [{ _type: "span", text: "x" }] })).toBe("unknown");
+    expect(alt({ alt: 5 })).toBe("unknown");
+    expect(alt({ altText: { en: "x" } })).toBe("unknown");
+    // Text in either field wins over an unreadable one in the other; null and missing are none.
+    expect(alt({ alt: { en: "x" }, altText: "Team" })).toBe("text");
+    expect(alt({ altText: "Team" })).toBe("text");
+    expect(alt({ alt: null })).toBe("none");
+    expect(alt({})).toBe("none");
+    expect(alt({ alt: "" })).toBe("none");
   });
 
   it("a document nested past the depth cap or past the node cap is not read to the end", () => {
@@ -172,10 +188,10 @@ describe("readSanityImages: integration (a fake Sanity query endpoint over inven
     expect(Number.isInteger(of("banner")?.size)).toBe(true);
     // The draft's hotspot (0.5, 0.5) is not seen: the published value is.
     expect(of("team")?.uses).toEqual([
-      { crop: { left: 0, top: 0, right: 0, bottom: 0 }, hotspot: { x: 0.25, y: 0.3 }, alt: true },
+      { crop: { left: 0, top: 0, right: 0, bottom: 0 }, hotspot: { x: 0.25, y: 0.3 }, alt: "text" },
     ]);
-    expect(of("menu")?.uses?.[0]).toMatchObject({ crop: { left: 0.1, right: 0.1 }, alt: true });
-    expect(of("logo")?.uses).toEqual([{ alt: false }]);
+    expect(of("menu")?.uses?.[0]).toMatchObject({ crop: { left: 0.1, right: 0.1 }, alt: "text" });
+    expect(of("logo")?.uses).toEqual([{ alt: "none" }]);
     expect(of("split")?.uses).toHaveLength(2);
     // Deleted from the dataset: no size, and the reason says so. No document uses it either.
     expect(of("gone")?.size).toBeUndefined();
