@@ -9,6 +9,8 @@ import {
   EMAIL_PRESET,
   LAUNCH_PRESET,
   buildRunSnapshot,
+  buildPageRecord,
+  DEFAULT_RETENTION_DAYS,
   createDnsReader,
   createPageRegistry,
   notifyAll,
@@ -143,6 +145,8 @@ import { runCutover } from "./cutover.js";
 import { runMigration } from "./migration.js";
 import { runAdvisory } from "./advisory.js";
 import { runInit } from "./init.js";
+import { runChanges } from "./changes.js";
+import { buildRunRecord, saveRun } from "./runs.js";
 import { gateVerdict } from "./deploy-gate.js";
 import { readImageSettings } from "./image-settings.js";
 import { runSnapshot } from "./snapshot.js";
@@ -193,11 +197,13 @@ import {
   readCostConfig,
   readTrackersConfig,
   readAdaptersConfig,
+  readChangesConfig,
   readBackupsConfig,
   readEvents,
   readSchemaRules,
   readTags,
   readNavRules,
+  readStaleDates,
   readPagesConfig,
 } from "./schema-config.js";
 import { listRouteFiles } from "./route-files.js";
@@ -1100,6 +1106,23 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         }),
         ci: false,
       };
+    case "changes":
+      return {
+        outcome: await runChanges(
+          {
+            address: args.address,
+            ...(args.since ? { since: args.since } : {}),
+            json: args.json,
+            quiet: args.quiet,
+          },
+          { stdout: io.stdout, stderr: io.stderr, ...(io.env ? { env: io.env } : {}) },
+          {
+            ...(deps.cwd ? { cwd: deps.cwd } : {}),
+            ...(deps.fetcher ? { fetcher: deps.fetcher } : {}),
+          },
+        ),
+        ci: false,
+      };
     case "digest": {
       await runDigest(
         {
@@ -1226,6 +1249,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       const tags = readTags(deps.cwd ?? process.cwd());
       const events = readEvents(deps.cwd ?? process.cwd());
       const navRules = readNavRules(deps.cwd ?? process.cwd());
+      const staleDates = readStaleDates(deps.cwd ?? process.cwd());
       const pagesConfig = readPagesConfig(deps.cwd ?? process.cwd());
       // Probing checks (CLAUDE.md rule 14) ask a route that should be protected for what it protects,
       // with no login. They are off unless the owner agreed: --owner-consent, or gaugeline.consent.json.
@@ -1541,6 +1565,12 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
             fetcher,
           )
         : undefined;
+      // The Sanity image checks that read the dataset (crop and hotspot, alt text, upload sizes) run when
+      // gaugeline.adapters.json names sanity. SANITY_PROJECT_ID, SANITY_DATASET and SANITY_TOKEN (a Viewer
+      // token) are copied here; the token goes in a header to the project's own query address, GET only.
+      const sanityImages = readAdaptersConfig(cwd)?.adapters.some((a) => a.id === "sanity")
+        ? { env: freezeEnv(io.env ?? {}, SANITY_ENV_VARS) }
+        : undefined;
       // What the handoff checks read: the registry's record through the renewals reader (which only asks
       // RDAP here: no token goes to it), then the provider reads, each with its own key from the environment.
       const handoff = handing
@@ -1578,6 +1608,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         ...(libraries ? { libraries } : {}),
         ...(wordpress ? { wordpress } : {}),
         ...(published ? { published } : {}),
+        ...(sanityImages ? { sanityImages } : {}),
         ...(backups ? { backups } : {}),
         ...(args.command === "renewals" || handing ? { tolerateUnreachable: true } : {}),
         // The walking skeleton (0.0.x) runs one check; an injected registry is used as given.
@@ -1591,6 +1622,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         ...(payments ? { payments } : {}),
         ...(hidden ? { hidden } : {}),
         ...(navRules ? { nav: navRules } : {}),
+        ...(staleDates ? { staleDates } : {}),
         ...(tags ? { tags } : {}),
         // No observer until rendered reads (G39): the click event checks are could not check.
         ...(events ? { events } : {}),
@@ -1828,13 +1860,23 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       // Gains since the last run: information on stderr, never findings.
       if (contentNotes && contentNotes.length > 0 && !args.json && !args.quiet)
         io.stderr.write(`Since the last run:\n${contentNotes.map((l) => `  ${l}`).join("\n")}\n`);
-      if (args.since && last?.kind !== "newer")
+      if (args.since && last?.kind !== "newer") {
         writeLastRun(
           cwd,
           host,
           buildRunSnapshot(snapshot, () => startedAt, contents),
           `Gaugeline ${deps.version ?? VERSION}`,
         );
+        // The same run, kept as history for `gaugeline changes`: a few fields and hashes of the
+        // page, and the findings' check, path and title.
+        saveRun(
+          cwd,
+          host,
+          buildRunRecord(snapshot, buildPageRecord(snapshot), result.findings, startedAt),
+          startedAt,
+          readChangesConfig(cwd)?.retentionDays ?? DEFAULT_RETENTION_DAYS,
+        );
+      }
       // The report: one self-contained file, written on every run that isn't --json, opened only
       // for a person at a terminal (not with --no-open, not in CI, not when piped).
       if (!args.json) {

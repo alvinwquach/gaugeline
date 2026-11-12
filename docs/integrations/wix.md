@@ -1,13 +1,13 @@
-# Wix: content checks for sites built on Wix
+# Wix: content checks for sites built on Wix (beta)
 
 What a Wix site publishes, read two ways. With **no key**, from the files the live site hands every visitor (its sitemap and feeds), and nothing is written. With **a Wix API key that can only read Wix Data**, from the CMS collections you name, through Wix's Query Data Items endpoint: counts, which fields are filled in, and a fingerprint of each item, never a word of your client's text.
 
-**The key first.** Wix has a key that can be limited to reading: an API key with only read permissions selected (you pick a key's permissions one by one, and here only the one that reads Wix Data items). That is the narrowest key Wix offers, and it is the only one this adapter asks for. It goes in the environment as `WIX_API_KEY`, never in a settings file. The one place Gaugeline sends a `POST` to anything but your own notification channels is this adapter's query: Wix answers "list this collection's items" with a `POST` (the filter travels in the body), and the owner allowed a documented read-only `POST` query through a per-adapter allowlist (ADR-0006, open question 52). Gaugeline sends that one query, to `www.wixapis.com` only, with a body that is a query and never a write, and its fetcher refuses anything else before it is sent. **If your Wix account offers no way to limit a key to reading Wix Data, do not set `WIX_API_KEY`:** the adapter then reads the live site with no key, as it always did.
+**The key first.** Wix has a key that can be limited to reading: an API key with only read permissions selected (you pick a key's permissions one by one, and here only the one that reads Wix Data items). That is the narrowest key Wix offers, and it is the only one this adapter asks for. It goes in the environment as `WIX_API_KEY`, never in a settings file. The one place Gaugeline sends a `POST` to anything but your own notification channels is this adapter's query: Wix answers "list this collection's items" with a `POST` (the filter travels in the body), and the owner allowed a documented read-only `POST` query through a per-adapter allowlist (ADR-0006, open question 52). Gaugeline sends that one query, to `www.wixapis.com` only, with a body that is a query and never a write, and its fetcher refuses anything else before it is sent. **Gaugeline cannot check whether the key you give it is limited to reading.** It sends one query and never a write, but it cannot see a key's permissions: making a key that can only read Wix Data is something you make, in your Wix account, and the run header's "read-only" says what the key should be, not what Wix has been shown to enforce. **If your Wix account offers no way to limit a key to reading Wix Data, do not set `WIX_API_KEY`:** the adapter then reads the live site with no key, as it always did.
 
-A run says what it uses before anything else it prints about the content system:
+**This adapter is beta.** Wix's developer pages could not be reached when it was built, so the endpoint and its body are from memory and uncited (see the note on sources below), and a run says so before anything else it prints about the content system:
 
 ```text title=Output
-Content system: Wix, with a read-only key when one is set, and with no key otherwise (it then only reads pages the site already publishes). Endpoints and how to make the key: https://gaugeline.dev/docs/integrations/wix
+Content system: Wix (beta), with a read-only key when one is set, and with no key otherwise (it then only reads pages the site already publishes). Endpoints and how to make the key: https://gaugeline.dev/docs/integrations/wix
 ```
 
 See [Content systems](/docs/integrations/) for the interface every adapter shares.
@@ -111,11 +111,11 @@ Read it the way the freelancer does:
 - `Programs` has three items. `Testimonials` is **could not check**, with the reason: the key may not read it (HTTP 403). The other collection is still counted, so one missing permission does not hide the rest, and nothing is reported as fine for a collection that was not read.
 - Of three programs, all have a title and a slug and one has a blurb. The spring cohort's blurb and the others' missing ones are the kind of drift a launch checklist misses.
 - The spring cohort changed on 9 November, and its `fieldHashes` say which of the two named fields it has and fingerprint them: run it again after an edit and a changed hash tells you the field changed, without a word of the text in the report. The summer intensive (2 August) is left out by the date.
-- Drafts are `not-applicable`: the query has no option for draft items, so Gaugeline never asks for them.
+- Drafts are `not-applicable`: the query has no option for draft items, so Gaugeline never asks for them. A Wix Data query returns every item the key can read, and Gaugeline does not tell a published item from an unpublished one, so a count here is the items the key can read, not only the ones the site shows.
 
 ## Without a key: what the live-site read asks for
 
-With no `WIX_API_KEY` set, every request is a `GET`, to the checked site and nowhere else, through the same fetcher as every other request. Wix's own servers (`www.wixapis.com`) are never asked, and no key is sent to the site.
+With no `WIX_API_KEY` set (or with it set but no `siteId` and no collection named, see below), every request is a `GET`, to the checked site and nowhere else, through the same fetcher as every other request. Wix's own servers (`www.wixapis.com`) are never asked, and no key is sent to the site.
 
 - `GET /robots.txt`, for its `Sitemap:` lines.
 - The sitemaps named there; with none, `GET /sitemap.xml`, then `/sitemap_index.xml` and `/wp-sitemap.xml`, stopping at the first that reads. A Wix site publishes its sitemap at `/sitemap.xml`, an index with one file for the pages and one for each part of the site that Wix generates, such as the blog or a collection's dynamic pages (uncited: Wix's pages could not be reached, so this is the usual layout and not a confirmed one; Gaugeline reads whichever files the index lists, and a site that names another in `robots.txt` or in the settings is read from there).
@@ -229,23 +229,41 @@ What the live-site read answers with no key is unchanged: which addresses the si
 
 It never returns a list with a hole in it. With the key, the read is could-not-check, in plain words, when the key is not one line of printable characters, `siteId` is missing, no collection is named, Wix refuses the key for a collection (HTTP 401 or 403) or has no such collection (HTTP 404), an answer is not a list of items, an item has no usable id or update time, a list says there is more and gives no way to read it, a cursor repeats, or a collection is longer than 10,000 items. A collection or item id that is not letters, digits, dots, hyphens and underscores is never sent. A slug that is not that is left out, and the item then has no address.
 
-A rate limit (HTTP 429, or a 403 that says how long to wait) is waited for once when the wait is a minute or less; after that the run keeps what it had read and says it is partial.
+A rate limit (HTTP 429, or a 403 that says how long to wait) is waited for once for a request when the wait is a minute or less, and a run waits at most 120 seconds in all, over every collection and page; after that the run keeps what it had read and says it is partial.
+
+A type that was not named under `urls` or `fingerprint` is could-not-check for `fieldCounts`, never a count of 0: nothing was read for it.
+
+A key set for another reason does not take the live-site read away. If `WIX_API_KEY` is set but `siteId` is missing or no collection is named, the adapter reads the sitemap exactly as with no key, and says why the CMS was skipped: "WIX_API_KEY is set but the CMS collections were not read, because \"siteId\" is not set on the wix entry in gaugeline.adapters.json. Gaugeline read what the live site publishes instead, as it does with no key." The CMS parts (`fieldCounts`, `readCollections`) answer with that sentence.
 
 Without the key, it is could-not-check when no sitemap and no feed could be read (it names where it looked), the site answers with a login (HTTP 401 or 403), a sitemap that `robots.txt`, an index or your settings name is missing or is not a sitemap, a file is larger than the cap, or the run has no site address.
+
+## Limits on names and ids
+
+Only plain names are ever put in a request body or an address, and anything else is could-not-check with nothing sent:
+
+| What                                  | Allowed                                                                                                                      |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Collection ID (the keys under `urls`) | ASCII letters, digits, dots, hyphens and underscores, starting with a letter or digit, up to 128 characters.                 |
+| Item ID and `slug`                    | The same. An item whose id is not that is could-not-check. A slug that is not that is left out, and the item has no address. |
+| Field name (under `fingerprint`)      | Letters, digits and underscores, starting with a letter or underscore, up to 64 characters; up to five parts joined by dots. |
+| `siteId`                              | 8 to 64 letters, digits and hyphens, starting with a letter or digit.                                                        |
+| An address pattern under `urls`       | Gives an address only with one leading slash (`/programs/{slug}`) or an `https` address; `//other.example/...` is dropped.   |
+| Items read from one collection        | 10,000 at most; more is could-not-check, never a count of part of it.                                                        |
+| Waiting for a rate limit, in all      | 120 seconds over the whole run.                                                                                              |
 
 ## Settings
 
 | `gaugeline.adapters.json` field | What it does                                                                                                                                            |
 | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `adapters[].id`                 | `wix`.                                                                                                                                                  |
-| `adapters[].siteId`             | The Wix site's id (a UUID, letters, digits and hyphens). Sent as `wix-site-id` with the key. Needed for the CMS read.                                   |
+| `adapters[].siteId`             | The Wix site's id (a UUID, letters, digits and hyphens). Sent as `wix-site-id` with the key. Needed for the CMS read: without it the key is not used.   |
 | `adapters[].urls`               | Where an item of a collection lives: `"/programs/{slug}"`. The keys are the collection IDs to read. `{slug}` is the item's `slug` field, `{id}` its id. |
 | `adapters[].fingerprint`        | The fields to hash, by collection. Only these fields' values are read, and only to be hashed. The keys also name the collections to read.               |
 | `adapters[].site`               | The site's address (`https://marlow-coaching.example`) for the live-site read. Wins over the address the run was given.                                 |
 | `adapters[].sitemaps`           | Up to 10 sitemap files to read instead of looking: a path on the site or an https address on it. Each must answer, or the read is could-not-check.      |
 | `adapters[].feeds`              | Up to 5 feeds to read instead of looking, likewise.                                                                                                     |
 
-The key is not a setting. Keys come from the environment: `WIX_API_KEY`.
+The key is not a setting. Keys come from the environment: `WIX_API_KEY`. The CMS is read only when the key, `siteId` and at least one collection are all present.
 
 ## Why the CMS read is a POST, and what stops it being anything else
 
