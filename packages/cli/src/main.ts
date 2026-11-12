@@ -242,6 +242,13 @@ import { basename, join, resolve } from "node:path";
 export const REPORT_FILE = "gaugeline-report.html";
 import { VERSION } from "./version.js";
 
+/**
+ * Off until a real upload to GitHub code scanning says a result with no file is rejected: then
+ * change this to true (one line) and every page finding in --format sarif also carries a placeholder
+ * file. See docs/ci.md, "If GitHub rejects the upload".
+ */
+const SARIF_PHYSICAL_LOCATION_FALLBACK = false;
+
 /** Shown under the mail record checks a run without --dns leaves out. */
 export const DNS_HINT =
   "Mail records are read from DNS only with --dns. Rerun with --dns to check them.";
@@ -1921,6 +1928,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           registry,
           version: deps.version ?? VERSION,
           notRun: dnsSkipped,
+          physicalLocationFallback: SARIF_PHYSICAL_LOCATION_FALLBACK,
         };
         io.stdout.write(
           args.format === "sarif"
