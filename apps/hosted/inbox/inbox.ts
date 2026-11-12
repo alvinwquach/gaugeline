@@ -33,6 +33,8 @@ export interface WaitingDraft {
 /** One apply job: what the customer's worker is asked to write, after which decision. */
 export interface ApplyJob {
   orgId: string;
+  /** The draft's site: the worker refuses a job for any site but its configured target's. */
+  siteId: string;
   draftId: string;
   decisionId: string;
   kind: string;
@@ -209,6 +211,7 @@ export async function decide(
     if (decision !== "declined") {
       await queue.enqueueApply(tx, {
         orgId: draft.org_id as string,
+        siteId: draft.site_id as string,
         draftId,
         decisionId,
         kind,

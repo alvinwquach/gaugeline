@@ -42,16 +42,82 @@ const prose = (max: number) =>
     .refine((s) => !hasControl(s, true), "must not contain control characters");
 
 /**
- * A relative path inside a repository: no leading "/" or "-", no "." or ".." segment, nothing under .git
- * or .github (workflows run with the repository's secrets), plain characters only.
+ * Names the writer never writes, at any depth and in any letter case: the files a repository's own
+ * automation runs. The branch lives in the customer's own repository, so a pull request from it can
+ * start CI that reads the repository's secrets; a file that defines or hooks that automation is not a
+ * draft a fixer may propose. This is a deny-list, not a boundary: any source file a CI job runs is code
+ * too. The boundary is the per-site `allowedPrefixes` in the worker's configuration, and the customer's
+ * own setting for workflows on non-default branches (docs/hosted/writer.md).
+ */
+const DENIED_NAMES: ReadonlySet<string> = new Set(
+  [
+    ".husky",
+    ".circleci",
+    ".devcontainer",
+    ".vscode",
+    ".buildkite",
+    ".yarn",
+    ".pnp.cjs",
+    ".npmrc",
+    ".pre-commit-config.yaml",
+    ".travis.yml",
+    ".drone.yml",
+    "azure-pipelines.yml",
+    "bitbucket-pipelines.yml",
+    "codeowners",
+    "package.json",
+    "package-lock.json",
+    "npm-shrinkwrap.json",
+    "yarn.lock",
+    "pnpm-lock.yaml",
+    "pnpm-workspace.yaml",
+    "bun.lock",
+    "bun.lockb",
+    "makefile",
+    "justfile",
+    "rakefile",
+    "jenkinsfile",
+    "taskfile.yml",
+    "taskfile.yaml",
+  ].map((n) => n.toLowerCase()),
+);
+/** Prefixes of a name: `.git*` (.git, .gitmodules, .gitattributes, .gitlab-ci.yml), `.yarnrc*`, `Dockerfile*`, `docker-compose*`; .github falls under .git. */
+const DENIED_PREFIXES = [".git", ".yarnrc", "dockerfile", "docker-compose"] as const;
+/** Scripts a shell or a runner starts, and any lock file. */
+const DENIED_SUFFIX = /\.(sh|bash|zsh|ps1|bat|cmd|lock)$/;
+
+/** True when one path segment names something the writer never writes. */
+function isDeniedName(segment: string): boolean {
+  const n = segment.toLowerCase();
+  return (
+    DENIED_NAMES.has(n) || DENIED_PREFIXES.some((p) => n.startsWith(p)) || DENIED_SUFFIX.test(n)
+  );
+}
+
+/**
+ * A relative path inside a repository: no leading "/" or "-", no "." or ".." segment, plain characters
+ * only, and no segment from the deny-list above (at any depth: `x/.git/config`, `docs/CODEOWNERS`).
  */
 export function isSafeRepoPath(path: string): boolean {
   if (path.length === 0 || path.length > 300 || path.startsWith("-")) return false;
   if (!/^[A-Za-z0-9._@()[\]-]+(\/[A-Za-z0-9._@()[\]-]+)*$/.test(path)) return false;
   const parts = path.split("/");
   if (parts.some((p) => p === "." || p === ".." || p.startsWith("-"))) return false;
-  const top = parts[0]!.toLowerCase();
-  return top !== ".git" && top !== ".github";
+  return !parts.some(isDeniedName);
+}
+
+/**
+ * True when `path` is inside one of the site's allowed prefixes (`content/`, `docs/menu.md`). A prefix
+ * ending in "/" is a folder; any other prefix is that exact file. No prefixes at all means no limit
+ * beyond the deny-list. Compared in lower case, so a letter-case trick cannot step outside a folder.
+ */
+export function isAllowedPath(path: string, prefixes: readonly string[] | undefined): boolean {
+  if (prefixes === undefined) return true;
+  const p = path.toLowerCase();
+  return prefixes.some((raw) => {
+    const prefix = raw.toLowerCase();
+    return prefix.endsWith("/") ? p.startsWith(prefix) : p === prefix;
+  });
 }
 
 const pullRequest = z

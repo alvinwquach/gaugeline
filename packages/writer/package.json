@@ -16,6 +16,7 @@
     "./kinds": "./src/kinds.ts"
   },
   "dependencies": {
+    "@gaugeline/core": "workspace:*",
     "zod": "4.6.7"
   }
 }

@@ -20,6 +20,10 @@ import { scan, type Category, type Finding } from "./post-scan.js";
  * - `writer/src/github/endpoints.ts`: ADR-0010 (accepted 12 Nov 2026). The writer's fixed registry of
  *   GitHub requests, run only in the customer's own worker after a recorded approval: create one
  *   `gaugeline/<id>` ref, put contents on that branch, open a draft pull request. Not in the CLI.
+ * - `writer/src/github/send.ts`: ADR-0010. The writer's one connection: a `fetch` to api.github.com
+ *   whose method is the registered endpoint's, after `checkRequest` has accepted the request. Named here
+ *   so the scan reads it (it is a tightening: the file used to be invisible to this list). Any other
+ *   file in the writer that opens a connection fails this test and the lint rule on packages/writer.
  */
 const ALLOWED: Readonly<Record<string, readonly Category[]>> = {
   "core/src/transport.ts": ["method", "network"],
@@ -27,6 +31,7 @@ const ALLOWED: Readonly<Record<string, readonly Category[]>> = {
   "core/src/notify/post.ts": ["verb", "network"],
   "app/src/api.ts": ["verb", "network"],
   "writer/src/github/endpoints.ts": ["verb"], // ADR-0010
+  "writer/src/github/send.ts": ["network", "method"], // ADR-0010
 };
 
 const packagesDir = fileURLToPath(new URL("../../../", import.meta.url));

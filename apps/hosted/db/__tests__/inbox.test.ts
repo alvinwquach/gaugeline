@@ -256,6 +256,8 @@ describe.skipIf(!HAS_DATABASE)("drafts inbox", () => {
       const [row] = await decisionsFor(id);
       expect(job.payloadSha256).toBe(row!.payload_sha256);
       expect(job.payloadSha256).toBe(sha256(job.payloadText));
+      // The writer refuses a job for any site but its configured target's, so the job names the site.
+      expect(job.siteId).toBe(SITE_A1);
       expect(verifyApplyJob(job)).toEqual(PR_PAYLOAD);
     });
 
@@ -263,6 +265,7 @@ describe.skipIf(!HAS_DATABASE)("drafts inbox", () => {
       const payloadText = JSON.stringify(PR_PAYLOAD);
       const job = {
         orgId: ORG_A,
+        siteId: SITE_A1,
         draftId: randomUUID(),
         decisionId: "1",
         kind: "pull_request",

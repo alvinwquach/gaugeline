@@ -2,83 +2,14 @@
  * The writer (ADR-0010): after a recorded approval, the customer's worker pushes one branch and opens one
  * draft pull request, and nothing else. Every test uses a recording stand-in for GitHub; no network.
  */
-import { createHash } from "node:crypto";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import { applyPullRequest, type ApplyDeps } from "../github/apply.js";
-import { checkRequest, ENDPOINTS, type GithubRequest } from "../github/endpoints.js";
-import { githubSender } from "../github/send.js";
-import { KILL_SWITCH_ENV } from "../switches.js";
+import { DEFAULT_MODE, KILL_SWITCH_ENV, resolveMode } from "../switches.js";
 import { checkDraftPayload } from "../kinds.js";
-import type { ApplyJob, TrailEntry } from "../types.js";
-
-const DRAFT = "a1d10000-0000-4000-8000-0000000000a1";
-const TOKEN = ["ghp", "_", "invented0token0for0tests0only00000000"].join("");
-const PAYLOAD = {
-  title: "Point the menu link at /drinks",
-  body: "The menu page links to /drinks-2025, which returns 404.",
-  files: [{ path: "app/menu/links.ts", content: 'export const drinks = "/drinks";\n' }],
-};
-const job = (payload: unknown = PAYLOAD): ApplyJob => {
-  const payloadText = JSON.stringify(payload);
-  return {
-    orgId: "0a000000-0000-4000-8000-00000000000a",
-    draftId: DRAFT,
-    decisionId: "42",
-    kind: "pull_request",
-    payloadText,
-    payloadSha256: createHash("sha256").update(payloadText, "utf8").digest("hex"),
-  };
-};
-
-/** A stand-in GitHub: answers each registered endpoint and records what was asked. */
-function fakeGithub(
-  options: { existingPull?: boolean; fileExists?: boolean; failOn?: string } = {},
-) {
-  const sent: GithubRequest[] = [];
-  const send = async (req: GithubRequest) => {
-    checkRequest(req);
-    sent.push(req);
-    if (req.endpoint === options.failOn) return { status: 422, json: { message: "secret detail" } };
-    switch (req.endpoint) {
-      case "getRef":
-        return { status: 200, json: { object: { sha: "b".repeat(40) } } };
-      case "getContent":
-        return options.fileExists
-          ? { status: 200, json: { sha: "c".repeat(40) } }
-          : { status: 404, json: {} };
-      case "listPulls":
-        return {
-          status: 200,
-          json: options.existingPull ? [{ html_url: "https://github.com/acme/site/pull/7" }] : [],
-        };
-      case "createRef":
-        return { status: 201, json: {} };
-      case "putContent":
-        return { status: 201, json: {} };
-      case "createPull":
-        return { status: 201, json: { html_url: "https://github.com/acme/site/pull/8" } };
-    }
-  };
-  return { sent, send };
-}
-
-function deps(
-  over: Partial<ApplyDeps> & { send: ApplyDeps["send"] },
-): ApplyDeps & { log: TrailEntry[] } {
-  const log: TrailEntry[] = [];
-  return {
-    target: { owner: "northgate-studio", repo: "tidewater-bar", base: "main" },
-    trail: { record: async (e) => void log.push(e) },
-    mode: "write",
-    env: {},
-    orgPaused: async () => false,
-    log,
-    ...over,
-  };
-}
+import { DRAFT, PAYLOAD, TOKEN, deps, fakeGithub, job } from "./helpers.js";
 
 afterEach(() => {
   delete process.env[KILL_SWITCH_ENV];
@@ -115,7 +46,7 @@ describe("apply a pull request draft", () => {
     await applyPullRequest(job(), deps({ send: gh.send }));
     const put = gh.sent.find((r) => r.endpoint === "putContent")!;
     expect(put.body).toMatchObject({ sha: "c".repeat(40), branch: `gaugeline/${DRAFT}` });
-    expect(put.query).toEqual({});
+    expect(put.query).toBeUndefined();
     expect(gh.sent.find((r) => r.endpoint === "getContent")!.query).toEqual({ ref: "main" });
   });
 
@@ -124,6 +55,17 @@ describe("apply a pull request draft", () => {
     const out = await applyPullRequest(job(), deps({ send: gh.send }));
     expect(gh.sent.map((r) => r.endpoint)).toEqual(["getRef", "listPulls"]);
     expect(out).toMatchObject({ outcome: "applied", ref: "https://github.com/acme/site/pull/7" });
+  });
+
+  it("treats a pull request from the draft's branch that was since closed as already applied", async () => {
+    // The replay after the pull request was closed and the branch deleted must not open a second one.
+    const gh = fakeGithub({ closedPull: true });
+    const d = deps({ send: gh.send });
+    const out = await applyPullRequest(job(), d);
+    expect(gh.sent.map((r) => r.endpoint)).toEqual(["getRef", "listPulls"]);
+    expect(gh.sent[1]!.query).toMatchObject({ state: "all" });
+    expect(out).toMatchObject({ outcome: "applied", ref: "https://github.com/acme/site/pull/7" });
+    expect(d.log).toEqual([out]);
   });
 
   it("is a dry run unless the mode says write: nothing is sent, the plan is recorded", async () => {
@@ -150,6 +92,33 @@ describe("apply a pull request draft", () => {
     expect(text).not.toContain(TOKEN);
     expect(text).not.toContain(PAYLOAD.body);
     expect(text).not.toContain("drinks");
+  });
+});
+
+describe("the default is a dry run", () => {
+  it("the mode a configuration gets when it says nothing is dry-run", () => {
+    expect(DEFAULT_MODE).toBe("dry-run");
+    expect(resolveMode(undefined)).toBe("dry-run");
+    expect(resolveMode(null)).toBe("dry-run");
+  });
+
+  it("only the exact word write turns writing on; any other value is a dry run", () => {
+    expect(resolveMode("write")).toBe("write");
+    for (const v of [
+      "Write",
+      "WRITE",
+      " write",
+      "write ",
+      "true",
+      "1",
+      "",
+      "dry-run",
+      "yes",
+      1,
+      true,
+      {},
+    ])
+      expect(resolveMode(v), String(v)).toBe("dry-run");
   });
 });
 
@@ -198,7 +167,8 @@ describe("the payload is a fixed shape, checked before anything is sent", () => 
     it(`refuses ${name}`, async () => {
       expect(checkDraftPayload("pull_request", payload).ok).toBe(false);
       const gh = fakeGithub();
-      const out = await applyPullRequest(job(payload), deps({ send: gh.send }));
+      const j = job(payload);
+      const out = await applyPullRequest(j, deps({ send: gh.send }, j));
       expect(out).toMatchObject({ outcome: "refused", reason: "payload" });
       expect(gh.sent).toEqual([]);
     });
@@ -216,96 +186,6 @@ describe("the payload is a fixed shape, checked before anything is sent", () => 
     const out = await applyPullRequest({ ...job(), kind: "email" }, deps({ send: gh.send }));
     expect(out).toMatchObject({ outcome: "refused" });
     expect(gh.sent).toEqual([]);
-  });
-});
-
-describe("the registry: six endpoints, and each body is held to its shape", () => {
-  it("names exactly the reads and writes the writer needs", () => {
-    expect(Object.entries(ENDPOINTS).map(([id, e]) => `${e.method} ${id}`)).toEqual([
-      "GET getRef",
-      "GET getContent",
-      "GET listPulls",
-      "POST createRef",
-      "PUT putContent",
-      "POST createPull",
-    ]);
-  });
-
-  const repo = "/repos/northgate-studio/tidewater-bar";
-  const refused: GithubRequest[] = [
-    { endpoint: "createRef", path: `${repo}/git/refs`, body: { ref: "refs/heads/main", sha: "b" } },
-    {
-      endpoint: "createRef",
-      path: `${repo}/git/refs`,
-      body: { ref: "refs/tags/gaugeline/x", sha: "b" },
-    },
-    { endpoint: "putContent", path: `${repo}/contents/a.ts`, body: { message: "m", content: "" } },
-    {
-      endpoint: "putContent",
-      path: `${repo}/contents/a.ts`,
-      body: { message: "m", content: "", branch: "main" },
-    },
-    {
-      endpoint: "createPull",
-      path: `${repo}/pulls`,
-      body: { title: "t", head: "gaugeline/x", base: "main", body: "", draft: false },
-    },
-    {
-      endpoint: "createPull",
-      path: `${repo}/pulls/1/reviews`,
-      body: { title: "t", head: "gaugeline/x", base: "main", body: "", draft: true },
-    },
-    { endpoint: "getRef", path: `${repo}/git/refs/heads/x` },
-    { endpoint: "putContent", path: `${repo}/contents/.github/workflows/ci.yml`, body: {} },
-    { endpoint: "nope" as GithubRequest["endpoint"], path: `${repo}/pulls` },
-  ];
-  for (const req of refused)
-    it(`refuses ${req.endpoint} ${req.path} ${JSON.stringify(req.body ?? {})}`, () => {
-      expect(() => checkRequest(req)).toThrow();
-    });
-});
-
-describe("the sender", () => {
-  it("puts the token in the Authorization header only, and talks to api.github.com only", async () => {
-    const calls: { url: string; init: RequestInit }[] = [];
-    const fake = (async (url: string, init: RequestInit) => {
-      calls.push({ url, init });
-      return new Response(JSON.stringify({ html_url: "u" }), { status: 201 });
-    }) as unknown as typeof fetch;
-    const send = githubSender(TOKEN, fake);
-    const res = await send({
-      endpoint: "createPull",
-      path: "/repos/northgate-studio/tidewater-bar/pulls",
-      body: { title: "t", head: `gaugeline/${DRAFT}`, base: "main", body: "b", draft: true },
-    });
-    expect(res.status).toBe(201);
-    const { url, init } = calls[0]!;
-    expect(new URL(url).host).toBe("api.github.com");
-    expect(url).not.toContain(TOKEN);
-    expect(String(init.body)).not.toContain(TOKEN);
-    expect(new Headers(init.headers).get("authorization")).toBe(`Bearer ${TOKEN}`);
-    expect(init.redirect).toBe("error");
-  });
-
-  it("refuses a request outside the registry before it reaches the network", async () => {
-    let called = false;
-    const fake = (async () => {
-      called = true;
-      return new Response("{}");
-    }) as unknown as typeof fetch;
-    const send = githubSender(TOKEN, fake);
-    await expect(
-      send({
-        endpoint: "createRef",
-        path: "/repos/a/b/git/refs",
-        body: { ref: "refs/heads/main", sha: "b" },
-      }),
-    ).rejects.toThrow();
-    expect(called).toBe(false);
-  });
-
-  it("refuses an empty token", () => {
-    expect(() => githubSender("")).toThrow();
   });
 });
 
