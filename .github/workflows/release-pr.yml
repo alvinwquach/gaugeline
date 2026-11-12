@@ -19,8 +19,11 @@ concurrency: release-${{ github.ref }}
 
 jobs:
   ci-gate:
-    # Pull requests run a smaller matrix (Linux on Node 22 and 24, Windows on Node 24). The full matrix
-    # runs on main after each merge. Nothing is released from a commit until that run is green.
+    # Pull requests run Node 22 on Linux only (and the Release pull request runs the full matrix on its head).
+    # The full matrix runs again on main after each merge. Nothing is released from a commit until that
+    # run is green. A run on main is not cancelled by a newer merge (ci.yml concurrency), but GitHub drops an
+    # older queued run when a newer one queues: a cancelled run is never treated as green. This commit is then not released from here; the newer commit includes it,
+    # and the newer commit's own gate waits for its own full matrix.
     if: vars.RELEASE_PR_ENABLED == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -41,6 +44,9 @@ jobs:
             conclusion=$(printf '%s' "$run" | cut -f2)
             if [ "$status" = "completed" ]; then
               if [ "$conclusion" = "success" ]; then echo "The full matrix is green for $SHA."; exit 0; fi
+              if [ "$conclusion" = "cancelled" ]; then
+                echo "The full matrix for $SHA was cancelled by a newer merge. Not releasing $SHA; the newer commit's run releases it."; exit 1
+              fi
               echo "The full matrix finished with: $conclusion. Not releasing $SHA."; exit 1
             fi
             echo "CI on $SHA: ${status:-not started}. Waiting."; sleep 30

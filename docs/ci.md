@@ -21,6 +21,89 @@ jobs:
 
 Vercel and Netlify both report preview deployments to GitHub, so this runs against every preview with real content.
 
+## SARIF and JUnit: results your CI already reads
+
+`--format` chooses what stdout carries. Both formats are views of the same run: the findings and their evidence line, nothing from the page beyond that line, and no key (a secret in an evidence line is replaced before it is written). Stdout is the result and nothing else, no report file is written, and the exit codes are the same as without it: 0, 1 with `--ci` and a "Fix this first" finding, 2 when the run could not be done.
+
+| Value   | What it is                                                                                          | Where it goes                                  |
+| ------- | --------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| `json`  | The result, the same as `--json`                                                                    | Scripts                                        |
+| `sarif` | [SARIF 2.1.0](https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.html), one rule per check | GitHub code scanning and other SARIF viewers   |
+| `junit` | JUnit XML (`testsuites`, `testsuite`, `testcase`)                                                   | Jenkins, GitLab, CircleCI, any test-result tab |
+
+Say a studio checks the preview of a dental practice's new site. The run writes SARIF to a file and still fails the job on a broken link:
+
+```sh title=Terminal untested="The full output is 280 lines (one rule per check, a result per finding), so this page shows the first result and trims the rest. packages/core/src/report/__tests__/formats.test.ts and packages/cli/src/__tests__/format.test.ts run it and check the whole log against the SARIF schema."
+$ npx gaugeline brightside-preview.example --format sarif --ci > gaugeline.sarif
+```
+
+```json title=Output
+{
+  "$schema": "https://docs.oasis-open.org/sarif/sarif/v2.1.0/errata01/os/schemas/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "Gaugeline",
+          "version": "X.Y.Z",
+          "informationUri": "https://gaugeline.dev/",
+          "rules": [
+            {
+              "id": "broken-links",
+              "shortDescription": { "text": "Links on this page go nowhere" },
+              "helpUri": "https://gaugeline.dev/docs/checks#broken-links",
+              "defaultConfiguration": { "level": "error" }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "broken-links",
+          "ruleIndex": 0,
+          "level": "error",
+          "message": {
+            "text": "Links on this page go nowhere\nEvidence: \"Prices\" <a href=\"/prices\"> returned 404"
+          },
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "https://brightside-preview.example/prices",
+                  "kind": "resource"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": { "gaugeline/v1": "3ba56b7b03738062" }
+        }
+      ]
+    }
+  ]
+}
+```
+
+(Trimmed: the real log also carries each rule's what, why and fix, and a `properties` object with the evidence and address.)
+
+How a finding becomes SARIF:
+
+- **Rule.** One per check that found something: its id, title, what it catches, how to fix it, and a link to its page in the checks reference.
+- **Level.** "Fix this first" is `error`, "Fix soon" is `warning`, "Worth knowing" is `note`.
+- **Location.** A finding from a repository check (one that names a file and line) gets that file and line. A finding about a live page has no file, so its location is the page address, as a logical location.
+- **Fingerprint.** `partialFingerprints` holds the same fingerprint `--baseline` uses, so the same problem is the same alert from one run to the next, on a new preview address too.
+- **Checks that could not run, or were left out** (the email checks without `--dns`) are notifications on the run, not results.
+- **Suppressed findings.** A finding muted by a baseline or a dated suppression is written with a SARIF `suppressions` entry and the reason, so a viewer can show it as dismissed.
+
+How a finding becomes JUnit:
+
+- A "Fix this first" or "Fix soon" finding is a `failure` (its `type` says which). A "Worth knowing" finding is a passing test case with the evidence as its output.
+- Every check that passed is a passing test case, so a clean site is a run with test results and no failures, not an empty report (Jenkins, for one, rejects an empty one).
+- A check that could not run is an `error`. A page the site refused, a check left out on purpose, and a muted finding are `skipped`, with the reason as the message.
+- Titles and evidence are escaped, and characters XML 1.0 cannot hold are dropped.
+
+Both formats are checked in the repository's tests: SARIF against a schema written from the 2.1.0 specification, JUnit against the Jenkins `junit-10.xsd` (see `packages/core/src/report/__tests__/schemas/README.md` for why the SARIF schema is not the OASIS file).
+
 ## A protected preview
 
 A preview behind deployment protection answers every request with a login page. Store its secret
