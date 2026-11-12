@@ -48,7 +48,7 @@ export const MAX_CALLS = 2 + MAX_LIST_PAGES + 3;
 const MAX_ANSWER_BYTES = 1024 * 1024;
 /** The most of one tool result parsed; past it that tool is could-not-check. */
 const MAX_RESULT_BYTES = 256 * 1024;
-const MAX_TABLES = 500;
+export const MAX_TABLES = 500;
 const MAX_LINTS = 200;
 
 /** One allowlisted read: the tool, Gaugeline's fixed arguments, and the listing hash a person reviewed. */
