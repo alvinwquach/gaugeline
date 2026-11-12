@@ -201,10 +201,11 @@ revoke all on function private.drafts_check_payload() from public;
 create trigger drafts_check_payload before insert on public.drafts
   for each row execute function private.drafts_check_payload();
 
--- At most 50 findings behind one draft, and a flat list: a two-dimensional array would count its cells
--- but break the per-finding checks.
+-- At most 50 findings behind one draft, and a flat list that starts at 1: a two-dimensional array would
+-- count its cells but break the per-finding checks, and '[0:0]={id}' reads back nested.
 alter table public.drafts add constraint drafts_finding_ids_cap
-  check (cardinality(finding_ids) <= 50 and coalesce(array_ndims(finding_ids), 1) <= 1);
+  check (cardinality(finding_ids) <= 50 and coalesce(array_ndims(finding_ids), 1) <= 1
+         and coalesce(array_lower(finding_ids, 1), 1) = 1);
 
 -- The agent. An agent proposes and never decides. Its role holds no privilege on any table or view: it
 -- cannot read drafts, insert a decision or change anything. Its one way in is private.agent_insert_draft,

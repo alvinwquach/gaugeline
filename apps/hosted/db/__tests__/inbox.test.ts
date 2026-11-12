@@ -4,6 +4,8 @@
  * GAUGELINE_TEST_DATABASE_URL (see the db harness).
  */
 import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import postgres from "postgres";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { agentLoginsWithOtherRoles } from "../audit.js";
@@ -803,6 +805,18 @@ describe.skipIf(!HAS_DATABASE)("drafts inbox", () => {
           tx`select private.agent_insert_draft(${TOKEN_A}, ${SITE_A1}, 'pull_request', ${sql.json(PR_PAYLOAD)}, ${twoD}::uuid[])`,
       );
       expect(viaAgent).not.toBe("");
+      // A flat array that does not start at 1 reads back nested, so it is refused too.
+      const offset = `[0:0]={${a}}`;
+      const shifted = await errorOf(
+        sql`insert into public.drafts (org_id, site_id, kind, payload, finding_ids)
+          values (${ORG_A}, ${SITE_A1}, 'pull_request', ${sql.json(PR_PAYLOAD)}, ${offset}::uuid[])`,
+      );
+      expect(shifted).toMatch(/drafts_finding_ids_cap/);
+      const shiftedViaAgent = await asAgent(
+        (tx) =>
+          tx`select private.agent_insert_draft(${TOKEN_A}, ${SITE_A1}, 'pull_request', ${sql.json(PR_PAYLOAD)}, ${offset}::uuid[])`,
+      );
+      expect(shiftedViaAgent).not.toBe("");
       // A flat list, and an empty one, are fine.
       expect(
         await errorOf(
@@ -898,6 +912,28 @@ describe.skipIf(!HAS_DATABASE)("drafts inbox", () => {
       const site = await siteNear();
       await race(site, "serializable");
       expect(await waiting(site)).toBeLessThanOrEqual(200);
+    });
+  });
+
+  describe("the docs example", () => {
+    it("names the real lines of the functions in its error context", async () => {
+      const docs = readFileSync(
+        fileURLToPath(new URL("../../../../docs/hosted/inbox.md", import.meta.url)),
+        "utf8",
+      );
+      const contexts = [
+        ...docs.matchAll(/function (private\.\w+)\(.*?\) line (\d+) at ([A-Za-z ]+)/g),
+      ];
+      expect(contexts.length).toBeGreaterThanOrEqual(2);
+      for (const [, name, line, what] of contexts) {
+        const [fn] =
+          await sql`select prosrc from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+          where n.nspname = 'private' and p.proname = ${name!.replace("private.", "")}`;
+        const text = (fn!.prosrc as string).split("\n")[Number(line) - 1] ?? "";
+        const expected =
+          what!.trim() === "RAISE" ? /raise exception/i : /insert into public\.drafts/i;
+        expect(text, `${name} line ${line} at ${what}`).toMatch(expected);
+      }
     });
   });
 
