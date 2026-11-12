@@ -2,8 +2,7 @@
 
 The hosted version of Gaugeline (in progress, not released) opens with an email link. There are no
 passwords. This page covers the first part of "Sign in, and the dashboard": signing in, switching
-organisation, and the page every signed-in person lands on. The dashboard itself is on [its own page](/hosted/dashboard); "what happened last night" comes in the next
-change.
+organisation, and the page every signed-in person lands on. The dashboard itself is on [its own page](/hosted/dashboard); [what happened last night](/hosted/last-night) is another.
 
 ## An example: two agencies, one login
 

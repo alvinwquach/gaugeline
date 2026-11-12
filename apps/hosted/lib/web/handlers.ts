@@ -9,6 +9,8 @@ import type { WebDeps } from "./deps.js";
 import { siteSummaries } from "./dashboard.js";
 import { dashboardBody } from "./dashboard-view.js";
 import { markup } from "./html.js";
+import { lastNight } from "./last-night.js";
+import { nightBody } from "./last-night-view.js";
 import { redirect, respondHtml, respondText, STYLES, type Shell } from "./layout.js";
 import { listMemberships, listSites, pickOrg, ROLE_LABEL, type Membership } from "./memberships.js";
 import {
@@ -197,6 +199,21 @@ export function home(request: Request, deps: WebDeps): Promise<Response> {
 <p class="muted">You are signed in as ${ROLE_LABEL[current.role]}.</p>
 ${dashboardBody(sites, current.role)}`,
       shell,
+    );
+  });
+}
+
+export function lastNightPage(request: Request, deps: WebDeps): Promise<Response> {
+  return signedIn(request, deps, async ({ tx, shell }) => {
+    if (!shell) return redirect("/");
+    const sites = await lastNight(tx, await listSites(tx, shell.current));
+    return respondHtml(
+      200,
+      "Last night",
+      markup`<h1>Last night</h1>
+<p class="muted">${shell.current.orgName}</p>
+${nightBody(sites, shell.current.role)}`,
+      { ...shell, active: "last-night" },
     );
   });
 }

@@ -5,6 +5,7 @@
  */
 import {
   home,
+  lastNightPage,
   postOrg,
   postSignIn,
   postSignOut,
@@ -32,6 +33,7 @@ const r = (path: string, handlers: Route["handlers"]): Route => ({
 
 export const ROUTES: Route[] = [
   r("/", { GET: home }),
+  r("/last-night", { GET: lastNightPage }),
   r("/sign-in", { GET: signInPage, POST: postSignIn }),
   r("/sign-in/verify", { GET: verifyPage, POST: postVerify }),
   r("/sign-out", { POST: postSignOut }),
