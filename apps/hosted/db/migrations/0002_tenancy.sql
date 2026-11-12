@@ -196,16 +196,24 @@ revoke all on public.draft_state, public.site_consent_current
 grant select on public.draft_state, public.site_consent_current to authenticated, service_role;
 
 -- Every organisation keeps at least one owner. Runs as the owner of the function so it sees every
--- member row; skipped when the organisation itself is being deleted.
+-- member row; skipped when the organisation itself is being deleted. The organisation row is locked
+-- before counting, so concurrent removals of two different owners cannot both pass (READ COMMITTED).
 create function private.keep_an_owner() returns trigger
 language plpgsql security definer set search_path = ''
 as $$
 begin
-  if old.role = 'owner'
-     and (tg_op = 'DELETE' or new.role <> 'owner' or new.org_id <> old.org_id)
-     and exists (select 1 from public.organisations o where o.org_id = old.org_id)
-     and not exists (select 1 from public.members m
-                     where m.org_id = old.org_id and m.role = 'owner' and m.user_id <> old.user_id)
+  if old.role <> 'owner' or (tg_op = 'UPDATE' and new.role = 'owner' and new.org_id = old.org_id) then
+    return coalesce(new, old);
+  end if;
+  -- Lock the organisation first, so two sessions removing two different owners at once take turns:
+  -- the second one then counts after the first has committed. No row means the organisation itself
+  -- is being deleted (a cascade), which is allowed.
+  perform 1 from public.organisations o where o.org_id = old.org_id for update;
+  if not found then
+    return coalesce(new, old);
+  end if;
+  if not exists (select 1 from public.members m
+                 where m.org_id = old.org_id and m.role = 'owner' and m.user_id <> old.user_id)
   then
     raise exception 'the last owner of an organisation cannot leave or step down'
       using hint = 'Make another member an owner first.';
