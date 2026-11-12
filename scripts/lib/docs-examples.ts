@@ -15,6 +15,16 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { SITES_DIR, startFixture } from "../../packages/fixtures/src/index.js";
 
+/**
+ * The clock every example runs with, so a page's dates (an advisory's "looked at 2026-11-11") never
+ * go stale. The pages show this date; change both together, never one of them. It is the existing
+ * test preload (GAUGELINE_TEST_NOW in map-hosts.cjs) that pins Date in the built bin: no product code.
+ */
+export const DOCS_CLOCK = "2026-11-11T12:00:00Z";
+const CLOCK_PRELOAD = fileURLToPath(
+  new URL("../../packages/cli/src/__tests__/helpers/map-hosts.cjs", import.meta.url),
+);
+
 export interface Example {
   file: string;
   /** Line of the Terminal block's opening fence. */
@@ -322,11 +332,23 @@ export function offlineEnv(): Record<string, string> {
   };
 }
 
-/** The parent's environment without CI and colour settings, plus NO_COLOR and the example's own. */
+/**
+ * The parent's environment without CI and colour settings, plus NO_COLOR, the fixed clock, the offline
+ * preload and the example's own.
+ */
 function childProcessEnv(extra: Record<string, string>): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = { ...process.env };
   for (const k of ["CI", "FORCE_COLOR", "GITHUB_ACTIONS"]) delete env[k];
-  return { ...env, NO_COLOR: "1", ...offlineEnv(), ...extra };
+  const offline = offlineEnv();
+  const preload = `--require=${JSON.stringify(CLOCK_PRELOAD)}`;
+  return {
+    ...env,
+    NO_COLOR: "1",
+    GAUGELINE_TEST_NOW: DOCS_CLOCK,
+    ...offline,
+    ...extra,
+    NODE_OPTIONS: [offline.NODE_OPTIONS, extra.NODE_OPTIONS, preload].filter(Boolean).join(" "),
+  };
 }
 
 /** A small unified diff of two texts, line by line (LCS). */
