@@ -706,6 +706,24 @@ between the markers; CI fails when it differs from the flag table.
 
 Only "Fix this first" findings fail CI. "Fix soon" and "Worth knowing" never change the exit code.
 
+### Config, baselines and suppressions
+
+`gaugeline.config.json` (or `.mjs`, `.js`, `.ts`: those run code, see [Config](/docs/config#json-is-the-safe-default))
+in the folder you run from sets which checks block, adds checks you wrote and snoozes findings with a date.
+Four flags work with it on the page check and `launch`:
+
+- `--baseline <file>`: if the file does not exist, write the findings of this run to it (fingerprints, check ids
+  and paths, never page text) and exit as if they were accepted; if it does, leave out the findings it holds
+  and report only new ones, with a stderr line saying how many were already known. A file that is not a
+  baseline, or was written by a newer version, is exit 2.
+- `--update-baseline`: with `--baseline`, write the file again from this run.
+- `--suppress <id>`, with `--suppress-until YYYY-MM-DD` and `--suppress-reason "..."`: snooze a check for this
+  run. All three are required, `--suppress` can be repeated, and a past date is exit 2. For a standing
+  suppression, use the config file's `suppress` list: an entry past its `until` date stops applying and is
+  reported.
+
+Baselined and suppressed findings never fail `--ci`. See [Config, baselines and suppressions](/docs/config).
+
 ### Streams and colour
 
 Results go to stdout; progress, warnings and errors go to stderr, so `--json` output can be piped

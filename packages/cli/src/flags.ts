@@ -710,6 +710,45 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     commands: ["check", "launch", "renewals", "cost", "backups"],
   },
   {
+    name: "baseline",
+    type: "string",
+    description:
+      "Read or write a baseline of known findings: a file that does not exist yet is written from this run, one that exists hides what it holds and reports only new findings",
+    since: "0.2.0",
+    commands: ["check", "launch"],
+  },
+  {
+    name: "update-baseline",
+    type: "boolean",
+    description:
+      "With --baseline, write the baseline again from this run (accept every finding as known)",
+    since: "0.2.0",
+    commands: ["check", "launch"],
+  },
+  {
+    name: "suppress",
+    type: "string",
+    description:
+      "Snooze a check id for this run, with --suppress-until and --suppress-reason, both required (repeatable)",
+    since: "0.2.0",
+    commands: ["check", "launch"],
+    multiple: true,
+  },
+  {
+    name: "suppress-until",
+    type: "string",
+    description: "With --suppress, the last day it applies, as YYYY-MM-DD; a past date is refused",
+    since: "0.2.0",
+    commands: ["check", "launch"],
+  },
+  {
+    name: "suppress-reason",
+    type: "string",
+    description: "With --suppress, why the finding is accepted for now",
+    since: "0.2.0",
+    commands: ["check", "launch"],
+  },
+  {
     name: "list",
     type: "boolean",
     description: "Print the data assertions in gaugeline.sources.json and run none of them",
