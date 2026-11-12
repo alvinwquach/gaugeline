@@ -62,6 +62,11 @@ const TOOL_NAME = /^[a-z][a-z0-9_-]{0,63}$/;
 const GLUED_WRITES: readonly string[] = [
   ...WRITE_WORDS,
   ..."exec mutat invalidat truncate".split(" "),
+  // A verb that ends in "e" loses it before -ing and -ion ("creating", "deletion"): the stem
+  // without the "e". "migrat" is left out because "list_migrations" is a read Gaugeline calls, so
+  // only "migrating" is added. "emergency" (merg) and "recreation" (creat) are accepted false refusals.
+  ...[...WRITE_WORDS].filter((w) => w.endsWith("e") && w !== "migrate").map((w) => w.slice(0, -1)),
+  "migrating",
 ];
 const GLUED_OTHER: readonly string[] =
   "secret token passw credential key sql query eval fetch browse screenshot shell script crawl scrape url".split(
@@ -71,10 +76,11 @@ const GLUED_OTHER: readonly string[] =
 const glued = (name: string): string => name.toLowerCase().replace(/[^a-z0-9]/g, "");
 
 /**
- * The one ending that turns a verb into an adjective ("publishable"). Every other ending ("deletes",
+ * The endings that turn a verb into an adjective ("publishable", "mergeable", where the stem may be
+ * the verb without its "e"). Every other ending ("deletes",
  * "updated", "sending", "deployment") is a write by name, so it is not exempt.
  */
-const ADJECTIVE_ENDING = "able";
+const ADJECTIVE_ENDINGS: ReadonlySet<string> = new Set(["able", "eable"]);
 
 /**
  * The write stem inside any word of a name, glued or not ("executesql", "get_deployfunction"), from
@@ -86,7 +92,7 @@ export function gluedWriteIn(name: string): string | undefined {
     for (const stem of GLUED_WRITES)
       if (
         word.includes(stem) &&
-        !(word.startsWith(stem) && word.slice(stem.length) === ADJECTIVE_ENDING)
+        !(word.startsWith(stem) && ADJECTIVE_ENDINGS.has(word.slice(stem.length)))
       )
         return stem;
   return undefined;

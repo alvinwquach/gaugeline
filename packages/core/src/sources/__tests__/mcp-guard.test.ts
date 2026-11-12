@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { idPatternProblem } from "../../fetch/mcp-jsonrpc.js";
+import { idPatternProblem, writeWordIn } from "../../fetch/mcp-jsonrpc.js";
 import {
   COULD_NOT_CHECK,
   keepFields,
@@ -477,7 +477,60 @@ describe("targeted verification of #263", () => {
     expect(keepFields({ v: "abc" }, idRule("^x.*$|^abc$"))).toEqual({});
   });
 
-  it("the tolerated screen refuses a write verb with any ending but -able", () => {
+  it("the tolerated screen refuses the -ing and -ion forms of verbs that end in e", () => {
+    for (const tool of [
+      "creating_user",
+      "updating_user",
+      "deleting_rows",
+      "writing_file",
+      "removing_member",
+      "merging_branch",
+      "revoking_key",
+      "enabling_rls",
+      "disabling_rls",
+      "migrating_db",
+      "invoking_fn",
+      "approving",
+      "restoring_backup",
+      "rotating_key",
+      "pausing_project",
+      "resuming_project",
+      "purging_cache",
+      "creation_log",
+      "deletion_log",
+      "promoting_user",
+      "inviting_guest",
+      "rebasing_branch",
+      "regenerating_key",
+      "creatuser",
+      "getdeletion",
+    ])
+      expect(toleratedProblems([{ tool, listingHash: "0".repeat(64) }], []), tool).not.toEqual([]);
+  });
+
+  it("the listing screen sees the same forms, but never refuses a reviewed read like list_migrations", () => {
+    for (const tool of ["creating_user", "deletion_log", "migrating_db", "writing_file"])
+      expect(writeWordIn(tool), tool).toBeDefined();
+    for (const tool of ["list_migrations", "list_tables", "get_advisors", "get_project_url"])
+      expect(writeWordIn(tool), tool).toBeUndefined();
+  });
+
+  it("-able stays exempt for every verb that ends in e", () => {
+    for (const tool of [
+      "get_updatable_rows",
+      "list_deletable_rows",
+      "get_writable_schemas",
+      "get_publishable_keys",
+      "list_creatable_types",
+      "get_removable_items",
+      "list_mergeable_prs",
+      "get_revokable_keys",
+      "list_restorable_backups",
+    ])
+      expect(toleratedProblems([{ tool, listingHash: "0".repeat(64) }], []), tool).toEqual([]);
+  });
+
+  it("the tolerated screen refuses a write verb with the endings s, d, ed and ment", () => {
     for (const tool of [
       "deletes_rows",
       "creates_user",
