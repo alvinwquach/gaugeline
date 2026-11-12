@@ -48,7 +48,8 @@
   "devDependencies": {
     "@gaugeline/app": "workspace:*",
     "@gaugeline/app-server": "workspace:*",
-    "@gaugeline/core": "workspace:*"
+    "@gaugeline/core": "workspace:*",
+    "@gaugeline/documents": "workspace:*"
   },
   "private": false
 }

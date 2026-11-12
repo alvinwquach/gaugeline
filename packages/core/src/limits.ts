@@ -41,6 +41,10 @@ export const LIMITS = Object.freeze({
   draftRoutes: 4,
   /** Download routes asked once each with no session, 1,024 bytes read (a probing check: only with owner consent). */
   downloadRoutes: 10,
+  /** Linked PDF menus, price lists and brochures read, one GET each (the size of each is capped at documentBytes). */
+  documents: 5,
+  /** The default size above which a linked document is skipped, with the reason. */
+  documentBytes: 10 * 1024 * 1024,
   /** Bytes read from a download route's answer before the connection is closed. */
   downloadPeekBytes: 1024,
   /** Signed-in routes asked once each with no session by check --routes (a probing check: only with owner consent). */
@@ -49,6 +53,8 @@ export const LIMITS = Object.freeze({
   routeProbeBytes: 64 * 1024,
   /** Framework addresses (/_next/, ?_rsc=) found and ignored: never requested, so the limit is 0. */
   frameworkAddresses: 0,
+  /** Addresses a Nuxt check asks once each: the page's own payload file, a preview query, the dev tools route. */
+  nuxtAddresses: 6,
   structuredDataAddresses: 12,
   concurrency: 5,
   redirectHops: 10,
@@ -76,7 +82,9 @@ export type BudgetKind =
   | "statePages"
   | "draftRoutes"
   | "downloadRoutes"
+  | "documents"
   | "frameworkAddresses"
+  | "nuxtAddresses"
   | "structuredDataAddresses";
 
 /** Report order. */
@@ -99,7 +107,9 @@ export const BUDGET_KINDS = [
   "statePages",
   "draftRoutes",
   "downloadRoutes",
+  "documents",
   "frameworkAddresses",
+  "nuxtAddresses",
   "structuredDataAddresses",
 ] as const satisfies readonly BudgetKind[];
 
@@ -165,7 +175,9 @@ const NOUNS: Record<BudgetKind, [singular: string, plural: string]> = {
   statePages: ["switch page", "switch pages"],
   draftRoutes: ["draft route", "draft routes"],
   downloadRoutes: ["download route", "download routes"],
+  documents: ["document", "documents"],
   frameworkAddresses: ["framework address", "framework addresses"],
+  nuxtAddresses: ["Nuxt address", "Nuxt addresses"],
   structuredDataAddresses: ["address in structured data", "addresses in structured data"],
 };
 
