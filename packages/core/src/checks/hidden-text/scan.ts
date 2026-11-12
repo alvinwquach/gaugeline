@@ -44,14 +44,14 @@ const MAX_COLLECTED = 200_000;
 
 const TAG_CHARS = /[\u{E0000}-\u{E007F}]/gu;
 /** Subdivision flags (England, Scotland, Wales) are a black flag, tag letters and a cancel tag. */
-const FLAG_SEQUENCE = /\u{1F3F4}[\u{E0061}-\u{E007A}]+\u{E007F}/gu;
+export const FLAG_SEQUENCE = /\u{1F3F4}[\u{E0061}-\u{E007A}]+\u{E007F}/gu;
 const WORD = "\\p{Script=Latin}\\p{Script=Cyrillic}\\p{Script=Greek}\\p{Nd}";
 /**
  * A zero-width character (or a run of them) between two letters or digits of the scripts that
  * write words with spaces. Joiners in emoji, non-joiners in Persian and zero-width spaces in Thai
  * have other characters beside them. Sanity's stega puts its run at the end of a text, not inside.
  */
-const ZERO_WIDTH_IN_WORD = new RegExp(
+export const ZERO_WIDTH_IN_WORD = new RegExp(
   `([${WORD}])([\\u200B-\\u200D\\u2060-\\u2064\\u180E\\uFEFF]+)(?=[${WORD}])`,
   "gu",
 );

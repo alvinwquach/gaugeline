@@ -91,6 +91,7 @@ export const UNLISTED: NavPage[] = [
   { slug: "tools/redirects", title: "Check a redirect list" },
   { slug: "tools/plan", title: "Check a launch plan" },
   { slug: "security", title: "Security" },
+  { slug: "security/untrusted-content", title: "Text from the sites you check" },
   { slug: "changelog", title: "Changelog" },
   { slug: "reference/json-schema", title: "JSON output reference" },
   { slug: "contributing/docs-first", title: "Docs first" },
