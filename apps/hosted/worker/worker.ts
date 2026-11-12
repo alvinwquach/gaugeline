@@ -29,6 +29,12 @@ import { cleanFindings, cleanReason, stripNul } from "./clean.js";
 import { bounded, DeadlineError, guardFetcher } from "./deadline.js";
 import { diffRuns } from "./diff.js";
 import {
+  type MorningDeps,
+  MORNING_EVERY_MS,
+  morningFromEnv,
+  sendMorningEmails,
+} from "./email/send.js";
+import {
   claimJobs,
   completeJob,
   failJob,
@@ -298,21 +304,28 @@ export async function workOnce(deps: WorkerDeps, limit = 4): Promise<number> {
  */
 export async function runWorker(
   deps: WorkerDeps,
-  options: { signal: AbortSignal; limit?: number; idleMs?: number },
+  options: { signal: AbortSignal; limit?: number; idleMs?: number; morning?: MorningDeps | null },
 ): Promise<void> {
   const { signal } = options;
   const limit = options.limit ?? 4;
   const idle = options.idleMs ?? 30_000;
+  const clock = deps.now ?? (() => new Date());
+  let lastMorning = Number.NEGATIVE_INFINITY;
   const running = new Set<Promise<unknown>>();
   const pause = new Promise<void>((resolve) =>
     signal.addEventListener("abort", () => resolve(), { once: true }),
   );
   try {
     while (!signal.aborted) {
+      // The morning email (X64): every few minutes, whoever it is morning for. A failure never stops the checks.
+      if (options.morning && clock().getTime() - lastMorning >= MORNING_EVERY_MS) {
+        lastMorning = clock().getTime();
+        await sendMorningEmails(options.morning, clock()).catch(() => undefined);
+      }
       const free = limit - running.size;
       let claimed = 0;
       if (free > 0) {
-        const now = (deps.now ?? (() => new Date()))();
+        const now = clock();
         await releaseExpired(deps.sql, now);
         const jobs = await claimJobs(deps.sql, free, now);
         claimed = jobs.length;
@@ -342,7 +355,9 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   openWorkerDatabase(process.env)
     .then(async (sql) => {
       try {
-        await runWorker({ sql }, { signal: stop.signal });
+        const morning = morningFromEnv(sql, process.env);
+        if (!morning) console.error("worker: the morning email is off (RESEND_API_KEY is not set)");
+        await runWorker({ sql }, { signal: stop.signal, morning });
       } finally {
         await sql.end({ timeout: 5 });
       }

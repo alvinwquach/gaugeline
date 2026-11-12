@@ -187,7 +187,7 @@ organisation that leaves needs an owner-run procedure; that decision is open (se
 
 ## Email settings
 
-The morning email (X64) needs a person's address, so the
+The morning email (see [Hosted: the morning email](./morning-email.md)) needs a person's address, so the
 address lives in `email_preferences`, one row per person and organisation, and nowhere else.
 
 - The server sets the address and when it was confirmed (signing in with it confirms it). Nothing is
