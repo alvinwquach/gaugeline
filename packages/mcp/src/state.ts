@@ -19,6 +19,8 @@ import {
 import { ToolError } from "./errors.js";
 
 /** What the server needs from whoever starts it. None of it can be changed by a tool call. */
+export const DEFAULT_CALL_MS = 120_000;
+
 export interface ServerOptions {
   /**
    * Started with --allow-private: an address a model names may be loopback or private (never link-local or
@@ -33,6 +35,8 @@ export interface ServerOptions {
   planBases?: string[];
   /** The most calls that make requests and may be running or waiting at once (default 16); beyond it a call is refused. */
   maxActiveCalls?: number;
+  /** The longest one tool call may run, in milliseconds (default 120000): checked before every hop, and the call is answered at the limit. */
+  maxCallMs?: number;
   /** Fetcher settings for tests (a `hosts` map, a resolver). Never exposed to a tool. */
   fetcher?: Partial<FetcherOptions>;
   now?: () => Date;
@@ -122,6 +126,7 @@ export function contextFor(options: ServerOptions, state: ServerState): ToolCont
       // Every hop of every request is judged by the wrapper, not only the first address.
       return guardedFetcher(inner, {
         ...(onlyOrigin !== undefined ? { origin: onlyOrigin } : {}),
+        deadline: Date.now() + (options.maxCallMs ?? DEFAULT_CALL_MS),
         ...(options.fetcher?.maxHops !== undefined ? { maxHops: options.fetcher.maxHops } : {}),
       });
     },

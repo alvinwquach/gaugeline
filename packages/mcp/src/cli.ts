@@ -104,6 +104,21 @@ export interface Io {
   cwd: string;
 }
 
+/**
+ * One tool call must never take the server down: a rejection nobody handled is logged as a fixed line (no
+ * detail, which could carry page text) and the server keeps serving. Installed once, only where a server starts.
+ */
+let safetyNet = false;
+export function installSafetyNet(io: Pick<Io, "stderr">): void {
+  if (safetyNet) return;
+  safetyNet = true;
+  process.on("unhandledRejection", () => {
+    io.stderr.write(
+      "gaugeline-mcp: a tool call failed unexpectedly; the server is still running.\n",
+    );
+  });
+}
+
 /** Returns an exit code once the server stops. stdout is the protocol in stdio mode: logs go to stderr only. */
 export async function main(argv: string[], io: Io): Promise<number> {
   let args: Parsed;
@@ -141,6 +156,7 @@ export async function main(argv: string[], io: Io): Promise<number> {
     );
     return 2;
   }
+  installSafetyNet(io);
   if (!args.http) {
     const server = createGaugelineServer(options);
     await server.connect(new StdioServerTransport());

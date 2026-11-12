@@ -36,7 +36,7 @@ By default, only public sites. Link-local and cloud-metadata addresses (`169.254
 
 ### plan_check is off until you turn it on
 
-`plan_check` reads a file from your disk and checks a site against it, so it is not offered unless you name both the folder it may read and the sites it may check: `--root ./plans --plan-base https://preview.harbourline.example` (repeat `--plan-base` for more). There is no default folder. A plan is read only from inside `--root`, and every refusal says the same thing, so it does not tell a model which paths exist. A plan's contents are never shown in an error. A row whose address (or an old address in it) would point at another host, such as `//other.example/x`, is not requested at all and is reported by line number only; every request goes to the `--plan-base` origin and nowhere else: each redirect hop is checked too, and a redirect that points anywhere else is not followed (the trail stops at the redirect).
+`plan_check` reads a file from your disk and checks a site against it, so it is not offered unless you name both the folder it may read and the sites it may check: `--root ./plans --plan-base https://preview.harbourline.example` (repeat `--plan-base` for more). There is no default folder. A plan is read only from inside `--root`, and every refusal says the same thing, so it does not tell a model which paths exist. A plan's contents are never shown in an error. A row whose address (or an old address in it) would point at another host, such as `//other.example/x`, is not requested at all and is reported by line number only; every request goes to the `--plan-base` origin and nowhere else: each redirect hop is checked too. A planned page or an old address that redirects anywhere else is not followed and is reported as a could-not-check row (`plan-row`, with its line number and a fixed sentence: "this row redirects off the preview; not followed"); neither the cell's text nor where it redirected to is shown. A row that loops or redirects more than ten times is reported the same way and does not stop the rest.
 
 ## An example: a bindery's staging site
 
@@ -91,6 +91,10 @@ $ npx gaugeline-mcp --http --port 7433
 It needs a token (below) when you pass `--allow-private`, `--allow-private-host`, `--root` or `--plan-base`. It answers `POST` on `http://127.0.0.1:7433/mcp` and nothing else. Following the MCP specification's [transport security guidance](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#security-warning), it listens on `127.0.0.1` only, checks the `Host` header against the address it bound (so a web page cannot reach it through a name that points at your machine), and refuses any request that carries an `Origin` header unless you listed it with `--allowed-origin`.
 
 To listen on another address you must pass `--allow-non-loopback`, name each host clients will use with `--allowed-host`, and set the token in the environment: `GAUGELINE_MCP_TOKEN` (never on the command line). With a token set, every request needs `Authorization: Bearer <token>`.
+
+## Limits on one call
+
+A call that makes requests has an overall time limit (two minutes): no new request is started after it, and the call is answered at the limit. At most 16 such calls run or wait at once; more are refused with a clear message. A redirect to an address that is not http or https (`javascript:`, `file:`, `data:`) is reported as could not be read. An unexpected failure inside one call is logged as one fixed line on stderr and never stops the server.
 
 ## What it keeps
 

@@ -85,4 +85,31 @@ describe("gaugeline-mcp over stdio (built bin)", () => {
     expect(r.isError || JSON.parse(r.text).couldNotCheck.length > 0).toBe(true);
     expect(fixture.total).toBe(0);
   }, 60000);
+
+  it("stays up when a checked site redirects to a metadata address", async () => {
+    const { createServer } = await import("node:http");
+    const site = createServer((q, r) =>
+      q.url?.startsWith("/to")
+        ? r.writeHead(302, { location: "http://168.63.129.16/x" }).end()
+        : r
+            .writeHead(200, { "content-type": "text/html" })
+            .end("<html><head><title>t</title></head></html>"),
+    );
+    await new Promise<void>((ok) => site.listen(0, "127.0.0.1", ok));
+    try {
+      const port = (site.address() as { port: number }).port;
+      const client = await spawnServer(["--allow-private"]);
+      const r = textOf(
+        await client.callTool({
+          name: "run_check",
+          arguments: { url: `http://127.0.0.1:${port}/to` },
+        }),
+      );
+      expect(r.isError).toBe(false);
+      await new Promise((ok) => setTimeout(ok, 500));
+      expect((await client.listTools()).tools.length).toBeGreaterThan(0);
+    } finally {
+      await new Promise((ok) => site.close(ok));
+    }
+  }, 60000);
 });

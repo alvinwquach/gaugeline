@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { TOOLS, assertLabelled, describeTool, type ToolDef } from "./registry.js";
-import { contextFor, createState, type ServerOptions } from "./state.js";
+import { DEFAULT_CALL_MS, contextFor, createState, type ServerOptions } from "./state.js";
+import { ToolError } from "./errors.js";
 import { asToolError } from "./tools/shared.js";
 
 export const SERVER_NAME = "gaugeline";
@@ -53,7 +54,10 @@ export function createGaugelineServer(options: ServerOptions = {}): McpServer {
           };
         if (def.requests) state.active++;
         try {
-          const data = await def.run(args as never, ctx);
+          const data = await withDeadline(
+            def.run(args as never, ctx),
+            (options.maxCallMs ?? DEFAULT_CALL_MS) + 2000,
+          );
           return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
         } catch (err) {
           const e = asToolError(err, keep);
@@ -65,4 +69,25 @@ export function createGaugelineServer(options: ServerOptions = {}): McpServer {
     );
   }
   return server;
+}
+
+/**
+ * Answers at the limit even if something below is stuck. The work itself is stopped by the hop-level
+ * deadline; this only makes sure the caller is not left waiting, and that a late failure of the abandoned
+ * work is swallowed here and never becomes an unhandled rejection.
+ */
+async function withDeadline<T>(work: Promise<T>, ms: number): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  const late = new Promise<never>((_, reject) => {
+    timer = setTimeout(
+      () => reject(new ToolError("This check ran past its time limit and was stopped.")),
+      ms,
+    );
+  });
+  work.catch(() => undefined);
+  try {
+    return await Promise.race([work, late]);
+  } finally {
+    clearTimeout(timer);
+  }
 }

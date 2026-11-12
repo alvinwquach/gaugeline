@@ -61,9 +61,12 @@ export function labelDetail(
 /** At most this many could-not-check entries are returned; the count says how many more there are. */
 export const MAX_COULD_NOT_CHECK = 20;
 
-export function couldNotCheckForAgent(list: readonly { id: string; reason: string }[]) {
+export function couldNotCheckForAgent(
+  list: readonly { id: string; reason: string; line?: number }[],
+) {
   const shown = list.slice(0, MAX_COULD_NOT_CHECK).map((c) => ({
     id: c.id,
+    ...(c.line !== undefined ? { line: c.line } : {}),
     reason: labelDetail(c.reason),
   }));
   const omitted = Math.max(0, list.length - shown.length);

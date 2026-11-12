@@ -14,13 +14,13 @@ import {
   LIMITS,
   classifyAddress,
   systemResolver,
+  type FetchErrorReason,
   type Fetcher,
   type GetOptions,
   type Hop,
   type Resolver,
   type ResolvedAddress,
 } from "@gaugeline/core";
-import { ToolError } from "./errors.js";
 
 /** Cloud metadata addresses that are not link-local: Alibaba's 100.100.100.200 and Azure's wire server 168.63.129.16. */
 const METADATA_V4 = new Set(["100.100.100.200", "168.63.129.16"]);
@@ -156,18 +156,19 @@ const stripHash = (href: string) => href.replace(/#.*$/, "");
 
 export function guardedFetcher(
   inner: Fetcher,
-  opts: { origin?: string; maxHops?: number } = {},
+  opts: { origin?: string; maxHops?: number; deadline?: number } = {},
 ): Fetcher {
   const maxHops = opts.maxHops ?? LIMITS.redirectHops;
   type Fetch = (address: string, o: GetOptions) => Promise<Hop[]>;
 
-  const judge = (address: string): "ok" | "never" | "off" => {
+  const judge = (address: string): "ok" | "never" | "off" | "scheme" => {
     let u: URL;
     try {
       u = new URL(address);
     } catch {
-      return "off";
+      return "scheme";
     }
+    if (u.protocol !== "http:" && u.protocol !== "https:") return "scheme";
     if (neverReachable(u.hostname)) return "never";
     if (
       opts.origin !== undefined &&
@@ -177,27 +178,51 @@ export function guardedFetcher(
     return "ok";
   };
 
+  // Inside the fetcher only the core's own error type is thrown: a NetworkError is what every caller in
+  // core already handles, and anything else would escape as an unhandled rejection from a lazy reader.
+  const refused = (message: string, url: string, hops: Hop[], reason: FetchErrorReason) =>
+    new FetchError(reason, message, url, hops);
+
   async function walk(start: string, o: GetOptions, first: Fetch): Promise<Hop[]> {
     const hops: Hop[] = [];
     const visited = new Set<string>();
-    let startOrigin: string;
+    let startOrigin = "";
     try {
       startOrigin = new URL(start).origin;
     } catch {
-      throw new ToolError(opts.origin === undefined ? NEVER_MESSAGE : OFF_BASE);
+      throw refused(NOT_HTTP, start, [], "blocked-address");
     }
     let current = start;
     for (;;) {
+      if (opts.deadline !== undefined && Date.now() > opts.deadline)
+        throw refused(OVER_TIME, start, hops, "timeout");
       const verdict = judge(current);
-      if (verdict === "never") {
-        if (hops.length === 0) throw new ToolError(NEVER_MESSAGE);
-        throw new FetchError("private-address-refused", NEVER_MESSAGE, current, [
-          ...hops,
-          { url: current, status: 0, headers: {}, ms: 0, error: "private-address-refused" },
-        ]);
+      if (verdict === "never")
+        throw refused(
+          NEVER_MESSAGE,
+          current,
+          [
+            ...hops,
+            ...(hops.length > 0
+              ? [
+                  {
+                    url: current,
+                    status: 0,
+                    headers: {},
+                    ms: 0,
+                    error: "private-address-refused" as const,
+                  },
+                ]
+              : []),
+          ],
+          "private-address-refused",
+        );
+      if (verdict === "scheme") {
+        if (hops.length > 0 && opts.origin !== undefined) return hops;
+        throw refused(NOT_HTTP, start, hops, "blocked-address");
       }
       if (verdict === "off") {
-        if (hops.length === 0) throw new ToolError(OFF_BASE);
+        if (hops.length === 0) throw refused(OFF_BASE, current, [], "blocked-address");
         return hops; // the trail ends at the redirect that points off the base; nothing is sent there
       }
       visited.add(stripHash(current));
@@ -259,5 +284,7 @@ export function guardedFetcher(
   };
 }
 
+const NOT_HTTP = "A redirect points at an address that is not http or https; it was not followed.";
+const OVER_TIME = "This check ran past its time limit and was stopped.";
 export const OFF_BASE =
   "A plan address points off the preview it is being checked against. Nothing was requested for it.";

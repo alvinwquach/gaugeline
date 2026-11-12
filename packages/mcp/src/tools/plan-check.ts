@@ -6,10 +6,13 @@ import {
   checkBuilt,
   checkRedirects,
   createPlanRegistry,
+  ConfigError,
+  NetworkError,
   legacyPath,
   readPlan,
   runChecks,
   splitLegacy,
+  type Fetcher,
   type PlanRow,
 } from "@gaugeline/core";
 import { ToolError, remember, type ToolContext } from "../state.js";
@@ -110,6 +113,75 @@ function onBaseOnly(rows: readonly PlanRow[], origin: string) {
   return { kept, skipped };
 }
 
+const REDIRECT_STATUS = new Set([301, 302, 303, 307, 308]);
+
+/** One row or old address that was not followed, with a fixed sentence and a line number, never a cell. */
+interface NotFollowed {
+  id: "plan-row";
+  line: number;
+  reason: string;
+}
+const OFF = "this row redirects off the preview; not followed";
+const OFF_LEGACY = "an old address in this row redirects off the preview; not followed";
+const STUCK =
+  "this row could not be followed (a redirect loop, too many redirects or a refused address); not requested further";
+const STUCK_LEGACY =
+  "an old address in this row could not be followed (a redirect loop, too many redirects or a refused address)";
+
+/**
+ * Follows one address from the plan through the guarded fetcher (the answer is memoised by the core fetcher,
+ * so core's own later request for it costs nothing) and says whether its trail stayed on the preview. A
+ * trail that ends at a redirect the fetcher refused to follow left the preview; one that failed (a loop, too
+ * many redirects, a refused address) could not be followed. Neither is judged by core: a row it could not
+ * follow is reported as could-not-check, and the cell's text and the redirect's target are never shown.
+ */
+async function probe(fetcher: Fetcher, url: string): Promise<"ok" | "off" | "stuck"> {
+  try {
+    const last = (await fetcher.get(url)).at(-1);
+    return last && REDIRECT_STATUS.has(last.status) && last.headers.location ? "off" : "ok";
+  } catch (err) {
+    if (err instanceof NetworkError) return "stuck";
+    throw err;
+  }
+}
+
+/** Drops each row, and each old address, whose trail leaves the preview or cannot be followed. */
+async function followable(rows: readonly PlanRow[], base: string, fetcher: Fetcher) {
+  const notFollowed: NotFollowed[] = [];
+  const seen = new Map<string, Promise<"ok" | "off" | "stuck">>();
+  const check = (url: string) => {
+    let p = seen.get(url);
+    if (!p) seen.set(url, (p = probe(fetcher, url)));
+    return p;
+  };
+  const kept: PlanRow[] = [];
+  for (const row of rows) {
+    const verdict = await check(new URL(row.path, base).href);
+    if (verdict !== "ok") {
+      notFollowed.push({ id: "plan-row", line: row.line, reason: verdict === "off" ? OFF : STUCK });
+      continue;
+    }
+    const good: string[] = [];
+    let dropped: "off" | "stuck" | undefined;
+    for (const token of splitLegacy(row.legacyUrl)) {
+      const p = legacyPath(token);
+      const v = p ? await check(new URL(`${p.path}${p.search}`, base).href) : "stuck";
+      if (v === "ok") good.push(token);
+      else dropped = dropped === "off" ? "off" : v;
+    }
+    if (dropped) {
+      notFollowed.push({
+        id: "plan-row",
+        line: row.line,
+        reason: dropped === "off" ? OFF_LEGACY : STUCK_LEGACY,
+      });
+      const { legacyUrl: _old, ...rest } = row;
+      kept.push(good.length > 0 ? { ...rest, legacyUrl: good.join("\n") } : rest);
+    } else kept.push(row);
+  }
+  return { kept, notFollowed };
+}
+
 export async function planCheck(
   args: z.infer<z.ZodObject<typeof planCheckInput>>,
   ctx: ToolContext,
@@ -132,9 +204,19 @@ export async function planCheck(
   }
   // Requests go to the configured origin and nowhere else: the rows are checked first, and the fetcher
   // refuses any other address as well.
-  const { kept, skipped } = onBaseOnly(plan.rows, base);
+  const { kept: onBase, skipped } = onBaseOnly(plan.rows, base);
   const fetcher = ctx.fetcherFor(base, base);
   const startedAt = ctx.now();
+  // The preview itself must answer, as in `gaugeline plan --base`.
+  try {
+    await fetcher.get(`${base}/`);
+  } catch (err) {
+    if (err instanceof NetworkError)
+      throw new ConfigError(`The preview at ${base} could not be reached: ${err.message}`);
+    throw err;
+  }
+  // Every planned address and old address is followed once, here, before core judges anything.
+  const { kept, notFollowed } = await followable(onBase, base, fetcher);
   // The same calls as `gaugeline plan --base`: each planned path with GET, each legacy address once.
   const built = await checkBuilt(kept, { base, fetcher, file: name });
   const redirects = await checkRedirects(kept, { base, fetcher, file: name });
@@ -156,22 +238,18 @@ export async function planCheck(
     couldNotCheck: result.couldNotCheck,
     registry,
   });
+  const couldNotCheck = [
+    ...skipped.map((k) => ({ id: "plan-row", line: k.line, reason: k.what })),
+    ...notFollowed,
+    ...result.couldNotCheck.map((c) => ({ id: c.id, reason: c.reason })),
+  ];
   return {
     runId: run.id,
     kind: "read",
     plan: { file: name, rows: plan.rows.length },
     url: base,
-    summary: { findings: result.findings.length, couldNotCheck: result.couldNotCheck.length },
+    summary: { findings: result.findings.length, couldNotCheck: couldNotCheck.length },
     ...findingsForAgent(run, ctx.maxFindings),
-    ...couldNotCheckForAgent(result.couldNotCheck),
-    ...(skipped.length > 0
-      ? {
-          skippedRows: {
-            count: skipped.length,
-            note: "These rows were not requested: an address in them points off the preview. Only the line number is shown.",
-            rows: skipped.slice(0, 20),
-          },
-        }
-      : {}),
+    ...couldNotCheckForAgent(couldNotCheck),
   };
 }

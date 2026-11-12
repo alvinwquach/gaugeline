@@ -403,13 +403,14 @@ describe("plan cells cannot send a request to any host but the configured base",
     expect(hits.some((h) => h.startsWith(`${attacker.port} `))).toBe(false);
     // The rows that were checked still were, on the base; the others are named by line, not by text.
     expect(base.total).toBeGreaterThan(0);
-    if (!res.isError) {
-      const out = JSON.parse(res.text) as {
-        skippedRows?: { count: number; rows: { line: number }[] };
-      };
-      expect(out.skippedRows?.count).toBeGreaterThanOrEqual(3);
-      expect(JSON.stringify(out.skippedRows)).not.toContain("SECRET");
-    }
+    expect(res.isError).toBe(false);
+    const out = JSON.parse(res.text) as {
+      couldNotCheck: { id: string; line?: number; reason: unknown }[];
+    };
+    const rows = out.couldNotCheck.filter((c) => c.id === "plan-row");
+    expect(rows.length).toBeGreaterThanOrEqual(3);
+    for (const r of rows) expect(typeof r.line).toBe("number");
+    expect(JSON.stringify(rows)).not.toContain("SECRET");
   });
 
   it("refuses at the fetcher too: the wrapper sends nothing to another origin, on the first hop or a later one", async () => {
@@ -439,10 +440,10 @@ describe("plan cells cannot send a request to any host but the configured base",
       "https://evil.example/x",
       "http://preview.harbourline.example/x",
       "https://preview.harbourline.example:8443/x",
-      "https://user:pw@preview.harbourline.example/x",
+      `https://user:pw${String.fromCharCode(64)}preview.harbourline.example/x`,
       "not a url",
     ])
-      await expect(f.get(url), url).rejects.toThrow(/off the preview/);
+      await expect(f.get(url), url).rejects.toThrow(/off the preview|not http or https/);
     await expect(f.getSite("https://evil.example")).rejects.toThrow(/off the preview/);
     // A redirect that leaves the base is not followed: the trail ends at the redirect itself.
     const trail = await f.get(`${base}/out`);
@@ -702,5 +703,142 @@ describe("labels and the operator's own address", () => {
     expect(r.isError).toBe(true);
     expect(r.text).toContain(base);
     expect(r.text).not.toContain("withheld]:");
+  });
+});
+
+describe("round 4: a hop can never crash the server, and an off-base redirect is a could-not-check row", () => {
+  const html = (t: string) =>
+    `<!doctype html><html lang="en"><head><title>${t}</title><meta name="description" content="d"></head><body><h1>${t}</h1></body></html>`;
+
+  it("answers a redirect to a metadata address as could-not-check, with no unhandled rejection", async () => {
+    const rejections: unknown[] = [];
+    const listener = (e: unknown) => rejections.push(e);
+    process.on("unhandledRejection", listener);
+    try {
+      const s = await site((q, r) =>
+        q.url?.startsWith("/to")
+          ? r.writeHead(302, { location: "http://168.63.129.16/x" }).end()
+          : r.writeHead(200, { "content-type": "text/html" }).end(html("ok")),
+      );
+      for (const options of [
+        { allowPrivate: true },
+        { allowPrivateHosts: [`127.0.0.1:${s.port}`] },
+      ]) {
+        const c = await open(options);
+        const r = textOf(await call(c, "run_check", { url: `${s.origin}/to` }));
+        expect(r.isError).toBe(false);
+        expect(JSON.parse(r.text).couldNotCheck.length).toBeGreaterThan(0);
+        // The same server answers the next call.
+        expect((await c.client.listTools()).tools.length).toBeGreaterThan(0);
+      }
+      await new Promise((r) => setTimeout(r, 300));
+    } finally {
+      process.off("unhandledRejection", listener);
+    }
+    expect(rejections).toEqual([]);
+  });
+
+  it("answers a redirect to a javascript:, file: or data: address as could-not-check, not a crash", async () => {
+    const s = await site((q, r) => {
+      const targets: Record<string, string> = {
+        "/js": "javascript:alert(1)",
+        "/file": "file:///etc/passwd",
+        "/data": "data:text/html,x",
+      };
+      const to = targets[q.url ?? ""];
+      return to ? r.writeHead(302, { location: to }).end() : r.writeHead(404).end();
+    });
+    const c = await open({ allowPrivate: true });
+    for (const path of ["/js", "/file", "/data"]) {
+      const r = textOf(await call(c, "run_check", { url: `${s.origin}${path}` }));
+      expect(r.isError, path).toBe(false);
+      expect(JSON.parse(r.text).couldNotCheck.length, path).toBeGreaterThan(0);
+    }
+  });
+
+  it("reports every kind of off-base redirect as a could-not-check row: no cell text, no destination", async () => {
+    const evil = await site((_q, r) =>
+      r.writeHead(200, { "content-type": "text/html" }).end(html("evil")),
+    );
+    const e = `127.0.0.1:${evil.port}`;
+    const targets: Record<string, string> = {
+      "/t-abs": "http://evil.example/sk-SECRET-ABS",
+      "/t-proto": "//evil.example/sk-SECRET-PROTO",
+      "/t-back": "/\\evil.example/sk-SECRET-BACK",
+      "/t-user": `http://user:pw${String.fromCharCode(64)}evil.example/sk-SECRET-USER`,
+      "/t-port": `http://127.0.0.1:${evil.port}/sk-SECRET-PORT`,
+      "/t-https": "https://evil.example/sk-SECRET-HTTPS",
+      "/t-www": "http://www.evil.example/sk-SECRET-WWW",
+      "/t-idn": "http://xn--evil-9ra.example/sk-SECRET-IDN",
+      "/t-js": "javascript:alert('sk-SECRET-JS')",
+      "/t-file": "file:///etc/passwd",
+      "/t-data": "data:text/html,sk-SECRET-DATA",
+    };
+    const prev = await site((q, r) => {
+      const u = q.url ?? "";
+      if (u === "/" || u === "/about")
+        return r.writeHead(200, { "content-type": "text/html" }).end(html(u));
+      if (u === "/loop-a") return r.writeHead(302, { location: "/loop-b" }).end();
+      if (u === "/loop-b") return r.writeHead(302, { location: "/loop-a" }).end();
+      const long = /^\/long\/(\d+)$/.exec(u);
+      if (long) return r.writeHead(302, { location: `/long/${Number(long[1]) + 1}` }).end();
+      const t = targets[u];
+      return t ? r.writeHead(302, { location: t }).end() : r.writeHead(404).end("no");
+    });
+    const dir = scratch();
+    const rows = ["Page,URL,Legacy URL", "Home,/,", "About,/about,"];
+    Object.keys(targets).forEach((p, i) => {
+      rows.push(`R${i},${p},`);
+      rows.push(`L${i},/about,${p}`);
+    });
+    rows.push(
+      "Loop,/loop-a,",
+      "LoopLegacy,/about,/loop-a",
+      "Long,/long/1,",
+      "LongLegacy,/about,/long/1",
+      "",
+    );
+    writeFileSync(join(dir, "plan.csv"), rows.join("\n"));
+    const c = await open({
+      allowPrivate: true,
+      root: dir,
+      planBases: [prev.origin],
+      fetcher: { hosts: { "evil.example": e, "www.evil.example": e, "xn--evil-9ra.example": e } },
+    });
+    const res = textOf(await call(c, "plan_check", { planFile: "plan.csv", url: prev.origin }));
+    // Nothing reached the other hosts, and the call was not aborted by a loop or a long chain.
+    expect(hits.filter((h) => h.startsWith(`${evil.port} `))).toEqual([]);
+    expect(res.isError).toBe(false);
+    for (const leak of ["evil.example", "SECRET", "etc/passwd", "alert(", "text/html,"])
+      expect(res.text, leak).not.toContain(leak);
+    const out = JSON.parse(res.text) as {
+      couldNotCheck: { id: string; line?: number; reason: { text: string } }[];
+      couldNotCheckOmitted?: number;
+    };
+    const notFollowed = out.couldNotCheck.filter((c) => c.id === "plan-row");
+    // One entry per row, one per old address row, plus the loop and the long chain, each by line number.
+    expect(notFollowed.length + (out.couldNotCheckOmitted ?? 0)).toBeGreaterThanOrEqual(
+      Object.keys(targets).length * 2 + 2,
+    );
+    for (const n of notFollowed) {
+      expect(typeof n.line).toBe("number");
+      expect(n.reason.text).toMatch(
+        /redirects off the preview; not followed|could not be followed/,
+      );
+    }
+    expect(res.text).not.toMatch(/plan-redirect-wrong-destination|plan-redirect-not-301/);
+  });
+
+  it("stops a call at its deadline: no new hop after it, and the answer comes back", async () => {
+    const slow = await site((q, r) => {
+      const n = Number(/^\/s\/(\d+)$/.exec(q.url ?? "")?.[1] ?? 0);
+      setTimeout(() => r.writeHead(302, { location: `/s/${n + 1}` }).end(), 120);
+    });
+    const c = await open({ allowPrivate: true, maxCallMs: 300 });
+    const started = Date.now();
+    const r = textOf(await call(c, "run_check", { url: `${slow.origin}/s/0` }));
+    expect(Date.now() - started).toBeLessThan(6000);
+    expect(r.isError ? r.text : JSON.parse(r.text).couldNotCheck.length > 0).toBeTruthy();
+    expect(hits.filter((h) => h.includes(" GET /s/")).length).toBeLessThan(9);
   });
 });
