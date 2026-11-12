@@ -51,6 +51,8 @@ const FIXTURES = [
   "astro-like",
   "sanity-images",
   "aem-author-links",
+  "remix-like",
+  "remix-dev",
   "refusing",
   "tag-rules",
   "nav-events",
