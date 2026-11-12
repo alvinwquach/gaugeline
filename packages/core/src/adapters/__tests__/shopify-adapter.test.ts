@@ -191,6 +191,13 @@ describe("the Shopify adapter: settings that are empty or wrong are could-not-ch
     expect(seen).toEqual([]);
   });
 
+  it("shopHost normalises case, spaces and a trailing root dot, and still refuses a different host", () => {
+    expect(shopHost(" LARKSPUR-Ceramics.myshopify.com. ")).toBe("larkspur-ceramics.myshopify.com");
+    expect(shopHost("larkspur-ceramics.")).toBe("larkspur-ceramics.myshopify.com");
+    expect(shopHost("a.myshopify.com..")).toBeUndefined();
+    expect(shopHost(".")).toBeUndefined();
+  });
+
   it("shopHost accepts the spec's shape (and the bare handle) and nothing else", () => {
     expect(shopHost("larkspur-ceramics")).toBe("larkspur-ceramics.myshopify.com");
     expect(shopHost(" Larkspur-Ceramics.myshopify.com ")).toBe("larkspur-ceramics.myshopify.com");
@@ -653,6 +660,24 @@ describe("the Shopify adapter: review fixes (M1, L1 to L9)", () => {
       return reply(200, { data: { pages: { nodes, pageInfo: info(end < 1205, String(end)) } } });
     };
     const { adapter } = make({ transport, pageSize: 250 });
+    await collectPublished(adapter, { types: ["pages"] });
+    expect(adapter.skipped()).toHaveLength(1000);
+    expect(adapter.skippedMore()).toBe(205);
+  });
+
+  it("L3: reading the same list again does not count a skipped item a second time", async () => {
+    const bad = (i: number) => ({ ...page(i), handle: `\u00fcber-${i}` });
+    const transport: Transport = (_url, req) => {
+      const v = JSON.parse(req.body ?? "{}").variables as { first: number; after: string | null };
+      const start = v.after === null ? 0 : Number(v.after);
+      const nodes = Array.from({ length: Math.min(v.first, 1205 - start) }, (_, i) =>
+        bad(start + i + 1),
+      );
+      const end = start + nodes.length;
+      return reply(200, { data: { pages: { nodes, pageInfo: info(end < 1205, String(end)) } } });
+    };
+    const { adapter } = make({ transport, pageSize: 250 });
+    await collectPublished(adapter, { types: ["pages"] });
     await collectPublished(adapter, { types: ["pages"] });
     expect(adapter.skipped()).toHaveLength(1000);
     expect(adapter.skippedMore()).toBe(205);

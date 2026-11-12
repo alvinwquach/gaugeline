@@ -78,9 +78,12 @@ const GID = /^gid:\/\/shopify\/(Product|Collection|Page|Blog|Article)\/(\d{1,20}
 const HANDLE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
 const SEGMENT = /^[A-Za-z0-9][A-Za-z0-9._~%-]{0,200}$/;
 
-/** The shop's myshopify.com host from what a person set (the bare handle works too), or undefined. */
+/**
+ * The shop's myshopify.com host from what a person set, or undefined. Case, surrounding spaces and one trailing root
+ * dot are normalised away, and the bare handle works too; a scheme, a port or a path is not accepted.
+ */
 export function shopHost(input: string): string | undefined {
-  const t = input.trim().toLowerCase();
+  const t = input.trim().toLowerCase().replace(/\.$/, "");
   const host = /^[a-z0-9][a-z0-9-]{0,60}$/.test(t) ? `${t}.myshopify.com` : t;
   return SHOP.test(host) ? host : undefined;
 }
@@ -331,8 +334,8 @@ export function createShopifyAdapter(options: ShopifyAdapterOptions): ShopifyAda
   const redact = createRedactor(env, [SHOPIFY_STOREFRONT_TOKEN]);
   /** Keyed by type and id: reading again does not list an item twice. */
   const skipped = new Map<string, SkippedItem>();
-  /** Items skipped after the list was full: counted, so the run can say how many were not listed. */
-  let skippedMore = 0;
+  /** Items skipped after the list was full, by the same key: counted once each, however many times a list is read. */
+  const skippedOver = new Set<string>();
 
   /** What a failed read becomes: a rate limit carries what was read, anything else is could-not-check. */
   const translate = (err: unknown, partial: unknown): Error => {
@@ -532,7 +535,7 @@ export function createShopifyAdapter(options: ShopifyAdapterOptions): ShopifyAda
           const key = `${item.type}:${item.id}`;
           if (skipped.has(key)) continue;
           if (skipped.size < SKIPPED_LISTED) skipped.set(key, item);
-          else skippedMore++;
+          else skippedOver.add(key);
           continue;
         }
         yield item;
@@ -687,6 +690,6 @@ export function createShopifyAdapter(options: ShopifyAdapterOptions): ShopifyAda
     resolveUrl,
     offers,
     skipped: () => [...skipped.values()],
-    skippedMore: () => skippedMore,
+    skippedMore: () => skippedOver.size,
   };
 }

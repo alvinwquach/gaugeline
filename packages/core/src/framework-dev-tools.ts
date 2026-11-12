@@ -13,7 +13,7 @@ import { devMarkers as astroMarkers, isAstroSite, pageBody as astroBody } from "
 import { isHtmlPage } from "./checks/page.js";
 import { frameworkOf } from "./checks/qwik-solid-shared.js";
 import { devMarkers as gatsbyMarkers, isGatsbySite } from "./gatsby/detect.js";
-import { devMarkers as hydrogenMarkers, isHydrogenSite, readEmbedded } from "./hydrogen/detect.js";
+import { devMarkers as hydrogenMarkers, isHydrogenSite } from "./hydrogen/detect.js";
 import { isNuxtSite, NUXT_DEV_SCRIPT } from "./nuxt/detect.js";
 import { devMarkers as qwikMarkers } from "./qwik/detect.js";
 import { devMarkers as remixMarkers } from "./remix/detect.js";
@@ -41,8 +41,7 @@ export function frameworkCoversDevTools(page: PageSnapshot): boolean {
     (isAngularSite(page) && angularMarkers(angularBody(page).html).length > 0) ||
     (isAstroSite(page) && astroMarkers(astroBody(page).html).length > 0) ||
     sveltekitMarkers(page).length > 0 ||
-    (hydrogenMarkers(page).length > 0 &&
-      (isHydrogenSite(page) || readEmbedded(page) !== undefined)) ||
+    (isHydrogenSite(page) && hydrogenMarkers(page).length > 0) ||
     (isGatsbySite(page) && gatsbyMarkers(page).length > 0) ||
     remixMarkers(page).length > 0 ||
     (isNuxtSite(page) && page.scripts.some((src) => NUXT_DEV_SCRIPT.test(src))) ||
