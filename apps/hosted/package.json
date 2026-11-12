@@ -1,0 +1,19 @@
+{
+  "name": "@gaugeline/hosted",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The hosted Gaugeline app (in progress): database schema, row-level security and migrations. Never published.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "db:migrate": "tsx db/migrate.ts"
+  },
+  "dependencies": {
+    "drizzle-orm": "0.45.4",
+    "postgres": "3.4.9"
+  }
+}
