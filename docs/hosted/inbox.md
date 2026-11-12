@@ -37,11 +37,17 @@ token's organisation and refuses a site or a finding that is not that organisati
 nobody's name. Those are missing privileges and checks in the database, not an `if` in the app, so a
 refactor cannot skip them.
 
-This is the output of the seeded test database (`apps/hosted/db/__tests__/harness.ts`, migration
-`0005_drafts_inbox.sql`, and one invented agent token for Northgate Studio). The session first claims to
-be Brightfield Web, which changes nothing:
+This is the output of the seeded test database (`apps/hosted/db/__tests__/harness.ts` and migration
+`0005_drafts_inbox.sql`), run with `psql` 16 as written, including the one invented agent token for
+Northgate Studio that the first statement adds. The session first claims to be Brightfield Web, which
+changes nothing:
 
 ```sql
+-- set-up, as the schema owner: the hosted app mints a token, shows it once and keeps only its SHA-256
+insert into private.agent_tokens (org_id, token_sha256)
+  values ('0a000000-0000-4000-8000-00000000000a',
+          decode('75ba71e74f134b7296af485bd0dc6f1b6b5bee0fb953435bcb11939ed7d55099', 'hex'));
+
 -- as the agent role; the session claims Brightfield Web's organisation
 begin;
 select set_config('request.jwt.claims', '{"org_id":"0b000000-0000-4000-8000-00000000000b"}', true);
@@ -54,19 +60,25 @@ rollback;
 begin;
 set local role gaugeline_agent;
 -- 2. Northgate's agent token, naming Brightfield's site
-select private.agent_insert_draft('gla_0123456789abcdef0123456789abcdef',
-  'b1000000-0000-4000-8000-0000000000b1', 'email', '{"subject":"x","body":"y"}');
+select private.agent_insert_draft($1, $2, $3, $4)
+  \bind 'gla_0123456789abcdef0123456789abcdef' 'b1000000-0000-4000-8000-0000000000b1' 'email' '{"subject":"x","body":"y"}' \g
 rollback;
 begin;
 set local role gaugeline_agent;
 -- 3. the same token, naming its own organisation's site
-select private.agent_insert_draft('gla_0123456789abcdef0123456789abcdef',
-  'a1000000-0000-4000-8000-0000000000a1', 'email',
-  '{"subject":"Your menu link is fixed","body":"The drinks page is back."}') is not null as inserted;
+select private.agent_insert_draft($1, $2, $3, $4) is not null as inserted
+  \bind 'gla_0123456789abcdef0123456789abcdef' 'a1000000-0000-4000-8000-0000000000a1' 'email' '{"subject":"Your menu link is fixed","body":"The drinks page is back."}' \g
+rollback;
+begin;
+set local role gaugeline_agent;
+-- 4. the same token, a payload that is not an email
+select private.agent_insert_draft($1, $2, $3, $4)
+  \bind 'gla_0123456789abcdef0123456789abcdef' 'a1000000-0000-4000-8000-0000000000a1' 'email' '{"subject":"Menu link","body":"Fixed.","to":"owner@example.test"}' \g
 rollback;
 ```
 
 ```text
+INSERT 0 1
 BEGIN
                     set_config
 ---------------------------------------------------
@@ -89,23 +101,72 @@ SET
 (1 row)
 
 ROLLBACK
+BEGIN
+SET
+ERROR:  the payload does not match the email shape: payload must have exactly subject and body
+CONTEXT:  PL/pgSQL function private.drafts_check_payload() line 8 at RAISE
+SQL statement "insert into public.drafts (org_id, site_id, kind, payload, finding_ids, created_by)
+    values (v_org, p_site_id, p_kind, p_payload, coalesce(p_finding_ids, '{}'), null)
+    returning id"
+PL/pgSQL function private.agent_insert_draft(text,uuid,text,jsonb,uuid[]) line 36 at SQL statement
+ROLLBACK
 ```
+
+**The agent's token is always a bind parameter, never text in the statement.** Above, `\bind` sends the
+token apart from the SQL (`$1`). A token written into the statement is a literal, and when a call fails
+Postgres writes the failing statement to its server log (`log_min_error_statement` defaults to `error`),
+so the token would land in the log. With a driver, use its parameters (a tagged template in postgres.js,
+never string concatenation). Parameters are logged only when you ask for it, so on the agent's database
+leave `log_statement` at `none` and `log_parameter_max_length` and `log_parameter_max_length_on_error` at
+`0` where the host lets you set them.
 
 What the owner sets up: a database login for the agent service that is a member of `gaugeline_agent`
 only (like the app's login, never the table owner), and one agent token per organisation, created by the
-hosted app (G35's token code). Nothing is created by this change.
+hosted app (G35's token code). Nothing is created by this change. `agentLoginsWithOtherRoles`
+(`apps/hosted/db/audit.ts`) lists any login that is a member of `gaugeline_agent` and also of
+`authenticated` or `service_role`; such a login could act as a person or as the server, so the list must
+be empty, like the checks in the data model page.
+
+An agent cannot flood the inbox: a draft names at most 50 findings, and a site holds at most 200 drafts
+waiting for a decision. The 201st call fails with "this site already has 200 drafts waiting for a decision"
+until someone decides or declines some. The cap is per site, so one noisy site does not block the others.
 
 ## Only fixed shapes can be approved
 
 A draft is one of three kinds, and the database refuses any other for everyone who inserts one:
-`pull_request` (a title, a description and up to 20 files, each a plain relative path outside `.git` and
-`.github`), `email` (a subject and a body; recipients come from the site's contacts, never the payload)
-and `sanity_draft` (a document id, a type and up to 20 field values). Unknown keys are refused, so a
-payload cannot name a branch, a repository, a recipient or a flag. The shapes are in
-`apps/hosted/inbox/kinds.ts`, and the writer checks the same shapes again before it sends anything.
+
+- `pull_request`: a title (one line), a description and up to 20 files. A path is plain characters,
+  relative, and never reaches into git or the repository's automation: any `.git` directory, `.gitmodules`,
+  `.github`, `.circleci`, `.gitlab-ci.yml` or `.husky`, at any depth and whatever the case, is refused, and
+  so are `..` and a leading `-`.
+- `email`: a subject (one line) and a body. Recipients come from the site's contacts, never the payload.
+- `sanity_draft`: a document id, a type and up to 20 field values. A field name starts with a letter, so
+  Sanity's own fields (`_id`, `_type`, `_rev`, ...) can never be set by a draft.
+
+Unknown keys are refused, so a payload cannot name a branch, a repository, a recipient or a flag. A
+one-line field refuses every line break and control character, including U+0085, the C1 controls
+(U+0080 to U+009F) and U+2028 and U+2029. The shapes are in `apps/hosted/inbox/kinds.ts`, and the writer
+checks the same shapes again before it sends anything.
+
+**The database checks the shape too, not only the app.** A signed-in person can write to `drafts` and
+`decisions` without going through the inbox code (Supabase exposes both tables over REST), so a trigger on
+each table runs the same rules (`private.draft_payload_problem`, a test gives it and `kinds.ts` the same
+list of payloads and requires the same verdicts). A draft that does not fit its kind is refused when it is
+written, whoever writes it; an approval is refused if the draft's payload does not fit, and an edit is
+refused if the edit does not fit. So a hostile edit cannot be recorded, and cannot use up a draft's only
+decision. One thing stays in the app: the "this finding has closed" confirmation below is a second click for
+a person to make, not a safeguard, so someone writing to the table directly does not see it.
+
+**Rule for the jobs table (G36) and the writer:** an apply job is created only from a decision row, using
+that row's payload (the draft's for `approved`, `edited_payload` for `edited`) and its `payload_sha256`,
+and never from a payload anyone supplies separately. Every decision row has passed the database's shape
+check, and the worker checks the hash and the shape again before it writes anything.
 
 Approve checks the agent's payload, and Edit first checks the edit, before anything is recorded. A draft
-whose payload does not fit can only be declined. An edit is capped at 16 KB, like a draft.
+whose payload does not fit can only be declined. An edit is capped at 16 KB (measured on the text Postgres
+stores, which has a space after each colon and comma), like a draft. A payload over the cap, containing
+U+0000 or an unpaired surrogate, or a number such as `1e21` that JSON and Postgres print differently, is
+reported as an invalid payload, with the reason, rather than failing in the database.
 
 ## One decision per draft
 
@@ -117,10 +178,15 @@ draft; the old decision stays in the log, which nobody can edit or delete (see
 
 ## When the finding has already closed
 
-If a later complete run (finished, not partial) no longer reports the finding a draft was written for
-(someone fixed it by hand),
+If a later clean run no longer reports the finding a draft was written for (someone fixed it by hand),
 Approve warns first and names the closed findings. A second, confirmed Approve records the decision.
 Decline never warns.
+
+A run counts as clean when it finished and its stored summary does not say `partial` or carry an `error`.
+It does not close a finding whose check it could not run (the check is listed under `couldNotCheck`: its
+silence means nothing), and it does not close anything when `couldNotCheck` holds 20 entries, because the
+summary keeps no more than 20 and the list may have been cut off. A job that failed stores no run at all
+(G36 keeps only a short code on the job), so it cannot close a finding either.
 
 ## What happens after an approval
 

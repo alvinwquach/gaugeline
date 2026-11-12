@@ -5,6 +5,7 @@
  */
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { agentLoginsWithOtherRoles } from "../audit.js";
 import {
   as,
   errorOf,
@@ -16,6 +17,7 @@ import {
   RUN_B1,
   seed,
   SITE_A1,
+  SITE_A2,
   SITE_B1,
   type Sql,
   type TestDatabase,
@@ -24,6 +26,7 @@ import {
   USER_A_OWNER,
   USER_B_OWNER,
 } from "./harness.js";
+import { checkDraftPayload, jsonbText, MAX_PAYLOAD_BYTES } from "../../inbox/kinds.js";
 import {
   decide,
   listWaiting,
@@ -309,11 +312,29 @@ describe.skipIf(!HAS_DATABASE)("drafts inbox", () => {
       expect(queue.jobs.size).toBe(0);
     });
 
-    it("a draft whose own payload is not its kind's shape cannot be approved, only declined", async () => {
-      const id = await draft([], { title: "x", body: "y", files: [], branch: "main" });
+    it("a draft stored before the shape rules (the trigger was not there) cannot be approved, only declined", async () => {
+      const id = randomUUID();
+      await sql.begin(async (tx) => {
+        await tx.unsafe("alter table public.drafts disable trigger drafts_check_payload");
+        await tx`insert into public.drafts (id, org_id, site_id, kind, payload)
+          values (${id}, ${ORG_A}, ${SITE_A1}, 'pull_request',
+            ${tx.json({ title: "x", body: "y", files: [], branch: "main" })})`;
+        await tx.unsafe("alter table public.drafts enable trigger drafts_check_payload");
+      });
       expect((await decide(sql, owner, id, { kind: "approve" }, queue)).status).toBe(
         "invalid-payload",
       );
+      // The database refuses the approval too, whoever inserts it.
+      const direct = await errorOf(
+        as(
+          sql,
+          { role: "authenticated", userId: USER_A_OWNER },
+          (tx) =>
+            tx`insert into public.decisions (org_id, draft_id, decision, decided_by)
+             values (${ORG_A}, ${id}, 'approved', ${USER_A_OWNER})`,
+        ),
+      );
+      expect(direct).toMatch(/does not match the pull_request shape/);
       expect((await decide(sql, owner, id, { kind: "decline" }, queue)).status).toBe("recorded");
       expect(queue.jobs.size).toBe(0);
     });
@@ -395,6 +416,42 @@ describe.skipIf(!HAS_DATABASE)("drafts inbox", () => {
       expect(queue.jobs.size).toBe(1);
     });
 
+    // Each case gets its own site, so the runs of one never close the findings of another.
+    async function closedBy(laterSummary: object): Promise<string> {
+      const [site] = await sql`insert into public.sites (org_id, name, url, timezone)
+        values (${ORG_A}, 'Closing test', ${`https://closing-${randomUUID()}.test`}, 'Europe/London') returning id`;
+      const [first] = await sql`insert into public.runs (org_id, site_id, started_at, finished_at)
+        values (${ORG_A}, ${site!.id}, '2026-11-01T03:00:00Z', '2026-11-01T03:01:00Z') returning id`;
+      const [f] = await sql`insert into public.findings
+        (org_id, site_id, run_id, check_id, severity, title, url, fingerprint)
+        values (${ORG_A}, ${site!.id}, ${first!.id}, 'broken-links', 'high', 'Broken link',
+          'https://tidewater-bar.test/', 'cccccccccccccccc') returning id`;
+      const id = randomUUID();
+      await sql`insert into public.drafts (id, org_id, site_id, kind, payload, finding_ids)
+        values (${id}, ${ORG_A}, ${site!.id}, 'pull_request', ${sql.json(PR_PAYLOAD)}, ${[f!.id]})`;
+      await sql`insert into public.runs (org_id, site_id, started_at, finished_at, summary)
+        values (${ORG_A}, ${site!.id}, '2026-11-02T03:00:00Z', '2026-11-02T03:01:00Z', ${sql.json(laterSummary as never)})`;
+      return (await decide(sql, owner, id, { kind: "approve" }, queue)).status;
+    }
+
+    it("a later run that finished but could not run the finding's check does not close it", async () => {
+      const skipped = (id: string) => ({ couldNotCheck: [{ id, reason: "the site timed out" }] });
+      expect(await closedBy(skipped("broken-links"))).toBe("recorded");
+      // A different check being skipped says nothing about this one.
+      expect(await closedBy(skipped("canonical-missing"))).toBe("confirm-closed-findings");
+    });
+
+    it("a later run with an error, or a possibly cut-off list of skipped checks, does not close it", async () => {
+      expect(await closedBy({ error: "fetch-failed" })).toBe("recorded");
+      const twenty = Array.from({ length: 20 }, (_, i) => ({
+        id: `other-check-${i}`,
+        reason: "r",
+      }));
+      expect(await closedBy({ couldNotCheck: twenty })).toBe("recorded");
+      expect(await closedBy({ couldNotCheck: twenty.slice(1) })).toBe("confirm-closed-findings");
+      expect(await closedBy({ couldNotCheck: "not a list" })).toBe("confirm-closed-findings");
+    });
+
     it("a later run that was partial does not close it: no warning", async () => {
       const [r] =
         await sql`insert into public.runs (org_id, site_id, started_at, finished_at, summary)
@@ -407,6 +464,283 @@ describe.skipIf(!HAS_DATABASE)("drafts inbox", () => {
         values (${id}, ${ORG_B}, ${SITE_B1}, 'pull_request', ${sql.json(PR_PAYLOAD)}, ${[f!.id]})`;
       const r2 = await decide(sql, { userId: USER_B_OWNER }, id, { kind: "approve" }, queue);
       expect(r2.status).toBe("recorded");
+    });
+  });
+  describe("the database holds every inserter to each kind's shape (a person can bypass the app)", () => {
+    const HOSTILE_PR = {
+      title: "t\nx",
+      body: "b",
+      branch: "main",
+      files: [{ path: "../../.github/workflows/x.yml", content: "x" }],
+    };
+    const HOSTILE_EDITS: [string, unknown][] = [
+      ["a newline in the title", { ...PR_PAYLOAD, title: "t\nx" }],
+      [
+        "a path into .github",
+        { ...PR_PAYLOAD, files: [{ path: "../../.github/workflows/pwn.yml", content: "x" }] },
+      ],
+      ["a branch key", { ...PR_PAYLOAD, branch: "main" }],
+      [
+        "a git hook",
+        { ...PR_PAYLOAD, files: [{ path: "sub/.git/hooks/pre-commit", content: "x" }] },
+      ],
+      ["a C1 line break in the title", { ...PR_PAYLOAD, title: "t\u0085x" }],
+      ["not an object", ["x"]],
+    ];
+    const person = { role: "authenticated" as const, userId: USER_A_MEMBER };
+    const directDecision = (id: string, edited: unknown) =>
+      errorOf(
+        as(
+          sql,
+          person,
+          (tx) =>
+            tx`insert into public.decisions (org_id, draft_id, decision, edited_payload, decided_by)
+             values (${ORG_A}, ${id}, 'edited', ${tx.json(edited as never)}, ${USER_A_MEMBER})`,
+        ),
+      );
+
+    it("the agent's function refuses the hostile draft (the reviewer's repro)", async () => {
+      const msg = await asAgent(
+        (tx) =>
+          tx`select private.agent_insert_draft(${TOKEN_A}, ${SITE_A1}, 'pull_request', ${sql.json(HOSTILE_PR)})`,
+      );
+      expect(msg).toMatch(/does not match the pull_request shape/);
+    });
+
+    it("a person inserting a hostile draft directly is refused too", async () => {
+      const msg = await errorOf(
+        as(
+          sql,
+          person,
+          (tx) =>
+            tx`insert into public.drafts (org_id, site_id, kind, payload, created_by)
+             values (${ORG_A}, ${SITE_A1}, 'pull_request', ${tx.json(HOSTILE_PR)}, ${USER_A_MEMBER})`,
+        ),
+      );
+      expect(msg).toMatch(/does not match the pull_request shape/);
+    });
+
+    it("a person recording a hostile edit directly is refused, and the draft keeps its one decision", async () => {
+      const id = await draft();
+      for (const [name, edited] of HOSTILE_EDITS)
+        expect(await directDecision(id, edited), name).toMatch(/shape|decisions_/);
+      expect(await decisionsFor(id)).toHaveLength(0);
+      const r = await decide(sql, owner, id, { kind: "approve" }, queue);
+      expect(r.status).toBe("recorded");
+    });
+
+    it("a sanity draft cannot set Sanity's system fields, through the app or directly", async () => {
+      const id = randomUUID();
+      const payload = { documentId: "menu", documentType: "page", set: { title: "Opening hours" } };
+      await sql`insert into public.drafts (id, org_id, site_id, kind, payload)
+        values (${id}, ${ORG_A}, ${SITE_A1}, 'sanity_draft', ${sql.json(payload)})`;
+      const hostile = {
+        documentId: "menu",
+        documentType: "page",
+        set: { _id: "menu", _type: "page", title: "x" },
+      };
+      const r = await decide(sql, owner, id, { kind: "edit", payload: hostile }, queue);
+      expect(r.status).toBe("invalid-payload");
+      expect(await directDecision(id, hostile)).toMatch(/does not match the sanity_draft shape/);
+      expect(await decisionsFor(id)).toHaveLength(0);
+      expect(queue.jobs.size).toBe(0);
+    });
+
+    // One list, two validators: the app's (kinds.ts) and the database's must agree on every payload.
+    const CORPUS: [string, unknown][] = [
+      ["pull_request", PR_PAYLOAD],
+      ["pull_request", { ...PR_PAYLOAD, body: "" }],
+      ["pull_request", { ...PR_PAYLOAD, title: "" }],
+      ["pull_request", { ...PR_PAYLOAD, title: "a\tb" }],
+      ["pull_request", { ...PR_PAYLOAD, body: "one\ntwo\tthree" }],
+      ["pull_request", { ...PR_PAYLOAD, body: "a\rb" }],
+      ["pull_request", { ...PR_PAYLOAD, branch: "main" }],
+      ["pull_request", { title: "t", body: "b" }],
+      ["pull_request", { ...PR_PAYLOAD, files: [] }],
+      ["pull_request", { ...PR_PAYLOAD, files: "x" }],
+      ["pull_request", { ...PR_PAYLOAD, files: [{ path: "a.txt" }] }],
+      ["pull_request", { ...PR_PAYLOAD, files: [{ path: "a.txt", content: "x", mode: "x" }] }],
+      ["pull_request", { ...PR_PAYLOAD, files: [{ path: "a.txt", content: 1 }] }],
+      [
+        "pull_request",
+        {
+          ...PR_PAYLOAD,
+          files: Array.from({ length: 21 }, (_, i) => ({ path: `f${i}`, content: "" })),
+        },
+      ],
+      [
+        "pull_request",
+        {
+          ...PR_PAYLOAD,
+          files: Array.from({ length: 20 }, (_, i) => ({ path: `f${i}`, content: "" })),
+        },
+      ],
+      ["pull_request", { ...PR_PAYLOAD, files: [PR_PAYLOAD.files[0], PR_PAYLOAD.files[0]] }],
+      ["pull_request", 5],
+      ["email", { subject: "s", body: "b" }],
+      ["email", { subject: "s", body: "b", to: "a@b.test" }],
+      ["email", { subject: "s" }],
+      ["email", { subject: "s", body: 1 }],
+      ["email", { subject: "a\u2028b", body: "b" }],
+      ["email", { subject: "s", body: "a\u0085b" }],
+      ["email", { subject: "s".repeat(201), body: "b" }],
+      ["email", { subject: "s".repeat(200), body: "b" }],
+      [
+        "sanity_draft",
+        {
+          documentId: "menu",
+          documentType: "page",
+          set: { title: "x", n: 1.5, b: false, z: null },
+        },
+      ],
+      ["sanity_draft", { documentId: "menu", documentType: "page", set: {} }],
+      ["sanity_draft", { documentId: "menu", documentType: "page", set: { _id: "x" } }],
+      ["sanity_draft", { documentId: "menu", documentType: "page", set: { "a.b": "x" } }],
+      ["sanity_draft", { documentId: "menu", documentType: "page", set: { a: { b: 1 } } }],
+      ["sanity_draft", { documentId: "menu", documentType: "page", set: { a: [1] } }],
+      ["sanity_draft", { documentId: "menu", documentType: "page", set: { n: 1e20 } }],
+      ["sanity_draft", { documentId: "menu", documentType: "page", set: { n: 1e-7 } }],
+      ["sanity_draft", { documentId: "drafts.menu", documentType: "page", set: { a: "x" } }],
+      ["sanity_draft", { documentId: "_menu", documentType: "page", set: { a: "x" } }],
+      ["sanity_draft", { documentId: "menu", documentType: "1page", set: { a: "x" } }],
+      [
+        "sanity_draft",
+        {
+          documentId: "menu",
+          documentType: "page",
+          set: Object.fromEntries(Array.from({ length: 21 }, (_, i) => [`k${i}`, "x"])),
+        },
+      ],
+      ["sanity_draft", { documentId: "menu", documentType: "page" }],
+      ...[
+        "app/menu/links.ts",
+        "src/[id]/(g)/p@2.tsx",
+        ".eslintrc.json",
+        "a.git/x",
+        "gitmodules",
+        ".git/config",
+        "sub/.git/hooks/pre-commit",
+        ".GIT./x",
+        ".gitmodules",
+        "d/.gitmodules",
+        ".github/w.yml",
+        "p/.github/w.yml",
+        ".circleci/config.yml",
+        "x/.circleci/c.yml",
+        ".gitlab-ci.yml",
+        "x/.gitlab-ci.yml",
+        ".husky/pre-commit",
+        "../x",
+        "a/../x",
+        "a/./x",
+        "...",
+        "/etc/x",
+        "-rf",
+        "a/-b",
+        "a//b",
+        "a/",
+        "a b",
+        "x".repeat(301),
+        "x".repeat(300),
+      ].map((path): [string, unknown] => [
+        "pull_request",
+        { ...PR_PAYLOAD, files: [{ path, content: "x" }] },
+      ]),
+    ];
+
+    it("gives the same verdict as the app's shapes on a list of payloads", async () => {
+      for (const [kind, payload] of CORPUS) {
+        const [row] =
+          await sql`select private.draft_payload_problem(${kind}, ${sql.json(payload as never)}) as problem`;
+        const appOk = checkDraftPayload(kind, payload).ok;
+        expect(row!.problem === null, `${kind} ${JSON.stringify(payload).slice(0, 120)}`).toBe(
+          appOk,
+        );
+      }
+    });
+  });
+
+  describe("size, characters and caps (a refusal, never a thrown database error)", () => {
+    it("an edit of 17 KB is invalid-payload, not an exception; one at the cap is recorded", async () => {
+      const id = await draft();
+      const big = { ...PR_PAYLOAD, body: "x".repeat(17_000) };
+      const r = await decide(sql, member, id, { kind: "edit", payload: big }, queue);
+      expect(r).toMatchObject({ status: "invalid-payload" });
+      const room = MAX_PAYLOAD_BYTES - Buffer.byteLength(jsonbText(PR_PAYLOAD));
+      const exact = { ...PR_PAYLOAD, body: PR_PAYLOAD.body + "y".repeat(room) };
+      const [t] = await sql`select octet_length(${sql.json(exact)}::jsonb::text) as n`;
+      expect(t!.n).toBe(MAX_PAYLOAD_BYTES);
+      expect((await decide(sql, member, id, { kind: "edit", payload: exact }, queue)).status).toBe(
+        "recorded",
+      );
+    });
+
+    it("U+0000 and an unpaired surrogate are invalid-payload, not 22P05", async () => {
+      const id = await draft();
+      for (const content of ["a\u0000b", "a\ud800b"]) {
+        const edit = { ...PR_PAYLOAD, files: [{ path: "a.txt", content }] };
+        const r = await decide(sql, member, id, { kind: "edit", payload: edit }, queue);
+        expect(r.status).toBe("invalid-payload");
+      }
+      expect(await decisionsFor(id)).toHaveLength(0);
+    });
+
+    it("a draft names at most 50 findings (the agent's function and the table)", async () => {
+      const ids = Array.from({ length: 51 }, () => randomUUID());
+      expect(await agentInsert(TOKEN_A, SITE_A1, "pull_request", ids)).toMatch(
+        /at most 50 findings/,
+      );
+      const direct = await errorOf(
+        sql`insert into public.drafts (org_id, site_id, kind, payload, finding_ids)
+          values (${ORG_A}, ${SITE_A1}, 'pull_request', ${sql.json(PR_PAYLOAD)}, ${ids})`,
+      );
+      expect(direct).toMatch(/drafts_finding_ids_cap/);
+    });
+
+    it("a site holds at most 200 undecided agent drafts; deciding frees room", async () => {
+      await sql`insert into public.drafts (org_id, site_id, kind, payload)
+        select ${ORG_A}, ${SITE_A2}, 'pull_request', ${sql.json(PR_PAYLOAD)}
+        from generate_series(1, 200)`;
+      const msg = await agentInsert(TOKEN_A, SITE_A2);
+      expect(msg).toMatch(/already has 200 drafts waiting for a decision/);
+      // Another site of the same organisation is not affected.
+      expect(await agentInsert(TOKEN_A, SITE_A1)).toBe("");
+      const [one] = await sql`select id from public.drafts where site_id = ${SITE_A2} limit 1`;
+      await sql`insert into public.decisions (org_id, draft_id, decision, decided_by)
+        values (${ORG_A}, ${one!.id}, 'declined', ${USER_A_OWNER})`;
+      expect(await agentInsert(TOKEN_A, SITE_A2)).toBe("");
+      expect(await agentInsert(TOKEN_A, SITE_A2)).toMatch(/200 drafts waiting/);
+    });
+  });
+
+  describe("an agent login is only an agent login", () => {
+    it("reports a login that can also be a signed-in person or the server", async () => {
+      const tag = randomUUID().replace(/-/g, "").slice(0, 10);
+      const good = `gl_agent_ok_${tag}`;
+      const viaPerson = `gl_agent_auth_${tag}`;
+      const viaServer = `gl_agent_srv_${tag}`;
+      const indirect = `gl_agent_ind_${tag}`;
+      const middle = `gl_agent_mid_${tag}`;
+      try {
+        await sql.unsafe(`
+          create role ${good} login in role gaugeline_agent;
+          create role ${viaPerson} login in role gaugeline_agent, authenticated;
+          create role ${viaServer} login in role gaugeline_agent, service_role;
+          create role ${middle} nologin in role authenticated;
+          create role ${indirect} login in role gaugeline_agent, ${middle};`);
+        const found = await agentLoginsWithOtherRoles(sql);
+        expect(found).toEqual(expect.arrayContaining([viaPerson, viaServer, indirect]));
+        expect(found).not.toContain(good);
+        expect(found).not.toContain("gaugeline_agent");
+      } finally {
+        for (const r of [good, viaPerson, viaServer, indirect, middle])
+          await sql.unsafe(`drop role if exists ${r}`);
+      }
+    });
+
+    it("finds nothing on a database whose agent role has no members beyond its own logins", async () => {
+      const found = await agentLoginsWithOtherRoles(sql);
+      expect(found.filter((n) => !n.startsWith("gl_agent_"))).toEqual([]);
     });
   });
 });

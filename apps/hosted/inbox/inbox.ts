@@ -115,8 +115,14 @@ export async function listWaiting(sql: postgres.Sql, who: Person): Promise<Waiti
 }
 
 /**
- * The draft's findings that have since closed: a later run of the same site that finished and was not
- * partial no longer reports their fingerprint. Approving such a draft needs a second, confirmed click.
+ * The draft's findings that have since closed: a later run of the same site that finished cleanly no
+ * longer reports their fingerprint. Approving such a draft needs a second, confirmed click.
+ *
+ * "Cleanly" is what the stored summary can show (G35 keeps the CLI's counts and short lists, and G36 makes a
+ * run only when the checks completed; a job that failed stores no run, only a code on the job). A later run
+ * does not close a finding when its summary says `partial`, carries an `error`, lists the finding's check
+ * under couldNotCheck (the check never ran, so its silence means nothing), or lists 20 couldNotCheck
+ * entries (the summary keeps no more, so the list may be cut off).
  */
 async function closedFindings(tx: Tx, draftSite: string, findingIds: string[]): Promise<string[]> {
   if (findingIds.length === 0) return [];
@@ -125,8 +131,15 @@ async function closedFindings(tx: Tx, draftSite: string, findingIds: string[]): 
     where f.id = any(${findingIds}::uuid[]) and f.site_id = ${draftSite}
       and exists (
         select 1 from public.runs later
+        cross join lateral (
+          select coalesce(case when jsonb_typeof(later.summary -> 'couldNotCheck') = 'array'
+                               then later.summary -> 'couldNotCheck' end, '[]'::jsonb) as skipped) c
         where later.site_id = f.site_id and later.finished_at is not null
           and later.summary ->> 'partial' is distinct from 'true'
+          and later.summary ->> 'error' is null
+          and jsonb_array_length(c.skipped) < 20
+          and not exists (select 1 from jsonb_array_elements(c.skipped) s
+                          where s ->> 'id' = f.check_id)
           and later.started_at > r.started_at
           and not exists (select 1 from public.findings g
                           where g.run_id = later.id and g.fingerprint = f.fingerprint))

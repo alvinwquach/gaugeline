@@ -90,8 +90,10 @@ A person in two organisations sees both, and nothing else.
   and can be retried. Either way one owner remains.
 - **Role names.** The database roles are Supabase's: `authenticated` is the signed-in app user (the
   plan's "app" role) and `service_role` is the server and worker (the plan's "service" role). The
-  plan's `agent` role is `gaugeline_agent` (G37): it may insert drafts, through one function that takes the organisation from the agent's token, and nothing else
-  ([the inbox and approvals](./inbox.md)).
+  plan's `agent` role is `gaugeline_agent` (G37): it may insert drafts, through one function that takes
+  the organisation from the agent's token, and nothing else ([the inbox and approvals](./inbox.md)). Its
+  login must be a member of that role only: `agentLoginsWithOtherRoles` in `db/audit.ts` lists any login
+  that could also act as `authenticated` or `service_role`.
 - **The app must never connect as the table owner.** The owner (`postgres` on Supabase) skips
   row-level security. Row-level security is not `FORCE`d: FORCE only binds the table owner, which runs
   the migrations and would then need its own policies, and it does nothing against a superuser or a
