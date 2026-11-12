@@ -241,7 +241,7 @@ describe("Prismic checks: the release check is a probing check", () => {
     const { reading: r } = await reading(PAGES_HEALTHY, { ownerConsent: true });
     const out = await run(r);
     expect(evidence(out, "prismic-release-document-live")).toEqual([
-      "release Autumn retreat holds 1 document last published before the live copy (classes c-evening); publishing it would put the older copy back",
+      "release Autumn retreat lists 1 document last published before the live copy (classes c-evening); if the release holds that copy, publishing it may put the older copy back",
     ]);
     expect(JSON.stringify(out)).not.toContain(PRISMIC_MARKERS.evening);
     expect(JSON.stringify(out)).not.toContain(KEY);
@@ -262,6 +262,18 @@ describe("Prismic checks: the release check is a probing check", () => {
     const out = await run(r);
     expect(out.passed).not.toContain("prismic-release-document-live");
     expect(reasons(out)).toMatch(/lists no release/);
+  });
+
+  it("a release that shows nothing different from the live repository is could-not-check, never a pass", async () => {
+    const { reading: r } = await reading(PAGES_HEALTHY, {
+      ownerConsent: true,
+      fixture: {
+        snapshots: { [MASTER_REF]: LARKSPUR, [RELEASE_REF]: LARKSPUR, [OLD_MASTER_REF]: LARKSPUR },
+      },
+    });
+    const out = await run(r);
+    expect(out.passed).not.toContain("prismic-release-document-live");
+    expect(reasons(out)).toMatch(/cannot tell what the release holds/);
   });
 
   it("a release that could not be listed is could-not-check by name", async () => {

@@ -46,7 +46,7 @@ export async function prismicReads(): Promise<string> {
       "a field count for a type that does not exist": other,
       "published classes": docs,
       "master ref, cache against origin": await adapter.masterRefs(),
-      "releases (token and consent)": await adapter.releaseReadings(),
+      "releases (token and consent)": await adapter.releaseReadings({ ownerConsent: true }),
     },
     null,
     2,

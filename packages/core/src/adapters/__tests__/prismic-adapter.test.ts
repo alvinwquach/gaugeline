@@ -96,6 +96,11 @@ describe("the Prismic adapter: the repository name", () => {
     "larkspur-yoga/evil",
     "larkspur-yoga@evil.example",
     "larkspur:443",
+    "larkspur-yoga:8080",
+    "larkspur-yoga.",
+    "larkspur-yoga..",
+    "larksp\u00fcr-yoga",
+    "larkspur-yoga\u3002example",
     "larkspur yoga",
     "xn--larkspur",
     "lark--spur",
@@ -511,7 +516,7 @@ describe("the Prismic adapter: the master ref at the cache and at the origin", (
       originLatestId: "n-closed",
     });
     // The pair has to survive one wait longer than the cache's own five seconds.
-    expect(w.sleeps).toEqual([6000]);
+    expect(w.sleeps).toEqual([6000, 6000]);
   });
 
   it("a cache that catches up during the wait is a pass, not a finding", async () => {
@@ -575,7 +580,7 @@ describe("the Prismic adapter: the master ref at the cache and at the origin", (
 describe("the Prismic adapter: releases", () => {
   it("finds a document whose copy in the release is older than the live one", async () => {
     const w = world({ releaseToken: KEY });
-    const got = await w.adapter.releaseReadings();
+    const got = await w.adapter.releaseReadings({ ownerConsent: true });
     expect(got).toEqual([
       {
         id: RELEASE_ID,
@@ -596,14 +601,14 @@ describe("the Prismic adapter: releases", () => {
         [OLD_MASTER_REF]: LARKSPUR,
       },
     });
-    const [rel] = await w.adapter.releaseReadings();
+    const [rel] = await w.adapter.releaseReadings({ ownerConsent: true });
     expect(rel?.state).toBe("read");
     expect(rel?.behind).toEqual([]);
   });
 
   it("sends the token in a header to every release read, and never in an address", async () => {
     const w = world({ releaseToken: KEY });
-    await w.adapter.releaseReadings();
+    await w.adapter.releaseReadings({ ownerConsent: true });
     expect(w.seen.length).toBeGreaterThanOrEqual(4);
     for (const s of w.seen) {
       expect(s.headers.authorization).toBe(`Token ${KEY}`);
@@ -614,7 +619,9 @@ describe("the Prismic adapter: releases", () => {
 
   it("with no token it asks nothing", async () => {
     const w = world({}, { env: { PRISMIC_REPOSITORY: REPOSITORY } });
-    expect(await reason(w.adapter.releaseReadings())).toContain("PRISMIC_ACCESS_TOKEN");
+    expect(await reason(w.adapter.releaseReadings({ ownerConsent: true }))).toContain(
+      "PRISMIC_ACCESS_TOKEN",
+    );
     expect(w.seen).toEqual([]);
   });
 
@@ -626,7 +633,7 @@ describe("the Prismic adapter: releases", () => {
         { id: RELEASE_ID, label: "Autumn retreat", ref: RELEASE_REF },
       ],
     });
-    const got = await w.adapter.releaseReadings();
+    const got = await w.adapter.releaseReadings({ ownerConsent: true });
     expect(got.map((g) => [g.id, g.state])).toEqual([
       ["rel-a", "unread"],
       [RELEASE_ID, "read"],
@@ -645,7 +652,7 @@ describe("the Prismic adapter: releases", () => {
       },
       { maxReleases: 1 },
     );
-    const got = await w.adapter.releaseReadings();
+    const got = await w.adapter.releaseReadings({ ownerConsent: true });
     expect(got).toHaveLength(2);
     expect(got[1]).toMatchObject({ id: "rel-z", state: "unread" });
     expect(got[1]?.reason).toMatch(/more than 1 releases/);
@@ -656,14 +663,14 @@ describe("the Prismic adapter: releases", () => {
       releaseToken: KEY,
       masterRef: (_h, n) => (n === 1 ? OLD_MASTER_REF : MASTER_REF),
     });
-    const second = await once.adapter.releaseReadings();
+    const second = await once.adapter.releaseReadings({ ownerConsent: true });
     expect(second[0]?.state).toBe("read");
     // Every pair of reads sees the master ref move: the reading gives up.
     const always = world({
       releaseToken: KEY,
       masterRef: (_h, n) => (n % 2 === 1 ? OLD_MASTER_REF : MASTER_REF),
     });
-    const got = await always.adapter.releaseReadings();
+    const got = await always.adapter.releaseReadings({ ownerConsent: true });
     expect(got.every((g) => g.state === "unread")).toBe(true);
     expect(got[0]?.behind).toEqual([]);
     expect(got[0]?.reason).toMatch(/published to while the release was read/);
@@ -672,7 +679,7 @@ describe("the Prismic adapter: releases", () => {
   it("a release read that the token may not make is unread", async () => {
     const w = world({ token: KEY, releaseToken: KEY });
     // The repository takes the token; the release ref answers 401 when it is missing, so a good token reads it.
-    const [rel] = await w.adapter.releaseReadings();
+    const [rel] = await w.adapter.releaseReadings({ ownerConsent: true });
     expect(rel?.state).toBe("read");
   });
 });
@@ -692,5 +699,187 @@ describe("the settings", () => {
   it("is off unless the settings say so", () => {
     expect(world({}, { settings: { id: "prismic" } }).adapter.checkReleases()).toBe(false);
     expect(world().adapter.checkReleases()).toBe(true);
+  });
+});
+
+describe("the Prismic adapter: review fixes", () => {
+  it("a publication that reaches the cache only on the third read is not stale", async () => {
+    const w = world({
+      masterRef: (host, n) => (host === "cache" && n < 2 ? OLD_MASTER_REF : MASTER_REF),
+    });
+    expect(await w.adapter.masterRefs()).toEqual({ state: "same" });
+    expect(w.sleeps).toEqual([6000, 6000]);
+  });
+
+  it("a different pair on the third read than on the first two is undetermined, never stale", async () => {
+    const w = world({
+      masterRef: (host, n) =>
+        host === "cache" ? (n < 2 ? OLD_MASTER_REF : RELEASE_REF) : MASTER_REF,
+    });
+    const got = await w.adapter.masterRefs();
+    expect(got.state).toBe("undetermined");
+  });
+
+  it("a release whose list shows nothing that differs from the live repository is could-not-check, never a pass", async () => {
+    const w = world({
+      releaseToken: KEY,
+      snapshots: { [MASTER_REF]: LARKSPUR, [RELEASE_REF]: LARKSPUR, [OLD_MASTER_REF]: LARKSPUR },
+    });
+    const [rel] = await w.adapter.releaseReadings({ ownerConsent: true });
+    expect(rel?.state).toBe("unread");
+    expect(rel?.reason).toMatch(/cannot tell what the release holds/);
+  });
+
+  it("a release that lists a document the live repository does not have is read", async () => {
+    const w = world({
+      releaseToken: KEY,
+      snapshots: {
+        [MASTER_REF]: LARKSPUR,
+        [RELEASE_REF]: RELEASE_DOCS_CLEAN,
+        [OLD_MASTER_REF]: LARKSPUR,
+      },
+    });
+    const [rel] = await w.adapter.releaseReadings({ ownerConsent: true });
+    expect(rel?.state).toBe("read");
+    expect(rel?.behind).toEqual([]);
+  });
+
+  it("releases are not read without the owner's consent or without the setting, and nothing is asked", async () => {
+    const noConsent = world({ releaseToken: KEY });
+    expect(await reason(noConsent.adapter.releaseReadings())).toMatch(/owner-consent/);
+    expect(await reason(noConsent.adapter.releaseReadings({ ownerConsent: false }))).toMatch(
+      /owner-consent/,
+    );
+    expect(noConsent.seen).toEqual([]);
+    const noSetting = world({ releaseToken: KEY }, { settings: { id: "prismic" } });
+    expect(await reason(noSetting.adapter.releaseReadings({ ownerConsent: true }))).toMatch(
+      /checkReleases: true/,
+    );
+    expect(noSetting.seen).toEqual([]);
+  });
+
+  it.each([null, [], "text", 7])(
+    "a document whose data is %j is could-not-check, never zero fields",
+    async (data) => {
+      const w = world({
+        mangle: (body) => {
+          const first = (body.results as Record<string, unknown>[])[0];
+          if (first) first.data = data;
+          return body;
+        },
+      });
+      expect(await reason(w.adapter.fieldCounts("classes", ["name"]))).toMatch(/data/);
+      const missing = world({
+        mangle: (body) => {
+          const first = (body.results as Record<string, unknown>[])[0];
+          if (first) delete first.data;
+          return body;
+        },
+      });
+      expect(await reason(collectPublished(missing.adapter, { types: ["classes"] }))).toMatch(
+        /data/,
+      );
+    },
+  );
+
+  it.each([".", ".."])(
+    "a uid of %j is never given an address (it would resolve to another page)",
+    async (uid) => {
+      const w = world({
+        mangle: (body) => {
+          const first = (body.results as Record<string, unknown>[])[0];
+          if (first) first.uid = uid;
+          return body;
+        },
+      });
+      const docs = (await collectPublished(w.adapter, { types: ["classes"] })).docs;
+      expect(docs[0]?.url).toBeUndefined();
+      expect(docs[1]?.url).toBe("/classes/evening-stretch");
+    },
+  );
+
+  it("with no fingerprint the list is asked for whole documents, and only the header fields are kept", async () => {
+    const w = world();
+    const docs = (await collectPublished(w.adapter, { types: ["classes"] })).docs;
+    for (const s of w.seen.filter((x) => x.url.pathname.endsWith("/documents/search")))
+      expect(s.url.searchParams.has("fetch")).toBe(false);
+    expect(JSON.stringify(docs)).not.toContain(PRISMIC_MARKERS.morning);
+  });
+
+  it("a page size reduced in the middle of a list does not make the list look as if it moved", async () => {
+    const many: FixtureDoc[] = Array.from({ length: 120 }, (_, i) => ({
+      id: `t-${String(i).padStart(3, "0")}`,
+      uid: `teacher-${i}`,
+      type: "teachers",
+      lang: "en-us",
+      first: `2026-01-01T00:${String(Math.floor(i / 60)).padStart(2, "0")}:${String(i % 60).padStart(2, "0")}.000Z`,
+      last: "2026-02-01T00:00:00.000Z",
+      data: { name: rich(`Teacher ${i}`) },
+    }));
+    const w = world(
+      {
+        mangle: (body, q, call) => {
+          if (Number(q.get("pageSize")) === 100 && call >= 1)
+            for (const r of body.results as { data: Record<string, unknown> }[])
+              r.data = { ...r.data, pad: "x".repeat(400_000) };
+          return body;
+        },
+      },
+      {},
+      many,
+    );
+    expect((await collectPublished(w.adapter, { types: ["teachers"] })).docs).toHaveLength(120);
+  });
+
+  it("a private repository that answers a missing token with 404 is read with the token", async () => {
+    const w = world({ token: KEY, deniedAs404: true });
+    expect((await w.adapter.types()).map((t) => t.name)).toEqual([
+      "classes",
+      "notices",
+      "teachers",
+    ]);
+    expect(w.seen[0]?.headers.authorization).toBeUndefined();
+    expect(w.seen[1]?.headers.authorization).toBe(`Token ${KEY}`);
+  });
+
+  it("a private repository that answers 404 and has no token says it may be private", async () => {
+    const w = world({ token: KEY, deniedAs404: true }, { env: { PRISMIC_REPOSITORY: REPOSITORY } });
+    expect(await reason(w.adapter.types())).toMatch(/private/);
+  });
+
+  it("an upper-case repository name is accepted and asks the lower-case host", async () => {
+    const w = world({}, { env: { PRISMIC_REPOSITORY: "Larkspur-Yoga" } });
+    await w.adapter.types();
+    expect(new Set(w.seen.map((s) => s.url.host))).toEqual(new Set([CACHE_HOST]));
+  });
+
+  it("a redirect to another origin carries no Authorization header", async () => {
+    const seen: { url: string; headers: Record<string, string> }[] = [];
+    const inner = prismicTransport(LARKSPUR, { releaseToken: KEY });
+    const adapter = createPrismicAdapter({
+      env: { PRISMIC_REPOSITORY: REPOSITORY, PRISMIC_ACCESS_TOKEN: KEY },
+      fetcher: createFetcher({
+        transport: (url, req) => {
+          seen.push({ url: url.href, headers: req.headers });
+          if (url.host === CACHE_HOST && url.pathname === "/api/v2")
+            return Promise.resolve({
+              status: 302,
+              headers: { location: "https://elsewhere.example/api/v2" },
+              body: Readable.from([]),
+            });
+          if (url.host === "elsewhere.example")
+            return inner(new URL(`https://${CACHE_HOST}/api/v2`), req);
+          return inner(url, req);
+        },
+        timeoutMs: 5000,
+      }),
+      sleep: noWait,
+      settings: { id: "prismic", checkReleases: true },
+    });
+    await adapter.draftsReachable().catch(() => undefined);
+    const elsewhere = seen.filter((s) => s.url.includes("elsewhere.example"));
+    expect(elsewhere.length).toBeGreaterThan(0);
+    for (const h of elsewhere) expect(h.headers.authorization).toBeUndefined();
+    expect(seen.some((s) => s.url.includes(CACHE_HOST) && s.headers.authorization)).toBe(true);
   });
 });

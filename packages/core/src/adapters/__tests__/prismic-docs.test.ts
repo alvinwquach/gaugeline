@@ -87,6 +87,12 @@ describe("docs/integrations/prismic.md", () => {
     expect(page).toContain("PRISMIC_REPOSITORY");
   });
 
+  it("says plainly that no fingerprint means whole documents, and that a release is not a pass when it shows nothing different", () => {
+    expect(page).toContain("sends no `fetch`, so Prismic sends whole documents");
+    expect(page).toContain("cannot tell what the release holds");
+    expect(page).toContain("How long Prismic's cache takes to follow a publication is `uncited`");
+  });
+
   it("the options page lists the release check among the probing checks", () => {
     expect(read("docs/options.md")).toContain("prismic-release-document-live");
   });

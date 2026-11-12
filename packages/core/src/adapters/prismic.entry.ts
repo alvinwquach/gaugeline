@@ -37,7 +37,12 @@ export const PRISMIC_LIMITS = {
   itemsPerType: 10_000,
   /** Releases read by the release check. More are could-not-check by name. */
   releases: 10,
-  /** Seconds between the reads that tell a stale master ref from a publication in flight (the client's own cache is 5). */
+  /**
+   * Reads of the two roots, and seconds between them, that tell a stale master ref from a publication in flight. How
+   * long Prismic's cache takes to follow a publication is not documented where Gaugeline could read it (uncited); the
+   * same pair of different refs has to persist across every read, so a cache would need to lag for 2 x 6 seconds.
+   */
+  masterRounds: 3,
   settleSeconds: 6,
 } as const;
 

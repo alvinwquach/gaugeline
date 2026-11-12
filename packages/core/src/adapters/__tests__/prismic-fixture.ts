@@ -159,6 +159,8 @@ export interface PrismicFixtureOptions {
    * different one is 401, and the root lists the release only to a request that carries it.
    */
   token?: string;
+  /** A private repository answers a request with no (or a wrong) token with 404 and api_security_error, not 401. */
+  deniedAs404?: boolean;
   /**
    * The token that makes the root list releases while the repository is public (a public repository shows
    * published content to anyone and releases to a token).
@@ -237,7 +239,9 @@ export function prismicTransport(
     const auth = req.headers.authorization;
     const withToken = (t: string | undefined): boolean => t !== undefined && auth === `Token ${t}`;
     if (options.token !== undefined && !withToken(options.token))
-      return failure(401, "api_security_error", "This repository requires an access token.");
+      return options.deniedAs404
+        ? failure(404, "api_security_error", "Not found.")
+        : failure(401, "api_security_error", "This repository requires an access token.");
     const seesReleases = withToken(options.token) || withToken(options.releaseToken);
 
     if (url.pathname === "/api/v2") {

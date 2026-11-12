@@ -102,7 +102,7 @@ export async function readPrismic(options: ReadPrismicOptions): Promise<PrismicR
               type,
               id: d.id,
               reason:
-                "it has no address: the pattern needs a uid it does not have, or it is in a language other than the repository's main one (Gaugeline does not guess locale paths)",
+                "it has no address: the pattern needs a uid it does not have (or its uid cannot be put in an address), or it is in a language other than the repository's main one (Gaugeline does not guess locale paths)",
             });
             continue;
           }
@@ -172,7 +172,7 @@ export async function readPrismic(options: ReadPrismicOptions): Promise<PrismicR
   // The one read of unpublished content: only with consent and the settings entry (CLAUDE.md rule 14).
   if (reading.ownerConsent && reading.releasesEnabled && !reading.partial) {
     try {
-      reading.releases = await adapter.releaseReadings();
+      reading.releases = await adapter.releaseReadings({ ownerConsent: reading.ownerConsent });
     } catch (err) {
       if (err instanceof AdapterCouldNotCheck) reading.releasesError = err.reason;
       else if (err instanceof AdapterRateLimitedError)

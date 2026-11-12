@@ -100,7 +100,7 @@ export interface PrismicAdapter extends ContentAdapter {
    * copy was published before the live copy. Reads unpublished content, so a caller runs it only with the owner's
    * consent (CLAUDE.md rule 14) and the settings entry.
    */
-  releaseReadings(): Promise<PrismicReleaseReading[]>;
+  releaseReadings(gate?: { ownerConsent?: boolean }): Promise<PrismicReleaseReading[]>;
 }
 
 export interface PrismicAdapterOptions {
@@ -265,7 +265,7 @@ export function createPrismicAdapter(options: PrismicAdapterOptions): PrismicAda
         return new RefGone(
           err.status === 410
             ? "Prismic answered HTTP 410: the ref it was asked about has expired, so the repository changed while it was being read."
-            : "Prismic answered HTTP 404: there is no such repository or ref. Check the repository name; a ref that was just replaced answers this too.",
+            : "Prismic answered HTTP 404: there is no such repository or ref, or the repository is private and the request was not accepted (Prismic answers some denied requests this way). Check the repository name and, for a private repository, set PRISMIC_ACCESS_TOKEN; a ref that was just replaced answers this too.",
         );
       return new AdapterCouldNotCheck(`Prismic answered HTTP ${err.status}.`);
     }
@@ -318,7 +318,12 @@ export function createPrismicAdapter(options: PrismicAdapterOptions): PrismicAda
         try {
           body = await ask(false);
         } catch (err) {
-          if (!(err instanceof ConnectorRefusedError) || token === "") throw err;
+          // A private repository answers a missing token with 401 or 403, and some denied requests with a
+          // 404 (the client treats a 404 of type api_security_error as a denied token): both retry with the token.
+          const denied =
+            err instanceof ConnectorRefusedError ||
+            (err instanceof ConnectorStatusError && err.status === 404);
+          if (!denied || token === "") throw err;
           body = await ask(true);
           tokenNeeded = true;
         }
@@ -406,6 +411,10 @@ export function createPrismicAdapter(options: PrismicAdapterOptions): PrismicAda
       throw new AdapterCouldNotCheck(
         "Prismic answered with a document whose uid is neither text nor empty, so whether it has one is unknown.",
       );
+    if (!isRecord(r.data))
+      throw new AdapterCouldNotCheck(
+        "Prismic answered with a document whose data is not an object, so its fields are unknown.",
+      );
     if (last === undefined || first === undefined)
       throw new AdapterCouldNotCheck(
         "Prismic answered with a document that has no usable publication time.",
@@ -417,7 +426,7 @@ export function createPrismicAdapter(options: PrismicAdapterOptions): PrismicAda
       lang: r.lang,
       firstPublishedAt: first,
       lastPublishedAt: last,
-      data: isRecord(r.data) ? r.data : {},
+      data: r.data,
     };
   };
 
@@ -537,7 +546,7 @@ export function createPrismicAdapter(options: PrismicAdapterOptions): PrismicAda
           throw new AdapterCouldNotCheck(
             `Prismic reported ${total} documents in ${totalPages} pages of ${size}, which does not add up, so the list was not read.`,
           );
-      } else if (page.total !== total || page.totalPages !== totalPages)
+      } else if (page.total !== total || page.totalPages !== Math.ceil(total / size))
         throw new AdapterCouldNotCheck(
           "The list changed while it was being read (the total moved between pages), so it was not read.",
         );
@@ -699,52 +708,63 @@ export function createPrismicAdapter(options: PrismicAdapterOptions): PrismicAda
 
   const masterRefs = async (): Promise<PrismicMasterReading> => {
     const settleMs = PRISMIC_LIMITS.settleSeconds * 1000;
-    let previous: { cache: string; origin: string } | undefined;
-    for (let round = 0; round < 3; round++) {
+    const rounds = PRISMIC_LIMITS.masterRounds;
+    let first: { cache: string; origin: string } | undefined;
+    for (let round = 0; round < rounds; round++) {
       // A re-read is a new request: the fetcher would hand back what it was told the first time.
       const again = round > 0;
       const cache = (await root("cache", "published", () => undefined, again)).master.ref;
       const origin = (await root("origin", "published", () => undefined, again)).master.ref;
       if (cache === origin) return { state: "same" };
-      // The two hosts disagree. A publication in flight makes them disagree for a moment, so the pair has to
-      // survive a wait longer than the cache's own (5 seconds) before it counts.
-      if (previous !== undefined && previous.cache === cache && previous.origin === origin) {
-        const [seenByCache, seenByOrigin] = [await newestAt(cache), await newestAt(origin)];
-        if (seenByCache === undefined || seenByOrigin === undefined)
-          return {
-            state: "undetermined",
-            reason:
-              "the two hosts give different master refs, and one of them shows no published document, so there is nothing to compare",
-          };
-        if (seenByOrigin.at > seenByCache.at)
-          return {
-            state: "stale",
-            cacheLatest: seenByCache.at,
-            originLatest: seenByOrigin.at,
-            originLatestId: seenByOrigin.id,
-          };
+      // The two hosts disagree. A publication in flight makes them disagree for a moment, and how long the cache
+      // takes to follow is not something Gaugeline has read (uncited), so the same pair has to persist across
+      // every one of the reads before it counts. Any change of the pair is a repository in motion.
+      if (first !== undefined && (first.cache !== cache || first.origin !== origin))
         return {
           state: "undetermined",
           reason:
-            "the two hosts give different master refs for longer than the cache's own wait, but the origin's ref shows no document published after the newest the cache's ref shows (an unpublished or deleted document looks like this), so it cannot be said the cache is older",
+            "the master ref kept changing between reads, so the repository was being published to while it was read",
         };
+      first ??= { cache, origin };
+      if (round < rounds - 1) {
+        await sleep(settleMs);
+        continue;
       }
-      previous = { cache, origin };
-      if (round < 2) await sleep(settleMs);
+      const [seenByCache, seenByOrigin] = [await newestAt(cache), await newestAt(origin)];
+      if (seenByCache === undefined || seenByOrigin === undefined)
+        return {
+          state: "undetermined",
+          reason:
+            "the two hosts give different master refs, and one of them shows no published document, so there is nothing to compare",
+        };
+      if (seenByOrigin.at > seenByCache.at)
+        return {
+          state: "stale",
+          cacheLatest: seenByCache.at,
+          originLatest: seenByOrigin.at,
+          originLatestId: seenByOrigin.id,
+        };
+      return {
+        state: "undetermined",
+        reason: `the two hosts give different master refs on ${rounds} reads about ${PRISMIC_LIMITS.settleSeconds} seconds apart, but the origin's ref shows no document published after the newest the cache's ref shows (an unpublished or deleted document looks like this), so it cannot be said the cache is older`,
+      };
     }
-    return {
-      state: "undetermined",
-      reason:
-        "the master ref kept changing between reads, so the repository was being published to while it was read",
-    };
+    return { state: "undetermined", reason: "the master ref was not read" };
   };
 
+  /**
+   * What a release's own list shows against the live list. Prismic does not say which documents a release holds
+   * (uncited), so a document counts as the release's only when its copy at the release's ref is not the live one
+   * (not in the live list, or another publication time). A release that shows no such document is not a pass: the
+   * premise that its ref differs from the master's is unconfirmed, so it is could-not-check.
+   */
   const behindOf = async (
     release: Ref,
     masterDates: Map<string, string>,
   ): Promise<{ documents: number; behind: { id: string; type: string }[] }> => {
     const behind: { id: string; type: string }[] = [];
     let documents = 0;
+    let differing = 0;
     const spec: ListSpec = {
       ref: release.ref,
       host: "cache",
@@ -754,12 +774,28 @@ export function createPrismicAdapter(options: PrismicAdapterOptions): PrismicAda
     for await (const d of listOf(spec, true, () => undefined)) {
       documents++;
       const live = masterDates.get(d.id);
+      if (live === undefined || live !== d.lastPublishedAt) differing++;
       if (live !== undefined && d.lastPublishedAt < live) behind.push({ id: d.id, type: d.type });
     }
+    if (differing === 0)
+      throw new AdapterCouldNotCheck(
+        "its list shows no document that differs from the live repository (none is missing from it, none has another publication time), so Gaugeline cannot tell what the release holds",
+      );
     return { documents, behind };
   };
 
-  const releaseReadings = async (): Promise<PrismicReleaseReading[]> => {
+  const releaseReadings = async (
+    gate: { ownerConsent?: boolean } = {},
+  ): Promise<PrismicReleaseReading[]> => {
+    // Releases hold content that is not published: the adapter itself asks only with consent and the setting.
+    if (gate.ownerConsent !== true)
+      throw new AdapterCouldNotCheck(
+        "Not asked: releases hold unpublished content, so they are read only with --owner-consent (or gaugeline.consent.json), on sites you own or have permission to test.",
+      );
+    if (settings?.checkReleases !== true)
+      throw new AdapterCouldNotCheck(
+        "Not asked: releases hold unpublished content, and gaugeline.adapters.json does not say checkReleases: true for prismic.",
+      );
     if (token === "")
       throw new AdapterCouldNotCheck(
         `${PRISMIC_ACCESS_TOKEN} is not set. Releases need a read access token.`,
