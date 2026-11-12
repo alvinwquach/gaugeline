@@ -10,3 +10,4 @@ export type { PublishGateOptions } from "./plugin.js";
 export { GATE_STATES, IDLE, canPublish, gateReduce } from "./gate-state.js";
 export type { GateEvent, GateState } from "./gate-state.js";
 export type { GateAction, GateActionProps, GateDescription } from "./publish-action.js";
+export type { GateConfirmDialog } from "./publish-action.js";

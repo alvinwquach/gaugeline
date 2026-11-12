@@ -189,7 +189,7 @@ export default defineConfig({
 });
 ```
 
-`pages` is the same table the Function uses. A document that renders to no page (settings) is not gated: its Publish button is Sanity's own and nothing is requested. A wrong setup (an http or wildcard `functionUrl`, a `site` that is not a web address) stops the Studio when it loads, not at the first click.
+`pages` is the same table the Function uses. A document that renders to no page (settings) is not gated: its Publish button is Sanity's own and nothing is requested. It uses your Studio's own React (18.3 or 19). A wrong setup (an http or wildcard `functionUrl`, a `site` that is not a web address) stops the Studio when it loads, not at the first click.
 
 ### The six states
 

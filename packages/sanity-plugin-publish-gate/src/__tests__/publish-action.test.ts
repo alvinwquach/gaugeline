@@ -45,12 +45,19 @@ interface Description {
 /** Sanity's own Publish action, as far as the gate sees it: a label, a handler and a name. */
 function fakeSanity() {
   const published = vi.fn();
+  /** Sanity can disable Publish at any moment (validation errors arrive, the document is published elsewhere). */
+  const sanity = { disabled: false };
   const Publish = Object.assign(
-    (): Description => ({ label: "Publish", onHandle: published, tone: "positive" }),
+    (): Description => ({
+      label: "Publish",
+      onHandle: published,
+      tone: "positive",
+      ...(sanity.disabled ? { disabled: true } : {}),
+    }),
     { action: "publish", displayName: "PublishAction" },
   );
   const Delete = Object.assign((): Description => ({ label: "Delete" }), { action: "delete" });
-  return { published, Publish, Delete };
+  return { published, Publish, Delete, sanity };
 }
 
 /** The Studio, the Function and the bar's site, wired together in memory. */
@@ -73,7 +80,7 @@ function world(
     await over.delay;
     return handler(new Request(String(url), { headers: { origin: STUDIO } }));
   }) as typeof globalThis.fetch;
-  const { published, Publish, Delete } = fakeSanity();
+  const { published, Publish, Delete, sanity } = fakeSanity();
   const plugin = publishGate({
     site: SITE,
     functionUrl: FN,
@@ -86,7 +93,7 @@ function world(
     renderHook((p: ReturnType<typeof propsFor>) => (Gated as (p: unknown) => Description)(p), {
       initialProps: propsFor({ ...doc, _type: type }, type),
     });
-  return { site, calls, seen, published, plugin, Gated, Other, Delete, Publish, mount };
+  return { site, calls, seen, published, sanity, plugin, Gated, Other, Delete, Publish, mount };
 }
 
 const click = async (r: { current: Description }) => {
@@ -322,6 +329,49 @@ describe("publishGate: the check could not run", () => {
     await waitFor(() => expect(result.current.label).toMatch(/could not check/i));
     expect(w.calls).toEqual([]);
     expect(w.published).not.toHaveBeenCalled();
+  });
+});
+
+describe("publishGate: Sanity disables Publish while the plugin waits", () => {
+  it("a clean answer does not call Sanity's Publish once Sanity has disabled it", async () => {
+    let release: () => void = () => undefined;
+    const w = world({
+      body: '<a href="/">Back</a>',
+      delay: new Promise<void>((resolve) => (release = resolve)),
+    });
+    const { result, rerender } = w.mount();
+    await click(result);
+    // Validation errors arrive: same revision, but Sanity now refuses to publish.
+    w.sanity.disabled = true;
+    rerender(propsFor(draft("r1")));
+    expect(result.current.disabled).toBe(true);
+    await act(async () => {
+      release();
+      await new Promise((r) => setTimeout(r, 30));
+    });
+    expect(w.published).not.toHaveBeenCalled();
+  });
+
+  it("a confirmed override does not call Sanity's Publish once Sanity has disabled it", async () => {
+    const w = world({ down: true });
+    const { result, rerender } = w.mount();
+    await click(result);
+    await waitFor(() => expect(result.current.disabled).toBe(true));
+    const confirm = result.current.dialog?.onConfirm;
+    expect(confirm).toBeDefined();
+    w.sanity.disabled = true;
+    rerender(propsFor(draft("r1")));
+    act(() => confirm?.());
+    expect(w.published).not.toHaveBeenCalled();
+  });
+
+  it("with Sanity's Publish enabled the same override does call it, once", async () => {
+    const w = world({ down: true });
+    const { result } = w.mount();
+    await click(result);
+    await waitFor(() => expect(result.current.disabled).toBe(true));
+    act(() => result.current.dialog?.onConfirm?.());
+    expect(w.published).toHaveBeenCalledTimes(1);
   });
 });
 

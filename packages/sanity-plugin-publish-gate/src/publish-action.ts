@@ -29,13 +29,23 @@ export interface GateActionProps {
   revision?: string;
 }
 /** What of an action description the gate reads and sets. Sanity's own description has more and passes through. */
+/** The one dialog the gate opens: Sanity's confirm dialog, with these fields. */
+export interface GateConfirmDialog {
+  type: "confirm";
+  tone?: "caution";
+  message: ReactNode;
+  onConfirm: () => void;
+  onCancel: () => void;
+  confirmButtonText?: string;
+  cancelButtonText?: string;
+}
 export interface GateDescription {
   label: string;
   disabled?: boolean;
   tone?: string;
   title?: ReactNode;
   onHandle?: () => void;
-  dialog?: unknown;
+  dialog?: GateConfirmDialog | false | null;
 }
 export type GateAction = ((props: GateActionProps) => GateDescription | null) & {
   action?: string;
@@ -86,7 +96,13 @@ export function gatePublishAction(Original: GateAction, config: GateConfig): Gat
     if (original === null || original.disabled === true || resolved.kind === "no-page")
       return original;
 
-    const publish = () => latest.current.original?.onHandle?.();
+    // Sanity's action as it is now, not as it was when the check began: if Sanity has since refused
+    // to publish (validation errors, the document published elsewhere), the gate does not go around it.
+    const publish = () => {
+      const now = latest.current.original;
+      if (now === null || now.disabled === true) return;
+      now.onHandle?.();
+    };
     const start = () => {
       if (latest.current.state.name === "checking") return;
       const url = resolved.kind === "page" ? resolved.url : "";

@@ -19,15 +19,16 @@ export function publishGate(options: PublishGateOptions) {
   return {
     name: "sanity-plugin-publish-gate",
     document: {
-      actions: <T extends GateAction>(prev: T[], _context?: unknown): T[] =>
+      // Any action type fits (Sanity's own takes more props than the gate reads); only `action` is looked at.
+      actions: <T extends { action?: string }>(prev: T[], _context?: unknown): T[] =>
         prev.map((action) => {
           if (action.action !== "publish") return action;
           let gated = wrapped.get(action);
           if (gated === undefined) {
-            gated = gatePublishAction(action, options);
+            gated = gatePublishAction(action as unknown as GateAction, options);
             wrapped.set(action, gated);
           }
-          return gated as T;
+          return gated as unknown as T;
         }),
     },
   };
