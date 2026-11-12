@@ -20,6 +20,7 @@ import {
   compare,
   extractExamples,
   normalise,
+  offlineEnv,
   parseCommand,
   runExample,
   type Example,
@@ -308,5 +309,20 @@ describe("docs examples: edge cases", () => {
     await expect(runExample(e, bin)).rejects.toThrow(
       /no fixture "no-such-fixture"\. Available: .*clean.*quick-start/,
     );
+  });
+});
+
+describe("an example never reaches the live internet: unit", () => {
+  it("a name that is not a fixture host does not resolve, so the output does not depend on the network", () => {
+    const env = { ...process.env, ...offlineEnv() };
+    const r = spawnSync(
+      process.execPath,
+      [
+        "-e",
+        "require('node:dns/promises').lookup('cdn.sanity.io').then(() => process.exit(3), (e) => process.exit(e.code === 'ENOTFOUND' ? 0 : 4))",
+      ],
+      { env, encoding: "utf8" },
+    );
+    expect(r.status, r.stderr).toBe(0);
   });
 });

@@ -293,6 +293,8 @@ beforeAll(() => {
     "scripts",
     "packages/core",
     "packages/testkit",
+    // Core's document tests build their PDFs and read them with the documents package.
+    "packages/documents",
     "packages/fixtures",
     "docs/integrations",
     "docs/nav.ts",

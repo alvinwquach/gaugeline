@@ -4,6 +4,7 @@ import type { AddressInfo } from "node:net";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { SITES_DIR, startFixture } from "../../packages/fixtures/src/index.js";
 
 export interface Example {
@@ -289,11 +290,28 @@ export async function runExample(
   }
 }
 
+const OFFLINE_PRELOAD = fileURLToPath(
+  new URL("../../packages/cli/src/__tests__/helpers/map-hosts.cjs", import.meta.url),
+);
+
+/**
+ * An example runs offline: a host that is not an IP address does not resolve (the same preload the
+ * CLI's own tests use), so a fixture page that links a real address (a CDN file, say) gives the same
+ * output on a developer machine and on CI, where the real host would answer differently.
+ */
+export function offlineEnv(): Record<string, string> {
+  const inherited = process.env.NODE_OPTIONS ? `${process.env.NODE_OPTIONS} ` : "";
+  return {
+    NODE_OPTIONS: `${inherited}--require "${OFFLINE_PRELOAD}"`,
+    GAUGELINE_TEST_OFFLINE: "1",
+  };
+}
+
 /** The parent's environment without CI and colour settings, plus NO_COLOR and the example's own. */
 function childProcessEnv(extra: Record<string, string>): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = { ...process.env };
   for (const k of ["CI", "FORCE_COLOR", "GITHUB_ACTIONS"]) delete env[k];
-  return { ...env, NO_COLOR: "1", ...extra };
+  return { ...env, NO_COLOR: "1", ...offlineEnv(), ...extra };
 }
 
 /** A small unified diff of two texts, line by line (LCS). */
