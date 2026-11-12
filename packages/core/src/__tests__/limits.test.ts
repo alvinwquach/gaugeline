@@ -46,6 +46,8 @@ describe("LIMITS and Budget: unit", () => {
       statePages: 16,
       draftRoutes: 4,
       downloadRoutes: 10,
+      documents: 5,
+      documentBytes: 10485760,
       downloadPeekBytes: 1024,
       routeProbes: 30,
       routeProbeBytes: 65536,

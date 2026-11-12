@@ -22,7 +22,11 @@ export default defineConfig({
     },
   },
   test: {
-    include: ["packages/*/src/**/*.test.{ts,tsx}", "scripts/**/*.test.ts"],
+    include: [
+      "packages/*/src/**/*.test.{ts,tsx}",
+      "apps/*/db/**/*.test.ts",
+      "scripts/**/*.test.ts",
+    ],
     testTimeout: 20000,
     // Reserved names (.test, .example, ...) never reach a real resolver in any test.
     setupFiles: [

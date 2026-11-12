@@ -55,3 +55,5 @@ export {
 export { FERNBROOK, FERNBROOK_MARKER, fernbrookContent } from "./sanity-model.js";
 export { startGraphqlServer } from "./graphql-server.js";
 export type { GraphqlServer, GraphqlServerOptions, SeenGraphqlRequest } from "./graphql-server.js";
+export { makePdf } from "./pdf.js";
+export type { PdfLine, PdfOptions } from "./pdf.js";
