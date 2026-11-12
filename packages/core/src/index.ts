@@ -1111,6 +1111,20 @@ export {
 } from "./delivery/webhooks.js";
 export type { WebhookEndpointState } from "./delivery/webhooks.js";
 export { runDelivery, runWebhooks } from "./delivery/run.js";
+export {
+  SUPABASE_PLATFORM_CHECKS,
+  createSupabasePlatformRegistry,
+  runSupabasePlatform,
+  supabaseRlsOff,
+  supabaseSecurityAdvisor,
+} from "./checks/supabase-platform.js";
+export type { SupabasePlatformInput } from "./checks/supabase-platform.js";
+export {
+  PROJECT_REF as SUPABASE_PROJECT_REF,
+  SUPABASE_ACCESS_TOKEN,
+  readSupabase,
+} from "./adapters/supabase-mcp-read.js";
+export type { SupabaseRead } from "./adapters/supabase-mcp-read.js";
 export type { DeliveryOptions, DeliveryRun, WebhooksOptions, WebhooksRun } from "./delivery/run.js";
 export {
   RECEIPT_CHECKS,
