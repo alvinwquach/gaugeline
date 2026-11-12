@@ -192,6 +192,7 @@ describe("host-preview-named: unit", () => {
     ["SvelteKit", "<main>Hi</main>", { "x-sveltekit-page": "true" }],
     ["Angular", '<app-root ng-version="18.2.0"></app-root>', {}],
     ["Gatsby", '<div id="___gatsby"></div>', {}],
+    ["Hydrogen", "<main>Hi</main>", { "powered-by": "Shopify, Hydrogen" }],
     ["Hugo", '<meta name="generator" content="Hugo 0.121.0">', {}],
   ];
 

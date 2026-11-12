@@ -21,6 +21,7 @@ describe("frameworkCoversPreviewCanonical", () => {
     ["SvelteKit", page("<main>Hi</main>", { "x-sveltekit-page": "true" })],
     ["Angular", page('<app-root ng-version="18.2.0"></app-root>')],
     ["Gatsby", page('<div id="___gatsby"></div>')],
+    ["Hydrogen", page("<main>Hi</main>", { "powered-by": "Shopify, Hydrogen" })],
     ["Hugo", page('<meta name="generator" content="Hugo 0.121.0">')],
     ["Docusaurus", page('<meta name="generator" content="Docusaurus v3.5.2">')],
   ];
