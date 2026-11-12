@@ -382,6 +382,8 @@ export { NEXT_RENDERED_NOTE, isNextSite, readCache } from "./next/detect.js";
 export type { CacheRead } from "./next/detect.js";
 export { isSveltekitSite, dataAddress as sveltekitDataAddress } from "./sveltekit/detect.js";
 export { isFrameworkUrl } from "./next/framework-urls.js";
+export { NUXT_RENDERED_NOTE, isNuxtSite } from "./nuxt/detect.js";
+export { isNuxtFrameworkUrl } from "./nuxt/framework-urls.js";
 export { frameworkLinks } from "./links.js";
 export { consentConfigSchema } from "./consent.js";
 export { imagesConfigSchema } from "./images/config.js";

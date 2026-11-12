@@ -244,6 +244,19 @@ describe("docs examples: fixed clock", () => {
   }, 30_000);
 });
 
+describe("docs examples: settings files", () => {
+  it("a fixture that names settings files in gaugeline.images.json runs with those files beside it", async () => {
+    const page = readFileSync(join(repoRoot, "docs/guides/image-optimizers.md"), "utf8");
+    const e = extractExamples(page, "docs/guides/image-optimizers.md").find(
+      (x) => x.fixture === "image-optimizer",
+    ) as Example;
+    expect(e).toBeDefined();
+    const r = await runExample(e, bin);
+    expect(r.stderr).not.toContain("which is not a file");
+    expect(compare(e, r)).toBeNull();
+  }, 30_000);
+});
+
 describe("docs examples: edge cases", () => {
   it("an environment variable prefix is parsed into the child environment and pointed at a local sink", async () => {
     expect(
