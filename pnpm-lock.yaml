@@ -77,6 +77,9 @@ importers:
 
   apps/hosted:
     dependencies:
+      '@gaugeline/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       drizzle-orm:
         specifier: 0.45.4
         version: 0.45.4(postgres@3.4.9)
