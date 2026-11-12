@@ -175,6 +175,10 @@ export interface AdapterSettings {
    * `umbraco-delivery-api-public` and `joomla-api-public` run only when this is true; a key being set says nothing of it.
    */
   expectPrivate?: boolean | undefined;
+  /** Only `sitecore`: the Sitecore site's name, as the platform names it (the `site` argument of its GraphQL API). */
+  siteName?: string | undefined;
+  /** Only `sitecore`: the languages to read, such as `["en", "fr-CA"]`. Default: `["en"]`. */
+  languages?: readonly string[] | undefined;
   /**
    * Only `datocms` and `hygraph`: the GraphQL collection to read for each content type, because the Content Delivery API has no
    * list of types to ask: `{ "classes": { "collection": "allClasses", "slug": "slug" } }`. `slug` names the field
