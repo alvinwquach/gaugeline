@@ -12,9 +12,6 @@ const read = (path: string): string =>
 const page = read("docs/integrations/prismic.md");
 const index = read("docs/integrations/index.md");
 
-/** A marker for text still to be written. The scaffold has them; the no-TODO test refuses them at merge. */
-const TODO = /TODO\(new:adapter\)/;
-
 const block = (lang: string, title: string): string[] =>
   [
     ...page.matchAll(new RegExp("```" + lang + " title=" + title + "\\n([\\s\\S]*?)\\n```", "g")),
@@ -47,7 +44,7 @@ describe("docs/integrations/prismic.md", () => {
   });
 
   it("says when the documentation was checked, and marks the citation [docs]", () => {
-    expect(page).toMatch(/Documentation checked on: (\d{4}-\d{2}-\d{2}|TODO\(new:adapter\))/);
+    expect(page).toMatch(/Documentation checked on: \d{4}-\d{2}-\d{2}/);
     expect(page).toContain("[docs]");
   });
 
@@ -61,17 +58,37 @@ describe("docs/integrations/prismic.md", () => {
     const shown = block("json", "gaugeline\\.adapters\\.json");
     expect(shown).toHaveLength(1);
     const parsed = adaptersConfigSchema.parse(JSON.parse(shown[0] ?? "null"));
-    if (
-      !TODO.test(shown[0] ?? "") &&
-      JSON.stringify(parsed) !== JSON.stringify({ adapters: [{ id: "prismic" }] })
-    )
-      expect(parsed).toEqual({ adapters: [PRISMIC_SETTINGS] });
+    expect(parsed).toEqual({ adapters: [PRISMIC_SETTINGS] });
   });
 
   it("the read it shows is what the adapter reads, once pasted", async () => {
     const outputs = block("json", "Output");
     expect(outputs).toHaveLength(1);
-    if (!TODO.test(outputs[0] ?? "")) expect(outputs[0]).toBe(await prismicReads());
+    expect(outputs[0]).toBe(await prismicReads());
+  });
+
+  it("names the three checks, and says the release check is a probing check that needs consent and the setting", () => {
+    for (const id of [
+      "prismic-document-no-page",
+      "prismic-master-ref-stale",
+      "prismic-release-document-live",
+    ])
+      expect(page).toContain(id);
+    expect(page).toContain("is a probing check");
+    expect(page).toContain("--owner-consent");
+    expect(page).toContain("checkReleases: true");
+    expect(page).toContain("sites you own or have permission to test");
+  });
+
+  it("says what is uncited, and that the token never goes in an address", () => {
+    expect(page).toContain("`uncited`");
+    expect(page).toContain("never puts a key in an address");
+    expect(page).toContain("PRISMIC_ACCESS_TOKEN");
+    expect(page).toContain("PRISMIC_REPOSITORY");
+  });
+
+  it("the options page lists the release check among the probing checks", () => {
+    expect(read("docs/options.md")).toContain("prismic-release-document-live");
   });
 
   it("shows no text from the site's content", () => {

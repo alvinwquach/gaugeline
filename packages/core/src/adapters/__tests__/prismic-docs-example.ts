@@ -4,7 +4,7 @@ import { createFetcher } from "../../fetcher.js";
 import { collectPublished } from "../collect.js";
 import { createPrismicAdapter } from "../prismic.js";
 import { AdapterCouldNotCheck } from "../types.js";
-import { prismicTransport } from "./prismic-fixture.js";
+import { REPOSITORY, prismicTransport } from "./prismic-fixture.js";
 
 /**
  * What docs/integrations/prismic.md shows for Larkspur Yoga Studio (an invented small studio whose Prismic site
@@ -16,6 +16,7 @@ export const PRISMIC_SETTINGS = {
   id: "prismic",
   fingerprint: { classes: ["name", "summary"] },
   urls: { classes: "/classes/{slug}", teachers: "/teachers/{slug}" },
+  checkReleases: true,
 } as const;
 
 // Built at run time: a literal that looks like a key is refused by the repository's secret scanning.
@@ -23,11 +24,11 @@ const KEY = ["prismic", "docs", "larkspur0123456789abcdef"].join("_");
 
 export async function prismicReads(): Promise<string> {
   const fetcher = createFetcher({
-    transport: prismicTransport(undefined, { token: KEY }),
+    transport: prismicTransport(undefined, { releaseToken: KEY }),
     timeoutMs: 5000,
   });
   const adapter = createPrismicAdapter({
-    env: { PRISMIC_TOKEN: KEY },
+    env: { PRISMIC_REPOSITORY: REPOSITORY, PRISMIC_ACCESS_TOKEN: KEY },
     fetcher,
     settings: PRISMIC_SETTINGS,
     sleep: () => Promise.resolve(),
@@ -42,9 +43,10 @@ export async function prismicReads(): Promise<string> {
     {
       types,
       "class fields": fields,
-      "a type that does not exist": other,
-      "drafts reachable": await adapter.draftsReachable(),
+      "a field count for a type that does not exist": other,
       "published classes": docs,
+      "master ref, cache against origin": await adapter.masterRefs(),
+      "releases (token and consent)": await adapter.releaseReadings(),
     },
     null,
     2,
