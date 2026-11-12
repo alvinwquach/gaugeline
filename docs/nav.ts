@@ -37,6 +37,8 @@ export const NAV: NavGroup[] = [
       { slug: "delivery", title: "Paid downloads and delivery" },
       { slug: "protected-routes", title: "Routes that are hidden, not protected" },
       { slug: "query-check", title: "Checking your queries" },
+      { slug: "config", title: "Config, baselines and suppressions" },
+      { slug: "custom-checks", title: "Your own checks" },
       { slug: "no-developer", title: "When you don't have a developer" },
       { slug: "ad-landing-pages", title: "Ad landing pages" },
       { slug: "forms-and-crm", title: "Forms and CRM tracking" },
@@ -141,6 +143,7 @@ export const UNLISTED: NavPage[] = [
   // Each adapter's page comes from its entry file (pnpm gen:adapters), so a new adapter does not edit this list.
   ...ADAPTER_PAGES,
   { slug: "integrations/recipes/index", title: "Recipes for the generic API adapter" },
+  { slug: "integrations/ghost", title: "Ghost: content checks for sites built on Ghost" },
   { slug: "connectors/listings", title: "Listings off the site" },
   { slug: "checks/documents-agree", title: "Documents agree with the site" },
   { slug: "connectors/postgres", title: "A database as a source: Postgres and Supabase" },
@@ -187,4 +190,5 @@ export const UNLISTED: NavPage[] = [
   { slug: "hosted/api", title: "Hosted: the runs API (v1)" },
   { slug: "hosted/schedules", title: "Hosted: schedules and history" },
   { slug: "hosted/plan", title: "Hosted app plan" },
+  { slug: "hosted/sign-in", title: "Hosted: sign in and the shell" },
 ];

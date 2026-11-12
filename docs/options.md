@@ -53,76 +53,91 @@ Next.js routes in a folder and asks the running site for each signed-in one with
 no session (a probing check: only on sites you own or have permission to test).
 
 Options:
-      --ci                       Exit 1 when a "Fix this first" finding is found
-                                 [CI]
-      --json                     Print the result as JSON on stdout, and nothing
-                                 else
-      --format <value>           What stdout carries: json (the same as --json),
-                                 sarif (GitHub code scanning) or junit (any CI's
-                                 test results)
-      --no-open                  Do not open anything in a browser
-      --allow-private            Allow addresses on this computer or a private
-                                 network, such as 127.0.0.1 or 192.168.x.x
-      --allow-secret-key         Use a Stripe secret key, with a notice, instead
-                                 of refusing it; a restricted key is safer
-      --dns                      Also read the domain's mail records (SPF and
-                                 DMARC) from DNS
-      --renewals                 Also check what lapses: the domain's
-                                 registration, the certificates and any token
-                                 you set up
-      --cost                     Also check what runs up the hosting bill: pages
-                                 that change on every visit, the cache and usage
-                                 jumps
-      --trackers                 Also list the trackers on pages with a form or
-                                 a path you listed, and what a tag manager holds
-      --libraries                Also check the JavaScript files a page loads
-                                 for libraries with a published advisory
-      --wordpress                Also check a WordPress site's versions against
-                                 the current releases, and whether it lists its
-                                 users
-      --backups                  Also check when the client's content and
-                                 database were last backed up (Supabase, Sanity,
-                                 an export folder)
-      --published                Also check that content changed in your CMS is
-                                 live on the site, and that unpublished pages
-                                 are gone
-      --owner-consent            Run the probing checks, which ask routes for
-                                 what they protect with no login; only on sites
-                                 you may test
-      --routes <value>           With --owner-consent: download routes in files
-                                 matching this glob (repeatable); no glob: a
-                                 folder's signed-in routes
-      --since <value>            Page check: compare with the last run (the only
-                                 value is last). delivery: the window to read,
-                                 such as 7d
-  -i, --interactive              Open a terminal view of the results to move
-                                 through, filter and dismiss findings
-      --slack <value>            Send a summary to this Slack incoming webhook
-                                 (or set GAUGELINE_SLACK_WEBHOOK)
-      --discord <value>          Send an embed to this Discord webhook (or set
-                                 GAUGELINE_DISCORD_WEBHOOK)
-      --webhook <value>          POST the result as JSON to this address (or set
-                                 GAUGELINE_WEBHOOK)
-      --email <value>            Email the full report to these addresses
-                                 through Resend (or set GAUGELINE_EMAIL)
-      --base <value>             The site a plan is checked against (a preview);
-                                 the site emails link to; or the site to ask for
-                                 --routes
-      --notify-on <value>        When to send: any (something was found, the
-                                 default), high or always
-      --report-url <value>       Link each message to a hosted copy of the
-                                 report at this address
-      --upload                   Upload the result to your hosted workspace;
-                                 needs GAUGELINE_TOKEN and GAUGELINE_UPLOAD_URL
-                                 (see the API page)
-      --save-requests <value>    Save the requests made and the page's data to
-                                 this JSON file; it may contain page content, so
-                                 do not commit it
-      --quiet                    Print only results and errors
-      --verbose                  Show each request, and technical detail when
-                                 something goes wrong
-  -h, --help                     Show this help and exit
-  -v, --version                  Print the version and exit
+      --ci                         Exit 1 when a "Fix this first" finding is
+                                   found [CI]
+      --json                       Print the result as JSON on stdout, and
+                                   nothing else
+      --format <value>             What stdout carries: json (the same as
+                                   --json), sarif (GitHub code scanning) or
+                                   junit (any CI's test results)
+      --no-open                    Do not open anything in a browser
+      --allow-private              Allow addresses on this computer or a private
+                                   network, such as 127.0.0.1 or 192.168.x.x
+      --allow-secret-key           Use a Stripe secret key, with a notice,
+                                   instead of refusing it; a restricted key is
+                                   safer
+      --dns                        Also read the domain's mail records (SPF and
+                                   DMARC) from DNS
+      --renewals                   Also check what lapses: the domain's
+                                   registration, the certificates and any token
+                                   you set up
+      --cost                       Also check what runs up the hosting bill:
+                                   pages that change on every visit, the cache
+                                   and usage jumps
+      --trackers                   Also list the trackers on pages with a form
+                                   or a path you listed, and what a tag manager
+                                   holds
+      --libraries                  Also check the JavaScript files a page loads
+                                   for libraries with a published advisory
+      --wordpress                  Also check a WordPress site's versions
+                                   against the current releases, and whether it
+                                   lists its users
+      --backups                    Also check when the client's content and
+                                   database were last backed up (Supabase,
+                                   Sanity, an export folder)
+      --published                  Also check that content changed in your CMS
+                                   is live on the site, and that unpublished
+                                   pages are gone
+      --owner-consent              Run the probing checks, which ask routes for
+                                   what they protect with no login; only on
+                                   sites you may test
+      --routes <value>             With --owner-consent: download routes in
+                                   files matching this glob (repeatable); no
+                                   glob: a folder's signed-in routes
+      --since <value>              Page check: compare with the last run (the
+                                   only value is last). delivery: the window to
+                                   read, such as 7d
+  -i, --interactive                Open a terminal view of the results to move
+                                   through, filter and dismiss findings
+      --slack <value>              Send a summary to this Slack incoming webhook
+                                   (or set GAUGELINE_SLACK_WEBHOOK)
+      --discord <value>            Send an embed to this Discord webhook (or set
+                                   GAUGELINE_DISCORD_WEBHOOK)
+      --webhook <value>            POST the result as JSON to this address (or
+                                   set GAUGELINE_WEBHOOK)
+      --email <value>              Email the full report to these addresses
+                                   through Resend (or set GAUGELINE_EMAIL)
+      --base <value>               The site a plan is checked against (a
+                                   preview); the site emails link to; or the
+                                   site to ask for --routes
+      --notify-on <value>          When to send: any (something was found, the
+                                   default), high or always
+      --report-url <value>         Link each message to a hosted copy of the
+                                   report at this address
+      --upload                     Upload the result to your hosted workspace;
+                                   needs GAUGELINE_TOKEN and
+                                   GAUGELINE_UPLOAD_URL (see the API page)
+      --save-requests <value>      Save the requests made and the page's data to
+                                   this JSON file; it may contain page content,
+                                   so do not commit it
+      --baseline <value>           Read or write a file of known findings; with
+                                   it a run reports only new ones
+      --update-baseline            With --baseline, write the file again from
+                                   this run
+      --config-json-only           Refuse a gaugeline.config.mjs, .js or .ts,
+                                   which runs code; read gaugeline.config.json
+                                   only [GAUGELINE_NO_EXEC_CONFIG]
+      --suppress <value>           Snooze a check id for this run, with an
+                                   expiry and a reason (repeatable)
+      --suppress-until <value>     With --suppress, the last day it applies,
+                                   YYYY-MM-DD; a past date is refused
+      --suppress-reason <value>    With --suppress, why the finding is accepted
+                                   for now
+      --quiet                      Print only results and errors
+      --verbose                    Show each request, and technical detail when
+                                   something goes wrong
+  -h, --help                       Show this help and exit
+  -v, --version                    Print the version and exit
 
 Exit codes: 0 ran, 1 --ci with a fix-first finding, 2 could not run
 ```
@@ -241,43 +256,57 @@ Run the launch-day checks: links to preview addresses, the share picture, an
 indexable staging site, noindex and robots.txt. Read-only.
 
 Options:
-      --ci                       Exit 1 when a "Fix this first" finding is found
-                                 [CI]
-      --json                     Print the result as JSON on stdout, and nothing
-                                 else
-      --format <value>           What stdout carries: json (the same as --json),
-                                 sarif (GitHub code scanning) or junit (any CI's
-                                 test results)
-      --no-open                  Do not open anything in a browser
-      --allow-private            Allow addresses on this computer or a private
-                                 network, such as 127.0.0.1 or 192.168.x.x
-      --allow-secret-key         Use a Stripe secret key, with a notice, instead
-                                 of refusing it; a restricted key is safer
-      --dns                      Also read the domain's mail records (SPF and
-                                 DMARC) from DNS
-      --slack <value>            Send a summary to this Slack incoming webhook
-                                 (or set GAUGELINE_SLACK_WEBHOOK)
-      --discord <value>          Send an embed to this Discord webhook (or set
-                                 GAUGELINE_DISCORD_WEBHOOK)
-      --webhook <value>          POST the result as JSON to this address (or set
-                                 GAUGELINE_WEBHOOK)
-      --email <value>            Email the full report to these addresses
-                                 through Resend (or set GAUGELINE_EMAIL)
-      --notify-on <value>        When to send: any (something was found, the
-                                 default), high or always
-      --report-url <value>       Link each message to a hosted copy of the
-                                 report at this address
-      --upload                   Upload the result to your hosted workspace;
-                                 needs GAUGELINE_TOKEN and GAUGELINE_UPLOAD_URL
-                                 (see the API page)
-      --save-requests <value>    Save the requests made and the page's data to
-                                 this JSON file; it may contain page content, so
-                                 do not commit it
-      --quiet                    Print only results and errors
-      --verbose                  Show each request, and technical detail when
-                                 something goes wrong
-  -h, --help                     Show this help and exit
-  -v, --version                  Print the version and exit
+      --ci                         Exit 1 when a "Fix this first" finding is
+                                   found [CI]
+      --json                       Print the result as JSON on stdout, and
+                                   nothing else
+      --format <value>             What stdout carries: json (the same as
+                                   --json), sarif (GitHub code scanning) or
+                                   junit (any CI's test results)
+      --no-open                    Do not open anything in a browser
+      --allow-private              Allow addresses on this computer or a private
+                                   network, such as 127.0.0.1 or 192.168.x.x
+      --allow-secret-key           Use a Stripe secret key, with a notice,
+                                   instead of refusing it; a restricted key is
+                                   safer
+      --dns                        Also read the domain's mail records (SPF and
+                                   DMARC) from DNS
+      --slack <value>              Send a summary to this Slack incoming webhook
+                                   (or set GAUGELINE_SLACK_WEBHOOK)
+      --discord <value>            Send an embed to this Discord webhook (or set
+                                   GAUGELINE_DISCORD_WEBHOOK)
+      --webhook <value>            POST the result as JSON to this address (or
+                                   set GAUGELINE_WEBHOOK)
+      --email <value>              Email the full report to these addresses
+                                   through Resend (or set GAUGELINE_EMAIL)
+      --notify-on <value>          When to send: any (something was found, the
+                                   default), high or always
+      --report-url <value>         Link each message to a hosted copy of the
+                                   report at this address
+      --upload                     Upload the result to your hosted workspace;
+                                   needs GAUGELINE_TOKEN and
+                                   GAUGELINE_UPLOAD_URL (see the API page)
+      --save-requests <value>      Save the requests made and the page's data to
+                                   this JSON file; it may contain page content,
+                                   so do not commit it
+      --baseline <value>           Read or write a file of known findings; with
+                                   it a run reports only new ones
+      --update-baseline            With --baseline, write the file again from
+                                   this run
+      --config-json-only           Refuse a gaugeline.config.mjs, .js or .ts,
+                                   which runs code; read gaugeline.config.json
+                                   only [GAUGELINE_NO_EXEC_CONFIG]
+      --suppress <value>           Snooze a check id for this run, with an
+                                   expiry and a reason (repeatable)
+      --suppress-until <value>     With --suppress, the last day it applies,
+                                   YYYY-MM-DD; a past date is refused
+      --suppress-reason <value>    With --suppress, why the finding is accepted
+                                   for now
+      --quiet                      Print only results and errors
+      --verbose                    Show each request, and technical detail when
+                                   something goes wrong
+  -h, --help                       Show this help and exit
+  -v, --version                    Print the version and exit
 
 Exit codes: 0 ran, 1 --ci with a fix-first finding, 2 could not run
 ```
@@ -631,98 +660,124 @@ between the markers; CI fails when it differs from the flag table.
 
 <!-- flags:start -->
 
-| Flag                        | Does                                                                                                                 | Environment variable   | Since |
-| --------------------------- | -------------------------------------------------------------------------------------------------------------------- | ---------------------- | ----- |
-| `--ci`                      | Exit 1 when a "Fix this first" finding is found                                                                      | `CI`                   | 0.1.0 |
-| `--json`                    | Print the result as JSON on stdout, and nothing else                                                                 |                        | 0.1.0 |
-| `--format <value>`          | What stdout carries: json (the same as --json), sarif (GitHub code scanning) or junit (any CI's test results)        |                        | 0.2.0 |
-| `--no-open`                 | Do not open anything in a browser                                                                                    |                        | 0.1.0 |
-| `--demo`                    | Start the app with example results about invented sites; no address is checked and nothing is requested              |                        | 0.2.0 |
-| `--ads <value>`             | Start the app with an ads export read from this file (a Meta Ads Manager or Google Ads CSV)                          |                        | 0.2.0 |
-| `--allow-private`           | Allow addresses on this computer or a private network, such as 127.0.0.1 or 192.168.x.x                              |                        | 0.1.0 |
-| `--allow-secret-key`        | Use a Stripe secret key, with a notice, instead of refusing it; a restricted key is safer                            |                        | 0.2.0 |
-| `--dns`                     | Also read the domain's mail records (SPF and DMARC) from DNS                                                         |                        | 0.2.0 |
-| `--renewals`                | Also check what lapses: the domain's registration, the certificates and any token you set up                         |                        | 0.2.0 |
-| `--cost`                    | Also check what runs up the hosting bill: pages that change on every visit, the cache and usage jumps                |                        | 0.2.0 |
-| `--trackers`                | Also list the trackers on pages with a form or a path you listed, and what a tag manager holds                       |                        | 0.2.0 |
-| `--libraries`               | Also check the JavaScript files a page loads for libraries with a published advisory                                 |                        | 0.2.0 |
-| `--wordpress`               | Also check a WordPress site's versions against the current releases, and whether it lists its users                  |                        | 0.2.0 |
-| `--backups`                 | Also check when the client's content and database were last backed up (Supabase, Sanity, an export folder)           |                        | 0.2.0 |
-| `--published`               | Also check that content changed in your CMS is live on the site, and that unpublished pages are gone                 |                        | 0.2.0 |
-| `--owner-consent`           | Run the probing checks, which ask routes for what they protect with no login; only on sites you may test             |                        | 0.2.0 |
-| `--routes <value>`          | With --owner-consent: download routes in files matching this glob (repeatable); no glob: a folder's signed-in routes |                        | 0.2.0 |
-| `--since <value>`           | Page check: compare with the last run (the only value is last). delivery: the window to read, such as 7d             |                        | 0.2.0 |
-| `--paid`                    | Count the orders paid in Stripe in the window; with --sent, compare them with the emails                             |                        | 0.2.0 |
-| `--sent`                    | Count the emails Resend says it sent in the window; with --paid, compare them with the orders                        |                        | 0.2.0 |
-| `--dupes`                   | With query: name documents that share a slug or a title (reads each one's id, slug and title)                        |                        | 0.2.0 |
-| `--mutations`               | With query: check the writes in your code against the schema (parsed, never sent)                                    |                        | 0.2.0 |
-| `--graphql`                 | With query: check the GraphQL in your code against the schema (an endpoint may follow; Sanity's when none)           |                        | 0.2.0 |
-| `--suggest`                 | With query: write a GROQ query for a type from the schema and document counts (needs --type)                         |                        | 0.2.0 |
-| `--page`                    | With query: write a route (queries, types, page) from the schema and counts into --out (needs --type)                |                        | 0.2.0 |
-| `--unused`                  | With query: list fields your queries fetch that no code reads, GROQ and GraphQL (source only, no request)            |                        | 0.2.0 |
-| `--totals <value>`          | With query: check a stated number against the sum of its parts, as type:stated=parts (repeatable)                    |                        | 0.2.0 |
-| `--refs <value>`            | With query: find documents that link to things nobody published, as type:path (repeatable)                           |                        | 0.2.0 |
-| `--save <value>`            | With query: save today's gaps (names only) to this file, to compare a later run with                                 |                        | 0.2.0 |
-| `--against <value>`         | With query: list the gaps created since the --save file, and those it closed; --ci fails on a new high one           |                        | 0.2.0 |
-| `--type <value>`            | With query --suggest or --page: the document type to write the query or the route for, as in your schema             |                        | 0.2.0 |
-| `--schema <value>`          | With query: the schema file (sanity schema extract; SDL or introspection JSON for --graphql)                         |                        | 0.2.0 |
-| `--webhooks`                | Read Stripe's webhook endpoints and the events that were never delivered                                             |                        | 0.2.0 |
-| `-i`, `--interactive`       | Open a terminal view of the results to move through, filter and dismiss findings                                     |                        | 0.2.0 |
-| `--slack <value>`           | Send a summary to this Slack incoming webhook (or set GAUGELINE_SLACK_WEBHOOK)                                       |                        | 0.2.0 |
-| `--discord <value>`         | Send an embed to this Discord webhook (or set GAUGELINE_DISCORD_WEBHOOK)                                             |                        | 0.2.0 |
-| `--webhook <value>`         | POST the result as JSON to this address (or set GAUGELINE_WEBHOOK)                                                   |                        | 0.2.0 |
-| `--email <value>`           | Email the full report to these addresses through Resend (or set GAUGELINE_EMAIL)                                     |                        | 0.2.0 |
-| `--plan-only`               | Check the plan on its own, before anything is built (no requests)                                                    |                        | 0.2.0 |
-| `--sheet <value>`           | Read this tab of a workbook instead of the one with a URL column                                                     |                        | 0.2.0 |
-| `--legacy-from <value>`     | Read old addresses from this notes column when the plan has no Legacy URL column (repeatable)                        |                        | 0.2.0 |
-| `--legacy-review <value>`   | Write the old addresses read with --legacy-from to this CSV file, for review                                         |                        | 0.2.0 |
-| `--base <value>`            | The site a plan is checked against (a preview); the site emails link to; or the site to ask for --routes             |                        | 0.2.0 |
-| `--annotate <value>`        | Write a copy of the plan with a Gaugeline column saying what is wrong on each row                                    |                        | 0.2.0 |
-| `--force`                   | Let --annotate (plan), --page, --save (query), --out (brief), handoff or audit replace files, never a folder or link |                        | 0.2.0 |
-| `--progress <value>`        | With --base, say what was fixed and what is new since the last run (state file optional)                             |                        | 0.2.0 |
-| `--watch <value>`           | With --base on production: the 30-day watch from this cutover date (YYYY-MM-DD)                                      |                        | 0.2.0 |
-| `--all`                     | plan --progress: list the findings still open; run: check every site in gaugeline.sites.json                         |                        | 0.2.0 |
-| `--live <value>`            | List pages in this crawl, sitemap, Search Console export or list that the plan misses                                |                        | 0.2.0 |
-| `--nav <value>`             | Check the menu tabs (all headed Main category, or these, comma separated) against the pages                          |                        | 0.2.0 |
-| `--rank <value>`            | With --live, sort the missing pages by clicks from this Search Console or rank export                                |                        | 0.2.0 |
-| `--ignore <value>`          | With --live, leave out paths matching this glob, such as /tag/* (repeatable)                                         |                        | 0.2.0 |
-| `--printed <value>`         | With --base, add the printed register's addresses to the 301 map                                                     |                        | 0.2.0 |
-| `--decode <value>`          | Read the QR code in these PNG images (or a folder) and add new ones to the register                                  |                        | 0.2.0 |
-| `--tags <value>`            | Query parameters that must reach the destination, as name prefixes (default utm_)                                    |                        | 0.2.0 |
-| `--site <value>`            | Check this site from gaugeline.sites.json, by name (repeatable)                                                      |                        | 0.2.0 |
-| `--tag <value>`             | Check the sites in gaugeline.sites.json with this tag, such as client                                                |                        | 0.2.0 |
-| `--parallel <value>`        | Check this many sites at once (default 1); sites on one host never overlap                                           |                        | 0.2.0 |
-| `--limit <value>`           | Re-check this many of the export's pages (default 40; 0 only classifies the rows)                                    |                        | 0.2.0 |
-| `--out <value>`             | snapshot: the file (default before.json). query --page: the folder. brief: the file. handoff, audit: the folder      |                        | 0.2.0 |
-| `--business <value>`        | brief: the business the work order is for, shown in its heading. audit: the prospect's business                      |                        | 0.2.0 |
-| `--rate <value>`            | brief: what an hour costs, in whole currency units such as 110; used with --hours-per-point                          |                        | 0.2.0 |
-| `--hours-per-point <value>` | brief: how many hours one point takes, such as 1.5; prints a range of hours, never one number                        |                        | 0.2.0 |
-| `--pack`                    | audit: turn the run into a proposal-ready pack (HTML and Markdown), using the packages in gaugeline.services.json    |                        | 0.2.0 |
-| `--brand <value>`           | audit: your name, shown at the head and foot of the pack                                                             |                        | 0.2.0 |
-| `--brand-logo <value>`      | audit: an https address for your logo; it is never fetched by Gaugeline, only by whoever opens the pack              |                        | 0.2.0 |
-| `--brand-contact <value>`   | audit: your contact line, shown under your name                                                                      |                        | 0.2.0 |
-| `--before <value>`          | The snapshot taken before cutover, written by gaugeline snapshot                                                     |                        | 0.2.0 |
-| `--old <value>`             | migration: the old site's address, to read its list of pages and the pages themselves                                |                        | 0.2.0 |
-| `--old-file <value>`        | migration: a Wix, Webflow or other export (CSV or JSON) that lists the old site's pages, read from this file         |                        | 0.2.0 |
-| `--package <value>`         | advisory: a package@range to use instead of looking the id up in OSV (repeatable)                                    |                        | 0.2.0 |
-| `--host <value>`            | advisory: another hostname of the client to look at, such as an old subdomain (up to 5)                              |                        | 0.2.0 |
-| `--block`                   | deploy-gate: exit 1 when a "Fix this first" finding is found; without it the gate only reports                       | `GAUGELINE_GATE_BLOCK` | 0.2.0 |
-| `--dry-run`                 | init: print the settings files it would write, and write nothing                                                     |                        | 0.2.0 |
-| `--note`                    | advisory: print the short note for the client (Markdown) instead of the report                                       |                        | 0.2.0 |
-| `--runs <value>`            | The folder of saved runs (each one saved with --json) to read                                                        |                        | 0.2.0 |
-| `--time-zone <value>`       | The time zone for dates and ages, such as America/Los_Angeles (default UTC)                                          |                        | 0.2.0 |
-| `--notify-on <value>`       | When to send: any (something was found, the default), high or always                                                 |                        | 0.2.0 |
-| `--report-url <value>`      | Link each message to a hosted copy of the report at this address                                                     |                        | 0.2.0 |
-| `--save-requests <value>`   | Save the requests made and the page's data to this JSON file; it may contain page content, so do not commit it       |                        | 0.2.0 |
-| `--list`                    | Print the data assertions in gaugeline.sources.json and run none of them                                             |                        | 0.2.0 |
-| `--quiet`                   | Print only results and errors                                                                                        |                        | 0.1.0 |
-| `--verbose`                 | Show each request, and technical detail when something goes wrong                                                    |                        | 0.1.0 |
-| `-h`, `--help`              | Show this help and exit                                                                                              |                        | 0.1.0 |
-| `-v`, `--version`           | Print the version and exit                                                                                           |                        | 0.1.0 |
+| Flag                        | Does                                                                                                                 | Environment variable       | Since |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------- | -------------------------- | ----- |
+| `--ci`                      | Exit 1 when a "Fix this first" finding is found                                                                      | `CI`                       | 0.1.0 |
+| `--json`                    | Print the result as JSON on stdout, and nothing else                                                                 |                            | 0.1.0 |
+| `--format <value>`          | What stdout carries: json (the same as --json), sarif (GitHub code scanning) or junit (any CI's test results)        |                            | 0.2.0 |
+| `--no-open`                 | Do not open anything in a browser                                                                                    |                            | 0.1.0 |
+| `--demo`                    | Start the app with example results about invented sites; no address is checked and nothing is requested              |                            | 0.2.0 |
+| `--ads <value>`             | Start the app with an ads export read from this file (a Meta Ads Manager or Google Ads CSV)                          |                            | 0.2.0 |
+| `--allow-private`           | Allow addresses on this computer or a private network, such as 127.0.0.1 or 192.168.x.x                              |                            | 0.1.0 |
+| `--allow-secret-key`        | Use a Stripe secret key, with a notice, instead of refusing it; a restricted key is safer                            |                            | 0.2.0 |
+| `--dns`                     | Also read the domain's mail records (SPF and DMARC) from DNS                                                         |                            | 0.2.0 |
+| `--renewals`                | Also check what lapses: the domain's registration, the certificates and any token you set up                         |                            | 0.2.0 |
+| `--cost`                    | Also check what runs up the hosting bill: pages that change on every visit, the cache and usage jumps                |                            | 0.2.0 |
+| `--trackers`                | Also list the trackers on pages with a form or a path you listed, and what a tag manager holds                       |                            | 0.2.0 |
+| `--libraries`               | Also check the JavaScript files a page loads for libraries with a published advisory                                 |                            | 0.2.0 |
+| `--wordpress`               | Also check a WordPress site's versions against the current releases, and whether it lists its users                  |                            | 0.2.0 |
+| `--backups`                 | Also check when the client's content and database were last backed up (Supabase, Sanity, an export folder)           |                            | 0.2.0 |
+| `--published`               | Also check that content changed in your CMS is live on the site, and that unpublished pages are gone                 |                            | 0.2.0 |
+| `--owner-consent`           | Run the probing checks, which ask routes for what they protect with no login; only on sites you may test             |                            | 0.2.0 |
+| `--routes <value>`          | With --owner-consent: download routes in files matching this glob (repeatable); no glob: a folder's signed-in routes |                            | 0.2.0 |
+| `--since <value>`           | Page check: compare with the last run (the only value is last). delivery: the window to read, such as 7d             |                            | 0.2.0 |
+| `--paid`                    | Count the orders paid in Stripe in the window; with --sent, compare them with the emails                             |                            | 0.2.0 |
+| `--sent`                    | Count the emails Resend says it sent in the window; with --paid, compare them with the orders                        |                            | 0.2.0 |
+| `--dupes`                   | With query: name documents that share a slug or a title (reads each one's id, slug and title)                        |                            | 0.2.0 |
+| `--mutations`               | With query: check the writes in your code against the schema (parsed, never sent)                                    |                            | 0.2.0 |
+| `--graphql`                 | With query: check the GraphQL in your code against the schema (an endpoint may follow; Sanity's when none)           |                            | 0.2.0 |
+| `--suggest`                 | With query: write a GROQ query for a type from the schema and document counts (needs --type)                         |                            | 0.2.0 |
+| `--page`                    | With query: write a route (queries, types, page) from the schema and counts into --out (needs --type)                |                            | 0.2.0 |
+| `--unused`                  | With query: list fields your queries fetch that no code reads, GROQ and GraphQL (source only, no request)            |                            | 0.2.0 |
+| `--totals <value>`          | With query: check a stated number against the sum of its parts, as type:stated=parts (repeatable)                    |                            | 0.2.0 |
+| `--refs <value>`            | With query: find documents that link to things nobody published, as type:path (repeatable)                           |                            | 0.2.0 |
+| `--save <value>`            | With query: save today's gaps (names only) to this file, to compare a later run with                                 |                            | 0.2.0 |
+| `--against <value>`         | With query: list the gaps created since the --save file, and those it closed; --ci fails on a new high one           |                            | 0.2.0 |
+| `--type <value>`            | With query --suggest or --page: the document type to write the query or the route for, as in your schema             |                            | 0.2.0 |
+| `--schema <value>`          | With query: the schema file (sanity schema extract; SDL or introspection JSON for --graphql)                         |                            | 0.2.0 |
+| `--webhooks`                | Read Stripe's webhook endpoints and the events that were never delivered                                             |                            | 0.2.0 |
+| `-i`, `--interactive`       | Open a terminal view of the results to move through, filter and dismiss findings                                     |                            | 0.2.0 |
+| `--slack <value>`           | Send a summary to this Slack incoming webhook (or set GAUGELINE_SLACK_WEBHOOK)                                       |                            | 0.2.0 |
+| `--discord <value>`         | Send an embed to this Discord webhook (or set GAUGELINE_DISCORD_WEBHOOK)                                             |                            | 0.2.0 |
+| `--webhook <value>`         | POST the result as JSON to this address (or set GAUGELINE_WEBHOOK)                                                   |                            | 0.2.0 |
+| `--email <value>`           | Email the full report to these addresses through Resend (or set GAUGELINE_EMAIL)                                     |                            | 0.2.0 |
+| `--plan-only`               | Check the plan on its own, before anything is built (no requests)                                                    |                            | 0.2.0 |
+| `--sheet <value>`           | Read this tab of a workbook instead of the one with a URL column                                                     |                            | 0.2.0 |
+| `--legacy-from <value>`     | Read old addresses from this notes column when the plan has no Legacy URL column (repeatable)                        |                            | 0.2.0 |
+| `--legacy-review <value>`   | Write the old addresses read with --legacy-from to this CSV file, for review                                         |                            | 0.2.0 |
+| `--base <value>`            | The site a plan is checked against (a preview); the site emails link to; or the site to ask for --routes             |                            | 0.2.0 |
+| `--annotate <value>`        | Write a copy of the plan with a Gaugeline column saying what is wrong on each row                                    |                            | 0.2.0 |
+| `--force`                   | Let --annotate (plan), --page, --save (query), --out (brief), handoff or audit replace files, never a folder or link |                            | 0.2.0 |
+| `--progress <value>`        | With --base, say what was fixed and what is new since the last run (state file optional)                             |                            | 0.2.0 |
+| `--watch <value>`           | With --base on production: the 30-day watch from this cutover date (YYYY-MM-DD)                                      |                            | 0.2.0 |
+| `--all`                     | plan --progress: list the findings still open; run: check every site in gaugeline.sites.json                         |                            | 0.2.0 |
+| `--live <value>`            | List pages in this crawl, sitemap, Search Console export or list that the plan misses                                |                            | 0.2.0 |
+| `--nav <value>`             | Check the menu tabs (all headed Main category, or these, comma separated) against the pages                          |                            | 0.2.0 |
+| `--rank <value>`            | With --live, sort the missing pages by clicks from this Search Console or rank export                                |                            | 0.2.0 |
+| `--ignore <value>`          | With --live, leave out paths matching this glob, such as /tag/* (repeatable)                                         |                            | 0.2.0 |
+| `--printed <value>`         | With --base, add the printed register's addresses to the 301 map                                                     |                            | 0.2.0 |
+| `--decode <value>`          | Read the QR code in these PNG images (or a folder) and add new ones to the register                                  |                            | 0.2.0 |
+| `--tags <value>`            | Query parameters that must reach the destination, as name prefixes (default utm_)                                    |                            | 0.2.0 |
+| `--site <value>`            | Check this site from gaugeline.sites.json, by name (repeatable)                                                      |                            | 0.2.0 |
+| `--tag <value>`             | Check the sites in gaugeline.sites.json with this tag, such as client                                                |                            | 0.2.0 |
+| `--parallel <value>`        | Check this many sites at once (default 1); sites on one host never overlap                                           |                            | 0.2.0 |
+| `--limit <value>`           | Re-check this many of the export's pages (default 40; 0 only classifies the rows)                                    |                            | 0.2.0 |
+| `--out <value>`             | snapshot: the file (default before.json). query --page: the folder. brief: the file. handoff, audit: the folder      |                            | 0.2.0 |
+| `--business <value>`        | brief: the business the work order is for, shown in its heading. audit: the prospect's business                      |                            | 0.2.0 |
+| `--rate <value>`            | brief: what an hour costs, in whole currency units such as 110; used with --hours-per-point                          |                            | 0.2.0 |
+| `--hours-per-point <value>` | brief: how many hours one point takes, such as 1.5; prints a range of hours, never one number                        |                            | 0.2.0 |
+| `--pack`                    | audit: turn the run into a proposal-ready pack (HTML and Markdown), using the packages in gaugeline.services.json    |                            | 0.2.0 |
+| `--brand <value>`           | audit: your name, shown at the head and foot of the pack                                                             |                            | 0.2.0 |
+| `--brand-logo <value>`      | audit: an https address for your logo; it is never fetched by Gaugeline, only by whoever opens the pack              |                            | 0.2.0 |
+| `--brand-contact <value>`   | audit: your contact line, shown under your name                                                                      |                            | 0.2.0 |
+| `--before <value>`          | The snapshot taken before cutover, written by gaugeline snapshot                                                     |                            | 0.2.0 |
+| `--old <value>`             | migration: the old site's address, to read its list of pages and the pages themselves                                |                            | 0.2.0 |
+| `--old-file <value>`        | migration: a Wix, Webflow or other export (CSV or JSON) that lists the old site's pages, read from this file         |                            | 0.2.0 |
+| `--package <value>`         | advisory: a package@range to use instead of looking the id up in OSV (repeatable)                                    |                            | 0.2.0 |
+| `--host <value>`            | advisory: another hostname of the client to look at, such as an old subdomain (up to 5)                              |                            | 0.2.0 |
+| `--block`                   | deploy-gate: exit 1 when a "Fix this first" finding is found; without it the gate only reports                       | `GAUGELINE_GATE_BLOCK`     | 0.2.0 |
+| `--dry-run`                 | init: print the settings files it would write, and write nothing                                                     |                            | 0.2.0 |
+| `--note`                    | advisory: print the short note for the client (Markdown) instead of the report                                       |                            | 0.2.0 |
+| `--runs <value>`            | The folder of saved runs (each one saved with --json) to read                                                        |                            | 0.2.0 |
+| `--time-zone <value>`       | The time zone for dates and ages, such as America/Los_Angeles (default UTC)                                          |                            | 0.2.0 |
+| `--notify-on <value>`       | When to send: any (something was found, the default), high or always                                                 |                            | 0.2.0 |
+| `--report-url <value>`      | Link each message to a hosted copy of the report at this address                                                     |                            | 0.2.0 |
+| `--upload`                  | Upload the result to your hosted workspace; needs GAUGELINE_TOKEN and GAUGELINE_UPLOAD_URL (see the API page)        |                            | 0.2.0 |
+| `--save-requests <value>`   | Save the requests made and the page's data to this JSON file; it may contain page content, so do not commit it       |                            | 0.2.0 |
+| `--baseline <value>`        | Read or write a file of known findings; with it a run reports only new ones                                          |                            | 0.2.0 |
+| `--update-baseline`         | With --baseline, write the file again from this run                                                                  |                            | 0.2.0 |
+| `--config-json-only`        | Refuse a gaugeline.config.mjs, .js or .ts, which runs code; read gaugeline.config.json only                          | `GAUGELINE_NO_EXEC_CONFIG` | 0.2.0 |
+| `--suppress <value>`        | Snooze a check id for this run, with an expiry and a reason (repeatable)                                             |                            | 0.2.0 |
+| `--suppress-until <value>`  | With --suppress, the last day it applies, YYYY-MM-DD; a past date is refused                                         |                            | 0.2.0 |
+| `--suppress-reason <value>` | With --suppress, why the finding is accepted for now                                                                 |                            | 0.2.0 |
+| `--list`                    | Print the data assertions in gaugeline.sources.json and run none of them                                             |                            | 0.2.0 |
+| `--quiet`                   | Print only results and errors                                                                                        |                            | 0.1.0 |
+| `--verbose`                 | Show each request, and technical detail when something goes wrong                                                    |                            | 0.1.0 |
+| `-h`, `--help`              | Show this help and exit                                                                                              |                            | 0.1.0 |
+| `-v`, `--version`           | Print the version and exit                                                                                           |                            | 0.1.0 |
 
 <!-- flags:end -->
 
 Only "Fix this first" findings fail CI. "Fix soon" and "Worth knowing" never change the exit code.
+
+### Config, baselines and suppressions
+
+`gaugeline.config.json` (or `.mjs`, `.js`, `.ts`: those run code, see [Config](/docs/config#json-is-the-safe-default))
+in the folder you run from sets which checks block, adds checks you wrote and snoozes findings with a date.
+Four flags work with it on the page check and `launch`:
+
+- `--baseline <file>`: if the file does not exist (under `--ci` that is exit 2), write the findings of this run to it (fingerprints, check ids
+  and paths, never page text) and exit as if they were accepted; if it does, leave out the findings it holds
+  and report only new ones, with a stderr line saying how many were already known. A file that is not a
+  baseline, or was written by a newer version, is exit 2.
+- `--update-baseline`: with `--baseline`, write the file again from this run.
+- `--config-json-only` (or `GAUGELINE_NO_EXEC_CONFIG=1`): refuse a `gaugeline.config.mjs`, `.js` or `.ts`, which run code, as exit 2.
+- `--suppress <id>`, with `--suppress-until YYYY-MM-DD` and `--suppress-reason "..."`: snooze a check for this
+  run. All three are required, `--suppress` can be repeated, and a past date is exit 2. For a standing
+  suppression, use the config file's `suppress` list: an entry past its `until` date stops applying and is
+  reported.
+
+Baselined and suppressed findings never fail `--ci`. See [Config, baselines and suppressions](/docs/config).
 
 ### Streams and colour
 
@@ -1027,7 +1082,7 @@ to test.** Without either, nothing is asked and the check is not listed.
 `by` says who agreed and `on` says when, so a shared repository records it once. A run with consent
 prints one line on stderr saying probing checks are on.
 
-There are twelve probing checks: `image-optimizer-open`, described in
+There are fifteen probing checks: `image-optimizer-open`, described in
 [Open image optimizers](guides/image-optimizers.md#what-it-asks-the-running-site-a-probing-check) (it also needs an
 address you chose, in `gaugeline.images.json`, below), `not-found-200`, described in [Error pages that answer 200](guides/error-pages.md#not-found-200-what-the-site-does-for-an-address-that-does-not-exist) (one `GET` of an address made up from your own site's address), `gated-download-open`, described in
 [Paid downloads and delivery](delivery.md#a-download-route-that-hands-the-file-to-anyone),
@@ -1037,10 +1092,13 @@ address you chose, in `gaugeline.images.json`, below), `not-found-200`, describe
 Nuxt sites only), `strapi-drafts-public`, described in [Strapi](integrations/strapi.md#the-two-checks),
 `umbraco-delivery-api-public`, described in [Umbraco](integrations/umbraco.md#the-two-checks),
 `joomla-api-public`, described in [Joomla](integrations/joomla.md#the-two-checks),
-`datocms-drafts-reachable`, described in [DatoCMS](integrations/datocms.md#the-check), and
-`directus-collection-public`, described in [Directus](integrations/directus.md#the-two-checks), and
-`prismic-release-document-live`, described in [Prismic](integrations/prismic.md#the-checks) (the last
-six run from an adapter's reading, not from a page check).
+`datocms-drafts-reachable`, described in [DatoCMS](integrations/datocms.md#the-check),
+`directus-collection-public`, described in [Directus](integrations/directus.md#the-two-checks),
+`hygraph-draft-live`, described in [Hygraph](integrations/hygraph.md#the-check),
+`payload-collection-public`, described in [Payload](integrations/payload.md#the-check),
+`prismic-release-document-live`, described in [Prismic](integrations/prismic.md#the-checks), and
+`sitecore-preview-public`, described in [Sitecore XM Cloud](integrations/sitecore.md#the-two-checks) (the last
+nine run from an adapter's reading, not from a page check).
 
 `gaugeline.images.json` (in the folder you run from) holds the image optimizer settings. `settingsFiles` lists up
 to six framework settings files (`next.config.js`, `nuxt.config.ts`, `astro.config.mjs`, `netlify.toml`) that are

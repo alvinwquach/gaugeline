@@ -327,6 +327,32 @@ export {
 export type { PreviewAuth, Protection } from "./fetch/preview-auth.js";
 export { fingerprint, stableEvidence } from "./fingerprint.js";
 export {
+  CHECK_MODES,
+  FINDINGS_BASELINE_SCHEMA,
+  applySuppressions,
+  buildFindingsBaseline,
+  dayOf,
+  diffFindingsBaseline,
+  isBlocking,
+  isCalendarDate,
+  offIds,
+  parseConfig,
+  parseFindingsBaseline,
+  registerCustomChecks,
+  sandboxCustomCheck,
+} from "./config/index.js";
+export type {
+  CheckMode,
+  Config,
+  CustomCheckContext,
+  FindingsBaseline,
+  FindingsBaselineEntry,
+  FindingsBaselineMigration,
+  ParseFindingsBaselineOptions,
+  Suppression,
+  SuppressionResult,
+} from "./config/index.js";
+export {
   PLAN_STATE_SCHEMA,
   compare as comparePlanProgress,
   planHash,
@@ -1504,6 +1530,7 @@ export { JOOMLA_CHECKS, createJoomlaRegistry } from "./checks/joomla.js";
 export { DATOCMS_CHECKS, createDatocmsRegistry } from "./checks/datocms.js";
 export { PRISMIC_CHECKS, createPrismicRegistry } from "./checks/prismic.js";
 export { DIRECTUS_CHECKS, createDirectusRegistry } from "./checks/directus.js";
+export { PAYLOAD_CHECKS, createPayloadRegistry } from "./checks/payload.js";
 export { HUBSPOT_CMS_CHECKS, createHubspotCmsRegistry } from "./checks/hubspot-cms.js";
 export {
   ListBuilder,
