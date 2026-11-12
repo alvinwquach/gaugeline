@@ -19,6 +19,7 @@ import {
   forSlackPlain,
   forTerminal,
   stripAnsi,
+  TERMINAL_EVIDENCE_MAX,
   type SafeText,
 } from "../untrusted-output.js";
 
@@ -101,6 +102,16 @@ describe("output escapers: unit (one table per format)", () => {
     expect(forSlackPlain("*Free* _drinks_ ~today~ <!here>")).toBe(
       "\u2217Free\u2217 \uFF3Fdrinks\uFF3F \u223Ctoday\u223C &lt;!here&gt;",
     );
+  });
+
+  it("terminal: benign GROQ, paths and commands pass through unchanged", () => {
+    for (const line of [
+      "src/app/menu/[slug]/page.tsx:3  The menuItem query's filter does not leave drafts out.",
+      "--totals dinnerParty:total=courses[].price  Nothing of type dinnerParty exists",
+      '*[_type == "popup" && date > $after]{title, venue->name, "n": count(guests[])} | order(date)',
+      "`npx gaugeline query --refs` @acme/site -> ./src/lib/sanity.ts:12",
+    ])
+      expect(forTerminal(line, TERMINAL_EVIDENCE_MAX)).toBe(line);
   });
 
   it("stripAnsi leaves text without escapes alone, emoji included", () => {

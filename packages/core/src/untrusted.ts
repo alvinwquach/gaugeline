@@ -65,8 +65,12 @@ export type AgentFinding = Omit<Finding, "title" | "evidence" | "url"> & {
 const TAGS = new RegExp(`(${FLAG_SEQUENCE.source})|[\\u{E0000}-\\u{E007F}]+`, "gu");
 /** Bidirectional embeddings, overrides, isolates and marks (LRM, RLM, ALM): they reorder what a reader sees. */
 const BIDI = /[\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069]/gu;
-/** Whitespace runs, other than the byte order mark (escaped below, not collapsed). */
-const SPACE = /[^\S\uFEFF]+/gu;
+/**
+ * A run of whitespace that holds a line break, a tab or another non-space (but not the byte order
+ * mark, escaped below): it becomes one space. Runs of plain spaces are kept, so aligned columns in
+ * evidence ("file.ts:3  text") stay as written.
+ */
+const SPACE = / *[^\S \uFEFF][^\S\uFEFF]*/gu;
 /** Control characters (an ANSI escape starts with U+001B) and the byte order mark. */
 // eslint-disable-next-line no-control-regex -- the point is to find control characters
 const CONTROL = /[\u0000-\u001F\u007F-\u009F\uFEFF]/gu;
