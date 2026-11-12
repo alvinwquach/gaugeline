@@ -23,6 +23,7 @@ describe("frameworkCoversPreviewCanonical", () => {
     ["Gatsby", page('<div id="___gatsby"></div>')],
     ["Hydrogen", page("<main>Hi</main>", { "powered-by": "Shopify, Hydrogen" })],
     ["Remix", page('<script>window.__reactRouterContext = {"basename":"/","ssr":true};</script>')],
+    ["Nuxt", page("<main>Hi</main>", { "x-powered-by": "Nuxt" })],
     ["Qwik", page('<html q:container="paused"><body>Hi</body></html>')],
     [
       "SolidStart",

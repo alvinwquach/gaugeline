@@ -49,6 +49,8 @@ export const LIMITS = Object.freeze({
   routeProbeBytes: 64 * 1024,
   /** Framework addresses (/_next/, ?_rsc=) found and ignored: never requested, so the limit is 0. */
   frameworkAddresses: 0,
+  /** Addresses a Nuxt check asks once each: the page's own payload file, a preview query, the dev tools route. */
+  nuxtAddresses: 6,
   structuredDataAddresses: 12,
   concurrency: 5,
   redirectHops: 10,
@@ -77,6 +79,7 @@ export type BudgetKind =
   | "draftRoutes"
   | "downloadRoutes"
   | "frameworkAddresses"
+  | "nuxtAddresses"
   | "structuredDataAddresses";
 
 /** Report order. */
@@ -100,6 +103,7 @@ export const BUDGET_KINDS = [
   "draftRoutes",
   "downloadRoutes",
   "frameworkAddresses",
+  "nuxtAddresses",
   "structuredDataAddresses",
 ] as const satisfies readonly BudgetKind[];
 
@@ -166,6 +170,7 @@ const NOUNS: Record<BudgetKind, [singular: string, plural: string]> = {
   draftRoutes: ["draft route", "draft routes"],
   downloadRoutes: ["download route", "download routes"],
   frameworkAddresses: ["framework address", "framework addresses"],
+  nuxtAddresses: ["Nuxt address", "Nuxt addresses"],
   structuredDataAddresses: ["address in structured data", "addresses in structured data"],
 };
 
