@@ -106,7 +106,7 @@ export const adaptersConfigSchema = z.strictObject({
             )
             .optional(),
           /**
-           * Umbraco only: the Content Delivery API is meant to be private. Switches on the probing check that asks
+           * Umbraco and Joomla only: the platform's API is meant to be private. Switches on the probing check that asks
            * whether it answers a visitor with no key (still only with --owner-consent).
            */
           expectPrivate: z.boolean().optional(),
@@ -275,7 +275,7 @@ export const adaptersConfigSchema = z.strictObject({
             ctx.addIssue({
               code: "custom",
               path: ["expectPrivate"],
-              message: `"expectPrivate" belongs to the Umbraco and Sitecore adapters, not to ${entry.id}`,
+              message: `"expectPrivate" belongs to the Umbraco, Joomla and Sitecore adapters, not to ${entry.id}`,
             });
           for (const key of ["siteName", "languages"] as const)
             if (entry[key] !== undefined && !EDGE_SITES.includes(entry.id))

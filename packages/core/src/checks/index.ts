@@ -157,6 +157,11 @@ import { placeholderText } from "./placeholder-text.js";
 import { priceChanged } from "./price-changed.js";
 import { quotableFactsDisagree } from "./quotable-facts-disagree.js";
 import { redirectChain } from "./redirect-chain.js";
+import { remixDataAsPage } from "./remix-data-as-page.js";
+import { remixDevToolsLive } from "./remix-dev-tools-live.js";
+import { remixDraftPublic } from "./remix-draft-public.js";
+import { remixPreviewCanonical } from "./remix-preview-canonical.js";
+import { remixPrivateFields } from "./remix-private-fields.js";
 import { robotsBlock } from "./robots-block.js";
 import { rscServedAsPage } from "./rsc-served-as-page.js";
 import { rscVaryMissing } from "./rsc-vary-missing.js";
@@ -357,6 +362,11 @@ export const PAGE_CHECKS = [
   priceChanged,
   quotableFactsDisagree,
   redirectChain,
+  remixDataAsPage,
+  remixDevToolsLive,
+  remixDraftPublic,
+  remixPreviewCanonical,
+  remixPrivateFields,
   robotsBlock,
   rscServedAsPage,
   rscVaryMissing,

@@ -7,7 +7,7 @@ import { adapterHeader, collectPublished } from "../collect.js";
 import { adaptersConfigSchema } from "../config.js";
 import { BUILT_ADAPTERS, PLANNED_ADAPTERS, createAdapter, resolveAdapters } from "../registry.js";
 import { AdapterCouldNotCheck } from "../types.js";
-import { WIX_CMS_READ_PATH, WIX_DESCRIPTION, createWixAdapter } from "../wix.js";
+import { WIX_CMS_READ_PATH, WIX_DESCRIPTION, createWixAdapter, type WixAdapter } from "../wix.js";
 import { recording, requestProblems, type Seen } from "./contract.js";
 import { urlset, type Reply } from "./sitemap-feed-fixture.js";
 import { MARLOW, MARLOW_MARKERS, marlowRoutes, marlowServe, marlowWithout } from "./wix-fixture.js";
@@ -51,8 +51,9 @@ describe("the Wix adapter describes itself", () => {
     expect(d.name).toBe("Wix");
     expect(d.optionalKey).toBe(true);
     expect(d.keyKind).toBe("read-only");
+    expect(d.beta).toBe(true);
     expect(adapterHeader(d)).toBe(
-      "Content system: Wix, with a read-only key when one is set, and with no key otherwise (it then only reads pages the site already publishes). Endpoints and how to make the key: https://gaugeline.dev/docs/integrations/wix",
+      "Content system: Wix (beta), with a read-only key when one is set, and with no key otherwise (it then only reads pages the site already publishes). Endpoints and how to make the key: https://gaugeline.dev/docs/integrations/wix",
     );
   });
 
@@ -222,15 +223,19 @@ describe("the CMS collections: could-not-check, with the reason, for that part o
 
   it("has no members, and the endpoint named as unusable is the one the docs name", () => {
     expect(build().adapter.members).toBeUndefined();
-    expect(WIX_CMS_READ_PATH.queryVerb).toBe("POST");
     expect(WIX_CMS_READ_PATH.path).toBe("/wix-data/v2/items/query");
+    // ADR-0006, Amendment 1: no adapter file holds a request-verb literal, not even to describe an endpoint.
+    expect(Object.keys(WIX_CMS_READ_PATH)).not.toContain("queryVerb");
   });
 });
 
 describe("a Wix API key set without the rest of the settings", () => {
   const key = testKey("wix-api");
+  const SITE_ID = "6b1f0c2e-3d4a-4e5f-9a8b-7c6d5e4f3a2b";
+  const programs = { Programs: "/programs/{slug}" };
 
-  it("is could-not-check naming what is missing, sends nothing, and never repeats the key", async () => {
+  /** The adapter the registry builds, with the key in the environment and these settings. */
+  async function withKey(settings: Record<string, unknown>) {
     const seen: Seen[] = [];
     const fetcher = createFetcher({
       transport: recording(marlowServe(marlowRoutes()), seen),
@@ -239,24 +244,60 @@ describe("a Wix API key set without the rest of the settings", () => {
     const built = BUILT_ADAPTERS.get("wix");
     expect(built).toBeDefined();
     const adapter = built
-      ? await createAdapter(
+      ? ((await createAdapter(
           built,
           { env: { WIX_API_KEY: key }, fetcher, site: MARLOW, sleep: () => Promise.resolve() },
-          { id: "wix" },
-        )
+          { id: "wix", ...settings },
+        )) as WixAdapter | undefined)
       : undefined;
     expect(adapter).toBeDefined();
-    if (!adapter) return;
+    return { adapter: adapter as WixAdapter, seen };
+  }
+
+  it.each([
+    ["no site id and no collection", {}, ["siteId", "collection"]],
+    ["no site id", { urls: programs }, ["siteId"]],
+    ["no collection", { siteId: SITE_ID }, ["collection"]],
+    ["an empty site id", { siteId: "", urls: programs }, ["siteId"]],
+  ])(
+    "with %s it reads the live site as if there were no key, and a note says why the CMS was skipped",
+    async (_name, settings, named) => {
+      const { adapter, seen } = await withKey(settings);
+      expect(adapter.readsPages).toBe(true);
+      const note = adapter.cmsNote();
+      expect(note).toBeDefined();
+      expect(note).toContain("WIX_API_KEY");
+      for (const word of named) expect(note).toContain(word);
+      expect(note).not.toContain(key);
+      // The sitemap read works, so a key set for another reason does not take it away.
+      expect((await adapter.types()).map((t) => t.name)).toEqual(["post", "programs", "top-level"]);
+      expect((await collectPublished(adapter)).docs).toHaveLength(8);
+      // And the key is nowhere: every request is a GET or HEAD to the site.
+      expect(seen.length).toBeGreaterThan(0);
+      for (const s of seen) {
+        expect(s.method).not.toBe("POST");
+        expect(new URL(s.url).host).toBe(new URL(MARLOW).host);
+        expect(Object.keys(s.headers).map((h) => h.toLowerCase())).not.toContain("authorization");
+      }
+      // The CMS parts say why they were skipped, in the same words as the note, and ask for nothing more.
+      const before = seen.length;
+      expect(await reasonOf(adapter.fieldCounts("programs", ["title"]))).toBe(note);
+      expect(await reasonOf(adapter.readCollections())).toBe(note);
+      expect(seen).toHaveLength(before);
+    },
+  );
+
+  it("with the key, the site id and a named collection it reads the CMS, and has no note", async () => {
+    const { adapter, seen } = await withKey({ siteId: SITE_ID, urls: programs });
     expect(adapter.readsPages).toBe(false);
-    for (const reason of [
-      await reasonOf(adapter.types()),
-      await reasonOf(adapter.fieldCounts("Programs", ["title"])),
-      await reasonOf(collectPublished(adapter)),
-    ]) {
-      expect(reason).toContain("siteId");
-      expect(reason).not.toContain(key);
-    }
-    expect(seen).toEqual([]);
+    expect(adapter.cmsNote()).toBeUndefined();
+    // The (invented) site answers 404 to Wix's host: the point is only that Wix is the one asked.
+    await adapter.types().catch(() => undefined);
+    expect(seen.every((s) => new URL(s.url).host === "www.wixapis.com")).toBe(true);
+  });
+
+  it("with no key there is no note: nothing was skipped", () => {
+    expect(build().adapter.cmsNote()).toBeUndefined();
   });
 
   it("the adapter's source reads one environment variable, builds no request of its own, and sends no key to the site", () => {
@@ -265,6 +306,7 @@ describe("a Wix API key set without the rest of the settings", () => {
     expect(source).not.toMatch(/\bfetch\(/);
     expect(source).not.toMatch(/\bgetJson\b|\bconnectorGet\b|\bpostJson\b/);
     expect(source).not.toMatch(/\.request\(|\.post\(|\.put\(|\.delete\(/);
+    expect(source).not.toMatch(/["'`](?:POST|PUT|PATCH|DELETE)["'`]/);
     expect([...source.matchAll(/options\.env\?*\.?\[(\w+)\]/g)].map((m) => m[1])).toEqual([
       "WIX_API_KEY",
     ]);
