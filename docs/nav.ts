@@ -61,14 +61,13 @@ export const NAV: NavGroup[] = [
   },
   {
     group: "Integrations",
-    pages: [
-      { slug: "playwright", title: "Playwright helper", soon: true },
-      { slug: "mcp", title: "MCP server" },
-    ],
+    soon: true,
+    pages: [{ slug: "playwright", title: "Playwright helper", soon: true }],
   },
   {
     group: "Reference",
     pages: [
+      { slug: "mcp", title: "MCP server" },
       { slug: "writes", title: "What it can and can't write" },
       { slug: "private-datasets", title: "Private datasets" },
       { slug: "privacy", title: "Privacy and safety" },
