@@ -140,3 +140,35 @@ export const siteConsents = pgTable(
   },
   (t) => [index("site_consents_site_idx").on(t.siteId, t.id.desc())],
 ).enableRLS();
+
+/** Server-only: an upload token's hash (never the token) and the 8-character prefix that finds it. */
+export const tokens = pgTable(
+  "tokens",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id").notNull(),
+    siteId: uuid("site_id").notNull(),
+    prefix: text("prefix").notNull().unique(),
+    tokenHash: text("token_hash").notNull(),
+    createdAt: createdAt(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  },
+  (t) => [index("tokens_site_idx").on(t.siteId)],
+).enableRLS();
+
+/** Server-only: the Idempotency-Keys POST /runs has seen, per site. */
+export const idempotencyKeys = pgTable(
+  "idempotency_keys",
+  {
+    siteId: uuid("site_id").notNull(),
+    key: text("key").notNull(),
+    orgId: uuid("org_id").notNull(),
+    requestHash: text("request_hash").notNull(),
+    runId: uuid("run_id").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.siteId, t.key] }),
+    index("idempotency_keys_created_idx").on(t.createdAt),
+  ],
+).enableRLS();
