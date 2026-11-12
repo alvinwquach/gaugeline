@@ -1,3 +1,4 @@
+import { Readable } from "node:stream";
 import { describe, expect, it } from "vitest";
 import { createDirectusAdapter } from "../../adapters/directus.js";
 import { readDirectus, type DirectusReading } from "../../adapters/directus-read.js";
@@ -317,5 +318,57 @@ describe("directus-collection-public: a probing check", () => {
         expect(text.endsWith(".")).toBe(true);
       }
     }
+  });
+});
+
+describe("review fixes: nothing checked is not a pass", () => {
+  it("items that are all 'live' or 'Published' (none exactly published) leave the page check could-not-check", async () => {
+    const content = LARKSPUR.map((c) => ({
+      ...c,
+      items: c.items.map((i) => ({ ...i, status: "live" })),
+    }));
+    const { reading: r } = await reading(content, PAGES_HEALTHY, { ownerConsent: true });
+    const out = await run(r);
+    expect(out.passed).not.toContain("directus-entry-no-page");
+    expect(out.couldNotCheck.map((c) => c.reason).join("\n")).toMatch(/no item read as published/);
+  });
+
+  it("a closed collection whose spelling the token could not confirm is could-not-check by name, a confirmed one passes", async () => {
+    const { reading: a } = await reading(LARKSPUR, PAGES_HEALTHY, {
+      ownerConsent: true,
+      privateCollections: ["appointments", "apointments"],
+    });
+    const outA = await run(a);
+    expect(outA.passed).not.toContain("directus-collection-public");
+    expect(outA.couldNotCheck.map((c) => c.reason).join("\n")).toMatch(
+      /apointments: .*403.*missing collection.*spelling/,
+    );
+    const { reading: b } = await reading(LARKSPUR, PAGES_HEALTHY, { ownerConsent: true });
+    expect((await run(b)).passed).toContain("directus-collection-public");
+  });
+
+  it("a firewall's 403 to the visitor is could-not-check with its reason, never a pass", async () => {
+    const real = directusTransport(LARKSPUR, { token: KEY, pages: PAGES_HEALTHY });
+    const fetcher = createFetcher({
+      transport: (url, req) =>
+        url.host === "cms.larkspur-yoga.example" && req.headers.authorization === undefined
+          ? Promise.resolve({
+              status: 403,
+              headers: { "content-type": "text/html" },
+              body: Readable.from([Buffer.from("<html>Attention Required</html>")]),
+            })
+          : real(url, req),
+      timeoutMs: 5000,
+    });
+    const adapter = createDirectusAdapter({
+      env: { DIRECTUS_URL: CMS_URL, DIRECTUS_TOKEN: KEY },
+      fetcher,
+      settings: { id: "directus", urls: URLS, privateCollections: ["appointments"] },
+      sleep: () => Promise.resolve(),
+    });
+    const r = await readDirectus({ adapter, fetcher, site: DIRECTUS_SITE, ownerConsent: true });
+    const out = await run(r);
+    expect(out.passed).not.toContain("directus-collection-public");
+    expect(out.couldNotCheck.map((c) => c.reason).join("\n")).toMatch(/not a Directus answer/);
   });
 });

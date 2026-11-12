@@ -493,14 +493,21 @@ describe("Directus: what a visitor with no token can list of the collections mar
     const got = await adapter.publicCollections();
     expect(got).toEqual([
       { type: "appointments", state: "public", listed: 2, exact: true },
-      { type: "notices", state: "closed", listed: 0, exact: true },
+      { type: "notices", state: "closed", listed: 0, exact: true, exists: true },
+    ]);
+    const visitor = seen.filter((s) => s.headers.authorization === undefined);
+    expect(visitor.map((s) => new URL(s.url).pathname)).toEqual([
+      "/items/appointments",
+      "/items/notices",
     ]);
     for (const s of seen) {
-      expect(s.headers.authorization).toBeUndefined();
       expect(s.url).not.toContain(KEY);
       expect(new URL(s.url).searchParams.get("fields")).toBe("id");
       expect(new URL(s.url).searchParams.get("limit")).toBe("1");
     }
+    // The token is used once, only to see that a closed collection exists, and never on the open one.
+    const withToken = seen.filter((s) => s.headers.authorization !== undefined);
+    expect(withToken.map((s) => new URL(s.url).pathname)).toEqual(["/items/notices"]);
     expect(JSON.stringify(got)).not.toContain(DIRECTUS_MARKERS.booking);
   });
 
@@ -553,5 +560,173 @@ describe("Directus: what a visitor with no token can list of the collections mar
     });
     expect(await adapter.publicCollections()).toEqual([]);
     expect(seen).toEqual([]);
+  });
+});
+
+describe("review fixes: the tokenless probe proves a Directus answered", () => {
+  const html403: Transport = (url, req) =>
+    url.host === "cms.larkspur-yoga.example" && req.headers.authorization === undefined
+      ? Promise.resolve({
+          status: 403,
+          headers: { "content-type": "text/html" },
+          body: Readable.from([Buffer.from("<html>Attention Required</html>")]),
+        })
+      : directusTransport(LARKSPUR, { token: KEY })(url, req);
+
+  it("a 403 that is not Directus's error envelope (a CDN or WAF page) is unread, never closed", async () => {
+    const got = await over({ transport: html403 }).adapter.publicCollections();
+    expect(got.map((c) => c.state)).toEqual(["unread", "unread"]);
+    expect(got[0]?.reason).toMatch(/not a Directus answer/);
+  });
+
+  it("a JSON 403 without Directus's error code is unread too", async () => {
+    const other: Transport = (url, req) =>
+      req.headers.authorization === undefined
+        ? json(403, { message: "blocked" })
+        : directusTransport(LARKSPUR, { token: KEY })(url, req);
+    const got = await over({ transport: other }).adapter.publicCollections();
+    expect(got.map((c) => c.state)).toEqual(["unread", "unread"]);
+  });
+
+  it("Directus's FORBIDDEN and INVALID_CREDENTIALS envelopes are closed", async () => {
+    const creds: Transport = (url, req) =>
+      req.headers.authorization === undefined
+        ? json(401, { errors: [{ message: "x", extensions: { code: "INVALID_CREDENTIALS" } }] })
+        : directusTransport(LARKSPUR, { token: KEY })(url, req);
+    const got = await over({ transport: creds }).adapter.publicCollections();
+    expect(got.map((c) => c.state)).toEqual(["closed", "closed"]);
+  });
+
+  it("a closed collection the token can also not read has an unconfirmed spelling; one the token reads is confirmed", async () => {
+    const { adapter } = over({
+      adapter: { settings: { ...SETTINGS, privateCollections: ["appointments", "apointments"] } },
+    });
+    const got = await adapter.publicCollections();
+    expect(got.map((c) => [c.type, c.state, c.exists])).toEqual([
+      ["appointments", "closed", true],
+      ["apointments", "closed", false],
+    ]);
+  });
+
+  it("with no token set the spelling cannot be confirmed", async () => {
+    const { adapter } = over({ adapter: { env: { DIRECTUS_URL: CMS_URL } } });
+    expect((await adapter.publicCollections()).map((c) => c.exists)).toEqual([false, false]);
+  });
+
+  it("a Public role that reads the collection but not its id is not a pass: the 403 comes with Directus's envelope but a 200 never did", async () => {
+    // A 403 on fields=id is Directus's own answer; the spelling is confirmed by the token, so it is closed and confirmed.
+    const got = await over().adapter.publicCollections();
+    expect(got.every((c) => c.state === "closed")).toBe(true);
+  });
+
+  it("rows with a count of 0, or a count with no rows, are unread; the larger of count and rows is listed", async () => {
+    const body =
+      (data: unknown[], n: number): Transport =>
+      (url, req) =>
+        req.headers.authorization === undefined
+          ? json(200, { data, meta: { filter_count: n } })
+          : directusTransport(LARKSPUR, { token: KEY })(url, req);
+    const a = await over({ transport: body([{ id: 1 }], 0) }).adapter.publicCollections();
+    expect(a[0]?.state).toBe("unread");
+    const b = await over({ transport: body([], 3) }).adapter.publicCollections();
+    expect(b[0]?.state).toBe("unread");
+    const c = await over({ transport: body([{ id: 1 }], 4) }).adapter.publicCollections();
+    expect(c[0]).toMatchObject({ state: "public", listed: 4, exact: true });
+  });
+});
+
+describe("review fixes: what reads as published", () => {
+  const rows =
+    (status: unknown): Transport =>
+    () =>
+      json(200, {
+        data: [{ id: 2, status, slug: "x", date_created: "2026-10-01T09:00:00Z" }],
+        meta: { filter_count: 1 },
+      });
+  const one = { id: "directus", urls: { classes: "/c/{slug}" } };
+
+  it.each([[0], [false], [{}], [["published"]]])(
+    "a status that is not text (%j) is not published",
+    async (status) => {
+      const { adapter } = over({ transport: rows(status), adapter: { settings: one } });
+      expect((await collectPublished(adapter, { types: ["classes"] })).docs).toEqual([]);
+    },
+  );
+
+  it("only a missing status key means the collection has no status field", async () => {
+    const noKey: Transport = () =>
+      json(200, {
+        data: [{ id: 2, slug: "x", date_created: "2026-10-01T09:00:00Z" }],
+        meta: { filter_count: 1 },
+      });
+    const { adapter } = over({ transport: noKey, adapter: { settings: one } });
+    expect((await collectPublished(adapter, { types: ["classes"] })).docs).toHaveLength(1);
+  });
+
+  it("a field named like an Object.prototype member is not read from the prototype", async () => {
+    const { adapter } = over({
+      adapter: { settings: { ...SETTINGS, fingerprint: { classes: ["constructor", "name"] } } },
+    });
+    const counts = await adapter.fieldCounts("classes", ["constructor", "name"]);
+    expect(counts).toEqual({ constructor: 0, name: 2 });
+  });
+});
+
+describe("review fixes: a list that is read to the end is the list that was counted", () => {
+  const page = (ids: number[], total: number) => ({
+    data: ids.map((id) => ({ id, status: "published", date_created: "2026-10-01T09:00:00Z" })),
+    meta: { filter_count: total },
+  });
+  const one = { id: "directus", urls: { classes: "/c/{slug}" } };
+
+  it("a server that ignores offset repeats a page: could-not-check on the repeated id", async () => {
+    const same: Transport = () => json(200, page([1, 2], 4));
+    const { adapter } = over({ transport: same, adapter: { settings: one, pageSize: 2 } });
+    expect(await reasonOf(collectPublished(adapter, { types: ["classes"] }))).toMatch(
+      /same item twice/,
+    );
+  });
+
+  it("more items than the reported count is 'the list changed', not accepted", async () => {
+    const more: Transport = (url) =>
+      json(200, url.searchParams.get("offset") === "0" ? page([1, 2], 3) : page([3, 4], 3));
+    const { adapter } = over({ transport: more, adapter: { settings: one, pageSize: 2 } });
+    expect(await reasonOf(collectPublished(adapter, { types: ["classes"] }))).toMatch(
+      /changed while it was read/,
+    );
+  });
+
+  it("a count that moved between pages is the same statement", async () => {
+    const moved: Transport = (url) =>
+      json(200, url.searchParams.get("offset") === "0" ? page([1, 2], 4) : page([3], 3));
+    const { adapter } = over({ transport: moved, adapter: { settings: one, pageSize: 2 } });
+    expect(await reasonOf(collectPublished(adapter, { types: ["classes"] }))).toMatch(
+      /changed while it was read/,
+    );
+  });
+});
+
+describe("review fixes: the token and the fields asked for", () => {
+  it("a token with a space, a newline or a non-ASCII character is refused naming the variable, and nothing is sent", async () => {
+    for (const bad of ["abc def", "abc\ndef", "abc\u00e9def"]) {
+      const { adapter, seen } = over({
+        adapter: { env: { DIRECTUS_URL: CMS_URL, DIRECTUS_TOKEN: bad } },
+      });
+      const reason = await reasonOf(adapter.types());
+      expect(reason).toMatch(/DIRECTUS_TOKEN/);
+      expect(reason).not.toContain(bad);
+      expect(seen).toEqual([]);
+    }
+  });
+
+  it("slug is selected only when the collection's pattern uses it", async () => {
+    const withSlug = over({
+      adapter: { settings: { id: "directus", urls: { classes: "/c/{slug}" } } },
+    });
+    await collectPublished(withSlug.adapter, { types: ["classes"] });
+    expect(new URL(withSlug.seen[0]?.url ?? "").searchParams.get("fields")).toContain("slug");
+    const byId = over({ adapter: { settings: { id: "directus", urls: { classes: "/c/{id}" } } } });
+    await collectPublished(byId.adapter, { types: ["classes"] });
+    expect(new URL(byId.seen[0]?.url ?? "").searchParams.get("fields")).not.toContain("slug");
   });
 });

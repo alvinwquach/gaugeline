@@ -1001,14 +1001,15 @@ to test.** Without either, nothing is asked and the check is not listed.
 `by` says who agreed and `on` says when, so a shared repository records it once. A run with consent
 prints one line on stderr saying probing checks are on.
 
-There are six probing checks: `gated-download-open`, described in
+There are seven probing checks: `gated-download-open`, described in
 [Paid downloads and delivery](delivery.md#a-download-route-that-hands-the-file-to-anyone),
 `route-hidden-not-protected`, described in [Routes that are hidden, not protected](protected-routes.md),
 `strapi-drafts-public`, described in [Strapi](integrations/strapi.md#the-two-checks),
 `umbraco-delivery-api-public`, described in [Umbraco](integrations/umbraco.md#the-two-checks),
 `joomla-api-public`, described in [Joomla](integrations/joomla.md#the-two-checks), and
-`datocms-drafts-reachable`, described in [DatoCMS](integrations/datocms.md#the-check) (the last four run
-from an adapter's reading, not from a page check).
+`datocms-drafts-reachable`, described in [DatoCMS](integrations/datocms.md#the-check), and
+`directus-collection-public`, described in [Directus](integrations/directus.md#the-two-checks) (the last
+five run from an adapter's reading, not from a page check).
 
 `--routes <glob>` (repeatable) points that check at your repository's route files, so it finds routes
 no page links to. Run Gaugeline from the repository's folder and give a glob such as

@@ -1,13 +1,20 @@
-import { ResponseTooLargeError, getJson, isRecord } from "../connectors/get-json.js";
+import {
+  MAX_RETRY_SECONDS,
+  ResponseTooLargeError,
+  getJson,
+  isRecord,
+} from "../connectors/get-json.js";
 import {
   ConnectorRateLimitedError,
   ConnectorRefusedError,
   ConnectorStatusError,
+  describeRetry,
+  retryAfterSeconds,
 } from "../connectors/http.js";
 import { createRedactor } from "../connectors/redact.js";
 import type { Env } from "../connectors/types.js";
 import type { Fetcher } from "../fetcher.js";
-import { fillUrlTemplate, hashValue } from "./fingerprint.js";
+import { fillUrlTemplate, hasValue, hashValue, valueAt } from "./fingerprint.js";
 import {
   AdapterCouldNotCheck,
   AdapterRateLimitedError,
@@ -38,6 +45,9 @@ export {
 /** The smallest page asked for when an answer is too big: the page is halved down to this and no further. */
 const MIN_PAGE_SIZE = 10;
 
+/** What a token looks like: printable ASCII with no space. Anything else is a paste mistake, and is never sent. */
+const TOKEN_SHAPE = /^[\x21-\x7e]+$/;
+
 /** A collection name is letters, digits and underscores (Directus's own rule for a table); anything else never goes into an address. */
 const TYPE_NAME = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
 
@@ -53,7 +63,10 @@ const NOT_PUBLISHED = '{"_or":[{"status":{"_neq":"published"}},{"status":{"_null
  * - `public`: it listed at least one item. The Public role can read it.
  * - `empty`: it answered with no items. The Public role may read it (Directus answers a forbidden collection
  *   with 403), but an empty list shows nothing to count.
- * - `closed`: 401 or 403, which is what a collection the Public role may not read answers.
+ * - `closed`: a 401 or 403 that carries Directus's own error envelope (FORBIDDEN or INVALID_CREDENTIALS), which is
+ *   what a collection the Public role may not read answers. Directus also answers it for a collection that does not
+ *   exist (uncited), so `exists` says whether the token could read the collection: when it could not, the
+ *   spelling is unconfirmed.
  * - `unread`: the answer could not be read; `reason` says why.
  */
 export type DirectusPublicState = "public" | "empty" | "closed" | "unread";
@@ -65,6 +78,8 @@ export interface DirectusPublicCollection {
   listed: number;
   /** True when `listed` is a count the server reported, false when it is "at least this many". */
   exact: boolean;
+  /** Only meaningful when `state` is `closed`: the token could read the collection, so it exists and the 403 is real. */
+  exists?: boolean;
   reason?: string;
 }
 
@@ -103,26 +118,6 @@ function isoOf(value: unknown): string | undefined {
   return Number.isNaN(ms) ? undefined : new Date(ms).toISOString();
 }
 
-/** A field's value by name; a dotted name goes into objects. */
-function valueAt(data: Record<string, unknown>, path: string): unknown {
-  if (path in data) return data[path];
-  let at: unknown = data;
-  for (const part of path.split(".")) {
-    if (!isRecord(at)) return undefined;
-    at = at[part];
-  }
-  return at;
-}
-
-/** A field counts as present when it has a value: not missing, null, an empty string, an empty list or an empty object. */
-function hasValue(v: unknown): boolean {
-  if (v === undefined || v === null) return false;
-  if (typeof v === "string") return v.trim() !== "";
-  if (Array.isArray(v)) return v.length > 0;
-  if (isRecord(v)) return Object.keys(v).length > 0;
-  return true;
-}
-
 /** An answer over the size limit: asked again with a smaller page before it becomes could-not-check. */
 class TooLarge extends AdapterCouldNotCheck {}
 
@@ -148,7 +143,13 @@ function parseItem(raw: unknown): RawItem {
   const id = idOf(r.id);
   if (id === undefined)
     throw new AdapterCouldNotCheck("Directus answered with items that have no id.");
-  const status = r.status === null ? null : typeof r.status === "string" ? r.status : undefined;
+  // Only a MISSING key means the collection has no status field. A key with a value that is not text (0, false,
+  // an object) is a status Gaugeline cannot read as "published": the item is not live.
+  const status = !Object.hasOwn(r, "status")
+    ? undefined
+    : typeof r.status === "string"
+      ? r.status
+      : null;
   return {
     id,
     status,
@@ -248,6 +249,10 @@ export function createDirectusAdapter(options: DirectusAdapterOptions): Directus
         );
       const base = site();
       const sendToken = authed && token !== "";
+      if (sendToken && !TOKEN_SHAPE.test(token))
+        throw new AdapterCouldNotCheck(
+          `${DIRECTUS_TOKEN} has a space, a line break or a character that is not plain ASCII in it, so it is not a token. Copy it again without anything around it.`,
+        );
       if (sendToken && base.protocol !== "https:")
         throw new AdapterCouldNotCheck(
           `${DIRECTUS_URL} is an http address, and ${DIRECTUS_TOKEN} is not sent over plain http.`,
@@ -296,10 +301,6 @@ export function createDirectusAdapter(options: DirectusAdapterOptions): Directus
     throw new AdapterCouldNotCheck("Directus answered with something that is not a list.");
   };
 
-  const isRefusal = (err: unknown): err is AdapterCouldNotCheck =>
-    err instanceof AdapterCouldNotCheck &&
-    /did not accept|would not let|does not show this collection/.test(err.reason);
-
   /**
    * The items of one collection a page at a time, until every one is read. `offset` is the number of items
    * already received, so a server that holds an answer below the `limit` asked for (QUERY_LIMIT_MAX) is followed
@@ -323,6 +324,9 @@ export function createDirectusAdapter(options: DirectusAdapterOptions): Directus
     let size = pageSize;
     let read = 0;
     let asked = 0;
+    // Ids already delivered in this read: a repeat means the server ignored `offset`, or the list moved under us.
+    const seen = new Set<string>();
+    let firstTotal: number | undefined;
     for (;;) {
       if (++asked > maxPages)
         throw new AdapterCouldNotCheck(
@@ -362,6 +366,13 @@ export function createDirectusAdapter(options: DirectusAdapterOptions): Directus
         );
       }
       const total = filterCount(body);
+      if (total !== undefined) {
+        firstTotal ??= total;
+        if (total !== firstTotal)
+          throw new AdapterCouldNotCheck(
+            `The list changed while it was read: Directus reported ${firstTotal} items and then ${total}.`,
+          );
+      }
       if (enforceCap && total !== undefined && total > cap)
         throw new AdapterCouldNotCheck(
           `The collection has ${total} items, more than ${cap}, which is as many as Gaugeline reads from one collection.`,
@@ -371,12 +382,29 @@ export function createDirectusAdapter(options: DirectusAdapterOptions): Directus
         throw new AdapterCouldNotCheck(
           `Directus listed more items than the ${cap} Gaugeline reads from one collection, whatever count it reported.`,
         );
-      for (const raw of rows) yield parseItem(raw);
-      read += rows.length;
       // A singleton answers one item and has no pages.
-      if (isRecord(body.data)) return;
+      const singleton = isRecord(body.data);
+      for (const raw of rows) {
+        const item = parseItem(raw);
+        if (!singleton) {
+          if (seen.has(item.id))
+            throw new AdapterCouldNotCheck(
+              `Directus listed the same item twice (id ${item.id}) while one collection was read, so the list is not reliable: the server may ignore offset, or items were added or removed during the read.`,
+            );
+          seen.add(item.id);
+        }
+        yield item;
+      }
+      read += rows.length;
+      if (singleton) return;
       if (total !== undefined) {
-        if (read >= total) return;
+        if (read >= total) {
+          if (read !== total)
+            throw new AdapterCouldNotCheck(
+              `The list changed while it was read: Directus reported ${total} items and ${read} came back.`,
+            );
+          return;
+        }
         if (rows.length === 0)
           throw new AdapterCouldNotCheck(
             `Directus's list stopped after ${read} of ${total} items, so the rest was not read.`,
@@ -483,7 +511,16 @@ export function createDirectusAdapter(options: DirectusAdapterOptions): Directus
     for (const type of named.filter((n) => opts.types === undefined || opts.types.includes(n))) {
       if (remaining <= 0) return;
       const fields = opts.fields?.[type] ?? settings?.fingerprint?.[type] ?? [];
-      const select = ["id", "status", "slug", "date_created", "date_updated", ...topLevel(fields)];
+      // The slug is asked for only when the collection's address pattern uses it.
+      const wantsSlug = (templateFor(type) ?? "").includes("{slug}");
+      const select = [
+        "id",
+        "status",
+        ...(wantsSlug ? ["slug"] : []),
+        "date_created",
+        "date_updated",
+        ...topLevel(fields),
+      ];
       for await (const i of itemsOf(type, true, opts.limit === undefined, () => delivered, {
         select,
       })) {
@@ -542,51 +579,129 @@ export function createDirectusAdapter(options: DirectusAdapterOptions): Directus
     return false;
   };
 
-  const publicCollections: DirectusAdapter["publicCollections"] = async () => {
-    const out: DirectusPublicCollection[] = [];
-    const none = (
-      type: string,
-      state: DirectusPublicState,
-      reason?: string,
-    ): DirectusPublicCollection => ({
+  /** Directus's own error codes for a request that is refused: what a collection the Public role may not read answers. */
+  const REFUSAL_CODES: readonly string[] = ["FORBIDDEN", "INVALID_CREDENTIALS"];
+
+  /** True when the body is Directus's error envelope with one of its refusal codes: `{ errors: [{ extensions: { code } }] }`. */
+  const isDirectusRefusal = (text: string | undefined): boolean => {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(text ?? "");
+    } catch {
+      return false;
+    }
+    if (!isRecord(parsed) || !Array.isArray(parsed.errors)) return false;
+    const first: unknown = parsed.errors[0];
+    const ext = isRecord(first) && isRecord(first.extensions) ? first.extensions : {};
+    return typeof ext.code === "string" && REFUSAL_CODES.includes(ext.code);
+  };
+
+  /**
+   * One tokenless GET (the fetcher's `anonymous` request: no token, no cookie, nothing added per address), read
+   * directly because the answer's BODY matters: a 401 or 403 means "closed" only when it is Directus that sent it
+   * (its error envelope), never when it is a firewall or CDN page.
+   */
+  const anonymousProbe = async (
+    type: string,
+    partial: () => unknown,
+  ): Promise<DirectusPublicCollection> => {
+    const none = (state: DirectusPublicState, reason?: string): DirectusPublicCollection => ({
       type,
       state,
       listed: 0,
       exact: true,
       ...(reason !== undefined ? { reason } : {}),
     });
-    for (const type of priv) {
+    if (!TYPE_NAME.test(type))
+      return none(
+        "unread",
+        `"${type}" is not a Directus collection name (letters, digits and underscores).`,
+      );
+    const base = site();
+    const root = base.pathname.replace(/\/+$/, "");
+    const query = new URLSearchParams({ limit: "1", fields: "id", meta: "filter_count" });
+    const url = `${base.origin}${root}/items/${encodeURIComponent(type)}?${query.toString()}`;
+    let hop;
+    for (let attempt = 0; ; attempt++) {
+      let hops;
       try {
-        // No token, one item, its id only: the answer is read as a count and nothing else.
-        const body = await get(
-          type,
-          { limit: "1", fields: "id", meta: "filter_count" },
-          false,
-          () => out.slice(),
-        );
-        const rows = rowsOf(body);
-        const n = filterCount(body);
-        if (rows.length === 0 && (n === undefined || n === 0)) out.push(none(type, "empty"));
-        else
-          out.push({
-            type,
-            state: "public",
-            listed: n ?? rows.length,
-            exact: n !== undefined,
-          });
+        hops = await fetcher.get(url, {
+          headers: { accept: "application/json" },
+          headersSameOrigin: true,
+          anonymous: true,
+          ...(attempt > 0 ? { fresh: true } : {}),
+        });
       } catch (err) {
-        if (err instanceof AdapterRateLimitedError) throw err;
-        if (isRefusal(err)) {
-          out.push(none(type, "closed"));
+        return none("unread", redact(err instanceof Error ? err.message : String(err)));
+      }
+      hop = hops.at(-1);
+      if (!hop) return none("unread", "Directus gave no answer.");
+      if (hop.status === 429) {
+        const secs = retryAfterSeconds(hop.headers);
+        if (attempt === 0 && secs !== undefined && secs <= MAX_RETRY_SECONDS) {
+          await sleep(secs * 1000);
           continue;
         }
-        out.push(
-          none(
-            type,
+        throw new AdapterRateLimitedError(partial(), describeRetry(hop.headers));
+      }
+      break;
+    }
+    if (hop.truncated === true)
+      return none("unread", "Directus's answer was larger than a page should be.");
+    if (hop.status === 401 || hop.status === 403)
+      return isDirectusRefusal(hop.body)
+        ? none("closed")
+        : none(
             "unread",
-            err instanceof AdapterCouldNotCheck ? err.reason : "unexpected error",
-          ),
-        );
+            `HTTP ${hop.status} that is not a Directus answer (no Directus error code in it): a firewall, a CDN or another server may be answering for Directus.`,
+          );
+    if (hop.status < 200 || hop.status >= 300)
+      return none("unread", `Directus answered HTTP ${hop.status}.`);
+    let body: unknown;
+    try {
+      body = JSON.parse(hop.body ?? "");
+    } catch {
+      return none("unread", "Directus answered with something that is not JSON.");
+    }
+    if (!isRecord(body))
+      return none("unread", "Directus answered with something that is not an object.");
+    const rows = rowsOf(body);
+    const n = filterCount(body);
+    if (rows.length === 0 && (n === undefined || n === 0)) return none("empty");
+    // A count that disagrees with the rows is not a count: say so rather than pick one.
+    if ((rows.length > 0 && n === 0) || (rows.length === 0 && (n ?? 0) > 0))
+      return none("unread", "Directus's count and its list disagree, so nothing was counted.");
+    return { type, state: "public", listed: Math.max(n ?? 0, rows.length), exact: n !== undefined };
+  };
+
+  const publicCollections: DirectusAdapter["publicCollections"] = async () => {
+    const out: DirectusPublicCollection[] = [];
+    for (const type of priv) {
+      try {
+        const got = await anonymousProbe(type, () => out.slice());
+        if (got.state === "closed") {
+          // Directus answers 403 for a collection that does not exist too (uncited). The token, when it can read
+          // the collection, shows that it exists, so the 403 is a real refusal and the spelling is right.
+          let exists = false;
+          if (token !== "") {
+            try {
+              await get(type, { limit: "1", fields: "id" }, true, () => out.slice());
+              exists = true;
+            } catch (err) {
+              if (err instanceof AdapterRateLimitedError) throw err;
+            }
+          }
+          out.push({ ...got, exists });
+        } else out.push(got);
+      } catch (err) {
+        if (err instanceof AdapterRateLimitedError) throw err;
+        out.push({
+          type,
+          state: "unread",
+          listed: 0,
+          exact: true,
+          reason: err instanceof AdapterCouldNotCheck ? err.reason : "unexpected error",
+        });
       }
     }
     return out;

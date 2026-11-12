@@ -41,6 +41,14 @@ export const directusEntryNoPage = defineCheck<DirectusReading>({
         `${u.type}: Directus would not give this collection (${u.reason})`,
       );
     stopped(r, ctx);
+    let said = r.nothingNamed || r.unreadable.length > 0 || r.partial !== undefined ? 1 : 0;
+    for (const type of r.emptyTypes) {
+      said++;
+      ctx.couldNotCheck?.(
+        r.site,
+        `${type}: no item read as published, so no page of it was checked. The collection may be empty, or its status values may not be exactly "published" (Gaugeline reads only that word as live), or the status field may be missing or unreadable.`,
+      );
+    }
     for (const type of r.withoutPattern)
       ctx.couldNotCheck?.(
         r.site,
@@ -52,6 +60,16 @@ export const directusEntryNoPage = defineCheck<DirectusReading>({
       ctx.couldNotCheck?.(
         r.site,
         `${r.pagesSkipped} ${r.pagesSkipped === 1 ? "page was" : "pages were"} not asked for, because a run asks for at most ${r.pageBudget}.`,
+      );
+    if (
+      r.pages.length === 0 &&
+      said === 0 &&
+      r.withoutPattern.length === 0 &&
+      r.unaddressed.length === 0
+    )
+      ctx.couldNotCheck?.(
+        r.site,
+        "no published item with an address was asked, so no page was checked.",
       );
     const out: Finding[] = [];
     for (const p of r.pages) {
@@ -87,7 +105,7 @@ export const directusCollectionPublic = defineCheck<DirectusReading>({
   what: "gaugeline.adapters.json marks a collection private (privateCollections), and a plain GET of its items with no token is answered with items.",
   why: "Anyone who guesses the route can read the collection as data: bookings, customer notes, prices before they are announced. A search engine or scraper may already have it.",
   fix: "In Directus open Settings, then Access Policies, then the Public policy, and remove read access from the collection (or narrow it with a filter). If the front end needs the data, read it on the server with a token whose role is limited to what the page shows. If the collection is meant to be public, take it out of privateCollections.",
-  tech: `probing check, off without --owner-consent: ${PROBING_NOTE}; only for the collections named in the settings' privateCollections; per collection one GET of /items/{collection}?limit=1&fields=id&meta=filter_count with no Authorization header, no cookie and nothing the fetcher adds per address; a 200 with at least one item is the finding (its count is the reported filter_count, or "at least 1" when none is reported); a 200 with no items is could-not-check (the role may read it and there is nothing to count); 401 and 403 are a collection visitors cannot read, with no finding; any other answer is could-not-check; the answer is read as a count and nothing else, and a finding is a collection name and a count, never an item`,
+  tech: `probing check, off without --owner-consent: ${PROBING_NOTE}; only for the collections named in the settings' privateCollections; per collection one GET of /items/{collection}?limit=1&fields=id&meta=filter_count with no Authorization header, no cookie and nothing the fetcher adds per address; a 200 with at least one item is the finding (its count is the reported filter_count, or "at least 1" when none is reported); a 200 with no items is could-not-check (the role may read it and there is nothing to count); a 401 or 403 is a closed collection only when its body is Directus's own error envelope (error code FORBIDDEN or INVALID_CREDENTIALS), otherwise it is could-not-check (a firewall or CDN page answers 403 too); a closed collection passes only when the token can read the same collection (a second request with the token, id only), because Directus also answers 403 for a collection that does not exist, and a Public policy that allows some fields but not id also answers 403 for fields=id, so a pass is no sign of public reads rather than proof; any other answer is could-not-check; the answer is read as a count and nothing else, and a finding is a collection name and a count, never an item`,
   run(r, ctx) {
     if (!r.ownerConsent) {
       ctx.couldNotCheck?.(
@@ -115,6 +133,14 @@ export const directusCollectionPublic = defineCheck<DirectusReading>({
           r.site,
           `${c.type}: Directus answered a visitor with no items, so there was nothing to count. The collection may be empty, or the Public role may read it and the filter in its permission may match nothing.`,
         );
+        continue;
+      }
+      if (c.state === "closed") {
+        if (c.exists !== true)
+          ctx.couldNotCheck?.(
+            r.site,
+            `${c.type}: Directus answered a visitor 403, which it also answers for a missing collection, and the token could not read the collection either, so the spelling is unconfirmed. Check the name in privateCollections.`,
+          );
         continue;
       }
       if (c.state !== "public") continue;

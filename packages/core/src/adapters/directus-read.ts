@@ -29,6 +29,8 @@ export interface DirectusReading {
   unreadable: { type: string; reason: string }[];
   /** The settings name no collection to read, so no item was read: the page check is could-not-check, not a pass. */
   nothingNamed: boolean;
+  /** Collections that gave no item read as published (none has the status exactly "published", or it is empty): their pages were not asked. */
+  emptyTypes: string[];
   /** Collections with published items and no address pattern in the settings: their pages were not asked. */
   withoutPattern: string[];
   /** Published items in a collection with a pattern that could not be given an address. */
@@ -72,6 +74,7 @@ export async function readDirectus(options: ReadDirectusOptions): Promise<Direct
     markedPrivate: adapter.privateCollections(),
     publicCollections: [],
     unreadable: [],
+    emptyTypes: [],
     nothingNamed: adapter.collections().length === 0,
     withoutPattern: [],
     unaddressed: [],
@@ -87,6 +90,7 @@ export async function readDirectus(options: ReadDirectusOptions): Promise<Direct
   for (const type of names) {
     try {
       const got = await collectPublished(adapter, { types: [type] });
+      if (got.docs.length === 0 && !got.partial) reading.emptyTypes.push(type);
       const patterned = (resolve?.({ id: "probe", type, slug: "probe" }) ?? "") !== "";
       if (got.docs.length > 0 && !patterned) reading.withoutPattern.push(type);
       if (patterned)
