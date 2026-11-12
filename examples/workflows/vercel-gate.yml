@@ -1,0 +1,35 @@
+# An example: copy it to .github/workflows/ in the repository Vercel deploys.
+#
+# Vercel reports every deployment to GitHub. This job runs when a Preview deployment is live, checks it
+# with Gaugeline, and fails when a finding is marked "Fix this first". Gaugeline writes nothing to Vercel
+# or to GitHub: GitHub holds the merge, because you make this job a required status check (Settings,
+# Branches, branch protection rule for main, "Require status checks to pass"). A pull request cannot be
+# merged until it has passed, so a preview that still says noindex never reaches production.
+#
+# Exit 1 means a fix-first finding; exit 2 means the check could not run (the preview did not answer, or
+# it is locked and no bypass secret was given). Both fail the job: no answer is never a pass.
+name: Gaugeline Vercel gate
+
+on:
+  deployment_status:
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    # Previews only. Use the environment name your project reports (Vercel says Preview).
+    if: github.event.deployment_status.state == 'success' && github.event.deployment.environment == 'Preview'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 24
+      - name: Check the preview and fail on a fix-first finding
+        env:
+          # The address comes in through the environment, never pasted into the script.
+          TARGET_URL: ${{ github.event.deployment_status.target_url }}
+          # Only when Vercel Authentication protects previews; an unset secret is empty and ignored.
+          # A run from a fork gets no secrets: a protected preview then exits 2, never a false pass.
+          GAUGELINE_VERCEL_BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        run: npx --yes gaugeline deploy-gate "$TARGET_URL" --block

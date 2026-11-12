@@ -29,6 +29,7 @@ import { runBin } from "./helpers/bin.js";
 const SAMPLE_VALUES: Record<string, string> = {
   since: "last",
   "notify-on": "any",
+  format: "sarif",
   "time-zone": "UTC",
   // A file with no tabs is one tab named after the file.
   sheet: "legacy-notes.csv",
@@ -88,6 +89,7 @@ describe("flag table: unit", () => {
     expect(toParseArgsOptions(FLAGS, "check")).toEqual({
       ci: { type: "boolean" },
       json: { type: "boolean" },
+      format: { type: "string" },
       "no-open": { type: "boolean" },
       "allow-private": { type: "boolean" },
       "allow-secret-key": { type: "boolean" },
@@ -107,6 +109,7 @@ describe("flag table: unit", () => {
       renewals: { type: "boolean" },
       cost: { type: "boolean" },
       trackers: { type: "boolean" },
+      upload: { type: "boolean" },
       libraries: { type: "boolean" },
       wordpress: { type: "boolean" },
       backups: { type: "boolean" },
@@ -155,6 +158,9 @@ describe("flag table: unit", () => {
         "                                 [CI]",
         "      --json                     Print the result as JSON on stdout, and nothing",
         "                                 else",
+        "      --format <value>           What stdout carries: json (the same as --json),",
+        "                                 sarif (GitHub code scanning) or junit (any CI's",
+        "                                 test results)",
         "      --no-open                  Do not open anything in a browser",
         "      --allow-private            Allow addresses on this computer or a private",
         "                                 network, such as 127.0.0.1 or 192.168.x.x",
@@ -207,6 +213,9 @@ describe("flag table: unit", () => {
         "                                 default), high or always",
         "      --report-url <value>       Link each message to a hosted copy of the",
         "                                 report at this address",
+        "      --upload                   Upload the result to your hosted workspace;",
+        "                                 needs GAUGELINE_TOKEN and GAUGELINE_UPLOAD_URL",
+        "                                 (see the API page)",
         "      --save-requests <value>    Save the requests made and the page's data to",
         "                                 this JSON file; it may contain page content, so",
         "                                 do not commit it",

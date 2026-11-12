@@ -14,6 +14,7 @@ import {
   createDnsReader,
   createPageRegistry,
   notifyAll,
+  uploadResult,
   resolveTargets,
   shouldNotify,
   parseResult,
@@ -100,6 +101,8 @@ import {
   HANDOFF_CHECKS,
   HANDOFF_ENV_VARS,
   formatRenewalRows,
+  formatJunit,
+  formatSarif,
   RENEWALS_CHECKS,
   RENEWALS_ENV_VARS,
   COST_CHECKS,
@@ -231,6 +234,13 @@ import { basename, join, resolve } from "node:path";
 /** The report file, in the folder the run starts from. */
 export const REPORT_FILE = "gaugeline-report.html";
 import { VERSION } from "./version.js";
+
+/**
+ * Off until a real upload to GitHub code scanning says a result with no file is rejected: then
+ * change this to true (one line) and every page finding in --format sarif also carries a placeholder
+ * file. See docs/ci.md, "If GitHub rejects the upload".
+ */
+const SARIF_PHYSICAL_LOCATION_FALLBACK = false;
 
 /** Shown under the mail record checks a run without --dns leaves out. */
 export const DNS_HINT =
@@ -1807,7 +1817,22 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           couldNotCheck: result.couldNotCheck,
           sampled: result.sampled,
         });
-        io.stdout.write(`${JSON.stringify(json, null, 2)}\n`);
+        // --format sarif and junit are views of this same result; any muted findings go in as
+        // `suppressed` once G29's --baseline and --suppress are on main. A check left out on
+        // purpose (DNS without --dns) is a skip there, not a check that could not run.
+        const view = {
+          registry,
+          version: deps.version ?? VERSION,
+          notRun: dnsSkipped,
+          physicalLocationFallback: SARIF_PHYSICAL_LOCATION_FALLBACK,
+        };
+        io.stdout.write(
+          args.format === "sarif"
+            ? formatSarif({ ...json, failed: result.failed.map((f) => f.id) }, view)
+            : args.format === "junit"
+              ? formatJunit({ ...json, failed: result.failed.map((f) => f.id) }, view)
+              : `${JSON.stringify(json, null, 2)}\n`,
+        );
       } else {
         // gaugeline renewals: the list by date first (every date read, healthy or not), then what to fix.
         if (renewals && args.command === "renewals") {
@@ -1957,6 +1982,24 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
                   : `Could not send to ${NAME[r.channel]}: ${r.error ?? "it failed"}.\n`,
             );
         }
+      }
+      // --upload: the result, to the person's own hosted workspace. One plain line says how it went; a
+      // failed upload is never an error and never changes the exit code. Findings and evidence only,
+      // and nothing is sent if a key from this environment is in it (uploadResult checks).
+      if (args.upload) {
+        const up = await uploadResult(
+          buildResult({
+            url: snapshot.requestedUrl,
+            startedAt,
+            findings: result.findings,
+            passed: result.passed,
+            failed: [...result.failed.map((f) => f.id), ...dnsSkipped],
+            couldNotCheck: result.couldNotCheck,
+            sampled: result.sampled,
+          }),
+          env,
+        );
+        if (!up.ok || !args.quiet) io.stderr.write(`${up.line}\n`);
       }
       // -i: the terminal view over this run, for a person at a wide enough terminal, never in CI.
       const stdin = io.stdin ?? process.stdin;
