@@ -33,6 +33,7 @@ import type { DatabasesRead } from "./connectors/postgres/read.js";
 import type { AssertionsRead } from "./assertions/read.js";
 import type { Freshness } from "./freshness/read.js";
 import type { ContentModel } from "./content-model/read.js";
+import type { SanityImageRead } from "./sanity-images/read.js";
 import type { StatePages } from "./switches/pages.js";
 import type { SwitchesRead } from "./switches/types.js";
 import type { ScriptRead } from "./scripts.js";
@@ -40,6 +41,7 @@ import type { PageSnapshot } from "./snapshot.js";
 import type { ImageSample } from "./checks/images/refs.js";
 import type { LinkSample } from "./links.js";
 import type { SiteContext } from "./site-context.js";
+import type { StaleDatesConfig } from "./stale-dates/config.js";
 
 /** Fix this first / Fix soon / Worth knowing. */
 export type Severity = "high" | "medium" | "low";
@@ -164,6 +166,8 @@ export interface CheckContext {
   hidden?: HiddenConfig;
   /** Where the menus are and which footer links are required (gaugeline.nav.json). */
   navRules?: NavRules;
+  /** The out-of-date copy settings (gaugeline.stale-dates.json): grace days, ignored sentences, historic paths. */
+  staleDates?: StaleDatesConfig;
   /**
    * Each page saved with the last run (--since last), as it is now: read once on first use. Absent
    * when the last run saved no pages.
@@ -287,6 +291,12 @@ export interface CheckContext {
    * could not check.
    */
   model?: ContentModel;
+  /**
+   * What the dataset says about the Sanity uploads the page uses (size, and the crop, hotspot and alt text on
+   * the image values), read once on first use with GET and a Viewer token. Absent unless gaugeline.adapters.json
+   * names sanity: those checks are then not run.
+   */
+  sanityImages?: () => Promise<SanityImageRead>;
   /** Values the run was told to expect (for example the app's name). Until the config file, API only. */
   expect?: RunExpectations;
   /**

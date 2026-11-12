@@ -1,0 +1,43 @@
+{
+  "format": 1,
+  "recipe": "hygraph",
+  "name": "Hygraph",
+  "settings": {
+    "id": "generic-api",
+    "fingerprint": {
+      "post": ["title"]
+    },
+    "urls": {
+      "post": "/blog/{slug}"
+    },
+    "api": {
+      "endpoint": "https://eu-central-1.cdn.hygraph.com/content/cl0invented0project/master",
+      "auth": {
+        "header": "Authorization",
+        "env": "GAUGELINE_API_HYGRAPH_TOKEN",
+        "prefix": "Bearer "
+      },
+      "collections": {
+        "post": {
+          "graphql": "query Posts($first: Int!, $after: String) { postsConnection(first: $first, after: $after, stage: PUBLISHED, orderBy: id_ASC) { edges { node { id slug updatedAt publishedAt __FIELDS__ } } pageInfo { endCursor hasNextPage } } }",
+          "items": "/data/postsConnection/edges",
+          "fieldRoot": "/node",
+          "pagination": {
+            "style": "cursor",
+            "cursor": "after",
+            "size": "first",
+            "pageSize": 100,
+            "next": "/data/postsConnection/pageInfo/endCursor",
+            "more": "/data/postsConnection/pageInfo/hasNextPage"
+          },
+          "fields": {
+            "id": "/node/id",
+            "slug": "/node/slug",
+            "updatedAt": "/node/updatedAt",
+            "publishedAt": "/node/publishedAt"
+          }
+        }
+      }
+    }
+  }
+}

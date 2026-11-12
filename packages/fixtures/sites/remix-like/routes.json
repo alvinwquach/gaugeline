@@ -1,0 +1,12 @@
+{
+  "/preview": {
+    "status": 307,
+    "location": "/",
+    "headers": { "set-cookie": "preview_session=invented-fixture-value; Path=/; HttpOnly; SameSite=Lax" }
+  },
+  "/draft": { "status": 401, "body": "Invalid token" },
+  "/shop.data": {
+    "headers": { "content-type": "text/x-script", "x-remix-response": "yes" },
+    "body": "[{\"_1\":-5},\"routes/shop\"]\n"
+  }
+}

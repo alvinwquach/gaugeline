@@ -1,0 +1,127 @@
+{
+  "format": 1,
+  "recipe": "directus",
+  "provenance": "Invented content in the shape Directus's documented API is remembered to answer. Not recorded from a live service; the shapes are uncited (the vendor's pages could not be read when this was written).",
+  "env": {
+    "GAUGELINE_API_DIRECTUS_TOKEN": "recipe-test-value"
+  },
+  "exchanges": [
+    {
+      "request": {
+        "url": "https://cms.example/items/articles",
+        "query": {
+          "offset": "0",
+          "filter[status][_eq]": "published"
+        },
+        "headers": {
+          "authorization": "Bearer {env:GAUGELINE_API_DIRECTUS_TOKEN}"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "data": [
+            {
+              "id": 1,
+              "slug": "lunch-menu",
+              "status": "published",
+              "title": "New lunch menu",
+              "summary": "Soups and salads",
+              "date_created": "2026-09-01T09:00:00Z",
+              "date_updated": "2026-10-30T09:00:00Z"
+            },
+            {
+              "id": 2,
+              "slug": "events",
+              "status": "published",
+              "title": "Pop-up nights",
+              "date_created": "2026-10-01T09:00:00Z",
+              "date_updated": null
+            }
+          ],
+          "meta": {
+            "filter_count": 2
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "url": "https://cms.example/items/articles",
+        "query": {
+          "offset": "0",
+          "filter[status][_eq]": "draft"
+        },
+        "headers": {
+          "authorization": "Bearer {env:GAUGELINE_API_DIRECTUS_TOKEN}"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "data": [
+            {
+              "id": 3,
+              "slug": "new-year",
+              "status": "draft",
+              "title": "New year menu",
+              "date_created": "2026-11-05T09:00:00Z",
+              "date_updated": null
+            }
+          ],
+          "meta": {
+            "filter_count": 1
+          }
+        }
+      }
+    }
+  ],
+  "expect": {
+    "options": {
+      "types": ["article"],
+      "fields": {
+        "article": ["title", "summary"]
+      }
+    },
+    "countType": "article",
+    "countFields": ["title", "summary", "subtitle"],
+    "drafts": true,
+    "types": [
+      {
+        "name": "article",
+        "count": 2
+      }
+    ],
+    "fieldCounts": {
+      "title": 2,
+      "summary": 1,
+      "subtitle": 0
+    },
+    "published": [
+      {
+        "id": "1",
+        "type": "article",
+        "url": "/news/lunch-menu",
+        "slug": "lunch-menu",
+        "publishedAt": "2026-09-01T09:00:00.000Z",
+        "updatedAt": "2026-10-30T09:00:00.000Z",
+        "fieldHashes": {
+          "title": "b8d07cc4326511ef",
+          "summary": "854db094522cc402"
+        }
+      },
+      {
+        "id": "2",
+        "type": "article",
+        "url": "/news/events",
+        "slug": "events",
+        "publishedAt": "2026-10-01T09:00:00.000Z",
+        "updatedAt": "2026-10-01T09:00:00.000Z",
+        "fieldHashes": {
+          "title": "203ef959d9f8ea82"
+        }
+      }
+    ],
+    "draftsReachable": true
+  }
+}

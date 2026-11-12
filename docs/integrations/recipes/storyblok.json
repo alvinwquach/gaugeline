@@ -1,0 +1,42 @@
+{
+  "format": 1,
+  "recipe": "storyblok",
+  "name": "Storyblok",
+  "settings": {
+    "id": "generic-api",
+    "fingerprint": {
+      "post": ["title", "intro"]
+    },
+    "urls": {
+      "post": "/blog/{slug}"
+    },
+    "api": {
+      "endpoint": "https://api.storyblok.com/v2/cdn",
+      "blocked": "key-in-address",
+      "collections": {
+        "story": {
+          "path": "/stories",
+          "query": {
+            "version": "published"
+          },
+          "items": "/stories",
+          "pagination": {
+            "style": "page",
+            "page": "page",
+            "size": "per_page",
+            "pageSize": 100
+          },
+          "fieldRoot": "/content",
+          "fields": {
+            "id": "/id",
+            "type": "/content/component",
+            "slug": "/slug",
+            "url": "/full_slug",
+            "updatedAt": "/published_at",
+            "publishedAt": "/first_published_at"
+          }
+        }
+      }
+    }
+  }
+}
