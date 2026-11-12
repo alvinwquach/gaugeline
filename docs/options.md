@@ -1106,6 +1106,7 @@ Nuxt sites only), `strapi-drafts-public`, described in [Strapi](integrations/str
 `joomla-api-public`, described in [Joomla](integrations/joomla.md#the-two-checks),
 `datocms-drafts-reachable`, described in [DatoCMS](integrations/datocms.md#the-check),
 `directus-collection-public`, described in [Directus](integrations/directus.md#the-two-checks),
+`drupal-unpublished-reachable`, described in [Drupal](integrations/drupal.md#the-check),
 `hygraph-draft-live`, described in [Hygraph](integrations/hygraph.md#the-check),
 `kontent-ai-unpublished-live`, described in [Kontent.ai](integrations/kontent-ai.md#the-check),
 `payload-collection-public`, described in [Payload](integrations/payload.md#the-check),
