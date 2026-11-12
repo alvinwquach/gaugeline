@@ -45,7 +45,12 @@ const TENANT_TABLES = [
   "drafts",
   "decisions",
   "site_consents",
+  // Server-only (0003): no grant for anon or authenticated at all.
+  "tokens",
+  "idempotency_keys",
 ];
+
+const SERVER_ONLY = new Set(["tokens", "idempotency_keys"]);
 
 describe.skipIf(!HAS_DATABASE)("hosted database: row-level security", () => {
   let db: TestDatabase;
@@ -544,7 +549,8 @@ describe.skipIf(!HAS_DATABASE)("hosted database: row-level security", () => {
             }),
           );
           // anon has no grant at all; a stranger has the grant but RLS returns nothing.
-          if (who.role === "anon") expect(msg, table).toMatch(/permission denied/);
+          if (who.role === "anon" || SERVER_ONLY.has(table))
+            expect(msg, table).toMatch(/permission denied/);
           else expect(msg, table).toBe("");
         }
       }

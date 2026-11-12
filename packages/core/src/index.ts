@@ -390,6 +390,14 @@ export type { Sheet, Workbook } from "./plan/workbook.js";
 export type { BuiltEmail, EmailSettings } from "./notify/email.js";
 export { discordPayload, slackPayload, webhookPayload } from "./notify/payloads.js";
 export { NOTIFY_TIMEOUT_MS, postJson, providerMessage, safeTarget } from "./notify/post.js";
+export {
+  UPLOAD_TIMEOUT_MS,
+  UPLOAD_TOKEN_ENV,
+  UPLOAD_URL_ENV,
+  uploadKey,
+  uploadResult,
+} from "./notify/upload.js";
+export type { UploadOutcome } from "./notify/upload.js";
 export { escapeHtml, renderLookedRight, renderReport, renderSampled } from "./report/html.js";
 export type { ReportInput } from "./report/html.js";
 export { EVIDENCE_LIMIT, formatJunit, formatSarif } from "./report/formats.js";
@@ -521,7 +529,14 @@ export { blockedRange, isBlockedAddress } from "./addresses.js";
 export type { BlockedRange } from "./addresses.js";
 export { send, systemResolver } from "./transport.js";
 export type { ResolvedAddress, Resolver, TransportResponse } from "./transport.js";
-export { KEY_PATTERNS, findKeys, keyPatterns } from "./secrets.js";
+export {
+  KEY_PATTERNS,
+  findKeys,
+  keyPatterns,
+  secretsIn,
+  secretsInValue,
+  stringsOf,
+} from "./secrets.js";
 export type { KeyPattern } from "./secrets.js";
 export { catalogue } from "./catalogue.js";
 export type { CatalogueEntry } from "./catalogue.js";
@@ -1691,3 +1706,13 @@ export {
   wrapFindingForAgent,
 } from "./untrusted.js";
 export type { AgentFinding, Sanitised, UntrustedField, UntrustedText } from "./untrusted.js";
+export {
+  TERMINAL_EVIDENCE_MAX,
+  forDiscord,
+  forMarkdown,
+  forSlack,
+  forSlackPlain,
+  forTerminal,
+  stripAnsi,
+} from "./untrusted-output.js";
+export type { OutputFormat, SafeText } from "./untrusted-output.js";
