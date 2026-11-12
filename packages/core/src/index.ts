@@ -314,6 +314,30 @@ export {
 export type { PreviewAuth, Protection } from "./fetch/preview-auth.js";
 export { fingerprint, stableEvidence } from "./fingerprint.js";
 export {
+  CHECK_MODES,
+  FINDINGS_BASELINE_SCHEMA,
+  applySuppressions,
+  buildFindingsBaseline,
+  dayOf,
+  diffFindingsBaseline,
+  isBlocking,
+  isCalendarDate,
+  offIds,
+  parseConfig,
+  parseFindingsBaseline,
+  registerCustomChecks,
+} from "./config/index.js";
+export type {
+  CheckMode,
+  Config,
+  FindingsBaseline,
+  FindingsBaselineEntry,
+  FindingsBaselineMigration,
+  ParseFindingsBaselineOptions,
+  Suppression,
+  SuppressionResult,
+} from "./config/index.js";
+export {
   PLAN_STATE_SCHEMA,
   compare as comparePlanProgress,
   planHash,
