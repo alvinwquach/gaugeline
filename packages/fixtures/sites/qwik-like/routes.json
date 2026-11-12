@@ -1,0 +1,15 @@
+{
+  "/": {
+    "ifHeader": {
+      "name": "accept",
+      "value": "application/json",
+      "then": { "headers": { "content-type": "application/json" }, "body": "{\"repairs\":[\"Flat tyre\",\"Gear service\"]}" }
+    }
+  },
+  "/api/preview": {
+    "status": 307,
+    "location": "/",
+    "headers": { "set-cookie": "preview_session=invented-fixture-value; Path=/; HttpOnly; SameSite=Lax" }
+  },
+  "/api/draft": { "status": 401, "body": "Invalid token" }
+}

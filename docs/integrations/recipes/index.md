@@ -605,6 +605,8 @@ Docs: [Builder.io](https://www.builder.io/c/docs/content-api) [docs].
 
 **Not usable yet.** Builder.io reads its key from the address (a query-string parameter), and Gaugeline sends a key only in a header, never in an address. The mapping below is tested against its recorded answers, but it is marked `blocked`, so a run asks for nothing and says why (could-not-check). The owner decides this in open question 53; until then, use the platform's native adapter when it exists, or the sitemap and feeds adapter.
 
+**Checked 12 Nov 2026 against the vendor's own package** (the vendor's docs site could not be reached from the build machine, so this is the package source, not the docs page; the package is the `@builder.io/sdk-react` npm package, version 5.4.3, and the older `@builder.io/sdk` 6.0.0). Both build the content request as `/api/v3/content/<model>` with the public key as the `apiKey` query parameter, and neither sends it in a header. The only header either sends is `Authorization: Bearer`, and that carries a separate private token for private content, not the public key. So no header spelling for the public key is known, and no native Builder.io adapter or Builder.io check that reads content is built until the owner decides open question 53. The two extra checks planned for this platform (content scheduled to end that is still live, and targeting that hides a page from every visitor) both need that read, so they wait too. Nothing here sends a key in an address.
+
 ```json title=builder-io.json
 {
   "format": 1,
