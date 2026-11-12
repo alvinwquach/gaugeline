@@ -19,6 +19,7 @@ import {
   LIBRARY_CHECKS,
   MIGRATION_CHECKS,
   MUTATION_CHECKS,
+  PAYLOAD_CHECKS,
   PLAN_CHECKS,
   PRESENCE_CHECKS,
   PRICE_CHECKS,
@@ -93,6 +94,7 @@ export function builtInCheckIds(): Set<string> {
     PRISMIC_CHECKS,
     DIRECTUS_CHECKS,
     HUBSPOT_CMS_CHECKS,
+    PAYLOAD_CHECKS,
   ];
   return new Set([
     ...createPageRegistry()
