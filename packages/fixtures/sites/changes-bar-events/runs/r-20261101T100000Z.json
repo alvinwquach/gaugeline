@@ -1,0 +1,52 @@
+{
+  "schema": 1,
+  "id": "r-20261101T100000Z",
+  "takenAt": "2026-11-01T10:00:00.000Z",
+  "pages": {
+    "/events": {
+      "title": "Events",
+      "h1": "Events",
+      "mainHash": "4814e1557b225d54",
+      "links": [
+        "/book"
+      ],
+      "types": [
+        "Event"
+      ],
+      "scripts": []
+    }
+  },
+  "findings": [
+    {
+      "checkId": "thin-html",
+      "path": "/events",
+      "title": "Google sees an almost empty page"
+    },
+    {
+      "checkId": "sitemap-missing",
+      "path": "/events",
+      "title": "Search engines can't find a list of your pages"
+    },
+    {
+      "checkId": "viewport",
+      "path": "/events",
+      "title": "This page isn't set up for phone screens"
+    },
+    {
+      "checkId": "canonical-missing",
+      "path": "/events",
+      "title": "The page doesn't say which address is the real one"
+    },
+    {
+      "checkId": "event-missing-fields",
+      "path": "/events",
+      "title": "Some events are missing details search engines need"
+    },
+    {
+      "checkId": "og-image-missing",
+      "path": "/events",
+      "title": "Shared links have no picture"
+    }
+  ],
+  "offPage": 1
+}

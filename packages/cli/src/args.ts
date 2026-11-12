@@ -1,5 +1,11 @@
 import { parseArgs } from "node:util";
-import { SECRET_FLAGS, minorExponent, parseAddress, safeLogoUrl } from "@gaugeline/core";
+import {
+  SECRET_FLAGS,
+  minorExponent,
+  parseAddress,
+  parseSince,
+  safeLogoUrl,
+} from "@gaugeline/core";
 import { resolveDeployGate, type GateHost } from "./deploy-gate.js";
 import { HELP } from "./help.js";
 import { FLAGS, nearestFlag, resolveFlags, toParseArgsOptions, type FlagDef } from "./flags.js";
@@ -34,6 +40,7 @@ export const SUBCOMMANDS = [
   "migration",
   "advisory",
   "init",
+  "changes",
   "deploy-gate",
 ] as const;
 export type CliCommand = "check" | (typeof SUBCOMMANDS)[number];
@@ -205,6 +212,16 @@ export type ParsedArgs =
       json: boolean;
       ci: boolean;
       allowPrivate: boolean;
+      verbose: boolean;
+      quiet: boolean;
+    }
+  | {
+      kind: "changes";
+      /** The site's address, https unless it was typed with http. */
+      address: string;
+      /** --since as typed: a date or a run id. Checked when the command runs. */
+      since?: string;
+      json: boolean;
       verbose: boolean;
       quiet: boolean;
     }
@@ -495,7 +512,12 @@ export function parseCliArgs(
       verbose,
     };
   }
-  if (command !== "delivery" && values.since !== undefined && values.since !== "last") {
+  if (
+    command !== "delivery" &&
+    command !== "changes" &&
+    values.since !== undefined &&
+    values.since !== "last"
+  ) {
     return {
       kind: "error",
       message: `--since accepts only last in this version, not "${String(values.since)}".`,
@@ -1252,6 +1274,41 @@ export function parseCliArgs(
       ...(oldFile !== undefined ? { oldFile } : {}),
       ci: values.ci === true,
       allowPrivate: values["allow-private"] === true,
+      verbose,
+      quiet: values.quiet === true,
+    };
+  }
+  if (command === "changes") {
+    if (positionals.length !== 1)
+      return {
+        kind: "error",
+        message:
+          positionals.length === 0
+            ? "gaugeline changes needs the site: gaugeline changes harbourbar.example"
+            : `gaugeline changes takes one site, got ${positionals.length} words: ${positionals.join(", ")}.`,
+        hint: "Type the site like harbourbar.example or https://harbourbar.example.",
+        verbose,
+      };
+    const site = parseAddress(positionals[0] ?? "");
+    if (!site.ok)
+      return {
+        kind: "error",
+        message: `The site's address: ${site.reason}`,
+        hint: "Type the site like harbourbar.example or https://harbourbar.example.",
+        verbose,
+      };
+    if (typeof values.since === "string" && parseSince(values.since) === undefined)
+      return {
+        kind: "error",
+        message: `--since needs a date such as 2026-11-01 or a run id such as r-20261101T100000Z, not "${values.since}".`,
+        hint: "Run ids are in gaugeline changes --json, and in .gaugeline/runs.",
+        verbose,
+      };
+    return {
+      kind: "changes",
+      address: site.url.href,
+      ...(typeof values.since === "string" ? { since: values.since } : {}),
+      json: values.json === true,
       verbose,
       quiet: values.quiet === true,
     };
