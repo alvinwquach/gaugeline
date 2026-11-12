@@ -8,6 +8,7 @@ import {
   keepFields,
   readRpcAnswer,
   sessionIdOf,
+  outputRuleProblems,
   sessionReadOnlyProblem,
   toolLockProblem,
   toolResultData,
@@ -36,8 +37,10 @@ const PATH = "/mcp";
 /** A Supabase project ref as the dashboard shows it: 20 lower-case letters and digits (uncited). */
 export const PROJECT_REF = /^[a-z0-9]{20}$/;
 const PROTOCOL_VERSION = "2025-06-18";
-/** Requests in one read: initialize, initialized, tools/list and the three calls. */
-export const MAX_CALLS = 6;
+/** Pages of `tools/list` read at most; a longer listing is could-not-check. */
+const MAX_LIST_PAGES = 8;
+/** Requests in one read: initialize, initialized, every page of tools/list and the three calls. */
+export const MAX_CALLS = 2 + MAX_LIST_PAGES + 3;
 /** The most of an answer the fetcher reads; past it the answer is cut and the read stops. */
 const MAX_ANSWER_BYTES = 1024 * 1024;
 /** The most of one tool result parsed; past it that tool is could-not-check. */
@@ -59,7 +62,7 @@ interface SupabaseReadEntry {
   semantics: string;
 }
 
-export const SUPABASE_READS: readonly SupabaseReadEntry[] = Object.freeze([
+export const SUPABASE_READS: readonly SupabaseReadEntry[] = Object.freeze<SupabaseReadEntry[]>([
   {
     tool: "list_tables",
     rules: {
@@ -67,21 +70,21 @@ export const SUPABASE_READS: readonly SupabaseReadEntry[] = Object.freeze([
       verbose: { type: "const", value: false },
     },
     arguments: { schemas: ["public"], verbose: false },
-    listingHash: "76f29b461f3de5f19d73276ff17c8777beb1c948e55d7cd05dc523f0e6acfc0e",
+    listingHash: "594d30131a3a4f6973d5e3a4a1f992e8cc7ddee4eef512c5adf8d3ebdf40a3fc",
     semantics: "Lists all tables in one or more schemas.",
   },
   {
     tool: "get_advisors",
     rules: { type: { type: "enum", values: ["security"] } },
     arguments: { type: "security" },
-    listingHash: "a8fe7339c8aefa394a756cbbb496a9b28601693577c686462fd03a0fdda73776",
+    listingHash: "5e0395ae682b8045cbd9c4e918017940fdbf43aff278046f47cdc0820a668ebd",
     semantics: "Gets a list of advisory notices for the Supabase project.",
   },
   {
     tool: "list_migrations",
     rules: {},
     arguments: {},
-    listingHash: "dcdca2ec64452031e91b134547619328684283b419ecdd234ad380656fac012b",
+    listingHash: "87f7b4725fd9455bd14d530b935c8f2e03a7c23105c1d9aa940f6e339fd38245",
     semantics: "Lists all migrations in the database.",
   },
 ]);
@@ -125,6 +128,12 @@ const MIGRATION_RULES: Record<string, OutputRule> = {
     item: { version: { type: "id", pattern: "^[0-9]{1,20}$" } },
   },
 };
+
+for (const rules of [TABLE_RULES, LINT_RULES, MIGRATION_RULES]) {
+  const problems = outputRuleProblems(rules);
+  if (problems.length > 0)
+    throw new TypeError(`Supabase output rules are not valid: ${problems[0]}.`);
+}
 
 export interface SupabaseTable {
   name?: string;
@@ -205,6 +214,8 @@ export async function readSupabase(options: {
     try {
       hop = await query(address.href, {
         allow: SUPABASE_MCP_ALLOW.id,
+        // The fetcher compares the address's project_ref with this, exactly (ADR-0008 point 3).
+        configured: { projectRef },
         headers,
         maxBytes: MAX_ANSWER_BYTES,
         body: {
@@ -235,11 +246,22 @@ export async function readSupabase(options: {
       clientInfo: { name: "gaugeline", version: "1" },
     });
     await send("notifications/initialized");
-    const listed = (await send("tools/list")).tools;
+    // Every page, before any lock: a write tool on the last page must still stop the session.
+    const listed: unknown[] = [];
+    let cursor: string | undefined;
+    for (let page = 0; ; page += 1) {
+      if (page >= MAX_LIST_PAGES) throw new Stop(COULD_NOT_CHECK.callCap);
+      const answer = await send("tools/list", cursor === undefined ? undefined : { cursor });
+      if (!Array.isArray(answer.tools)) throw new Stop(COULD_NOT_CHECK.unexpectedShape);
+      listed.push(...(answer.tools as unknown[]));
+      if (answer.nextCursor === undefined) break;
+      if (typeof answer.nextCursor !== "string") throw new Stop(COULD_NOT_CHECK.unexpectedShape);
+      cursor = answer.nextCursor;
+    }
     const notReadOnly = sessionReadOnlyProblem(listed);
     if (notReadOnly !== undefined) throw new Stop(notReadOnly);
     for (const entry of SUPABASE_READS) {
-      const locked = toolLockProblem(entry, listed as unknown[]);
+      const locked = toolLockProblem(entry, listed);
       if (locked !== undefined) {
         out.notRead.push({ tool: entry.tool, reason: locked });
         continue;

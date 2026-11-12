@@ -5,7 +5,7 @@ import type { Transport } from "../../fetcher.js";
  * A fake of Supabase's hosted MCP server in read-only mode, as an injected transport: no socket,
  * no vendor, no key. The tool list is a hand-written recording modelled on the tool names and
  * annotations in `@supabase/mcp-server-supabase` 0.16.1; the schemas, rows, names and lints are
- * invented (CLAUDE.md rule 12). The listing hashes in adapters/supabase-mcp.ts are taken from this
+ * invented (CLAUDE.md rule 12). The listing hashes in adapters/supabase-mcp-read.ts are taken from this
  * recording until the owner records the real `tools/list`.
  */
 export const READ = { readOnlyHint: true, destructiveHint: false, openWorldHint: false };
@@ -89,6 +89,8 @@ export interface FakeOptions {
   askBack?: boolean;
   /** Reject every request as a timeout. */
   timeout?: boolean;
+  /** List the tools this many at a time, with a nextCursor ("p1", "p2", ...) to the next page. */
+  pageSize?: number;
 }
 
 export interface Sent {
@@ -110,7 +112,7 @@ export function fakeSupabase(opts: FakeOptions = {}): { transport: Transport; se
     const msg = JSON.parse(req.body ?? "{}") as {
       id?: number;
       method: string;
-      params?: { name?: string };
+      params?: { name?: string; cursor?: string };
     };
     const answer = (result: unknown, extra: Record<string, string> = {}, before = "") =>
       Promise.resolve({
@@ -133,7 +135,14 @@ export function fakeSupabase(opts: FakeOptions = {}): { transport: Transport; se
         },
         { "mcp-session-id": "fake-session-1" },
       );
-    if (msg.method === "tools/list") return answer({ tools: opts.tools ?? RECORDED_TOOLS });
+    if (msg.method === "tools/list") {
+      const all = opts.tools ?? RECORDED_TOOLS;
+      if (opts.pageSize === undefined) return answer({ tools: all });
+      const page = Number((msg.params?.cursor ?? "p0").slice(1));
+      const from = page * opts.pageSize;
+      const next = from + opts.pageSize < all.length ? { nextCursor: `p${page + 1}` } : {};
+      return answer({ tools: all.slice(from, from + opts.pageSize), ...next });
+    }
     if (msg.method === "tools/call") {
       const name = msg.params?.name ?? "";
       const data = (opts.answers ?? RECORDED_ANSWERS)[name];

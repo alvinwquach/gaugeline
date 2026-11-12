@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { ConfigError } from "../../errors.js";
 import { createFetcher } from "../../fetcher.js";
 import { COULD_NOT_CHECK } from "../../sources/mcp-guard.js";
-import { SUPABASE_ACCESS_TOKEN, SUPABASE_READS, readSupabase } from "../supabase-mcp.js";
+import { SUPABASE_ACCESS_TOKEN, SUPABASE_READS, readSupabase } from "../supabase-mcp-read.js";
 import { READ, RECORDED_TOOLS, fakeSupabase, type FakeOptions } from "./supabase-mcp-fake.js";
 
 /** Supabase through its hosted MCP server, read-only (ADR-0008 Part A), against a fake server through the real fetcher. */
@@ -67,6 +67,39 @@ describe("readSupabase: the recorded read", () => {
     }
     expect(sent.slice(1).every((s) => s.headers["mcp-session-id"] === "fake-session-1")).toBe(true);
     expect(JSON.stringify(history) + JSON.stringify(result)).not.toContain(TOKEN);
+  });
+});
+
+describe("readSupabase: every page of the tool list is read before any lock (review of #263)", () => {
+  it("collects a listing split over pages, then calls the tools", async () => {
+    const { result, sent } = await read({ pageSize: 1 });
+    expect(result.status).toBe("read");
+    expect(result.notRead).toEqual([]);
+    const lists = sent
+      .filter((s) => s.body.includes('"tools/list"'))
+      .map((s) => JSON.parse(s.body).params);
+    expect(lists).toEqual([undefined, { cursor: "p1" }, { cursor: "p2" }, { cursor: "p3" }]);
+  });
+
+  it("a write tool on the last page still stops the session", async () => {
+    const liar = [
+      ...RECORDED_TOOLS,
+      { name: "apply_migration", annotations: READ, inputSchema: {} },
+    ];
+    const { result } = await read({ tools: liar, pageSize: 2 });
+    expect(result).toMatchObject({
+      status: "could-not-check",
+      reason: COULD_NOT_CHECK.sessionNotReadOnly,
+    });
+  });
+
+  it("a listing longer than the page cap is could-not-check", async () => {
+    const many = Array.from({ length: 40 }, (_, i) => ({
+      name: `get_thing_${i}`,
+      annotations: READ,
+    }));
+    const { result } = await read({ tools: [...RECORDED_TOOLS, ...many], pageSize: 1 });
+    expect(result).toMatchObject({ status: "could-not-check", reason: COULD_NOT_CHECK.callCap });
   });
 });
 
