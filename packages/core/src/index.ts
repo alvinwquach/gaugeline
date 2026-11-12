@@ -366,6 +366,8 @@ export { discordPayload, slackPayload, webhookPayload } from "./notify/payloads.
 export { NOTIFY_TIMEOUT_MS, postJson, providerMessage, safeTarget } from "./notify/post.js";
 export { escapeHtml, renderLookedRight, renderReport, renderSampled } from "./report/html.js";
 export type { ReportInput } from "./report/html.js";
+export { EVIDENCE_LIMIT, formatJunit, formatSarif } from "./report/formats.js";
+export type { FormatOptions, SuppressedFinding } from "./report/formats.js";
 export {
   buildBrief,
   costRange,
