@@ -70,9 +70,19 @@ something a page wrote, not something Gaugeline vouches for.
 
 ## The link at the bottom
 
-It is signed with a server secret (HMAC-SHA256), names one person in one organisation, and works for 90
-days. It lets the holder change that person's email setting and nothing else: it does not sign anyone in and
-sets no session.
+It opens `/email/preferences?t=...`, a small page with three buttons: every change, fix first only, no
+email. The link is signed with a server secret (HMAC-SHA256), names one person in one organisation, and
+works for 90 days. It changes that person's email setting and nothing else: it does not sign anyone in and
+sets no cookie.
+
+- Opening the link changes nothing. Mail programs and scanners open links, so only the button (a POST that
+  carries the signed token) saves a choice.
+- The page does not show the address, loads nothing from elsewhere, and is not cached, framed or passed on
+  as a referrer, since the address contains the token.
+- A bad, expired or tampered link gets "This link does not work" and changes nothing.
+- A POST with `List-Unsubscribe=One-Click` (RFC 8058) turns the email off. The email does not yet send the
+  `List-Unsubscribe` header that mail programs use to show their own unsubscribe button; that needs a field
+  in core's `postEmail` and is left for when the sender domain is set up.
 
 ## How it sends
 
