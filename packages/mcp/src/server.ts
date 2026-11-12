@@ -11,6 +11,9 @@ export const SERVER_VERSION = "0.1.0";
  * An MCP server over the registry's tools. It holds no logic of its own: every tool calls the same core
  * functions as the CLI, and every request goes through the core fetcher.
  */
+/** How long after a call's own time limit the caller is still waited for before it is answered regardless. */
+const SLACK_MS = 2000;
+
 export function createGaugelineServer(options: ServerOptions = {}): McpServer {
   assertLabelled(TOOLS);
   const state = options.state ?? createState();
@@ -52,18 +55,22 @@ export function createGaugelineServer(options: ServerOptions = {}): McpServer {
               },
             ],
           };
-        if (def.requests) state.active++;
+        // The slot is held until the WORK settles, not until the caller is answered: a call that hit its
+        // time limit is still running below for a moment, and it must still count against the cap.
+        const work = (async () => def.run(args as never, ctx))();
+        if (def.requests) {
+          state.active++;
+          const release = () => {
+            state.active--;
+          };
+          work.then(release, release);
+        }
         try {
-          const data = await withDeadline(
-            def.run(args as never, ctx),
-            (options.maxCallMs ?? DEFAULT_CALL_MS) + 2000,
-          );
+          const data = await withDeadline(work, (options.maxCallMs ?? DEFAULT_CALL_MS) + SLACK_MS);
           return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
         } catch (err) {
           const e = asToolError(err, keep);
           return { isError: true, content: [{ type: "text" as const, text: e.message }] };
-        } finally {
-          if (def.requests) state.active--;
         }
       },
     );

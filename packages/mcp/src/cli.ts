@@ -109,13 +109,22 @@ export interface Io {
  * detail, which could carry page text) and the server keeps serving. Installed once, only where a server starts.
  */
 let safetyNet = false;
-export function installSafetyNet(io: Pick<Io, "stderr">): void {
-  if (safetyNet) return;
-  safetyNet = true;
-  process.on("unhandledRejection", () => {
+type Proc = Pick<NodeJS.Process, "on" | "exit">;
+export function installSafetyNet(io: Pick<Io, "stderr">, proc: Proc = process): void {
+  if (safetyNet && proc === process) return;
+  if (proc === process) safetyNet = true;
+  // A promise nobody handled belongs to a tool call (every call below awaits its work): log one fixed
+  // line and keep serving.
+  proc.on("unhandledRejection", () => {
     io.stderr.write(
       "gaugeline-mcp: a tool call failed unexpectedly; the server is still running.\n",
     );
+  });
+  // An exception thrown outside any promise (a timer, a socket) cannot be tied to one call and may leave
+  // the process in a state nobody checked: say so in one fixed line and stop with a non-zero code.
+  proc.on("uncaughtException", () => {
+    io.stderr.write("gaugeline-mcp: stopping after an unexpected error outside a tool call.\n");
+    proc.exit(1);
   });
 }
 

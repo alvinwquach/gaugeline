@@ -842,3 +842,62 @@ describe("round 4: a hop can never crash the server, and an off-base redirect is
     expect(hits.filter((h) => h.includes(" GET /s/")).length).toBeLessThan(9);
   });
 });
+
+describe("round 5: the call slot and the safety net", () => {
+  it("keeps a timed-out call's slot until its work has settled", async () => {
+    const quick = await site((_q, r) =>
+      r
+        .writeHead(200, { "content-type": "text/html" })
+        .end("<html><head><title>t</title></head></html>"),
+    );
+    const slow = await site((_q, r) =>
+      setTimeout(
+        () => r.writeHead(200, { "content-type": "text/html" }).end("<html></html>"),
+        3500,
+      ),
+    );
+    const c = await open({ allowPrivate: true, maxCallMs: 100, maxActiveCalls: 1 });
+    const first = textOf(await call(c, "run_check", { url: `${slow.origin}/` }));
+    // The caller has its answer (the time limit), but the work below is still waiting on the slow site.
+    expect(first.text.length).toBeGreaterThan(0);
+    const during = textOf(
+      await call(c, "run_check", { url: `${quick.origin}/`, checks: ["canonical-elsewhere"] }),
+    );
+    expect(during.isError).toBe(true);
+    expect(during.text).toMatch(/busy/);
+    // Once the abandoned work settles, the slot is free again.
+    await new Promise((r) => setTimeout(r, 2500));
+    const after = textOf(
+      await call(c, "run_check", { url: `${quick.origin}/`, checks: ["canonical-elsewhere"] }),
+    );
+    expect(after.isError).toBe(false);
+  }, 30000);
+
+  it("logs one fixed line and keeps serving on an unhandled rejection, and stops on an uncaught exception", async () => {
+    const { installSafetyNet } = await import("../cli.js");
+    const handlers: Record<string, () => void> = {};
+    let exited: number | undefined;
+    const out: string[] = [];
+    installSafetyNet(
+      { stderr: { write: (s: string) => out.push(s) } },
+      {
+        on: ((event: string, fn: () => void) => {
+          handlers[event] = fn;
+          return process;
+        }) as never,
+        exit: ((code?: number) => {
+          exited = code;
+          return undefined as never;
+        }) as never,
+      },
+    );
+    handlers.unhandledRejection?.();
+    expect(exited).toBeUndefined();
+    expect(out).toEqual([
+      "gaugeline-mcp: a tool call failed unexpectedly; the server is still running.\n",
+    ]);
+    handlers.uncaughtException?.();
+    expect(exited).toBe(1);
+    expect(out.at(-1)).toContain("stopping");
+  });
+});

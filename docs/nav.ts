@@ -61,7 +61,6 @@ export const NAV: NavGroup[] = [
   },
   {
     group: "Integrations",
-    soon: true,
     pages: [
       { slug: "playwright", title: "Playwright helper", soon: true },
       { slug: "mcp", title: "MCP server" },
