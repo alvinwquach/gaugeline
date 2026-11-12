@@ -70,6 +70,34 @@ const GLUED_OTHER: readonly string[] =
 
 const glued = (name: string): string => name.toLowerCase().replace(/[^a-z0-9]/g, "");
 
+/** Endings that make a verb an adjective or a noun of state ("publishable", "deployed"): not a write by themselves. */
+const INFLECTIONS: ReadonlySet<string> = new Set([
+  "able",
+  "d",
+  "ed",
+  "s",
+  "es",
+  "ing",
+  "ment",
+  "ments",
+]);
+
+/**
+ * The write stem inside any word of a name, glued or not ("executesql", "get_deployfunction"), from
+ * the same generated list as mcpToolNameProblem; a word that is only a stem and an inflection
+ * ("publishable") is not a write. Used for the tolerated list, which names read tools by exact name.
+ */
+export function gluedWriteIn(name: string): string | undefined {
+  for (const word of name.toLowerCase().split(/[^a-z0-9]+/))
+    for (const stem of GLUED_WRITES)
+      if (
+        word.includes(stem) &&
+        !(word.startsWith(stem) && INFLECTIONS.has(word.slice(stem.length)))
+      )
+        return stem;
+  return undefined;
+}
+
 /** The first whole word of a tool name (split on case and punctuation) that is a write verb, or undefined. */
 export function writeTokenIn(name: string): string | undefined {
   return name
