@@ -8,7 +8,7 @@
  * - an @-mention, a user's or a team's (`@name`, `@org/team`), becomes a code span, so nobody is notified;
  * - an issue or pull request reference (`#12`, `GH-12`, `owner/repo#12`), and an address after a closing
  *   keyword (`closes`, `fixes`, `resolves` and their forms), becomes a code span, so nothing is linked or
- *   closed by the merge;
+ *   closed when the pull request lands;
  * - a `javascript:`, `vbscript:`, `data:` or `file:` address becomes a code span, so it is never a link.
  *
  * Every rule works on whole space-separated words of the escaped line, so there is one place to read.

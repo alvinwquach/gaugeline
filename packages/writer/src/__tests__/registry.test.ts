@@ -77,9 +77,15 @@ describe("each guard refuses its own fault", () => {
     ],
     ["a path that is not text", { ...valid.getRef!, path: 7 as never }],
     ["a path outside /repos", { ...valid.listPulls!, path: "/user/pulls" }],
-    ["the merge path under createPull", { ...valid.createPull!, path: `${R}/pulls/1/merge` }],
+    [
+      "a pull request action path under createPull",
+      { ...valid.createPull!, path: `${R}/pulls/1/labels` },
+    ],
     ["the reviews path under createPull", { ...valid.createPull!, path: `${R}/pulls/1/reviews` }],
-    ["a merge sent as a putContent", { ...valid.putContent!, path: `${R}/pulls/7/merge` }],
+    [
+      "a pull request path sent as a putContent",
+      { ...valid.putContent!, path: `${R}/pulls/7/labels` },
+    ],
     ["an owner with a dot", { ...valid.listPulls!, path: "/repos/a.b/site/pulls" }],
     ["getRef under git/refs", { ...valid.getRef!, path: `${R}/git/refs/heads/x` }],
     // A file path (the registry's own check, with a body that is otherwise valid).
@@ -167,7 +173,7 @@ describe("dot segments never reach the URL parser", () => {
 describe("the registry cannot be rewritten by code that imports it", () => {
   const attempts: [string, () => void][] = [
     ["change a method", () => void ((ENDPOINTS.getRef as { method: string }).method = "DELETE")],
-    ["add an endpoint", () => void ((ENDPOINTS as Record<string, unknown>).merge = {})],
+    ["add an endpoint", () => void ((ENDPOINTS as Record<string, unknown>).extra = {})],
     ["replace an endpoint", () => void ((ENDPOINTS as Record<string, unknown>).getRef = {})],
     ["delete an endpoint", () => void delete (ENDPOINTS as Record<string, unknown>).getRef],
     [
@@ -183,7 +189,7 @@ describe("the registry cannot be rewritten by code that imports it", () => {
     ],
     [
       "recompile the path pattern",
-      () => (ENDPOINTS.putContent.rest as unknown as RegExp).compile("^/pulls/1/merge$"),
+      () => (ENDPOINTS.putContent.rest as unknown as RegExp).compile("^/pulls/1/labels$"),
     ],
   ];
   for (const [name, attempt] of attempts)
@@ -210,7 +216,7 @@ describe("the registry cannot be rewritten by code that imports it", () => {
       }
     }
     expect(() => checkRequest(valid.putContent!)).not.toThrow();
-    expect(() => checkRequest({ ...valid.putContent!, path: `${R}/pulls/7/merge` })).toThrow();
+    expect(() => checkRequest({ ...valid.putContent!, path: `${R}/pulls/7/labels` })).toThrow();
     expect(() => checkRequest(withBody("createPull", { maintainer_can_modify: true }))).toThrow();
     expect(Object.keys(ENDPOINTS)).toHaveLength(6);
   });

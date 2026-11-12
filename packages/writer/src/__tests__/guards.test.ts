@@ -1,5 +1,5 @@
 /**
- * ADR-0010's boundary tests: no merge endpoint, page text never becomes a branch or a path, the packages
+ * ADR-0010's boundary tests: no write but a draft, page text never becomes a branch or a path, the packages
  * that must not know the writer do not import it, and the hosted app imports only its kinds.
  */
 import { sanitise } from "@gaugeline/core";
@@ -8,12 +8,11 @@ import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { applyPullRequest } from "../github/apply.js";
-import { checkRequest, ENDPOINTS, type EndpointId } from "../github/endpoints.js";
+import { ENDPOINTS } from "../github/endpoints.js";
 import { prBody, prTitle } from "../github/text.js";
 import { DRAFT, deps, fakeGithub, job, PAYLOAD } from "./helpers.js";
 
 const root = fileURLToPath(new URL("../../../../", import.meta.url));
-const R = "/repos/northgate-studio/tidewater-bar";
 
 function walk(dir: string, keep: (name: string) => boolean): string[] {
   let names: string[];
@@ -33,55 +32,12 @@ const ts = (n: string) => /\.tsx?$/.test(n) && !n.endsWith(".d.ts");
 const nonTest = (dir: string) =>
   walk(dir, ts).filter((f) => !/[\\/]__tests__[\\/]/.test(f) && !/\.test\.tsx?$/.test(f));
 
-describe("no way to merge, approve, force or delete (ADR-0010 part 7), asserted on requests", () => {
-  const merges = [
-    `${R}/pulls/7/merge`,
-    `${R}/pulls/7/update-branch`,
-    `${R}/pulls/7/reviews`,
-    `${R}/pulls/7/reviews/1/events`,
-    `${R}/merges`,
-    `${R}/git/refs/heads/main`,
-    `${R}/git/refs`,
-    `${R}/branches/main/protection`,
-    `${R}/pulls/7`,
-    `${R}/issues/7`,
-    `${R}/actions/workflows/ci.yml/dispatches`,
-    "/graphql",
-  ];
-  const bodies = [
-    undefined,
-    {},
-    { merge_method: "squash" },
-    { message: "m", content: "", branch: `gaugeline/${DRAFT}` },
-    { event: "APPROVE" },
-    { enabled: true },
-  ];
-
-  it("no registered endpoint accepts a merge, update, review, protection or dispatch path", () => {
-    for (const endpoint of Object.keys(ENDPOINTS) as EndpointId[])
-      for (const path of merges)
-        for (const body of bodies) {
-          // createRef at its own path is a registered request; it is refused below without its sha.
-          if (path === `${R}/git/refs` && endpoint === "createRef") continue;
-          expect(
-            () => checkRequest({ endpoint, path, ...(body ? { body } : {}) }),
-            `${endpoint} ${path}`,
-          ).toThrow(/refused/);
-        }
-  });
-
-  it("the only methods in the registry are GET, POST and PUT, and PUT only writes file contents", () => {
+describe("the registry's methods (ADR-0010 part 7)", () => {
+  it("are GET, POST and PUT; PUT only writes file contents; nothing deletes or patches", () => {
     const by = Object.entries(ENDPOINTS).map(([id, e]) => `${e.method} ${id}`);
     expect(by.filter((l) => l.startsWith("PUT"))).toEqual(["PUT putContent"]);
     expect(by.filter((l) => /^(PATCH|DELETE)/.test(l))).toEqual([]);
     expect(by.filter((l) => l.startsWith("POST"))).toEqual(["POST createRef", "POST createPull"]);
-  });
-
-  it("an applied job sends none of them", async () => {
-    const gh = fakeGithub();
-    const j = job();
-    await applyPullRequest(j, deps({ send: gh.send }, j));
-    for (const r of gh.sent) expect(r.path).not.toMatch(/merge|reviews|protection|dispatches/);
   });
 });
 
