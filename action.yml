@@ -1,7 +1,7 @@
 name: Gaugeline
 description: >-
-  Check a live site or a preview deployment with Gaugeline (read-only: GET and HEAD requests),
-  upload the findings to GitHub code scanning, and keep one pull request comment up to date.
+  Check a live site or a preview deployment with Gaugeline (read-only: GET and HEAD requests) and
+  upload the findings to GitHub code scanning.
 author: Gaugeline
 branding:
   icon: check-circle
@@ -17,16 +17,11 @@ inputs:
       soon") or "never" (findings never fail the job). A check that could not run always fails.
     required: false
     default: high
-  comment:
-    description: >-
-      "true" (the default) posts one pull request comment and edits it on every later run;
-      "false" posts none. Skipped, with a notice, on a pull request from a fork and without a token.
-    required: false
-    default: "true"
   upload-sarif:
     description: >-
-      "true" (the default) uploads the SARIF file to code scanning. It needs the job permission
-      security-events: write.
+      "true" (the default) uploads the SARIF file to code scanning with GitHub's own upload-sarif
+      action. It needs the job permission security-events: write, and a private repository needs
+      GitHub Advanced Security for code scanning.
     required: false
     default: "true"
   version:
@@ -39,10 +34,6 @@ inputs:
       server). It is off by default, as it is everywhere else.
     required: false
     default: "false"
-  github-token:
-    description: Used only to read and write this pull request's comment.
-    required: false
-    default: ${{ github.token }}
 
 outputs:
   sarif-file:
@@ -65,11 +56,9 @@ runs:
       env:
         INPUT_URL: ${{ inputs.url }}
         INPUT_FAIL_ON: ${{ inputs.fail-on }}
-        INPUT_COMMENT: ${{ inputs.comment }}
         INPUT_VERSION: ${{ inputs.version }}
         INPUT_ALLOW_PRIVATE: ${{ inputs.allow-private }}
         INPUT_SARIF_FILE: ${{ github.workspace }}/gaugeline.sarif
-        GITHUB_TOKEN: ${{ inputs.github-token }}
       run: node "$GITHUB_ACTION_PATH/scripts/action/gaugeline-action.mjs"
 
     # Pinned by commit (v4.39.3 of github/codeql-action), like every action in this repository.

@@ -1,30 +1,18 @@
 // @ts-check
 /**
- * The logic of action.yml: run the published CLI, keep its SARIF, decide whether the job fails, and
- * post one pull request comment that later runs edit. Plain Node, no dependencies, so the action
- * runs on any runner with Node and the file is tested as it ships.
+ * The logic of action.yml: run the published CLI, keep its SARIF, and decide whether the job fails.
+ * Plain Node, no dependencies, so the action runs on any runner with Node and the file is tested as
+ * it ships.
  *
- * What it asks of GitHub: list the pull request's comments and write one comment, with the job's
- * own GITHUB_TOKEN, on the repository the job runs in. It never makes a request to the checked
- * site: that is the CLI's job, and the CLI only reads.
+ * It makes no HTTP request of its own: not to the checked site (that is the CLI's job, and the CLI
+ * only reads), and not to GitHub's API. The SARIF is uploaded by the official upload-sarif step in
+ * action.yml. A test asserts this file has no network code.
  */
 import { execFile } from "node:child_process";
-import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
-
-/** The hidden marker the comment is found by. Never shown: it is an HTML comment. */
-export const MARKER = "<!-- gaugeline-action -->";
-const LIST_LIMIT = 10;
-
-/** A Markdown table cell: pipes and backslashes escaped, line breaks flattened. */
-const cell = (/** @type {string} */ t) =>
-  t
-    .replace(/\\/g, "\\\\")
-    .replace(/\|/g, "\\|")
-    .replace(/\r?\n|\r/g, " ")
-    .trim();
+import { appendFileSync, writeFileSync } from "node:fs";
 
 /**
- * What the SARIF log says: findings by level (muted ones left out), and the first few as rows.
+ * What the SARIF log says: findings by level (muted ones, with a SARIF suppression, left out).
  * @param {string} sarifText
  */
 export function summarise(sarifText) {
@@ -35,59 +23,12 @@ export function summarise(sarifText) {
   );
   const count = (/** @type {string} */ level) =>
     results.filter((/** @type {{ level?: string }} */ r) => r.level === level).length;
-  const order = { error: 0, warning: 1, note: 2 };
-  const rows = [...results]
-    .sort(
-      (/** @type {any} */ a, /** @type {any} */ b) =>
-        (order[/** @type {'error'} */ (a.level)] ?? 3) -
-        (order[/** @type {'error'} */ (b.level)] ?? 3),
-    )
-    .slice(0, LIST_LIMIT)
-    .map((/** @type {any} */ r) => ({
-      level: r.level,
-      title: String(r.message?.text ?? "").split("\n")[0] ?? "",
-      evidence: String(r.properties?.evidence ?? ""),
-    }));
   return {
     high: count("error"),
     medium: count("warning"),
     low: count("note"),
     total: results.length,
-    rows,
   };
-}
-
-/**
- * The comment body. Deterministic: the same SARIF and inputs give the same text.
- * @param {string} sarifText
- * @param {{ url: string, failOn: string }} opts
- */
-export function buildComment(sarifText, opts) {
-  const s = summarise(sarifText);
-  const label = { error: "Fix this first", warning: "Fix soon", note: "Worth knowing" };
-  const lines = [MARKER, `### Gaugeline checked ${cell(opts.url)}`, ""];
-  lines.push(
-    s.total === 0
-      ? "Nothing to look at."
-      : `${s.high} to fix first, ${s.medium} to fix soon, ${s.low} worth knowing.`,
-  );
-  if (s.rows.length > 0) {
-    lines.push("", "| Level | Finding | Evidence |", "| --- | --- | --- |");
-    for (const r of s.rows)
-      lines.push(
-        `| ${label[/** @type {'error'} */ (r.level)] ?? r.level} | ${cell(r.title)} | ${cell(r.evidence)} |`,
-      );
-    if (s.total > s.rows.length)
-      lines.push(
-        "",
-        `...and ${s.total - s.rows.length} more: they are in the SARIF file and in the Security tab.`,
-      );
-  }
-  lines.push(
-    "",
-    `Fails the job on: ${opts.failOn === "never" ? "nothing" : `"${opts.failOn === "medium" ? "Fix soon" : "Fix this first"}" findings`}. This comment is edited on every run.`,
-  );
-  return `${lines.join("\n")}\n`;
 }
 
 /**
@@ -105,90 +46,15 @@ export function decide({ exit, failOn, summary }) {
 }
 
 /**
- * Post the comment, or edit the one an earlier run left. Returns what happened; never throws, so a
- * comment problem can not change the check's result.
- * @param {{ body: string, repo: string, pr: number, token: string, api?: string, fetch?: typeof fetch }} a
- */
-export async function upsertComment({
-  body,
-  repo,
-  pr,
-  token,
-  api = "https://api.github.com",
-  fetch: f = globalThis.fetch,
-}) {
-  const headers = {
-    authorization: `Bearer ${token}`,
-    accept: "application/vnd.github+json",
-    "content-type": "application/json",
-    "x-github-api-version": "2022-11-28",
-  };
-  try {
-    let existing;
-    for (let page = 1; page <= 20 && !existing; page++) {
-      const res = await f(`${api}/repos/${repo}/issues/${pr}/comments?per_page=100&page=${page}`, {
-        headers,
-      });
-      if (!res.ok) return { done: false, why: `could not list comments (${res.status})` };
-      const list = /** @type {{ id: number, body?: string }[]} */ (await res.json());
-      existing = list.find((c) => typeof c.body === "string" && c.body.includes(MARKER));
-      if (list.length < 100) break;
-    }
-    const res = existing
-      ? await f(`${api}/repos/${repo}/issues/comments/${existing.id}`, {
-          method: "PATCH",
-          headers,
-          body: JSON.stringify({ body }),
-        })
-      : await f(`${api}/repos/${repo}/issues/${pr}/comments`, {
-          method: "POST",
-          headers,
-          body: JSON.stringify({ body }),
-        });
-    return res.ok
-      ? { done: true, why: existing ? "edited the earlier comment" : "posted the comment" }
-      : { done: false, why: `GitHub answered ${res.status}` };
-  } catch (err) {
-    return { done: false, why: err instanceof Error ? err.message : "the request failed" };
-  }
-}
-
-/**
- * The pull request this run is for, and whether a comment can be written: not on a fork's pull
- * request (its token is read-only), not without a token, not outside a pull request.
- * @param {Record<string, string | undefined>} env
- */
-export function commentTarget(env) {
-  if (!env.GITHUB_TOKEN) return { ok: false, why: "no token" };
-  if (!(env.GITHUB_EVENT_NAME ?? "").startsWith("pull_request"))
-    return { ok: false, why: "not a pull request" };
-  let event;
-  try {
-    event = JSON.parse(readFileSync(env.GITHUB_EVENT_PATH ?? "", "utf8"));
-  } catch {
-    return { ok: false, why: "no event payload" };
-  }
-  const pr = event.pull_request;
-  if (!pr || !env.GITHUB_REPOSITORY) return { ok: false, why: "not a pull request" };
-  if (
-    pr.head?.repo?.fork === true ||
-    (pr.head?.repo?.full_name && pr.head.repo.full_name !== env.GITHUB_REPOSITORY)
-  )
-    return { ok: false, why: "a pull request from a fork has a read-only token" };
-  return { ok: true, repo: env.GITHUB_REPOSITORY, pr: Number(pr.number) };
-}
-
-/**
  * The whole step. Inputs come from the environment (action.yml maps them), so nothing the user
  * typed is ever spliced into a shell command.
  * @param {Record<string, string | undefined>} env
- * @param {{ log?: (line: string) => void, fetch?: typeof fetch }} [deps]
+ * @param {{ log?: (line: string) => void }} [deps]
  */
 export async function run(env, deps = {}) {
   const log = deps.log ?? ((/** @type {string} */ l) => process.stdout.write(`${l}\n`));
   const url = (env.INPUT_URL ?? "").trim();
   const failOn = (env.INPUT_FAIL_ON ?? "high").trim();
-  const comment = (env.INPUT_COMMENT ?? "true").trim() === "true";
   const sarifFile = env.INPUT_SARIF_FILE || "gaugeline.sarif";
   if (!url)
     return finish(env, log, { failed: true, message: "The url input is empty.", sarifFile });
@@ -235,20 +101,6 @@ export async function run(env, deps = {}) {
     summary = undefined;
   }
   const verdict = decide({ exit: r.status, failOn, summary });
-  if (summary && comment) {
-    const target = commentTarget(env);
-    if (!target.ok) log(`::notice::No pull request comment: ${target.why}.`);
-    else {
-      const res = await upsertComment({
-        body: buildComment(r.stdout, { url, failOn }),
-        repo: target.repo ?? "",
-        pr: target.pr ?? 0,
-        token: env.GITHUB_TOKEN ?? "",
-        ...(deps.fetch ? { fetch: deps.fetch } : {}),
-      });
-      if (!res.done) log(`::warning::No pull request comment: ${res.why}.`);
-    }
-  }
   return finish(env, log, {
     failed: verdict.fail,
     message: verdict.reason,

@@ -1,4 +1,4 @@
 ---
 ---
 
-(internal) A composite GitHub Action (`action.yml`) runs the CLI, uploads SARIF to code scanning and keeps one pull request comment up to date.
+(internal) A composite GitHub Action (`action.yml`) runs the CLI and uploads its SARIF to code scanning.

@@ -80,6 +80,8 @@ export interface DirectusPublicCollection {
   exact: boolean;
   /** Only meaningful when `state` is `closed`: the token could read the collection, so it exists and the 403 is real. */
   exists?: boolean;
+  /** Only when `state` is `closed` and `exists` is false: why the spelling could not be confirmed, in words that name the variable when it is the token. */
+  unconfirmed?: string;
   reason?: string;
 }
 
@@ -629,6 +631,8 @@ export function createDirectusAdapter(options: DirectusAdapterOptions): Directus
           headers: { accept: "application/json" },
           headersSameOrigin: true,
           anonymous: true,
+          // A redirect is not followed: the answer of another server (or another path) says nothing about this collection.
+          maxRedirects: 0,
           ...(attempt > 0 ? { fresh: true } : {}),
         });
       } catch (err) {
@@ -655,6 +659,11 @@ export function createDirectusAdapter(options: DirectusAdapterOptions): Directus
             "unread",
             `HTTP ${hop.status} that is not a Directus answer (no Directus error code in it): a firewall, a CDN or another server may be answering for Directus.`,
           );
+    if (hop.status >= 300 && hop.status < 400)
+      return none(
+        "unread",
+        `Directus answered HTTP ${hop.status}, a redirect, which a visitor request does not follow (the place it points to says nothing about this collection). Check ${DIRECTUS_URL}.`,
+      );
     if (hop.status < 200 || hop.status >= 300)
       return none("unread", `Directus answered HTTP ${hop.status}.`);
     let body: unknown;
@@ -683,15 +692,20 @@ export function createDirectusAdapter(options: DirectusAdapterOptions): Directus
           // Directus answers 403 for a collection that does not exist too (uncited). The token, when it can read
           // the collection, shows that it exists, so the 403 is a real refusal and the spelling is right.
           let exists = false;
+          let unconfirmed = `${DIRECTUS_TOKEN} is not set, so the token could not show that the collection exists.`;
           if (token !== "") {
             try {
               await get(type, { limit: "1", fields: "id" }, true, () => out.slice());
               exists = true;
             } catch (err) {
               if (err instanceof AdapterRateLimitedError) throw err;
+              const reason = err instanceof AdapterCouldNotCheck ? err.reason : "";
+              unconfirmed = /HTTP 401\b/.test(reason)
+                ? `Directus did not accept ${DIRECTUS_TOKEN} (HTTP 401), so the token could not show that the collection exists.`
+                : "the token could not read the collection either.";
             }
           }
-          out.push({ ...got, exists });
+          out.push({ ...got, exists, ...(exists ? {} : { unconfirmed }) });
         } else out.push(got);
       } catch (err) {
         if (err instanceof AdapterRateLimitedError) throw err;

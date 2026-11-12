@@ -106,7 +106,7 @@ Both formats are checked in the repository's tests: SARIF against a schema writt
 
 ## The GitHub Action
 
-`action.yml` at the root of the repository is a composite action. It runs the published CLI with `npx`, keeps the SARIF file, uploads it to GitHub code scanning, posts one pull request comment, and fails the job when you said it should. It reads the site with GET and HEAD requests only, like the CLI; the only thing it writes is that one comment, in your own repository, with the job's own token.
+`action.yml` at the root of the repository is a composite action. It runs the published CLI with `npx`, keeps the SARIF file, uploads it to GitHub code scanning with GitHub's own `upload-sarif` action, and fails the job when you said it should. It reads the site with GET and HEAD requests only, like the CLI, and makes no request of its own to GitHub: the upload is the official step, and nothing else writes to your repository.
 
 ```yaml title=.github/workflows/gaugeline.yml
 name: Gaugeline
@@ -114,7 +114,6 @@ on: pull_request
 permissions:
   contents: read
   security-events: write # upload to code scanning
-  pull-requests: write # the one comment
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -129,18 +128,28 @@ jobs:
 | --------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | `url`           | required | The address to check, usually a preview deployment                                                                                          |
 | `fail-on`       | `high`   | `high` fails the job on a "Fix this first" finding, `medium` also on "Fix soon", `never` on no finding. A check that could not run fails it |
-| `comment`       | `true`   | `true` posts one comment and edits it on every later run; `false` posts none                                                                |
 | `upload-sarif`  | `true`   | Uploads the SARIF file to code scanning (needs `security-events: write`)                                                                    |
 | `version`       | `latest` | The `gaugeline` version `npx` runs. Pin it, so a release never changes a build                                                              |
 | `allow-private` | `false`  | Lets the check read a private-network address, such as a self-hosted runner's staging server                                                |
 
 Outputs: `sarif-file` (its path), `high` and `medium` (how many findings, muted ones not counted).
 
-- **One comment.** The comment carries a hidden marker. The next run finds it and edits it, so a pull request with twenty pushes still has one comment.
-- **A pull request from a fork** has a read-only token, so no comment is tried: the job prints a notice, and the check still reports and still fails on `fail-on`.
-- **Muted findings.** The comment and `fail-on` do not count a finding that has a SARIF suppression (a baseline or a dated suppression).
-- **Not a pull request?** `comment: true` on a push or a deployment does nothing but print a notice.
-- **No `npx` on the runner?** GitHub's own runners have Node. A self-hosted runner needs Node 20 or later.
+- **Code scanning needs a public repository or GitHub Advanced Security.** A private repository must have GitHub Advanced Security turned on for code scanning; without it the upload step fails and the check itself is unaffected. Set `upload-sarif: "false"` to keep the job and the `fail-on` check without the upload.
+- **The SARIF file is uploaded even when the job fails**, so a failing run still shows its findings in the Security tab. The job fails afterwards, in its last step.
+- **Muted findings.** `fail-on` and the `high` and `medium` outputs do not count a finding that has a SARIF suppression (a baseline or a dated suppression).
+- **A pull request from a fork** has a read-only token, so GitHub may refuse the upload; the check still reports and still fails on `fail-on`.
+- **No `npx` on the runner?** GitHub's own runners have Node. A self-hosted runner needs Node 22 or later.
+- **A pull request comment** is planned for v1.1, together with an amendment of ADR-0005 (a comment is a write to your repository, so it needs its own decision). It is not in this version.
+
+### Try the upload once, on a public scratch repository
+
+Before you rely on it, run one upload in a repository you can throw away. On GitHub, create a public repository (for example `gaugeline-sarif-scratch`), which needs no Advanced Security, then:
+
+1. Add `.github/workflows/gaugeline.yml` with the workflow above, with `on: [push, workflow_dispatch]`, `url: https://example.com/` (any public site you may check) and `fail-on: never`, and the action pinned to the commit of this repository you want to try.
+2. Keep the two permissions, `contents: read` and `security-events: write`. Nothing else is needed.
+3. Push, or run the workflow from the Actions tab. The job's "Upload SARIF" step should end green.
+4. Open the repository's **Security** tab, then **Code scanning**. Each Gaugeline finding is an alert whose rule is the check's id. A finding about a live page has no file in your repository, so open one to read its title, evidence line and address.
+5. If the upload step fails, read its log: a rejected log names the field it did not accept. Send that line with the issue.
 
 ## A protected preview
 

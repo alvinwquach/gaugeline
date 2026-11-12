@@ -6,7 +6,7 @@ record.
 
 ```mermaid
 flowchart LR
-  PR[Pull request body] -->|opened / edited| Check[pr-body workflow: pnpm pr:check]
+  PR[Pull request body] -->|opened / edited| Check[pr-checks workflow: pnpm pr:check]
   Check -->|placeholder or no Changelog| Block[cannot merge]
   PR -->|merged| Merge[on-merge workflow: on-merge.ts]
   Merge -->|one POST, with the shared secret| GAS[Apps Script web app]
