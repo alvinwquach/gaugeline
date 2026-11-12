@@ -25,7 +25,7 @@ import {
 import { type Sql, withService } from "../lib/api/db.js";
 import { storeRun } from "../lib/api/handlers.js";
 import { parseUpload, type Upload } from "../lib/api/schema.js";
-import { secretsIn } from "../lib/api/secrets.js";
+import { secretsInValue, stringsOf } from "../lib/api/secrets.js";
 import { openDatabase } from "../lib/api/startup.js";
 import { diffFingerprints } from "./diff.js";
 import { claimJobs, completeJob, failJob, type Job, releaseExpired } from "./queue.js";
@@ -50,8 +50,6 @@ export interface WorkerDeps {
   random?: () => number;
   /** Defaults to publicChecks(): core's checkSite through core's fetcher. */
   runSite?: RunSite;
-  /** The worker's environment: none of its secret values may be stored. Defaults to process.env. */
-  env?: Record<string, string | undefined>;
 }
 
 /** The worker's database: the app login, refused when it could read around row-level security. */
@@ -97,8 +95,12 @@ function errorCode(e: unknown): { code: string; permanent: boolean } {
   return { code: /^[a-z]/.test(name) ? name.slice(0, 64) : "error", permanent: false };
 }
 
-/** The result as the runs API would store it, with page text cleaned (N17) and no secret in it. */
-function toUpload(result: Result, env: Record<string, string | undefined>): Upload {
+/**
+ * The result as the runs API would store it, with page text cleaned (N17) and nothing shaped like a key.
+ * The scan is the runs API's: key shapes in every decoded string, never the worker's own environment.
+ */
+function toUpload(result: Result): Upload {
+  if (stringsOf(result).some((x) => x.includes("\u0000"))) throw new Refused("invalid-result");
   const parsed = parseUpload(result);
   if (!parsed.ok) throw new Refused("invalid-result");
   const upload = parsed.value;
@@ -108,7 +110,7 @@ function toUpload(result: Result, env: Record<string, string | undefined>): Uplo
     title: sanitise(f.title, UNTRUSTED_CAPS.title).text,
     evidence: sanitise(f.evidence, UNTRUSTED_CAPS.evidence).text,
   }));
-  if (secretsIn(JSON.stringify(upload), env).length > 0) throw new Refused("secret-in-result");
+  if (secretsInValue(upload).length > 0) throw new Refused("secret-in-result");
   return upload;
 }
 
@@ -143,7 +145,7 @@ export async function processJob(
           url: site.url as string,
         })),
       ];
-    const upload = toUpload(result, deps.env ?? process.env);
+    const upload = toUpload(result);
     const hash = createHash("sha256").update(JSON.stringify(upload)).digest("hex");
 
     await withService(sql, async (tx) => {

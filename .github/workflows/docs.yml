@@ -1,11 +1,30 @@
 name: Docs
 
-# Builds and tests the docs site on every pull request and uploads it as an artifact. Deploys
+# Builds and tests the docs site on a pull request that changes the docs or what the docs build reads
+# (CI diet, owner policy: the paths list below), and on every push to main. It uploads the site as an artifact. Deploys
 # (a preview per pull request, production on merge) are switched off until the owner sets the
 # repository variable DOCS_DEPLOY_ENABLED=true and the Netlify settings in scripts/deploy-docs.sh.
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
+    # Only a change to the docs, the check registry, the docs build or the pages the browser tests drive.
+    # Keep in step with scripts/needs-browser-tests.sh. Do not make this workflow's job a required check:
+    # a pull request that skips it would wait for it forever.
+    paths:
+      - "docs/**"
+      - "e2e/**"
+      - "packages/core/src/checks/**"
+      - "scripts/gen-*"
+      - "scripts/build-docs.ts"
+      - "scripts/check-docs.ts"
+      - "scripts/changelog-to-docs.ts"
+      - "scripts/build-demo.ts"
+      - "scripts/docs-examples.ts"
+      - "scripts/lib/**"
+      - "scripts/needs-browser-tests.sh"
+      - "vitest.docs.config.ts"
+      - "playwright.config.ts"
+      - ".github/workflows/docs.yml"
   push:
     branches: [main]
 
@@ -14,7 +33,7 @@ permissions:
 
 # A new push to a pull request cancels the run of the older commit; runs on main finish.
 concurrency:
-  group: docs-${{ github.event_name }}-${{ github.head_ref || github.sha }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:

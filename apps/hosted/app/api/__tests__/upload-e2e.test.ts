@@ -30,7 +30,7 @@ describe.skipIf(!HAS_DATABASE)("gaugeline --upload to the runs API: e2e", () => 
   let address: string;
   let token: string;
   let tokenOther: string;
-  const secret = ["Qw8", "Er5", "Ty2", "Ui9"].join("");
+  const secret = ["sk", "live", "0123456789abcdefABCDEF"].join("_");
 
   beforeAll(async () => {
     db = await freshDatabase();
@@ -38,7 +38,7 @@ describe.skipIf(!HAS_DATABASE)("gaugeline --upload to the runs API: e2e", () => 
     app = await appLogin(db.sql);
     token = (await mintToken(app.sql, { orgId: ORG_A, siteId: SITE_A1 })).token;
     tokenOther = (await mintToken(app.sql, { orgId: ORG_A, siteId: SITE_A2 })).token;
-    const deps: ApiDeps = { sql: app.sql, env: { SERVER_SECRET_KEY: secret } };
+    const deps: ApiDeps = { sql: app.sql };
     // A Node server that hands each request to the handlers as a Web Request, as Next.js does.
     server = createServer((req, res) => {
       const chunks: Buffer[] = [];
@@ -129,11 +129,11 @@ describe.skipIf(!HAS_DATABASE)("gaugeline --upload to the runs API: e2e", () => 
     expect((await db.sql`select count(*)::int as n from public.runs`)[0]!.n).toBe(before);
   }, 30_000);
 
-  it("a result with a key's value in it is stopped by the CLI, and by the server if it gets there anyway", async () => {
+  it("a result with a key's value in it is stopped by the CLI, and by the server, which refuses a key shape if one gets there anyway", async () => {
     const before = (await db.sql`select count(*)::int as n from public.runs`)[0]!.n as number;
     const r = await cli({ GAUGELINE_TOKEN: token, MY_SERVICE_API_KEY: "http://127.0.0.1:" });
     expect(r.err).toContain("the result contains the value of MY_SERVICE_API_KEY");
-    // The same body sent by hand, with the server's own key in it: refused whole.
+    // The same body sent by hand, with a key shape in it: refused whole.
     const res = await fetch(`${address}/runs`, {
       method: "POST",
       headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },

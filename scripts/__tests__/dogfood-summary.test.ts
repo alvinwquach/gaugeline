@@ -28,6 +28,13 @@ const result = (
 });
 
 describe("summarise: unit", () => {
+  it("a finding title from a page is escaped Markdown in the issue body", () => {
+    const r = result([{ checkId: "duplicate-title", severity: "high" }]);
+    r.findings[0]!.title = "[login](https://evil.example) <img src=x> **x**";
+    const md = summarise(r);
+    expect(md).toContain("\\[login\\]\\(https://evil.example\\) \\<img src=x\\> \\*\\*x\\*\\*");
+  });
+
   it('a clean result gives "0 to fix first" and lists the passed check ids', () => {
     const md = summarise(result([], ["canonical-elsewhere", "noindex"]));
     expect(md).toContain("**0 to fix first**");
