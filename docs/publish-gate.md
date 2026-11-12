@@ -7,7 +7,7 @@ notReleased: true
 How a publish gets checked, and its one honest limit.
 
 ::: warning
-<b>Not released yet.</b> The first part, the Function that checks the page after every publish, is built and described here. The part that keeps the Publish button disabled follows in the next release (0.2).
+<b>Not released yet.</b> Built and described here: the Function that checks the page after every publish, and the request the Publish button makes to a Function you own. The button itself, which stays disabled until the page is right, follows in the next release (0.2).
 :::
 
 1. An editor clicks Publish, or a script writes through the API.
@@ -95,6 +95,80 @@ The handler records that outcome as one JSON line in the Function's log. To send
 gateHandler({ site, pages, report: (outcome) => notifyTheStudio(outcome) });
 ```
 
+## Where a request goes and what is sent
+
+The Publish button asks one question: is this page right? It asks it of a Function **you own**, at an https address you configure. Nothing is stored anywhere, not in your dataset and not by Gaugeline: the answer is shown in the Studio and gone when the session ends.
+
+|          |                                                                                                                                               |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| From     | The browser that is running your Studio.                                                                                                      |
+| To       | The one https address you set as `functionUrl`. Not Gaugeline, not Sanity, not your site.                                                     |
+| Method   | `GET`, with no body.                                                                                                                          |
+| Sent     | The page's public address, as `?url=`. The only header is `Accept: application/json`.                                                         |
+| Not sent | The document or any field of it, a Sanity token, a cookie, an `Authorization` header, the editor's name or email, a referrer.                 |
+| Refused  | An address that is not https, that holds a user name or password, a `*`, a query or a fragment. A redirect is never followed.                 |
+| Bounded  | At most 15 seconds to the whole reply, at most 64 KiB of it.                                                                                  |
+| Checked  | The reply must match one fixed shape. Anything else is "could not check", never a pass.                                                       |
+| Shown    | Every piece of page text is cleaned (hidden and direction-changing characters removed, length capped) and shown as plain text, never as HTML. |
+
+The Function reads only your own site: it refuses any address that is not on `site` (same scheme, host and port, no user name or password) before it requests anything. It answers a browser only when the browser's origin is the one `allowOrigin` you name, exactly: no wildcard. It holds no Sanity token and sends only `GET` and `HEAD` to your own host.
+
+Two limits, stated plainly. `allowOrigin` decides who can read the answer, not who can ask: anyone who knows the address can ask it to check a page of your site (and only your site), so it caches an answer for 10 seconds and shares one check between two editors who publish the same page at once. And the check reads the live page: to check a draft before it is published, point `site` at a preview deployment that shows drafts.
+
+This is the Function. It takes a standard `Request` and gives a standard `Response`, so it mounts on any host you own that does the same: a serverless route or a plain Node server.
+
+```ts title=functions/gate/index.ts
+import { gateRequestHandler } from "sanity-plugin-publish-gate/function";
+
+export const handle = gateRequestHandler({
+  site: "https://lantern-yard.example",
+  allowOrigin: "https://lantern-yard.sanity.studio",
+});
+```
+
+The Studio's side is `requestGate`. This runs the same call against that handler on an invented copy of the bar's site, with the browser's `fetch` replaced by a call to the handler:
+
+```ts title=try-the-request.ts untested="Needs the bar's live site and a hosted Function. packages/sanity-plugin-publish-gate/src/__tests__/docs.test.ts runs this code against an invented copy of the site in memory and compares the output with the blocks below."
+import { requestGate } from "sanity-plugin-publish-gate";
+import { gateRequestHandler } from "sanity-plugin-publish-gate/function";
+
+const handler = gateRequestHandler({
+  site: "https://lantern-yard.example",
+  allowOrigin: "https://lantern-yard.sanity.studio",
+});
+const sent: string[] = [];
+
+const answer = await requestGate({
+  functionUrl: "https://gate.lantern-yard.example/check",
+  pageUrl: "https://lantern-yard.example/menu",
+  fetch: (url, init) => {
+    sent.push(`${init?.method} ${url}`);
+    sent.push(
+      `credentials=${init?.credentials} redirect=${init?.redirect} referrer=${init?.referrerPolicy}`,
+    );
+    return handler(
+      new Request(String(url), { headers: { origin: "https://lantern-yard.sanity.studio" } }),
+    );
+  },
+});
+
+console.log(sent.join("\n"));
+console.log(answer.status, answer.url);
+for (const f of answer.findings) console.log(f.severity.padEnd(4), f.id, f.evidence);
+```
+
+```text title=Request
+GET https://gate.lantern-yard.example/check?url=https%3A%2F%2Flantern-yard.example%2Fmenu
+credentials=omit redirect=error referrer=no-referrer
+```
+
+```text title=Reply
+findings https://lantern-yard.example/menu
+high broken-links "Old cocktails" <a href="/menu/old-cocktails"> returned 404
+```
+
+The reply has one fixed shape: `version` (1), `status` (`clean`, `findings` or `could-not-check`), `url`, `checkedAt`, `findings` (each with `id`, `severity`, `title`, `evidence` and `url`) and, for `could-not-check`, a `reason`. A reply about a different page than the one asked for is refused, and so is a reply with a field not named here, a content type other than `application/json` (a utf-8 charset is allowed) or a reply that is not valid JSON. `findings` holds only the problems at or above `blockOn`.
+
 ## The four answers
 
 | Status            | Meaning                                                                         | Reported |
@@ -110,5 +184,5 @@ If your site rebuilds after a publish, the page may still be the old one for a m
 
 ## What is not here yet
 
-- The disabled Publish button, with the reasons and a link to each problem, and the choice of failing open or closed with an override that records who and why (the next release).
+- The disabled Publish button itself, with the reasons and a link to each problem, and the choice of failing open or closed with an override a person has to confirm (the next release). The override is not logged anywhere beyond the Studio session.
 - Where findings are kept. The Function does not write to your dataset, so a finding lives in the Function's log or in whatever `report` sends it to.

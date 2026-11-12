@@ -26,6 +26,27 @@ describe("the package cannot write", () => {
     expect(text).not.toMatch(/\bfetch\(/);
   });
 
+  it("the Studio's request is one GET with no credentials, no redirect and no body", () => {
+    const request = readFileSync(join(src, "request.ts"), "utf8");
+    expect(request).toMatch(/method: "GET"/);
+    expect(request).toMatch(/credentials: "omit"/);
+    expect(request).toMatch(/redirect: "error"/);
+    expect(request).toMatch(/referrerPolicy: "no-referrer"/);
+    expect(request).not.toMatch(
+      /\bbody:|XMLHttpRequest|sendBeacon|WebSocket|localStorage|document\.cookie/,
+    );
+    // The one place the browser's fetch is named: every other file reaches the network through this one.
+    const others = files.filter((f) => f !== "request.ts" && f !== "check.ts");
+    for (const f of others)
+      expect(readFileSync(join(src, f), "utf8"), f).not.toMatch(/globalThis\.fetch|\bsend\(/);
+  });
+
+  it("the endpoint answers a GET and never reads a request body", () => {
+    const endpoint = readFileSync(join(src, "endpoint.ts"), "utf8");
+    expect(endpoint).toMatch(/request\.method !== "GET"/);
+    expect(endpoint).not.toMatch(/request\.(json|text|formData|arrayBuffer|blob|body)\b/);
+  });
+
   it("never reads the Function's context, where its token is", () => {
     expect(text).not.toMatch(/clientOptions|\.context\b|\.token\b/);
   });

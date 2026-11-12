@@ -20,6 +20,10 @@ import { resolvePage, type GateDocument, type PageRules } from "./resolve.js";
 
 export type { GateFinding, GateReport, GateSeverity, GateTransport } from "./check.js";
 export { blocking, checkPage } from "./check.js";
+export { gateRequestHandler } from "./endpoint.js";
+export type { GateRequestOptions } from "./endpoint.js";
+export { ANSWER_VERSION, parseGateAnswer } from "./answer.js";
+export type { GateAnswer, GateAnswerStatus } from "./answer.js";
 export { resolvePage } from "./resolve.js";
 export type { GateDocument, PageRule, PageRules, Resolution } from "./resolve.js";
 
