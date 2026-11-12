@@ -1,4 +1,14 @@
 import { GqlSyntaxError, parseGraphql } from "../query/graphql-parse.js";
+import {
+  mcpBodyProblem,
+  mcpShapeProblems,
+  queryOptionProblems,
+  queryStringProblem,
+  type McpJsonRpcShape,
+  type McpQueryOption,
+} from "./mcp-jsonrpc.js";
+
+export type { McpArgumentRule, McpJsonRpcShape, McpQueryOption } from "./mcp-jsonrpc.js";
 
 /**
  * The allowlist that lets an adapter send a POST to a documented read-only query endpoint
@@ -40,7 +50,8 @@ export interface JsonQueryShape {
   enums?: Readonly<Record<string, readonly (string | number | boolean)[]>>;
 }
 
-export type QueryBodyShape = GraphqlQueryShape | JsonQueryShape;
+/** `McpJsonRpcShape` (fetch/mcp-jsonrpc.ts): one message to a platform's remote MCP server (ADR-0008 Part A). */
+export type QueryBodyShape = GraphqlQueryShape | JsonQueryShape | McpJsonRpcShape;
 
 /**
  * A host the adapter reads from its own validated configuration (a GraphQL endpoint the person
@@ -67,6 +78,12 @@ export interface ReadOnlyQueryAllow {
    * segment ("/v1/data/query/*"). No other wildcard exists. No segment is named like a write.
    */
   path: string;
+  /**
+   * The address's whole query string, for an `mcp-jsonrpc` entry only (ADR-0008): each option is
+   * fixed by the entry (`read_only=true`) or the one value the person configured (a project ref).
+   * Any other entry's address carries no query string.
+   */
+  query?: Readonly<Record<string, McpQueryOption>>;
   body: QueryBodyShape;
   /** Where the vendor documents this endpoint as a read, query or search endpoint. */
   docs: {
@@ -316,7 +333,13 @@ export function allowProblems(
     const p = shape.persisted;
     if (p !== undefined && (!Array.isArray(p) || p.some((x) => typeof x !== "string" || x === "")))
       out.push("persisted is a list of the stored query ids the vendor documents as reads");
-  } else out.push("the body shape must be graphql-query or json-query");
+  } else if (shape?.kind === "mcp-jsonrpc") out.push(...mcpShapeProblems(shape));
+  else out.push("the body shape must be graphql-query, json-query or mcp-jsonrpc");
+  if (a.query !== undefined) {
+    if (shape?.kind !== "mcp-jsonrpc")
+      out.push("only an mcp-jsonrpc entry may name a query string");
+    else out.push(...queryOptionProblems(a.query));
+  }
   const docs = a.docs as { url?: unknown; checked?: unknown } | undefined;
   if (typeof docs?.url !== "string" || !docs.url.startsWith("https://"))
     out.push("docs.url must be an https page of the vendor's documentation");
@@ -464,6 +487,7 @@ export function bodyProblem(allow: ReadOnlyQueryAllow, body: unknown): string | 
   const s = serializeBody(body);
   if (!s.ok) return s.reason;
   const parsed = s.parsed;
+  if (allow.body.kind === "mcp-jsonrpc") return mcpBodyProblem(allow.body, parsed);
   if (!isPlainObject(parsed)) return "the body must be a JSON object";
   switch (allow.body.kind) {
     case "graphql-query":
@@ -500,7 +524,13 @@ export function addressProblem(
       ? `allowlist entry ${allow.id} has a fixed host and is not given another`
       : `allowlist entry ${allow.id} needs the host from the adapter's configuration (one exact host name)`;
   if (url.host !== host) return `${url.host} is not the host of allowlist entry ${allow.id}`;
-  if (url.search !== "" || url.hash !== "") return "the address has a query string or fragment";
+  if (url.hash !== "") return "the address has a fragment";
+  if (allow.query === undefined) {
+    if (url.search !== "") return "the address has a query string";
+  } else {
+    const why = queryStringProblem(url.searchParams, allow.query);
+    if (why !== undefined) return why;
+  }
   if (!matchesPath(allow.path, url.pathname))
     return `${url.pathname} does not match the path of allowlist entry ${allow.id}`;
   return undefined;

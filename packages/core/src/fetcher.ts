@@ -807,7 +807,15 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
     const step = await requestOnce(
       target.href,
       "POST",
-      { ...headers, accept: "application/json", "content-type": "application/json" },
+      {
+        ...headers,
+        // A remote MCP server may answer as JSON or as an event stream; the spec asks for both (ADR-0008).
+        accept:
+          entry.body.kind === "mcp-jsonrpc"
+            ? "application/json, text/event-stream"
+            : "application/json",
+        "content-type": "application/json",
+      },
       { kind: currentKind(), chain: chains++, hop: 0 },
       {
         query: { body: body.text, allow: entry.id },
