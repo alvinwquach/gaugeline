@@ -51,9 +51,12 @@ const TENANT_TABLES = [
   // 0004: the queue is server-only; what changed is read like runs.
   "jobs",
   "run_changes",
+  // 0006: a person reads and changes their own email setting; the send log is the server's.
+  "email_preferences",
+  "email_sends",
 ];
 
-const SERVER_ONLY = new Set(["tokens", "idempotency_keys", "jobs"]);
+const SERVER_ONLY = new Set(["tokens", "idempotency_keys", "jobs", "email_sends"]);
 
 describe.skipIf(!HAS_DATABASE)("hosted database: row-level security", () => {
   let db: TestDatabase;
