@@ -129,6 +129,9 @@ importers:
       '@gaugeline/core':
         specifier: workspace:*
         version: link:../core
+      '@gaugeline/documents':
+        specifier: workspace:*
+        version: link:../documents
 
   packages/core:
     dependencies:
@@ -160,6 +163,8 @@ importers:
       postgres:
         specifier: 3.4.9
         version: 3.4.9
+
+  packages/documents: {}
 
   packages/fixtures: {}
 
