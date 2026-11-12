@@ -1001,7 +1001,9 @@ to test.** Without either, nothing is asked and the check is not listed.
 `by` says who agreed and `on` says when, so a shared repository records it once. A run with consent
 prints one line on stderr saying probing checks are on.
 
-There are eight probing checks: `gated-download-open`, described in
+There are ten probing checks: `image-optimizer-open`, described in
+[Open image optimizers](guides/image-optimizers.md#what-it-asks-the-running-site-a-probing-check) (it also needs an
+address you chose, in `gaugeline.images.json`, below), `not-found-200`, described in [Error pages that answer 200](guides/error-pages.md#not-found-200-what-the-site-does-for-an-address-that-does-not-exist) (one `GET` of an address made up from your own site's address), `gated-download-open`, described in
 [Paid downloads and delivery](delivery.md#a-download-route-that-hands-the-file-to-anyone),
 `route-hidden-not-protected`, described in [Routes that are hidden, not protected](protected-routes.md),
 `nuxt-devtools-public` and `nuxt-preview-public`, described in
@@ -1011,6 +1013,21 @@ Nuxt sites only), `strapi-drafts-public`, described in [Strapi](integrations/str
 `joomla-api-public`, described in [Joomla](integrations/joomla.md#the-two-checks), and
 `datocms-drafts-reachable`, described in [DatoCMS](integrations/datocms.md#the-check) (the last four run
 from an adapter's reading, not from a page check).
+
+`gaugeline.images.json` (in the folder you run from) holds the image optimizer settings. `settingsFiles` lists up
+to six framework settings files (`next.config.js`, `nuxt.config.ts`, `astro.config.mjs`, `netlify.toml`) that are
+read as text, never run, for an image allowlist that lets any host through (`image-optimizer-allowlist-wide` and
+`image-optimizer-allowlist-unanchored`); that part needs no consent and sends nothing. `imageOptimizerProbeUrl` is
+the one `https` address you chose, on a public host that is not one of your image hosts, for
+`image-optimizer-open`; it is used only with `--owner-consent`, and Gaugeline never picks an address of its own.
+There is no flag for it: the file is the one place that names the address.
+
+```json title=gaugeline.images.json
+{
+  "imageOptimizerProbeUrl": "https://test-pictures.example/gaugeline-probe.png",
+  "settingsFiles": ["next.config.js"]
+}
+```
 
 `--routes <glob>` (repeatable) points that check at your repository's route files, so it finds routes
 no page links to. Run Gaugeline from the repository's folder and give a glob such as

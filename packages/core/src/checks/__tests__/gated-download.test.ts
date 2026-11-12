@@ -305,6 +305,8 @@ describe("gated-download-open: a probing check", () => {
   it("is on the probing list, so a run without consent leaves it out and with consent runs it", async () => {
     expect(PROBING_CHECKS).toEqual([
       "gated-download-open",
+      "image-optimizer-open",
+      "not-found-200",
       "nuxt-devtools-public",
       "nuxt-preview-public",
     ]);

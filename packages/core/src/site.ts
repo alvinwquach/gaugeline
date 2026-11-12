@@ -37,6 +37,7 @@ import type { WordPress } from "./wordpress/reader.js";
 import type { HiddenConfig } from "./hidden.js";
 import { lazyEvents, type EventObserver } from "./events/observe.js";
 import type { EventsConfig } from "./events/types.js";
+import type { ImageSettings } from "./images/config.js";
 import type { NavRules } from "./nav/read-regions.js";
 import type { StaleDatesConfig } from "./stale-dates/config.js";
 import { lazyTagAnalysis, summarise, type TagSummary } from "./tags/analyse.js";
@@ -158,6 +159,8 @@ export interface SiteCheckOptions {
   ownerConsent?: boolean;
   /** Paths of the repository's route files (--routes), for the download route probe. Names only. */
   routeFiles?: readonly string[];
+  /** The image optimizer settings (gaugeline.images.json): settings files as text, and the probe address when consent was given. */
+  imageSettings?: ImageSettings;
 }
 
 export interface SiteCheck {
@@ -404,6 +407,7 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
       ...(opts.expect ? { expect: opts.expect } : {}),
       ...(opts.ownerConsent ? { ownerConsent: true } : {}),
       ...(opts.routeFiles ? { routeFiles: opts.routeFiles } : {}),
+      ...(opts.imageSettings ? { imageSettings: opts.imageSettings } : {}),
     },
     onProgress: sink,
     ...(only ? { only } : {}),
