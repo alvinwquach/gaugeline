@@ -39,6 +39,11 @@ export interface ContractEntry {
    */
   keyRaw?: true;
   /**
+   * The Authorization header is this text followed by the key, exactly, on every request (Payload's
+   * `users API-Key <key>`). Instead of "Bearer <key>"; the key is still only ever in that header.
+   */
+  keyPrefix?: string;
+  /**
    * For a platform that takes its key in headers other than Authorization (Contentstack's `api_key` and
    * `access_token`): every request carries exactly these headers (lower-case names), and none carries an
    * Authorization header. The values must not appear in an address, a result or a message.

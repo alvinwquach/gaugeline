@@ -50,6 +50,14 @@ const PRIVATE_COLLECTIONS: readonly string[] = ADAPTER_ENTRIES.filter(
   (e) => e.settings?.privateCollections,
 ).map((e) => e.id);
 
+/** The adapters that take `authCollection`: the slug of the auth collection whose API key is sent. */
+const AUTH_COLLECTION: readonly string[] = ADAPTER_ENTRIES.filter(
+  (e) => e.settings?.authCollection,
+).map((e) => e.id);
+
+/** A Payload collection slug: kebab-case, as Payload's own documentation requires. It is put into a header and an address. */
+const PAYLOAD_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
 /** The adapters that name a GraphQL collection for each content type (`collections`): DatoCMS and Hygraph; DatoCMS also takes `expectPublishedOnly`. */
 const GRAPHQL_COLLECTIONS: readonly string[] = ADAPTER_ENTRIES.filter(
   (e) => e.settings?.graphqlCollections,
@@ -140,13 +148,24 @@ export const adaptersConfigSchema = z.strictObject({
            */
           checkReleases: z.boolean().optional(),
           /**
-           * Directus only: collections that must not be readable by a visitor with no token (the Public role). Switches
-           * on the check that asks (still only with --owner-consent).
+           * Directus and Payload only: collections that must not be readable by a visitor with no token. Switches on
+           * the check that asks (still only with --owner-consent).
            */
           privateCollections: z
             .array(z.string().regex(TYPE, "a collection name"))
             .min(1)
             .max(50)
+            .optional(),
+          /**
+           * Payload only: the slug of the auth collection whose API key is sent (the header is `<slug> API-Key <key>`).
+           * The slug goes into a header, so only the kebab-case Payload requires of a slug is accepted.
+           */
+          authCollection: z
+            .string()
+            .regex(
+              PAYLOAD_SLUG,
+              "a Payload collection slug (lower-case letters, digits and hyphens)",
+            )
             .optional(),
           /**
            * DatoCMS only: the GraphQL collection to read for each content type, and the field that holds an item's
@@ -329,7 +348,13 @@ export const adaptersConfigSchema = z.strictObject({
             ctx.addIssue({
               code: "custom",
               path: ["privateCollections"],
-              message: `"privateCollections" belongs to the Directus adapter, not to ${entry.id}`,
+              message: `"privateCollections" belongs to the Directus and Payload adapters, not to ${entry.id}`,
+            });
+          if (entry.authCollection !== undefined && !AUTH_COLLECTION.includes(entry.id))
+            ctx.addIssue({
+              code: "custom",
+              path: ["authCollection"],
+              message: `"authCollection" belongs to the Payload adapter, not to ${entry.id}`,
             });
           for (const key of ["collections", "expectPublishedOnly", "showDraftIds"] as const)
             if (entry[key] !== undefined && !GRAPHQL_COLLECTIONS.includes(entry.id))
