@@ -190,6 +190,25 @@ describe("a custom check is not a way round the probing rule (rule 14)", () => {
     ["an admin path", "https://bar.example/wp-admin/"],
     ["an admin path", "https://bar.example/admin"],
     ["an administrator path", "https://bar.example/administrator/index.php"],
+    ["a percent-encoded dot", "https://bar.example/%2eenv"],
+    ["a percent-encoded dot, upper case", "https://bar.example/%2Eenv"],
+    ["a percent-encoded dot before .git", "https://bar.example/%2egit/config"],
+    ["a dot-dot segment that lands on .env", "https://bar.example/%2e%2e/.env"],
+    ["a dot-dot segment in the middle", "https://bar.example/a/%2e%2e/.env"],
+    ["an encoded letter after the dot", "https://bar.example/.%65nv"],
+    ["a double-encoded dot", "https://bar.example/%252eenv"],
+    ["a triple-encoded dot", "https://bar.example/%25252eenv"],
+    ["an encoded slash in a segment", "https://bar.example/a%2f.env"],
+    ["an encoded backslash", "https://bar.example/a%5c.env"],
+    ["an encoded NUL", "https://bar.example/menu%00.png"],
+    ["a segment that does not decode", "https://bar.example/%E0%A4%A"],
+    ["an encoded admin", "https://bar.example/%61dmin"],
+    ["admin with an encoded slash", "https://bar.example/admin%2f"],
+    ["wp-admin with an encoded slash", "https://bar.example/wp-admin%2Fx"],
+    ["admin with a trailing dot", "https://bar.example/admin."],
+    ["admin.php", "https://bar.example/admin.php"],
+    ["wp-admin with a suffix", "https://bar.example/wp-admin-old/"],
+    ["wp-login.php", "https://bar.example/wp-login.php"],
   ] as const;
 
   for (const [what, url] of refused) {
@@ -212,7 +231,18 @@ describe("a custom check is not a way round the probing rule (rule 14)", () => {
     expect(calls).toEqual(urls);
   });
 
-  for (const name of ["Authorization", "x-api-key", "Cookie", "X-Auth-Token", "apikey"]) {
+  for (const name of [
+    "Authorization",
+    "x-api-key",
+    "Cookie",
+    "X-Auth-Token",
+    "apikey",
+    "X-Session",
+    "X-Session-Id",
+    "X-CSRF-Token",
+    "X-XSRF-Header",
+    "Proxy-Authorization",
+  ]) {
     it(`without consent the header ${name} is refused; with consent it is sent`, async () => {
       const no = asked(["https://bar.example/menu"], false, { [name]: "v" });
       await expect(no.result).rejects.toThrow(/header/);

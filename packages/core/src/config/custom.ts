@@ -12,10 +12,34 @@ export type CustomCheckContext = Pick<CheckContext, "warn" | "couldNotCheck" | "
 };
 
 /** Path segments that are not public pages: a dot segment (not .well-known) or an admin area. */
-const ADMIN_SEGMENT = /^(?:admin|administrator|wp-admin|wp-login\.php|phpmyadmin)$/i;
+const ADMIN_SEGMENT = /^(?:admin|wp-admin|wp-login|phpmyadmin)/i;
 /** Headers that carry a site's keys: using one against the site's own API is a probing request. */
 const KEY_HEADER =
-  /^(?:authorization|proxy-authorization|cookie|apikey|api-key)$|auth|token|secret|key/i;
+  /^(?:authorization|proxy-authorization|cookie|apikey|api-key)$|auth|token|secret|key|session|csrf|xsrf/i;
+
+/**
+ * A path segment as a server would read it: percent-decoded, up to three times (a double-encoded dot is
+ * still a dot). undefined when it does not decode, still changes after three decodes, or holds a slash,
+ * a backslash or a NUL once decoded: no honest page address does, so it is refused.
+ */
+function decodeSegment(raw: string): string | undefined {
+  let segment = raw;
+  for (let i = 0; i < 3; i++) {
+    try {
+      const next = decodeURIComponent(segment);
+      if (next === segment) break;
+      segment = next;
+    } catch {
+      return undefined;
+    }
+  }
+  try {
+    if (decodeURIComponent(segment) !== segment) return undefined;
+  } catch {
+    return undefined;
+  }
+  return /[/\\\0]/.test(segment) ? undefined : segment;
+}
 
 /**
  * Why a request is a probing request (CLAUDE.md rule 14), or undefined when it is not. There is no
@@ -33,7 +57,10 @@ export function probingReason(
     pathname = undefined;
   }
   if (pathname !== undefined) {
-    for (const segment of pathname.split("/")) {
+    for (const raw of pathname.split("/")) {
+      const segment = decodeSegment(raw);
+      if (segment === undefined)
+        return `${pathname} has a path segment that does not decode cleanly (percent-encoding used to hide a path)`;
       if (segment.startsWith(".") && segment !== ".well-known")
         return `${pathname} is not a public page (a path starting with a dot)`;
       if (ADMIN_SEGMENT.test(segment)) return `${pathname} is an admin path`;
