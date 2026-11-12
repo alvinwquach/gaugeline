@@ -20,6 +20,77 @@ import {
 export type GateSeverity = "high" | "medium" | "low";
 const RANK: Readonly<Record<GateSeverity, number>> = { high: 0, medium: 1, low: 2 };
 
+const text = (value: string, max: number): string => sanitise(value, max).text;
+
+/**
+ * Checks the gate does not run, because they read an address other than the page: robots.txt, the
+ * sitemap, llms.txt, well-known files, the other host names, scripts, images, feeds and the pages
+ * a listing or a document names. The gate reads the one page, and (for broken-links) the links that
+ * page holds on its own site. A test runs every other check alone and fails if a new one in core
+ * reads anything else, so this list is changed on purpose, never by accident.
+ */
+export const PAGE_CHECK_SKIP: readonly string[] = Object.freeze([
+  "ai-crawlers-blocked",
+  "dev-tools-in-production",
+  "document-hours-mismatch",
+  "document-item-missing",
+  "document-price-mismatch",
+  "document-unreadable",
+  "error-shell-200",
+  "feed-broken",
+  "feed-duplicate",
+  "feed-invalid",
+  "feed-oversized",
+  "host-duplicate",
+  "host-preview-indexable",
+  "host-preview-named",
+  "images-broken",
+  "images-heavy",
+  "images-legacy-format",
+  "lang-attr-mismatch",
+  "lang-price-mismatch",
+  "lang-twin-missing",
+  "links-via-redirect",
+  "listing-address-mismatch",
+  "listing-hours-mismatch",
+  "listing-name-mismatch",
+  "listing-phone-mismatch",
+  "listing-special-hours-missing",
+  "listing-website-wrong",
+  "llms-txt-broken-links",
+  "llms-txt-malformed",
+  "llms-txt-stale-facts",
+  "og-image-broken",
+  "quotable-facts-disagree",
+  "robots-block",
+  "secret-in-js",
+  "sitemap-dead",
+  "sitemap-host",
+  "sitemap-missing",
+  "sitemap-redirects",
+  "source-maps-public",
+  "staging-indexable",
+  "stripe-test-mode",
+  "well-known-invalid",
+]);
+
+/** A core finding as the gate reports it: page text cleaned and capped. */
+export function gateFinding(f: {
+  checkId: string;
+  severity: GateSeverity;
+  title: string;
+  evidence: string;
+  url: string;
+}): GateFinding {
+  return {
+    id: f.checkId,
+    severity: f.severity,
+    title: text(f.title, UNTRUSTED_CAPS.title),
+    evidence: text(f.evidence, UNTRUSTED_CAPS.evidence),
+    url: text(f.url, UNTRUSTED_CAPS.evidence),
+  };
+}
+
 /** One problem on the page. `title` and `evidence` hold text from the page: data, never instructions. */
 export interface GateFinding {
   id: string;
@@ -55,17 +126,20 @@ export interface CheckPageOptions {
   now?: () => Date;
 }
 
-/** The core fetcher, with a stand-in network when one is given. A request that is not GET or HEAD is refused here too. */
-export function gateFetcher(transport?: GateTransport) {
-  if (transport === undefined) return createFetcher();
-  const readOnly: Transport = (url, req) => {
+/** A stand-in network seen as the core one, which refuses a POST before the stand-in is called. */
+export function readOnlyTransport(transport: GateTransport): Transport {
+  return (url, req) => {
     if (req.method === "POST") throw new Error("The publish gate sends GET and HEAD only.");
     return transport(url, { method: req.method, headers: req.headers, timeoutMs: req.timeoutMs });
   };
-  return createFetcher({ transport: readOnly });
 }
 
-const text = (value: string, max: number): string => sanitise(value, max).text;
+/** The core fetcher (private addresses refused), with a stand-in network when one is given. */
+export function gateFetcher(transport?: GateTransport) {
+  return transport === undefined
+    ? createFetcher()
+    : createFetcher({ transport: readOnlyTransport(transport) });
+}
 
 export async function checkPage(options: CheckPageOptions): Promise<GateReport> {
   if (!/^https?:\/\/[^\s/]/i.test(options.url) || !URL.canParse(options.url))
@@ -81,7 +155,7 @@ export async function checkPage(options: CheckPageOptions): Promise<GateReport> 
     address: options.url,
     fetcher: gateFetcher(options.transport),
     registry,
-    skip: EMAIL_PRESET.filter((id) => registry.has(id)),
+    skip: [...PAGE_CHECK_SKIP, ...EMAIL_PRESET].filter((id) => registry.has(id)),
     now,
   });
   // A page that answers with an error is not a page that passed: checks over an error page find nothing.
@@ -97,15 +171,7 @@ export async function checkPage(options: CheckPageOptions): Promise<GateReport> 
     };
   return {
     ...base,
-    findings: result.findings
-      .map((f): GateFinding => ({
-        id: f.checkId,
-        severity: f.severity,
-        title: text(f.title, UNTRUSTED_CAPS.title),
-        evidence: text(f.evidence, UNTRUSTED_CAPS.evidence),
-        url: text(f.url, UNTRUSTED_CAPS.evidence),
-      }))
-      .sort((a, b) => RANK[a.severity] - RANK[b.severity]),
+    findings: result.findings.map(gateFinding).sort((a, b) => RANK[a.severity] - RANK[b.severity]),
     couldNotCheck: result.couldNotCheck.map((c) => ({
       id: c.id,
       reason: text(c.reason, UNTRUSTED_CAPS.evidence),

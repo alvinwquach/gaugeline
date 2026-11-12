@@ -75,3 +75,11 @@ export function memorySite(
 /** A transport for a site that does not answer at all. */
 export const downSite: Transport = () =>
   Promise.reject(Object.assign(new Error("connect ECONNREFUSED"), { code: "ECONNREFUSED" }));
+
+/** True when the text holds a control character, a bidi override or a Unicode tag character. */
+export function hasHiddenCharacters(text: string): boolean {
+  return [...text].some((ch) => {
+    const n = ch.codePointAt(0) ?? 0;
+    return n < 0x20 || n === 0x7f || (n >= 0x202a && n <= 0x202e) || (n >= 0xe0000 && n <= 0xe007f);
+  });
+}

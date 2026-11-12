@@ -1,6 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 import { checkDocument, gateHandler, type GateOutcome } from "../function.js";
-import { SITE, barSite, downSite, memorySite, type MemoryPage } from "./helpers.js";
+import {
+  SITE,
+  barSite,
+  downSite,
+  hasHiddenCharacters,
+  memorySite,
+  type MemoryPage,
+} from "./helpers.js";
 
 const now = () => new Date("2026-11-12T10:00:00Z");
 const pages = { page: "/{slug}", product: "/shop/{slug}", siteSettings: null } as const;
@@ -80,6 +87,32 @@ describe("the post-publish Function", () => {
       reason: expect.stringContaining("slug"),
     });
     expect(seen).toEqual([]);
+  });
+
+  it("a release version is not published: not gated, nothing requested", async () => {
+    const { options, seen } = world("<p>x</p>");
+    const outcome = await checkDocument({ ...menuDoc, _id: "versions.rAutumn.menu-page" }, options);
+    expect(outcome.status).toBe("not-gated");
+    expect(seen).toEqual([]);
+  });
+
+  it("an envelope with no event is could-not-check, not a TypeError", async () => {
+    const { options, reported } = world("<p>x</p>");
+    const handler = gateHandler(options) as (e: unknown) => Promise<void>;
+    for (const envelope of [{}, undefined, null, { event: null }]) await handler(envelope);
+    expect(reported).toHaveLength(4);
+    expect(reported.every((r) => r.status === "could-not-check")).toBe(true);
+  });
+
+  it("an id that carries control or bidi characters is cleaned before it reaches a report sink", async () => {
+    const { options, reported } = world("<p>x</p>");
+    const documentId = `a\u001bb\u202ec${"y".repeat(5000)}`;
+    await gateHandler(options)({
+      event: { data: { _id: documentId, _type: "page", slug: "../x" } },
+    });
+    expect(reported).toHaveLength(1);
+    expect(hasHiddenCharacters(reported[0]?.documentId ?? "")).toBe(false);
+    expect(reported[0]?.documentId.length).toBeLessThanOrEqual(200);
   });
 
   it("an event with no document in it is could-not-check, not an exception", async () => {

@@ -115,3 +115,33 @@ describe("resolvePage: documents that are not pages, and ones that cannot be res
     ).toThrow(/site/);
   });
 });
+
+describe("resolvePage: names that are not rules", () => {
+  it("a type called constructor, __proto__ or toString is not taken from the object's prototype", () => {
+    for (const type of ["constructor", "__proto__", "toString", "hasOwnProperty", "valueOf"]) {
+      expect(resolvePage({ _id: "x", _type: type, slug: "a" }, { site, pages }).kind, type).toBe(
+        "no-page",
+      );
+    }
+  });
+
+  it("a function-rule address with a user name or password is refused", () => {
+    const rules: PageRules = {
+      a: () => "https://user:secret@lantern-yard.example/x",
+      b: () => "https://user@lantern-yard.example/x",
+    };
+    for (const t of ["a", "b"]) {
+      const r = resolvePage({ _id: t, _type: t }, { site, pages: rules });
+      expect(r.kind).toBe("unresolved");
+      expect(JSON.stringify(r)).not.toContain("secret");
+    }
+  });
+
+  it("a slug of 512 characters is allowed and one of 513 is refused", () => {
+    const ok = "a".repeat(512);
+    expect(resolvePage({ _id: "p", _type: "page", slug: ok }, { site, pages }).kind).toBe("page");
+    expect(resolvePage({ _id: "p", _type: "page", slug: `${ok}a` }, { site, pages }).kind).toBe(
+      "unresolved",
+    );
+  });
+});

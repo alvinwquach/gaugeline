@@ -8,6 +8,7 @@
  * read. The page is read through the core fetcher (GET and HEAD). Reporting goes to a sink you
  * give it; the default writes one JSON line to the Function's log. Nothing is written to a dataset.
  */
+import { sanitise } from "@gaugeline/core";
 import {
   blocking,
   checkPage,
@@ -82,10 +83,20 @@ export async function checkDocument(data: unknown, options: GateOptions): Promis
       ...NOTHING,
       reason: "The event held no document with an _id and a _type.",
     };
-  const { _id: documentId, _type: type } = data;
-  if (documentId.startsWith("drafts."))
-    return { status: "not-gated", documentId, type, reason: "A draft is not published." };
-  const resolved = resolvePage(data, { site: options.site, pages: options.pages });
+  // Both come from the dataset and reach a log or a sink: cleaned and capped like page text.
+  const documentId = sanitise(data._id, 200).text;
+  const type = sanitise(data._type, 100).text;
+  if (documentId.startsWith("drafts.") || documentId.startsWith("versions."))
+    return {
+      status: "not-gated",
+      documentId,
+      type,
+      reason: "A draft or a release version is not published.",
+    };
+  const resolved = resolvePage(
+    { ...data, _type: type },
+    { site: options.site, pages: options.pages },
+  );
   if (resolved.kind === "no-page")
     return { status: "not-gated", documentId, type, reason: resolved.reason };
   if (resolved.kind === "unresolved")
@@ -118,7 +129,7 @@ export function gateHandler(
   options: GateOptions,
 ): (envelope: { event: { data: unknown } }) => Promise<void> {
   return async (envelope) => {
-    const outcome = await checkDocument(envelope.event.data, options);
+    const outcome = await checkDocument(envelope?.event?.data, options);
     if (outcome.status === "slipped" || outcome.status === "could-not-check")
       await (options.report ?? toLog)(outcome);
   };

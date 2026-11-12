@@ -34,6 +34,9 @@ export type Resolution =
 
 /** One or more slug segments: letters, digits and . _ ~ - only; "." and ".." are refused below. */
 const SLUG = /^[A-Za-z0-9._~-]+(?:\/[A-Za-z0-9._~-]+)*$/;
+/** The longest slug taken into an address, and the longest address a rule may give. */
+const MAX_SLUG = 512;
+const MAX_URL = 2048;
 const FIELD = /\{([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*)\}/g;
 
 function valueAt(doc: GateDocument, path: string): unknown {
@@ -55,6 +58,7 @@ function fill(template: string, doc: GateDocument): string | { missing: string }
     const text = typeof v === "number" && Number.isSafeInteger(v) ? String(v) : v;
     if (
       typeof text !== "string" ||
+      text.length > MAX_SLUG ||
       !SLUG.test(text) ||
       text.split("/").some((s) => s === "." || s === "..")
     ) {
@@ -68,6 +72,7 @@ function fill(template: string, doc: GateDocument): string | { missing: string }
 
 /** Where a path goes on the site, or undefined when it would leave it. */
 function onSite(path: string, site: URL): string | undefined {
+  if (path.length > MAX_URL) return undefined;
   if (/^\/(?![/\\])/.test(path)) {
     // A path: the base decides the host, whatever the path holds.
     const url = new URL(path, site);
@@ -75,6 +80,8 @@ function onSite(path: string, site: URL): string | undefined {
   }
   if (/^https?:\/\//i.test(path) && URL.canParse(path)) {
     const url = new URL(path);
+    // An address with a user name or password would be requested, and reported, with it.
+    if (url.username !== "" || url.password !== "") return undefined;
     return url.origin === site.origin ? url.href : undefined;
   }
   return undefined;

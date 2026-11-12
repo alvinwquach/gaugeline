@@ -22,7 +22,9 @@ The Function is a smoke alarm, not a lock. It reads the live page after the docu
 
 ## What it can touch
 
-Nothing is written. The Function gets the published document in its event, so it needs no Sanity client and no token, and it never reads the token Sanity hands every Function. It reads one page of your site with GET and HEAD, the same way `gaugeline` does, and refuses private addresses. It does not run the probing checks or the DNS checks.
+Nothing is written. The Function gets the published document in its event, so it needs no Sanity client and no token, and it never reads the token Sanity hands every Function.
+
+It reads the page, and only the page: one GET of it, plus a HEAD (then a GET if the site refuses HEAD) of each link on that page that points at your own site, to find dead ones. It does not fetch robots.txt, the sitemap, llms.txt, your other host names, scripts, images or feeds, so the checks that need those do not run in the gate; run `gaugeline` on the whole site for them. It uses the same read-only fetcher as `gaugeline`, which refuses private and metadata addresses, and it does not run the probing checks or the DNS checks. A draft and a release version are not published, so they are not checked.
 
 ## Set it up
 
