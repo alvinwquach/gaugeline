@@ -29,6 +29,8 @@ const STAND_IN = fileURLToPath(new URL("../stand-in/supabase-auth.sql", import.m
 export interface TestDatabase {
   /** A superuser connection to the fresh database (the migration owner, like "postgres" on Supabase). */
   sql: Sql;
+  /** The database's connection URL as the superuser; swap the user to connect as another login. */
+  url: string;
   /** Drop the database and close the connection. */
   drop: () => Promise<void>;
 }
@@ -50,6 +52,7 @@ export async function freshDatabase(options: { to?: number } = {}): Promise<Test
   if (options.to === undefined || options.to > 0) await migrate(sql, MIGRATIONS_DIR, options);
   return {
     sql,
+    url: withDatabase(TEST_DATABASE_URL, name),
     drop: async () => {
       await sql.end();
       const a = postgres(TEST_DATABASE_URL, { max: 1, onnotice: () => {} });

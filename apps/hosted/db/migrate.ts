@@ -4,7 +4,7 @@
  * private.schema_migrations. One run is one transaction: if any file fails, nothing from that run stays.
  * An advisory lock stops two deploys migrating at the same time.
  *
- *   GAUGELINE_DATABASE_URL=postgres://... pnpm --filter @gaugeline/hosted db:migrate
+ *   GAUGELINE_MIGRATE_URL=postgres://... pnpm --filter @gaugeline/hosted db:migrate
  */
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -80,9 +80,9 @@ export async function migrate(
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const url = process.env.GAUGELINE_DATABASE_URL;
+  const url = process.env.GAUGELINE_MIGRATE_URL;
   if (!url) {
-    process.stderr.write("GAUGELINE_DATABASE_URL is not set.\n");
+    process.stderr.write("GAUGELINE_MIGRATE_URL is not set.\n");
     process.exitCode = 2;
   } else {
     const sql = postgres(url, { max: 1, onnotice: () => {} });

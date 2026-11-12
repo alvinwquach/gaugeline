@@ -56,6 +56,13 @@ export function redirect(location: string, cookies: string[] = []): Response {
   return new Response(null, { status: 303, headers });
 }
 
+/** Browsers that have seen an https answer keep to https for a year. Added on https responses only. */
+export function withHsts(response: Response, request: Request, secure: boolean): Response {
+  if (secure || new URL(request.url).protocol === "https:")
+    response.headers.set("strict-transport-security", "max-age=31536000; includeSubDomains");
+  return response;
+}
+
 export function respondText(status: number, body: string, type: string): Response {
   return new Response(body, { status, headers: securityHeaders({ "content-type": type }) });
 }

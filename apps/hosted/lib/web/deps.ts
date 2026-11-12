@@ -1,9 +1,11 @@
 /**
  * What the web app is built from, and the one place that reads the environment.
  *
- *   GAUGELINE_DATABASE_URL        the app's own database login (server-only). Not the owner's address.
+ *   GAUGELINE_WEB_DATABASE_URL    the web app's own database login (server-only): a member of `authenticated`
+ *                                 and nothing else. Not the owner's address, not the runs API's login.
  *   GAUGELINE_APP_URL             the app's public address; https makes cookies Secure.
  *   GAUGELINE_AUTH                `stand-in` for development and tests; anything else is not configured.
+ *                                 The stand-in also needs NODE_ENV to be exactly `development` or `test`.
  *   GAUGELINE_STANDIN_SECRET      stand-in only: signs its tokens (32+ characters).
  *   GAUGELINE_STANDIN_USERS       stand-in only: `email=user-id,email=user-id`.
  *
@@ -31,6 +33,7 @@ export function standIn(env: Record<string, string | undefined>): AuthProvider {
   return new StandInAuth({
     secret: env.GAUGELINE_STANDIN_SECRET ?? "",
     users,
+    nodeEnv: env.NODE_ENV,
     // Development only: the stand-in has no mail server, so the link goes to the terminal that runs it.
     deliver: (email, token) =>
       void console.log(

@@ -19,7 +19,9 @@ import { hydrogenDevToolsLive } from "../hydrogen-dev-tools-live.js";
 import { hydrogenPreviewCanonical } from "../hydrogen-preview-canonical.js";
 import { hydrogenPreviewIndexable } from "../hydrogen-preview-indexable.js";
 import { hydrogenPricesDisagree } from "../hydrogen-prices-disagree.js";
+import { remixDevToolsLive } from "../remix-dev-tools-live.js";
 import { hydrogenPrivateFields } from "../hydrogen-private-fields.js";
+import { frameworkCoversDevTools } from "../../framework-dev-tools.js";
 
 const IDS = [
   "hydrogen-preview-canonical",
@@ -521,5 +523,50 @@ describe("hydrogen: edge cases", () => {
     await hydrogenPreviewIndexable.run(page("https://shop.example/", links + links), ctx);
     expect(asked.length).toBeLessThanOrEqual(5);
     expect(new Set(asked).size).toBe(asked.length);
+  });
+});
+
+describe("hydrogen-dev-tools-live and remix-dev-tools-live: one dev server, one report", () => {
+  const VITE = '<script type="module" src="/@vite/client"></script>';
+  const CONTEXT = '<script>window.__reactRouterContext = {"basename":"/","ssr":true};</script>';
+  const reports = async (p: ReturnType<typeof page>): Promise<string[]> => {
+    const ids: string[] = [];
+    for (const check of [hydrogenDevToolsLive, remixDevToolsLive])
+      for (const f of await check.run(p, ctxFor().ctx)) ids.push(f.checkId);
+    return ids;
+  };
+
+  it("a React Router 7 site that is not Hydrogen is the Remix check's alone", async () => {
+    // No Hydrogen header and nothing from Shopify's CDN: React Router's context beside Vite's client is a Remix page.
+    const p = page(URL0, `${VITE}${CONTEXT}`, {});
+    expect(isHydrogenSite(p)).toBe(false);
+    expect(await hydrogenDevToolsLive.run(p, ctxFor().ctx)).toEqual([]);
+    expect(await reports(p)).toEqual(["remix-dev-tools-live"]);
+    expect(frameworkCoversDevTools(p)).toBe(true);
+  });
+
+  it("a Hydrogen storefront (the header) on a dev server is the Hydrogen check's alone", async () => {
+    const p = page(URL0, `${VITE}${CONTEXT}`, H);
+    expect(await reports(p)).toEqual(["hydrogen-dev-tools-live"]);
+    expect(frameworkCoversDevTools(p)).toBe(true);
+  });
+
+  it("a Hydrogen storefront with no header, known by Shopify's CDN beside the context, is Hydrogen's alone", async () => {
+    const p = page(
+      URL0,
+      `<script src="https://cdn.shopify.com/s/files/x.js"></script>${VITE}${CONTEXT}`,
+      {},
+    );
+    expect(await reports(p)).toEqual(["hydrogen-dev-tools-live"]);
+  });
+
+  it("Vite's client on a page that is neither Hydrogen nor React Router is neither check's", async () => {
+    const p = page(URL0, `${VITE}<main>Hi</main>`, {});
+    expect(await reports(p)).toEqual([]);
+  });
+
+  it("a Hydrogen page with no dev markers is not reported by either, and a built React Router page is not either", async () => {
+    expect(await reports(page(URL0, CONTEXT, H))).toEqual([]);
+    expect(await reports(page(URL0, CONTEXT, {}))).toEqual([]);
   });
 });

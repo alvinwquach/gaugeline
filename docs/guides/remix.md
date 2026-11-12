@@ -33,7 +33,8 @@ run.
   request is made.
 - `remix-dev-tools-live` (fix first): the page was served by the dev server (it loads
   `/@vite/client`, `/@react-refresh`, the `inject-hmr-runtime` module or the live-reload script).
-  Read from the page already fetched.
+  Read from the page already fetched. A Hydrogen storefront is reported by `hydrogen-dev-tools-live`
+  instead, so one dev server is reported once.
 
 Gaugeline does not ask for the `.data` or `?_data=` address of a page or a route: loader data of
 other routes is not requested, and the data of the page being checked is read from the page itself.

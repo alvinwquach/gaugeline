@@ -135,10 +135,15 @@ export interface RunFlags {
   notify: { slack?: string; discord?: string; webhook?: string; email?: string };
   notifyOn: "any" | "high" | "always";
   reportUrl?: string;
+  /** --upload: send the result to the hosted workspace after the run (G35). */
+  upload: boolean;
   /** --save-requests: where to write the request log and page data (a separate file, never the result). */
   saveRequests?: string;
   ci: boolean;
+  /** Machine output on stdout: --json, or --format json|sarif|junit. No report file, no stderr chatter. */
   json: boolean;
+  /** --format sarif or junit: which machine format stdout carries. Absent for the JSON result. */
+  format?: "sarif" | "junit";
   noOpen: boolean;
   verbose: boolean;
   quiet: boolean;
@@ -522,6 +527,23 @@ export function parseCliArgs(
       kind: "error",
       message: `--since accepts only last in this version, not "${String(values.since)}".`,
       hint: "Use --since last to compare with the previous run of this site.",
+      verbose,
+    };
+  }
+  const format = values.format;
+  if (format !== undefined && format !== "json" && format !== "sarif" && format !== "junit") {
+    return {
+      kind: "error",
+      message: `--format accepts json, sarif or junit, not "${String(format)}".`,
+      hint: "For example: gaugeline example.com --format sarif > gaugeline.sarif",
+      verbose,
+    };
+  }
+  if (format !== undefined && format !== "json" && values.json === true) {
+    return {
+      kind: "error",
+      message: `--json and --format ${format} both choose what stdout carries. Use one.`,
+      hint: "--json is the same as --format json.",
       verbose,
     };
   }
@@ -1709,6 +1731,7 @@ export function parseCliArgs(
     },
     notifyOn,
     ...(typeof values["report-url"] === "string" ? { reportUrl: values["report-url"] } : {}),
+    upload: values.upload === true,
     ...(values.since === "last" ? { since: "last" as const } : {}),
     ...(typeof values["save-requests"] === "string"
       ? { saveRequests: values["save-requests"] }
@@ -1721,7 +1744,8 @@ export function parseCliArgs(
     allowPrivate: values["allow-private"] === true,
     // The gate blocks only with --block; the CI variable alone does not turn it on.
     ci: gate ? gate.block : values.ci === true,
-    json: values.json === true,
+    json: values.json === true || format !== undefined,
+    ...(format === "sarif" || format === "junit" ? { format } : {}),
     noOpen: gate ? true : values["no-open"] === true,
   };
 }

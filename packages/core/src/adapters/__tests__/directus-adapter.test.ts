@@ -730,3 +730,54 @@ describe("review fixes: the token and the fields asked for", () => {
     expect(new URL(byId.seen[0]?.url ?? "").searchParams.get("fields")).not.toContain("slug");
   });
 });
+
+describe("follow-up lows: the visitor probe", () => {
+  const real = directusTransport(LARKSPUR, { token: KEY });
+
+  it("a 403 whose Directus-shaped body has another error code is unread, not closed", async () => {
+    const other: Transport = (url, req) =>
+      req.headers.authorization === undefined
+        ? json(403, { errors: [{ message: "x", extensions: { code: "SOMETHING_ELSE" } }] })
+        : real(url, req);
+    const got = await over({ transport: other }).adapter.publicCollections();
+    expect(got.map((c) => c.state)).toEqual(["unread", "unread"]);
+    expect(got[0]?.reason).toMatch(/not a Directus answer/);
+  });
+
+  it("a redirect is not followed: a cross-origin 302 to a server that lists items is unread, and that server is never asked", async () => {
+    const hosts: string[] = [];
+    const redirecting: Transport = (url, req) => {
+      hosts.push(url.host);
+      if (url.host === "elsewhere.example")
+        return json(200, { data: [{ id: 1 }], meta: { filter_count: 1 } });
+      return req.headers.authorization === undefined
+        ? Promise.resolve({
+            status: 302,
+            headers: { location: "https://elsewhere.example/items/appointments" },
+            body: Readable.from([]),
+          })
+        : real(url, req);
+    };
+    const got = await over({ transport: redirecting }).adapter.publicCollections();
+    expect(got.map((c) => c.state)).toEqual(["unread", "unread"]);
+    expect(got[0]?.reason).toMatch(/redirect/);
+    expect(hosts).not.toContain("elsewhere.example");
+  });
+
+  it("a closed collection the token was refused (401) says the token is the problem, naming the variable", async () => {
+    const refused: Transport = (url, req) =>
+      req.headers.authorization === undefined
+        ? json(403, { errors: [{ message: "x", extensions: { code: "FORBIDDEN" } }] })
+        : json(401, { errors: [{ message: "x", extensions: { code: "INVALID_CREDENTIALS" } }] });
+    const got = await over({ transport: refused }).adapter.publicCollections();
+    expect(got[0]).toMatchObject({ state: "closed", exists: false });
+    expect(got[0]?.unconfirmed).toMatch(/DIRECTUS_TOKEN.*401/);
+  });
+
+  it("with no token the reason names the variable too", async () => {
+    const { adapter } = over({ adapter: { env: { DIRECTUS_URL: CMS_URL } } });
+    expect((await adapter.publicCollections())[0]?.unconfirmed).toMatch(
+      /DIRECTUS_TOKEN is not set/,
+    );
+  });
+});

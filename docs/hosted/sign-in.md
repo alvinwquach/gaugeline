@@ -34,13 +34,13 @@ $ curl -X POST -d 'email=maya@northgate.test' http://127.0.0.1:3101/sign-in
 ```
 
 Opening the link shows one button, "Sign in", and the button's POST signs in, so a mail scanner that opens
-the link does not use it up. After that, the home page shows what the database lets Maya read:
+the link does not use it up. After that, the home page is the organisation's name, your role and the table of its sites (see
+[the dashboard](/hosted/dashboard)); it shows only what the database lets Maya read:
 
 ```html
 <main id="main">
   <h1>Northgate Studio</h1>
   <p class="muted">You are signed in as Owner.</p>
-  <h2>Sites</h2>
   <ul>
     <li>Juniper Pop-up Kitchen</li>
     <li>The Tidewater Bar</li>
@@ -56,12 +56,26 @@ nothing else.
 - It is sent to the address you type. The page answers the same way whether or not the address has an
   account, so the form cannot be used to find out who has one.
 - It works once and expires after 15 minutes. An expired or used link says so and offers a new one.
+  Asking for a new link ends the older one, and expired links are dropped, so links do not pile up.
+- An address with no account does the same work as one with an account, so the form's answer does not
+  tell them apart. (The stand-in does not equalise the time to deliver the mail; the real provider
+  rate-limits and has its own mail path.)
 - Where you were going is kept in a cookie in the browser that asked, so a link opened in another
-  browser does not inherit it. Only a path on this app is followed; `//evil.test`, `https://...` and
-  `/\evil.test` all go to the home page.
+  browser does not inherit it. Only a path on this app is followed. A value is refused (and you land on
+  the home page) if it does not start with exactly one `/`, contains any space, control, invisible or
+  separator character (a browser strips a tab or newline, so `/<tab>/evil.test` would leave the site) or a
+  backslash, or does not parse as a path on this app. `//evil.test`, `https://...`, `/\evil.test`,
+  `/%09/...` (once decoded) and `javascript:` all go to the home page.
 - The session is a cookie, `HttpOnly`, `SameSite=Lax`, and on https `Secure` with the `__Host-` prefix.
   Every action that changes something (sign out, switch organisation) must come from this app's own
-  page: the `Origin` (or `Referer`) is checked as well.
+  page: the `Origin` (or `Referer`) is checked as well. On https every response also carries
+  `Strict-Transport-Security`.
+- Signing out ends the session on the server, not just in your browser: the session's id is put on a
+  revocation list (kept until the token would have expired anyway), so a copy of the cookie stops working
+  at once.
+- The token is checked strictly: `alg` HS256 and `typ` JWT only, one canonical spelling of the signature,
+  at most 8 KB, issuer, audience and role as expected, `iat` and `nbf` not in the future (60 seconds of
+  clock skew), and a lifetime of at most 30 days whatever it claims. The user id is compared in lower case.
 
 ## Who sees what
 
@@ -91,9 +105,11 @@ are a member of it, so a forged cookie changes nothing.
 
 ## The database login
 
-The app connects with its own login role, never the table owner and never a superuser, because both skip
-row-level security. At start-up it asks `connectionSkipsRls()` once and refuses to serve if the answer is
-yes. Every read a signed-in person causes then runs in one transaction that starts with
+The app connects with its own login role (`GAUGELINE_WEB_DATABASE_URL`), never the table owner and never
+a superuser, because both skip row-level security. At start-up it asks `connectionSkipsRls()` once and
+refuses to serve if the answer is yes. It also refuses a login that is, or can become, `service_role` or a
+role that bypasses row-level security: that login is the runs API's (`GAUGELINE_DATABASE_URL`), a separate
+role, because the web app reads as the signed-in person only. Every read a signed-in person causes then runs in one transaction that starts with
 `set local role authenticated` and sets `request.jwt.claims` to that person's verified claims, and checks
 that the database sees the same person (`auth.uid()`). The app never writes runs or findings (the runs API
 does, as the server) and never chooses an id, `decided_at` or `recorded_at`.
@@ -101,21 +117,24 @@ does, as the server) and never chooses an id, `decided_at` or `recorded_at`.
 ## Running it locally
 
 ```bash
-GAUGELINE_DATABASE_URL=postgres://app-login:...@127.0.0.1:5432/gaugeline \
+GAUGELINE_WEB_DATABASE_URL=postgres://app-login:...@127.0.0.1:5432/gaugeline \
 GAUGELINE_AUTH=stand-in GAUGELINE_STANDIN_SECRET=<32+ characters> \
 GAUGELINE_STANDIN_USERS="maya@northgate.test=<user id>" \
 pnpm --filter @gaugeline/hosted dev
 ```
 
-| Variable                 | What it is                                                                      |
-| ------------------------ | ------------------------------------------------------------------------------- |
-| `GAUGELINE_DATABASE_URL` | the app's own login (a member of `authenticated` only), not the owner's address |
-| `GAUGELINE_APP_URL`      | the public address; `https://` makes cookies `Secure`                           |
-| `GAUGELINE_AUTH`         | `stand-in`. Anything else is "not configured" and every page answers 503        |
-| `GAUGELINE_STANDIN_*`    | the stand-in's signing secret and its list of addresses and user ids            |
+| Variable                     | What it is                                                                      |
+| ---------------------------- | ------------------------------------------------------------------------------- |
+| `GAUGELINE_WEB_DATABASE_URL` | the app's own login (a member of `authenticated` only), not the owner's address |
+| `GAUGELINE_APP_URL`          | the public address; `https://` makes cookies `Secure`                           |
+| `GAUGELINE_AUTH`             | `stand-in`. Anything else is "not configured" and every page answers 503        |
+| `GAUGELINE_STANDIN_*`        | the stand-in's signing secret and its list of addresses and user ids            |
 
-The stand-in has no mail server: the link is printed in the terminal that runs it. It refuses to start
-when `NODE_ENV=production`. The browser test (`pnpm hosted:e2e`) and the database tests
+The stand-in has no mail server: the link is printed in the terminal that runs it. It runs only when
+`NODE_ENV` is exactly `development` or `test` (unset, `Production`, `staging` and every other value are
+refused), `GAUGELINE_AUTH=stand-in` must be set as well, its secret must be 32 or more characters with at
+least 16 different ones, and the development server (`pnpm --filter @gaugeline/hosted dev`) treats an unset
+`NODE_ENV` as `development`. The browser test (`pnpm hosted:e2e`) and the database tests
 (`pnpm exec vitest run apps/hosted`) need a Postgres server you can create databases on; see
 [data model and tenancy](/hosted/data-model).
 
@@ -137,12 +156,14 @@ Supabase's auth source, and the vendor's own pages were not reachable when this 
 4. The token's signing key, and the same key (or its public key set) given to the app so `verify` can
    check tokens. The app verifies the token itself; it does not ask Supabase on each request.
 5. The app's login role (NOINHERIT, a member of `authenticated`), and its address as
-   `GAUGELINE_DATABASE_URL`.
+   `GAUGELINE_WEB_DATABASE_URL`.
 6. A Supabase-backed `AuthProvider`, and `GAUGELINE_AUTH` set to it.
 
 ## Not here yet
 
 - Refresh tokens: the stand-in's session lasts 8 hours and then asks for a new link.
+- Durable sign-out and links: the stand-in keeps the revocation list and the unused links in memory, so they
+  are lost on a restart and not shared by two server processes. The real provider keeps its own sessions.
 - Rate limits on asking for a link (the real provider has its own).
 - Creating an organisation and inviting people (agencies, X66).
 - Adding a site and verifying that you own it, and the nightly time. The hosted service cannot check a

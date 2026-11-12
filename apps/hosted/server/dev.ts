@@ -6,7 +6,8 @@ import type { AddressInfo } from "node:net";
 import { buildDeps } from "../lib/web/deps.js";
 import { createWebServer } from "./node.js";
 
-const deps = await buildDeps(process.env);
+// This is the development server, so an unset NODE_ENV means development; any other value is kept and judged.
+const deps = await buildDeps({ ...process.env, NODE_ENV: process.env.NODE_ENV ?? "development" });
 const port = Number(process.env.PORT ?? 3000);
 let origin = "";
 const server = createWebServer(deps, () => origin);
