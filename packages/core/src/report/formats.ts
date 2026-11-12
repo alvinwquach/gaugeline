@@ -38,6 +38,13 @@ export interface FormatOptions {
   suppressed?: readonly SuppressedFinding[];
   /** Checks left out of this run on purpose (the DNS checks without --dns): a skip, never a failure. */
   notRun?: readonly string[];
+  /**
+   * Off by default. GitHub code scanning may want a file for every result, and a finding about a live
+   * page has none. On, each such result also carries a placeholder file, `gaugeline-pages/<host>/<path>`
+   * (a path ending in "/" becomes ".../index"), at line 1; the address stays as a logical location.
+   * The placeholder names no real file in the repository. Turn it on only if an upload is rejected.
+   */
+  physicalLocationFallback?: boolean;
 }
 
 const DOCS_CHECKS = "https://gaugeline.dev/docs/checks";
@@ -66,6 +73,23 @@ function pathOf(url: string): string {
   } catch {
     return "";
   }
+}
+
+/** The placeholder file for a page address: gaugeline-pages/<host>/<path>, "index" for a folder. */
+function placeholderUri(url: string): string {
+  let host = "page";
+  let path = "";
+  try {
+    const u = new URL(url);
+    host = u.hostname || host;
+    path = u.pathname;
+  } catch {
+    // Not an address: the placeholder is just the host-less name.
+  }
+  const clean = path.replace(/^\/+/, "");
+  const last = clean === "" || clean.endsWith("/") ? `${clean}index` : clean;
+  // URL already percent-encodes the path and the host.
+  return `gaugeline-pages/${host}/${last}`;
 }
 
 /** A repository-relative URI reference: forward slashes, no leading "./", escaped. */
@@ -117,7 +141,17 @@ export function formatSarif(result: Result, options: FormatOptions): string {
             region: { startLine: Math.max(1, f.source.line) },
           },
         }
-      : { logicalLocations: [{ fullyQualifiedName: url, kind: "resource" }] };
+      : {
+          ...(options.physicalLocationFallback
+            ? {
+                physicalLocation: {
+                  artifactLocation: { uri: placeholderUri(f.url), uriBaseId: "%SRCROOT%" },
+                  region: { startLine: 1 },
+                },
+              }
+            : {}),
+          logicalLocations: [{ fullyQualifiedName: url, kind: "resource" }],
+        };
     return {
       ruleId: f.checkId,
       ruleIndex: index.get(f.checkId) ?? -1,
