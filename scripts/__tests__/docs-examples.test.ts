@@ -3,6 +3,7 @@ import {
   EMAIL_PRESET,
   FRESHNESS_CHECKS,
   MODEL_CHECKS,
+  SANITY_IMAGE_CHECKS,
   LISTING_CHECKS,
   CRM_CHECKS,
   SWITCH_CHECKS,
@@ -178,6 +179,8 @@ describe("docs examples: integration", () => {
               !FRESHNESS_CHECKS.includes(id) &&
               // And without gaugeline.model.json.
               !MODEL_CHECKS.includes(id) &&
+              // And without gaugeline.adapters.json naming sanity (the Sanity image checks that read the dataset).
+              !SANITY_IMAGE_CHECKS.includes(id) &&
               // And without --owner-consent (the probing checks).
               !PROBING_CHECKS.includes(id),
           ),
