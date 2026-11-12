@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { writeWordIn } from "../fetch/mcp-jsonrpc.js";
+import { idPattern, idPatternProblem, writeTokenIn, writeWordIn } from "../fetch/mcp-jsonrpc.js";
 import { sanitise } from "../untrusted.js";
 
 /**
@@ -37,6 +37,9 @@ export const COULD_NOT_CHECK = Object.freeze({
     "the server asked Gaugeline a question; Gaugeline answers no request from a server, so the run stopped",
   unexpectedShape: "the answer does not have the fields Gaugeline reads",
   callCap: "the run reached its call cap for this platform",
+  unreviewed:
+    "the server lists a tool Gaugeline has not reviewed, or two tools whose names differ only in case, so this session is not trusted and nothing was called",
+  badCursor: "the server's page cursor is not an opaque token",
   task: "the server would run this tool as a task, which Gaugeline does not follow, so it is not called",
 } as const);
 
@@ -97,11 +100,14 @@ export function toolLockProblem(
   entry: { tool: string; listingHash: string },
   listed: readonly unknown[],
 ): CouldNotCheckReason | undefined {
-  const same = listed.filter((t) => isObject(t) && t.name === entry.tool) as Record<
-    string,
-    unknown
-  >[];
-  const tool = same.length === 1 ? same[0] : undefined;
+  // Every name that equals the entry's once lower-cased: "LIST_TABLES" beside "list_tables" is not one tool.
+  const same = listed.filter(
+    (t) =>
+      isObject(t) &&
+      typeof t.name === "string" &&
+      t.name.toLowerCase() === entry.tool.toLowerCase(),
+  ) as Record<string, unknown>[];
+  const tool = same.length === 1 && same[0]?.name === entry.tool ? same[0] : undefined;
   if (tool === undefined) return COULD_NOT_CHECK.notListed;
   if (!hintsSayRead(tool.annotations)) return COULD_NOT_CHECK.hints;
   // A tool run as a task answers later, through calls Gaugeline never makes: only "forbidden" (or none) is read.
@@ -114,22 +120,81 @@ export function toolLockProblem(
   return undefined;
 }
 
+/** A tool the server may list in its read-only session that Gaugeline never calls, pinned by its reviewed hash. */
+export interface ToleratedTool {
+  tool: string;
+  listingHash: string;
+}
+
 /**
- * For a session the entry says is in the server's read-only mode: undefined when every listed tool
- * says `readOnlyHint: true`, none says `destructiveHint: true` and none is named like a write. A
- * listing that is empty or malformed is could-not-check, never a pass.
+ * The whole listing of a session the entry says is in the server's read-only mode, every page
+ * collected, judged before any call. Every tool says `readOnlyHint: true` and is not destructive; no
+ * two names are equal once lower-cased; a name outside plain ASCII stops the run; and no tool is named
+ * like a write, except a tolerated one, matched by exact name AND reviewed hash, with all three hints.
+ * With `reviewed`, any tool neither called nor tolerated stops the run too. A listing that is empty or
+ * malformed is could-not-check, never a pass. A description is never read.
  */
-export function sessionReadOnlyProblem(listed: unknown): CouldNotCheckReason | undefined {
+export function sessionReadOnlyProblem(
+  listed: unknown,
+  reviewed?: { called: readonly { tool: string }[]; tolerated: readonly ToleratedTool[] },
+): CouldNotCheckReason | undefined {
   if (!Array.isArray(listed) || listed.length === 0) return COULD_NOT_CHECK.unexpectedShape;
+  const seen = new Set<string>();
   for (const t of listed) {
     if (!isObject(t) || typeof t.name !== "string") return COULD_NOT_CHECK.unexpectedShape;
     // A name outside plain ASCII (a Cyrillic lookalike) cannot be screened by words: not read-only.
     if (!/^[A-Za-z0-9_.-]{1,64}$/.test(t.name)) return COULD_NOT_CHECK.sessionNotReadOnly;
+    const lower = t.name.toLowerCase();
+    if (seen.has(lower)) return COULD_NOT_CHECK.unreviewed;
+    seen.add(lower);
     const a = isObject(t.annotations) ? t.annotations : {};
-    if (a.readOnlyHint !== true || a.destructiveHint === true || writeWordIn(t.name) !== undefined)
+    if (a.readOnlyHint !== true || a.destructiveHint === true)
       return COULD_NOT_CHECK.sessionNotReadOnly;
+    const tolerated = reviewed?.tolerated.find((x) => x.tool === t.name);
+    if (tolerated !== undefined) {
+      if (!hintsSayRead(t.annotations)) return COULD_NOT_CHECK.sessionNotReadOnly;
+      if (listingHash(t) !== tolerated.listingHash) return COULD_NOT_CHECK.changed;
+      continue;
+    }
+    if (writeWordIn(t.name) !== undefined) return COULD_NOT_CHECK.sessionNotReadOnly;
+    if (reviewed !== undefined && !reviewed.called.some((c) => c.tool === t.name))
+      return COULD_NOT_CHECK.unreviewed;
   }
   return undefined;
+}
+
+/**
+ * Contract for an entry's tolerated list: a lower-case ASCII name with no write verb as a word (a key,
+ * docs or search tool, never `apply_migration` or `execute_sql`), never one of the tools the entry
+ * calls (the names `fetcher.query` may send), listed once, with a sha256 hash.
+ */
+export function toleratedProblems(
+  tolerated: readonly ToleratedTool[],
+  called: readonly { tool: string }[],
+): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const t of tolerated) {
+    if (!/^[a-z][a-z0-9_]{0,63}$/.test(t.tool)) out.push(`${t.tool}: not a lower-case ASCII name`);
+    const verb = writeTokenIn(t.tool);
+    if (verb !== undefined) out.push(`${t.tool}: a tool named with "${verb}" is never tolerated`);
+    if (called.some((c) => c.tool.toLowerCase() === t.tool.toLowerCase()))
+      out.push(`${t.tool}: is a called tool, so it is not tolerated`);
+    if (seen.has(t.tool)) out.push(`${t.tool}: tolerated twice`);
+    seen.add(t.tool);
+    if (!/^[0-9a-f]{64}$/.test(t.listingHash))
+      out.push(`${t.tool}: the listing hash is not a sha256`);
+  }
+  return out;
+}
+
+/** Why a server's page cursor may not be sent back, or undefined: an opaque token, short, no "..". */
+export function cursorProblem(cursor: unknown): CouldNotCheckReason | undefined {
+  return typeof cursor === "string" &&
+    /^[A-Za-z0-9+/=_.-]{1,256}$/.test(cursor) &&
+    !cursor.includes("..")
+    ? undefined
+    : COULD_NOT_CHECK.badCursor;
 }
 
 /** The parts of a fetcher hop this module reads. */
@@ -181,6 +246,8 @@ export function readRpcAnswer(
       return fail(COULD_NOT_CHECK.notJson);
     }
   } else return fail(COULD_NOT_CHECK.notJson);
+  // A batch (an array of messages) is read as its messages, so nothing hides inside one.
+  messages = messages.flatMap((m) => (Array.isArray(m) ? (m as unknown[]) : [m]));
   // A request from the server anywhere in the answer ends the run, before or after the response.
   if (messages.some((m) => isObject(m) && typeof m.method === "string" && m.id !== undefined))
     return fail(COULD_NOT_CHECK.serverRequest);
@@ -207,7 +274,10 @@ export function toolResultData(
   const fail = (reason: CouldNotCheckReason) => ({ ok: false as const, reason });
   if (!isObject(result)) return fail(COULD_NOT_CHECK.unexpectedShape);
   if (result.isError === true) return fail(COULD_NOT_CHECK.toolError);
-  if (isObject(result.structuredContent)) return { ok: true, data: result.structuredContent };
+  if (isObject(result.structuredContent))
+    return Buffer.byteLength(JSON.stringify(result.structuredContent)) > maxBytes
+      ? fail(COULD_NOT_CHECK.tooLarge)
+      : { ok: true, data: result.structuredContent };
   const first = Array.isArray(result.content)
     ? (result.content as unknown[]).find((c) => isObject(c) && c.type === "text")
     : undefined;
@@ -237,6 +307,8 @@ export type OutputRule =
   | { type: "hash" }
   | { type: "list"; max: number; item: Readonly<Record<string, OutputRule>> };
 
+/** The longest id kept. */
+const ID_MAX = 128;
 /** The longest name kept. */
 export const NAME_MAX = 40;
 /** Hex digits of a kept hash: enough to tell two texts apart, too few to search for one. */
@@ -253,10 +325,18 @@ function keepValue(rule: OutputRule, v: unknown): unknown {
       const t = Date.parse(v);
       return Number.isFinite(t) ? new Date(t).toISOString() : undefined;
     }
-    case "id":
-      return typeof v === "string" && v.length <= 128 && new RegExp(rule.pattern).test(v)
-        ? v
-        : undefined;
+    case "id": {
+      // A rule that admits free text keeps nothing; a kept id is still cleaned (N17) and capped.
+      if (
+        typeof v !== "string" ||
+        v.length > ID_MAX ||
+        idPatternProblem(rule.pattern) !== undefined
+      )
+        return undefined;
+      if (!idPattern(rule.pattern).test(v)) return undefined;
+      const clean = sanitise(v, ID_MAX).text;
+      return clean === v ? clean : undefined;
+    }
     case "enum":
       return typeof v === "string" && rule.values.includes(v) ? v : undefined;
     case "name": {
@@ -315,15 +395,8 @@ export function outputRuleProblems(rules: Readonly<Record<string, OutputRule>>, 
       case "hash":
         break;
       case "id": {
-        const p = r.pattern;
-        let compiles = typeof p === "string";
-        try {
-          if (compiles) new RegExp(p as string);
-        } catch {
-          compiles = false;
-        }
-        if (!compiles || !(p as string).startsWith("^") || !(p as string).endsWith("$"))
-          out.push(`${where}: an id rule needs an anchored pattern that compiles`);
+        const why = idPatternProblem(r.pattern);
+        if (why !== undefined) out.push(`${where}: ${why}`);
         break;
       }
       case "enum":
