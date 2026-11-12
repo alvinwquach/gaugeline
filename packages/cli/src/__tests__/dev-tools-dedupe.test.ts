@@ -39,3 +39,17 @@ describe("development tools: the generic check steps aside for a framework's own
     expect(text).not.toContain("Development tools are live on your site");
   });
 });
+
+describe("development tools: Hydrogen and Remix do not report the same dev server twice", () => {
+  it("hydrogen-dev (a Hydrogen storefront on React Router) is the Hydrogen check's, not the Remix check's", async () => {
+    const text = await run("hydrogen-dev");
+    expect(text).toContain("\u2717 The live Hydrogen store is a development server\n");
+    expect(text).not.toContain("The live Remix site is a development server");
+  });
+
+  it("remix-dev (a React Router 7 site that is not Hydrogen) is the Remix check's, not the Hydrogen check's", async () => {
+    const text = await run("remix-dev");
+    expect(text).toContain("\u2717 The live Remix site is a development server\n");
+    expect(text).not.toContain("The live Hydrogen store is a development server");
+  });
+});
