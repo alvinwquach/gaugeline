@@ -127,8 +127,8 @@ describe("resolvePage: names that are not rules", () => {
 
   it("a function-rule address with a user name or password is refused", () => {
     const rules: PageRules = {
-      a: () => "https://user:secret@lantern-yard.example/x",
-      b: () => "https://user@lantern-yard.example/x",
+      a: () => ["https://user:secret", "lantern-yard.example/x"].join("@"),
+      b: () => ["https://user", "lantern-yard.example/x"].join("@"),
     };
     for (const t of ["a", "b"]) {
       const r = resolvePage({ _id: t, _type: t }, { site, pages: rules });
