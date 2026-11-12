@@ -8,3 +8,5 @@ npx gaugeline-mcp --http     # streamable HTTP on 127.0.0.1:7433/mcp
 ```
 
 Docs: the MCP server page at https://github.com/alvinwquach/gaugeline/blob/main/docs/mcp.md
+
+Set it up in Claude Desktop, Claude Code, Cursor, VS Code, Windsurf or Codex: https://github.com/alvinwquach/gaugeline/blob/main/docs/mcp-install.md
