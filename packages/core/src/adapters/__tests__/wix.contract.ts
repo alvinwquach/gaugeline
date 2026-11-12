@@ -30,6 +30,7 @@ export const wixEntry: ContractEntry = {
   key: WIX_KEY,
   keyRaw: true,
   queryAllow: [WIX_QUERY_ALLOW],
+  unknownType: "could-not-check",
   secrets: Object.values(WIX_NATIVE_MARKERS),
   expected: {
     types: [

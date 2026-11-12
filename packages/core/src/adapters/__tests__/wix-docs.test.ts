@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { adapterHeader } from "../collect.js";
 import { adaptersConfigSchema } from "../config.js";
 import { BUILT_ADAPTERS } from "../registry.js";
+import { entries } from "../wix.entry.js";
 import { WIX_CMS_READ_PATH, WIX_QUERY_ALLOW } from "../wix.js";
 import {
   marlowNativeReads,
@@ -49,7 +50,7 @@ describe("docs/integrations/wix.md", () => {
     expect(shown).toEqual([
       adapterHeader(built?.describe ?? { name: "", docsUrl: "", keyKind: "read-only" }),
     ]);
-    expect(shown[0]).toContain("Content system: Wix, with a read-only key when one is set");
+    expect(shown[0]).toContain("Content system: Wix (beta), with a read-only key when one is set");
   });
 
   it("the settings it shows are valid and are the ones the examples read with", () => {
@@ -94,6 +95,37 @@ describe("docs/integrations/wix.md", () => {
     expect(page).toContain(WIX_QUERY_ALLOW.id);
     expect(page).toContain(WIX_QUERY_ALLOW.host as string);
     expect(page).toContain("open question 52");
+  });
+
+  it("says a Wix Data query returns every item the key can read, not only published ones", () => {
+    const reads = (entries[0]?.docs?.reads ?? "").split("With the key:")[1] ?? "";
+    expect(reads).not.toMatch(/published items/i);
+    expect(page).not.toMatch(/published items/i);
+    expect(page).toContain("every item the key can read");
+  });
+
+  it("says Gaugeline cannot check that a key is read-only, and that making one is the owner's job", () => {
+    expect(page).toMatch(/cannot (see|check) (what|whether)[^.]*key/i);
+    expect(page).toContain("you make");
+  });
+
+  it("the sidebar and index title carries (beta), like the page's own heading and Framer's", () => {
+    expect(entries[0]?.page?.title).toBe("Wix: content checks for sites built on Wix (beta)");
+    expect(entries[0]?.page?.title).toBe(page.split("\n")[0]?.replace(/^# /, ""));
+  });
+
+  it("is marked beta, with the reason: the endpoint shapes are not confirmed", () => {
+    expect(built?.describe.beta).toBe(true);
+    expect(page.split("\n")[0]).toContain("(beta)");
+    expect(page).toContain("This adapter is beta");
+    expect(page).toContain("Content system: Wix (beta)");
+  });
+
+  it("states the limits on ids, slugs, field names and the site id, and that the CMS read is skipped without a site id or a collection", () => {
+    expect(page).toContain("## Limits on names and ids");
+    for (const needle of ["128", "letters, digits", "siteId", "120 seconds", "one leading"])
+      expect(page).toContain(needle);
+    expect(page).toContain("WIX_API_KEY is set but");
   });
 
   it("marks what it could not confirm: the sources note and the uncited endpoint shapes", () => {

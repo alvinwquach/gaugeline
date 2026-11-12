@@ -44,6 +44,7 @@ describe("leaks: unit (detectors)", () => {
       "sanity-token",
       "contentful-preview-token",
       "contentstack-preview-token",
+      "storyblok-preview-token",
       "secret-assignment",
     ]);
   });
@@ -151,6 +152,7 @@ describe("leaks: unit (detectors)", () => {
     expect(named.map((d) => d.id)).toEqual([
       "contentful-preview-token",
       "contentstack-preview-token",
+      "storyblok-preview-token",
       "secret-assignment",
     ]);
     for (const d of named) {

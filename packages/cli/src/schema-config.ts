@@ -9,6 +9,8 @@ import {
   renewalsConfigSchema,
   handoffConfigSchema,
   costConfigSchema,
+  changesConfigSchema,
+  type ChangesConfig,
   backupsConfigSchema,
   trackersConfigSchema,
   adaptersConfigSchema,
@@ -16,6 +18,7 @@ import {
   eventsConfigSchema,
   factsConfigSchema,
   hiddenConfigSchema,
+  staleDatesConfigSchema,
   navRulesSchema,
   languageRulesSchema,
   listingsConfigSchema,
@@ -44,6 +47,7 @@ import {
   type FactsConfig,
   type HiddenConfig,
   type NavRules,
+  type StaleDatesConfig,
   type LanguageRules,
   type ListingsConfig,
   type CrmConfig,
@@ -102,6 +106,8 @@ export const HIDDEN_CONFIG_FILE = "gaugeline.hidden.json";
 export const EVENTS_CONFIG_FILE = "gaugeline.events.json";
 /** Where the menus are and which footer links are required, likewise (nav-orphans, nav-footer). */
 export const NAV_CONFIG_FILE = "gaugeline.nav.json";
+/** Grace days, ignored sentences and historic paths for the out-of-date copy checks. */
+export const STALE_DATES_CONFIG_FILE = "gaugeline.stale-dates.json";
 /** Pages whose loss was intended, each with its reason, likewise (the page checks). */
 export const PAGES_CONFIG_FILE = "gaugeline.pages.json";
 /** The DKIM selectors to read and the changes meant at cutover, likewise (snapshot, cutover). */
@@ -181,6 +187,12 @@ export function readServicesConfig(dir: string): ServicesConfig | undefined {
 
 export function readTrackersConfig(dir: string): TrackersConfig | undefined {
   return readJsonConfig(dir, TRACKERS_CONFIG_FILE, trackersConfigSchema, "the tracker settings");
+}
+
+export const CHANGES_CONFIG_FILE = "gaugeline.changes.json";
+
+export function readChangesConfig(dir: string): ChangesConfig | undefined {
+  return readJsonConfig(dir, CHANGES_CONFIG_FILE, changesConfigSchema, "the what-changed settings");
 }
 
 export function readAdaptersConfig(dir: string): AdaptersConfig | undefined {
@@ -276,6 +288,15 @@ export function readEvents(dir: string): EventsConfig | undefined {
 
 export function readNavRules(dir: string): NavRules | undefined {
   return readJsonConfig(dir, NAV_CONFIG_FILE, navRulesSchema, "the menu settings");
+}
+
+export function readStaleDates(dir: string): StaleDatesConfig | undefined {
+  return readJsonConfig(
+    dir,
+    STALE_DATES_CONFIG_FILE,
+    staleDatesConfigSchema,
+    "the out-of-date copy settings",
+  )?.staleDates;
 }
 
 export function readCutoverConfig(dir: string): CutoverConfig | undefined {

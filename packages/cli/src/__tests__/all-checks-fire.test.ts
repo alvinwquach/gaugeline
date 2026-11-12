@@ -44,6 +44,8 @@ const FIXTURES = [
   "angular-like",
   "gatsby-like",
   "gatsby-dev",
+  "hydrogen-like",
+  "hydrogen-dev",
   "sveltekit-like",
   "sveltekit-dev",
   "astro-like",
@@ -60,6 +62,8 @@ const FIXTURES = [
   "gated-downloads",
   "checkout-after",
   "source-maps",
+  "copy-date-passed",
+  "copyright-stale",
 ];
 
 /**
@@ -167,6 +171,9 @@ const NEEDS_LIVE_STORES = new Set([
   // marks them as stand-ins (runner.test.ts duplicate-host, launch tests for staging-indexable).
   "host-duplicate",
   "staging-indexable",
+  // Asks a preview host the page links to (the hydrogen-preview-link fixture), which is another host: confirmed in-process
+  // with the fetcher's hosts map (core checks/__tests__/hydrogen.test.ts).
+  "hydrogen-preview-indexable",
 ]);
 
 async function findingsOf(name: string): Promise<string[]> {
