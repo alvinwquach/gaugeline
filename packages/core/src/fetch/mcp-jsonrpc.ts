@@ -56,21 +56,43 @@ const REFUSED_WORDS: ReadonlySet<string> = new Set(
 const TOOL_NAME = /^[a-z][a-z0-9_-]{0,63}$/;
 
 /**
+ * Stems found inside a name run together ("executesql", "deployfunction", "get_anonkey"), where a
+ * word split cannot see them. A false refusal costs a reviewed entry; a missed write costs a client.
+ */
+const GLUED_WRITES: readonly string[] = (
+  "exec deploy apply migrate delete drop insert update create remove write upsert mutat publish " +
+  "revoke grant rotate purge invalidat rollback restore reset pause cancel trigger submit invoke " +
+  "confirm login install truncate run"
+).split(" ");
+const GLUED_OTHER: readonly string[] =
+  "secret token passw credential key sql query eval fetch browse screenshot shell script crawl scrape url".split(
+    " ",
+  );
+
+const glued = (name: string): string => name.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+/**
  * The first write word in a tool name as any server spells it ("apply_migration", "deployFunction",
  * "confirm-cost"), or undefined. Used to check a whole listing, so it splits camel case too.
  */
 export function writeWordIn(name: string): string | undefined {
-  return name
+  const word = name
     .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
     .toLowerCase()
     .split(/[^a-z0-9]+/)
     .find((w) => WRITE_WORDS.has(w));
+  if (word !== undefined) return word;
+  const flat = glued(name);
+  return GLUED_WRITES.find((stem) => flat.includes(stem));
 }
 
 /** Why Gaugeline never calls a tool by this name, or undefined. Names are lower-case ASCII only. */
 export function mcpToolNameProblem(name: string): string | undefined {
   if (!TOOL_NAME.test(name)) return `the tool name "${safe(name)}" is not a lower-case ASCII name`;
-  const bad = name.split(/[_-]/).find((w) => REFUSED_WORDS.has(w));
+  const flat = glued(name);
+  const bad =
+    name.split(/[_-]/).find((w) => REFUSED_WORDS.has(w)) ??
+    [...GLUED_WRITES, ...GLUED_OTHER].find((stem) => flat.includes(stem));
   return bad === undefined
     ? undefined
     : `the tool "${name}" is named like a write, a credential, a fetch or code ("${bad}")`;
@@ -273,10 +295,31 @@ export function queryOptionProblems(query: unknown): string[] {
   return out;
 }
 
-/** Does the address carry exactly the entry's options, each once, fixed ones as written and configured ones as plain ids? */
+/**
+ * What an mcp-jsonrpc entry must say about its address (ADR-0008 point 1): the vendor's exact host
+ * (never a configured, self-hosted one) and the server's read-only option fixed to true by the entry.
+ */
+export function mcpAddressRuleProblems(entry: { host?: unknown; query?: unknown }): string[] {
+  const out: string[] = [];
+  if (typeof entry.host !== "string")
+    out.push("an mcp-jsonrpc entry names the vendor's exact host, never a configured one");
+  const query = isPlainObject(entry.query) ? entry.query : undefined;
+  const readOnly =
+    query !== undefined && Object.hasOwn(query, "read_only") ? query.read_only : undefined;
+  if (!isPlainObject(readOnly) || readOnly.fixed !== "true")
+    out.push("an mcp-jsonrpc entry fixes the read_only option of its address to true");
+  return out;
+}
+
+/**
+ * Does the address carry exactly the entry's options, each once: fixed ones as written, and each
+ * configured one EXACTLY the value the caller passes in `configured` (by the option's setting name)?
+ * A configured option with no value given, or a value that is not a plain id, is refused.
+ */
 export function queryStringProblem(
   params: URLSearchParams,
   options: Readonly<Record<string, McpQueryOption>>,
+  configured: Readonly<Record<string, string>> = {},
 ): string | undefined {
   const seen = [...params.keys()];
   if (new Set(seen).size !== seen.length) return "an option appears twice in the address";
@@ -285,8 +328,14 @@ export function queryStringProblem(
     return "the address does not carry exactly the entry's options";
   for (const [name, opt] of Object.entries(options)) {
     const value = params.get(name) ?? "";
-    if ("fixed" in opt ? value !== opt.fixed : !OPTION_VALUE.test(value))
-      return `the option ${name} is not the entry's`;
+    if ("fixed" in opt) {
+      if (value !== opt.fixed) return `the option ${name} is not the entry's`;
+      continue;
+    }
+    const want = Object.hasOwn(configured, opt.configured) ? configured[opt.configured] : undefined;
+    if (want === undefined || !OPTION_VALUE.test(want))
+      return `the option ${name} needs the configured value, and none was given`;
+    if (value !== want) return `the option ${name} is not the configured value`;
   }
   return undefined;
 }
