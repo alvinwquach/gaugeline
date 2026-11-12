@@ -1,13 +1,11 @@
 # ADR-0010: Approve-then-act writes: a person approves one proposal, the customer's own worker writes one draft
 
-Status: proposed Date: 2026-11-12
+Status: accepted Date: 2026-11-12
 
-**Waiting for the owner's decision; nothing that writes is built.** This record proposes; it changes no
-code, no flag and no line of CLAUDE.md. Rows X70 (a fix as a pull request), X71 (a draft in the content
-system), X72 (one field on one record), X75 (a draft in the person's own mailbox) and the body of G37's
-apply job are held until the owner accepts this record, changes it or refuses it. G37 builds the drafts
-inbox, the decision log and the apply-job enqueue regardless: none of those writes to anything outside
-Gaugeline's own database. Branch `08/adr-approve-then-act`. The hosted plan called this record
+**Accepted by the owner on 12 November 2026, with the six decisions below.** Writes are allowed for
+drafts only: a pull request, a content-system draft and a Gmail draft, each applied by G37's apply job
+after a recorded human approval. X72 (a live one-field write) and Outlook are held to v1.1. Nothing that
+writes is built by this PR, and CLAUDE.md is unchanged until the release PR (part 9). Branch `08/adr-approve-then-act`. The hosted plan called this record
 "ADR-0009"; 0009 is rendered checks, so it is 0010.
 
 ## Context
@@ -43,7 +41,7 @@ finding or tool result can never approve." The docs page "What it can and can't 
 "An agent can draft a mutation, a person approves it, and then your worker applies it with your
 credentials", while its first line says Gaugeline "never writes the C, U or D".
 
-Three things in the spec contradict each other and need the owner:
+Three things in the spec contradicted each other; the owner's decisions settle each one:
 
 1. Every one of X70, X71, X72 and X75 carries the house rule "Reading only: nothing in this branch writes
    to any system it checks", and each one's job is to write. Rule 6 as written forbids all four.
@@ -62,10 +60,10 @@ the approval.
 
 ## Decision
 
-**Proposed:** a third, narrow exception to rule 6. After a person approves one proposal in the signed-in
-inbox, a job in the customer's own worker, with the customer's own write credential, creates **one draft**
-in the customer's own system (a draft pull request, a content-system draft, a mailbox draft) or, if the
-owner also accepts part 6, sets **one field on one record** and keeps the old value. Nothing else writes.
+A third, narrow exception to rule 6, for drafts only. After a person approves one proposal in the
+signed-in inbox, a job in the customer's own worker, with the customer's own write credential, creates
+**one draft** in the customer's own system: a draft pull request, a content-system draft, or a Gmail
+draft. Nothing else writes. A live write of one field on one record (part 6) is held to v1.1.
 
 ### 1. What is written, to what, with whose credentials
 
@@ -73,8 +71,8 @@ owner also accepts part 6, sets **one field on one record** and keeps the old va
 | -------------- | ---------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
 | `pull_request` | GitHub: create a blob, tree and commit, create one ref `gaugeline/<proposal id>`, create one pull request with `draft: true` | A fine-grained token for one repository: `contents` write, `pull_requests` write |
 | `sanity_draft` | Sanity Actions API: `sanity.action.document.create` or `.edit` on a `drafts.` id only, `dryRun` first                        | A Sanity token with write access to one dataset (no draft-only role is verified) |
-| `email`        | Gmail: `users.drafts.create`. Outlook: held (decision 3)                                                                     | Gmail OAuth with the one scope `gmail.drafts.create`                             |
-| `record_field` | One `PATCH` (or the platform's documented single-field update) to one record id, with the platform's revision guard          | A token for that one system, separate from its read-only key                     |
+| `email`        | Gmail: `users.drafts.create`. Outlook: held to v1.1                                                                          | Gmail OAuth with the one scope `gmail.drafts.create`                             |
+| `record_field` | Held to v1.1. Then: one `PATCH` (or documented single-field update) to one record id, with the revision guard                | A token for that one system, separate from its read-only key                     |
 
 - **Separate keys.** Every write credential is a separate environment variable from the read-only key the
   same platform's adapter uses, and is optional. A run of `gaugeline` (the checker) never reads it: the
@@ -146,19 +144,25 @@ The old value is stored as the value, so a person can put it back by hand. Gauge
   applying" in the hosted app, which makes job claims return nothing; and revoking the token, which the
   docs page names as the last resort. A paused job stays in the inbox, as X75 asks when a token is revoked.
 
-### 6. X72 is the one write that is not a draft (decision 2)
+### 6. X72 is the one write that is not a draft: held to v1.1
 
 X70, X71 and X75 each leave a person one more act: merge, publish, send. X72 does not: the approved field
-is live when it is written. It is proposed under extra rules: one record and one field per proposal, a
+is live when it is written. When it is built (v1.1), it is under extra rules: one record and one field per proposal, a
 proposal that would touch more is refused; never a delete; never a price in a payment system; never
 content that publishes; the platform's revision guard on the request; the old value in the log; a re-check
-at once. The owner may accept parts 1 to 5 and hold X72.
+at once. It is not built in v1.
 
 ### 7. What is never written
 
-- A live site's code: never the default branch or any branch but the one the writer created
-  (`gaugeline/<proposal id>`); never a merge (the merge endpoint is not registered; a scan fails any file
-  that names it), never a force push, never a workflow file under `.github/` (proposed: uncited).
+- A live site's code. On GitHub the apply job does two things only: it pushes one new branch
+  (`gaugeline/<proposal id>`) and opens a pull request from it. It never merges, never turns on
+  auto-merge, never pushes to the default branch or any branch it did not create, never force-pushes, and
+  never writes a workflow file under `.github/`. A scan fails the build if any file in the writer package
+  can ask for a merge (Enforced by).
+- **Customers protect their default branch.** A GitHub token that can open a pull request can also merge
+  it, because both need `contents` write (Sources); only the repository's own rules stop that. The docs
+  tell every customer to protect the default branch with required reviews and required status checks
+  before giving the writer a token, so a merge needs a person even if the token were misused.
 - A publish (no `sanity.action.document.publish` or `unpublish`; no id without the `drafts.` prefix), a
   send (no `drafts.send`, no `messages.send`, no `sendMail`), a delete of anything.
 - Anything without an approval row; anything an agent, a model or a tool decided (N17); anything from the
@@ -175,41 +179,43 @@ and escaped for where it lands: Markdown in a pull request body, plain text in a
 field in a Sanity note. It never becomes a branch name, a file path, a commit message's first line, a
 recipient, a subject header, a field name or a record id. An agent may write a draft's prose (G37); the
 person approves exactly the text the inbox showed them (the payload hash), and the writer validates the
-kind's shape again before sending. N17 is not built yet; this part cannot ship before it.
+kind's shape again before sending. N17 has merged (`packages/core/src/untrusted.ts`); the writer uses it.
 
 ### 9. Rule 6 after acceptance (the release PR edits CLAUDE.md; this PR does not)
 
-Proposed sentence, to follow the ADR-0006 sentence in rule 6:
+The sentence the owner accepted, to follow the ADR-0006 sentence in rule 6:
 
 > That makes three: the owner decided (ADR-0010) that after a person approves one proposal in the
 > signed-in inbox, or runs `gaugeline apply <proposal> --approve` for it, a job in the customer's own
 > worker, with the customer's own write credential, may create one draft (a draft pull request on a new
-> branch, a content-system draft, a mailbox draft) or set one approved field on one record keeping its
-> old value, through the registered writer only; it never merges, publishes, sends or deletes, never
-> writes without an approval row, and the checker and the hosted service never write.
+> branch, a content-system draft, a mailbox draft), through the registered writer only; it never merges,
+> publishes, sends or deletes, never writes without an approval row, and the checker and the hosted
+> service never write.
 
 The same release PR must also: replace "Reading only: nothing in this branch writes to any system it
 checks" in X70, X71, X72 and X75 with "Writes only as ADR-0010 allows"; update "What it can and can't
 write" (its first line, and a new "Drafts it writes after you approve" section with the table in part 1);
 and add the writer files to the post-boundary scan's list of files allowed to send, by name, with ADR-0010
-cited beside them. Adding them before the owner accepts this record would be loosening a safeguard to make
-CI pass (rule 13).
+cited beside them, in the writer's own branch and not before (rule 13).
 
-### Decisions for the owner
+## Owner decisions (12 Nov 2026)
 
-1. **Accept a third exception to rule 6** for drafts (X70, X71, X75 and G37's apply body), as parts 1 to
-   5, 7 and 8 say, or refuse it (option A or B below), or choose another.
-2. **X72:** accept it under part 6's rules, or hold it (a direct, live write is a different promise from a
-   draft).
-3. **Outlook:** accept `Mail.ReadWrite` (it can read and delete mail; X75's rule says no read permission is
-   ever requested), or ship Gmail only and hold Outlook.
-4. **GitHub merge risk:** the token that opens a pull request can merge it. Accept that Gaugeline's code
-   never calls merge and the docs tell the customer to protect the default branch, or require the writer to
-   refuse a repository whose default branch it cannot confirm is protected (that confirmation needs a read
-   the token may not be allowed: uncited).
-5. **The rule 6 sentence** in part 9, as written or changed.
-6. **Packaging:** the writer as a separate package the CLI does not install by default (proposed), or
-   inside the CLI behind the configuration switch.
+1. **A third exception to rule 6, for drafts only:** pull requests, content-system drafts, mailbox drafts
+   and G37's apply job, each applied only after a recorded human approval, in the customer's own worker,
+   with the customer's own credentials.
+2. **X72 (a live one-field write) is held to v1.1.**
+3. **Mailbox drafts: Gmail only in v1**, with the draft-only scope `gmail.drafts.create`. Outlook (whose
+   least privileged permission, `Mail.ReadWrite`, can read and delete mail) is held to v1.1.
+4. **GitHub: the apply job only pushes a branch and opens a pull request, and never merges** (part 7). A
+   test fails if the writer package can call any merge or auto-merge endpoint, and the docs tell customers
+   to protect their default branch with required reviews and status checks.
+5. **The rule 6 sentence** in part 9 goes into CLAUDE.md in the release PR, as written there.
+6. **The writer is its own package, packages/writer**, which the checker and the main CLI do not depend on,
+   so the CLI stays read-only and its size budget is untouched.
+
+**Consequences.** Unblocked: G37's apply job body, X70 (pull request), X71 (content-system draft) and X75
+for Gmail. Deferred to v1.1: X72 and Outlook. G37's inbox, decision log and apply enqueue were never
+blocked.
 
 ## Alternatives
 
@@ -222,14 +228,14 @@ CI pass (rule 13).
   patch file and prints each diff (X70 step 3 already allows this, as local files, like `--page`); the
   person runs `git apply`, pastes into Studio, or copies the email. Cost: friction at the moment the
   person is most likely to put it off; no external id, so the re-check cannot follow a pull request's
-  preview. No new exception; this is the fallback if the owner refuses.
+  preview. No new exception.
 - **C. Write only to the user's own channels.** Extend ADR-0005: post the proposal (diff, value, email
   text) to the person's Slack, email or a GitHub issue. Cost: the same hand work as B, plus one more
   message; it fits the existing exception, but it is notification, not a fix.
-- **D. Drafts after an approval, in the customer's worker (recommended).** This record. Cost: a third
+- **D. Drafts after an approval, in the customer's worker (chosen).** This record. Cost: a third
   exception, a writer package to review, write tokens that customers must create and guard, a token on
-  GitHub that could merge and one on Outlook that could read. Why it wins: every write leaves a person one
-  more act (merge, publish, send), except X72, which is held apart; the approval is recorded where nobody
+  GitHub that could merge (so branch protection is required). Why it wins: every write leaves a person one
+  more act (merge, publish, send), and X72, which would not, is held to v1.1; the approval is recorded where nobody
   can rewrite it; and the hosted service is never the thing holding the keys.
 - **E. The hosted service applies with stored credentials.** Lost because the hosted service would hold
   every customer's write keys, so one breach writes to all of them; G37 rules it out.
@@ -242,14 +248,14 @@ CI pass (rule 13).
 - Rule 6 gains a third exception, and its sentence gets longer; a reviewer has to know three boundaries.
 - A writer package, its registry, and a scan entry to review for every new kind, and each platform's
   write endpoint to re-read when the vendor changes it.
-- The customer creates and guards one more token per platform. On GitHub that token can merge; on Outlook
-  (if accepted) it can read and delete mail. Gaugeline's code limits what it does with them; it cannot
-  limit what the token allows.
+- The customer creates and guards one more token per platform. On GitHub that token can merge, so the
+  customer must protect the default branch. Gaugeline's code limits what it does with the token; it cannot
+  limit what the token allows. Outlook waits for v1.1 for the same reason.
 - A forged approval in the hosted database would enqueue a write. The payload hash, the expiry, the
   worker's own checks and the dry-run default narrow that; they do not remove it.
 - Sanity: whether a token can be limited to drafts depends on the customer's plan and roles, which were not
   verified (uncited). Without it, the code is the only thing that keeps a publish out.
-- X70, X71, X72 and X75 wait for this decision and for N17.
+- X72 and Outlook wait for v1.1; a customer who needs either does it by hand until then.
 
 ## What would change it
 
@@ -263,7 +269,11 @@ CI pass (rule 13).
 
 ## Enforced by
 
-Nothing new, because nothing is built. What already holds, and what a writer would have to pass:
+- `scripts/__tests__/writer-no-merge.test.ts` and `scripts/lib/writer-scan.ts` (owner decision 4: any
+  file in the writer package that names a merge, an auto-merge, a merge endpoint or a merge mutation, even
+  split into pieces or escaped, fails the build; a self-test runs each way of asking)
+
+What already holds, and what the writer has to pass when it is built:
 
 - `packages/core/src/__tests__/post-boundary.test.ts` and `packages/core/src/__tests__/post-scan.ts` (no
   file but the fetcher, the notifier, the transport and the app page builds a `POST`, `PUT`, `PATCH` or
@@ -311,7 +321,7 @@ raw.githubusercontent.com, on 2026-11-12.
   `.edit`, `.publish`, `.unpublish`, `.delete`; `dryRun` "no documents will be affected";
   `ifRevisionId` applies a patch only if the stored document matches. [docs] Token roles and whether a
   token can be limited to drafts: uncited (sanity.io unreachable).
-- **Spec G34, G37, N17, X69, X70, X71, X72, X75; hosted plan (owner decision 1); docs/writes.md;
+- **Spec G34, G37, N17, X69, X70, X71, X72, X75; hosted plan (owner decision 1); the owner's decisions of 12 Nov 2026; docs/writes.md;
   docs/mcp.md; ADR-0001, 0005, 0006; CLAUDE.md rules 6, 7, 11, 13, 14.** [repository]
 - **uncited:** the 72-hour expiry, the branch prefix, refusing `.github/` workflow files, the kill-switch
   design, the payload hash, and the decision row fields beyond G34's, which are this record's proposals.
