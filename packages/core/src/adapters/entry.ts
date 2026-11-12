@@ -80,8 +80,10 @@ export interface AdapterEntry {
     checkReleases?: true;
     /** Takes `privateCollections`: collections the owner says the Public role must not read (Directus). */
     privateCollections?: true;
-    /** Takes `collections` (the GraphQL collection of each content type) and `expectPublishedOnly` (DatoCMS). */
+    /** Takes `collections` (the GraphQL collection of each content type; DatoCMS and Hygraph) and, for DatoCMS, `expectPublishedOnly`. */
     graphqlCollections?: true;
+    /** Hygraph: takes `readDraftStage` (the owner lets the one probing check read the DRAFT stage) and not DatoCMS's draft settings. */
+    draftStageRead?: true;
     /**
      * Reads content kept in a repository: takes `path` or `github`, and `folders`; `urls` is replaced by each folder's
      * `permalink`. `true`: `folders` is required. "from-config": the platform's own config file names the folders (TinaCMS),

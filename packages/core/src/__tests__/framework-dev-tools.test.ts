@@ -32,6 +32,12 @@ describe("frameworkCoversDevTools", () => {
       "Remix",
       page(`<script>window.__reactRouterContext = {"basename":"/","ssr":true};</script>${VITE}`),
     ],
+    [
+      "Nuxt",
+      page(
+        '<script type="module" src="/_nuxt/@vite/client"></script><script src="/_nuxt/entry.js"></script>',
+      ),
+    ],
     ["Qwik", page('<html q:container="paused" q:render="ssr-dev"><body>Hi</body></html>')],
     [
       "SolidStart",
