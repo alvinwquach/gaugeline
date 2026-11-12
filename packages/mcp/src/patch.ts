@@ -38,7 +38,20 @@ function fileFor(pageUrl: string): string | undefined {
   } catch {
     return undefined;
   }
-  const path = decodeURIComponent(u.pathname).replace(/^\/+/, "");
+  let path: string;
+  try {
+    path = decodeURIComponent(u.pathname).replace(/^\/+/, "");
+  } catch {
+    return undefined;
+  }
+  // After decoding, no segment may climb or stay: "/a%2F..%2F..%2Fx" would otherwise leave the site folder.
+  const segments = path.split("/");
+  if (
+    segments.some(
+      (seg, i) => seg === ".." || seg === "." || (seg === "" && i < segments.length - 1),
+    )
+  )
+    return undefined;
   if (/[^A-Za-z0-9._\-/]/.test(path)) return undefined;
   if (path === "" || path.endsWith("/")) return `${path}index.html`;
   return /\.[A-Za-z0-9]+$/.test(path) ? path : `${path}.html`;

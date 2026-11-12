@@ -1,7 +1,7 @@
 import * as z from "zod";
 import { EMAIL_PRESET, PROBING_CHECKS, checkSite, createPageRegistry } from "@gaugeline/core";
 import { ToolError, remember, type ToolContext } from "../state.js";
-import { findingsForAgent, urlSchema } from "./shared.js";
+import { couldNotCheckForAgent, findingsForAgent, urlSchema } from "./shared.js";
 
 export const runCheckInput = {
   url: urlSchema.describe("The page to check, as a full http or https address."),
@@ -56,7 +56,8 @@ export async function runCheck(args: z.infer<z.ZodObject<typeof runCheckInput>>,
     );
   const dnsOff = EMAIL_PRESET.filter((id) => registry.has(id));
   const startedAt = ctx.now();
-  const { snapshot, result, budget } = await checkSite({
+  const { snapshot, result, budget, unreachable } = await checkSite({
+    tolerateUnreachable: true,
     address: args.url,
     fetcher: ctx.fetcherFor(args.url),
     registry,
@@ -65,6 +66,17 @@ export async function runCheck(args: z.infer<z.ZodObject<typeof runCheckInput>>,
     ...(consent ? { ownerConsent: true } : {}),
     now: ctx.now,
   });
+  // A page that cannot be read (a refused redirect, a name that does not answer) is a could-not-check
+  // entry, not a failed call: the reason is labelled, and no checks are run over a page that is not there.
+  if (unreachable !== undefined)
+    return {
+      kind: "read",
+      url: args.url,
+      summary: { high: 0, medium: 0, low: 0, passed: 0, couldNotCheck: 1 },
+      findings: [],
+      ...couldNotCheckForAgent([{ id: "page", reason: unreachable }]),
+      probingConsent: consent,
+    };
   const run = remember(ctx.state, {
     kind: "site",
     url: snapshot.requestedUrl,
@@ -89,7 +101,7 @@ export async function runCheck(args: z.infer<z.ZodObject<typeof runCheckInput>>,
       couldNotCheck: result.couldNotCheck.length,
     },
     ...findingsForAgent(run, ctx.maxFindings),
-    couldNotCheck: result.couldNotCheck.map((c) => ({ id: c.id, reason: c.reason })),
+    ...couldNotCheckForAgent(result.couldNotCheck),
     notRun: {
       dns: { ids: dnsOff, hint: "DNS checks are opt-in and this server does not read DNS." },
       ...(withheld.length > 0

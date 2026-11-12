@@ -13,7 +13,15 @@ afterEach(async () => {
 
 async function start(extra: Partial<Parameters<typeof startHttp>[0]> = {}) {
   const state = createState();
-  const r = await startHttp({ makeServer: () => createGaugelineServer({ state }), ...extra });
+  const r = await startHttp({
+    makeServer: () =>
+      createGaugelineServer({
+        state,
+        root: process.cwd(),
+        planBases: ["https://preview.harbourline.example"],
+      }),
+    ...extra,
+  });
   running.push(r);
   return r;
 }

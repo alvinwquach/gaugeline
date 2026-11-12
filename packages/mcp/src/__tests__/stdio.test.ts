@@ -47,7 +47,13 @@ describe("gaugeline-mcp over stdio (built bin)", () => {
   it("lists six tools and checks a fixture site end to end", async () => {
     const fixture = await startFixture("tampered");
     fixtures.push(fixture);
-    const client = await spawnServer(["--allow-private"]);
+    const client = await spawnServer([
+      "--allow-private",
+      "--root",
+      process.cwd(),
+      "--plan-base",
+      fixture.origin,
+    ]);
     const { tools } = await client.listTools();
     expect(tools.map((t) => t.name).sort()).toEqual([
       "compare_runs",
@@ -75,7 +81,8 @@ describe("gaugeline-mcp over stdio (built bin)", () => {
     const r = textOf(
       await client.callTool({ name: "run_check", arguments: { url: `${fixture.origin}/` } }),
     );
-    expect(r.isError).toBe(true);
+    // Refused before a socket opens: a could-not-check entry, and the fixture saw nothing.
+    expect(r.isError || JSON.parse(r.text).couldNotCheck.length > 0).toBe(true);
     expect(fixture.total).toBe(0);
   }, 60000);
 });

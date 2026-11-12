@@ -35,7 +35,15 @@ export async function draftFix(args: z.infer<z.ZodObject<typeof draftFixInput>>,
       format: "text/x-diff",
       patchKind: "unified-diff",
       file: built.file,
-      patch: built.patch,
+      // The diff quotes lines of the page as served (and its address): it is page text, so it is labelled
+      // as a whole, even though it applies cleanly. The lines were cleaned first (patch.ts).
+      patch: {
+        untrusted: true as const,
+        source: "diff built from the page as served",
+        text: built.patch,
+        truncated: false,
+        strippedDirectives: 0,
+      },
       note: `NOT APPLIED: nothing was written, committed, published or changed. ${built.note} A person or a coding agent applies it, then runs Gaugeline again to confirm.`,
       done: check.done,
       finding: findingForAgent(hit.finding, hit.run.registry),

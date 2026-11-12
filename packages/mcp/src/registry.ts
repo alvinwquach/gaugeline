@@ -11,7 +11,7 @@
  */
 import type * as z from "zod";
 import { UNTRUSTED_NOTE } from "./agent-text.js";
-import type { ToolContext } from "./state.js";
+import type { ServerOptions, ToolContext } from "./state.js";
 import { compareRuns, compareRunsInput } from "./tools/compare-runs.js";
 import { draftFix, draftFixInput } from "./tools/draft-fix.js";
 import { explainFinding, explainFindingInput } from "./tools/explain-finding.js";
@@ -30,6 +30,8 @@ export interface ToolDef<S extends z.ZodRawShape = z.ZodRawShape> {
   pageText: boolean;
   /** True when the tool makes requests to the site it is given (GET and HEAD only, through the fetcher). */
   requests: boolean;
+  /** Whether the server offers this tool with these options. Absent means always. A tool that is off is not listed. */
+  enabled?(options: ServerOptions): boolean;
   inputSchema: S;
   run(args: z.infer<z.ZodObject<S>>, ctx: ToolContext): Promise<unknown>;
 }
@@ -88,9 +90,11 @@ export const TOOLS = {
     kind: "read",
     title: "Check a launch plan",
     summary:
-      "Checks a launch-plan file (a folder inside the server's root) against a built site: GET requests for each planned page and each old address. Reads the plan file; nothing is written.",
+      "Checks a launch-plan file (inside the folder the operator named with --root) against a built site at an address the operator allowed with --plan-base: GET requests for each planned page and each old address. Reads the plan file; nothing is written. Offered only when the server was started with both.",
     pageText: true,
     requests: true,
+    // Off unless the operator named a plan folder AND the addresses a plan may be checked against.
+    enabled: (o) => Boolean(o.root) && (o.planBases?.length ?? 0) > 0,
     inputSchema: planCheckInput,
     run: planCheck,
   }),

@@ -22,7 +22,11 @@ afterEach(async () => {
 async function serve(name: string, options: Parameters<typeof connect>[0] = {}) {
   const fixture = await startFixture(name);
   fixtures.push(fixture);
-  const c = await connect({ allowPrivate: true, ...options });
+  const c = await connect({
+    allowPrivate: true,
+    ...(options.root ? { planBases: [fixture.origin] } : {}),
+    ...options,
+  });
   opened.push(c);
   return { fixture, ...c };
 }
@@ -107,7 +111,8 @@ describe("run_check", () => {
       "http://10.0.0.5/",
     ]) {
       const r = textOf(await call(c, "run_check", { url }));
-      expect(r.isError, url).toBe(true);
+      // Refused before a socket opens: an error for a never-reachable literal, a could-not-check entry otherwise.
+      expect(r.isError || JSON.parse(r.text).couldNotCheck.length > 0, url).toBe(true);
     }
     expect(fixture.total).toBe(0);
   });

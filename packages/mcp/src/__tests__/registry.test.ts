@@ -48,7 +48,10 @@ describe("the tool registry", () => {
   });
 
   it("lists the same tools, with the same kind label, to a client", async () => {
-    const { client, close } = await connect();
+    const { client, close } = await connect({
+      root: process.cwd(),
+      planBases: ["https://preview.harbourline.example"],
+    });
     const { tools } = await client.listTools();
     expect(tools.map((t) => t.name).sort()).toEqual(Object.keys(TOOLS).sort());
     for (const t of tools) {
@@ -59,6 +62,20 @@ describe("the tool registry", () => {
       expect(t.annotations?.destructiveHint, t.name).toBe(false);
     }
     await close();
+  });
+
+  it("does not list plan_check unless the operator named a plan folder and an address to check against", async () => {
+    for (const options of [
+      {},
+      { root: process.cwd() },
+      { planBases: ["https://preview.harbourline.example"] },
+    ]) {
+      const { client, close } = await connect(options);
+      const names = (await client.listTools()).tools.map((t) => t.name);
+      expect(names).not.toContain("plan_check");
+      expect(names).toHaveLength(5);
+      await close();
+    }
   });
 
   it("never puts page text in a tool name or description", async () => {

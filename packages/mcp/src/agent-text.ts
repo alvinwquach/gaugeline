@@ -19,7 +19,8 @@ export { markUntrusted };
 /** The fixed note every tool that returns page text repeats in its description. */
 export const UNTRUSTED_NOTE = UNTRUSTED_FIELD_NOTE;
 
-export interface FindingForAgent extends AgentFinding {
+export interface FindingForAgent extends Omit<AgentFinding, "group"> {
+  group?: { key: ReturnType<typeof markUntrusted>; lines: number[] };
   /** Stable across runs (the same fingerprint the baseline uses): pass it to explain_finding or draft_fix. */
   id: string;
   /** The check's own title, written by Gaugeline. */
@@ -31,9 +32,20 @@ export function findingId(finding: Finding): string {
 }
 
 export function findingForAgent(finding: Finding, registry: CheckRegistry): FindingForAgent {
+  const { group, ...wrapped } = wrapFindingForAgent(finding);
   return {
     id: findingId(finding),
     checkTitle: registry.get(finding.checkId)?.title ?? finding.checkId,
-    ...wrapFindingForAgent(finding),
+    ...wrapped,
+    // A plan finding's group key is a cell from the plan (a path, a title, a keyword): page-derived text
+    // that wrapFindingForAgent leaves as it is, so it is labelled here.
+    ...(group
+      ? {
+          group: {
+            key: markUntrusted(group.key, { source: "plan group key" }),
+            lines: group.lines,
+          },
+        }
+      : {}),
   };
 }

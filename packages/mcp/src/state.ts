@@ -8,13 +8,29 @@ import {
   type Finding,
   type Result,
 } from "@gaugeline/core";
+import {
+  NEVER_MESSAGE,
+  checkTarget,
+  guardedResolver,
+  hostPortOf,
+  normaliseHostPort,
+} from "./net-guard.js";
 
 /** What the server needs from whoever starts it. None of it can be changed by a tool call. */
 export interface ServerOptions {
-  /** Started with --allow-private: the address the caller named may be private or loopback. Default false. */
+  /**
+   * Started with --allow-private: an address a model names may be loopback or private (never link-local or
+   * metadata, which are always refused). Default false.
+   */
   allowPrivate?: boolean;
-  /** The only folder plan_check may read a plan file from. Default: the working directory. */
+  /** --allow-private-host: the only private host:port pairs a model may reach. When set, no other private address is reachable. */
+  allowPrivateHosts?: string[];
+  /** The only folder plan_check may read plan files from. There is no default: without it plan_check is not offered. */
   root?: string;
+  /** --plan-base: the origins plan_check may check a plan against. Without at least one, plan_check is not offered. */
+  planBases?: string[];
+  /** The most calls that make requests and may be running or waiting at once (default 16); beyond it a call is refused. */
+  maxActiveCalls?: number;
   /** Fetcher settings for tests (a `hosts` map, a resolver). Never exposed to a tool. */
   fetcher?: Partial<FetcherOptions>;
   now?: () => Date;
@@ -47,10 +63,12 @@ export interface ServerState {
   nextRun: number;
   /** One in-flight limit shared by every call: fifty callers still make at most LIMITS.concurrency requests at once. */
   gate: Semaphore;
+  /** Calls that make requests and have not finished. */
+  active: number;
 }
 
 export function createState(): ServerState {
-  return { runs: new Map(), nextRun: 1, gate: new Semaphore(LIMITS.concurrency) };
+  return { runs: new Map(), nextRun: 1, gate: new Semaphore(LIMITS.concurrency), active: 0 };
 }
 
 export function remember(state: ServerState, run: Omit<StoredRun, "id">): StoredRun {
@@ -75,19 +93,31 @@ export interface ToolContext {
 }
 
 export function contextFor(options: ServerOptions, state: ServerState): ToolContext {
+  const listed = new Set((options.allowPrivateHosts ?? []).map(normaliseHostPort));
   return {
     options,
     state,
     now: options.now ?? (() => new Date()),
     maxFindings: options.maxFindings ?? 40,
-    fetcherFor: (target) =>
-      createFetcher({
+    fetcherFor: (target) => {
+      try {
+        checkTarget(target);
+      } catch {
+        throw new ToolError(NEVER_MESSAGE);
+      }
+      // May the model's own address be private? Only if the operator said so: for every private address
+      // (--allow-private), or for the named host:port pairs only (--allow-private-host, which wins).
+      const open =
+        listed.size > 0 ? listed.has(hostPortOf(new URL(target))) : options.allowPrivate === true;
+      return createFetcher({
         ...options.fetcher,
+        resolver: guardedResolver(options.fetcher?.resolver),
         semaphore: state.gate,
-        // The same rule as the CLI's --allow-private: it trusts the address the caller named, not where
-        // its pages point, so a redirect or a link to another non-public address is still refused.
-        ...(options.allowPrivate === true ? { allowPrivate: true, target } : {}),
-      }),
+        // The same rule as the CLI's --allow-private: it trusts the address named, not where its pages
+        // point, so a redirect or a link to another non-public address is still refused.
+        ...(open ? { allowPrivate: true, target } : {}),
+      });
+    },
   };
 }
 

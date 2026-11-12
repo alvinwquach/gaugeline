@@ -41,11 +41,17 @@ describe("packages/mcp has no write, publish or request code path of its own", (
 
   it("opens no outgoing connection and runs no program", () => {
     expect(where(/\bfetch\s*\(|XMLHttpRequest|WebSocket|sendBeacon|new Request\b/)).toEqual([]);
-    expect(
-      where(/node:https|node:net|node:tls|node:dgram|node:child_process|node:worker_threads/),
-    ).toEqual([]);
+    expect(where(/node:https|node:tls|node:dgram|node:child_process|node:worker_threads/)).toEqual(
+      [],
+    );
     expect(where(/\bhttp\.request|\bhttp\.get|\brequest\s*\(/)).toEqual([]);
     expect(where(/(?<![.\w])(spawn|exec|execFile|execSync|execFileSync)\s*\(/)).toEqual([]);
+  });
+
+  it("uses node:net only for isIP, in the address guard", () => {
+    expect(where(/node:net/)).toEqual(["net-guard.ts"]);
+    const text = sources.find((s) => s.file === "net-guard.ts")?.text ?? "";
+    expect(text).toMatch(/import \{ isIP \} from "node:net"/);
   });
 
   it("uses node:http only to listen, in the HTTP transport", () => {

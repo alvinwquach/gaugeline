@@ -56,16 +56,21 @@ function readBody(req: IncomingMessage): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
     let size = 0;
+    let over = false;
     req.on("data", (c: Buffer) => {
+      if (over) return;
       size += c.length;
       if (size > MAX_BODY_BYTES) {
+        // Stop keeping it, and answer now: the connection is closed after the 413 is written, not before.
+        over = true;
+        chunks.length = 0;
         reject(new RangeError("body too large"));
-        req.destroy();
         return;
       }
       chunks.push(c);
     });
     req.on("end", () => {
+      if (over) return;
       try {
         resolve(JSON.parse(Buffer.concat(chunks).toString("utf8")));
       } catch (e) {
@@ -133,7 +138,12 @@ export async function startHttp(opts: HttpOptions): Promise<RunningHttp> {
     try {
       body = await readBody(req);
     } catch (e) {
-      return refuse(res, e instanceof RangeError ? 413 : 400, "Bad request body");
+      if (e instanceof RangeError) {
+        refuse(res, 413, "Request body too large", { connection: "close" });
+        res.once("finish", () => req.destroy());
+        return;
+      }
+      return refuse(res, 400, "Bad request body");
     }
     const mcp = opts.makeServer();
     const transport = new StreamableHTTPServerTransport({

@@ -1,6 +1,7 @@
 import { resolve } from "node:path";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { startHttp } from "./http.js";
+import { normaliseHostPort } from "./net-guard.js";
 import { SERVER_VERSION, createGaugelineServer } from "./server.js";
 import { createState } from "./state.js";
 
@@ -17,11 +18,18 @@ Options:
   --allow-non-loopback    allow a bind address other than loopback; needs GAUGELINE_MCP_TOKEN and --allowed-host
   --allowed-host <name>   a Host header value clients may use (repeat); needed with a non-loopback bind
   --allowed-origin <o>    an Origin a browser client may send (repeat); by default none
-  --allow-private         let a tool check private and loopback addresses (fixture sites, your own machine)
-  --root <folder>         the folder plan_check may read plan files from (default: the working directory)
+  --allow-private         let a tool check loopback and private addresses (your own machine or network).
+                          Link-local and cloud-metadata addresses (169.254.x.x, fd00:ec2::254 ...) are never requested.
+  --allow-private-host <host:port>
+                          a private address a tool may reach (repeat for more). With any of these, no other
+                          private address is reachable, and --allow-private is not needed.
+  --root <folder>         the folder plan_check reads plan files from. plan_check is off without --root and --plan-base.
+  --plan-base <origin>    an origin plan_check may check a plan against (repeat for more)
   --help, --version
 
-The token for HTTP comes from the environment (GAUGELINE_MCP_TOKEN), never from the command line.
+The token for HTTP comes from the environment (GAUGELINE_MCP_TOKEN), never from the command line. Over HTTP a token is
+required whenever --allow-private, --allow-private-host, --root or --plan-base is given: every holder of the token shares
+the session's runs.
 Probing checks run only when a tool call passes ownerConsent: true; there is no flag that turns them on.
 `;
 
@@ -33,7 +41,9 @@ interface Parsed {
   allowedHosts: string[];
   allowedOrigins: string[];
   allowPrivate: boolean;
-  root: string;
+  allowPrivateHosts: string[];
+  planBases: string[];
+  root: string | undefined;
   help: boolean;
   version: boolean;
 }
@@ -47,7 +57,9 @@ export function parseArgs(argv: string[], cwd: string): Parsed {
     allowedHosts: [],
     allowedOrigins: [],
     allowPrivate: false,
-    root: cwd,
+    allowPrivateHosts: [],
+    planBases: [],
+    root: undefined,
     help: false,
     version: false,
   };
@@ -69,7 +81,15 @@ export function parseArgs(argv: string[], cwd: string): Parsed {
     else if (a === "--allowed-host") out.allowedHosts.push(value());
     else if (a === "--allowed-origin") out.allowedOrigins.push(value());
     else if (a === "--allow-private") out.allowPrivate = true;
-    else if (a === "--root") out.root = resolve(cwd, value());
+    else if (a === "--allow-private-host") out.allowPrivateHosts.push(normaliseHostPort(value()));
+    else if (a === "--plan-base") {
+      const v = value();
+      if (!URL.canParse(v) || !/^https?:$/.test(new URL(v).protocol))
+        throw new Error(
+          "--plan-base needs an http or https origin, for example https://preview.harbourline.example.",
+        );
+      out.planBases.push(new URL(v).origin);
+    } else if (a === "--root") out.root = resolve(cwd, value());
     else if (a === "--help" || a === "-h") out.help = true;
     else if (a === "--version" || a === "-v") out.version = true;
     else throw new Error(`Unknown option ${a}. See --help.`);
@@ -101,7 +121,26 @@ export async function main(argv: string[], io: Io): Promise<number> {
     io.stdout.write(`${SERVER_VERSION}\n`);
     return 0;
   }
-  const options = { allowPrivate: args.allowPrivate, root: args.root, state: createState() };
+  const options = {
+    allowPrivate: args.allowPrivate,
+    allowPrivateHosts: args.allowPrivateHosts,
+    planBases: args.planBases,
+    ...(args.root !== undefined ? { root: args.root } : {}),
+    state: createState(),
+  };
+  // Over HTTP, anything that widens what a tool can reach needs a token: without one, any process on the
+  // machine could call the tools, and runs are shared by every caller.
+  const widened =
+    args.allowPrivate ||
+    args.allowPrivateHosts.length > 0 ||
+    args.root !== undefined ||
+    args.planBases.length > 0;
+  if (args.http && widened && !io.env.GAUGELINE_MCP_TOKEN) {
+    io.stderr.write(
+      "Over HTTP, --allow-private, --allow-private-host, --root and --plan-base need a token: set GAUGELINE_MCP_TOKEN.\n",
+    );
+    return 2;
+  }
   if (!args.http) {
     const server = createGaugelineServer(options);
     await server.connect(new StdioServerTransport());

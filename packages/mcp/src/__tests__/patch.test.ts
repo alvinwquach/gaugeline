@@ -166,14 +166,15 @@ describe("draft_fix with a diff, end to end", () => {
       applied: boolean;
       patchKind: string;
       format: string;
-      patch: string;
+      patch: { untrusted: boolean; source: string; text: string };
       note: string;
     }>(await c.client.callTool({ name: "draft_fix", arguments: { findingId: viewport?.id } }));
     expect(draft.applied).toBe(false);
     expect(draft.patchKind).toBe("unified-diff");
     expect(draft.format).toBe("text/x-diff");
     expect(draft.note).toContain("NOT APPLIED");
-    expect(applies("index.html", HTML, draft.patch)).toBe(true);
+    expect(draft.patch.untrusted).toBe(true);
+    expect(applies("index.html", HTML, draft.patch.text)).toBe(true);
     expect(hits).toHaveLength(before);
     expect(hits.every((h) => h.startsWith("GET ") || h.startsWith("HEAD "))).toBe(true);
     // A finding with no builder still gets words, labelled as text.
@@ -187,5 +188,22 @@ describe("draft_fix with a diff, end to end", () => {
       expect(words.isError).toBe(false);
     }
     expect(readFileSync(new URL(import.meta.url), "utf8").length).toBeGreaterThan(0);
+  });
+});
+
+describe("the diff's file name", () => {
+  it("is never outside the site folder, however the address is spelled", () => {
+    for (const path of [
+      "/a%2F..%2F..%2Fhome%2Fx",
+      "/a%2F.%2Fb",
+      "/a%5C..%5Cb",
+      "/a%2F%2E%2E%2Fb",
+      "/a//b",
+      "/%ZZ",
+    ]) {
+      const url = `https://harbourline.example${path}`;
+      const f = finding("viewport", url);
+      expect(buildPatch(runWith(HTML, [f], url), f), path).toBeUndefined();
+    }
   });
 });
