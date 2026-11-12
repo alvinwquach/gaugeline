@@ -161,6 +161,17 @@ Before you rely on it, run one upload in a repository you can throw away. On Git
 
 A finding about a live page has no file in your repository, so Gaugeline writes its address as a logical location and no file location. GitHub code scanning may require a file for every result. If the **Upload SARIF** step is refused for that reason, nothing is lost: the SARIF file is still the step's `sarif-file` output and can be read as JSON. The fix is a switch in the code that is off until a real upload says it is needed: `SARIF_PHYSICAL_LOCATION_FALLBACK` in `packages/cli/src/main.ts`. Turned on, every page finding also carries a placeholder file, `gaugeline-pages/<host>/<path>` (a path ending in `/` becomes `.../index`) at line 1, which names no real file in your repository. Open an issue with the step's log line and it will be turned on in a release.
 
+## Docker
+
+For a team that does not want to argue about Node versions, the repository has a `Dockerfile`: a pinned `node:22-slim` image (Gaugeline needs Node 22 or later), the published CLI at one exact version, and an unprivileged user. It holds no key; pass keys at run time with `-e NAME`. Each release is meant to be published to the GitHub Container Registry as `ghcr.io/alvinwquach/gaugeline:<version>`; until the first one is, build it from a release yourself. `GAUGELINE_VERSION` must be an exact release number (`1.2.3`): a tag such as `latest`, a range, a URL or another package name stops the build:
+
+```sh title=Terminal untested="Needs Docker and a published release of gaugeline (the image installs it from npm), so it cannot run in the docs build. scripts/__tests__/docker-image.test.ts checks the Dockerfile and the entrypoint without building."
+$ docker build --build-arg GAUGELINE_VERSION=0.1.0 -t ghcr.io/alvinwquach/gaugeline:0.1.0 .
+$ docker run --rm --read-only --tmpfs /tmp ghcr.io/alvinwquach/gaugeline:0.1.0 https://brightside-preview.example --format junit --ci > gaugeline.xml
+```
+
+The container's exit code is the CLI's: 0, 1 with `--ci` and a "Fix this first" finding, 2 when the check could not run. With `--read-only --tmpfs /tmp` it writes nowhere else, and `--format` (or `--json`) keeps stdout to the result and writes no report file. Mount a folder at `/work` (`-v "$PWD:/work"`) to give it a `gaugeline.config.json` or a baseline.
+
 ## A protected preview
 
 A preview behind deployment protection answers every request with a login page. Store its secret
@@ -282,12 +293,6 @@ jobs:
 - GitHub turns off scheduled workflows in a repository with no activity for 60 days. A 30-day
   watch ends before that.
 - The Slack address comes from the secrets context; no address or token is written in the file.
-
-## Docker
-
-```sh title=Terminal
-$ docker run --rm node:20 npx gaugeline yoursite.com --ci
-```
 
 ::: info
 Tests check your code and run when code changes. Gaugeline checks the content your code renders. See [the FAQ](/docs/faq) for how they fit together.
