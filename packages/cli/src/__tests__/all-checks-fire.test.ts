@@ -38,6 +38,7 @@ const FIXTURES = [
   "load-more",
   "hidden-library",
   "next-like",
+  "host-previews",
   "qwik-like",
   "qwik-dev",
   "solidstart-like",
@@ -79,6 +80,10 @@ const FIXTURES = [
  * (packages/cli/src/__tests__/app-store-links.test.ts), not through the built bin.
  */
 const NEEDS_LIVE_STORES = new Set([
+  // A preview address is another host than the typed one, and the built bin refuses another host
+  // that resolves to a private address (the fixture's does): confirmed in-process, where the
+  // fixture's hosts are mapped (host-previews.test.ts, core and cli).
+  "host-preview-indexable",
   "app-link-dead",
   "app-name-mismatch",
   "app-smart-banner-mismatch",
