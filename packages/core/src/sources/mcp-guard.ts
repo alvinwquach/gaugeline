@@ -1,5 +1,11 @@
 import { createHash } from "node:crypto";
-import { idPattern, idPatternProblem, writeTokenIn, writeWordIn } from "../fetch/mcp-jsonrpc.js";
+import {
+  gluedWriteIn,
+  idPattern,
+  idPatternProblem,
+  isIdValue,
+  writeWordIn,
+} from "../fetch/mcp-jsonrpc.js";
 import { sanitise } from "../untrusted.js";
 
 /**
@@ -176,7 +182,7 @@ export function toleratedProblems(
   const seen = new Set<string>();
   for (const t of tolerated) {
     if (!/^[a-z][a-z0-9_]{0,63}$/.test(t.tool)) out.push(`${t.tool}: not a lower-case ASCII name`);
-    const verb = writeTokenIn(t.tool);
+    const verb = gluedWriteIn(t.tool);
     if (verb !== undefined) out.push(`${t.tool}: a tool named with "${verb}" is never tolerated`);
     if (called.some((c) => c.tool.toLowerCase() === t.tool.toLowerCase()))
       out.push(`${t.tool}: is a called tool, so it is not tolerated`);
@@ -327,12 +333,8 @@ function keepValue(rule: OutputRule, v: unknown): unknown {
     }
     case "id": {
       // A rule that admits free text keeps nothing; a kept id is still cleaned (N17) and capped.
-      if (
-        typeof v !== "string" ||
-        v.length > ID_MAX ||
-        idPatternProblem(rule.pattern) !== undefined
-      )
-        return undefined;
+      // The fixed character set (no markup, space, quote or ".."), the cap, then the entry's own pattern.
+      if (!isIdValue(v, ID_MAX) || idPatternProblem(rule.pattern) !== undefined) return undefined;
       if (!idPattern(rule.pattern).test(v)) return undefined;
       const clean = sanitise(v, ID_MAX).text;
       return clean === v ? clean : undefined;

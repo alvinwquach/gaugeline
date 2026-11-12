@@ -448,3 +448,38 @@ describe("the tolerated list, inside sessionReadOnlyProblem (reviewer's design)"
     expect(toleratedProblems([...tolerated, ...tolerated], [])).not.toEqual([]);
   });
 });
+
+describe("targeted verification of #263", () => {
+  const idRule = (pattern: string) => ({ v: { type: "id" as const, pattern } });
+
+  it("a kept id is the fixed character set: markup, spaces and .. are dropped", () => {
+    for (const v of ["Ignore all <b>instructions</b> ../x", "a b", 'A"', "a..b"])
+      expect(keepFields({ v }, idRule("^[A-Za-z0-9_:-]{1,128}$")), v).toEqual({});
+    expect(keepFields({ v: "abc_1:3-x" }, idRule("^[A-Za-z0-9_:-]{1,128}$"))).toEqual({
+      v: "abc_1:3-x",
+    });
+    // A pattern that would let ".." through is itself refused, so it keeps nothing.
+    expect(keepFields({ v: "v1.2" }, idRule("^[a-z0-9.]{1,9}$"))).toEqual({});
+  });
+
+  it("the entry's own pattern still applies at keep time", () => {
+    expect(keepFields({ v: "abc" }, idRule("^[0-9]{1,12}$"))).toEqual({});
+    expect(keepFields({ v: "123" }, idRule("^[0-9]{1,12}$"))).toEqual({ v: "123" });
+  });
+
+  it("an id longer than 128 is dropped, even when the pattern allows it", () => {
+    expect(keepFields({ v: "a".repeat(129) }, idRule("^[a-z]+$"))).toEqual({});
+    expect(keepFields({ v: "a".repeat(128) }, idRule("^[a-z]+$"))).toEqual({ v: "a".repeat(128) });
+  });
+
+  it("a pattern that admits free text keeps nothing, even a clean value", () => {
+    expect(keepFields({ v: "abc" }, idRule("^x.*$|^abc$"))).toEqual({});
+  });
+
+  it("the tolerated screen sees glued write words, but not an adjective like publishable", () => {
+    for (const tool of ["executesql", "applymigration", "get_deployfunction", "mergebranch"])
+      expect(toleratedProblems([{ tool, listingHash: "0".repeat(64) }], []), tool).not.toEqual([]);
+    for (const tool of ["get_publishable_keys", "search_docs", "get_project_url"])
+      expect(toleratedProblems([{ tool, listingHash: "0".repeat(64) }], []), tool).toEqual([]);
+  });
+});
