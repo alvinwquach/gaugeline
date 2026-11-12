@@ -57,3 +57,10 @@ export { startGraphqlServer } from "./graphql-server.js";
 export type { GraphqlServer, GraphqlServerOptions, SeenGraphqlRequest } from "./graphql-server.js";
 export { makePdf } from "./pdf.js";
 export type { PdfLine, PdfOptions } from "./pdf.js";
+export {
+  READ as MCP_READ_HINTS,
+  RECORDED_ANSWERS as SUPABASE_RECORDED_ANSWERS,
+  RECORDED_TOOLS as SUPABASE_RECORDED_TOOLS,
+  fakeSupabase,
+} from "./supabase-mcp.js";
+export type { FakeOptions as FakeSupabaseOptions, Sent as SupabaseSent } from "./supabase-mcp.js";
