@@ -20,8 +20,8 @@ const answer = (over: Record<string, unknown> = {}) => ({
 });
 
 describe("parseGateAnswer: the Function's reply is data, checked field by field", () => {
-  it("accepts a well-formed reply and gives back only the fields it knows", () => {
-    const parsed = parseGateAnswer({ ...answer(), extra: "ignored", token: "no" }, PAGE);
+  it("accepts a well-formed reply and gives back its fields", () => {
+    const parsed = parseGateAnswer(answer(), PAGE);
     expect(parsed).toEqual({
       ok: true,
       answer: {
@@ -63,6 +63,11 @@ describe("parseGateAnswer: the Function's reply is data, checked field by field"
     ["a finding id with a space", answer({ findings: [{ ...finding, id: "broken links" }] })],
     ["a finding id of a script", answer({ findings: [{ ...finding, id: "<script>" }] })],
     ["a finding whose title is a number", answer({ findings: [{ ...finding, title: 7 }] })],
+    ["a field it does not know", answer({ token: "x" })],
+    [
+      "a finding with a field it does not know",
+      answer({ findings: [{ ...finding, html: "<b>" }] }),
+    ],
     ["a finding that is a string", answer({ findings: ["broken-links"] })],
   ])("refuses %s", (_name, data) => {
     const parsed = parseGateAnswer(data, PAGE);

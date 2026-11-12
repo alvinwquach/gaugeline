@@ -11,6 +11,8 @@ import { couldNotCheck, parseGateAnswer, type GateAnswer } from "./answer.js";
 export const DEFAULT_TIMEOUT_MS = 15_000;
 export const DEFAULT_MAX_BYTES = 64 * 1024;
 const MAX_PAGE_URL = 2048;
+/** Exactly application/json, with at most a utf-8 charset: not json-seq, jsonp or any other suffix. */
+const JSON_TYPE = /^application\/json(?:\s*;\s*charset="?utf-8"?)?$/i;
 
 export interface RequestGateOptions {
   /** The Function address you own, for example "https://gate.lantern-yard.example/check". */
@@ -35,7 +37,12 @@ export function gateEndpoint(functionUrl: string): URL {
       "The Function address must be a full https address with no name, password, wildcard, query or fragment, for example https://gate.lantern-yard.example/check.",
     );
   };
-  if (typeof functionUrl !== "string" || /[\s?#*]/.test(functionUrl) || !URL.canParse(functionUrl))
+  if (
+    typeof functionUrl !== "string" ||
+    !/^https:\/\/[^\s/\\]/.test(functionUrl) ||
+    /[\s?#*\\]/.test(functionUrl) ||
+    !URL.canParse(functionUrl)
+  )
     return fail();
   const url = new URL(functionUrl);
   if (url.protocol !== "https:" || url.username !== "" || url.password !== "" || url.host === "")
@@ -44,7 +51,12 @@ export function gateEndpoint(functionUrl: string): URL {
 }
 
 function isPageUrl(value: unknown): value is string {
-  if (typeof value !== "string" || value.length > MAX_PAGE_URL || !URL.canParse(value))
+  if (
+    typeof value !== "string" ||
+    value.length > MAX_PAGE_URL ||
+    !/^https?:\/\/[^\s/\\]/i.test(value) ||
+    !URL.canParse(value)
+  )
     return false;
   const url = new URL(value);
   return (
@@ -104,7 +116,7 @@ export async function requestGate(options: RequestGateOptions): Promise<GateAnsw
     )
       return stop("The Function redirected the request, which the Studio does not follow.");
     if (res.status !== 200) return stop(`The gate answered ${res.status}.`);
-    if (!/^application\/json\b/i.test(res.headers.get("content-type") ?? ""))
+    if (!JSON_TYPE.test(res.headers.get("content-type") ?? ""))
       return stop("The reply was not JSON.");
     const declared = Number(res.headers.get("content-length") ?? "0");
     if (declared > maxBytes) return stop("The reply was too large.");

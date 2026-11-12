@@ -43,8 +43,14 @@ const isRecord = (v: unknown): v is Record<string, unknown> =>
   v !== null && typeof v === "object" && !Array.isArray(v);
 const clean = (value: string, max: number): string => sanitise(value, max).text;
 
+const REPLY_FIELDS = ["version", "status", "url", "checkedAt", "findings", "reason"];
+const FINDING_FIELDS = ["id", "severity", "title", "evidence", "url"];
+/** True when the object holds a field the agreed shape does not name. */
+const hasUnknownField = (o: Record<string, unknown>, known: readonly string[]) =>
+  Object.keys(o).some((k) => !known.includes(k));
+
 function parseFinding(raw: unknown): GateFinding | undefined {
-  if (!isRecord(raw)) return undefined;
+  if (!isRecord(raw) || hasUnknownField(raw, FINDING_FIELDS)) return undefined;
   const { id, severity, title, evidence, url } = raw;
   if (typeof id !== "string" || !CHECK_ID.test(id)) return undefined;
   if (typeof severity !== "string" || !SEVERITIES.includes(severity)) return undefined;
@@ -65,6 +71,8 @@ function parseFinding(raw: unknown): GateFinding | undefined {
  */
 export function parseGateAnswer(data: unknown, expectedUrl: string): ParsedAnswer {
   if (!isRecord(data)) return bad("The reply was not an object.");
+  if (hasUnknownField(data, REPLY_FIELDS))
+    return bad("The reply held a field this plugin does not know.");
   if (data.version !== ANSWER_VERSION)
     return bad("The reply was a version this plugin does not read.");
   const { status, url, checkedAt, findings, reason } = data;

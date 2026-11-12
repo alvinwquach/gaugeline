@@ -74,6 +74,8 @@ describe("docs/publish-gate.md", () => {
       "at most 64 KiB",
       "A redirect is never followed",
       "never as HTML",
+      "a reply with a field not named here",
+      "a content type other than `application/json`",
     ])
       expect(page, claim).toContain(claim);
     expect(DEFAULT_TIMEOUT_MS).toBe(15_000);

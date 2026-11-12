@@ -167,7 +167,7 @@ findings https://lantern-yard.example/menu
 high broken-links "Old cocktails" <a href="/menu/old-cocktails"> returned 404
 ```
 
-The reply has one fixed shape: `version` (1), `status` (`clean`, `findings` or `could-not-check`), `url`, `checkedAt`, `findings` (each with `id`, `severity`, `title`, `evidence` and `url`) and, for `could-not-check`, a `reason`. A reply about a different page than the one asked for is refused. `findings` holds only the problems at or above `blockOn`.
+The reply has one fixed shape: `version` (1), `status` (`clean`, `findings` or `could-not-check`), `url`, `checkedAt`, `findings` (each with `id`, `severity`, `title`, `evidence` and `url`) and, for `could-not-check`, a `reason`. A reply about a different page than the one asked for is refused, and so is a reply with a field not named here, a content type other than `application/json` (a utf-8 charset is allowed) or a reply that is not valid JSON. `findings` holds only the problems at or above `blockOn`.
 
 ## The four answers
 

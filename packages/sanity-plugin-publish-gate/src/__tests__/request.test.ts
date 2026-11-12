@@ -50,6 +50,9 @@ describe("gateEndpoint: the one address the Studio may call", () => {
     ["a wildcard in a path host-like form", "https://*/check"],
     ["a fragment", "https://gate.lantern-yard.example/check#x"],
     ["a query already on it", "https://gate.lantern-yard.example/check?url=https://a.example/"],
+    ["a scheme with no slashes", "https:gate.lantern-yard.example/check"],
+    ["a scheme with backslashes", "https:\\\\gate.lantern-yard.example\\check"],
+    ["a scheme with one slash", "https:/gate.lantern-yard.example/check"],
     ["a relative address", "/check"],
     ["an empty string", ""],
     ["a javascript: address", "javascript:alert(1)"],
@@ -92,6 +95,7 @@ describe("requestGate: what leaves the Studio", () => {
       "https://user:pw@lantern-yard.example/menu",
       "ftp://lantern-yard.example/menu",
       "javascript:alert(1)",
+      "https:lantern-yard.example/menu",
       "/menu",
       "",
     ]) {
@@ -141,6 +145,33 @@ describe("requestGate: what comes back", () => {
     expect(answer.status).toBe("could-not-check");
     expect(JSON.stringify(answer)).not.toMatch(/ignore previous/);
     expect(answer.reason).toMatch(/502/);
+  });
+
+  it("the reply must say it is JSON: a valid body under another type is refused", async () => {
+    const body = JSON.stringify(good);
+    for (const type of [
+      "text/html",
+      "application/json-seq",
+      "application/jsonp",
+      "application/jsonx",
+      "text/plain; charset=utf-8",
+      "",
+    ]) {
+      const { fetch } = recorder(
+        () => new Response(body, { status: 200, headers: type ? { "content-type": type } : {} }),
+      );
+      expect((await ask(fetch)).status, type).toBe("could-not-check");
+    }
+    for (const type of [
+      "application/json",
+      "application/json; charset=utf-8",
+      "Application/JSON",
+    ]) {
+      const { fetch } = recorder(
+        () => new Response(body, { status: 200, headers: { "content-type": type } }),
+      );
+      expect((await ask(fetch)).status, type).toBe("findings");
+    }
   });
 
   it("an answer that is not JSON, or not the agreed shape, is could-not-check", async () => {
