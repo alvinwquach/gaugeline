@@ -115,6 +115,7 @@ export const UNLISTED: NavPage[] = [
   { slug: "guides/served-libraries", title: "Served libraries: the old jQuery nobody remembers" },
   { slug: "guides/init", title: "gaugeline init: start from what the site is built on" },
   { slug: "guides/deploy-gates", title: "Deploy gates: check a preview before it goes live" },
+  { slug: "guides/vercel-gate", title: "Hold a Vercel deploy on Gaugeline's result" },
   {
     slug: "guides/image-optimizers",
     title: "Open image optimizers: who can use your site to resize images",
@@ -183,6 +184,7 @@ export const UNLISTED: NavPage[] = [
   { slug: "guides/many-sites", title: "Many sites from one file" },
   { slug: "guides/ci-templates", title: "CI templates: GitLab CI, Bitbucket Pipelines, CircleCI" },
   { slug: "hosted/data-model", title: "Hosted: data model and tenancy" },
+  { slug: "hosted/api", title: "Hosted: the runs API (v1)" },
   { slug: "hosted/plan", title: "Hosted app plan" },
   { slug: "hosted/sign-in", title: "Hosted: sign in and the shell" },
   { slug: "hosted/dashboard", title: "Hosted: the dashboard" },

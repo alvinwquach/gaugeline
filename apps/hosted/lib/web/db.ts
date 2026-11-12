@@ -1,7 +1,7 @@
 /**
  * How the web app reaches the database. Two rules, both from the G34 review:
  *
- *  1. The login is the app's own role (GAUGELINE_DATABASE_URL), never the table owner and never a
+ *  1. The login is the app's own role (GAUGELINE_WEB_DATABASE_URL), never the table owner and never a
  *     superuser: both skip row-level security. connectionSkipsRls() is asked once, at start-up, outside any
  *     transaction, and the app refuses to start if the answer is yes.
  *  2. Every read a signed-in person causes runs in a transaction that starts with
@@ -17,7 +17,8 @@ import type { Claims } from "./auth.js";
 export type Sql = postgres.Sql;
 export type Tx = postgres.TransactionSql;
 
-export const APP_URL_ENV = "GAUGELINE_DATABASE_URL";
+/** Its own variable: the runs API's login is a member of service_role, and this one must never be. */
+export const APP_URL_ENV = "GAUGELINE_WEB_DATABASE_URL";
 const STATEMENT_TIMEOUT_MS = 10_000;
 
 export async function openAppDatabase(env: Record<string, string | undefined>): Promise<Sql> {
@@ -27,7 +28,17 @@ export async function openAppDatabase(env: Record<string, string | undefined>): 
   try {
     if (await connectionSkipsRls(sql))
       throw new Error(
-        `Refusing to start: the login in ${APP_URL_ENV} skips row-level security (a superuser, or the owner of the tables). Use the app's own login role there.`,
+        `Refusing to start: the login in ${APP_URL_ENV} skips row-level security (a superuser, or the owner of the tables). Use the web app's own login role there.`,
+      );
+    // connectionSkipsRls leaves service_role out on purpose (the runs API works as it). The web app never
+    // does: it reads as the signed-in person, so a login that can become service_role is refused.
+    const rows = await sql`select
+      exists (select 1 from pg_roles r where r.rolname = 'service_role'
+              and (pg_has_role(session_user, r.oid, 'MEMBER') or pg_has_role(current_user, r.oid, 'MEMBER'))) as service,
+      exists (select 1 from pg_roles r where r.rolname = session_user and (r.rolsuper or r.rolbypassrls)) as bypass`;
+    if (rows[0]?.service === true || rows[0]?.bypass === true)
+      throw new Error(
+        `Refusing to start: the login in ${APP_URL_ENV} is, or can become, service_role or a role that bypasses row-level security. The web app reads as the signed-in person only; give it a login that is a member of \`authenticated\` and nothing else.`,
       );
   } catch (e) {
     await sql.end({ timeout: 1 });

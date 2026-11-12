@@ -42,7 +42,7 @@ describe.skipIf(!HAS_DATABASE)("web database access", () => {
     await expect(openAppDatabase({ [APP_URL_ENV]: f.ownerUrl })).rejects.toThrow(
       /Refusing to start.*skips row-level security/s,
     );
-    await expect(openAppDatabase({})).rejects.toThrow(/GAUGELINE_DATABASE_URL is not set/);
+    await expect(openAppDatabase({})).rejects.toThrow(/GAUGELINE_WEB_DATABASE_URL is not set/);
   });
 
   it("starts on the app's own login", async () => {
@@ -52,6 +52,25 @@ describe.skipIf(!HAS_DATABASE)("web database access", () => {
     } finally {
       await sql.end({ timeout: 1 });
     }
+  });
+
+  it("refuses a login that is a member of service_role: the web app reads as people, never as the server", async () => {
+    const role = `gl_sr_${Math.random().toString(16).slice(2, 8)}`;
+    await f.owner.unsafe(
+      `create role ${role} login noinherit nosuperuser nobypassrls password 'pw'; grant authenticated, service_role to ${role};`,
+    );
+    try {
+      const u = new URL(f.ownerUrl);
+      u.username = role;
+      u.password = "pw";
+      await expect(openAppDatabase({ [APP_URL_ENV]: u.href })).rejects.toThrow(/service_role/);
+    } finally {
+      await f.owner.unsafe(`drop owned by ${role}; drop role ${role}`);
+    }
+  });
+
+  it("reads its address from its own variable, not the API's", () => {
+    expect(APP_URL_ENV).toBe("GAUGELINE_WEB_DATABASE_URL");
   });
 
   it("asUser runs as `authenticated` with the person's id, and leaves the login role afterwards", async () => {
@@ -120,7 +139,10 @@ describe("the web app's own code", () => {
       expect(code(f), f).not.toMatch(/reset\s+role/i);
       expect(code(f), f).not.toMatch(/session\s+authorization/i);
       expect(code(f), f).not.toMatch(/set\s+(?!local\s)role/i);
-      expect(code(f), f).not.toMatch(/service_role/);
+      if (f !== "db.ts") expect(code(f), f).not.toMatch(/service_role/);
+      expect(code(f), f).not.toMatch(
+        /(set\s+local\s+role|set_config\('role'[^)]*)\s*service_role/i,
+      );
       expect(code(f), f).not.toMatch(/GAUGELINE_MIGRATE_URL/);
     }
   });

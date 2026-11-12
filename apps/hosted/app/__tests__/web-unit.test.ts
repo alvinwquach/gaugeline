@@ -77,7 +77,14 @@ describe("stand-in auth: the token carries Supabase's claims", () => {
 
   it("refuses a token that is tampered, unsigned, signed with another key, expired, for another audience or malformed", () => {
     const { a } = auth();
-    const good = { sub: USER, aud: "authenticated", role: "authenticated", exp: 4e9, iat: 1 };
+    const good = {
+      sub: USER,
+      aud: "authenticated",
+      role: "authenticated",
+      iss: "gaugeline-stand-in",
+      iat: NOW.getTime() / 1000,
+      exp: NOW.getTime() / 1000 + 3600,
+    };
     const t = signHs256(good, SECRET);
     expect(a.verify(t)?.sub).toBe(USER);
     const [h, p, s] = t.split(".");
@@ -142,7 +149,7 @@ describe("stand-in auth: the email link", () => {
     const prev = process.env.NODE_ENV;
     process.env.NODE_ENV = "production";
     try {
-      expect(() => auth()).toThrow(/never in production/);
+      expect(() => auth()).toThrow(/development and test/);
     } finally {
       process.env.NODE_ENV = prev;
     }

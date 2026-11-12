@@ -14,7 +14,7 @@ import {
   verifyPage,
 } from "./handlers.js";
 import type { WebDeps } from "./deps.js";
-import { respondText } from "./layout.js";
+import { respondText, withHsts } from "./layout.js";
 
 type Handler = (request: Request, deps: WebDeps) => Response | Promise<Response>;
 
@@ -49,5 +49,5 @@ export async function route(request: Request, deps: WebDeps): Promise<Response> 
       status: 405,
       headers: { allow: match.methods.join(", ") },
     });
-  return handler(request, deps);
+  return withHsts(await handler(request, deps), request, deps.secureCookies);
 }

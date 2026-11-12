@@ -45,7 +45,12 @@ const TENANT_TABLES = [
   "drafts",
   "decisions",
   "site_consents",
+  // Server-only (0003): no grant for anon or authenticated at all.
+  "tokens",
+  "idempotency_keys",
 ];
+
+const SERVER_ONLY = new Set(["tokens", "idempotency_keys"]);
 
 describe.skipIf(!HAS_DATABASE)("hosted database: row-level security", () => {
   let db: TestDatabase;
@@ -461,7 +466,9 @@ describe.skipIf(!HAS_DATABASE)("hosted database: row-level security", () => {
   describe("edge cases", () => {
     it("a connection that skips row-level security is reported, so the app never queries as the owner", async () => {
       expect(await connectionSkipsRls(sql)).toBe(true);
-      expect(await as(sql, userA, (tx) => connectionSkipsRls(tx))).toBe(false);
+      // set local role does not hide the session's own role: a superuser session stays a superuser
+      // session, so the check still reports it (sessions.test.ts covers the safe login role).
+      expect(await as(sql, userA, (tx) => connectionSkipsRls(tx))).toBe(true);
     });
 
     it("roles get no privilege on sequences, and only SELECT on views", async () => {
@@ -542,7 +549,8 @@ describe.skipIf(!HAS_DATABASE)("hosted database: row-level security", () => {
             }),
           );
           // anon has no grant at all; a stranger has the grant but RLS returns nothing.
-          if (who.role === "anon") expect(msg, table).toMatch(/permission denied/);
+          if (who.role === "anon" || SERVER_ONLY.has(table))
+            expect(msg, table).toMatch(/permission denied/);
           else expect(msg, table).toBe("");
         }
       }
