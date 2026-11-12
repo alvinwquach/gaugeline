@@ -116,7 +116,9 @@ describe("--baseline: integration", () => {
       dir,
       registryOf(rule("menu-missing", "high", plant)),
     );
-    expect(second.err).toContain("1 known finding in base.json left out; 0 new");
+    expect(second.err).toContain(
+      "1 known finding in base.json left out (1 Fix this first); 0 new.",
+    );
     expect(second.out).not.toContain("Problem menu-missing");
     expect(second.code).toBe(0);
 
@@ -125,7 +127,7 @@ describe("--baseline: integration", () => {
       dir,
       registryOf(rule("menu-missing", "high"), rule("hours-missing", "high")),
     );
-    expect(third.err).toContain("1 known finding in base.json left out; 1 new");
+    expect(third.err).toContain("1 known finding in base.json left out (1 Fix this first); 1 new.");
     expect(third.out).toContain("Problem hours-missing");
     expect(third.out).not.toContain("Problem menu-missing");
     expect(third.code).toBe(1);
@@ -450,6 +452,49 @@ describe("review fixes: baseline in CI, unmatched suppressions, executable confi
     expect(site.log).toEqual([]);
     const json = folder({ "gaugeline.config.json": "{}" });
     expect((await run(["--config-json-only"], json, registryOf(rule("a", "low")))).code).toBe(0);
+  });
+
+  it("the baseline counts and the written line are printed under --quiet, with how many known were Fix this first", async () => {
+    const dir = folder();
+    const w = await run(
+      ["--quiet", "--baseline", "b.json"],
+      dir,
+      registryOf(rule("menu-missing", "high")),
+    );
+    expect(w.err).toContain("Baseline written to b.json: 1 finding now known");
+    const r = await run(
+      ["--quiet", "--baseline", "b.json"],
+      dir,
+      registryOf(rule("menu-missing", "high"), rule("hours-missing", "high")),
+    );
+    expect(r.err).toContain("1 known finding in b.json left out (1 Fix this first); 1 new.");
+  });
+
+  it("a program config that throws at import has already been announced", async () => {
+    const dir = folder({ "gaugeline.config.mjs": 'throw new Error("boom at import");' });
+    const r = await run([], dir, registryOf(rule("a", "low")));
+    expect(r.code).toBe(2);
+    expect(r.err.indexOf("Running code from gaugeline.config.mjs")).toBeGreaterThanOrEqual(0);
+    expect(r.err.indexOf("Running code from")).toBeLessThan(r.err.indexOf("boom at import"));
+  });
+
+  const prober = `export default { custom: [{ id: "env-prober", area: "Security & email", severity: "low", title: "Probe", what: "w", why: "y", fix: "f", tech: "t", size: "S", done: "d", estimateChanges: "e", async run(page, ctx) { await ctx.fetcher.get(new URL("/.env", page.finalUrl).href); return []; } }] };`;
+
+  it("a custom check cannot ask for /.env without --owner-consent; with it, one GET goes out", async () => {
+    site.log.length = 0;
+    const dir = folder({ "gaugeline.config.mjs": prober });
+    const no = await run([], dir, registryOf(rule("a", "low", { on: false })));
+    expect(no.out).toContain("1 check could not run: env-prober");
+    expect(site.log.map((q) => q.path)).not.toContain("/.env");
+    const yes = await run(
+      ["--owner-consent"],
+      dir,
+      registryOf(rule("a", "low", { on: false })),
+      undefined,
+      {},
+    );
+    expect(yes.out).not.toContain("could not run: env-prober");
+    expect(site.log.filter((q) => q.path === "/.env").map((q) => q.method)).toEqual(["GET"]);
   });
 
   it("a custom check sees get but no query, and no consent value, even with --owner-consent", async () => {

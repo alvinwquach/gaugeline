@@ -40,7 +40,12 @@ function canStripTypes(): boolean {
 
 export async function loadConfig(
   cwd: string,
-  opts: { importer?: (url: string) => Promise<unknown>; jsonOnly?: boolean } = {},
+  opts: {
+    importer?: (url: string) => Promise<unknown>;
+    jsonOnly?: boolean;
+    /** Called with the file's name just before a program is imported: it has run once it is. */
+    onProgram?: (file: string) => void;
+  } = {},
 ): Promise<LoadedConfig | undefined> {
   const found = CONFIG_FILES.filter((f) => existsSync(join(cwd, f)));
   if (found.length === 0) return undefined;
@@ -74,6 +79,7 @@ export async function loadConfig(
       { hint: "Use gaugeline.config.json or gaugeline.config.mjs, or update Node." },
     );
   let mod: unknown;
+  opts.onProgram?.(file);
   try {
     mod = await (opts.importer ?? ((u: string) => import(u)))(pathToFileURL(path).href);
   } catch (err) {

@@ -152,6 +152,84 @@ describe("a custom check runs in a smaller context", () => {
   });
 });
 
+describe("a custom check is not a way round the probing rule (rule 14)", () => {
+  function asked(urls: string[], consent: boolean, headers?: Record<string, string>) {
+    const calls: string[] = [];
+    const fetcher = {
+      get: async (url: string) => {
+        calls.push(url);
+        return [];
+      },
+    };
+    const check = sandboxCustomCheck(
+      defineCheck({
+        ...mine("fetching-rule"),
+        run: async (_page, ctx) => {
+          for (const u of urls)
+            await (ctx as never as { fetcher: typeof fetcher }).fetcher.get(
+              u,
+              headers ? { headers } : (undefined as never),
+            );
+          return [];
+        },
+      }),
+    );
+    return {
+      calls,
+      result: check.run({}, {
+        warn: () => undefined,
+        fetcher,
+        ...(consent ? { ownerConsent: true } : {}),
+      } as never),
+    };
+  }
+
+  const refused = [
+    ["a dot path", "https://bar.example/.env"],
+    ["a dot path deeper down", "https://bar.example/blog/.git/config"],
+    ["an admin path", "https://bar.example/wp-admin/"],
+    ["an admin path", "https://bar.example/admin"],
+    ["an administrator path", "https://bar.example/administrator/index.php"],
+  ] as const;
+
+  for (const [what, url] of refused) {
+    it(`without consent ${what} (${url}) is refused before a request`, async () => {
+      const { calls, result } = asked([url], false);
+      await expect(result).rejects.toThrow(/--owner-consent/);
+      expect(calls).toEqual([]);
+    });
+    it(`with consent ${what} (${url}) is asked for: get only`, async () => {
+      const { calls, result } = asked([url], true);
+      await result;
+      expect(calls).toEqual([url]);
+    });
+  }
+
+  it("public paths, including /.well-known/, are asked for without consent", async () => {
+    const urls = ["https://bar.example/menu", "https://bar.example/.well-known/security.txt"];
+    const { calls, result } = asked(urls, false);
+    await result;
+    expect(calls).toEqual(urls);
+  });
+
+  for (const name of ["Authorization", "x-api-key", "Cookie", "X-Auth-Token", "apikey"]) {
+    it(`without consent the header ${name} is refused; with consent it is sent`, async () => {
+      const no = asked(["https://bar.example/menu"], false, { [name]: "v" });
+      await expect(no.result).rejects.toThrow(/header/);
+      expect(no.calls).toEqual([]);
+      const yes = asked(["https://bar.example/menu"], true, { [name]: "v" });
+      await yes.result;
+      expect(yes.calls).toEqual(["https://bar.example/menu"]);
+    });
+  }
+
+  it("a harmless header is fine without consent", async () => {
+    const { calls, result } = asked(["https://bar.example/menu"], false, { accept: "text/html" });
+    await result;
+    expect(calls).toHaveLength(1);
+  });
+});
+
 describe("custom checks and built-ins", () => {
   it("an id of a check that is not in this run's registry but ships with Gaugeline is refused too", () => {
     const reserved = new Set(["wp-users-exposed"]);

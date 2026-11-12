@@ -31,7 +31,7 @@ An id under `checks` that no check has is exit 2 when it is set to `block` (it w
 
 ### JSON is the safe default
 
-`gaugeline.config.json` is data. `gaugeline.config.mjs`, `.js` and `.ts` are programs: Gaugeline loads them with Node's own `import()`, which **runs the code in the file**, the same as an ESLint or Vite config. Use them only in a folder you trust, and never in one you just cloned from someone else and have not read. A `.ts` config needs a Node that runs TypeScript files itself (22.18 or newer, or 24); Gaugeline adds no loader of its own. Keep one file: two in the folder is an error, so no file is ignored in silence. Every run that loads a program says `Running code from gaugeline.config.mjs` on stderr. To refuse programs altogether, for example in a CI job that checks a pull request from a fork, pass `--config-json-only` or set `GAUGELINE_NO_EXEC_CONFIG=1`: a `.mjs`, `.js` or `.ts` config is then exit 2 and nothing is run. Custom checks still read through the run's read-only fetcher; code in your own config can do anything Node can, which is why JSON comes first.
+`gaugeline.config.json` is data. `gaugeline.config.mjs`, `.js` and `.ts` are programs: Gaugeline loads them with Node's own `import()`, which **runs the code in the file**, the same as an ESLint or Vite config. Use them only in a folder you trust, and never in one you just cloned from someone else and have not read. A `.ts` config needs a Node that runs TypeScript files itself (22.18 or newer, or 24); Gaugeline adds no loader of its own. Keep one file: two in the folder is an error, so no file is ignored in silence. Every run that loads a program says `Running code from gaugeline.config.mjs` on stderr, before it runs it. To refuse programs altogether, for example in a CI job that checks a pull request from a fork, pass `--config-json-only` or set `GAUGELINE_NO_EXEC_CONFIG=1`: a `.mjs`, `.js` or `.ts` config is then exit 2 and nothing is run. Custom checks still read through the run's read-only fetcher; code in your own config can do anything Node can, which is why JSON comes first.
 
 ## A baseline: only what is new
 
@@ -64,7 +64,9 @@ $ npx gaugeline fernhill.example --ci --baseline gaugeline.baseline.json
 2 to look at, none to fix first.
 ```
 
-On stderr Gaugeline says what it left out: `2 known findings in gaugeline.baseline.json left out; 2 new.` The exit code is 1 because the config sets `mailto-cta` to `block`; stderr says so too. Known findings never fail a run. A baseline that is malformed, or written by a newer Gaugeline, is exit 2 with a plain message, never a silent pass. A baseline file that does not exist yet is written by a run without `--ci` (which exits 0 and says it wrote one), or by `--update-baseline`. Under `--ci` a missing baseline is exit 2: a checkout that lost the file must fail, not write a new one and accept every finding. Commit the file.
+On stderr Gaugeline says what it left out, whatever `--quiet` says: `2 known findings in gaugeline.baseline.json left out; 2 new.` (with `(N Fix this first)` after `left out` when some of the known ones were).
+
+**`--json` does not list them.** Baselined findings, and suppressed ones, are left out of the `--json` result. Their trace is the stderr lines: how many were left out and how many of those were "Fix this first". A result schema version 3 that lists them in `--json` is planned for v1.1; until then a program that reads `--json` cannot tell a clean site from a muted one, so read stderr too, or run without `--baseline` and `--suppress` when you need everything. The exit code is 1 because the config sets `mailto-cta` to `block`; stderr says so too. Known findings never fail a run. A baseline that is malformed, or written by a newer Gaugeline, is exit 2 with a plain message, never a silent pass. A baseline file that does not exist yet is written by a run without `--ci` (which exits 0 and says it wrote one), or by `--update-baseline`. Under `--ci` a missing baseline is exit 2: a checkout that lost the file must fail, not write a new one and accept every finding. Commit the file.
 
 `gaugeline query` has its own, older, narrower baseline (`--save` and `--against`, names of gaps only). It is unchanged.
 
@@ -98,6 +100,8 @@ $ npx gaugeline fernhill.example --suppress og-image-missing --suppress-until 20
 ```
 
 A suppression that matches no finding in a run is named on stderr (a mistyped id, an address with no scheme such as `fernhill.example/menu`, or a problem that is fixed): remove it or correct it. What was snoozed is always counted on stderr, with how many were "Fix this first", even with `--quiet`.
+
+The same is true of suppressions: `--json` leaves the snoozed findings out, and stderr always counts them, with how many were "Fix this first" (a schema version 3 that lists them is planned for v1.1).
 
 Nothing is muted for ever: a permanent ignore list is how real findings disappear. (Findings you dismiss in the terminal view with `d` go to `gaugeline.ignore.json`, which has a reason but no date.)
 

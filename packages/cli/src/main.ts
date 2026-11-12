@@ -1487,15 +1487,16 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           `--suppress-until ${args.suppress.until} is already past: a suppression that has expired does nothing.`,
           { hint: "Give a date from today on." },
         );
+      // A program in this folder is about to run: say so before it does, every time (a fork's pull
+      // request can bring its own), so a config that throws at import has been announced too.
       const loadedConfig = await loadConfig(cwd, {
         jsonOnly: args.configJsonOnly,
+        onProgram: (file) =>
+          io.stderr.write(
+            `Running code from ${file}. --config-json-only (or GAUGELINE_NO_EXEC_CONFIG=1) refuses it.\n`,
+          ),
       });
       const config: Config = loadedConfig?.config ?? { checks: {}, custom: [], suppress: [] };
-      // A program in this folder ran: say so every time (a fork's pull request can bring its own).
-      if (loadedConfig?.executable)
-        io.stderr.write(
-          `Running code from ${loadedConfig.file}. --config-json-only (or GAUGELINE_NO_EXEC_CONFIG=1) refuses it.\n`,
-        );
       const everyBuiltIn = builtInCheckIds();
       if (loadedConfig)
         registerCustomChecks(registry, config.custom, loadedConfig.file, everyBuiltIn);
@@ -1788,20 +1789,20 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         }
       }
       if (args.baseline !== undefined) {
+        // Printed whatever --quiet says, like the suppression count: --json does not list these findings.
         if (knownBaseline === undefined) {
           const n = writeBaselineFile(cwd, args.baseline, result.findings, runClock);
           for (const f of result.findings) accepted.add(f);
-          if (!args.quiet)
-            io.stderr.write(
-              `Baseline written to ${args.baseline}: ${n} finding${n === 1 ? "" : "s"} now known. Later runs with --baseline report only new ones.\n`,
-            );
+          io.stderr.write(
+            `Baseline written to ${args.baseline}: ${n} finding${n === 1 ? "" : "s"} now known. Later runs with --baseline report only new ones.\n`,
+          );
         } else {
           const d = diffFindingsBaseline(result.findings, knownBaseline);
           result.findings = d.fresh;
-          if (!args.quiet)
-            io.stderr.write(
-              `${d.known.length} known finding${d.known.length === 1 ? "" : "s"} in ${args.baseline} left out; ${d.fresh.length} new.\n`,
-            );
+          const knownHigh = d.known.filter((f) => f.severity === "high").length;
+          io.stderr.write(
+            `${d.known.length} known finding${d.known.length === 1 ? "" : "s"} in ${args.baseline} left out${knownHigh > 0 ? ` (${knownHigh} Fix this first)` : ""}; ${d.fresh.length} new.\n`,
+          );
         }
       }
       // gaugeline handoff: the summary of what the checks read, as three files (or JSON on stdout). Nothing
