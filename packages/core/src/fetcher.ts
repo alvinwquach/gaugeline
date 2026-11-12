@@ -206,6 +206,13 @@ export interface GetOptions {
    */
   maxRedirects?: number;
   method?: "GET" | "HEAD";
+  /**
+   * Read the body as bytes, kept as a string of one character per byte (latin1), for a file such as a
+   * PDF that is not text. `maxBytes` then sets the size cap, up to DOCUMENT_HARD_CAP, rather than only
+   * lowering the fetcher's; the body is cut there and the hop is flagged `truncated`. GET only: a
+   * file is never sent anywhere, and the bytes are parsed in memory and dropped.
+   */
+  binary?: boolean;
   /** Send `headers` only to hops on the first address's origin: a redirect elsewhere gets none. */
   headersSameOrigin?: boolean;
   /**
@@ -310,11 +317,15 @@ async function readPeek(
   };
 }
 
+/** The most a binary read may ask for, whatever the caller passes. */
+export const DOCUMENT_HARD_CAP = 25 * 1024 * 1024;
+
 async function readCapped(
   body: Readable,
   cap: number,
   contentType: string | undefined,
   unzip = true,
+  binary = false,
 ): Promise<{ body: string; truncated: boolean; bytes: number }> {
   const chunks: Buffer[] = [];
   let size = 0;
@@ -340,6 +351,7 @@ async function readCapped(
   const buf = Buffer.concat(chunks, size);
   // No text starts with 0x1f 0x8b, so a body that does is a gzip file: read it decompressed,
   // under the same cap. One level only: a gzip inside a gzip stays as it is.
+  if (binary) return { body: buf.toString("latin1"), truncated, bytes: size };
   if (unzip && isGzipFile(buf)) {
     const inner = await readCapped(
       Readable.from([buf]).pipe(createGunzip()),
@@ -541,6 +553,7 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
       anonymous?: boolean;
       peek?: PeekOptions;
       maxBytes?: number;
+      binary?: boolean;
       /** A query that `query()` has already checked against an allowlist: the only way method is POST. */
       query?: { body: string; allow: string };
     } = {},
@@ -625,8 +638,14 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
         try {
           const { body, truncated, bytes } = await readCapped(
             res.body,
-            extra.maxBytes === undefined ? maxBodyBytes : Math.min(extra.maxBytes, maxBodyBytes),
+            extra.binary
+              ? Math.min(extra.maxBytes ?? LIMITS.documentBytes, DOCUMENT_HARD_CAP)
+              : extra.maxBytes === undefined
+                ? maxBodyBytes
+                : Math.min(extra.maxBytes, maxBodyBytes),
             res.headers["content-type"],
+            true,
+            extra.binary === true,
           );
           hop.body = body;
           hop.bytes = bytes;
@@ -672,6 +691,7 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
             ...(opts.anonymous ? { anonymous: true } : {}),
             ...(opts.peek ? { peek: opts.peek } : {}),
             ...(opts.maxBytes === undefined ? {} : { maxBytes: opts.maxBytes }),
+            ...(opts.binary && method === "GET" ? { binary: true } : {}),
           },
         );
       } catch (err) {
@@ -721,7 +741,7 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
     const method = opts.method ?? "GET";
     assertReadOnly(method);
     const normal = normaliseUrl(url);
-    const key = `${method} ${normal}${opts.headers ? ` ${JSON.stringify(Object.entries(opts.headers).sort())}` : ""}${opts.headersSameOrigin ? " same-origin" : ""}${opts.anonymous ? " anonymous" : ""}${opts.peek ? ` peek:${opts.peek.maxBytes}` : ""}${opts.maxBytes === undefined ? "" : ` max:${opts.maxBytes}`}${opts.maxRedirects === undefined ? "" : ` redirects:${opts.maxRedirects}`}`;
+    const key = `${method} ${normal}${opts.headers ? ` ${JSON.stringify(Object.entries(opts.headers).sort())}` : ""}${opts.headersSameOrigin ? " same-origin" : ""}${opts.anonymous ? " anonymous" : ""}${opts.binary ? " binary" : ""}${opts.peek ? ` peek:${opts.peek.maxBytes}` : ""}${opts.maxBytes === undefined ? "" : ` max:${opts.maxBytes}`}${opts.maxRedirects === undefined ? "" : ` redirects:${opts.maxRedirects}`}`;
     if (opts.fresh) memo.delete(key);
     let pending = memo.get(key);
     if (!pending) {

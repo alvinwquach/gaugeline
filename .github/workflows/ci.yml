@@ -10,10 +10,17 @@ on:
 permissions:
   contents: read
 
-# A new push to a pull request cancels the run of the older commit. Runs on main are never cancelled:
-# the release workflow waits for the full matrix of the commit it releases.
+# CI diet (owner policy, 11 Nov 2026). A pull request runs Node 22 on Linux plus lint. The full matrix
+# (Linux, Windows and macOS on Node 22 and 24), docs-examples and pack-and-smoke run on every push to
+# main and on the Release pull request (head ref changeset-release/main).
+#
+# A new push to a pull request cancels the run of the older commit. A run on main has its own group
+# and is never cancelled by a newer merge (owner order, 11 Nov 2026: it replaces the earlier "a new
+# merge cancels the older run on main"). While one run on main is in progress, only the newest queued
+# run waits; GitHub cancels the older queued ones, and the release workflow's ci-gate refuses a
+# cancelled run, so nothing is released from it: the newer commit's own gate waits for its own matrix.
 concurrency:
-  group: ci-${{ github.event_name }}-${{ github.head_ref || github.sha }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
@@ -25,9 +32,9 @@ jobs:
     timeout-minutes: 15
     strategy:
       fail-fast: false
-      # Pull requests: Linux on Node 22 and 24, Windows on Node 24. Pushes to main (after each merge):
-      # the full matrix, three systems on both Node versions. The release workflow waits for it.
-      matrix: ${{ fromJSON(github.event_name == 'pull_request' && '{"include":[{"os":"ubuntu-latest","node":"22"},{"os":"ubuntu-latest","node":"24"},{"os":"windows-latest","node":"24"}]}' || '{"os":["ubuntu-latest","windows-latest","macos-latest"],"node":["22","24"]}') }}
+      # Pull requests: Linux on Node 22 only. Pushes to main (after each merge) and the Release pull request:
+      # the full matrix, three systems on both Node versions. The release workflow waits for the push run.
+      matrix: ${{ fromJSON(github.event_name == 'pull_request' && github.head_ref != 'changeset-release/main' && '{"include":[{"os":"ubuntu-latest","node":"22"}]}' || '{"os":["ubuntu-latest","windows-latest","macos-latest"],"node":["22","24"]}') }}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
@@ -56,7 +63,14 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: git fetch --depth=1 origin "${{ github.base_ref || 'main' }}"
+      - name: Fetch the base commit
+        env:
+          # A pull request is compared with the base commit its merge ref was built from. The tip of main at job
+          # time may hold a merge that landed since: a pull request would then look as if it removed what that
+          # merge added. Other events have no base commit and compare with the tip of main.
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BASE_REF: ${{ github.base_ref || 'main' }}
+        run: git fetch --depth=1 origin "${BASE_SHA:-$BASE_REF}"
       # Generated files are not committed on branches. Regenerate them here (README tables, options, check ids,
       # skill, adapter index, public surface): the job fails if generation fails or its rules are broken (an
       # unfinished check text, a check id removed, a breaking surface change without its changeset), not
@@ -71,10 +85,53 @@ jobs:
       # A released check's "Since" version never changes (docs/check-since.lock.json).
       - run: pnpm since --base FETCH_HEAD
 
+  hosted-db:
+    # The hosted app's database tests (apps/hosted/db): row-level security, append-only decisions and the
+    # migrations, against a real Postgres in a service container. The test matrix skips them (no server on
+    # Windows or macOS); here GAUGELINE_REQUIRE_TEST_DATABASE makes a missing server a failure. Not a
+    # required check while the hosted app is unreleased.
+    # A draft pull request runs no CI; marking it ready starts it (ready_for_review). Other events are unaffected.
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    name: hosted-db (node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ["22", "24"]
+    services:
+      postgres:
+        # By major-version tag, not digest: the registry was not reachable to read a digest when this was
+        # written. Pin it by digest once it is (a throwaway test server; nothing secret reaches it).
+        image: postgres:16
+        env:
+          # A throwaway server inside the job, reachable only from it: not a secret.
+          POSTGRES_PASSWORD: gaugeline-test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      GAUGELINE_TEST_DATABASE_URL: postgres://postgres:gaugeline-test@127.0.0.1:5432/postgres
+      GAUGELINE_REQUIRE_TEST_DATABASE: "1"
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec vitest run apps/hosted
+
   docs-examples:
     # Runs every "$ npx gaugeline" example in the docs against its fixture and compares the output.
     # A draft pull request runs no CI; marking it ready starts it (ready_for_review). Other events are unaffected.
-    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    # Main and the Release pull request only (CI diet): an ordinary pull request does not run this job.
+    if: (github.event_name != 'pull_request' || github.event.pull_request.draft == false) && (github.event_name == 'push' || github.head_ref == 'changeset-release/main')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -93,7 +150,8 @@ jobs:
   pack:
     # The tarball people will npx: contents, size budget, and a run under the oldest supported Node (22).
     # A draft pull request runs no CI; marking it ready starts it (ready_for_review). Other events are unaffected.
-    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    # Main and the Release pull request only (CI diet): an ordinary pull request does not run this job.
+    if: (github.event_name != 'pull_request' || github.event.pull_request.draft == false) && (github.event_name == 'push' || github.head_ref == 'changeset-release/main')
     name: pack and smoke (node 22)
     runs-on: ubuntu-latest
     timeout-minutes: 15

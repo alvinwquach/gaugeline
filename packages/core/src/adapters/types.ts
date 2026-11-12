@@ -175,8 +175,12 @@ export interface AdapterSettings {
    * `umbraco-delivery-api-public` and `joomla-api-public` run only when this is true; a key being set says nothing of it.
    */
   expectPrivate?: boolean | undefined;
+  /** Only `sitecore`: the Sitecore site's name, as the platform names it (the `site` argument of its GraphQL API). */
+  siteName?: string | undefined;
+  /** Only `sitecore`: the languages to read, such as `["en", "fr-CA"]`. Default: `["en"]`. */
+  languages?: readonly string[] | undefined;
   /**
-   * Only `datocms`: the GraphQL collection to read for each content type, because the Content Delivery API has no
+   * Only `datocms` and `hygraph`: the GraphQL collection to read for each content type, because the Content Delivery API has no
    * list of types to ask: `{ "classes": { "collection": "allClasses", "slug": "slug" } }`. `slug` names the field
    * that holds the item's slug; without it the item has none.
    */
@@ -188,10 +192,21 @@ export interface AdapterSettings {
    */
   expectPublishedOnly?: boolean | undefined;
   /**
+   * Only `hygraph`: the owner lets the draft-stage check read the DRAFT stage (ids and slugs only). It also needs
+   * --owner-consent and a token that may read DRAFT. Without both, the DRAFT stage is never asked for.
+   */
+  readDraftStage?: boolean | undefined;
+  /**
    * Only `datocms`: the check names the ids of the unpublished records it finds (at most five). Without it a
    * finding is a count.
    */
   showDraftIds?: boolean | undefined;
+  /**
+   * Only `prismic`: the owner agrees that Gaugeline reads the repository's releases (unpublished content) with the
+   * access token, to find documents in a release that are already live. Switches on the check that asks (still only
+   * with --owner-consent).
+   */
+  checkReleases?: boolean | undefined;
   /**
    * Only `directus`: collections the owner says visitors with no token must not be able to read. Switches on the
    * check that asks, as a visitor, whether the Public role can list them (still only with --owner-consent).

@@ -198,6 +198,19 @@ export type { LlmsFile, LlmsLink } from "./llms.js";
 export { addressParts, businessFromJsonLd } from "./facts/business.js";
 export { findFact } from "./facts/extract.js";
 export { factSchema, factsConfigSchema } from "./facts/types.js";
+export { documentsConfigSchema } from "./documents/config.js";
+export type { DocumentsConfig } from "./documents/config.js";
+export { parseItemLines } from "./documents/lines.js";
+export type { DocItem } from "./documents/lines.js";
+export { referenceFromGroups } from "./documents/reference.js";
+export { INSTALL_HINT, loadDocumentReader } from "./documents/types.js";
+export type {
+  DocumentReader,
+  DocumentText,
+  DocumentsContext,
+  ReferenceItem,
+} from "./documents/types.js";
+export { DOCUMENT_CHECKS } from "./checks/documents.js";
 export type { Fact, FactsConfig, Occurrence as FactOccurrence } from "./facts/types.js";
 export { ANCHOR_WINDOW, PAYMENT_RULES, configValue, extractPayments } from "./payments/extract.js";
 export { DETECTORS, findLeaks, redact as redactSecret } from "./checks/leaks/detectors.js";
@@ -353,6 +366,8 @@ export { discordPayload, slackPayload, webhookPayload } from "./notify/payloads.
 export { NOTIFY_TIMEOUT_MS, postJson, providerMessage, safeTarget } from "./notify/post.js";
 export { escapeHtml, renderLookedRight, renderReport, renderSampled } from "./report/html.js";
 export type { ReportInput } from "./report/html.js";
+export { EVIDENCE_LIMIT, formatJunit, formatSarif } from "./report/formats.js";
+export type { FormatOptions, SuppressedFinding } from "./report/formats.js";
 export {
   buildBrief,
   costRange,
@@ -382,6 +397,8 @@ export { NEXT_RENDERED_NOTE, isNextSite, readCache } from "./next/detect.js";
 export type { CacheRead } from "./next/detect.js";
 export { isSveltekitSite, dataAddress as sveltekitDataAddress } from "./sveltekit/detect.js";
 export { isFrameworkUrl } from "./next/framework-urls.js";
+export { NUXT_RENDERED_NOTE, isNuxtSite } from "./nuxt/detect.js";
+export { isNuxtFrameworkUrl } from "./nuxt/framework-urls.js";
 export { frameworkLinks } from "./links.js";
 export { consentConfigSchema } from "./consent.js";
 export { imagesConfigSchema } from "./images/config.js";
@@ -1465,9 +1482,12 @@ export {
 } from "./checks/squarespace-commerce.js";
 export { STRAPI_CHECKS, createStrapiRegistry } from "./checks/strapi.js";
 export { CRAFT_CHECKS, createCraftRegistry } from "./checks/craft.js";
+export { HYGRAPH_CHECKS, createHygraphRegistry } from "./checks/hygraph.js";
 export { UMBRACO_CHECKS, createUmbracoRegistry } from "./checks/umbraco.js";
+export { SITECORE_CHECKS, createSitecoreRegistry } from "./checks/sitecore.js";
 export { JOOMLA_CHECKS, createJoomlaRegistry } from "./checks/joomla.js";
 export { DATOCMS_CHECKS, createDatocmsRegistry } from "./checks/datocms.js";
+export { PRISMIC_CHECKS, createPrismicRegistry } from "./checks/prismic.js";
 export { DIRECTUS_CHECKS, createDirectusRegistry } from "./checks/directus.js";
 export { HUBSPOT_CMS_CHECKS, createHubspotCmsRegistry } from "./checks/hubspot-cms.js";
 export {
@@ -1635,3 +1655,13 @@ export type {
   RunRecord,
   SourceRead,
 } from "./changes/types.js";
+export {
+  CUT_MARKER,
+  DEFAULT_UNTRUSTED_MAX_CHARS,
+  UNTRUSTED_CAPS,
+  UNTRUSTED_FIELD_NOTE,
+  markUntrusted,
+  sanitise,
+  wrapFindingForAgent,
+} from "./untrusted.js";
+export type { AgentFinding, Sanitised, UntrustedField, UntrustedText } from "./untrusted.js";
