@@ -29,6 +29,7 @@ export const COMMANDS = [
   "migration",
   "advisory",
   "init",
+  "changes",
   "deploy-gate",
 ] as const;
 export type Command = (typeof COMMANDS)[number];
@@ -227,6 +228,21 @@ export const HELP: Record<string, string> = {
       "key: it names the environment variables you set. A file that already exists is",
       "left alone unless you add --force; --dry-run prints everything and writes",
       "nothing.",
+    ].join("\n"),
+    footer: "Exit codes: 0 ran, 2 could not run",
+  }),
+  changes: renderHelp(FLAGS, "changes", {
+    usage: "gaugeline changes <site> [--since <date|run-id>] [options]",
+    summary: [
+      "For each finding that is new since the run before (or since a date or run id),",
+      "show what changed on the page and what the records say changed it: a content",
+      "edit in the content system (with the editor's name as it shows it), a deploy on",
+      "Vercel or Netlify (with the commit range), both, or unknown. The label is",
+      "evidence, never a verdict. Reads the runs that --since last saves in",
+      ".gaugeline/runs, and GETs the content system's history and the host's",
+      "deployment list when gaugeline.changes.json names them. Read only; never",
+      "guesses an author. For this command --since takes a date such as 2026-11-01",
+      "or a run id such as r-20261101T100000Z.",
     ].join("\n"),
     footer: "Exit codes: 0 ran, 2 could not run",
   }),

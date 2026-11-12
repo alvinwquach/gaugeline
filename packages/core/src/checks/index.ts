@@ -25,6 +25,8 @@ import { canonicalMissing } from "./canonical-missing.js";
 import { capacityZeroNotSoldOut } from "./capacity-zero-not-sold-out.js";
 import { certificateExpiring } from "./certificate-expiring.js";
 import { checkoutJsOnly } from "./checkout-js-only.js";
+import { copyDatePassed } from "./copy-date-passed.js";
+import { copyrightStale } from "./copyright-stale.js";
 import { crmFieldNames } from "./crm-field-names.js";
 import { crmInsecure } from "./crm-insecure.js";
 import { crmLeadSource } from "./crm-lead-source.js";
@@ -85,6 +87,11 @@ import { hreflangBadCode } from "./hreflang-bad-code.js";
 import { hreflangNotReciprocal } from "./hreflang-not-reciprocal.js";
 import { htmlHeavy } from "./html-heavy.js";
 import { htmlHuge } from "./html-huge.js";
+import { hydrogenDevToolsLive } from "./hydrogen-dev-tools-live.js";
+import { hydrogenPreviewCanonical } from "./hydrogen-preview-canonical.js";
+import { hydrogenPreviewIndexable } from "./hydrogen-preview-indexable.js";
+import { hydrogenPricesDisagree } from "./hydrogen-prices-disagree.js";
+import { hydrogenPrivateFields } from "./hydrogen-private-fields.js";
 import { icsFloatingTime } from "./ics-floating-time.js";
 import { icsNoVtimezone } from "./ics-no-vtimezone.js";
 import { imageOptimizerAllowlistUnanchored } from "./image-optimizer-allowlist-unanchored.js";
@@ -154,11 +161,26 @@ import { placeholderImages } from "./placeholder-images.js";
 import { placeholderText } from "./placeholder-text.js";
 import { priceChanged } from "./price-changed.js";
 import { quotableFactsDisagree } from "./quotable-facts-disagree.js";
+import { qwikSolidDataAsPage } from "./qwik-solid-data-as-page.js";
+import { qwikSolidDevServerLive } from "./qwik-solid-dev-server-live.js";
+import { qwikSolidDraftPublic } from "./qwik-solid-draft-public.js";
+import { qwikSolidPreviewCanonical } from "./qwik-solid-preview-canonical.js";
+import { qwikSolidPrivateFields } from "./qwik-solid-private-fields.js";
+import { qwikSolidServerEndpoints } from "./qwik-solid-server-endpoints.js";
+import { qwikSolidVaryMissing } from "./qwik-solid-vary-missing.js";
 import { redirectChain } from "./redirect-chain.js";
+import { remixDataAsPage } from "./remix-data-as-page.js";
+import { remixDevToolsLive } from "./remix-dev-tools-live.js";
+import { remixDraftPublic } from "./remix-draft-public.js";
+import { remixPreviewCanonical } from "./remix-preview-canonical.js";
+import { remixPrivateFields } from "./remix-private-fields.js";
 import { robotsBlock } from "./robots-block.js";
 import { rscServedAsPage } from "./rsc-served-as-page.js";
 import { rscVaryMissing } from "./rsc-vary-missing.js";
+import { sanityImageAltUnrendered } from "./sanity-image-alt-unrendered.js";
+import { sanityImageCropIgnored } from "./sanity-image-crop-ignored.js";
 import { sanityImageDuplicate } from "./sanity-image-duplicate.js";
+import { sanityImageHeavy } from "./sanity-image-heavy.js";
 import { sanityImageOriginal } from "./sanity-image-original.js";
 import { sanityImageOversized } from "./sanity-image-oversized.js";
 import { schemaBreadcrumbMismatch } from "./schema-breadcrumb-mismatch.js";
@@ -228,6 +250,8 @@ export const PAGE_CHECKS = [
   capacityZeroNotSoldOut,
   certificateExpiring,
   checkoutJsOnly,
+  copyDatePassed,
+  copyrightStale,
   crmFieldNames,
   crmInsecure,
   crmLateTracking,
@@ -283,6 +307,11 @@ export const PAGE_CHECKS = [
   hreflangNotReciprocal,
   htmlHeavy,
   htmlHuge,
+  hydrogenDevToolsLive,
+  hydrogenPreviewCanonical,
+  hydrogenPreviewIndexable,
+  hydrogenPricesDisagree,
+  hydrogenPrivateFields,
   icsFloatingTime,
   icsNoVtimezone,
   imageOptimizerAllowlistUnanchored,
@@ -352,11 +381,26 @@ export const PAGE_CHECKS = [
   placeholderText,
   priceChanged,
   quotableFactsDisagree,
+  qwikSolidDataAsPage,
+  qwikSolidDevServerLive,
+  qwikSolidDraftPublic,
+  qwikSolidPreviewCanonical,
+  qwikSolidPrivateFields,
+  qwikSolidServerEndpoints,
+  qwikSolidVaryMissing,
   redirectChain,
+  remixDataAsPage,
+  remixDevToolsLive,
+  remixDraftPublic,
+  remixPreviewCanonical,
+  remixPrivateFields,
   robotsBlock,
   rscServedAsPage,
   rscVaryMissing,
+  sanityImageAltUnrendered,
+  sanityImageCropIgnored,
   sanityImageDuplicate,
+  sanityImageHeavy,
   sanityImageOriginal,
   sanityImageOversized,
   schemaBreadcrumbMismatch,

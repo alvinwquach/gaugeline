@@ -215,26 +215,28 @@ describe("the key and the headers", () => {
     }
   });
 
-  it("the site id must be an id: nothing is sent for another value", async () => {
-    for (const siteId of [undefined, "", "short", "id with spaces 123", "x/../y-12345678"]) {
-      const { adapter, seen } = build(
-        {},
-        {
-          settings: { ...SETTINGS, ...(siteId === undefined ? { siteId: undefined } : { siteId }) },
-        },
-      );
+  it("a site id that is set but is not an id: nothing is sent for it", async () => {
+    for (const siteId of ["short", "id with spaces 123", "x/../y-12345678"]) {
+      const { adapter, seen } = build({}, { settings: { ...SETTINGS, siteId } });
       expect(await reasonOf(adapter.types())).toContain("siteId");
       expect(seen).toEqual([]);
     }
   });
 
-  it("empty settings are could-not-check: no collection named, nothing asked", async () => {
-    const { adapter, seen } = build({}, { settings: { id: "wix", siteId: MARLOW_SITE_ID } });
-    expect(adapter.collections()).toEqual([]);
-    expect(await reasonOf(adapter.types())).toContain("No collection is named");
-    expect(await reasonOf(adapter.fieldCounts("Programs", ["title"]))).toContain("No collection");
-    expect(await reasonOf(collectPublished(adapter))).toContain("No collection");
-    expect(seen).toEqual([]);
+  it("a key with no site id, or with no collection named, is not the CMS read: nothing is sent to Wix and a note says why", async () => {
+    for (const [settings, word] of [
+      [{ ...SETTINGS, siteId: undefined }, "siteId"],
+      [{ ...SETTINGS, siteId: "" }, "siteId"],
+      [{ id: "wix", siteId: MARLOW_SITE_ID }, "collection"],
+    ] as const) {
+      const { adapter, seen } = build({}, { settings });
+      expect(adapter.readsPages).toBe(true);
+      expect(adapter.cmsNote()).toContain(word);
+      expect(adapter.cmsNote()).not.toContain(KEY);
+      await adapter.types().catch(() => undefined);
+      expect(seen.every((s) => new URL(s.url).host !== "www.wixapis.com")).toBe(true);
+      expect(seen.every((s) => s.method !== "POST")).toBe(true);
+    }
   });
 
   it("a fetcher that cannot send a query is could-not-check, not a crash", async () => {
@@ -367,14 +369,20 @@ describe("drift: what Wix answers is not always what was expected", () => {
   });
 
   it("a collection name that is not an id is could-not-check and nothing is sent", async () => {
-    const { adapter, seen } = build(
-      {},
-      { settings: { ...SETTINGS, urls: undefined, fingerprint: undefined } },
-    );
-    expect(await reasonOf(adapter.types())).toContain("No collection");
+    const { seen } = build({});
     const odd = build({}, { settings: { ...SETTINGS, urls: { "bad/name": "/x/{id}" } } });
     expect(await reasonOf(odd.adapter.types())).toContain("is not a Wix collection ID");
     expect(odd.seen).toEqual([]);
+    expect(seen).toEqual([]);
+  });
+
+  it("fieldCounts for a type that was not named is could-not-check, naming it, and nothing is sent", async () => {
+    const { adapter, seen } = build();
+    for (const type of ["Programz", "programs", "Testimonial"]) {
+      const reason = await reasonOf(adapter.fieldCounts(type, ["title"]));
+      expect(reason).toContain(type);
+      expect(reason).toContain("urls");
+    }
     expect(seen).toEqual([]);
   });
 
@@ -408,13 +416,62 @@ describe("pagination stops at the real end", () => {
     expect(JSON.parse(seen[1]?.body ?? "{}").query.cursorPaging.cursor).toBe(cursorFor(3));
   });
 
-  it("a page that fills the limit and has no cursor is the end: no extra request", async () => {
+  it("a page that fills the limit, with metadata that says there is no more and no cursor, is the end: no extra request", async () => {
     const { adapter, seen } = build(
       { collections: { Programs: items(2) } },
       { pageSize: 2, ...only },
     );
     expect((await adapter.types())[0]?.count).toBe(2);
     expect(seen).toHaveLength(1);
+  });
+
+  it("an answer with no paging information (no pagingMetadata, or one with no cursor and no hasNext) is the end only when its page is shorter than the limit asked for", async () => {
+    const bare = (n: number) => () =>
+      json(200, { dataItems: items(n).map((i) => ({ id: i.id, data: i.data })) });
+    // 3 items for a limit of 100: nothing says there is more, and the page is not full.
+    const short = build({ handler: bare(3) }, { pageSize: 100, ...only });
+    expect((await short.adapter.types())[0]?.count).toBe(3);
+    // A full page (100 of 100) with nothing about paging could be the first of many: never the whole count.
+    // Nothing in the metadata says whether there is more: absent, not an object, or an object with no cursor
+    // and no hasNext (a count or a total is not an end).
+    for (const metadata of [
+      undefined,
+      null,
+      "none",
+      [],
+      {},
+      { count: 100 },
+      { cursors: {} },
+      { total: 500 },
+    ]) {
+      const { adapter } = build(
+        {
+          handler: () =>
+            json(200, {
+              dataItems: items(100).map((i) => ({ id: i.id, data: i.data })),
+              ...(metadata === undefined ? {} : { pagingMetadata: metadata }),
+            }),
+        },
+        { pageSize: 100, ...only },
+      );
+      const reason = await reasonOf(adapter.types());
+      expect(reason).toContain("Programs");
+      expect(reason).toContain("not read to the end");
+    }
+    // The same metadata on a page shorter than the limit is the end.
+    for (const metadata of [{}, { count: 3 }, { cursors: {} }, { total: 3 }]) {
+      const { adapter } = build(
+        {
+          handler: () =>
+            json(200, {
+              dataItems: items(3).map((i) => ({ id: i.id, data: i.data })),
+              pagingMetadata: metadata,
+            }),
+        },
+        { pageSize: 100, ...only },
+      );
+      expect((await adapter.types())[0]?.count).toBe(3);
+    }
   });
 
   it("a short page that still has a cursor is not the end", async () => {
@@ -554,6 +611,37 @@ describe("rate limits", () => {
     const got = await collectPublished(adapter);
     expect(got.docs.map((d) => d.type)).toEqual(["Programs", "Programs", "Programs"]);
     expect(got.partial).toEqual({ reason: "rate-limited", retry: "in 2 seconds", delivered: 3 });
+  });
+
+  it("the waits for Retry-After share one budget of 120 seconds for the whole run, not one wait for each page", async () => {
+    // Every first try of a page is limited for a minute; the third such wait would be 180 seconds in all.
+    const { adapter, sleeps } = build(
+      {
+        collections: { Programs: items(5) },
+        handler: (c) => (c.n % 2 === 0 ? limited(429, "60") : undefined),
+      },
+      { pageSize: 1, settings: { ...SETTINGS, urls: { Programs: "/programs/{slug}" } } },
+    );
+    const err: unknown = await adapter.types().then(
+      () => undefined,
+      (e: unknown) => e,
+    );
+    expect(err).toBeInstanceOf(AdapterRateLimitedError);
+    expect(sleeps).toEqual([60_000, 60_000]);
+    expect((err as AdapterRateLimitedError).retry).toBe("in 60 seconds");
+  });
+
+  it("the budget is kept across calls on one adapter: once spent, no wait is made", async () => {
+    const { adapter, sleeps } = build({
+      handler: (c) => (c.n % 2 === 0 ? limited(429, "60") : undefined),
+    });
+    // Programs and Testimonials are each limited once: two minutes, the whole budget.
+    expect((await adapter.types())[0]?.count).toBe(3);
+    expect(sleeps).toEqual([60_000, 60_000]);
+    await expect(adapter.fieldCounts("Programs", ["title"])).rejects.toBeInstanceOf(
+      AdapterRateLimitedError,
+    );
+    expect(sleeps).toEqual([60_000, 60_000]);
   });
 
   it("a Retry-After over a minute is not waited for", async () => {

@@ -1,7 +1,16 @@
 import { spawn } from "node:child_process";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
-import { existsSync, readdirSync } from "node:fs";
+import {
+  copyFileSync,
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  rmSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { SITES_DIR, startFixture } from "../../packages/fixtures/src/index.js";
 
@@ -160,7 +169,13 @@ export interface RunResult {
 
 /** Split `A=1 B=2 npx gaugeline shop.example --ci` into env, the address and the flags. */
 /** Commands that take an address after their name, so an example can run them against a fixture site. */
-const SUBCOMMANDS_WITH_ADDRESS: readonly string[] = ["brief", "advisory", "init", "deploy-gate"];
+const SUBCOMMANDS_WITH_ADDRESS: readonly string[] = [
+  "brief",
+  "advisory",
+  "init",
+  "deploy-gate",
+  "changes",
+];
 
 export function parseCommand(command: string): {
   env: Record<string, string>;
@@ -233,22 +248,38 @@ export async function runExample(
       ...(subcommand ? [subcommand] : []),
       target,
       ...args,
-      "--allow-private",
+      // changes reads saved runs and APIs, never the site, so it has nothing to allow.
+      ...(subcommand === "changes" ? [] : ["--allow-private"]),
       ...(args.includes("--json") ||
       subcommand === "brief" ||
       subcommand === "advisory" ||
       subcommand === "init" ||
+      subcommand === "changes" ||
       subcommand === "deploy-gate"
         ? []
         : ["--no-open"]),
     ];
+    // A fixture with a runs/ folder carries saved runs for `gaugeline changes`: they are copied into
+    // .gaugeline/runs/<host>/ of a temporary working folder, so the example reads real history.
+    // A fixture that carries gaugeline.images.json is run from its own folder, so the settings it names are read
+    // (from the temporary folder when it also carries saved runs).
+    const dir = join(SITES_DIR, e.fixture);
+    const imagesSettings = join(dir, "gaugeline.images.json");
+    const saved = join(dir, "runs");
+    let cwd: string | undefined = existsSync(imagesSettings) ? dir : undefined;
+    if (existsSync(saved)) {
+      cwd = mkdtempSync(join(tmpdir(), "gaugeline-docs-runs-"));
+      if (existsSync(imagesSettings))
+        copyFileSync(imagesSettings, join(cwd, "gaugeline.images.json"));
+      const host = new URL(site.origin).host.toLowerCase().replace(/[^a-z0-9.-]/g, "_");
+      mkdirSync(join(cwd, ".gaugeline", "runs"), { recursive: true });
+      cpSync(saved, join(cwd, ".gaugeline", "runs", host), { recursive: true });
+    }
     const result = await new Promise<{ stdout: string; stderr: string; code: number }>(
       (resolve) => {
-        // A fixture that carries gaugeline.images.json is run from its own folder, so the settings it names are read.
-        const dir = join(SITES_DIR, e.fixture);
         const child = spawn(process.execPath, argv, {
+          ...(cwd ? { cwd } : {}),
           env: childProcessEnv({ ...extraEnv, ...childEnv }),
-          ...(existsSync(join(dir, "gaugeline.images.json")) ? { cwd: dir } : {}),
         });
         let stdout = "";
         let stderr = "";
@@ -257,6 +288,8 @@ export async function runExample(
         child.on("close", (code) => resolve({ stdout, stderr, code: code ?? -1 }));
       },
     );
+    if (cwd && cwd !== dir)
+      rmSync(cwd, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
     return {
       ...result,
       origin: site.origin,
