@@ -24,7 +24,16 @@ whole number or an identifier. There is no rule for free text, so nothing from a
 server reaches a tool. Only four messages exist: `initialize` (declaring no client capabilities, so a
 server has no way to ask Gaugeline anything), `notifications/initialized`, `tools/list` and
 `tools/call`. A tool whose name speaks of a write, a key or token, fetching a page or running code
-cannot be put on an entry at all. No platform is read this way yet.
+cannot be put on an entry at all.
+
+Before a call, the server's own tool list must show the tool once, by its exact name, marked
+read-only, not destructive and closed-world, and its name, marks and input schema must hash to the
+value a person reviewed: a server's mark is required and never enough on its own. A server whose list,
+in read-only mode, holds a tool named like a write is not trusted for anything, and a server that asks
+Gaugeline a question mid-answer ends the read. An answer is data: only the fields the entry names are
+kept, by type (a name is cleaned and cut to 40 characters, a text is kept as a hash), and every
+failure is reported as "could not check" in Gaugeline's own words, never the server's. No platform is
+read this way yet.
 
 ## Addresses Gaugeline will not request
 
