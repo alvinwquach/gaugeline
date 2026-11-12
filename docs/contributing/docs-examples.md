@@ -40,6 +40,13 @@ Only this, on purpose: the fixture address becomes the page's address; the versi
 prints is dropped ("passed checks"), so an Output block shows the findings and the summary. A new
 source of variation needs a new named rule, not fuzzy matching.
 
+## The clock
+
+Every example runs with the clock pinned to 11 November 2026, 12:00 UTC (`DOCS_CLOCK` in
+`scripts/lib/docs-examples.ts`, through the test preload's `GAUGELINE_TEST_NOW`), so a block that
+prints the run date, such as `looked at 2026-11-11`, reads the same on every day. Write dates in
+Output blocks as that day; do not move them to today.
+
 ## Opting out
 
 A block that cannot run (Docker, a feature not built yet) says why:

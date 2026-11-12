@@ -18,6 +18,7 @@ import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   compare,
+  DOCS_CLOCK,
   extractExamples,
   normalise,
   parseCommand,
@@ -217,6 +218,29 @@ describe("docs examples: promise test", () => {
     const [e] = extractExamples(quickStart, "docs/quick-start.md");
     const r = await runExample(e as Example, bin, { GAUGELINE_TEST_SECRET: "MARKER_EXAMPLE_5a1b" });
     expect(r.stdout + r.stderr).not.toContain("MARKER_EXAMPLE_5a1b");
+  }, 30_000);
+});
+
+describe("docs examples: fixed clock", () => {
+  const advisoryPage = readFileSync(join(repoRoot, "docs/guides/advisory.md"), "utf8");
+
+  it("an example that prints the run date prints the pinned date, not today's", async () => {
+    const e = extractExamples(advisoryPage, "docs/guides/advisory.md").find((x) =>
+      (x.expected ?? "").includes("looked at 2026-11-11"),
+    );
+    expect(e).toBeDefined();
+    const r = await runExample(e as Example, bin);
+    expect(DOCS_CLOCK.slice(0, 10)).toBe("2026-11-11");
+    expect(r.stdout).toContain("looked at 2026-11-11");
+    expect(compare(e as Example, r)).toBeNull();
+  }, 30_000);
+
+  it("a run that is given another clock prints that date, so the pin is what decides it", async () => {
+    const e = extractExamples(advisoryPage, "docs/guides/advisory.md").find((x) =>
+      (x.expected ?? "").includes("looked at 2026-11-11"),
+    ) as Example;
+    const r = await runExample(e, bin, { GAUGELINE_TEST_NOW: "2031-03-04T05:06:07Z" });
+    expect(r.stdout).toContain("looked at 2031-03-04");
   }, 30_000);
 });
 
