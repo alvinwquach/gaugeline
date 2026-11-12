@@ -46,16 +46,18 @@ ERROR:  new row violates row-level security policy for table "sites"
 
 Every table has an `org_id` column and row-level security turned on.
 
-| Table           | What a row is                                      | Notes                                                                                                 |
-| --------------- | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `organisations` | an agency or a business                            | created by the server; owners and admins can rename it                                                |
-| `members`       | one person's role in one organisation              | a `client` row names exactly one site                                                                 |
-| `sites`         | a site the organisation looks after                | `timezone` sets when the nightly run starts                                                           |
-| `runs`          | one run of the checks against one site             | `summary` holds counts, never the report                                                              |
-| `findings`      | one problem a run found                            | `check_id`, `severity`, `title`, `evidence` (one line, at most 1000 characters), `url`, `fingerprint` |
-| `drafts`        | a proposed change waiting for a person             | append-only; its state is the latest decision, not a column                                           |
-| `decisions`     | who approved, edited or declined a draft, and when | append-only                                                                                           |
-| `site_consents` | the site owner's consent to probing checks         | append-only                                                                                           |
+| Table            | What a row is                                      | Notes                                                                                                 |
+| ---------------- | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `organisations`  | an agency or a business                            | created by the server; owners and admins can rename it                                                |
+| `members`        | one person's role in one organisation              | a `client` row names exactly one site                                                                 |
+| `sites`          | a site the organisation looks after                | `timezone` sets when the nightly run starts                                                           |
+| `runs`           | one run of the checks against one site             | `summary` holds counts, never the report                                                              |
+| `findings`       | one problem a run found                            | `check_id`, `severity`, `title`, `evidence` (one line, at most 1000 characters), `url`, `fingerprint` |
+| `drafts`         | a proposed change waiting for a person             | append-only; its state is the latest decision, not a column                                           |
+| `decisions`      | who approved, edited or declined a draft, and when | append-only                                                                                           |
+| `site_consents`  | the site owner's consent to probing checks         | append-only                                                                                           |
+| `subscriptions`  | what an organisation has paid for                  | the provider's ids only, never a card; the owner reads it, only the server writes it                  |
+| `billing_events` | a payment webhook already handled                  | the provider's event id; append-only, server only                                                     |
 
 **No page content is stored.** A finding keeps the one evidence line the CLI prints, the address and a
 fingerprint. The database refuses a longer evidence value.
