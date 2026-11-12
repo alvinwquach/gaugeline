@@ -2,6 +2,10 @@
 
 export const ADAPTER_PAGES: { slug: string; title: string }[] = [
   {
+    slug: "integrations/aem",
+    title: "Adobe Experience Manager: content checks for sites built on AEM",
+  },
+  {
     slug: "integrations/builders",
     title: "Hosted builders: content checks for sites built on Squarespace and similar builders",
   },
@@ -13,7 +17,14 @@ export const ADAPTER_PAGES: { slug: string; title: string }[] = [
     slug: "integrations/contentstack",
     title: "Contentstack: content checks for sites built on Contentstack",
   },
+  { slug: "integrations/craft", title: "Craft CMS: content checks for sites built on Craft CMS" },
+  { slug: "integrations/datocms", title: "DatoCMS: content checks for sites built on DatoCMS" },
+  { slug: "integrations/directus", title: "Directus: content checks for sites built on Directus" },
   { slug: "integrations/framer", title: "Framer: content checks for sites built on Framer (beta)" },
+  {
+    slug: "integrations/generic-api",
+    title: "Generic API adapter: content checks for any headless CMS with a read API",
+  },
   {
     slug: "integrations/git-content",
     title: "Content kept in git: content checks for sites whose content lives in the repo",
@@ -21,6 +32,14 @@ export const ADAPTER_PAGES: { slug: string; title: string }[] = [
   {
     slug: "integrations/hubspot-cms",
     title: "HubSpot CMS: content checks for sites built on HubSpot CMS",
+  },
+  { slug: "integrations/hygraph", title: "Hygraph: content checks for sites built on Hygraph" },
+  { slug: "integrations/joomla", title: "Joomla: content checks for sites built on Joomla" },
+  { slug: "integrations/prismic", title: "Prismic: content checks for sites built on Prismic" },
+  { slug: "integrations/shopify", title: "Shopify: content checks for sites built on Shopify" },
+  {
+    slug: "integrations/sitecore",
+    title: "Sitecore XM Cloud: content checks for sites built on Sitecore XM Cloud",
   },
   {
     slug: "integrations/sitemap-feed",
@@ -34,7 +53,7 @@ export const ADAPTER_PAGES: { slug: string; title: string }[] = [
   { slug: "integrations/tina", title: "TinaCMS: content checks for sites built on TinaCMS" },
   { slug: "integrations/umbraco", title: "Umbraco: content checks for sites built on Umbraco" },
   { slug: "integrations/webflow", title: "Webflow: content checks for sites built on Webflow" },
-  { slug: "integrations/wix", title: "Wix: content checks for sites built on Wix" },
+  { slug: "integrations/wix", title: "Wix: content checks for sites built on Wix (beta)" },
   {
     slug: "integrations/wordpress",
     title: "WordPress: what the client published, against the page",
