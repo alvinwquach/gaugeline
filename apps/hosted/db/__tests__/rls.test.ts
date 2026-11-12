@@ -48,9 +48,13 @@ const TENANT_TABLES = [
   // Server-only (0003): no grant for anon or authenticated at all.
   "tokens",
   "idempotency_keys",
+  // Billing (0007): the provider's ids only. subscriptions is readable by an organisation's owner; the
+  // event ledger is the server's alone.
+  "subscriptions",
+  "billing_events",
 ];
 
-const SERVER_ONLY = new Set(["tokens", "idempotency_keys"]);
+const SERVER_ONLY = new Set(["tokens", "idempotency_keys", "billing_events"]);
 
 describe.skipIf(!HAS_DATABASE)("hosted database: row-level security", () => {
   let db: TestDatabase;

@@ -7,6 +7,7 @@
 import { sql } from "drizzle-orm";
 import {
   bigint,
+  boolean,
   index,
   jsonb,
   pgTable,
@@ -171,5 +172,42 @@ export const idempotencyKeys = pgTable(
   (t) => [
     primaryKey({ columns: [t.siteId, t.key] }),
     index("idempotency_keys_created_idx").on(t.createdAt),
+  ],
+).enableRLS();
+
+export type SubscriptionStatus = "trialing" | "active" | "past_due" | "canceled";
+
+/** Server-written; the organisation's owner can read it. The provider's ids only, never a card (0007). */
+export const subscriptions = pgTable("subscriptions", {
+  orgId: uuid("org_id").primaryKey(),
+  provider: text("provider").notNull(),
+  providerCustomerId: text("provider_customer_id").notNull(),
+  providerSubscriptionId: text("provider_subscription_id").notNull().unique(),
+  planId: text("plan_id").notNull(),
+  billingInterval: text("billing_interval").$type<"month" | "year">(),
+  status: text("status").$type<SubscriptionStatus>().notNull(),
+  currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
+  trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
+  graceEndsAt: timestamp("grace_ends_at", { withTimezone: true }),
+  cancelAtPeriodEnd: boolean("cancel_at_period_end").notNull().default(false),
+  lastEventAt: timestamp("last_event_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}).enableRLS();
+
+/** Server-only and append-only: the webhook events handled, by the provider's id (0007). */
+export const billingEvents = pgTable(
+  "billing_events",
+  {
+    provider: text("provider").notNull(),
+    eventId: text("event_id").notNull(),
+    orgId: uuid("org_id").notNull(),
+    type: text("type").notNull(),
+    eventAt: timestamp("event_at", { withTimezone: true }).notNull(),
+    outcome: text("outcome").$type<"applied" | "stale">().notNull(),
+    receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.provider, t.eventId] }),
+    index("billing_events_org_idx").on(t.orgId, t.receivedAt.desc()),
   ],
 ).enableRLS();
