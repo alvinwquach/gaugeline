@@ -1053,6 +1053,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           ...(deps.fetcher ? { fetcher: deps.fetcher } : {}),
           color: useColor(io.stdout, io.env ?? {}),
           ...(deps.sleep ? { sleep: deps.sleep } : {}),
+          cwd: deps.cwd ?? process.cwd(),
         }),
         ci: args.ci,
       };

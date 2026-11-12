@@ -1,4 +1,7 @@
 import {
+  ConfigError,
+  SUPABASE_ACCESS_TOKEN,
+  runSupabasePlatform,
   createFetcher,
   formatAge,
   freezeEnv,
@@ -12,6 +15,7 @@ import {
   type Result,
 } from "@gaugeline/core";
 import { formatTerminal } from "./reporter.js";
+import { PLATFORMS_CONFIG_FILE, readPlatformsConfig } from "./schema-config.js";
 
 interface Out {
   stdout: { write(s: string): unknown };
@@ -27,6 +31,8 @@ interface Deps {
   sleep?: (ms: number) => Promise<void>;
   /** Tests: how many days Resend is taken to keep. */
   retentionDays?: number;
+  /** Where gaugeline.platforms.json is looked for. */
+  cwd?: string;
 }
 
 /** The findings, as the page check prints them, and the high ones counted for --ci. */
@@ -102,10 +108,11 @@ export async function runDeliveryCommand(
 
 /** gaugeline platform --webhooks: one line for each endpoint (a host, its state, a count and an age), then the findings. */
 export async function runPlatformCommand(
-  args: { allowSecretKey: boolean; json: boolean; quiet: boolean },
+  args: { webhooks: boolean; allowSecretKey: boolean; json: boolean; quiet: boolean },
   io: Out,
   deps: Deps,
 ): Promise<Outcome> {
+  if (!args.webhooks) return runPlatformReads(args, io, deps);
   const run = await runWebhooks({
     env: freezeEnv(io.env ?? {}, [STRIPE_API_KEY]),
     fetcher: createFetcher(deps.fetcher),
@@ -134,6 +141,59 @@ export async function runPlatformCommand(
         : "enabled, nothing waiting";
     io.stdout.write(`${e.host.padEnd(width)}  ${state}\n`);
   }
+  io.stdout.write(`\n${text}`);
+  return outcome;
+}
+
+/**
+ * gaugeline platform (no flag): the platforms in gaugeline.platforms.json, read through their own
+ * MCP servers in read-only mode (ADR-0008). Supabase is the one so far. One line says what was read
+ * and how many requests it took, then the findings; a read that stopped says why, in Gaugeline's words.
+ */
+async function runPlatformReads(
+  args: { json: boolean; quiet: boolean },
+  io: Out,
+  deps: Deps,
+): Promise<Outcome> {
+  const config = readPlatformsConfig(deps.cwd ?? process.cwd());
+  if (config === undefined)
+    throw new ConfigError(
+      `gaugeline platform needs --webhooks, or a ${PLATFORMS_CONFIG_FILE} naming the platforms to read.`,
+      { hint: "The steps are in docs/delivery (Stripe) and docs/sources/supabase-mcp (Supabase)." },
+    );
+  const env = freezeEnv(io.env ?? {}, [SUPABASE_ACCESS_TOKEN]);
+  if (env[SUPABASE_ACCESS_TOKEN] === undefined || env[SUPABASE_ACCESS_TOKEN] === "")
+    throw new ConfigError(`Set ${SUPABASE_ACCESS_TOKEN} to read the Supabase project.`, {
+      hint: "Keys are read from the environment only and never printed. The steps are in docs/sources/supabase-mcp.",
+    });
+  const { read, result } = await runSupabasePlatform({
+    fetcher: createFetcher(deps.fetcher),
+    env,
+    projectRef: config.supabase.projectRef,
+    now: deps.now,
+  });
+  const { text, outcome } = describe(result, deps.color ?? false);
+  if (args.json) {
+    io.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+    return outcome;
+  }
+  io.stdout.write(
+    `Supabase project ${read.projectRef}, read-only through Supabase's MCP server (${plural(read.calls, read.calls === 1 ? "request" : "requests")})\n`,
+  );
+  if (read.status === "read") {
+    const parts = [
+      read.tables === undefined
+        ? "tables not read"
+        : `${plural(read.tables.length, read.tables.length === 1 ? "table" : "tables")} in public`,
+      read.advisors === undefined
+        ? "security advisor not read"
+        : `${plural(read.advisors.length, read.advisors.length === 1 ? "security lint" : "security lints")}`,
+      read.migrations === undefined
+        ? "migrations not read"
+        : `${plural(read.migrations.count, read.migrations.count === 1 ? "migration" : "migrations")}${read.migrations.latest ? `, the newest ${read.migrations.latest}` : ""}`,
+    ];
+    io.stdout.write(`Read: ${parts.join("; ")}\n`);
+  } else io.stdout.write(`Supabase could not be read: ${read.reason ?? "no reason recorded"}.\n`);
   io.stdout.write(`\n${text}`);
   return outcome;
 }

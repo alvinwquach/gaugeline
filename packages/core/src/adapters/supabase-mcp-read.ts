@@ -1,3 +1,4 @@
+import * as z from "zod";
 import type { Env } from "../connectors/types.js";
 import { ConfigError } from "../errors.js";
 import { registerQueryAllow } from "../fetch/query-registry.js";
@@ -38,6 +39,19 @@ export const SUPABASE_MCP_HOST = "mcp.supabase.com";
 const PATH = "/mcp";
 /** A Supabase project ref as the dashboard shows it: 20 lower-case letters and digits (uncited). */
 export const PROJECT_REF = /^[a-z0-9]{20}$/;
+/**
+ * gaugeline.platforms.json: which platforms to read and the project id. The token stays in the
+ * environment; a key in the file is refused (strict), not ignored.
+ */
+export const platformsConfigSchema = z.strictObject({
+  supabase: z.strictObject({
+    projectRef: z
+      .string()
+      .regex(PROJECT_REF, "must be the 20-character project ref from the dashboard"),
+  }),
+});
+export type PlatformsConfig = z.infer<typeof platformsConfigSchema>;
+
 const PROTOCOL_VERSION = "2025-06-18";
 /** Pages of `tools/list` read at most; a longer listing is could-not-check. */
 const MAX_LIST_PAGES = 8;
@@ -56,7 +70,7 @@ interface SupabaseReadEntry {
   rules: Readonly<Record<string, McpArgumentRule>>;
   arguments: Readonly<Record<string, unknown>>;
   /**
-   * PLACEHOLDER: the hash of the hand-written recording in adapters/__tests__/supabase-mcp-fake.ts,
+   * PLACEHOLDER: the hash of the hand-written recording in packages/testkit/src/supabase-mcp.ts,
    * not of the vendor's live listing. Until the owner records the real `tools/list`, a live server
    * fails this lock and the read is could-not-check ("the vendor changed this tool").
    */

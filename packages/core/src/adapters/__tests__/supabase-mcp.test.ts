@@ -8,7 +8,12 @@ import {
   SUPABASE_TOLERATED,
   readSupabase,
 } from "../supabase-mcp-read.js";
-import { READ, RECORDED_TOOLS, fakeSupabase, type FakeOptions } from "./supabase-mcp-fake.js";
+import {
+  MCP_READ_HINTS as READ,
+  SUPABASE_RECORDED_TOOLS as RECORDED_TOOLS,
+  fakeSupabase,
+  type FakeSupabaseOptions as FakeOptions,
+} from "@gaugeline/testkit";
 
 /** Supabase through its hosted MCP server, read-only (ADR-0008 Part A), against a fake server through the real fetcher. */
 const REF = "abcdefghijklmnopqrst";

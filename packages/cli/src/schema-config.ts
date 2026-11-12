@@ -2,6 +2,8 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import {
   ConfigError,
+  platformsConfigSchema,
+  type PlatformsConfig,
   accessConfigSchema,
   consentConfigSchema,
   imagesConfigSchema,
@@ -126,6 +128,16 @@ export const CONSENT_CONFIG_FILE = "gaugeline.consent.json";
 export const IMAGES_CONFIG_FILE = "gaugeline.images.json";
 /** Where the Tag Manager container export is, likewise. The export is a file: no account is used. */
 export const TAGS_CONFIG_FILE = "gaugeline.tags.json";
+
+/**
+ * The platforms `gaugeline platform` reads through their own MCP servers (ADR-0008), likewise: a
+ * project id only. The token stays in the environment; a key in the file is refused, not ignored.
+ */
+export const PLATFORMS_CONFIG_FILE = "gaugeline.platforms.json";
+
+export function readPlatformsConfig(dir: string): PlatformsConfig | undefined {
+  return readJsonConfig(dir, PLATFORMS_CONFIG_FILE, platformsConfigSchema, "platform reads");
+}
 
 /** A JSON settings file in `dir`, validated, or undefined when there is none. Invalid is a ConfigError. */
 function readJsonConfig<T>(
