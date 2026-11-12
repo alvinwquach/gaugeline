@@ -1635,3 +1635,13 @@ export type {
   RunRecord,
   SourceRead,
 } from "./changes/types.js";
+export {
+  CUT_MARKER,
+  DEFAULT_UNTRUSTED_MAX_CHARS,
+  UNTRUSTED_CAPS,
+  UNTRUSTED_FIELD_NOTE,
+  markUntrusted,
+  sanitise,
+  wrapFindingForAgent,
+} from "./untrusted.js";
+export type { AgentFinding, Sanitised, UntrustedField, UntrustedText } from "./untrusted.js";
