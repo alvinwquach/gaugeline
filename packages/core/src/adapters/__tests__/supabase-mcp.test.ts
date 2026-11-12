@@ -9,7 +9,13 @@ import {
   SUPABASE_TOLERATED,
   readSupabase,
 } from "../supabase-mcp-read.js";
-import { READ, RECORDED_TOOLS, fakeSupabase, type FakeOptions } from "./supabase-mcp-fake.js";
+import {
+  READ,
+  RECORDED_ANSWERS,
+  RECORDED_TOOLS,
+  fakeSupabase,
+  type FakeOptions,
+} from "./supabase-mcp-fake.js";
 
 /** Supabase through its hosted MCP server, read-only (ADR-0008 Part A), against a fake server through the real fetcher. */
 const REF = "abcdefghijklmnopqrst";
@@ -112,6 +118,53 @@ describe("readSupabase: every page of the tool list is read before any lock (rev
     }));
     const { result } = await read({ tools: [...RECORDED_TOOLS, ...many], pageSize: 1 });
     expect(result).toMatchObject({ status: "could-not-check", reason: COULD_NOT_CHECK.callCap });
+  });
+});
+
+describe("readSupabase: a list over its cap is could-not-check, never a short list", () => {
+  const tables = (n: number, lastOff: boolean) =>
+    Array.from({ length: n }, (_, i) => ({
+      name: `public.t${i}`,
+      rls_enabled: !(lastOff && i === n - 1),
+      rows: i,
+    }));
+
+  it("600 tables, only the last with RLS off: the tables are not read at all", async () => {
+    const { result } = await read({
+      answers: { ...RECORDED_ANSWERS, list_tables: { tables: tables(600, true) } },
+    });
+    expect(result.tables).toBeUndefined();
+    expect(result.notRead).toContainEqual({
+      tool: "list_tables",
+      reason: COULD_NOT_CHECK.tooLarge,
+    });
+  });
+
+  it("exactly the cap is still read in full, and one over is not", async () => {
+    const at = await read({
+      answers: { ...RECORDED_ANSWERS, list_tables: { tables: tables(500, true) } },
+    });
+    expect(at.result.tables).toHaveLength(500);
+    expect(at.result.notRead).toEqual([]);
+    const over = await read({
+      answers: { ...RECORDED_ANSWERS, list_tables: { tables: tables(501, true) } },
+    });
+    expect(over.result.tables).toBeUndefined();
+  });
+
+  it("more advisor lints or migrations than their caps are not read either", async () => {
+    const lints = Array.from({ length: 201 }, () => ({ name: "unused_index", level: "INFO" }));
+    const migrations = Array.from({ length: 10_001 }, (_, i) => ({ version: String(i + 1) }));
+    const { result } = await read({
+      answers: {
+        ...RECORDED_ANSWERS,
+        get_advisors: { result: { lints } },
+        list_migrations: { migrations },
+      },
+    });
+    expect(result.advisors).toBeUndefined();
+    expect(result.migrations).toBeUndefined();
+    expect(result.notRead.map((n) => n.tool).sort()).toEqual(["get_advisors", "list_migrations"]);
   });
 });
 

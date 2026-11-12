@@ -3,6 +3,7 @@ import { ConfigError } from "../errors.js";
 import { registerQueryAllow } from "../fetch/query-registry.js";
 import type { McpArgumentRule } from "../fetch/read-only-query.js";
 import type { Fetcher } from "../fetcher.js";
+import { PROJECT_REF, SUPABASE_ACCESS_TOKEN } from "../sources/supabase-config.js";
 import {
   COULD_NOT_CHECK,
   keepFields,
@@ -34,11 +35,9 @@ import {
  * is uncited: the owner confirms it.
  */
 
-export const SUPABASE_ACCESS_TOKEN = "SUPABASE_ACCESS_TOKEN";
+export { PROJECT_REF, SUPABASE_ACCESS_TOKEN };
 export const SUPABASE_MCP_HOST = "mcp.supabase.com";
 const PATH = "/mcp";
-/** A Supabase project ref as the dashboard shows it: 20 lower-case letters and digits (uncited). */
-export const PROJECT_REF = /^[a-z0-9]{20}$/;
 const PROTOCOL_VERSION = "2025-06-18";
 /** Pages of `tools/list` read at most; a longer listing is could-not-check. */
 const MAX_LIST_PAGES = 8;
@@ -48,7 +47,7 @@ export const MAX_CALLS = 2 + MAX_LIST_PAGES + 3;
 const MAX_ANSWER_BYTES = 1024 * 1024;
 /** The most of one tool result parsed; past it that tool is could-not-check. */
 const MAX_RESULT_BYTES = 256 * 1024;
-const MAX_TABLES = 500;
+export const MAX_TABLES = 500;
 const MAX_LINTS = 200;
 
 /** One allowlisted read: the tool, Gaugeline's fixed arguments, and the listing hash a person reviewed. */
@@ -322,16 +321,26 @@ function keep(
   const shaped = Array.isArray(data)
     ? { [tool === "list_tables" ? "tables" : "migrations"]: data }
     : data;
+  // A list longer than its cap is never cut to a prefix: the rest might hold the table that is open.
+  const over = (rules: Record<string, OutputRule>, key: string, list: unknown): boolean => {
+    const rule = rules[key];
+    return rule?.type === "list" && Array.isArray(list) && list.length > rule.max;
+  };
   if (tool === "list_tables") {
+    if (isObject(shaped) && over(TABLE_RULES, "tables", shaped.tables))
+      return COULD_NOT_CHECK.tooLarge;
     const kept = keepFields(shaped, TABLE_RULES).tables;
     if (!Array.isArray(kept)) return COULD_NOT_CHECK.unexpectedShape;
     out.tables = kept as SupabaseTable[];
   } else if (tool === "get_advisors") {
     const inner = isObject(shaped) && isObject(shaped.result) ? shaped.result : shaped;
+    if (isObject(inner) && over(LINT_RULES, "lints", inner.lints)) return COULD_NOT_CHECK.tooLarge;
     const kept = keepFields(inner, LINT_RULES).lints;
     if (!Array.isArray(kept)) return COULD_NOT_CHECK.unexpectedShape;
     out.advisors = kept as SupabaseLint[];
   } else {
+    if (isObject(shaped) && over(MIGRATION_RULES, "migrations", shaped.migrations))
+      return COULD_NOT_CHECK.tooLarge;
     const kept = keepFields(shaped, MIGRATION_RULES).migrations;
     if (!Array.isArray(kept)) return COULD_NOT_CHECK.unexpectedShape;
     const versions = (kept as { version?: string }[])
