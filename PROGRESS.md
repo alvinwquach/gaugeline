@@ -4,6 +4,47 @@ Resume from this file alone. The build follows `gaugeline-master-spec.md` (not i
 owner keeps it) branch by branch, in the order below. Each branch is one pull request into `main`,
 merged once CI is green on Node 22 and 24 (18.17, 20 and 22 until S00).
 
+## Resume here (paused by the owner, 12 Nov 2026, about 2:00 AM PT)
+
+The build is paused: no builder runs, no check-in is scheduled, auto-merge is off on every open pull request. This section replaces the CURRENT STATE bullets below where they differ. Main was rewritten at 8:19 PM PT on 11 Nov (same files, new commit ids); every pull request number from #286 up is new.
+
+Rules that hold on resume: no `Co-authored-by`, `Generated with` or `Claude-Session` text in commits, pull request titles or bodies (the pre-push hook refuses it); author `a-quach`; branch names `type/id-short-description`; never push a `claude/*` branch; write pull request text only with the GitHub MCP tools and read the body back (the create call adds a footer); no comments on pull requests; max 3 builders; squash-merge with an explicit title `<title> (#N)`; auto-merge only after a clean independent re-review. Branches cannot be renamed or deleted from the build session (the proxy refuses); the owner does that.
+
+### Status per row
+
+- Merged: G29 config and baseline (#244), G31 MCP server (#247), MCP-01 install docs (#313), MCP-03 parts 1 to 4 (#287, #322, #323, #325), G32 Sanity publish gate (#314, #333, #335), G34 schema (#245, #256), G35 runs API and upload (#253), G36 nightly queue (#317), G37 drafts inbox (#319), X63 sign-in, dashboard, last night (#259, #289, #330), C-09 Payload (#267), C-10 Ghost docs (#274), C-22 Prismic (#242), C-27 Kontent.ai (#318), X51 Vercel check (#264), ADR-0010 accepted (#250), pre-push hook (#312, #316).
+- In a pull request (draft or ready), not merged: MCP-03 part 5 `gaugeline platform` (#328), G37 writer (#321), X64 morning email (#324, #327, #329, #331), X68 billing (#326, #332), C-11 Drupal (#315), G33 Playwright helper (#320).
+- Not started: X66 agencies, X67 notifications, X69 chat approvals, X70 fix pull request, X71 fix CMS draft, X75 mailbox drafts (Gmail only in v1), F-13 care receipt, N16 rendered accessibility tools (waits for ADR-0009 to be accepted).
+- v1.1, not built: X54 desktop app, X72 live field write, Vercel Checks API, Outlook drafts, a pull request comment from the Action, schema 3 for `--json`, and the performance pack PERF-01 to PERF-04 on top of ADR-0009.
+
+### Open pull requests and their blockers
+
+| PR | Row | Blocker |
+|---|---|---|
+| #328 | MCP-03 part 5 | Approved; draft, stacked on merged #325: retarget to main, rebase, mark ready, wait for CI |
+| #321 | G37 writer | Security fixes verified; rebased onto main (41a1195); needs the `kinds-parity.test.ts` re-check against the merged inbox shapes, green CI, then a final re-check by the reviewer |
+| #324, #327 | X64 tables, rules | Renumbered to migration 0006 and rebased (1a37376, de6dd00); CI on these heads not confirmed |
+| #329, #331 | X64 send, preferences | Drafts; need an independent credential review (Resend, public token page); `RESEND_API_KEY` and the sender domain are held by the owner |
+| #326, #332 | X68 billing | Drafts, unfinished; placeholder prices "to be set"; real prices come from the owner before the release PR |
+| #315 | C-11 Drupal | Draft, unfinished (the builder was stopped mid-work) |
+| #320 | G33 Playwright helper | Draft, unfinished |
+| #297 to #301 | Dependabot bumps | Held for the post-release cleanup |
+
+### Resume here, in order
+
+1. X64: the 0005 to 0006 renumber is already pushed (#324 `1a37376`, #327 `de6dd00`, #329 `1d6e833`, #331 `a617108`). Confirm CI on #324 and #327; if main moved, rebase the stack bottom-first.
+2. #321: re-run `packages/writer` `kinds-parity.test.ts` and the writer suites against the merged inbox shapes; fix the parity if the inbox changed after the last rebase; get CI green; ask the reviewer for the final re-check; merge.
+3. #328: retarget to main, rebase onto main, mark ready, merge on green CI.
+4. X64 #329 and #331: independent credential review; then merge the stack bottom-up.
+5. Restart the unfinished builders (max 3): C-11 Drupal #315, G33 #320, X68 #326 and #332.
+6. Start the not-started rows: X66, X67, X69, X70, X71, X75, F-13, N16.
+7. After each batch of merges, open a regeneration pull request (`pnpm gen:all --base origin/main`, changeset none): the Regenerate job on main cannot push under the ruleset.
+8. Release pull request on `release/v1.0.0` once every v1 row has merged: full CI matrix, the field-findings files, the CLAUDE.md rule 6 and 14 sentences, ADR statuses 0007, 0008, 0009, the v1.1 marks, `docs/why-gaugeline.md`, the SARIF licence note, the performance pack rows, regenerated files; give the owner the npm and GHCR publish commands (never publish).
+
+### Owner holds
+
+Sender domain; `RESEND_API_KEY` as an Actions secret; accounts and spend (none until after the release, then domain, Supabase, hosts, Resend); real X68 prices; ADR-0009 acceptance; acknowledgement of the ADR-0010 amendment (one commit per file in v1); deleting the stale remote branches and the old "Replaced by" comments.
+
 ## Handoff
 
 Updated by the orchestrator's progress PRs (11 Nov 2026 about 19:00 UTC, after the merges of #171, #175, #176, #182 and #185 on top of #183; scope change and state of 19:35 UTC added). Resume from this file alone.
