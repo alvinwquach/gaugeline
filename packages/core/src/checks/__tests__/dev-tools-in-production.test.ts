@@ -37,6 +37,47 @@ describe("dev-tools-in-production: unit", () => {
     });
   });
 
+  const VITE = '<script type="module" src="/@vite/client"></script>';
+
+  it.each([
+    ["Angular", `<app-root ng-version="18.2.0"></app-root>${VITE}`],
+    ["Astro", `<astro-island uid="1"></astro-island>${VITE}`],
+    [
+      "Eleventy",
+      '<meta name="generator" content="Eleventy v3.0.0"><script src="/.11ty/reload-client.js"></script>',
+    ],
+  ])("a %s page whose own dev-tools check reports it is left to that check", async (_n, markup) => {
+    const out = await devToolsInProduction.run(
+      page(`<html>${markup}<main>Hi</main></html>`),
+      ctxOf([]),
+    );
+    expect(out).toEqual([]);
+  });
+
+  it("a framework page the pack finds nothing on still gets the generic read of its bundles", async () => {
+    const out = await devToolsInProduction.run(
+      page('<html><app-root ng-version="18.2.0"></app-root><main>Hi</main></html>'),
+      ctxOf([file("/a.js", 'const u="http://127.0.0.1:4010/api"')]),
+    );
+    expect(out).toHaveLength(1);
+    expect(out[0]?.evidence).toContain("127.0.0.1:4010");
+  });
+
+  it("a plain site and a Next.js site with the Vite client still get the finding", async () => {
+    const html = `<html>${VITE}<main>Hi</main></html>`;
+    expect(await devToolsInProduction.run(page(html), ctxOf([]))).toHaveLength(1);
+    const next = buildSnapshot([
+      {
+        url: `${ORIGIN}/`,
+        status: 200,
+        headers: { "content-type": "text/html", "x-powered-by": "Next.js" },
+        body: html,
+        ms: 1,
+      },
+    ]);
+    expect(await devToolsInProduction.run(next, ctxOf([]))).toHaveLength(1);
+  });
+
   it("an address on the developer's machine in a bundle is fix soon, by host and port only", async () => {
     const out = await devToolsInProduction.run(
       page("<html><main>Hi</main></html>"),
