@@ -13,13 +13,17 @@ describe("branchNameProblem", () => {
     "test/runner-lists",
     "refactor/split-fetcher",
     "release/v1.0.0",
+    "dependabot/github_actions/actions/checkout-7.0.1",
+    "dependabot/npm_and_yarn/vitest-4.1.0",
   ])("allows %s", (name) => {
     expect(branchNameProblem(name)).toBeUndefined();
   });
 
   it.each([
     "claude/relaxed-brown-7yxex4",
-    "dependabot/github_actions/actions/checkout-7.0.1",
+    "dependabot/",
+    "dependabot/Upper Case",
+    "dependabotx/a",
     "feat/Upper-Case",
     "feat/with_underscore",
     "feat/",
