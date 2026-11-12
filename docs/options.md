@@ -56,6 +56,9 @@ Options:
                                  [CI]
       --json                     Print the result as JSON on stdout, and nothing
                                  else
+      --format <value>           What stdout carries: json (the same as --json),
+                                 sarif (GitHub code scanning) or junit (any CI's
+                                 test results)
       --no-open                  Do not open anything in a browser
       --allow-private            Allow addresses on this computer or a private
                                  network, such as 127.0.0.1 or 192.168.x.x
@@ -238,6 +241,9 @@ Options:
                                  [CI]
       --json                     Print the result as JSON on stdout, and nothing
                                  else
+      --format <value>           What stdout carries: json (the same as --json),
+                                 sarif (GitHub code scanning) or junit (any CI's
+                                 test results)
       --no-open                  Do not open anything in a browser
       --allow-private            Allow addresses on this computer or a private
                                  network, such as 127.0.0.1 or 192.168.x.x
@@ -581,21 +587,24 @@ ends with one line: gate: clear, or gate: would block. Report only: the exit
 code stays 0 until you add --block.
 
 Options:
-      --json             Print the result as JSON on stdout, and nothing else
-      --allow-private    Allow addresses on this computer or a private network,
-                         such as 127.0.0.1 or 192.168.x.x
-      --dns              Also read the domain's mail records (SPF and DMARC)
-                         from DNS
-      --owner-consent    Run the probing checks, which ask routes for what they
-                         protect with no login; only on sites you may test
-      --block            deploy-gate: exit 1 when a "Fix this first" finding is
-                         found; without it the gate only reports
-                         [GAUGELINE_GATE_BLOCK]
-      --quiet            Print only results and errors
-      --verbose          Show each request, and technical detail when something
-                         goes wrong
-  -h, --help             Show this help and exit
-  -v, --version          Print the version and exit
+      --json              Print the result as JSON on stdout, and nothing else
+      --format <value>    What stdout carries: json (the same as --json), sarif
+                          (GitHub code scanning) or junit (any CI's test
+                          results)
+      --allow-private     Allow addresses on this computer or a private network,
+                          such as 127.0.0.1 or 192.168.x.x
+      --dns               Also read the domain's mail records (SPF and DMARC)
+                          from DNS
+      --owner-consent     Run the probing checks, which ask routes for what they
+                          protect with no login; only on sites you may test
+      --block             deploy-gate: exit 1 when a "Fix this first" finding is
+                          found; without it the gate only reports
+                          [GAUGELINE_GATE_BLOCK]
+      --quiet             Print only results and errors
+      --verbose           Show each request, and technical detail when something
+                          goes wrong
+  -h, --help              Show this help and exit
+  -v, --version           Print the version and exit
 
 Exit codes: 0 ran, 1 --block and a fix-first finding, 2 could not run
 ```
