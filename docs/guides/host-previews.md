@@ -102,10 +102,10 @@ was already indexed, ask for its removal in Search Console and keep the protecti
 
 - A preview address that is only in a setting (not named by the live site) is not read in this
   version: Gaugeline does not request an address it was not given by the site.
-- A preview used as a canonical on a Next.js, Astro, SvelteKit, Angular, Gatsby, Hydrogen or static-generator
+- A preview used as a canonical on a Next.js, Astro, SvelteKit, Angular, Gatsby, Hydrogen, Remix, Qwik, SolidStart or static-generator
   site (Hugo, Jekyll, Eleventy, Docusaurus, VitePress) is also reported by that framework's own
   check (`next-preview-canonical`, `astro-preview-canonical`, `sveltekit-preview-canonical`,
-  `angular-preview-canonical`, `gatsby-preview-canonical`, `hydrogen-preview-canonical`, `static-preview-canonical`). So that the
+  `angular-preview-canonical`, `gatsby-preview-canonical`, `hydrogen-preview-canonical`, `remix-preview-canonical`, `qwik-solid-preview-canonical`, `static-preview-canonical`). So that the
   site is not told twice, `host-preview-named` and `host-preview-indexable` leave that site's
   canonical, `og:url` and sitemap entries on `vercel.app`, `netlify.app` and `pages.dev` to it, and
   leave links to `temp-host-links`. They still read language versions, scripts, feeds and Amplify

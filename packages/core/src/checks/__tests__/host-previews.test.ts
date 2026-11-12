@@ -193,6 +193,8 @@ describe("host-preview-named: unit", () => {
     ["Angular", '<app-root ng-version="18.2.0"></app-root>', {}],
     ["Gatsby", '<div id="___gatsby"></div>', {}],
     ["Hydrogen", "<main>Hi</main>", { "powered-by": "Shopify, Hydrogen" }],
+    ["Remix", '<script>window.__reactRouterContext = {"basename":"/","ssr":true};</script>', {}],
+    ["Qwik", '<html q:container="paused"><body>Hi</body></html>', {}],
     ["Hugo", '<meta name="generator" content="Hugo 0.121.0">', {}],
   ];
 

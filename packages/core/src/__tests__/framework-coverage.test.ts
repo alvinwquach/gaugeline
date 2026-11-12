@@ -22,6 +22,14 @@ describe("frameworkCoversPreviewCanonical", () => {
     ["Angular", page('<app-root ng-version="18.2.0"></app-root>')],
     ["Gatsby", page('<div id="___gatsby"></div>')],
     ["Hydrogen", page("<main>Hi</main>", { "powered-by": "Shopify, Hydrogen" })],
+    ["Remix", page('<script>window.__reactRouterContext = {"basename":"/","ssr":true};</script>')],
+    ["Qwik", page('<html q:container="paused"><body>Hi</body></html>')],
+    [
+      "SolidStart",
+      page(
+        '<script>window._$HY||(_$HY={events:[]});</script><script src="/_build/app.js"></script>',
+      ),
+    ],
     ["Hugo", page('<meta name="generator" content="Hugo 0.121.0">')],
     ["Docusaurus", page('<meta name="generator" content="Docusaurus v3.5.2">')],
   ];
