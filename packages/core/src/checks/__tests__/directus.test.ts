@@ -371,4 +371,38 @@ describe("review fixes: nothing checked is not a pass", () => {
     expect(out.passed).not.toContain("directus-collection-public");
     expect(out.couldNotCheck.map((c) => c.reason).join("\n")).toMatch(/not a Directus answer/);
   });
+
+  it("when the token was rejected the note names DIRECTUS_TOKEN, and the check says what a pass means", async () => {
+    const real = directusTransport(LARKSPUR, { token: KEY, pages: PAGES_HEALTHY });
+    const fetcher = createFetcher({
+      transport: (url, req) =>
+        url.host === "cms.larkspur-yoga.example" &&
+        url.pathname === "/items/appointments" &&
+        req.headers.authorization !== undefined
+          ? Promise.resolve({
+              status: 401,
+              headers: { "content-type": "application/json" },
+              body: Readable.from([
+                Buffer.from(
+                  JSON.stringify({ errors: [{ extensions: { code: "INVALID_CREDENTIALS" } }] }),
+                ),
+              ]),
+            })
+          : real(url, req),
+      timeoutMs: 5000,
+    });
+    const adapter = createDirectusAdapter({
+      env: { DIRECTUS_URL: CMS_URL, DIRECTUS_TOKEN: KEY },
+      fetcher,
+      settings: { id: "directus", urls: URLS, privateCollections: ["appointments"] },
+      sleep: () => Promise.resolve(),
+    });
+    const out = await run(
+      await readDirectus({ adapter, fetcher, site: DIRECTUS_SITE, ownerConsent: true }),
+    );
+    expect(out.couldNotCheck.map((c) => c.reason).join("\n")).toMatch(/DIRECTUS_TOKEN.*401/);
+    expect(DIRECTUS_CHECKS[1].tech).toContain(
+      "a pass means no public read of id was seen, not that nothing is public",
+    );
+  });
 });
