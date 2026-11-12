@@ -17,11 +17,13 @@ export const WIX_PAGE_SIZE = 100;
 export const WIX_LIMITS = {
   /** Items read from one collection. A bigger one is could-not-check, never a count of part of it. */
   itemsPerType: 10_000,
+  /** The most a run waits for Retry-After in all, over every collection and page. Past it, the rate limit is reported. */
+  retryWaitSeconds: 120,
 } as const;
 
 /**
  * The Wix adapter reads with no key at all (the files the live site publishes: its sitemap and feeds) and, when
- * `WIX_API_KEY` is set, reads the CMS collections the settings name through Wix's Query Data Items endpoint. That
+ * `WIX_API_KEY` is set (and `siteId` and a collection are given), reads the CMS collections the settings name through Wix's Query Data Items endpoint. That
  * endpoint answers a read with a POST, which ADR-0006 allows for one documented read-only query, through the
  * allowlist `WIX_QUERY_ALLOW` (wix.ts). The key to make is a Wix API key with only the read permission for Wix
  * Data, so `keyKind` is "read-only"; docs/integrations/wix.md says how. `optionalKey` makes the run header say
@@ -32,6 +34,8 @@ export const WIX_DESCRIPTION: AdapterDescription = {
   docsUrl: "https://gaugeline.dev/docs/integrations/wix",
   keyKind: "read-only",
   optionalKey: true,
+  // The endpoint shapes could not be checked against Wix's reference (dev.wix.com was unreachable): beta, uncited.
+  beta: true,
 };
 
 export const entries: readonly AdapterEntry[] = [
@@ -61,8 +65,8 @@ export const entries: readonly AdapterEntry[] = [
     docs: {
       key: "none to read the live site; read-only (a Wix API key with only the Wix Data read permission) to read the CMS collections",
       reads:
-        "With no key: published items from the site's `sitemap.xml` and feeds, with their dates. With the key: the collections you name, through Wix's Query Data Items endpoint (the one POST Gaugeline sends, ADR-0006): counts, field counts and published items as fingerprints. [Wix](wix.md)",
+        "With no key: the items the sitemap lists, from the site's `sitemap.xml` and feeds, with their dates. With the key: the collections you name, through Wix's Query Data Items endpoint (the one POST Gaugeline sends, ADR-0006): counts, field counts and a fingerprint for every item the key can read. [Wix](wix.md)",
     },
-    page: { slug: "integrations/wix", title: "Wix: content checks for sites built on Wix" },
+    page: { slug: "integrations/wix", title: "Wix: content checks for sites built on Wix (beta)" },
   },
 ];

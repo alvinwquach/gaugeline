@@ -163,11 +163,26 @@ import { placeholderImages } from "./placeholder-images.js";
 import { placeholderText } from "./placeholder-text.js";
 import { priceChanged } from "./price-changed.js";
 import { quotableFactsDisagree } from "./quotable-facts-disagree.js";
+import { qwikSolidDataAsPage } from "./qwik-solid-data-as-page.js";
+import { qwikSolidDevServerLive } from "./qwik-solid-dev-server-live.js";
+import { qwikSolidDraftPublic } from "./qwik-solid-draft-public.js";
+import { qwikSolidPreviewCanonical } from "./qwik-solid-preview-canonical.js";
+import { qwikSolidPrivateFields } from "./qwik-solid-private-fields.js";
+import { qwikSolidServerEndpoints } from "./qwik-solid-server-endpoints.js";
+import { qwikSolidVaryMissing } from "./qwik-solid-vary-missing.js";
 import { redirectChain } from "./redirect-chain.js";
+import { remixDataAsPage } from "./remix-data-as-page.js";
+import { remixDevToolsLive } from "./remix-dev-tools-live.js";
+import { remixDraftPublic } from "./remix-draft-public.js";
+import { remixPreviewCanonical } from "./remix-preview-canonical.js";
+import { remixPrivateFields } from "./remix-private-fields.js";
 import { robotsBlock } from "./robots-block.js";
 import { rscServedAsPage } from "./rsc-served-as-page.js";
 import { rscVaryMissing } from "./rsc-vary-missing.js";
+import { sanityImageAltUnrendered } from "./sanity-image-alt-unrendered.js";
+import { sanityImageCropIgnored } from "./sanity-image-crop-ignored.js";
 import { sanityImageDuplicate } from "./sanity-image-duplicate.js";
+import { sanityImageHeavy } from "./sanity-image-heavy.js";
 import { sanityImageOriginal } from "./sanity-image-original.js";
 import { sanityImageOversized } from "./sanity-image-oversized.js";
 import { schemaBreadcrumbMismatch } from "./schema-breadcrumb-mismatch.js";
@@ -370,11 +385,26 @@ export const PAGE_CHECKS = [
   placeholderText,
   priceChanged,
   quotableFactsDisagree,
+  qwikSolidDataAsPage,
+  qwikSolidDevServerLive,
+  qwikSolidDraftPublic,
+  qwikSolidPreviewCanonical,
+  qwikSolidPrivateFields,
+  qwikSolidServerEndpoints,
+  qwikSolidVaryMissing,
   redirectChain,
+  remixDataAsPage,
+  remixDevToolsLive,
+  remixDraftPublic,
+  remixPreviewCanonical,
+  remixPrivateFields,
   robotsBlock,
   rscServedAsPage,
   rscVaryMissing,
+  sanityImageAltUnrendered,
+  sanityImageCropIgnored,
   sanityImageDuplicate,
+  sanityImageHeavy,
   sanityImageOriginal,
   sanityImageOversized,
   schemaBreadcrumbMismatch,
