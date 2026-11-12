@@ -189,6 +189,18 @@ importers:
         specifier: workspace:*
         version: link:../core
 
+  packages/playwright:
+    devDependencies:
+      '@gaugeline/core':
+        specifier: workspace:*
+        version: link:../core
+      '@gaugeline/testkit':
+        specifier: workspace:*
+        version: link:../testkit
+      '@playwright/test':
+        specifier: 1.63.0
+        version: 1.63.0
+
   packages/testkit:
     devDependencies:
       '@gaugeline/core':
