@@ -1,4 +1,7 @@
+import { Readable } from "node:stream";
 import { describe, expect, it } from "vitest";
+import { createFetcher, type Transport } from "../../fetcher.js";
+import { registerQueryAllow } from "../query-registry.js";
 import { mcpBodyProblem, mcpToolNameProblem, type McpJsonRpcShape } from "../mcp-jsonrpc.js";
 import { allowProblems, queryRefusal, type ReadOnlyQueryAllow } from "../read-only-query.js";
 
@@ -231,5 +234,41 @@ describe("the address of an mcp-jsonrpc entry", () => {
     expect(
       queryRefusal(new URL(`https://u:p@mcp.vendor.example/mcp${q}`), ENTRY, body),
     ).toBeDefined();
+  });
+});
+
+describe("fetcher.query sends an mcp-jsonrpc message", () => {
+  const registered = registerQueryAllow({ ...ENTRY, id: "test-mcp-send" });
+  const URL_OK = "https://mcp.vendor.example/mcp?read_only=true&project_ref=abcdefghijklmnop";
+
+  it("asks for JSON or an event stream, and sends nothing for a refused message", async () => {
+    const seen: { accept?: string; body?: string }[] = [];
+    const transport: Transport = (_url, req) => {
+      seen.push({ accept: req.headers.accept, body: req.body });
+      return Promise.resolve({
+        status: 200,
+        headers: { "content-type": "application/json" },
+        body: Readable.from([Buffer.from('{"jsonrpc":"2.0","id":2,"result":{"tools":[]}}')]),
+      });
+    };
+    const fetcher = createFetcher({ transport });
+    const hop = await fetcher.query!(URL_OK, {
+      allow: registered.id,
+      body: { jsonrpc: "2.0", id: 2, method: "tools/list" },
+    });
+    expect(hop.status).toBe(200);
+    expect(seen).toEqual([
+      {
+        accept: "application/json, text/event-stream",
+        body: '{"jsonrpc":"2.0","id":2,"method":"tools/list"}',
+      },
+    ]);
+    await expect(
+      fetcher.query!(URL_OK, {
+        allow: registered.id,
+        body: call("execute_sql", { query: "select 1" }),
+      }),
+    ).rejects.toThrow(/not on the entry/);
+    expect(seen).toHaveLength(1);
   });
 });
