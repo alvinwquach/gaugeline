@@ -724,6 +724,15 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     commands: ["check", "launch"],
   },
   {
+    name: "config-json-only",
+    type: "boolean",
+    description:
+      "Refuse a gaugeline.config.mjs, .js or .ts, which runs code; read gaugeline.config.json only",
+    env: "GAUGELINE_NO_EXEC_CONFIG",
+    since: "0.2.0",
+    commands: ["check", "launch"],
+  },
+  {
     name: "suppress",
     type: "string",
     description: "Snooze a check id for this run, with an expiry and a reason (repeatable)",

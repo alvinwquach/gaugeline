@@ -36,6 +36,11 @@ const SAMPLE_VALUES: Record<string, string> = {
   "legacy-review": "review.csv",
   progress: "plan-state.json",
   "save-requests": "requests.json",
+  // A path that does not exist yet: a baseline is a JSON file, and an earlier flag may have written "x".
+  baseline: "fresh-baseline.json",
+  "suppress-until": "2099-01-01",
+  "suppress-reason": "away",
+  suppress: "mailto-cta",
   "brand-logo": "https://studio.example/logo.png",
   tags: "utm_,ref",
   // Today is day 1 of the watch, whenever the test runs.
@@ -106,6 +111,7 @@ describe("flag table: unit", () => {
       "save-requests": { type: "string" },
       baseline: { type: "string" },
       "update-baseline": { type: "boolean" },
+      "config-json-only": { type: "boolean" },
       suppress: { type: "string", multiple: true },
       "suppress-until": { type: "string" },
       "suppress-reason": { type: "string" },
@@ -221,6 +227,9 @@ describe("flag table: unit", () => {
         "                                   it a run reports only new ones",
         "      --update-baseline            With --baseline, write the file again from",
         "                                   this run",
+        "      --config-json-only           Refuse a gaugeline.config.mjs, .js or .ts,",
+        "                                   which runs code; read gaugeline.config.json",
+        "                                   only [GAUGELINE_NO_EXEC_CONFIG]",
         "      --suppress <value>           Snooze a check id for this run, with an",
         "                                   expiry and a reason (repeatable)",
         "      --suppress-until <value>     With --suppress, the last day it applies,",
@@ -584,6 +593,28 @@ describe("flag table: e2e", () => {
                                           `${site.origin}/`,
                                           // --routes is read by a probing check: it needs the owner's consent.
                                           ...(f.name === "routes" ? ["--owner-consent"] : []),
+                                          // A baseline and a suppression each need their partners.
+                                          ...(f.name === "update-baseline"
+                                            ? ["--baseline", "fresh-baseline.json"]
+                                            : []),
+                                          ...(f.name === "suppress-until" ||
+                                          f.name === "suppress-reason"
+                                            ? ["--suppress", "mailto-cta"]
+                                            : []),
+                                          ...(f.name === "suppress"
+                                            ? [
+                                                "--suppress-until",
+                                                "2099-01-01",
+                                                "--suppress-reason",
+                                                "away",
+                                              ]
+                                            : []),
+                                          ...(f.name === "suppress-until"
+                                            ? ["--suppress-reason", "away"]
+                                            : []),
+                                          ...(f.name === "suppress-reason"
+                                            ? ["--suppress-until", "2099-01-01"]
+                                            : []),
                                           `--${f.name}`,
                                           ...value,
                                         ];

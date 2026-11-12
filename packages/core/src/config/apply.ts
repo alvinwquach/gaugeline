@@ -8,6 +8,8 @@ export interface SuppressionResult {
   suppressed: { finding: Finding; entry: Suppression }[];
   /** Entries past their date, reported whether or not the finding is still there. */
   expired: Suppression[];
+  /** Active entries that matched no finding: a mistyped id, an address with no scheme, or a fixed problem. */
+  unmatched: Suppression[];
 }
 
 /** The day, in UTC, of an injected clock: date logic never reads the real one. */
@@ -49,14 +51,17 @@ export function applySuppressions(
   const expired = suppress.filter((s) => s.until < today);
   const kept: Finding[] = [];
   const suppressed: SuppressionResult["suppressed"] = [];
+  const used = new Set<Suppression>();
   for (const finding of findings) {
     const entry = active.find(
       (s) => s.id === finding.checkId && (s.url === undefined || sameAddress(s.url, finding.url)),
     );
-    if (entry) suppressed.push({ finding, entry });
-    else kept.push(finding);
+    if (entry) {
+      used.add(entry);
+      suppressed.push({ finding, entry });
+    } else kept.push(finding);
   }
-  return { kept, suppressed, expired: [...expired] };
+  return { kept, suppressed, expired: [...expired], unmatched: active.filter((s) => !used.has(s)) };
 }
 
 /** Does this finding fail --ci? "block" any severity, "warn" never, otherwise only "Fix this first" (high). */

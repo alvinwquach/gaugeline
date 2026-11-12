@@ -222,6 +222,7 @@ import { defaultPlanStatePath, readPlanStateFile, writePlanStateFile } from "./p
 import { defaultClientDir } from "./client-dir.js";
 import { openInBrowser } from "./open.js";
 import { addIgnore, applyIgnore, IGNORE_FILE, readIgnore } from "./ignore.js";
+import { builtInCheckIds } from "./builtin-ids.js";
 import { loadConfig, readBaselineFile, writeBaselineFile } from "./config.js";
 import { canShowView, runView, type ViewIo } from "./tui/app.js";
 import {
@@ -1480,19 +1481,53 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       const services = args.audit ? readServicesConfig(cwd) : undefined;
       // gaugeline.config.(json|mjs|js|ts) in this folder: which checks block, the checks you wrote,
       // and findings snoozed with a date. A file that is wrong is exit 2 before any request.
-      const loadedConfig = await loadConfig(cwd);
+      const runClock = (deps.now ?? io.now ?? (() => new Date()))();
+      if (args.suppress && args.suppress.until < runClock.toISOString().slice(0, 10))
+        throw new ConfigError(
+          `--suppress-until ${args.suppress.until} is already past: a suppression that has expired does nothing.`,
+          { hint: "Give a date from today on." },
+        );
+      const loadedConfig = await loadConfig(cwd, {
+        jsonOnly: args.configJsonOnly,
+      });
       const config: Config = loadedConfig?.config ?? { checks: {}, custom: [], suppress: [] };
-      if (loadedConfig) registerCustomChecks(registry, config.custom, loadedConfig.file);
+      // A program in this folder ran: say so every time (a fork's pull request can bring its own).
+      if (loadedConfig?.executable)
+        io.stderr.write(
+          `Running code from ${loadedConfig.file}. --config-json-only (or GAUGELINE_NO_EXEC_CONFIG=1) refuses it.\n`,
+        );
+      const everyBuiltIn = builtInCheckIds();
+      if (loadedConfig)
+        registerCustomChecks(registry, config.custom, loadedConfig.file, everyBuiltIn);
       const configOff = offIds(config.checks);
-      if (loadedConfig && !args.quiet) {
-        for (const id of Object.keys(config.checks))
-          if (!registry.has(id))
-            io.stderr.write(
-              `${loadedConfig.file}: checks.${id}: no check with that id in this run.\n`,
+      if (loadedConfig) {
+        // A mistyped id under "block" would block nothing for ever: that is a config error. Under
+        // "warn" or "off" it is a notice, printed whatever --quiet says.
+        for (const [id, mode] of Object.entries(config.checks)) {
+          if (registry.has(id) || everyBuiltIn.has(id)) continue;
+          if (mode === "block")
+            throw new ConfigError(
+              `${loadedConfig.file}: checks.${id}: no check has that id, so "block" would block nothing.`,
+              { hint: "Check the spelling against the checks reference." },
             );
-        if (configOff.length > 0)
+          io.stderr.write(`${loadedConfig.file}: checks.${id}: no check has that id.\n`);
+        }
+        if (configOff.length > 0 && !args.quiet)
           io.stderr.write(
             `${configOff.length} check${configOff.length === 1 ? "" : "s"} turned off in ${loadedConfig.file}: ${configOff.join(", ")}\n`,
+          );
+      }
+      // A baseline is read before the first request: one that is wrong is exit 2, and under --ci a
+      // missing one is too (a throwaway checkout would write a fresh one and accept every finding).
+      let knownBaseline: ReturnType<typeof readBaselineFile>;
+      if (args.baseline !== undefined && !args.updateBaseline) {
+        knownBaseline = readBaselineFile(cwd, args.baseline);
+        if (knownBaseline === undefined && args.ci)
+          throw new ConfigError(
+            `${args.baseline} does not exist, and with --ci a missing baseline would accept every finding.`,
+            {
+              hint: `Write it once on your own machine and commit it: gaugeline <address> --baseline ${args.baseline} --update-baseline.`,
+            },
           );
       }
       checkServices(services, registry);
@@ -1728,17 +1763,10 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       }
       // Suppressions (config and --suppress), then the baseline (--baseline). Findings they hide are
       // counted on stderr, never dropped in silence; a finding that comes back says why.
-      const runClock = (deps.now ?? io.now ?? (() => new Date()))();
       const suppressions = [...config.suppress];
-      if (args.suppress) {
-        if (args.suppress.until < runClock.toISOString().slice(0, 10))
-          throw new ConfigError(
-            `--suppress-until ${args.suppress.until} is already past: a suppression that has expired does nothing.`,
-            { hint: "Give a date from today on." },
-          );
+      if (args.suppress)
         for (const id of args.suppress.ids)
           suppressions.push({ id, until: args.suppress.until, reason: args.suppress.reason });
-      }
       const accepted = new Set<Finding>();
       if (suppressions.length > 0) {
         const s = applySuppressions(result.findings, suppressions, runClock);
@@ -1747,14 +1775,20 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           io.stderr.write(
             `Suppression of ${e.id}${e.url ? ` on ${e.url}` : ""} expired on ${e.until} (${e.reason}). It no longer applies: ${s.kept.some((f) => f.checkId === e.id) ? "the finding is back below" : "remove it from the config"}.\n`,
           );
-        if (s.suppressed.length > 0 && !args.quiet)
+        for (const u of s.unmatched)
           io.stderr.write(
-            `${s.suppressed.length} finding${s.suppressed.length === 1 ? "" : "s"} snoozed by a suppression: ${[...new Set(s.suppressed.map((x) => `${x.entry.id} until ${x.entry.until}`))].join("; ")}\n`,
+            `Suppression of ${u.id}${u.url ? ` on ${u.url}` : ""} (until ${u.until}) matched no finding in this run: ${everyBuiltIn.has(u.id) || registry.has(u.id) ? "the problem may be fixed, or the address is not one a finding names (use a full address or a path such as /menu)" : "no check has that id"}.\n`,
           );
+        // What was muted is always counted, and so is how much of it was "Fix this first".
+        if (s.suppressed.length > 0) {
+          const high = s.suppressed.filter((x) => x.finding.severity === "high").length;
+          io.stderr.write(
+            `${s.suppressed.length} finding${s.suppressed.length === 1 ? "" : "s"} snoozed by a suppression${high > 0 ? ` (${high} Fix this first)` : ""}: ${[...new Set(s.suppressed.map((x) => `${x.entry.id} until ${x.entry.until}`))].join("; ")}\n`,
+          );
+        }
       }
       if (args.baseline !== undefined) {
-        const known = args.updateBaseline ? undefined : readBaselineFile(cwd, args.baseline);
-        if (known === undefined) {
+        if (knownBaseline === undefined) {
           const n = writeBaselineFile(cwd, args.baseline, result.findings, runClock);
           for (const f of result.findings) accepted.add(f);
           if (!args.quiet)
@@ -1762,7 +1796,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
               `Baseline written to ${args.baseline}: ${n} finding${n === 1 ? "" : "s"} now known. Later runs with --baseline report only new ones.\n`,
             );
         } else {
-          const d = diffFindingsBaseline(result.findings, known);
+          const d = diffFindingsBaseline(result.findings, knownBaseline);
           result.findings = d.fresh;
           if (!args.quiet)
             io.stderr.write(

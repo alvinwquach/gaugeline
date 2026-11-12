@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
@@ -82,12 +82,14 @@ async function run(
   cwd: string,
   registry: CheckRegistry,
   now = new Date("2026-11-12T10:00:00Z"),
+  env: Record<string, string> = {},
 ) {
   let out = "";
   let err = "";
   const io = {
     stdout: { write: (s: string) => ((out += s), true) },
     stderr: { write: (s: string) => ((err += s), true) },
+    env,
   };
   const code = await main([site.origin, "--allow-private", "--no-open", ...args], io, {
     registry,
@@ -102,7 +104,7 @@ describe("--baseline: integration", () => {
     const dir = folder();
     const plant = { on: true };
     const first = await run(
-      ["--ci", "--baseline", "base.json"],
+      ["--ci", "--baseline", "base.json", "--update-baseline"],
       dir,
       registryOf(rule("menu-missing", "high")),
     );
@@ -181,7 +183,9 @@ describe("suppressions that expire: integration", () => {
     const r = await run(["--ci"], dir, registryOf(rule("menu-missing", "high")));
     expect(r.code).toBe(0);
     expect(r.out).not.toContain("Problem menu-missing");
-    expect(r.err).toContain("1 finding snoozed by a suppression: menu-missing until 2026-12-01");
+    expect(r.err).toContain(
+      "1 finding snoozed by a suppression (1 Fix this first): menu-missing until 2026-12-01",
+    );
   });
 
   it("an expired one stops applying, is reported, and the finding fails again", async () => {
@@ -339,5 +343,130 @@ describe("gaugeline.config: integration", () => {
     const r = await run([], dir, registryOf(rule("a", "high")));
     expect(r.code).toBe(2);
     expect(r.err).toContain("custom.0");
+  });
+});
+
+describe("review fixes: baseline in CI, unmatched suppressions, executable config, custom context", () => {
+  it("under --ci a missing baseline is exit 2 and writes nothing; --update-baseline writes it", async () => {
+    const dir = folder();
+    const reg = () => registryOf(rule("menu-missing", "high"));
+    const r = await run(["--ci", "--baseline", "base.json"], dir, reg());
+    expect(r.code).toBe(2);
+    expect(r.err).toContain("base.json does not exist");
+    expect(existsSync(join(dir, "base.json"))).toBe(false);
+    const w = await run(["--ci", "--baseline", "base.json", "--update-baseline"], dir, reg());
+    expect(w.code).toBe(0);
+    expect(existsSync(join(dir, "base.json"))).toBe(true);
+  });
+
+  it("a baseline that is wrong is refused before the first request", async () => {
+    site.log.length = 0;
+    const dir = folder({ "bad.json": "{nope" });
+    const r = await run(["--baseline", "bad.json"], dir, registryOf(rule("a-rule", "high")));
+    expect(r.code).toBe(2);
+    expect(site.log).toEqual([]);
+  });
+
+  it("a past --suppress-until is refused before the first request", async () => {
+    site.log.length = 0;
+    const r = await run(
+      ["--suppress", "a-rule", "--suppress-until", "2026-11-01", "--suppress-reason", "away"],
+      folder(),
+      registryOf(rule("a-rule", "high")),
+    );
+    expect(r.code).toBe(2);
+    expect(site.log).toEqual([]);
+  });
+
+  it("a suppression that matches nothing is named on stderr, even with --quiet", async () => {
+    const dir = folder({
+      "gaugeline.config.json": JSON.stringify({
+        suppress: [
+          { id: "menu-mising", until: "2026-12-01", reason: "typo" },
+          {
+            id: "menu-missing",
+            url: "fernhill.example/menu",
+            until: "2026-12-01",
+            reason: "no scheme",
+          },
+        ],
+      }),
+    });
+    const r = await run(["--quiet"], dir, registryOf(rule("menu-missing", "high")));
+    expect(r.err).toContain("Suppression of menu-mising (until 2026-12-01) matched no finding");
+    expect(r.err).toContain("no check has that id");
+    expect(r.err).toContain("Suppression of menu-missing on fernhill.example/menu");
+  });
+
+  it("snoozed findings are counted under --quiet, with how many were Fix this first", async () => {
+    const dir = folder({
+      "gaugeline.config.json": JSON.stringify({
+        suppress: [{ id: "menu-missing", until: "2026-12-01", reason: "rewrite" }],
+      }),
+    });
+    const r = await run(["--ci", "--quiet"], dir, registryOf(rule("menu-missing", "high")));
+    expect(r.code).toBe(0);
+    expect(r.err).toContain("1 finding snoozed by a suppression (1 Fix this first)");
+  });
+
+  it("an unknown id under block is exit 2; under warn it is a notice even with --quiet", async () => {
+    const blocked = await run(
+      ["--ci"],
+      folder({ "gaugeline.config.json": JSON.stringify({ checks: { "mailto-ctaa": "block" } }) }),
+      registryOf(rule("menu-missing", "low")),
+    );
+    expect(blocked.code).toBe(2);
+    expect(blocked.err).toContain("checks.mailto-ctaa");
+    const warned = await run(
+      ["--quiet"],
+      folder({ "gaugeline.config.json": JSON.stringify({ checks: { "mailto-ctaa": "warn" } }) }),
+      registryOf(rule("menu-missing", "low")),
+    );
+    expect(warned.code).toBe(0);
+    expect(warned.err).toContain("checks.mailto-ctaa: no check has that id");
+  });
+
+  const program = `export default { custom: [{ id: "probe-rule", area: "Visitors", severity: "low", title: "Probe", what: "w", why: "y", fix: "f", tech: "t", size: "S", done: "d", estimateChanges: "e", run(page, ctx) { return [{ checkId: "probe-rule", severity: "low", title: "Probe", evidence: "keys:" + Object.keys(ctx).sort().join(",") + " fetcher:" + Object.keys(ctx.fetcher ?? {}).join(","), url: page.finalUrl }]; } }] };`;
+
+  it("a config that runs code says so on stderr every time", async () => {
+    const r = await run(
+      [],
+      folder({ "gaugeline.config.mjs": program }),
+      registryOf(rule("a", "low", { on: false })),
+    );
+    expect(r.err).toContain("Running code from gaugeline.config.mjs");
+  });
+
+  it("--config-json-only and GAUGELINE_NO_EXEC_CONFIG refuse it, before the first request", async () => {
+    site.log.length = 0;
+    const dir = folder({ "gaugeline.config.mjs": program });
+    const flag = await run(["--config-json-only"], dir, registryOf(rule("a", "low")));
+    expect(flag.code).toBe(2);
+    expect(flag.err).toContain("accepts a JSON config only");
+    const env = await run([], dir, registryOf(rule("a", "low")), undefined, {
+      GAUGELINE_NO_EXEC_CONFIG: "1",
+    });
+    expect(env.code).toBe(2);
+    expect(site.log).toEqual([]);
+    const json = folder({ "gaugeline.config.json": "{}" });
+    expect((await run(["--config-json-only"], json, registryOf(rule("a", "low")))).code).toBe(0);
+  });
+
+  it("a custom check sees get but no query, and no consent value, even with --owner-consent", async () => {
+    const r = await run(
+      ["--owner-consent"],
+      folder({ "gaugeline.config.mjs": program }),
+      registryOf(rule("a", "low", { on: false })),
+    );
+    expect(r.out).toContain("keys:couldNotCheck,fetcher,now,warn fetcher:get");
+  });
+
+  it("a custom id that a flag-only built-in uses is refused although this run does not have it", async () => {
+    const dir = folder({
+      "gaugeline.config.mjs": program.replaceAll("probe-rule", "wp-users-exposed"),
+    });
+    const r = await run([], dir, registryOf(rule("a", "low")));
+    expect(r.code).toBe(2);
+    expect(r.err).toContain("custom.0.id");
   });
 });

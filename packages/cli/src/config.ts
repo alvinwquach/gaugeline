@@ -40,7 +40,7 @@ function canStripTypes(): boolean {
 
 export async function loadConfig(
   cwd: string,
-  opts: { importer?: (url: string) => Promise<unknown> } = {},
+  opts: { importer?: (url: string) => Promise<unknown>; jsonOnly?: boolean } = {},
 ): Promise<LoadedConfig | undefined> {
   const found = CONFIG_FILES.filter((f) => existsSync(join(cwd, f)));
   if (found.length === 0) return undefined;
@@ -61,6 +61,13 @@ export async function loadConfig(
     }
     return { file, executable: false, config: parseConfig(json, file) };
   }
+  if (opts.jsonOnly)
+    throw new ConfigError(
+      `${file} is a program, and this run accepts a JSON config only (--config-json-only or GAUGELINE_NO_EXEC_CONFIG).`,
+      {
+        hint: "Move what it sets into gaugeline.config.json, or run without the option in a folder you trust.",
+      },
+    );
   if (file.endsWith(".ts") && !canStripTypes())
     throw new ConfigError(
       `${file} needs a Node that can run TypeScript files (22.18 or newer; this is ${process.versions.node}).`,

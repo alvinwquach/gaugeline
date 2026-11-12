@@ -1,6 +1,7 @@
 import * as z from "zod";
 import { ConfigError } from "../errors.js";
-import { defineCheck, type Check, type CheckRegistry } from "../model.js";
+import { AREAS, SEVERITIES, defineCheck, type Check, type CheckRegistry } from "../model.js";
+import { sandboxCustomCheck } from "./custom.js";
 
 /**
  * gaugeline.config.(json|mjs|js|ts): which checks block, the checks you wrote, and findings snoozed
@@ -92,6 +93,12 @@ export function parseConfig(raw: unknown, source: string): Config {
   const config = parsed.data;
   // The same rules as a built-in: kebab-case id, what/why/fix/tech, a size. defineCheck says which.
   config.custom.forEach((c, i) => {
+    if (!(AREAS as readonly string[]).includes(c.area as string))
+      fail([`custom.${i}.area: "${String(c.area)}" is not an area; use ${AREAS.join(", ")}`]);
+    if (!(SEVERITIES as readonly string[]).includes(c.severity as string))
+      fail([
+        `custom.${i}.severity: "${String(c.severity)}" is not a level; use high, medium or low`,
+      ]);
     try {
       defineCheck(c);
     } catch (err) {
@@ -101,18 +108,23 @@ export function parseConfig(raw: unknown, source: string): Config {
   return config;
 }
 
-/** Add the custom checks to a registry. An id already taken (built-in or custom) is a config error. */
+/**
+ * Add the custom checks to a registry, each in the smaller context of sandboxCustomCheck. An id already
+ * taken in this run, or that any built-in uses (`reserved`: every check Gaugeline ships, whichever flag
+ * adds it), or another custom check uses, is a config error.
+ */
 export function registerCustomChecks(
   registry: CheckRegistry,
   custom: readonly Check<unknown>[],
   source: string,
+  reserved: ReadonlySet<string> = new Set(),
 ): void {
   custom.forEach((c, i) => {
-    if (registry.has(c.id))
+    if (registry.has(c.id) || reserved.has(c.id))
       throw new ConfigError(
         `${source}: custom.${i}.id: "${c.id}" is already a built-in check (or another custom check).`,
         { hint: `Give your check its own id, for example "my-${c.id}".` },
       );
-    registry.register(c);
+    registry.register(sandboxCustomCheck(c));
   });
 }

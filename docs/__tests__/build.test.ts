@@ -20,7 +20,7 @@ describe("docs build: integration", () => {
   });
 
   it("every slug that was on the site before exists after the build (docs/slugs.lock.json)", () => {
-    expect(lock.length).toBe(29);
+    expect(lock.length).toBe(31);
     for (const slug of lock)
       expect(
         existsSync(`${dist}docs/${slug}.html`),

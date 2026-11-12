@@ -58,6 +58,35 @@ describe("suppressions with an injected clock", () => {
   });
 });
 
+describe("a suppression that matches nothing", () => {
+  it("is listed as unmatched, whether the id is mistyped or the url is not an address", () => {
+    const r = applySuppressions(
+      [f1],
+      [
+        { id: "canonical-elsewhre", until: "2026-12-01", reason: "typo" },
+        {
+          id: "canonical-elsewhere",
+          url: "bar.example/menu",
+          until: "2026-12-01",
+          reason: "no scheme",
+        },
+        { id: "canonical-elsewhere", url: "/menu", until: "2026-12-01", reason: "fine" },
+      ],
+      clock("2026-11-12"),
+    );
+    expect(r.unmatched.map((u) => u.reason)).toEqual(["typo", "no scheme"]);
+  });
+  it("an expired entry is not also unmatched", () => {
+    const r = applySuppressions(
+      [],
+      [{ id: "x", until: "2026-01-01", reason: "old" }],
+      clock("2026-11-12"),
+    );
+    expect(r.unmatched).toEqual([]);
+    expect(r.expired).toHaveLength(1);
+  });
+});
+
 describe("what blocks", () => {
   it("high blocks by default; warn never blocks; block makes any severity block", () => {
     expect(isBlocking(f1, {})).toBe(true);

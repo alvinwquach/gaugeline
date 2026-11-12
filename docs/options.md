@@ -117,6 +117,9 @@ Options:
                                    it a run reports only new ones
       --update-baseline            With --baseline, write the file again from
                                    this run
+      --config-json-only           Refuse a gaugeline.config.mjs, .js or .ts,
+                                   which runs code; read gaugeline.config.json
+                                   only [GAUGELINE_NO_EXEC_CONFIG]
       --suppress <value>           Snooze a check id for this run, with an
                                    expiry and a reason (repeatable)
       --suppress-until <value>     With --suppress, the last day it applies,
@@ -724,11 +727,12 @@ Only "Fix this first" findings fail CI. "Fix soon" and "Worth knowing" never cha
 in the folder you run from sets which checks block, adds checks you wrote and snoozes findings with a date.
 Four flags work with it on the page check and `launch`:
 
-- `--baseline <file>`: if the file does not exist, write the findings of this run to it (fingerprints, check ids
+- `--baseline <file>`: if the file does not exist (under `--ci` that is exit 2), write the findings of this run to it (fingerprints, check ids
   and paths, never page text) and exit as if they were accepted; if it does, leave out the findings it holds
   and report only new ones, with a stderr line saying how many were already known. A file that is not a
   baseline, or was written by a newer version, is exit 2.
 - `--update-baseline`: with `--baseline`, write the file again from this run.
+- `--config-json-only` (or `GAUGELINE_NO_EXEC_CONFIG=1`): refuse a `gaugeline.config.mjs`, `.js` or `.ts`, which run code, as exit 2.
 - `--suppress <id>`, with `--suppress-until YYYY-MM-DD` and `--suppress-reason "..."`: snooze a check for this
   run. All three are required, `--suppress` can be repeated, and a past date is exit 2. For a standing
   suppression, use the config file's `suppress` list: an entry past its `until` date stops applying and is

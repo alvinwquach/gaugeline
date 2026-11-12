@@ -141,6 +141,8 @@ export interface RunFlags {
   /** --baseline <file>, --update-baseline: the findings already known (G29). */
   baseline?: string;
   updateBaseline: boolean;
+  /** --config-json-only, GAUGELINE_NO_EXEC_CONFIG: refuse a config file that runs code. */
+  configJsonOnly: boolean;
   /** --suppress <id> with --suppress-until and --suppress-reason: snoozed for this run only. */
   suppress: { ids: string[]; until: string; reason: string } | undefined;
   ci: boolean;
@@ -1769,6 +1771,7 @@ export function parseCliArgs(
       : {}),
     ...(typeof values.baseline === "string" ? { baseline: values.baseline } : {}),
     updateBaseline: values["update-baseline"] === true,
+    configJsonOnly: values["config-json-only"] === true,
     suppress: suppression.ids.length > 0 ? suppression : undefined,
     address: address.url.href,
     input,

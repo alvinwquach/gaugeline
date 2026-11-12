@@ -42,10 +42,11 @@ export default { custom: [hoursListed], checks: { "hours-listed": "block" } };
 
 ## The rules
 
-- **A custom id must not collide with a built-in.** `custom.0.id: "hours-listed" is already a built-in check` is exit 2 before any request.
+- **A custom id must not collide with a built-in.** `gaugeline.config.mjs: custom.0.id: "canonical-elsewhere" is already a built-in check (or another custom check).` is exit 2 before any request. Every id Gaugeline ships is reserved, including the ones a flag such as `--wordpress` adds.
 - **Plain rules.** The same page gives the same findings. No model calls in a check.
-- **Read-only.** A check gets the page Gaugeline already read and a context. If it needs another page, it asks through the context's fetcher, which sends only GET and HEAD and refuses private addresses. Code in the file can import anything Node can, so keep to the context.
+- **A smaller context.** Your check gets the page, `warn`, `couldNotCheck`, the clock and a `fetcher` with `get` only (GET and HEAD, through the same guard that refuses private addresses). It does not get `query` (the one POST path, for adapters), the owner-consent value or the site readers. What it returns is checked: a finding must carry its own check id and a level of high, medium or low, or the check fails and is reported as one that could not run. Code in the file can import anything Node can, so keep to the context.
 - **A check that throws is isolated** like a built-in: the run goes on, and the output says `1 check could not run: hours-listed`.
+- **Rule 14 applies to you.** A check that asks for non-public paths (`/.env`, `/.git`, admin pages) is a probing check: nothing gates it for you, so run it only on sites you own or have permission to test.
 - **Same reporting.** Custom findings are in the report, the baseline and `suppress` like any other, and `"checks"` can make them `block`, `warn` or `off`.
 
-A custom check needs `gaugeline.config.mjs`, `.js` or `.ts`, and those run code: read [the safety note](/docs/config#json-is-the-safe-default) first. TypeScript gets the types of `defineCheck`, `Check` and `Finding` from the same import.
+A custom check needs `gaugeline.config.mjs`, `.js` or `.ts`, and those run code (Gaugeline prints `Running code from ...` each time, and `--config-json-only` refuses it): read [the safety note](/docs/config#json-is-the-safe-default) first. TypeScript gets the types of `defineCheck`, `Check` and `Finding` from the same import.

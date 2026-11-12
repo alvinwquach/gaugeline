@@ -339,10 +339,12 @@ export {
   parseConfig,
   parseFindingsBaseline,
   registerCustomChecks,
+  sandboxCustomCheck,
 } from "./config/index.js";
 export type {
   CheckMode,
   Config,
+  CustomCheckContext,
   FindingsBaseline,
   FindingsBaselineEntry,
   FindingsBaselineMigration,
