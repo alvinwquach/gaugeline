@@ -14,6 +14,7 @@ import {
   DATOCMS_CHECKS,
   PRISMIC_CHECKS,
   DIRECTUS_CHECKS,
+  DRUPAL_CHECKS,
   HUBSPOT_CMS_CHECKS,
   AD_LANDING_CHECKS,
   CAMPAIGN_CHECKS,
@@ -88,6 +89,7 @@ export function CATALOGUE_IDS(): string[] {
   for (const c of DATOCMS_CHECKS) registry.register(c);
   for (const c of PRISMIC_CHECKS) registry.register(c);
   for (const c of DIRECTUS_CHECKS) registry.register(c);
+  for (const c of DRUPAL_CHECKS) registry.register(c);
   for (const c of HUBSPOT_CMS_CHECKS) registry.register(c);
   return registry.all().map((c) => c.id);
 }

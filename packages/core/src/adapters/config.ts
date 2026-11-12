@@ -60,6 +60,11 @@ const DRAFT_STAGE: readonly string[] = ADAPTER_ENTRIES.filter(
   (e) => e.settings?.draftStageRead,
 ).map((e) => e.id);
 
+/** The adapters that take `readUnpublished` (Drupal): the owner lets the probing check list unpublished nodes. */
+const READ_UNPUBLISHED: readonly string[] = ADAPTER_ENTRIES.filter(
+  (e) => e.settings?.unpublishedRead,
+).map((e) => e.id);
+
 /** A GraphQL name: letters, digits and underscores, not starting with a digit. It is put into a query document, so nothing else is accepted. */
 const GRAPHQL_NAME = /^[A-Za-z_][A-Za-z0-9_]{0,63}$/;
 
@@ -178,6 +183,12 @@ export const adaptersConfigSchema = z.strictObject({
            * --owner-consent, a token that may read DRAFT, and a site you own or have permission to test.
            */
           readDraftStage: z.boolean().optional(),
+          /**
+           * Drupal only: lets the probing check list unpublished nodes (ids and node numbers) with the credential. It also
+           * needs --owner-consent, a credential whose role can view unpublished content, and a site you own or have
+           * permission to test.
+           */
+          readUnpublished: z.boolean().optional(),
           /** Content kept in a repository only: the repository's folder on this computer, relative to where the run starts. */
           path: z
             .string()
@@ -311,6 +322,12 @@ export const adaptersConfigSchema = z.strictObject({
               code: "custom",
               path: ["checkReleases"],
               message: `"checkReleases" belongs to the Prismic adapter, not to ${entry.id}`,
+            });
+          if (entry.readUnpublished !== undefined && !READ_UNPUBLISHED.includes(entry.id))
+            ctx.addIssue({
+              code: "custom",
+              path: ["readUnpublished"],
+              message: `"readUnpublished" belongs to the Drupal adapter, not to ${entry.id}`,
             });
           if (entry.expectPrivate !== undefined && !EXPECT_PRIVATE.includes(entry.id))
             ctx.addIssue({

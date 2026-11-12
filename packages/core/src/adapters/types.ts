@@ -212,6 +212,12 @@ export interface AdapterSettings {
    * check that asks, as a visitor, whether the Public role can list them (still only with --owner-consent).
    */
   privateCollections?: readonly string[] | undefined;
+  /**
+   * Only `drupal`: the owner lets the probing check list unpublished nodes with the credential (ids and node numbers
+   * only) and ask whether a visitor can open them. It also needs --owner-consent and a credential whose role can
+   * view unpublished content. Without both, no unpublished node is ever asked for.
+   */
+  readUnpublished?: boolean | undefined;
   /** Only `git-content`: the repository's folder on this computer, relative to where the run starts. */
   path?: string | undefined;
   /** Only `git-content`: a repository on GitHub, read with GET. Instead of `path`. */
