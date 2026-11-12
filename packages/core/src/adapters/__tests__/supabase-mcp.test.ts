@@ -4,6 +4,7 @@ import { createFetcher } from "../../fetcher.js";
 import { COULD_NOT_CHECK, toleratedProblems } from "../../sources/mcp-guard.js";
 import {
   SUPABASE_ACCESS_TOKEN,
+  SUPABASE_MCP_ALLOW,
   SUPABASE_READS,
   SUPABASE_TOLERATED,
   readSupabase,
@@ -295,5 +296,33 @@ describe("tools the server lists and Gaugeline never calls: the tolerated list (
       toleratedProblems([{ tool: "list_tables", listingHash: "0".repeat(64) }], SUPABASE_READS),
     ).not.toEqual([]);
     expect(toleratedProblems([{ tool: "search_docs", listingHash: "short" }], [])).not.toEqual([]);
+  });
+});
+
+describe("re-review: the cursor and the call list", () => {
+  it("a page cursor that is not an opaque token stops the read with that reason, before it is sent back", async () => {
+    const fake = fakeSupabase({ pageSize: 1 });
+    const transport: typeof fake.transport = async (url, req) => {
+      const res = await fake.transport(url, req);
+      if (!(req.body ?? "").includes('"tools/list"')) return res;
+      const { Readable } = await import("node:stream");
+      const text =
+        'data: {"jsonrpc":"2.0","id":2,"result":{"tools":[],"nextCursor":"../../x y"}}\n\n';
+      return { ...res, body: Readable.from([Buffer.from(text)]) };
+    };
+    const result = await readSupabase({
+      fetcher: createFetcher({ transport }),
+      env: ENV,
+      projectRef: REF,
+    });
+    expect(result).toMatchObject({ status: "could-not-check", reason: COULD_NOT_CHECK.badCursor });
+    expect(fake.sent).toHaveLength(3);
+  });
+
+  it("contract: no tolerated name is ever a tool fetcher.query may call", () => {
+    const callable = Object.keys(
+      (SUPABASE_MCP_ALLOW.body as { tools: Record<string, unknown> }).tools,
+    );
+    for (const t of SUPABASE_TOLERATED) expect(callable, t.tool).not.toContain(t.tool);
   });
 });
