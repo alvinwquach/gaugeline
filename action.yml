@@ -25,9 +25,16 @@ inputs:
     required: false
     default: "true"
   version:
-    description: The gaugeline version npx runs. Pin it ("0.1.0") so a release never changes a build.
+    description: >-
+      The exact gaugeline release npx runs, such as 1.2.3: the release you pin. Required: there is
+      no default and no "latest", and a tag, a range, a URL or another package name is refused.
+    required: true
+  category:
+    description: >-
+      The code scanning category of the upload. Give each use of this action in one workflow its
+      own, or the later upload replaces the earlier.
     required: false
-    default: latest
+    default: gaugeline
   allow-private:
     description: >-
       "true" lets Gaugeline check an address on a private network (a self-hosted runner's staging
@@ -62,11 +69,15 @@ runs:
       run: node "$GITHUB_ACTION_PATH/scripts/action/gaugeline-action.mjs"
 
     # Pinned by commit (v4.39.3 of github/codeql-action), like every action in this repository.
-    - if: ${{ !cancelled() && inputs.upload-sarif == 'true' && steps.check.outputs.sarif-file != '' }}
+    # A pull request from a fork gets a read-only token, so the upload cannot work there: it must not
+    # turn the job red (the check's own result, in the last step, still does).
+    - name: Upload SARIF
+      if: ${{ !cancelled() && inputs.upload-sarif == 'true' && steps.check.outputs.sarif-file != '' }}
+      continue-on-error: ${{ github.event.pull_request.head.repo.fork == true }}
       uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
       with:
         sarif_file: ${{ steps.check.outputs.sarif-file }}
-        category: gaugeline
+        category: ${{ inputs.category }}
 
     # The check step always ends green so the upload above runs; this step is what fails the job.
     - if: ${{ !cancelled() && steps.check.outputs.failed == 'true' }}

@@ -11,6 +11,11 @@
 import { execFile } from "node:child_process";
 import { appendFileSync, writeFileSync } from "node:fs";
 
+/** An exact release: 1.2.3, or 1.2.3-rc.1. Not a tag, a range, a URL or another package. */
+const EXACT_VERSION = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
+const VERSION_MESSAGE =
+  "The version input must be an exact release number such as 1.2.3 (the release you pin), not a tag, a range, a URL or another package.";
+
 /**
  * What the SARIF log says: findings by level (muted ones, with a SARIF suppression, left out).
  * @param {string} sarifText
@@ -57,24 +62,33 @@ export async function run(env, deps = {}) {
   const failOn = (env.INPUT_FAIL_ON ?? "high").trim();
   const sarifFile = env.INPUT_SARIF_FILE || "gaugeline.sarif";
   if (!url)
-    return finish(env, log, { failed: true, message: "The url input is empty.", sarifFile });
+    return finish(env, log, { failed: true, message: "The url input is empty.", sarifFile: "" });
+  // Fixed messages: what the user typed is never echoed into a workflow command line.
   if (!["high", "medium", "never"].includes(failOn))
     return finish(env, log, {
       failed: true,
-      message: `fail-on accepts high, medium or never, not "${failOn}".`,
-      sarifFile,
+      message: "fail-on accepts high, medium or never.",
+      sarifFile: "",
     });
   // Tests point GAUGELINE_ACTION_BIN at the built CLI, as a JSON list so a path may hold spaces.
+  // Otherwise the release to run is an exact version the user pinned: npx would run a tag, a range,
+  // a URL or another package ("npm:other@1") just as readily, and none of them is a release we
+  // published. There is no default and no "latest".
+  if (!env.GAUGELINE_ACTION_BIN && !EXACT_VERSION.test(env.INPUT_VERSION ?? ""))
+    return finish(env, log, { failed: true, message: VERSION_MESSAGE, sarifFile: "" });
   const bin = env.GAUGELINE_ACTION_BIN
     ? /** @type {string[]} */ (JSON.parse(env.GAUGELINE_ACTION_BIN))
-    : ["npx", "--yes", `gaugeline@${env.INPUT_VERSION || "latest"}`];
+    : ["npx", "--yes", `gaugeline@${env.INPUT_VERSION}`];
+  // Flags first, then -- and the address, so an address is never read as a flag. No probing flag
+  // is ever passed and no input offers one: the action only runs the default, read-only checks.
   const args = [
     ...bin.slice(1),
-    url,
     "--format",
     "sarif",
     ...(failOn === "never" ? [] : ["--ci"]),
     ...(env.INPUT_ALLOW_PRIVATE === "true" ? ["--allow-private"] : []),
+    "--",
+    url,
   ];
   /** @type {{ stdout: string, stderr: string, status: number }} */
   const r = await new Promise((resolve) => {
