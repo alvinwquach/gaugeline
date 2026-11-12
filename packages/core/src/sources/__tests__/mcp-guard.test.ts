@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { idPatternProblem } from "../../fetch/mcp-jsonrpc.js";
 import {
   COULD_NOT_CHECK,
   keepFields,
@@ -474,6 +475,33 @@ describe("targeted verification of #263", () => {
 
   it("a pattern that admits free text keeps nothing, even a clean value", () => {
     expect(keepFields({ v: "abc" }, idRule("^x.*$|^abc$"))).toEqual({});
+  });
+
+  it("the tolerated screen refuses a write verb with any ending but -able", () => {
+    for (const tool of [
+      "deletes_rows",
+      "creates_user",
+      "runs_job",
+      "sends_email",
+      "drops_table",
+      "posts",
+      "updated_rows",
+      "deleted_rows",
+      "sending_email",
+      "get_deployment",
+      "list_deploys",
+      "sets",
+      "pushes",
+    ])
+      expect(toleratedProblems([{ tool, listingHash: "0".repeat(64) }], []), tool).not.toEqual([]);
+  });
+
+  it("an id the pattern allows but the fixed set refuses is still dropped at keep time", () => {
+    // The pattern is a closed rule (it passes the grammar) and matches "a..b"; only isIdValue stops it.
+    const rule = idRule("^[a-z]+\\.\\.[a-z]+$");
+    expect(idPatternProblem("^[a-z]+\\.\\.[a-z]+$")).toBeUndefined();
+    expect(keepFields({ v: "a..b" }, rule)).toEqual({});
+    expect(keepFields({ v: "a".repeat(100) + ".." + "b".repeat(100) }, rule)).toEqual({});
   });
 
   it("the tolerated screen sees glued write words, but not an adjective like publishable", () => {

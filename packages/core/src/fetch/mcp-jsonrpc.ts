@@ -70,21 +70,15 @@ const GLUED_OTHER: readonly string[] =
 
 const glued = (name: string): string => name.toLowerCase().replace(/[^a-z0-9]/g, "");
 
-/** Endings that make a verb an adjective or a noun of state ("publishable", "deployed"): not a write by themselves. */
-const INFLECTIONS: ReadonlySet<string> = new Set([
-  "able",
-  "d",
-  "ed",
-  "s",
-  "es",
-  "ing",
-  "ment",
-  "ments",
-]);
+/**
+ * The one ending that turns a verb into an adjective ("publishable"). Every other ending ("deletes",
+ * "updated", "sending", "deployment") is a write by name, so it is not exempt.
+ */
+const ADJECTIVE_ENDING = "able";
 
 /**
  * The write stem inside any word of a name, glued or not ("executesql", "get_deployfunction"), from
- * the same generated list as mcpToolNameProblem; a word that is only a stem and an inflection
+ * the same generated list as mcpToolNameProblem; a word that is only a stem and "able"
  * ("publishable") is not a write. Used for the tolerated list, which names read tools by exact name.
  */
 export function gluedWriteIn(name: string): string | undefined {
@@ -92,7 +86,7 @@ export function gluedWriteIn(name: string): string | undefined {
     for (const stem of GLUED_WRITES)
       if (
         word.includes(stem) &&
-        !(word.startsWith(stem) && INFLECTIONS.has(word.slice(stem.length)))
+        !(word.startsWith(stem) && word.slice(stem.length) === ADJECTIVE_ENDING)
       )
         return stem;
   return undefined;
@@ -172,11 +166,12 @@ export function isIdValue(value: unknown, max: number): value is string {
 
 /**
  * What a registered id pattern may be built from, between its ^ and $: literal characters of the
- * set, \. and \-, character classes of the set, (?: ) groups and quantifiers. No ".", no \s, \S
+ * set, \. and \-, character classes of the set (a range only within a-z, A-Z or 0-9, and a bare - only first or last,
+ * so "[_-z]" and "[A-z]" are refused), (?: ) groups and quantifiers. No ".", no \s, \S
  * or \w, no [^ ], no alternation: such a pattern can only ever match characters of the set.
  */
 const PATTERN_BODY =
-  /^(?:\[(?:[A-Za-z0-9_:.]|\\[.-]|-)+\]|\\[.-]|[A-Za-z0-9_:-]|\{\d+(?:,\d*)?\}|[+*?]|\(\?:|\))*$/;
+  /^(?:\[-?(?:[a-z]-[a-z]|[A-Z]-[A-Z]|[0-9]-[0-9]|[A-Za-z0-9_:.]|\\[.-])+-?\]|\\[.-]|[A-Za-z0-9_:-]|\{\d+(?:,\d*)?\}|[+*?]|\(\?:|\))*$/;
 
 /** An id pattern as it is always used: the whole value, whatever alternation the pattern holds. */
 export function idPattern(pattern: string): RegExp {

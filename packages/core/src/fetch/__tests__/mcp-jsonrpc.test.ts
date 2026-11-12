@@ -506,9 +506,20 @@ describe("targeted verification of #262: an id is a fixed character set, whateve
       "^[a-z]{4}$|[0-9]$",
       "^[\\w]+$",
       "^[a-z\\s]+$",
+      // A class range is closed: a range across groups (_ to z) admits a backtick and more.
+      "^[_-z]+$",
+      "^[A-z]+$",
+      "^[ -~]+$",
+      "^[+--]+$",
+      "^[a-z-9]+$",
+      "^[.-:]+$",
     ])
       expect(idPatternProblem(p), p).toBeDefined();
     for (const p of [
+      "^[a-z0-9-]{1,9}$",
+      "^[-a-z0-9]{1,9}$",
+      "^[A-Za-z0-9_:]{1,9}$",
+      "^[a-f0-9]{20}$",
       "^[a-z0-9]{20}$",
       "^[0-9]{1,12}$",
       "^[a-z0-9_]{1,64}$",
