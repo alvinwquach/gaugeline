@@ -6,6 +6,8 @@
 import { SESSION_TTL_S, type Claims } from "./auth.js";
 import { asUser, type Tx } from "./db.js";
 import type { WebDeps } from "./deps.js";
+import { siteSummaries } from "./dashboard.js";
+import { dashboardBody } from "./dashboard-view.js";
 import { markup } from "./html.js";
 import { redirect, respondHtml, respondText, STYLES, type Shell } from "./layout.js";
 import { listMemberships, listSites, pickOrg, ROLE_LABEL, type Membership } from "./memberships.js";
@@ -220,20 +222,13 @@ export function home(request: Request, deps: WebDeps): Promise<Response> {
           <form method="post" action="/sign-out"><button type="submit">Sign out</button></form>`,
       );
     const { current } = shell;
-    const sites = await listSites(tx, current);
+    const sites = await siteSummaries(tx, await listSites(tx, current));
     return respondHtml(
       200,
       "Sites",
       markup`<h1>${current.orgName}</h1>
-        <p class="muted">You are signed in as ${ROLE_LABEL[current.role]}.</p>
-        <h2>Sites</h2>
-        ${
-          sites.length === 0
-            ? markup`<p class="notice">No sites yet.</p>`
-            : markup`<ul>
-                ${sites.map((s) => markup`<li>${s.name}</li>`)}
-              </ul>`
-        }`,
+<p class="muted">You are signed in as ${ROLE_LABEL[current.role]}.</p>
+${dashboardBody(sites, current.role)}`,
       shell,
     );
   });

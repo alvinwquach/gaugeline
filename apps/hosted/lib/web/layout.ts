@@ -131,4 +131,14 @@ button.primary { background: var(--accent); border-color: var(--accent); color: 
 .stack { display: grid; gap: 0.75rem; max-width: 26rem; }
 .stack label { font-weight: 600; }
 .notice { border: 1px solid var(--line); background: var(--panel); border-radius: 0.5rem; padding: 0.75rem 1rem; }
+.sites { width: 100%; border-collapse: collapse; }
+.sites caption { text-align: left; font-weight: 600; padding-bottom: 0.5rem; }
+.sites th, .sites td { text-align: left; vertical-align: top; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--line); }
+.sites thead th { font-size: 0.875rem; color: var(--muted); }
+.sites .num { text-align: right; font-variant-numeric: tabular-nums; }
+.sites tbody th { font-weight: 600; }
+.trend { font-weight: 600; }
+.trend-worse { color: var(--high); }
+.trend-better { color: var(--accent); }
+.trend-still, .trend-first, .trend-unchecked { color: var(--muted); }
 `;
