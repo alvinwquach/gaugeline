@@ -21,9 +21,9 @@ the same hosted service.
 | The bar's manager     | `client` | The Tidewater Bar only: its runs, findings and consent record. Read-only             |
 | Brightfield's owner   | `owner`  | Maple Street Physio only. Nothing of Northgate's                                     |
 
-Signed in as Northgate's owner, a plain `select` returns only Northgate's sites (one in this example
-database), and an insert claiming Brightfield's organisation is refused by the database, not by
-application code:
+Signed in as Northgate's owner, a plain `select` returns Northgate's two sites and nothing of
+Brightfield's, and an insert claiming Brightfield's organisation is refused by the database, not by
+application code. This is the output of the seeded test database (`apps/hosted/db/__tests__/harness.ts`):
 
 ```sql
 -- as the signed-in user 11111111-...-001 (Northgate's owner), role authenticated
@@ -33,10 +33,11 @@ insert into sites (org_id, name, url)
 ```
 
 ```text
-       name        |            url
--------------------+----------------------------
- The Tidewater Bar | https://tidewater-bar.test
-(1 row)
+          name          |            url
+------------------------+----------------------------
+ Juniper Pop-up Kitchen | https://juniper-popup.test
+ The Tidewater Bar      | https://tidewater-bar.test
+(2 rows)
 
 ERROR:  new row violates row-level security policy for table "sites"
 ```
@@ -52,7 +53,7 @@ Every table has an `org_id` column and row-level security turned on.
 | `sites`         | a site the organisation looks after                | `timezone` sets when the nightly run starts                                                           |
 | `runs`          | one run of the checks against one site             | `summary` holds counts, never the report                                                              |
 | `findings`      | one problem a run found                            | `check_id`, `severity`, `title`, `evidence` (one line, at most 1000 characters), `url`, `fingerprint` |
-| `drafts`        | a proposed change waiting for a person             | its state is the latest decision, not a column                                                        |
+| `drafts`        | a proposed change waiting for a person             | append-only; its state is the latest decision, not a column                                           |
 | `decisions`     | who approved, edited or declined a draft, and when | append-only                                                                                           |
 | `site_consents` | the site owner's consent to probing checks         | append-only                                                                                           |
 
@@ -72,17 +73,34 @@ finding cannot point at one organisation's run and claim another organisation, e
 | --------------------------- | ----------------------------------------------------- | ------------------------------------------------------------ |
 | not signed in (`anon`)      | nothing                                               | nothing                                                      |
 | `owner`, `admin`            | their organisations                                   | sites, members, consent records; everything a member can     |
-| `member`                    | their organisations                                   | runs, findings, drafts; decisions in their own name          |
+| `member`                    | their organisations                                   | drafts and decisions, in their own name                      |
 | `client`                    | their one site, its runs, findings and consent record | nothing                                                      |
-| the server (`service_role`) | everything                                            | everything except changing or removing a decision or consent |
+| the server (`service_role`) | everything                                            | runs and findings; new drafts, decisions and consent records |
 
 A person in two organisations sees both, and nothing else.
 
-## Decisions nobody can rewrite
+- **Runs and findings come only from the server.** A signed-in person cannot insert them; the runs API
+  (G35) checks the site's upload token and inserts as `service_role`, so nobody can invent a finding.
+- **Owners.** Only an owner adds, promotes, demotes or removes an owner; an admin cannot make anyone an
+  owner, themselves included. The last owner of an organisation cannot leave or step down until someone
+  else is an owner.
+- **Role names.** The database roles are Supabase's: `authenticated` is the signed-in app user (the
+  plan's "app" role) and `service_role` is the server and worker (the plan's "service" role). The
+  plan's `agent` role (may only insert drafts) does not exist yet: it is G37's work.
+- **The app never connects as the table owner.** The owner (`postgres` on Supabase) skips row-level
+  security. Every query runs either as `authenticated`, inside a transaction that sets
+  `set local role authenticated` and the request's claims, or as `service_role`. `connectionSkipsRls()`
+  in `db/audit.ts` reports a connection that would skip the policies; the app checks it at start-up.
+  Row-level security is not `FORCE`d: FORCE only binds the table owner, which runs the migrations and
+  would then need its own policies, and it does nothing against a superuser or a `BYPASSRLS` role.
 
-`decisions` and `site_consents` accept `INSERT` and `SELECT` only. No role is granted `UPDATE` or
-`DELETE`, and a trigger refuses `UPDATE`, `DELETE` and `TRUNCATE` for every role, the server and the
-table owner included:
+## Decisions the app cannot rewrite
+
+`drafts`, `decisions` and `site_consents` accept `INSERT` and `SELECT` only, for the app and the server.
+`INSERT` is granted on named columns: the `id` and the time (`decided_at`, `recorded_at`) are always set
+by the database, so nobody can choose an id to put a row "last", backdate it, or move the shared id
+sequence to block another organisation's inserts. A trigger refuses `UPDATE`, `DELETE` and `TRUNCATE`
+even for a role that holds those privileges:
 
 ```sql
 delete from decisions;
@@ -94,7 +112,36 @@ HINT:  Insert a new row instead (a later decision, a withdrawal).
 ```
 
 Changing your mind is a new row. The current state is a query over the log: the `draft_state` view gives
-each draft's latest decision (`pending` when there is none).
+each draft's latest decision (`pending` when there is none). A draft never changes after it is written,
+so an approval always refers to the payload that was shown; an edit is a decision of kind `edited` that
+carries the new payload.
+
+**What this does not stop.** The table owner (`postgres` on Supabase) can disable or drop the trigger,
+add a rule, or (as a superuser, where allowed) set `session_replication_role = replica`. For example,
+as the owner:
+
+```sql
+begin;
+alter table decisions disable trigger decisions_append_only;
+delete from decisions;
+rollback;
+```
+
+```text
+BEGIN
+ALTER TABLE
+DELETE 2
+ROLLBACK
+```
+
+So the protection holds against the app, the server and anyone who gets their credentials, not against
+the database owner. The owner role is used only to apply migrations, and migrations are applied only
+after review. To notice misuse, log DDL and owner sessions (for example with the `pgaudit` extension or
+an event trigger on `ddl_command_end`); that is set up with the real project (see the plan's owner needs).
+
+**Deleting is limited too.** A site with drafts, decisions or consent records cannot be deleted
+(`on delete restrict` and the append-only triggers), and neither can its organisation. Erasing an
+organisation that leaves needs an owner-run procedure; that decision is open (see the plan).
 
 ## Consent to probing checks
 

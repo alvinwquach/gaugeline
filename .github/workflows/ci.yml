@@ -78,10 +78,17 @@ jobs:
     # required check while the hosted app is unreleased.
     # A draft pull request runs no CI; marking it ready starts it (ready_for_review). Other events are unaffected.
     if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    name: hosted-db (node ${{ matrix.node }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ["22", "24"]
     services:
       postgres:
+        # By major-version tag, not digest: the registry was not reachable to read a digest when this was
+        # written. Pin it by digest once it is (a throwaway test server; nothing secret reaches it).
         image: postgres:16
         env:
           # A throwaway server inside the job, reachable only from it: not a secret.
@@ -101,7 +108,7 @@ jobs:
       - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
-          node-version: 24
+          node-version: ${{ matrix.node }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec vitest run apps/hosted
