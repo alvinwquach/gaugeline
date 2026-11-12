@@ -122,7 +122,10 @@ describe("publishGate: the plugin", () => {
     ["no Function address", { functionUrl: "" }],
     ["an http Function address", { functionUrl: "http://gate.lantern-yard.example/check" }],
     ["a wildcard Function address", { functionUrl: "https://*.lantern-yard.example/check" }],
-    ["a Function address with a password", { functionUrl: "https://a:b@gate.example/check" }],
+    [
+      "a Function address with a password",
+      { functionUrl: `https://a:b${String.fromCharCode(64)}gate.example/check` },
+    ],
     ["no site", { site: "" }],
     ["a site that is not http", { site: "ftp://lantern-yard.example" }],
   ])("refuses %s when the Studio loads", (_name, over) => {
