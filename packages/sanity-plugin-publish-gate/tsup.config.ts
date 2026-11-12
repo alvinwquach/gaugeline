@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "tsup";
 
 const common = {
@@ -10,8 +11,20 @@ const common = {
 };
 
 export default defineConfig([
-  // index is browser-safe (the resolver): it imports nothing, so it gets no banner and no shared chunk.
-  { ...common, entry: ["src/index.ts"], clean: true },
+  // index is browser-safe (the resolver, the request and the reply check): it imports no Node module, so it gets no banner and no shared chunk.
+  {
+    ...common,
+    entry: ["src/index.ts"],
+    clean: true,
+    // The Studio needs only the shared text cleaner (N17), not the whole engine: in this entry
+    // "@gaugeline/core" is that one module, so nothing else of core reaches the browser bundle.
+    noExternal: ["@gaugeline/core"],
+    esbuildOptions(options) {
+      options.alias = {
+        "@gaugeline/core": fileURLToPath(new URL("../core/src/untrusted.ts", import.meta.url)),
+      };
+    },
+  },
   {
     ...common,
     entry: ["src/function.ts"],

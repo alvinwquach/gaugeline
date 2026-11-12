@@ -28,6 +28,12 @@ describe("the built package", () => {
     }
   });
 
+  it("the browser entry carries the text cleaner and no more of the engine", () => {
+    // The Studio gets sanitise (N17) and nothing else of core: a whole engine in it would be over 1 MB.
+    const size = closure("index.js").reduce((n, f) => n + readFileSync(dist(f)).length, 0);
+    expect(size).toBeLessThan(150_000);
+  });
+
   it("the Function entry has the require shim its bundled engine needs", () => {
     expect(readFileSync(dist("function.js"), "utf8")).toMatch(/createRequire/);
   });
