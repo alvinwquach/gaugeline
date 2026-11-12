@@ -115,6 +115,7 @@ import {
   addWordPressChecks,
   addPublishedChecks,
   createPublished,
+  copyAdapterEnv,
   addBackupsChecks,
   createBackups,
   BACKUPS_CHECKS,
@@ -122,7 +123,6 @@ import {
   buildBackupsSummary,
   formatBackupsSummary,
   manualBackups,
-  allAdapterEnvVars,
   createWordPress,
   type ExportLister,
 } from "@gaugeline/core";
@@ -197,6 +197,7 @@ import {
   readSchemaRules,
   readTags,
   readNavRules,
+  readStaleDates,
   readPagesConfig,
 } from "./schema-config.js";
 import { listRouteFiles } from "./route-files.js";
@@ -1225,6 +1226,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       const tags = readTags(deps.cwd ?? process.cwd());
       const events = readEvents(deps.cwd ?? process.cwd());
       const navRules = readNavRules(deps.cwd ?? process.cwd());
+      const staleDates = readStaleDates(deps.cwd ?? process.cwd());
       const pagesConfig = readPagesConfig(deps.cwd ?? process.cwd());
       // Probing checks (CLAUDE.md rule 14) ask a route that should be protected for what it protects,
       // with no login. They are off unless the owner agreed: --owner-consent, or gaugeline.consent.json.
@@ -1529,7 +1531,10 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         ? createPublished(
             readAdaptersConfig(cwd),
             {
-              env: freezeEnv(io.env ?? {}, [...SANITY_ENV_VARS, ...allAdapterEnvVars()]),
+              env: {
+                ...freezeEnv(io.env ?? {}, SANITY_ENV_VARS),
+                ...copyAdapterEnv(io.env ?? {}),
+              },
               fetcher,
             },
             fetcher,
@@ -1585,6 +1590,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         ...(payments ? { payments } : {}),
         ...(hidden ? { hidden } : {}),
         ...(navRules ? { nav: navRules } : {}),
+        ...(staleDates ? { staleDates } : {}),
         ...(tags ? { tags } : {}),
         // No observer until rendered reads (G39): the click event checks are could not check.
         ...(events ? { events } : {}),

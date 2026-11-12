@@ -125,6 +125,7 @@ export const UNLISTED: NavPage[] = [
     title: "Handoff: who owns what, and can the client get in without you",
   },
   { slug: "guides/hidden-text", title: "Hidden text aimed at AI assistants" },
+  { slug: "guides/out-of-date-copy", title: "Out-of-date copy: dates that have passed" },
   {
     slug: "guides/script-baseline",
     title: "Script and header baseline: what loads on a payment page, and what changed",
@@ -132,6 +133,7 @@ export const UNLISTED: NavPage[] = [
   { slug: "integrations/index", title: "Content systems: one interface for every CMS" },
   // Each adapter's page comes from its entry file (pnpm gen:adapters), so a new adapter does not edit this list.
   ...ADAPTER_PAGES,
+  { slug: "integrations/recipes/index", title: "Recipes for the generic API adapter" },
   { slug: "connectors/listings", title: "Listings off the site" },
   { slug: "connectors/postgres", title: "A database as a source: Postgres and Supabase" },
   { slug: "sources/shopify", title: "Shopify as a price source" },
@@ -150,8 +152,10 @@ export const UNLISTED: NavPage[] = [
   { slug: "guides/access-rules", title: "Database access rules, tested from outside" },
   { slug: "guides/nextjs", title: "Next.js sites" },
   { slug: "guides/qwik-solidstart", title: "Qwik and SolidStart sites" },
+  { slug: "guides/static-generators", title: "Static site generators" },
   { slug: "guides/angular", title: "Angular sites" },
   { slug: "guides/gatsby", title: "Gatsby sites" },
+  { slug: "guides/hydrogen", title: "Shopify Hydrogen sites" },
   { slug: "guides/sveltekit", title: "SvelteKit sites" },
   { slug: "guides/astro", title: "Astro sites" },
   { slug: "guides/sanity-images", title: "Sanity images: sizes, crops and duplicates" },
