@@ -87,6 +87,8 @@ import { hiddenIndexable } from "./hidden-indexable.js";
 import { hiddenLinked } from "./hidden-linked.js";
 import { hiddenPastLaunch } from "./hidden-past-launch.js";
 import { hostDuplicate } from "./host-duplicate.js";
+import { hostPreviewIndexable } from "./host-preview-indexable.js";
+import { hostPreviewNamed } from "./host-preview-named.js";
 import { hreflangBadCode } from "./hreflang-bad-code.js";
 import { hreflangNotReciprocal } from "./hreflang-not-reciprocal.js";
 import { htmlHeavy } from "./html-heavy.js";
@@ -311,6 +313,8 @@ export const PAGE_CHECKS = [
   hiddenLinked,
   hiddenPastLaunch,
   hostDuplicate,
+  hostPreviewIndexable,
+  hostPreviewNamed,
   hreflangBadCode,
   hreflangNotReciprocal,
   htmlHeavy,
