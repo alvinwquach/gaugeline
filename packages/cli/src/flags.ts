@@ -712,16 +712,14 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
   {
     name: "baseline",
     type: "string",
-    description:
-      "Read or write a baseline of known findings: a file that does not exist yet is written from this run, one that exists hides what it holds and reports only new findings",
+    description: "Read or write a file of known findings; with it a run reports only new ones",
     since: "0.2.0",
     commands: ["check", "launch"],
   },
   {
     name: "update-baseline",
     type: "boolean",
-    description:
-      "With --baseline, write the baseline again from this run (accept every finding as known)",
+    description: "With --baseline, write the file again from this run",
     since: "0.2.0",
     commands: ["check", "launch"],
   },
@@ -729,7 +727,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     name: "suppress",
     type: "string",
     description:
-      "Snooze a check id for this run, with --suppress-until and --suppress-reason, both required (repeatable)",
+      "Snooze a check id for this run; needs --suppress-until and --suppress-reason (repeatable)",
     since: "0.2.0",
     commands: ["check", "launch"],
     multiple: true,
@@ -737,7 +735,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
   {
     name: "suppress-until",
     type: "string",
-    description: "With --suppress, the last day it applies, as YYYY-MM-DD; a past date is refused",
+    description: "With --suppress, the last day it applies, YYYY-MM-DD; a past date is refused",
     since: "0.2.0",
     commands: ["check", "launch"],
   },
