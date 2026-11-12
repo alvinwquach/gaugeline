@@ -35,6 +35,7 @@ export const ADAPTER_PAGES: { slug: string; title: string }[] = [
   },
   { slug: "integrations/hygraph", title: "Hygraph: content checks for sites built on Hygraph" },
   { slug: "integrations/joomla", title: "Joomla: content checks for sites built on Joomla" },
+  { slug: "integrations/payload", title: "Payload: content checks for sites built on Payload" },
   { slug: "integrations/prismic", title: "Prismic: content checks for sites built on Prismic" },
   { slug: "integrations/shopify", title: "Shopify: content checks for sites built on Shopify" },
   {
