@@ -76,7 +76,8 @@ jobs:
 ```
 
 - **Vercel**: reports each deployment to GitHub, with the environment `Preview` or `Production`. The job above
-  works as written. A build step or `vercel.json` setting is not needed, and would run before the preview is
+  works as written. To fail the job, and hold the merge with a required status check, see
+  [Hold a Vercel deploy on Gaugeline's result](./vercel-gate.md). A build step or `vercel.json` setting is not needed, and would run before the preview is
   live. If you turn on Vercel Authentication for previews, set `GAUGELINE_VERCEL_BYPASS` from a secret.
 - **Netlify**: the deploy preview's address is in `DEPLOY_PRIME_URL` during the build, but the build runs
   before the preview is live, so a command in the build cannot reach it. Use the same job once your Netlify
