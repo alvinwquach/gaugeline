@@ -29,6 +29,12 @@ import { secretsInValue, stringsOf } from "../lib/api/secrets.js";
 import { openDatabase } from "../lib/api/startup.js";
 import { diffFingerprints } from "./diff.js";
 import { claimJobs, completeJob, failJob, type Job, releaseExpired } from "./queue.js";
+import {
+  type MorningDeps,
+  MORNING_EVERY_MS,
+  morningFromEnv,
+  sendMorningEmails,
+} from "./email/send.js";
 
 /** The consent wording a site owner must have agreed to for probing checks to run. */
 export const CONSENT_WORDING_VERSION = "2026-11-12";
@@ -209,10 +215,17 @@ export async function workOnce(deps: WorkerDeps, limit = 4): Promise<number> {
 /** Work until `signal` aborts: claim, run, and wait `idleMs` when the queue is empty. */
 export async function runWorker(
   deps: WorkerDeps,
-  options: { signal: AbortSignal; limit?: number; idleMs?: number },
+  options: { signal: AbortSignal; limit?: number; idleMs?: number; morning?: MorningDeps | null },
 ): Promise<void> {
   const idle = options.idleMs ?? 30_000;
+  const clock = deps.now ?? (() => new Date());
+  let lastMorning = Number.NEGATIVE_INFINITY;
   while (!options.signal.aborted) {
+    // The morning email (X64): every few minutes, whoever it is morning for. A failure never stops the checks.
+    if (options.morning && clock().getTime() - lastMorning >= MORNING_EVERY_MS) {
+      lastMorning = clock().getTime();
+      await sendMorningEmails(options.morning, clock()).catch(() => undefined);
+    }
     if ((await workOnce(deps, options.limit)) > 0) continue;
     await new Promise<void>((resolve) => {
       const t = setTimeout(resolve, idle);
@@ -228,7 +241,9 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   openWorkerDatabase(process.env)
     .then(async (sql) => {
       try {
-        await runWorker({ sql }, { signal: stop.signal });
+        const morning = morningFromEnv(sql, process.env);
+        if (!morning) console.error("worker: the morning email is off (RESEND_API_KEY is not set)");
+        await runWorker({ sql }, { signal: stop.signal, morning });
       } finally {
         await sql.end({ timeout: 5 });
       }
