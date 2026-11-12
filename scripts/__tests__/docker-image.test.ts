@@ -53,11 +53,70 @@ describe("Dockerfile (static: nothing is built in CI)", () => {
 
   it("installs one exact release: the version is a required build argument, and install scripts are off", () => {
     const run = of("RUN").join("\n");
-    expect(of("ARG")).toEqual(["GAUGELINE_VERSION"]);
-    expect(run).toContain('test -n "$GAUGELINE_VERSION"');
+    expect(of("ARG")).toEqual(["GAUGELINE_VERSION", "VCS_REF=unknown"]);
     expect(run).toContain('"gaugeline@${GAUGELINE_VERSION}"');
     expect(run).toContain("--ignore-scripts");
     expect(run).not.toMatch(/gaugeline@latest/);
+  });
+
+  describe.skipIf(process.platform === "win32")(
+    "the version check, run as the build runs it",
+    () => {
+      // The first RUN is the check on its own: it is executed here with each value.
+      const check = of("RUN").find(
+        (r) => r.includes("GAUGELINE_VERSION") && !r.includes("npm install"),
+      );
+      const verdict = (version: string | undefined) =>
+        spawnSync("sh", ["-c", check ?? "exit 99"], {
+          encoding: "utf8",
+          env: {
+            PATH: process.env.PATH ?? "",
+            ...(version === undefined ? {} : { GAUGELINE_VERSION: version }),
+          },
+        });
+      it("accepts an exact release or pre-release", () => {
+        for (const v of ["1.2.3", "0.1.0", "10.20.30", "1.0.0-rc.1", "2.0.0-beta-2"])
+          expect(verdict(v).status, v).toBe(0);
+      });
+      it("refuses everything else, with a message and a non-zero exit", () => {
+        const refused = [
+          undefined,
+          "",
+          "latest",
+          "^1.0.0",
+          "1.2",
+          "v1.2.3",
+          "npm:other@1.0.0",
+          "https://evil.example/p.tgz",
+          "file:../p",
+          "1.2.3 --registry=https://evil.example",
+          "1.2.3\n4.5.6",
+          "1.2.3;id",
+          "$(id)",
+        ];
+        for (const v of refused) {
+          const r = verdict(v);
+          expect(r.status, JSON.stringify(v)).not.toBe(0);
+          expect(r.stderr, JSON.stringify(v)).toContain("exact release");
+        }
+      });
+    },
+  );
+
+  it("makes /work writable by the user the container runs as", () => {
+    const lines = instructions;
+    const workdir = lines.findIndex((l) => l === "WORKDIR /work");
+    const chown = lines.findIndex((l) => /^RUN chown (-R )?node:node \/work$/.test(l));
+    const user = lines.findIndex((l) => l === "USER node");
+    expect(workdir).toBeGreaterThan(-1);
+    expect(chown).toBeGreaterThan(workdir);
+    expect(user).toBeGreaterThan(chown);
+  });
+
+  it("labels the version and the revision from build arguments", () => {
+    const labels = of("LABEL").join(" ");
+    expect(labels).toContain('org.opencontainers.image.version="${GAUGELINE_VERSION}"');
+    expect(labels).toContain('org.opencontainers.image.revision="${VCS_REF}"');
   });
 
   it("bakes in no secret, fetches nothing by URL and pipes nothing into a shell", () => {
