@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { GATE_STATUSES, checkDocument, gateRequestHandler } from "../function.js";
+import { GATE_STATES, IDLE, gateReduce, type GateEvent } from "../gate-state.js";
 import { DEFAULT_MAX_BYTES, DEFAULT_TIMEOUT_MS, requestGate } from "../request.js";
 import { SITE, barSite, memorySite } from "./helpers.js";
 
@@ -82,8 +83,52 @@ describe("docs/publish-gate.md", () => {
     expect(DEFAULT_MAX_BYTES).toBe(64 * 1024);
   });
 
+  it("the state example prints exactly what the page shows", () => {
+    const code = block("try-the-states.ts");
+    expect(code).toContain('{ type: "confirm-override" }');
+    const url = "https://lantern-yard.example/menu";
+    const found = {
+      version: 1 as const,
+      status: "findings" as const,
+      url,
+      checkedAt: "2026-11-12T10:00:00Z",
+      findings: [],
+    };
+    const events: GateEvent[] = [
+      { type: "check", url },
+      { type: "answer", answer: found },
+      { type: "confirm-override" },
+      { type: "reset" },
+    ];
+    let state = IDLE;
+    const lines: string[] = [];
+    for (const event of events) {
+      state = gateReduce(state, event);
+      lines.push(`${event.type.padEnd(16)} ${state.name}`);
+    }
+    expect(lines.join("\n")).toBe(block("States"));
+  });
+
+  it("the six-state table lists the six states, in order, and the config example is the plugin's", () => {
+    const section = page.slice(
+      page.indexOf("### The six states"),
+      page.indexOf("```ts title=try-the-states"),
+    );
+    const rows = [...section.matchAll(/^\| `([a-z-]+)`\s+\|/gm)].map((m) => m[1]);
+    expect(rows).toEqual([...GATE_STATES]);
+    const config = block("sanity.config.ts");
+    for (const key of ["site:", "functionUrl:", "pages:"]) expect(config).toContain(key);
+  });
+
+  it("says the override is not logged and that nothing but Sanity's own action publishes", () => {
+    expect(page).toMatch(/The override is not logged anywhere/);
+    expect(page).toMatch(/the only thing that publishes is Sanity's own Publish action/);
+  });
+
   it("lists the four statuses the Function can end in, and no other", () => {
-    const rows = [...page.matchAll(/^\| `([a-z-]+)`\s+\|/gm)].map((m) => m[1]);
+    const rows = [
+      ...page.slice(page.indexOf("## The four answers")).matchAll(/^\| `([a-z-]+)`\s+\|/gm),
+    ].map((m) => m[1]);
     expect(rows).toEqual([...GATE_STATUSES]);
   });
 

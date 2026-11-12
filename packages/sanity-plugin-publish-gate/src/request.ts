@@ -14,6 +14,9 @@ const MAX_PAGE_URL = 2048;
 /** Exactly application/json, with at most a utf-8 charset: not json-seq, jsonp or any other suffix. */
 const JSON_TYPE = /^application\/json(?:\s*;\s*charset="?utf-8"?)?$/i;
 
+/** The browser's fetch, as a type, so no other file has to name it. */
+export type GateFetch = typeof globalThis.fetch;
+
 export interface RequestGateOptions {
   /** The Function address you own, for example "https://gate.lantern-yard.example/check". */
   functionUrl: string;
@@ -24,7 +27,7 @@ export interface RequestGateOptions {
   /** The most bytes of reply read. Default 65536. */
   maxBytes?: number;
   /** Replaces the browser's fetch; for tests. */
-  fetch?: typeof globalThis.fetch;
+  fetch?: GateFetch;
 }
 
 /**

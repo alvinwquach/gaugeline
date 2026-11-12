@@ -7,7 +7,7 @@ notReleased: true
 How a publish gets checked, and its one honest limit.
 
 ::: warning
-<b>Not released yet.</b> Built and described here: the Function that checks the page after every publish, and the request the Publish button makes to a Function you own. The button itself, which stays disabled until the page is right, follows in the next release (0.2).
+<b>Not released yet.</b> Built and described here: the Function that checks the page after every publish, the request the Publish button makes to a Function you own, and the button itself (0.2).
 :::
 
 1. An editor clicks Publish, or a script writes through the API.
@@ -169,6 +169,75 @@ high broken-links "Old cocktails" <a href="/menu/old-cocktails"> returned 404
 
 The reply has one fixed shape: `version` (1), `status` (`clean`, `findings` or `could-not-check`), `url`, `checkedAt`, `findings` (each with `id`, `severity`, `title`, `evidence` and `url`) and, for `could-not-check`, a `reason`. A reply about a different page than the one asked for is refused, and so is a reply with a field not named here, a content type other than `application/json` (a utf-8 charset is allowed) or a reply that is not valid JSON. `findings` holds only the problems at or above `blockOn`.
 
+## The Publish button
+
+`publishGate` is a Studio plugin. It wraps Sanity's own Publish action: the first click asks your Function whether the page this document renders to is right. A page that is right publishes at once. A page with problems, or a check that could not run, holds the button, says why, and links each problem on your site. The plugin does not publish or write anything itself: the only thing that publishes is Sanity's own Publish action, which it calls.
+
+```ts title=sanity.config.ts
+import { defineConfig } from "sanity";
+import { publishGate } from "sanity-plugin-publish-gate";
+
+export default defineConfig({
+  // ...
+  plugins: [
+    publishGate({
+      site: "https://lantern-yard.example",
+      functionUrl: "https://gate.lantern-yard.example/check",
+      pages: { page: "/{slug}", product: "/shop/{category.slug}/{slug}", siteSettings: null },
+    }),
+  ],
+});
+```
+
+`pages` is the same table the Function uses. A document that renders to no page (settings) is not gated: its Publish button is Sanity's own and nothing is requested. It uses your Studio's own React (18.3 or 19). A wrong setup (an http or wildcard `functionUrl`, a `site` that is not a web address) stops the Studio when it loads, not at the first click.
+
+### The six states
+
+| State                | What the editor sees                                                                                            |
+| -------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `idle`               | Sanity's own Publish button.                                                                                    |
+| `checking`           | "Checking the page..." and the button is disabled. A second click asks nothing more.                            |
+| `clean`              | The page is right. Sanity's Publish runs.                                                                       |
+| `findings`           | "Held: 2 problems". A dialog lists each problem with its severity and a link to it.                             |
+| `could-not-check`    | "Held: could not check the page". The site is down, the page answered an error, or the Function is unreachable. |
+| `override-confirmed` | "Publish (overridden)". A person confirmed publishing anyway.                                                   |
+
+A check that could not run is never a pass: by default it holds the button like a problem does. Set `failOpen: true` to let a check that could not run through; a page that has problems is still held. Editing the document after an answer clears it, so an override covers the document as it stood when the person confirmed, not the next edit.
+
+```ts title=try-the-states.ts untested="Needs a Studio. packages/sanity-plugin-publish-gate/src/__tests__/docs.test.ts runs the state machine of this example and compares the output with the block below."
+import { IDLE, gateReduce } from "sanity-plugin-publish-gate";
+
+const url = "https://lantern-yard.example/menu";
+const found = {
+  version: 1,
+  status: "findings",
+  url,
+  checkedAt: "2026-11-12T10:00:00Z",
+  findings: [],
+};
+let state = IDLE;
+for (const event of [
+  { type: "check", url },
+  { type: "answer", answer: found },
+  { type: "confirm-override" },
+  { type: "reset" },
+]) {
+  state = gateReduce(state, event);
+  console.log(event.type.padEnd(16), state.name);
+}
+```
+
+```text title=States
+check            checking
+answer           findings
+confirm-override override-confirmed
+reset            idle
+```
+
+### The override
+
+To publish a held page, a person clicks "Publish anyway" in the dialog that names every problem. Nothing the plugin does by itself publishes. The override is not logged anywhere: not in your dataset, not in the browser's storage, not in a request. It lives in the Studio session's memory and is gone when the tab closes. If you need a record of who published over a hold, that is Sanity's own history of the document.
+
 ## The four answers
 
 | Status            | Meaning                                                                         | Reported |
@@ -184,5 +253,5 @@ If your site rebuilds after a publish, the page may still be the old one for a m
 
 ## What is not here yet
 
-- The disabled Publish button itself, with the reasons and a link to each problem, and the choice of failing open or closed with an override a person has to confirm (the next release). The override is not logged anywhere beyond the Studio session.
+- A recheck of the pages that reference a document you publish, and an email when the gate holds a publish. These are follow-ups, not in this release.
 - Where findings are kept. The Function does not write to your dataset, so a finding lives in the Function's log or in whatever `report` sends it to.
