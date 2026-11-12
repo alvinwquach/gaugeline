@@ -1,5 +1,7 @@
 import { SEVERITY_LABEL, SEVERITY_ORDER, type Finding, type Severity } from "../model.js";
 import type { Result } from "../result.js";
+import { UNTRUSTED_CAPS } from "../untrusted.js";
+import { forDiscord, forSlack } from "../untrusted-output.js";
 
 /** Slack's limit for one section's text (Block Kit). Longer text is trimmed, never rejected. */
 export const SLACK_SECTION_MAX = 3000;
@@ -30,7 +32,7 @@ export interface SlackPayload {
 
 export function slackPayload(result: Result, reportUrl?: string): SlackPayload {
   const list = urgent(result);
-  const head = `*Gaugeline* checked ${result.url}: ${counts(result)}`;
+  const head = `*Gaugeline* checked ${forSlack(result.url)}: ${counts(result)}`;
   const blocks: SlackPayload["blocks"] = [
     { type: "section", text: { type: "mrkdwn", text: trim(head, SLACK_SECTION_MAX) } },
   ];
@@ -40,7 +42,7 @@ export function slackPayload(result: Result, reportUrl?: string): SlackPayload {
       text: {
         type: "mrkdwn",
         text: trim(
-          `*${SEVERITY_LABEL[f.severity]}:* ${f.title}\n\`${f.evidence}\``,
+          `*${SEVERITY_LABEL[f.severity]}:* ${forSlack(f.title, UNTRUSTED_CAPS.title)}\n\`${forSlack(f.evidence)}\``,
           SLACK_SECTION_MAX,
         ),
       },
@@ -66,6 +68,8 @@ export const DISCORD_COLOR: Readonly<Record<Severity | "none", number>> = {
 };
 
 export interface DiscordPayload {
+  /** No mention types: nothing in the message can ping anyone, whatever the page wrote. */
+  allowed_mentions: { parse: string[] };
   embeds: {
     title: string;
     description: string;
@@ -80,9 +84,10 @@ export function discordPayload(result: Result, reportUrl?: string): DiscordPaylo
   const worst = list[0]?.severity ?? "none";
   const more = list.length - MESSAGE_FINDINGS;
   return {
+    allowed_mentions: { parse: [] },
     embeds: [
       {
-        title: trim(`Gaugeline: ${result.url}`, 256),
+        title: trim(`Gaugeline: ${forDiscord(result.url)}`, 256),
         description: trim(
           `${counts(result)}${more > 0 ? ` (the ${MESSAGE_FINDINGS} most urgent below, and ${more} more)` : ""}`,
           4096,
@@ -90,8 +95,11 @@ export function discordPayload(result: Result, reportUrl?: string): DiscordPaylo
         color: DISCORD_COLOR[worst],
         ...(reportUrl ? { url: reportUrl } : {}),
         fields: list.slice(0, MESSAGE_FINDINGS).map((f) => ({
-          name: trim(`${SEVERITY_LABEL[f.severity]}: ${f.title}`, 256),
-          value: trim(f.evidence, 1024),
+          name: trim(
+            `${SEVERITY_LABEL[f.severity]}: ${forDiscord(f.title, UNTRUSTED_CAPS.title)}`,
+            256,
+          ),
+          value: trim(forDiscord(f.evidence), 1024),
         })),
       },
     ],

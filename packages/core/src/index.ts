@@ -1645,3 +1645,5 @@ export {
   wrapFindingForAgent,
 } from "./untrusted.js";
 export type { AgentFinding, Sanitised, UntrustedField, UntrustedText } from "./untrusted.js";
+export { forDiscord, forMarkdown, forSlack, forTerminal, stripAnsi } from "./untrusted-output.js";
+export type { OutputFormat, SafeText } from "./untrusted-output.js";
