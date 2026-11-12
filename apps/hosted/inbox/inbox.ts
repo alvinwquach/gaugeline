@@ -9,7 +9,7 @@
  */
 import { createHash } from "node:crypto";
 import type postgres from "postgres";
-import { checkDraftPayload, isDraftKind } from "./kinds.js";
+import { checkDraftPayload, isDraftKind } from "@gaugeline/writer/kinds";
 
 type Tx = postgres.TransactionSql;
 type Json = Record<string, unknown>;

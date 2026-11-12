@@ -4,7 +4,8 @@
  * and the writer checks it again before it sends anything. Unknown keys are refused, so a payload cannot
  * carry a branch, a target repository, a recipient or a flag: the writer fixes those itself.
  *
- * The writer package (packages/writer, part 2) imports these schemas rather than copying them.
+ * One module for both sides: the hosted inbox imports it as `@gaugeline/writer/kinds` (it brings in
+ * nothing that sends), and the writer checks every job against it again.
  */
 import * as z from "zod";
 

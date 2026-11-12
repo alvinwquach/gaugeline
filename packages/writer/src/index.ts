@@ -6,7 +6,7 @@ export {
   type GithubRequest,
 } from "./github/endpoints.js";
 export { githubSender, type GithubResponse, type Send } from "./github/send.js";
-export { parsePullRequestPayload, PayloadError, type PullRequestPayload } from "./schema.js";
+export { checkDraftPayload, DRAFT_KINDS, isDraftKind, type DraftKind } from "./kinds.js";
 export { KILL_SWITCH_ENV, stopReason, type Switches } from "./switches.js";
 export type { ApplyJob, Outcome, Trail, TrailEntry } from "./types.js";
 export type { DraftWriter, EmailDraftWriter, SanityDraftWriter } from "./drafts.js";

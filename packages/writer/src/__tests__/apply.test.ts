@@ -2,6 +2,7 @@
  * The writer (ADR-0010): after a recorded approval, the customer's worker pushes one branch and opens one
  * draft pull request, and nothing else. Every test uses a recording stand-in for GitHub; no network.
  */
+import { createHash } from "node:crypto";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -10,7 +11,7 @@ import { applyPullRequest, type ApplyDeps } from "../github/apply.js";
 import { checkRequest, ENDPOINTS, type GithubRequest } from "../github/endpoints.js";
 import { githubSender } from "../github/send.js";
 import { KILL_SWITCH_ENV } from "../switches.js";
-import { parsePullRequestPayload } from "../schema.js";
+import { checkDraftPayload } from "../kinds.js";
 import type { ApplyJob, TrailEntry } from "../types.js";
 
 const DRAFT = "a1d10000-0000-4000-8000-0000000000a1";
@@ -20,13 +21,17 @@ const PAYLOAD = {
   body: "The menu page links to /drinks-2025, which returns 404.",
   files: [{ path: "app/menu/links.ts", content: 'export const drinks = "/drinks";\n' }],
 };
-const job = (payload: unknown = PAYLOAD): ApplyJob => ({
-  orgId: "0a000000-0000-4000-8000-00000000000a",
-  draftId: DRAFT,
-  decisionId: "42",
-  kind: "pull_request",
-  payload,
-});
+const job = (payload: unknown = PAYLOAD): ApplyJob => {
+  const payloadText = JSON.stringify(payload);
+  return {
+    orgId: "0a000000-0000-4000-8000-00000000000a",
+    draftId: DRAFT,
+    decisionId: "42",
+    kind: "pull_request",
+    payloadText,
+    payloadSha256: createHash("sha256").update(payloadText, "utf8").digest("hex"),
+  };
+};
 
 /** A stand-in GitHub: answers each registered endpoint and records what was asked. */
 function fakeGithub(
@@ -191,12 +196,20 @@ describe("the payload is a fixed shape, checked before anything is sent", () => 
   };
   for (const [name, payload] of Object.entries(bad))
     it(`refuses ${name}`, async () => {
-      expect(() => parsePullRequestPayload(payload)).toThrow();
+      expect(checkDraftPayload("pull_request", payload).ok).toBe(false);
       const gh = fakeGithub();
       const out = await applyPullRequest(job(payload), deps({ send: gh.send }));
       expect(out).toMatchObject({ outcome: "refused", reason: "payload" });
       expect(gh.sent).toEqual([]);
     });
+
+  it("refuses a payload that is not the one approved (its hash differs)", async () => {
+    const gh = fakeGithub();
+    const swapped = { ...job(), payloadText: JSON.stringify({ ...PAYLOAD, title: "Swapped" }) };
+    const out = await applyPullRequest(swapped, deps({ send: gh.send }));
+    expect(out).toMatchObject({ outcome: "refused", reason: "hash" });
+    expect(gh.sent).toEqual([]);
+  });
 
   it("refuses a job of another kind", async () => {
     const gh = fakeGithub();
@@ -331,5 +344,15 @@ describe("the writer stays its own package and never sends, publishes or deletes
       const json = readFileSync(join(root, p), "utf8");
       expect(json, p).not.toContain("@gaugeline/writer");
     }
+  });
+});
+
+describe("docs/hosted/writer.md", () => {
+  it("shows the real dry-run entry for the bar's menu link", async () => {
+    const root = fileURLToPath(new URL("../../../../", import.meta.url));
+    const page = readFileSync(join(root, "docs/hosted/writer.md"), "utf8");
+    const shown = /```json\n([\s\S]*?)\n```/.exec(page)![1]!;
+    const out = await applyPullRequest(job(), deps({ send: fakeGithub().send, mode: "dry-run" }));
+    expect(JSON.parse(shown)).toEqual(out);
   });
 });

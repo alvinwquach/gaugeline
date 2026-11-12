@@ -4,7 +4,8 @@
  * refusal or failed request, and appends exactly one entry to the trail. It never writes to the base
  * branch and has no way to: the registry only accepts the draft's own branch.
  */
-import { PayloadError, parsePullRequestPayload, type PullRequestPayload } from "../schema.js";
+import { createHash } from "node:crypto";
+import { checkDraftPayload } from "../kinds.js";
 import { stopReason, type Switches } from "../switches.js";
 import type { ApplyJob, Trail, TrailEntry } from "../types.js";
 import type { GithubRequest } from "./endpoints.js";
@@ -32,6 +33,12 @@ class Stop extends Error {
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+interface PullRequestPayload {
+  title: string;
+  body: string;
+  files: { path: string; content: string }[];
+}
 
 function plan(p: PullRequestPayload, repo: string, branch: string, base: string, draftId: string) {
   const commitMessage = `Gaugeline: approved draft ${draftId}`;
@@ -71,13 +78,19 @@ export async function applyPullRequest(job: ApplyJob, deps: ApplyDeps): Promise<
   if (job.kind !== "pull_request" || !UUID.test(job.draftId)) {
     return finish({ outcome: "refused", reason: "kind" });
   }
-  let payload: PullRequestPayload;
+  // The payload must be the one the person approved (ADR-0010 part 3), then match the kind's fixed shape:
+  // the same schema the inbox checked before it recorded the approval.
+  const sha = createHash("sha256").update(job.payloadText, "utf8").digest("hex");
+  if (sha !== job.payloadSha256) return finish({ outcome: "refused", reason: "hash" });
+  let parsed: unknown;
   try {
-    payload = parsePullRequestPayload(job.payload);
-  } catch (e) {
-    if (e instanceof PayloadError) return finish({ outcome: "refused", reason: "payload" });
-    throw e;
+    parsed = JSON.parse(job.payloadText);
+  } catch {
+    return finish({ outcome: "refused", reason: "payload" });
   }
+  const check = checkDraftPayload("pull_request", parsed);
+  if (!check.ok) return finish({ outcome: "refused", reason: "payload" });
+  const payload = check.value as unknown as PullRequestPayload;
   const { owner, repo: name, base } = deps.target;
   const repo = `/repos/${owner}/${name}`;
   const branch = `gaugeline/${job.draftId}`;

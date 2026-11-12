@@ -4,8 +4,10 @@ export interface ApplyJob {
   draftId: string;
   decisionId: string;
   kind: string;
-  /** The approved payload; untrusted until the kind's schema accepts it. */
-  payload: unknown;
+  /** The approved payload exactly as the database holds it (jsonb text); untrusted until checked. */
+  payloadText: string;
+  /** The approval row's SHA-256 of payloadText (computed by the database, G37). */
+  payloadSha256: string;
 }
 
 /** What the worker appends to the decisions trail after an apply (ADR-0010 part 4). */
@@ -23,7 +25,7 @@ export interface TrailEntry {
   ref?: string;
   /** GitHub's HTTP status, when a request failed. */
   status?: number;
-  /** Why nothing was written: "payload", "kind", "kill switch", "organisation paused". */
+  /** Why nothing was written: "hash", "payload", "kind", "kill switch", "organisation paused". */
   reason?: string;
   /** A dry run's plan: the registered endpoint and the path it would call. */
   planned?: { endpoint: string; path: string }[];

@@ -4,7 +4,7 @@
  * network. Nothing here can approve a review, delete, force a ref, or touch any branch but the draft's
  * own `gaugeline/<id>` branch. Paths and bodies are from GitHub's REST description (see the PR's Sources).
  */
-import { isSafeRepoPath } from "../schema.js";
+import { isSafeRepoPath } from "../kinds.js";
 
 export type EndpointId =
   "getRef" | "getContent" | "listPulls" | "createRef" | "putContent" | "createPull";

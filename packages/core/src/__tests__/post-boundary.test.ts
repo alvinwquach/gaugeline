@@ -17,12 +17,16 @@ import { scan, type Category, type Finding } from "./post-scan.js";
  * - `core/src/notify/post.ts`: notifications to the person's own channels (ADR-0005).
  * - `app/src/api.ts`: the app's page calling its own local server with relative /api/* addresses
  *   (never a checked site): one POST to start a run, and the event stream.
+ * - `writer/src/github/endpoints.ts`: ADR-0010 (accepted 12 Nov 2026). The writer's fixed registry of
+ *   GitHub requests, run only in the customer's own worker after a recorded approval: create one
+ *   `gaugeline/<id>` ref, put contents on that branch, open a draft pull request. Not in the CLI.
  */
 const ALLOWED: Readonly<Record<string, readonly Category[]>> = {
   "core/src/transport.ts": ["method", "network"],
   "core/src/fetcher.ts": ["verb"],
   "core/src/notify/post.ts": ["verb", "network"],
   "app/src/api.ts": ["verb", "network"],
+  "writer/src/github/endpoints.ts": ["verb"], // ADR-0010
 };
 
 const packagesDir = fileURLToPath(new URL("../../../", import.meta.url));
