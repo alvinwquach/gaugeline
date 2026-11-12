@@ -94,8 +94,13 @@ anything the secret scan matches (a Stripe key in a query string, a bearer token
 a name that says so) is replaced by `[removed]`. The finding stays, with the same identity from night
 to night. The run's summary says how many fields were touched (`redactedFields`, a count; the text
 that was removed is never logged or stored). If a field still trips the scan after that, the finding
-keeps its title and loses its evidence and address. The scan itself is the runs API's and is not
-loosened.
+keeps its title and loses its evidence and address. An address over 2048 characters is cut, and a
+title that is empty gets a fixed one, so neither can stop the night. A few leak shapes depend on words
+elsewhere in the upload (a Contentful preview token counts only where the text names Contentful), so a
+token in one finding and that word in another is invisible to the per-field scan. The last scan reads the
+whole upload; if it still matches, the worker drops the evidence of every finding and every reason, then,
+if needed, every title and address, and stores the run with the count in `redactedFields`. The scan
+itself is the runs API's and is not loosened.
 
 ### Time zones
 

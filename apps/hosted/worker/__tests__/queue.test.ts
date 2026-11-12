@@ -411,6 +411,96 @@ describe.skipIf(!HAS_DATABASE)("nightly queue and worker", () => {
         expect(await changes()).toHaveLength(1);
       });
 
+      // A Contentful preview token is a leak only where the text names Contentful; the name can sit in another field.
+      const token = ["aB3dE5gH7jK9", "mN1pQ3sT5vX7", "zA9cF2hJ4kL6", "wR8yU0i"].join("");
+      const storedNight = async (
+        results: (site: SiteToCheck) => Partial<Parameters<typeof buildResult>[0]>,
+      ) => {
+        const runSite = async (site: SiteToCheck): Promise<Result> =>
+          buildResult({
+            url: site.url,
+            startedAt: new Date(),
+            findings: [],
+            passed: [],
+            failed: [],
+            ...results(site),
+          });
+        const [id] = await enqueue(SITE_A2);
+        await workOnce({ sql: one.sql, now: at(0), runSite });
+        return job(id!);
+      };
+      const summaryOf = async (runId: string) =>
+        (await owner`select summary from public.runs where id = ${runId}`)[0]!.summary as {
+          redactedFields?: number;
+          total: number;
+          couldNotCheck: { id: string; reason: string }[];
+        };
+
+      it("a token in one finding and the word that makes it a leak in another: the run is stored, evidence dropped and counted", async () => {
+        const a: Finding = { ...finding(1), title: "Broken link to contentful docs" };
+        const b: Finding = {
+          ...finding(2),
+          checkId: "headings",
+          evidence: `config previewToken: "${token} (404)`,
+        };
+        const j = await storedNight(() => ({ findings: [a, b] }));
+        expect(j).toMatchObject({ status: "done", last_error: null });
+        const runId = j.run_id as string;
+        expect(await stored(runId)).not.toContain(token);
+        const rows = await owner`select title, evidence, fingerprint from public.findings
+          where run_id = ${runId} order by title`;
+        expect(rows).toHaveLength(2);
+        expect(rows.map((r) => r.evidence)).toEqual(["", ""]);
+        expect(rows.map((r) => r.fingerprint).sort()).toEqual([fp(a), fp(b)].sort());
+        expect(rows.map((r) => r.title)).toContain("Broken link to contentful docs");
+        expect((await summaryOf(runId)).redactedFields).toBeGreaterThan(0);
+      });
+
+      it("the same, with the token in a could-not-check reason: the run is stored and the reasons are dropped", async () => {
+        const a: Finding = { ...finding(1), title: "Broken link to contentful docs" };
+        const j = await storedNight((site) => ({
+          findings: [a],
+          couldNotCheck: [
+            {
+              id: "headings",
+              reason: `config previewToken: "${token} (could not read)`,
+              url: site.url,
+            },
+          ],
+        }));
+        expect(j).toMatchObject({ status: "done", last_error: null });
+        const runId = j.run_id as string;
+        expect(await stored(runId)).not.toContain(token);
+        const summary = await summaryOf(runId);
+        expect(summary.total).toBe(1);
+        expect(summary.couldNotCheck.map((c) => c.id)).toEqual(["headings"]);
+        expect(summary.redactedFields).toBeGreaterThan(0);
+      });
+
+      it("a title that holds the token (its context in another title) loses its title, not the night", async () => {
+        const a: Finding = { ...finding(1), title: "Broken link to contentful docs" };
+        const b: Finding = { ...finding(2), title: `config previewToken: "${token} (404)` };
+        const j = await storedNight(() => ({ findings: [a, b] }));
+        expect(j).toMatchObject({ status: "done", last_error: null });
+        expect(await stored(j.run_id as string)).not.toContain(token);
+        expect(await runsOf(SITE_A2)).toBe(1);
+      });
+
+      it("an address of 50 KB is cut to the table's limit and a title of only NULs is replaced: neither ends the job", async () => {
+        const long: Finding = {
+          ...finding(3),
+          url: `https://tidewater-bar.test/${"a".repeat(50_000)}`,
+        };
+        const nuls: Finding = { ...finding(4), title: nul.repeat(5) };
+        const j = await storedNight(() => ({ findings: [long, nuls, finding(5)] }));
+        expect(j).toMatchObject({ status: "done", last_error: null });
+        const rows = await owner`select title, length(url)::int as n from public.findings
+          where run_id = ${j.run_id as string}`;
+        expect(rows).toHaveLength(3);
+        expect(Math.max(...rows.map((r) => r.n as number))).toBeLessThanOrEqual(2048);
+        expect(rows.map((r) => r.title)).toContain("(title removed)");
+      });
+
       it("a could-not-check reason is cleaned like the rest of the page text (N17), and holds no key", async () => {
         const reason = `\u001b[31mRED\u001b[0m \u202eevil\u202c ${String.fromCodePoint(0xe0041, 0xe0042)} ${key}`;
         const runSite = async (site: SiteToCheck): Promise<Result> =>
@@ -536,43 +626,43 @@ describe.skipIf(!HAS_DATABASE)("nightly queue and worker", () => {
       const [slow] = await enqueue(SITE_B1);
       await enqueue(SITE_A2, 3);
       const stop = new AbortController();
-      const finished = new Map<string, number>();
-      const started = Date.now();
+      // The slow job waits on a gate the test opens, not on a timer: nothing here depends on how fast the machine is.
+      let open: () => void = () => {};
+      const gate = new Promise<void>((r) => (open = r));
       const deps: WorkerDeps = {
         sql: one.sql,
         now: at(0),
         runSite: async (site) => {
-          if (site.siteId === SITE_B1) await new Promise((r) => setTimeout(r, 3000));
-          finished.set(site.jobId, Date.now() - started);
+          if (site.siteId === SITE_B1) await gate;
           return empty(site);
         },
       };
       const worker = runWorker(deps, { signal: stop.signal, limit: 2, idleMs: 50 });
-      try {
-        await vi.waitFor(
-          async () => {
-            expect(
-              (await owner`select count(*)::int as n from public.jobs where status = 'done'`)[0]!.n,
-            ).toBe(3);
-          },
-          { timeout: 2500, interval: 50 },
+      const done = async () =>
+        Number(
+          (await owner`select count(*)::int as n from public.jobs where status = 'done'`)[0]!.n,
         );
-        expect((await job(slow!)).status).toBe("running");
-        // A job arrives while the slow one still runs.
-        const [late] = await enqueue(SITE_A2);
-        await vi.waitFor(async () => expect((await job(late!)).status).toBe("done"), {
-          timeout: 2500,
+      try {
+        await vi.waitFor(async () => expect(await done()).toBe(3), {
+          timeout: 30_000,
           interval: 50,
         });
         expect((await job(slow!)).status).toBe("running");
-        expect(finished.get(late!)!).toBeLessThan(3000);
+        // A job arrives while the slow one still runs (held by the gate, so it cannot finish by itself).
+        const [late] = await enqueue(SITE_A2);
+        await vi.waitFor(async () => expect((await job(late!)).status).toBe("done"), {
+          timeout: 30_000,
+          interval: 50,
+        });
+        expect((await job(slow!)).status).toBe("running");
       } finally {
+        open();
         stop.abort();
         await worker;
       }
       // Stopping waits for the job in hand: the slow one finished and was stored.
       expect((await job(slow!)).status).toBe("done");
-    });
+    }, 60_000);
   });
 
   describe("consent and pausing", () => {

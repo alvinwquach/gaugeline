@@ -25,7 +25,7 @@ import { storeRun } from "../lib/api/handlers.js";
 import { parseUpload, type Upload } from "../lib/api/schema.js";
 import { secretsInValue } from "../lib/api/secrets.js";
 import { openDatabase } from "../lib/api/startup.js";
-import { cleanFindings, cleanReason, stripNul } from "./clean.js";
+import { cleanFindings, cleanReason, fitLimits, settleCrossField, stripNul } from "./clean.js";
 import { bounded, DeadlineError, guardFetcher } from "./deadline.js";
 import { diffRuns } from "./diff.js";
 import {
@@ -114,11 +114,14 @@ function errorCode(e: unknown): { code: string; permanent: boolean } {
  * A NUL byte or a key-shaped string in a title, an evidence line, an address or a reason is page text, so
  * it is cleaned (clean.ts), not a reason to lose the night; the run notes how many fields were touched
  * (`redactedFields`, a count only). The fingerprint is core's, taken from the finding before cleaning.
- * The last scan is the runs API's, unchanged: key shapes in every decoded string, never the worker's own
- * environment. It is a net, not the plan: only a string the cleaning could not make safe reaches it.
+ * An address over the table's limit is cut and an empty title replaced before parseUpload (fitLimits), so
+ * neither can refuse the night. The last scan is the runs API's, unchanged: key shapes in every decoded
+ * string, never the worker's own environment. Some leak detectors read context from the joined text, so
+ * what that scan still matches after per-field cleaning is dropped in steps (settleCrossField) and
+ * counted, instead of refusing the run. A refusal is left only for what dropping page text cannot fix.
  */
 export function toUpload(result: Result): Upload {
-  const clean = stripNul(result);
+  const clean = fitLimits(stripNul(result));
   let reasons = 0;
   clean.couldNotCheck = clean.couldNotCheck.map((c) => {
     const reason = cleanReason(c.reason);
@@ -128,7 +131,7 @@ export function toUpload(result: Result): Upload {
   const parsed = parseUpload(clean);
   if (!parsed.ok) throw new Refused("invalid-result");
   const upload = parsed.value;
-  const redacted = cleanFindings(upload) + reasons;
+  const redacted = cleanFindings(upload) + reasons + settleCrossField(upload);
   if (redacted > 0) upload.summary.redactedFields = redacted;
   if (secretsInValue(upload).length > 0) throw new Refused("secret-in-result");
   return upload;

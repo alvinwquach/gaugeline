@@ -6,7 +6,15 @@
 import { describe, expect, it } from "vitest";
 import { secretsInValue } from "@gaugeline/core";
 import type { Upload, UploadFinding } from "../../lib/api/schema.js";
-import { cleanFindings, cleanReason, REMOVED, scrubSecrets, stripNul } from "../clean.js";
+import {
+  cleanFindings,
+  cleanReason,
+  fitLimits,
+  REMOVED,
+  scrubSecrets,
+  settleCrossField,
+  stripNul,
+} from "../clean.js";
 
 const stripe = ["sk", "live", "Zx81Qw".repeat(4)].join("_");
 const stripeWithUnderscores = ["sk", "live", "Zx81_Qw41", "Rt52_Yu63", "Io74_Pl85"].join("_");
@@ -122,5 +130,107 @@ describe("cleanFindings", () => {
       title: "Broken link to the menu",
       fingerprint: "0123456789abcdef",
     });
+  });
+});
+
+// A Contentful preview token is only a leak where the text names Contentful: the context can sit in another field.
+const previewToken = ["aB3dE5gH7jK9", "mN1pQ3sT5vX7", "zA9cF2hJ4kL6", "wR8yU0i"].join("");
+const withReason = (u: Upload, reason: string): Upload => ({
+  ...u,
+  summary: { ...u.summary, couldNotCheck: [{ id: "broken-links", reason }] },
+});
+
+describe("settleCrossField", () => {
+  const split = (): Upload =>
+    upload([
+      finding({ title: "Broken link to contentful docs" }),
+      finding({
+        checkId: "headings",
+        title: "Heading skipped",
+        evidence: `config previewToken: "${previewToken} (404)`,
+      }),
+    ]);
+
+  it("the repro really is a cross-field leak: each field alone is clean, the joined upload is not", () => {
+    const u = split();
+    for (const f of u.findings) expect(secretsInValue(f)).toEqual([]);
+    expect(secretsInValue(u)).not.toEqual([]);
+    // Neither per-field cleaning step sees it.
+    cleanFindings(u);
+    expect(secretsInValue(u)).not.toEqual([]);
+  });
+
+  it("drops the evidence of every finding, keeps titles, urls and fingerprints, and counts what it dropped", () => {
+    const u = split();
+    cleanFindings(u);
+    const n = settleCrossField(u);
+    expect(n).toBe(2);
+    expect(secretsInValue(u)).toEqual([]);
+    expect(u.findings.map((f) => f.evidence)).toEqual(["", ""]);
+    expect(u.findings.map((f) => f.title)).toEqual([
+      "Broken link to contentful docs",
+      "Heading skipped",
+    ]);
+    expect(u.findings[1]!.fingerprint).toBe("0123456789abcdef");
+  });
+
+  it("drops the could-not-check reasons too when a reason holds the token", () => {
+    const u = withReason(
+      upload([finding({ title: "Broken link to contentful docs" })]),
+      `previewToken: "${previewToken}`,
+    );
+    cleanFindings(u);
+    expect(secretsInValue(u)).not.toEqual([]);
+    expect(settleCrossField(u)).toBe(2);
+    expect(secretsInValue(u)).toEqual([]);
+    expect((u.summary.couldNotCheck as { reason: string }[])[0]!.reason).not.toContain(
+      previewToken,
+    );
+    expect((u.summary.couldNotCheck as { id: string }[])[0]!.id).toBe("broken-links");
+  });
+
+  it("falls back to titles and addresses when evidence and reasons were not enough", () => {
+    const u = upload([
+      finding({ title: "Broken link to contentful docs" }),
+      finding({ title: `config previewToken: "${previewToken} (404)` }),
+    ]);
+    cleanFindings(u);
+    expect(secretsInValue(u)).not.toEqual([]);
+    expect(settleCrossField(u)).toBeGreaterThan(0);
+    expect(secretsInValue(u)).toEqual([]);
+    expect(u.findings).toHaveLength(2);
+    expect(u.findings[1]!.title).toBe("(title removed)");
+  });
+
+  it("changes nothing and counts nothing when the upload is clean", () => {
+    const u = upload([finding()]);
+    const before = JSON.stringify(u);
+    expect(settleCrossField(u)).toBe(0);
+    expect(JSON.stringify(u)).toBe(before);
+  });
+});
+
+describe("fitLimits", () => {
+  const result = (findings: { title: string; url: string }[]) => ({
+    findings: findings.map((f) => ({
+      checkId: "broken-links",
+      severity: "high" as const,
+      evidence: "e",
+      ...f,
+    })),
+  });
+
+  it("caps an address at the table's limit and replaces a title that is empty or only blanks", () => {
+    const out = fitLimits(
+      result([
+        { title: "", url: `https://tidewater-bar.test/${"a".repeat(50_000)}` },
+        { title: " \t\n ", url: "https://tidewater-bar.test/ok" },
+        { title: "Fine", url: "https://tidewater-bar.test/ok" },
+      ]),
+    );
+    expect(out.findings[0]!.url).toHaveLength(2048);
+    expect(out.findings[0]!.title).toBe("(title removed)");
+    expect(out.findings[1]!.title).toBe("(title removed)");
+    expect(out.findings[2]).toMatchObject({ title: "Fine", url: "https://tidewater-bar.test/ok" });
   });
 });

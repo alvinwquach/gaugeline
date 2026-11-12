@@ -86,6 +86,25 @@ function cleanText(raw: string, cap: number): { text: string; touched: boolean }
   return { text, touched };
 }
 
+/** Stands where a could-not-check reason that cannot be shown was. */
+const REASON_REMOVED = "(reason removed)";
+
+/**
+ * The result with the limits the runs API enforces already met, BEFORE parseUpload checks them: an
+ * address over the table's limit is cut, and a title that is empty (or only blanks) gets a fixed one. Both
+ * are page text a stranger chose; refusing the run over them would stop the site's monitoring every night.
+ */
+export function fitLimits<R extends { findings: { title: string; url: string }[] }>(result: R): R {
+  return {
+    ...result,
+    findings: result.findings.map((f) => ({
+      ...f,
+      title: f.title.replace(/\s+/g, " ").trim() === "" ? TITLE_REMOVED : f.title,
+      url: f.url.length > URL_CAP ? f.url.slice(0, URL_CAP) : f.url,
+    })),
+  };
+}
+
 /** A could-not-check reason, cleaned like the rest of the page text. */
 export function cleanReason(reason: string): { text: string; touched: boolean } {
   return cleanText(reason, REASON_CAP);
@@ -120,4 +139,47 @@ export function cleanFindings(upload: Upload, scan: Scan = secretsInValue): numb
     };
   });
   return fields;
+}
+
+/** The could-not-check entries of an upload's summary, as the runs API builds them. */
+function reasonsOf(upload: Upload): { id: string; reason: string }[] {
+  const list = upload.summary.couldNotCheck;
+  return Array.isArray(list) ? (list as { id: string; reason: string }[]) : [];
+}
+
+/**
+ * What is left when the last scan (the runs API's: every string of the upload joined) still matches after
+ * each field was cleaned on its own. Some core detectors read context from the whole text (a Contentful
+ * preview token needs "contentful" somewhere), so a token in one field and its context in another is
+ * invisible to the per-field scrub. Rather than refuse the night, the worker drops page text in steps and
+ * scans the same joined text again after each: first every finding's evidence and every reason, then every
+ * title and address. The findings, their fingerprints and the check ids stay. Returns how many fields it
+ * dropped (0 when the upload was clean); it never logs or returns the text. A scan that still matches
+ * after both steps is left to the caller to refuse.
+ */
+export function settleCrossField(upload: Upload, scan: Scan = secretsInValue): number {
+  if (scan(upload).length === 0) return 0;
+  let dropped = 0;
+  for (const f of upload.findings)
+    if (f.evidence !== "") {
+      f.evidence = "";
+      dropped += 1;
+    }
+  for (const c of reasonsOf(upload))
+    if (c.reason !== REASON_REMOVED) {
+      c.reason = REASON_REMOVED;
+      dropped += 1;
+    }
+  if (scan(upload).length === 0) return dropped;
+  for (const f of upload.findings) {
+    if (f.title !== TITLE_REMOVED) {
+      f.title = TITLE_REMOVED;
+      dropped += 1;
+    }
+    if (f.url !== upload.url) {
+      f.url = upload.url;
+      dropped += 1;
+    }
+  }
+  return dropped;
 }
