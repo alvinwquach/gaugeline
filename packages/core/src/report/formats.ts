@@ -36,6 +36,8 @@ export interface FormatOptions {
   /** Gaugeline's version, written as the tool's version. */
   version: string;
   suppressed?: readonly SuppressedFinding[];
+  /** Checks left out of this run on purpose (the DNS checks without --dns): a skip, never a failure. */
+  notRun?: readonly string[];
 }
 
 const DOCS_CHECKS = "https://gaugeline.dev/docs/checks";
@@ -55,14 +57,6 @@ function suppressionText(s: SuppressedFinding): string {
   if (s.kind === "baseline") return "In the baseline";
   const until = s.until ? ` (until ${s.until})` : "";
   return `${s.reason ? text(s.reason, TEXT_LIMIT) : "Suppressed"}${until}`;
-}
-
-function hostOf(url: string): string {
-  try {
-    return new URL(url).host;
-  } catch {
-    return "";
-  }
 }
 
 function pathOf(url: string): string {
@@ -142,6 +136,11 @@ export function formatSarif(result: Result, options: FormatOptions): string {
     };
   });
   const notifications = [
+    ...(options.notRun ?? []).map((id) => ({
+      level: "note",
+      message: { text: `${text(id, TEXT_LIMIT)} was not run` },
+      descriptor: { id },
+    })),
     ...result.failed.map((id) => ({
       level: "error",
       message: { text: `${text(id, TEXT_LIMIT)} could not run` },
@@ -164,7 +163,6 @@ export function formatSarif(result: Result, options: FormatOptions): string {
         tool: {
           driver: { name: "Gaugeline", version: options.version, informationUri: TOOL_URI, rules },
         },
-        automationDetails: { id: `gaugeline/${hostOf(result.url)}/` },
         invocations: [
           {
             executionSuccessful: result.failed.length === 0,
@@ -233,6 +231,11 @@ export function formatJunit(result: Result, options: FormatOptions): string {
       xml: `<testcase ${attr("classname", id)} ${attr("name", title(id))}><error ${attr("message", `${id} could not run`)} type="could-not-run"/></testcase>`,
       error: true,
     });
+  for (const id of options.notRun ?? [])
+    cases.push({
+      xml: `<testcase ${attr("classname", id)} ${attr("name", title(id))}><skipped message="not run"/></testcase>`,
+      skipped: true,
+    });
   for (const c of result.couldNotCheck)
     cases.push({
       xml: `<testcase ${attr("classname", c.id)} ${attr("name", title(c.id))}><skipped ${attr("message", `${c.reason} (${c.url})`, 2 * TEXT_LIMIT)}/></testcase>`,
@@ -243,7 +246,7 @@ export function formatJunit(result: Result, options: FormatOptions): string {
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
     `<testsuites ${attr("name", "Gaugeline")} ${counts}>`,
-    `<testsuite ${attr("name", result.url)} ${counts} skipped="${count("skipped")}" ${attr("timestamp", result.startedAt)} ${attr("hostname", hostOf(result.url))}>`,
+    `<testsuite ${attr("name", result.url)} ${counts} skipped="${count("skipped")}" ${attr("timestamp", result.startedAt)}>`,
     ...cases.map((c) => c.xml),
     "</testsuite>",
     "</testsuites>",

@@ -29,6 +29,7 @@ import { runBin } from "./helpers/bin.js";
 const SAMPLE_VALUES: Record<string, string> = {
   since: "last",
   "notify-on": "any",
+  format: "sarif",
   "time-zone": "UTC",
   // A file with no tabs is one tab named after the file.
   sheet: "legacy-notes.csv",

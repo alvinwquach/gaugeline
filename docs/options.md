@@ -619,6 +619,7 @@ between the markers; CI fails when it differs from the flag table.
 | --------------------------- | -------------------------------------------------------------------------------------------------------------------- | ---------------------- | ----- |
 | `--ci`                      | Exit 1 when a "Fix this first" finding is found                                                                      | `CI`                   | 0.1.0 |
 | `--json`                    | Print the result as JSON on stdout, and nothing else                                                                 |                        | 0.1.0 |
+| `--format <value>`          | What stdout carries: json (the same as --json), sarif (GitHub code scanning) or junit (any CI's test results)        |                        | 0.2.0 |
 | `--no-open`                 | Do not open anything in a browser                                                                                    |                        | 0.1.0 |
 | `--demo`                    | Start the app with example results about invented sites; no address is checked and nothing is requested              |                        | 0.2.0 |
 | `--ads <value>`             | Start the app with an ads export read from this file (a Meta Ads Manager or Google Ads CSV)                          |                        | 0.2.0 |
@@ -630,6 +631,7 @@ between the markers; CI fails when it differs from the flag table.
 | `--trackers`                | Also list the trackers on pages with a form or a path you listed, and what a tag manager holds                       |                        | 0.2.0 |
 | `--libraries`               | Also check the JavaScript files a page loads for libraries with a published advisory                                 |                        | 0.2.0 |
 | `--wordpress`               | Also check a WordPress site's versions against the current releases, and whether it lists its users                  |                        | 0.2.0 |
+| `--backups`                 | Also check when the client's content and database were last backed up (Supabase, Sanity, an export folder)           |                        | 0.2.0 |
 | `--published`               | Also check that content changed in your CMS is live on the site, and that unpublished pages are gone                 |                        | 0.2.0 |
 | `--owner-consent`           | Run the probing checks, which ask routes for what they protect with no login; only on sites you may test             |                        | 0.2.0 |
 | `--routes <value>`          | With --owner-consent: download routes in files matching this glob (repeatable); no glob: a folder's signed-in routes |                        | 0.2.0 |
