@@ -23,7 +23,9 @@ alter table public.decisions add constraint decisions_edited_payload_size
 -- that never quotes the value.
 
 -- A string field: its length, and no control or line-breaking character (C0 controls, DEL, C1 controls
--- including NEL, U+2028 and U+2029). Tab is allowed; a newline only when p_multiline.
+-- including NEL, U+2028 and U+2029). Tab is allowed; a newline only when p_multiline. A single-line field
+-- also refuses the bidirectional controls (U+202A to U+202E, U+2066 to U+2069), which can make a title
+-- read in another order than it is written, and the non-characters U+FFFE and U+FFFF.
 create function private.draft_text_problem(
   p_value jsonb, p_name text, p_min int, p_max int, p_multiline boolean
 ) returns text
@@ -41,7 +43,7 @@ begin
     return p_name || ' must be ' || p_min || ' to ' || p_max || ' characters';
   end if;
   v_bad := case when p_multiline then '[\u0001-\u0008\u000b-\u001f\u007f-\u009f\u2028\u2029]'
-                else '[\u0001-\u0008\u000a-\u001f\u007f-\u009f\u2028\u2029]' end;
+                else '[\u0001-\u0008\u000a-\u001f\u007f-\u009f\u2028\u2029\u202a-\u202e\u2066-\u2069\ufffe\uffff]' end;
   if v_text ~ v_bad then
     return p_name || ' must not contain control or line-break characters';
   end if;
@@ -83,6 +85,7 @@ declare
   v_entry record;
   v_problem text;
   v_count int;
+  v_number numeric;
   v_paths text[] := '{}';
 begin
   if p_payload is null or jsonb_typeof(p_payload) <> 'object' then
@@ -119,8 +122,10 @@ begin
       end if;
       v_paths := v_paths || (v_item ->> 'path');
     end loop;
-    if (select count(distinct x) from unnest(v_paths) x) <> v_count then
-      return 'payload.files names a path twice';
+    -- Two paths that differ only by case collide on a case-insensitive checkout. Paths are plain ASCII, so
+    -- lower() is the same here as toLowerCase in kinds.ts, whatever the database's locale.
+    if (select count(distinct lower(x)) from unnest(v_paths) x) <> v_count then
+      return 'payload.files names a path twice (case aside)';
     end if;
     return null;
 
@@ -149,11 +154,18 @@ begin
           v_problem := private.draft_text_problem(v_entry.value, 'payload.set value', 0, 2000, true);
           if v_problem is not null then return v_problem; end if;
         when 'number' then
-          -- The range in which JSON and jsonb print a number alike (kinds.ts plainNumber).
-          if (v_entry.value #>> '{}')::numeric <> 0
-             and (abs((v_entry.value #>> '{}')::numeric) < 0.000001
-                  or abs((v_entry.value #>> '{}')::numeric) >= 1e15) then
-            return 'payload.set has a number out of range';
+          -- The range in which JSON and jsonb print a number alike, and a value a double holds exactly as
+          -- far as 15 significant digits (kinds.ts plainNumber): jsonb keeps every digit, JSON.parse in
+          -- the writer does not, so a value that changes on the round trip through float8 is refused.
+          -- The range is checked first, so the cast cannot overflow.
+          v_number := (v_entry.value #>> '{}')::numeric;
+          if v_number <> 0 then
+            if abs(v_number) < 0.000001 or abs(v_number) >= 1e15 then
+              return 'payload.set has a number out of range';
+            end if;
+            if v_number::float8::numeric <> v_number then
+              return 'payload.set has a number with more than 15 significant digits';
+            end if;
           end if;
         when 'boolean' then null;
         when 'null' then null;
@@ -189,9 +201,10 @@ revoke all on function private.drafts_check_payload() from public;
 create trigger drafts_check_payload before insert on public.drafts
   for each row execute function private.drafts_check_payload();
 
--- At most 50 findings behind one draft.
+-- At most 50 findings behind one draft, and a flat list: a two-dimensional array would count its cells
+-- but break the per-finding checks.
 alter table public.drafts add constraint drafts_finding_ids_cap
-  check (cardinality(finding_ids) <= 50);
+  check (cardinality(finding_ids) <= 50 and coalesce(array_ndims(finding_ids), 1) <= 1);
 
 -- The agent. An agent proposes and never decides. Its role holds no privilege on any table or view: it
 -- cannot read drafts, insert a decision or change anything. Its one way in is private.agent_insert_draft,
@@ -227,6 +240,14 @@ declare
   v_org uuid;
   v_id uuid;
 begin
+  -- The cap below counts after taking a lock, which is only exact when each statement sees what the lock's
+  -- previous holders committed. REPEATABLE READ takes its snapshot before the lock, so concurrent callers
+  -- would each count the same stale number and overfill the site (30 callers took one from 195 to 225).
+  -- SERIALIZABLE refuses such a pair itself (40001); READ COMMITTED, the default, counts fresh.
+  if pg_catalog.current_setting('transaction_isolation') = 'repeatable read' then
+    raise exception 'agent drafts need READ COMMITTED or SERIALIZABLE, not REPEATABLE READ'
+      using errcode = '25000';
+  end if;
   if agent_token is null or length(agent_token) < 32 or length(agent_token) > 200 then
     raise exception 'agent token not recognised' using errcode = '28000';
   end if;
@@ -248,7 +269,8 @@ begin
     raise exception 'finding not found for this site' using errcode = '42501';
   end if;
   -- A site holds at most 200 undecided drafts from agents: one that loops cannot fill the inbox. The lock
-  -- makes the count exact when two calls arrive together; it is held to the end of the transaction.
+  -- makes the count exact when two calls arrive together (under READ COMMITTED; see the isolation check
+  -- above); it is held to the end of the transaction.
   perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(p_site_id::text, 0));
   if (select count(*) from public.drafts d
       where d.site_id = p_site_id

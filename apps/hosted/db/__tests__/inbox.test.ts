@@ -4,6 +4,7 @@
  * GAUGELINE_TEST_DATABASE_URL (see the db harness).
  */
 import { createHash, randomBytes, randomUUID } from "node:crypto";
+import postgres from "postgres";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { agentLoginsWithOtherRoles } from "../audit.js";
 import {
@@ -578,13 +579,51 @@ describe.skipIf(!HAS_DATABASE)("drafts inbox", () => {
       ["pull_request", { ...PR_PAYLOAD, files: [PR_PAYLOAD.files[0], PR_PAYLOAD.files[0]] }],
       ["pull_request", 5],
       ["email", { subject: "s", body: "b" }],
-      ["email", { subject: "s", body: "b", to: "a@b.test" }],
+      ["email", { subject: "s", body: "b", to: "someone" }],
       ["email", { subject: "s" }],
       ["email", { subject: "s", body: 1 }],
       ["email", { subject: "a\u2028b", body: "b" }],
       ["email", { subject: "s", body: "a\u0085b" }],
       ["email", { subject: "s".repeat(201), body: "b" }],
       ["email", { subject: "s".repeat(200), body: "b" }],
+      // Bidirectional controls and non-characters: refused in a single line, fine in prose.
+      ...[
+        0x202a, 0x202b, 0x202c, 0x202d, 0x202e, 0x2066, 0x2067, 0x2068, 0x2069, 0xfffe, 0xffff,
+      ].flatMap((c): [string, unknown][] => [
+        ["email", { subject: `a${String.fromCharCode(c)}b`, body: "b" }],
+        ["pull_request", { ...PR_PAYLOAD, title: `a${String.fromCharCode(c)}b` }],
+        ["email", { subject: "s", body: `a${String.fromCharCode(c)}b` }],
+      ]),
+      ["email", { subject: "a\u05d0b", body: "b" }],
+      ["email", { subject: "a\u202fb\u2065c\u206ad\ufffde", body: "b" }],
+      // Two paths that differ only by case, and the same path twice.
+      [
+        "pull_request",
+        {
+          ...PR_PAYLOAD,
+          files: [
+            { path: "docs/Readme.md", content: "x" },
+            { path: "docs/README.md", content: "y" },
+          ],
+        },
+      ],
+      [
+        "pull_request",
+        {
+          ...PR_PAYLOAD,
+          files: [
+            { path: "docs/readme.md", content: "x" },
+            { path: "docs/readme2.md", content: "y" },
+          ],
+        },
+      ],
+      // Numbers: more than 15 significant digits is refused, 15 or fewer is fine.
+      ...[0.1 + 0.2, 1 / 3, 100000000000000.5, 0.1, 4.5, -0.25, 999999999999999, 0.000001].map(
+        (n): [string, unknown] => [
+          "sanity_draft",
+          { documentId: "menu", documentType: "page", set: { n } },
+        ],
+      ),
       [
         "sanity_draft",
         {
@@ -614,7 +653,7 @@ describe.skipIf(!HAS_DATABASE)("drafts inbox", () => {
       ["sanity_draft", { documentId: "menu", documentType: "page" }],
       ...[
         "app/menu/links.ts",
-        "src/[id]/(g)/p@2.tsx",
+        "src/[id]/(g)/@modal/page.tsx",
         ".eslintrc.json",
         "a.git/x",
         "gitmodules",
@@ -660,6 +699,60 @@ describe.skipIf(!HAS_DATABASE)("drafts inbox", () => {
     });
   });
 
+  describe("numbers the database holds as exact decimals (the app only ever sees a parsed double)", () => {
+    const sanityText = (n: string) =>
+      `{"documentId": "menu", "documentType": "page", "set": {"n": ${n}}}`;
+    // [JSON text, whether the database accepts it, whether the app accepts the text's parsed value].
+    const NUMBERS: [string, boolean, boolean][] = [
+      ["9.99999999999999999999e14", false, false], // under 1e15 as a decimal, 1e15 as a double
+      ["0.1234567890123456789012345", false, false], // JSON.parse drops digits: another value
+      ["0.30000000000000004", false, false],
+      ["100000000000000.5", false, false],
+      ["123456.789", true, true],
+      ["1.500000000000000000000", true, true], // the same value as 1.5
+      ["999999999999999", true, true],
+      ["0.000001", true, true],
+      ["1e15", false, false],
+      // Just under 1e-6 as a decimal, exactly 1e-6 as a double: the database is the authority, and the app
+      // never gets to see the digits (its input is parsed). Writing the double back is accepted.
+      ["0.00000099999999999999999999", false, true],
+    ];
+    it("the database refuses what a double cannot hold, and agrees with the app wherever the app can see", async () => {
+      for (const [text, dbOk, appOk] of NUMBERS) {
+        const payload = sanityText(text);
+        const [row] =
+          await sql`select private.draft_payload_problem('sanity_draft', ${payload}::text::jsonb) as problem`;
+        expect(row!.problem === null, `database: ${text}`).toBe(dbOk);
+        expect(checkDraftPayload("sanity_draft", JSON.parse(payload)).ok, `app: ${text}`).toBe(
+          appOk,
+        );
+        if (dbOk !== appOk) {
+          // The only disagreement is a value the app saw after rounding; the rounded value is fine.
+          const [again] =
+            await sql`select private.draft_payload_problem('sanity_draft', ${JSON.stringify(JSON.parse(payload))}::text::jsonb) as problem`;
+          expect(again!.problem, `written back: ${text}`).toBeNull();
+        }
+      }
+    });
+
+    it("a stored draft the database would refuse is invalid-payload on approval, not a thrown 23514", async () => {
+      const id = randomUUID();
+      const stored = sanityText("0.00000099999999999999999999");
+      await sql.begin(async (tx) => {
+        await tx.unsafe("alter table public.drafts disable trigger drafts_check_payload");
+        await tx`insert into public.drafts (id, org_id, site_id, kind, payload)
+          values (${id}, ${ORG_A}, ${SITE_A1}, 'sanity_draft', ${stored}::text::jsonb)`;
+        await tx.unsafe("alter table public.drafts enable trigger drafts_check_payload");
+      });
+      const r = await decide(sql, owner, id, { kind: "approve" }, queue);
+      expect(r.status).toBe("invalid-payload");
+      expect(await decisionsFor(id)).toHaveLength(0);
+      expect(queue.jobs.size).toBe(0);
+      // The draft keeps its one decision: it can still be declined.
+      expect((await decide(sql, owner, id, { kind: "decline" }, queue)).status).toBe("recorded");
+    });
+  });
+
   describe("size, characters and caps (a refusal, never a thrown database error)", () => {
     it("an edit of 17 KB is invalid-payload, not an exception; one at the cap is recorded", async () => {
       const id = await draft();
@@ -697,6 +790,28 @@ describe.skipIf(!HAS_DATABASE)("drafts inbox", () => {
       expect(direct).toMatch(/drafts_finding_ids_cap/);
     });
 
+    it("finding_ids is a flat list: a two-dimensional array is refused", async () => {
+      const [a, b, c, d] = [randomUUID(), randomUUID(), randomUUID(), randomUUID()];
+      const twoD = `{{${a},${b}},{${c},${d}}}`;
+      const direct = await errorOf(
+        sql`insert into public.drafts (org_id, site_id, kind, payload, finding_ids)
+          values (${ORG_A}, ${SITE_A1}, 'pull_request', ${sql.json(PR_PAYLOAD)}, ${twoD}::uuid[])`,
+      );
+      expect(direct).toMatch(/drafts_finding_ids_cap/);
+      const viaAgent = await asAgent(
+        (tx) =>
+          tx`select private.agent_insert_draft(${TOKEN_A}, ${SITE_A1}, 'pull_request', ${sql.json(PR_PAYLOAD)}, ${twoD}::uuid[])`,
+      );
+      expect(viaAgent).not.toBe("");
+      // A flat list, and an empty one, are fine.
+      expect(
+        await errorOf(
+          sql`insert into public.drafts (org_id, site_id, kind, payload, finding_ids)
+            values (${ORG_A}, ${SITE_A1}, 'pull_request', ${sql.json(PR_PAYLOAD)}, '{}'::uuid[])`,
+        ),
+      ).toBe("");
+    });
+
     it("a site holds at most 200 undecided agent drafts; deciding frees room", async () => {
       await sql`insert into public.drafts (org_id, site_id, kind, payload)
         select ${ORG_A}, ${SITE_A2}, 'pull_request', ${sql.json(PR_PAYLOAD)}
@@ -710,6 +825,79 @@ describe.skipIf(!HAS_DATABASE)("drafts inbox", () => {
         values (${ORG_A}, ${one!.id}, 'declined', ${USER_A_OWNER})`;
       expect(await agentInsert(TOKEN_A, SITE_A2)).toBe("");
       expect(await agentInsert(TOKEN_A, SITE_A2)).toMatch(/200 drafts waiting/);
+    });
+  });
+
+  describe("the 200-draft cap holds when many agents write at once", () => {
+    /** A new site of organisation A holding 195 waiting drafts, so 30 callers race for the last 5 places. */
+    async function siteNear(): Promise<string> {
+      const site = randomUUID();
+      await sql`insert into public.sites (id, org_id, name, url, timezone)
+        values (${site}, ${ORG_A}, 'Cap Test Bakery', ${`https://cap-${site}.test`}, 'UTC')`;
+      await sql`insert into public.drafts (org_id, site_id, kind, payload)
+        select ${ORG_A}, ${site}, 'pull_request', ${sql.json(PR_PAYLOAD)} from generate_series(1, 195)`;
+      return site;
+    }
+    const waiting = async (site: string) => {
+      const [n] = await sql`select count(*)::int as n from public.drafts where site_id = ${site}`;
+      return n!.n as number;
+    };
+    /**
+     * 30 connections, each in its own transaction at `isolation`, each taking its snapshot (a first
+     * statement) and then waiting for all the others before it calls the agent's function: the snapshot
+     * is older than every other caller's insert. Returns how many calls succeeded.
+     */
+    async function race(
+      site: string,
+      isolation: string,
+    ): Promise<{ ok: number; errors: string[] }> {
+      const n = 30;
+      const pool = postgres(db.url, { max: n, onnotice: () => {} });
+      let ready = 0;
+      let release!: () => void;
+      const gate = new Promise<void>((r) => (release = r));
+      try {
+        const results = await Promise.all(
+          Array.from({ length: n }, () =>
+            errorOf(
+              pool.begin(`isolation level ${isolation}`, async (tx) => {
+                await tx`select 1`;
+                if (++ready === n) release();
+                await gate;
+                await tx.unsafe("set local role gaugeline_agent");
+                await tx`select private.agent_insert_draft(${TOKEN_A}, ${site}, 'pull_request', ${tx.json(PR_PAYLOAD)}, '{}'::uuid[])`;
+              }),
+            ),
+          ),
+        );
+        return {
+          ok: results.filter((e) => e === "").length,
+          errors: results.filter((e) => e !== ""),
+        };
+      } finally {
+        await pool.end();
+      }
+    }
+
+    it("READ COMMITTED: exactly the last 5 places are given", async () => {
+      const site = await siteNear();
+      const r = await race(site, "read committed");
+      expect(r.ok).toBe(5);
+      expect(await waiting(site)).toBe(200);
+    });
+
+    it("REPEATABLE READ (a snapshot older than the lock) cannot overfill a site", async () => {
+      const site = await siteNear();
+      const r = await race(site, "repeatable read");
+      expect(await waiting(site)).toBe(195);
+      expect(r.ok).toBe(0);
+      expect(r.errors.every((e) => /READ COMMITTED or SERIALIZABLE/.test(e))).toBe(true);
+    });
+
+    it("SERIALIZABLE cannot overfill a site either", async () => {
+      const site = await siteNear();
+      await race(site, "serializable");
+      expect(await waiting(site)).toBeLessThanOrEqual(200);
     });
   });
 

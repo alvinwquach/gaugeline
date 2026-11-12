@@ -44,6 +44,15 @@ describe("sanity_draft fields", () => {
     expect(ok("sanity_draft", sanity({ n: 0 }))).toBe(true);
     expect(ok("sanity_draft", sanity({ n: 123456.789 }))).toBe(true);
   });
+
+  it("refuses a number with more than 15 significant digits: the writer would write another value", () => {
+    // 0.1 + 0.2 prints as 0.30000000000000004 and a long decimal rounds when parsed; the approved text and
+    // the value the writer parses must be the same, so a double that needs 16 or 17 digits is refused.
+    for (const n of [0.1 + 0.2, 1 / 3, Number("0.1234567890123456789012345"), 100000000000000.5])
+      expect(ok("sanity_draft", sanity({ n })), String(n)).toBe(false);
+    for (const n of [0.1, 4.5, -0.25, 999999999999999, 0.000001, 123456789012.345])
+      expect(ok("sanity_draft", sanity({ n })), String(n)).toBe(true);
+  });
 });
 
 describe("single-line fields", () => {
@@ -55,6 +64,24 @@ describe("single-line fields", () => {
       expect(ok("email", { subject: `a${ch}b`, body: "x" }), `subject`).toBe(false);
     }
     expect(ok("email", { subject: "a\tb", body: "x" })).toBe(true);
+  });
+
+  it("refuse bidirectional controls and the non-characters U+FFFE and U+FFFF", () => {
+    const tricks = [
+      ...[0x202a, 0x202b, 0x202c, 0x202d, 0x202e, 0x2066, 0x2067, 0x2068, 0x2069],
+      0xfffe,
+      0xffff,
+    ].map((c) => String.fromCharCode(c));
+    for (const ch of tricks) {
+      const label = `U+${ch.charCodeAt(0).toString(16)}`;
+      expect(ok("pull_request", pr({ title: `a${ch}b` })), `title ${label}`).toBe(false);
+      expect(ok("email", { subject: `a${ch}b`, body: "x" }), `subject ${label}`).toBe(false);
+    }
+    // Neighbours of the ranges, and right-to-left text itself, are fine.
+    for (const c of [0x202f, 0x2065, 0x206a, 0xfffd, 0x05d0])
+      expect(ok("email", { subject: `a${String.fromCharCode(c)}b`, body: "x" }), String(c)).toBe(
+        true,
+      );
   });
 
   it("prose keeps its newlines but not C1 controls or the Unicode separators", () => {
@@ -97,7 +124,7 @@ describe("repository paths", () => {
   ];
   const allowed = [
     "app/menu/links.ts",
-    "src/[id]/(group)/page@2.tsx",
+    "src/[id]/(group)/@modal/page.tsx",
     ".eslintrc.json",
     "docs/.env.example",
     "a.git/x",
@@ -110,6 +137,19 @@ describe("repository paths", () => {
   });
   it("allows ordinary ones", () => {
     for (const p of allowed) expect(isSafeRepoPath(p), p).toBe(true);
+  });
+  it("refuses two paths in one pull request that differ only by case", () => {
+    const two = (a: string, b: string) =>
+      pr({
+        files: [
+          { path: a, content: "x" },
+          { path: b, content: "y" },
+        ],
+      });
+    expect(ok("pull_request", two("docs/Readme.md", "docs/README.md"))).toBe(false);
+    expect(ok("pull_request", two("a/b.txt", "A/b.txt"))).toBe(false);
+    expect(ok("pull_request", two("docs/readme.md", "docs/readme.md"))).toBe(false);
+    expect(ok("pull_request", two("docs/readme.md", "docs/readme2.md"))).toBe(true);
   });
   it("applies in a pull request payload", () => {
     for (const path of refused.slice(0, 15))

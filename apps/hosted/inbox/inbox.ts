@@ -174,6 +174,34 @@ export async function decide(
   options: { confirmClosed?: boolean } = {},
 ): Promise<DecideResult> {
   if (!UUID.test(draftId)) return { status: "not-found" };
+  try {
+    return await decideInTransaction(sql, who, draftId, choice, queue, options);
+  } catch (error) {
+    // The database holds the same shapes as kinds.ts (migration 0005) and sees the exact decimals, where
+    // the app sees a parsed double. If it refuses a payload the app passed, that is the payload's
+    // problem, not a failure: nothing was recorded (the transaction rolled back).
+    const refusal = shapeRefusal(error);
+    if (refusal) return { status: "invalid-payload", problems: [refusal] };
+    throw error;
+  }
+}
+
+/** The reason when `error` is the database refusing a payload's shape (23514 from 0005's triggers). */
+function shapeRefusal(error: unknown): string | undefined {
+  if (typeof error !== "object" || error === null) return undefined;
+  const { code, message } = error as { code?: unknown; message?: unknown };
+  if (code !== "23514" || typeof message !== "string") return undefined;
+  return message.startsWith("the payload does not match the ") ? message : undefined;
+}
+
+async function decideInTransaction(
+  sql: postgres.Sql,
+  who: Person,
+  draftId: string,
+  choice: Choice,
+  queue: ApplyQueue,
+  options: { confirmClosed?: boolean },
+): Promise<DecideResult> {
   return asPerson(sql, who, async (tx): Promise<DecideResult> => {
     const [draft] = await tx`
       select d.org_id, d.site_id, d.kind, d.payload, d.payload::text as payload_text, d.finding_ids,

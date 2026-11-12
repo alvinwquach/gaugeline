@@ -130,6 +130,9 @@ be empty, like the checks in the data model page.
 An agent cannot flood the inbox: a draft names at most 50 findings, and a site holds at most 200 drafts
 waiting for a decision. The 201st call fails with "this site already has 200 drafts waiting for a decision"
 until someone decides or declines some. The cap is per site, so one noisy site does not block the others.
+The count is exact when callers arrive together under the default isolation level (READ COMMITTED) and
+under SERIALIZABLE; the function refuses to run at REPEATABLE READ, where each caller would count a stale
+snapshot, so an agent connection must not set that level. A draft's findings are a flat list.
 
 ## Only fixed shapes can be approved
 
@@ -138,14 +141,18 @@ A draft is one of three kinds, and the database refuses any other for everyone w
 - `pull_request`: a title (one line), a description and up to 20 files. A path is plain characters,
   relative, and never reaches into git or the repository's automation: any `.git` directory, `.gitmodules`,
   `.github`, `.circleci`, `.gitlab-ci.yml` or `.husky`, at any depth and whatever the case, is refused, and
-  so are `..` and a leading `-`.
+  so are `..` and a leading `-`. Two paths in one pull request that differ only by case are refused, since
+  they would collide on a case-insensitive checkout.
 - `email`: a subject (one line) and a body. Recipients come from the site's contacts, never the payload.
 - `sanity_draft`: a document id, a type and up to 20 field values. A field name starts with a letter, so
   Sanity's own fields (`_id`, `_type`, `_rev`, ...) can never be set by a draft.
 
 Unknown keys are refused, so a payload cannot name a branch, a repository, a recipient or a flag. A
 one-line field refuses every line break and control character, including U+0085, the C1 controls
-(U+0080 to U+009F) and U+2028 and U+2029. The shapes are in `apps/hosted/inbox/kinds.ts`, and the writer
+(U+0080 to U+009F) and U+2028 and U+2029, and also the bidirectional controls (U+202A to U+202E and
+U+2066 to U+2069) and the non-characters U+FFFE and U+FFFF. A number in a Sanity field has at most 15
+significant digits (so 0.1 is fine and 1/3 is not): Postgres keeps every digit of a number but the writer
+reads it as a double, and the two must be the same value. The shapes are in `apps/hosted/inbox/kinds.ts`, and the writer
 checks the same shapes again before it sends anything.
 
 **The database checks the shape too, not only the app.** A signed-in person can write to `drafts` and
@@ -166,7 +173,9 @@ Approve checks the agent's payload, and Edit first checks the edit, before anyth
 whose payload does not fit can only be declined. An edit is capped at 16 KB (measured on the text Postgres
 stores, which has a space after each colon and comma), like a draft. A payload over the cap, containing
 U+0000 or an unpaired surrogate, or a number such as `1e21` that JSON and Postgres print differently, is
-reported as an invalid payload, with the reason, rather than failing in the database.
+reported as an invalid payload, with the reason, rather than failing in the database. If the database
+refuses a payload the app passed (it sees exact decimals, where the app sees a parsed double), that is
+reported the same way and nothing is recorded.
 
 ## One decision per draft
 

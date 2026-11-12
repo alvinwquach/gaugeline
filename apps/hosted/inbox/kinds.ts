@@ -27,18 +27,23 @@ export const MAX_FINDING_IDS = 50;
 /**
  * True when `text` has a control or line-breaking character other than tab and (when allowed) newline:
  * C0 controls, DEL, C1 controls (U+0080 to U+009F, which include NEL, U+0085) and the Unicode line and
- * paragraph separators (U+2028, U+2029). Mirrored by private.draft_text_problem in 0005.
+ * paragraph separators (U+2028, U+2029). A single-line field (`newlines` false) also refuses the
+ * bidirectional controls (U+202A to U+202E, U+2066 to U+2069), which can make a title read in another
+ * order than it is written, and the non-characters U+FFFE and U+FFFF. Mirrored by
+ * private.draft_text_problem in 0005.
  */
 function hasControl(text: string, newlines: boolean): boolean {
   for (const ch of text) {
     const c = ch.charCodeAt(0);
     if (c === 0x09 || (newlines && c === 0x0a)) continue;
     if (c < 0x20 || (c >= 0x7f && c <= 0x9f) || c === 0x2028 || c === 0x2029) return true;
+    if (!newlines && ((c >= 0x202a && c <= 0x202e) || (c >= 0x2066 && c <= 0x2069) || c >= 0xfffe))
+      return true;
   }
   return false;
 }
 
-/** One line of 1 to `max` characters: no newline, no control character. */
+/** One line of 1 to `max` characters: no newline, no control or bidirectional-control character. */
 const line = (max: number) =>
   z
     .string()
@@ -96,8 +101,10 @@ const pullRequest = z
       .min(1)
       .max(20),
   })
-  .refine((p) => new Set(p.files.map((f) => f.path)).size === p.files.length, {
-    message: "names a path twice",
+  // Two paths that differ only by case collide on a case-insensitive checkout (Windows, macOS): one would
+  // silently replace the other. Paths are plain ASCII, so toLowerCase and Postgres's lower() agree.
+  .refine((p) => new Set(p.files.map((f) => f.path.toLowerCase())).size === p.files.length, {
+    message: "names a path twice (case aside)",
     path: ["files"],
   });
 
@@ -105,13 +112,17 @@ const pullRequest = z
 const email = z.strictObject({ subject: line(200), body: prose(20_000) });
 
 /**
- * A number whose text is the same in JSON and in jsonb: finite, and either zero or between 1e-6 and 1e15
- * in size, where JavaScript never switches to exponent notation (jsonb prints the full digits, so the
- * size check in checkDraftPayload would otherwise be wrong).
+ * A number whose text is the same in JSON and in jsonb, and whose value survives the writer's JSON.parse:
+ * either zero or between 1e-6 and 1e15 in size (where JavaScript never switches to exponent notation and
+ * jsonb prints the full digits), and with at most 15 significant digits. A double needing 16 or 17
+ * (0.1 + 0.2) is refused because the database holds exact decimals: the text a person approves would be
+ * a different number from the one the writer parses. Mirrored by private.draft_payload_problem in 0005,
+ * which compares the value with its round trip through float8.
  */
 const plainNumber = z
   .number()
-  .refine((n) => n === 0 || (Math.abs(n) >= 1e-6 && Math.abs(n) < 1e15), "is out of range");
+  .refine((n) => n === 0 || (Math.abs(n) >= 1e-6 && Math.abs(n) < 1e15), "is out of range")
+  .refine((n) => n === 0 || Number(n.toPrecision(15)) === n, "has more than 15 significant digits");
 
 /** One Sanity document's fields. The writer adds the `drafts.` prefix; the payload cannot name it. */
 const sanityDraft = z.strictObject({
