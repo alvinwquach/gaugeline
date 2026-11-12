@@ -1,7 +1,15 @@
 import { spawn } from "node:child_process";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
+import {
+  copyFileSync,
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  rmSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -254,10 +262,16 @@ export async function runExample(
     ];
     // A fixture with a runs/ folder carries saved runs for `gaugeline changes`: they are copied into
     // .gaugeline/runs/<host>/ of a temporary working folder, so the example reads real history.
-    const saved = join(SITES_DIR, e.fixture, "runs");
-    let cwd: string | undefined;
+    // A fixture that carries gaugeline.images.json is run from its own folder, so the settings it names are read
+    // (from the temporary folder when it also carries saved runs).
+    const dir = join(SITES_DIR, e.fixture);
+    const imagesSettings = join(dir, "gaugeline.images.json");
+    const saved = join(dir, "runs");
+    let cwd: string | undefined = existsSync(imagesSettings) ? dir : undefined;
     if (existsSync(saved)) {
       cwd = mkdtempSync(join(tmpdir(), "gaugeline-docs-runs-"));
+      if (existsSync(imagesSettings))
+        copyFileSync(imagesSettings, join(cwd, "gaugeline.images.json"));
       const host = new URL(site.origin).host.toLowerCase().replace(/[^a-z0-9.-]/g, "_");
       mkdirSync(join(cwd, ".gaugeline", "runs"), { recursive: true });
       cpSync(saved, join(cwd, ".gaugeline", "runs", host), { recursive: true });
@@ -275,7 +289,8 @@ export async function runExample(
         child.on("close", (code) => resolve({ stdout, stderr, code: code ?? -1 }));
       },
     );
-    if (cwd) rmSync(cwd, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+    if (cwd && cwd !== dir)
+      rmSync(cwd, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
     return {
       ...result,
       origin: site.origin,

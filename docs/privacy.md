@@ -147,6 +147,7 @@ Against the invented `images` fixture, a haberdashery with 40 images, version 0.
     2 images have no alt: /img/swatch-0.png, /img/swatch-1.png
 · Images use older, heavier file formats
     16 of 20 sampled images are JPEG, PNG or GIF only: /img/heavy.jpg, /wp-content/uploads/2019/05/old-sign.jpg, /img/divider.png and 13 more
+? image-optimizer-allowlist-wide could not be checked: this page resizes images through the Next.js image address, and whether that address fetches only the hosts you listed is not visible from the page; add settingsFiles to gaugeline.images.json (the images settings of your framework), or run the probe on a site you own (/_next/image)
 ? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
     Mail records are read from DNS only with --dns. Rerun with --dns to check them.
 
@@ -156,6 +157,50 @@ Checked 20 of 41 images.
 
 Each check that passed also prints a `✓ <id>` line, left out above. The output is asserted by
 `packages/cli/src/__tests__/images.test.ts`.
+
+### Other pages of the same site
+
+The checks that compare or classify pages (such as `error-shell-200`, which is on by default) read a
+sample of at most 4 other same-site pages, found from the links on the page you checked, each with one
+`GET` and a body cap. The pages are fetched once and shared by every check that needs them. When the site
+has more, the run prints "Checked 4 of 10 other pages." and the rest are not requested.
+
+### A made-up address (a probing check)
+
+With `--owner-consent` (or a `gaugeline.consent.json`), the `not-found-200` check asks the site for one
+address that cannot exist, `/gaugeline-not-found-3f9c2a71` on the checked page's own origin, and reports
+a site that answers 200 for it ([Error pages that answer 200](guides/error-pages.md)). **Run it only on
+sites you own or have permission to test.** Without consent nothing is asked.
+
+- One `GET`, once per run. No cookie, no `Authorization` header, no query, no `Referer`.
+- At most 4,096 bytes of the answer are read, only for the status and where it leads; the body is not
+  kept or printed.
+- It goes through the same fetcher as every other request, so a private address is refused unless
+  `--allow-private` is set. Never a `POST`.
+
+### Image optimizers (a probing check)
+
+With `--owner-consent` (or a `gaugeline.consent.json`) **and** an `imageOptimizerProbeUrl` in
+`gaugeline.images.json`, the `image-optimizer-open` check asks your site's image address
+(`/_next/image`, `/_vercel/image`, `/_ipx/`, `/_image` or `/.netlify/images`) to fetch one picture from the
+address you chose, and reports it when it does ([Open image optimizers](guides/image-optimizers.md)).
+**Run it only on sites you own or have permission to test.** Without consent, or without an address, nothing
+is asked. The settings files you list in `gaugeline.images.json` are read as text with or without consent:
+that part sends nothing.
+
+What it sends, per optimizer the page uses:
+
+- One `GET` to your own origin, at most 5 in a run, with the width and quality your page itself used and
+  your chosen address in the query. No cookie, no `Authorization` header, no `Referer`. No retry.
+- No redirect is followed. Gaugeline never chooses the address: it refuses one that is not `https`, is an IP
+  address or a private name, is your own host, is a host your image addresses already use, or is a host in
+  the settings files you gave.
+- The cost to you: your server fetches your picture once, one small cache entry per optimizer, and a line in
+  your access log.
+
+What it reads: the status, the content type and at most 1,024 bytes of the body, to tell an image from a web
+page, after which the connection is closed. The body is never stored, logged, printed or put in a report, and
+neither is the query string of the address.
 
 ### Download routes (a probing check)
 

@@ -53,6 +53,8 @@ describe("LIMITS and Budget: unit", () => {
       routeProbeBytes: 65536,
       frameworkAddresses: 0,
       scripts: 15,
+      stylesheets: 5,
+      sourceMaps: 10,
       structuredDataAddresses: 12,
       concurrency: 5,
       redirectHops: 10,
