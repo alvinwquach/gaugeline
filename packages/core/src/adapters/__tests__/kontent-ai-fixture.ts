@@ -209,3 +209,37 @@ export function kontentTransport(
     return json(200, opts.tamper ? opts.tamper(body, call) : body) as ReturnType<Transport>;
   };
 }
+
+/**
+ * Fernhill Cycles' live site: a path answers 200 when it is in `live`, 500 when it is in `broken`, and 404 otherwise.
+ * `redirects` maps a path to the path it answers 301 to. Any other host is not here.
+ */
+export function siteTransport(
+  live: readonly string[],
+  broken: readonly string[] = [],
+  onRequest?: (path: string, method: string) => void,
+  redirects: Readonly<Record<string, string>> = {},
+): Transport {
+  return (url, req) => {
+    onRequest?.(url.pathname, req.method);
+    if (url.host !== new URL(KONTENT_SITE).host) return json(404, {}) as ReturnType<Transport>;
+    const to = redirects[url.pathname];
+    if (to !== undefined) return json(301, {}, { location: to }) as ReturnType<Transport>;
+    if (broken.includes(url.pathname)) return json(500, {}) as ReturnType<Transport>;
+    return (
+      live.includes(url.pathname)
+        ? Promise.resolve({
+            status: 200,
+            headers: { "content-type": "text/html" },
+            body: Readable.from([Buffer.from("<html></html>")]),
+          })
+        : json(404, {})
+    ) as ReturnType<Transport>;
+  };
+}
+
+/** One transport for Kontent.ai and the live site, as a run has one fetcher for both. */
+export function bothTransport(cms: Transport, site: Transport): Transport {
+  return (url, req) =>
+    url.host === DELIVERY_HOST || url.host === PREVIEW_HOST ? cms(url, req) : site(url, req);
+}
