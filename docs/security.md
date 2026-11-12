@@ -17,8 +17,10 @@ contract tests and a scan of the source fail an adapter that builds anything els
 channels are the other `POST` (ADR-0005).
 
 A platform's remote MCP server (ADR-0008) goes through the same `fetcher.query()`, with an entry of the
-`mcp-jsonrpc` shape. The entry names the server's exact address, including its whole query string (a
-read-only option fixed by the entry, and the one project id you configure), and the exact tools that may
+`mcp-jsonrpc` shape. The entry names the vendor's exact host (never one from a settings file) and its
+whole query string: the server's `read_only` option, which the registry refuses unless the entry fixes it
+to `true`, and the one project id you configure, which the fetcher compares with your setting exactly, so
+a request cannot reach another project the token can see. It also names the exact tools that may
 be called, each with a closed rule for every argument: a constant, a value from a short list, a bounded
 whole number or an identifier. There is no rule for free text, so nothing from a page, a finding or a
 server reaches a tool. Only four messages exist: `initialize` (declaring no client capabilities, so a

@@ -1,6 +1,6 @@
 import { Readable } from "node:stream";
 import { describe, expect, it } from "vitest";
-import { createFetcher, type Transport } from "../../fetcher.js";
+import { createFetcher, FetchError, type Transport } from "../../fetcher.js";
 import { registerQueryAllow } from "../query-registry.js";
 import { mcpBodyProblem, mcpToolNameProblem, type McpJsonRpcShape } from "../mcp-jsonrpc.js";
 import { allowProblems, queryRefusal, type ReadOnlyQueryAllow } from "../read-only-query.js";
@@ -202,14 +202,25 @@ describe("an entry with the mcp-jsonrpc shape", () => {
 describe("the address of an mcp-jsonrpc entry", () => {
   const body = call("list_migrations");
   const at = (search: string) => new URL(`https://mcp.vendor.example/mcp${search}`);
+  const MINE = { projectRef: "abcdefghijklmnop" };
+  const refuse = (search: string, configured: Record<string, string> | undefined = MINE) =>
+    queryRefusal(at(search), ENTRY, body, undefined, configured);
 
-  it("must carry exactly the entry's options: the fixed one as written, the configured one as an id", () => {
-    expect(
-      queryRefusal(at("?read_only=true&project_ref=abcdefghijklmnop"), ENTRY, body),
-    ).toBeUndefined();
-    expect(
-      queryRefusal(at("?project_ref=abcdefghijklmnop&read_only=true"), ENTRY, body),
-    ).toBeUndefined();
+  it("must carry exactly the entry's options: the fixed one as written, the configured one as configured", () => {
+    expect(refuse("?read_only=true&project_ref=abcdefghijklmnop")).toBeUndefined();
+    expect(refuse("?project_ref=abcdefghijklmnop&read_only=true")).toBeUndefined();
+  });
+
+  it("refuses a configured option that is not the value the person configured (review #262 M1)", () => {
+    expect(refuse("?read_only=true&project_ref=otherprojectzzzzz")).toMatch(/project_ref/);
+    expect(refuse("?read_only=true&project_ref=..")).toMatch(/project_ref/);
+    // No configured value given at all: nothing to compare with, so refused.
+    expect(queryRefusal(at("?read_only=true&project_ref=abcdefghijklmnop"), ENTRY, body)).toMatch(
+      /configured/,
+    );
+    expect(refuse("?read_only=true&project_ref=abcdefghijklmnop", {})).toMatch(/configured/);
+    // A configured value that is not a plain id is refused even when the address repeats it.
+    expect(refuse("?read_only=true&project_ref=a%26b", { projectRef: "a&b" })).toBeDefined();
   });
 
   it("refuses a missing, changed, repeated or extra option", () => {
@@ -223,17 +234,68 @@ describe("the address of an mcp-jsonrpc entry", () => {
       "?read_only=true",
       "",
     ])
-      expect(queryRefusal(at(search), ENTRY, body), search).toBeDefined();
+      expect(refuse(search), search).toBeDefined();
   });
 
   it("still refuses another host, another path, http and credentials in the address", () => {
     const q = "?read_only=true&project_ref=abcdefghijklmnop";
-    expect(queryRefusal(new URL(`https://mcp.other.example/mcp${q}`), ENTRY, body)).toBeDefined();
-    expect(queryRefusal(new URL(`https://mcp.vendor.example/sse${q}`), ENTRY, body)).toBeDefined();
-    expect(queryRefusal(new URL(`http://mcp.vendor.example/mcp${q}`), ENTRY, body)).toBeDefined();
-    expect(
-      queryRefusal(new URL(`https://u:p@mcp.vendor.example/mcp${q}`), ENTRY, body),
-    ).toBeDefined();
+    for (const u of [
+      `https://mcp.other.example/mcp${q}`,
+      `https://mcp.vendor.example/sse${q}`,
+      `http://mcp.vendor.example/mcp${q}`,
+      `https://u:p@mcp.vendor.example/mcp${q}`,
+    ])
+      expect(queryRefusal(new URL(u), ENTRY, body, undefined, MINE), u).toBeDefined();
+  });
+});
+
+describe("the registry refuses an mcp-jsonrpc entry that is not read-only by its address (review #262 M2)", () => {
+  const BAD: Array<[string, Record<string, unknown>]> = [
+    ["no query string at all", { query: undefined }],
+    [
+      "read_only fixed to false",
+      { query: { read_only: { fixed: "false" }, project_ref: { configured: "projectRef" } } },
+    ],
+    ["read_only left to configuration", { query: { read_only: { configured: "readOnly" } } }],
+    ["no read_only option", { query: { project_ref: { configured: "projectRef" } } }],
+    ["a configured (self-hosted) host", { host: { configured: "MCP_HOST" } }],
+  ];
+
+  for (const [what, change] of BAD)
+    it(`refuses ${what}`, () => {
+      const entry = { ...ENTRY, id: `bad-mcp-${what.replace(/[^a-z]+/g, "-")}`, ...change };
+      if (change.query === undefined && "query" in change)
+        delete (entry as { query?: unknown }).query;
+      expect(allowProblems(entry as ReadOnlyQueryAllow).length, what).toBeGreaterThan(0);
+      expect(() => registerQueryAllow(entry as ReadOnlyQueryAllow), what).toThrow(TypeError);
+    });
+});
+
+describe("the tool-name screen sees words run together (review #262 L3)", () => {
+  it("refuses glued and camel-case write, credential and code names", () => {
+    for (const name of [
+      "executesql",
+      "deployfunction",
+      "applymigration",
+      "listsecrets",
+      "get_anonkey",
+      "runquery",
+      "dropall",
+      "getapitoken",
+      "bulkdelete",
+    ])
+      expect(mcpToolNameProblem(name), name).toBeDefined();
+  });
+
+  it("still accepts the plain reads, including list_migrations", () => {
+    for (const name of [
+      "get_project",
+      "list_tables",
+      "get_advisors",
+      "list_migrations",
+      "list_extensions",
+    ])
+      expect(mcpToolNameProblem(name), name).toBeUndefined();
   });
 });
 
@@ -254,6 +316,7 @@ describe("fetcher.query sends an mcp-jsonrpc message", () => {
     const fetcher = createFetcher({ transport });
     const hop = await fetcher.query!(URL_OK, {
       allow: registered.id,
+      configured: { projectRef: "abcdefghijklmnop" },
       body: { jsonrpc: "2.0", id: 2, method: "tools/list" },
     });
     expect(hop.status).toBe(200);
@@ -266,9 +329,73 @@ describe("fetcher.query sends an mcp-jsonrpc message", () => {
     await expect(
       fetcher.query!(URL_OK, {
         allow: registered.id,
+        configured: { projectRef: "abcdefghijklmnop" },
         body: call("execute_sql", { query: "select 1" }),
       }),
     ).rejects.toThrow(/not on the entry/);
     expect(seen).toHaveLength(1);
+  });
+});
+
+describe("fetcher.query against a fake MCP server: redirect, size cap, timeout, token (review #262 L4)", () => {
+  const registered = registerQueryAllow({ ...ENTRY, id: "test-mcp-edges" });
+  const URL_OK = "https://mcp.vendor.example/mcp?read_only=true&project_ref=abcdefghijklmnop";
+  const configured = { projectRef: "abcdefghijklmnop" };
+  // Built at run time so no key-shaped string sits in the repository (push protection).
+  const TOKEN = ["tok", "en_", "fake", "0123456789abcdef"].join("");
+  const list = { jsonrpc: "2.0", id: 2, method: "tools/list" };
+  const ask = (transport: Transport, maxBytes?: number) => {
+    const fetcher = createFetcher({ transport, timeoutMs: 50 });
+    const result = fetcher.query!(URL_OK, {
+      allow: registered.id,
+      configured,
+      headers: { authorization: `Bearer ${TOKEN}` },
+      body: list,
+      ...(maxBytes === undefined ? {} : { maxBytes }),
+    }).catch((e: unknown) => e);
+    return { fetcher, result };
+  };
+
+  it("refuses a redirect and sends the body nowhere else", async () => {
+    const seen: string[] = [];
+    const { result } = ask((url) => {
+      seen.push(url.href);
+      return Promise.resolve({
+        status: 307,
+        headers: { location: "https://evil.example/mcp" },
+        body: Readable.from([]),
+      });
+    });
+    expect(await result).toBeInstanceOf(FetchError);
+    expect(seen).toEqual([URL_OK]);
+  });
+
+  it("cuts an oversized answer at the cap and flags it", async () => {
+    const { result } = ask(
+      () =>
+        Promise.resolve({
+          status: 200,
+          headers: { "content-type": "application/json" },
+          body: Readable.from([Buffer.from(`{"x":"${"a".repeat(10_000)}"}`)]),
+        }),
+      1024,
+    );
+    const hop = (await result) as { truncated?: boolean; body?: string };
+    expect(hop.truncated).toBe(true);
+    expect((hop.body ?? "").length).toBeLessThanOrEqual(1024);
+  });
+
+  it("times out a server that never answers, and neither the error nor the history holds the token", async () => {
+    const { fetcher, result } = ask(() => {
+      const err = new Error("deadline");
+      err.name = "TimeoutError";
+      return Promise.reject(err);
+    });
+    const err = await result;
+    expect(err).toBeInstanceOf(FetchError);
+    expect((err as FetchError).reason).toBe("timeout");
+    expect(
+      String((err as Error).message) + JSON.stringify(fetcher.history?.() ?? []),
+    ).not.toContain(TOKEN);
   });
 });

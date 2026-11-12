@@ -3,6 +3,7 @@ import {
   COULD_NOT_CHECK,
   keepFields,
   listingHash,
+  outputRuleProblems,
   readRpcAnswer,
   sessionIdOf,
   sessionReadOnlyProblem,
@@ -286,5 +287,67 @@ describe("keepFields: only the entry's fields, by type; everything else is dropp
       rules,
     );
     expect(kept).toEqual({});
+  });
+});
+
+describe("review of #263", () => {
+  it("L1: a server request anywhere in the stream ends the run, even after the answer", () => {
+    const stream = [
+      'data: {"jsonrpc":"2.0","id":2,"result":{"tools":[]}}',
+      'data: {"jsonrpc":"2.0","id":9,"method":"sampling/createMessage","params":{}}',
+    ].join("\n\n");
+    expect(readRpcAnswer(hop(stream, "text/event-stream"), 2)).toEqual({
+      ok: false,
+      reason: COULD_NOT_CHECK.serverRequest,
+    });
+  });
+
+  it("L2: an event stream with bare carriage returns is read", () => {
+    const stream = 'event: message\rdata: {"jsonrpc":"2.0","id":3,"result":{"ok":true}}\r\r';
+    expect(readRpcAnswer(hop(stream, "text/event-stream"), 3)).toEqual({
+      ok: true,
+      result: { ok: true },
+    });
+  });
+
+  it("L3: a read-only session listing a glued, short or non-ASCII write name is not read-only", () => {
+    for (const name of [
+      "exec_sql",
+      "executesql",
+      "\u0435\u0445ecute_sql",
+      "deployFunction",
+      "runquery",
+    ])
+      expect(sessionReadOnlyProblem([listTables, { name, annotations: READ_HINTS }]), name).toBe(
+        COULD_NOT_CHECK.sessionNotReadOnly,
+      );
+  });
+
+  it("L4: the hash covers title and outputSchema; a tool the server would run as a task is refused", () => {
+    expect(listingHash({ ...listTables, title: "List tables" })).not.toBe(ENTRY.listingHash);
+    expect(listingHash({ ...listTables, outputSchema: { type: "object" } })).not.toBe(
+      ENTRY.listingHash,
+    );
+    const task = { ...listTables, execution: { taskSupport: "required" } };
+    expect(toolLockProblem({ tool: "list_tables", listingHash: listingHash(task) }, [task])).toBe(
+      COULD_NOT_CHECK.task,
+    );
+    const forbidden = { ...listTables, execution: { taskSupport: "forbidden" } };
+    expect(
+      toolLockProblem({ tool: "list_tables", listingHash: listingHash(forbidden) }, [forbidden]),
+    ).toBeUndefined();
+  });
+
+  it("L5: outputRuleProblems refuses an unanchored id, an unbounded or negative list and an unknown type", () => {
+    expect(outputRuleProblems({ a: { type: "id", pattern: "^[a-z]{1,9}$" } })).toEqual([]);
+    expect(outputRuleProblems({ a: { type: "id", pattern: "[a-z]+" } })).not.toEqual([]);
+    expect(outputRuleProblems({ a: { type: "list", max: -1, item: {} } })).not.toEqual([]);
+    expect(outputRuleProblems({ a: { type: "list", max: 1e9, item: {} } })).not.toEqual([]);
+    expect(
+      outputRuleProblems({
+        a: { type: "list", max: 5, item: { b: { type: "id", pattern: ".*" } } },
+      }),
+    ).not.toEqual([]);
+    expect(outputRuleProblems({ a: { type: "text" } } as never)).not.toEqual([]);
   });
 });

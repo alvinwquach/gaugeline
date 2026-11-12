@@ -28,6 +28,7 @@ const ENTRY = registerQueryAllow({
   docs: { url: "https://vendor.example/docs/mcp", checked: null },
 });
 const URL_OK = "https://mcp.vendor.example/mcp?read_only=true&project_ref=abcdefghijklmnopqrst";
+const MINE = { projectRef: "abcdefghijklmnopqrst" };
 // Built at run time so no key-shaped string sits in the repository (push protection).
 const TOKEN = ["tok", "en", "_", "fake", "0123456789", "abcdef"].join("");
 
@@ -91,6 +92,7 @@ describe("fetcher.query with an mcp-jsonrpc entry", () => {
     const q = fetcher.query!;
     const init = await q(URL_OK, {
       allow: ENTRY.id,
+      configured: MINE,
       headers: auth,
       body: {
         jsonrpc: "2.0",
@@ -108,12 +110,14 @@ describe("fetcher.query with an mcp-jsonrpc entry", () => {
     const headers = { ...auth, "mcp-session-id": session! };
     await q(URL_OK, {
       allow: ENTRY.id,
+      configured: MINE,
       headers,
       body: { jsonrpc: "2.0", method: "notifications/initialized" },
     });
     const list = readRpcAnswer(
       await q(URL_OK, {
         allow: ENTRY.id,
+        configured: MINE,
         headers,
         body: { jsonrpc: "2.0", id: 2, method: "tools/list" },
       }),
@@ -128,6 +132,7 @@ describe("fetcher.query with an mcp-jsonrpc entry", () => {
     const answer = readRpcAnswer(
       await q(URL_OK, {
         allow: ENTRY.id,
+        configured: MINE,
         headers,
         body: {
           jsonrpc: "2.0",
@@ -167,9 +172,12 @@ describe("fetcher.query with an mcp-jsonrpc entry", () => {
       },
       { jsonrpc: "2.0", id: 3, method: "resources/read", params: { uri: "file:///etc/passwd" } },
     ]) {
-      const err = await fetcher.query!(URL_OK, { allow: ENTRY.id, headers: auth, body }).catch(
-        (e: unknown) => e,
-      );
+      const err = await fetcher.query!(URL_OK, {
+        allow: ENTRY.id,
+        configured: MINE,
+        headers: auth,
+        body,
+      }).catch((e: unknown) => e);
       expect(err).toBeInstanceOf(QueryRefusedError);
       expect(String((err as Error).message)).not.toContain(TOKEN);
     }
@@ -185,6 +193,7 @@ describe("fetcher.query with an mcp-jsonrpc entry", () => {
     ]) {
       const err = await fetcher.query!(url, {
         allow: ENTRY.id,
+        configured: MINE,
         body: { jsonrpc: "2.0", id: 2, method: "tools/list" },
       }).catch((e: unknown) => e);
       expect(err, url).toBeInstanceOf(QueryRefusedError);
@@ -201,6 +210,7 @@ describe("fetcher.query with an mcp-jsonrpc entry", () => {
     const list = readRpcAnswer(
       await fetcher.query!(URL_OK, {
         allow: ENTRY.id,
+        configured: MINE,
         body: { jsonrpc: "2.0", id: 2, method: "tools/list" },
       }),
       2,
@@ -222,6 +232,7 @@ describe("fetcher.query with an mcp-jsonrpc entry", () => {
     };
     const err = await createFetcher({ transport }).query!(URL_OK, {
       allow: ENTRY.id,
+      configured: MINE,
       headers: auth,
       body: { jsonrpc: "2.0", id: 2, method: "tools/list" },
     }).catch((e: unknown) => e);
@@ -240,6 +251,7 @@ describe("fetcher.query with an mcp-jsonrpc entry", () => {
       });
     const hop = await createFetcher({ transport }).query!(URL_OK, {
       allow: ENTRY.id,
+      configured: MINE,
       maxBytes: 1024,
       body: { jsonrpc: "2.0", id: 2, method: "tools/list" },
     });
@@ -254,6 +266,7 @@ describe("fetcher.query with an mcp-jsonrpc entry", () => {
     };
     const err = await createFetcher({ transport, timeoutMs: 50 }).query!(URL_OK, {
       allow: ENTRY.id,
+      configured: MINE,
       headers: auth,
       body: { jsonrpc: "2.0", id: 2, method: "tools/list" },
     }).catch((e: unknown) => e);

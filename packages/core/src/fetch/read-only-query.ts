@@ -1,5 +1,6 @@
 import { GqlSyntaxError, parseGraphql } from "../query/graphql-parse.js";
 import {
+  mcpAddressRuleProblems,
   mcpBodyProblem,
   mcpShapeProblems,
   queryOptionProblems,
@@ -333,7 +334,8 @@ export function allowProblems(
     const p = shape.persisted;
     if (p !== undefined && (!Array.isArray(p) || p.some((x) => typeof x !== "string" || x === "")))
       out.push("persisted is a list of the stored query ids the vendor documents as reads");
-  } else if (shape?.kind === "mcp-jsonrpc") out.push(...mcpShapeProblems(shape));
+  } else if (shape?.kind === "mcp-jsonrpc")
+    out.push(...mcpShapeProblems(shape), ...mcpAddressRuleProblems(a));
   else out.push("the body shape must be graphql-query, json-query or mcp-jsonrpc");
   if (a.query !== undefined) {
     if (shape?.kind !== "mcp-jsonrpc")
@@ -515,6 +517,7 @@ export function addressProblem(
   url: URL,
   allow: ReadOnlyQueryAllow,
   configuredHost?: string,
+  configured?: Readonly<Record<string, string>>,
 ): string | undefined {
   if (url.protocol !== "https:") return "a query goes over https only";
   if (url.username !== "" || url.password !== "") return "the address carries credentials";
@@ -528,7 +531,7 @@ export function addressProblem(
   if (allow.query === undefined) {
     if (url.search !== "") return "the address has a query string";
   } else {
-    const why = queryStringProblem(url.searchParams, allow.query);
+    const why = queryStringProblem(url.searchParams, allow.query, configured);
     if (why !== undefined) return why;
   }
   if (!matchesPath(allow.path, url.pathname))
@@ -545,12 +548,14 @@ export function queryRefusal(
   allow: ReadOnlyQueryAllow,
   body: unknown,
   configuredHost?: string,
+  /** For an mcp-jsonrpc entry: the person's configured option values, by setting name ({ projectRef }). */
+  configured?: Readonly<Record<string, string>>,
 ): string | undefined {
   // The fetcher passes the registry's stored entry (method fixed to POST); a bare entry (a unit
   // test's fixture) has no method key. Either way a method that is there must be POST.
   const entry = allowProblems(allow, { stored: "method" in allow });
   if (entry.length > 0) return `allowlist entry ${String(allow.id)} is not valid: ${entry[0]}`;
-  return addressProblem(url, allow, configuredHost) ?? bodyProblem(allow, body);
+  return addressProblem(url, allow, configuredHost, configured) ?? bodyProblem(allow, body);
 }
 
 /** A POST that was not sent because it is not a documented read-only query. The message never holds the address's path or query. */
