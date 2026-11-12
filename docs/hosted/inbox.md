@@ -29,7 +29,7 @@ The agent connects with its own database role, `gaugeline_agent`. It may insert 
 organisation its credentials name, of a kind the writer knows (`pull_request`, `email`, `sanity_draft`),
 in nobody's name. It cannot read the inbox, change a draft or record a decision. That is a missing
 privilege, not an `if` in the app, so a refactor cannot skip it. This is the output of the seeded test
-database (`apps/hosted/db/__tests__/harness.ts` plus migration `0003_drafts_inbox.sql`):
+database (`apps/hosted/db/__tests__/harness.ts` plus migration `0004_drafts_inbox.sql`):
 
 ```sql
 -- as the agent role, with an agent's claims for Northgate Studio
