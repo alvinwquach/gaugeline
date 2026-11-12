@@ -57,6 +57,8 @@ export interface SiteContext {
   sitemaps: SitemapRead[];
   /** Page addresses listed by the sitemaps read, deduplicated, in document order. */
   sitemapUrls: string[];
+  /** Framework addresses (build output, payloads) the sitemaps list: counted as ignored, kept only to be named. */
+  sitemapFrameworkUrls?: string[];
   /** xhtml:link hreflang alternates the sitemaps list, by page. */
   sitemapAlternates: { loc: string; hreflang: string; href: string }[];
   /** The sampled entries, in sitemapUrls order; [] for one that could not be reached. */
@@ -426,7 +428,8 @@ export async function buildSiteContext({
   );
   // A sitemap that lists framework addresses: counted as ignored, never sampled, and left out of
   // sitemapUrls so each sample lines up with the address it was taken from.
-  budget.take("frameworkAddresses", urls.filter(isFrameworkUrl));
+  const frameworkUrls = urls.filter(isFrameworkUrl);
+  budget.take("frameworkAddresses", frameworkUrls);
   const pageUrls = urls.filter((u) => !isFrameworkUrl(u));
   const sampled = budget.take("sitemapPages", pageUrls);
   const sitemapSample = await Promise.all(
@@ -438,6 +441,7 @@ export async function buildSiteContext({
     robotsState: state,
     sitemaps,
     sitemapUrls: pageUrls,
+    sitemapFrameworkUrls: frameworkUrls,
     sitemapAlternates: alternates,
     sitemapSample,
     feeds: await feedsRead,

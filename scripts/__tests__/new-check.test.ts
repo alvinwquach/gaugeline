@@ -131,6 +131,8 @@ beforeAll(() => {
     "packages/fixtures",
     // Core's cassette tests import the testkit.
     "packages/testkit",
+    // Core's document tests build their PDFs and read them with the documents package.
+    "packages/documents",
     "docs/check-ids.lock.json",
     "docs/checks.data.json",
     ".changeset/config.json",

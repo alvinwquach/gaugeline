@@ -21,6 +21,7 @@ import {
   DOCS_CLOCK,
   extractExamples,
   normalise,
+  offlineEnv,
   parseCommand,
   runExample,
   type Example,
@@ -244,6 +245,19 @@ describe("docs examples: fixed clock", () => {
   }, 30_000);
 });
 
+describe("docs examples: settings files", () => {
+  it("a fixture that names settings files in gaugeline.images.json runs with those files beside it", async () => {
+    const page = readFileSync(join(repoRoot, "docs/guides/image-optimizers.md"), "utf8");
+    const e = extractExamples(page, "docs/guides/image-optimizers.md").find(
+      (x) => x.fixture === "image-optimizer",
+    ) as Example;
+    expect(e).toBeDefined();
+    const r = await runExample(e, bin);
+    expect(r.stderr).not.toContain("which is not a file");
+    expect(compare(e, r)).toBeNull();
+  }, 30_000);
+});
+
 describe("docs examples: edge cases", () => {
   it("an environment variable prefix is parsed into the child environment and pointed at a local sink", async () => {
     expect(
@@ -332,5 +346,45 @@ describe("docs examples: edge cases", () => {
     await expect(runExample(e, bin)).rejects.toThrow(
       /no fixture "no-such-fixture"\. Available: .*clean.*quick-start/,
     );
+  });
+});
+
+describe("an example never reaches the live internet: unit", () => {
+  it("a name that is not a fixture host does not resolve, so the output does not depend on the network", () => {
+    const env = { ...process.env, ...offlineEnv() };
+    const r = spawnSync(
+      process.execPath,
+      [
+        "-e",
+        "require('node:dns/promises').lookup('cdn.sanity.io').then(() => process.exit(3), (e) => process.exit(e.code === 'ENOTFOUND' ? 0 : 4))",
+      ],
+      { env, encoding: "utf8" },
+    );
+    expect(r.status, r.stderr).toBe(0);
+  });
+
+  it("the preload path survives NODE_OPTIONS parsing, whatever its separators (a Windows path has backslashes)", () => {
+    // Node reads NODE_OPTIONS as words split on spaces; inside double quotes a backslash escapes the next character.
+    const words = (text: string): string[] => {
+      const out: string[] = [];
+      let word = "";
+      let quoted = false;
+      for (let i = 0; i < text.length; i++) {
+        const c = text[i] as string;
+        if (c === "\\" && quoted) word += text[++i] ?? "";
+        else if (c === '"') quoted = !quoted;
+        else if (c === " " && !quoted) {
+          if (word) out.push(word);
+          word = "";
+        } else word += c;
+      }
+      if (word) out.push(word);
+      return out;
+    };
+    const winPath = "D:\\a\\gaugeline\\my repo\\helpers\\map-hosts.cjs";
+    const found = words(offlineEnv(winPath).NODE_OPTIONS ?? "");
+    const at = found.indexOf("--require");
+    const path = at >= 0 ? found[at + 1] : found.find((w) => w.startsWith("--require="))?.slice(10);
+    expect(path).toBe(winPath);
   });
 });

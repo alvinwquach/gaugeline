@@ -180,7 +180,7 @@ export interface AdapterSettings {
   /** Only `sitecore`: the languages to read, such as `["en", "fr-CA"]`. Default: `["en"]`. */
   languages?: readonly string[] | undefined;
   /**
-   * Only `datocms`: the GraphQL collection to read for each content type, because the Content Delivery API has no
+   * Only `datocms` and `hygraph`: the GraphQL collection to read for each content type, because the Content Delivery API has no
    * list of types to ask: `{ "classes": { "collection": "allClasses", "slug": "slug" } }`. `slug` names the field
    * that holds the item's slug; without it the item has none.
    */
@@ -191,6 +191,11 @@ export interface AdapterSettings {
    * whether it can also read drafts.
    */
   expectPublishedOnly?: boolean | undefined;
+  /**
+   * Only `hygraph`: the owner lets the draft-stage check read the DRAFT stage (ids and slugs only). It also needs
+   * --owner-consent and a token that may read DRAFT. Without both, the DRAFT stage is never asked for.
+   */
+  readDraftStage?: boolean | undefined;
   /**
    * Only `datocms`: the check names the ids of the unpublished records it finds (at most five). Without it a
    * finding is a count.

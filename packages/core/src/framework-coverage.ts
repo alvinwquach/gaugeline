@@ -10,6 +10,7 @@ import { isGatsbySite } from "./gatsby/detect.js";
 import { isHydrogenSite } from "./hydrogen/detect.js";
 import { frameworkOf as qwikOrSolidStart } from "./checks/qwik-solid-shared.js";
 import { isNextSite } from "./next/detect.js";
+import { isNuxtSite } from "./nuxt/detect.js";
 import { isRemixSite } from "./remix/detect.js";
 import type { PageSnapshot } from "./snapshot.js";
 import { generatorOf } from "./static-generators/detect.js";
@@ -17,7 +18,7 @@ import { isSveltekitSite } from "./sveltekit/detect.js";
 
 /**
  * True when the page's framework pack has its own check for a preview or placeholder canonical,
- * og:url and sitemap (next-, astro-, sveltekit-, angular-, gatsby-, hydrogen-, remix-, qwik-solid- and static-preview-canonical).
+ * og:url and sitemap (next-, astro-, sveltekit-, angular-, gatsby-, hydrogen-, remix-, nuxt-, qwik-solid- and static-preview-canonical).
  * host-preview-named and host-preview-indexable then leave those three places to that check.
  * A pack without such a check (and a site no pack recognises) is not listed: the generic checks
  * are the only ones that report there.
@@ -31,6 +32,7 @@ export function frameworkCoversPreviewCanonical(page: PageSnapshot): boolean {
     isGatsbySite(page) ||
     isHydrogenSite(page) ||
     isRemixSite(page) ||
+    isNuxtSite(page) ||
     qwikOrSolidStart(page) !== undefined ||
     generatorOf(page) !== undefined
   );
