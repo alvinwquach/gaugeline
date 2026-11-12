@@ -2,8 +2,8 @@
 
 The hosted version of Gaugeline (in progress, not released) opens with an email link. There are no
 passwords. This page covers the first part of "Sign in, and the dashboard": signing in, switching
-organisation, and the page every signed-in person lands on. The dashboard itself (sites worst first,
-and what happened last night) comes in the next two changes.
+organisation, and the page every signed-in person lands on. The dashboard itself is on [its own page](/hosted/dashboard); "what happened last night" comes in the next
+change.
 
 ## An example: two agencies, one login
 
@@ -86,7 +86,7 @@ are a member of it, so a forged cookie changes nothing.
 - Text a checked site chose (a finding's title or evidence line) is shown as text: cleaned with the same
   helper the CLI uses before anything leaves the engine (`sanitise` in `@gaugeline/core`: hidden tag
   characters and bidirectional controls removed, control characters shown, capped), then escaped. It is
-  never markup. The first change shows no findings yet; the next ones do.
+  never markup.
 - Nothing secret is in a page. The signing secret, the database address and the session token never
   appear in a response (a test checks every page for all three).
 
