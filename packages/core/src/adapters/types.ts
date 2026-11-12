@@ -198,6 +198,12 @@ export interface AdapterSettings {
    */
   showDraftIds?: boolean | undefined;
   /**
+   * Only `prismic`: the owner agrees that Gaugeline reads the repository's releases (unpublished content) with the
+   * access token, to find documents in a release that are already live. Switches on the check that asks (still only
+   * with --owner-consent).
+   */
+  checkReleases?: boolean | undefined;
+  /**
    * Only `directus`: collections the owner says visitors with no token must not be able to read. Switches on the
    * check that asks, as a visitor, whether the Public role can list them (still only with --owner-consent).
    */
