@@ -1562,6 +1562,12 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
             fetcher,
           )
         : undefined;
+      // The Sanity image checks that read the dataset (crop and hotspot, alt text, upload sizes) run when
+      // gaugeline.adapters.json names sanity. SANITY_PROJECT_ID, SANITY_DATASET and SANITY_TOKEN (a Viewer
+      // token) are copied here; the token goes in a header to the project's own query address, GET only.
+      const sanityImages = readAdaptersConfig(cwd)?.adapters.some((a) => a.id === "sanity")
+        ? { env: freezeEnv(io.env ?? {}, SANITY_ENV_VARS) }
+        : undefined;
       // What the handoff checks read: the registry's record through the renewals reader (which only asks
       // RDAP here: no token goes to it), then the provider reads, each with its own key from the environment.
       const handoff = handing
@@ -1599,6 +1605,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         ...(libraries ? { libraries } : {}),
         ...(wordpress ? { wordpress } : {}),
         ...(published ? { published } : {}),
+        ...(sanityImages ? { sanityImages } : {}),
         ...(backups ? { backups } : {}),
         ...(args.command === "renewals" || handing ? { tolerateUnreachable: true } : {}),
         // The walking skeleton (0.0.x) runs one check; an injected registry is used as given.
