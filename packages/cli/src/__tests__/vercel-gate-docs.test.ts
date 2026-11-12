@@ -63,6 +63,23 @@ describe("the Vercel gate, with the built CLI", () => {
     }
   });
 
+  it("--format sarif keeps the exit code and writes a SARIF log with the noindex result", async () => {
+    const site = await startFixture("vercel-noindex-preview");
+    try {
+      const r = await runBin(
+        ["deploy-gate", site.origin, "--allow-private", "--block", "--format", "sarif"],
+        { VERCEL_ENV: "preview" },
+        { cwd: dir },
+      );
+      expect(r.status).toBe(1);
+      const log = JSON.parse(r.stdout) as { version: string; runs: { results: unknown[] }[] };
+      expect(log.version).toBe("2.1.0");
+      expect(JSON.stringify(log.runs[0]?.results)).toMatch(/noindex/i);
+    } finally {
+      await site.close();
+    }
+  });
+
   it("a clean preview: exit 0 with --block", async () => {
     const site = await startFixture("clean");
     try {

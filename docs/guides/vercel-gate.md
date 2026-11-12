@@ -114,9 +114,9 @@ checks their signature, and a place to run it. None of that exists yet, and noth
 
 ## What the findings look like
 
-Findings are in the job log, in the same format as every Gaugeline run. For a durable copy, run the gate
-with `--json` in a step of your own and keep the file as a workflow artifact; the same formats as a normal
-run are available.
+Findings are in the job log, in the same format as every Gaugeline run. For a durable copy, add
+`--format sarif > gaugeline.sarif` to the command (the exit code does not change) and keep the file as a
+workflow artifact or upload it to GitHub code scanning; see [SARIF and JUnit](../ci.md#sarif-and-junit-results-your-ci-already-reads).
 
 ## Exit codes
 
