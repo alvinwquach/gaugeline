@@ -7,7 +7,9 @@
  * claims, so row-level security decides what they see and whether they may decide (a client viewer sees no
  * drafts at all). The server checks its login with connectionSkipsRls() once at start-up (db/audit.ts).
  */
+import { createHash } from "node:crypto";
 import type postgres from "postgres";
+import { checkDraftPayload, isDraftKind } from "./kinds.js";
 
 type Tx = postgres.TransactionSql;
 type Json = Record<string, unknown>;
@@ -17,7 +19,7 @@ export interface Person {
 }
 
 export type Choice =
-  { kind: "approve" } | { kind: "edit"; payload: Json } | { kind: "decline"; reason?: string };
+  { kind: "approve" } | { kind: "edit"; payload: unknown } | { kind: "decline"; reason?: string };
 
 export interface WaitingDraft {
   id: string;
@@ -34,19 +36,26 @@ export interface ApplyJob {
   draftId: string;
   decisionId: string;
   kind: string;
-  /** The approved payload: the draft's own, or the edited one. */
-  payload: Json;
+  /** The approved payload exactly as the database holds it (jsonb text): the draft's own, or the edit. */
+  payloadText: string;
+  /** The approval row's SHA-256 of payloadText, computed by the database. */
+  payloadSha256: string;
 }
 
 /**
- * Where an approval puts its apply job. The jobs table belongs to G36: its implementation inserts the job
- * in the same transaction as the decision, keyed on the draft id so a retry cannot add a second one.
+ * Where an approval puts its apply job. Contract: called inside the decision's transaction, at most once
+ * per draft (the unique decision makes a second call impossible), and the job must commit or roll back
+ * with that transaction. The jobs table belongs to G36: its implementation inserts the job with `tx`.
  */
 export interface ApplyQueue {
   enqueueApply(tx: Tx, job: ApplyJob): Promise<void>;
 }
 
-/** A stand-in queue for tests and local runs, keyed on the draft id (a Map: one job per draft). */
+/**
+ * A stand-in queue for tests and local runs, keyed on the draft id (a Map: one job per draft). It does
+ * NOT honour the contract's last clause: it ignores `tx`, so a job stays here if the transaction later
+ * rolls back. decide() enqueues as its last statement for that reason; production uses the jobs table.
+ */
 export class MemoryApplyQueue implements ApplyQueue {
   readonly jobs = new Map<string, ApplyJob>();
   async enqueueApply(_tx: Tx, job: ApplyJob): Promise<void> {
@@ -54,10 +63,23 @@ export class MemoryApplyQueue implements ApplyQueue {
   }
 }
 
+/**
+ * What the worker does first with a job (ADR-0010 part 3): the payload must hash to the approval and
+ * match its kind's fixed shape. Returns the payload; throws otherwise. The writer package enforces it.
+ */
+export function verifyApplyJob(job: ApplyJob): Json {
+  const sha = createHash("sha256").update(job.payloadText, "utf8").digest("hex");
+  if (sha !== job.payloadSha256) throw new Error("the job's payload is not the one approved");
+  const check = checkDraftPayload(job.kind, JSON.parse(job.payloadText));
+  if (!check.ok) throw new Error(`the job's payload does not match ${job.kind}`);
+  return check.value;
+}
+
 export type DecideResult =
   | { status: "recorded"; decision: "approved" | "edited" | "declined"; decisionId: string }
   | { status: "already-decided"; decision: string; decidedBy: string | null }
   | { status: "confirm-closed-findings"; closedFindingIds: string[] }
+  | { status: "invalid-payload"; problems: string[] }
   | { status: "not-found" };
 
 /** Run `fn` as the signed-in person under row-level security, and commit. */
@@ -93,31 +115,42 @@ export async function listWaiting(sql: postgres.Sql, who: Person): Promise<Waiti
 }
 
 /**
- * The findings a draft fixes that have since closed: a later finished run of the same site no longer
- * reports their fingerprint. Approving such a draft needs a second, confirmed click.
+ * The draft's findings that have since closed: a later run of the same site that finished and was not
+ * partial no longer reports their fingerprint. Approving such a draft needs a second, confirmed click.
  */
-async function closedFindings(tx: Tx, findingIds: string[]): Promise<string[]> {
+async function closedFindings(tx: Tx, draftSite: string, findingIds: string[]): Promise<string[]> {
   if (findingIds.length === 0) return [];
   const rows = await tx`
     select f.id from public.findings f join public.runs r on r.id = f.run_id
-    where f.id = any(${findingIds}::uuid[])
+    where f.id = any(${findingIds}::uuid[]) and f.site_id = ${draftSite}
       and exists (
         select 1 from public.runs later
-        where later.site_id = f.site_id and later.finished_at is not null and later.started_at > r.started_at
+        where later.site_id = f.site_id and later.finished_at is not null
+          and later.summary ->> 'partial' is distinct from 'true'
+          and later.started_at > r.started_at
           and not exists (select 1 from public.findings g
                           where g.run_id = later.id and g.fingerprint = f.fingerprint))
     order by f.id`;
   return rows.map((r) => r.id as string);
 }
 
-function isObject(v: unknown): v is Json {
-  return typeof v === "object" && v !== null && !Array.isArray(v);
+/** How many of the ids are findings of this draft's organisation and site that this person can see. */
+async function ownFindings(tx: Tx, org: string, site: string, ids: string[]): Promise<boolean> {
+  const unique = [...new Set(ids)];
+  if (unique.length === 0) return true;
+  const [row] = await tx`select count(*)::int as n from public.findings
+    where id = any(${unique}::uuid[]) and org_id = ${org} and site_id = ${site}`;
+  return row!.n === unique.length;
 }
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /**
- * Record one person's choice about one draft. The decision and the apply job are written in one
- * transaction. A second choice for the same draft (a double click, a colleague at the same moment) meets
- * the unique index on decisions and reports the decision that won; it writes nothing and enqueues nothing.
+ * Record one person's choice about one draft. The payload being approved (the draft's, or the edit) is
+ * checked against its kind's fixed shape first, and the draft's findings must be its own site's. The
+ * decision and the apply job are written in one transaction. A second choice for the same draft (a double
+ * click, a colleague at the same moment) meets the unique index on decisions and reports the decision that
+ * won; it writes nothing and enqueues nothing.
  */
 export async function decide(
   sql: postgres.Sql,
@@ -127,20 +160,36 @@ export async function decide(
   queue: ApplyQueue,
   options: { confirmClosed?: boolean } = {},
 ): Promise<DecideResult> {
-  if (choice.kind === "edit" && !isObject(choice.payload)) {
-    throw new Error("an edited payload must be a JSON object");
-  }
+  if (!UUID.test(draftId)) return { status: "not-found" };
   return asPerson(sql, who, async (tx): Promise<DecideResult> => {
     const [draft] = await tx`
-      select d.org_id, d.kind, d.payload, d.finding_ids, s.decision, s.decided_by
+      select d.org_id, d.site_id, d.kind, d.payload, d.payload::text as payload_text, d.finding_ids,
+        s.decision, s.decided_by
       from public.drafts d join public.draft_state s on s.draft_id = d.id where d.id = ${draftId}`;
     if (!draft) return { status: "not-found" };
     if (draft.decision !== "pending") {
       return { status: "already-decided", decision: draft.decision, decidedBy: draft.decided_by };
     }
-    if (choice.kind !== "decline" && !options.confirmClosed) {
-      const closed = await closedFindings(tx, draft.finding_ids as string[]);
-      if (closed.length > 0) return { status: "confirm-closed-findings", closedFindingIds: closed };
+    const kind = draft.kind as string;
+    const findingIds = draft.finding_ids as string[];
+    if (choice.kind !== "decline") {
+      if (!isDraftKind(kind)) return { status: "invalid-payload", problems: [`kind ${kind}`] };
+      const check = checkDraftPayload(
+        kind,
+        choice.kind === "edit" ? choice.payload : draft.payload,
+      );
+      if (!check.ok) return { status: "invalid-payload", problems: check.problems };
+      if (!(await ownFindings(tx, draft.org_id, draft.site_id, findingIds))) {
+        return {
+          status: "invalid-payload",
+          problems: ["finding_ids are not this site's findings"],
+        };
+      }
+      if (!options.confirmClosed) {
+        const closed = await closedFindings(tx, draft.site_id, findingIds);
+        if (closed.length > 0)
+          return { status: "confirm-closed-findings", closedFindingIds: closed };
+      }
     }
     const decision =
       choice.kind === "approve" ? "approved" : choice.kind === "edit" ? "edited" : "declined";
@@ -150,7 +199,7 @@ export async function decide(
       insert into public.decisions (org_id, draft_id, decision, edited_payload, reason, decided_by)
       values (${draft.org_id}, ${draftId}, ${decision}, ${edited}, ${reason}, ${who.userId})
       on conflict (draft_id) where decision in ('approved', 'edited', 'declined') do nothing
-      returning id`;
+      returning id, payload_sha256, edited_payload::text as edited_text`;
     if (!row) {
       const [won] = await tx`
         select decision, decided_by from public.draft_state where draft_id = ${draftId}`;
@@ -162,8 +211,9 @@ export async function decide(
         orgId: draft.org_id as string,
         draftId,
         decisionId,
-        kind: draft.kind as string,
-        payload: choice.kind === "edit" ? choice.payload : (draft.payload as Json),
+        kind,
+        payloadText: (row.edited_text ?? draft.payload_text) as string,
+        payloadSha256: row.payload_sha256 as string,
       });
     }
     return { status: "recorded", decision, decisionId };
