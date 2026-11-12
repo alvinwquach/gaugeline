@@ -4,7 +4,8 @@
 
 The hosted version of Gaugeline (in progress, not released) opens on a list of your sites, worst first.
 You see which site got worse overnight and what the new problem is, without opening anything. Signing in is
-covered in [sign in and the shell](/hosted/sign-in).
+covered in [sign in and the shell](/hosted/sign-in), and [what happened last night](/hosted/last-night)
+lists the new, still open and closed findings behind each row.
 
 ## An example: four sites, one morning
 

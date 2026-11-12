@@ -6,6 +6,8 @@ export interface Shell {
   email: string;
   memberships: Membership[];
   current: Membership;
+  /** Which page the header marks as current. */
+  active?: "sites" | "last-night";
 }
 
 /** No script anywhere, no framing, styles only from this app's own stylesheet, forms only to this app. */
@@ -69,7 +71,10 @@ function header(shell: Shell): SafeHtml {
   const { current, memberships } = shell;
   return markup`<header class="bar">
     <a class="brand" href="/">Gaugeline</a>
-    <nav aria-label="Main"><a href="/" aria-current="page">Sites</a></nav>
+    <nav aria-label="Main">
+      <a href="/"${shell.active === "last-night" ? "" : markup` aria-current="page"`}>Sites</a>
+      <a href="/last-night"${shell.active === "last-night" ? markup` aria-current="page"` : ""}>Last night</a>
+    </nav>
     <div class="who">
       ${
         memberships.length > 1
