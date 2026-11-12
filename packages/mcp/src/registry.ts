@@ -98,7 +98,7 @@ export const TOOLS = {
     kind: "draft",
     title: "Draft a fix",
     summary:
-      "Drafts the change that would fix a finding from this session, as text for a person or a coding agent to apply. Makes no request.",
+      "Drafts the change that would fix a finding from this session, as text for a person or a coding agent to apply: a unified diff where the run holds what it needs (a missing viewport or canonical tag, a missing robots.txt), otherwise the change in words. Makes no request.",
     pageText: true,
     requests: false,
     inputSchema: draftFixInput,
@@ -113,4 +113,21 @@ export function describeTool(def: ToolDef): string {
   return [`[${def.kind}]`, def.summary, KIND_NOTE[def.kind], def.pageText ? UNTRUSTED_NOTE : ""]
     .filter(Boolean)
     .join(" ");
+}
+
+/**
+ * Refuses a registry with a tool that has no kind of `read` or `draft`. The server calls it before it
+ * registers anything, so an unlabelled tool cannot be served; a test calls it with one to prove it.
+ */
+export function assertLabelled(tools: Record<string, object>): void {
+  const bad = Object.entries(tools)
+    .filter(([, t]) => {
+      const kind = (t as { kind?: unknown }).kind;
+      return kind !== "read" && kind !== "draft";
+    })
+    .map(([name]) => name);
+  if (bad.length > 0)
+    throw new Error(
+      `Every tool needs kind "read" or "draft". Missing or invalid on: ${bad.join(", ")}.`,
+    );
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { TOOLS, describeTool } from "../registry.js";
+import { TOOLS, assertLabelled, describeTool } from "../registry.js";
 import { UNTRUSTED_NOTE } from "../agent-text.js";
 import { connect } from "./helpers.js";
 
@@ -68,5 +68,12 @@ describe("the tool registry", () => {
     await client.callTool({ name: "list_checks", arguments: {} });
     expect(JSON.stringify((await client.listTools()).tools)).toBe(first);
     await close();
+  });
+
+  it("fails for a tool with no read or draft label", () => {
+    expect(() => assertLabelled(TOOLS)).not.toThrow();
+    expect(() => assertLabelled({ ...TOOLS, sneaky: { run: () => 1 } })).toThrow(/sneaky/);
+    expect(() => assertLabelled({ ...TOOLS, wrong: { kind: "write" } })).toThrow(/wrong/);
+    expect(() => assertLabelled({ ...TOOLS, empty: { kind: undefined } })).toThrow(/empty/);
   });
 });

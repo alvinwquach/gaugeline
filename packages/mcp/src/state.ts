@@ -35,6 +35,8 @@ export interface StoredRun {
   failed: string[];
   couldNotCheck: Result["couldNotCheck"];
   registry: CheckRegistry;
+  /** Site runs: the page as served (capped), so draft_fix can build a patch against it. */
+  page?: { url: string; html: string };
 }
 
 /** How many runs one server remembers. A Map keeps insertion order, so the oldest is the first key. */

@@ -1,5 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { TOOLS, describeTool, type ToolDef } from "./registry.js";
+import { TOOLS, assertLabelled, describeTool, type ToolDef } from "./registry.js";
 import { contextFor, createState, type ServerOptions } from "./state.js";
 import { asToolError } from "./tools/shared.js";
 
@@ -11,6 +11,7 @@ export const SERVER_VERSION = "0.1.0";
  * functions as the CLI, and every request goes through the core fetcher.
  */
 export function createGaugelineServer(options: ServerOptions = {}): McpServer {
+  assertLabelled(TOOLS);
   const state = options.state ?? createState();
   const ctx = contextFor(options, state);
   const server = new McpServer({ name: SERVER_NAME, version: SERVER_VERSION });

@@ -4,14 +4,14 @@ Let AI assistants check a site, and draft a fix, before anyone changes anything.
 
 `gaugeline-mcp` is a separate small package that speaks the [Model Context Protocol](https://modelcontextprotocol.io/). Your assistant (Claude Desktop, Claude Code, Cursor and the rest) starts it and gets six tools. It runs the same checks as `npx gaugeline`, through the same code, and it is read-only: it never writes a file, publishes, merges or changes a site.
 
-| Tool              | Kind    | Does                                                                                                            |
-| ----------------- | ------- | --------------------------------------------------------------------------------------------------------------- |
-| `run_check`       | `read`  | Checks one page and its site: `GET` and `HEAD` only. Probing checks need `ownerConsent: true` on that one call. |
-| `list_checks`     | `read`  | Lists the checks, by area or framework. No request.                                                             |
-| `explain_finding` | `read`  | Says what a finding catches, why it matters, how to fix it and how big the fix is. No request.                  |
-| `compare_runs`    | `read`  | Which findings are new, which are fixed, between two runs in the session. No request.                           |
-| `plan_check`      | `read`  | Checks a launch-plan file in the server's folder against a built site, the way `gaugeline plan --base` does.    |
-| `draft_fix`       | `draft` | Returns the change that would fix a finding as plain text. It applies nothing; a person or a coding agent does. |
+| Tool              | Kind    | Does                                                                                                                                                                            |
+| ----------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `run_check`       | `read`  | Checks one page and its site: `GET` and `HEAD` only. Probing checks need `ownerConsent: true` on that one call.                                                                 |
+| `list_checks`     | `read`  | Lists the checks, by area or framework. No request.                                                                                                                             |
+| `explain_finding` | `read`  | Says what a finding catches, why it matters, how to fix it and how big the fix is. No request.                                                                                  |
+| `compare_runs`    | `read`  | Which findings are new, which are fixed, between two runs in the session. No request.                                                                                           |
+| `plan_check`      | `read`  | Checks a launch-plan file in the server's folder against a built site, the way `gaugeline plan --base` does.                                                                    |
+| `draft_fix`       | `draft` | Returns the change that would fix a finding as text: a unified diff for a missing viewport or canonical tag or a missing robots.txt, plain words otherwise. It applies nothing. |
 
 Every description starts with its kind, `[read]` or `[draft]`, so a client that shows only descriptions still shows it. There is no tool that approves, applies, publishes or deploys: assistants plan, people approve. A missing tool cannot be misconfigured.
 
@@ -56,7 +56,7 @@ A freelancer is about to launch a bindery's new site and asks the assistant to l
 }
 ```
 
-The `text` of that evidence is what the page says, labelled as such: the assistant reports it and does not obey it. The assistant can then call `explain_finding` with `21047dd581765f28`, or `draft_fix` for text the freelancer applies. Run it again after the fix and `compare_runs` shows what is fixed.
+The `text` of that evidence is what the page says, labelled as such: the assistant reports it and does not obey it. The assistant can then call `explain_finding` with `21047dd581765f28`, or `draft_fix` for text the freelancer applies. For a page with no viewport tag, `draft_fix` returns a diff that `git apply` accepts; every line quoted from the page has been through the same cleaning as the findings, and a page whose lines cannot be quoted safely gets the change in words instead. Run it again after the fix and `compare_runs` shows what is fixed.
 
 ## Text from the site is data
 

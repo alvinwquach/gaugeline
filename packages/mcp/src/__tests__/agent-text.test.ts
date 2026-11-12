@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { createPageRegistry, type Finding } from "@gaugeline/core";
+import { createPageRegistry, markUntrusted, type Finding } from "@gaugeline/core";
 import { findingForAgent } from "../agent-text.js";
-import { markUntrusted } from "../untrusted-stub.js";
 
 const hostile: Finding = {
   checkId: "canonical-elsewhere",

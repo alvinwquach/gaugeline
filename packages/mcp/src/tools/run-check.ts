@@ -32,6 +32,14 @@ export const runCheckInput = {
 };
 
 /** The checks Gaugeline lists as could-not-run when DNS is off (this server never reads DNS). */
+/** The page as served, kept only if it is HTML and small enough to build a patch against. */
+function pageOf(snapshot: { finalUrl: string; hops: { body?: string; truncated?: boolean }[] }) {
+  const last = snapshot.hops.at(-1);
+  return last?.body !== undefined && last.truncated !== true && last.body.length <= 512 * 1024
+    ? { page: { url: snapshot.finalUrl, html: last.body } }
+    : {};
+}
+
 export async function runCheck(args: z.infer<z.ZodObject<typeof runCheckInput>>, ctx: ToolContext) {
   const registry = createPageRegistry();
   const skip = args.flags?.skip ?? [];
@@ -66,6 +74,7 @@ export async function runCheck(args: z.infer<z.ZodObject<typeof runCheckInput>>,
     failed: [...result.failed.map((f) => f.id), ...dnsOff],
     couldNotCheck: result.couldNotCheck,
     registry,
+    ...pageOf(snapshot),
   });
   const count = (s: string) => result.findings.filter((f) => f.severity === s).length;
   return {

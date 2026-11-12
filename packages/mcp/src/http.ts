@@ -5,13 +5,12 @@
  *   - validate the Host header (DNS rebinding: a page on the web cannot reach a local server through a
  *     name that resolves to 127.0.0.1) and the Origin header (a browser page is refused unless its origin
  *     is on the list; clients that are not browsers send none);
- *   - a token, when one is set, is required on every request (Authorization: Bearer), compared in constant time.
+ *   - a token, when one is set, is required on every call (Authorization: Bearer), compared in constant time.
  * Stateless: each request gets its own server and transport, so nothing is shared between callers except
  * the run store and the in-flight limit.
  */
 import { createHash, timingSafeEqual } from "node:crypto";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
-import type { AddressInfo } from "node:net";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 
@@ -153,7 +152,7 @@ export async function startHttp(opts: HttpOptions): Promise<RunningHttp> {
     server.once("error", reject);
     server.listen({ host, port }, resolve);
   });
-  port = (server.address() as AddressInfo).port;
+  port = (server.address() as { port: number }).port;
   const shown = host.includes(":") ? `[${host}]` : host;
   return {
     url: `http://${shown}:${port}${MCP_PATH}`,
