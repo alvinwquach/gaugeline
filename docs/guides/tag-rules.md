@@ -71,6 +71,10 @@ fires two copies of the same GA4 tag, version 0.1.0 prints:
     Trigger "Contact form sent" (form submission): {{Form ID}} equals "contact-form" matches no form on the 3 pages read; nearest that exists: contact-form-2024
 ! Two tags send the same event at the same moment
     "GA4 - generate_lead" and "GA4 - generate_lead (copy)" both send generate_lead to G-TEST0001 on trigger "Newsletter"
+? document-hours-mismatch could not be checked: install @gaugeline/documents to read PDFs (/files/catalogue.pdf)
+? document-item-missing could not be checked: install @gaugeline/documents to read PDFs (/files/catalogue.pdf)
+? document-price-mismatch could not be checked: install @gaugeline/documents to read PDFs (/files/catalogue.pdf)
+? document-unreadable could not be checked: install @gaugeline/documents to read PDFs (/files/catalogue.pdf)
 ? tags-dead-rules could not be checked: trigger "Members renew": it fires only on pages this run did not read (/members/renew) (/)
 ? tags-dead-rules could not be checked: trigger "Scroll depth": SCROLL_DEPTH triggers are not read (/)
 ? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
@@ -84,6 +88,10 @@ and on stderr:
 ```text
 Tag rules: read 8 triggers from GTM-TEST01; 4 can fire, 2 cannot, 2 could not be checked.
 ```
+
+The four `document-*` lines are not about tags. The bookshop's page links a PDF catalogue, and without
+the optional `@gaugeline/documents` package installed beside `gaugeline` Gaugeline says it could not
+read that PDF, rather than skipping it or calling it fine (see [Documents agree](/checks/documents-agree)).
 
 The eight are the export's seven triggers and the built-in All Pages trigger its Google tag uses.
 Each check that passed also prints a `✓ <id>` line, left out above. The output is asserted by

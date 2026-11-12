@@ -67,11 +67,15 @@ export interface MatchResult {
  * A name with no letters or digits (only emoji, say) is the empty string, which is never a key.
  */
 export function normaliseName(s: string): string {
-  return s
-    .normalize("NFKD")
-    .replace(/\p{M}/gu, "")
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}]/gu, "");
+  return (
+    s
+      .normalize("NFKD")
+      .replace(/\p{M}/gu, "")
+      .toLowerCase()
+      // "Salt & Pepper" and "Salt and Pepper" are one name (a menu and a CMS spell it either way).
+      .replace(/\s&\s/g, " and ")
+      .replace(/[^\p{L}\p{N}]/gu, "")
+  );
 }
 
 /** A SKU as a key: trimmed and lower-cased. null when there is nothing left, so empty never matches empty. */
