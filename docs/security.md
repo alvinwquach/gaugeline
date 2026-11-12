@@ -44,6 +44,12 @@ Try: To check a site on your own computer or network, add --allow-private.
 
 To check a development server or a site on your own network, pass `--allow-private`.
 
+## Text from the sites you check
+
+Page text can't change a finding, but findings quote it. Before it reaches an AI assistant, a report
+or a chat message it is cleaned, cut and labelled as data from the checked site: see
+[Text from the sites you check](./security/untrusted-content.md).
+
 ## How much a run requests
 
 Each run samples a fixed amount and never more. The numbers live in one frozen object,
