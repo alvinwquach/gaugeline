@@ -547,6 +547,8 @@ Docs: [Ghost](https://ghost.org/docs/content-api/) [docs].
 
 **Not usable yet.** Ghost reads its key from the address (a query-string parameter), and Gaugeline sends a key only in a header, never in an address. The mapping below is tested against its recorded answers, but it is marked `blocked`, so a run asks for nothing and says why (could-not-check). The owner decides this in open question 53; until then, use the platform's native adapter when it exists, or the sitemap and feeds adapter.
 
+**Checked 12 Nov 2026 against the vendor's own package** (the vendor's docs site could not be reached from the build machine, so this is the package source, not the docs page; the package is the `@tryghost/content-api` npm package, version 1.12.13). It builds every Content API request as `GET <site>/ghost/api/content/<resource>/` and adds the Content API key as the `key` query parameter. The only header it can set for authorisation is `Authorization: GhostMembers`, and that carries a members token, not the Content API key. So no header spelling for the key is known, and no native Ghost adapter is built until the owner decides open question 53. Ghost sites are read through the sitemap and feeds adapter instead: see [Ghost](/docs/integrations/ghost) for what that reads and what it cannot. Nothing here sends a key in an address.
+
 ```json title=ghost.json
 {
   "format": 1,

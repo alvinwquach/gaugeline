@@ -141,6 +141,7 @@ export const UNLISTED: NavPage[] = [
   // Each adapter's page comes from its entry file (pnpm gen:adapters), so a new adapter does not edit this list.
   ...ADAPTER_PAGES,
   { slug: "integrations/recipes/index", title: "Recipes for the generic API adapter" },
+  { slug: "integrations/ghost", title: "Ghost: content checks for sites built on Ghost" },
   { slug: "connectors/listings", title: "Listings off the site" },
   { slug: "checks/documents-agree", title: "Documents agree with the site" },
   { slug: "connectors/postgres", title: "A database as a source: Postgres and Supabase" },
