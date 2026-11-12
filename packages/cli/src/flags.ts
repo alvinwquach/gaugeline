@@ -726,8 +726,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
   {
     name: "suppress",
     type: "string",
-    description:
-      "Snooze a check id for this run; needs --suppress-until and --suppress-reason (repeatable)",
+    description: "Snooze a check id for this run, with an expiry and a reason (repeatable)",
     since: "0.2.0",
     commands: ["check", "launch"],
     multiple: true,
