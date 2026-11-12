@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import type { Result } from "../result.js";
-import { secretsIn } from "../secrets.js";
+import { secretsInValue } from "../secrets.js";
+import { sanitise } from "../untrusted.js";
 import { postJson, safeTarget } from "./post.js";
 
 /**
@@ -42,7 +43,8 @@ function runsAddress(base: string): string | undefined {
 
 /** One line that ends like a sentence. */
 const stop = (s: string): string => {
-  const line = s.replace(/\s+/g, " ").trim();
+  // What the server said is text from a network, printed on a terminal: control and escape characters go.
+  const line = sanitise(s.replace(/\s+/g, " "), 400).text;
   return /[.!?]$/.test(line) ? line : `${line}.`;
 };
 
@@ -68,8 +70,7 @@ export async function uploadResult(
     if (!address)
       return { ok: false, line: `Not uploaded: ${UPLOAD_URL_ENV} must be an https address.` };
     // Findings and evidence lines only; if a key from this environment got in, none of it leaves.
-    const body = JSON.stringify(result);
-    const leaked = secretsIn(body, env);
+    const leaked = secretsInValue(result, env);
     if (leaked.length > 0)
       return {
         ok: false,

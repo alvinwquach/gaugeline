@@ -84,7 +84,11 @@ $ npx gaugeline shop.example --upload
 - If the value of a key from your environment (a variable whose name has KEY, TOKEN, SECRET,
   PASSWORD, WEBHOOK and so on) is anywhere in the result, **nothing is sent** and the line says which
   variable: `Not uploaded: the result contains the value of MY_SERVICE_API_KEY, so nothing was sent.`
-  The value is never printed.
+  The value is never printed. The check reads every decoded string of the result (every field, and the
+  names in `sampled`), so a key with a quote, a backslash or a non-ASCII character is found too, not only
+  a key that looks the same once JSON has escaped it. A string shaped like a key (a Stripe secret key, a
+  Sanity token and the other shapes the `secret-in-js` check knows) stops the upload even when no variable holds it.
+- The text of the server's answer is cleaned of control and escape characters before it is printed.
 - The upload carries an `Idempotency-Key` made from the result, so a CI job that is run again with the
   same result makes one run, not two.
 - With `--json`, stdout is still only the JSON; the line goes to stderr. `--quiet` hides the success line, never a failure.
@@ -115,7 +119,7 @@ Headers: `Authorization` (required), `Idempotency-Key` (optional; 1 to 255 print
 | `403`  | `wrong_site`                                                              | `?site=` is not the token's site                                               |
 | `409`  | `idempotency_key_reused`                                                  | The key was used for a different body                                          |
 | `413`  | `body_too_large`, `too_many_findings`                                     | Over 8 MB, or over 10,000 findings                                             |
-| `422`  | `unsupported_schema`, `secret_in_body`                                    | A schema this API does not take, or a value the service keeps secret           |
+| `422`  | `unsupported_schema`, `secret_in_body`                                    | A schema this API does not take, or a key or token in the body                 |
 
 Every error is `{ "code": "...", "message": "..." }`.
 
@@ -129,9 +133,18 @@ computed by the server with the same function the command line uses for baseline
 same finding from one run to the next. A finding's `source` (a plan row) is not stored. The run keeps the counts, the ids of the failed
 checks and the checks that could not run, not the lists of passed checks.
 
-The server also scans the body for the values of the keys it holds itself (its database and service
-keys) and for the token you just used. If one is there the upload is refused with `secret_in_body`
-and nothing is stored.
+The server scans every decoded string of the body (every field, and object keys; `\u` escapes are
+read as the receiver would read them) for the token you just used and for strings shaped like a key
+(the same shapes the command line looks for). If one is there the upload is refused with
+`secret_in_body` and nothing is stored; the answer does not say which it was and never repeats it.
+It does **not** compare the body with the server's own environment: that would let anyone with a token
+guess at the server's secrets one upload at a time. Comparing with your environment's values is the
+command line's job, because the command line knows them. A NUL character (`\u0000`) anywhere is a
+`400`: the database cannot store it.
+
+**Addresses are text.** The `url` of a finding is whatever address the check reported, and an address
+can be `javascript:` or `data:` text. Anything that shows it as a link (the dashboard, the weekly
+update) must check the scheme and only link `http:` and `https:` addresses.
 
 ## `GET /api/v1/runs`
 
@@ -208,7 +221,7 @@ What the code in this repository does today.
   in `apps/hosted/app/api/v1`. The Next.js app around them (sign-in, the dashboard) is not built yet.
 - There is no screen to make or revoke a token yet; `mintToken` and `revokeToken` in `lib/api/tokens.ts` do
   it, and the database holds only the hash.
-- There is no rate limit yet. The size cap, the 10,000-finding cap and the token are the limits.
+- There is no rate limit yet, and old idempotency keys are not pruned yet. The size cap, the 10,000-finding cap and the token are the limits.
 - Server Actions for what a signed-in person owns (rename a site, invite a member) need sign-in and are not part of this page.
 - Two database logins, two variables, both secrets that stay on the server. `GAUGELINE_MIGRATE_URL` is the
   owner (the role that creates the tables) and only `db:migrate` reads it. `GAUGELINE_DATABASE_URL` is the

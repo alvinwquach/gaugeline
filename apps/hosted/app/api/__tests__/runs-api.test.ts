@@ -17,12 +17,18 @@ import {
   type TestDatabase,
 } from "../../../db/__tests__/harness.js";
 import { getRunFindings, getRuns, postRun } from "../../../lib/api/handlers.js";
+import { encodeCursor } from "../../../lib/api/cursor.js";
 import { mintToken, revokeToken } from "../../../lib/api/tokens.js";
 import { appLogin } from "./app-login.js";
 import { finding, manyFindings, result } from "./helpers.js";
 
 const BASE = "https://hosted.example/api/v1";
-const SECRET_ENV_VALUE = ["Zq9", "Lm2", "Xv7", "Kp4"].join("");
+const SERVER_ENV_VALUE = ["Zq9", "Lm2", "Xv7", "Kp4"].join("");
+// Key-shaped, built at run time (a key in the source would be refused by push protection).
+const KEY_SHAPE = ["sk", "live", "0123456789abcdefABCDEF"].join("_");
+/** Every character as a JSON \\uXXXX escape: the receiver decodes it, a scan of the text does not see it. */
+const escaped = (s: string) =>
+  [...s].map((c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`).join("");
 
 describe.skipIf(!HAS_DATABASE)("runs API: integration", () => {
   let db: TestDatabase;
@@ -31,9 +37,8 @@ describe.skipIf(!HAS_DATABASE)("runs API: integration", () => {
   let tokenA1: string;
   let tokenA2: string;
   let tokenB1: string;
-  const env: Record<string, string> = { SUPABASE_SERVICE_ROLE_KEY: SECRET_ENV_VALUE };
   // The API connects as the app login (not the owner); the tests read the tables as the owner.
-  const deps = () => ({ sql: app.sql, env });
+  const deps = () => ({ sql: app.sql });
 
   beforeAll(async () => {
     db = await freshDatabase();
@@ -240,21 +245,101 @@ describe.skipIf(!HAS_DATABASE)("runs API: integration", () => {
       }
     });
 
-    it("the body is scanned for the values of the keys the server holds: none may appear, and nothing is stored", async () => {
-      const runs = await count("runs");
-      const res = await post(result([finding(1, { evidence: `config says ${SECRET_ENV_VALUE}` })]));
-      expect(res.status).toBe(422);
-      const text = JSON.stringify(await res.json());
-      expect(text).not.toContain(SECRET_ENV_VALUE);
-      expect(await count("runs")).toBe(runs);
-      const stored =
-        await sql`select count(*)::int as n from public.findings where evidence like ${`%${SECRET_ENV_VALUE}%`}`;
-      expect(stored[0]!.n).toBe(0);
+    it("the server's own environment is not a dictionary to guess from: its values are accepted, however many guesses", async () => {
+      const prev = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      process.env.SUPABASE_SERVICE_ROLE_KEY = SERVER_ENV_VALUE;
+      try {
+        const guesses = Array.from({ length: 5000 }, (_, i) => `guess${i}`).concat([
+          SERVER_ENV_VALUE,
+        ]);
+        const res = await post(result([finding(1, { evidence: guesses.join(" ").slice(0, 900) })]));
+        expect(res.status).toBe(201);
+        const res2 = await post(
+          result([finding(2, { evidence: `NEXTAUTH_URL is ${SERVER_ENV_VALUE}` })]),
+        );
+        expect(res2.status).toBe(201);
+      } finally {
+        if (prev === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+        else process.env.SUPABASE_SERVICE_ROLE_KEY = prev;
+      }
     });
 
-    it("the token itself in a body is refused too", async () => {
-      const res = await post(result([finding(1, { title: `token ${tokenA1}` })]));
-      expect(res.status).toBe(422);
+    // Each way a value can sit in a body: plain, and as \\u escapes (which a scan of the text never sees).
+    const fields: Array<[string, (v: string) => Record<string, unknown>]> = [
+      ["a finding's title", (v) => result([finding(1, { title: `t ${v}` })])],
+      ["a finding's evidence", (v) => result([finding(1, { evidence: `e ${v}` })])],
+      ["a finding's address", (v) => result([finding(1, { url: `https://t.test/?${v}` })])],
+      [
+        "a reason in couldNotCheck",
+        (v) =>
+          result([finding(1)], { couldNotCheck: [{ id: "a", reason: v, url: "https://t.test/" }] }),
+      ],
+      [
+        "an address in couldNotCheck",
+        (v) =>
+          result([finding(1)], {
+            couldNotCheck: [{ id: "a", reason: "r", url: `https://t.test/${v}` }],
+          }),
+      ],
+      ["the top-level address", (v) => result([finding(1)], { url: `https://t.test/?${v}` })],
+      ["a passed id", (v) => result([finding(1)], { passed: [v] })],
+      [
+        "a sampled key",
+        (v) => result([finding(1)], { sampled: { [v]: { seen: 1, taken: 1, limit: 1 } } }),
+      ],
+      ["a field the schema does not know", (v) => result([finding(1)], { extra: v })],
+    ];
+    for (const [where, make] of fields) {
+      for (const [how, secret] of [
+        ["a key shape", KEY_SHAPE],
+        ["the token just presented", "TOKEN"],
+      ] as const) {
+        for (const mode of ["plain", "escaped"] as const) {
+          it(`${how} in ${where}, ${mode}: refused whole, nothing stored, never echoed`, async () => {
+            const value = secret === "TOKEN" ? tokenA1 : secret;
+            const runs = await count("runs");
+            const marker = "MARKERXYZ";
+            let raw = JSON.stringify(make(marker));
+            raw = raw.replace(marker, mode === "plain" ? value : escaped(value));
+            expect(raw).not.toContain(marker);
+            const res = await post(null, { raw });
+            expect(res.status).toBe(422);
+            expect(((await res.json()) as { code: string }).code).toBe("secret_in_body");
+            expect(await count("runs")).toBe(runs);
+          });
+        }
+      }
+    }
+
+    it("the refusal does not echo the value or say which one it was", async () => {
+      const res = await post(result([finding(1, { evidence: `x ${KEY_SHAPE}` })]));
+      const text = await res.text();
+      expect(text).not.toContain(KEY_SHAPE);
+      expect(text).not.toMatch(/stripe/i);
+    });
+
+    it("a NUL character anywhere is a 400 the sender can read, not a 500", async () => {
+      for (const make of [
+        () => result([finding(1, { evidence: "a\u0000b" })]),
+        () => result([finding(1, { title: "a\u0000b" })]),
+        () => result([finding(1)], { couldNotCheck: [{ id: "a", reason: "a\u0000b", url: "u" }] }),
+        () => result([finding(1)], { url: "https://t.test/\u0000" }),
+      ]) {
+        const res = await post(make());
+        expect(res.status).toBe(400);
+        expect(((await res.json()) as { message: string }).message).toMatch(/NUL/);
+      }
+    });
+
+    it("a start time the database cannot hold is a 400, not a 500", async () => {
+      for (const startedAt of [
+        "0000-01-01T00:00:00Z",
+        "0001-01-01T00:00:00+14:00",
+        "275760-09-13T00:00:00Z",
+      ]) {
+        const res = await post(result([finding(1)], { startedAt }));
+        expect(res.status, startedAt).toBe(400);
+      }
     });
 
     it("stores no token and no body: the token column is a 64-character hash", async () => {
@@ -327,6 +412,24 @@ describe.skipIf(!HAS_DATABASE)("runs API: integration", () => {
       expect((await get(`/runs?site=${SITE_B1}`, tokenA2)).status).toBe(403);
       expect((await get(`/runs?site=not-a-uuid`, tokenA2)).status).toBe(400);
       expect((await get(`/runs?cursor=junk`, tokenA2)).status).toBe(400);
+      for (const t of [
+        "abc",
+        "infinity",
+        "-infinity",
+        "9999-99-99 00:00:00+00",
+        "2026-01-01 00:00:00+00' or 1=1",
+      ]) {
+        const res = await get(
+          `/runs?cursor=${encodeCursor({ t, id: "a1a10000-0000-4000-8000-0000000000a1" })}`,
+          tokenA2,
+        );
+        expect(res.status, t).toBe(400);
+        expect(((await res.json()) as { code: string }).code).toBe("invalid_cursor");
+      }
+      const zero = await get(`/runs?since=0000-01-01T00:00:00Z`, tokenA2);
+      expect(zero.status).toBe(400);
+      expect(((await zero.json()) as { message: string }).message).not.toMatch(/upload/i);
+      expect((await get(`/runs?since=10000-01-01T00:00:00Z`, tokenA2)).status).toBe(400);
       expect((await get(`/runs?since=yesterday`, tokenA2)).status).toBe(400);
       expect((await get(`/runs?limit=0`, tokenA2)).status).toBe(400);
       expect((await get(`/runs`, null)).status).toBe(401);

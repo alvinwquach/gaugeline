@@ -4,7 +4,7 @@ Exactly what a check reads, and what it never touches.
 
 - Read-only. A check never changes anything on the site.
 - No login. It sees only what anyone on the internet can see.
-- Nothing is sent to us. The check runs on your computer or in your CI, and the report stays there.
+- Nothing is sent to us. The check runs on your computer or in your CI, and the report stays there. The one exception is something you switch on: `--upload`, with a token and an address you set, sends the findings and their evidence lines (no page content, no keys) to your own hosted workspace. See [Hosted: the runs API](/docs/hosted/api).
 - The Sanity check reads only the number of documents and the names of their types. It never downloads document contents.
 
 ## In this version

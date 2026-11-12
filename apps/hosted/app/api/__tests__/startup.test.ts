@@ -112,3 +112,35 @@ describe("the API's own code", () => {
       );
   });
 });
+
+describe.skipIf(!HAS_DATABASE)("getDeps: a failed start is not cached for good", () => {
+  let db: TestDatabase;
+  let app: Awaited<ReturnType<typeof appLogin>>;
+  let ownerUrl: string;
+  const saved = process.env[APP_URL_ENV];
+  beforeAll(async () => {
+    db = await freshDatabase();
+    app = await appLogin(db.sql);
+    const dbName = (await db.sql`select current_database() as n`)[0]!.n as string;
+    const u = new URL(TEST_DATABASE_URL);
+    u.pathname = `/${dbName}`;
+    ownerUrl = u.href;
+  });
+  afterAll(async () => {
+    if (saved === undefined) delete process.env[APP_URL_ENV];
+    else process.env[APP_URL_ENV] = saved;
+    await app?.drop();
+    await db?.drop();
+  });
+
+  it("the owner's address is refused every time, and the app login works once it is set", async () => {
+    const { getDeps } = await import("../../../lib/api/deps.js");
+    process.env[APP_URL_ENV] = ownerUrl;
+    await expect(getDeps()).rejects.toThrow(/Refusing to start/);
+    await expect(getDeps()).rejects.toThrow(/Refusing to start/);
+    process.env[APP_URL_ENV] = app.url;
+    const deps = await getDeps();
+    expect((await deps.sql`select current_user as u`)[0]!.u).toBe(app.role);
+    await deps.sql.end({ timeout: 1 });
+  });
+});

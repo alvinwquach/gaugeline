@@ -2,6 +2,9 @@
 
 exports[`notify: unit > Discord: an embed coloured by the worst finding 1`] = `
 {
+  "allowed_mentions": {
+    "parse": [],
+  },
   "embeds": [
     {
       "color": 11805464,
