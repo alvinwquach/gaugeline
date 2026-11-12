@@ -25,6 +25,8 @@ import { canonicalMissing } from "./canonical-missing.js";
 import { capacityZeroNotSoldOut } from "./capacity-zero-not-sold-out.js";
 import { certificateExpiring } from "./certificate-expiring.js";
 import { checkoutJsOnly } from "./checkout-js-only.js";
+import { copyDatePassed } from "./copy-date-passed.js";
+import { copyrightStale } from "./copyright-stale.js";
 import { crmFieldNames } from "./crm-field-names.js";
 import { crmInsecure } from "./crm-insecure.js";
 import { crmLeadSource } from "./crm-lead-source.js";
@@ -86,6 +88,11 @@ import { hreflangBadCode } from "./hreflang-bad-code.js";
 import { hreflangNotReciprocal } from "./hreflang-not-reciprocal.js";
 import { htmlHeavy } from "./html-heavy.js";
 import { htmlHuge } from "./html-huge.js";
+import { hydrogenDevToolsLive } from "./hydrogen-dev-tools-live.js";
+import { hydrogenPreviewCanonical } from "./hydrogen-preview-canonical.js";
+import { hydrogenPreviewIndexable } from "./hydrogen-preview-indexable.js";
+import { hydrogenPricesDisagree } from "./hydrogen-prices-disagree.js";
+import { hydrogenPrivateFields } from "./hydrogen-private-fields.js";
 import { icsFloatingTime } from "./ics-floating-time.js";
 import { icsNoVtimezone } from "./ics-no-vtimezone.js";
 import { imageWidthAbsurd } from "./image-width-absurd.js";
@@ -225,6 +232,8 @@ export const PAGE_CHECKS = [
   capacityZeroNotSoldOut,
   certificateExpiring,
   checkoutJsOnly,
+  copyDatePassed,
+  copyrightStale,
   crmFieldNames,
   crmInsecure,
   crmLateTracking,
@@ -281,6 +290,11 @@ export const PAGE_CHECKS = [
   hreflangNotReciprocal,
   htmlHeavy,
   htmlHuge,
+  hydrogenDevToolsLive,
+  hydrogenPreviewCanonical,
+  hydrogenPreviewIndexable,
+  hydrogenPricesDisagree,
+  hydrogenPrivateFields,
   icsFloatingTime,
   icsNoVtimezone,
   imageWidthAbsurd,

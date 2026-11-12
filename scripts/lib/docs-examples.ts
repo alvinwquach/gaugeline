@@ -1,7 +1,9 @@
 import { spawn } from "node:child_process";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
-import { readdirSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { SITES_DIR, startFixture } from "../../packages/fixtures/src/index.js";
 
 export interface Example {
@@ -159,7 +161,13 @@ export interface RunResult {
 
 /** Split `A=1 B=2 npx gaugeline shop.example --ci` into env, the address and the flags. */
 /** Commands that take an address after their name, so an example can run them against a fixture site. */
-const SUBCOMMANDS_WITH_ADDRESS: readonly string[] = ["brief", "advisory", "init", "deploy-gate"];
+const SUBCOMMANDS_WITH_ADDRESS: readonly string[] = [
+  "brief",
+  "advisory",
+  "init",
+  "deploy-gate",
+  "changes",
+];
 
 export function parseCommand(command: string): {
   env: Record<string, string>;
@@ -232,18 +240,31 @@ export async function runExample(
       ...(subcommand ? [subcommand] : []),
       target,
       ...args,
-      "--allow-private",
+      // changes reads saved runs and APIs, never the site, so it has nothing to allow.
+      ...(subcommand === "changes" ? [] : ["--allow-private"]),
       ...(args.includes("--json") ||
       subcommand === "brief" ||
       subcommand === "advisory" ||
       subcommand === "init" ||
+      subcommand === "changes" ||
       subcommand === "deploy-gate"
         ? []
         : ["--no-open"]),
     ];
+    // A fixture with a runs/ folder carries saved runs for `gaugeline changes`: they are copied into
+    // .gaugeline/runs/<host>/ of a temporary working folder, so the example reads real history.
+    const saved = join(SITES_DIR, e.fixture, "runs");
+    let cwd: string | undefined;
+    if (existsSync(saved)) {
+      cwd = mkdtempSync(join(tmpdir(), "gaugeline-docs-runs-"));
+      const host = new URL(site.origin).host.toLowerCase().replace(/[^a-z0-9.-]/g, "_");
+      mkdirSync(join(cwd, ".gaugeline", "runs"), { recursive: true });
+      cpSync(saved, join(cwd, ".gaugeline", "runs", host), { recursive: true });
+    }
     const result = await new Promise<{ stdout: string; stderr: string; code: number }>(
       (resolve) => {
         const child = spawn(process.execPath, argv, {
+          ...(cwd ? { cwd } : {}),
           env: childProcessEnv({ ...extraEnv, ...childEnv }),
         });
         let stdout = "";
@@ -253,6 +274,7 @@ export async function runExample(
         child.on("close", (code) => resolve({ stdout, stderr, code: code ?? -1 }));
       },
     );
+    if (cwd) rmSync(cwd, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
     return {
       ...result,
       origin: site.origin,
