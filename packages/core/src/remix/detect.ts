@@ -1,3 +1,4 @@
+import { isHydrogenSite } from "../hydrogen/detect.js";
 import type { PageSnapshot } from "../snapshot.js";
 
 /**
@@ -63,8 +64,13 @@ function assignmentAt(body: string, name: string, from: number): { at: number; a
   return { at: -1, after: -1 };
 }
 
-/** A Remix v2 or React Router 7 site, from its headers or the markers its own scripts write. */
+/**
+ * A Remix v2 or React Router 7 site, from its headers or the markers its own scripts write. A Hydrogen
+ * storefront is built on React Router too, but it has its own checks (the Hydrogen pack), so it is not
+ * counted here: one problem is reported once.
+ */
 export function isRemixSite(page: PageSnapshot): boolean {
+  if (isHydrogenSite(page)) return false;
   const headers = page.hops.at(-1)?.headers ?? {};
   if (headers["x-remix-response"] !== undefined) return true;
   const body = bodyOf(page);
@@ -242,12 +248,28 @@ export function readEmbedded(page: PageSnapshot): Embedded | undefined {
   return undefined;
 }
 
-/** Markers only a development server writes. Each is a name the dev tooling uses. */
+/**
+ * Markers only a development server writes. Vite's own paths (`/@vite/client`, `/@react-refresh`,
+ * the React preamble, `/node_modules/.vite/`) are every Vite framework's, so they count only on a
+ * page that is positively Remix or React Router: its own context or header, or one of the two
+ * modules only their dev servers write (`virtual:react-router/inject-hmr-runtime`,
+ * `virtual:remix/inject-hmr-runtime`) or the classic compiler's `remixLiveReloadConnect`.
+ */
 export function devMarkers(page: PageSnapshot): string[] {
   const body = bodyOf(page);
-  const out: string[] = [];
   const has = (needle: string): boolean =>
     page.scripts.some((s) => s.includes(needle)) || body.includes(needle);
+  const own = (m: string): boolean => {
+    if (m === "inject-hmr-runtime")
+      return (
+        has("virtual:react-router/inject-hmr-runtime") || has("virtual:remix/inject-hmr-runtime")
+      );
+    return m === "remixLiveReloadConnect" && has(m);
+  };
+  if (isHydrogenSite(page)) return [];
+  const remix = isRemixSite(page) || own("inject-hmr-runtime") || own("remixLiveReloadConnect");
+  if (!remix) return [];
+  const out: string[] = [];
   for (const m of [
     "/@vite/client",
     "/@react-refresh",
@@ -255,8 +277,9 @@ export function devMarkers(page: PageSnapshot): string[] {
     "remixLiveReloadConnect",
     "__vite_plugin_react_preamble_installed__",
     "/node_modules/.vite/",
-  ])
-    if (has(m)) out.push(m);
+  ]) {
+    if (m === "inject-hmr-runtime" || m === "remixLiveReloadConnect" ? own(m) : has(m)) out.push(m);
+  }
   return out;
 }
 

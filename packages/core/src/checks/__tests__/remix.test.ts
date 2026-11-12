@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { startFixture } from "../../../../fixtures/src/index.js";
 import { createFetcher, type Hop } from "../../fetcher.js";
@@ -146,6 +148,72 @@ describe("remix: unit", () => {
       '<script type="module" src="/@vite/client"></script><script type="module">import "/@id/__x00__virtual:remix/inject-hmr-runtime"</script>',
     );
     expect(devMarkers(dev)).toEqual(["/@vite/client", "inject-hmr-runtime"]);
+  });
+});
+
+describe("remix: other packs' pages are not Remix pages", () => {
+  const fixtureHtml = (name: string): string =>
+    readFileSync(
+      fileURLToPath(new URL(`../../../../fixtures/sites/${name}/index.html`, import.meta.url)),
+      "utf8",
+    );
+  // Every one of these carries Vite's generic dev paths or a React runtime, which are not Remix's own.
+  const OTHERS = [
+    "angular-like",
+    "astro-like",
+    "sveltekit-like",
+    "sveltekit-dev",
+    "gatsby-like",
+    "gatsby-dev",
+    "hugo-like",
+    "hugo-server",
+    "docusaurus-old",
+    "next-like",
+  ];
+  for (const name of OTHERS) {
+    it(`${name} is not detected as Remix, and no Remix dev-server marker fires on it`, () => {
+      const p = page(URL0, fixtureHtml(name));
+      expect(isRemixSite(p)).toBe(false);
+      expect(devMarkers(p)).toEqual([]);
+    });
+  }
+
+  it("a page with only Vite's generic dev paths is not a Remix dev server", () => {
+    const vite = page(
+      URL0,
+      '<script type="module" src="/@vite/client"></script><script type="module" src="/@react-refresh"></script>',
+    );
+    expect(devMarkers(vite)).toEqual([]);
+  });
+
+  it("hydrogen pages belong to the Hydrogen pack, so the generic Remix checks leave them alone", () => {
+    // hydrogen-dev is left out on purpose: it has no Shopify marker (only React Router's own context and dev
+    // module), so it is positively a React Router page, and Hydrogen's dev check claims it too.
+    for (const name of ["hydrogen-like", "hydrogen-preview-link"]) {
+      const p = page(URL0, fixtureHtml(name));
+      expect(isRemixSite(p), name).toBe(false);
+      expect(devMarkers(p), name).toEqual([]);
+    }
+  });
+
+  it("a Hydrogen storefront served by a dev server is Hydrogen's to report, not Remix's", () => {
+    const dev = page(
+      URL0,
+      `<script src="https://cdn.shopify.com/x.js"></script><script type="module" src="/@vite/client"></script>${RR_HTML}`,
+    );
+    expect(isRemixSite(dev)).toBe(false);
+    expect(devMarkers(dev)).toEqual([]);
+  });
+
+  it("the remix-like and remix-dev fixtures still are Remix", () => {
+    expect(isRemixSite(page(URL0, fixtureHtml("remix-like")))).toBe(true);
+    const dev = page(URL0, fixtureHtml("remix-dev"));
+    expect(devMarkers(dev).length).toBeGreaterThan(0);
+  });
+
+  it("a Remix page's own context makes Vite's paths count", () => {
+    const dev = page(URL0, `<script type="module" src="/@vite/client"></script>${RR_HTML}`);
+    expect(devMarkers(dev)).toEqual(["/@vite/client"]);
   });
 });
 
