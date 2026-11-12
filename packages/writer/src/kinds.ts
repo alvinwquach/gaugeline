@@ -122,7 +122,7 @@ function isDeniedName(segment: string): boolean {
  * by the inbox's shape checks except through this list.
  */
 export function isSafeRepoPath(path: string): boolean {
-  if (path.length === 0 || path.length > 300 || path.startsWith("-")) return false;
+  if (path.length === 0 || path.length > 300) return false;
   if (!/^[A-Za-z0-9._@()[\]-]+(\/[A-Za-z0-9._@()[\]-]+)*$/.test(path)) return false;
   return path.split("/").every((segment) => {
     if (segment.startsWith("-")) return false;
