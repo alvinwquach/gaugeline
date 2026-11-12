@@ -39,6 +39,7 @@ import {
   SQUARESPACE_COMMERCE_CHECKS,
   STRAPI_CHECKS,
   SUBSCRIPTION_CHECKS,
+  SUPABASE_PLATFORM_CHECKS,
   TRACKER_CHECKS,
   UMBRACO_CHECKS,
   WEBFLOW_CHECKS,
@@ -98,6 +99,7 @@ export function builtInCheckIds(): Set<string> {
     KONTENT_AI_CHECKS,
     HUBSPOT_CMS_CHECKS,
     PAYLOAD_CHECKS,
+    SUPABASE_PLATFORM_CHECKS,
   ];
   return new Set([
     ...createPageRegistry()
