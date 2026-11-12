@@ -99,4 +99,7 @@ It never merges, publishes, sends or deletes. On GitHub it pushes one new branch
 
 Approvals happen in [the inbox](hosted/inbox.md). The agent's database role cannot record an approval, a
 client viewer cannot approve, a draft is decided once, and the approval row carries the SHA-256 of the
-exact payload approved, which the worker checks before it writes.
+exact payload approved. The job only says which approval to look at: before it writes anything, your
+worker reads that approval row itself and refuses unless the row exists, is an approval, is for this
+draft, organisation, site and kind, hashes to the payload it was given, has not been declined or
+withdrawn since, and is less than 72 hours old ([the checks, in order](hosted/writer.md#what-the-writer-checks-before-it-writes)).

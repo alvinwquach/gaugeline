@@ -115,6 +115,11 @@ describe("each guard refuses its own fault", () => {
     ["a missing sha on createRef", withoutKey("createRef", "sha")],
     ["a missing branch on putContent", withoutKey("putContent", "branch")],
     ["a missing draft flag", withoutKey("createPull", "draft")],
+    ["a missing title", withoutKey("createPull", "title")],
+    ["a missing base", withoutKey("createPull", "base")],
+    ["a missing body", withoutKey("createPull", "body")],
+    ["a missing commit message", withoutKey("putContent", "message")],
+    ["a missing content", withoutKey("putContent", "content")],
     // Values.
     ["a ref on the default branch", withBody("createRef", { ref: "refs/heads/main" })],
     ["a tag", withBody("createRef", { ref: "refs/tags/gaugeline/x" })],

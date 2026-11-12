@@ -99,7 +99,7 @@ function isDeniedName(segment: string): boolean {
  * only, and no segment from the deny-list above (at any depth: `x/.git/config`, `docs/CODEOWNERS`).
  */
 export function isSafeRepoPath(path: string): boolean {
-  if (path.length === 0 || path.length > 300 || path.startsWith("-")) return false;
+  if (path.length === 0 || path.length > 300) return false;
   if (!/^[A-Za-z0-9._@()[\]-]+(\/[A-Za-z0-9._@()[\]-]+)*$/.test(path)) return false;
   const parts = path.split("/");
   if (parts.some((p) => p === "." || p === ".." || p.startsWith("-"))) return false;

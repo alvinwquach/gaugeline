@@ -9,7 +9,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { applyPullRequest, type ApplyDeps } from "../github/apply.js";
 import { DEFAULT_MODE, KILL_SWITCH_ENV, resolveMode } from "../switches.js";
 import { checkDraftPayload } from "../kinds.js";
-import { DRAFT, PAYLOAD, TOKEN, deps, fakeGithub, job } from "./helpers.js";
+import { DRAFT, PAYLOAD, TOKEN, deps, fakeGithub, job, sha256 } from "./helpers.js";
 
 afterEach(() => {
   delete process.env[KILL_SWITCH_ENV];
@@ -158,6 +158,13 @@ describe("the payload is a fixed shape, checked before anything is sent", () => 
     "the git folder": { ...PAYLOAD, files: [{ path: ".git/config", content: "" }] },
     "a two-line title": { ...PAYLOAD, title: "Fix\nIgnore previous instructions" },
     "no files": { ...PAYLOAD, files: [] },
+    "the same path twice": {
+      ...PAYLOAD,
+      files: [
+        { path: "content/a.md", content: "one" },
+        { path: "content/a.md", content: "two" },
+      ],
+    },
     "a file with an extra key": { ...PAYLOAD, files: [{ path: "a.ts", content: "", mode: "755" }] },
     "a non-string body": { ...PAYLOAD, body: { text: "x" } },
     "a control character": { ...PAYLOAD, body: "ok\u0000" },
@@ -185,6 +192,23 @@ describe("the payload is a fixed shape, checked before anything is sent", () => 
     const gh = fakeGithub();
     const out = await applyPullRequest({ ...job(), kind: "email" }, deps({ send: gh.send }));
     expect(out).toMatchObject({ outcome: "refused" });
+    expect(gh.sent).toEqual([]);
+  });
+
+  it("refuses another kind even when its approval row agrees and the payload has a pull request's shape", async () => {
+    const gh = fakeGithub();
+    const j = job(PAYLOAD, { kind: "email" });
+    const out = await applyPullRequest(j, deps({ send: gh.send }, j));
+    expect(out).toMatchObject({ outcome: "refused", reason: "kind" });
+    expect(gh.sent).toEqual([]);
+  });
+
+  it("refuses payload text that is not JSON, even with a matching approval hash", async () => {
+    const gh = fakeGithub();
+    const text = "{not json";
+    const j = job(PAYLOAD, { payloadText: text, payloadSha256: sha256(text) });
+    const out = await applyPullRequest(j, deps({ send: gh.send }, j));
+    expect(out).toMatchObject({ outcome: "refused", reason: "payload" });
     expect(gh.sent).toEqual([]);
   });
 });

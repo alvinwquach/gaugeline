@@ -114,8 +114,8 @@ describe("the body", () => {
   });
 
   it("never lets a backtick in the text end a code span early", () => {
-    const r = prBody("@evil`name more");
-    expect(r.replace(/`[^`]*`/gu, "")).not.toContain("@");
+    // The backtick becomes an apostrophe inside the span, so the span is one piece and holds the mention.
+    expect(prBody("@evil`name more")).toBe("`@evil'name` more");
   });
 });
 

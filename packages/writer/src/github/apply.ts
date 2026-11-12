@@ -64,7 +64,10 @@ const OWNER = /^[A-Za-z0-9-]{1,39}$/;
 const REPO_NAME = /^[A-Za-z0-9._-]{1,100}$/;
 const BASE = /^[A-Za-z0-9_][A-Za-z0-9._-]*(\/[A-Za-z0-9_][A-Za-z0-9._-]*)*$/;
 
-/** True when the configured target is plain names: no dot segment, no slash in an owner or repo. */
+/**
+ * True when the configured target is plain names: no dot segment, no slash in an owner or repo. A base
+ * branch's every segment must start with a letter, digit or underscore (BASE), so it has no dot segment.
+ */
 function validTarget(t: GithubTarget): boolean {
   const dots = (s: string) => s.split("/").some((p) => p === "." || p === "..");
   return (
@@ -74,8 +77,7 @@ function validTarget(t: GithubTarget): boolean {
     REPO_NAME.test(t.repo) &&
     !dots(t.repo) &&
     t.base.length <= 200 &&
-    BASE.test(t.base) &&
-    !dots(t.base)
+    BASE.test(t.base)
   );
 }
 
