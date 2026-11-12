@@ -165,19 +165,21 @@ The checks do not run from a command yet: like the other content checks they use
 
 Anything the platform does not expose is could-not-check, with the reason, never a pass and never scraped from Payload's admin panel:
 
-| Question                                          | Answer here                           | Why                                                                                                |
-| ------------------------------------------------- | ------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| Which collections the site has                    | only the ones you name                | Gaugeline does not ask Payload for its collections.                                                |
-| Whether a visitor can read a collection           | only for collections you mark private | A collection you did not mark is never asked as a visitor.                                         |
-| Whether a collection uses a different state field | not offered                           | Only a `_status` field with the value `published` is read as live.                                 |
-| Who has access to the admin (`members`)           | not offered                           | An API key is not asked for users.                                                                 |
-| Whether a page shows the same words as the CMS    | not decided here                      | The adapter gives hashes; the comparison with the page is the published-but-not-live check (F-05). |
-| A collection's page address                       | only from your `urls` settings        | The API does not say where the front end serves a collection, so Gaugeline does not guess.         |
-| Versions, and drafts held in a version            | not read                              | Only the documents as the key lists them; the `draft` read parameter is never sent.                |
-| Localised fields                                  | not read                              | Only the fields on the document in the default locale.                                             |
-| Globals                                           | not read                              | Only collections are named.                                                                        |
-| A collection the key's user may not read          | could not check, for that collection  | The others are still read. Payload answers 403 for this and for a key it does not recognise.       |
-| GraphQL                                           | not used                              | The REST routes cover everything above.                                                            |
+| Question                                          | Answer here                             | Why                                                                                                                                      |
+| ------------------------------------------------- | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Which collections the site has                    | only the ones you name                  | Gaugeline does not ask Payload for its collections.                                                                                      |
+| Whether a visitor can read a collection           | only for collections you mark private   | A collection you did not mark is never asked as a visitor.                                                                               |
+| Whether a collection uses a different state field | not offered                             | Only a `_status` field with the value `published` is read as live.                                                                       |
+| Who has access to the admin (`members`)           | not offered                             | An API key is not asked for users.                                                                                                       |
+| Whether a page shows the same words as the CMS    | not decided here                        | The adapter gives hashes; the comparison with the page is the published-but-not-live check (F-05).                                       |
+| A collection's page address                       | only from your `urls` settings          | The API does not say where the front end serves a collection, so Gaugeline does not guess.                                               |
+| Versions, and drafts held in a version            | not read                                | Only the documents as the key lists them; the `draft` read parameter is never sent.                                                      |
+| What `drafts reachable: false` means              | no listed document has `_status: draft` | Drafts of already-published documents live in versions and are not seen (uncited, from how Payload's update path works).                 |
+| A `_status` the key may not read                  | reads as a collection with no drafts    | A field-level read rule that hides `_status` makes the collection look like it has none, so `drafts reachable` can be `false` (uncited). |
+| Localised fields                                  | not read                                | Only the fields on the document in the default locale.                                                                                   |
+| Globals                                           | not read                                | Only collections are named.                                                                                                              |
+| A collection the key's user may not read          | could not check, for that collection    | The others are still read. Payload answers 403 for this and for a key it does not recognise.                                             |
+| GraphQL                                           | not used                                | The REST routes cover everything above.                                                                                                  |
 
 ## When it cannot check
 

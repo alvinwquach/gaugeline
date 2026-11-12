@@ -560,7 +560,16 @@ export function createPayloadAdapter(options: PayloadAdapterOptions): PayloadAda
         true,
         partial,
       );
-      return totalOf(body);
+      const n = totalOf(body);
+      // A server or proxy that drops the where answers the whole collection's count: the one row asked for must be a draft.
+      if (n > 0) {
+        const first = docsOf(body)[0];
+        if (!isRecord(first) || first._status !== "draft")
+          throw new AdapterCouldNotCheck(
+            "Payload's count of drafts is not backed by a draft document in the answer, so the filter may have been ignored; drafts could not be told.",
+          );
+      }
+      return n;
     } catch (err) {
       if (!(err instanceof AdapterCouldNotCheck) || !/HTTP 400\b/.test(err.reason)) throw err;
       const first = docsOf(

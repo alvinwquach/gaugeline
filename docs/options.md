@@ -1012,7 +1012,7 @@ to test.** Without either, nothing is asked and the check is not listed.
 `by` says who agreed and `on` says when, so a shared repository records it once. A run with consent
 prints one line on stderr saying probing checks are on.
 
-There are thirteen probing checks: `image-optimizer-open`, described in
+There are fifteen probing checks: `image-optimizer-open`, described in
 [Open image optimizers](guides/image-optimizers.md#what-it-asks-the-running-site-a-probing-check) (it also needs an
 address you chose, in `gaugeline.images.json`, below), `not-found-200`, described in [Error pages that answer 200](guides/error-pages.md#not-found-200-what-the-site-does-for-an-address-that-does-not-exist) (one `GET` of an address made up from your own site's address), `gated-download-open`, described in
 [Paid downloads and delivery](delivery.md#a-download-route-that-hands-the-file-to-anyone),
@@ -1022,11 +1022,13 @@ address you chose, in `gaugeline.images.json`, below), `not-found-200`, describe
 Nuxt sites only), `strapi-drafts-public`, described in [Strapi](integrations/strapi.md#the-two-checks),
 `umbraco-delivery-api-public`, described in [Umbraco](integrations/umbraco.md#the-two-checks),
 `joomla-api-public`, described in [Joomla](integrations/joomla.md#the-two-checks),
-`datocms-drafts-reachable`, described in [DatoCMS](integrations/datocms.md#the-check), and
+`datocms-drafts-reachable`, described in [DatoCMS](integrations/datocms.md#the-check),
 `directus-collection-public`, described in [Directus](integrations/directus.md#the-two-checks),
-`payload-collection-public`, described in [Payload](integrations/payload.md#the-check), and
-`prismic-release-document-live`, described in [Prismic](integrations/prismic.md#the-checks) (the last
-seven run from an adapter's reading, not from a page check).
+`hygraph-draft-live`, described in [Hygraph](integrations/hygraph.md#the-check),
+`payload-collection-public`, described in [Payload](integrations/payload.md#the-check),
+`prismic-release-document-live`, described in [Prismic](integrations/prismic.md#the-checks), and
+`sitecore-preview-public`, described in [Sitecore XM Cloud](integrations/sitecore.md#the-two-checks) (the last
+nine run from an adapter's reading, not from a page check).
 
 `gaugeline.images.json` (in the folder you run from) holds the image optimizer settings. `settingsFiles` lists up
 to six framework settings files (`next.config.js`, `nuxt.config.ts`, `astro.config.mjs`, `netlify.toml`) that are

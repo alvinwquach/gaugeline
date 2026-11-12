@@ -141,6 +141,8 @@ describe("Payload on ContentAdapter: what it says about itself", () => {
     expect(bad({ authCollection: "staff members" })).toBe(false);
     expect(bad({ authCollection: "staff\r\nx-evil: 1" })).toBe(false);
     expect(bad({ authCollection: "staff-members" })).toBe(true);
+    expect(bad({ authCollection: "a".repeat(64) })).toBe(true);
+    expect(bad({ authCollection: "a".repeat(65) })).toBe(false);
     expect(bad({ privateCollections: [] })).toBe(false);
     expect(bad({ privateCollections: ["a/b"] })).toBe(false);
   });
@@ -738,6 +740,22 @@ describe("Payload: unpublished work the key can reach", () => {
 
   it("a draft seen elsewhere is true even when another collection could not be asked", async () => {
     expect(await over({ fixture: { denied: ["events"] } }).adapter.draftsReachable()).toBe(true);
+  });
+
+  it("a count the answer does not back with a draft row is could-not-check (a dropped where must not read as drafts)", async () => {
+    const real = payloadTransport(QUILLON_SETTLED, { key: KEY });
+    const dropped: Transport = (url, req) => {
+      const u = new URL(url.href);
+      u.searchParams.delete("where[_status][equals]");
+      return real(u, req);
+    };
+    expect(await reasonOf(over({ transport: dropped }).adapter.draftsReachable())).toMatch(
+      /not backed by a draft/,
+    );
+    const noRow: Transport = () => json(200, { docs: [], totalDocs: 3 });
+    expect(await reasonOf(over({ transport: noRow }).adapter.draftsReachable())).toMatch(
+      /not backed by a draft/,
+    );
   });
 
   it("a count that is not a whole number is could-not-check", async () => {

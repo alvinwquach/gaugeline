@@ -166,6 +166,7 @@ export const adaptersConfigSchema = z.strictObject({
               PAYLOAD_SLUG,
               "a Payload collection slug (lower-case letters, digits and hyphens)",
             )
+            .max(64)
             .optional(),
           /**
            * DatoCMS only: the GraphQL collection to read for each content type, and the field that holds an item's
