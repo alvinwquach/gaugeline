@@ -392,6 +392,8 @@ export { discordPayload, slackPayload, webhookPayload } from "./notify/payloads.
 export { NOTIFY_TIMEOUT_MS, postJson, providerMessage, safeTarget } from "./notify/post.js";
 export { escapeHtml, renderLookedRight, renderReport, renderSampled } from "./report/html.js";
 export type { ReportInput } from "./report/html.js";
+export { EVIDENCE_LIMIT, formatJunit, formatSarif } from "./report/formats.js";
+export type { FormatOptions, SuppressedFinding } from "./report/formats.js";
 export {
   buildBrief,
   costRange,
@@ -1508,6 +1510,7 @@ export { STRAPI_CHECKS, createStrapiRegistry } from "./checks/strapi.js";
 export { CRAFT_CHECKS, createCraftRegistry } from "./checks/craft.js";
 export { HYGRAPH_CHECKS, createHygraphRegistry } from "./checks/hygraph.js";
 export { UMBRACO_CHECKS, createUmbracoRegistry } from "./checks/umbraco.js";
+export { SITECORE_CHECKS, createSitecoreRegistry } from "./checks/sitecore.js";
 export { JOOMLA_CHECKS, createJoomlaRegistry } from "./checks/joomla.js";
 export { DATOCMS_CHECKS, createDatocmsRegistry } from "./checks/datocms.js";
 export { PRISMIC_CHECKS, createPrismicRegistry } from "./checks/prismic.js";

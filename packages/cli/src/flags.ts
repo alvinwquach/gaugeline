@@ -75,6 +75,14 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     ],
   },
   {
+    name: "format",
+    type: "string",
+    description:
+      "What stdout carries: json (the same as --json), sarif (GitHub code scanning) or junit (any CI's test results)",
+    since: "0.2.0",
+    commands: ["check", "deploy-gate", "launch", "renewals", "cost", "backups"],
+  },
+  {
     name: "no-open",
     type: "boolean",
     description: "Do not open anything in a browser",
