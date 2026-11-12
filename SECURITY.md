@@ -35,6 +35,16 @@ repository. Gaugeline's promises are written down as decision records: it is rea
 configure ([ADR-0003](docs/adr/0003-no-telemetry-nothing-sent.md)). A way to break one of those is in
 scope.
 
+## The hosted app's database (in progress)
+
+The hosted app (`apps/hosted`, not released) keeps each organisation's sites, runs and findings apart with
+row-level security in the database, not with filters in application code. Decisions on proposed changes,
+drafts, and consent to probing checks are append-only for the app and the server: they may insert
+(never choosing a row's id or time) and read, and a trigger refuses changes. The database owner role
+can still disable that trigger; it is used only to apply reviewed migrations. No page content and no keys are stored. A way for one organisation to read or write another's rows,
+for a client viewer to see a site that is not theirs, or to rewrite a decision or consent record is in
+scope. See [Hosted: data model and tenancy](docs/hosted/data-model.md).
+
 ## Please do not
 
 Test against sites you do not own or have permission to test. Gaugeline's fixture sites

@@ -198,6 +198,19 @@ export type { LlmsFile, LlmsLink } from "./llms.js";
 export { addressParts, businessFromJsonLd } from "./facts/business.js";
 export { findFact } from "./facts/extract.js";
 export { factSchema, factsConfigSchema } from "./facts/types.js";
+export { documentsConfigSchema } from "./documents/config.js";
+export type { DocumentsConfig } from "./documents/config.js";
+export { parseItemLines } from "./documents/lines.js";
+export type { DocItem } from "./documents/lines.js";
+export { referenceFromGroups } from "./documents/reference.js";
+export { INSTALL_HINT, loadDocumentReader } from "./documents/types.js";
+export type {
+  DocumentReader,
+  DocumentText,
+  DocumentsContext,
+  ReferenceItem,
+} from "./documents/types.js";
+export { DOCUMENT_CHECKS } from "./checks/documents.js";
 export type { Fact, FactsConfig, Occurrence as FactOccurrence } from "./facts/types.js";
 export { ANCHOR_WINDOW, PAYMENT_RULES, configValue, extractPayments } from "./payments/extract.js";
 export { DETECTORS, findLeaks, redact as redactSecret } from "./checks/leaks/detectors.js";

@@ -72,6 +72,7 @@ const FIXTURES = [
   "image-optimizer",
   "error-pages",
   "checkout-after",
+  "printed-menu",
   "source-maps",
   "copy-date-passed",
   "copyright-stale",
@@ -141,6 +142,11 @@ const NEEDS_LIVE_STORES = new Set([
   "model-listing-count",
   "model-dependents",
   "model-orphan-fields",
+  // PDF documents: the item list and the unreadable PDF need a menu that lists items the page lacks
+  // and a scan; confirmed in-process with invented PDFs (core checks/__tests__/documents.test.ts).
+  // The price and hours checks fire end to end on printed-menu.
+  "document-item-missing",
+  "document-unreadable",
   // Sanity image checks that read the dataset (crop and hotspot, alt text, upload sizes): they run only when
   // gaugeline.adapters.json names sanity and ask the project's query address with a Viewer token; confirmed
   // in-process against the invented Harbour Lane dataset (core checks/__tests__/sanity-studio-images.test.ts,
