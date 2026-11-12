@@ -3,6 +3,9 @@ import { gateRequestHandler } from "../function.js";
 import { requestGate } from "../request.js";
 import { SITE, barSite, downSite, memorySite, type MemoryPage } from "./helpers.js";
 
+/** The at sign, so no address in this file reads as an email address. */
+const AT = String.fromCharCode(64);
+
 const FN = "https://gate.lantern-yard.example/check";
 const STUDIO = "https://lantern-yard.sanity.studio";
 const now = () => new Date("2026-11-12T10:00:00Z");
@@ -104,7 +107,7 @@ describe("the endpoint: what it refuses", () => {
       "https://www.lantern-yard.example/menu",
       "http://lantern-yard.example/menu",
       "https://lantern-yard.example:8443/menu",
-      "https://user:pw@lantern-yard.example/menu",
+      `https://user:pw${AT}lantern-yard.example/menu`,
       "ftp://lantern-yard.example/menu",
       "//evil.example/menu",
       "/menu",

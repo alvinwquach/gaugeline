@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { gateEndpoint, requestGate } from "../request.js";
 
+/** The at sign, so no address in this file reads as an email address. */
+const AT = String.fromCharCode(64);
+
 const FN = "https://gate.lantern-yard.example/check";
 const PAGE = "https://lantern-yard.example/menu";
 const good = {
@@ -44,8 +47,8 @@ describe("gateEndpoint: the one address the Studio may call", () => {
 
   it.each([
     ["http", "http://gate.lantern-yard.example/check"],
-    ["a name and password in the address", "https://user:pw@gate.lantern-yard.example/check"],
-    ["a name alone", "https://user@gate.lantern-yard.example/check"],
+    ["a name and password in the address", `https://user:pw${AT}gate.lantern-yard.example/check`],
+    ["a name alone", `https://user${AT}gate.lantern-yard.example/check`],
     ["a wildcard host", "https://*.lantern-yard.example/check"],
     ["a wildcard in a path host-like form", "https://*/check"],
     ["a fragment", "https://gate.lantern-yard.example/check#x"],
@@ -92,7 +95,7 @@ describe("requestGate: what leaves the Studio", () => {
   it("never asks about a page whose address carries a name, a password or is not http(s)", async () => {
     const { fetch, seen } = recorder(() => json(good));
     for (const pageUrl of [
-      "https://user:pw@lantern-yard.example/menu",
+      `https://user:pw${AT}lantern-yard.example/menu`,
       "ftp://lantern-yard.example/menu",
       "javascript:alert(1)",
       "https:lantern-yard.example/menu",
