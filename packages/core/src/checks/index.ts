@@ -156,6 +156,13 @@ import { placeholderImages } from "./placeholder-images.js";
 import { placeholderText } from "./placeholder-text.js";
 import { priceChanged } from "./price-changed.js";
 import { quotableFactsDisagree } from "./quotable-facts-disagree.js";
+import { qwikSolidDataAsPage } from "./qwik-solid-data-as-page.js";
+import { qwikSolidDevServerLive } from "./qwik-solid-dev-server-live.js";
+import { qwikSolidDraftPublic } from "./qwik-solid-draft-public.js";
+import { qwikSolidPreviewCanonical } from "./qwik-solid-preview-canonical.js";
+import { qwikSolidPrivateFields } from "./qwik-solid-private-fields.js";
+import { qwikSolidServerEndpoints } from "./qwik-solid-server-endpoints.js";
+import { qwikSolidVaryMissing } from "./qwik-solid-vary-missing.js";
 import { redirectChain } from "./redirect-chain.js";
 import { remixDataAsPage } from "./remix-data-as-page.js";
 import { remixDevToolsLive } from "./remix-dev-tools-live.js";
@@ -364,6 +371,13 @@ export const PAGE_CHECKS = [
   placeholderText,
   priceChanged,
   quotableFactsDisagree,
+  qwikSolidDataAsPage,
+  qwikSolidDevServerLive,
+  qwikSolidDraftPublic,
+  qwikSolidPreviewCanonical,
+  qwikSolidPrivateFields,
+  qwikSolidServerEndpoints,
+  qwikSolidVaryMissing,
   redirectChain,
   remixDataAsPage,
   remixDevToolsLive,
