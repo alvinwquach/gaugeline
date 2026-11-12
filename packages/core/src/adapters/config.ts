@@ -1,6 +1,7 @@
 import * as z from "zod";
 import { ADAPTER_ENTRIES } from "./entries.generated.js";
 import { isUrlTemplate } from "./fingerprint.js";
+import { PROTOTYPE_KEYS, genericApiSchema } from "./generic-api-config.js";
 import { isPermalinkPattern } from "./shared/permalink.js";
 
 const ID = /^[a-z][a-z0-9-]{0,30}$/;
@@ -38,6 +39,13 @@ const EDGE_SITES: readonly string[] = ADAPTER_ENTRIES.filter((e) => e.settings?.
 /** A site's name as Sitecore keeps it in its configuration, and a language as Sitecore names it (en, fr-CA). */
 const SITE_NAME = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/;
 const LANGUAGE = /^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8}){0,2}$/;
+/** The adapters that name a GraphQL collection for each content type (`collections`) and take `expectPublishedOnly`. */
+const GRAPHQL_COLLECTIONS: readonly string[] = ADAPTER_ENTRIES.filter(
+  (e) => e.settings?.graphqlCollections,
+).map((e) => e.id);
+
+/** A GraphQL name: letters, digits and underscores, not starting with a digit. It is put into a query document, so nothing else is accepted. */
+const GRAPHQL_NAME = /^[A-Za-z_][A-Za-z0-9_]{0,63}$/;
 
 /** The adapters that read content kept in a repository: they take `path` or `github`, and `folders`. */
 const CONTENT_FOLDERS: readonly string[] = ADAPTER_ENTRIES.filter(
@@ -57,6 +65,9 @@ const FOLDER =
 const HYPHEN_FIELDS: readonly string[] = ADAPTER_ENTRIES.filter(
   (e) => e.settings?.hyphenFields,
 ).map((e) => e.id);
+
+/** The adapter driven by a mapping in the settings (`api`). */
+const GENERIC_API = "generic-api";
 
 /**
  * gaugeline.adapters.json, read from the working folder like the other settings files (there is no
@@ -107,6 +118,31 @@ export const adaptersConfigSchema = z.strictObject({
             .min(1)
             .max(5)
             .optional(),
+          /**
+           * DatoCMS only: the GraphQL collection to read for each content type, and the field that holds an item's
+           * slug. The Content Delivery API has no list of types, so the types are the ones named here.
+           */
+          collections: z
+            .record(
+              z.string().regex(TYPE, "a content type name"),
+              z.strictObject({
+                collection: z
+                  .string()
+                  .regex(GRAPHQL_NAME, "a GraphQL field name such as allClasses"),
+                slug: z
+                  .string()
+                  .regex(GRAPHQL_NAME, "a GraphQL field name such as slug")
+                  .optional(),
+              }),
+            )
+            .optional(),
+          /**
+           * DatoCMS only: the token is meant for published content only. Switches on the check that asks whether
+           * it can also read drafts (it sends the token to DatoCMS's own API, as every read does).
+           */
+          expectPublishedOnly: z.boolean().optional(),
+          /** DatoCMS only: the check names the ids of the unpublished records it finds (at most five). Default: a count. */
+          showDraftIds: z.boolean().optional(),
           /** Content kept in a repository only: the repository's folder on this computer, relative to where the run starts. */
           path: z
             .string()
@@ -171,9 +207,48 @@ export const adaptersConfigSchema = z.strictObject({
             .min(1)
             .max(5)
             .optional(),
+          /** `generic-api` only: the mapping from a platform's read API to items (docs/integrations/generic-api). */
+          api: genericApiSchema.optional(),
         })
         .superRefine((entry, ctx) => {
           const own = PAGE_READERS.includes(entry.id);
+          if (entry.id !== GENERIC_API && entry.api !== undefined)
+            ctx.addIssue({
+              code: "custom",
+              path: ["api"],
+              message: `"api" belongs to the generic-api adapter, not to ${entry.id}`,
+            });
+          if (entry.id === GENERIC_API) {
+            if (entry.api === undefined)
+              ctx.addIssue({
+                code: "custom",
+                path: ["api"],
+                message:
+                  'the generic-api adapter needs an "api" mapping: its endpoint, how it pages and where the fields are (see docs/integrations/recipes)',
+              });
+            else {
+              const named = Object.keys(entry.api.collections);
+              const typed = Object.values(entry.api.collections).some(
+                (c) => c.fields.type !== undefined,
+              );
+              for (const key of ["fingerprint", "urls"] as const)
+                for (const type of Object.keys(entry[key] ?? {}))
+                  if (!typed && !named.includes(type))
+                    ctx.addIssue({
+                      code: "custom",
+                      path: [key, type],
+                      message: `"${type}" is not a collection in "api" (${named.join(", ")}): nothing would be read for it`,
+                    });
+            }
+            for (const [type, fields] of Object.entries(entry.fingerprint ?? {}))
+              for (const field of fields)
+                if (field.split(".").some((part) => PROTOTYPE_KEYS.has(part)))
+                  ctx.addIssue({
+                    code: "custom",
+                    path: ["fingerprint", type],
+                    message: `"${field}" reaches into an object's prototype, which is never read`,
+                  });
+          }
           for (const key of ["site", "sitemaps", "feeds"] as const)
             if (!own && entry[key] !== undefined)
               ctx.addIssue({
@@ -208,6 +283,13 @@ export const adaptersConfigSchema = z.strictObject({
                 code: "custom",
                 path: [key],
                 message: `"${key}" belongs to the Sitecore adapter, not to ${entry.id}`,
+              });
+          for (const key of ["collections", "expectPublishedOnly", "showDraftIds"] as const)
+            if (entry[key] !== undefined && !GRAPHQL_COLLECTIONS.includes(entry.id))
+              ctx.addIssue({
+                code: "custom",
+                path: [key],
+                message: `"${key}" belongs to the DatoCMS adapter, not to ${entry.id}`,
               });
           const repo = CONTENT_FOLDERS.includes(entry.id);
           for (const key of ["path", "github", "folders"] as const)

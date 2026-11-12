@@ -374,6 +374,8 @@ export { isFrameworkUrl } from "./next/framework-urls.js";
 export { frameworkLinks } from "./links.js";
 export { consentConfigSchema } from "./consent.js";
 export type { ConsentConfig } from "./consent.js";
+export { staleDatesConfigSchema } from "./stale-dates/config.js";
+export type { StaleDatesConfig } from "./stale-dates/config.js";
 export { hiddenConfigSchema, isHidden, matchesGlob, overdue } from "./hidden.js";
 export type { HiddenConfig, HiddenSection } from "./hidden.js";
 export { eventRuleSchema, eventsConfigSchema, REGIONS } from "./events/types.js";
@@ -1442,6 +1444,7 @@ export type { AuditPackFile } from "./audit/render.js";
 
 export { MIGRATION_CHECKS, createMigrationRegistry, unreadPages } from "./checks/migration.js";
 export { WEBFLOW_CHECKS, createWebflowRegistry } from "./checks/webflow.js";
+export { SHOPIFY_CHECKS, createShopifyRegistry } from "./checks/shopify.js";
 export { CONTENTFUL_CHECKS, createContentfulRegistry } from "./checks/contentful.js";
 export {
   SQUARESPACE_COMMERCE_CHECKS,
@@ -1451,6 +1454,7 @@ export { STRAPI_CHECKS, createStrapiRegistry } from "./checks/strapi.js";
 export { CRAFT_CHECKS, createCraftRegistry } from "./checks/craft.js";
 export { UMBRACO_CHECKS, createUmbracoRegistry } from "./checks/umbraco.js";
 export { SITECORE_CHECKS, createSitecoreRegistry } from "./checks/sitecore.js";
+export { DATOCMS_CHECKS, createDatocmsRegistry } from "./checks/datocms.js";
 export { HUBSPOT_CMS_CHECKS, createHubspotCmsRegistry } from "./checks/hubspot-cms.js";
 export {
   ListBuilder,

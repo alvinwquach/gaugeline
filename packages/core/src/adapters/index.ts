@@ -20,6 +20,7 @@ export {
   adapterDescription,
   adapterEnvVars,
   allAdapterEnvVars,
+  copyAdapterEnv,
   adaptersOrDefault,
   createAdapter,
   createAdapters,

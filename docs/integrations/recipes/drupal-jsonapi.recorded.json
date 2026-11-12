@@ -1,0 +1,98 @@
+{
+  "format": 1,
+  "recipe": "drupal-jsonapi",
+  "provenance": "Invented content in the shape Drupal JSON:API's documented API is remembered to answer. Not recorded from a live service; the shapes are uncited (the vendor's pages could not be read when this was written).",
+  "env": {},
+  "exchanges": [
+    {
+      "request": {
+        "url": "https://clinic.example/jsonapi/node/article",
+        "query": {
+          "page[offset]": "0"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "data": [
+            {
+              "type": "node--article",
+              "id": "5f1c0a10-0000-4000-8000-000000000001",
+              "attributes": {
+                "title": "Flu jab clinic",
+                "status": true,
+                "changed": "2026-11-02T10:00:00+00:00",
+                "created": "2026-10-20T10:00:00+00:00",
+                "path": {
+                  "alias": "/news/flu-jab-clinic"
+                }
+              }
+            },
+            {
+              "type": "node--article",
+              "id": "5f1c0a10-0000-4000-8000-000000000002",
+              "attributes": {
+                "title": "Opening hours",
+                "status": true,
+                "changed": "2026-10-01T10:00:00+00:00",
+                "created": "2026-09-01T10:00:00+00:00"
+              }
+            },
+            {
+              "type": "node--article",
+              "id": "5f1c0a10-0000-4000-8000-000000000003",
+              "attributes": {
+                "title": "Unreleased notice",
+                "status": false,
+                "changed": "2026-11-05T10:00:00+00:00",
+                "created": "2026-11-05T10:00:00+00:00"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "expect": {
+    "options": {
+      "types": ["node--article"],
+      "fields": {
+        "node--article": ["title"]
+      }
+    },
+    "countType": "node--article",
+    "countFields": ["title", "subtitle"],
+    "drafts": false,
+    "types": [
+      {
+        "name": "node--article",
+        "count": 2
+      }
+    ],
+    "fieldCounts": {
+      "title": 2,
+      "subtitle": 0
+    },
+    "published": [
+      {
+        "id": "5f1c0a10-0000-4000-8000-000000000001",
+        "type": "node--article",
+        "url": "/news/flu-jab-clinic",
+        "publishedAt": "2026-10-20T10:00:00.000Z",
+        "updatedAt": "2026-11-02T10:00:00.000Z",
+        "fieldHashes": {
+          "title": "89b2d74c0b25aab6"
+        }
+      },
+      {
+        "id": "5f1c0a10-0000-4000-8000-000000000002",
+        "type": "node--article",
+        "publishedAt": "2026-09-01T10:00:00.000Z",
+        "updatedAt": "2026-10-01T10:00:00.000Z",
+        "fieldHashes": {
+          "title": "04cbd4210eccf1fb"
+        }
+      }
+    ]
+  }
+}

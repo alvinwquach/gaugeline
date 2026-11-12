@@ -1,0 +1,44 @@
+{
+  "format": 1,
+  "recipe": "joomla",
+  "name": "Joomla",
+  "settings": {
+    "id": "generic-api",
+    "fingerprint": {
+      "article": ["title"]
+    },
+    "urls": {
+      "article": "/{slug}"
+    },
+    "api": {
+      "endpoint": "https://clinic.example/api/index.php/v1",
+      "auth": {
+        "header": "X-Joomla-Token",
+        "env": "GAUGELINE_API_JOOMLA_TOKEN"
+      },
+      "collections": {
+        "article": {
+          "path": "/content/articles",
+          "items": "/data",
+          "fieldRoot": "/attributes",
+          "pagination": {
+            "style": "offset",
+            "limit": "page[limit]",
+            "offset": "page[offset]",
+            "pageSize": 100
+          },
+          "published": {
+            "path": "/attributes/state",
+            "equals": 1
+          },
+          "fields": {
+            "id": "/id",
+            "slug": "/attributes/alias",
+            "updatedAt": "/attributes/modified",
+            "publishedAt": "/attributes/publish_up"
+          }
+        }
+      }
+    }
+  }
+}
