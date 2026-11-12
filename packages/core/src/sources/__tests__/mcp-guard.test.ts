@@ -311,7 +311,13 @@ describe("review of #263", () => {
   });
 
   it("L3: a read-only session listing a glued, short or non-ASCII write name is not read-only", () => {
-    for (const name of ["exec_sql", "executesql", "ехecute_sql", "deployFunction", "runquery"])
+    for (const name of [
+      "exec_sql",
+      "executesql",
+      "\u0435\u0445ecute_sql",
+      "deployFunction",
+      "runquery",
+    ])
       expect(sessionReadOnlyProblem([listTables, { name, annotations: READ_HINTS }]), name).toBe(
         COULD_NOT_CHECK.sessionNotReadOnly,
       );
