@@ -1,3 +1,4 @@
+// check-community: allow-email (invented addresses on the reserved .test domain, for the mail sink)
 /**
  * Unit: the morning email's rules with no database. Which sites count for which setting, the plain
  * sentence per site, the subject, hostile text, 07:00 in a time zone across the clock changes, and the
