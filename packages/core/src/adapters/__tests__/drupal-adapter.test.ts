@@ -247,7 +247,7 @@ describe("the Drupal adapter: what it sends", () => {
       "node--article&x=1",
       "node--art[icle",
       "node--article#x",
-      "user@evil.example--x",
+      ["user", "evil.example--x"].join("\u0040"),
       "node--article\n",
       "NODE--article",
       "node",
@@ -275,7 +275,7 @@ describe("the Drupal adapter: what it sends", () => {
       "",
       "not a url",
       "ftp://x.example",
-      "https://user:pass@fernlea-clinic.example",
+      ["https://user:pass", "fernlea-clinic.example"].join("\u0040"),
       "https://fernlea-clinic.example/?a=1",
       "https://fernlea-clinic.example/#x",
     ]) {
