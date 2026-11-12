@@ -43,7 +43,9 @@ drafts, and consent to probing checks are append-only for the app and the server
 (never choosing a row's id or time) and read, and a trigger refuses changes. The database owner role
 can still disable that trigger; it is used only to apply reviewed migrations. No page content and no keys are stored. A way for one organisation to read or write another's rows,
 for a client viewer to see a site that is not theirs, or to rewrite a decision or consent record is in
-scope. See [Hosted: data model and tenancy](docs/hosted/data-model.md).
+scope. Signing in as someone else, reusing or guessing a sign-in link, reading a site above your role, or
+making the pages run script are in scope too (the pages are HTML with no script; see
+[Hosted: sign in and the shell](docs/hosted/sign-in.md)). See [Hosted: data model and tenancy](docs/hosted/data-model.md).
 
 ## Please do not
 

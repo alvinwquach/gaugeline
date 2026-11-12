@@ -112,6 +112,11 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec vitest run apps/hosted
+      # The hosted app's browser specs (e2e/hosted-*.spec.ts) start the app against this server. They load
+      # the built core, so build it first; the docs workflow's Playwright run skips them (no server there).
+      - run: pnpm --filter @gaugeline/core build
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm hosted:e2e
 
   docs-examples:
     # Runs every "$ npx gaugeline" example in the docs against its fixture and compares the output.

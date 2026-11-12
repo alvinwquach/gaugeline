@@ -1,0 +1,62 @@
+/**
+ * What the web app is built from, and the one place that reads the environment.
+ *
+ *   GAUGELINE_DATABASE_URL        the app's own database login (server-only). Not the owner's address.
+ *   GAUGELINE_APP_URL             the app's public address; https makes cookies Secure.
+ *   GAUGELINE_AUTH                `stand-in` for development and tests; anything else is not configured.
+ *   GAUGELINE_STANDIN_SECRET      stand-in only: signs its tokens (32+ characters).
+ *   GAUGELINE_STANDIN_USERS       stand-in only: `email=user-id,email=user-id`.
+ *
+ * The first request (or the server's start) opens the database and checks the login once; a refusal is
+ * kept, so a server on a login that skips row-level security never serves a page.
+ */
+import { StandInAuth, type AuthProvider } from "./auth.js";
+import { openAppDatabase, type Sql } from "./db.js";
+
+export interface WebDeps {
+  sql: Sql;
+  auth: AuthProvider;
+  /** https: cookies are Secure and named with the __Host- prefix. */
+  secureCookies: boolean;
+  now: () => Date;
+}
+
+export function standIn(env: Record<string, string | undefined>): AuthProvider {
+  const users: Record<string, string> = {};
+  for (const pair of (env.GAUGELINE_STANDIN_USERS ?? "").split(",")) {
+    const [email, id] = pair.split("=").map((s) => s.trim());
+    if (email && id) users[email] = id;
+  }
+  const base = env.GAUGELINE_APP_URL ?? "http://127.0.0.1:3000";
+  return new StandInAuth({
+    secret: env.GAUGELINE_STANDIN_SECRET ?? "",
+    users,
+    // Development only: the stand-in has no mail server, so the link goes to the terminal that runs it.
+    deliver: (email, token) =>
+      void console.log(
+        `[stand-in] sign-in link for ${email}: ${base}/sign-in/verify?token=${token}`,
+      ),
+  });
+}
+
+export async function buildDeps(env: Record<string, string | undefined>): Promise<WebDeps> {
+  if (env.GAUGELINE_AUTH !== "stand-in")
+    throw new Error(
+      "GAUGELINE_AUTH is not set to a configured provider (only `stand-in` exists yet).",
+    );
+  const auth = standIn(env);
+  const sql = await openAppDatabase(env);
+  return {
+    sql,
+    auth,
+    secureCookies: (env.GAUGELINE_APP_URL ?? "").startsWith("https://"),
+    now: () => new Date(),
+  };
+}
+
+let shared: Promise<WebDeps> | undefined;
+
+export function getWebDeps(): Promise<WebDeps> {
+  shared ??= buildDeps(process.env);
+  return shared;
+}
