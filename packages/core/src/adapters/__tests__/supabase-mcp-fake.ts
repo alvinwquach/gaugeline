@@ -40,6 +40,12 @@ export const RECORDED_TOOLS = [
     inputSchema: { type: "object", properties: {} },
   },
   {
+    name: "get_publishable_keys",
+    description: "Gets the publishable keys of the project.",
+    annotations: { title: "Get publishable keys", ...READ, idempotentHint: true },
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
     name: "search_docs",
     description: "Searches the Supabase documentation.",
     annotations: { title: "Search docs", ...READ, idempotentHint: true },

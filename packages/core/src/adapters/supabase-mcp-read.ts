@@ -9,11 +9,13 @@ import {
   readRpcAnswer,
   sessionIdOf,
   outputRuleProblems,
-  sessionReadOnlyProblem,
+  sessionListingProblem,
+  toleratedProblems,
   toolLockProblem,
   toolResultData,
   type CouldNotCheckReason,
   type OutputRule,
+  type ToleratedTool,
 } from "../sources/mcp-guard.js";
 
 /**
@@ -88,6 +90,27 @@ export const SUPABASE_READS: readonly SupabaseReadEntry[] = Object.freeze<Supaba
     semantics: "Lists all migrations in the database.",
   },
 ]);
+
+/**
+ * Tools Supabase's read-only session lists that Gaugeline never calls (a key read, a docs search):
+ * tolerated in the listing only when listed once, with all three hints and the reviewed hash. Any
+ * other tool not called stops the read. PLACEHOLDER hashes, from the same invented recording.
+ */
+export const SUPABASE_TOLERATED: readonly ToleratedTool[] = Object.freeze([
+  {
+    tool: "get_publishable_keys",
+    listingHash: "f96941aa5f0fb95f66d376a37ecca0959e9254b3d02d9feaa2b0916fafd11c3e",
+  },
+  {
+    tool: "search_docs",
+    listingHash: "ebfe7590fd2b6b53fe31e9abb703121995c298d674923c19052a1d289e75f79e",
+  },
+]);
+{
+  const problems = toleratedProblems(SUPABASE_TOLERATED, SUPABASE_READS);
+  if (problems.length > 0)
+    throw new TypeError(`Supabase tolerated tools are not valid: ${problems[0]}.`);
+}
 
 /** The one address Gaugeline may send to: the hosted server, read-only, one project. */
 export const SUPABASE_MCP_ALLOW = registerQueryAllow({
@@ -258,7 +281,10 @@ export async function readSupabase(options: {
       if (typeof answer.nextCursor !== "string") throw new Stop(COULD_NOT_CHECK.unexpectedShape);
       cursor = answer.nextCursor;
     }
-    const notReadOnly = sessionReadOnlyProblem(listed);
+    const notReadOnly = sessionListingProblem(listed, {
+      called: SUPABASE_READS,
+      tolerated: SUPABASE_TOLERATED,
+    });
     if (notReadOnly !== undefined) throw new Stop(notReadOnly);
     for (const entry of SUPABASE_READS) {
       const locked = toolLockProblem(entry, listed);

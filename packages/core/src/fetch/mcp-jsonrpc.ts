@@ -71,16 +71,21 @@ const GLUED_OTHER: readonly string[] =
 
 const glued = (name: string): string => name.toLowerCase().replace(/[^a-z0-9]/g, "");
 
+/** The first whole word of a tool name (split on case and punctuation) that is a write verb, or undefined. */
+export function writeTokenIn(name: string): string | undefined {
+  return name
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .find((w) => WRITE_WORDS.has(w));
+}
+
 /**
  * The first write word in a tool name as any server spells it ("apply_migration", "deployFunction",
  * "confirm-cost"), or undefined. Used to check a whole listing, so it splits camel case too.
  */
 export function writeWordIn(name: string): string | undefined {
-  const word = name
-    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
-    .toLowerCase()
-    .split(/[^a-z0-9]+/)
-    .find((w) => WRITE_WORDS.has(w));
+  const word = writeTokenIn(name);
   if (word !== undefined) return word;
   const flat = glued(name);
   return GLUED_WRITES.find((stem) => flat.includes(stem));

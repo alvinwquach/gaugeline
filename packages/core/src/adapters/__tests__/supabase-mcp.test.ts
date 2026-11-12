@@ -1,8 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { ConfigError } from "../../errors.js";
 import { createFetcher } from "../../fetcher.js";
-import { COULD_NOT_CHECK } from "../../sources/mcp-guard.js";
-import { SUPABASE_ACCESS_TOKEN, SUPABASE_READS, readSupabase } from "../supabase-mcp-read.js";
+import { COULD_NOT_CHECK, toleratedProblems } from "../../sources/mcp-guard.js";
+import {
+  SUPABASE_ACCESS_TOKEN,
+  SUPABASE_READS,
+  SUPABASE_TOLERATED,
+  readSupabase,
+} from "../supabase-mcp-read.js";
 import { READ, RECORDED_TOOLS, fakeSupabase, type FakeOptions } from "./supabase-mcp-fake.js";
 
 /** Supabase through its hosted MCP server, read-only (ADR-0008 Part A), against a fake server through the real fetcher. */
@@ -78,7 +83,13 @@ describe("readSupabase: every page of the tool list is read before any lock (rev
     const lists = sent
       .filter((s) => s.body.includes('"tools/list"'))
       .map((s) => JSON.parse(s.body).params);
-    expect(lists).toEqual([undefined, { cursor: "p1" }, { cursor: "p2" }, { cursor: "p3" }]);
+    expect(lists).toEqual([
+      undefined,
+      { cursor: "p1" },
+      { cursor: "p2" },
+      { cursor: "p3" },
+      { cursor: "p4" },
+    ]);
   });
 
   it("a write tool on the last page still stops the session", async () => {
@@ -219,5 +230,70 @@ describe("readSupabase: could-not-check, never a pass", () => {
     const slow = await read({ timeout: true });
     expect(slow.result).toMatchObject({ status: "could-not-check" });
     expect(JSON.stringify([denied.result, slow.result])).not.toContain(TOKEN);
+  });
+});
+
+describe("tools the server lists and Gaugeline never calls: the tolerated list (coordinator decision)", () => {
+  const tools = RECORDED_TOOLS as readonly { name: string }[];
+  const swap = (name: string, change: (t: Record<string, unknown>) => unknown) =>
+    tools.map((t) => (t.name === name ? change({ ...t }) : t));
+
+  it("tolerates the reviewed key and docs tools, and never calls them", async () => {
+    expect(SUPABASE_TOLERATED.map((t) => t.tool)).toEqual(["get_publishable_keys", "search_docs"]);
+    const { result, sent } = await read();
+    expect(result.status).toBe("read");
+    const called = sent.map(
+      (s) => (JSON.parse(s.body) as { params?: { name?: string } }).params?.name,
+    );
+    expect(called).not.toContain("get_publishable_keys");
+    expect(called).not.toContain("search_docs");
+  });
+
+  it("stops on an unknown tool, read-sounding or not", async () => {
+    for (const name of ["get_logs", "execute_sql"]) {
+      const { result, sent } = await read({
+        tools: [...tools, { name, annotations: READ, inputSchema: {} }],
+      });
+      expect(result.status, name).toBe("could-not-check");
+      expect(sent, name).toHaveLength(3);
+    }
+  });
+
+  it("stops on a tool listed twice", async () => {
+    const { result } = await read({ tools: [...tools, tools[0]] });
+    expect(result).toMatchObject({ status: "could-not-check", reason: COULD_NOT_CHECK.unreviewed });
+  });
+
+  it("stops when a tolerated tool's hints or schema change", async () => {
+    const hint = await read({
+      tools: swap("get_publishable_keys", (t) => ({
+        ...t,
+        annotations: { ...READ, openWorldHint: true },
+      })),
+    });
+    expect(hint.result).toMatchObject({
+      status: "could-not-check",
+      reason: COULD_NOT_CHECK.sessionNotReadOnly,
+    });
+    const schema = await read({
+      tools: swap("search_docs", (t) => ({
+        ...t,
+        inputSchema: { type: "object", properties: { q: {} } },
+      })),
+    });
+    expect(schema.result).toMatchObject({
+      status: "could-not-check",
+      reason: COULD_NOT_CHECK.changed,
+    });
+  });
+
+  it("contract: an entry may not tolerate a write-verb tool or one it also calls", () => {
+    expect(toleratedProblems(SUPABASE_TOLERATED, SUPABASE_READS)).toEqual([]);
+    for (const tool of ["apply_migration", "execute_sql", "deploy_edge_function", "reset_branch"])
+      expect(toleratedProblems([{ tool, listingHash: "0".repeat(64) }], []), tool).not.toEqual([]);
+    expect(
+      toleratedProblems([{ tool: "list_tables", listingHash: "0".repeat(64) }], SUPABASE_READS),
+    ).not.toEqual([]);
+    expect(toleratedProblems([{ tool: "search_docs", listingHash: "short" }], [])).not.toEqual([]);
   });
 });

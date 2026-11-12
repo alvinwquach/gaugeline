@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { writeWordIn } from "../fetch/mcp-jsonrpc.js";
+import { writeTokenIn, writeWordIn } from "../fetch/mcp-jsonrpc.js";
 import { sanitise } from "../untrusted.js";
 
 /**
@@ -38,6 +38,8 @@ export const COULD_NOT_CHECK = Object.freeze({
   unexpectedShape: "the answer does not have the fields Gaugeline reads",
   callCap: "the run reached its call cap for this platform",
   task: "the server would run this tool as a task, which Gaugeline does not follow, so it is not called",
+  unreviewed:
+    "the server lists a tool Gaugeline has not reviewed, or lists one twice, so this session is not trusted and nothing was called",
 } as const);
 
 export type CouldNotCheckReason = (typeof COULD_NOT_CHECK)[keyof typeof COULD_NOT_CHECK];
@@ -345,4 +347,77 @@ export function outputRuleProblems(rules: Readonly<Record<string, OutputRule>>, 
     }
   }
   return out;
+}
+
+/** A tool the server may list in its read-only session that Gaugeline never calls, pinned by its reviewed hash. */
+export interface ToleratedTool {
+  tool: string;
+  listingHash: string;
+}
+
+/**
+ * Contract for an entry's tolerated list: a lower-case ASCII name with no write verb as a word (a key,
+ * docs or search tool, never `apply_migration` or `execute_sql`), not also a called tool, listed once,
+ * with a sha256 hash.
+ */
+export function toleratedProblems(
+  tolerated: readonly ToleratedTool[],
+  called: readonly { tool: string }[],
+): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const t of tolerated) {
+    if (!/^[a-z][a-z0-9_]{0,63}$/.test(t.tool)) out.push(`${t.tool}: not a lower-case ASCII name`);
+    const verb = writeTokenIn(t.tool);
+    if (verb !== undefined) out.push(`${t.tool}: a tool named with "${verb}" is never tolerated`);
+    if (called.some((c) => c.tool === t.tool))
+      out.push(`${t.tool}: is called, so it is not tolerated`);
+    if (seen.has(t.tool)) out.push(`${t.tool}: tolerated twice`);
+    seen.add(t.tool);
+    if (!/^[0-9a-f]{64}$/.test(t.listingHash))
+      out.push(`${t.tool}: the listing hash is not a sha256`);
+  }
+  return out;
+}
+
+/**
+ * The whole listing of a read-only session, judged before any call: every tool says readOnlyHint
+ * true and is not destructive; each name appears once; a tolerated tool carries all three hints and
+ * its reviewed hash; a called tool is judged by its own locks at call time; any other tool stops the
+ * run (a write-sounding one as not read-only, any other as not reviewed). Never reads a description.
+ */
+export function sessionListingProblem(
+  listed: unknown,
+  reviewed: { called: readonly { tool: string }[]; tolerated: readonly ToleratedTool[] },
+): CouldNotCheckReason | undefined {
+  const base = sessionShapeProblem(listed);
+  if (base !== undefined) return base;
+  const names = new Set<string>();
+  for (const t of listed as Record<string, unknown>[]) {
+    const name = t.name as string;
+    if (names.has(name)) return COULD_NOT_CHECK.unreviewed;
+    names.add(name);
+    const tolerated = reviewed.tolerated.find((x) => x.tool === name);
+    if (tolerated !== undefined) {
+      if (!hintsSayRead(t.annotations)) return COULD_NOT_CHECK.sessionNotReadOnly;
+      if (listingHash(t) !== tolerated.listingHash) return COULD_NOT_CHECK.changed;
+      continue;
+    }
+    if (writeWordIn(name) !== undefined) return COULD_NOT_CHECK.sessionNotReadOnly;
+    if (!reviewed.called.some((c) => c.tool === name)) return COULD_NOT_CHECK.unreviewed;
+  }
+  return undefined;
+}
+
+/** Every listed tool is an object with a plain ASCII name, says readOnlyHint true and is not destructive. */
+function sessionShapeProblem(listed: unknown): CouldNotCheckReason | undefined {
+  if (!Array.isArray(listed) || listed.length === 0) return COULD_NOT_CHECK.unexpectedShape;
+  for (const t of listed) {
+    if (!isObject(t) || typeof t.name !== "string") return COULD_NOT_CHECK.unexpectedShape;
+    if (!/^[A-Za-z0-9_.-]{1,64}$/.test(t.name)) return COULD_NOT_CHECK.sessionNotReadOnly;
+    const a = isObject(t.annotations) ? t.annotations : {};
+    if (a.readOnlyHint !== true || a.destructiveHint === true)
+      return COULD_NOT_CHECK.sessionNotReadOnly;
+  }
+  return undefined;
 }
