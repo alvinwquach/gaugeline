@@ -89,6 +89,9 @@ function ownObject(m: RegExpExecArray): string {
 /** The Contentstack Live Preview host (rest-preview.contentstack.com and its regional spellings). */
 const CONTENTSTACK_PREVIEW_HOST = /preview\.contentstack\.(?:com|io)/i;
 
+/** A Storyblok request for the draft version (`version: "draft"` in any quoting), which only a preview token may make. */
+const STORYBLOK_DRAFT = /version["']?\s*[:=]\s*["'`]draft["'`]/i;
+
 export const DETECTORS: readonly Detector[] = Object.freeze([
   {
     id: "stripe-secret",
@@ -146,6 +149,20 @@ export const DETECTORS: readonly Detector[] = Object.freeze([
     verify: (_s, m) =>
       CONTENTSTACK_PREVIEW_HOST.test(ownObject(m)) ||
       (/preview/i.test(m.groups?.name ?? "") && /contentstack/i.test(m.input)),
+  },
+  {
+    id: "storyblok-preview-token",
+    label: "Storyblok preview token",
+    // A finding says the kind and the place only: no prefix, no suffix, no hash.
+    hideValue: true,
+    // A public token and a preview token look the same: letters and digits (uncited: the shape is from memory).
+    // The public one is meant to be in the page, so a match needs a word that says preview: in the name, in a
+    // file that names Storyblok, or a draft version asked for in the same object literal.
+    pattern:
+      /(?<![A-Za-z0-9_$])(?<name>[A-Za-z0-9_$]{0,40}(?:token|key)[A-Za-z0-9_$]{0,40})["']?\s*[:=]\s*["'`](?<secret>[A-Za-z0-9]{20,32})(?![A-Za-z0-9_-])/gi,
+    verify: (_s, m) =>
+      STORYBLOK_DRAFT.test(ownObject(m)) ||
+      (/preview/i.test(m.groups?.name ?? "") && /storyblok/i.test(m.input)),
   },
   {
     id: "secret-assignment",
