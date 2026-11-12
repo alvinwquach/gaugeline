@@ -252,40 +252,54 @@ Run the launch-day checks: links to preview addresses, the share picture, an
 indexable staging site, noindex and robots.txt. Read-only.
 
 Options:
-      --ci                       Exit 1 when a "Fix this first" finding is found
-                                 [CI]
-      --json                     Print the result as JSON on stdout, and nothing
-                                 else
-      --format <value>           What stdout carries: json (the same as --json),
-                                 sarif (GitHub code scanning) or junit (any CI's
-                                 test results)
-      --no-open                  Do not open anything in a browser
-      --allow-private            Allow addresses on this computer or a private
-                                 network, such as 127.0.0.1 or 192.168.x.x
-      --allow-secret-key         Use a Stripe secret key, with a notice, instead
-                                 of refusing it; a restricted key is safer
-      --dns                      Also read the domain's mail records (SPF and
-                                 DMARC) from DNS
-      --slack <value>            Send a summary to this Slack incoming webhook
-                                 (or set GAUGELINE_SLACK_WEBHOOK)
-      --discord <value>          Send an embed to this Discord webhook (or set
-                                 GAUGELINE_DISCORD_WEBHOOK)
-      --webhook <value>          POST the result as JSON to this address (or set
-                                 GAUGELINE_WEBHOOK)
-      --email <value>            Email the full report to these addresses
-                                 through Resend (or set GAUGELINE_EMAIL)
-      --notify-on <value>        When to send: any (something was found, the
-                                 default), high or always
-      --report-url <value>       Link each message to a hosted copy of the
-                                 report at this address
-      --save-requests <value>    Save the requests made and the page's data to
-                                 this JSON file; it may contain page content, so
-                                 do not commit it
-      --quiet                    Print only results and errors
-      --verbose                  Show each request, and technical detail when
-                                 something goes wrong
-  -h, --help                     Show this help and exit
-  -v, --version                  Print the version and exit
+      --ci                         Exit 1 when a "Fix this first" finding is
+                                   found [CI]
+      --json                       Print the result as JSON on stdout, and
+                                   nothing else
+      --format <value>             What stdout carries: json (the same as
+                                   --json), sarif (GitHub code scanning) or
+                                   junit (any CI's test results)
+      --no-open                    Do not open anything in a browser
+      --allow-private              Allow addresses on this computer or a private
+                                   network, such as 127.0.0.1 or 192.168.x.x
+      --allow-secret-key           Use a Stripe secret key, with a notice,
+                                   instead of refusing it; a restricted key is
+                                   safer
+      --dns                        Also read the domain's mail records (SPF and
+                                   DMARC) from DNS
+      --slack <value>              Send a summary to this Slack incoming webhook
+                                   (or set GAUGELINE_SLACK_WEBHOOK)
+      --discord <value>            Send an embed to this Discord webhook (or set
+                                   GAUGELINE_DISCORD_WEBHOOK)
+      --webhook <value>            POST the result as JSON to this address (or
+                                   set GAUGELINE_WEBHOOK)
+      --email <value>              Email the full report to these addresses
+                                   through Resend (or set GAUGELINE_EMAIL)
+      --notify-on <value>          When to send: any (something was found, the
+                                   default), high or always
+      --report-url <value>         Link each message to a hosted copy of the
+                                   report at this address
+      --save-requests <value>      Save the requests made and the page's data to
+                                   this JSON file; it may contain page content,
+                                   so do not commit it
+      --baseline <value>           Read or write a file of known findings; with
+                                   it a run reports only new ones
+      --update-baseline            With --baseline, write the file again from
+                                   this run
+      --config-json-only           Refuse a gaugeline.config.mjs, .js or .ts,
+                                   which runs code; read gaugeline.config.json
+                                   only [GAUGELINE_NO_EXEC_CONFIG]
+      --suppress <value>           Snooze a check id for this run, with an
+                                   expiry and a reason (repeatable)
+      --suppress-until <value>     With --suppress, the last day it applies,
+                                   YYYY-MM-DD; a past date is refused
+      --suppress-reason <value>    With --suppress, why the finding is accepted
+                                   for now
+      --quiet                      Print only results and errors
+      --verbose                    Show each request, and technical detail when
+                                   something goes wrong
+  -h, --help                       Show this help and exit
+  -v, --version                    Print the version and exit
 
 Exit codes: 0 ran, 1 --ci with a fix-first finding, 2 could not run
 ```
