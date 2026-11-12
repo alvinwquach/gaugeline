@@ -9,12 +9,14 @@ import {
   renewalsConfigSchema,
   handoffConfigSchema,
   costConfigSchema,
+  backupsConfigSchema,
   trackersConfigSchema,
   adaptersConfigSchema,
   servicesConfigSchema,
   eventsConfigSchema,
   factsConfigSchema,
   hiddenConfigSchema,
+  staleDatesConfigSchema,
   navRulesSchema,
   aiConfigSchema,
   languageRulesSchema,
@@ -35,6 +37,7 @@ import {
   type EmailsConfig,
   type RenewalsConfig,
   type CostConfig,
+  type BackupsConfig,
   type TrackersConfig,
   type AdaptersConfig,
   type ServicesConfig,
@@ -44,6 +47,7 @@ import {
   type HiddenConfig,
   type NavRules,
   type AiConfig,
+  type StaleDatesConfig,
   type LanguageRules,
   type ListingsConfig,
   type CrmConfig,
@@ -74,6 +78,8 @@ export const RENEWALS_CONFIG_FILE = "gaugeline.renewals.json";
 export const HANDOFF_CONFIG_FILE = "gaugeline.handoff.json";
 /** What the project says about its hosting cost (the pages that should be cached, other pages to visit, the usage window), likewise. Tokens stay in the environment. */
 export const COST_CONFIG_FILE = "gaugeline.cost.json";
+/** Where a client's content and database are backed up (the Supabase project, the Sanity dataset, export folders, how old is too old), likewise. Tokens stay in the environment. */
+export const BACKUPS_CONFIG_FILE = "gaugeline.backups.json";
 /** The freelancer's own packages, prices and brand, for `gaugeline audit --pack`, likewise. No keys. */
 export const SERVICES_CONFIG_FILE = "gaugeline.services.json";
 /** The paths that count as sensitive for the tracker checks (--trackers), likewise. Nothing in it is a key. */
@@ -100,6 +106,8 @@ export const HIDDEN_CONFIG_FILE = "gaugeline.hidden.json";
 export const EVENTS_CONFIG_FILE = "gaugeline.events.json";
 /** Where the menus are and which footer links are required, likewise (nav-orphans, nav-footer). */
 export const NAV_CONFIG_FILE = "gaugeline.nav.json";
+/** Grace days, ignored sentences and historic paths for the out-of-date copy checks. */
+export const STALE_DATES_CONFIG_FILE = "gaugeline.stale-dates.json";
 /** Pages whose loss was intended, each with its reason, likewise (the page checks). */
 export const PAGES_CONFIG_FILE = "gaugeline.pages.json";
 /** The DKIM selectors to read and the changes meant at cutover, likewise (snapshot, cutover). */
@@ -167,6 +175,10 @@ export function readHandoffConfig(dir: string): HandoffConfig | undefined {
 
 export function readCostConfig(dir: string): CostConfig | undefined {
   return readJsonConfig(dir, COST_CONFIG_FILE, costConfigSchema, "the hosting cost settings");
+}
+
+export function readBackupsConfig(dir: string): BackupsConfig | undefined {
+  return readJsonConfig(dir, BACKUPS_CONFIG_FILE, backupsConfigSchema, "the backup settings");
 }
 
 export function readServicesConfig(dir: string): ServicesConfig | undefined {
@@ -276,6 +288,15 @@ export function readEvents(dir: string): EventsConfig | undefined {
 
 export function readNavRules(dir: string): NavRules | undefined {
   return readJsonConfig(dir, NAV_CONFIG_FILE, navRulesSchema, "the menu settings");
+}
+
+export function readStaleDates(dir: string): StaleDatesConfig | undefined {
+  return readJsonConfig(
+    dir,
+    STALE_DATES_CONFIG_FILE,
+    staleDatesConfigSchema,
+    "the out-of-date copy settings",
+  )?.staleDates;
 }
 
 export function readCutoverConfig(dir: string): CutoverConfig | undefined {

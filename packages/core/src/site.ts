@@ -29,12 +29,14 @@ import type { Handoff } from "./handoff/reader.js";
 import type { Cost } from "./cost/reader.js";
 import type { Trackers } from "./trackers/reader.js";
 import type { Published } from "./published/reader.js";
+import type { Backups } from "./backups/reader.js";
 import type { Libraries } from "./libraries/reader.js";
 import type { WordPress } from "./wordpress/reader.js";
 import type { HiddenConfig } from "./hidden.js";
 import { lazyEvents, type EventObserver } from "./events/observe.js";
 import type { EventsConfig } from "./events/types.js";
 import type { NavRules } from "./nav/read-regions.js";
+import type { StaleDatesConfig } from "./stale-dates/config.js";
 import { lazyTagAnalysis, summarise, type TagSummary } from "./tags/analyse.js";
 import type { TagContainer } from "./tags/read-container.js";
 import type { RunSnapshot } from "./run-snapshot.js";
@@ -124,6 +126,8 @@ export interface SiteCheckOptions {
   trackers?: Trackers;
   /** What the published-not-live checks read (`--published`). Without it they are not in the run. */
   published?: Published;
+  /** What the backups checks read (`--backups`, `gaugeline backups`). Without it they are not in the run. */
+  backups?: Backups;
   /** What the library check reads (`--libraries`). Without it the check is not in the run. */
   libraries?: Libraries;
   /** What the WordPress checks read (`--wordpress`). Without it they are not in the run. */
@@ -132,6 +136,8 @@ export interface SiteCheckOptions {
   hidden?: HiddenConfig;
   /** Where the menus are and which footer links are required (gaugeline.nav.json). */
   nav?: NavRules;
+  /** The out-of-date copy settings (gaugeline.stale-dates.json). */
+  staleDates?: StaleDatesConfig;
   /** The tracking plan: elements whose clicks must push an event (gaugeline.events.json). */
   events?: EventsConfig;
   /** Clicks the plan's elements in a rendered page. None until rendered reads (G39): could not check. */
@@ -318,10 +324,12 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
       ...(opts.cost ? { cost: opts.cost } : {}),
       ...(opts.trackers ? { trackers: opts.trackers } : {}),
       ...(opts.published ? { published: opts.published } : {}),
+      ...(opts.backups ? { backups: opts.backups } : {}),
       ...(opts.libraries ? { libraries: opts.libraries } : {}),
       ...(opts.wordpress ? { wordpress: opts.wordpress } : {}),
       ...(opts.hidden ? { hidden: opts.hidden } : {}),
       ...(opts.nav ? { navRules: opts.nav } : {}),
+      ...(opts.staleDates ? { staleDates: opts.staleDates } : {}),
       ...(container && tagRules ? { tagContainer: container, tagRules } : {}),
       ...(opts.events
         ? {
