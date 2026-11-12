@@ -17,6 +17,10 @@ export interface LlmsFile {
   text: string;
 }
 
+/** Longest line read and most lines read: a hostile file cannot make the parser do unbounded work. */
+const MAX_LINE_CHARS = 2_000;
+const MAX_LINES = 50_000;
+
 const LINK = /^\s*[-*+]\s*\[([^\]]+)\]\(\s*<?([^)\s>]+)>?\s*\)\s*(?::\s*(.*))?$/;
 
 export function parseLlmsTxt(raw: string): LlmsFile {
@@ -25,7 +29,8 @@ export function parseLlmsTxt(raw: string): LlmsFile {
   const summary: string[] = [];
   let current: LlmsFile["sections"][number] | undefined;
   let inFence = false;
-  for (const line of text.split("\n")) {
+  for (const full of text.split("\n", MAX_LINES)) {
+    const line = full.length > MAX_LINE_CHARS ? full.slice(0, MAX_LINE_CHARS) : full;
     if (/^\s*```/.test(line)) inFence = !inFence;
     if (inFence) continue;
     const h1 = /^#\s+(.+?)\s*#*\s*$/.exec(line);

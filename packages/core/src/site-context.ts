@@ -44,6 +44,8 @@ export interface LlmsRead {
   url: string;
   state: RobotsState;
   file: LlmsFile | null;
+  /** The body was cut at the fetcher's size cap: the file was only partly read. */
+  truncated?: boolean;
 }
 
 /** Read once per run, before the checks that need it, and shared by all of them. */
@@ -306,14 +308,14 @@ function looksLikeHtml(hop: Hop): boolean {
 async function readRootText(
   fetcher: Fetcher,
   url: string,
-): Promise<{ body: string | null; state: RobotsState }> {
+): Promise<{ body: string | null; state: RobotsState; truncated?: boolean }> {
   const hops = await getOrNull(fetcher, url);
   const last = hops.at(-1);
   if (!last || last.status >= 500) return { body: null, state: "unknown" };
   if (last.status < 200 || last.status >= 300 || looksLikeHtml(last)) {
     return { body: null, state: "missing" };
   }
-  return { body: last.body ?? "", state: "found" };
+  return { body: last.body ?? "", state: "found", ...(last.truncated ? { truncated: true } : {}) };
 }
 
 async function readRobots(
@@ -439,10 +441,11 @@ export async function buildSiteContext({
     sitemapAlternates: alternates,
     sitemapSample,
     feeds: await feedsRead,
-    llms: await llmsRead.then(({ body, state: llmsState }) => ({
+    llms: await llmsRead.then(({ body, state: llmsState, truncated }) => ({
       url: llmsUrl,
       state: llmsState,
       file: body === null ? null : parseLlmsTxt(body),
+      ...(truncated ? { truncated: true } : {}),
     })),
   };
 }

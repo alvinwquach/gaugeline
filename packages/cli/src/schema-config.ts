@@ -21,6 +21,7 @@ import {
   hiddenConfigSchema,
   staleDatesConfigSchema,
   navRulesSchema,
+  aiConfigSchema,
   languageRulesSchema,
   listingsConfigSchema,
   crmConfigSchema,
@@ -49,6 +50,7 @@ import {
   type HiddenConfig,
   type ImagesConfig,
   type NavRules,
+  type AiConfig,
   type StaleDatesConfig,
   type LanguageRules,
   type ListingsConfig,
@@ -187,6 +189,12 @@ export function readBackupsConfig(dir: string): BackupsConfig | undefined {
 
 export function readServicesConfig(dir: string): ServicesConfig | undefined {
   return readJsonConfig(dir, SERVICES_CONFIG_FILE, servicesConfigSchema, "your packages");
+}
+
+export const AI_CONFIG_FILE = "gaugeline.ai.json";
+
+export function readAiConfig(dir: string): AiConfig | undefined {
+  return readJsonConfig(dir, AI_CONFIG_FILE, aiConfigSchema, "the AI crawler settings");
 }
 
 export function readTrackersConfig(dir: string): TrackersConfig | undefined {
