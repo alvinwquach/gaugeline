@@ -42,10 +42,35 @@ the link does not use it up. After that, the home page is the organisation's nam
 <main id="main">
   <h1>Northgate Studio</h1>
   <p class="muted">You are signed in as Owner.</p>
-  <ul>
-    <li>Juniper Pop-up Kitchen</li>
-    <li>The Tidewater Bar</li>
-  </ul>
+  <table class="sites">
+    <caption>Sites, worst first</caption>
+    <thead><tr>
+      <th scope="col">Site</th>
+      <th scope="col" class="num">Fix this first</th>
+      <th scope="col" class="num">Fix soon</th>
+      <th scope="col">Since the run before</th>
+      <th scope="col">Last checked</th>
+      <th scope="col">New since then</th>
+    </tr></thead>
+    <tbody>
+    <tr>
+      <th scope="row">Juniper Pop-up Kitchen<br><span class="muted">https://juniper-popup.test</span></th>
+      <td class="num">-</td>
+      <td class="num">-</td>
+      <td><span class="trend trend-unchecked">Not checked yet</span></td>
+      <td>-</td>
+      <td></td>
+    </tr>
+    <tr>
+      <th scope="row">The Tidewater Bar<br><span class="muted">https://tidewater-bar.test</span></th>
+      <td class="num">-</td>
+      <td class="num">-</td>
+      <td><span class="trend trend-unchecked">Not checked yet</span></td>
+      <td>-</td>
+      <td></td>
+    </tr>
+    </tbody>
+  </table>
 </main>
 ```
 

@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "at": "2026-11-02",
+  "findings": [
+    {
+      "fingerprint": "173443e99cd1af4d",
+      "checkId": "canonical-elsewhere",
+      "path": "/"
+    },
+    {
+      "fingerprint": "a74d0bda74f17606",
+      "checkId": "images-alt-missing",
+      "path": "/"
+    },
+    {
+      "fingerprint": "0281269272fe3b19",
+      "checkId": "images-legacy-format",
+      "path": "/taps.png"
+    },
+    {
+      "fingerprint": "8fa09220c5857ac8",
+      "checkId": "viewport",
+      "path": "/"
+    }
+  ]
+}

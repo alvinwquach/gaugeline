@@ -190,7 +190,11 @@ describe.each(ENTRIES)("the adapter contract: $id", (entry) => {
           for (const value of Object.values(entry.keyHeaders)) expect(s.url).not.toContain(value);
         } else
           expect(s.headers.authorization ?? "").toBe(
-            entry.keyHeader ? "" : entry.keyRaw ? entry.key : `Bearer ${entry.key}`,
+            entry.keyHeader
+              ? ""
+              : entry.keyRaw
+                ? entry.key
+                : `${entry.keyPrefix ?? "Bearer "}${entry.key}`,
           );
       }
       if (!entry.keyHeader) return;

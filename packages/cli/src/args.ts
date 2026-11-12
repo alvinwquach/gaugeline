@@ -1,6 +1,7 @@
 import { parseArgs } from "node:util";
 import {
   SECRET_FLAGS,
+  isCalendarDate,
   minorExponent,
   parseAddress,
   parseSince,
@@ -139,6 +140,13 @@ export interface RunFlags {
   upload: boolean;
   /** --save-requests: where to write the request log and page data (a separate file, never the result). */
   saveRequests?: string;
+  /** --baseline <file>, --update-baseline: the findings already known (G29). */
+  baseline?: string;
+  updateBaseline: boolean;
+  /** --config-json-only, GAUGELINE_NO_EXEC_CONFIG: refuse a config file that runs code. */
+  configJsonOnly: boolean;
+  /** --suppress <id> with --suppress-until and --suppress-reason: snoozed for this run only. */
+  suppress: { ids: string[]; until: string; reason: string } | undefined;
   ci: boolean;
   /** Machine output on stdout: --json, or --format json|sarif|junit. No report file, no stderr chatter. */
   json: boolean;
@@ -556,6 +564,54 @@ export function parseCliArgs(
       verbose,
     };
   }
+
+  if (typeof values.baseline === "string" && values.baseline.trim() === "") {
+    return {
+      kind: "error",
+      message: "--baseline needs a file name.",
+      hint: "For example: gaugeline example.com --baseline gaugeline.baseline.json.",
+      verbose,
+    };
+  }
+  if (values["update-baseline"] === true && typeof values.baseline !== "string") {
+    return {
+      kind: "error",
+      message: "--update-baseline needs --baseline <file> to say which file to write.",
+      hint: "For example: gaugeline example.com --baseline gaugeline.baseline.json --update-baseline.",
+      verbose,
+    };
+  }
+  const suppressIds = (
+    Array.isArray(values.suppress)
+      ? values.suppress
+      : typeof values.suppress === "string"
+        ? [values.suppress]
+        : []
+  ).map((s) => String(s).trim());
+  const suppressUntil =
+    typeof values["suppress-until"] === "string" ? values["suppress-until"].trim() : "";
+  const suppressReason =
+    typeof values["suppress-reason"] === "string" ? values["suppress-reason"].trim() : "";
+  if (suppressIds.length > 0 || suppressUntil !== "" || suppressReason !== "") {
+    const problem =
+      suppressIds.length === 0 || suppressIds.some((s) => s === "")
+        ? "--suppress needs a check id."
+        : suppressReason === ""
+          ? "--suppress needs --suppress-reason: say why it is accepted for now."
+          : suppressUntil === ""
+            ? "--suppress needs --suppress-until: nothing is muted for ever."
+            : !isCalendarDate(suppressUntil)
+              ? `--suppress-until must be a real date, YYYY-MM-DD, not "${suppressUntil}".`
+              : undefined;
+    if (problem)
+      return {
+        kind: "error",
+        message: problem,
+        hint: 'For example: gaugeline example.com --suppress title-missing --suppress-until 2026-12-31 --suppress-reason "client is rewriting the page".',
+        verbose,
+      };
+  }
+  const suppression = { ids: suppressIds, until: suppressUntil, reason: suppressReason };
 
   const positionals = parsed.positionals.map((p) => p.trim()).filter((p) => p !== "");
   if (command === "plan") {
@@ -1736,6 +1792,10 @@ export function parseCliArgs(
     ...(typeof values["save-requests"] === "string"
       ? { saveRequests: values["save-requests"] }
       : {}),
+    ...(typeof values.baseline === "string" ? { baseline: values.baseline } : {}),
+    updateBaseline: values["update-baseline"] === true,
+    configJsonOnly: values["config-json-only"] === true,
+    suppress: suppression.ids.length > 0 ? suppression : undefined,
     address: address.url.href,
     input,
     deprecatedUsed,
