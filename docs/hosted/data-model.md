@@ -83,8 +83,11 @@ A person in two organisations sees both, and nothing else.
   (G35) checks the site's upload token and inserts as `service_role`, so nobody can invent a finding.
 - **Owners.** Only an owner adds, promotes, demotes or removes an owner; an admin cannot make anyone an
   owner, themselves included. The last owner of an organisation cannot leave or step down until someone
-  else is an owner, even when two owners try to leave at the same moment (the organisation row is
-  locked while the owners are counted).
+  else is an owner. That holds when two owners try to leave at the same moment: the removal writes the
+  organisation row before counting owners, so the second one waits for the first. At READ COMMITTED (the
+  default) the second then fails with "the last owner of an organisation cannot leave or step down"; at
+  REPEATABLE READ or SERIALIZABLE it fails with "could not serialize access due to concurrent update"
+  and can be retried. Either way one owner remains.
 - **Role names.** The database roles are Supabase's: `authenticated` is the signed-in app user (the
   plan's "app" role) and `service_role` is the server and worker (the plan's "service" role). The
   plan's `agent` role (may only insert drafts) does not exist yet: it is G37's work.
@@ -98,8 +101,8 @@ A person in two organisations sees both, and nothing else.
 These are requirements, not yet code that runs: the server and worker arrive with G35 and G36.
 
 1. **A separate login role.** The server and the worker connect with their own login role, like
-   Supabase's `authenticator`: `NOINHERIT`, a member of `authenticated` and `service_role` and of
-   nothing else. It is not `postgres`, which owns the tables (and on Supabase has `BYPASSRLS`).
+   Supabase's `authenticator`: `NOINHERIT`, a member of `anon`, `authenticated` and `service_role`
+   and of nothing riskier. It is not `postgres`, which owns the tables (and on Supabase has `BYPASSRLS`).
 2. **The owner's address is for migrations only.** `GAUGELINE_DATABASE_URL` (the owner) is used by
    `db:migrate` and nothing else; the server gets a different address for its login role.
 3. **Every query names its role.** A request from a signed-in person runs in a transaction that starts

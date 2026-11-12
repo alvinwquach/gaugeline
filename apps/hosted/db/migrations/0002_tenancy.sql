@@ -196,8 +196,8 @@ revoke all on public.draft_state, public.site_consent_current
 grant select on public.draft_state, public.site_consent_current to authenticated, service_role;
 
 -- Every organisation keeps at least one owner. Runs as the owner of the function so it sees every
--- member row; skipped when the organisation itself is being deleted. The organisation row is locked
--- before counting, so concurrent removals of two different owners cannot both pass (READ COMMITTED).
+-- member row; skipped when the organisation itself is being deleted. The organisation row is written
+-- before counting, so concurrent removals of two different owners cannot both pass at any isolation level.
 create function private.keep_an_owner() returns trigger
 language plpgsql security definer set search_path = ''
 as $$
@@ -205,10 +205,13 @@ begin
   if old.role <> 'owner' or (tg_op = 'UPDATE' and new.role = 'owner' and new.org_id = old.org_id) then
     return coalesce(new, old);
   end if;
-  -- Lock the organisation first, so two sessions removing two different owners at once take turns:
-  -- the second one then counts after the first has committed. No row means the organisation itself
-  -- is being deleted (a cascade), which is allowed.
-  perform 1 from public.organisations o where o.org_id = old.org_id for update;
+  -- Write the organisation row (a no-op update) before counting, so two sessions removing two
+  -- different owners at once conflict on it. READ COMMITTED: the second waits, then counts after the
+  -- first has committed and fails with "last owner". REPEATABLE READ or SERIALIZABLE: the second fails
+  -- with a serialization error. The update takes FOR NO KEY UPDATE, which does not block foreign-key
+  -- checks (FOR KEY SHARE) from other writes to the organisation. organisations has no triggers.
+  -- No row means the organisation itself is being deleted (a cascade), which is allowed.
+  update public.organisations o set name = o.name where o.org_id = old.org_id;
   if not found then
     return coalesce(new, old);
   end if;

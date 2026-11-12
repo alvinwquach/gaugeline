@@ -107,35 +107,76 @@ describe.skipIf(!HAS_DATABASE)("hosted database: sessions and login roles", () =
   });
 
   describe("the last owner, under concurrency", () => {
-    it("two sessions removing the last two owners at once leave one owner", async () => {
-      await sql`update public.members set role = 'owner' where org_id = ${ORG_B} and user_id = ${USER_BOTH}`;
+    /** Make both people owners of org B again, then race two sessions removing one each. */
+    async function race(isolation: "read committed" | "repeatable read") {
+      await sql`insert into public.members (org_id, user_id, role) values
+        (${ORG_B}, ${USER_B_OWNER}, 'owner'), (${ORG_B}, ${USER_BOTH}, 'owner')
+        on conflict (org_id, user_id) do update set role = 'owner'`;
       const s1 = postgres(db.url, { max: 1, onnotice: () => {} });
       const s2 = postgres(db.url, { max: 1, onnotice: () => {} });
-      open.push(s1, s2);
+      const s3 = postgres(db.url, { max: 1, onnotice: () => {} });
+      open.push(s1, s2, s3);
+      const [{ pid: pid2 }] = (await s2`select pg_backend_pid() as pid`) as unknown as [
+        { pid: number },
+      ];
       let started!: () => void;
       let release!: () => void;
       const startedP = new Promise<void>((r) => (started = r));
       const releaseP = new Promise<void>((r) => (release = r));
-      const first = s1.begin(async (tx) => {
+      const first = s1.begin(`isolation level ${isolation}`, async (tx) => {
         await tx`delete from public.members where org_id = ${ORG_B} and user_id = ${USER_B_OWNER}`;
         started();
         await releaseP;
       });
       await startedP;
       const second = errorOf(
-        s2.begin(async (tx) => {
+        s2.begin(`isolation level ${isolation}`, async (tx) => {
           await tx.unsafe("set local lock_timeout = '20s'");
           await tx`delete from public.members where org_id = ${ORG_B} and user_id = ${USER_BOTH}`;
         }),
       );
-      // Give the second session time to reach the trigger (it waits on the organisation's lock).
-      await new Promise((r) => setTimeout(r, 300));
+      // Wait until the second session is really blocked on a lock, so the race is exercised.
+      for (let i = 0; i < 200; i++) {
+        const w = await sql`select wait_event_type from pg_stat_activity where pid = ${pid2}`;
+        if (w[0]?.wait_event_type === "Lock") break;
+        await new Promise((r) => setTimeout(r, 25));
+      }
+      const blocked = await sql`select wait_event_type from pg_stat_activity where pid = ${pid2}`;
+      // While an owner removal is open, other writes to the organisation (foreign-key checks) go on.
+      const other = await errorOf(
+        s3.begin(async (tx) => {
+          await tx.unsafe("set local lock_timeout = '2s'");
+          await tx`insert into public.members (org_id, user_id, role)
+            values (${ORG_B}, gen_random_uuid(), 'member')`;
+        }),
+      );
       release();
       await first;
-      expect(await second).toMatch(/last owner/);
+      const loser = await second;
       const owners =
         await sql`select user_id from public.members where org_id = ${ORG_B} and role = 'owner'`;
-      expect(owners.map((r) => r.user_id)).toEqual([USER_BOTH]);
+      return {
+        blocked: blocked[0]?.wait_event_type,
+        other,
+        loser,
+        owners: owners.map((r) => r.user_id),
+      };
+    }
+
+    it("READ COMMITTED: the second removal waits, then fails with 'last owner'", async () => {
+      const r = await race("read committed");
+      expect(r.blocked).toBe("Lock");
+      expect(r.other).toBe("");
+      expect(r.loser).toMatch(/last owner/);
+      expect(r.owners).toEqual([USER_BOTH]);
+    });
+
+    it("REPEATABLE READ: the second removal fails with a serialization error", async () => {
+      const r = await race("repeatable read");
+      expect(r.blocked).toBe("Lock");
+      expect(r.other).toBe("");
+      expect(r.loser).toMatch(/could not serialize access/);
+      expect(r.owners).toEqual([USER_BOTH]);
     });
   });
 });

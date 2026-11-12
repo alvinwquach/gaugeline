@@ -46,7 +46,7 @@ export async function viewsWithoutSecurityInvoker(
  * member of, whatever NOINHERIT says. Reported: membership (directly or through other roles) in a
  * superuser, in a BYPASSRLS role other than service_role, or in the owner of a table in `schema`.
  *
- * The app's login must be like Supabase's authenticator: NOINHERIT, a member of `authenticated` and
+ * The app's login must be like Supabase's authenticator: NOINHERIT, a member of `anon`, `authenticated` and
  * `service_role` only. Call this once at start-up, outside any transaction (assertConnectionRespectsRls).
  */
 export async function connectionSkipsRls(sql: Query, schema = "public"): Promise<boolean> {
