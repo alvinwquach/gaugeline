@@ -1,0 +1,43 @@
+{
+  "name": "@gaugeline/documents",
+  "version": "0.1.0",
+  "description": "Reads the text of PDF menus, price lists and brochures for Gaugeline's document checks. Optional: install it beside gaugeline.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alvinwquach/gaugeline.git",
+    "directory": "packages/documents"
+  },
+  "keywords": [
+    "pdf",
+    "menu",
+    "price-list",
+    "gaugeline"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "private": false
+}

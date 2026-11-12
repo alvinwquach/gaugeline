@@ -140,6 +140,7 @@ export const UNLISTED: NavPage[] = [
   ...ADAPTER_PAGES,
   { slug: "integrations/recipes/index", title: "Recipes for the generic API adapter" },
   { slug: "connectors/listings", title: "Listings off the site" },
+  { slug: "checks/documents-agree", title: "Documents agree with the site" },
   { slug: "connectors/postgres", title: "A database as a source: Postgres and Supabase" },
   { slug: "sources/shopify", title: "Shopify as a price source" },
   { slug: "sources/square", title: "Square as a price source" },
