@@ -35,7 +35,9 @@ checks below are not run.
   only, never values.** The public Storefront API token and the checkout domain, which the starter's
   root loader sends on purpose, are not flagged.
 - `hydrogen-dev-tools-live` (fix first): the page was served by the dev server (it loads
-  `/@vite/client`, `/@react-refresh` or the `inject-hmr-runtime` module).
+  `/@vite/client`, `/@react-refresh` or the `inject-hmr-runtime` module). Only a page recognised as
+  Hydrogen (see above) is reported here; a React Router 7 site that is not Hydrogen is reported by
+  `remix-dev-tools-live` instead, so one dev server is reported once.
 
 ## What is not checked, and why
 

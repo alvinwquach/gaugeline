@@ -3,7 +3,12 @@ import type { Fetcher, Hop } from "../fetcher.js";
 import { readPrices, type PriceReading } from "../price.js";
 import { buildSnapshot } from "../snapshot.js";
 import { collectPublished, type PartialRead } from "./collect.js";
-import { SHOPIFY_TYPES, type ShopifyAdapter, type ShopifyOffer } from "./shopify.js";
+import {
+  SHOPIFY_TYPES,
+  shopHost as normaliseShopHost,
+  type ShopifyAdapter,
+  type ShopifyOffer,
+} from "./shopify.js";
 import { AdapterCouldNotCheck, AdapterRateLimitedError } from "./types.js";
 import { bare, onSite, type PageAnswer } from "./webflow-read.js";
 
@@ -159,7 +164,7 @@ const SHOPIFY_HOST = /(^|\.)(myshopify|shopifypreview)\.com$/;
  * is "refused": never asked for and never shown, but counted so the run can say so. An address on any other host
  * is not Shopify's business and is ignored. Never a guess: only what the site itself links to.
  */
-function previewTarget(
+export function previewTarget(
   href: string,
   siteHost: string,
   shopHost: string | undefined,
@@ -167,12 +172,15 @@ function previewTarget(
   try {
     const u = new URL(href);
     if (u.protocol !== "https:") return undefined;
-    const host = u.hostname.toLowerCase();
-    const handle =
-      shopHost === undefined ? undefined : shopHost.toLowerCase().replace(/\.myshopify\.com$/, "");
-    const ownHost = bare(host) === bare(siteHost) || host === shopHost?.toLowerCase();
+    // The hostname (no port) says whose address it is; the host (with its port) says which server. A Shopify name is
+    // judged by its hostname alone, with a root dot dropped; "own" is judged by host, so another port is another server.
+    const name = u.hostname.toLowerCase().replace(/\.$/, "");
+    const host = u.host.toLowerCase().replace(/\.(?=$|:)/, "");
+    const shop = shopHost === undefined ? undefined : normaliseShopHost(shopHost);
+    const handle = shop?.replace(/\.myshopify\.com$/, "");
+    const ownHost = bare(host) === bare(siteHost) || host === shop;
     if (ownHost) return u.searchParams.has("preview_theme_id") ? u : undefined;
-    if (!SHOPIFY_HOST.test(host)) return undefined;
+    if (!SHOPIFY_HOST.test(name)) return undefined;
     if (handle !== undefined && host === `${handle}.shopifypreview.com`) return u;
     return "refused";
   } catch {

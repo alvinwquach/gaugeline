@@ -77,6 +77,7 @@ Each run samples a fixed amount and never more. The numbers live in one frozen o
 | Next.js draft routes asked       | 4       |
 | Download routes asked (consent)  | 10      |
 | Framework addresses requested    | 0       |
+| Nuxt addresses asked             | 6       |
 | Addresses inside structured data | 12      |
 | Requests at the same time        | 5       |
 | Redirect hops followed           | 10      |

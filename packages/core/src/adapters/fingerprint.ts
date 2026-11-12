@@ -41,7 +41,8 @@ export function fillUrlTemplate(template: string, doc: Pick<PublishedDoc, "id" |
   let missing = false;
   const out = template.replace(PLACEHOLDER, (_m, name: string) => {
     const value = name === "slug" ? doc.slug : doc.id;
-    if (value === undefined || value === "") {
+    // "." and ".." are dot segments: "/blog/.." is "/", another page, so they are no address at all.
+    if (value === undefined || value === "" || value === "." || value === "..") {
       missing = true;
       return "";
     }

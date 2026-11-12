@@ -28,6 +28,7 @@ import type { TagAnalysis } from "./tags/analyse.js";
 import type { TagContainer } from "./tags/read-container.js";
 import type { RunSnapshot } from "./run-snapshot.js";
 import type { DatasetRead } from "./sanity.js";
+import type { DocumentsContext } from "./documents/types.js";
 import type { ListingsRead } from "./listings/read.js";
 import type { CrmRead } from "./sources/crm-read.js";
 import type { DatabasesRead } from "./connectors/postgres/read.js";
@@ -244,6 +245,12 @@ export interface CheckContext {
   wordpress?: WordPress;
   /** The page's App Store and Google Play apps, looked up once on first use. */
   apps?: () => Promise<AppLookup[]>;
+  /**
+   * What the document checks read besides the pages: gaugeline.documents.json, the prices the content
+   * and payment systems state, and the reader (the optional package @gaugeline/documents). Absent
+   * values mean "none configured"; the checks still find the PDFs the pages link to.
+   */
+  documents?: DocumentsContext;
   /**
    * The business listings named in gaugeline.listings.json (Google, Yelp, Apple, social bios), read
    * once on first use. Absent when no listing is configured: the listing checks then say they could

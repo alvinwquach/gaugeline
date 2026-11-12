@@ -39,6 +39,10 @@ $ npx gaugeline tideline-coaching.example
     The page shows a price and 1 buy button, and none can be linked to: "Buy now" (an element with a click handler).
 · A downloadable file is on a public asset address
     Links to a downloadable file on a public asset address: "Terms of sale" (cdn.sanity.io/files/k3x9q2/production/c0ffee01234567890abc-terms-of-sale.pdf).
+? document-hours-mismatch could not be checked: could not be fetched (cdn.sanity.io could not be found. Check the spelling.), so it was not compared with the site (https://cdn.sanity.io/files/k3x9q2/production/7e1c5a0b9d3f4a6b8c2d-7-day-plan.pdf, https://cdn.sanity.io/files/k3x9q2/production/c0ffee01234567890abc-terms-of-sale.pdf)
+? document-item-missing could not be checked: could not be fetched (cdn.sanity.io could not be found. Check the spelling.), so it was not compared with the site (https://cdn.sanity.io/files/k3x9q2/production/7e1c5a0b9d3f4a6b8c2d-7-day-plan.pdf, https://cdn.sanity.io/files/k3x9q2/production/c0ffee01234567890abc-terms-of-sale.pdf)
+? document-price-mismatch could not be checked: could not be fetched (cdn.sanity.io could not be found. Check the spelling.), so it was not compared with the site (https://cdn.sanity.io/files/k3x9q2/production/7e1c5a0b9d3f4a6b8c2d-7-day-plan.pdf, https://cdn.sanity.io/files/k3x9q2/production/c0ffee01234567890abc-terms-of-sale.pdf)
+? document-unreadable could not be checked: could not be fetched (cdn.sanity.io could not be found. Check the spelling.), so it was not read (https://cdn.sanity.io/files/k3x9q2/production/7e1c5a0b9d3f4a6b8c2d-7-day-plan.pdf, https://cdn.sanity.io/files/k3x9q2/production/c0ffee01234567890abc-terms-of-sale.pdf)
 ? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
     Mail records are read from DNS only with --dns. Rerun with --dns to check them.
 

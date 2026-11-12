@@ -141,6 +141,7 @@ export const UNLISTED: NavPage[] = [
   ...ADAPTER_PAGES,
   { slug: "integrations/recipes/index", title: "Recipes for the generic API adapter" },
   { slug: "connectors/listings", title: "Listings off the site" },
+  { slug: "checks/documents-agree", title: "Documents agree with the site" },
   { slug: "connectors/postgres", title: "A database as a source: Postgres and Supabase" },
   { slug: "sources/shopify", title: "Shopify as a price source" },
   { slug: "sources/square", title: "Square as a price source" },
@@ -167,6 +168,7 @@ export const UNLISTED: NavPage[] = [
   { slug: "guides/sveltekit", title: "SvelteKit sites" },
   { slug: "guides/astro", title: "Astro sites" },
   { slug: "guides/sanity-images", title: "Sanity images: sizes, crops and duplicates" },
+  { slug: "guides/nuxt", title: "Nuxt sites" },
   { slug: "guides/source-maps", title: "Source maps and development tools left on" },
   { slug: "guides/headless-wordpress", title: "Headless WordPress sites" },
   { slug: "guides/remix", title: "Remix and React Router sites" },
@@ -180,4 +182,6 @@ export const UNLISTED: NavPage[] = [
   { slug: "guides/cutover", title: "Cutover: what changed on the day" },
   { slug: "guides/many-sites", title: "Many sites from one file" },
   { slug: "guides/ci-templates", title: "CI templates: GitLab CI, Bitbucket Pipelines, CircleCI" },
+  { slug: "hosted/data-model", title: "Hosted: data model and tenancy" },
+  { slug: "hosted/plan", title: "Hosted app plan" },
 ];
