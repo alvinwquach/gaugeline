@@ -26,6 +26,11 @@ const FIELD_READERS: readonly string[] = ADAPTER_ENTRIES.filter((e) => e.setting
   (e) => e.id,
 );
 
+/** The adapters that take `checkReleases`: the owner agrees that the repository's releases are read with the token. */
+const CHECK_RELEASES: readonly string[] = ADAPTER_ENTRIES.filter(
+  (e) => e.settings?.checkReleases,
+).map((e) => e.id);
+
 /** The adapters that take `expectPrivate`: the owner says their public API is meant to be private. */
 const EXPECT_PRIVATE: readonly string[] = ADAPTER_ENTRIES.filter(
   (e) => e.settings?.expectPrivate,
@@ -102,6 +107,11 @@ export const adaptersConfigSchema = z.strictObject({
            * whether it answers a visitor with no key (still only with --owner-consent).
            */
           expectPrivate: z.boolean().optional(),
+          /**
+           * Prismic only: the owner agrees that Gaugeline reads the repository's releases with the access token. Switches
+           * on the check that asks (still only with --owner-consent).
+           */
+          checkReleases: z.boolean().optional(),
           /**
            * DatoCMS only: the GraphQL collection to read for each content type, and the field that holds an item's
            * slug. The Content Delivery API has no list of types, so the types are the ones named here.
@@ -254,6 +264,12 @@ export const adaptersConfigSchema = z.strictObject({
               code: "custom",
               path: ["siteId"],
               message: `"siteId" belongs to the wix adapter, not to ${entry.id}`,
+            });
+          if (entry.checkReleases !== undefined && !CHECK_RELEASES.includes(entry.id))
+            ctx.addIssue({
+              code: "custom",
+              path: ["checkReleases"],
+              message: `"checkReleases" belongs to the Prismic adapter, not to ${entry.id}`,
             });
           if (entry.expectPrivate !== undefined && !EXPECT_PRIVATE.includes(entry.id))
             ctx.addIssue({

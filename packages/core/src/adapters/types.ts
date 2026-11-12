@@ -192,6 +192,12 @@ export interface AdapterSettings {
    * finding is a count.
    */
   showDraftIds?: boolean | undefined;
+  /**
+   * Only `prismic`: the owner agrees that Gaugeline reads the repository's releases (unpublished content) with the
+   * access token, to find documents in a release that are already live. Switches on the check that asks (still only
+   * with --owner-consent).
+   */
+  checkReleases?: boolean | undefined;
   /** Only `git-content`: the repository's folder on this computer, relative to where the run starts. */
   path?: string | undefined;
   /** Only `git-content`: a repository on GitHub, read with GET. Instead of `path`. */
