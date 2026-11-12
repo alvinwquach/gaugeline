@@ -672,6 +672,11 @@ export function createPrismicAdapter(options: PrismicAdapterOptions): PrismicAda
    */
   const draftsReachable = async (): Promise<boolean | "not-applicable"> => {
     if (token === "") return "not-applicable";
+    // Listing the releases a token can see is a look at unpublished work: only when the settings say it may be.
+    if (settings?.checkReleases !== true)
+      throw new AdapterCouldNotCheck(
+        "Not asked: the token could reach releases, which hold unpublished content, and gaugeline.adapters.json does not say checkReleases: true for prismic.",
+      );
     const r = await root("cache", "token", () => undefined);
     if (r.releases.length > 0) return true;
     throw new AdapterCouldNotCheck(

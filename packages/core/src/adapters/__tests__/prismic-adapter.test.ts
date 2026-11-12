@@ -1,3 +1,4 @@
+// check-community: allow-email (an invented malformed repository name, to prove it never becomes a host)
 import { Readable } from "node:stream";
 import { describe, expect, it } from "vitest";
 import { testKey } from "../../connectors/__tests__/fake.js";
@@ -479,6 +480,12 @@ describe("the Prismic adapter: drafts", () => {
     const w = world({ releaseToken: KEY });
     expect(await w.adapter.draftsReachable()).toBe(true);
     expect(w.seen.every((s) => !s.url.pathname.endsWith("/documents/search"))).toBe(true);
+  });
+
+  it("with a token but without checkReleases it does not look at the releases at all", async () => {
+    const w = world({ releaseToken: KEY }, { settings: { id: "prismic" } });
+    expect(await reason(w.adapter.draftsReachable())).toMatch(/checkReleases: true/);
+    expect(w.seen).toEqual([]);
   });
 
   it("no release listed is could-not-check, never 'no'", async () => {

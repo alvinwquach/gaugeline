@@ -20,6 +20,7 @@ export const prismicEntry: ContractEntry = {
       settings: {
         id: "prismic",
         urls: { classes: "/classes/{slug}", teachers: "/teachers/{slug}" },
+        checkReleases: true,
       },
     }),
   transport: () => prismicTransport(undefined, { releaseToken: PRISMIC_KEY }),
