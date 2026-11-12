@@ -142,6 +142,17 @@ Outputs: `sarif-file` (its path), `high` and `medium` (how many findings, muted 
 - **Not a pull request?** `comment: true` on a push or a deployment does nothing but print a notice.
 - **No `npx` on the runner?** GitHub's own runners have Node. A self-hosted runner needs Node 20 or later.
 
+## Docker
+
+For a team that does not want to argue about Node versions, the repository has a `Dockerfile`: a pinned `node:22-slim` image (Gaugeline needs Node 22 or later), the published CLI at one exact version, and an unprivileged user. It holds no key; pass keys at run time with `-e NAME`. Build it from a release:
+
+```sh title=Terminal untested="Needs Docker and a published release of gaugeline (the image installs it from npm), so it cannot run in the docs build. scripts/__tests__/docker-image.test.ts checks the Dockerfile and the entrypoint without building."
+$ docker build --build-arg GAUGELINE_VERSION=0.1.0 -t gaugeline .
+$ docker run --rm --read-only --tmpfs /tmp gaugeline https://brightside-preview.example --format junit --ci > gaugeline.xml
+```
+
+The container's exit code is the CLI's: 0, 1 with `--ci` and a "Fix this first" finding, 2 when the check could not run. With `--read-only --tmpfs /tmp` it writes nowhere else, and `--format` (or `--json`) keeps stdout to the result and writes no report file. Mount a folder at `/work` (`-v "$PWD:/work"`) to give it a `gaugeline.config.json` or a baseline.
+
 ## A protected preview
 
 A preview behind deployment protection answers every request with a login page. Store its secret
