@@ -1578,3 +1578,37 @@ export {
 export type { InitEnvVar, InitFile, InitPlan, NextStep } from "./init/plan.js";
 export { renderInit } from "./init/render.js";
 export type { InitOutput } from "./init/render.js";
+
+export { changesConfigSchema, DEFAULT_RETENTION_DAYS } from "./changes/config.js";
+export type { ChangesConfig } from "./changes/config.js";
+export { buildPageRecord, diffRecords } from "./changes/record.js";
+export {
+  findingKey as recordedFindingKey,
+  inOrder,
+  newFindings,
+  parseSince,
+  pruneRuns,
+  runId,
+} from "./changes/history.js";
+export type { Appearance, Since } from "./changes/history.js";
+export { attribute } from "./changes/attribute.js";
+export {
+  buildChanges,
+  describe as describeChange,
+  formatChanges,
+  warrantyNote,
+} from "./changes/report.js";
+export type { ChangeItem, ChangeSources, ChangesReport, Warranty } from "./changes/report.js";
+export { createChangeSources } from "./changes/sources.js";
+export { readDeploys } from "./changes/deploys.js";
+export { HISTORY_SCHEMA, RUN_ID, isRunRecord } from "./changes/types.js";
+export type {
+  ChangeLabel,
+  Deploy,
+  FieldChange,
+  PageRecord,
+  RecordedFinding,
+  Revision,
+  RunRecord,
+  SourceRead,
+} from "./changes/types.js";
