@@ -224,6 +224,10 @@ describe("fingerprints: unit", () => {
       expect(isUrlTemplate(bad)).toBe(false);
     expect(fillUrlTemplate("/blog/{slug}", { id: "i", slug: "a/b?c" })).toBe("/blog/a%2Fb%3Fc");
     expect(fillUrlTemplate("/id/{id}", { id: "x y" })).toBe("/id/x%20y");
+    // A dot segment would make the address another page ("/blog/.." is "/"), so it is no address at all.
+    expect(fillUrlTemplate("/blog/{slug}", { id: "i", slug: ".." })).toBe("");
+    expect(fillUrlTemplate("/blog/{slug}", { id: "i", slug: "." })).toBe("");
+    expect(fillUrlTemplate("/blog/{slug}", { id: "i", slug: "..." })).toBe("/blog/...");
   });
 });
 

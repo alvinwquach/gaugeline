@@ -91,6 +91,7 @@ export const UNLISTED: NavPage[] = [
   { slug: "tools/redirects", title: "Check a redirect list" },
   { slug: "tools/plan", title: "Check a launch plan" },
   { slug: "security", title: "Security" },
+  { slug: "security/untrusted-content", title: "Text from the sites you check" },
   { slug: "changelog", title: "Changelog" },
   { slug: "reference/json-schema", title: "JSON output reference" },
   { slug: "contributing/docs-first", title: "Docs first" },
@@ -181,4 +182,6 @@ export const UNLISTED: NavPage[] = [
   { slug: "guides/cutover", title: "Cutover: what changed on the day" },
   { slug: "guides/many-sites", title: "Many sites from one file" },
   { slug: "guides/ci-templates", title: "CI templates: GitLab CI, Bitbucket Pipelines, CircleCI" },
+  { slug: "hosted/data-model", title: "Hosted: data model and tenancy" },
+  { slug: "hosted/plan", title: "Hosted app plan" },
 ];

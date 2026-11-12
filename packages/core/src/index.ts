@@ -1484,8 +1484,10 @@ export { STRAPI_CHECKS, createStrapiRegistry } from "./checks/strapi.js";
 export { CRAFT_CHECKS, createCraftRegistry } from "./checks/craft.js";
 export { HYGRAPH_CHECKS, createHygraphRegistry } from "./checks/hygraph.js";
 export { UMBRACO_CHECKS, createUmbracoRegistry } from "./checks/umbraco.js";
+export { SITECORE_CHECKS, createSitecoreRegistry } from "./checks/sitecore.js";
 export { JOOMLA_CHECKS, createJoomlaRegistry } from "./checks/joomla.js";
 export { DATOCMS_CHECKS, createDatocmsRegistry } from "./checks/datocms.js";
+export { PRISMIC_CHECKS, createPrismicRegistry } from "./checks/prismic.js";
 export { DIRECTUS_CHECKS, createDirectusRegistry } from "./checks/directus.js";
 export { HUBSPOT_CMS_CHECKS, createHubspotCmsRegistry } from "./checks/hubspot-cms.js";
 export {
@@ -1653,3 +1655,13 @@ export type {
   RunRecord,
   SourceRead,
 } from "./changes/types.js";
+export {
+  CUT_MARKER,
+  DEFAULT_UNTRUSTED_MAX_CHARS,
+  UNTRUSTED_CAPS,
+  UNTRUSTED_FIELD_NOTE,
+  markUntrusted,
+  sanitise,
+  wrapFindingForAgent,
+} from "./untrusted.js";
+export type { AgentFinding, Sanitised, UntrustedField, UntrustedText } from "./untrusted.js";

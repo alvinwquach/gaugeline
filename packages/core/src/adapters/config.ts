@@ -26,10 +26,24 @@ const FIELD_READERS: readonly string[] = ADAPTER_ENTRIES.filter((e) => e.setting
   (e) => e.id,
 );
 
+/** The adapters that take `checkReleases`: the owner agrees that the repository's releases are read with the token. */
+const CHECK_RELEASES: readonly string[] = ADAPTER_ENTRIES.filter(
+  (e) => e.settings?.checkReleases,
+).map((e) => e.id);
+
 /** The adapters that take `expectPrivate`: the owner says their public API is meant to be private. */
 const EXPECT_PRIVATE: readonly string[] = ADAPTER_ENTRIES.filter(
   (e) => e.settings?.expectPrivate,
 ).map((e) => e.id);
+
+/** The adapters that take `siteName` and `languages`: they read one named site of a multi-site platform. */
+const EDGE_SITES: readonly string[] = ADAPTER_ENTRIES.filter((e) => e.settings?.edgeSite).map(
+  (e) => e.id,
+);
+
+/** A site's name as Sitecore keeps it in its configuration, and a language as Sitecore names it (en, fr-CA). */
+const SITE_NAME = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/;
+const LANGUAGE = /^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8}){0,2}$/;
 
 /** The adapters that take `privateCollections`: collections the owner says the Public role must not read. */
 const PRIVATE_COLLECTIONS: readonly string[] = ADAPTER_ENTRIES.filter(
@@ -112,6 +126,19 @@ export const adaptersConfigSchema = z.strictObject({
            * whether it answers a visitor with no key (still only with --owner-consent).
            */
           expectPrivate: z.boolean().optional(),
+          /** `sitecore` only: the Sitecore site to read (the name the platform gives it in its site configuration). */
+          siteName: z.string().regex(SITE_NAME, "a Sitecore site name, such as website").optional(),
+          /** `sitecore` only: the languages to read. Default en. */
+          languages: z
+            .array(z.string().regex(LANGUAGE, "a language such as en or fr-CA"))
+            .min(1)
+            .max(5)
+            .optional(),
+          /**
+           * Prismic only: the owner agrees that Gaugeline reads the repository's releases with the access token. Switches
+           * on the check that asks (still only with --owner-consent).
+           */
+          checkReleases: z.boolean().optional(),
           /**
            * Directus only: collections that must not be readable by a visitor with no token (the Public role). Switches
            * on the check that asks (still only with --owner-consent).
@@ -279,12 +306,25 @@ export const adaptersConfigSchema = z.strictObject({
               path: ["siteId"],
               message: `"siteId" belongs to the wix adapter, not to ${entry.id}`,
             });
+          if (entry.checkReleases !== undefined && !CHECK_RELEASES.includes(entry.id))
+            ctx.addIssue({
+              code: "custom",
+              path: ["checkReleases"],
+              message: `"checkReleases" belongs to the Prismic adapter, not to ${entry.id}`,
+            });
           if (entry.expectPrivate !== undefined && !EXPECT_PRIVATE.includes(entry.id))
             ctx.addIssue({
               code: "custom",
               path: ["expectPrivate"],
-              message: `"expectPrivate" belongs to the Umbraco and Joomla adapters, not to ${entry.id}`,
+              message: `"expectPrivate" belongs to the Umbraco, Joomla and Sitecore adapters, not to ${entry.id}`,
             });
+          for (const key of ["siteName", "languages"] as const)
+            if (entry[key] !== undefined && !EDGE_SITES.includes(entry.id))
+              ctx.addIssue({
+                code: "custom",
+                path: [key],
+                message: `"${key}" belongs to the Sitecore adapter, not to ${entry.id}`,
+              });
           if (entry.privateCollections !== undefined && !PRIVATE_COLLECTIONS.includes(entry.id))
             ctx.addIssue({
               code: "custom",
