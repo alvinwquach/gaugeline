@@ -62,6 +62,11 @@ const TOOL_NAME = /^[a-z][a-z0-9_-]{0,63}$/;
 const GLUED_WRITES: readonly string[] = [
   ...WRITE_WORDS,
   ..."exec mutat invalidat truncate".split(" "),
+  // A verb that ends in "e" loses it before -ing and -ion ("creating", "deletion"): the stem
+  // without the "e". "migrat" is left out because "list_migrations" is a read Gaugeline calls, so
+  // only "migrating" is added. "emergency" (merg) and "recreation" (creat) are accepted false refusals.
+  ...[...WRITE_WORDS].filter((w) => w.endsWith("e") && w !== "migrate").map((w) => w.slice(0, -1)),
+  "migrating",
 ];
 const GLUED_OTHER: readonly string[] =
   "secret token passw credential key sql query eval fetch browse screenshot shell script crawl scrape url".split(
@@ -71,15 +76,43 @@ const GLUED_OTHER: readonly string[] =
 const glued = (name: string): string => name.toLowerCase().replace(/[^a-z0-9]/g, "");
 
 /**
- * The first write word in a tool name as any server spells it ("apply_migration", "deployFunction",
- * "confirm-cost"), or undefined. Used to check a whole listing, so it splits camel case too.
+ * The endings that turn a verb into an adjective ("publishable", "mergeable", where the stem may be
+ * the verb without its "e"). Every other ending ("deletes",
+ * "updated", "sending", "deployment") is a write by name, so it is not exempt.
  */
-export function writeWordIn(name: string): string | undefined {
-  const word = name
+const ADJECTIVE_ENDINGS: ReadonlySet<string> = new Set(["able", "eable"]);
+
+/**
+ * The write stem inside any word of a name, glued or not ("executesql", "get_deployfunction"), from
+ * the same generated list as mcpToolNameProblem; a word that is only a stem and "able"
+ * ("publishable") is not a write. Used for the tolerated list, which names read tools by exact name.
+ */
+export function gluedWriteIn(name: string): string | undefined {
+  for (const word of name.toLowerCase().split(/[^a-z0-9]+/))
+    for (const stem of GLUED_WRITES)
+      if (
+        word.includes(stem) &&
+        !(word.startsWith(stem) && ADJECTIVE_ENDINGS.has(word.slice(stem.length)))
+      )
+        return stem;
+  return undefined;
+}
+
+/** The first whole word of a tool name (split on case and punctuation) that is a write verb, or undefined. */
+export function writeTokenIn(name: string): string | undefined {
+  return name
     .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
     .toLowerCase()
     .split(/[^a-z0-9]+/)
     .find((w) => WRITE_WORDS.has(w));
+}
+
+/**
+ * The first write word in a tool name as any server spells it ("apply_migration", "deployFunction",
+ * "confirm-cost"), or undefined. Used to check a whole listing, so it splits camel case too.
+ */
+export function writeWordIn(name: string): string | undefined {
+  const word = writeTokenIn(name);
   if (word !== undefined) return word;
   const flat = glued(name);
   return GLUED_WRITES.find((stem) => flat.includes(stem));
@@ -139,11 +172,12 @@ export function isIdValue(value: unknown, max: number): value is string {
 
 /**
  * What a registered id pattern may be built from, between its ^ and $: literal characters of the
- * set, \. and \-, character classes of the set, (?: ) groups and quantifiers. No ".", no \s, \S
+ * set, \. and \-, character classes of the set (a range only within a-z, A-Z or 0-9, and a bare - only first or last,
+ * so "[_-z]" and "[A-z]" are refused), (?: ) groups and quantifiers. No ".", no \s, \S
  * or \w, no [^ ], no alternation: such a pattern can only ever match characters of the set.
  */
 const PATTERN_BODY =
-  /^(?:\[(?:[A-Za-z0-9_:.]|\\[.-]|-)+\]|\\[.-]|[A-Za-z0-9_:-]|\{\d+(?:,\d*)?\}|[+*?]|\(\?:|\))*$/;
+  /^(?:\[-?(?:[a-z]-[a-z]|[A-Z]-[A-Z]|[0-9]-[0-9]|[A-Za-z0-9_:.]|\\[.-])+-?\]|\\[.-]|[A-Za-z0-9_:-]|\{\d+(?:,\d*)?\}|[+*?]|\(\?:|\))*$/;
 
 /** An id pattern as it is always used: the whole value, whatever alternation the pattern holds. */
 export function idPattern(pattern: string): RegExp {
