@@ -16,6 +16,22 @@ A fair question, asked early by anyone who has handed a tool credentials before:
 | SQL                 | yes  | never                  | SELECT and catalogue reads only: counts, constraints, indexes, row-level security state, migration state. No DDL, no DML. A configured Postgres or Supabase source is read through a read-only transaction ([how](./connectors/postgres.md)).                                                                                                                               |
 | Webhooks and queues | yes  | never                  | Reads delivery history and queue depth: `gaugeline platform --webhooks` reads Stripe's webhook endpoints and the events that were never delivered ([Paid downloads and delivery](delivery.md#webhooks-that-quietly-stopped)). It never enqueues, replays or retries on your behalf.                                                                                         |
 
+## Drafts it writes after you approve
+
+The checker never writes. In the hosted version, an agent may propose a change as a draft, and a person in
+your agency approves it in [the inbox](hosted/inbox.md). Only then does a job in **your own worker, with
+your own credentials**, create one draft in your own system (ADR-0010, "approve-then-act writes"):
+
+| Kind           | What it creates                                 | What it never does                 |
+| -------------- | ----------------------------------------------- | ---------------------------------- |
+| `pull_request` | A new branch and a pull request on GitHub       | Merge, push to your default branch |
+| `sanity_draft` | A Sanity draft document (`drafts.` id)          | Publish, unpublish, delete         |
+| `email`        | A Gmail draft (the `gmail.drafts.create` scope) | Send                               |
+
+Nothing changes a live field. The hosted service never holds a write credential, the agent's database
+role cannot record an approval, and a client viewer cannot approve. Protect your default branch on
+GitHub: the token that opens a pull request can also merge one, and Gaugeline never asks it to.
+
 ## What it does instead of writing
 
 - **Static checks on the write path.** A patch setting a field no type declares, a create missing a required field, a migration with no rollback, writes that aren't idempotent, two routes writing the same field.

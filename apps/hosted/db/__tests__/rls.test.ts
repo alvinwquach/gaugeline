@@ -222,9 +222,12 @@ describe.skipIf(!HAS_DATABASE)("hosted database: row-level security", () => {
 
     it("a member records a decision as themselves, not as someone else", async () => {
       const ok = await as(sql, userA, async (tx) => {
+        // A draft is decided once (G37), so decide a new one; DRAFT_A1 is already approved in the seed.
+        const [d] = await tx`insert into public.drafts (org_id, site_id, kind, payload, created_by)
+          values (${ORG_A}, ${SITE_A1}, 'redirect', '{}', ${USER_A_MEMBER}) returning id`;
         await tx`insert into public.decisions (org_id, draft_id, decision, reason, decided_by)
-          values (${ORG_A}, ${DRAFT_A1}, 'declined', 'Menu page is being rebuilt', ${USER_A_MEMBER})`;
-        return (await tx`select decision from public.draft_state where draft_id = ${DRAFT_A1}`)[0]!
+          values (${ORG_A}, ${d!.id}, 'declined', 'Menu page is being rebuilt', ${USER_A_MEMBER})`;
+        return (await tx`select decision from public.draft_state where draft_id = ${d!.id}`)[0]!
           .decision as string;
       });
       expect(ok).toBe("declined");
@@ -325,8 +328,10 @@ describe.skipIf(!HAS_DATABASE)("hosted database: row-level security", () => {
         // Org B's next ordinary insert still works after org A's attempts.
         const ok = await as(sql, { role: "authenticated", userId: USER_B_OWNER }, async (tx) =>
           log.table === "decisions"
-            ? tx`insert into public.decisions (org_id, draft_id, decision, decided_by)
-                 values (${ORG_B}, ${DRAFT_B1}, 'approved', ${USER_B_OWNER}) returning id`
+            ? tx`with d as (insert into public.drafts (org_id, site_id, kind, payload, created_by)
+                   values (${ORG_B}, ${SITE_B1}, 'field', '{}', ${USER_B_OWNER}) returning id)
+                 insert into public.decisions (org_id, draft_id, decision, decided_by)
+                 select ${ORG_B}, d.id, 'approved', ${USER_B_OWNER} from d returning id`
             : tx`insert into public.site_consents (org_id, site_id, action, wording_version, recorded_by)
                  values (${ORG_B}, ${SITE_B1}, 'granted', '2026-11-12', ${USER_B_OWNER}) returning id`,
         );
