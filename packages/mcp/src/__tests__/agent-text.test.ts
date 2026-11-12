@@ -12,26 +12,26 @@ const hostile: Finding = {
 };
 
 describe("page text for the model", () => {
-  it("puts every page-derived value in an untrusted_page_text field", () => {
+  it("labels every page-derived value as untrusted, with where it came from", () => {
     const f = findingForAgent(hostile, createPageRegistry());
-    for (const field of Object.values(f.untrusted))
-      expect(field).toHaveProperty("untrusted_page_text");
-    expect(JSON.stringify(f)).toContain('"untrusted_page_text"');
+    for (const field of [f.title, f.evidence, f.url]) {
+      expect(field.untrusted).toBe(true);
+      expect(field.source).toMatch(/^finding /);
+    }
   });
 
-  it("strips tag characters, bidi controls and ANSI, shows zero-width characters as escapes, and caps length", () => {
+  it("removes tag characters, bidi controls and ANSI, shows zero-width characters as escapes, and caps length", () => {
     const f = findingForAgent(hostile, createPageRegistry());
     const all = JSON.stringify(f);
     // eslint-disable-next-line no-control-regex -- the point: no escape sequence survives
     expect(all).not.toMatch(/[\u{E0000}-\u{E007F}\u202A-\u202E\u2066-\u2069\u001B]/u);
-    expect(f.untrusted.evidence.untrusted_page_text).toContain("a\\u200bb");
-    expect(f.untrusted.evidence.truncated).toBe(true);
-    expect(f.untrusted.evidence.untrusted_page_text.length).toBeLessThanOrEqual(
-      300 + " [cut]".length,
-    );
+    expect(f.evidence.text).toContain("a\\u{200B}b");
+    expect(f.evidence.strippedDirectives).toBe(1);
+    expect(f.evidence.truncated).toBe(true);
+    expect([...f.evidence.text].length).toBeLessThanOrEqual(300);
   });
 
-  it("keeps the check's own title, id and severity outside the untrusted block", () => {
+  it("keeps the check's own title, id and severity outside the labelled fields", () => {
     const f = findingForAgent(hostile, createPageRegistry());
     expect(f.checkId).toBe("canonical-elsewhere");
     expect(f.severity).toBe("high");
@@ -40,11 +40,9 @@ describe("page text for the model", () => {
   });
 
   it("leaves non-Latin text and emoji unchanged", () => {
-    const t = markUntrusted("Cafe \u00E9t\u00E9 \u65E5\u672C\u8A9E \u{1F600}", {
-      source: "x",
-      maxChars: 100,
-    });
-    expect(t.untrusted_page_text).toBe("Cafe \u00E9t\u00E9 \u65E5\u672C\u8A9E \u{1F600}");
+    const text = "Caf\u00E9 \u65E5\u672C\u8A9E \u{1F600}";
+    const t = markUntrusted(text, { source: "x", maxChars: 100 });
+    expect(t.text).toBe(text);
     expect(t.truncated).toBe(false);
   });
 });

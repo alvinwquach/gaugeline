@@ -1,7 +1,7 @@
 import * as z from "zod";
 import { POINTS } from "@gaugeline/core";
 import { ToolError, type ToolContext } from "../state.js";
-import { findingForAgent, markUntrusted } from "../agent-text.js";
+import { findingForAgent } from "../agent-text.js";
 import { checkById, findFinding } from "./explain-finding.js";
 
 export const draftFixInput = {
@@ -34,7 +34,7 @@ export async function draftFix(args: z.infer<z.ZodObject<typeof draftFixInput>>,
     "",
     ...(src
       ? [
-          "--- a/<the file named in untrusted_source>",
+          "--- a/<the file named in finding.source>",
           "+++ b/<the same file>",
           `@@ line ${src.line} @@`,
           "",
@@ -53,13 +53,5 @@ export async function draftFix(args: z.infer<z.ZodObject<typeof draftFixInput>>,
     format: "text/plain",
     patch,
     finding: findingForAgent(hit.finding, hit.run.registry),
-    ...(src
-      ? {
-          untrusted_source: markUntrusted(`${src.file}:${src.line}`, {
-            source: "source file",
-            maxChars: 200,
-          }),
-        }
-      : {}),
   };
 }

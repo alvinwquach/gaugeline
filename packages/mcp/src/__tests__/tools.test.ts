@@ -37,7 +37,7 @@ interface RunOut {
     id: string;
     checkId: string;
     checkTitle: string;
-    untrusted: Record<string, unknown>;
+    evidence: { untrusted: boolean; text: string };
   }[];
   notRun: { dns: { ids: string[] }; probing?: { ids: string[] } };
   probingConsent: boolean;
@@ -70,7 +70,7 @@ describe("run_check", () => {
       await call({ client } as Connected, "run_check", { url: `${fixture.origin}/` }),
     );
     for (const f of out.findings) {
-      expect(f.untrusted).toHaveProperty("evidence");
+      expect(f.evidence.untrusted).toBe(true);
       expect(f.checkTitle.length).toBeGreaterThan(0);
     }
   });
