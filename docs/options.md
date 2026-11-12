@@ -76,6 +76,9 @@ Options:
       --wordpress                Also check a WordPress site's versions against
                                  the current releases, and whether it lists its
                                  users
+      --backups                  Also check when the client's content and
+                                 database were last backed up (Supabase, Sanity,
+                                 an export folder)
       --published                Also check that content changed in your CMS is
                                  live on the site, and that unpublished pages
                                  are gone
@@ -526,6 +529,42 @@ writes a key, never replaces a file that exists unless you add `--force`, and wr
 you ran it in. `--dry-run` prints the files and writes nothing. An example from a pop-up bar on WordPress
 with a Formspree form: [gaugeline init](guides/init.md).
 
+### The changes command
+
+`gaugeline changes --help` prints:
+
+```text title=Output
+Usage: gaugeline changes <site> [--since <date|run-id>] [options]
+
+For each finding that is new since the run before (or since a date or run id),
+show what changed on the page and what the records say changed it: a content
+edit in the content system (with the editor's name as it shows it), a deploy on
+Vercel or Netlify (with the commit range), both, or unknown. The label is
+evidence, never a verdict. Reads the runs that --since last saves in
+.gaugeline/runs, and GETs the content system's history and the host's
+deployment list when gaugeline.changes.json names them. Read only; never
+guesses an author. For this command --since takes a date such as 2026-11-01
+or a run id such as r-20261101T100000Z.
+
+Options:
+      --json             Print the result as JSON on stdout, and nothing else
+      --since <value>    Findings that appeared after this date (2026-11-01) or
+                         run id (r-20261101T100000Z)
+      --quiet            Print only results and errors
+      --verbose          Show each request, and technical detail when something
+                         goes wrong
+  -h, --help             Show this help and exit
+  -v, --version          Print the version and exit
+
+Exit codes: 0 ran, 2 could not run
+```
+
+`gaugeline changes <site>` lists the findings that are new since the run before, or since a date or run id, and for each
+what changed on the page and what the content system's history and the host's deployments say about when. It reads the
+runs that `--since last` saves and, only when `gaugeline.changes.json` names them, makes `GET` requests to Sanity's history
+and to Vercel or Netlify. The label is evidence, never a verdict. An example from a pop-up bar:
+[What changed, and who changed it](guides/what-changed.md).
+
 ### The deploy-gate command
 
 `gaugeline deploy-gate --help` prints:
@@ -828,6 +867,27 @@ lifetime, the Vercel team, the usage window and multiple). What it reads, what k
 checks: [Hosting cost](guides/hosting-cost.md). What it sends:
 [Privacy and safety](privacy.md#hosting-cost-gaugeline-cost).
 
+### The backups command
+
+`gaugeline backups <address>` finds out when a client's content and database were last backed up. Where a
+platform documents a read-only way to ask, it reads Supabase's backups and point-in-time recovery (a project
+named in `gaugeline.backups.json` and `SUPABASE_ACCESS_TOKEN`) and Sanity's dataset backups (`SANITY_TOKEN`
+and `SANITY_PROJECT_ID`), and it lists the dated files of any export folder you name. It flags the newest
+backup being older than `maxAgeDays` (7 by default), backups never switched on, and an export far smaller
+than the one before. A platform whose backup status cannot be read becomes a line to check by hand, here and
+on the handoff checklist. It prints each source, then what to fix.
+
+```sh
+npx gaugeline backups marlowe-bar.com
+npx gaugeline backups marlowe-bar.com --ci
+```
+
+It takes `--ci`, `--json` (the schema 2 result and nothing else), `--allow-private`, `--no-open` and the
+notification flags, like the page check. `--backups` adds the same checks to the page check, and
+`gaugeline run --all --backups` to every site of a nightly run. It never starts a backup or an export, and an
+export file is listed, never opened. What it reads, what keys to make and the three checks:
+[Backups](guides/backups.md). What it sends: [Privacy and safety](privacy.md#backups-gaugeline-backups).
+
 ### The trackers option
 
 `--trackers` adds two checks to the page check: the trackers (Meta, TikTok and LinkedIn pixels, Google
@@ -941,11 +1001,13 @@ to test.** Without either, nothing is asked and the check is not listed.
 `by` says who agreed and `on` says when, so a shared repository records it once. A run with consent
 prints one line on stderr saying probing checks are on.
 
-There are five probing checks: `not-found-200`, described in [Error pages that answer 200](guides/error-pages.md#not-found-200-what-the-site-does-for-an-address-that-does-not-exist) (one `GET` of an address made up from your own site's address), `gated-download-open`, described in
+There are seven probing checks: `not-found-200`, described in [Error pages that answer 200](guides/error-pages.md#not-found-200-what-the-site-does-for-an-address-that-does-not-exist) (one `GET` of an address made up from your own site's address), `gated-download-open`, described in
 [Paid downloads and delivery](delivery.md#a-download-route-that-hands-the-file-to-anyone),
 `route-hidden-not-protected`, described in [Routes that are hidden, not protected](protected-routes.md),
-`strapi-drafts-public`, described in [Strapi](integrations/strapi.md#the-two-checks), and
-`umbraco-delivery-api-public`, described in [Umbraco](integrations/umbraco.md#the-two-checks) (the last two run
+`strapi-drafts-public`, described in [Strapi](integrations/strapi.md#the-two-checks),
+`umbraco-delivery-api-public`, described in [Umbraco](integrations/umbraco.md#the-two-checks),
+`joomla-api-public`, described in [Joomla](integrations/joomla.md#the-two-checks), and
+`datocms-drafts-reachable`, described in [DatoCMS](integrations/datocms.md#the-check) (the last four run
 from an adapter's reading, not from a page check).
 
 `--routes <glob>` (repeatable) points that check at your repository's route files, so it finds routes

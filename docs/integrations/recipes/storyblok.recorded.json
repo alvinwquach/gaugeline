@@ -1,0 +1,98 @@
+{
+  "format": 1,
+  "recipe": "storyblok",
+  "provenance": "Invented content in the shape Storyblok's documented API is remembered to answer. Not recorded from a live service; the shapes are uncited (the vendor's pages could not be read when this was written).",
+  "env": {},
+  "exchanges": [
+    {
+      "request": {
+        "url": "https://api.storyblok.com/v2/cdn/stories",
+        "query": {
+          "page": "1"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "stories": [
+            {
+              "id": 101,
+              "name": "Spring intake",
+              "slug": "spring-intake",
+              "full_slug": "blog/spring-intake",
+              "published_at": "2026-11-03T09:00:00.000Z",
+              "first_published_at": "2026-10-01T09:00:00.000Z",
+              "content": {
+                "_uid": "a1",
+                "component": "post",
+                "title": "Spring intake opens",
+                "intro": "Book a first session"
+              }
+            },
+            {
+              "id": 102,
+              "name": "About",
+              "slug": "about",
+              "full_slug": "about",
+              "published_at": "2026-10-12T09:00:00.000Z",
+              "first_published_at": "2026-09-01T09:00:00.000Z",
+              "content": {
+                "_uid": "a2",
+                "component": "post",
+                "title": "About the coach"
+              }
+            }
+          ],
+          "cv": 1790000000
+        }
+      }
+    }
+  ],
+  "expect": {
+    "options": {
+      "types": ["post"],
+      "fields": {
+        "post": ["title", "intro"]
+      }
+    },
+    "countType": "post",
+    "countFields": ["title", "intro", "subtitle"],
+    "drafts": false,
+    "types": [
+      {
+        "name": "post",
+        "count": 2
+      }
+    ],
+    "fieldCounts": {
+      "title": 2,
+      "intro": 1,
+      "subtitle": 0
+    },
+    "published": [
+      {
+        "id": "101",
+        "type": "post",
+        "url": "/blog/spring-intake",
+        "slug": "spring-intake",
+        "publishedAt": "2026-10-01T09:00:00.000Z",
+        "updatedAt": "2026-11-03T09:00:00.000Z",
+        "fieldHashes": {
+          "title": "d99e15d026211de3",
+          "intro": "a3347d24d7637e9b"
+        }
+      },
+      {
+        "id": "102",
+        "type": "post",
+        "url": "/blog/about",
+        "slug": "about",
+        "publishedAt": "2026-09-01T09:00:00.000Z",
+        "updatedAt": "2026-10-12T09:00:00.000Z",
+        "fieldHashes": {
+          "title": "cd96af98118ffe7f"
+        }
+      }
+    ]
+  }
+}

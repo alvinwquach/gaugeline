@@ -1,5 +1,11 @@
 import { parseArgs } from "node:util";
-import { SECRET_FLAGS, minorExponent, parseAddress, safeLogoUrl } from "@gaugeline/core";
+import {
+  SECRET_FLAGS,
+  minorExponent,
+  parseAddress,
+  parseSince,
+  safeLogoUrl,
+} from "@gaugeline/core";
 import { resolveDeployGate, type GateHost } from "./deploy-gate.js";
 import { HELP } from "./help.js";
 import { FLAGS, nearestFlag, resolveFlags, toParseArgsOptions, type FlagDef } from "./flags.js";
@@ -29,10 +35,12 @@ export const SUBCOMMANDS = [
   "renewals",
   "handoff",
   "cost",
+  "backups",
   "audit",
   "migration",
   "advisory",
   "init",
+  "changes",
   "deploy-gate",
 ] as const;
 export type CliCommand = "check" | (typeof SUBCOMMANDS)[number];
@@ -109,6 +117,8 @@ export interface RunFlags {
   libraries: boolean;
   /** --wordpress: add the WordPress checks (versions shown against wordpress.org's current releases, and the REST API's list of users). */
   wordpress: boolean;
+  /** --backups (or the backups command): add the backups checks (no recent backup, backups not enabled, an export far smaller than the last). */
+  backups: boolean;
   /** --published: add the published-not-live checks (changed CMS items against their live pages, and pages of items that are gone). */
   published: boolean;
   /** --owner-consent: run the probing checks (they ask gated routes for what they protect, with no login). */
@@ -206,6 +216,16 @@ export type ParsedArgs =
       quiet: boolean;
     }
   | {
+      kind: "changes";
+      /** The site's address, https unless it was typed with http. */
+      address: string;
+      /** --since as typed: a date or a run id. Checked when the command runs. */
+      since?: string;
+      json: boolean;
+      verbose: boolean;
+      quiet: boolean;
+    }
+  | {
       kind: "init";
       /** The client's site, https unless it was typed with http. */
       address: string;
@@ -259,6 +279,8 @@ export type ParsedArgs =
       libraries: boolean;
       /** --wordpress: each site's run also runs the WordPress checks. */
       wordpress: boolean;
+      /** --backups: each site's run also reads when its content and database were last backed up. */
+      backups: boolean;
       /** --published: each site's run also compares changed CMS items with their pages. */
       published: boolean;
       verbose: boolean;
@@ -490,7 +512,12 @@ export function parseCliArgs(
       verbose,
     };
   }
-  if (command !== "delivery" && values.since !== undefined && values.since !== "last") {
+  if (
+    command !== "delivery" &&
+    command !== "changes" &&
+    values.since !== undefined &&
+    values.since !== "last"
+  ) {
     return {
       kind: "error",
       message: `--since accepts only last in this version, not "${String(values.since)}".`,
@@ -704,6 +731,7 @@ export function parseCliArgs(
       trackers: values.trackers === true,
       libraries: values.libraries === true,
       wordpress: values.wordpress === true,
+      backups: values.backups === true,
       published: values.published === true,
       verbose,
       quiet: values.quiet === true,
@@ -1250,6 +1278,41 @@ export function parseCliArgs(
       quiet: values.quiet === true,
     };
   }
+  if (command === "changes") {
+    if (positionals.length !== 1)
+      return {
+        kind: "error",
+        message:
+          positionals.length === 0
+            ? "gaugeline changes needs the site: gaugeline changes harbourbar.example"
+            : `gaugeline changes takes one site, got ${positionals.length} words: ${positionals.join(", ")}.`,
+        hint: "Type the site like harbourbar.example or https://harbourbar.example.",
+        verbose,
+      };
+    const site = parseAddress(positionals[0] ?? "");
+    if (!site.ok)
+      return {
+        kind: "error",
+        message: `The site's address: ${site.reason}`,
+        hint: "Type the site like harbourbar.example or https://harbourbar.example.",
+        verbose,
+      };
+    if (typeof values.since === "string" && parseSince(values.since) === undefined)
+      return {
+        kind: "error",
+        message: `--since needs a date such as 2026-11-01 or a run id such as r-20261101T100000Z, not "${values.since}".`,
+        hint: "Run ids are in gaugeline changes --json, and in .gaugeline/runs.",
+        verbose,
+      };
+    return {
+      kind: "changes",
+      address: site.url.href,
+      ...(typeof values.since === "string" ? { since: values.since } : {}),
+      json: values.json === true,
+      verbose,
+      quiet: values.quiet === true,
+    };
+  }
   if (command === "init") {
     if (positionals.length !== 1)
       return {
@@ -1628,6 +1691,7 @@ export function parseCliArgs(
     trackers: values.trackers === true,
     libraries: values.libraries === true,
     wordpress: values.wordpress === true,
+    backups: values.backups === true || command === "backups",
     published: values.published === true,
     ownerConsent: values["owner-consent"] === true,
     routes: Array.isArray(values.routes)

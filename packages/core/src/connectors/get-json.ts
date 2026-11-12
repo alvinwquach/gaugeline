@@ -35,7 +35,7 @@ export interface JsonSource {
 export async function getJson(
   source: JsonSource,
   url: string,
-): Promise<{ body: unknown; headers: Record<string, string> }> {
+): Promise<{ body: unknown; headers: Record<string, string>; url: string }> {
   for (let attempt = 0; ; attempt++) {
     try {
       const hop = await connectorGet(source.fetcher, url, {
@@ -45,7 +45,7 @@ export async function getJson(
       });
       if (hop.truncated) throw new ResponseTooLargeError(source.system);
       try {
-        return { body: JSON.parse(hop.body ?? "") as unknown, headers: hop.headers };
+        return { body: JSON.parse(hop.body ?? "") as unknown, headers: hop.headers, url: hop.url };
       } catch {
         throw new Error(`${source.system} answered with something that is not JSON.`);
       }

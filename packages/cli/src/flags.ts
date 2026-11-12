@@ -13,6 +13,8 @@ export interface FlagDef {
   env?: string;
   /** The version that introduced it. */
   since: string;
+  /** Where a command needs different words than the table has, by command name (help only). */
+  commandDescriptions?: Readonly<Record<string, string>>;
   /** Commands that accept it; "*" for all. The default page check is "check". */
   commands: readonly string[];
   /** One letter, only where the flag already had one. */
@@ -38,6 +40,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
       "renewals",
       "handoff",
       "cost",
+      "backups",
       "migration",
       "advisory",
       "verify",
@@ -62,11 +65,13 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
       "handoff",
       "advisory",
       "cost",
+      "backups",
       "ads",
       "delivery",
       "platform",
       "query",
       "emails",
+      "changes",
     ],
   },
   {
@@ -74,7 +79,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     type: "boolean",
     description: "Do not open anything in a browser",
     since: "0.1.0",
-    commands: ["check", "launch", "renewals", "cost", "open"],
+    commands: ["check", "launch", "renewals", "cost", "backups", "open"],
   },
   {
     name: "demo",
@@ -104,6 +109,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
       "renewals",
       "handoff",
       "cost",
+      "backups",
       "brief",
       "audit",
       "migration",
@@ -178,6 +184,14 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     commands: ["check", "run"],
   },
   {
+    name: "backups",
+    type: "boolean",
+    description:
+      "Also check when the client's content and database were last backed up (Supabase, Sanity, an export folder)",
+    since: "0.2.0",
+    commands: ["check", "run"],
+  },
+  {
     name: "published",
     type: "boolean",
     description:
@@ -207,8 +221,11 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     type: "string",
     description:
       "Page check: compare with the last run (the only value is last). delivery: the window to read, such as 7d",
+    commandDescriptions: {
+      changes: "Findings that appeared after this date (2026-11-01) or run id (r-20261101T100000Z)",
+    },
     since: "0.2.0",
-    commands: ["check", "delivery"],
+    commands: ["check", "delivery", "changes"],
   },
   {
     name: "paid",
@@ -344,28 +361,28 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     type: "string",
     description: "Send a summary to this Slack incoming webhook (or set GAUGELINE_SLACK_WEBHOOK)",
     since: "0.2.0",
-    commands: ["check", "launch", "renewals", "cost", "plan"],
+    commands: ["check", "launch", "renewals", "cost", "backups", "plan"],
   },
   {
     name: "discord",
     type: "string",
     description: "Send an embed to this Discord webhook (or set GAUGELINE_DISCORD_WEBHOOK)",
     since: "0.2.0",
-    commands: ["check", "launch", "renewals", "cost", "plan"],
+    commands: ["check", "launch", "renewals", "cost", "backups", "plan"],
   },
   {
     name: "webhook",
     type: "string",
     description: "POST the result as JSON to this address (or set GAUGELINE_WEBHOOK)",
     since: "0.2.0",
-    commands: ["check", "launch", "renewals", "cost", "digest", "plan"],
+    commands: ["check", "launch", "renewals", "cost", "backups", "digest", "plan"],
   },
   {
     name: "email",
     type: "string",
     description: "Email the full report to these addresses through Resend (or set GAUGELINE_EMAIL)",
     since: "0.2.0",
-    commands: ["check", "launch", "renewals", "cost", "digest"],
+    commands: ["check", "launch", "renewals", "cost", "backups", "digest"],
   },
   {
     name: "plan-only",
@@ -675,14 +692,14 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     type: "string",
     description: "When to send: any (something was found, the default), high or always",
     since: "0.2.0",
-    commands: ["check", "launch", "renewals", "cost", "plan"],
+    commands: ["check", "launch", "renewals", "cost", "backups", "plan"],
   },
   {
     name: "report-url",
     type: "string",
     description: "Link each message to a hosted copy of the report at this address",
     since: "0.2.0",
-    commands: ["check", "launch", "renewals", "cost"],
+    commands: ["check", "launch", "renewals", "cost", "backups"],
   },
   {
     name: "save-requests",
@@ -690,7 +707,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     description:
       "Save the requests made and the page's data to this JSON file; it may contain page content, so do not commit it",
     since: "0.2.0",
-    commands: ["check", "launch", "renewals", "cost"],
+    commands: ["check", "launch", "renewals", "cost", "backups"],
   },
   {
     name: "list",
@@ -808,7 +825,8 @@ export function renderHelp(
   const col = Math.max(...labels.map((l) => l.length)) + 4;
   const lines = [`Usage: ${head.usage}`, "", head.summary, "", "Options:"];
   visible.forEach((f, i) => {
-    const desc = f.env ? `${f.description} [${f.env}]` : f.description;
+    const own = f.commandDescriptions?.[command] ?? f.description;
+    const desc = f.env ? `${own} [${f.env}]` : own;
     const [first = "", ...rest] = wrap(desc, HELP_WIDTH - col - 2);
     lines.push(`  ${(labels[i] ?? "").padEnd(col)}${first}`);
     for (const r of rest) lines.push(`  ${" ".repeat(col)}${r}`);
