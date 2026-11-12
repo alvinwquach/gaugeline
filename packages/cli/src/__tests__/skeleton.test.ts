@@ -107,6 +107,8 @@ describe("walking skeleton: integration (the packed tarball)", () => {
     const paths = info.files.map((f) => f.path);
     const chunks = paths.filter((p) => chunk.test(p));
     expect(chunks).toContain("dist/index.js");
+    // The public entry (`import { defineCheck } from "gaugeline"`): its code, and its hand-written types below.
+    expect(chunks).toContain("dist/lib.js");
     // The adapter modules are read from the entry files (adapters/<id>.entry.ts), so a new adapter edits no list here.
     const adaptersDir = join(repoRoot, "packages/core/src/adapters");
     const adapterModules = readdirSync(adaptersDir)
@@ -128,6 +130,7 @@ describe("walking skeleton: integration (the packed tarball)", () => {
         "README.md",
         "THIRD_PARTY_LICENSES.md",
         "dist/client/client-manifest.json",
+        "dist/lib.d.ts",
         ...manifest.map((e) => `dist/client/${e.path}`),
         "package.json",
       ].sort(),
