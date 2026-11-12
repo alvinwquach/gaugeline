@@ -26,7 +26,7 @@ export interface DrupalFixtureNode {
   id: string;
   nid: number;
   bundle: "article" | "page";
-  status: boolean | string | null | undefined;
+  status: boolean | string | number | null | undefined;
   title: string;
   /** `null`: the node has no alias (Drupal sends `path.alias: null`). */
   alias: string | null | number;
@@ -168,6 +168,8 @@ export interface DrupalFixtureOptions {
   credential?: DrupalCredential;
   /** The credential's role may read unpublished content. Default: true. When false it sees only what a visitor sees. */
   seesUnpublished?: boolean;
+  /** Every node is listed to everyone, whatever the filter and the role say (a server that ignores the filter). */
+  leaky?: boolean;
   /** Visitors may read published content. Default: true. When false an anonymous read is 403. */
   anonymousRead?: boolean;
   /** The most resources one answer holds, whatever `page[limit]` asks (Drupal's own maximum is 50). Default: 50. */
@@ -314,8 +316,13 @@ export function drupalTransport(
       return failure(400, "Bad request");
     const size = Math.min(limit, options.maxLimit ?? 50);
     const visible = mine
-      .filter((x) => (x.status === true ? true : sees))
-      .filter((x) => filter === null || (filter === "1" ? x.status === true : x.status !== true))
+      .filter((x) => options.leaky === true || x.status === true || sees)
+      .filter(
+        (x) =>
+          options.leaky === true ||
+          filter === null ||
+          (filter === "1" ? x.status === true : x.status !== true),
+      )
       .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
     // Drupal asks for one more than the page to know whether there is a next page, and offsets by the size it was asked.
     const slice = visible.slice(offset, offset + size);

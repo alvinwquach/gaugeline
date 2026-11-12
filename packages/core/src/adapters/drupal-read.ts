@@ -89,31 +89,48 @@ async function askNode(
   url: string,
   alias: string | undefined,
 ): Promise<NodeAnswer> {
-  let hops: Hop[];
-  try {
-    hops = await fetcher.get(url, { anonymous: true, maxRedirects: 3 });
-  } catch (err) {
-    return { kind: "unread", reason: err instanceof Error ? err.message : String(err) };
-  }
-  const last = hops.at(-1);
-  if (!last) return { kind: "unread", reason: "no answer" };
   const asked = new URL(url);
-  for (const h of hops)
-    if (new URL(h.url).host.toLowerCase() !== asked.host.toLowerCase())
+  // Redirects are followed here, one at a time, and only to the same host: the Location a site sends is never asked for
+  // when it points elsewhere (the answer of another site says nothing about this node).
+  let at = url;
+  let last: Hop | undefined;
+  for (let hop = 0; hop <= 3; hop++) {
+    try {
+      last = (await fetcher.get(at, { anonymous: true, maxRedirects: 0 })).at(-1);
+    } catch (err) {
+      return { kind: "unread", reason: err instanceof Error ? err.message : String(err) };
+    }
+    if (!last) return { kind: "unread", reason: "no answer" };
+    if (last.status < 300 || last.status >= 400) break;
+    const location = last.headers.location;
+    let next: URL | undefined;
+    try {
+      next = location === undefined ? undefined : new URL(location, at);
+    } catch {
+      next = undefined;
+    }
+    if (!next)
+      return {
+        kind: "unread",
+        reason: `the site answered ${last.status}, a redirect with no usable address`,
+      };
+    if (
+      (next.protocol !== "https:" && next.protocol !== "http:") ||
+      next.host.toLowerCase() !== asked.host.toLowerCase()
+    )
       return { kind: "unread", reason: "the address redirects to another site" };
+    at = next.href;
+  }
+  if (!last) return { kind: "unread", reason: "no answer" };
   if (last.status >= 300 && last.status < 400)
-    return {
-      kind: "unread",
-      reason: `the site answered ${last.status}, a redirect that was not followed to an answer`,
-    };
-  const finalPath = trim(new URL(last.url).pathname);
+    return { kind: "unread", reason: "the address redirects more than three times" };
+  const finalPath = trim(new URL(at).pathname);
   const ok =
     finalPath === trim(asked.pathname) || (alias !== undefined && finalPath === trim(alias));
   const open = last.status >= 200 && last.status < 300;
   const closed = last.status === 403 || last.status === 404;
   if (!open && !closed) return { kind: "unread", reason: `the site answered ${last.status}` };
-  if (!ok)
-    return { kind: "unread", reason: `the address redirects to ${new URL(last.url).pathname}` };
+  if (!ok) return { kind: "unread", reason: `the address redirects to ${new URL(at).pathname}` };
   if (!fromDrupal(last))
     return {
       kind: "unread",

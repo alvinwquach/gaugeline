@@ -263,7 +263,12 @@ export function createDrupalAdapter(options: DrupalAdapterOptions): DrupalAdapte
    * another place says nothing about this resource). The credential goes in a header, never in the address, only when
    * `authed`, only over https. A 429 with a short Retry-After is waited out once.
    */
-  const send = async (url: string, authed: boolean, partial: () => unknown): Promise<Hop> => {
+  const send = async (
+    url: string,
+    authed: boolean,
+    partial: () => unknown,
+    fresh = false,
+  ): Promise<Hop> => {
     let auth: string | undefined;
     if (authed) {
       auth = authorization();
@@ -284,7 +289,7 @@ export function createDrupalAdapter(options: DrupalAdapterOptions): DrupalAdapte
           // A request with no credential is a visitor's: nothing the fetcher adds per address goes with it.
           ...(auth === undefined ? { anonymous: true } : {}),
           maxRedirects: 0,
-          ...(attempt > 0 ? { fresh: true } : {}),
+          ...(attempt > 0 || fresh ? { fresh: true } : {}),
         });
       } catch (err) {
         throw new AdapterCouldNotCheck(redact(err instanceof Error ? err.message : String(err)));
@@ -308,8 +313,9 @@ export function createDrupalAdapter(options: DrupalAdapterOptions): DrupalAdapte
     url: string,
     authed: boolean,
     partial: () => unknown,
+    fresh = false,
   ): Promise<Record<string, unknown>> => {
-    const hop = await send(url, authed, partial);
+    const hop = await send(url, authed, partial, fresh);
     if (hop.truncated === true)
       throw new TooLarge("Drupal's answer is larger than a page should be.");
     const s = hop.status;
@@ -528,7 +534,7 @@ export function createDrupalAdapter(options: DrupalAdapterOptions): DrupalAdapte
             `The list changed while it was read: Drupal reported ${total} resources and ${read} came back.`,
           );
         if (pages > 1) {
-          const again = rowsOf(await get(addressFor(0, firstSize), o.authed, o.partial));
+          const again = rowsOf(await get(addressFor(0, firstSize), o.authed, o.partial, true));
           const ids = again.map((row) => parseRow(row, type).id);
           if (ids.length !== firstIds?.length || ids.some((id, i) => id !== firstIds?.[i]))
             throw new AdapterCouldNotCheck(
@@ -778,6 +784,7 @@ export function createDrupalAdapter(options: DrupalAdapterOptions): DrupalAdapte
       resourceUrl(type, { [`fields[${type}]`]: "status" }, id),
       true,
       () => undefined,
+      true,
     );
     const data = isRecord(body.data) ? body.data : {};
     if (data.type !== type || data.id !== id)
