@@ -37,6 +37,7 @@ export const COULD_NOT_CHECK = Object.freeze({
     "the server asked Gaugeline a question; Gaugeline answers no request from a server, so the run stopped",
   unexpectedShape: "the answer does not have the fields Gaugeline reads",
   callCap: "the run reached its call cap for this platform",
+  task: "the server would run this tool as a task, which Gaugeline does not follow, so it is not called",
 } as const);
 
 export type CouldNotCheckReason = (typeof COULD_NOT_CHECK)[keyof typeof COULD_NOT_CHECK];
@@ -61,13 +62,19 @@ function canonical(value: unknown): string {
  */
 export function listingHash(tool: {
   name?: unknown;
+  title?: unknown;
   annotations?: unknown;
   inputSchema?: unknown;
+  outputSchema?: unknown;
+  execution?: unknown;
 }): string {
   const text = canonical({
     name: tool.name ?? null,
+    title: tool.title ?? null,
     annotations: tool.annotations ?? null,
     inputSchema: tool.inputSchema ?? null,
+    outputSchema: tool.outputSchema ?? null,
+    execution: tool.execution ?? null,
   });
   return createHash("sha256").update(text).digest("hex");
 }
@@ -97,6 +104,12 @@ export function toolLockProblem(
   const tool = same.length === 1 ? same[0] : undefined;
   if (tool === undefined) return COULD_NOT_CHECK.notListed;
   if (!hintsSayRead(tool.annotations)) return COULD_NOT_CHECK.hints;
+  // A tool run as a task answers later, through calls Gaugeline never makes: only "forbidden" (or none) is read.
+  if (
+    tool.execution !== undefined &&
+    !(isObject(tool.execution) && tool.execution.taskSupport === "forbidden")
+  )
+    return COULD_NOT_CHECK.task;
   if (listingHash(tool) !== entry.listingHash) return COULD_NOT_CHECK.changed;
   return undefined;
 }
@@ -110,6 +123,8 @@ export function sessionReadOnlyProblem(listed: unknown): CouldNotCheckReason | u
   if (!Array.isArray(listed) || listed.length === 0) return COULD_NOT_CHECK.unexpectedShape;
   for (const t of listed) {
     if (!isObject(t) || typeof t.name !== "string") return COULD_NOT_CHECK.unexpectedShape;
+    // A name outside plain ASCII (a Cyrillic lookalike) cannot be screened by words: not read-only.
+    if (!/^[A-Za-z0-9_.-]{1,64}$/.test(t.name)) return COULD_NOT_CHECK.sessionNotReadOnly;
     const a = isObject(t.annotations) ? t.annotations : {};
     if (a.readOnlyHint !== true || a.destructiveHint === true || writeWordIn(t.name) !== undefined)
       return COULD_NOT_CHECK.sessionNotReadOnly;
@@ -128,9 +143,10 @@ export interface AnswerHop {
 /** The JSON messages of an event stream: each event's data lines, joined. Lines that are not JSON are skipped. */
 function streamMessages(text: string): unknown[] {
   const out: unknown[] = [];
-  for (const block of text.split(/\r?\n\r?\n/)) {
+  // Lines end in CRLF, LF or a bare CR (all three are valid in an event stream).
+  for (const block of text.replace(/\r\n?/g, "\n").split("\n\n")) {
     const data = block
-      .split(/\r?\n/)
+      .split("\n")
       .filter((l) => l.startsWith("data:"))
       .map((l) => l.slice(5).replace(/^ /, ""));
     if (data.length === 0) continue;
@@ -165,10 +181,11 @@ export function readRpcAnswer(
       return fail(COULD_NOT_CHECK.notJson);
     }
   } else return fail(COULD_NOT_CHECK.notJson);
+  // A request from the server anywhere in the answer ends the run, before or after the response.
+  if (messages.some((m) => isObject(m) && typeof m.method === "string" && m.id !== undefined))
+    return fail(COULD_NOT_CHECK.serverRequest);
   for (const m of messages) {
     if (!isObject(m)) continue;
-    if (typeof m.method === "string" && m.id !== undefined)
-      return fail(COULD_NOT_CHECK.serverRequest);
     if (m.id !== id) continue;
     if (m.error !== undefined) return fail(COULD_NOT_CHECK.rpcError);
     return isObject(m.result) ? { ok: true, result: m.result } : fail(COULD_NOT_CHECK.notJson);
@@ -276,6 +293,56 @@ export function keepFields(
     if (!Object.hasOwn(data, key)) continue;
     const kept = keepValue(rule, data[key]);
     if (kept !== undefined) out[key] = kept;
+  }
+  return out;
+}
+
+/** The most items a list rule may keep. */
+const MAX_LIST = 10_000;
+
+/** What is wrong with an entry's output rules; empty when every rule is closed and bounded. */
+export function outputRuleProblems(rules: Readonly<Record<string, OutputRule>>, at = ""): string[] {
+  const out: string[] = [];
+  for (const [field, rule] of Object.entries(rules)) {
+    const where = `${at}${field}`;
+    const r = rule as unknown as Record<string, unknown>;
+    switch (r.type) {
+      case "boolean":
+      case "integer":
+      case "timestamp":
+      case "name":
+      case "count":
+      case "hash":
+        break;
+      case "id": {
+        const p = r.pattern;
+        let compiles = typeof p === "string";
+        try {
+          if (compiles) new RegExp(p as string);
+        } catch {
+          compiles = false;
+        }
+        if (!compiles || !(p as string).startsWith("^") || !(p as string).endsWith("$"))
+          out.push(`${where}: an id rule needs an anchored pattern that compiles`);
+        break;
+      }
+      case "enum":
+        if (
+          !Array.isArray(r.values) ||
+          r.values.length === 0 ||
+          r.values.some((v) => typeof v !== "string")
+        )
+          out.push(`${where}: an enum rule needs a list of values`);
+        break;
+      case "list":
+        if (!Number.isInteger(r.max) || (r.max as number) < 1 || (r.max as number) > MAX_LIST)
+          out.push(`${where}: a list rule needs a max from 1 to ${MAX_LIST}`);
+        if (!isObject(r.item)) out.push(`${where}: a list rule needs item rules`);
+        else out.push(...outputRuleProblems(r.item as Record<string, OutputRule>, `${where}.`));
+        break;
+      default:
+        out.push(`${where}: not an output rule`);
+    }
   }
   return out;
 }
