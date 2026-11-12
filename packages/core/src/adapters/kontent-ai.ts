@@ -58,6 +58,9 @@ const KEY_SHAPE = /^[\x21-\x7e]+$/;
 /** An id Gaugeline will print in a finding and put in a report: letters, digits, hyphens and underscores. */
 const PLAIN_ID = /^[A-Za-z0-9_-]{1,64}$/;
 
+/** A slug Gaugeline will print in a finding: letters, digits and a few marks. Anything else is treated as no slug in the preview read. */
+const PLAIN_SLUG = /^[A-Za-z0-9._~-]{1,200}$/;
+
 /** The workflow step Kontent.ai gives an item that has a published version and no newer one. */
 const PUBLISHED_STEP = "published";
 
@@ -439,6 +442,12 @@ export function createKontentAdapter(options: KontentAdapterOptions): KontentAda
     return isRecord(el) ? textOf(el.value) : undefined;
   };
 
+  /** The slug, only when it is plain enough to be printed in a finding and used in a path. */
+  const plainSlugOf = (row: Row): string | undefined => {
+    const slug = slugOf(row);
+    return slug !== undefined && PLAIN_SLUG.test(slug) ? slug : undefined;
+  };
+
   const types = async (): Promise<TypeCount[]> => {
     const counts = new Map<string, number>();
     for await (const row of rowsIn("delivery", true, () => [], [slugElement]))
@@ -529,7 +538,7 @@ export function createKontentAdapter(options: KontentAdapterOptions): KontentAda
   ): Promise<Map<string, { type: string; slug?: string }>> => {
     const out = new Map<string, { type: string; slug?: string }>();
     for await (const row of rowsIn("delivery", true, () => [], [slugElement], fresh)) {
-      const slug = slugOf(row);
+      const slug = plainSlugOf(row);
       out.set(row.id, { type: row.type, ...(slug !== undefined ? { slug } : {}) });
     }
     return out;
@@ -565,7 +574,7 @@ export function createKontentAdapter(options: KontentAdapterOptions): KontentAda
     const preview: { row: Row; slug: string | undefined }[] = [];
     try {
       for await (const row of rowsIn("preview", true, () => [], [slugElement]))
-        preview.push({ row, slug: slugOf(row) });
+        preview.push({ row, slug: plainSlugOf(row) });
     } catch (err) {
       if (err instanceof AdapterRateLimitedError) throw err;
       if (err instanceof AdapterCouldNotCheck) {
@@ -587,13 +596,14 @@ export function createKontentAdapter(options: KontentAdapterOptions): KontentAda
     let unclear = 0;
     for (const { row, slug } of preview) {
       if (first.has(row.id)) continue;
-      // A step that says "published", or says nothing readable (absent, not text, or not a codename), is an item
+      // A step that says "published", or says nothing readable (a step or a type that is absent, not text, or not a codename), is an item
       // published a moment ago or one Gaugeline cannot classify: never a finding.
       if (
         row.step === undefined ||
         row.step === null ||
         row.step === PUBLISHED_STEP ||
-        !ELEMENT.test(row.step)
+        !ELEMENT.test(row.step) ||
+        !ELEMENT.test(row.type)
       ) {
         unclear++;
         continue;
