@@ -7,7 +7,10 @@
 import { sql } from "drizzle-orm";
 import {
   bigint,
+  boolean,
+  date,
   index,
+  integer,
   jsonb,
   pgTable,
   primaryKey,
@@ -31,6 +34,8 @@ export const sites = pgTable("sites", {
   url: text("url").notNull(),
   timezone: text("timezone").notNull().default("UTC"),
   createdAt: createdAt(),
+  /** A paused site gets no nightly job (0004). */
+  active: boolean("active").notNull().default(true),
 }).enableRLS();
 
 export type MemberRole = "owner" | "admin" | "member" | "client";
@@ -172,4 +177,48 @@ export const idempotencyKeys = pgTable(
     primaryKey({ columns: [t.siteId, t.key] }),
     index("idempotency_keys_created_idx").on(t.createdAt),
   ],
+).enableRLS();
+
+export type JobStatus = "queued" | "running" | "done" | "failed";
+
+/** Server-only (0004): the nightly queue. A claim is a lease: status "running" and locked_at. */
+export const jobs = pgTable(
+  "jobs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id").notNull(),
+    siteId: uuid("site_id").notNull(),
+    kind: text("kind").$type<"nightly" | "manual">().notNull(),
+    status: text("status").$type<JobStatus>().notNull().default("queued"),
+    attempts: integer("attempts").notNull().default(0),
+    runAfter: timestamp("run_after", { withTimezone: true }).notNull().defaultNow(),
+    lockedAt: timestamp("locked_at", { withTimezone: true }),
+    probing: boolean("probing").notNull().default(false),
+    /** A nightly job's date in the site's time zone. */
+    scheduledFor: date("scheduled_for"),
+    runId: uuid("run_id"),
+    lastError: text("last_error"),
+    createdAt: createdAt(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (t) => [index("jobs_claim_idx").on(t.runAfter, t.id), index("jobs_lease_idx").on(t.lockedAt)],
+).enableRLS();
+
+/** What a run opened and closed against the site's previous run, by fingerprint. Only runs that changed. */
+export const runChanges = pgTable(
+  "run_changes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id").notNull(),
+    siteId: uuid("site_id").notNull(),
+    runId: uuid("run_id").notNull().unique(),
+    previousRunId: uuid("previous_run_id"),
+    opened: integer("opened").notNull(),
+    stillOpen: integer("still_open").notNull(),
+    closed: integer("closed").notNull(),
+    openedFingerprints: text("opened_fingerprints").array().notNull(),
+    closedFingerprints: text("closed_fingerprints").array().notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index("run_changes_site_idx").on(t.siteId, t.createdAt.desc())],
 ).enableRLS();
