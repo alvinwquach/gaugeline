@@ -31,6 +31,11 @@ const EXPECT_PRIVATE: readonly string[] = ADAPTER_ENTRIES.filter(
   (e) => e.settings?.expectPrivate,
 ).map((e) => e.id);
 
+/** The adapters that take `privateCollections`: collections the owner says the Public role must not read. */
+const PRIVATE_COLLECTIONS: readonly string[] = ADAPTER_ENTRIES.filter(
+  (e) => e.settings?.privateCollections,
+).map((e) => e.id);
+
 /** The adapters that name a GraphQL collection for each content type (`collections`) and take `expectPublishedOnly`. */
 const GRAPHQL_COLLECTIONS: readonly string[] = ADAPTER_ENTRIES.filter(
   (e) => e.settings?.graphqlCollections,
@@ -102,6 +107,15 @@ export const adaptersConfigSchema = z.strictObject({
            * whether it answers a visitor with no key (still only with --owner-consent).
            */
           expectPrivate: z.boolean().optional(),
+          /**
+           * Directus only: collections that must not be readable by a visitor with no token (the Public role). Switches
+           * on the check that asks (still only with --owner-consent).
+           */
+          privateCollections: z
+            .array(z.string().regex(TYPE, "a collection name"))
+            .min(1)
+            .max(50)
+            .optional(),
           /**
            * DatoCMS only: the GraphQL collection to read for each content type, and the field that holds an item's
            * slug. The Content Delivery API has no list of types, so the types are the ones named here.
@@ -260,6 +274,12 @@ export const adaptersConfigSchema = z.strictObject({
               code: "custom",
               path: ["expectPrivate"],
               message: `"expectPrivate" belongs to the Umbraco and Joomla adapters, not to ${entry.id}`,
+            });
+          if (entry.privateCollections !== undefined && !PRIVATE_COLLECTIONS.includes(entry.id))
+            ctx.addIssue({
+              code: "custom",
+              path: ["privateCollections"],
+              message: `"privateCollections" belongs to the Directus adapter, not to ${entry.id}`,
             });
           for (const key of ["collections", "expectPublishedOnly", "showDraftIds"] as const)
             if (entry[key] !== undefined && !GRAPHQL_COLLECTIONS.includes(entry.id))
