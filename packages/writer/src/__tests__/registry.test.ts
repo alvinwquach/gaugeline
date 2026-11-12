@@ -148,6 +148,39 @@ describe("each guard refuses its own fault", () => {
   });
 });
 
+describe("an encoded dot or slash in a file path is refused by the pattern, not by luck", () => {
+  // "a%2e%2e" decodes to "a..", which the file-path policy alone would let through.
+  for (const encoded of ["a%2e%2e", "docs%2fb.md", "docs%5cb.md", "a%2E%2E", "%2e"])
+    it(`refuses ${encoded}`, () => {
+      for (const endpoint of ["getContent", "putContent"] as const) {
+        const req =
+          endpoint === "getContent"
+            ? { endpoint, path: `${R}/contents/${encoded}`, query: { ref: "main" } }
+            : {
+                endpoint,
+                path: `${R}/contents/${encoded}`,
+                body: { message: "m", content: "Yg==", branch: "gaugeline/x" },
+              };
+        expect(() => checkRequest(req)).toThrow(/dot, empty or encoded/);
+      }
+    });
+});
+
+describe("a branch name is plain", () => {
+  for (const name of ["a..b", "refs/heads/main", "main.lock", "a//b", "a/", "@{u}", "a b", "main."])
+    it(`getRef refuses ${JSON.stringify(name)}`, () => {
+      expect(() =>
+        checkRequest({ endpoint: "getRef", path: `${R}/git/ref/heads/${name}` }),
+      ).toThrow(/refused/);
+    });
+  it("getRef accepts main and release/2026.11", () => {
+    for (const name of ["main", "release/2026.11", "feat/x_y-z"])
+      expect(() =>
+        checkRequest({ endpoint: "getRef", path: `${R}/git/ref/heads/${name}` }),
+      ).not.toThrow();
+  });
+});
+
 describe("dot segments never reach the URL parser", () => {
   const climbs = [
     `${R}/git/ref/heads/../../../../../user`,

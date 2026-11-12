@@ -39,7 +39,7 @@ describe("isSafeRepoPath: what a draft may name", () => {
     ["a trailing slash", "a/"],
     ["a backslash", "a\\b.ts"],
     ["an encoded dot", "x%2f.."],
-    ["a non-ASCII name", "café.ts"],
+    ["a non-ASCII name", "caf\u00E9.ts"],
     ["301 characters", "a".repeat(301)],
     ["nothing", ""],
     // The deny-list, top level and nested, in any case.

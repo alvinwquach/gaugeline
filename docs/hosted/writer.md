@@ -62,7 +62,8 @@ implements over its own database connection, and checks these, in this order. Th
 ends the job with a `refused` entry in the trail, and nothing is sent.
 
 1. The job names a pull request draft by a UUID, and your configured target is plain names (an owner, a
-   repository and a base branch with no `.` or `..` segment, and the organisation and site ids).
+   repository, a base branch name (not a full ref such as `refs/heads/main`, and no `..`), and the
+   organisation and site ids).
 2. No stop: `GAUGELINE_WRITER_STOP` is unset or `0`, and the organisation has not paused applying. If the
    pause cannot be read (the database is down), that counts as paused.
 3. **The approval row exists** and is an approval (`approved`, or `edited` after Edit first). A job
@@ -72,10 +73,13 @@ ends the job with a `refused` entry in the trail, and nothing is sent.
    and this kind.
 5. **The hash matches.** The SHA-256 of the job's payload text equals the approval's hash, and so does the
    hash the job carries. The comparison is constant-time and accepts only lower-case hex.
-6. **It was not withdrawn.** No `declined` or `withdrawn` decision was recorded for the draft after it.
-7. **It has not expired.** The approval is less than 72 hours old. A shorter expiry on your record is
-   honoured; a longer one is not.
-8. The payload matches the fixed shape for its kind (same schema the inbox used), and every file is
+6. **It was not withdrawn.** The only decisions that may follow an approval are the writer's own outcomes
+   (`dry_run`, `apply_failed`, `refused`, `applied`). Any other word, including `declined`, `withdrawn`,
+   `Withdrawn` or one this version does not know, counts as a withdrawal.
+7. **It has not expired, and was not decided in the future.** The approval is less than 72 hours old. A
+   shorter expiry on your record is honoured; a longer one is not. A `decidedAt` more than five minutes
+   ahead of the worker's clock is refused (`approval`).
+8. The payload matches the fixed shape for its kind (the inbox's shape checks, plus the longer list of paths below; a test holds that the writer accepts nothing the inbox refuses), and every file is
    inside your `allowedPrefixes` if you set them.
 9. Every request of the plan passes the registry, in a dry run too (the dry run uses a placeholder for the
    base commit, which the real run reads first).
@@ -112,14 +116,16 @@ interface Approval {
   `.devcontainer`, `.vscode`, `.yarn`, `.npmrc`, `.yarnrc*`, `CODEOWNERS`, `package.json`, lock files,
   `pnpm-workspace.yaml`, `Makefile`, `Dockerfile*`, `docker-compose*`, `Jenkinsfile`, other CI
   configuration, and `*.sh`, `*.ps1`, `*.bat`, `*.cmd`. This list is a floor, not a fence: any source file
-  your CI runs is code too. The fence is `allowedPrefixes` below.
+  your CI runs is code too. The fence is `allowedPrefixes` below, which is optional in this version;
+  making it required is the owner's decision, not the writer's.
 - **Page text that is not escaped.** The pull request's title and body go through Gaugeline's Markdown
   escaping first (ADR-0010 part 8). Every `<`, `>`, `&`, bracket, `#` and `*` is backslash-escaped, so
   nothing is a heading, a link, an image or HTML (an HTML comment shows as text). An `@name` or `@org/team`
   becomes a code span so nobody is notified, an issue reference (`#12`, `owner/repo#12`) and an address
   after `closes`, `fixes` or `resolves` becomes a code span so nothing is linked or closed, and a
   `javascript:`, `vbscript:`, `data:` or `file:` address becomes a code span so it is never a link. A
-  title is one line. The file contents are not touched: they are the change.
+  title is one line and at most 256 characters once escaped (GitHub's limit; the cut is made at a whole
+  escape or code span and ends with an ellipsis). The file contents are not touched: they are the change.
 - **A payload that is not the one approved.** See checks 3 to 5 above.
 - **A stop.** Set `GAUGELINE_WRITER_STOP=1` on the worker (any value but unset, empty or `0` stops), or
   pause applying for the organisation in the hosted app, and the writer stops before its next request.
@@ -137,7 +143,9 @@ test holds the default.)
 One entry per job: the outcome (`dry_run`, `applied`, `apply_failed` or `refused`), the pull request's
 address, GitHub's status code on a failure, or the reason it was refused (`kind`, `target`,
 `kill switch`, `organisation paused`, `approval`, `draft`, `org`, `site`, `hash`, `withdrawn`, `expired`,
-`payload`, `path`, `registry`). Never the token, never GitHub's response body, never the payload.
+`payload`, `path`, `registry`). If a request fails in a way that is not an HTTP status (the network drops), the entry is `apply_failed` with
+no status, and the error then goes on to your worker. Never the token, never GitHub's response body, never
+the payload.
 
 ## What you set up
 

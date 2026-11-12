@@ -90,6 +90,21 @@ export const ENDPOINTS: Readonly<Record<EndpointId, Endpoint>> = Object.freeze({
   }),
 });
 
+/**
+ * A branch name the writer will read or name: slash-separated parts that each start with a letter, digit or
+ * underscore, with no ".." anywhere, no part ending ".lock" or ".", and not spelled as a full ref
+ * ("refs/heads/main" is the ref of a branch called main, not a branch name).
+ */
+export function isPlainBranchName(name: string): boolean {
+  if (name.length === 0 || name.length > 200 || name.startsWith("refs/")) return false;
+  if (name.includes("..")) return false;
+  return name
+    .split("/")
+    .every(
+      (p) => /^[A-Za-z0-9_][A-Za-z0-9._-]*$/.test(p) && !p.endsWith(".lock") && !p.endsWith("."),
+    );
+}
+
 export class RegistryError extends Error {}
 
 function refuse(req: GithubRequest, why: string): never {
@@ -114,6 +129,12 @@ export function checkRequest(req: GithubRequest): void {
   const m = REPO.exec(req.path);
   const rest = m ? new RegExp(e.rest).exec(m[1]!) : null;
   if (!rest) refuse(req, "path does not match");
+  if (
+    req.endpoint === "getRef" &&
+    !isPlainBranchName(req.path.slice(req.path.indexOf("/git/ref/heads/") + 15))
+  ) {
+    refuse(req, "not a plain branch name");
+  }
   if (rest[1] !== undefined) {
     let file: string;
     try {

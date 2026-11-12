@@ -143,14 +143,17 @@ describe("who may import the writer", () => {
     expect(hits.map((f) => relative(root, f))).toEqual([]);
   });
 
-  it("the hosted app imports only @gaugeline/writer/kinds, which brings in nothing that sends", () => {
+  it("the hosted app imports nothing of the writer but, at most, @gaugeline/writer/kinds, which brings in nothing that sends", () => {
     const files = walk(join(root, "apps/hosted"), ts);
     expect(files.length).toBeGreaterThan(5);
     const named = files.flatMap((f) =>
-      [...readFileSync(f, "utf8").matchAll(/@gaugeline\/writer[^"'`\s)]*/g)].map((m) => m[0]),
+      [...readFileSync(f, "utf8").matchAll(/from "(@gaugeline\/writer[^"]*)"/g)].map((m) => m[1]),
     );
-    expect(named.length).toBeGreaterThan(0);
-    expect(new Set(named)).toEqual(new Set(["@gaugeline/writer/kinds"]));
+    expect([...new Set(named)].filter((n) => n !== "@gaugeline/writer/kinds")).toEqual([]);
+    const manifest = JSON.parse(readFileSync(join(root, "apps/hosted/package.json"), "utf8"));
+    expect(Object.keys(manifest.dependencies ?? {}).filter((d) => d.includes("writer"))).toEqual(
+      named.length > 0 ? ["@gaugeline/writer"] : [],
+    );
     // And that module imports nothing but zod.
     const kinds = readFileSync(join(root, "packages/writer/src/kinds.ts"), "utf8");
     const imports = [...kinds.matchAll(/^import .* from "([^"]+)";/gm)].map((m) => m[1]);

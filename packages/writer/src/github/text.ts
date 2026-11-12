@@ -58,9 +58,26 @@ function lines(text: string, max: number): string {
     .join("\n");
 }
 
-/** A pull request title: one line. */
+/** GitHub cuts a pull request title at 256 characters; escaping can double a title, so the escaped text is capped. */
+const TITLE_CAP = 256;
+
+/** The units of escaped text that must not be split: an escape (backslash and its character) or a code span. */
+const UNIT = /\\[\s\S]|`[^`]*`|[\s\S]/gu;
+
+/** Cut escaped text to `max` characters at a unit boundary, ending with an ellipsis. */
+function capEscaped(text: string, max: number): string {
+  if (text.length <= max) return text;
+  let out = "";
+  for (const [unit] of text.matchAll(UNIT)) {
+    if (out.length + unit.length > max - 1) break;
+    out += unit;
+  }
+  return `${out.trimEnd()}\u2026`;
+}
+
+/** A pull request title: one line, at most 256 characters once escaped. */
 export function prTitle(title: string): string {
-  return lines(title.replace(/\s+/gu, " "), TITLE_MAX);
+  return capEscaped(lines(title.replace(/\s+/gu, " "), TITLE_MAX), TITLE_CAP);
 }
 
 /** A pull request body: lines kept, each one escaped. */

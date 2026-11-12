@@ -14,7 +14,7 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { checkDraftPayload, isAllowedPath } from "../kinds.js";
 import { stopReason, type Mode, type Switches } from "../switches.js";
 import type { Approvals, ApplyJob, Trail, TrailEntry } from "../types.js";
-import { checkRequest, RegistryError, type GithubRequest } from "./endpoints.js";
+import { checkRequest, isPlainBranchName, RegistryError, type GithubRequest } from "./endpoints.js";
 import type { Send } from "./send.js";
 import { prBody, prTitle } from "./text.js";
 
@@ -62,11 +62,19 @@ const PLACEHOLDER_SHA = "0".repeat(40);
 
 const OWNER = /^[A-Za-z0-9-]{1,39}$/;
 const REPO_NAME = /^[A-Za-z0-9._-]{1,100}$/;
-const BASE = /^[A-Za-z0-9_][A-Za-z0-9._-]*(\/[A-Za-z0-9_][A-Za-z0-9._-]*)*$/;
+/** The outcomes the writer itself records after an approval; any other word that follows one is a withdrawal. */
+const MAY_FOLLOW_AN_APPROVAL: ReadonlySet<string> = new Set([
+  "dry_run",
+  "apply_failed",
+  "refused",
+  "applied",
+]);
+/** How far ahead of the worker's clock a decision may be dated (clock skew between the database and the worker). */
+const CLOCK_SKEW_MS = 5 * 60 * 1000;
 
 /**
- * True when the configured target is plain names: no dot segment, no slash in an owner or repo. A base
- * branch's every segment must start with a letter, digit or underscore (BASE), so it has no dot segment.
+ * True when the configured target is plain names: no dot segment, no slash in an owner or repo, and a base
+ * that is a branch name (not a full ref, no "..").
  */
 function validTarget(t: GithubTarget): boolean {
   const dots = (s: string) => s.split("/").some((p) => p === "." || p === "..");
@@ -76,8 +84,7 @@ function validTarget(t: GithubTarget): boolean {
     OWNER.test(t.owner) &&
     REPO_NAME.test(t.repo) &&
     !dots(t.repo) &&
-    t.base.length <= 200 &&
-    BASE.test(t.base)
+    isPlainBranchName(t.base)
   );
 }
 
@@ -186,14 +193,16 @@ export async function applyPullRequest(job: ApplyJob, deps: ApplyDeps): Promise<
   ) {
     return refused("hash");
   }
-  if (approval.later.some((d) => d === "declined" || d === "withdrawn"))
-    return refused("withdrawn");
+  // Only the outcomes the writer itself records may follow an approval. Anything else ("declined",
+  // "withdrawn", "Withdrawn", a word this version does not know) ends it.
+  if (approval.later.some((d) => !MAY_FOLLOW_AN_APPROVAL.has(d))) return refused("withdrawn");
   const decidedAt = approval.decidedAt.getTime();
+  const now = (deps.now ?? (() => new Date()))().getTime();
+  if (!(decidedAt <= now + CLOCK_SKEW_MS)) return refused("approval");
   const expires = Math.min(
     decidedAt + APPROVAL_TTL_MS,
     approval.expiresAt?.getTime() ?? Number.POSITIVE_INFINITY,
   );
-  const now = (deps.now ?? (() => new Date()))().getTime();
   if (!(now < expires)) return refused("expired");
 
   // The payload must match the kind's fixed shape: the same schema the inbox checked before it recorded
@@ -276,6 +285,8 @@ export async function applyPullRequest(job: ApplyJob, deps: ApplyDeps): Promise<
   } catch (e) {
     if (e instanceof Stop) return finish(e.entry);
     if (e instanceof RegistryError) return finish({ outcome: "refused", reason: "registry" });
+    // Anything else (the network failed): leave a trail entry, then let the worker see the error.
+    await finish({ outcome: "apply_failed" }).catch(() => undefined);
     throw e;
   }
 }

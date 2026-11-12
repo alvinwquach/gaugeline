@@ -37,6 +37,24 @@ describe("the title", () => {
   it("is one line", () => {
     expect(prTitle("one\ntwo\r\nthree\tfour")).toBe("one two three four");
   });
+
+  it("stays under GitHub's 256 characters after escaping, which can double its length", () => {
+    const hashes = prTitle("#".repeat(200));
+    expect(hashes.length).toBeLessThanOrEqual(256);
+    // The cut never leaves half an escape: every backslash is followed by the character it escapes.
+    expect(hashes.replace(/\\./gu, "")).toMatch(/^(\u2026)?$/u);
+    const long = prTitle("word ".repeat(60) + "@acme/security-team " + "x".repeat(300));
+    expect(long.length).toBeLessThanOrEqual(256);
+    expect(long.endsWith("\u2026")).toBe(true);
+  });
+
+  it("never cuts a code span in two, and leaves a short title alone", () => {
+    const t = prTitle("a".repeat(250) + " @acme/security-team");
+    expect(t.length).toBeLessThanOrEqual(256);
+    expect((t.match(/`/gu) ?? []).length % 2).toBe(0);
+    expect(t.replace(/`[^`]*`/gu, "")).not.toContain("@");
+    expect(prTitle("Point the menu link at /drinks")).toBe("Point the menu link at /drinks");
+  });
 });
 
 describe("the body", () => {

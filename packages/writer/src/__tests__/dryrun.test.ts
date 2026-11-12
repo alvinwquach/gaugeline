@@ -80,6 +80,22 @@ describe("a dry run validates its whole plan against the registry", () => {
     expect(d.log).toEqual([out]);
   });
 
+  it("a send that throws leaves an apply_failed entry in the trail, then the error goes on", async () => {
+    const j = job();
+    const d = deps(
+      {
+        send: async () => {
+          throw new TypeError("socket hang up");
+        },
+      },
+      j,
+    );
+    await expect(applyPullRequest(j, d)).rejects.toThrow("socket hang up");
+    expect(d.log).toEqual([
+      { draftId: j.draftId, decisionId: j.decisionId, outcome: "apply_failed" },
+    ]);
+  });
+
   it("an error that is not the registry's is not swallowed", async () => {
     check.mockImplementation(() => {
       throw new TypeError("boom");

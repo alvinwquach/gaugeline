@@ -80,9 +80,6 @@ importers:
       '@gaugeline/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@gaugeline/writer':
-        specifier: workspace:*
-        version: link:../../packages/writer
       drizzle-orm:
         specifier: 0.45.4
         version: 0.45.4(postgres@3.4.9)

@@ -171,6 +171,25 @@ describe("the writer reads the approval row itself (ADR-0010 part 3.2)", () => {
     expect((await run(job(), { later: ["dry_run", "apply_failed"] })).out.outcome).toBe("applied");
   });
 
+  it("only the outcomes the writer itself records may follow an approval: any other word counts as a withdrawal", async () => {
+    for (const word of ["Withdrawn", "WITHDRAWN", "expired", "revoked", "Declined", "paused", ""]) {
+      const { out, sent } = await run(job(), { later: ["dry_run", word] });
+      expect(out, JSON.stringify(word)).toMatchObject({ outcome: "refused", reason: "withdrawn" });
+      expect(sent).toEqual([]);
+    }
+    for (const word of ["dry_run", "apply_failed", "refused", "applied"]) {
+      expect((await run(job(), { later: [word] })).out.outcome, word).toBe("applied");
+    }
+  });
+
+  it("refuses an approval decided in the future, beyond a small clock skew", async () => {
+    const future = await run(job(), { decidedAt: new Date(NOW.getTime() + 10 * 60 * 1000) });
+    expect(future.out).toMatchObject({ outcome: "refused", reason: "approval" });
+    expect(future.sent).toEqual([]);
+    const skew = await run(job(), { decidedAt: new Date(NOW.getTime() + 60 * 1000) });
+    expect(skew.out.outcome).toBe("applied");
+  });
+
   it("refuses an approval older than 72 hours, and applies one just inside it", async () => {
     expect(APPROVAL_TTL_MS).toBe(72 * HOUR);
     const old = await run(job(), { decidedAt: new Date(NOW.getTime() - 72 * HOUR) });
@@ -215,6 +234,10 @@ describe("the configured target is plain names", () => {
     "a base that climbs": { base: "../../../../user" },
     "a base with a dot segment in the middle": { base: "release/../main" },
     "an empty base": { base: "" },
+    "a base that is a full ref": { base: "refs/heads/main" },
+    "a base with two dots in a name": { base: "a..b" },
+    "a base ending .lock": { base: "main.lock" },
+    "a base ending in a dot": { base: "main." },
     "a base with a space": { base: "main branch" },
     "a site that is not a uuid": { siteId: "site-1" },
     "an organisation that is not a uuid": { orgId: "org-1" },
