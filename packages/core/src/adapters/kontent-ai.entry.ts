@@ -73,7 +73,7 @@ export const entries: readonly AdapterEntry[] = [
     }),
     // The row in docs/integrations/index.md is generated from this (pnpm gen:adapters).
     docs: {
-      key: "none for a public project; a Delivery API secure access key for a secured one (it can only read published content)",
+      key: "read-only (none for a public project; a Delivery API secure access key for a secured one, which can only read published content)",
       reads:
         "The published items of the environment, through the Delivery API: counts, field counts and published items as fingerprints. With --owner-consent and a settings entry, items that are not published and still have a live page. [Endpoints and the key](/docs/integrations/kontent-ai)",
     },
