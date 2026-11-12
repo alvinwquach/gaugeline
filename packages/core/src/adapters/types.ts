@@ -218,6 +218,11 @@ export interface AdapterSettings {
    * view unpublished content. Without both, no unpublished node is ever asked for.
    */
   readUnpublished?: boolean | undefined;
+  /**
+   * Only `payload`: the slug of the auth collection that holds the API key's user (Payload sends the key as
+   * `<slug> API-Key <key>`). Default: `users`.
+   */
+  authCollection?: string | undefined;
   /** Only `git-content`: the repository's folder on this computer, relative to where the run starts. */
   path?: string | undefined;
   /** Only `git-content`: a repository on GitHub, read with GET. Instead of `path`. */

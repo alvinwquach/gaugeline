@@ -14,6 +14,7 @@ import {
   createDnsReader,
   createPageRegistry,
   notifyAll,
+  uploadResult,
   resolveTargets,
   shouldNotify,
   parseResult,
@@ -129,6 +130,12 @@ import {
   manualBackups,
   createWordPress,
   type ExportLister,
+  applySuppressions,
+  diffFindingsBaseline,
+  isBlocking,
+  offIds,
+  registerCustomChecks,
+  type Config,
 } from "@gaugeline/core";
 import { parseCliArgs } from "./args.js";
 import { HELP } from "./help.js";
@@ -218,6 +225,8 @@ import { defaultPlanStatePath, readPlanStateFile, writePlanStateFile } from "./p
 import { defaultClientDir } from "./client-dir.js";
 import { openInBrowser } from "./open.js";
 import { addIgnore, applyIgnore, IGNORE_FILE, readIgnore } from "./ignore.js";
+import { builtInCheckIds } from "./builtin-ids.js";
+import { loadConfig, readBaselineFile, writeBaselineFile } from "./config.js";
 import { canShowView, runView, type ViewIo } from "./tui/app.js";
 import {
   appendFileSync,
@@ -1480,6 +1489,58 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       // gaugeline audit --pack: the packages are read, and checked against the checks this run makes, before
       // any request: a package that names a check that never runs is a mistake in the file (exit 2).
       const services = args.audit ? readServicesConfig(cwd) : undefined;
+      // gaugeline.config.(json|mjs|js|ts) in this folder: which checks block, the checks you wrote,
+      // and findings snoozed with a date. A file that is wrong is exit 2 before any request.
+      const runClock = (deps.now ?? io.now ?? (() => new Date()))();
+      if (args.suppress && args.suppress.until < runClock.toISOString().slice(0, 10))
+        throw new ConfigError(
+          `--suppress-until ${args.suppress.until} is already past: a suppression that has expired does nothing.`,
+          { hint: "Give a date from today on." },
+        );
+      // A program in this folder is about to run: say so before it does, every time (a fork's pull
+      // request can bring its own), so a config that throws at import has been announced too.
+      const loadedConfig = await loadConfig(cwd, {
+        jsonOnly: args.configJsonOnly,
+        onProgram: (file) =>
+          io.stderr.write(
+            `Running code from ${file}. --config-json-only (or GAUGELINE_NO_EXEC_CONFIG=1) refuses it.\n`,
+          ),
+      });
+      const config: Config = loadedConfig?.config ?? { checks: {}, custom: [], suppress: [] };
+      const everyBuiltIn = builtInCheckIds();
+      if (loadedConfig)
+        registerCustomChecks(registry, config.custom, loadedConfig.file, everyBuiltIn);
+      const configOff = offIds(config.checks);
+      if (loadedConfig) {
+        // A mistyped id under "block" would block nothing for ever: that is a config error. Under
+        // "warn" or "off" it is a notice, printed whatever --quiet says.
+        for (const [id, mode] of Object.entries(config.checks)) {
+          if (registry.has(id) || everyBuiltIn.has(id)) continue;
+          if (mode === "block")
+            throw new ConfigError(
+              `${loadedConfig.file}: checks.${id}: no check has that id, so "block" would block nothing.`,
+              { hint: "Check the spelling against the checks reference." },
+            );
+          io.stderr.write(`${loadedConfig.file}: checks.${id}: no check has that id.\n`);
+        }
+        if (configOff.length > 0 && !args.quiet)
+          io.stderr.write(
+            `${configOff.length} check${configOff.length === 1 ? "" : "s"} turned off in ${loadedConfig.file}: ${configOff.join(", ")}\n`,
+          );
+      }
+      // A baseline is read before the first request: one that is wrong is exit 2, and under --ci a
+      // missing one is too (a throwaway checkout would write a fresh one and accept every finding).
+      let knownBaseline: ReturnType<typeof readBaselineFile>;
+      if (args.baseline !== undefined && !args.updateBaseline) {
+        knownBaseline = readBaselineFile(cwd, args.baseline);
+        if (knownBaseline === undefined && args.ci)
+          throw new ConfigError(
+            `${args.baseline} does not exist, and with --ci a missing baseline would accept every finding.`,
+            {
+              hint: `Write it once on your own machine and commit it: gaugeline <address> --baseline ${args.baseline} --update-baseline.`,
+            },
+          );
+      }
       checkServices(services, registry);
       let only: readonly string[] | undefined =
         deps.registry === undefined && skeleton ? skeleton : undefined;
@@ -1626,7 +1687,9 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         ...(args.command === "renewals" || handing ? { tolerateUnreachable: true } : {}),
         // The walking skeleton (0.0.x) runs one check; an injected registry is used as given.
         ...(only ? { only } : {}),
-        ...(dnsSkipped.length > 0 ? { skip: dnsSkipped } : {}),
+        ...(dnsSkipped.length + configOff.length > 0
+          ? { skip: [...dnsSkipped, ...configOff] }
+          : {}),
         onProgress: (e) => log.progress(e),
         ...(deps.now ? { now: deps.now } : {}),
         ...(schemaRules ? { schemaRules } : {}),
@@ -1708,6 +1771,49 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           io.stderr.write(
             `${dismissed} finding${dismissed === 1 ? "" : "s"} dismissed in ${IGNORE_FILE}\n`,
           );
+      }
+      // Suppressions (config and --suppress), then the baseline (--baseline). Findings they hide are
+      // counted on stderr, never dropped in silence; a finding that comes back says why.
+      const suppressions = [...config.suppress];
+      if (args.suppress)
+        for (const id of args.suppress.ids)
+          suppressions.push({ id, until: args.suppress.until, reason: args.suppress.reason });
+      const accepted = new Set<Finding>();
+      if (suppressions.length > 0) {
+        const s = applySuppressions(result.findings, suppressions, runClock);
+        result.findings = s.kept;
+        for (const e of s.expired)
+          io.stderr.write(
+            `Suppression of ${e.id}${e.url ? ` on ${e.url}` : ""} expired on ${e.until} (${e.reason}). It no longer applies: ${s.kept.some((f) => f.checkId === e.id) ? "the finding is back below" : "remove it from the config"}.\n`,
+          );
+        for (const u of s.unmatched)
+          io.stderr.write(
+            `Suppression of ${u.id}${u.url ? ` on ${u.url}` : ""} (until ${u.until}) matched no finding in this run: ${everyBuiltIn.has(u.id) || registry.has(u.id) ? "the problem may be fixed, or the address is not one a finding names (use a full address or a path such as /menu)" : "no check has that id"}.\n`,
+          );
+        // What was muted is always counted, and so is how much of it was "Fix this first".
+        if (s.suppressed.length > 0) {
+          const high = s.suppressed.filter((x) => x.finding.severity === "high").length;
+          io.stderr.write(
+            `${s.suppressed.length} finding${s.suppressed.length === 1 ? "" : "s"} snoozed by a suppression${high > 0 ? ` (${high} Fix this first)` : ""}: ${[...new Set(s.suppressed.map((x) => `${x.entry.id} until ${x.entry.until}`))].join("; ")}\n`,
+          );
+        }
+      }
+      if (args.baseline !== undefined) {
+        // Printed whatever --quiet says, like the suppression count: --json does not list these findings.
+        if (knownBaseline === undefined) {
+          const n = writeBaselineFile(cwd, args.baseline, result.findings, runClock);
+          for (const f of result.findings) accepted.add(f);
+          io.stderr.write(
+            `Baseline written to ${args.baseline}: ${n} finding${n === 1 ? "" : "s"} now known. Later runs with --baseline report only new ones.\n`,
+          );
+        } else {
+          const d = diffFindingsBaseline(result.findings, knownBaseline);
+          result.findings = d.fresh;
+          const knownHigh = d.known.filter((f) => f.severity === "high").length;
+          io.stderr.write(
+            `${d.known.length} known finding${d.known.length === 1 ? "" : "s"} in ${args.baseline} left out${knownHigh > 0 ? ` (${knownHigh} Fix this first)` : ""}; ${d.fresh.length} new.\n`,
+          );
+        }
       }
       // gaugeline handoff: the summary of what the checks read, as three files (or JSON on stdout). Nothing
       // else is written or sent: no page report, no notification, no saved run.
@@ -1982,6 +2088,24 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
             );
         }
       }
+      // --upload: the result, to the person's own hosted workspace. One plain line says how it went; a
+      // failed upload is never an error and never changes the exit code. Findings and evidence only,
+      // and nothing is sent if a key from this environment is in it (uploadResult checks).
+      if (args.upload) {
+        const up = await uploadResult(
+          buildResult({
+            url: snapshot.requestedUrl,
+            startedAt,
+            findings: result.findings,
+            passed: result.passed,
+            failed: [...result.failed.map((f) => f.id), ...dnsSkipped],
+            couldNotCheck: result.couldNotCheck,
+            sampled: result.sampled,
+          }),
+          env,
+        );
+        if (!up.ok || !args.quiet) io.stderr.write(`${up.line}\n`);
+      }
       // -i: the terminal view over this run, for a person at a wide enough terminal, never in CI.
       const stdin = io.stdin ?? process.stdin;
       if (
@@ -2005,7 +2129,25 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           stdout: io.stdout,
           onDismiss: (d) => addIgnore(cwd, d, startedAt),
         });
-      const highFindings = result.findings.filter((f) => f.severity === "high").length;
+      const highFindings = result.findings.filter(
+        (f) => !accepted.has(f) && isBlocking(f, config.checks),
+      ).length;
+      // A finding below "Fix this first" that the config sets to "block" fails --ci: say so, since the
+      // summary line counts by severity.
+      const blockedByConfig = [
+        ...new Set(
+          result.findings
+            .filter(
+              (f) =>
+                !accepted.has(f) && f.severity !== "high" && config.checks[f.checkId] === "block",
+            )
+            .map((f) => f.checkId),
+        ),
+      ];
+      if (blockedByConfig.length > 0 && loadedConfig && !args.json && !args.quiet)
+        io.stderr.write(
+          `Set to block in ${loadedConfig.file}: ${blockedByConfig.join(", ")}. With --ci these fail the run.\n`,
+        );
       if (launch && !args.json)
         io.stdout.write(
           highFindings === 0 ? "Ready to launch\n" : `Not yet: ${highFindings} to fix first\n`,

@@ -1,0 +1,13 @@
+{
+  "checks": {
+    "mailto-cta": "block",
+    "images-legacy-format": "off"
+  },
+  "suppress": [
+    {
+      "id": "viewport",
+      "until": "2026-12-31",
+      "reason": "The phone layout ships with the December redesign"
+    }
+  ]
+}
