@@ -32,7 +32,7 @@ export const sitecoreRouteNoPage = defineCheck<SitecoreReading>({
   what: "Experience Edge says a route is published for a language, and the address its page should have answers 404 or 410 on the live site.",
   why: "Links, the sitemap and search results point at a page that is not there, and the client's announcement leads to an error page. Edge is what the front end reads, so a route that is on Edge and not on the site means the front end did not build it.",
   fix: "Check that the front end has a route for the path (a rebuild or a revalidation may be needed after publishing), that the language's urls prefix in gaugeline.adapters.json matches how the site addresses that language, and that the item is not published by mistake. If the page should not be public, unpublish the item in Sitecore.",
-  tech: "POST https://edge.sitecorecloud.io/api/graphql/v1 (a documented read-only query, through the fetcher's query allowlist, ADR-0006) with the Delivery API token in the sc_apikey header: site { siteInfo(site) { routes(language, first, after) { total pageInfo { endCursor hasNext } results { routePath } } } }, every value a variable; pages are followed by the cursor Edge returns, and a repeated cursor or route, a missing hasNext, an empty page before the end and fewer routes than total are could-not-check. Then one GET of each route's address on the live site: the route path for the first language, the settings' urls prefix plus the route path for any language that has one (redirects followed). A final 404 or 410 is the finding; any other answer that is not a 2xx is could-not-check for that page. A language with no prefix that is not the first, an address on another site, and a path that is not a plain path (a host, `..`, an escaped slash) are could-not-check by name and are not asked. Routes only: no field of any item is requested. Routes are kept in a Set per language to catch a repeat.",
+  tech: "POST https://edge.sitecorecloud.io/api/graphql/v1 (a documented read-only query, through the fetcher's query allowlist, ADR-0006) with the Delivery API token in the sc_apikey header: site { siteInfo(site) { routes(language, first, after) { total pageInfo { endCursor hasNext } results { routePath } } } }, every value a variable; pages are followed by the cursor Edge returns, and a repeated cursor or route, a missing hasNext, an empty page before the end and fewer routes than total are could-not-check. Then one GET of each route's address on the live site: the route path for the first language, the settings' urls prefix plus the route path for any language that has one (redirects followed). A final 404 or 410 on the site's own host is the finding, but only after Experience Edge is asked again for that language and still lists the route; a route that is gone by then, a second read that fails, a redirect to another site, a 429 (the pages after it are not asked) and any other answer that is not a 2xx are could-not-check. A language with no prefix that is not the first, an address on another site, and a path that is not a plain path (a host, `..`, an escaped slash) are could-not-check by name and are not asked. Routes only: no field of any item is requested. Routes are kept in a Set per language to catch a repeat.",
   run(r, ctx) {
     unfinished(r, ctx);
     for (const type of r.emptyLanguages)
@@ -41,7 +41,15 @@ export const sitecoreRouteNoPage = defineCheck<SitecoreReading>({
         `${type}: Experience Edge returned no published route, so no page of it was checked. The site name or the language may be mistyped, or nothing in that language was published to Edge.`,
       );
     for (const u of r.unaddressed)
-      ctx.couldNotCheck?.(r.site, `${u.type}: route ${u.id} was not checked, because ${u.reason}.`);
+      ctx.couldNotCheck?.(
+        r.site,
+        `${u.type}: ${u.count} ${u.count === 1 ? "route was" : "routes were"} not checked, because ${u.reason}.`,
+      );
+    if (r.liveSlowDown)
+      ctx.couldNotCheck?.(
+        r.site,
+        `The live site asked Gaugeline to slow down (429)${r.liveSlowDown.retry ? `; it said to try again ${r.liveSlowDown.retry}` : ""}, so ${r.liveSlowDown.notAsked} ${r.liveSlowDown.notAsked === 1 ? "page was" : "pages were"} not asked. Run again later.`,
+      );
     if (r.pagesSkipped > 0)
       ctx.couldNotCheck?.(
         r.site,

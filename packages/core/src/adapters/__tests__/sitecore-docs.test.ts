@@ -44,7 +44,7 @@ describe("docs/integrations/sitecore.md", () => {
   });
 
   it("says when the documentation was checked, and marks the citation [docs]", () => {
-    expect(page).toMatch(/Documentation checked on: \d{4}-\d{2}-\d{2}/);
+    expect(page).toMatch(/Documentation not read; date of the attempt: \d{4}-\d{2}-\d{2}/);
     expect(page).toContain("[docs]");
   });
 
@@ -86,7 +86,8 @@ describe("docs/integrations/sitecore.md", () => {
   });
 
   it("says plainly that the documentation pages were not read, and the entry is marked not verified", () => {
-    expect(page).toContain("which means the pages were not read");
+    expect(page).toContain("Documentation not read");
+    expect(page).not.toContain("Documentation checked on");
     expect(page).toContain("not verified");
   });
 

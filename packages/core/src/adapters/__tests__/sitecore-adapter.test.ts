@@ -342,6 +342,11 @@ describe("the Sitecore adapter: answers that cannot be trusted are could-not-che
       "/a/%2e%2e/b",
       "/a\\b",
       "/a\nb",
+      "/a?b=1",
+      "/a#frag",
+      "/a%0d%0ab",
+      "/a%0Ab",
+      "/a%09b",
       "no-slash",
       "",
       42,
@@ -557,6 +562,50 @@ describe("the Sitecore adapter: the preview endpoint's path", () => {
     expect(
       make({ settings: { ...SITECORE_SETTINGS, expectPrivate: true } }).adapter.privacyExpected(),
     ).toBe(true);
+  });
+});
+
+describe("the Sitecore adapter: a list that changes while it is read", () => {
+  it("a total that differs from page to page is could-not-check, never a list with a hole in it", async () => {
+    // 25 routes, pages of 10. After page 1, /p3 is unpublished: page 2 says 24 and the offsets shift, so /p10 is never read.
+    const page = (from: number, to: number, total: number, hasNext: boolean) =>
+      answer(
+        Array.from({ length: to - from }, (_, i) => route(`/p${from + i}`)),
+        { total, hasNext, endCursor: hasNext ? `C${to}` : "" },
+      );
+    const w = make({
+      pageSize: 10,
+      fixture: {
+        respond: (_c, n) =>
+          n === 0
+            ? page(0, 10, 25, true)
+            : n === 1
+              ? page(11, 21, 24, true)
+              : page(21, 25, 24, false),
+      },
+    });
+    const reason = await reasonOf(collectPublished(w.adapter, { types: ["en"] }));
+    expect(reason).toMatch(/changed while it was read/);
+  });
+
+  it("a total that stays the same is not a change", async () => {
+    const w = make({ pageSize: 10 });
+    expect(await ids(w, ["en"])).toHaveLength(6);
+  });
+});
+
+describe("the Sitecore adapter: the urls prefix", () => {
+  it("a prefix with a . or .. segment is refused before anything is asked", async () => {
+    for (const prefix of ["/..", "/.", "/a/../b", "/a/./b", "/fr/.."]) {
+      const w = make({ settings: { ...SITECORE_SETTINGS, urls: { "fr-CA": prefix } } });
+      expect(await reasonOf(w.adapter.types())).toMatch(/start of the address/);
+      expect(w.seen).toEqual([]);
+    }
+  });
+
+  it("a prefix with ordinary segments is accepted", async () => {
+    const w = make({ settings: { ...SITECORE_SETTINGS, urls: { "fr-CA": "/fr.ca/v1" } } });
+    expect(await w.adapter.types()).toHaveLength(2);
   });
 });
 

@@ -122,6 +122,16 @@ const KEY_SHAPE = /^[\x21-\x7e]{8,4096}$/;
 const PREFIX_PATH = /^\/[A-Za-z0-9._~-]{1,40}(?:\/[A-Za-z0-9._~-]{1,40}){0,3}$/;
 const PREFIX_ORIGIN = /^https:\/\/[A-Za-z0-9.-]{1,253}$/;
 
+/** How many characters of a setting a message repeats. */
+const SHOWN_CHARS = 20;
+
+/** Characters in a route path that make a different address once it is parsed: a query, a fragment, an encoded line break or tab. */
+const PATH_TRICKS = /[?#]|%0[9ad]/i;
+
+/** A route path as Edge gave it, or undefined: a plain path (see safePath) with no query, fragment, line break or tab in it. */
+const routePathOf = (raw: string): string | undefined =>
+  PATH_TRICKS.test(raw) ? undefined : safePath(raw);
+
 /** An answer over the size limit: asked again with a smaller page before it becomes could-not-check. */
 class TooLarge extends AdapterCouldNotCheck {}
 
@@ -168,7 +178,7 @@ export function createSitecoreAdapter(options: SitecoreAdapterOptions): Sitecore
     for (const language of named)
       if (!LANGUAGE.test(language))
         throw new AdapterCouldNotCheck(
-          `"${language.slice(0, 20)}" is not a language such as en or fr-CA.`,
+          `"${language.slice(0, SHOWN_CHARS)}" is not a language such as en or fr-CA.`,
         );
     for (const [language, prefix] of Object.entries(settings?.urls ?? {}))
       if (named.includes(language) && !prefixOk(prefix))
@@ -181,7 +191,9 @@ export function createSitecoreAdapter(options: SitecoreAdapterOptions): Sitecore
   };
 
   const prefixOk = (prefix: string): boolean =>
-    prefix === "" || PREFIX_PATH.test(prefix) || PREFIX_ORIGIN.test(prefix);
+    prefix === "" ||
+    (PREFIX_PATH.test(prefix) && !prefix.split("/").some((seg) => seg === "." || seg === "..")) ||
+    PREFIX_ORIGIN.test(prefix);
 
   /** What a failed read becomes: a rate limit carries what was read, anything else is could-not-check, in fixed words. */
   const translate = (err: unknown, language: string, partial: unknown): Error => {
@@ -284,7 +296,7 @@ export function createSitecoreAdapter(options: SitecoreAdapterOptions): Sitecore
     const paths: string[] = [];
     for (const r of routes.results) {
       const path =
-        isRecord(r) && typeof r.routePath === "string" ? safePath(r.routePath) : undefined;
+        isRecord(r) && typeof r.routePath === "string" ? routePathOf(r.routePath) : undefined;
       if (path === undefined)
         throw new AdapterCouldNotCheck(
           "Experience Edge answered with routes that have no usable path.",
@@ -321,6 +333,8 @@ export function createSitecoreAdapter(options: SitecoreAdapterOptions): Sitecore
     let after = "";
     let size = pageSize;
     let asked = 0;
+    /** The total the first page reported: the list is one list only while every page agrees with it. */
+    let firstTotal: number | undefined;
     for (;;) {
       if (++asked > maxPages)
         throw new AdapterCouldNotCheck(
@@ -336,6 +350,11 @@ export function createSitecoreAdapter(options: SitecoreAdapterOptions): Sitecore
         }
         throw translate(err, language, partial());
       }
+      if (firstTotal !== undefined && page.total !== firstTotal)
+        throw new AdapterCouldNotCheck(
+          `Experience Edge's ${language} list changed while it was read (it said ${firstTotal} routes, then ${page.total}), so it was not read to the end. Run again.`,
+        );
+      firstTotal = page.total;
       if (page.total > maxRead)
         throw new AdapterCouldNotCheck(
           `The ${language} site has ${page.total} routes, more than ${maxRead}, which is as many as Gaugeline reads for one language.`,

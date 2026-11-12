@@ -105,12 +105,14 @@ describe("Sitecore checks: route published to Edge but no page on the live site"
     const { reading: r, seen } = await reading(PAGES_DRIFT, {
       settings: { ...SITECORE_SETTINGS, urls: {} },
     });
-    expect(r.unaddressed).toHaveLength(3);
+    expect(r.unaddressed).toHaveLength(1);
+    expect(r.unaddressed[0]).toMatchObject({ type: "fr-CA", count: 3 });
     expect(seen.some((s) => s.includes("/fr-ca"))).toBe(false);
     const out = await run(r);
     expect(reasons(out)).toMatch(
-      /fr-CA: route \/classes was not checked, because its address in this language is not known/,
+      /fr-CA: 3 routes were not checked, because its address in this language is not known/,
     );
+    expect(out.couldNotCheck.filter((c) => /fr-CA: 3 routes/.test(c.reason))).toHaveLength(1);
     expect(evidence(out, "sitecore-route-no-page")).toHaveLength(1);
   });
 
@@ -216,6 +218,101 @@ describe("Sitecore checks: route published to Edge but no page on the live site"
     const a = await run((await reading(PAGES_DRIFT)).reading);
     const b = await run((await reading(PAGES_DRIFT)).reading);
     expect(a).toEqual(b);
+  });
+});
+
+describe("Sitecore checks: a route that was unpublished after Edge was read", () => {
+  const unpublishedAfterRead = (extra: (call: { language: string }) => unknown) => {
+    let live = false;
+    return {
+      onRequest: (_m: string, url: URL) => {
+        if (url.host === new URL(LARKSPUR_SITE).host) live = true;
+      },
+      respond: (call: { language: string }) => {
+        if (!live) return undefined;
+        return extra(call);
+      },
+    };
+  };
+  const withoutEvening = {
+    data: {
+      site: {
+        siteInfo: {
+          routes: {
+            total: 5,
+            pageInfo: { endCursor: "", hasNext: false },
+            results: [
+              "/",
+              "/classes",
+              "/classes/morning-flow",
+              "/teachers/ana",
+              "/notices/closed-last-friday",
+            ].map((routePath) => ({ routePath })),
+          },
+        },
+      },
+    },
+  };
+
+  it("is not reported: Edge is asked again and the route is gone, so it is could-not-check", async () => {
+    const { reading: r } = await reading(PAGES_DRIFT, {
+      fixture: unpublishedAfterRead((c) => (c.language === "en" ? withoutEvening : undefined)),
+    });
+    const out = await run(r);
+    expect(evidence(out, "sitecore-route-no-page")).toEqual([
+      "fr-CA: /classes/morning-flow is published to Experience Edge and its page /fr-ca/classes/morning-flow answers 410 on the live site",
+    ]);
+    expect(reasons(out)).toMatch(/no longer published when Experience Edge was asked again/);
+  });
+
+  it("is not reported when the second read fails: could-not-check, not a finding", async () => {
+    const { reading: r } = await reading(PAGES_DRIFT, {
+      fixture: unpublishedAfterRead(() => ({ status: 500, body: {} })),
+    });
+    const out = await run(r);
+    expect(out.findings).toEqual([]);
+    expect(reasons(out)).toMatch(/could not be asked again/);
+  });
+
+  it("asks Edge again only for a language that has a missing page", async () => {
+    const calls: string[] = [];
+    await reading(PAGES_HEALTHY, {
+      fixture: { respond: (c) => (calls.push(c.language), undefined) },
+    });
+    expect(calls).toEqual(["en", "fr-CA"]);
+  });
+});
+
+describe("Sitecore checks: the live site asks Gaugeline to slow down", () => {
+  it("stops asking further pages, says how many were not asked, and reports no finding for them", async () => {
+    const seen: string[] = [];
+    const { reading: r } = await reading(
+      { ...PAGES_DRIFT, [`${LARKSPUR_SITE}/classes`]: 429 },
+      {
+        fixture: {
+          onRequest: (m, url) => {
+            if (url.host === new URL(LARKSPUR_SITE).host) seen.push(`${m} ${url.pathname}`);
+          },
+        },
+      },
+    );
+    expect(seen.length).toBeLessThan(9);
+    expect(r.liveSlowDown?.notAsked).toBe(9 - seen.length);
+    const out = await run(r);
+    expect(reasons(out)).toMatch(/asked Gaugeline to slow down/);
+    expect(reasons(out)).toMatch(new RegExp(`${9 - seen.length} pages were not asked`));
+  });
+});
+
+describe("Sitecore checks: a page that redirects to another site", () => {
+  it("a final 404 on another host is could-not-check, not a finding", async () => {
+    const { reading: r } = await reading(
+      { ...PAGES_HEALTHY, [`${LARKSPUR_SITE}/classes/evening-stretch`]: 301 },
+      {},
+    );
+    const out = await run(r);
+    expect(out.findings).toEqual([]);
+    expect(reasons(out)).toMatch(/redirected to another site/);
   });
 });
 

@@ -1,9 +1,10 @@
+import { retryAfterSeconds } from "../connectors/http.js";
 import type { Fetcher } from "../fetcher.js";
 import { collectPublished, type PartialRead } from "./collect.js";
 import { safePath } from "./craft.js";
 import type { SitecoreAdapter, SitecorePreview } from "./sitecore.js";
 import { AdapterCouldNotCheck, AdapterRateLimitedError, type PublishedDoc } from "./types.js";
-import { addressOf, askPage, bare, type PageRead } from "./webflow-read.js";
+import { addressOf, bare, type PageAnswer, type PageRead } from "./webflow-read.js";
 
 /** Bounds a Sitecore read keeps to. There are no flags to raise them. */
 export const SITECORE_READ_LIMITS = {
@@ -30,8 +31,10 @@ export interface SitecoreReading {
   unreadable: { type: string; reason: string }[];
   /** Languages that gave no published route at all: a mistyped site name or language, or nothing published to Edge. Never a pass. */
   emptyLanguages: string[];
-  /** Routes that could not be given an address (a language with no urls prefix that is not the first, an address on another site). */
-  unaddressed: { type: string; id: string; reason: string }[];
+  /** Routes that could not be given an address (a language with no urls prefix that is not the first, an address on another site), counted by language and reason. */
+  unaddressed: { type: string; count: number; reason: string }[];
+  /** The live site answered 429 (slow down): the pages after that were not asked. */
+  liveSlowDown?: { notAsked: number; retry?: string };
   /** Routes with an address that were not asked for, because the page budget was used. */
   pagesSkipped: number;
   pageBudget: number;
@@ -53,8 +56,90 @@ export interface ReadSitecoreOptions {
   maxPages?: number;
 }
 
-/** The route path inside a doc's id (`<language>:<path>`). */
-const pathOfId = (id: string, language: string): string => id.slice(language.length + 1);
+/** Pages asked at the same moment. The fetcher itself never has more than five in flight. */
+const PAGE_GROUP = 5;
+
+/** What one live page said, and whether the site asked Gaugeline to slow down. */
+async function askLivePage(
+  fetcher: Fetcher,
+  url: string,
+  origin: string,
+): Promise<{ answer: PageAnswer; slow: boolean; retry?: string }> {
+  try {
+    const hops = await fetcher.get(url);
+    const last = hops.at(-1);
+    if (!last) return { answer: { kind: "unread", reason: "no answer" }, slow: false };
+    if (last.status === 429) {
+      const wait = retryAfterSeconds(last.headers);
+      return {
+        answer: { kind: "unread", reason: "the site asked Gaugeline to slow down (429)" },
+        slow: true,
+        ...(wait !== undefined ? { retry: `in ${wait} seconds` } : {}),
+      };
+    }
+    if (last.status >= 200 && last.status < 300)
+      return { answer: { kind: "page", status: last.status }, slow: false };
+    if (last.status === 404 || last.status === 410) {
+      // A page that redirected to another site and is missing there is that site's missing page, not this site's.
+      let finalHost = "";
+      try {
+        finalHost = new URL(last.url).host;
+      } catch {
+        finalHost = "";
+      }
+      if (hops.length > 1 && bare(finalHost) !== bare(new URL(origin).host))
+        return {
+          answer: {
+            kind: "unread",
+            reason: `the page redirected to another site (${finalHost}), which answered ${last.status}`,
+          },
+          slow: false,
+        };
+      return { answer: { kind: "missing", status: last.status }, slow: false };
+    }
+    return { answer: { kind: "unread", reason: `the site answered ${last.status}` }, slow: false };
+  } catch (err) {
+    return {
+      answer: { kind: "unread", reason: err instanceof Error ? err.message : String(err) },
+      slow: false,
+    };
+  }
+}
+
+/**
+ * For each language that has a page the live site did not have, ask Experience Edge for that language's routes
+ * again. A route still listed keeps its finding. A route no longer listed, and any language whose second read fails
+ * or stops, becomes could-not-check: Gaugeline reports "published" only with a second answer that says so.
+ */
+async function confirmMissing(adapter: SitecoreAdapter, reading: SitecoreReading): Promise<void> {
+  const languages = new Set(
+    reading.pages.filter((p) => p.answer.kind === "missing").map((p) => p.type),
+  );
+  for (const language of languages) {
+    let still: Set<string> | undefined;
+    let why = "";
+    try {
+      const got = await collectPublished(adapter, { types: [language] });
+      if (got.partial) why = "Experience Edge asked Gaugeline to slow down";
+      else still = new Set(got.docs.map((d) => d.id));
+    } catch (err) {
+      why = err instanceof AdapterCouldNotCheck ? err.reason : "it could not be read";
+    }
+    for (const p of reading.pages) {
+      if (p.type !== language || p.answer.kind !== "missing") continue;
+      if (still === undefined)
+        p.answer = {
+          kind: "unread",
+          reason: `Experience Edge could not be asked again to confirm the route is still published (${why})`,
+        };
+      else if (!still.has(p.id))
+        p.answer = {
+          kind: "unread",
+          reason: "the route was no longer published when Experience Edge was asked again",
+        };
+    }
+  }
+}
 
 /**
  * Read a Sitecore site for the Sitecore checks: the published routes of each language (what Experience Edge says
@@ -80,6 +165,13 @@ export async function readSitecore(options: ReadSitecoreOptions): Promise<Siteco
   };
 
   const todo: Omit<PageRead, "answer">[] = [];
+  const unaddressed = new Map<string, { type: string; count: number; reason: string }>();
+  const noAddress = (type: string, reason: string): void => {
+    const key = `${type}\u0000${reason}`;
+    const known = unaddressed.get(key);
+    if (known) known.count++;
+    else unaddressed.set(key, { type, count: 1, reason });
+  };
   const failures = new Map<string, string[]>();
   for (const language of adapter
     .languages()
@@ -96,15 +188,12 @@ export async function readSitecore(options: ReadSitecoreOptions): Promise<Siteco
       continue;
     }
     for (const d of docs) {
-      const path = pathOfId(d.id, language);
       const url = d.url === undefined ? undefined : addressOf(d.url, origin);
       if (url === undefined) {
-        reading.unaddressed.push({
-          type: language,
-          id: path,
-          reason:
-            "its address in this language is not known: the settings have no urls prefix for it (add one, such as /fr-ca)",
-        });
+        noAddress(
+          language,
+          "its address in this language is not known: the settings have no urls prefix for it (add one, such as /fr-ca)",
+        );
         continue;
       }
       if (
@@ -112,21 +201,16 @@ export async function readSitecore(options: ReadSitecoreOptions): Promise<Siteco
         url.username !== "" ||
         bare(url.host) !== bare(new URL(origin).host)
       ) {
-        reading.unaddressed.push({
-          type: language,
-          id: path,
-          reason: `its address prefix points to another site (${url.host}), which is not the site being checked`,
-        });
+        noAddress(
+          language,
+          `its address prefix points to another site (${url.host}), which is not the site being checked`,
+        );
         continue;
       }
       // The address is built again from the checked site's own origin and a path that passed the same rules as every path.
       const plain = safePath(url.pathname);
       if (plain === undefined) {
-        reading.unaddressed.push({
-          type: language,
-          id: path,
-          reason: "its address is not a plain path on the site",
-        });
+        noAddress(language, "its address is not a plain path on the site");
         continue;
       }
       todo.push({
@@ -138,14 +222,36 @@ export async function readSitecore(options: ReadSitecoreOptions): Promise<Siteco
     }
     if (reading.partial) break;
   }
+  reading.unaddressed.push(...unaddressed.values());
   for (const [reason, languages] of failures)
     reading.unreadable.push({ type: languages.join(", "), reason });
 
   const asked = todo.slice(0, budget);
   reading.pagesSkipped = todo.length - asked.length;
-  reading.pages = await Promise.all(
-    asked.map(async (p): Promise<PageRead> => ({ ...p, answer: await askPage(fetcher, p.url) })),
-  );
+  // Pages are asked a few at a time. When the live site says to slow down (429) no later group is asked: the pages
+  // left are named, never sent in a burst at a site that has already asked for less.
+  const answered: PageRead[] = [];
+  for (let at = 0; at < asked.length; at += PAGE_GROUP) {
+    const group = await Promise.all(
+      asked
+        .slice(at, at + PAGE_GROUP)
+        .map(async (p) => ({ p, got: await askLivePage(fetcher, p.url, origin) })),
+    );
+    for (const { p, got } of group) answered.push({ ...p, answer: got.answer });
+    const slow = group.find((g) => g.got.slow);
+    if (slow) {
+      reading.liveSlowDown = {
+        notAsked: asked.length - answered.length,
+        ...(slow.got.retry !== undefined ? { retry: slow.got.retry } : {}),
+      };
+      break;
+    }
+  }
+  reading.pages = answered;
+
+  // A page that is missing is reported as "published to Edge" only if Edge still says so: the list was read before
+  // the pages, and a route unpublished in between would otherwise be reported as published.
+  await confirmMissing(adapter, reading);
 
   // The one read that asks a path a visitor is not meant to be sent to: only with consent (CLAUDE.md rule 14), and
   // only when the owner has said in the settings that the endpoint is meant to be private.

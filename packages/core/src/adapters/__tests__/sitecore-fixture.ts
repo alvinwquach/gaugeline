@@ -210,10 +210,19 @@ export function sitecoreTransport(
         }
       }
       const status = options.pages?.[url.href] ?? 404;
+      // 301 stands for a page that moved to another site, whose own answer is a 404.
+      if (status === 301)
+        return reply(301, "", {
+          location: "https://moved.example/gone",
+          "content-type": "text/html",
+        });
+      if (status === 429) return reply(429, "slow down", { "retry-after": "30" });
       return reply(status, status < 300 ? "<html><body>page</body></html>" : "not found", {
         "content-type": "text/html",
       });
     }
+    if (url.host === "moved.example")
+      return reply(404, "not found", { "content-type": "text/html" });
     return json(404, { message: "not here" });
   };
 }
