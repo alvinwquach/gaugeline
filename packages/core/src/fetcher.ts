@@ -233,6 +233,11 @@ export interface QueryOptions {
   host?: string;
   /** The query as an object. It is serialised once; that text is what is checked and what is sent. */
   body: Record<string, unknown>;
+  /**
+   * For an mcp-jsonrpc entry (ADR-0008): the values the person configured, by setting name
+   * ({ projectRef: "..." }). Each configured option in the address must equal its value exactly.
+   */
+  configured?: Readonly<Record<string, string>>;
   /** The key or token, from the environment. Sent to the entry's origin only; never logged. */
   headers?: Record<string, string>;
   /** Read at most this many bytes of the answer; it can only lower the fetcher's own cap. */
@@ -795,7 +800,7 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
     // Serialise once: this text is validated (as parsed back) and is exactly what is sent.
     const body = serializeBody(opts.body);
     if (!body.ok) return refuse(body.reason);
-    const why = queryRefusal(target, entry, body.parsed, opts.host);
+    const why = queryRefusal(target, entry, body.parsed, opts.host, opts.configured);
     if (why !== undefined) return refuse(why);
     const headers: Record<string, string> = {};
     for (const [name, value] of Object.entries(opts.headers ?? {})) {
