@@ -10,7 +10,8 @@
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
-    "db:migrate": "tsx db/migrate.ts"
+    "db:migrate": "tsx db/migrate.ts",
+    "dev": "tsx server/dev.ts"
   },
   "dependencies": {
     "@gaugeline/core": "workspace:*",
