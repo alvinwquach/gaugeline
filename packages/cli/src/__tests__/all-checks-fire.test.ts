@@ -66,6 +66,8 @@ const FIXTURES = [
   "form-checks",
   "paid-downloads",
   "gated-downloads",
+  "image-optimizer",
+  "error-pages",
   "checkout-after",
   "copy-date-passed",
   "copyright-stale",

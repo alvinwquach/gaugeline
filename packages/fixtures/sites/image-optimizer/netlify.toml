@@ -1,0 +1,4 @@
+# An invented settings file: the expression is not anchored, so an allowed address anywhere in the
+# image address satisfies it.
+[images]
+  remote_images = ["https://images\\.cedar-crumb\\.example/.*"]
