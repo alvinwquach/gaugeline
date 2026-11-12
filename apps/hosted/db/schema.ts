@@ -98,7 +98,7 @@ export const drafts = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     orgId: uuid("org_id").notNull(),
     siteId: uuid("site_id").notNull(),
-    /** pull_request | email | sanity_draft (0004; the shapes are apps/hosted/inbox/kinds.ts). */
+    /** pull_request | email | sanity_draft (0005; the shapes are apps/hosted/inbox/kinds.ts). */
     kind: text("kind").$type<"pull_request" | "email" | "sanity_draft">().notNull(),
     payload: jsonb("payload").$type<Record<string, unknown>>().notNull(),
     findingIds: uuid("finding_ids")
@@ -125,12 +125,12 @@ export const decisions = pgTable(
     reason: text("reason"),
     decidedBy: uuid("decided_by").notNull(),
     decidedAt: timestamp("decided_at", { withTimezone: true }).notNull().defaultNow(),
-    /** SHA-256 of the approved payload's jsonb text, set by a trigger (0004); null for a decline. */
+    /** SHA-256 of the approved payload's jsonb text, set by a trigger (0005); null for a decline. */
     payloadSha256: text("payload_sha256"),
   },
   (t) => [
     index("decisions_draft_idx").on(t.draftId, t.id.desc()),
-    // One person's choice per draft (0004).
+    // One person's choice per draft (0005).
     uniqueIndex("decisions_one_choice_per_draft")
       .on(t.draftId)
       .where(sql`decision in ('approved', 'edited', 'declined')`),

@@ -38,7 +38,7 @@ nobody's name. Those are missing privileges and checks in the database, not an `
 refactor cannot skip them.
 
 This is the output of the seeded test database (`apps/hosted/db/__tests__/harness.ts`, migration
-`0004_drafts_inbox.sql`, and one invented agent token for Northgate Studio). The session first claims to
+`0005_drafts_inbox.sql`, and one invented agent token for Northgate Studio). The session first claims to
 be Brightfield Web, which changes nothing:
 
 ```sql
