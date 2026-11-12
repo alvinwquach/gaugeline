@@ -2,7 +2,13 @@ import { Readable } from "node:stream";
 import { describe, expect, it } from "vitest";
 import { createFetcher, FetchError, type Transport } from "../../fetcher.js";
 import { registerQueryAllow } from "../query-registry.js";
-import { mcpBodyProblem, mcpToolNameProblem, type McpJsonRpcShape } from "../mcp-jsonrpc.js";
+import {
+  idPatternProblem,
+  mcpBodyProblem,
+  mcpToolNameProblem,
+  writeWordIn,
+  type McpJsonRpcShape,
+} from "../mcp-jsonrpc.js";
 import { allowProblems, queryRefusal, type ReadOnlyQueryAllow } from "../read-only-query.js";
 
 /**
@@ -397,5 +403,91 @@ describe("fetcher.query against a fake MCP server: redirect, size cap, timeout, 
     expect(
       String((err as Error).message) + JSON.stringify(fetcher.history?.() ?? []),
     ).not.toContain(TOKEN);
+  });
+});
+
+describe("re-review of #262", () => {
+  it("(1) an id pattern that admits free text is refused, alternation included", () => {
+    for (const p of ["^.*$", "^[\\s\\S]{0,128}$", "^a|.*$", "^[a-z ]+$", "^[^x]+$"])
+      expect(idPatternProblem(p), p).toBeDefined();
+    for (const p of ["^[a-z0-9]{20}$", "^[0-9]{1,12}$", "^[a-z0-9_]{1,64}$"])
+      expect(idPatternProblem(p), p).toBeUndefined();
+    const free = {
+      ...ENTRY,
+      id: "free-id-rule",
+      body: {
+        kind: "mcp-jsonrpc",
+        tools: { get_item: { id: { type: "id", pattern: "^a|.*$", maxLength: 128 } } },
+      },
+    };
+    expect(allowProblems(free as ReadOnlyQueryAllow).join(" ")).toMatch(/argument rule/);
+  });
+
+  it("(2) every write word run onto a common noun, either side, is refused by both screens", () => {
+    const words = (
+      "create update delete upsert insert mutate write remove merge execute invoke post patch put " +
+      "send submit assign convert approve deploy run redeploy rollback revert promote publish " +
+      "unpublish set apply drop destroy reset rebase restore pause resume cancel purge invalidate " +
+      "flush clear push invite grant revoke rotate regenerate enable disable trigger confirm login " +
+      "logout install uninstall migrate alter"
+    ).split(" ");
+    for (const w of words)
+      for (const name of [`${w}project`, `branch${w}`, `${w}rows`, `table${w}`]) {
+        expect(mcpToolNameProblem(name), name).toBeDefined();
+        expect(writeWordIn(name), name).toBeDefined();
+      }
+    for (const name of [
+      "mergebranch",
+      "clearcache",
+      "enablerls",
+      "sendemail",
+      "setconfig",
+      "alter_table",
+      "altertable",
+    ])
+      expect(mcpToolNameProblem(name), name).toBeDefined();
+  });
+
+  it("(3) extra tools/call params (_meta, task) are refused", () => {
+    const withExtra = (extra: Record<string, unknown>) => ({
+      jsonrpc: "2.0",
+      id: 3,
+      method: "tools/call",
+      params: { name: "list_migrations", arguments: {}, ...extra },
+    });
+    expect(mcpBodyProblem(SHAPE, withExtra({ _meta: { progressToken: 1 } }))).toMatch(/_meta/);
+    expect(mcpBodyProblem(SHAPE, withExtra({ task: { ttl: 1000 } }))).toMatch(/task/);
+  });
+
+  it("(4) a loopback or private host and a .. option value are refused in an entry", () => {
+    for (const host of [
+      "127.0.0.1",
+      "localhost",
+      "localhost:8080",
+      "10.0.0.5",
+      "192.168.1.2",
+      "172.16.0.1",
+      "169.254.169.254",
+      "mcp.internal",
+      "printer.local",
+    ])
+      expect(allowProblems({ ...ENTRY, host } as ReadOnlyQueryAllow).join(" "), host).toMatch(
+        /private|loopback/,
+      );
+    expect(
+      allowProblems({
+        ...ENTRY,
+        query: { read_only: { fixed: "true" }, x: { fixed: ".." } },
+      } as ReadOnlyQueryAllow).length,
+    ).toBeGreaterThan(0);
+    expect(
+      queryRefusal(
+        new URL("https://mcp.vendor.example/mcp?read_only=true&project_ref=.."),
+        ENTRY,
+        call("list_migrations"),
+        undefined,
+        { projectRef: ".." },
+      ),
+    ).toBeDefined();
   });
 });
