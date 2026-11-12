@@ -12,7 +12,6 @@ import {
   splitLegacy,
   type PlanRow,
 } from "@gaugeline/core";
-import { onlyOrigin } from "../net-guard.js";
 import { ToolError, remember, type ToolContext } from "../state.js";
 import { couldNotCheckForAgent, findingsForAgent, urlSchema } from "./shared.js";
 
@@ -134,7 +133,7 @@ export async function planCheck(
   // Requests go to the configured origin and nowhere else: the rows are checked first, and the fetcher
   // refuses any other address as well.
   const { kept, skipped } = onBaseOnly(plan.rows, base);
-  const fetcher = onlyOrigin(ctx.fetcherFor(base), base);
+  const fetcher = ctx.fetcherFor(base, base);
   const startedAt = ctx.now();
   // The same calls as `gaugeline plan --base`: each planned path with GET, each legacy address once.
   const built = await checkBuilt(kept, { base, fetcher, file: name });

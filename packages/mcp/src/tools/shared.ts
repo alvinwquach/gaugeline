@@ -45,7 +45,14 @@ export function labelDetail(
   // The operator's own configured addresses stay readable; every other address is withheld.
   const kept = keep.filter((k) => k !== "");
   let work = text;
-  kept.forEach((k, i) => (work = work.split(k).join(`\u0001${i}\u0001`)));
+  // Whole address tokens only: base http://10.0.0.5 must not keep the start of 10.0.0.50.
+  kept.forEach((k, i) => {
+    const token = new RegExp(
+      `(?<![\\w.:-])${k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\w.-])`,
+      "g",
+    );
+    work = work.replace(token, `\u0001${i}\u0001`);
+  });
   work = work.replace(IPV4, "[address withheld]").replace(IPV6, "[address withheld]");
   kept.forEach((k, i) => (work = work.split(`\u0001${i}\u0001`).join(k)));
   return markUntrusted(work, { source, maxChars });

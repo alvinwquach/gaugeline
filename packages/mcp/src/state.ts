@@ -11,6 +11,7 @@ import {
 import {
   NEVER_MESSAGE,
   checkTarget,
+  guardedFetcher,
   guardedResolver,
   hostPortOf,
   normaliseHostPort,
@@ -90,7 +91,7 @@ export interface ToolContext {
   now(): Date;
   maxFindings: number;
   /** The one way a tool reaches a site: the core fetcher (GET and HEAD only, private addresses refused). */
-  fetcherFor(target: string): Fetcher;
+  fetcherFor(target: string, onlyOrigin?: string): Fetcher;
 }
 
 export function contextFor(options: ServerOptions, state: ServerState): ToolContext {
@@ -100,7 +101,7 @@ export function contextFor(options: ServerOptions, state: ServerState): ToolCont
     state,
     now: options.now ?? (() => new Date()),
     maxFindings: options.maxFindings ?? 40,
-    fetcherFor: (target) => {
+    fetcherFor: (target, onlyOrigin) => {
       try {
         checkTarget(target);
       } catch {
@@ -110,13 +111,18 @@ export function contextFor(options: ServerOptions, state: ServerState): ToolCont
       // (--allow-private), or for the named host:port pairs only (--allow-private-host, which wins).
       const open =
         listed.size > 0 ? listed.has(hostPortOf(new URL(target))) : options.allowPrivate === true;
-      return createFetcher({
+      const inner = createFetcher({
         ...options.fetcher,
         resolver: guardedResolver(options.fetcher?.resolver),
         semaphore: state.gate,
         // The same rule as the CLI's --allow-private: it trusts the address named, not where its pages
         // point, so a redirect or a link to another non-public address is still refused.
         ...(open ? { allowPrivate: true, target } : {}),
+      });
+      // Every hop of every request is judged by the wrapper, not only the first address.
+      return guardedFetcher(inner, {
+        ...(onlyOrigin !== undefined ? { origin: onlyOrigin } : {}),
+        ...(options.fetcher?.maxHops !== undefined ? { maxHops: options.fetcher.maxHops } : {}),
       });
     },
   };

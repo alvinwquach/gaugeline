@@ -9,7 +9,7 @@ import { main } from "../cli.js";
 import { startHttp, type RunningHttp } from "../http.js";
 import { createGaugelineServer } from "../server.js";
 import { NEVER_MESSAGE, neverReachable, normaliseHostPort } from "../net-guard.js";
-import { couldNotCheckForAgent } from "../tools/shared.js";
+import { couldNotCheckForAgent, labelDetail } from "../tools/shared.js";
 import { connect, jsonOf, textOf, type Connected } from "./helpers.js";
 
 /** Tests written from the independent review of the first version: each one fails on that version. */
@@ -234,6 +234,19 @@ describe("errors and refusals carry no page-chosen text or resolved address", ()
     expect(out.couldNotCheckNote).toContain("185");
   });
 
+  it("keeps only whole configured addresses: a base of 10.0.0.5 does not keep 10.0.0.50", () => {
+    const text = JSON.stringify(
+      labelDetail(
+        "The preview at http://10.0.0.5 failed; resolves to 10.0.0.50 and 10.0.0.5:80",
+        "x",
+        300,
+        ["http://10.0.0.5", "10.0.0.5"],
+      ),
+    );
+    expect(text).toContain("http://10.0.0.5 failed");
+    expect(text).not.toContain("10.0.0.50");
+  });
+
   it("takes an address out of a reason and labels what is left", () => {
     const out = couldNotCheckForAgent([
       { id: "x", reason: "link resolves to 10.1.2.3 and fe80::1 and 169.254.169.254" },
@@ -399,22 +412,29 @@ describe("plan cells cannot send a request to any host but the configured base",
     }
   });
 
-  it("refuses at the fetcher too: a wrapper sends nothing to another origin", async () => {
-    const { onlyOrigin } = await import("../net-guard.js");
-    let sent = 0;
+  it("refuses at the fetcher too: the wrapper sends nothing to another origin, on the first hop or a later one", async () => {
+    const { guardedFetcher } = await import("../net-guard.js");
+    const base = "https://preview.harbourline.example";
+    const calls: string[] = [];
+    const hop = (url: string, status: number, location?: string) => ({
+      url,
+      status,
+      headers: (location ? { location } : {}) as Record<string, string>,
+      ms: 0,
+    });
     const inner = {
-      get: async () => {
-        sent++;
-        return [];
+      get: async (url: string) => {
+        calls.push(url);
+        return url.endsWith("/out") ? [hop(url, 302, "https://evil.example/x")] : [hop(url, 200)];
       },
-      getSite: async () => {
-        sent++;
-        return [];
+      getSite: async (url: string) => {
+        calls.push(url);
+        return [hop(url, 200)];
       },
       stats: { requests: 0, maxInFlight: 0 },
     };
-    const f = onlyOrigin(inner, "https://preview.harbourline.example");
-    await f.get("https://preview.harbourline.example/menu");
+    const f = guardedFetcher(inner, { origin: base });
+    expect((await f.get(`${base}/menu`)).map((h) => h.status)).toEqual([200]);
     for (const url of [
       "https://evil.example/x",
       "http://preview.harbourline.example/x",
@@ -424,8 +444,139 @@ describe("plan cells cannot send a request to any host but the configured base",
     ])
       await expect(f.get(url), url).rejects.toThrow(/off the preview/);
     await expect(f.getSite("https://evil.example")).rejects.toThrow(/off the preview/);
-    expect(sent).toBe(1);
+    // A redirect that leaves the base is not followed: the trail ends at the redirect itself.
+    const trail = await f.get(`${base}/out`);
+    expect(trail.map((h) => h.status)).toEqual([302]);
+    expect(calls).toEqual([`${base}/menu`, `${base}/out`]);
     expect((f as { query?: unknown }).query).toBeUndefined();
+  });
+});
+
+describe("a redirect hop is judged like the first address", () => {
+  const page = (t: string) =>
+    `<!doctype html><html lang="en"><head><title>${t}</title><meta name="description" content="d"></head><body><h1>${t}</h1></body></html>`;
+
+  async function preview(evilPort: number, extra: Record<string, string> = {}) {
+    return site((q, r) => {
+      const u = q.url ?? "";
+      if (u === "/" || u === "/about" || u === "/menu")
+        return r.writeHead(200, { "content-type": "text/html" }).end(page(u));
+      if (u === "/go-evil")
+        return r.writeHead(302, { location: "http://evil.example/sk-SECRET-REDIR" }).end();
+      if (u.startsWith("/out/"))
+        return r.writeHead(302, { location: `http://evil.example/${u.slice(5)}` }).end();
+      if (u === "/old") return r.writeHead(301, { location: "/about" }).end();
+      if (u === "/old-evil")
+        return r.writeHead(301, { location: "http://evil.example/sk-SECRET-LEGREDIR" }).end();
+      if (u === "/old-proto")
+        return r.writeHead(301, { location: "//evil.example/sk-SECRET-PROTOREDIR" }).end();
+      if (u === "/r1") return r.writeHead(302, { location: "/about" }).end();
+      if (u in extra) return r.writeHead(302, { location: extra[u] }).end();
+      void evilPort;
+      return r.writeHead(404).end("no");
+    });
+  }
+
+  it("never sends a plan row's or legacy address's text to another host, through a redirect either", async () => {
+    const evil = await site((_q, r) =>
+      r.writeHead(200, { "content-type": "text/html" }).end(page("evil")),
+    );
+    const prev = await preview(evil.port);
+    const dir = scratch();
+    writeFileSync(
+      join(dir, "plan.csv"),
+      [
+        "Page,URL,Legacy URL",
+        "Home,/,",
+        "About,/about,/old",
+        "Q,/out/sk-SECRET-PATHCHAIN,",
+        "R,/about,/out/sk-SECRET-LEGCHAIN?x=1",
+        "J,/go-evil,",
+        "K,/about,/old-evil",
+        "L,/about,/old-proto",
+        "",
+      ].join("\n"),
+    );
+    const c = await open({
+      allowPrivate: true,
+      root: dir,
+      planBases: [prev.origin],
+      fetcher: { hosts: { "evil.example": `127.0.0.1:${evil.port}` } },
+    });
+    const res = textOf(await call(c, "plan_check", { planFile: "plan.csv", url: prev.origin }));
+    expect(hits.filter((h) => h.startsWith(`${evil.port} `))).toEqual([]);
+    expect(hits.some((h) => h.startsWith(`${prev.port} `))).toBe(true);
+    // (A finding may quote where the preview itself pointed: labelled page text. Nothing was sent there.)
+    expect(res.isError).toBe(false);
+  });
+
+  it("refuses a hop to a never-reachable address in every spelling, with and without --allow-private", async () => {
+    const never = await site((_q, r) =>
+      r.writeHead(200, { "content-type": "text/html" }).end(page("never")),
+    );
+    const spellings = [
+      "http://168.63.129.16/",
+      "http://[::ffff:168.63.129.16]/",
+      "http://[64:ff9b::a83f:8110]/",
+      "http://[64:ff9b:1::a83f:8110]/",
+      "http://[2002:a83f:8110::1]/",
+      "http://100.100.100.200/",
+    ];
+    const routes: Record<string, string> = {};
+    spellings.forEach((to, i) => (routes[`/hop${i}`] = to));
+    // Every never-reachable host is routed to a local server, so a connection would show in its log.
+    const hostMap: Record<string, string> = {};
+    for (const to of spellings) {
+      const u = new URL(to);
+      hostMap[u.host] = `127.0.0.1:${never.port}`;
+      hostMap[u.hostname] = `127.0.0.1:${never.port}`;
+    }
+    const prev = await preview(never.port, routes);
+    for (const options of [
+      { allowPrivate: true },
+      { allowPrivateHosts: [`127.0.0.1:${prev.port}`] },
+    ]) {
+      const c = await open({ ...options, fetcher: { hosts: hostMap } });
+      for (let i = 0; i < spellings.length; i++) {
+        const r = textOf(await call(c, "run_check", { url: `${prev.origin}/hop${i}` }));
+        expect(r.isError, spellings[i]).toBe(false);
+        expect(JSON.parse(r.text).couldNotCheck.length, spellings[i]).toBeGreaterThan(0);
+      }
+    }
+    expect(hits.filter((h) => h.startsWith(`${never.port} `))).toEqual([]);
+  });
+
+  it("still follows a redirect inside the same origin, stops a loop and a long chain", async () => {
+    const prev = await site((q, r) => {
+      const u = q.url ?? "";
+      if (u === "/about")
+        return r.writeHead(200, { "content-type": "text/html" }).end(page("About"));
+      if (u === "/r1") return r.writeHead(302, { location: "/about" }).end();
+      if (u === "/a") return r.writeHead(302, { location: "/b" }).end();
+      if (u === "/b") return r.writeHead(302, { location: "/a" }).end();
+      const n = /^\/n\/(\d+)$/.exec(u);
+      if (n) return r.writeHead(302, { location: `/n/${Number(n[1]) + 1}` }).end();
+      return r.writeHead(404).end("no");
+    });
+    const c = await open({ allowPrivate: true });
+    const ok = JSON.parse(
+      textOf(
+        await call(c, "run_check", { url: `${prev.origin}/r1`, checks: ["canonical-elsewhere"] }),
+      ).text,
+    );
+    expect(ok.couldNotCheck).toEqual([]);
+    expect(hits.some((h) => h.includes(" GET /about"))).toBe(true);
+    for (const path of ["/a", "/n/1"]) {
+      const r = textOf(
+        await call(c, "run_check", {
+          url: `${prev.origin}${path}`,
+          checks: ["canonical-elsewhere"],
+        }),
+      );
+      expect(r.isError, path).toBe(false);
+      expect(JSON.parse(r.text).couldNotCheck.length, path).toBeGreaterThan(0);
+    }
+    expect(hits.filter((h) => h.includes(" GET /n/")).length).toBeLessThanOrEqual(12);
   });
 });
 
@@ -445,6 +596,11 @@ describe("every spelling of a metadata address is refused", () => {
     "::6464:64c8",
     "fd00:ec2::254",
     "fd00:ec2:0:0:0:0:0:254",
+    "64:ff9b:1::6464:64c8",
+    "64:ff9b:1::a83f:8110",
+    "2002:6464:64c8::1",
+    "2002:a9fe:a9fe::1",
+    "2002:a83f:8110::1",
     "FD00:EC2:0000::0254",
     "[fd00:ec2::254]",
     "fe80::1",

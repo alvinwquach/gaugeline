@@ -29,14 +29,14 @@ For an assistant that starts a server itself (stdio), in its MCP settings:
 
 ### What the server can reach
 
-By default, only public sites. Link-local and cloud-metadata addresses (`169.254.x.x`, `100.100.100.200`, `168.63.129.16`, `fd00:ec2::254`, in any spelling, including inside an IPv6 address such as `::ffff:100.100.100.200`) are **never** requested, whatever you pass, because a model can be talked into asking for them.
+By default, only public sites. Link-local and cloud-metadata addresses (`169.254.x.x`, `100.100.100.200`, `168.63.129.16`, `fd00:ec2::254`, in any spelling, including inside an IPv6 address such as `::ffff:100.100.100.200`) are **never** requested, whatever you pass, because a model can be talked into asking for them. The rule is applied to the address a model types, to every redirect hop (the server follows redirects itself, one hop at a time), and to the addresses a host name resolves to. A name that resolves to such an address is reported as could not be reached, not with this rule's own message.
 
 - `--allow-private` opens loopback and private ranges (your own machine and network), and nothing else. Add `"--allow-private"` to `args` to check a site running on your computer.
 - `--allow-private-host 127.0.0.1:3000` (repeat for more) names the only private addresses a model may reach. With it, no other private address is reachable, and `--allow-private` is not needed.
 
 ### plan_check is off until you turn it on
 
-`plan_check` reads a file from your disk and checks a site against it, so it is not offered unless you name both the folder it may read and the sites it may check: `--root ./plans --plan-base https://preview.harbourline.example` (repeat `--plan-base` for more). There is no default folder. A plan is read only from inside `--root`, and every refusal says the same thing, so it does not tell a model which paths exist. A plan's contents are never shown in an error. A row whose address (or an old address in it) would point at another host, such as `//other.example/x`, is not requested at all and is reported by line number only; every request goes to the `--plan-base` origin and nowhere else.
+`plan_check` reads a file from your disk and checks a site against it, so it is not offered unless you name both the folder it may read and the sites it may check: `--root ./plans --plan-base https://preview.harbourline.example` (repeat `--plan-base` for more). There is no default folder. A plan is read only from inside `--root`, and every refusal says the same thing, so it does not tell a model which paths exist. A plan's contents are never shown in an error. A row whose address (or an old address in it) would point at another host, such as `//other.example/x`, is not requested at all and is reported by line number only; every request goes to the `--plan-base` origin and nowhere else: each redirect hop is checked too, and a redirect that points anywhere else is not followed (the trail stops at the redirect).
 
 ## An example: a bindery's staging site
 
