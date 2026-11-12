@@ -1,6 +1,6 @@
 import { Readable } from "node:stream";
 import { describe, expect, it } from "vitest";
-import { readShopify, type ShopifyReading } from "../../adapters/shopify-read.js";
+import { previewTarget, readShopify, type ShopifyReading } from "../../adapters/shopify-read.js";
 import { createShopifyAdapter } from "../../adapters/shopify.js";
 import {
   LIVE_HEALTHY,
@@ -516,5 +516,47 @@ describe("review fixes: preview hosts, preview addresses, products with no price
       });
     const out = await run((await read(LIVE_HEALTHY, { content })).reading);
     expect(JSON.stringify(out.couldNotCheck)).toContain("3 more");
+  });
+});
+
+describe("review lows: the shop host is normalised, and hosts are compared with their port", () => {
+  const site = "larkspur-ceramics.example:8443";
+  const shop = "larkspur-ceramics.myshopify.com";
+
+  it("a shop host set in capitals, with spaces or a root dot, is still this store's own host", () => {
+    for (const given of [` ${shop.toUpperCase()} `, `${shop}.`, "larkspur-ceramics"]) {
+      expect(previewTarget(`https://${shop}/?preview_theme_id=1`, site, given)).toBeInstanceOf(URL);
+      expect(
+        previewTarget("https://larkspur-ceramics.shopifypreview.com/", site, given),
+      ).toBeInstanceOf(URL);
+      expect(previewTarget("https://other.shopifypreview.com/", site, given)).toBe("refused");
+    }
+  });
+
+  it("a link to a root-dot spelling of the shop host is the shop's own, and of another shop is refused", () => {
+    expect(previewTarget(`https://${shop}./?preview_theme_id=1`, site, shop)).toBeInstanceOf(URL);
+    expect(previewTarget("https://other.myshopify.com./?preview_theme_id=1", site, shop)).toBe(
+      "refused",
+    );
+  });
+
+  it("the live site's own host is matched with its port: a preview link on the same port is its own", () => {
+    expect(previewTarget(`https://${site}/?preview_theme_id=1`, site, shop)).toBeInstanceOf(URL);
+    expect(previewTarget(`https://www.${site}/?preview_theme_id=1`, site, shop)).toBeInstanceOf(
+      URL,
+    );
+  });
+
+  it("the same host on another port is another server: it is not the site's own and is not asked for", () => {
+    expect(
+      previewTarget("https://larkspur-ceramics.example:9999/?preview_theme_id=1", site, shop),
+    ).toBeUndefined();
+    expect(
+      previewTarget("https://larkspur-ceramics.example/?preview_theme_id=1", site, shop),
+    ).toBeUndefined();
+  });
+
+  it("the shop's host on a port is not the shop's own host: it is refused, never asked for", () => {
+    expect(previewTarget(`https://${shop}:8443/?preview_theme_id=1`, site, shop)).toBe("refused");
   });
 });
