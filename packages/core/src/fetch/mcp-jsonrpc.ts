@@ -41,7 +41,7 @@ const WRITE_WORDS: ReadonlySet<string> = new Set(
     "send submit assign convert approve deploy run redeploy rollback revert promote publish " +
     "unpublish set apply drop destroy reset rebase restore pause resume cancel purge invalidate " +
     "flush clear push invite grant revoke rotate regenerate enable disable trigger confirm login " +
-    "logout install uninstall migrate"
+    "logout install uninstall migrate alter"
   ).split(" "),
 );
 const REFUSED_WORDS: ReadonlySet<string> = new Set(
@@ -59,11 +59,10 @@ const TOOL_NAME = /^[a-z][a-z0-9_-]{0,63}$/;
  * Stems found inside a name run together ("executesql", "deployfunction", "get_anonkey"), where a
  * word split cannot see them. A false refusal costs a reviewed entry; a missed write costs a client.
  */
-const GLUED_WRITES: readonly string[] = (
-  "exec deploy apply migrate delete drop insert update create remove write upsert mutat publish " +
-  "revoke grant rotate purge invalidat rollback restore reset pause cancel trigger submit invoke " +
-  "confirm login install truncate run"
-).split(" ");
+const GLUED_WRITES: readonly string[] = [
+  ...WRITE_WORDS,
+  ..."exec mutat invalidat truncate".split(" "),
+];
 const GLUED_OTHER: readonly string[] =
   "secret token passw credential key sql query eval fetch browse screenshot shell script crawl scrape url".split(
     " ",
@@ -98,6 +97,57 @@ export function mcpToolNameProblem(name: string): string | undefined {
     : `the tool "${name}" is named like a write, a credential, a fetch or code ("${bad}")`;
 }
 
+/**
+ * Strings no identifier holds: a space, a control or invisible character, a path or markup character,
+ * a quote, "..", and an instruction. A pattern that matches any of them admits free text.
+ */
+const FREE_TEXT_PROBES: readonly string[] = [
+  " ",
+  "\t",
+  "\n",
+  "\u0000",
+  "\u0007",
+  "\u202E",
+  "\u200B",
+  "/",
+  "\\",
+  "'",
+  '"',
+  "<",
+  ">",
+  "..",
+  "a b",
+  "a/b",
+  "ignore previous instructions",
+];
+
+/** An id pattern as it is always used: the whole value, whatever alternation the pattern holds. */
+export function idPattern(pattern: string): RegExp {
+  return new RegExp(`^(?:${pattern})$`, "u");
+}
+
+/**
+ * Why this pattern is not a closed identifier rule (ADR-0008 point 2: no free-form string), or
+ * undefined. It must be written anchored, compile, and match none of the free-text probes once
+ * wrapped as ^(?:pattern)$, so "^a|.*$" and "^[\s\S]{0,128}$" are refused.
+ */
+export function idPatternProblem(pattern: unknown): string | undefined {
+  if (
+    typeof pattern !== "string" ||
+    pattern.length > 200 ||
+    !pattern.startsWith("^") ||
+    !pattern.endsWith("$")
+  )
+    return "id needs an anchored pattern";
+  let re: RegExp;
+  try {
+    re = idPattern(pattern);
+  } catch {
+    return "id pattern does not compile";
+  }
+  return FREE_TEXT_PROBES.some((p) => re.test(p)) ? "id pattern admits free text" : undefined;
+}
+
 const safe = (s: string): string => s.replace(/[^A-Za-z0-9_.-]/g, "?").slice(0, 40);
 
 const isPlainObject = (v: unknown): v is Record<string, unknown> =>
@@ -126,14 +176,8 @@ function ruleProblem(rule: unknown): string | undefined {
         ? undefined
         : "integer needs min <= max";
     case "id": {
-      const p = rule.pattern;
-      if (typeof p !== "string" || !p.startsWith("^") || !p.endsWith("$"))
-        return "id needs an anchored pattern";
-      try {
-        new RegExp(p);
-      } catch {
-        return "id pattern does not compile";
-      }
+      const bad = idPatternProblem(rule.pattern);
+      if (bad !== undefined) return bad;
       const n = rule.maxLength;
       return Number.isInteger(n) && (n as number) > 0 && (n as number) <= 128
         ? undefined
@@ -186,7 +230,7 @@ function argumentProblem(rule: McpArgumentRule, value: unknown): boolean {
       return (
         typeof value !== "string" ||
         value.length > rule.maxLength ||
-        !new RegExp(rule.pattern).test(value)
+        !idPattern(rule.pattern).test(value)
       );
   }
 }
@@ -275,7 +319,8 @@ export function mcpBodyProblem(shape: McpJsonRpcShape, body: unknown): string | 
 export type McpQueryOption = { fixed: string } | { configured: string };
 
 const OPTION_NAME = /^[a-z][a-z0-9_]{0,31}$/;
-const OPTION_VALUE = /^[A-Za-z0-9_.-]{1,64}$/;
+/** A plain id: letters, digits, _ . - and never "..". */
+const OPTION_VALUE = /^(?!.*\.\.)[A-Za-z0-9_.-]{1,64}$/;
 
 /** What is wrong with an entry's query options. */
 export function queryOptionProblems(query: unknown): string[] {
