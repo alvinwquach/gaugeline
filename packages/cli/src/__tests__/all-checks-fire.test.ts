@@ -70,6 +70,7 @@ const FIXTURES = [
   "image-optimizer",
   "error-pages",
   "checkout-after",
+  "source-maps",
   "copy-date-passed",
   "copyright-stale",
 ];
