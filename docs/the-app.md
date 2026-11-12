@@ -67,6 +67,7 @@ $ npx gaugeline shop.example
     2 images have no alt: ./swatch-0.png, ./swatch-1.png
 · Images use older, heavier file formats
     16 of 20 sampled images are JPEG, PNG or GIF only: ./heavy.jpg, ./old-sign.jpg, ./divider.png and 13 more
+? image-optimizer-allowlist-wide could not be checked: this page resizes images through the Next.js image address, and whether that address fetches only the hosts you listed is not visible from the page; add settingsFiles to gaugeline.images.json (the images settings of your framework), or run the probe on a site you own (./image)
 ? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
     Mail records are read from DNS only with --dns. Rerun with --dns to check them.
 

@@ -289,7 +289,8 @@ export async function runExample(
         child.on("close", (code) => resolve({ stdout, stderr, code: code ?? -1 }));
       },
     );
-    if (cwd) rmSync(cwd, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+    if (cwd && cwd !== dir)
+      rmSync(cwd, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
     return {
       ...result,
       origin: site.origin,

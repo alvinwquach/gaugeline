@@ -20,6 +20,7 @@ import type { Backups } from "./backups/reader.js";
 import type { Libraries } from "./libraries/reader.js";
 import type { WordPress } from "./wordpress/reader.js";
 import type { HiddenConfig } from "./hidden.js";
+import type { ImageSettings } from "./images/config.js";
 import type { NavRules } from "./nav/read-regions.js";
 import type { ContentNow, PagesConfig } from "./snapshot/compare.js";
 import type { EventsRead } from "./events/observe.js";
@@ -303,6 +304,8 @@ export interface CheckContext {
   ownerConsent?: boolean;
   /** Paths of the site's repository route files (--routes), for the download route probe. Names only: no file is read. */
   routeFiles?: readonly string[];
+  /** XF-04: the framework settings files read as text and, with consent, the owner's probe address (gaugeline.images.json). */
+  imageSettings?: ImageSettings;
 }
 
 export interface Check<Input> {

@@ -384,6 +384,8 @@ export { isSveltekitSite, dataAddress as sveltekitDataAddress } from "./svelteki
 export { isFrameworkUrl } from "./next/framework-urls.js";
 export { frameworkLinks } from "./links.js";
 export { consentConfigSchema } from "./consent.js";
+export { imagesConfigSchema } from "./images/config.js";
+export type { ImageSettings, ImagesConfig } from "./images/config.js";
 export type { ConsentConfig } from "./consent.js";
 export { staleDatesConfigSchema } from "./stale-dates/config.js";
 export type { StaleDatesConfig } from "./stale-dates/config.js";

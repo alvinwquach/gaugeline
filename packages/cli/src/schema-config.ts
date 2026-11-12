@@ -4,6 +4,7 @@ import {
   ConfigError,
   accessConfigSchema,
   consentConfigSchema,
+  imagesConfigSchema,
   cutoverConfigSchema,
   emailsConfigSchema,
   renewalsConfigSchema,
@@ -47,6 +48,7 @@ import {
   type EventsConfig,
   type FactsConfig,
   type HiddenConfig,
+  type ImagesConfig,
   type NavRules,
   type AiConfig,
   type StaleDatesConfig,
@@ -116,6 +118,8 @@ export const PAGES_CONFIG_FILE = "gaugeline.pages.json";
 export const CUTOVER_CONFIG_FILE = "gaugeline.cutover.json";
 /** The owner's agreement to the probing checks, who gave it and when: the same as --owner-consent. */
 export const CONSENT_CONFIG_FILE = "gaugeline.consent.json";
+/** The framework image settings to read and the probe address you chose (XF-04): nothing in it is a key. */
+export const IMAGES_CONFIG_FILE = "gaugeline.images.json";
 /** Where the Tag Manager container export is, likewise. The export is a file: no account is used. */
 export const TAGS_CONFIG_FILE = "gaugeline.tags.json";
 
@@ -313,6 +317,15 @@ export function readCutoverConfig(dir: string): CutoverConfig | undefined {
 
 export function readConsent(dir: string): ConsentConfig | undefined {
   return readJsonConfig(dir, CONSENT_CONFIG_FILE, consentConfigSchema, "the probing checks");
+}
+
+export function readImagesJson(dir: string): ImagesConfig | undefined {
+  return readJsonConfig(
+    dir,
+    IMAGES_CONFIG_FILE,
+    imagesConfigSchema,
+    "the image optimizer settings",
+  );
 }
 
 export function readPagesConfig(dir: string): PagesConfig | undefined {
