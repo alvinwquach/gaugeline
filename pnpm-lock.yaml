@@ -202,6 +202,12 @@ importers:
         specifier: workspace:*
         version: link:../core
 
+  packages/sanity-plugin-publish-gate:
+    devDependencies:
+      '@gaugeline/core':
+        specifier: workspace:*
+        version: link:../core
+
   packages/testkit:
     devDependencies:
       '@gaugeline/core':

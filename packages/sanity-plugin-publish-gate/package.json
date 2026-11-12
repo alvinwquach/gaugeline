@@ -1,0 +1,51 @@
+{
+  "name": "sanity-plugin-publish-gate",
+  "version": "0.1.0",
+  "description": "Hold a Sanity publish until the page it renders is right, and check again after every publish. Read-only: it reads the page and the document, and never writes or publishes.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./function": {
+      "types": "./dist/function.d.ts",
+      "import": "./dist/function.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "THIRD_PARTY_LICENSES.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alvinwquach/gaugeline.git",
+    "directory": "packages/sanity-plugin-publish-gate"
+  },
+  "keywords": [
+    "sanity",
+    "sanity-plugin",
+    "publish",
+    "read-only"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@gaugeline/core": "workspace:*"
+  },
+  "private": false
+}
