@@ -1,0 +1,1 @@
+window.legacyBanner = "Fresh daily";

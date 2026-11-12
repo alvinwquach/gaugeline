@@ -46,6 +46,7 @@ import { dataNoStamp } from "./data-no-stamp.js";
 import { dataStale } from "./data-stale.js";
 import { datasetPrivateTypes } from "./dataset-private-types.js";
 import { datasetPublic } from "./dataset-public.js";
+import { devToolsInProduction } from "./dev-tools-in-production.js";
 import { draftsLive } from "./drafts-live.js";
 import { duplicateTitle } from "./duplicate-title.js";
 import { emailDmarcMissing } from "./email-dmarc-missing.js";
@@ -200,6 +201,7 @@ import { sitemapDead } from "./sitemap-dead.js";
 import { sitemapHost } from "./sitemap-host.js";
 import { sitemapMissing } from "./sitemap-missing.js";
 import { sitemapRedirects } from "./sitemap-redirects.js";
+import { sourceMapsPublic } from "./source-maps-public.js";
 import { stagingIndexable } from "./staging-indexable.js";
 import { staticDevServerLive } from "./static-dev-server-live.js";
 import { staticDraftMarkerLive } from "./static-draft-marker-live.js";
@@ -272,6 +274,7 @@ export const PAGE_CHECKS = [
   dataStale,
   datasetPrivateTypes,
   datasetPublic,
+  devToolsInProduction,
   draftsLive,
   duplicateTitle,
   emailDmarcMissing,
@@ -429,6 +432,7 @@ export const PAGE_CHECKS = [
   sitemapHost,
   sitemapMissing,
   sitemapRedirects,
+  sourceMapsPublic,
   stagingIndexable,
   staticDevServerLive,
   staticDraftMarkerLive,
