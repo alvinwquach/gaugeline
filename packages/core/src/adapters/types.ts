@@ -217,6 +217,14 @@ export interface AdapterSettings {
    * `<slug> API-Key <key>`). Default: `users`.
    */
   authCollection?: string | undefined;
+  /**
+   * Only `kontent-ai`: the owner lets the preview check read the Preview API (ids, types, slugs and workflow steps of
+   * items that are not published). It also needs --owner-consent and a Preview API key. Without both, the Preview API
+   * is never asked.
+   */
+  readPreview?: boolean | undefined;
+  /** Only `kontent-ai`: the codename of the element that holds an item's slug. Default: `url`. */
+  slugElement?: string | undefined;
   /** Only `git-content`: the repository's folder on this computer, relative to where the run starts. */
   path?: string | undefined;
   /** Only `git-content`: a repository on GitHub, read with GET. Instead of `path`. */
