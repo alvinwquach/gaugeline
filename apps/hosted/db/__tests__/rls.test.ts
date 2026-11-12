@@ -461,7 +461,9 @@ describe.skipIf(!HAS_DATABASE)("hosted database: row-level security", () => {
   describe("edge cases", () => {
     it("a connection that skips row-level security is reported, so the app never queries as the owner", async () => {
       expect(await connectionSkipsRls(sql)).toBe(true);
-      expect(await as(sql, userA, (tx) => connectionSkipsRls(tx))).toBe(false);
+      // set local role does not hide the session's own role: a superuser session stays a superuser
+      // session, so the check still reports it (sessions.test.ts covers the safe login role).
+      expect(await as(sql, userA, (tx) => connectionSkipsRls(tx))).toBe(true);
     });
 
     it("roles get no privilege on sequences, and only SELECT on views", async () => {
