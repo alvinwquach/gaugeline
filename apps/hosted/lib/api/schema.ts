@@ -99,6 +99,9 @@ export function parseUpload(body: unknown): Parsed {
     sampled: {},
     ...parsed.data,
   } as z.infer<typeof resultV2> & { schema: 1 | 2 };
+  const at = Date.parse(r.startedAt);
+  if (!Number.isFinite(at) || at < Date.UTC(1900, 0, 1) || at >= Date.UTC(10000, 0, 1))
+    return fail(400, "invalid_body", "startedAt: must be a time between the years 1900 and 9999.");
   const limit = checkLimits(r);
   if (limit) return fail(422, "invalid_body", limit);
 

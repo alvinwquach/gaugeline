@@ -15,13 +15,11 @@ import { decodeCursor, encodeCursor, isUuid } from "./cursor.js";
 import { type Sql, type Tx, withService } from "./db.js";
 import { json, problem, UNAUTHORIZED } from "./http.js";
 import { MAX_BODY_BYTES, parseIdempotencyKey, parseUpload, type Upload } from "./schema.js";
-import { secretsIn } from "./secrets.js";
+import { secretsInValue, stringsOf } from "./secrets.js";
 import { type Authorised, authenticate, parseBearer } from "./tokens.js";
 
 export interface ApiDeps {
   sql: Sql;
-  /** The server's environment: the values of its keys must never appear in an upload. */
-  env: Record<string, string | undefined>;
 }
 
 const FINDINGS_PER_INSERT = 1000;
@@ -68,15 +66,11 @@ async function readCapped(req: Request): Promise<string | undefined> {
   return Buffer.concat(chunks).toString("utf8");
 }
 
-const failed = (e: unknown): Response => {
+const failed = (e: unknown, what: string): Response => {
   // The error's code or name only: a database message can quote a row.
   const err = e as { code?: string; name?: string };
   console.error("runs api: the request failed", err.code ?? err.name ?? "error");
-  return problem(
-    500,
-    "internal_error",
-    "The upload could not be stored. Nothing was saved; try again.",
-  );
+  return problem(500, "internal_error", `${what} Nothing was saved; try again.`);
 };
 
 export async function postRun(req: Request, deps: ApiDeps): Promise<Response> {
@@ -107,23 +101,25 @@ export async function postRun(req: Request, deps: ApiDeps): Promise<Response> {
     } catch {
       return problem(400, "invalid_json", "The body is not valid JSON.");
     }
-    const parsed = parseUpload(body);
-    if (!parsed.ok) return problem(parsed.status, parsed.code, parsed.message);
-
-    // None of the values this server holds as secrets (its keys, and the token just presented) may be in
-    // what is stored. Refuse the whole upload; say so without naming which.
-    const text2 = parsed.value.findings
-      .map((f) => `${f.title}\n${f.evidence}\n${f.url}`)
-      .join("\n");
-    if (
-      secretsIn(text, { ...deps.env, PRESENTED_TOKEN: token }).length > 0 ||
-      secretsIn(text2, { ...deps.env, PRESENTED_TOKEN: token }).length > 0
-    )
+    // Every string of the body as it decodes (values, and keys), checked before anything else reads it.
+    const strings = stringsOf(body);
+    if (strings.some((x) => x.includes("\u0000")))
+      return problem(
+        400,
+        "invalid_body",
+        "The body contains a NUL character (\\u0000), which cannot be stored.",
+      );
+    // Findings and evidence lines only: no keys. The scan is for key shapes and for the token just
+    // presented, never for the server's own environment (that would let any token holder guess at it).
+    // The refusal does not say which one it was, and never echoes the value.
+    if (secretsInValue(strings, { PRESENTED_TOKEN: token }).length > 0)
       return problem(
         422,
         "secret_in_body",
-        "The upload contains a value this service keeps secret, so nothing was stored. Findings and evidence lines only: no keys.",
+        "The upload contains something that looks like a key or a token, so nothing was stored. Findings and evidence lines only: no keys.",
       );
+    const parsed = parseUpload(body);
+    if (!parsed.ok) return problem(parsed.status, parsed.code, parsed.message);
 
     const hash = createHash("sha256").update(text).digest("hex");
     const outcome = await withService(deps.sql, (tx) =>
@@ -145,7 +141,7 @@ export async function postRun(req: Request, deps: ApiDeps): Promise<Response> {
       ? json(200, body2, { "idempotent-replayed": "true" })
       : json(201, body2);
   } catch (e) {
-    return failed(e);
+    return failed(e, "The upload could not be stored.");
   }
 }
 
@@ -211,8 +207,17 @@ async function store(
   };
 }
 
+/** A time Postgres can hold and the API means: between the years 1900 and 9999 (UTC). */
+const inRange = (iso: string): boolean => {
+  const t = Date.parse(iso);
+  return Number.isFinite(t) && t >= Date.UTC(1900, 0, 1) && t < Date.UTC(10000, 0, 1);
+};
+
 const listQuery = z.object({
-  since: z.iso.datetime({ offset: true }).optional(),
+  since: z.iso
+    .datetime({ offset: true })
+    .refine(inRange, "must be a time between the years 1900 and 9999")
+    .optional(),
   limit: z.coerce.number().int().min(1).max(200).default(50),
   cursor: z.string().optional(),
 });
@@ -236,7 +241,7 @@ export async function getRuns(req: Request, deps: ApiDeps): Promise<Response> {
         "invalid_query",
         `Bad query: ${q.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}.`,
       );
-    const cursor = q.data.cursor === undefined ? null : decodeCursor(q.data.cursor);
+    const cursor = q.data.cursor === undefined ? null : decodeCursor(q.data.cursor, "runs");
     if (q.data.cursor !== undefined && !cursor)
       return problem(400, "invalid_cursor", "cursor is not one this API gave you.");
     const { since, limit } = q.data;
@@ -266,7 +271,7 @@ export async function getRuns(req: Request, deps: ApiDeps): Promise<Response> {
           : null,
     });
   } catch (e) {
-    return failed(e);
+    return failed(e, "The runs could not be read.");
   }
 }
 
@@ -298,7 +303,7 @@ export async function getRunFindings(
         "invalid_query",
         `Bad query: ${q.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}.`,
       );
-    const cursor = q.data.cursor === undefined ? null : decodeCursor(q.data.cursor);
+    const cursor = q.data.cursor === undefined ? null : decodeCursor(q.data.cursor, "findings");
     if (q.data.cursor !== undefined && !cursor)
       return problem(400, "invalid_cursor", "cursor is not one this API gave you.");
     const { limit } = q.data;
@@ -330,6 +335,6 @@ export async function getRunFindings(
           : null,
     });
   } catch (e) {
-    return failed(e);
+    return failed(e, "The findings could not be read.");
   }
 }

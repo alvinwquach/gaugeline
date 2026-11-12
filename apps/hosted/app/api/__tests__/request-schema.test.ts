@@ -158,7 +158,7 @@ describe("cursor", () => {
   });
 });
 
-describe("secrets held by the running process", () => {
+describe("secretsIn (core's scan, used for the presented token and key shapes)", () => {
   it("finds the names of variables whose value appears in the text, never the values", () => {
     const value = ["abcd", "1234", "efgh"].join("");
     const env = {

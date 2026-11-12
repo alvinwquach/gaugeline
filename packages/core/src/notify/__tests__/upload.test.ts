@@ -165,3 +165,95 @@ describe("uploadResult", () => {
     expect(out.ok).toBe(false);
   });
 });
+
+describe("uploadResult: the scan covers every decoded string", () => {
+  const AWKWARD = ['pa"ss', "word99"].join("\\");
+  const base = () => ({
+    schema: 2 as const,
+    url: "https://tidewater-bar.test/",
+    startedAt: "2026-11-12T03:00:00.000Z",
+    findings: [
+      {
+        checkId: "broken-links",
+        severity: "low" as const,
+        title: "x",
+        evidence: "e",
+        url: "https://tidewater-bar.test/",
+      },
+    ],
+    passed: ["noindex"],
+    failed: [],
+    couldNotCheck: [] as { id: string; reason: string; url: string }[],
+    sampled: {} as Record<string, { seen: number; taken: number; limit: number }>,
+  });
+  const cases: Array<[string, (v: string) => ReturnType<typeof base>]> = [
+    ["title", (v) => ({ ...base(), findings: [{ ...base().findings[0]!, title: `t ${v}` }] })],
+    [
+      "evidence",
+      (v) => ({ ...base(), findings: [{ ...base().findings[0]!, evidence: `e ${v}` }] }),
+    ],
+    [
+      "finding url",
+      (v) => ({ ...base(), findings: [{ ...base().findings[0]!, url: `https://x.test/?${v}` }] }),
+    ],
+    [
+      "couldNotCheck reason",
+      (v) => ({ ...base(), couldNotCheck: [{ id: "a", reason: v, url: "https://x.test/" }] }),
+    ],
+    [
+      "couldNotCheck url",
+      (v) => ({ ...base(), couldNotCheck: [{ id: "a", reason: "r", url: `https://x.test/${v}` }] }),
+    ],
+    ["top-level url", (v) => ({ ...base(), url: `https://x.test/?${v}` })],
+    ["passed id", (v) => ({ ...base(), passed: [v] })],
+    ["a sampled key", (v) => ({ ...base(), sampled: { [v]: { seen: 1, taken: 1, limit: 1 } } })],
+  ];
+  for (const [field, make] of cases) {
+    it(`a key with a quote and a backslash in ${field} stops the upload`, async () => {
+      const r = await receiver(201);
+      const out = await uploadResult(make(AWKWARD) as never, {
+        [UPLOAD_TOKEN_ENV]: TOKEN,
+        [UPLOAD_URL_ENV]: `${r.origin}/api/v1`,
+        DB_PASSWORD: AWKWARD,
+      });
+      expect(out.ok).toBe(false);
+      expect(out.line).toBe(
+        "Not uploaded: the result contains the value of DB_PASSWORD, so nothing was sent.",
+      );
+      expect(r.seen).toHaveLength(0);
+    });
+  }
+
+  it("a key shape in the result stops it even when no variable holds it", async () => {
+    const r = await receiver(201);
+    const shape = ["sk", "live", "0123456789abcdefABCDEF"].join("_");
+    const out = await uploadResult(make1(shape) as never, {
+      [UPLOAD_TOKEN_ENV]: TOKEN,
+      [UPLOAD_URL_ENV]: `${r.origin}/api/v1`,
+    });
+    expect(out.ok).toBe(false);
+    expect(out.line).toContain("stripe-secret");
+    expect(r.seen).toHaveLength(0);
+    function make1(v: string) {
+      return { ...base(), couldNotCheck: [{ id: "a", reason: v, url: "https://x.test/" }] };
+    }
+  });
+});
+
+describe("uploadResult: what the server says is cleaned for the terminal", () => {
+  it("control and escape characters in the server's message do not reach the line", async () => {
+    const r = await receiver(
+      400,
+      JSON.stringify({ code: "x", message: "\u001b[31mred\u001b[0m and \u0007 bell" }),
+    );
+    const out = await uploadResult(result, {
+      [UPLOAD_TOKEN_ENV]: TOKEN,
+      [UPLOAD_URL_ENV]: `${r.origin}/api/v1`,
+    });
+    expect(out.ok).toBe(false);
+    // eslint-disable-next-line no-control-regex
+    expect(out.line).not.toMatch(/[\u0000-\u0008\u000b-\u001f\u007f]/);
+    expect(out.line).toContain("red");
+    expect(out.line.startsWith("Could not upload: 127.0.0.1 answered 400:")).toBe(true);
+  });
+});
