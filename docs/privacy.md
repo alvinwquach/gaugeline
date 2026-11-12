@@ -340,6 +340,25 @@ name (inside the one you ran from), never over a file without `--force`, all thr
 What it prints: paths, cache header values, usage figures and dates. It never buys, upgrades, renews, logs in
 or changes anything.
 
+### Backups (gaugeline backups)
+
+`gaugeline backups <address>` (and `--backups` on the page check) reads when a client's content and
+database were last backed up ([Backups](guides/backups.md)). Every request is `GET`, through the fetcher.
+
+- **Supabase, only for a project you name and a token you set.** One
+  `GET https://api.supabase.com/v1/projects/<ref>/database/backups`, with the token in a request header to
+  that host only. Read from the answer: whether daily backups and point-in-time recovery are on, and each
+  backup's status and time.
+- **Sanity, only for a token you set.** One
+  `GET https://api.sanity.io/v2021-06-07/projects/<id>/datasets/<name>/backups`, likewise. Read: each
+  backup's time.
+- **An export folder you name.** Nothing is requested. The folder on this computer is listed: each file's
+  name, size and time. A file is never opened or read, a subfolder is not entered, and a link is not followed.
+
+The tokens are never put in an address, a log, a finding or a report. Nothing starts a backup or an export,
+restores anything, logs in or changes anything. File names from your folder are escaped like all text in a
+report.
+
 ### Trackers on sensitive pages (--trackers)
 
 `--trackers` on the page check lists the trackers on pages with a form or a path you list
@@ -388,6 +407,22 @@ document), and then:
 - **What is kept.** The item's type and slug or id, the time it changed, the names of the fields that differ, and
   the page's `Age`, `Last-Modified`, `Cache-Control` and cache status headers. Never a field's text from the
   content system or from the page, and no key.
+
+### What changed, and who changed it (gaugeline changes)
+
+`gaugeline changes` and the run history behind it ([What changed, and who changed it](guides/what-changed.md)) keep a
+small record of each page when a run uses `--since last`, in `.gaugeline/runs/` on your computer.
+
+- **What is kept.** Per page: the title and first h1 (cut at 120 characters), the canonical address, a hash of the main
+  content's text, the paths of the links in it, the structured-data type names and the script addresses. Per finding:
+  the check, the path and the title. Never the page's text, never the evidence line. Runs older than 90 days are
+  deleted (`retentionDays`).
+- **What it asks.** Only when `gaugeline.changes.json` names them, and only with `GET`: Sanity's edit history of the
+  document named for a page and the names of its editors, and the production deployments of a Vercel or Netlify
+  project. Tokens come from the environment and are blanked from every message.
+- **Personal data.** The one kind is an editor's name as the content system shows it. It is printed in the output of
+  the command and never written to the runs store. Without a name, the output says "an editor"; an email address is
+  never read into the output. Gaugeline never infers an author.
 
 ### WordPress (--wordpress)
 

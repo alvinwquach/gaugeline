@@ -1,0 +1,52 @@
+{
+  "schema": 1,
+  "id": "r-20261103T100000Z",
+  "takenAt": "2026-11-03T10:00:00.000Z",
+  "pages": {
+    "/events": {
+      "title": "Events",
+      "h1": "Events",
+      "mainHash": "162ea6ebb1c415cf",
+      "links": [],
+      "types": [],
+      "scripts": []
+    }
+  },
+  "findings": [
+    {
+      "checkId": "page-lost-content",
+      "path": "/events",
+      "title": "A page lost content since the last run"
+    },
+    {
+      "checkId": "thin-html",
+      "path": "/events",
+      "title": "Google sees an almost empty page"
+    },
+    {
+      "checkId": "page-lost-structured-data",
+      "path": "/events",
+      "title": "A page lost its structured data since the last run"
+    },
+    {
+      "checkId": "sitemap-missing",
+      "path": "/events",
+      "title": "Search engines can't find a list of your pages"
+    },
+    {
+      "checkId": "viewport",
+      "path": "/events",
+      "title": "This page isn't set up for phone screens"
+    },
+    {
+      "checkId": "canonical-missing",
+      "path": "/events",
+      "title": "The page doesn't say which address is the real one"
+    },
+    {
+      "checkId": "og-image-missing",
+      "path": "/events",
+      "title": "Shared links have no picture"
+    }
+  ]
+}
