@@ -70,6 +70,7 @@ export const NAV: NavGroup[] = [
     group: "Reference",
     pages: [
       { slug: "mcp", title: "MCP server" },
+      { slug: "mcp-install", title: "Add the MCP server to your assistant" },
       { slug: "writes", title: "What it can and can't write" },
       { slug: "private-datasets", title: "Private datasets" },
       { slug: "privacy", title: "Privacy and safety" },
