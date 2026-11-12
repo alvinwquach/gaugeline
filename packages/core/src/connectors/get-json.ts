@@ -18,7 +18,10 @@ export class ResponseTooLargeError extends Error {
 export interface JsonSource {
   fetcher: Fetcher;
   /** Headers for every request: the key goes here, never into an address. */
-  request: Pick<ConnectorRequest, "authorization" | "headers" | "anonymous" | "fresh">;
+  request: Pick<
+    ConnectorRequest,
+    "authorization" | "headers" | "anonymous" | "fresh" | "maxRedirects"
+  >;
   /** How a wait for Retry-After is made. Tests pass a stand-in that does not wait. */
   sleep: (ms: number) => Promise<void>;
   /** The system's name for messages, such as "Shopify". */
