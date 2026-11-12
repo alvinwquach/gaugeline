@@ -276,6 +276,16 @@ export function isExactHost(host: unknown): host is string {
   return typeof host === "string" && HOST.test(host) && !host.includes("*");
 }
 
+/** A host name that is loopback, private or an address literal (by name: no lookup is made here). */
+function isPrivateHostName(hostAndPort: string): boolean {
+  const host = hostAndPort.replace(/:[0-9]+$/, "");
+  return (
+    /^[0-9.]+$/.test(host) ||
+    host === "localhost" ||
+    /\.(localhost|local|internal|lan|home|corp)$/.test(host)
+  );
+}
+
 /**
  * What is wrong with the entry itself; an empty list means it is well formed. An entry an adapter
  * wrote must have no `method` key at all (the registry fixes it); with `{ stored: true }` the entry
@@ -297,6 +307,10 @@ export function allowProblems(
   if (typeof host === "string") {
     if (!isExactHost(host))
       out.push("the host must be one exact lower-case host name, with no scheme, path or wildcard");
+    else if (isPrivateHostName(host))
+      out.push(
+        "the host must be a vendor's public name, not a loopback, private or address-literal host",
+      );
   } else if (typeof host?.configured !== "string" || host.configured === "")
     out.push("the host is an exact host name, or { configured: <the setting's name> }");
   const path = a.path;

@@ -10,7 +10,8 @@ import {
   readRpcAnswer,
   sessionIdOf,
   outputRuleProblems,
-  sessionListingProblem,
+  cursorProblem,
+  sessionReadOnlyProblem,
   toleratedProblems,
   toolLockProblem,
   toolResultData,
@@ -292,10 +293,11 @@ export async function readSupabase(options: {
       if (!Array.isArray(answer.tools)) throw new Stop(COULD_NOT_CHECK.unexpectedShape);
       listed.push(...(answer.tools as unknown[]));
       if (answer.nextCursor === undefined) break;
-      if (typeof answer.nextCursor !== "string") throw new Stop(COULD_NOT_CHECK.unexpectedShape);
-      cursor = answer.nextCursor;
+      const badCursor = cursorProblem(answer.nextCursor);
+      if (badCursor !== undefined) throw new Stop(badCursor);
+      cursor = answer.nextCursor as string;
     }
-    const notReadOnly = sessionListingProblem(listed, {
+    const notReadOnly = sessionReadOnlyProblem(listed, {
       called: SUPABASE_READS,
       tolerated: SUPABASE_TOLERATED,
     });
