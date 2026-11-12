@@ -187,8 +187,6 @@ describe("remix: other packs' pages are not Remix pages", () => {
   });
 
   it("hydrogen pages belong to the Hydrogen pack, so the generic Remix checks leave them alone", () => {
-    // hydrogen-dev is left out on purpose: it has no Shopify marker (only React Router's own context and dev
-    // module), so it is positively a React Router page, and Hydrogen's dev check claims it too.
     for (const name of ["hydrogen-like", "hydrogen-preview-link"]) {
       const p = page(URL0, fixtureHtml(name));
       expect(isRemixSite(p), name).toBe(false);
