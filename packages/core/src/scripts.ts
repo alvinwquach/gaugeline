@@ -12,6 +12,8 @@ export interface ScriptRead {
   text: string;
   /** The body was longer than the cap (LIMITS.bodyBytes) and only its start was read. */
   truncated: boolean;
+  /** The address its SourceMap (or older X-SourceMap) response header names, as written. */
+  sourceMap?: string;
 }
 
 export interface ScriptOptions {
@@ -34,11 +36,13 @@ export async function readScripts({ page, fetcher, budget }: ScriptOptions): Pro
     budget.take("scripts", urls).map(async (url) => {
       const last = (await getOrNull(fetcher, url)).at(-1);
       const ok = last !== undefined && last.status >= 200 && last.status < 300;
+      const sourceMap = ok ? (last.headers.sourcemap ?? last.headers["x-sourcemap"]) : undefined;
       return {
         url,
         status: last?.status ?? null,
         text: ok ? (last.body ?? "") : "",
         truncated: last?.truncated ?? false,
+        ...(sourceMap ? { sourceMap: sourceMap.trim() } : {}),
       };
     }),
   );

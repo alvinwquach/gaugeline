@@ -215,8 +215,19 @@ export {
   LISTING_CHECKS,
   CRM_CHECKS,
   PROBING_CHECKS,
+  SANITY_IMAGE_CHECKS,
   SWITCH_CHECKS,
 } from "./presets.js";
+export {
+  SANITY_ASSET_CAP,
+  USES_BATCH,
+  SIZE_BATCH,
+  assetDocumentId,
+  readSanityImages,
+  sizeQuery,
+  usesQuery,
+} from "./sanity-images/read.js";
+export type { AssetRead, SanityImageRead, StudioUse } from "./sanity-images/read.js";
 export {
   CHANNELS,
   EMAIL_ENV,
@@ -373,6 +384,8 @@ export { isSveltekitSite, dataAddress as sveltekitDataAddress } from "./svelteki
 export { isFrameworkUrl } from "./next/framework-urls.js";
 export { frameworkLinks } from "./links.js";
 export { consentConfigSchema } from "./consent.js";
+export { imagesConfigSchema } from "./images/config.js";
+export type { ImageSettings, ImagesConfig } from "./images/config.js";
 export type { ConsentConfig } from "./consent.js";
 export { staleDatesConfigSchema } from "./stale-dates/config.js";
 export type { StaleDatesConfig } from "./stale-dates/config.js";
@@ -1456,6 +1469,7 @@ export { UMBRACO_CHECKS, createUmbracoRegistry } from "./checks/umbraco.js";
 export { JOOMLA_CHECKS, createJoomlaRegistry } from "./checks/joomla.js";
 export { DATOCMS_CHECKS, createDatocmsRegistry } from "./checks/datocms.js";
 export { PRISMIC_CHECKS, createPrismicRegistry } from "./checks/prismic.js";
+export { DIRECTUS_CHECKS, createDirectusRegistry } from "./checks/directus.js";
 export { HUBSPOT_CMS_CHECKS, createHubspotCmsRegistry } from "./checks/hubspot-cms.js";
 export {
   ListBuilder,

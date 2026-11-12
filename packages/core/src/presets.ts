@@ -84,7 +84,11 @@ export const CRM_CHECKS: readonly string[] = Object.freeze([
  * they are not run (so not passed either), unless a caller asked for one by id: that one says it
  * did not ask.
  */
-export const PROBING_CHECKS: readonly string[] = Object.freeze(["gated-download-open"]);
+export const PROBING_CHECKS: readonly string[] = Object.freeze([
+  "gated-download-open",
+  "image-optimizer-open",
+  "not-found-200",
+]);
 
 /**
  * The content model checks: they compare a Sanity schema, its documents and the pages built from
@@ -97,4 +101,16 @@ export const MODEL_CHECKS: readonly string[] = Object.freeze([
   "model-listing-count",
   "model-dependents",
   "model-orphan-fields",
+]);
+
+/**
+ * The Sanity image checks that read the dataset (the crop and hotspot set in Studio, the alt text, the
+ * size of each upload): they run only when gaugeline.adapters.json names sanity, because they send the
+ * Viewer token to Sanity. Without it they are not run (so not passed either), unless a caller asked for one
+ * by id: that one says it could not check.
+ */
+export const SANITY_IMAGE_CHECKS: readonly string[] = Object.freeze([
+  "sanity-image-alt-unrendered",
+  "sanity-image-crop-ignored",
+  "sanity-image-heavy",
 ]);

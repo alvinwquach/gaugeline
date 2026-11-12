@@ -78,6 +78,8 @@ export interface AdapterEntry {
     expectPrivate?: true;
     /** Takes `checkReleases`: the owner agrees that Gaugeline reads the repository's releases with the token (Prismic). */
     checkReleases?: true;
+    /** Takes `privateCollections`: collections the owner says the Public role must not read (Directus). */
+    privateCollections?: true;
     /** Takes `collections` (the GraphQL collection of each content type) and `expectPublishedOnly` (DatoCMS). */
     graphqlCollections?: true;
     /**

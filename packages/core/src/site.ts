@@ -1,3 +1,4 @@
+import type { Env } from "./connectors/types.js";
 import { NetworkError } from "./errors.js";
 import { createPageRegistry } from "./checks/index.js";
 import type { Fetcher } from "./fetcher.js";
@@ -12,11 +13,13 @@ import {
   LISTING_CHECKS,
   MODEL_CHECKS,
   PROBING_CHECKS,
+  SANITY_IMAGE_CHECKS,
   SWITCH_CHECKS,
 } from "./presets.js";
 import { classifyHop, describeRefusal } from "./refusal.js";
 import { runChecks, type RunOptions, type RunResult } from "./run.js";
 import { dedupeUrls } from "./sample.js";
+import { lazySanityImages, notConfigured } from "./sanity-images/read.js";
 import { lazyAppLookups } from "./apps.js";
 import { lazyCalendars } from "./calendars.js";
 import { lazyLanguageGroup, type LanguageRules } from "./languages.js";
@@ -34,6 +37,7 @@ import type { WordPress } from "./wordpress/reader.js";
 import type { HiddenConfig } from "./hidden.js";
 import { lazyEvents, type EventObserver } from "./events/observe.js";
 import type { EventsConfig } from "./events/types.js";
+import type { ImageSettings } from "./images/config.js";
 import type { NavRules } from "./nav/read-regions.js";
 import type { StaleDatesConfig } from "./stale-dates/config.js";
 import { lazyTagAnalysis, summarise, type TagSummary } from "./tags/analyse.js";
@@ -103,6 +107,10 @@ export interface SiteCheckOptions {
   freshness?: FreshnessSettings;
   /** The content model (gaugeline.model.json): the schema it names, read, and its Sanity variables already copied. */
   model?: ModelSettings;
+  /** The Sanity dataset the image checks read (gaugeline.adapters.json names sanity), with SANITY_PROJECT_ID, SANITY_DATASET and SANITY_TOKEN already copied. */
+  sanityImages?: { env: Env };
+  /** How a short Retry-After from Sanity is waited out. Tests pass a stand-in. */
+  sanityImagesSleep?: (ms: number) => Promise<void>;
   /** The database project to read as each role, with its keys already read from the environment. */
   access?: AccessSettings;
   /** Public DNS for the email record checks. Without one, they find nothing and nothing is resolved. */
@@ -151,6 +159,8 @@ export interface SiteCheckOptions {
   ownerConsent?: boolean;
   /** Paths of the repository's route files (--routes), for the download route probe. Names only. */
   routeFiles?: readonly string[];
+  /** The image optimizer settings (gaugeline.images.json): settings files as text, and the probe address when consent was given. */
+  imageSettings?: ImageSettings;
 }
 
 export interface SiteCheck {
@@ -255,7 +265,11 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
   // And the content model checks: they run when gaugeline.model.json is there.
   const modelAsked = MODEL_CHECKS.some((id) => opts.only?.includes(id));
   const modelOff = !opts.model && !modelAsked;
+  // The Sanity image checks read the dataset, so they run when gaugeline.adapters.json names sanity.
+  const sanityImagesAsked = SANITY_IMAGE_CHECKS.some((id) => opts.only?.includes(id));
+  const sanityImagesOff = !opts.sanityImages && !sanityImagesAsked;
   const switchedOff = [
+    ...(sanityImagesOff ? SANITY_IMAGE_CHECKS.filter((id) => registered.has(id)) : []),
     ...(probingOff ? PROBING_CHECKS.filter((id) => registered.has(id)) : []),
     ...(crmOff ? CRM_CHECKS.filter((id) => registered.has(id)) : []),
     ...(listingsOff ? LISTING_CHECKS.filter((id) => registered.has(id)) : []),
@@ -362,6 +376,18 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
       ...(databases ? { databases } : {}),
       ...(opts.switches ? { switches: lazySwitches(opts.switches, sourceDeps) } : {}),
       ...(opts.freshness ? { freshness: createFreshness(opts.freshness, sourceDeps) } : {}),
+      ...(opts.sanityImages
+        ? {
+            sanityImages: lazySanityImages({
+              page: snapshot,
+              env: opts.sanityImages.env,
+              fetcher: opts.fetcher,
+              ...(opts.sanityImagesSleep ? { sleep: opts.sanityImagesSleep } : {}),
+            }),
+          }
+        : sanityImagesAsked
+          ? { sanityImages: () => Promise.resolve(notConfigured()) }
+          : {}),
       ...(opts.model ? { model: createContentModel(opts.model, opts.fetcher) } : {}),
       // The switches, freshness and model files name pages the run reads itself (a listing and its
       // pages of results, a block's page), once each, from one shared allowance.
@@ -381,6 +407,7 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
       ...(opts.expect ? { expect: opts.expect } : {}),
       ...(opts.ownerConsent ? { ownerConsent: true } : {}),
       ...(opts.routeFiles ? { routeFiles: opts.routeFiles } : {}),
+      ...(opts.imageSettings ? { imageSettings: opts.imageSettings } : {}),
     },
     onProgress: sink,
     ...(only ? { only } : {}),

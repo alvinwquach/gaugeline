@@ -148,6 +148,7 @@ import { runInit } from "./init.js";
 import { runChanges } from "./changes.js";
 import { buildRunRecord, saveRun } from "./runs.js";
 import { gateVerdict } from "./deploy-gate.js";
+import { readImageSettings } from "./image-settings.js";
 import { runSnapshot } from "./snapshot.js";
 import { runVerify } from "./verify.js";
 import { runAssert } from "./assert.js";
@@ -1266,9 +1267,11 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       // Only the names of the route files are read, never the files.
       const routeFiles =
         ownerConsent && args.routes.length > 0 ? listRouteFiles(args.routes, cwd) : undefined;
+      // The image settings files are read as text with or without consent; the probe address only with it.
+      const imageSettings = readImageSettings(cwd, ownerConsent);
       if (ownerConsent && !args.quiet) {
         io.stderr.write(
-          `Probing checks are on (${args.ownerConsent ? "--owner-consent" : CONSENT_CONFIG_FILE}): gated-download-open asks download routes for their file with no login. Run only on sites you own or have permission to test.\n`,
+          `Probing checks are on (${args.ownerConsent ? "--owner-consent" : CONSENT_CONFIG_FILE}): gated-download-open asks download routes for their file with no login, not-found-200 asks for one address that does not exist${imageSettings?.probeUrl ? ", and image-optimizer-open asks your image address to fetch the one outside picture you named" : ""}. Run only on sites you own or have permission to test.\n`,
         );
         if (routeFiles && routeFiles.length === 0)
           io.stderr.write(`--routes matched no files in ${cwd}.\n`);
@@ -1562,6 +1565,12 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
             fetcher,
           )
         : undefined;
+      // The Sanity image checks that read the dataset (crop and hotspot, alt text, upload sizes) run when
+      // gaugeline.adapters.json names sanity. SANITY_PROJECT_ID, SANITY_DATASET and SANITY_TOKEN (a Viewer
+      // token) are copied here; the token goes in a header to the project's own query address, GET only.
+      const sanityImages = readAdaptersConfig(cwd)?.adapters.some((a) => a.id === "sanity")
+        ? { env: freezeEnv(io.env ?? {}, SANITY_ENV_VARS) }
+        : undefined;
       // What the handoff checks read: the registry's record through the renewals reader (which only asks
       // RDAP here: no token goes to it), then the provider reads, each with its own key from the environment.
       const handoff = handing
@@ -1599,6 +1608,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         ...(libraries ? { libraries } : {}),
         ...(wordpress ? { wordpress } : {}),
         ...(published ? { published } : {}),
+        ...(sanityImages ? { sanityImages } : {}),
         ...(backups ? { backups } : {}),
         ...(args.command === "renewals" || handing ? { tolerateUnreachable: true } : {}),
         // The walking skeleton (0.0.x) runs one check; an injected registry is used as given.
@@ -1630,6 +1640,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         ...(dns ? { dns } : {}),
         ...(ownerConsent ? { ownerConsent: true } : {}),
         ...(routeFiles ? { routeFiles } : {}),
+        ...(imageSettings ? { imageSettings } : {}),
       });
       const {
         snapshot,
