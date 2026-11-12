@@ -18,6 +18,7 @@ import {
 } from "../../../db/__tests__/harness.js";
 import { getRunFindings, getRuns, postRun } from "../../../lib/api/handlers.js";
 import { mintToken, revokeToken } from "../../../lib/api/tokens.js";
+import { appLogin } from "./app-login.js";
 import { finding, manyFindings, result } from "./helpers.js";
 
 const BASE = "https://hosted.example/api/v1";
@@ -26,21 +27,25 @@ const SECRET_ENV_VALUE = ["Zq9", "Lm2", "Xv7", "Kp4"].join("");
 describe.skipIf(!HAS_DATABASE)("runs API: integration", () => {
   let db: TestDatabase;
   let sql: Sql;
+  let app: Awaited<ReturnType<typeof appLogin>>;
   let tokenA1: string;
   let tokenA2: string;
   let tokenB1: string;
   const env: Record<string, string> = { SUPABASE_SERVICE_ROLE_KEY: SECRET_ENV_VALUE };
-  const deps = () => ({ sql, env });
+  // The API connects as the app login (not the owner); the tests read the tables as the owner.
+  const deps = () => ({ sql: app.sql, env });
 
   beforeAll(async () => {
     db = await freshDatabase();
     sql = db.sql;
     await seed(sql);
-    tokenA1 = (await mintToken(sql, { orgId: ORG_A, siteId: SITE_A1 })).token;
-    tokenA2 = (await mintToken(sql, { orgId: ORG_A, siteId: SITE_A2 })).token;
-    tokenB1 = (await mintToken(sql, { orgId: ORG_B, siteId: SITE_B1 })).token;
+    app = await appLogin(sql);
+    tokenA1 = (await mintToken(app.sql, { orgId: ORG_A, siteId: SITE_A1 })).token;
+    tokenA2 = (await mintToken(app.sql, { orgId: ORG_A, siteId: SITE_A2 })).token;
+    tokenB1 = (await mintToken(app.sql, { orgId: ORG_B, siteId: SITE_B1 })).token;
   });
   afterAll(async () => {
+    await app?.drop();
     await db?.drop();
   });
 
@@ -86,8 +91,8 @@ describe.skipIf(!HAS_DATABASE)("runs API: integration", () => {
     });
 
     it("no token, a wrong token, a revoked token and a malformed header are 401, with the same message", async () => {
-      const { token, id } = await mintToken(sql, { orgId: ORG_A, siteId: SITE_A1 });
-      await revokeToken(sql, id);
+      const { token, id } = await mintToken(app.sql, { orgId: ORG_A, siteId: SITE_A1 });
+      await revokeToken(app.sql, id);
       const wrong = `${tokenA1.slice(0, -4)}AAAA`;
       const before = await count("runs");
       const messages = new Set<string>();
@@ -376,15 +381,15 @@ describe.skipIf(!HAS_DATABASE)("runs API: integration", () => {
 
   describe("tokens and the database", () => {
     it("a revoked token stops working at once", async () => {
-      const t = await mintToken(sql, { orgId: ORG_A, siteId: SITE_A1 });
+      const t = await mintToken(app.sql, { orgId: ORG_A, siteId: SITE_A1 });
       expect((await post(result(), { token: t.token })).status).toBe(201);
-      await revokeToken(sql, t.id);
+      await revokeToken(app.sql, t.id);
       expect((await post(result(), { token: t.token })).status).toBe(401);
       expect((await get("/runs", t.token)).status).toBe(401);
     });
 
     it("mintToken refuses a site that is not in the organisation", async () => {
-      await expect(mintToken(sql, { orgId: ORG_B, siteId: SITE_A1 })).rejects.toThrow();
+      await expect(mintToken(app.sql, { orgId: ORG_B, siteId: SITE_A1 })).rejects.toThrow();
     });
   });
 });

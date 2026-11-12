@@ -135,6 +135,8 @@ export interface RunFlags {
   notify: { slack?: string; discord?: string; webhook?: string; email?: string };
   notifyOn: "any" | "high" | "always";
   reportUrl?: string;
+  /** --upload: send the result to the hosted workspace after the run (G35). */
+  upload: boolean;
   /** --save-requests: where to write the request log and page data (a separate file, never the result). */
   saveRequests?: string;
   ci: boolean;
@@ -1709,6 +1711,7 @@ export function parseCliArgs(
     },
     notifyOn,
     ...(typeof values["report-url"] === "string" ? { reportUrl: values["report-url"] } : {}),
+    upload: values.upload === true,
     ...(values.since === "last" ? { since: "last" as const } : {}),
     ...(typeof values["save-requests"] === "string"
       ? { saveRequests: values["save-requests"] }

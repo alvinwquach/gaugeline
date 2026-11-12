@@ -14,6 +14,7 @@ import {
   createDnsReader,
   createPageRegistry,
   notifyAll,
+  uploadResult,
   resolveTargets,
   shouldNotify,
   parseResult,
@@ -1954,6 +1955,24 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
                   : `Could not send to ${NAME[r.channel]}: ${r.error ?? "it failed"}.\n`,
             );
         }
+      }
+      // --upload: the result, to the person's own hosted workspace. One plain line says how it went; a
+      // failed upload is never an error and never changes the exit code. Findings and evidence only,
+      // and nothing is sent if a key from this environment is in it (uploadResult checks).
+      if (args.upload) {
+        const up = await uploadResult(
+          buildResult({
+            url: snapshot.requestedUrl,
+            startedAt,
+            findings: result.findings,
+            passed: result.passed,
+            failed: [...result.failed.map((f) => f.id), ...dnsSkipped],
+            couldNotCheck: result.couldNotCheck,
+            sampled: result.sampled,
+          }),
+          env,
+        );
+        if (!up.ok || !args.quiet) io.stderr.write(`${up.line}\n`);
       }
       // -i: the terminal view over this run, for a person at a wide enough terminal, never in CI.
       const stdin = io.stdin ?? process.stdin;

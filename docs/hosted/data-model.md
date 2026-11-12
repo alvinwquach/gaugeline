@@ -170,7 +170,7 @@ row-level security off, has no `org_id`, or a view runs with its owner's rights.
 ## Running the migrations
 
 ```bash
-GAUGELINE_DATABASE_URL=postgres://... pnpm --filter @gaugeline/hosted db:migrate
+GAUGELINE_MIGRATE_URL=postgres://... pnpm --filter @gaugeline/hosted db:migrate
 ```
 
 ```text

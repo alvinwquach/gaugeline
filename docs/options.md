@@ -15,6 +15,7 @@ Every flag the CLI accepts.
 | `--help`                                       | Shows usage                                                                                                                                    |
 | `--slack`, `--discord`, `--email`, `--webhook` | Send the results somewhere. See [Send results anywhere](/docs/notifications)                                                                   |
 | `--notify-on`, `--report-url`                  | Control when messages are sent, and link to a hosted report                                                                                    |
+| `--upload`                                     | Upload the result to your hosted workspace after the run. See [Hosted: the runs API](/docs/hosted/api#upload-from-the-command-line)            |
 
 Two commands read ad links. `gaugeline ads <export.csv>` takes `--json`, `--ci` (exit 1 when a landing page doesn't load or another "Fix this first" finding is found) and `--allow-private`, and `gaugeline tags <link>` follows one link through its redirects and takes `--ci` and `--allow-private`; see [Ad landing pages](/docs/ad-landing-pages#campaign-tags-are-lost).
 
@@ -744,6 +745,14 @@ that scripts can validate against:
 - The `schema` number only changes with a new file. Published files (`result.v1.json`,
   `result.v2.json`) are never edited in place; a new
   shape ships as `result.v2.json` and the old file stays in the package so consumers can pin.
+
+### The upload option
+
+`--upload` (page check and `launch`) sends the run's result to your hosted workspace after the run: the
+same JSON `--json` prints, to `$GAUGELINE_UPLOAD_URL/runs`, with `GAUGELINE_TOKEN` as a Bearer token.
+Both variables are required; there is no default address. One plain line on stderr says how it went,
+and an upload failure never changes the exit code. If the value of a key in the environment is in the
+result, nothing is sent. See [Hosted: the runs API](/docs/hosted/api).
 
 ### Saving the requests
 

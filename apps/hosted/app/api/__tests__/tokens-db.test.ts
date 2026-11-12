@@ -18,31 +18,29 @@ import {
   USER_A_OWNER,
 } from "../../../db/__tests__/harness.js";
 import { assertServiceRole, withService } from "../../../lib/api/db.js";
+import { appLogin } from "./app-login.js";
 
 const HASH = "a".repeat(64);
 
 describe.skipIf(!HAS_DATABASE)("tokens and idempotency keys: database", () => {
   let db: TestDatabase;
   let sql: Sql;
+  let app: Awaited<ReturnType<typeof appLogin>>;
   const service = { role: "service_role" as const };
   beforeAll(async () => {
     db = await freshDatabase();
     sql = db.sql;
     await seed(sql);
+    app = await appLogin(sql);
   });
   afterAll(async () => {
+    await app?.drop();
     await db?.drop();
   });
 
-  it("both tables have row-level security on (forced) and an org_id", async () => {
+  it("both tables have row-level security on and an org_id", async () => {
     expect(await tablesWithoutRls(sql)).toEqual([]);
     expect(await tablesWithoutOrgId(sql)).toEqual([]);
-    const rows = await sql`select relname, relforcerowsecurity from pg_class
-      where relname in ('tokens', 'idempotency_keys') order by 1`;
-    expect(rows.map((r) => [r.relname, r.relforcerowsecurity])).toEqual([
-      ["idempotency_keys", true],
-      ["tokens", true],
-    ]);
   });
 
   it("anon and signed-in people cannot read or write either table, so a token hash never reaches a browser", async () => {
@@ -131,9 +129,12 @@ describe.skipIf(!HAS_DATABASE)("tokens and idempotency keys: database", () => {
 
   describe("the API's database access is the service role, never the table owner", () => {
     it("withService runs its queries as service_role", async () => {
-      const who = await withService(sql, async (tx) => (await tx`select current_user as u`)[0]!.u);
+      const who = await withService(
+        app.sql,
+        async (tx) => (await tx`select current_user as u`)[0]!.u,
+      );
       expect(who).toBe("service_role");
-      expect((await sql`select current_user as u`)[0]!.u).not.toBe("service_role");
+      expect((await app.sql`select current_user as u`)[0]!.u).toBe(app.role);
     });
 
     it("assertServiceRole refuses any other role, the connecting owner and a signed-in user included", async () => {
@@ -147,7 +148,7 @@ describe.skipIf(!HAS_DATABASE)("tokens and idempotency keys: database", () => {
     });
 
     it("the service role is fenced: it still cannot change or remove a decision", async () => {
-      const msg = await errorOf(withService(sql, (tx) => tx`delete from public.decisions`));
+      const msg = await errorOf(withService(app.sql, (tx) => tx`delete from public.decisions`));
       expect(msg).toMatch(/permission denied|append-only/);
     });
   });

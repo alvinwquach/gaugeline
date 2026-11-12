@@ -1,8 +1,9 @@
 /**
- * How the API reaches the database: always as service_role, never as the table owner (the connecting
- * "postgres" role on Supabase), because the owner skips every row-level security policy. The connection
- * may log in as the owner; each unit of work switches to service_role for its transaction only, and
- * checks that it did.
+ * How the API reaches the database: as service_role, never as the table owner (the "postgres" role on
+ * Supabase), because the owner skips every row-level security policy. The connection logs in as a separate
+ * app role (startup.ts refuses to start otherwise); each unit of work switches to service_role for its
+ * transaction only (`set local role`, which ends with the transaction), and checks that it did. Nothing in
+ * lib/api issues `reset role` or `set session authorization`; a test scans for both.
  */
 import type postgres from "postgres";
 

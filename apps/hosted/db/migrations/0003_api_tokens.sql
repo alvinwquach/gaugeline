@@ -2,7 +2,7 @@
 --
 -- Both tables are for the server only: nobody signed in (a browser) can read or write them, because a
 -- token hash is a credential. The API reaches them as service_role (apps/hosted/lib/api/db.ts), never as
--- the table owner. RLS is on and forced; with no policy and no grant for anon or authenticated there is
+-- the table owner. RLS is on; with no policy and no grant for anon or authenticated there is
 -- nothing for those roles to reach, and a later policy has to be written on purpose.
 
 -- One upload token per row. The token itself (glt_<prefix>_<43 random characters>) is shown once when it
@@ -36,9 +36,7 @@ create table public.idempotency_keys (
 create index idempotency_keys_created_idx on public.idempotency_keys (created_at);
 
 alter table public.tokens enable row level security;
-alter table public.tokens force row level security;
 alter table public.idempotency_keys enable row level security;
-alter table public.idempotency_keys force row level security;
 
 -- Take back whatever default privileges gave, then grant exactly what the API does.
 revoke all on public.tokens, public.idempotency_keys from public, anon, authenticated, service_role;

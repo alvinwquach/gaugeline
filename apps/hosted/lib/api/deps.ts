@@ -1,13 +1,14 @@
-/** The API's dependencies for a running server: one pooled connection from GAUGELINE_DATABASE_URL. */
-import postgres from "postgres";
+/** The API's dependencies for a running server: one pooled connection, opened and checked once. */
 import type { ApiDeps } from "./handlers.js";
+import { openDatabase } from "./startup.js";
 
-let shared: ApiDeps | undefined;
+let shared: Promise<ApiDeps> | undefined;
 
-/** Undefined when the server has no database configured: the route answers 503 rather than throwing. */
-export function getDeps(): ApiDeps | undefined {
-  const url = process.env.GAUGELINE_DATABASE_URL;
-  if (!url) return undefined;
-  shared ??= { sql: postgres(url, { max: 10, onnotice: () => {} }), env: process.env };
+/**
+ * Opens the database on first use (or at start-up, from instrumentation.ts) and keeps the answer. A refusal
+ * is kept too: a server whose login skips row-level security never serves a request.
+ */
+export function getDeps(): Promise<ApiDeps> {
+  shared ??= openDatabase(process.env).then((sql) => ({ sql, env: process.env }));
   return shared;
 }

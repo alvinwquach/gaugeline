@@ -702,6 +702,14 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     commands: ["check", "launch", "renewals", "cost", "backups"],
   },
   {
+    name: "upload",
+    type: "boolean",
+    description:
+      "Upload the result to your hosted workspace; needs GAUGELINE_TOKEN and GAUGELINE_UPLOAD_URL (see the API page)",
+    since: "0.2.0",
+    commands: ["check", "launch"],
+  },
+  {
     name: "save-requests",
     type: "string",
     description:
