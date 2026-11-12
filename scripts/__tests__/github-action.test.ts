@@ -51,6 +51,10 @@ describe("action.yml", () => {
   };
   it("takes url and fail-on, with the defaults the docs state, and has no comment input", () => {
     expect(action.inputs.url?.required).toBe(true);
+    // The release is the user's choice: no default, never "latest".
+    expect(action.inputs.version?.required).toBe(true);
+    expect(action.inputs.version).not.toHaveProperty("default");
+    expect(action.inputs.category?.default).toBe("gaugeline");
     expect(action.inputs["fail-on"]?.default).toBe("high");
     expect(action.inputs["upload-sarif"]?.default).toBe("true");
     expect(action.inputs).not.toHaveProperty("comment");
@@ -66,6 +70,17 @@ describe("action.yml", () => {
     }
     // The only thing that talks to GitHub is the official upload step.
     expect(uses.map((m) => m[1]?.split("@")[0])).toEqual(["github/codeql-action/upload-sarif"]);
+  });
+  it("fork: the upload step cannot turn a fork pull request's job red (its token is read-only)", () => {
+    const upload = action.runs.steps.find((st) => st.uses?.startsWith("github/codeql-action/"));
+    const step = upload as unknown as Record<string, string>;
+    expect(step.name).toBe("Upload SARIF");
+    expect(String(step["continue-on-error"])).toContain("github.event.pull_request.head.repo.fork");
+    expect(String(step.with ? JSON.stringify(step.with) : "")).toContain("inputs.category");
+    // The job fails from the check's own result, never from the upload's.
+    const last = action.runs.steps.at(-1) as unknown as Record<string, string>;
+    expect(last.if).toContain("steps.check.outputs.failed");
+    expect(last.if).not.toContain("upload");
   });
   it("never puts an input into a script, and never reads a token", () => {
     for (const step of action.runs.steps) expect(step.run ?? "").not.toMatch(/\$\{\{/);
@@ -153,6 +168,94 @@ describe("the action against a fixture (the built CLI)", () => {
     expect(r.failed).toBe(true);
   }, 60000);
 
+  it("version: only an exact release number runs; every other form is refused with a fixed message, before anything runs", async () => {
+    const refused = [
+      "",
+      "latest",
+      "next",
+      "^1.0.0",
+      "~1.2.3",
+      ">=1.0.0",
+      "1",
+      "1.2",
+      "v1.2.3",
+      "npm:other@1.0.0",
+      "other@1.0.0",
+      "https://evil.example/pkg.tgz",
+      "file:../pkg",
+      "git+https://evil.example/pkg.git",
+      "1.2.3 --registry=https://evil.example",
+      "1.2.3\n::error::injected",
+      "1.2.3; rm -rf /",
+    ];
+    for (const version of refused) {
+      const notes: string[] = [];
+      const out = join(dir, `version-${Math.random().toString(36).slice(2)}.txt`);
+      writeFileSync(out, "");
+      // No GAUGELINE_ACTION_BIN and an empty PATH: if the check were not refused first, the run
+      // would try to start npx and report "could not run" instead of this message.
+      const r = await run(
+        { INPUT_URL: "https://a.example/", INPUT_VERSION: version, PATH: "", GITHUB_OUTPUT: out },
+        { log: (l) => notes.push(l) },
+      );
+      expect(r.failed, JSON.stringify(version)).toBe(true);
+      expect(r.message).toBe(
+        "The version input must be an exact release number such as 1.2.3 (the release you pin), not a tag, a range, a URL or another package.",
+      );
+      expect(notes.join("\n")).not.toContain("injected");
+      expect(readFileSync(out, "utf8")).toContain("sarif-file=\n");
+    }
+  });
+  it("version: exact releases and pre-releases pass the check (and then try to run)", async () => {
+    for (const version of ["1.2.3", "0.1.0", "10.20.30", "1.0.0-rc.1", "2.0.0-beta-2"]) {
+      const r = await run(
+        { INPUT_URL: "https://a.example/", INPUT_VERSION: version, PATH: "" },
+        { log: () => undefined },
+      );
+      expect(r.message).toBe("Gaugeline could not run the check.");
+    }
+  });
+  it("the url goes after -- so it can never be read as a flag", async () => {
+    const stub = join(dir, "stub.mjs");
+    const seen = join(dir, "argv.json");
+    writeFileSync(
+      stub,
+      `import { writeFileSync } from "node:fs";
+writeFileSync(${JSON.stringify(seen)}, JSON.stringify(process.argv.slice(2)));
+process.stdout.write(${JSON.stringify(sarif())});`,
+    );
+    const { env } = base("argv", {
+      INPUT_URL: "--owner-consent",
+      GAUGELINE_ACTION_BIN: JSON.stringify([process.execPath, stub]),
+    });
+    await run(env, { log: () => undefined });
+    expect(JSON.parse(readFileSync(seen, "utf8"))).toEqual([
+      "--format",
+      "sarif",
+      "--ci",
+      "--allow-private",
+      "--",
+      "--owner-consent",
+    ]);
+  });
+  it("never passes a probing flag, whatever the inputs say", async () => {
+    const stub = join(dir, "stub2.mjs");
+    const seen = join(dir, "argv2.json");
+    writeFileSync(
+      stub,
+      `import { writeFileSync } from "node:fs";
+writeFileSync(${JSON.stringify(seen)}, JSON.stringify(process.argv.slice(2)));
+process.stdout.write(${JSON.stringify(sarif())});`,
+    );
+    const { env } = base("probe", {
+      INPUT_OWNER_CONSENT: "true",
+      INPUT_ROUTES: "app/**",
+      GAUGELINE_ACTION_BIN: JSON.stringify([process.execPath, stub]),
+    });
+    await run(env, { log: () => undefined });
+    const argv = JSON.parse(readFileSync(seen, "utf8")) as string[];
+    expect(argv.join(" ")).not.toMatch(/owner-consent|routes|probe/);
+  });
   it("an empty url or a bad fail-on fails with a sentence, before anything is requested", async () => {
     const notes: string[] = [];
     const a = await run({ INPUT_URL: "" }, { log: (l) => notes.push(l) });
@@ -161,6 +264,14 @@ describe("the action against a fixture (the built CLI)", () => {
       { log: (l) => notes.push(l) },
     );
     expect([a.failed, b.failed]).toEqual([true, true]);
-    expect(notes.join("\n")).toContain('fail-on accepts high, medium or never, not "sometimes"');
+    expect(notes.join("\n")).toContain("fail-on accepts high, medium or never.");
+    // What the user typed is never echoed into a workflow command line (::error::, ::set-output).
+    const c: string[] = [];
+    await run(
+      { INPUT_URL: "https://a.example/", INPUT_FAIL_ON: "high\n::set-output name=x::y" },
+      { log: (l) => c.push(l) },
+    );
+    expect(c.join("\n")).not.toContain("set-output");
+    expect(c).toHaveLength(1);
   });
 });
