@@ -53,6 +53,7 @@ const FIXTURES = [
   "sveltekit-dev",
   "astro-like",
   "sanity-images",
+  "headless-wp",
   "aem-author-links",
   "remix-like",
   "remix-dev",
