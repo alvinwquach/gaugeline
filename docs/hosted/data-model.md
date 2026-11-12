@@ -83,26 +83,63 @@ A person in two organisations sees both, and nothing else.
   (G35) checks the site's upload token and inserts as `service_role`, so nobody can invent a finding.
 - **Owners.** Only an owner adds, promotes, demotes or removes an owner; an admin cannot make anyone an
   owner, themselves included. The last owner of an organisation cannot leave or step down until someone
-  else is an owner.
+  else is an owner, even when two owners try to leave at the same moment (the organisation row is
+  locked while the owners are counted).
 - **Role names.** The database roles are Supabase's: `authenticated` is the signed-in app user (the
   plan's "app" role) and `service_role` is the server and worker (the plan's "service" role). The
   plan's `agent` role (may only insert drafts) does not exist yet: it is G37's work.
-- **The app never connects as the table owner.** The owner (`postgres` on Supabase) skips row-level
-  security. Every query runs either as `authenticated`, inside a transaction that sets
-  `set local role authenticated` and the request's claims, or as `service_role`. `connectionSkipsRls()`
-  in `db/audit.ts` reports a connection that would skip the policies; the app checks it at start-up.
-  Row-level security is not `FORCE`d: FORCE only binds the table owner, which runs the migrations and
-  would then need its own policies, and it does nothing against a superuser or a `BYPASSRLS` role.
+- **The app must never connect as the table owner.** The owner (`postgres` on Supabase) skips
+  row-level security. Row-level security is not `FORCE`d: FORCE only binds the table owner, which runs
+  the migrations and would then need its own policies, and it does nothing against a superuser or a
+  `BYPASSRLS` role. Nothing in the app connects yet; see the rules below for the server (G35 onward).
+
+### Rules for the server and the worker (G35 onward)
+
+These are requirements, not yet code that runs: the server and worker arrive with G35 and G36.
+
+1. **A separate login role.** The server and the worker connect with their own login role, like
+   Supabase's `authenticator`: `NOINHERIT`, a member of `authenticated` and `service_role` and of
+   nothing else. It is not `postgres`, which owns the tables (and on Supabase has `BYPASSRLS`).
+2. **The owner's address is for migrations only.** `GAUGELINE_DATABASE_URL` (the owner) is used by
+   `db:migrate` and nothing else; the server gets a different address for its login role.
+3. **Every query names its role.** A request from a signed-in person runs in a transaction that starts
+   with `set local role authenticated` and sets `request.jwt.claims` to that person's claims; work for
+   the server itself (an upload with a site token, the worker) runs as `set local role service_role`.
+4. **Check once at start-up.** Before serving anything, call `assertConnectionRespectsRls()` from
+   `db/audit.ts` once, outside any transaction. It looks at the login (`session_user`) and the role in
+   effect (`current_user`) and refuses a connection that is, or is a member of (through any chain of
+   roles), a superuser, a `BYPASSRLS` role other than `service_role`, or the owner of a table. `set role`
+   can switch to any role a login is a member of, whatever `NOINHERIT` says, so membership is what
+   counts. The server must not start if it throws.
 
 ## Decisions the app cannot rewrite
 
 `drafts`, `decisions` and `site_consents` accept `INSERT` and `SELECT` only, for the app and the server.
 `INSERT` is granted on named columns: the `id` and the time (`decided_at`, `recorded_at`) are always set
 by the database, so nobody can choose an id to put a row "last", backdate it, or move the shared id
-sequence to block another organisation's inserts. A trigger refuses `UPDATE`, `DELETE` and `TRUNCATE`
-even for a role that holds those privileges:
+sequence to block another organisation's inserts. The app and the server hold no `UPDATE` or
+`DELETE` privilege on these tables, so they are refused before anything else:
 
 ```sql
+-- as the server
+begin;
+set local role service_role;
+delete from decisions;
+rollback;
+```
+
+```text
+BEGIN
+SET
+ERROR:  permission denied for table decisions
+ROLLBACK
+```
+
+A trigger refuses `UPDATE`, `DELETE` and `TRUNCATE` even for a role that does hold those privileges,
+such as the table owner:
+
+```sql
+-- as the owner
 delete from decisions;
 ```
 
