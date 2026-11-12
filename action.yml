@@ -1,0 +1,85 @@
+name: Gaugeline
+description: >-
+  Check a live site or a preview deployment with Gaugeline (read-only: GET and HEAD requests),
+  upload the findings to GitHub code scanning, and keep one pull request comment up to date.
+author: Gaugeline
+branding:
+  icon: check-circle
+  color: green
+
+inputs:
+  url:
+    description: The address to check, for example a preview deployment's URL.
+    required: true
+  fail-on:
+    description: >-
+      When the job fails: "high" (a "Fix this first" finding, the default), "medium" (also "Fix
+      soon") or "never" (findings never fail the job). A check that could not run always fails.
+    required: false
+    default: high
+  comment:
+    description: >-
+      "true" (the default) posts one pull request comment and edits it on every later run;
+      "false" posts none. Skipped, with a notice, on a pull request from a fork and without a token.
+    required: false
+    default: "true"
+  upload-sarif:
+    description: >-
+      "true" (the default) uploads the SARIF file to code scanning. It needs the job permission
+      security-events: write.
+    required: false
+    default: "true"
+  version:
+    description: The gaugeline version npx runs. Pin it ("0.1.0") so a release never changes a build.
+    required: false
+    default: latest
+  allow-private:
+    description: >-
+      "true" lets Gaugeline check an address on a private network (a self-hosted runner's staging
+      server). It is off by default, as it is everywhere else.
+    required: false
+    default: "false"
+  github-token:
+    description: Used only to read and write this pull request's comment.
+    required: false
+    default: ${{ github.token }}
+
+outputs:
+  sarif-file:
+    description: The path of the SARIF file, empty when the check could not run.
+    value: ${{ steps.check.outputs.sarif-file }}
+  high:
+    description: How many "Fix this first" findings were not muted.
+    value: ${{ steps.check.outputs.high }}
+  medium:
+    description: How many "Fix soon" findings were not muted.
+    value: ${{ steps.check.outputs.medium }}
+
+runs:
+  using: composite
+  steps:
+    - id: check
+      shell: bash
+      # Inputs go in through the environment, never into the script text, so a value with quotes
+      # or $( ) in it is only ever data.
+      env:
+        INPUT_URL: ${{ inputs.url }}
+        INPUT_FAIL_ON: ${{ inputs.fail-on }}
+        INPUT_COMMENT: ${{ inputs.comment }}
+        INPUT_VERSION: ${{ inputs.version }}
+        INPUT_ALLOW_PRIVATE: ${{ inputs.allow-private }}
+        INPUT_SARIF_FILE: ${{ github.workspace }}/gaugeline.sarif
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+      run: node "$GITHUB_ACTION_PATH/scripts/action/gaugeline-action.mjs"
+
+    # Pinned by commit (v4.39.3 of github/codeql-action), like every action in this repository.
+    - if: ${{ !cancelled() && inputs.upload-sarif == 'true' && steps.check.outputs.sarif-file != '' }}
+      uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+      with:
+        sarif_file: ${{ steps.check.outputs.sarif-file }}
+        category: gaugeline
+
+    # The check step always ends green so the upload above runs; this step is what fails the job.
+    - if: ${{ !cancelled() && steps.check.outputs.failed == 'true' }}
+      shell: bash
+      run: exit 1

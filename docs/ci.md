@@ -104,6 +104,44 @@ How a finding becomes JUnit:
 
 Both formats are checked in the repository's tests: SARIF against a schema written from the 2.1.0 specification, JUnit against the Jenkins `junit-10.xsd` (see `packages/core/src/report/__tests__/schemas/README.md` for why the SARIF schema is not the OASIS file).
 
+## The GitHub Action
+
+`action.yml` at the root of the repository is a composite action. It runs the published CLI with `npx`, keeps the SARIF file, uploads it to GitHub code scanning, posts one pull request comment, and fails the job when you said it should. It reads the site with GET and HEAD requests only, like the CLI; the only thing it writes is that one comment, in your own repository, with the job's own token.
+
+```yaml title=.github/workflows/gaugeline.yml
+name: Gaugeline
+on: pull_request
+permissions:
+  contents: read
+  security-events: write # upload to code scanning
+  pull-requests: write # the one comment
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: alvinwquach/gaugeline@<commit-sha> # pin by commit, like every action you use
+        with:
+          url: https://brightside-pr-${{ github.event.number }}.example/
+          fail-on: high
+```
+
+| Input           | Default  | What it does                                                                                                                                |
+| --------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `url`           | required | The address to check, usually a preview deployment                                                                                          |
+| `fail-on`       | `high`   | `high` fails the job on a "Fix this first" finding, `medium` also on "Fix soon", `never` on no finding. A check that could not run fails it |
+| `comment`       | `true`   | `true` posts one comment and edits it on every later run; `false` posts none                                                                |
+| `upload-sarif`  | `true`   | Uploads the SARIF file to code scanning (needs `security-events: write`)                                                                    |
+| `version`       | `latest` | The `gaugeline` version `npx` runs. Pin it, so a release never changes a build                                                              |
+| `allow-private` | `false`  | Lets the check read a private-network address, such as a self-hosted runner's staging server                                                |
+
+Outputs: `sarif-file` (its path), `high` and `medium` (how many findings, muted ones not counted).
+
+- **One comment.** The comment carries a hidden marker. The next run finds it and edits it, so a pull request with twenty pushes still has one comment.
+- **A pull request from a fork** has a read-only token, so no comment is tried: the job prints a notice, and the check still reports and still fails on `fail-on`.
+- **Muted findings.** The comment and `fail-on` do not count a finding that has a SARIF suppression (a baseline or a dated suppression).
+- **Not a pull request?** `comment: true` on a push or a deployment does nothing but print a notice.
+- **No `npx` on the runner?** GitHub's own runners have Node. A self-hosted runner needs Node 20 or later.
+
 ## A protected preview
 
 A preview behind deployment protection answers every request with a login page. Store its secret
