@@ -14,5 +14,6 @@ with a new record.
 | [0006](0006-read-only-post-queries.md)                      | A POST is allowed for a documented read-only query                                                           | accepted | 2026-11-11 |
 | [0007](0007-open-image-optimizers.md)                       | Open image optimizers: read the config, probe only with consent and your own address                         | proposed | 2026-11-11 |
 | [0008](0008-platform-reads-through-mcp-servers-and-clis.md) | Platform reads through MCP servers and CLIs: a named allowlist, a read-only credential, never the hint alone | proposed | 2026-11-11 |
+| [0009](0009-rendered-checks.md)                             | Rendered checks: local Playwright by default, a microVM for the hosted tier, Firecrawl only when asked for   | proposed | 2026-11-12 |
 
 Start a new record from [0000-template.md](0000-template.md).
