@@ -1531,6 +1531,7 @@ export { DATOCMS_CHECKS, createDatocmsRegistry } from "./checks/datocms.js";
 export { PRISMIC_CHECKS, createPrismicRegistry } from "./checks/prismic.js";
 export { DIRECTUS_CHECKS, createDirectusRegistry } from "./checks/directus.js";
 export { PAYLOAD_CHECKS, createPayloadRegistry } from "./checks/payload.js";
+export { KONTENT_AI_CHECKS, createKontentAiRegistry } from "./checks/kontent-ai.js";
 export { HUBSPOT_CMS_CHECKS, createHubspotCmsRegistry } from "./checks/hubspot-cms.js";
 export {
   ListBuilder,
