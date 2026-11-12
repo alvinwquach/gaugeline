@@ -73,6 +73,11 @@ export interface ConnectorRequest {
   fresh?: boolean;
   /** Send nothing the fetcher adds per address (a protected preview's headers): a visitor with no session. */
   anonymous?: boolean;
+  /**
+   * Follow at most this many redirects. 0: none, and a 3xx answer is thrown as ConnectorStatusError, so a key sent in a
+   * header goes nowhere but the address that was asked (a draft read with a Preview API key, for one).
+   */
+  maxRedirects?: number;
 }
 
 /**
@@ -98,6 +103,7 @@ export async function connectorGet(
     headersSameOrigin: true,
     ...(request.fresh === true ? { fresh: true } : {}),
     ...(request.anonymous === true ? { anonymous: true } : {}),
+    ...(request.maxRedirects !== undefined ? { maxRedirects: request.maxRedirects } : {}),
   });
   const last = hops.at(-1);
   if (!last) throw new Error("No answer.");
