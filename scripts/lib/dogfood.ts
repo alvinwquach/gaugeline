@@ -1,4 +1,10 @@
-import { RESULT_SCHEMA_VERSION, resultSchema, type Result } from "../../packages/core/src/index.js";
+import {
+  RESULT_SCHEMA_VERSION,
+  UNTRUSTED_CAPS,
+  forMarkdown,
+  resultSchema,
+  type Result,
+} from "../../packages/core/src/index.js";
 
 const LEVEL = { high: "Fix this first", medium: "Fix soon", low: "Worth knowing" } as const;
 const ORDER = { high: 0, medium: 1, low: 2 } as const;
@@ -20,7 +26,9 @@ export function summarise(json: unknown): string {
   ];
   const sorted = [...result.findings].sort((a, b) => ORDER[a.severity] - ORDER[b.severity]);
   for (const f of sorted) {
-    lines.push(`- ${LEVEL[f.severity]}: [${f.checkId}](/docs/checks?id=${f.checkId}) ${f.title}`);
+    lines.push(
+      `- ${LEVEL[f.severity]}: [${f.checkId}](/docs/checks?id=${f.checkId}) ${forMarkdown(f.title, UNTRUSTED_CAPS.title)}`,
+    );
   }
   if (result.passed.length > 0)
     lines.push("", `Passed: ${result.passed.map((id) => `\`${id}\``).join(", ")}`);
