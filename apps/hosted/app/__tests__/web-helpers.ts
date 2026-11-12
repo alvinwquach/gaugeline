@@ -82,6 +82,7 @@ export async function fixture(): Promise<Fixture> {
     sql: appSql,
     auth: new StandInAuth({
       secret: SECRET,
+      nodeEnv: "test",
       users: Object.fromEntries(Object.values(PEOPLE).map((p) => [p.email, p.id])),
       deliver: (email, token) => void inbox.push({ email, token }),
       now: () => now.t,

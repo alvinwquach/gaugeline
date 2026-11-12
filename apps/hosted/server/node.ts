@@ -9,6 +9,11 @@ import { route } from "../lib/web/routes.js";
 const MAX_BODY = 16 * 1024;
 
 async function toRequest(req: IncomingMessage, origin: string): Promise<Request> {
+  // The address is the configured origin plus the raw path, joined as text. `new URL(req.url, origin)`
+  // would read `//evil.example/x` as a host and let the request choose its own origin.
+  const path = req.url ?? "/";
+  if (!path.startsWith("/")) throw new Error("request target must be a path");
+  const base = new URL(origin).origin;
   const headers = new Headers();
   for (const [k, v] of Object.entries(req.headers))
     if (v !== undefined) headers.set(k, Array.isArray(v) ? v.join(", ") : v);
@@ -24,7 +29,7 @@ async function toRequest(req: IncomingMessage, origin: string): Promise<Request>
     }
     body = Buffer.concat(chunks);
   }
-  return new Request(new URL(req.url ?? "/", origin), { method: req.method, headers, body });
+  return new Request(`${base}${path}`, { method: req.method, headers, body });
 }
 
 export function createWebServer(deps: WebDeps, origin: () => string): Server {

@@ -9,7 +9,8 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { HAS_DATABASE, ORG_A, ORG_B } from "../../db/__tests__/harness.js";
-import { ROUTES } from "../../lib/web/routes.js";
+import { signHs256 } from "../../lib/web/auth.js";
+import { ROUTES, route } from "../../lib/web/routes.js";
 import { fixture, PEOPLE, SECRET, type Fixture } from "./web-helpers.js";
 
 const text = (r: Response) => r.text();
@@ -179,6 +180,51 @@ describe.skipIf(!HAS_DATABASE)("sign in and the shell", () => {
     expect(out.headers.get("location")).toBe("/sign-in");
     expect(out.headers.getSetCookie().join(";")).toMatch(/gl_session=; .*Max-Age=0/);
     expect((await b.get("/")).status).toBe(303);
+  });
+
+  it("sign-out ends the session on the server: the old cookie no longer works", async () => {
+    const b = f.browser();
+    await b.signIn(PEOPLE.maya.email);
+    const old = b.cookies.get("gl_session")!;
+    expect((await b.get("/")).status).toBe(200);
+    await b.post("/sign-out", {});
+    const replay = f.browser();
+    replay.cookies.set("gl_session", old);
+    expect((await replay.get("/")).status).toBe(303);
+    // Signing in again gives a different, working session.
+    const again = f.browser();
+    await again.signIn(PEOPLE.maya.email);
+    expect((await again.get("/")).status).toBe(200);
+  });
+
+  it("a token whose sub is in capitals is the same person, not a server error", async () => {
+    const b = f.browser();
+    await b.signIn(PEOPLE.maya.email);
+    const token = signHs256(
+      {
+        ...f.deps.auth.verify(b.cookies.get("gl_session")!)!,
+        sub: PEOPLE.maya.id.toUpperCase(),
+        iss: "gaugeline-stand-in",
+      },
+      SECRET,
+    );
+    const c = f.browser();
+    c.cookies.set("gl_session", token);
+    const res = await c.get("/");
+    expect(res.status).toBe(200);
+    expect(await text(res)).toContain("Northgate Studio");
+  });
+
+  it("https responses carry HSTS, http ones do not", async () => {
+    const https = await route(new Request("https://app.test/sign-in"), {
+      ...f.deps,
+      secureCookies: true,
+    });
+    expect(https.headers.get("strict-transport-security")).toBe(
+      "max-age=31536000; includeSubDomains",
+    );
+    const http = await route(new Request("http://app.test/sign-in"), f.deps);
+    expect(http.headers.get("strict-transport-security")).toBeNull();
   });
 
   it("`next` is followed only to a path on this app, and only in the browser that asked", async () => {

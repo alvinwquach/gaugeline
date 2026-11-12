@@ -1,17 +1,17 @@
-/** What each Route Handler file calls: the handler with the app's dependencies, or a 503. */
+/** What each Route Handler file calls: the route table with the app's dependencies, or a 503. */
 import { getWebDeps } from "./deps.js";
-import type { Route } from "./routes.js";
-import { ROUTES } from "./routes.js";
 import { respondText } from "./layout.js";
+import { ROUTES, route } from "./routes.js";
 
 export function handle(
   path: string,
   method: "GET" | "POST",
 ): (request: Request) => Promise<Response> {
-  const entry = ROUTES.find((x) => x.path === path) as Route;
+  if (!ROUTES.some((x) => x.path === path && x.methods.includes(method)))
+    throw new Error(`no route ${method} ${path} in the route table`);
   return async (request) => {
     try {
-      return await entry.handlers[method]!(request, await getWebDeps());
+      return await route(request, await getWebDeps());
     } catch (e) {
       // The reason is for the server's log; the visitor only learns the service is not available.
       console.error("web: not available:", e instanceof Error ? e.message : "error");

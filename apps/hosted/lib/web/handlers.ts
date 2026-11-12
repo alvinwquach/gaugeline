@@ -21,9 +21,38 @@ import {
   sessionCookieName,
 } from "./session.js";
 
-/** Only a path on this app: starts with one slash, and the next character is not a slash or backslash. */
+/** Space-like, invisible and separator characters beyond the ASCII and C1 controls checked in code below. */
+const INVISIBLE =
+  /[\s\u00a0\u00ad\u061c\u180e\u200b-\u200f\u2028-\u202f\u205f-\u206f\u3000\ufeff]/u;
+
+/** A control character (C0, DEL, C1), a space or a backslash: none belongs in a path we redirect to. */
+function hasUnsafe(value: string): boolean {
+  for (const ch of value) {
+    const c = ch.codePointAt(0) ?? 0;
+    if (c <= 0x20 || (c >= 0x7f && c <= 0x9f) || ch === "\\") return true;
+  }
+  return INVISIBLE.test(value);
+}
+
+const BASE = "http://base.invalid";
+
+/**
+ * Only a path on this app, else "/". The value must start with a single slash and hold no whitespace,
+ * control or invisible character and no backslash (a browser strips a tab or newline and reads `\` as `/`,
+ * so `/<tab>/evil.example` would leave the site); then it is parsed against a placeholder origin and must
+ * stay on it. What comes back is the parsed path and query, never the fragment.
+ */
 export function safeNext(value: string | null | undefined): string {
-  return value && /^\/(?![/\\])/.test(value) ? value : "/";
+  if (!value || value.length > 2048 || !value.startsWith("/") || value.startsWith("//")) return "/";
+  if (hasUnsafe(value)) return "/";
+  let url: URL;
+  try {
+    url = new URL(value, BASE);
+  } catch {
+    return "/";
+  }
+  const out = url.pathname + url.search;
+  return url.origin === BASE && out.startsWith("/") && !out.startsWith("//") ? out : "/";
 }
 
 async function form(request: Request): Promise<URLSearchParams> {
@@ -130,6 +159,10 @@ export async function postVerify(request: Request, deps: WebDeps): Promise<Respo
 
 export async function postSignOut(request: Request, deps: WebDeps): Promise<Response> {
   if (!sameOrigin(request)) return refused();
+  // End the session on the server too, so a copy of the cookie stops working at once.
+  const token = readCookie(request.headers.get("cookie"), sessionCookieName(deps.secureCookies));
+  const claims = token ? deps.auth.verify(token) : null;
+  if (claims) await deps.auth.revoke(claims);
   return redirect("/sign-in", [
     clearCookie(sessionCookieName(deps.secureCookies), deps.secureCookies),
     clearCookie(orgCookieName(deps.secureCookies), deps.secureCookies),
