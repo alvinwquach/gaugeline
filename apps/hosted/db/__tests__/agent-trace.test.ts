@@ -4,6 +4,8 @@
  * things up and calls the private writer directly (no login may). Skipped without GAUGELINE_TEST_DATABASE_URL.
  */
 import { createHash, randomBytes } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import postgres from "postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
@@ -39,6 +41,7 @@ const EMAIL = { subject: "Your menu link is fixed", body: "The drinks page is ba
 const FAKE_KEY = ["sk", "live", "TRACEFAKE0000000000000000"].join("_");
 const FAKE_MAIL = ["guest.list", "tidewater-bar.test"].join("@");
 const HEX64 = /^[0-9a-f]{64}$/;
+const DOC = fileURLToPath(new URL("../../../../docs/hosted/agent-trace.md", import.meta.url));
 const sha = (s: string) => createHash("sha256").update(s, "utf8").digest("hex");
 
 class Rollback extends Error {}
@@ -539,6 +542,17 @@ describe.skipIf(!HAS_DATABASE)("agent trace", () => {
       const by = Object.fromEntries(defs.map((r) => [r.conname, words(String(r.d))]));
       expect(by.agent_trace_reason_known).toEqual(by.agent_denies_reason_known);
       expect(by.agent_trace_tool_check).toEqual(by.agent_denies_tool_check);
+    });
+    it("the docs page names every column of the trace and shows the real refusal of a change", async () => {
+      const doc = readFileSync(DOC, "utf8");
+      const cols = await owner`select column_name from information_schema.columns
+        where table_schema = 'public' and table_name = 'agent_trace' and column_name <> 'id'`;
+      for (const c of cols) expect(doc, String(c.column_name)).toContain(`\`${c.column_name}\``);
+      expect(doc).toContain("agent_trace_overflow");
+      expect(doc).toContain("ERROR:  agent_trace is append-only: UPDATE is not allowed");
+      expect(await errorOf(owner`update public.agent_trace set tokens = 1`)).toBe(
+        "agent_trace is append-only: UPDATE is not allowed",
+      );
     });
   });
 });
