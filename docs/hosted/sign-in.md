@@ -216,6 +216,16 @@ A token is accepted only if its issuer is exactly `SUPABASE_URL` + `/auth/v1`, i
 passes the same time and shape rules as the stand-in's. The session lasts as long as Supabase's access
 token (an hour by default) and then asks for a new link.
 
+`SUPABASE_JWKS` is a fixed copy of the project's public keys: the app never fetches keys while it runs.
+When the owner rotates the signing key in Supabase, the new public key must be added to `SUPABASE_JWKS`
+before Supabase starts using it; until then, tokens signed with the new key are refused (people cannot
+sign in), never accepted unchecked. An ES256 key must be on the P-256 curve.
+
+The app accepts a token from Supabase Auth whatever sign-in method produced it: Supabase's documentation
+lists the methods a token can record (`amr`) but does not say which one an email link records, so the app
+does not filter on it. Email link is the only way in because the project allows nothing else: keep
+sign-ups, passwords, other providers and anonymous sign-ins off in the Supabase project.
+
 Supabase's magic link template has to send people to this app's verify page with the link's token hash.
 In Auth, Email Templates, Magic Link, the link is:
 
@@ -230,7 +240,7 @@ Supabase's published API:
 $ pnpm exec vitest run apps/hosted/app/__tests__/supabase-auth.test.ts
 
  Test Files  1 passed (1)
-      Tests  27 passed (27)
+      Tests  33 passed (33)
 ```
 
 What the owner creates (none of this exists yet; nothing in this repository creates it):

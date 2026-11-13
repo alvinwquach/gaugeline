@@ -109,13 +109,15 @@ export class SupabaseAuth implements AuthProvider {
       if ("d" in k || "p" in k || "k" in k)
         throw new Error("SUPABASE_JWKS holds a private or shared key: give the public keys only.");
       const alg =
-        k.alg === "ES256" && k.kty === "EC"
+        k.alg === "ES256" && k.kty === "EC" && k.crv === "P-256"
           ? "ES256"
           : k.alg === "RS256" && k.kty === "RSA"
             ? "RS256"
             : null;
       if (!alg || typeof k.kid !== "string" || k.kid === "")
-        throw new Error("SUPABASE_JWKS: every key needs a kid and alg ES256 (EC) or RS256 (RSA).");
+        throw new Error(
+          "SUPABASE_JWKS: every key needs a kid and alg ES256 (EC P-256) or RS256 (RSA).",
+        );
       try {
         this.keys.set(k.kid, { alg, key: createPublicKey({ key: k as never, format: "jwk" }) });
       } catch {

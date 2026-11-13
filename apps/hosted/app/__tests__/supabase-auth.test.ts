@@ -133,6 +133,45 @@ describe("requestLink: POST /auth/v1/otp, invited members only", () => {
     expect(unknown.logs.join("\n")).toContain("422");
   });
 
+  it("answers at the fixed time while Supabase is still working, for a member and an unknown address alike", async () => {
+    for (const status of [200, 422]) {
+      let release!: () => void;
+      const gate = new Promise<void>((r) => (release = r));
+      let answered = false;
+      const { a, waits } = adapter({
+        "/auth/v1/otp": async () => {
+          await gate;
+          answered = true;
+          return json(status, {});
+        },
+      });
+      const outcome = await Promise.race([
+        a.requestLink("someone@northgate.test").then(() => "resolved"),
+        new Promise((r) => setTimeout(() => r("pending"), 300)),
+      ]);
+      expect(outcome, `status ${status}`).toBe("resolved");
+      expect(answered).toBe(false);
+      expect(waits).toEqual([1500]);
+      release();
+      await a.settled();
+      expect(answered).toBe(true);
+    }
+  });
+
+  it("does not answer before the fixed time, even when Supabase answers at once", async () => {
+    let wake!: () => void;
+    const timer = new Promise<void>((r) => (wake = r));
+    const { a, seen } = adapter({ "/auth/v1/otp": () => json(200, {}) }, { sleep: () => timer });
+    let done = false;
+    const asked = a.requestLink("maya@northgate.test").then(() => (done = true));
+    await a.settled();
+    expect(seen).toHaveLength(1);
+    expect(done).toBe(false);
+    wake();
+    await asked;
+    expect(done).toBe(true);
+  });
+
   it("does not wait for a slow Auth server, and gives up on it after the timeout", async () => {
     const { a, logs } = adapter(
       {
@@ -202,6 +241,38 @@ describe("exchangeLink: POST /auth/v1/verify with the link's token hash", () => 
   });
 });
 
+describe("the answer size cap", () => {
+  it("stops reading a valid answer past 64 KB, refuses it, and logs 'answer too large'", async () => {
+    const good = JSON.stringify({
+      access_token: signHs256(claims(), SECRET),
+      expires_in: 3600,
+      pad: "a".repeat(200_000),
+    });
+    const bytes = new TextEncoder().encode(good);
+    const CHUNK = 16 * 1024;
+    let pulled = 0;
+    const answer = () =>
+      new Response(
+        new ReadableStream<Uint8Array>({
+          pull(c) {
+            if (pulled >= bytes.length) return c.close();
+            c.enqueue(bytes.slice(pulled, pulled + CHUNK));
+            pulled += CHUNK;
+          },
+        }),
+        { status: 200 },
+      );
+    // The same answer under the cap succeeds: only its size is refused.
+    const small = adapter({ "/auth/v1/verify": verified() });
+    expect((await small.a.exchangeLink("a1b2c3")).ok).toBe(true);
+    const { a, logs } = adapter({ "/auth/v1/verify": answer });
+    expect(await a.exchangeLink("a1b2c3")).toEqual({ ok: false, reason: "invalid" });
+    expect(logs).toEqual(["[auth] supabase verify failed: answer too large"]);
+    expect(pulled).toBeLessThanOrEqual(64 * 1024 + 2 * CHUNK);
+    expect(pulled).toBeLessThan(bytes.length);
+  });
+});
+
 describe("verify: the access token, checked locally", () => {
   const { a } = adapter({});
   const t = (over: Record<string, unknown>) => signHs256(claims(over), SECRET);
@@ -250,6 +321,42 @@ describe("verify: the access token, checked locally", () => {
     // Algorithm confusion: an HS256 token "signed" with the public key's text is refused (no secret set).
     expect(es.verify(signHs256(claims(), JSON.stringify(jwk)))).toBeNull();
   });
+
+  /** The same token with its signature spelled another way that decodes to the same bytes. */
+  const respell = (token: string): string => {
+    const abc = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+    const last = token.at(-1)!;
+    return token.slice(0, -1) + abc[abc.indexOf(last) ^ 1];
+  };
+
+  it.each(["ES256", "RS256"] as const)(
+    "%s: refuses a token whose typ is not JWT, and a signature not in its one canonical spelling",
+    (alg) => {
+      const { publicKey, privateKey } =
+        alg === "ES256"
+          ? generateKeyPairSync("ec", { namedCurve: "P-256" })
+          : generateKeyPairSync("rsa", { modulusLength: 2048 });
+      const jwk = { ...publicKey.export({ format: "jwk" }), kid: "k1", alg };
+      const v = adapter({}, { jwtSecret: undefined, jwks: JSON.stringify({ keys: [jwk] }) }).a;
+      const sign = (header: object) => {
+        const data = `${b64(header)}.${b64(claims())}`;
+        const sig = cryptoSign(
+          "sha256",
+          Buffer.from(data),
+          alg === "ES256" ? { key: privateKey, dsaEncoding: "ieee-p1363" } : privateKey,
+        );
+        return `${data}.${sig.toString("base64url")}`;
+      };
+      const good = sign({ alg, typ: "JWT", kid: "k1" });
+      expect(v.verify(good)).toMatchObject({ sub: USER });
+      expect(Buffer.from(respell(good).split(".")[2]!, "base64url")).toEqual(
+        Buffer.from(good.split(".")[2]!, "base64url"),
+      );
+      expect(v.verify(respell(good))).toBeNull();
+      expect(v.verify(sign({ alg, kid: "k1" }))).toBeNull();
+      expect(v.verify(sign({ alg, typ: "at+jwt", kid: "k1" }))).toBeNull();
+    },
+  );
 });
 
 describe("revoke: POST /auth/v1/logout?scope=local, and the local revocation list", () => {
@@ -309,11 +416,40 @@ describe("configuration: refused at start-up when missing or weak, never echoing
       "a private key in the key set",
       {
         jwtSecret: undefined,
-        jwks: JSON.stringify({ keys: [{ kty: "EC", kid: "k", alg: "ES256", d: "x" }] }),
+        jwks: JSON.stringify({
+          keys: [
+            {
+              ...generateKeyPairSync("ec", { namedCurve: "P-256" }).privateKey.export({
+                format: "jwk",
+              }),
+              kid: "k",
+              alg: "ES256",
+            },
+          ],
+        }),
       },
+      /private or shared/,
     ],
-  ] as [string, Partial<SupabaseAuthOptions>][])("refuses %s", (_name, over) => {
-    expect(make(over)).toThrow();
+    [
+      "an ES256 key that is not on the P-256 curve",
+      {
+        jwtSecret: undefined,
+        jwks: JSON.stringify({
+          keys: [
+            {
+              ...generateKeyPairSync("ec", { namedCurve: "P-384" }).publicKey.export({
+                format: "jwk",
+              }),
+              kid: "k",
+              alg: "ES256",
+            },
+          ],
+        }),
+      },
+      /ES256 \(EC P-256\)/,
+    ],
+  ] as [string, Partial<SupabaseAuthOptions>, RegExp?][])("refuses %s", (_name, over, why) => {
+    expect(make(over)).toThrow(why ?? Error);
     try {
       make(over)();
     } catch (e) {
