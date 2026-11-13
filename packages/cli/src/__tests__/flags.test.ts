@@ -457,6 +457,10 @@ describe("flag table: e2e", () => {
         const mineOnly = f.commands.length === 1 && f.commands[0] === "mine";
         // house-rules reads a rules file: its own flag (--rules) is proved the same way, with --help.
         const houseRulesOnly = f.commands.length === 1 && f.commands[0] === "house-rules";
+        // write-check reads one advisory file: its own flag (--from-file) is proved the same way, with --help.
+        const writeCheckOnly = f.commands.length === 1 && f.commands[0] === "write-check";
+        // --deny-list is mine's and write-check's: proved on mine.
+        const denyListFlag = f.commands.join() === "mine,write-check";
         // brief runs the page check and writes a work order: its own flags are proved on a run.
         const briefOnly = f.commands.length === 1 && f.commands[0] === "brief";
         // --business is brief's and audit's, proved on brief. audit --pack runs the page check too, and its own flags
@@ -487,6 +491,8 @@ describe("flag table: e2e", () => {
           !evalsOnly &&
           !mineOnly &&
           !houseRulesOnly &&
+          !writeCheckOnly &&
+          !denyListFlag &&
           !briefOnly &&
           !businessFlag &&
           !auditOnly &&
@@ -610,7 +616,9 @@ describe("flag table: e2e", () => {
                                   receiptsOnly ||
                                   evalsOnly ||
                                   mineOnly ||
-                                  houseRulesOnly
+                                  houseRulesOnly ||
+                                  writeCheckOnly ||
+                                  denyListFlag
                                 ? [
                                     deliveryOnly
                                       ? "delivery"
@@ -624,11 +632,13 @@ describe("flag table: e2e", () => {
                                               ? "receipts"
                                               : evalsOnly
                                                 ? "evals"
-                                                : mineOnly
+                                                : mineOnly || denyListFlag
                                                   ? "mine"
                                                   : houseRulesOnly
                                                     ? "house-rules"
-                                                    : "query",
+                                                    : writeCheckOnly
+                                                      ? "write-check"
+                                                      : "query",
                                     `--${f.name}`,
                                     ...value,
                                     "--help",
