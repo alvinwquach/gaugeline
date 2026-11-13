@@ -56,6 +56,8 @@ const SECURITY_IDS = new Set([
   "webhook-url-hardcoded",
   "webhook-signature-compared-plainly",
   "webhook-timestamp-unbounded",
+  "webhook-body-read-unsafely",
+  "webhook-logs-private-values",
 ]);
 
 /** Words that make it a listing, an opening time or an event date. */
