@@ -86,6 +86,8 @@ export interface AdapterEntry {
     previewRead?: true;
     /** Takes `slugElement`: the codename of the element that holds an item's slug (Kontent.ai). */
     slugElement?: true;
+    /** Takes `readUnpublished`: the owner lets the one probing check list unpublished nodes with the credential (Drupal). */
+    unpublishedRead?: true;
     /** Takes `authCollection`: the slug of the auth collection whose API key is sent (Payload). */
     authCollection?: true;
     /** Takes `collections` (the GraphQL collection of each content type; DatoCMS and Hygraph) and, for DatoCMS, `expectPublishedOnly`. */
