@@ -5,6 +5,8 @@ import { robotsDisallowHidesNoindex } from "../checks/static/robots-disallow-hid
 import { sitemapWhileIndexingOff } from "../checks/static/sitemap-while-indexing-off.js";
 import { groqReferenceNotExpanded } from "../checks/static/groq-reference-not-expanded.js";
 import { imageAltNotValidated } from "../checks/static/image-alt-not-validated.js";
+import { sectionTypeComponentMismatch } from "../checks/static/section-type-component-mismatch.js";
+import { stegaNotCleaned } from "../checks/static/stega-not-cleaned.js";
 import { sanityCdnTaggedReads } from "../checks/static/sanity-cdn-tagged-reads.js";
 import { webhookSignatureComparedPlainly } from "../checks/static/webhook-signature-compared-plainly.js";
 import { webhookTimestampUnbounded } from "../checks/static/webhook-timestamp-unbounded.js";
@@ -78,6 +80,8 @@ export const STATIC_CHECKS: readonly Check<LocalSourceInput>[] = [
   revalidateTimeAndTagMixed,
   groqReferenceNotExpanded,
   imageAltNotValidated,
+  sectionTypeComponentMismatch,
+  stegaNotCleaned,
 ];
 
 export function createStaticRegistry(): CheckRegistry {
