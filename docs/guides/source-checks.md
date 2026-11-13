@@ -74,6 +74,8 @@ Read 4 files in ./harbour-bar-switch. No request was made and no code was run.
 ✓ webhook-timestamp-unbounded
 ✓ personal-data-in-analytics
 ✓ form-values-in-logs
+✓ webhook-body-read-unsafely
+✓ webhook-logs-private-values
 
 2 to look at, none to fix first.
 ```
