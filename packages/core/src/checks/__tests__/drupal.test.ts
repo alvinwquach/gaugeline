@@ -231,6 +231,17 @@ describe("the Drupal check: every part that cannot be checked is named, and none
     expect(seen.some((s) => new URL(s.url).host === "evil.example")).toBe(false);
   });
 
+  it("a redirect to a long path of the site is named cut short, never in full", async () => {
+    const long = `/${"a".repeat(400)}`;
+    const { reading: r } = await reading(FERNLEA, {
+      fixture: { pages: { ...PAGES_CLOSED, 3: { status: 301, location: long } } },
+    });
+    const out = await run(r);
+    expect(out.findings).toEqual([]);
+    expect(said(out)).toContain("redirects to /aaa");
+    expect(said(out)).not.toContain("a".repeat(150));
+  });
+
   it("a redirect to the node's alias that Drupal then closes is a closed node", async () => {
     const { reading: r } = await reading(FERNLEA, {
       fixture: { pages: { ...PAGES_CLOSED, 3: { status: 301, location: "/news/staff-changes" } } },

@@ -1,4 +1,5 @@
 import type { Fetcher, Hop } from "../fetcher.js";
+import { sanitise } from "../untrusted.js";
 import { type PartialRead } from "./collect.js";
 import type { DrupalAdapter, UnpublishedRead } from "./drupal.js";
 import { DRUPAL_LIMITS } from "./drupal.entry.js";
@@ -130,7 +131,11 @@ async function askNode(
   const open = last.status >= 200 && last.status < 300;
   const closed = last.status === 403 || last.status === 404;
   if (!open && !closed) return { kind: "unread", reason: `the site answered ${last.status}` };
-  if (!ok) return { kind: "unread", reason: `the address redirects to ${new URL(at).pathname}` };
+  if (!ok)
+    return {
+      kind: "unread",
+      reason: `the address redirects to ${sanitise(new URL(at).pathname, 80).text}`,
+    };
   if (!fromDrupal(last))
     return {
       kind: "unread",

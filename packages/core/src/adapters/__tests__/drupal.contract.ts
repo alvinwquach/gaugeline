@@ -46,7 +46,7 @@ export const drupalEntry: ContractEntry = {
       },
       ids: ["5f1c0a10-0000-4000-8000-000000000001", "5f1c0a10-0000-4000-8000-000000000002"],
     },
-    draftsReachable: true,
+    draftsReachable: "not-applicable",
   },
   // The first type's page is answered; the second's is the first refused.
   rateLimit: { options: { types: ["node--article", "node--page"] }, succeedFirst: 1, atLeast: 2 },

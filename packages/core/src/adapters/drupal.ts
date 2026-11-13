@@ -217,6 +217,11 @@ export function createDrupalAdapter(options: DrupalAdapterOptions): DrupalAdapte
   const site = (): URL => {
     const text = (env[DRUPAL_URL] ?? "").trim();
     if (text === "") throw new AdapterCouldNotCheck(`${DRUPAL_URL} is not set.`);
+    // Plain ASCII only: a look-alike letter, a space or a control character in an address is never sent.
+    if (/[^\x21-\x7e]/.test(text))
+      throw new AdapterCouldNotCheck(
+        `${DRUPAL_URL} has a space, a control character or a character that is not plain ASCII in it, so it is not used. Write the address with plain letters (a punycode host name for a non-English domain).`,
+      );
     let url: URL;
     try {
       url = new URL(text);
@@ -234,6 +239,21 @@ export function createDrupalAdapter(options: DrupalAdapterOptions): DrupalAdapte
     )
       throw new AdapterCouldNotCheck(
         `${DRUPAL_URL} must be an http or https address with no user name, password, query or fragment in it.`,
+      );
+    // A path that is the site's own folder, written plainly. The address is read as typed as well as parsed, because
+    // parsing quietly resolves a written or encoded dot segment: no dot segment, no encoded slash, dot, backslash or
+    // space, no control character and no non-ASCII byte.
+    const typedPath = text.replace(/^[a-z]+:\/\/[^/]*/i, "");
+    if (
+      [typedPath, url.pathname].some(
+        (path) =>
+          /%(2e|2f|5c|20|[01][0-9a-f]|7f|[89a-f][0-9a-f])/i.test(path) ||
+          path.includes("\\") ||
+          path.split("/").some((seg) => seg === "." || seg === ".."),
+      )
+    )
+      throw new AdapterCouldNotCheck(
+        `${DRUPAL_URL} has a path with a dot segment, an encoded slash or dot, or a control character in it, so it is not used.`,
       );
     return url;
   };
@@ -404,12 +424,12 @@ export function createDrupalAdapter(options: DrupalAdapterOptions): DrupalAdapte
     if (
       !Number.isSafeInteger(off) ||
       !Number.isSafeInteger(lim) ||
-      lim < 1 ||
+      lim < Math.min(MIN_PAGE_SIZE, size) ||
       lim > size ||
       off !== offset + lim
     )
       throw new AdapterCouldNotCheck(
-        "Drupal's next link does not continue the list where it should (its offset is not the offset asked plus its page size), so the list was not followed.",
+        "Drupal's next link does not continue the list where it should (its offset is not the offset asked plus its page size, or its page size is below the least Gaugeline accepts), so the list was not followed.",
       );
     return { offset: off, limit: lim };
   };
@@ -529,7 +549,7 @@ export function createDrupalAdapter(options: DrupalAdapterOptions): DrupalAdapte
       read += rows.length;
       const next = nextOf(body, new URL(url), offset, size);
       if (next === undefined) {
-        if (total !== undefined && read !== total && !leftOut)
+        if (total !== undefined && (read > total || (read !== total && !leftOut)))
           throw new AdapterCouldNotCheck(
             `The list changed while it was read: Drupal reported ${total} resources and ${read} came back.`,
           );
@@ -681,41 +701,12 @@ export function createDrupalAdapter(options: DrupalAdapterOptions): DrupalAdapte
   };
 
   /**
-   * Can the credential reach unpublished work? With no credential there is nothing to ask about. With one, and only when
-   * the settings allow it, one small list per type. A list that comes back empty says nothing (the role may not be
-   * allowed to view unpublished content, or there may be none), so it is could-not-check, never "no".
+   * Always "not-applicable". Reading what the credential can see that a visitor cannot is the probing check's own
+   * method, `unpublishedReading`, which a caller runs only with the owner's consent (CLAUDE.md rule 14): nothing a
+   * normal run does may ask for unpublished nodes, so this asks nothing.
    */
-  const draftsReachable = async (): Promise<boolean | "not-applicable"> => {
-    if (!configured) return "not-applicable";
-    needSettings();
-    authorization();
-    needNamed();
-    let failure: AdapterCouldNotCheck | undefined;
-    for (const type of named) {
-      try {
-        for await (const r of listOf(type, {
-          status: "0",
-          authed: true,
-          enforceCap: false,
-          partial: () => undefined,
-          select: ["status"],
-        })) {
-          if (statusOf(r))
-            throw new AdapterCouldNotCheck(
-              "Drupal listed a published resource under the unpublished filter.",
-            );
-          return true;
-        }
-      } catch (err) {
-        if (!(err instanceof AdapterCouldNotCheck)) throw err;
-        failure ??= err;
-      }
-    }
-    if (failure) throw failure;
-    throw new AdapterCouldNotCheck(
-      "Drupal lists no unpublished node for the credential, so whether it could read unpublished work is not known. There may be none, or the user's role may not be allowed to view unpublished content.",
-    );
-  };
+  const draftsReachable = (): Promise<boolean | "not-applicable"> =>
+    Promise.resolve("not-applicable");
 
   const unpublishedReading = async (): Promise<UnpublishedRead[]> => {
     needSettings();

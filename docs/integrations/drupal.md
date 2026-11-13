@@ -91,7 +91,7 @@ With `DRUPAL_URL` and `DRUPAL_TOKEN` in the environment, this is what the adapte
     "field_subtitle": 1,
     "field_teaser": 0
   },
-  "drafts reachable": true,
+  "drafts reachable": "not-applicable",
   "published articles": [
     {
       "id": "5f1c0a10-0000-4000-8000-000000000001",
@@ -117,7 +117,7 @@ With `DRUPAL_URL` and `DRUPAL_TOKEN` in the environment, this is what the adapte
 }
 ```
 
-Read it the way the freelancer does. The clinic has two published articles and one published page, though Drupal holds more: the others are drafts. `drafts reachable` is `true` because the credential can list a node that is not published. The opening-hours article has no `field_subtitle`, so it has no hash for it (a field an item lacks is left out, never hashed as empty), and `field_teaser` counts 0 because no article has one. It has no path alias either, so it has no address. The hashes stand for the clinic's titles and subtitles, which are not in the output.
+Read it the way the freelancer does. The clinic has two published articles and one published page, though Drupal holds more: the others are drafts. `drafts reachable` is `"not-applicable"`: the published read never asks for unpublished nodes, even with a credential set, so it has nothing to say about them. Listing them is the probing check's own read, below, and runs only with `--owner-consent`. The opening-hours article has no `field_subtitle`, so it has no hash for it (a field an item lacks is left out, never hashed as empty), and `field_teaser` counts 0 because no article has one. It has no path alias either, so it has no address. The hashes stand for the clinic's titles and subtitles, which are not in the output.
 
 The check then runs over that site, with the owner's consent (invented: the staff-change article is a draft, and its page opens for a visitor):
 

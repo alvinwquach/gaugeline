@@ -1094,14 +1094,20 @@ to test.** Without either, nothing is asked and the check is not listed.
 `by` says who agreed and `on` says when, so a shared repository records it once. A run with consent
 prints one line on stderr saying probing checks are on.
 
-There are seventeen probing checks: `image-optimizer-open`, described in
+There are twenty-four probing checks: `image-optimizer-open`, described in
 [Open image optimizers](guides/image-optimizers.md#what-it-asks-the-running-site-a-probing-check) (it also needs an
 address you chose, in `gaugeline.images.json`, below), `not-found-200`, described in [Error pages that answer 200](guides/error-pages.md#not-found-200-what-the-site-does-for-an-address-that-does-not-exist) (one `GET` of an address made up from your own site's address), `gated-download-open`, described in
 [Paid downloads and delivery](delivery.md#a-download-route-that-hands-the-file-to-anyone),
 `route-hidden-not-protected`, described in [Routes that are hidden, not protected](protected-routes.md),
 `nuxt-devtools-public` and `nuxt-preview-public`, described in
 [Nuxt sites](guides/nuxt.md#probing-checks-run-only-on-sites-you-own-or-have-permission-to-test) (page checks, for
-Nuxt sites only), `strapi-drafts-public`, described in [Strapi](integrations/strapi.md#the-two-checks),
+Nuxt sites only), `gatsby-graphql-public`, described in [Gatsby](guides/gatsby.md#the-checks),
+`headless-wp-preview-open` and `headless-wp-introspection-open`, described in
+[Headless WordPress](guides/headless-wordpress.md#the-checks), `qwik-solid-draft-public`, described in
+[Qwik and SolidStart](guides/qwik-solidstart.md#the-checks), `remix-draft-public`, described in
+[Remix and React Router](guides/remix.md#the-checks), `static-search-index-hidden`, described in
+[Static site generators](guides/static-generators.md#the-checks), `sveltekit-draft-public`, described in
+[SvelteKit](guides/sveltekit.md#the-checks) (these seven are page checks, for sites of that kind only), `strapi-drafts-public`, described in [Strapi](integrations/strapi.md#the-two-checks),
 `umbraco-delivery-api-public`, described in [Umbraco](integrations/umbraco.md#the-two-checks),
 `joomla-api-public`, described in [Joomla](integrations/joomla.md#the-two-checks),
 `datocms-drafts-reachable`, described in [DatoCMS](integrations/datocms.md#the-check),

@@ -202,6 +202,12 @@ describe.each(ENTRIES)("the adapter contract: $id", (entry) => {
       const before = seen.length;
       await adapter.draftsReachable();
       const keyed = seen.slice(before);
+      // An adapter that says "not-applicable" has no read of drafts in a normal run: it asks nothing, so the key (which
+      // only a gated read of unpublished work may use) is never sent from here.
+      if (entry.expected.draftsReachable === "not-applicable") {
+        expect(keyed).toEqual([]);
+        return;
+      }
       expect(keyed.length).toBeGreaterThan(0);
       for (const s of keyed) {
         expect(s.url).not.toContain(entry.key ?? "");

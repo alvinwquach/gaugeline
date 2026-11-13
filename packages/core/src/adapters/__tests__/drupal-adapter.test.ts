@@ -94,7 +94,38 @@ const fixed =
   () =>
     answer(status, body, headers);
 
-const ARTICLES_ONLY: AdapterSettings = { id: "drupal", urls: { "node--article": "/n/{id}" } };
+const ARTICLES_ONLY: AdapterSettings = {
+  id: "drupal",
+  urls: { "node--article": "/n/{id}" },
+  readUnpublished: true,
+};
+
+/**
+ * A server that ignores `page[offset]` and always answers the first page, yet writes a next link that looks right
+ * (the offset asked plus the page size): only the repeated id can tell.
+ */
+const ignoreOffset =
+  (t: Transport): Transport =>
+  async (url, req) => {
+    const asked = Number(url.searchParams.get("page[offset]") ?? "0");
+    url.searchParams.set("page[offset]", "0");
+    const res = await t(url, req);
+    const chunks: Buffer[] = [];
+    for await (const c of res.body) chunks.push(Buffer.from(c as Buffer));
+    const body = JSON.parse(Buffer.concat(chunks).toString()) as {
+      links?: { next?: { href: string } };
+    };
+    const next = body.links?.next;
+    if (next !== undefined) {
+      const target = new URL(next.href);
+      target.searchParams.set(
+        "page[offset]",
+        String(asked + Number(target.searchParams.get("page[limit]"))),
+      );
+      next.href = target.href;
+    }
+    return { ...res, body: Readable.from([Buffer.from(JSON.stringify(body))]) };
+  };
 
 describe("the Drupal adapter: reading what is published", () => {
   it("counts the published nodes of each named type, and nothing else", async () => {
@@ -278,6 +309,16 @@ describe("the Drupal adapter: what it sends", () => {
       ["https://user:pass", "fernlea-clinic.example"].join("\u0040"),
       "https://fernlea-clinic.example/?a=1",
       "https://fernlea-clinic.example/#x",
+      "https://fernlea-clinic.example/%2e%2e/admin",
+      "https://fernlea-clinic.example/a%2fb",
+      "https://fernlea-clinic.example/a%5Cb",
+      "https://fernlea-clinic.example/a%00b",
+      "https://fernlea-clinic.example/a/%2E/b",
+      "https://fernlea-clinic.example/a b",
+      "https://fernlea-clinic.example\u00a0/x",
+      "https://fernlea-clinic.exampl\u0435/x",
+      "https://fernlea-clinic.example/caf\u00e9",
+      "https://fernlea-clinic.example\t/x",
     ]) {
       const w = world(FERNLEA, { env: { DRUPAL_URL: url } });
       expect(await reason(w.adapter.types())).toContain("DRUPAL_URL");
@@ -336,14 +377,38 @@ describe("the Drupal adapter: pages", () => {
     expect(w.seen.length).toBeLessThanOrEqual(30);
   });
 
-  it("the same resource twice (a server that ignores the offset) is could-not-check", async () => {
+  it("the same resource twice (a server that ignores the offset, with a next link that looks right) is could-not-check", async () => {
+    const w = world(big, { wrap: ignoreOffset });
+    expect(await reason(w.adapter.types())).toContain("same resource twice");
+  });
+
+  it("the same unpublished node twice is could-not-check for its type, never a list of what was read", async () => {
+    const unpublished = manyArticles(120).map((n) => ({ ...n, status: false }));
+    const w = world(unpublished, { wrap: ignoreOffset, settings: ARTICLES_ONLY });
+    const got = await w.adapter.unpublishedReading();
+    expect(got).toHaveLength(1);
+    expect(got[0]?.state).toBe("unread");
+    expect(got[0]?.reason).toContain("same resource twice");
+    expect(got[0]?.nodes).toEqual([]);
+  });
+
+  it("a next link that shrinks the page size to almost nothing is could-not-check, never followed", async () => {
+    const w = world(big, { fixture: { nextLimit: 2 }, settings: ARTICLES_ONLY });
+    expect(await reason(w.adapter.types())).toContain("page size");
+    expect(w.seen).toHaveLength(1);
+  });
+
+  it("a count lower than what came back is could-not-check, even when the answer says it left some out", async () => {
+    const w = world(big, { fixture: { count: "low", omitted: true }, settings: ARTICLES_ONLY });
+    expect(await reason(w.adapter.types())).toContain("changed while it was read");
+  });
+
+  it("a count higher than what came back is accepted when the answer says it left some out", async () => {
     const w = world(big, {
-      wrap: (t) => (url, req) => {
-        url.searchParams.set("page[offset]", "0");
-        return t(url, req);
-      },
+      fixture: { count: true, omitPerPage: 5, omitted: true },
+      settings: ARTICLES_ONLY,
     });
-    expect(await reason(w.adapter.types())).toMatch(/same resource twice|next link does not/);
+    expect(await w.adapter.types()).toEqual([{ name: "node--article", count: 105 }]);
   });
 
   it("a total that moves, or that is not what came back, is could-not-check", async () => {
@@ -467,9 +532,22 @@ describe("the Drupal adapter: the credential", () => {
     expect(await w.adapter.draftsReachable()).toBe("not-applicable");
   });
 
+  it("draftsReachable is not-applicable with a credential and readUnpublished too, and asks nothing: the unpublished read is its own gated method", async () => {
+    const w = world(FERNLEA, { settings: SETTINGS });
+    expect(SETTINGS.readUnpublished).toBe(true);
+    expect(w.adapter.hasCredential()).toBe(true);
+    expect(await w.adapter.draftsReachable()).toBe("not-applicable");
+    expect(w.seen).toEqual([]);
+    const off = world(FERNLEA, {
+      settings: { id: "drupal", urls: { "node--article": "/n/{id}" } },
+    });
+    expect(await off.adapter.draftsReachable()).toBe("not-applicable");
+    expect(off.seen).toEqual([]);
+  });
+
   it("a bearer token is sent in an Authorization header for the unpublished read, and only there", async () => {
     const w = world();
-    expect(await w.adapter.draftsReachable()).toBe(true);
+    expect((await w.adapter.unpublishedReading()).map((g) => g.state)).toEqual(["read", "read"]);
     expect(w.seen.length).toBeGreaterThan(0);
     for (const s of w.seen) {
       expect(s.headers.authorization).toBe(`Bearer ${KEY}`);
@@ -483,7 +561,7 @@ describe("the Drupal adapter: the credential", () => {
       fixture: { credential: BASIC },
       env: { DRUPAL_TOKEN: "", DRUPAL_USER: BASIC.user, DRUPAL_PASSWORD: BASIC.password },
     });
-    expect(await w.adapter.draftsReachable()).toBe(true);
+    expect((await w.adapter.unpublishedReading()).map((g) => g.state)).toEqual(["read", "read"]);
     const want = `Basic ${Buffer.from(`${BASIC.user}:${BASIC.password}`).toString("base64")}`;
     for (const s of w.seen) {
       expect(s.headers.authorization).toBe(want);
@@ -496,7 +574,9 @@ describe("the Drupal adapter: the credential", () => {
     const w = world(FERNLEA, {
       fixture: { credential: { kind: "bearer", token: "another_token_value_123" } },
     });
-    const why = await reason(w.adapter.draftsReachable());
+    const got = await w.adapter.unpublishedReading();
+    expect(got.map((g) => g.state)).toEqual(["unread", "unread"]);
+    const why = got[0]?.reason ?? "";
     expect(why).toContain("DRUPAL_TOKEN");
     expect(why).not.toContain(KEY);
   });
@@ -509,7 +589,7 @@ describe("the Drupal adapter: the credential", () => {
       `${KEY.slice(0, 6)}\r${KEY.slice(6)}`,
     ]) {
       const w = world(FERNLEA, { env: { DRUPAL_TOKEN: token } });
-      const why = await reason(w.adapter.draftsReachable());
+      const why = await reason(w.adapter.unpublishedReading());
       expect(why).toContain("not a token");
       expect(w.seen).toEqual([]);
     }
@@ -524,21 +604,23 @@ describe("the Drupal adapter: the credential", () => {
       const w = world(FERNLEA, {
         env: { DRUPAL_TOKEN: "", DRUPAL_USER: user!, DRUPAL_PASSWORD: password! },
       });
-      expect(await reason(w.adapter.draftsReachable())).toContain("cannot be sent as Basic");
+      expect(await reason(w.adapter.unpublishedReading())).toContain("cannot be sent as Basic");
       expect(w.seen).toEqual([]);
     }
   });
 
   it("a token and a user name together, or a user name without a password, is could-not-check", async () => {
     const both = world(FERNLEA, { env: { DRUPAL_USER: "a", DRUPAL_PASSWORD: "b" } });
-    expect(await reason(both.adapter.draftsReachable())).toContain("Set one credential");
+    expect(await reason(both.adapter.unpublishedReading())).toContain("Set one credential");
     const half = world(FERNLEA, { env: { DRUPAL_TOKEN: "", DRUPAL_USER: "a" } });
-    expect(await reason(half.adapter.draftsReachable())).toContain("must both be set");
+    expect(await reason(half.adapter.unpublishedReading())).toContain("must both be set");
   });
 
   it("is not sent over plain http", async () => {
     const w = world(FERNLEA, { env: { DRUPAL_URL: "http://fernlea-clinic.example" } });
-    expect(await reason(w.adapter.draftsReachable())).toContain("not sent over plain http");
+    const got = await w.adapter.unpublishedReading();
+    expect(got.map((g) => g.state)).toEqual(["unread", "unread"]);
+    expect(got[0]?.reason).toContain("not sent over plain http");
     expect(w.seen).toEqual([]);
   });
 
@@ -546,21 +628,24 @@ describe("the Drupal adapter: the credential", () => {
     const w = world(FERNLEA, {
       wrap: fixed(301, "", { location: "https://evil.example/jsonapi" }),
     });
-    expect(await reason(w.adapter.draftsReachable())).toContain("redirect");
+    const got = await w.adapter.unpublishedReading();
+    expect(got.map((g) => g.state)).toEqual(["unread", "unread"]);
+    expect(got[0]?.reason).toContain("redirect");
     // One request for each named type, all to the address in DRUPAL_URL: the Location was never asked for.
     expect(w.seen).toHaveLength(2);
     for (const s of w.seen) expect(new URL(s.url).host).toBe("fernlea-clinic.example");
   });
 
-  it("draftsReachable needs the settings entry: a credential alone does not read unpublished nodes", async () => {
+  it("a credential alone does not read unpublished nodes: the settings entry is needed", async () => {
     const w = world(FERNLEA, { settings: { id: "drupal", urls: { "node--article": "/n/{id}" } } });
-    expect(await reason(w.adapter.draftsReachable())).toContain("readUnpublished");
+    expect(await reason(w.adapter.unpublishedReading())).toContain("readUnpublished");
     expect(w.seen).toEqual([]);
   });
 
-  it("a credential that lists no unpublished node is could-not-check, never a no", async () => {
+  it("a credential that lists no unpublished node gives an empty list, which the check never reads as a no", async () => {
     const w = world(FERNLEA, { fixture: { seesUnpublished: false } });
-    expect(await reason(w.adapter.draftsReachable())).toContain("lists no unpublished node");
+    const got = await w.adapter.unpublishedReading();
+    expect(got.every((g) => g.state === "read" && g.nodes.length === 0)).toBe(true);
   });
 
   it("an unpublished node found under a published filter, or the reverse, is could-not-check", async () => {
@@ -570,9 +655,9 @@ describe("the Drupal adapter: the credential", () => {
         return t(url, req);
       },
     });
-    expect(await reason(w.adapter.draftsReachable())).toContain(
-      "published resource under the unpublished",
-    );
+    const got = await w.adapter.unpublishedReading();
+    expect(got.map((g) => g.state)).toEqual(["unread", "unread"]);
+    expect(got[0]?.reason).toContain("published node under the unpublished");
   });
 });
 

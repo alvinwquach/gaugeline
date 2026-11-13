@@ -175,13 +175,17 @@ export interface DrupalFixtureOptions {
   /** The most resources one answer holds, whatever `page[limit]` asks (Drupal's own maximum is 50). Default: 50. */
   maxLimit?: number;
   /** Add `meta.count` (what jsonapi_extras adds). Default: no, as in Drupal core. */
-  count?: boolean | "wrong" | "moving";
+  count?: boolean | "wrong" | "moving" | "low";
   /** Where the `next` link points: another host. */
   nextHost?: string;
   /** Where the `next` link points: another path. */
   nextPath?: string;
   /** The `next` link carries this offset instead of the right one. */
   nextOffset?: number;
+  /** The `next` link carries this page size instead of the one asked. */
+  nextLimit?: number;
+  /** Every answer says it left resources out (`meta.omitted`, as Drupal does for resources the user may not view). */
+  omitted?: boolean;
   /** The `next` link is present on every page, last one included. */
   nextAlways?: boolean;
   /** Drop this many resources from every page after the offset maths (access-filtered resources). */
@@ -330,20 +334,34 @@ export function drupalTransport(
     const rows = options.omitPerPage ? slice.slice(options.omitPerPage) : slice;
 
     const next = new URL(url.href);
-    next.searchParams.set("page[offset]", String(options.nextOffset ?? offset + size));
-    next.searchParams.set("page[limit]", String(size));
+    next.searchParams.set(
+      "page[offset]",
+      String(options.nextOffset ?? offset + (options.nextLimit ?? size)),
+    );
+    next.searchParams.set("page[limit]", String(options.nextLimit ?? size));
     if (options.nextHost !== undefined) next.host = options.nextHost;
     if (options.nextPath !== undefined) next.pathname = options.nextPath;
     const total =
       options.count === "wrong"
         ? visible.length + 1
-        : options.count === "moving"
-          ? visible.length + n
-          : visible.length;
+        : options.count === "low"
+          ? Math.max(0, visible.length - 1)
+          : options.count === "moving"
+            ? visible.length + n
+            : visible.length;
     return api(200, {
       jsonapi: { version: "1.0" },
       data: rows.map(resource),
-      ...(options.count ? { meta: { count: total } } : {}),
+      ...(options.count || options.omitted
+        ? {
+            meta: {
+              ...(options.count ? { count: total } : {}),
+              ...(options.omitted
+                ? { omitted: { detail: "Some resources have been omitted." } }
+                : {}),
+            },
+          }
+        : {}),
       links: {
         self: { href: url.href },
         ...(hasNext ? { next: { href: next.href } } : {}),
