@@ -25,10 +25,15 @@ export const eventsFire = defineCheck<PageSnapshot>({
       return [];
     }
     const origin = new URL(page.finalUrl).origin;
-    return observedEvents(read).flatMap(({ target, rule, verdict }) => {
+    const unobserved: string[] = [];
+    const findings = observedEvents(read).flatMap(({ target, rule, verdict }) => {
       const what = `"${target.text}"${target.destination ? ` (${shortUrl(target.destination, origin)})` : ""}`;
       let evidence: string;
       if (verdict.state === "ok") return [];
+      if (verdict.state === "unobserved") {
+        unobserved.push(`${what}: ${verdict.reason}`);
+        return [];
+      }
       if (verdict.state === "silent")
         evidence =
           verdict.lateMs === undefined
@@ -48,5 +53,12 @@ export const eventsFire = defineCheck<PageSnapshot>({
         },
       ];
     });
+    // A click that could not be watched is not a pass and not a finding: it is could not check.
+    if (unobserved.length > 0)
+      ctx.couldNotCheck?.(
+        page.finalUrl,
+        `${unobserved.length} of the plan's links could not be observed (${unobserved.slice(0, 3).join("; ")}${unobserved.length > 3 ? "; and more" : ""})`,
+      );
+    return findings;
   },
 });

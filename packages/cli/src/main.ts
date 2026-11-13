@@ -1834,6 +1834,11 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         fetcher,
         registry,
         ...(rendering ? { rendering: rendering.source } : {}),
+        // With a renderer that can click, the plan's links are clicked in the browser (links only, analytics
+        // recorded and never delivered). Without one the click checks say could not check.
+        ...(rendering?.source.renderer?.observer
+          ? { eventObserver: rendering.source.renderer.observer }
+          : {}),
         ...(renewals ? { renewals } : {}),
         ...(handoff ? { handoff } : {}),
         ...(cost ? { cost } : {}),
@@ -1864,7 +1869,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         ...(navRules ? { nav: navRules } : {}),
         ...(staleDates ? { staleDates } : {}),
         ...(tags ? { tags } : {}),
-        // No observer until rendered reads (G39): the click event checks are could not check.
+        // The click event checks are could not check unless --renderer playwright gave the run an observer.
         ...(events ? { events } : {}),
         ...(last?.kind === "ok" ? { previous: last.snapshot } : {}),
         ...(args.since === "last" ? { baselineRequested: true } : {}),

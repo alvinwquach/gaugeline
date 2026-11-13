@@ -1,0 +1,3 @@
+{
+  "/redir": { "status": 302, "location": "https://redirected.example/landing" }
+}

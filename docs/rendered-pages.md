@@ -5,11 +5,12 @@ run: a price filled in by a script, a menu a script builds, the order links get 
 Gaugeline can load the page in a browser **you installed**, read what it did, and hand that to the checks that
 need it. It is off unless you ask for it, and it is read-only: the browser can look, and it cannot send.
 
-**Today.** The renderer is built and tested (row render-01) and `--renderer playwright` turns it on. **Not
-built.** No check reads a rendered page yet: the click observer for your [tracking plan](./guides/click-events.md)
-is the next change, and the layout, contrast and calculator checks follow it. **Not accepted.** A hosted
+**Today.** The renderer is built and tested (row render-01) and `--renderer playwright` turns it on. With it, the
+click checks for your [tracking plan](./guides/click-events.md) click the plan's links in the browser (row
+render-02, below). **Not built.** The layout, contrast and calculator checks. **Not accepted.** A hosted
 renderer, a service that renders the page on someone else's machine and Firecrawl: the owner decided on 13 Nov
-2026 that the only renderer is the browser on your own machine (decision record 0009, `docs/adr/0009-rendered-checks.md` in the repository).
+2026 that the only renderer is the browser on your own machine (decision record 0009,
+`docs/adr/0009-rendered-checks.md` in the repository).
 
 ## Turn it on
 
@@ -55,19 +56,19 @@ Loading a page runs the code of the site and of every third party it loads, so e
 goes through one gate in Gaugeline, never through the browser's own network. The browser's own network is
 pointed at nothing, so a request that skipped the gate would fail instead of leaving.
 
-| The page tries to...                                                   | What happens                                                                                                                                                                                                                                                                                 |
-| ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Send a POST, PUT, PATCH or DELETE, or a preflight, or submit a form    | Stopped and counted. Only `GET` and `HEAD` are ever sent                                                                                                                                                                                                                                     |
-| Reach a private, loopback, link-local or metadata address              | Refused on the address the name resolves to, before a connection opens. `--allow-private` allows only the address you typed                                                                                                                                                                  |
-| Redirect somewhere it should not go                                    | Each hop comes back through the gate and is checked again, so a redirect to a private address is refused                                                                                                                                                                                     |
-| Redirect for ever                                                      | Stopped after 10 redirects                                                                                                                                                                                                                                                                   |
-| Send a hit to an analytics, advertising or session replay tool         | Stopped and recorded if the host or path is on the built-in list, and never sent. The list is not complete: analytics a site runs from its own address under another name may still be requested (as `GET` or `HEAD`), so a rendered run can count as a visit. No setting turns the list off |
-| Open WebRTC or WebTransport                                            | The names are removed, the browser may use UDP only through a proxy that goes nowhere, and a test listens on a UDP port and asserts nothing arrives                                                                                                                                          |
-| Open a WebSocket                                                       | Never connected, and counted                                                                                                                                                                                                                                                                 |
-| Open a window or a dialog, start a download, register a service worker | The window is closed, the dialog dismissed, the rest refused                                                                                                                                                                                                                                 |
-| Use a cookie, storage, a saved login or a permission                   | Every page gets a fresh browser context with none, and nothing is kept                                                                                                                                                                                                                       |
-| Read Gaugeline's keys                                                  | The browser starts with a short list of harmless variables (`PATH`, `HOME`, `LANG` and similar), never a key                                                                                                                                                                                 |
-| Use a `file:`, `javascript:` or other non-web address                  | Refused                                                                                                                                                                                                                                                                                      |
+| The page tries to...                                                   | What happens                                                                                                                                                                                                                                                                                                                 |
+| ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Send a POST, PUT, PATCH or DELETE, or a preflight, or submit a form    | Stopped and counted. Only `GET` and `HEAD` are ever sent                                                                                                                                                                                                                                                                     |
+| Reach a private, loopback, link-local or metadata address              | Refused on the address the name resolves to, before a connection opens. `--allow-private` allows only the address you typed                                                                                                                                                                                                  |
+| Redirect somewhere it should not go                                    | Each hop comes back through the gate and is checked again, so a redirect to a private address is refused                                                                                                                                                                                                                     |
+| Redirect for ever                                                      | Stopped after 10 redirects                                                                                                                                                                                                                                                                                                   |
+| Send a hit to an analytics, advertising or session replay tool         | Stopped and recorded if the host or path is on the built-in list, and never sent. The list is not complete: analytics a site runs from its own address under another name may still be requested (as `GET` or `HEAD`), so a rendered run can count as a visit. No setting turns the list off                                 |
+| Open WebRTC or WebTransport                                            | In the page the names are removed, so a peer connection or a `WebTransport` fails at once. A dedicated worker can still see `WebTransport` (it exists there and fails: the browser's own network goes nowhere). WebRTC is also limited to UDP through that proxy. Tests listen on a UDP port and assert that nothing arrives |
+| Open a WebSocket                                                       | Never connected, and counted                                                                                                                                                                                                                                                                                                 |
+| Open a window or a dialog, start a download, register a service worker | The window is closed, the dialog dismissed, the rest refused                                                                                                                                                                                                                                                                 |
+| Use a cookie, storage, a saved login or a permission                   | Every page gets a fresh browser context with none, and nothing is kept                                                                                                                                                                                                                                                       |
+| Read Gaugeline's keys                                                  | The browser starts with a short list of harmless variables (`PATH`, `HOME`, `LANG` and similar), never a key                                                                                                                                                                                                                 |
+| Use a `file:`, `javascript:` or other non-web address                  | Refused                                                                                                                                                                                                                                                                                                                      |
 
 Gaugeline clicks nothing, types nothing and fills no form. What a page writes (its text, its links, its title)
 is data from the site, never an instruction: it is cleaned and cut like every other page text
@@ -140,6 +141,18 @@ one line after the page loads:
 
 The second line of `text` was not in the HTML the server sent: a script wrote it. The `bytes` of each request
 and of the total are left out here, and the query string of every address is never kept (it can carry a token).
+
+## Clicking the plan's links
+
+With a tracking plan (`gaugeline.events.json`), `--renderer playwright` also lets the click checks run. The
+observer clicks each link the plan lists, once, at a desktop width and again at a phone width, and reads what the
+page reported: pushes to `dataLayer` and the analytics requests the page tried to make, which are recorded and
+never sent. Only links are clicked (never a button, an input or anything in a form), at most 20, and a link to
+another site only when the plan names it by selector, with its navigation cancelled, and a navigation that would
+leave the site (a redirect included) is refused. Every click gets a fresh browser context with the page loaded
+again, so nothing one click stored reaches the next. A click that cannot be watched is could not check. The Tab key is pressed (and
+nothing else is typed) to read the order the keyboard reaches the listed links in. What it reads and how the checks
+judge it: [Click events](./guides/click-events.md).
 
 ## The caps
 

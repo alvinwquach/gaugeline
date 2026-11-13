@@ -194,6 +194,70 @@ describe("click events: edge cases", () => {
     ]);
   });
 
+  it("asks the observer to click links only, and reports the rest as not observed", async () => {
+    let given: string[] = [];
+    const spy: EventObserver = {
+      observe: (input) => {
+        given = input.targets.map((t) => t.text);
+        return Promise.resolve({ clicks: [click([push(50, sent)], "a.track")] });
+      },
+    };
+    const mixed = eventsConfigSchema.parse({
+      events: [
+        { selector: "a.track", event: "menu_click", params: ["link_text", "link_url"] },
+        { selector: "button.buy", event: "buy_click" },
+        { region: "nav", event: "menu_click" },
+      ],
+    });
+    const { p, ctx, unchecked } = ctxFor(
+      `<a class="track" href="/a">A</a><button class="buy">Buy</button><nav><a href="https://other.example/">Elsewhere</a></nav>`,
+      mixed,
+      spy,
+    );
+    await eventsFire.run(p, ctx);
+    expect(given).toEqual(["A"]);
+    expect(unchecked[0]).toMatch(/^2 of the plan's links could not be observed/);
+  });
+
+  it("a link that could not be observed is could not check, never a finding and never a pass", async () => {
+    const { p, ctx, unchecked } = ctxFor(
+      html,
+      config,
+      recordedObserver({
+        clicks: [{ path: "a", pushes: [], blocked: [], unobserved: "it is covered by a banner" }],
+      }),
+    );
+    expect(await eventsFire.run(p, ctx)).toEqual([]);
+    expect(unchecked).toEqual([
+      `1 of the plan's links could not be observed ("A" (/a): it is covered by a banner)`,
+    ]);
+  });
+
+  it("an event the page tried to send to analytics counts as the click's event", async () => {
+    const { p, ctx } = ctxFor(
+      html,
+      config,
+      recordedObserver({
+        clicks: [
+          {
+            path: "a",
+            pushes: [],
+            blocked: ["www.google-analytics.com"],
+            sent: [
+              {
+                atMs: 40,
+                host: "www.google-analytics.com",
+                name: "menu_click",
+                params: { link_text: "A", link_url: "/a" },
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    expect(await eventsFire.run(p, ctx)).toEqual([]);
+  });
+
   it("a link that opens a new tab is still clicked and judged like any other", async () => {
     const { p, ctx } = ctxFor(
       `<a class="track" href="/a" target="_blank">A</a>`,

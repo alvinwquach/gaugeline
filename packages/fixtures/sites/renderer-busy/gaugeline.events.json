@@ -1,0 +1,3 @@
+{
+  "events": [{ "region": "nav", "event": "nav_click", "params": [] }]
+}

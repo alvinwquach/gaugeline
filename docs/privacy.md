@@ -472,8 +472,9 @@ page goes to a Gaugeline service or any other place.
   fetcher uses: a private, loopback, link-local or metadata address is refused unless you typed it and passed
   `--allow-private`, and every redirect is checked again at each hop.
 - **What is never requested.** Anything but `GET` and `HEAD`, a form submission, a WebSocket, WebRTC and
-  WebTransport (they send UDP outside the page's web requests, so the browser is started with WebRTC limited to
-  a proxy that goes nowhere and the names are removed from the page), a window, and a `file:` or other non-web
+  WebTransport (they send UDP outside the page's web requests: the browser is started with WebRTC limited to a
+  proxy that goes nowhere, and the names are removed from the page; a dedicated worker can still see
+  `WebTransport`, where it fails and sends nothing), a window, and a `file:` or other non-web
   address.
 - **Analytics, and what can still reach yours.** A request to a host on a fixed list of analytics,
   advertising and session replay services (Google Analytics and Tag Manager, Meta, LinkedIn, TikTok, Bing,
@@ -484,6 +485,12 @@ page goes to a Gaugeline service or any other place.
   a name not on the list, or a tool not named, is not recognised: the page's own scripts can still make those
   requests to the site, as `GET` or `HEAD`, and a rendered run may then count as a visit. Gaugeline does not
   say a rendered run adds nothing to your numbers; filter its visits out if that matters.
+- **Clicks.** With a tracking plan, the plan's links are clicked, once each, at two widths (links only, never a
+  button, an input or anything in a form). A click is not a request Gaugeline makes: what the page then asks for
+  goes through the same gate, a link to another site is not followed and a navigation that would leave the site
+  (a redirect included) is refused and never asked for, every click gets a fresh browser context with no cookie
+  or storage from an earlier one, and an analytics request is read for its event name and parameters and
+  dropped. A link on your own site that the plan lists is clicked as a `GET` whatever it is called. A page's own script can still send the browser to another address on your site during a click (`location.href = '/x?id=1'`, a meta refresh, a `fetch` with a query): those are plain `GET` requests behind the same gate, no different from the page loading, and Gaugeline does not tell them from the page's own behaviour.
 - **What the browser holds.** A fresh context for every page with no cookie, storage, login or permission, and
   an environment with none of your keys. Nothing is clicked, typed or submitted.
 - **What is kept.** The renderer hands back the address the page ended on, its status, its text and links, and

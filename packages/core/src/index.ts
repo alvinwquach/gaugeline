@@ -552,7 +552,21 @@ export {
   observedEvents,
   recordedObserver,
 } from "./events/observe.js";
+export {
+  DESKTOP_VIEWPORT,
+  MAX_EVENTS_PER_REQUEST,
+  MAX_REQUEST_BODY_CHARS,
+  MAX_TAB_STOPS,
+  PHONE_VIEWPORT,
+  eventsOf,
+  judgeFocusOrder,
+  judgeParity,
+  parseAnalyticsRequest,
+  selectClickable,
+} from "./events/observation.js";
+export type { FocusReport, ParityRow, SkippedTarget } from "./events/observation.js";
 export type {
+  SentEvent,
   ClickTarget,
   ClickVerdict,
   EventObserver,

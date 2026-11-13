@@ -75,3 +75,125 @@ export const readDomExpression = (ask: DomAsk): string => `((ask) => ({
   html: ask.html ? String(document.documentElement.outerHTML).slice(0, ask.maxHtml) : "",
   url: String(location.href),
 }))(${JSON.stringify(ask)})`;
+
+/**
+ * For the click observer. Runs before the page's own scripts, in every frame. It hands what is pushed to
+ * `dataLayer` (a plain object, or the arguments of a `gtag('event', name, {...})` call, kept as a flat object
+ * of text, numbers and booleans), and it cancels the default action of a click on a link to another site: the
+ * page's own click handlers still run and can still report, but the browser does not leave for a site the
+ * plan did not name. `__glMark` is new in every document, so a click that loaded a new page can be told.
+ */
+/** The name the page calls when a click was stopped because it was not on a link. */
+export const REFUSED_BINDING = "__glRefused";
+
+export const OBSERVER_SCRIPT = `(() => {
+  const grab = (x) => {
+    try {
+      let o = x;
+      if (Object.prototype.toString.call(x) === "[object Arguments]" || Array.isArray(x)) {
+        const a = Array.from(x);
+        if (a[0] === "event" && typeof a[1] === "string") {
+          o = Object.assign({ event: a[1] }, typeof a[2] === "object" && a[2] !== null ? a[2] : {});
+        } else return;
+      }
+      if (typeof o !== "object" || o === null) return;
+      const out = {};
+      let n = 0;
+      for (const k of Object.keys(o)) {
+        if (n++ >= 30) break;
+        const v = o[k];
+        if (typeof v === "string") out[k] = v.slice(0, 300);
+        else if (typeof v === "number" || typeof v === "boolean") out[k] = v;
+      }
+      if (typeof window.__glPush === "function") window.__glPush({ t: Date.now(), x: out });
+    } catch (e) { /* a page object that will not read is not an event */ }
+  };
+  const hook = (arr) => {
+    if (!Array.isArray(arr) || arr.__gl) return arr;
+    const push = arr.push;
+    Object.defineProperty(arr, "__gl", { value: true });
+    arr.push = function () {
+      for (const a of arguments) grab(a);
+      return push.apply(this, arguments);
+    };
+    return arr;
+  };
+  let current = hook([]);
+  Object.defineProperty(window, "dataLayer", { configurable: true, get: () => current, set: (v) => { current = hook(v); } });
+  Object.defineProperty(window, "__glMark", { value: Math.random() });
+  // Every click is checked as it happens, whatever was meant: it must land on a link to a web address, not in a
+  // form, and not on or in a button, an input or anything else that acts. If a page swapped the link for
+  // something else under the pointer, or rewrote its address, the click is stopped before any handler sees it.
+  window.addEventListener("click", (e) => {
+    const t = e.target;
+    const a = t && t.closest ? t.closest("a[href]") : null;
+    const acts = t && t.closest ? t.closest("button, input, select, textarea, summary, label, [role=button], [contenteditable]") : null;
+    if (!a || a.closest("form") || acts || !/^https?:$/.test(a.protocol)) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      try { window.${REFUSED_BINDING}("what was clicked was not a link to a web address"); } catch (err) { /* nobody is listening */ }
+      return;
+    }
+    if (a.origin !== location.origin) e.preventDefault();
+  }, true);
+})();`;
+
+export interface TargetInspection {
+  found: boolean;
+  isLink?: boolean;
+  inForm?: boolean;
+  visible?: boolean;
+  /** Its address is http or https now (a script may have changed it). */
+  webAddress?: boolean;
+  /** Its address is on another origin than the page's. */
+  crossSite?: boolean;
+}
+
+/** Evaluated in the page: is this still a visible link that is not in a form? Reads, never acts. */
+export const inspectExpression = (path: string): string => `((path) => {
+  let el;
+  try { el = document.querySelector(path); } catch (e) { return { found: false }; }
+  if (!el) return { found: false };
+  const r = el.getBoundingClientRect();
+  const cs = getComputedStyle(el);
+  return {
+    found: true,
+    isLink: el.tagName === "A" && el.hasAttribute("href"),
+    inForm: !!el.closest("form"),
+    webAddress: /^https?:$/.test(el.protocol),
+    crossSite: el.origin !== location.origin,
+    visible: r.width > 0 && r.height > 0 && cs.visibility !== "hidden" && cs.display !== "none" && !el.closest("[hidden]"),
+  };
+})(${JSON.stringify(path)})`;
+
+/** The name the page calls to hand a captured push to the observer (it survives a navigation: the push is kept outside the page). */
+export const PUSH_BINDING = "__glPush";
+/** This document's mark: gone, or another, when a click loaded a new page. */
+export const READ_MARK = "window.__glMark === undefined ? null : window.__glMark";
+export const READ_NOW = "Date.now()";
+
+/** The index in `paths` of the element that has focus, -1 for another element, -2 for none (the end of the page). */
+export const focusExpression = (paths: readonly string[]): string => `((paths) => {
+  const a = document.activeElement;
+  if (!a || a === document.body || a === document.documentElement) return -2;
+  for (let i = 0; i < paths.length; i++) {
+    try { if (a.matches(paths[i])) return i; } catch (e) { /* a path that will not parse matches nothing */ }
+  }
+  return -1;
+})(${JSON.stringify(paths)})`;
+
+/** The link in the page whose text is exactly this (the consent line the plan names), as a path, or null. */
+export const findLinkByText = (text: string): string => `((want) => {
+  const norm = (s) => String(s || "").replace(/\\s+/g, " ").trim().toLowerCase();
+  const links = Array.from(document.querySelectorAll("a[href]"));
+  const el = links.find((a) => norm(a.innerText || a.getAttribute("aria-label")) === norm(want) && !a.closest("form"));
+  if (!el) return null;
+  const parts = [];
+  let node = el;
+  while (node && node.nodeType === 1 && node !== document.documentElement) {
+    const same = node.parentElement ? Array.from(node.parentElement.children).filter((c) => c.tagName === node.tagName) : [node];
+    parts.unshift(node.tagName.toLowerCase() + ":nth-of-type(" + (same.indexOf(node) + 1) + ")");
+    node = node.parentElement;
+  }
+  return parts.join(" > ");
+})(${JSON.stringify(text)})`;

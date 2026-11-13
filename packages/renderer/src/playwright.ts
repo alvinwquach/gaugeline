@@ -1,13 +1,13 @@
 import { existsSync } from "node:fs";
 import {
   DEFAULT_RENDER_LIMITS,
+  DESKTOP_VIEWPORT,
   createEgressGate,
   emptyBlocked,
   sanitise,
   type BlockReason,
   type CapName,
   type EgressGate,
-  type GateRequest,
   type RenderCouldNotCheck,
   type RenderLimits,
   type RenderRequest,
@@ -24,13 +24,9 @@ import {
   installHint,
   type FindBrowserOptions,
 } from "./browser.js";
-import {
-  FORM_COUNTER,
-  FORM_GUARD,
-  NETWORK_GUARD,
-  readDomExpression,
-  type DomRead,
-} from "./page-script.js";
+import { readDomExpression, type DomRead } from "./page-script.js";
+import { createClickObserver } from "./observer.js";
+import { openPage } from "./session.js";
 
 /**
  * The local Playwright adapter (ADR-0009, accepted in part on 13 Nov 2026): the person's own installed
@@ -62,6 +58,10 @@ export interface PlaywrightRendererOptions {
   chromiumSandbox?: boolean;
   /** How long the network must be quiet after load before the page is read. */
   settleMs?: number;
+  /** The click observation's time limit, in milliseconds. Default 3 minutes. */
+  observerLimitMs?: number;
+  /** How long a page is given to close at that limit before the browser is closed. Default 2 seconds. */
+  observerCloseMs?: number;
   now?: () => number;
 }
 
@@ -81,8 +81,22 @@ const LAUNCH_ENV = [
   "APPDATA",
 ] as const;
 
+/**
+ * Chromium's switches. The memory cap is the ADR's (1 GiB). WebRTC sends UDP outside the HTTP stack, so it may
+ * use UDP only through a proxy, and the proxy goes nowhere (a test launches a browser with exactly these and
+ * listens on a UDP port).
+ */
+export const BROWSER_ARGS: readonly string[] = Object.freeze([
+  "--js-flags=--max-old-space-size=1024",
+  // Measured on Chromium 1243: the forced policy alone stops it in the headless shell and not in the full
+  // browser, the plain policy alone the other way round, so both, with the permission check.
+  "--force-webrtc-ip-handling-policy=disable_non_proxied_udp",
+  "--webrtc-ip-handling-policy=disable_non_proxied_udp",
+  "--enforce-webrtc-ip-permission-check",
+]);
+
 /** Where the browser's own network points: nowhere. Port 9 is "discard", and nothing listens on a closed port. */
-const NO_NETWORK = { server: "http://127.0.0.1:9", bypass: "<-loopback>" } as const;
+export const NO_NETWORK = { server: "http://127.0.0.1:9", bypass: "<-loopback>" } as const;
 
 /** Extra time after the page's own limit before the hang guard gives up on the browser. */
 const HANG_GUARD_MS = 5000;
@@ -187,12 +201,7 @@ export function createPlaywrightRenderer(options: PlaywrightRendererOptions): Re
         chromiumSandbox: options.chromiumSandbox ?? true,
         env: launchEnv(env),
         proxy: { ...NO_NETWORK },
-        args: [
-          "--js-flags=--max-old-space-size=1024",
-          // WebRTC sends UDP outside the HTTP stack: only through a proxy, and the proxy goes nowhere.
-          "--force-webrtc-ip-handling-policy=disable_non_proxied_udp",
-          "--webrtc-ip-handling-policy=disable_non_proxied_udp",
-        ],
+        args: [...BROWSER_ARGS],
         handleSIGINT: false,
         handleSIGTERM: false,
         handleSIGHUP: false,
@@ -204,8 +213,7 @@ export function createPlaywrightRenderer(options: PlaywrightRendererOptions): Re
         `the browser at ${located.path} could not start: ${line}`,
         /sandbox|root/i.test(line)
           ? `Run Gaugeline as an ordinary user, not as root: the browser's own sandbox stays on. If ${BROWSER_PATH_VARIABLE} is not what you meant, unset it.`
-          : "Check that the browser runs on its own (for example `chromium --version`), or point " +
-              `${BROWSER_PATH_VARIABLE} at another one.`,
+          : `Check that the browser runs on its own (for example \`chromium --version\`), or point ${BROWSER_PATH_VARIABLE} at another one.`,
       );
     }
   }
@@ -215,58 +223,12 @@ export function createPlaywrightRenderer(options: PlaywrightRendererOptions): Re
     request: RenderRequest,
     gate: EgressGate,
   ): Promise<RenderResult> {
-    const context = await b.newContext({
-      viewport: request.viewport ?? { width: 1280, height: 800 },
-      serviceWorkers: "block",
-      acceptDownloads: false,
-      ignoreHTTPSErrors: false,
-      locale: "en-US",
-      timezoneId: "UTC",
+    const { context, page, lastActivity } = await openPage(b, {
+      viewport: request.viewport ?? DESKTOP_VIEWPORT,
+      gate,
+      now,
     });
     try {
-      const ref: { page?: Playwright.Page } = {};
-      let lastActivity = now();
-      await context.exposeFunction(FORM_COUNTER, () => gate.note("form"));
-      await context.addInitScript(FORM_GUARD);
-      await context.addInitScript(NETWORK_GUARD);
-      await context.route(/.*/, async (route) => {
-        lastActivity = now();
-        const req = route.request();
-        let frame: GateRequest["frame"] = "popup";
-        try {
-          const f = req.frame();
-          // A request that belongs to no frame of this page is treated like a window's: refused.
-          if (f.page() === ref.page) frame = f === ref.page?.mainFrame() ? "main" : "sub";
-        } catch {
-          frame = "popup";
-        }
-        const answer = await gate.handle({
-          url: req.url(),
-          method: req.method(),
-          kind: req.resourceType(),
-          frame,
-          headers: req.headers(),
-        });
-        lastActivity = now();
-        if (answer.action === "fulfill")
-          await route
-            .fulfill({ status: answer.status, headers: answer.headers, body: answer.body })
-            .catch(() => undefined);
-        else await route.abort("blockedbyclient").catch(() => undefined);
-      });
-      // A WebSocket is opened on the page's side and never connected to a server.
-      await context.routeWebSocket(/.*/, (ws) => {
-        gate.note("websocket");
-        void ws.close({ code: 1008, reason: "blocked" });
-      });
-      const page = await context.newPage();
-      ref.page = page;
-      page.on("popup", (popup) => {
-        gate.note("popup");
-        void popup.close().catch(() => undefined);
-      });
-      page.on("dialog", (dialog) => void dialog.dismiss().catch(() => undefined));
-
       /** Why what the browser ended on is not a page to read, or undefined when it is. */
       const problem = (failure: string | undefined): RenderCouldNotCheck | undefined => {
         const state = gate.state;
@@ -295,7 +257,7 @@ export function createPlaywrightRenderer(options: PlaywrightRendererOptions): Re
         const deadline = now() + limits.ms;
         while (
           failure === undefined &&
-          (now() - lastActivity < settleMs || gate.state.redirectPending) &&
+          (now() - lastActivity() < settleMs || gate.state.redirectPending) &&
           now() < deadline
         )
           await new Promise((r) => setTimeout(r, Math.max(1, Math.min(25, settleMs))));
@@ -356,8 +318,36 @@ export function createPlaywrightRenderer(options: PlaywrightRendererOptions): Re
     }
   }
 
+  /** One more use of the run's page and time caps, or the reason there are none left. */
+  function reserve(count: number): string | undefined {
+    if (closed) return "the renderer was closed";
+    runStart ??= now();
+    if (now() - runStart > limits.runMs)
+      return `the run's time cap of ${Math.round(limits.runMs / 1000)} seconds is used up`;
+    if (pages + count > limits.pages)
+      return `the run's page cap of ${limits.pages} rendered pages is reached`;
+    pages += count;
+    return undefined;
+  }
+
   return {
     name: "playwright",
+    observer: createClickObserver({
+      getBrowser: () => (started ??= start()),
+      transport: options.transport,
+      ...(options.limits ? { limits: options.limits } : {}),
+      now,
+      reserve,
+      abandonBrowser: async () => {
+        const b = browser;
+        browser = undefined;
+        started = undefined;
+        await b?.close().catch(() => undefined);
+      },
+      ...(options.observerLimitMs === undefined ? {} : { limitMs: options.observerLimitMs }),
+      ...(options.observerCloseMs === undefined ? {} : { closeMs: options.observerCloseMs }),
+      ...(options.settleMs === undefined ? {} : { settleMs: options.settleMs }),
+    }),
     async availability() {
       const found = await locate();
       return "kind" in found

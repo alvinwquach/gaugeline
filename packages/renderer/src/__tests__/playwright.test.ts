@@ -44,6 +44,8 @@ interface Scenario {
   dom?: Partial<typeof DOM>;
   /** goto never answers. */
   hang?: boolean;
+  /** Closing a context never returns. */
+  hangClose?: boolean;
   /** evaluate throws. */
   evaluateFails?: boolean;
   fireDialog?: boolean;
@@ -145,7 +147,10 @@ function fakeDriver(scenario: Scenario = {}) {
                 };
                 return Promise.resolve(page);
               },
-              close: () => ((log.contextsClosed += 1), Promise.resolve()),
+              close: () => (
+                (log.contextsClosed += 1),
+                scenario.hangClose ? new Promise<void>(() => undefined) : Promise.resolve()
+              ),
             };
             return Promise.resolve(ctx);
           },
@@ -518,17 +523,78 @@ describe("the Playwright adapter: could-not-check, never a pass", () => {
   });
 });
 
+describe("the Playwright adapter: the click observer's last resort", () => {
+  it("closes the browser when a page will not close at the observer's limit, and starts a new one after", async () => {
+    const { r, log } = renderer(
+      { hang: true, hangClose: true },
+      { observerLimitMs: 30, observerCloseMs: 30 },
+    );
+    const answer = await r.observer?.observe({
+      page: "https://bakery.example/",
+      targets: [
+        {
+          path: "a",
+          rule: 0,
+          text: "A",
+          destination: "https://bakery.example/a",
+          newTab: false,
+        },
+      ],
+      waitMs: 0,
+    });
+    expect(answer).toMatchObject({ unchecked: expect.stringContaining("longer than") });
+    expect(log.browsersClosed).toBe(1);
+    // The next use is a new browser, not a dead one.
+    await r.observer?.observe({
+      page: "https://bakery.example/",
+      targets: [
+        { path: "a", rule: 0, text: "A", destination: "https://bakery.example/a", newTab: false },
+      ],
+      waitMs: 0,
+    });
+    expect(log.launches).toHaveLength(2);
+  });
+});
+
 describe("the Playwright adapter: nothing but the gate answers a request", () => {
-  it("never lets the browser fetch for itself, never installs a browser and never acts on the page", async () => {
-    const { readFileSync, readdirSync } = await import("node:fs");
+  /**
+   * Every source file under packages/renderer/src (the tests aside), comments taken out because they name
+   * what is never used. A scan like this stops a slip and a casual change; it does not stop a maintainer who
+   * means to hide a call (a name built at run time, say). That is review's to catch, and it is the limit of
+   * what a scan can promise: the guarantees that hold against a hostile PAGE are the gate, the guards and the
+   * tests above, not this.
+   */
+  async function sources() {
+    const { readFileSync, readdirSync, statSync } = await import("node:fs");
     const { fileURLToPath } = await import("node:url");
-    const dir = fileURLToPath(new URL("..", import.meta.url));
-    const source = readdirSync(dir)
-      .filter((f) => f.endsWith(".ts"))
-      .map((f) => readFileSync(`${dir}/${f}`, "utf8"))
-      .join("\n")
-      // Comments name these on purpose, to say they are never used.
-      .replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, "");
+    const root = fileURLToPath(new URL("..", import.meta.url));
+    const out: Record<string, string> = {};
+    const walk = (dir: string, prefix: string) => {
+      for (const name of readdirSync(dir)) {
+        const path = `${dir}/${name}`;
+        if (statSync(path).isDirectory()) {
+          if (name !== "__tests__" && name !== "node_modules") walk(path, `${prefix}${name}/`);
+        } else if (/\.tsx?$/.test(name))
+          out[`${prefix}${name}`] = readFileSync(path, "utf8").replace(
+            /\/\*[\s\S]*?\*\/|\/\/.*$/gm,
+            "",
+          );
+      }
+    };
+    walk(root, "");
+    return out;
+  }
+
+  it("scans every file of the package, not only the top folder", async () => {
+    const names = Object.keys(await sources());
+    expect(names).toEqual(
+      expect.arrayContaining(["observer.ts", "session.ts", "playwright.ts", "page-script.ts"]),
+    );
+    expect(names.some((n) => n.includes("__tests__"))).toBe(false);
+  });
+
+  it("never lets the browser fetch for itself, never installs a browser and never carries state", async () => {
+    const source = Object.values(await sources()).join("\n");
     // A route answered by continue, fallback or fetch would let the browser's own network carry the request.
     for (const forbidden of [
       /\.continue\(/,
@@ -536,10 +602,88 @@ describe("the Playwright adapter: nothing but the gate answers a request", () =>
       /\.fetch\(/,
       /\b(?:page|context|browser)\.request\b/,
       /connectToServer/,
-      /\.click\(|\.fill\(|\.type\(|\.press\(|\.check\(|\.selectOption\(|\.dispatchEvent\(|\.setInputFiles\(/,
       /\.install\(|browserType\.install|child_process|execFile|spawn\(/,
       /storageState|httpCredentials|extraHTTPHeaders|setExtraHTTPHeaders|addCookies/,
     ])
       expect(source, String(forbidden)).not.toMatch(forbidden);
+  });
+
+  it("builds no code at run time and imports nothing it does not name", async () => {
+    for (const [file, text] of Object.entries(await sources())) {
+      expect(text, file).not.toMatch(/\beval\(|\bnew\s+Function\b|\bFunction\(/);
+      expect(text, file).not.toMatch(/\b(?:setTimeout|setInterval)\(\s*["'`]/);
+      // The one dynamic import is the driver, by its name.
+      for (const m of text.matchAll(/\bimport\(\s*([^)]*)\)/g))
+        expect(m[1]?.trim(), `${file}: import(...)`).toBe('"playwright-core"');
+      expect(text, file).not.toMatch(/\brequire\(/);
+      // No string put together from pieces to name a method: no `"key" + "board"`, no joined or decoded names.
+      expect(text, file).not.toMatch(
+        /["'`]\s*\+\s*["'`]|\.concat\(|fromCharCode|\batob\(|\.join\(\s*(?:["'`]{2})?\s*\)/,
+      );
+    }
+  });
+
+  it("evaluates only code this package wrote: each call names one of its page-script builders", async () => {
+    const allowed = [
+      /^(?:inspectExpression|findLinkByText|focusExpression|readDomExpression)\(/,
+      /^"Date\.now\(\)"$/,
+    ];
+    for (const [file, text] of Object.entries(await sources())) {
+      for (const m of text.matchAll(/\.evaluate\(\s*("[^"]*"|[A-Za-z_]\w*\()/g)) {
+        const argument = (m[1] ?? "").trim();
+        expect(
+          allowed.some((a) => a.test(argument)),
+          `${file}: evaluate(${argument})`,
+        ).toBe(true);
+      }
+      // Every call is one the pattern above read: none hides behind a variable or an argument of another shape.
+      expect(text.match(/\.evaluate\(/g)?.length ?? 0, `${file}: evaluate calls`).toBe(
+        [...text.matchAll(/\.evaluate\(\s*("[^"]*"|[A-Za-z_]\w*\()/g)].length,
+      );
+      expect(text, file).not.toMatch(
+        /\.(?:evaluateHandle|\$eval|\$\$eval|waitForFunction|addScriptTag|addStyleTag|exposeBinding|setContent)\(/,
+      );
+      // Scripts that run before the page's own are this package's constants.
+      for (const m of text.matchAll(/\.addInitScript\(\s*([^)]*)\)/g))
+        expect(m[1]?.trim(), `${file}: addInitScript`).toMatch(
+          /^(?:FORM_GUARD|NETWORK_GUARD|script)$/,
+        );
+    }
+  });
+
+  it("acts on the page in one file only, with a click on a link and the Tab key and nothing else", async () => {
+    const all = await sources();
+    const acting =
+      /\.click\(|\.dblclick\(|\.tap\(|\.fill\(|\.type\(|\.press\(|\.down\(|\.up\(|\.pressSequentially\(|\.check\(|\.uncheck\(|\.selectOption\(|\.dispatchEvent\(|\.setInputFiles\(|\.hover\(|\.dragTo\(|\.focus\(|\.mouse\b|\.touchscreen\b/;
+    for (const [file, text] of Object.entries(all))
+      if (file !== "observer.ts") expect(text, file).not.toMatch(acting);
+    const observer = all["observer.ts"] ?? "";
+    // The two clicks are on a path that was looked at first: the consent link and a listed link.
+    expect(observer.match(/\.click\(/g)).toHaveLength(2);
+    expect(observer.match(/\.press\(/g)).toEqual([".press("]);
+    expect(observer).toContain('.press("Tab")');
+    expect(observer).not.toMatch(
+      /\.dblclick\(|\.tap\(|\.fill\(|\.type\(|\.down\(|\.up\(|\.pressSequentially\(|\.check\(|\.uncheck\(|\.selectOption\(|\.dispatchEvent\(|\.setInputFiles\(|\.hover\(|\.dragTo\(|\.mouse\b|\.touchscreen\b|\.requestSubmit|\.submit\(/,
+    );
+    // No other key, anywhere, however it is reached: the keyboard may be named only in one call, `.press("Tab")`.
+    for (const [file, text] of Object.entries(all)) {
+      expect(text.match(/\bkeyboard\b/g)?.length ?? 0, `${file}: keyboard`).toBe(
+        text.match(/\bkeyboard\.press\("Tab"\)/g)?.length ?? 0,
+      );
+      expect(text, file).not.toMatch(/\binsertText\b|\bsendCharacter\b/);
+      // Not by bracket access to a method (`keyboard["down"]`, `obj["click"]`).
+      expect(text, file).not.toMatch(
+        /\[\s*["'`](?:press|down|up|type|insertText|sendCharacter|click|dblclick|tap|fill|check|hover|dispatchEvent|submit|requestSubmit)["'`]\s*\]/,
+      );
+      // Not by the protocol underneath: no input event is dispatched, and the one protocol call is Page.enable,
+      // named as a literal.
+      expect(text, file).not.toMatch(/Input\.(?:dispatch|insert|emulate|synthesize)\w*/);
+      expect(text, file).not.toMatch(/\bInput\b\s*\./);
+      for (const m of text.matchAll(/\.send\(\s*([^,)]*)/g))
+        expect(m[1]?.trim(), `${file}: send(...)`).toBe('"Page.enable"');
+    }
+    // Each click comes after looking in the page: the consent link is found by its text, a listed link is inspected.
+    expect(observer.indexOf("findLinkByText(")).toBeLessThan(observer.indexOf(".click("));
+    expect(observer.indexOf("inspectExpression(")).toBeLessThan(observer.lastIndexOf(".click("));
   });
 });

@@ -1,3 +1,4 @@
+import type { EventObserver } from "../events/observe.js";
 import type { UntrustedText } from "../untrusted.js";
 
 /**
@@ -138,6 +139,12 @@ export type RendererAvailability = { kind: "available"; detail: string } | Rende
 
 export interface Renderer {
   readonly name: RendererName;
+  /**
+   * Clicks the tracking plan's links in the browser and reports what the page sent (ADR-0009: links only,
+   * analytics recorded and never delivered). Absent: the renderer cannot click, and the click checks say
+   * could not check.
+   */
+  readonly observer?: EventObserver;
   /** Can this renderer render here? Looks for the driver and the browser and starts neither. */
   availability(): Promise<RendererAvailability>;
   /** Load one page. Never throws for a page that misbehaves: the answer is could-not-check. */
