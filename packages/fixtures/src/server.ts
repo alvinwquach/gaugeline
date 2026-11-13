@@ -95,6 +95,8 @@ export const PLANTED: Readonly<Record<string, string>> = Object.freeze({
   "stripe-restricted": ["rk", "live", "GaugelineFixtureRestricted0"].join("_"),
   "stripe-publishable-test": ["pk", "test", "GaugelineFixtureTestPublic00"].join("_"),
   "stripe-publishable-test-shop": ["pk", "test", "GaugelineFixtureTestShop0K7"].join("_"),
+  "ai-openai-project": ["sk", "proj", "nQvWys81vp7hB1dx8PpD5KHXe3PYiGkPAuNaRL63xYKwzEIn"].join("-"),
+  "ai-groq": ["gsk", "ncIIA3ANxN9K3KSU9Mi4roNL89sM995YTBXaK7JQEVT0mlAmrtVE"].join("_"),
 });
 
 /** Replace {{planted:<name>}} with the invented value of that name. */

@@ -5,6 +5,7 @@ import { accessRoleScope } from "./access-role-scope.js";
 import { aemAuthorLinks } from "./aem-author-links.js";
 import { aiCrawlersBlocked } from "./ai-crawlers-blocked.js";
 import { aiCrawlersIntent } from "./ai-crawlers-intent.js";
+import { aiKeyInJs } from "./ai-key-in-js.js";
 import { angularAnalogEndpointsListed } from "./angular-analog-endpoints-listed.js";
 import { angularDevToolsPublic } from "./angular-dev-tools-public.js";
 import { angularPreviewCanonical } from "./angular-preview-canonical.js";
@@ -257,6 +258,7 @@ export const PAGE_CHECKS = [
   aemAuthorLinks,
   aiCrawlersBlocked,
   aiCrawlersIntent,
+  aiKeyInJs,
   angularAnalogEndpointsListed,
   angularDevToolsPublic,
   angularPreviewCanonical,
