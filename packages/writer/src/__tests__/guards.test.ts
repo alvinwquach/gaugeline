@@ -160,7 +160,7 @@ describe("who may import the writer", () => {
     expect(imports).toEqual(["zod"]);
   });
 
-  it("inside the writer, only the two senders (GitHub, and Gmail for X75) use fetch or a Node HTTP module", () => {
+  it("inside the writer, only the three named senders (GitHub, Gmail, Sanity) use fetch or a Node HTTP module", () => {
     const files = nonTest(join(root, "packages/writer/src"));
     expect(files.length).toBeGreaterThanOrEqual(7);
     const users = files
@@ -170,6 +170,6 @@ describe("who may import the writer", () => {
         ),
       )
       .map((f) => relative(join(root, "packages/writer/src"), f).split("\\").join("/"));
-    expect(users).toEqual(["github/send.ts", "gmail/send.ts"]);
+    expect(users.sort()).toEqual(["github/send.ts", "gmail/send.ts", "sanity/send.ts"]);
   });
 });
