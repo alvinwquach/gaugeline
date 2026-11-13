@@ -34,11 +34,13 @@ publishes, and its receiver answers 401 when the secret is not set.
 
 <!-- source-fixture: webhook-missing-secret-status/fail -->
 
-```sh title=Terminal untested="The command that runs the static checks on a folder arrives with the indexing checks. packages/cli/src/__tests__/source-webhook-docs.test.ts runs the same checks on the same invented folder (packages/fixtures/source/webhook-missing-secret-status/fail) and compares the Output block with what the CLI's own terminal report prints."
+```sh title=Terminal untested="The docs runner points every example at a fixture website, and this command reads a folder. packages/cli/src/__tests__/source-webhook-docs.test.ts runs the same command on the same invented folder (packages/fixtures/source/webhook-missing-secret-status/fail) and compares the Output block with what it prints."
 $ npx gaugeline source ./harbor-lane-taproom
 ```
 
 ```sh title=Output
+Read 1 file in ./harbor-lane-taproom. No request was made and no code was run.
+
 ✗ A missing webhook secret is answered with the wrong status
     app/api/revalidate/route.ts:8: a missing webhook secret is answered with 401.
 · The webhook signature is compared with a plain comparison
@@ -78,11 +80,13 @@ in the call are reported as could not check: Gaugeline has not confirmed what th
 
 <!-- source-fixture: sanity-cdn-tagged-reads/fail -->
 
-```sh title=Terminal untested="The command that runs the static checks on a folder arrives with the indexing checks. packages/cli/src/__tests__/source-webhook-docs.test.ts runs the same checks on the same invented folder (packages/fixtures/source/sanity-cdn-tagged-reads/fail) and compares the Output block with what the CLI's own terminal report prints."
+```sh title=Terminal untested="The docs runner points every example at a fixture website, and this command reads a folder. packages/cli/src/__tests__/source-webhook-docs.test.ts runs the same command on the same invented folder (packages/fixtures/source/sanity-cdn-tagged-reads/fail) and compares the Output block with what it prints."
 $ npx gaugeline source ./harbor-lane-taproom
 ```
 
 ```sh title=Output
+Read 2 files in ./harbor-lane-taproom. No request was made and no code was run.
+
 ✗ The Sanity client reads through the CDN, and the reads are cached by tag
     lib/sanity/client.ts:8: useCdn is true, and reads are cached by tag (app/events/page.tsx).
 
@@ -105,11 +109,13 @@ Bluebell Clinic is an invented clinic whose site shows its opening hours from Sa
 
 <!-- source-fixture: webhook-signature-compared-plainly/fail -->
 
-```sh title=Terminal untested="The command that runs the static checks on a folder arrives with the indexing checks. packages/cli/src/__tests__/source-webhook-docs.test.ts runs the same checks on the same invented folder (packages/fixtures/source/webhook-signature-compared-plainly/fail) and compares the Output block with what the CLI's own terminal report prints."
+```sh title=Terminal untested="The docs runner points every example at a fixture website, and this command reads a folder. packages/cli/src/__tests__/source-webhook-docs.test.ts runs the same command on the same invented folder (packages/fixtures/source/webhook-signature-compared-plainly/fail) and compares the Output block with what it prints."
 $ npx gaugeline source ./bluebell-clinic
 ```
 
 ```sh title=Output
+Read 1 file in ./bluebell-clinic. No request was made and no code was run.
+
 ! The webhook signature is compared with a plain comparison
     app/api/revalidate/route.ts:20: the signature is compared with a plain comparison.
 
@@ -130,11 +136,13 @@ read as a limit on the timestamp is reported as could not check.
 
 <!-- source-fixture: webhook-timestamp-unbounded/fail -->
 
-```sh title=Terminal untested="The command that runs the static checks on a folder arrives with the indexing checks. packages/cli/src/__tests__/source-webhook-docs.test.ts runs the same checks on the same invented folder (packages/fixtures/source/webhook-timestamp-unbounded/fail) and compares the Output block with what the CLI's own terminal report prints."
+```sh title=Terminal untested="The docs runner points every example at a fixture website, and this command reads a folder. packages/cli/src/__tests__/source-webhook-docs.test.ts runs the same command on the same invented folder (packages/fixtures/source/webhook-timestamp-unbounded/fail) and compares the Output block with what it prints."
 $ npx gaugeline source ./bluebell-clinic
 ```
 
 ```sh title=Output
+Read 1 file in ./bluebell-clinic. No request was made and no code was run.
+
 ! The webhook's signed timestamp has no age limit
     app/api/revalidate/route.ts:17: the signed timestamp is read but never compared with the time now.
 
@@ -157,11 +165,13 @@ Fennel Lane Bakery is an invented bakery whose menu is published from Sanity.
 
 <!-- source-fixture: webhook-body-read-unsafely/fail -->
 
-```sh title=Terminal untested="The command that runs the static checks on a folder arrives with the indexing checks. packages/cli/src/__tests__/source-webhook-docs.test.ts runs the same checks on the same invented folder (packages/fixtures/source/webhook-body-read-unsafely/fail) and compares the Output block with what the CLI's own terminal report prints."
+```sh title=Terminal untested="The docs runner points every example at a fixture website, and this command reads a folder. packages/cli/src/__tests__/source-webhook-docs.test.ts runs the same command on the same invented folder (packages/fixtures/source/webhook-body-read-unsafely/fail) and compares the Output block with what it prints."
 $ npx gaugeline source ./fennel-lane-bakery
 ```
 
 ```sh title=Output
+Read 1 file in ./fennel-lane-bakery. No request was made and no code was run.
+
 ! The webhook body is parsed before its signature is checked, or read with no size limit
     app/api/revalidate/route.ts:12: the body is parsed with req.json(), so the signature cannot be checked over the raw body.
 ! The webhook body is parsed before its signature is checked, or read with no size limit
@@ -185,11 +195,13 @@ Marlowe Street Dental is an invented clinic.
 
 <!-- source-fixture: webhook-logs-private-values/fail -->
 
-```sh title=Terminal untested="The command that runs the static checks on a folder arrives with the indexing checks. packages/cli/src/__tests__/source-webhook-docs.test.ts runs the same checks on the same invented folder (packages/fixtures/source/webhook-logs-private-values/fail) and compares the Output block with what the CLI's own terminal report prints."
+```sh title=Terminal untested="The docs runner points every example at a fixture website, and this command reads a folder. packages/cli/src/__tests__/source-webhook-docs.test.ts runs the same command on the same invented folder (packages/fixtures/source/webhook-logs-private-values/fail) and compares the Output block with what it prints."
 $ npx gaugeline source ./marlowe-street-dental
 ```
 
 ```sh title=Output
+Read 1 file in ./marlowe-street-dental. No request was made and no code was run.
+
 ! The webhook receiver writes the body, an id or a secret to its logs
     app/api/revalidate/route.ts:29: a log call includes the request body.
 ! The webhook receiver writes the body, an id or a secret to its logs

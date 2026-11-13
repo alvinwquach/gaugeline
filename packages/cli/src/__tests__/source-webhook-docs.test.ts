@@ -1,15 +1,16 @@
-import { readFileSync } from "node:fs";
+import { cpSync, mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
-import { readLocalSource, runStaticChecks, type RunResult } from "@gaugeline/core";
-import { formatTerminal } from "../reporter.js";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { runSource } from "../source.js";
 
 /**
- * docs/guides/webhook-and-cache-source.md shows what the static checks print for an invented bar's
- * repository. The command that runs them on a folder arrives with the indexing checks, so this test runs
- * the same checks through the core entry point on the same invented folder
- * (packages/fixtures/source/<id>/<kind>) and prints the report with the CLI's own terminal formatter,
- * the way the page's Output block must read. "Passed" lines are left out, as in every docs example.
+ * docs/guides/webhook-and-cache-source.md shows `npx gaugeline source <folder>` and what it prints for
+ * an invented business's repository. The docs runner points every example at a fixture website and this
+ * command reads a folder, so this test copies the invented folder (packages/fixtures/source/<id>/<kind>)
+ * under the name the page uses and runs the command's own code on it. "Passed" lines are left out, as in
+ * every docs example.
  */
 const page = readFileSync(
   fileURLToPath(new URL("../../../../docs/guides/webhook-and-cache-source.md", import.meta.url)),
@@ -34,31 +35,31 @@ describe("docs/guides/webhook-and-cache-source.md", () => {
     ]);
   });
 
+  let base: string;
+  beforeEach(() => {
+    base = realpathSync(mkdtempSync(join(tmpdir(), "gl-source-docs-")));
+  });
+  afterEach(() => {
+    rmSync(base, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+  });
+
   it.each(examples)(
     "prints $id/$kind as the page shows it",
     async ({ id, kind, command, expected }) => {
       const folder = command.replace("$ npx gaugeline source ", "");
-      expect([
-        "./harbor-lane-taproom",
-        "./bluebell-clinic",
-        "./fennel-lane-bakery",
-        "./marlowe-street-dental",
-      ]).toContain(folder);
-      const tree = await readLocalSource(
+      expect(folder).toMatch(/^\.\/[a-z-]+$/);
+      cpSync(
         fileURLToPath(new URL(`../../../fixtures/source/${id}/${kind}`, import.meta.url)),
-        undefined,
-        "./harbor-lane-taproom",
+        join(base, folder),
+        { recursive: true },
       );
-      const r = await runStaticChecks({ tree, now: new Date("2026-11-11T12:00:00Z") });
-      const run: RunResult = {
-        findings: r.findings,
-        passed: r.passed,
-        failed: [],
-        warnings: [],
-        couldNotCheck: r.couldNotCheck,
-        sampled: {},
-      };
-      const printed = formatTerminal({ result: run, color: false })
+      let out = "";
+      await runSource(
+        { folder, json: false, quiet: false },
+        { stdout: { write: (t) => (out += t) }, stderr: { write: () => true } },
+        { cwd: base, now: new Date("2026-11-11T12:00:00Z"), color: false },
+      );
+      const printed = out
         .split("\n")
         .filter((l) => !/^✓ [a-z0-9-]+$/.test(l))
         .join("\n")
