@@ -15,7 +15,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { HELP, parseArgs, serverOptions } from "../cli.js";
 import { MCP_AGENT_ID } from "../policy.js";
 import type { ServerOptions } from "../state.js";
-import { createStreamTraceSink, type TraceSink } from "../trace.js";
+import { DEFAULT_TRACE_BUFFER_BYTES, createStreamTraceSink, type TraceSink } from "../trace.js";
 import { connect, textOf } from "./helpers.js";
 
 const NOW = new Date("2026-11-13T12:00:00.000Z");
@@ -198,6 +198,28 @@ describe("the sink never fails or leaks a call", () => {
       decision: "allowed",
     });
     expect(() => sink.write(rec)).not.toThrow();
+  });
+
+  it("the default cap is 1 MiB: a stream holding exactly that still gets a line, one byte more does not", () => {
+    expect(DEFAULT_TRACE_BUFFER_BYTES).toBe(1024 * 1024);
+    const rec = agentTraceRecord({
+      at: NOW.toISOString(),
+      agentId: MCP_AGENT_ID,
+      tool: "list_checks",
+      inputSha256: null,
+      outputSha256: null,
+      latencyMs: 0,
+      tokens: 0,
+      costMicros: 0,
+      decision: "allowed",
+    });
+    const at = (held: number) => {
+      const sink = createStreamTraceSink({ writableLength: held, write: () => true });
+      sink.write(rec);
+      return sink.stats();
+    };
+    expect(at(1024 * 1024)).toMatchObject({ written: 1, dropped: 0 });
+    expect(at(1024 * 1024 + 1)).toMatchObject({ written: 0, dropped: 1 });
   });
 
   it("a stream that cannot keep up: lines past the byte cap are dropped and counted, never buffered", () => {

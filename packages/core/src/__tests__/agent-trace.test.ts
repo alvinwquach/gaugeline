@@ -77,6 +77,12 @@ describe("traceHash: canonical, redacted, bounded", () => {
     expect(traceHash(Number.NaN)).toBe(traceHash(null));
   });
 
+  it("the cap is 100,000 characters: a string of exactly that length is hashed by its content, one more is not", () => {
+    expect(MAX_TRACE_STRING).toBe(100_000);
+    expect(traceHash("x".repeat(100_000))).not.toBe(traceHash("y".repeat(100_000)));
+    expect(traceHash("x".repeat(100_001))).toBe(traceHash("y".repeat(100_001)));
+  });
+
   it("a string past the cap is hashed as its length only, never read whole", () => {
     const huge = "x".repeat(MAX_TRACE_STRING + 1);
     expect(traceHash(huge)).toBe(traceHash("y".repeat(MAX_TRACE_STRING + 1)));

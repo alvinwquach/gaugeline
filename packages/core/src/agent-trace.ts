@@ -1,8 +1,12 @@
 /**
- * The agent trace record (AG-05, ADR-0014 "every agent call is traced"): the one shape every trace sink
- * writes (the MCP server's local JSONL file; the hosted database's `agent_trace` has the same fields as
- * columns, migration 0014). It holds ids, SHA-256 hashes, integers and closed-list codes, never the input or
- * the output of a call.
+ * The agent trace record (AG-05, ADR-0014 "every agent call is traced"): the one shape the MCP server's trace
+ * writes (one JSON line per tool call on stderr, packages/mcp/src/trace.ts). The hosted database's
+ * `agent_trace` (migration 0015) holds the same facts as columns, but the two are not identical:
+ *   both:          agent id, tool, input and output SHA-256, latency (ms), tokens, cost (micro-units),
+ *                  decision, deny reason, approver id, draft id, time
+ *   this record:   `v` (the shape's version) and `error` (an allowed call that ended in an error); no org
+ *   database row:  `org_id` and its own `id`; no `v` and no `error` (a call that raises there is undone)
+ * It holds ids, SHA-256 hashes, integers and closed-list codes, never the input or the output of a call.
  *
  * Pure and deterministic: no I/O, no model call, no clock (the time is handed in). Hashing streams a
  * canonical form into SHA-256 without building it as one string, after redacting secrets and personal data
