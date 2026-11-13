@@ -129,6 +129,10 @@ export const UNLISTED: NavPage[] = [
     title: "Versions, settings and licences, read from your code",
   },
   {
+    slug: "guides/purges-and-config-source",
+    title: "Wasted cache clears and a client in the config, read from your code",
+  },
+  {
     slug: "guides/image-optimizers",
     title: "Open image optimizers: who can use your site to resize images",
   },

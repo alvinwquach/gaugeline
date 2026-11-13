@@ -3,6 +3,7 @@ import {
   envReads,
   hasDirective,
   importsOf,
+  inFunctionBody,
   isCmsTokenName,
   isSourcePath,
   depthMap,
@@ -49,6 +50,25 @@ describe("small helpers", () => {
   it("lineOf is 1-based", () => {
     expect(lineOf("a\nb\nc", 0)).toBe(1);
     expect(lineOf("a\nb\nc", 4)).toBe(3);
+  });
+
+  it("inFunctionBody tells a function body from the top level and from plain blocks", () => {
+    const at = (code: string): boolean => inFunctionBody(scrub(code, true), code.indexOf("HERE"));
+    expect(at("const a = HERE;")).toBe(false);
+    expect(at("export default { a: HERE };")).toBe(false);
+    expect(at("if (x) { HERE }")).toBe(false);
+    expect(at("try { HERE } catch {}")).toBe(false);
+    expect(at("for (const a of b) { HERE }")).toBe(false);
+    expect(at("function f() { HERE }")).toBe(true);
+    expect(at("const f = () => { HERE };")).toBe(true);
+    expect(at("const f = async (a) => { if (a) { HERE } };")).toBe(true);
+    expect(at("export default { async redirects() { HERE } };")).toBe(true);
+    expect(at("export default { async redirects(): Promise<string[]> { HERE } };")).toBe(true);
+    expect(at("const f = () => HERE;")).toBe(true);
+    expect(at("const f = async (a) => (await HERE);")).toBe(true);
+    expect(at("const a = b ? c => 1 : HERE;")).toBe(false);
+    expect(at("class A { m() { HERE } }")).toBe(true);
+    expect(at('const s = "{ not a block"; HERE')).toBe(false);
   });
 
   it("matchingBack finds the bracket that opens a block", () => {

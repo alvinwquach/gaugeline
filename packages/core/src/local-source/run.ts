@@ -23,6 +23,7 @@ import { webhookMissingSecretStatus } from "../checks/static/webhook-missing-sec
 import { CheckRegistry, type Check } from "../model.js";
 import { buildResult, type Result } from "../result.js";
 import { runChecks } from "../run.js";
+import { cmsClientInFrameworkConfig } from "../checks/static/cms-client-in-framework-config.js";
 import { cmsTokenInClientCode } from "../checks/static/cms-token-in-client-code.js";
 import { formFailureShowsSuccess } from "../checks/static/form-failure-shows-success.js";
 import { formPostUnguarded } from "../checks/static/form-post-unguarded.js";
@@ -30,6 +31,7 @@ import { formValuesInLogs } from "../checks/static/form-values-in-logs.js";
 import { personalDataInAnalytics } from "../checks/static/personal-data-in-analytics.js";
 import { tokenRequiredAtImport } from "../checks/static/token-required-at-import.js";
 import { useServerExportsNotAsync } from "../checks/static/use-server-exports-not-async.js";
+import { webhookPurgesDraftIds } from "../checks/static/webhook-purges-draft-ids.js";
 import { webhookUrlHardcoded } from "../checks/static/webhook-url-hardcoded.js";
 import type { SkipReason, SourceTree } from "./read.js";
 
@@ -102,6 +104,8 @@ export const STATIC_CHECKS: readonly Check<LocalSourceInput>[] = [
   a11ySpecExpectsViolations,
   starterLicenceNoticeMissing,
   nextSanityRemovedApi,
+  webhookPurgesDraftIds,
+  cmsClientInFrameworkConfig,
 ];
 
 export function createStaticRegistry(): CheckRegistry {
