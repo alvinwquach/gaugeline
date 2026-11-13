@@ -229,6 +229,7 @@ import { staticSearchIndexHidden } from "./static-search-index-hidden.js";
 import { stegaLeak } from "./stega-leak.js";
 import { stripeTestMode } from "./stripe-test-mode.js";
 import { structuredDuplicate } from "./structured-duplicate.js";
+import { studioResponseCacheable } from "./studio-response-cacheable.js";
 import { sveltekitDataAsPage } from "./sveltekit-data-as-page.js";
 import { sveltekitDataUnshown } from "./sveltekit-data-unshown.js";
 import { sveltekitDevServerLive } from "./sveltekit-dev-server-live.js";
@@ -476,6 +477,7 @@ export const PAGE_CHECKS = [
   stegaLeak,
   stripeTestMode,
   structuredDuplicate,
+  studioResponseCacheable,
   sveltekitDataAsPage,
   sveltekitDataUnshown,
   sveltekitDevServerLive,

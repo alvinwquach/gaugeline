@@ -509,6 +509,8 @@ export { staleDatesConfigSchema } from "./stale-dates/config.js";
 export type { StaleDatesConfig } from "./stale-dates/config.js";
 export { hiddenConfigSchema, isHidden, matchesGlob, overdue } from "./hidden.js";
 export type { HiddenConfig, HiddenSection } from "./hidden.js";
+export { studioConfigSchema } from "./studio.js";
+export type { StudioConfig } from "./studio.js";
 export { eventRuleSchema, eventsConfigSchema, REGIONS } from "./events/types.js";
 export type { EventRule, EventsConfig, Region } from "./events/types.js";
 export {

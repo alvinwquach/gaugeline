@@ -20,6 +20,7 @@ import type { Backups } from "./backups/reader.js";
 import type { Libraries } from "./libraries/reader.js";
 import type { WordPress } from "./wordpress/reader.js";
 import type { HiddenConfig } from "./hidden.js";
+import type { StudioConfig } from "./studio.js";
 import type { ImageSettings } from "./images/config.js";
 import type { NavRules } from "./nav/read-regions.js";
 import type { ContentNow, PagesConfig } from "./snapshot/compare.js";
@@ -168,6 +169,8 @@ export interface CheckContext {
   baselineRequested?: boolean;
   /** Sections hidden until launch (gaugeline.hidden.json). */
   hidden?: HiddenConfig;
+  /** The editor studio's route, named by the owner (gaugeline.studio.json). Absent: studio-response-cacheable asks nothing. */
+  studio?: StudioConfig;
   /** Where the menus are and which footer links are required (gaugeline.nav.json). */
   navRules?: NavRules;
   /** The out-of-date copy settings (gaugeline.stale-dates.json): grace days, ignored sentences, historic paths. */

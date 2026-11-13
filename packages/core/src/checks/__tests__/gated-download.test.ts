@@ -310,6 +310,7 @@ describe("gated-download-open: a probing check", () => {
       "not-found-200",
       "nuxt-devtools-public",
       "nuxt-preview-public",
+      "studio-response-cacheable",
     ]);
     expect(PAGE_CHECKS.some((c) => c.id === "gated-download-open")).toBe(true);
     for (const consent of [false, true]) {

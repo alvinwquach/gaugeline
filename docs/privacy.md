@@ -193,6 +193,21 @@ route is asked only if you wrote it.
 - It goes through the same fetcher as every other request, so a private address is refused unless
   `--allow-private` is set. Never a `POST`.
 
+### The editor studio (a probing check)
+
+With `--owner-consent` (or a `gaugeline.consent.json`) **and** a `gaugeline.studio.json` that names the studio's
+route, the `studio-response-cacheable` check asks for that route, to see whether its answer says it must not
+be stored ([Is the editor studio cached?](guides/studio-caching.md)). **Run it only on sites you own or have
+permission to test.** Gaugeline never picks a route of its own: it will not ask for `/studio` unless you
+wrote it.
+
+- One `GET` per route, once per run, at most 4 (redirects are followed, as a browser would). No cookie, no
+  `Authorization` header, no query.
+- At most 4 KiB of each answer are read, only for the status and the `Cache-Control` header; the body is not
+  kept or printed, and a header's value is never printed.
+- It goes through the same fetcher as every other request, so a private address is refused unless
+  `--allow-private` is set. Never a `POST`.
+
 ### Image optimizers (a probing check)
 
 With `--owner-consent` (or a `gaugeline.consent.json`) **and** an `imageOptimizerProbeUrl` in

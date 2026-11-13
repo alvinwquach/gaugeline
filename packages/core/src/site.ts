@@ -36,6 +36,7 @@ import type { Backups } from "./backups/reader.js";
 import type { Libraries } from "./libraries/reader.js";
 import type { WordPress } from "./wordpress/reader.js";
 import type { HiddenConfig } from "./hidden.js";
+import type { StudioConfig } from "./studio.js";
 import { lazyEvents, type EventObserver } from "./events/observe.js";
 import type { EventsConfig } from "./events/types.js";
 import type { ImageSettings } from "./images/config.js";
@@ -148,6 +149,8 @@ export interface SiteCheckOptions {
   wordpress?: WordPress;
   /** Sections hidden until launch. */
   hidden?: HiddenConfig;
+  /** The editor studio's route (gaugeline.studio.json). */
+  studio?: StudioConfig;
   /** Where the menus are and which footer links are required (gaugeline.nav.json). */
   nav?: NavRules;
   /** The out-of-date copy settings (gaugeline.stale-dates.json). */
@@ -348,6 +351,7 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
       ...(opts.libraries ? { libraries: opts.libraries } : {}),
       ...(opts.wordpress ? { wordpress: opts.wordpress } : {}),
       ...(opts.hidden ? { hidden: opts.hidden } : {}),
+      ...(opts.studio ? { studio: opts.studio } : {}),
       ...(opts.nav ? { navRules: opts.nav } : {}),
       ...(opts.staleDates ? { staleDates: opts.staleDates } : {}),
       ...(container && tagRules ? { tagContainer: container, tagRules } : {}),
