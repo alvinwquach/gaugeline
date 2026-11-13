@@ -236,7 +236,7 @@ export const HELP: Record<string, string> = {
     footer: "Exit codes: 0 ran, 2 could not run",
   }),
   changes: renderHelp(FLAGS, "changes", {
-    usage: "gaugeline changes <site> [--since <date|run-id>] [--before-after] [options]",
+    usage: "gaugeline changes <site> [--since <date|run-id>] [--before-after]",
     summary: [
       "For each finding that is new since the run before (or since a date or run id),",
       "show what changed on the page and what the records say changed it: a content",

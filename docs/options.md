@@ -576,7 +576,7 @@ with a Formspree form: [gaugeline init](guides/init.md).
 `gaugeline changes --help` prints:
 
 ```text title=Output
-Usage: gaugeline changes <site> [--since <date|run-id>] [--before-after] [options]
+Usage: gaugeline changes <site> [--since <date|run-id>] [--before-after]
 
 For each finding that is new since the run before (or since a date or run id),
 show what changed on the page and what the records say changed it: a content
