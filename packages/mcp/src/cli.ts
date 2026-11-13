@@ -7,6 +7,7 @@ import { DEFAULT_CALLS_PER_MINUTE, DEFAULT_COST_CEILING_MICROS, denyLine } from 
 import { TOOLS } from "./registry.js";
 import { SERVER_VERSION, createGaugelineServer } from "./server.js";
 import { createState, type ServerOptions } from "./state.js";
+import { createStreamTraceSink } from "./trace.js";
 
 export const HELP = `gaugeline-mcp: Gaugeline as an MCP server. Read-only: it never writes, publishes or changes a site.
 
@@ -39,6 +40,8 @@ Options:
   --calls-per-minute <n>  calls allowed per minute, all tools together (default 120; 0 refuses every call)
   --cost-ceiling-micros <n>
                           cost allowed per UTC day, in micro-units (default 1000000). Every tool costs 0 today.
+  --trace                 write one JSON line per tool call to stderr (the tool, the decision, hashes, latency;
+                          never the arguments or the page). Off by default.
   --help, --version
 
 The token for HTTP comes from the environment (GAUGELINE_MCP_TOKEN), never from the command line. Over HTTP a token is
@@ -69,6 +72,7 @@ export interface Parsed {
   allowedTools: string[] | undefined;
   callsPerMinute: number;
   costCeilingMicros: number;
+  trace: boolean;
   help: boolean;
   version: boolean;
 }
@@ -90,6 +94,7 @@ export function parseArgs(argv: string[], cwd: string): Parsed {
     allowedTools: undefined,
     callsPerMinute: DEFAULT_CALLS_PER_MINUTE,
     costCeilingMicros: DEFAULT_COST_CEILING_MICROS,
+    trace: false,
     help: false,
     version: false,
   };
@@ -136,6 +141,7 @@ export function parseArgs(argv: string[], cwd: string): Parsed {
     } else if (a === "--calls-per-minute") out.callsPerMinute = whole(a, value(), 10_000);
     else if (a === "--cost-ceiling-micros")
       out.costCeilingMicros = whole(a, value(), 1_000_000_000_000);
+    else if (a === "--trace") out.trace = true;
     else if (a === "--help" || a === "-h") out.help = true;
     else if (a === "--version" || a === "-v") out.version = true;
     else throw new Error(`Unknown option ${a}. See --help.`);
@@ -202,6 +208,7 @@ export function serverOptions(args: Parsed, io: Pick<Io, "env" | "stderr">): Ser
     costCeilingMicros: args.costCeilingMicros,
     env: io.env,
     onDeny: (e: Parameters<typeof denyLine>[0]) => io.stderr.write(denyLine(e)),
+    ...(args.trace ? { trace: createStreamTraceSink(io.stderr) } : {}),
     state: createState(),
   };
 }

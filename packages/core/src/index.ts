@@ -1835,5 +1835,14 @@ export type {
   AgentPolicyConfig,
   AgentRule,
 } from "./agent-policy.js";
+export {
+  AGENT_TRACE_DECISIONS,
+  MAX_TRACE_STRING,
+  agentTraceRecord,
+  redactForTrace,
+  traceHash,
+  traceLine,
+} from "./agent-trace.js";
+export type { AgentTraceDecision, AgentTraceInput, AgentTraceRecord } from "./agent-trace.js";
 export * from "./fixes/index.js";
 export * from "./approval-receipts/index.js";

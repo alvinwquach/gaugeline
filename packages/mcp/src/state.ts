@@ -19,6 +19,7 @@ import {
   normaliseHostPort,
 } from "./net-guard.js";
 import { ToolError } from "./errors.js";
+import type { TraceSink } from "./trace.js";
 
 /** What the server needs from whoever starts it. None of it can be changed by a tool call. */
 export const DEFAULT_CALL_MS = 120_000;
@@ -72,6 +73,8 @@ export interface ServerOptions {
    * only (cli.ts). Without it list_pending_approvals and read_run_history are not offered. Never a tool argument.
    */
   hosted?: { base: string; token: string };
+  /** --trace: where one line per tool call goes (AG-05; stderr from the command line). Absent: no trace (the default). */
+  trace?: TraceSink;
   /** Shared by every server made from the same options (the HTTP transport makes one per request). */
   state?: ServerState;
 }
