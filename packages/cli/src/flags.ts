@@ -486,7 +486,10 @@ export const FLAGS: readonly FlagDef[] = Object.freeze<FlagDef[]>([
     name: "force",
     type: "boolean",
     description:
-      "Let --annotate (plan), --page, --save (query), --out (brief, evals), handoff or audit replace files, never a folder",
+      "Let --annotate (plan), --page, --save (query), --out (brief), handoff or audit replace files, never a folder or link",
+    commandDescriptions: {
+      evals: "Replace a report that is already there; never a folder or a link",
+    },
     since: "0.2.0",
     commands: ["plan", "query", "brief", "handoff", "audit", "init", "evals"],
   },
@@ -603,7 +606,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze<FlagDef[]>([
     name: "out",
     type: "string",
     description:
-      "snapshot: the file (default before.json). brief, evals: the file. query --page, handoff, audit: the folder",
+      "snapshot: the file (default before.json). query --page: the folder. brief: the file. handoff, audit: the folder",
     commandDescriptions: {
       propose: "The proposals file (default gaugeline.proposals.json)",
       evals:

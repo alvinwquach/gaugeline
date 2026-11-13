@@ -842,9 +842,8 @@ case is not caught. There is no live-model mode: a model's opinion never
 counts as a pass.
 
 Options:
-      --force            Let --annotate (plan), --page, --save (query), --out
-                         (brief, evals), handoff or audit replace files, never a
-                         folder
+      --force            Replace a report that is already there; never a folder
+                         or a link
       --out <value>      The JSON report's file (default gaugeline-evals.json),
                          in this folder or one inside it
       --agent <value>    evals: run just this agent's eval set, by id (an agent

@@ -435,7 +435,7 @@ describe("gaugeline evals --help and docs/options.md list the same flags", () =>
       );
     }
     // The table's words for the flags that name evals say so.
-    for (const name of ["agent", "out", "force"])
+    for (const name of ["agent"])
       expect(
         options.split("\n").find((l) => l.startsWith(`| \`--${name}`)),
         name,
