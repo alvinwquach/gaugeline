@@ -17,7 +17,8 @@ export const eventsFire = defineCheck<PageSnapshot>({
   fix: "Restore the click handler or tag for that element, and fill every parameter the plan names (for a menu: link text, destination and parent menu).",
   tech: "Each element a plan line selects (a CSS selector, or every link in nav, header, footer or main; at most 20) is clicked in the rendered page with analytics requests intercepted and never delivered, and dataLayer pushes are read for 1500 ms. One push with the event name and every listed parameter filled passes. Needs a rendered read (G39): until then it is could not check",
   async run(page, ctx) {
-    if (!ctx.events) return [];
+    // A plan with only attribute rules has no click to wait for.
+    if (!ctx.events || ctx.eventsConfig?.events.length === 0) return [];
     const read = await ctx.events();
     if ("unchecked" in read.result) {
       ctx.couldNotCheck?.(page.finalUrl, read.result.unchecked);

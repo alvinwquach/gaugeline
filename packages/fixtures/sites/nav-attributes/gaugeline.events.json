@@ -1,0 +1,6 @@
+{
+  "attributes": [
+    { "region": "nav", "require": ["data-track"] },
+    { "selector": "a.book-now", "require": ["data-track", "data-location"] }
+  ]
+}

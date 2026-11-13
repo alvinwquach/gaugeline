@@ -76,7 +76,7 @@ function cssPath($: CheerioAPI, el: DomElement): string {
   return parts.join(" > ");
 }
 
-function regionOf($: CheerioAPI, el: DomElement): Region {
+export function regionOf($: CheerioAPI, el: DomElement): Region {
   if ($(el).closest("nav").length > 0) return "nav";
   if ($(el).closest("header").length > 0) return "header";
   if ($(el).closest("footer").length > 0) return "footer";

@@ -308,6 +308,7 @@ describe("runner: unit", () => {
       "temp-host-canonical",
       "temp-host-links",
       "thin-html",
+      "tracking-attributes-missing",
       "viewport",
       "well-known-invalid",
       "zero-width-in-text",
@@ -568,6 +569,7 @@ describe("runner: edge cases", () => {
       "tel-format",
       "temp-host-canonical",
       "temp-host-links",
+      "tracking-attributes-missing",
       "well-known-invalid",
       "zero-width-in-text",
     ]);
