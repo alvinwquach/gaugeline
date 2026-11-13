@@ -244,7 +244,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze<FlagDef[]>([
     name: "before-after",
     type: "boolean",
     description:
-      "changes: a before-and-after report of two saved runs: what was fixed, what is new and what is still there (--since names the before run; the default is the run before the latest)",
+      "Print two saved runs side by side: fixed, new and still there (--since names the before run)",
     since: "0.2.0",
     commands: ["changes"],
   },

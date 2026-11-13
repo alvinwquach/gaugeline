@@ -594,10 +594,8 @@ Options:
       --json             Print the result as JSON on stdout, and nothing else
       --since <value>    Findings that appeared after this date (2026-11-01) or
                          run id (r-20261101T100000Z)
-      --before-after     changes: a before-and-after report of two saved runs:
-                         what was fixed, what is new and what is still there
-                         (--since names the before run; the default is the run
-                         before the latest)
+      --before-after     Print two saved runs side by side: fixed, new and still
+                         there (--since names the before run)
       --quiet            Print only results and errors
       --verbose          Show each request, and technical detail when something
                          goes wrong
