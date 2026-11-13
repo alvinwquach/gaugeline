@@ -78,6 +78,7 @@ const FIXTURES = [
   "error-pages",
   "noindex-header-missing",
   "ai-directives",
+  "agent-bait",
   "studio-cacheable",
   "ai-key-in-js",
   "ai-widgets",
