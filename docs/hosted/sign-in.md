@@ -243,6 +243,21 @@ $ pnpm exec vitest run apps/hosted/app/__tests__/supabase-auth.test.ts
       Tests  33 passed (33)
 ```
 
+A second test runs the whole sign-in against a local Supabase Auth: people invited into Northgate and
+Brightfield ask for a link, the link is read from the local mail catcher, and the pages they then see are
+decided by the real policies (a member sees Northgate's sites, the bar's manager sees the bar only, an
+owner at Brightfield sees none of Northgate's). An address that is not invited gets the same page and no
+mail, a link works once, a forged, expired or service-role token is refused, and after signing out Supabase
+Auth itself refuses the old token. It runs when `GAUGELINE_SUPABASE_LOCAL_URL` points at a local stack (the
+`supabase-local` CI job starts one with the Supabase CLI on pushes to main; no account is involved):
+
+```text
+$ pnpm exec vitest run apps/hosted/app/__tests__/supabase-local.test.ts
+
+ Test Files  1 passed (1)
+      Tests  5 passed (5)
+```
+
 What the owner creates (none of this exists yet; nothing in this repository creates it):
 
 1. A Supabase project on a paid plan, and its Postgres.

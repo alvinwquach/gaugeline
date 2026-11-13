@@ -132,6 +132,66 @@ jobs:
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm hosted:e2e
 
+  supabase-local:
+    # The Supabase Auth adapter end to end (A-01): the local Supabase stack from the Supabase CLI (a set of
+    # containers on this runner: no account, no project, no key of anyone's), real sign-in links read from
+    # its mail catcher, and the app's row-level security policies on the Postgres service below. The stack's
+    # keys are its own throwaway local ones, printed by `supabase status`; nothing secret is read.
+    # Not a required check. Main and the Release pull request only (CI diet): an ordinary pull request does
+    # not run this job, like docs-examples.
+    if: (github.event_name != 'pull_request' || github.event.pull_request.draft == false) && (github.event_name == 'push' || github.head_ref == 'changeset-release/main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        # The app's own tables, as in hosted-db (by major-version tag; see the note there).
+        image: postgres:16
+        env:
+          # A throwaway server inside the job, reachable only from it: not a secret.
+          POSTGRES_PASSWORD: gaugeline-test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      GAUGELINE_TEST_DATABASE_URL: postgres://postgres:gaugeline-test@127.0.0.1:5432/postgres
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # The Supabase CLI at an exact version, in a folder of the runner's own (not the checkout): Auth, its
+      # API gateway, the mail catcher and Supabase's Postgres; the services the test does not use are left out.
+      - name: Start the local Supabase stack
+        working-directory: ${{ runner.temp }}
+        run: |
+          npx --yes supabase@3.1.0 init --force
+          npx --yes supabase@3.1.0 start -x realtime,storage-api,imgproxy,postgres-meta,studio,edge-runtime,logflare,vector,supavisor,postgrest
+      - name: Hand the stack's local addresses and keys to the test
+        working-directory: ${{ runner.temp }}
+        run: |
+          npx --yes supabase@3.1.0 status -o env > sb.env
+          set -a; . ./sb.env; set +a
+          {
+            echo "GAUGELINE_SUPABASE_LOCAL_URL=$API_URL"
+            echo "GAUGELINE_SUPABASE_LOCAL_ANON_KEY=$ANON_KEY"
+            echo "GAUGELINE_SUPABASE_LOCAL_JWT_SECRET=$JWT_SECRET"
+            echo "GAUGELINE_SUPABASE_LOCAL_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+            echo "GAUGELINE_SUPABASE_LOCAL_MAIL_URL=${MAILPIT_URL:-$INBUCKET_URL}"
+            echo "GAUGELINE_SUPABASE_LOCAL_JWKS=$(curl -fsS "$API_URL/auth/v1/.well-known/jwks.json" -H "apikey: $ANON_KEY" || true)"
+          } >> "$GITHUB_ENV"
+      - run: pnpm exec vitest run apps/hosted/app/__tests__/supabase-local.test.ts
+      - name: Stop the local Supabase stack
+        if: always()
+        working-directory: ${{ runner.temp }}
+        run: npx --yes supabase@3.1.0 stop --no-backup
+
   docs-examples:
     # Runs every "$ npx gaugeline" example in the docs against its fixture and compares the output.
     # A draft pull request runs no CI; marking it ready starts it (ready_for_review). Other events are unaffected.

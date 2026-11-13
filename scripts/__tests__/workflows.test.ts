@@ -164,9 +164,9 @@ describe("faster pull request runs", () => {
     });
   });
 
-  it("build-heavy jobs (docs examples, pack and smoke) run on pushes to main and the Release pull request only", () => {
+  it("build-heavy jobs (docs examples, pack and smoke, the local Supabase stack) run on pushes to main and the Release pull request only", () => {
     const ci = parse(read("ci.yml")) as { jobs: Record<string, { if?: string }> };
-    for (const job of ["docs-examples", "pack"]) {
+    for (const job of ["docs-examples", "pack", "supabase-local"]) {
       const cond = ci.jobs[job]?.if ?? "";
       expect(cond, job).toContain("github.event_name == 'push'");
       expect(cond, job).toContain("github.head_ref == 'changeset-release/main'");
