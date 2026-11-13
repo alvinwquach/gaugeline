@@ -152,6 +152,7 @@ export const UNLISTED: NavPage[] = [
   { slug: "connectors/listings", title: "Listings off the site" },
   { slug: "checks/documents-agree", title: "Documents agree with the site" },
   { slug: "checks/tokens-in-source", title: "Tokens and webhook addresses in your source" },
+  { slug: "checks/personal-data-in-source", title: "Visitors' details in analytics and logs" },
   { slug: "connectors/postgres", title: "A database as a source: Postgres and Supabase" },
   { slug: "sources/shopify", title: "Shopify as a price source" },
   { slug: "sources/square", title: "Square as a price source" },
