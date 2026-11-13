@@ -239,6 +239,8 @@ export type ParsedArgs =
       address: string;
       /** --since as typed: a date or a run id. Checked when the command runs. */
       since?: string;
+      /** --before-after: the two-run report instead of the findings that are new. */
+      beforeAfter: boolean;
       json: boolean;
       verbose: boolean;
       quiet: boolean;
@@ -1569,6 +1571,7 @@ export function parseCliArgs(
       kind: "changes",
       address: site.url.href,
       ...(typeof values.since === "string" ? { since: values.since } : {}),
+      beforeAfter: values["before-after"] === true,
       json: values.json === true,
       verbose,
       quiet: values.quiet === true,

@@ -1163,6 +1163,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           {
             address: args.address,
             ...(args.since ? { since: args.since } : {}),
+            beforeAfter: args.beforeAfter,
             json: args.json,
             quiet: args.quiet,
           },

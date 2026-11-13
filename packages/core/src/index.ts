@@ -1777,6 +1777,8 @@ export {
 } from "./changes/history.js";
 export type { Appearance, Since } from "./changes/history.js";
 export { attribute } from "./changes/attribute.js";
+export { compareRuns, formatBeforeAfter } from "./changes/compare.js";
+export type { BeforeAfter, BeforeAfterResult, RunRef } from "./changes/compare.js";
 export {
   buildChanges,
   describe as describeChange,
