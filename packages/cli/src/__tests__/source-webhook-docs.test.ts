@@ -47,8 +47,12 @@ describe("docs/guides/webhook-and-cache-source.md", () => {
   it.each(examples)(
     "prints $id/$kind as the page shows it",
     async ({ id, kind, command, expected }) => {
-      const folder = command.replace("$ npx gaugeline source ", "");
+      // The command names the checks it runs (--only), so a check added to the pack later changes nothing here.
+      const [folder = "", flag, ids = ""] = command
+        .replace("$ npx gaugeline source ", "")
+        .split(" ");
       expect(folder).toMatch(/^\.\/[a-z-]+$/);
+      expect(flag).toBe("--only");
       cpSync(
         fileURLToPath(new URL(`../../../fixtures/source/${id}/${kind}`, import.meta.url)),
         join(base, folder),
@@ -56,7 +60,7 @@ describe("docs/guides/webhook-and-cache-source.md", () => {
       );
       let out = "";
       await runSource(
-        { folder, json: false, quiet: false },
+        { folder, only: ids.split(","), json: false, quiet: false },
         { stdout: { write: (t) => (out += t) }, stderr: { write: () => true } },
         { cwd: base, now: new Date("2026-11-11T12:00:00Z"), color: false },
       );
