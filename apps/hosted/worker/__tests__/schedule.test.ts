@@ -49,10 +49,13 @@ describe.skipIf(!HAS_DATABASE)("nightly fan-out (pg_cron stand-in)", () => {
       where j.site_id = ${siteId} and j.kind = 'nightly' order by j.scheduled_for`;
   }
 
+  // Created well before every night the tests enqueue, so no test depends on the real day.
+  const SITE_CREATED = "2026-11-01T00:00:00Z";
+
   async function addSite(name: string, timezone: string, createdAt?: string): Promise<string> {
     const host = `${name.toLowerCase().replace(/[^a-z]+/g, "-")}.test`;
     const rows = await sql`insert into public.sites (org_id, name, url, timezone, created_at)
-      values (${ORG_A}, ${name}, ${`https://${host}`}, ${timezone}, ${createdAt ?? new Date().toISOString()})
+      values (${ORG_A}, ${name}, ${`https://${host}`}, ${timezone}, ${createdAt ?? SITE_CREATED})
       returning id`;
     return rows[0]!.id as string;
   }
