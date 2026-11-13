@@ -361,6 +361,22 @@ describe.skipIf(!HAS_DATABASE)("approval receipts", () => {
       // The writers file sits beside the chain: the chain itself still verifies, byte for byte as before.
       expect(verifyApprovalReceipts(await chainOf(ORG_A)).ok).toBe(true);
     });
+
+    it("the role is the one in the draft's organisation, not the person's role elsewhere", async () => {
+      // A person who is an admin of B (inserted first) and a member of A: a decision in A says member.
+      const someone = "66666666-0000-4000-8000-000000000001";
+      await owner`insert into public.members (org_id, user_id, role) values (${ORG_B}, ${someone}, 'admin')`;
+      await owner`insert into public.members (org_id, user_id, role) values (${ORG_A}, ${someone}, 'member')`;
+      const id = await person(
+        someone,
+        async (tx) => (await decide(tx, ORG_A, draftId(11), "declined", someone))[0]!.id,
+        true,
+      );
+      const [r] = await owner`select record from public.receipts where decision_id = ${id}`;
+      expect(JSON.parse(r!.record as string)).toMatchObject({
+        approver: { member: someone, role: "member" },
+      });
+    });
   });
 
   describe("two choices at the same moment chain without a fork", () => {
@@ -547,6 +563,21 @@ describe.skipIf(!HAS_DATABASE)("approval receipts", () => {
         ok: true,
         org: ORG_B,
       });
+    });
+
+    it("an admin of two organisations gets only the chain of the one asked for", async () => {
+      // USER_B_OWNER becomes an admin of A too: each export holds one organisation's receipts, and both verify.
+      await owner`insert into public.members (org_id, user_id, role) values (${ORG_A}, ${USER_B_OWNER}, 'admin')
+        on conflict do nothing`;
+      const b = await exportAs(USER_B_OWNER, ORG_B);
+      const a = await exportAs(USER_B_OWNER, ORG_A);
+      expect(b).toBe(await chainOf(ORG_B));
+      expect(a).toBe(await chainOf(ORG_A));
+      expect(b).not.toContain(ORG_A);
+      expect(a).not.toContain(ORG_B);
+      const writers = await person(USER_B_OWNER, (tx) => exportReceiptWriters(tx, ORG_B));
+      expect(writers.trimEnd().split("\n")).toHaveLength(b.trimEnd().split("\n").length);
+      await owner`delete from public.members where org_id = ${ORG_A} and user_id = ${USER_B_OWNER}`;
     });
 
     it("a member, a client viewer and another organisation's owner are refused, not handed an empty chain", async () => {
