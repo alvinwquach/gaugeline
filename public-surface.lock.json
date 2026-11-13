@@ -332,6 +332,17 @@
       "verbose",
       "version"
     ],
+    "receipt": [
+      "client-reported",
+      "coming-up",
+      "help",
+      "json",
+      "month",
+      "printable",
+      "quiet",
+      "verbose",
+      "version"
+    ],
     "renewals": [
       "allow-private",
       "ci",
