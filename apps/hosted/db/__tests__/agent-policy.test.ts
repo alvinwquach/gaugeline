@@ -785,9 +785,12 @@ describe.skipIf(!HAS_DATABASE)("agent policy and limits", () => {
   });
 
   describe("audit", () => {
-    it("the agent role still holds no table and runs one function; nobody runs the policy directly", async () => {
+    it("the agent role still holds no table and runs its three functions; nobody runs the policy directly", async () => {
       expect(await privateFunctionsExecutableBy(owner, "gaugeline_agent")).toEqual([
         "agent_insert_draft",
+        // AG-08 (0014): the two reads, each authorized with its own scope.
+        "agent_list_pending",
+        "agent_list_runs",
       ]);
       for (const role of [
         "anon",

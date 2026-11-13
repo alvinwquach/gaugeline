@@ -296,6 +296,9 @@ describe.skipIf(!HAS_DATABASE)("hosted database: secrets in Vault", () => {
       expect(await privateFunctionsExecutableBy(sql, "anon")).toEqual([]);
       expect(await privateFunctionsExecutableBy(sql, "gaugeline_agent")).toEqual([
         "agent_insert_draft",
+        // AG-08 (0014): the two reads, each authorized with its own scope.
+        "agent_list_pending",
+        "agent_list_runs",
       ]);
       expect(await privateFunctionsExecutableBy(sql, "authenticated")).toEqual([
         // X66 (the agencies migration): a signed-in person accepts an invite sent to their email.
