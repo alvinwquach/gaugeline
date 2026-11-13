@@ -40,11 +40,11 @@ $ npx gaugeline source ./harbor-lane-taproom
 
 ```sh title=Output
 ✗ A missing webhook secret is answered with the wrong status
-    app/api/revalidate/route.ts:7: a missing webhook secret is answered with 401.
+    app/api/revalidate/route.ts:8: a missing webhook secret is answered with 401.
 · The webhook signature is compared with a plain comparison
-    app/api/revalidate/route.ts:10: this receiver uses the official verification helper, which compares signatures with a plain comparison (read in @sanity/webhook 4.0.4). Advice, not a failure.
+    app/api/revalidate/route.ts:14: this receiver uses the official verification helper, which compares signatures with a plain comparison (read in @sanity/webhook 4.0.4). Advice, not a failure.
 · The webhook's signed timestamp has no age limit
-    app/api/revalidate/route.ts:10: this receiver uses the official verification helper, which makes no age check (read in @sanity/webhook 4.0.4). Advice, not a failure.
+    app/api/revalidate/route.ts:14: this receiver uses the official verification helper, which makes no age check (read in @sanity/webhook 4.0.4). Advice, not a failure.
 
 3 to look at, 1 to fix first.
 ```
@@ -111,7 +111,7 @@ $ npx gaugeline source ./bluebell-clinic
 
 ```sh title=Output
 ! The webhook signature is compared with a plain comparison
-    app/api/revalidate/route.ts:16: the signature is compared with a plain comparison.
+    app/api/revalidate/route.ts:20: the signature is compared with a plain comparison.
 
 1 to look at, none to fix first.
 ```
@@ -136,9 +136,66 @@ $ npx gaugeline source ./bluebell-clinic
 
 ```sh title=Output
 ! The webhook's signed timestamp has no age limit
-    app/api/revalidate/route.ts:13: the signed timestamp is read but never compared with the time now.
+    app/api/revalidate/route.ts:17: the signed timestamp is read but never compared with the time now.
 
 1 to look at, none to fix first.
+```
+
+## The body parsed before its signature, or read with no size limit
+
+`webhook-body-read-unsafely` (fix soon) finds a receiver that parses the body (`req.json()`, a
+`JSON.parse` before the signature step, or Next's parsed `req.body` in a `pages/api` route) before the
+signature is checked over the raw body, and one that reads the whole body with no size limit. The
+official helper's documentation says to give it the payload straight from the request, not a
+re-encoded JSON string.
+
+Check the `Content-Length` header against a limit (64 KB is plenty for a publish), read the body once
+with `req.text()`, check the signature over that text, and only then `JSON.parse` it. A size limit
+Gaugeline recognises is a `content-length` check, a stream reader, or a `limit` option.
+
+Fennel Lane Bakery is an invented bakery whose menu is published from Sanity.
+
+<!-- source-fixture: webhook-body-read-unsafely/fail -->
+
+```sh title=Terminal untested="The command that runs the static checks on a folder arrives with the indexing checks. packages/cli/src/__tests__/source-webhook-docs.test.ts runs the same checks on the same invented folder (packages/fixtures/source/webhook-body-read-unsafely/fail) and compares the Output block with what the CLI's own terminal report prints."
+$ npx gaugeline source ./fennel-lane-bakery
+```
+
+```sh title=Output
+! The webhook body is parsed before its signature is checked, or read with no size limit
+    app/api/revalidate/route.ts:12: the body is parsed with req.json(), so the signature cannot be checked over the raw body.
+! The webhook body is parsed before its signature is checked, or read with no size limit
+    app/api/revalidate/route.ts:12: the body is read in full with no size limit.
+
+2 to look at, none to fix first.
+```
+
+## The body, an id or the secret in a log
+
+`webhook-logs-private-values` (fix soon) reads every `console`, `logger` and `log` call in a receiver
+and finds one that includes the request body, a document id, the signature or the secret. A publish
+body holds the document's content (a notice, a customer's name in a booking), and a secret in a log
+is a secret that has leaked.
+
+The finding names the file and the line, and the kind of thing logged. It never prints what was
+logged. Log what happened (the document type, the status you answered with, a count), not what was
+received.
+
+Marlowe Street Dental is an invented clinic.
+
+<!-- source-fixture: webhook-logs-private-values/fail -->
+
+```sh title=Terminal untested="The command that runs the static checks on a folder arrives with the indexing checks. packages/cli/src/__tests__/source-webhook-docs.test.ts runs the same checks on the same invented folder (packages/fixtures/source/webhook-logs-private-values/fail) and compares the Output block with what the CLI's own terminal report prints."
+$ npx gaugeline source ./marlowe-street-dental
+```
+
+```sh title=Output
+! The webhook receiver writes the body, an id or a secret to its logs
+    app/api/revalidate/route.ts:29: a log call includes the request body.
+! The webhook receiver writes the body, an id or a secret to its logs
+    app/api/revalidate/route.ts:30: a log call includes a document id and the secret.
+
+2 to look at, none to fix first.
 ```
 
 ## What could not be checked

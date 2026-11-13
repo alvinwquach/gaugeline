@@ -24,8 +24,8 @@ describe("webhook-signature-compared-plainly: fixtures", () => {
       checkId: ID,
       severity: "medium",
       evidence:
-        "app/api/revalidate/route.ts:16: the signature is compared with a plain comparison.",
-      source: { file: "app/api/revalidate/route.ts", line: 16 },
+        "app/api/revalidate/route.ts:20: the signature is compared with a plain comparison.",
+      source: { file: "app/api/revalidate/route.ts", line: 20 },
     });
   });
 

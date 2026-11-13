@@ -28,9 +28,9 @@ describe("webhook-missing-secret-status: fixtures", () => {
     expect(out.findings[0]).toMatchObject({
       checkId: ID,
       severity: "high",
-      evidence: "app/api/revalidate/route.ts:7: a missing webhook secret is answered with 401.",
+      evidence: "app/api/revalidate/route.ts:8: a missing webhook secret is answered with 401.",
       url: "source:./webhook-missing-secret-status/fail",
-      source: { file: "app/api/revalidate/route.ts", line: 7 },
+      source: { file: "app/api/revalidate/route.ts", line: 8 },
     });
   });
 

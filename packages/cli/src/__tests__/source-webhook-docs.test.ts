@@ -29,6 +29,8 @@ describe("docs/guides/webhook-and-cache-source.md", () => {
       "sanity-cdn-tagged-reads",
       "webhook-signature-compared-plainly",
       "webhook-timestamp-unbounded",
+      "webhook-body-read-unsafely",
+      "webhook-logs-private-values",
     ]);
   });
 
@@ -36,7 +38,12 @@ describe("docs/guides/webhook-and-cache-source.md", () => {
     "prints $id/$kind as the page shows it",
     async ({ id, kind, command, expected }) => {
       const folder = command.replace("$ npx gaugeline source ", "");
-      expect(["./harbor-lane-taproom", "./bluebell-clinic"]).toContain(folder);
+      expect([
+        "./harbor-lane-taproom",
+        "./bluebell-clinic",
+        "./fennel-lane-bakery",
+        "./marlowe-street-dental",
+      ]).toContain(folder);
       const tree = await readLocalSource(
         fileURLToPath(new URL(`../../../fixtures/source/${id}/${kind}`, import.meta.url)),
         undefined,

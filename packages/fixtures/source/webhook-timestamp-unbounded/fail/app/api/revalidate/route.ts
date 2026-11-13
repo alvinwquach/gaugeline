@@ -3,11 +3,15 @@ import { revalidateTag } from "next/cache";
 
 // Bluebell Clinic: a publish in the studio clears the cached opening hours.
 const FIVE_MINUTES = 5 * 60 * 1000;
+const MAX_BODY_BYTES = 64 * 1024;
 
 export async function POST(req: Request) {
   const secret = process.env.SANITY_REVALIDATE_SECRET;
   if (!secret) {
     return new Response("The webhook secret is not set.", { status: 500 });
+  }
+  if (Number(req.headers.get("content-length") ?? 0) > MAX_BODY_BYTES) {
+    return new Response("The request is too large.", { status: 413 });
   }
   const header = req.headers.get("sanity-webhook-signature") ?? "";
   const [, timestamp = "", signature = ""] = /^t=(\d+),v1=(.+)$/.exec(header) ?? [];
