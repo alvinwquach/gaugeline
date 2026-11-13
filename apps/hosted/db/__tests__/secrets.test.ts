@@ -302,7 +302,10 @@ describe.skipIf(!HAS_DATABASE)("hosted database: secrets in Vault", () => {
         "accept_invite",
         "admin_org_ids",
         "client_site_ids",
+        // X69 (0010): the inbox's own SQL rules, called as the signed-in person and by chat_decide.
+        "closed_findings",
         "member_org_ids",
+        "own_findings",
         "owner_org_ids",
         "staff_org_ids",
       ]);

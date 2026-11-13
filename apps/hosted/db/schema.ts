@@ -383,3 +383,33 @@ export const notificationDeliveries = pgTable("notification_deliveries", {
   sentAt: timestamp("sent_at", { withTimezone: true }),
   createdAt: createdAt(),
 }).enableRLS();
+
+/** A chat workspace an organisation connected (X69). The signing secret is a Vault secret: its name only. */
+export const chatConnections = pgTable("chat_connections", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orgId: uuid("org_id").notNull(),
+  provider: text("provider").$type<"slack" | "discord" | "teams">().notNull(),
+  label: text("label").notNull(),
+  workspaceRef: text("workspace_ref"),
+  secretName: text("secret_name").notNull(),
+  status: text("status").$type<"active" | "disabled">().notNull().default("active"),
+  createdAt: createdAt(),
+}).enableRLS();
+
+/** Which member a chat user is, per connection: proposed by an admin, confirmed by the member. */
+export const chatIdentities = pgTable(
+  "chat_identities",
+  {
+    orgId: uuid("org_id").notNull(),
+    connectionId: uuid("connection_id").notNull(),
+    chatUserId: text("chat_user_id").notNull(),
+    userId: uuid("user_id").notNull(),
+    createdAt: createdAt(),
+    /** Set by the member themself (signed in); a link counts only once it is. */
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+  },
+  (t) => [
+    primaryKey({ columns: [t.connectionId, t.chatUserId] }),
+    index("chat_identities_user_idx").on(t.orgId, t.userId),
+  ],
+).enableRLS();

@@ -63,14 +63,14 @@ LINE 1: select decrypted_secret from vault.decrypted_secrets;
 
 ## Where each kind of secret lives
 
-| Secret                                                                      | Where it lives                                         | Who can read it                                   |
-| --------------------------------------------------------------------------- | ------------------------------------------------------ | ------------------------------------------------- |
-| Per-site CMS tokens (Sanity, Contentful, Shopify, ...)                      | the customer's own CI or worker. **Never stored here** | only the customer's job                           |
-| GitHub App private key (fix proposals, ADR-0010)                            | the customer's worker environment. **Never stored**    | only the customer's worker                        |
-| Notification webhook URLs (Slack, Sentry, GitHub; X67)                      | Supabase Vault, one per organisation and name          | the hosted worker (`gaugeline_worker`) only       |
-| Chat approval signing secrets (Slack, Discord, Teams; X69)                  | Supabase Vault, one per organisation and name          | the hosted worker (`gaugeline_worker`) only       |
-| Site upload tokens and agent tokens                                         | a SHA-256 hash only (`tokens`, `private.agent_tokens`) | nobody: the token itself is shown once, then gone |
-| Server secrets (`SUPABASE_SERVICE_ROLE_KEY`, database URLs, the Resend key) | the server's environment variables                     | the server process; never a table, log or report  |
+| Secret                                                                      | Where it lives                                         | Who can read it                                                                                        |
+| --------------------------------------------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| Per-site CMS tokens (Sanity, Contentful, Shopify, ...)                      | the customer's own CI or worker. **Never stored here** | only the customer's job                                                                                |
+| GitHub App private key (fix proposals, ADR-0010)                            | the customer's worker environment. **Never stored**    | only the customer's worker                                                                             |
+| Notification webhook URLs (Slack, Sentry, GitHub; X67)                      | Supabase Vault, one per organisation and name          | the hosted worker (`gaugeline_worker`) only                                                            |
+| Chat approval signing secrets (Slack, Discord, Teams; X69)                  | Supabase Vault, one per organisation and name          | the chat endpoint (`gaugeline_chat`), one connection at a time ([chat approvals](./chat-approvals.md)) |
+| Site upload tokens and agent tokens                                         | a SHA-256 hash only (`tokens`, `private.agent_tokens`) | nobody: the token itself is shown once, then gone                                                      |
+| Server secrets (`SUPABASE_SERVICE_ROLE_KEY`, database URLs, the Resend key) | the server's environment variables                     | the server process; never a table, log or report                                                       |
 
 "We never hold your keys" (G35) is about the first two rows: anything that can read or write a
 customer's site or content stays with the customer.
@@ -148,13 +148,14 @@ changing the variable and restarting the server and the worker.
 
 ## What a breach could reach
 
-| If someone got...                                          | They could read                                            | They could not read                                     |
-| ---------------------------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------- |
-| a signed-in person's session                               | their organisations' rows and secret names                 | any secret value, any other organisation                |
-| a copy of the database or a backup                         | the Vault table, encrypted                                 | the values: Vault's key is not in the database          |
-| the runs API's or settings API's `service_role` connection | secret names; it can overwrite or delete a secret          | any secret value: `get_secret` needs `gaugeline_worker` |
-| the worker's connection (`gaugeline_worker`)               | every organisation's webhook URLs and chat signing secrets | CMS tokens, the GitHub App key: they were never here    |
-| the database owner role (`postgres`)                       | everything in the database, Vault included                 | CMS tokens, the GitHub App key                          |
+| If someone got...                                          | They could read                                                                                                  | They could not read                                     |
+| ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| a signed-in person's session                               | their organisations' rows and secret names                                                                       | any secret value, any other organisation                |
+| a copy of the database or a backup                         | the Vault table, encrypted                                                                                       | the values: Vault's key is not in the database          |
+| the runs API's or settings API's `service_role` connection | secret names; it can overwrite or delete a secret                                                                | any secret value: `get_secret` needs `gaugeline_worker` |
+| the worker's connection (`gaugeline_worker`)               | every organisation's webhook URLs and chat signing secrets                                                       | CMS tokens, the GitHub App key: they were never here    |
+| the chat endpoint's connection (`gaugeline_chat`)          | one connection's signing secret, if it knows the id; it can record an approval for a member who confirmed a link | webhook URLs, any table, another way into Vault         |
+| the database owner role (`postgres`)                       | everything in the database, Vault included                                                                       | CMS tokens, the GitHub App key                          |
 
 So a full breach of the hosted app can post into customers' notification channels and forge chat
 approvals, and both are fixed by rotating those secrets. It cannot read or change a customer's site or

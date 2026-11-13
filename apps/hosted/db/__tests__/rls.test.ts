@@ -63,6 +63,9 @@ const TENANT_TABLES = [
   "notification_channels",
   "notification_rules",
   "notification_deliveries",
+  // 0010: chat workspaces and which member a chat user is (X69); owners and admins only.
+  "chat_connections",
+  "chat_identities",
 ];
 
 const SERVER_ONLY = new Set(["tokens", "idempotency_keys", "jobs", "email_sends"]);

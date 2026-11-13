@@ -126,34 +126,17 @@ export async function listWaiting(sql: postgres.Sql, who: Person): Promise<Waiti
  */
 async function closedFindings(tx: Tx, draftSite: string, findingIds: string[]): Promise<string[]> {
   if (findingIds.length === 0) return [];
-  const rows = await tx`
-    select f.id from public.findings f join public.runs r on r.id = f.run_id
-    where f.id = any(${findingIds}::uuid[]) and f.site_id = ${draftSite}
-      and exists (
-        select 1 from public.runs later
-        cross join lateral (
-          select coalesce(case when jsonb_typeof(later.summary -> 'couldNotCheck') = 'array'
-                               then later.summary -> 'couldNotCheck' end, '[]'::jsonb) as skipped) c
-        where later.site_id = f.site_id and later.finished_at is not null
-          and later.summary ->> 'partial' is distinct from 'true'
-          and later.summary ->> 'error' is null
-          and jsonb_array_length(c.skipped) < 20
-          and not exists (select 1 from jsonb_array_elements(c.skipped) s
-                          where s ->> 'id' = f.check_id)
-          and later.started_at > r.started_at
-          and not exists (select 1 from public.findings g
-                          where g.run_id = later.id and g.fingerprint = f.fingerprint))
-    order by f.id`;
+  // The query lives in SQL (private.closed_findings, migration 0010) so the chat path, which runs as a
+  // function in the database, applies exactly this rule. It runs here as the signed-in person.
+  const rows =
+    await tx`select f as id from private.closed_findings(${draftSite}, ${findingIds}::uuid[]) f`;
   return rows.map((r) => r.id as string);
 }
 
-/** How many of the ids are findings of this draft's organisation and site that this person can see. */
+/** Whether every one of the ids is a finding of this draft's organisation and site (private.own_findings, 0010). */
 async function ownFindings(tx: Tx, org: string, site: string, ids: string[]): Promise<boolean> {
-  const unique = [...new Set(ids)];
-  if (unique.length === 0) return true;
-  const [row] = await tx`select count(*)::int as n from public.findings
-    where id = any(${unique}::uuid[]) and org_id = ${org} and site_id = ${site}`;
-  return row!.n === unique.length;
+  const [row] = await tx`select private.own_findings(${org}, ${site}, ${ids}::uuid[]) as ok`;
+  return row!.ok === true;
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
