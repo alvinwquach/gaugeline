@@ -18,16 +18,18 @@ answers for the agent and what it may draft, and one action stops it.
 | status                 | `active`, `disabled` (off until switched back on) or `revoked` (off for good)                                                                                       |
 | revoked at, revoked by | set by the database, from its clock and the signed-in person, when the agent is revoked                                                                             |
 
-The scopes are one per kind of draft and two reads. None of them writes: agents only draft, and only
+The scopes are one per kind of draft and four reads. None of them writes: agents only draft, and only
 your own worker applies an approved draft ([applying an approved fix](./writer.md)).
 
-| Scope                | Lets the agent                                                                                                          |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `draft:pull_request` | propose a pull request                                                                                                  |
-| `draft:email`        | propose an email                                                                                                        |
-| `draft:sanity_draft` | propose a Sanity draft document                                                                                         |
-| `read:runs`          | read one site's run history at a time ([`GET /api/v1/runs?site=`](./api.md#agent-reads-pending-drafts-and-run-history)) |
-| `read:pending`       | list the drafts waiting for a decision (`GET /api/v1/drafts?status=pending`)                                            |
+| Scope                | Lets the agent                                                                                                              |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `draft:pull_request` | propose a pull request                                                                                                      |
+| `draft:email`        | propose an email                                                                                                            |
+| `draft:sanity_draft` | propose a Sanity draft document                                                                                             |
+| `read:runs`          | read one site's run history at a time ([`GET /api/v1/runs?site=`](./api.md#agent-reads-pending-drafts-and-run-history))     |
+| `read:pending`       | list the drafts waiting for a decision (`GET /api/v1/drafts?status=pending`)                                                |
+| `read:notes`         | name the [field-findings miner](../field-findings-miner.md)'s one read, a folder of review notes (registry only, see below) |
+| `read:rules-file`    | name the [house-rules compiler](../house-rules.md)'s one read, a style-guide file (registry only, see below)                |
 
 **Registering is one call**, `private.register_agent(organisation, name, owner, scopes)`, for an owner or
 admin of that organisation. Nobody inserts a row any other way. The database mints the token (256 bits
@@ -389,6 +391,112 @@ asked for (3); the agent drafts before it passes (4); the agent cannot call the 
 on purpose (6) makes its next call a refusal with the reason `disabled`, in the deny log (7, 8); a member
 cannot undo it (9); the owner can (10).
 
+## The two scopes for agents that read a local file
+
+Two agents read a file on a person's own computer: the [field-findings miner](../field-findings-miner.md)
+(`read:notes`) and the [house-rules compiler](../house-rules.md) (`read:rules-file`). Their descriptors name
+that scope, so the registry's closed list holds it (migration `0019_agent_scopes_notes_rules.sql`). The
+migration changes one rule of the list and nothing else: the two names are added and the most scopes an
+agent can hold goes from 5 to 7. No role, login, grant, table or function is added, and no agent that was
+registered before changes.
+
+**Registering an agent with one of them lets it do nothing yet.** The policy's list of tools
+([agent policy](./agent-policy.md)) does not name `read:notes` or `read:rules-file`, so a call with either is
+refused as `tool-not-allowed` and logged, whatever scopes the agent holds. Adding a tool to the policy is its own
+reviewed change; until then, the scope is how the owner records that the agent exists and what it would read.
+Both agents run from the command line, on your own computer, and need no token there.
+
+Northgate Studio registers both. This is the output of the seeded test database, run with `psql` 16 as written,
+as the schema owner switching roles the way the app's login does:
+
+```sql
+-- Northgate Studio's owner, signed in (the app's login switches to `authenticated` with her claims)
+set role authenticated;
+select set_config('request.jwt.claims', '{"sub":"11111111-0000-4000-8000-000000000001"}', false) is not null as signed_in;
+
+-- 1. register the two agents; each gets the one scope that names the file it reads
+select agent_id as miner_id, token as miner_token
+  from private.register_agent('0a000000-0000-4000-8000-00000000000a', 'Field-findings miner',
+                              '11111111-0000-4000-8000-000000000001', '{read:notes}') \gset
+select agent_id as rules_id, token as rules_token
+  from private.register_agent('0a000000-0000-4000-8000-00000000000a', 'House-rules compiler',
+                              '11111111-0000-4000-8000-000000000001', '{read:rules-file}') \gset
+select name, scopes, status from agents order by name;
+
+-- 2. the list is still closed: a misspelling, and a scope that writes beside a good one
+select agent_id from private.register_agent('0a000000-0000-4000-8000-00000000000a', 'Typo',
+  '11111111-0000-4000-8000-000000000001', '{read:note}');
+select agent_id from private.register_agent('0a000000-0000-4000-8000-00000000000a', 'Writer',
+  '11111111-0000-4000-8000-000000000001', '{read:notes,write:rules-file}');
+
+-- 3. another agency's owner, signed in, sees none of this organisation's agents
+select set_config('request.jwt.claims', '{"sub":"22222222-0000-4000-8000-000000000001"}', false) is not null as signed_in;
+select count(*) as agents_seen from agents;
+
+-- 4. the policy still refuses both tools, scope or no scope (run as the schema owner: no login calls it)
+reset role;
+select allowed, reason from private.agent_authorize(:'miner_token', 'read:notes', 0);
+select allowed, reason from private.agent_authorize(:'rules_token', 'read:rules-file', 0);
+select tool, reason from agent_denies order by id;
+```
+
+```text
+SET
+ signed_in
+-----------
+ t
+(1 row)
+
+         name         |      scopes       | status
+----------------------+-------------------+--------
+ Field-findings miner | {read:notes}      | active
+ House-rules compiler | {read:rules-file} | active
+(2 rows)
+
+ERROR:  the agent breaks the registry rule agents_scopes_known
+CONTEXT:  PL/pgSQL function private.register_agent(uuid,text,uuid,text[]) line 52 at RAISE
+ERROR:  the agent breaks the registry rule agents_scopes_known
+CONTEXT:  PL/pgSQL function private.register_agent(uuid,text,uuid,text[]) line 52 at RAISE
+ signed_in
+-----------
+ t
+(1 row)
+
+ agents_seen
+-------------
+           0
+(1 row)
+
+RESET
+WARNING:  agent call denied: tool-not-allowed
+ allowed |      reason
+---------+------------------
+ f       | tool-not-allowed
+(1 row)
+
+WARNING:  agent call denied: tool-not-allowed
+ allowed |      reason
+---------+------------------
+ f       | tool-not-allowed
+(1 row)
+
+ tool |      reason
+------+------------------
+      | tool-not-allowed
+      | tool-not-allowed
+(2 rows)
+
+```
+
+What it shows:
+
+1. Each agent is registered with its one scope; the database mints a token for each, as for any agent.
+2. The list is still closed: a misspelling and a scope that writes are refused, and the refusal names the rule,
+   not the row.
+3. Another agency's owner, signed in, sees none of this organisation's agents.
+4. The policy refuses both tools. The deny log holds the reason and no tool name: only a name on the policy's own
+   list is ever stored, never what a caller typed.
+
 ## Shadow agents: the inventory
 
 An agent nobody answers for is a risk even if it never misbehaves: nobody notices when it should have
@@ -415,7 +523,9 @@ can be marked as migrated.
 
 ## What it does not do yet
 
-- The two `read:` scopes are enforced (AG-08): a call without the scope is refused with `scope` and logged.
+- The `read:notes` and `read:rules-file` scopes are accepted by the registry but not enforced anywhere
+  yet: the policy does not list their tools, so they are refused (above).
+- The `read:pending` and `read:runs` scopes are enforced (AG-08): a call without the scope is refused with `scope` and logged.
   An allowed read sets "last used" too, so an agent that only reads is not flagged as unused.
 - Per-agent tool allowlists, rate limits, cost ceilings, timeouts and kill switches are on
   [agent policy and limits](./agent-policy.md) (AG-03); per-call traces are AG-05. ADR-0014 ("Agent

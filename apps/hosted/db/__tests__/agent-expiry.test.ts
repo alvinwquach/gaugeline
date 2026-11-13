@@ -244,7 +244,9 @@ describe.skipIf(!HAS_DATABASE)("agent token expiry", () => {
         await old.sql`insert into public.agents (org_id, name, owner_id, scopes, token_sha256, token_prefix)
           values (${ORG_A}, 'Old agent', ${USER_A_OWNER}, '{draft:email}', ${hashAgentToken(token)},
                   ${token.slice(4, 12)})`;
-        expect(await migrate(old.sql, MIGRATIONS_DIR)).toEqual(["0018_agent_token_expiry"]);
+        expect(await migrate(old.sql, MIGRATIONS_DIR, { to: 18 })).toEqual([
+          "0018_agent_token_expiry",
+        ]);
         const [a] = await old.sql`select expires_at from public.agents where name = 'Old agent'`;
         expect(a!.expires_at).toBeNull();
         let id: unknown;

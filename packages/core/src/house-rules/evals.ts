@@ -32,11 +32,15 @@ const LIMITS: AgentLimits = {
   timeoutMs: 5_000,
 };
 
-/** What the owner registers: a name, the scopes it needs (none), the one tool it calls, and its limits. */
+/**
+ * What the owner registers: a name, the one scope it needs (`read:rules-file`, on the hosted registry's closed
+ * list since migration 0019), the one tool it calls, and its limits. The hosted policy does not list the tool
+ * yet, so a hosted call with it is refused until a later reviewed change adds it.
+ */
 export const HOUSE_RULES_AGENT = Object.freeze({
   id: "house-rules-compiler",
   name: "House-rules compiler",
-  scopes: [] as readonly string[],
+  scopes: ["read:rules-file"] as readonly string[],
   tools: ["read:rules-file"] as readonly string[],
   limits: LIMITS,
 });

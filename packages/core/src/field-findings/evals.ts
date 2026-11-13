@@ -51,14 +51,15 @@ const LIMITS: AgentLimits = {
 };
 
 /**
- * What the owner registers: a name, the one tool it calls and its limits. It reads a folder on the owner's own
- * computer, so it holds no hosted scope and draws no token; a hosted run would need a new scope in the
- * registry's closed list, which is its own reviewed change.
+ * What the owner registers: a name, the one tool it calls, the one scope that names it and its limits. On the
+ * owner's own computer it needs no token. To register it in the hosted app (AG-02) the registry's closed list
+ * holds the scope `read:notes` (migration 0019); the hosted policy does not list the tool yet, so a hosted
+ * call with it is refused until a later reviewed change adds it.
  */
 export const FIELD_FINDINGS_MINER_AGENT = Object.freeze({
   id: "field-findings-miner",
   name: "Field-findings miner",
-  scopes: [] as readonly string[],
+  scopes: ["read:notes"] as readonly string[],
   tools: ["read:notes"] as readonly string[],
   limits: LIMITS,
 });

@@ -28,7 +28,7 @@ or `read:runs` ([the API](./api.md#agent-reads-pending-drafts-and-run-history)).
 | `disabled`           | an owner or admin set the agent's status to `disabled`, or its token's [expiry](./agent-registry.md#token-expiry) has passed |
 | `kill-switch-agent`  | the operator has stopped this one agent                                                                                      |
 | `bad-input`          | the call names no tool, or declares a cost that is missing, negative or over 10^12                                           |
-| `tool-not-allowed`   | the tool is not on the closed list (the registry's scopes); nothing that writes is on it                                     |
+| `tool-not-allowed`   | the tool is not on the closed list (the registry's scopes bar `read:notes`, `read:rules-file`); none writes                  |
 | `scope`              | the tool is on the list, but the agent's scopes do not name it. A new agent has no scope                                     |
 | `timeout`            | the call cannot finish within the agent's timeout (it waited too long for a lock, or ran too long)                           |
 | `rate-limit`         | the agent has used all its calls for the current window                                                                      |
