@@ -3,6 +3,7 @@
  * whole CI matrix. The same payloads are given to the database's own validator in inbox.test.ts, which
  * must agree with every verdict here.
  */
+import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import {
   checkDraftPayload,
@@ -22,10 +23,13 @@ const pr = (over: Record<string, unknown> = {}) => ({
   files: [{ path: "app/menu/links.ts", content: "export const drinks = '/drinks';\n" }],
   ...over,
 });
+/** The digest the proposer records for a field's published value: any 64 lower-case hex digits will do here. */
+const digest = (field: string) => createHash("sha256").update(field).digest("hex");
 const sanity = (set: Record<string, unknown>) => ({
   documentId: "menu",
   documentType: "page",
   set,
+  before: Object.fromEntries(Object.keys(set).map((k) => [k, digest(k)])),
 });
 const ok = (kind: string, payload: unknown) => checkDraftPayload(kind, payload).ok;
 
@@ -52,6 +56,47 @@ describe("sanity_draft fields", () => {
       expect(ok("sanity_draft", sanity({ n })), String(n)).toBe(false);
     for (const n of [0.1, 4.5, -0.25, 999999999999999, 0.000001, 123456789012.345])
       expect(ok("sanity_draft", sanity({ n })), String(n)).toBe(true);
+  });
+});
+
+describe("sanity_draft before-digests (X71)", () => {
+  const good = sanity({ hours: "Mon to Sat, 10:00 to 22:00", phone: "+44 20 7946 0000" });
+  it("accepts one digest per field in set", () => {
+    expect(ok("sanity_draft", good)).toBe(true);
+  });
+
+  it("refuses a payload with no before, an empty one, or one that names other fields", () => {
+    const { before: _dropped, ...none } = good;
+    expect(ok("sanity_draft", none)).toBe(false);
+    expect(ok("sanity_draft", { ...good, before: {} })).toBe(false);
+    expect(ok("sanity_draft", { ...good, before: { hours: digest("hours") } })).toBe(false);
+    expect(
+      ok("sanity_draft", {
+        ...good,
+        before: { hours: digest("hours"), phone: digest("phone"), extra: digest("extra") },
+      }),
+    ).toBe(false);
+    expect(
+      ok("sanity_draft", { ...good, before: { hours: digest("hours"), email: digest("email") } }),
+    ).toBe(false);
+  });
+
+  it("refuses a digest that is not 64 lower-case hex characters", () => {
+    const h = digest("hours");
+    for (const bad of [h.toUpperCase(), h.slice(1), `${h}0`, `${h.slice(0, 63)}g`, "", null, 5])
+      expect(
+        ok("sanity_draft", { ...sanity({ hours: "x" }), before: { hours: bad } }),
+        String(bad),
+      ).toBe(false);
+  });
+
+  it("refuses an underscore field name in before", () => {
+    expect(
+      ok("sanity_draft", {
+        ...sanity({ hours: "x" }),
+        before: { hours: digest("h"), _rev: digest("r") },
+      }),
+    ).toBe(false);
   });
 });
 

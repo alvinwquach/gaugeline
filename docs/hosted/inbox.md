@@ -144,8 +144,11 @@ A draft is one of three kinds, and the database refuses any other for everyone w
   so are `..` and a leading `-`. Two paths in one pull request that differ only by case are refused, since
   they would collide on a case-insensitive checkout.
 - `email`: a subject (one line) and a body. Recipients come from the site's contacts, never the payload.
-- `sanity_draft`: a document id, a type and up to 20 field values. A field name starts with a letter, so
-  Sanity's own fields (`_id`, `_type`, `_rev`, ...) can never be set by a draft.
+- `sanity_draft`: a document id, a type, up to 20 field values (`set`) and, for each of those fields, the
+  SHA-256 of the value it has in the published document (`before`, 64 lower-case hex characters). A field
+  name starts with a letter, so Sanity's own fields (`_id`, `_type`, `_rev`, ...) can never be set by a
+  draft. The writer compares `before` with what the content system holds now and refuses a stale draft
+  ([applying an approved fix](./writer.md)). A digest is stored, never the client's published text.
 
 Unknown keys are refused, so a payload cannot name a branch, a repository, a recipient or a flag. A
 one-line field refuses every line break and control character, including U+0085, the C1 controls
