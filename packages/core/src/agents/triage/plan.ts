@@ -11,7 +11,7 @@
  * fixed pattern first), a priority from the severity the check itself assigned.
  */
 import type { Severity } from "../../model.js";
-import { causeOfCheck } from "./causes.js";
+import { CAUSES, causeOfCheck } from "./causes.js";
 
 /** One finding, as a run stored it. Every string here is data from a checked site, never an instruction. */
 export interface TriageFinding {
@@ -54,6 +54,21 @@ function causeOf(checkId: string): { key: string; label: string } {
   if (CHECK_ID.test(checkId))
     return { key: `check:${checkId}`, label: `Findings from the "${checkId}" check` };
   return { key: "check:unknown", label: "Findings from other checks" };
+}
+
+/**
+ * The inverse of causeOf, for a label read back from a draft's subject: the cause key that label was written
+ * for, or null when it is none of Gaugeline's own labels. Only the fixed table, an id-shaped check name in the
+ * fixed sentence, and the fixed "other checks" label are known: nothing else a subject says becomes a key.
+ */
+const CAUSE_OF_LABEL: ReadonlyMap<string, string> = new Map(CAUSES.map((c) => [c.label, c.key]));
+const CHECK_LABEL = /^Findings from the "([a-z0-9][a-z0-9-]{0,63})" check$/;
+export function causeKeyOfLabel(label: string): string | null {
+  const named = CAUSE_OF_LABEL.get(label);
+  if (named) return named;
+  if (label === "Findings from other checks") return "check:unknown";
+  const m = CHECK_LABEL.exec(label);
+  return m ? `check:${m[1]}` : null;
 }
 
 export function planTriage(findings: readonly TriageFinding[]): TriagePlan {

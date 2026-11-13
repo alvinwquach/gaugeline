@@ -127,9 +127,9 @@ describe("gaugeline evals: a green run (exit 0)", () => {
     expect(r.code).toBe(0);
     expect(r.out).toBe(`${formatEvalSuite(await runEvalSets(EVAL_SETS))}\n`);
     expect(r.out).toContain("agent approvals-digest\n  pass rate     10 of 10 cases (100%)");
-    expect(r.out).toContain("agent triage\n  pass rate     15 of 15 cases (100%)");
-    expect(r.out).toContain("refusal rate  8 of 15 cases (53%)");
-    expect(r.out).toContain("cost          12000 micro-units over 14 cases");
+    expect(r.out).toContain("agent triage\n  pass rate     19 of 19 cases (100%)");
+    expect(r.out).toContain("refusal rate  11 of 19 cases (58%)");
+    expect(r.out).toContain("cost          12000 micro-units over 17 cases");
     expect(r.err).toBe("Report written to gaugeline-evals.json\n");
     const file = readFileSync(join(dir, "gaugeline-evals.json"), "utf8");
     expect(file).toBe(`${JSON.stringify(await runEvalSets(EVAL_SETS), null, 2)}\n`);
@@ -142,8 +142,8 @@ describe("gaugeline evals: a green run (exit 0)", () => {
     expect(parsed.agents[1]).toMatchObject({
       agentId: "triage",
       passRatePercent: 100,
-      refusalRatePercent: 53,
-      cost: { measured: true, micros: 12_000, cases: 14 },
+      refusalRatePercent: 58,
+      cost: { measured: true, micros: 12_000, cases: 17 },
     });
     // No clock, no machine: nothing in the file changes from run to run or from computer to computer.
     expect(file).not.toMatch(/\d{4}-\d{2}-\d{2}T/);
@@ -335,7 +335,7 @@ describe("gaugeline evals: edge cases (exit 2, nothing written)", () => {
     };
     const r = await run(["evals", "--out", "locked/evals.json"], { evalsFs: fs });
     expect(r.code).toBe(2);
-    expect(r.out).toContain("pass rate     15 of 15 cases (100%)");
+    expect(r.out).toContain("pass rate     19 of 19 cases (100%)");
     expect(r.err).toContain('Could not write "locked/evals.json" (EACCES). Nothing was written.');
     expect(readdirSync(dir)).toEqual([]);
   });

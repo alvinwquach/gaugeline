@@ -101,9 +101,9 @@ agent approvals-digest
   cost          60000 micro-units over 9 cases with a recorded answer
 
 agent triage
-  pass rate     15 of 15 cases (100%): golden 5 of 5 pass, known-bad 10 of 10 caught
-  refusal rate  8 of 15 cases (53%): the answer was stopped by schema, limits or no-write-call
-  cost          12000 micro-units over 14 cases with a recorded answer
+  pass rate     19 of 19 cases (100%): golden 6 of 6 pass, known-bad 13 of 13 caught
+  refusal rate  11 of 19 cases (58%): the answer was stopped by schema, limits or no-write-call
+  cost          12000 micro-units over 17 cases with a recorded answer
 
 Result: every golden case passed and every known-bad case was caught.
 ```

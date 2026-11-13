@@ -4,6 +4,7 @@
  */
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { inspect } from "node:util";
 import { describe, expect, it } from "vitest";
 import {
   createTriagePolicy,
@@ -41,7 +42,60 @@ async function example(): Promise<string> {
   ].join("\n");
 }
 
+/** The second example on the page, run: the same program with the pending read added. */
+async function waitingExample(): Promise<string> {
+  const now = () => Date.UTC(2026, 10, 13, 12);
+  const SITE = "a1000000-0000-4000-8000-0000000000a1";
+  const waitingPage = {
+    drafts: [
+      {
+        id: "c3000000-0000-4000-8000-000000000001",
+        siteId: SITE,
+        kind: "email",
+        title: {
+          untrusted: true,
+          source: "draft title",
+          text: "Fix soon: Canonical links",
+          truncated: false,
+        },
+      },
+    ],
+    nextCursor: null,
+  };
+  const drafts: TriageDraftCall[] = [];
+  const outcome = await runTriage(
+    { siteId: SITE, findings: bakery },
+    {
+      policy: createTriagePolicy({ env: {}, now }),
+      readPending: async () => ({ read: true, page: waitingPage }),
+      draft: async (call) => {
+        drafts.push(call);
+        return { inserted: true, draftId: `draft-${drafts.length}` };
+      },
+      now,
+    },
+  );
+  return [
+    ...drafts.map((d) => `drafted  ${d.payload.subject}`),
+    ...outcome.skipped.map((s) => `skipped  ${s.causeKey} (${s.reason})`),
+    inspect(outcome.pending),
+  ].join("\n");
+}
+
 describe("the docs page", () => {
+  it("shows the waiting-drafts example's real output", async () => {
+    expect(page).toContain(await waitingExample());
+  });
+
+  it("the second example's code is the one run here", () => {
+    for (const line of [
+      "readPending: async () => ({ read: true, page: waitingPage }),",
+      "for (const s of outcome.skipped) console.log(`skipped  ${s.causeKey} (${s.reason})`);",
+      'text: "Fix soon: Canonical links"',
+    ])
+      expect(page).toContain(line);
+  });
+
   it("shows this example's real output", async () => {
     expect(page).toContain(await example());
   });
@@ -59,5 +113,7 @@ describe("the docs page", () => {
       `'${TRIAGE_REGISTRATION.name}', :owner, '{${TRIAGE_REGISTRATION.scopes.join(",")}}'`,
     );
     expect(page).toMatch(/at most \*\*20 drafts\*\*/);
+    expect(page).toContain(`| Calls        | ${l.callsPerWindow} per 60 seconds`);
+    expect(page).toContain("| Scope        | `draft:email` and `read:pending`");
   });
 });

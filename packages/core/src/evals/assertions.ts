@@ -19,6 +19,7 @@ const list = (items: readonly unknown[]): string =>
 /** Every character the case hands the agent. Counted before a prompt is built or a model is called. */
 export function inputChars(input: EvalInput): number {
   let n = input.pageText?.length ?? 0;
+  if (input.pending !== undefined) n += JSON.stringify(input.pending)?.length ?? 0;
   for (const f of input.findings)
     n += f.id.length + f.checkId.length + f.title.length + f.evidence.length;
   return n;

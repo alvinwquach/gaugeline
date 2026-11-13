@@ -13,7 +13,7 @@
  * scripts/ parses every payload this makes with the inbox's and the writer's own parsers.
  */
 import { sanitise } from "../../untrusted.js";
-import type { TriageGroup } from "./plan.js";
+import { causeKeyOfLabel, type TriageGroup } from "./plan.js";
 
 export const MAX_DRAFT_FINDING_IDS = 50;
 /** The line after which everything is text from the checked site. */
@@ -51,6 +51,19 @@ function clean(text: string, max: number): string {
 }
 
 const plural = (n: number, one: string, many = `${one}s`): string => `${n} ${n === 1 ? one : many}`;
+
+/** The subject of a draft, in the one place it is written: priority, a colon, then the cause's label. */
+const SUBJECT = /^(?:Fix first|Fix soon): ([^\r\n]{1,200})$/;
+
+/**
+ * The cause key a draft's subject was written for (the inverse of the subject `triageEmail` makes), or null
+ * when the subject is not one of this agent's. The subject read back may be anyone's words (a person edited
+ * it, a page quoted into it): it is only compared with the fixed labels, never read as an instruction.
+ */
+export function causeKeyOfSubject(subject: string): string | null {
+  const m = SUBJECT.exec(subject);
+  return m ? causeKeyOfLabel(m[1]!) : null;
+}
 
 export function triageEmail(group: TriageGroup): TriageDraft {
   const first = group.priority === "fix-first";
