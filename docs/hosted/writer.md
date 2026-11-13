@@ -213,6 +213,17 @@ editor to read and publish. The full walk-through, with a local example you can 
   connection fails. The API version is pinned in the registry (`v2025-02-06`), not a setting.
 - **`allowedFields` is required** (`page.hours`), and prices, costs, fees, currencies, discounts, payments, slugs
   and secrets are refused even if listed. A dry run sends nothing at all.
+- **One approval, one draft: the `duplicate` reason.** A job is refused as `duplicate` when the trail already
+  holds an `applied` entry after this approval (`later` on the approval row; `applySanityDraft` in `packages/writer/src/sanity/apply.ts`,
+  the check after the payload and `allowedFields` checks). It happens when a job is run a second time for an
+  approval that was already applied, for example a worker that claims the same job again after it restarted.
+  It happens in a dry run too. It is decided from the trail alone, so the writer makes no request at all, not
+  even a read: a draft an editor has since discarded is not made again. What the owner sees is one `refused`
+  entry with the reason `duplicate` in the trail next to the first `applied` one, and nothing changes in
+  Sanity. A new fix needs a new approval. An earlier `dry_run`,
+  `apply_failed` or `refused` entry is not an application and does not cause it. The mailbox kind refuses
+  the same way (see above), and the test is "an approval that was already applied is never applied again" in
+  `packages/writer/src/__tests__/sanity-apply.test.ts`.
 - The trail records the outcome, the draft's id (`drafts.<id>`), the status or the reason. Never the token,
   never a response, never the client's text.
 
