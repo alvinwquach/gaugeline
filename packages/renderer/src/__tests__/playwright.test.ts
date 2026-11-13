@@ -503,3 +503,29 @@ describe("the Playwright adapter: could-not-check, never a pass", () => {
     expect(driver.chromium.launch).not.toHaveBeenCalled();
   });
 });
+
+describe("the Playwright adapter: nothing but the gate answers a request", () => {
+  it("never lets the browser fetch for itself, never installs a browser and never acts on the page", async () => {
+    const { readFileSync, readdirSync } = await import("node:fs");
+    const { fileURLToPath } = await import("node:url");
+    const dir = fileURLToPath(new URL("..", import.meta.url));
+    const source = readdirSync(dir)
+      .filter((f) => f.endsWith(".ts"))
+      .map((f) => readFileSync(`${dir}/${f}`, "utf8"))
+      .join("\n")
+      // Comments name these on purpose, to say they are never used.
+      .replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, "");
+    // A route answered by continue, fallback or fetch would let the browser's own network carry the request.
+    for (const forbidden of [
+      /\.continue\(/,
+      /\.fallback\(/,
+      /\.fetch\(/,
+      /\b(?:page|context|browser)\.request\b/,
+      /connectToServer/,
+      /\.click\(|\.fill\(|\.type\(|\.press\(|\.check\(|\.selectOption\(|\.dispatchEvent\(|\.setInputFiles\(/,
+      /\.install\(|browserType\.install|child_process|execFile|spawn\(/,
+      /storageState|httpCredentials|extraHTTPHeaders|setExtraHTTPHeaders|addCookies/,
+    ])
+      expect(source, String(forbidden)).not.toMatch(forbidden);
+  });
+});
