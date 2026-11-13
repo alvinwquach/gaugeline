@@ -46,6 +46,7 @@ export function recordGateway(inner: ModelGateway): {
   return {
     gateway: {
       provider: inner.provider,
+      budget: inner.budget,
       async complete(request) {
         const answer = await inner.complete(request);
         seen.set(request.callId, {

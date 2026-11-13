@@ -13,6 +13,7 @@ import { formatEvalReport, runEvals } from "../../evals/run.js";
 import { scan } from "../../__tests__/post-scan.js";
 import { gatewayEvalModel } from "../eval-bridge.js";
 import { runExample } from "../example.js";
+import { runRoutingExample } from "../example-router.js";
 import { createGateway } from "../gateway.js";
 import { RECORDED_PROVIDER, createRecordedAdapter } from "../recorded.js";
 
@@ -138,5 +139,23 @@ describe("the docs page", () => {
     expect(block("Evals")).toBe(
       formatEvalReport(await runEvals(triage.agent, triage.cases, through())),
     );
+  });
+
+  it("shows the routing output this code prints, word for word", async () => {
+    expect(block("RouteOutput")).toBe(await runRoutingExample());
+  });
+
+  it("shows routing code that is the example's own: every line of it is in example-router.ts", () => {
+    const source = readFileSync(
+      fileURLToPath(new URL("../example-router.ts", import.meta.url)),
+      "utf8",
+    );
+    const shown = (block("RouteExample") ?? "")
+      .replace(/^import[\s\S]*?;\n/, "")
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => l !== "" && !l.startsWith("console.log"));
+    expect(shown.length).toBeGreaterThan(10);
+    for (const line of shown) expect(source, line).toContain(line);
   });
 });

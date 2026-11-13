@@ -143,6 +143,8 @@ make a model obey it; what keeps you safe is that the agent has no approve tool 
   for your own input, without sending it.
 - **Planned (row AG-20).** If you turn on model wording, you bring your own key: on the CLI from your
   environment, or the call runs in your own worker. Gaugeline stores no key. A managed key is not offered.
+  If you give the router a second provider, the same payload can reach both after a timeout, a lost connection or a
+  5xx: see [the model gateway](./model-gateway.md#routing-and-escalation).
 
 ## Not covered
 

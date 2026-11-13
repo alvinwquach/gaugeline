@@ -2,16 +2,18 @@
  * The model gateway (AG-19). One call goes through the same steps whatever the provider: the tier is chosen,
  * the input goes through the privacy gate (AG-23: allowlist, page check, redaction; a refusal sends nothing),
  * the key is read from the environment now, the budget is asked, the adapter is called with a timeout, and the
- * answer is checked before anyone sees it. Nothing here opens a connection, reads the process environment,
- * logs, or reads a clock: the adapter sends, the caller hands the environment in, and the timeout is a timer.
+ * answer is checked before anyone sees it. The gate runs inside the call's own clock. Nothing
+ * here opens a connection, reads the process environment, logs, or reads a clock: the adapter sends, the
+ * caller hands the environment in, and the timeout is a timer.
  */
 import { parseRecording } from "../evals/replay.js";
 import { stringsOf } from "../secrets.js";
 import { parseGatewayConfig } from "./config.js";
 import { ModelGatewayError, type GatewayErrorCode } from "./errors.js";
 import { shownProvider } from "./known.js";
+import type { GatedPayload } from "./gated.js";
 import { ApiKey, isUsableKey } from "./key.js";
-import { REDACTION_KINDS, buildModelPayload } from "./privacy.js";
+import { REDACTION_KINDS, buildModelPayload, type PrivacyRecord } from "./privacy.js";
 import {
   MAX_ANSWER_CHARS,
   MAX_PROMPT_CHARS,
@@ -51,6 +53,11 @@ function decision(d: unknown): BudgetDecision {
   }
   return { allowed: false, reason: "the budget check gave no clear answer" };
 }
+
+/** The gateways `createGateway` has made. A router accepts only these: an object built by hand could say it has a budget and spend none. */
+const MADE = new WeakSet<object>();
+export const isMadeGateway = (g: unknown): g is ModelGateway =>
+  typeof g === "object" && g !== null && MADE.has(g);
 
 export function createGateway(options: GatewayOptions): ModelGateway {
   const parsed = parseGatewayConfig(options.config);
@@ -116,83 +123,117 @@ export function createGateway(options: GatewayOptions): ModelGateway {
         "bad-request",
         "A request carries an input (a task, findings, snippets and ids), not a prompt: a prompt is not checked by the privacy gate.",
       );
-    // The privacy gate: allowlist, page check, redaction. A refusal is could-not-run; nothing is read or sent.
-    const built = buildModelPayload(request.input);
-    if (!built.ok)
-      return fail(
-        "input-refused",
-        `The input was refused (${built.reason} at ${built.path}); nothing was sent.`,
-      );
-    const sent = built.payload;
-    if (sent.length > maxChars)
-      return fail(
-        "input-too-large",
-        `What would be sent is over the ${maxChars} character limit; nothing was sent.`,
-      );
 
-    const key = readKey();
-    const secret = key?.reveal();
-    if (
-      secret !== undefined &&
-      (sent.includes(secret) || stringsOf(request.input).some((t) => t.includes(secret)))
-    )
-      return fail("key-in-prompt", "The input holds the key; nothing was sent.");
+    const own: unknown = request.timeoutMs;
+    if (own !== undefined && (typeof own !== "number" || !Number.isSafeInteger(own) || own < 1))
+      return fail("bad-request", "timeoutMs must be a whole number of milliseconds, 1 or more.");
+    const outer: unknown = request.signal;
+    if (outer !== undefined && !(outer instanceof AbortSignal))
+      return fail("bad-request", "signal must be an AbortSignal.");
+    const limitMs = Math.min(config.timeoutMs, (own as number | undefined) ?? config.timeoutMs);
 
-    const estimate: BudgetEstimate = {
-      agentId: request.agentId,
-      callId: request.callId,
-      tier: tier as ModelTier,
-      provider: config.provider,
-      model,
-      inputTokens: Math.ceil(sent.length / CHARS_PER_TOKEN),
-      maxOutputTokens: config.maxOutputTokens,
-    };
-    let allowed: BudgetDecision;
-    try {
-      allowed = decision(await budget.before(estimate));
-    } catch {
-      allowed = { allowed: false, reason: "the budget check failed" };
-    }
-    if (!allowed.allowed)
-      return fail(
-        "budget",
-        `The budget stopped the call: ${allowed.reason}.`,
-        secret ? [secret] : [],
-      );
-
+    // The call's clock starts here, before the budget check: a check that takes the whole limit leaves nothing
+    // for the adapter, and once the call is aborted (by the limit or by the caller) nothing is ever sent.
     const abort = new AbortController();
-    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timer = setTimeout(() => abort.abort(), limitMs);
+    const onOuter = () => abort.abort();
+    if (outer?.aborted) abort.abort();
+    else outer?.addEventListener("abort", onOuter, { once: true });
+    const timedOut = () =>
+      new ModelGatewayError(
+        "timeout",
+        `The provider did not answer within ${limitMs / 1000} seconds.`,
+      );
+    const expired = new Promise<never>((_, reject) => {
+      if (abort.signal.aborted) reject(timedOut());
+      else abort.signal.addEventListener("abort", () => reject(timedOut()), { once: true });
+    });
+    expired.catch(() => undefined); // it may never be raced: it is not an unhandled rejection
+    const stopIfAborted = () => {
+      if (abort.signal.aborted) throw timedOut();
+    };
+
+    let secret: string | undefined;
+    let sent = "";
+    let gated: GatedPayload;
+    let record: PrivacyRecord;
+    let estimate: BudgetEstimate;
     let raw: unknown;
     try {
+      stopIfAborted();
+      // The privacy gate: allowlist, page check, redaction. A refusal is could-not-run; nothing is read or sent.
+      // It is plain code with no wait in it, and the clock is read again right after it.
+      const built = buildModelPayload(request.input);
+      if (!built.ok)
+        return fail(
+          "input-refused",
+          `The input was refused (${built.reason} at ${built.path}); nothing was sent.`,
+        );
+      sent = built.payload;
+      gated = built.gated;
+      record = built.record;
+      if (sent.length > maxChars)
+        return fail(
+          "input-too-large",
+          `What would be sent is over the ${maxChars} character limit; nothing was sent.`,
+        );
+      stopIfAborted();
+      const key = readKey();
+      secret = key?.reveal();
+      if (
+        secret !== undefined &&
+        (sent.includes(secret) || stringsOf(request.input).some((t) => t.includes(secret!)))
+      )
+        return fail("key-in-prompt", "The input holds the key; nothing was sent.");
+
+      estimate = {
+        agentId: request.agentId,
+        callId: request.callId,
+        tier: tier as ModelTier,
+        provider: config.provider,
+        model,
+        inputTokens: Math.ceil(sent.length / CHARS_PER_TOKEN),
+        maxOutputTokens: config.maxOutputTokens,
+        timeoutMs: limitMs,
+      };
+      let allowed: BudgetDecision;
+      try {
+        allowed = decision(await Promise.race([Promise.resolve(budget.before(estimate)), expired]));
+      } catch {
+        // The call's own time ran out while the check was still running: that is a timeout, not a refusal.
+        if (abort.signal.aborted) throw timedOut();
+        allowed = { allowed: false, reason: "the budget check failed" };
+      }
+      // After every await: a call that has been aborted never reaches the adapter, however the check ended.
+      stopIfAborted();
+      if (!allowed.allowed)
+        return fail(
+          "budget",
+          `The budget stopped the call: ${allowed.reason}.`,
+          secret ? [secret] : [],
+        );
+
       raw = await Promise.race([
         adapter!.complete({
           model,
-          prompt: built.gated,
+          prompt: gated,
           callId: request.callId,
           maxOutputTokens: config.maxOutputTokens,
           signal: abort.signal,
           key,
         }),
-        new Promise<never>((_, reject) => {
-          timer = setTimeout(() => {
-            abort.abort();
-            reject(
-              new ModelGatewayError(
-                "timeout",
-                `The provider did not answer within ${config.timeoutMs / 1000} seconds.`,
-              ),
-            );
-          }, config.timeoutMs);
-        }),
+        expired,
       ]);
     } catch (err) {
       const secrets = secret ? [secret] : [];
+      // The class is the adapter's: kept, never worked out from the message. A plain Error has none.
       if (err instanceof ModelGatewayError)
-        throw new ModelGatewayError(err.code, err.message, secrets);
+        throw new ModelGatewayError(err.code, err.message, secrets, err.failure);
       const said = err instanceof Error ? err.message : "no message";
       return fail("provider-error", `The ${config.provider} adapter failed: ${said}`, secrets);
     } finally {
       clearTimeout(timer);
+      outer?.removeEventListener("abort", onOuter);
     }
 
     const rec = parseRecording(raw);
@@ -212,10 +253,19 @@ export function createGateway(options: GatewayOptions): ModelGateway {
       model,
       tier: tier as ModelTier,
       advisory: true,
-      redacted: REDACTION_KINDS.some((k) => built.record.redactions[k] > 0),
-      privacy: built.record,
+      redacted: REDACTION_KINDS.some((k) => record.redactions[k] > 0),
+      privacy: record,
     };
   }
 
-  return { provider: config.provider, complete: call };
+  // Frozen, with the budget it was given: `complete` and `budget` cannot be assigned, redefined or deleted, so a
+  // made gateway cannot be turned into one that skips its ceilings.
+  if (options.budget) Object.freeze(options.budget);
+  const gateway: ModelGateway = Object.freeze({
+    provider: config.provider,
+    budget,
+    complete: call,
+  });
+  MADE.add(gateway);
+  return gateway;
 }

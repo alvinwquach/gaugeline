@@ -75,7 +75,7 @@ export const TASK_REASONS = Object.freeze({
 export type TaskReason = keyof typeof TASK_REASONS;
 
 /** The task of a call: a template, and for a second try the reason the first answer was refused. */
-export interface ModelTask {
+export interface PromptTask {
   template: TaskTemplate;
   reason?: TaskReason;
 }
@@ -94,7 +94,7 @@ export interface ModelFinding {
 }
 /** What one model call may carry. */
 export interface ModelInput {
-  task: ModelTask;
+  task: PromptTask;
   findings?: readonly ModelFinding[];
   /** Further ids (a draft, a related finding), in the same shape as a finding's. */
   ids?: readonly string[];

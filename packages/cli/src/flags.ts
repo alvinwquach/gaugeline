@@ -199,6 +199,14 @@ export const FLAGS: readonly FlagDef[] = Object.freeze<FlagDef[]>([
     commands: ["check"],
   },
   {
+    name: "pagespeed",
+    type: "boolean",
+    description:
+      "Also read Google's PageSpeed Insights: real-user vitals decide, lab is advice; sends page addresses to Google",
+    since: "0.2.0",
+    commands: ["check"],
+  },
+  {
     name: "libraries",
     type: "boolean",
     description:

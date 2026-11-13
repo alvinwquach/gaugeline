@@ -245,3 +245,27 @@ describe("with the recorded fake", () => {
     ).rejects.toMatchObject({ code: "input-refused" });
   });
 });
+
+describe("the gate runs inside the call's own clock", () => {
+  it("never builds or sends anything once the caller has aborted: the call is a timeout, whatever the input", async () => {
+    const { gateway, calls, reads } = setup();
+    const ctl = new AbortController();
+    ctl.abort();
+    for (const input of [
+      request().input,
+      request({ findings: [finding({ snippet: WHOLE_PAGE })] }).input,
+    ]) {
+      const e = await failure(gateway.complete({ ...request(), input, signal: ctl.signal }));
+      expect(e.code).toBe("timeout");
+    }
+    expect(calls).toHaveLength(0);
+    expect(reads()).toBe(0);
+  });
+
+  it("hands the adapter the one payload the gate built, and the same text on every call with the same input", async () => {
+    const { gateway, calls } = setup();
+    await gateway.complete({ ...request(), signal: new AbortController().signal });
+    await gateway.complete({ ...request(), callId: "call-2" });
+    expect(calls[0]!.prompt.text()).toBe(calls[1]!.prompt.text());
+  });
+});

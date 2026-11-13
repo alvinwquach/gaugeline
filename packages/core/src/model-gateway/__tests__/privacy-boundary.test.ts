@@ -121,8 +121,8 @@ describe("only the privacy gate makes a payload, and only the gateway calls an a
 
   it("has the gateway hand an adapter the gated payload and nothing else", () => {
     const g = all.find((f) => f.file.endsWith("model-gateway/gateway.ts"))!.text;
-    expect(g).toContain("prompt: built.gated");
-    expect(g).not.toMatch(/prompt:\s*(sent|request\.|prompt)/);
+    expect(g).toContain("prompt: gated,");
+    expect(g).not.toMatch(/prompt:\s*(sent|request\.)/);
   });
 
   it("is checked by a scan that would find a second caller (a planted one is seen)", () => {

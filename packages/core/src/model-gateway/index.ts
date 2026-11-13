@@ -9,6 +9,7 @@ export * from "./known.js";
 export * from "./model-pins.js";
 export { ApiKey, isUsableKey, scrub } from "./key.js";
 export * from "./recorded.js";
+export * from "./router.js";
 export * from "./types.js";
 export {
   DEFAULT_REDACTION_RULES,

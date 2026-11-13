@@ -19,6 +19,7 @@ import type { Trackers } from "./trackers/reader.js";
 import type { Published } from "./published/reader.js";
 import type { Backups } from "./backups/reader.js";
 import type { Libraries } from "./libraries/reader.js";
+import type { PageSpeed } from "./pagespeed/reader.js";
 import type { WordPress } from "./wordpress/reader.js";
 import type { HiddenConfig } from "./hidden.js";
 import type { StudioConfig } from "./studio.js";
@@ -253,6 +254,11 @@ export interface CheckContext {
    * has --libraries: that check then does nothing.
    */
   libraries?: Libraries;
+  /**
+   * What the PageSpeed checks read: Google's PageSpeed Insights answer for a page, one GET each, once per address.
+   * Absent unless the run has --pagespeed: those checks then do nothing.
+   */
+  pageSpeed?: PageSpeed;
   /**
    * What the WordPress checks read: the current releases from wordpress.org and the site's own list of users,
    * once each. Absent unless the run has --wordpress: those checks then do nothing.

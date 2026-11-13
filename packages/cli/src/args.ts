@@ -129,6 +129,8 @@ export interface RunFlags {
   trackers: boolean;
   /** --renderer: the browser renderer the run may use for rendered reads. Absent: nothing is rendered. */
   renderer?: RendererName;
+  /** --pagespeed: add the PageSpeed checks (Google's PageSpeed Insights for the key pages: real-user vitals decide, lab scores are advice). */
+  pagespeed: boolean;
   /** --libraries: add the library check (JavaScript libraries the page loads, with the published advisories that name their version). */
   libraries: boolean;
   /** --wordpress: add the WordPress checks (versions shown against wordpress.org's current releases, and the REST API's list of users). */
@@ -2260,6 +2262,7 @@ export function parseCliArgs(
     cost: values.cost === true || command === "cost",
     trackers: values.trackers === true,
     ...(renderer !== undefined ? { renderer: renderer as RendererName } : {}),
+    pagespeed: values.pagespeed === true,
     libraries: values.libraries === true,
     wordpress: values.wordpress === true,
     backups: values.backups === true || command === "backups",

@@ -27,7 +27,7 @@ import { Agent as HttpsAgent, request as httpsRequest, type RequestOptions } fro
 import { isIP } from "node:net";
 import type { Readable } from "node:stream";
 import { isBlockedAddress } from "../addresses.js";
-import { ModelGatewayError } from "./errors.js";
+import { ModelGatewayError, type FailureClass } from "./errors.js";
 import { isGatedPayload } from "./gated.js";
 import type { AdapterCall, ModelAdapter } from "./types.js";
 
@@ -118,16 +118,46 @@ function costMicros(entry: ProviderHost, inputTokens: number, outputTokens: numb
   return Number((total + 999_999n) / 1_000_000n);
 }
 
+/** What a status means, as a class (never read from the body): only a 5xx is an outage. */
+function classOfStatus(status: number): FailureClass {
+  if (status >= 500 && status < 600) return "outage";
+  if (status >= 300 && status < 400) return "redirect";
+  if (status === 401 || status === 403) return "bad-key";
+  if (status === 429) return "rate-limited";
+  if (status === 400 || status === 422) return "bad-request";
+  return "refused";
+}
+/** Errors that mean the host could not be reached or the connection was lost, by their code and nothing else. */
+const CONNECTION_CODES: ReadonlySet<string> = new Set([
+  "ECONNREFUSED",
+  "ECONNRESET",
+  "ETIMEDOUT",
+  "EHOSTUNREACH",
+  "ENETUNREACH",
+  "ENOTFOUND",
+  "EAI_AGAIN",
+  "EPIPE",
+]);
+const classOfError = (code: string | undefined): FailureClass =>
+  code === NOT_PUBLIC
+    ? "blocked-address"
+    : code !== undefined && CONNECTION_CODES.has(code)
+      ? "outage"
+      : "unclassified";
+
+/** An answer that is not JSON at all, as opposed to JSON in the wrong shape (null). */
+const NOT_JSON = Symbol("not json");
+
 const whole = (v: unknown): v is number =>
   typeof v === "number" && Number.isSafeInteger(v) && v >= 0;
 
-/** The gateway's answer shape from the neutral JSON, or null. */
+/** The gateway's answer shape from the neutral JSON, NOT_JSON when it is not JSON, or null when it is the wrong shape. */
 function answerOf(entry: ProviderHost, raw: string, latencyMs: number): unknown {
   let body: unknown;
   try {
     body = JSON.parse(raw);
   } catch {
-    return null;
+    return NOT_JSON;
   }
   if (body === null || typeof body !== "object" || Array.isArray(body)) return null;
   const { text, usage } = body as { text?: unknown; usage?: Record<string, unknown> | null };
@@ -190,6 +220,8 @@ export function createProviderAdapter(
           new ModelGatewayError(
             "input-too-large",
             `The prompt is over ${MAX_PAYLOAD_BYTES} bytes; nothing was sent.`,
+            [],
+            "bad-request",
           ),
         );
       if (WHOLE_PAGE.test(prompt))
@@ -197,6 +229,8 @@ export function createProviderAdapter(
           new ModelGatewayError(
             "bad-request",
             "The prompt looks like a whole page; only findings, ids and snippets are sent.",
+            [],
+            "bad-request",
           ),
         );
       const data = Buffer.from(
@@ -217,10 +251,10 @@ export function createProviderAdapter(
           call.signal.removeEventListener("abort", onAbort);
           done();
         };
-        const fail = (code: ModelGatewayError["code"], message: string) =>
+        const fail = (code: ModelGatewayError["code"], message: string, failure?: FailureClass) =>
           finish(() => {
             req?.destroy();
-            reject(new ModelGatewayError(code, message, secrets));
+            reject(new ModelGatewayError(code, message, secrets, failure));
           });
         function onAbort() {
           fail("timeout", `${entry!.host} did not answer in time.`);
@@ -257,11 +291,16 @@ export function createProviderAdapter(
                 return fail(
                   "provider-error",
                   `${entry.host} answered a redirect, which is not followed.`,
+                  classOfStatus(status),
                 );
               }
               if (status < 200 || status >= 300) {
                 res.destroy();
-                return fail("provider-error", `${entry.host} answered ${status}.`);
+                return fail(
+                  "provider-error",
+                  `${entry.host} answered ${status}.`,
+                  classOfStatus(status),
+                );
               }
               if (!JSON_TYPE.test(String(res.headers?.["content-type"] ?? "")))
                 return (
@@ -269,6 +308,7 @@ export function createProviderAdapter(
                   fail(
                     "bad-answer",
                     `${entry.host} answered something that is not JSON; it was not read.`,
+                    "not-json",
                   )
                 );
               const chunks: Buffer[] = [];
@@ -287,15 +327,22 @@ export function createProviderAdapter(
                   Buffer.concat(chunks).toString("utf8"),
                   Math.max(0, Math.round(now() - started)),
                 );
+                if (answer === NOT_JSON)
+                  return fail(
+                    "bad-answer",
+                    `The answer from ${entry.host} is not in the expected shape.`,
+                    "not-json",
+                  );
                 if (answer === null)
                   return fail(
                     "bad-answer",
                     `The answer from ${entry.host} is not in the expected shape.`,
+                    "bad-answer",
                   );
                 finish(() => resolve(answer));
               });
               res.on("error", () =>
-                fail("provider-error", `${entry.host} ended the answer early.`),
+                fail("provider-error", `${entry.host} ended the answer early.`, "outage"),
               );
             },
           );
@@ -306,6 +353,7 @@ export function createProviderAdapter(
               err.code === NOT_PUBLIC
                 ? `${entry.host} is not a public address: nothing was sent`
                 : `${entry.host} could not be reached (${err.code ?? "error"})`,
+              classOfError(err.code),
             ),
           );
           req.end(data);

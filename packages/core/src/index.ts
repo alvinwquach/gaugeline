@@ -1704,6 +1704,18 @@ export { sensitiveReason, collectsDetails } from "./trackers/sensitive.js";
 
 export { LIBRARY_CHECKS } from "./checks/libraries.js";
 export { addLibraryChecks } from "./libraries/registry.js";
+export { PAGESPEED_CHECKS } from "./checks/pagespeed.js";
+export { addPageSpeedChecks } from "./pagespeed/registry.js";
+export {
+  createPageSpeed,
+  PAGESPEED_HOSTS,
+  PAGESPEED_ORIGIN,
+  PAGESPEED_PAGE_CAP,
+  sendableAddress,
+} from "./pagespeed/reader.js";
+export type { PageSpeed, PageSpeedReading } from "./pagespeed/reader.js";
+export { parsePageSpeed, VITALS } from "./pagespeed/vitals.js";
+export type { PageSpeedAnswer, VitalVerdict, VitalId } from "./pagespeed/vitals.js";
 export { createLibraries, LIBRARY_SCRIPT_CAP } from "./libraries/reader.js";
 
 // C-01: the WordPress checks (wp-outdated, wp-users-exposed), off unless --wordpress
@@ -2054,20 +2066,28 @@ export {
   MAX_LLM_CONFIG_CHARS,
   LLM_CONFIG_FILE,
   MAX_ANSWER_CHARS,
+  DEFAULT_ROUTE_DEADLINE_MS,
+  MAX_CALLS_PER_ROUTE,
   MAX_PRICE_MICROS,
   MAX_PROMPT_CHARS,
   MAX_RECORDINGS,
   MAX_REPORT_BYTES,
   MODEL_PINS_SCHEMA,
+  MODEL_TASKS,
   MODEL_TIERS,
   ModelGatewayError,
   NO_BUDGET,
+  FALLBACK_FAILURES,
+  FAILURE_CLASSES,
   RECORDED_PROVIDER,
+  TASK_TIERS,
+  agentAnswerCheck,
   budgetConfigSchema,
   callCostMicros,
   createBudgetLedger,
   createGateway,
   createRecordedAdapter,
+  createRouter,
   estimateInputTokens,
   estimateRun,
   createByokGateway,
@@ -2102,6 +2122,7 @@ export {
 } from "./model-gateway/index.js";
 export type {
   AdapterCall,
+  AnswerCheck,
   BudgetCeilings,
   BudgetConfig,
   BudgetConfigInput,
@@ -2115,6 +2136,8 @@ export type {
   CallEstimate,
   ByokMode,
   ByokStatus,
+  CheckVerdict,
+  FailureClass,
   GatewayErrorCode,
   GatewayOptions,
   InputRefusal,
@@ -2137,8 +2160,14 @@ export type {
   ModelPinsResult,
   ModelPinsVerdict,
   ModelRequest,
+  ModelTask,
   ModelTier,
   PlannedCall,
+  RouteAttempt,
+  RouteOutcome,
+  RouteRequest,
+  RouterOptions,
+  Router,
   RunBudget,
   RunEstimate,
   SpendEntry,

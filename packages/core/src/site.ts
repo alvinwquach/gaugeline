@@ -35,6 +35,7 @@ import type { Trackers } from "./trackers/reader.js";
 import type { Published } from "./published/reader.js";
 import type { Backups } from "./backups/reader.js";
 import type { Libraries } from "./libraries/reader.js";
+import type { PageSpeed } from "./pagespeed/reader.js";
 import type { WordPress } from "./wordpress/reader.js";
 import type { HiddenConfig } from "./hidden.js";
 import type { StudioConfig } from "./studio.js";
@@ -149,6 +150,8 @@ export interface SiteCheckOptions {
   backups?: Backups;
   /** What the library check reads (`--libraries`). Without it the check is not in the run. */
   libraries?: Libraries;
+  /** What the PageSpeed checks read (`--pagespeed`). Without it those checks are not in the run. */
+  pageSpeed?: PageSpeed;
   /** What the WordPress checks read (`--wordpress`). Without it they are not in the run. */
   wordpress?: WordPress;
   /** Sections hidden until launch. */
@@ -356,6 +359,7 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
       ...(opts.published ? { published: opts.published } : {}),
       ...(opts.backups ? { backups: opts.backups } : {}),
       ...(opts.libraries ? { libraries: opts.libraries } : {}),
+      ...(opts.pageSpeed ? { pageSpeed: opts.pageSpeed } : {}),
       ...(opts.wordpress ? { wordpress: opts.wordpress } : {}),
       ...(opts.hidden ? { hidden: opts.hidden } : {}),
       ...(opts.studio ? { studio: opts.studio } : {}),

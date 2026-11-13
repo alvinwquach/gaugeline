@@ -43,7 +43,7 @@ export async function runExample(): Promise<string> {
         {
           id: "f-1",
           title: "The menu link gives a 404",
-          snippet: `Reply to ${["baker", "example.test"].join("@")}`,
+          snippet: "Reply on +44 20 7946 0958",
         },
       ],
     },
