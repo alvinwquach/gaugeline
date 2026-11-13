@@ -663,7 +663,7 @@ describe("the worker's email settings from the environment", () => {
   const good = {
     RESEND_API_KEY: ["re", "_test_", "abcdef0123456789"].join(""),
     GAUGELINE_DASHBOARD_URL: "https://dashboard.example.test/",
-    GAUGELINE_EMAIL_TOKEN_SECRET: "t".repeat(40),
+    GAUGELINE_EMAIL_TOKEN_SECRET: "t9Gk2Vq7ZxMw4BnR8cLd1HsYfJ3aEuP5oIe0",
   };
   it("is off without a Resend key, and the error for a half-set-up email never contains the key", () => {
     expect(morningFromEnv(sql, {})).toBeNull();
