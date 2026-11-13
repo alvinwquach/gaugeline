@@ -33,6 +33,8 @@ Read 5 files in ./harbour-bar-preview. No request was made and no code was run.
 ✓ robots-disallow-hides-noindex
 ✓ webhook-missing-secret-status
 ✓ sanity-cdn-tagged-reads
+✓ cms-token-in-client-code
+✓ webhook-url-hardcoded
 
 2 to look at, 2 to fix first.
 ```
@@ -58,7 +60,7 @@ that uses it and has no `app/layout` says so and checks nothing.
   a dynamic segment (`/menu/[slug]`) counts as blocked only by a rule that covers everything before the
   segment. A `robots.ts` that builds its rules from code is not sure.
 
-The command also runs the two checks for the Sanity publish webhook and the cache, described in [the webhook and cache checks](webhook-and-cache-source.md).
+The command also runs the other source checks: the Sanity publish webhook and the cache (see [the webhook and cache checks](webhook-and-cache-source.md)) and tokens and webhook addresses in code. A tick names each check that passed.
 
 The first check cites the Next.js page on merging metadata; the other two rest on what the Next.js file
 conventions say a sitemap and a `robots` file are for, and on the way crawlers are documented to treat a
