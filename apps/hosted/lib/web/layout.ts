@@ -136,6 +136,7 @@ button.primary { background: var(--accent); border-color: var(--accent); color: 
 .stack { display: grid; gap: 0.75rem; max-width: 26rem; }
 .stack label { font-weight: 600; }
 .notice { border: 1px solid var(--line); background: var(--panel); border-radius: 0.5rem; padding: 0.75rem 1rem; }
+.update { white-space: pre-wrap; font: inherit; border: 1px solid var(--line); border-radius: 0.5rem; padding: 0.75rem 1rem; max-width: 70ch; }
 .sites { width: 100%; border-collapse: collapse; }
 .sites caption { text-align: left; font-weight: 600; padding-bottom: 0.5rem; }
 .sites th, .sites td { text-align: left; vertical-align: top; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--line); }

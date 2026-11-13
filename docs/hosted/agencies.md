@@ -2,7 +2,7 @@
 
 The hosted version of Gaugeline (in progress, not released) is built for agencies that look after many
 small-business sites. This page covers grouping sites by **client**, giving a client a **view-only login**
-to their own site, and the **invite** that creates that login. The database enforces all of it: a client
+to their own site, the **invite** that creates that login, and the **weekly update** each client receives. The database enforces all of it: a client
 viewer cannot read another client's site, whatever the app does.
 
 ## An example: one agency, a bar and a pop-up kitchen
@@ -124,6 +124,105 @@ inviter), can be revoked, and is used once.
   (all with the same message, so it does not reveal which tokens exist);
 - the person who sent it no longer holds a role that may grant it (an admin who has since become a member);
 - the person is already in that organisation.
+
+## The weekly update
+
+On Friday, `draftWeeklyUpdates` drafts one update per client from that week's runs (Monday to Sunday, UTC), in the
+digest's plain wording: what was checked, what is new, what was fixed and what is still waiting. A client
+with nothing found still gets a short "All checked, nothing found." A site with no run that week says "Not
+checked this week." instead of claiming it was checked. The text is plain rules over the findings matched by
+fingerprint, no model call, so the same week gives the same words. Names (the agency's, the client's, each
+site's) and finding titles are cleaned to one line first, the same way as on the dashboard. If one client's
+update cannot be drafted, that client is skipped and logged by its id only, and every other client still gets
+theirs.
+
+For the bar, whose Tuesday run found the broken menu link, the draft reads:
+
+```text
+Hello from Northgate Studio. Here is what we checked on your site this week.
+
+The Tidewater Bar (tidewater-bar.test)
+Checked once, on Tue 10 Nov.
+This week: 1 new thing to fix.
+
+New this week:
+- Broken link on the menu page
+
+Northgate Studio
+```
+
+The draft goes to the [inbox](./inbox.md) as an `email` draft. Someone at the agency approves it, edits it
+first, or declines it. Only then is it sent, from the agency's name, and recorded once in
+`weekly_update_sends`. The database refuses that record unless the update's draft has an approving decision,
+and it copies the approved words (the edit, when there was one) into the record itself, so nothing can be
+sent that a person did not approve:
+
+```sql
+-- set-up, as the schema owner: Friday's draft for Juniper Kitchens, into the inbox (the worker does this)
+begin;
+insert into drafts (id, org_id, site_id, kind, payload) values ('a2d20000-0000-4000-8000-0000000000a2',
+  '0a000000-0000-4000-8000-00000000000a', 'a2000000-0000-4000-8000-0000000000a2', 'email',
+  '{"subject":"Juniper Kitchens: your sites, week of Mon 9 Nov","body":"All checked, nothing found."}');
+insert into weekly_updates (id, org_id, client_id, week_start, site_ids, subject, body, draft_id)
+  values ('a2e10000-0000-4000-8000-0000000000a2', '0a000000-0000-4000-8000-00000000000a',
+          'c2000000-0000-4000-8000-0000000000c2', '2026-11-09', '{a2000000-0000-4000-8000-0000000000a2}',
+          'Juniper Kitchens: your sites, week of Mon 9 Nov', 'All checked, nothing found.',
+          'a2d20000-0000-4000-8000-0000000000a2');
+commit;
+
+-- 1. send before anyone approved
+begin;
+set local role service_role;
+insert into weekly_update_sends (org_id, update_id, decision_id)
+  select '0a000000-0000-4000-8000-00000000000a', 'a2e10000-0000-4000-8000-0000000000a2', max(id) from decisions;
+rollback;
+
+-- 2. Northgate's member edits and approves in the inbox; then the send is recorded with the edited words
+begin;
+select set_config('request.jwt.claims', '{"sub":"11111111-0000-4000-8000-000000000002"}', true);
+set local role authenticated;
+insert into decisions (org_id, draft_id, decision, edited_payload, decided_by)
+  values ('0a000000-0000-4000-8000-00000000000a', 'a2d20000-0000-4000-8000-0000000000a2', 'edited',
+          '{"subject":"Juniper Kitchens: your week","body":"All checked, nothing found. See you Friday."}',
+          '11111111-0000-4000-8000-000000000002');
+reset role;
+set local role service_role;
+insert into weekly_update_sends (org_id, update_id, decision_id)
+  select '0a000000-0000-4000-8000-00000000000a', 'a2e10000-0000-4000-8000-0000000000a2', id
+  from decisions where draft_id = 'a2d20000-0000-4000-8000-0000000000a2'
+  returning subject, body;
+rollback;
+```
+
+Output (the `set_config` lines trimmed):
+
+```text
+ERROR:  a weekly update is sent only after a person approves it
+
+           subject           |                    body
+-----------------------------+---------------------------------------------
+ Juniper Kitchens: your week | All checked, nothing found. See you Friday.
+(1 row)
+```
+
+A client viewer reads a sent update when every site it covers is their site and their site still belongs to
+that update's client. They never see the draft, the edit history or a declined update. The update keeps the
+list of sites it covered, so a site moved to another client does not take its old updates along (and moving it
+removes its viewers, see [clients and sites](#clients-and-sites)).
+
+An approved weekly-update draft never becomes an apply job: the inbox skips the apply queue for a draft that
+belongs to a weekly update, so the writer cannot send it a second time. Only `sendApprovedUpdates` sends it.
+
+### The pages
+
+- **Clients** (`/clients`): every client, worst first (most "fix this first" findings, then most open, then
+  most changed this week), with this week's update state. Staff only.
+- **Weekly update** (`/clients/update?client=...`): the update as drafted, as edited, or as sent; before
+  Friday, a preview of what the draft would say now.
+
+Not yet wired: the worker's schedule does not call `draftWeeklyUpdates` and `sendApprovedUpdates` yet (a
+small follow-up), and sending goes through one interface (`WeeklyMailer` in `apps/hosted/agency/weekly-store.ts`), which the morning email's
+mail path plugs into; until it does, nothing is sent anywhere.
 
 ## Run only on sites you own or have permission to test
 
