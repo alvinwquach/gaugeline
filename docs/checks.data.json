@@ -2158,6 +2158,19 @@
     "estimateChanges": "The fault may be in the route, the host or the signing secret, and events missed in the meantime have to be replayed."
   },
   {
+    "id": "supabase-rls-off",
+    "severity": "high",
+    "area": "Security & email",
+    "title": "A Supabase table has row-level security off",
+    "what": "A table in the project's public schema has row-level security switched off.",
+    "why": "A site built on Supabase ships the project's public key to every visitor. Without row-level security on a public table, that key reaches every row of it through the Data API, unless the table's grants say otherwise: a booking list, a waitlist or an order table can be read, and often changed, by anyone.",
+    "fix": "In the Supabase dashboard, open the table and enable row-level security, then add a policy for each thing visitors should do (for example, insert their own booking, read the menu). Test the site after: a table with no policy refuses everything.",
+    "tech": "read through Supabase's hosted MCP server in read-only mode for the configured project only (list_tables with schemas [\"public\"], verbose false); a table whose rls_enabled is false is a finding; the evidence is the table's name, cleaned and cut to 40 characters, and its row estimate; a table whose rls_enabled is not a boolean, an unread tool or a stopped read is could-not-check",
+    "size": "M",
+    "done": "Every table in the public schema has row-level security on, with policies for what visitors may read and write.",
+    "estimateChanges": "Turning it on is one statement per table; writing the policies the site needs is the work, and the site must be tested after."
+  },
+  {
     "id": "cutover-canonical-host",
     "severity": "high",
     "area": "Launch day",
@@ -2429,6 +2442,19 @@
     "size": "S",
     "done": "A visitor with no token cannot list a single item of any collection you marked private.",
     "estimateChanges": "Usually one change in Directus: open Settings, then Access Policies, then the Public policy, and remove read access from the collection. Allow longer if the front end reads that collection with no token and needs a server-side token instead."
+  },
+  {
+    "id": "drupal-unpublished-reachable",
+    "severity": "high",
+    "area": "Security & email",
+    "title": "A Drupal node that is not published can be opened by a visitor",
+    "what": "A node is saved in Drupal and not published, and its own page at /node/ID answers a visitor with a page instead of Drupal's access denied.",
+    "why": "Unpublished work is meant to be private: a staff change not announced yet, a price list for next year, a notice that was pulled. If a visitor can open it, so can anyone who guesses the number, and a search engine may already have it.",
+    "fix": "In Drupal open People, then Permissions, and check which roles can view unpublished content: Bypass content access control, or a permission from a contributed module such as View unpublished, especially for the Anonymous and Authenticated roles. Remove it from roles that should not have it, then clear the caches and check that a page cache or a CDN is not serving an old copy of the page.",
+    "tech": "probing check, off without --owner-consent: this check lists unpublished nodes with the credential you gave Gaugeline and asks the site for their pages as a visitor, so it runs only with --owner-consent (or gaugeline.consent.json) and a readUnpublished entry in gaugeline.adapters.json, and you should run it only on sites you own or have permission to test; per type named in the settings that is a node type, GETs of /jsonapi/node/BUNDLE with filter[status]=0, sort=id, page[limit] and page[offset] (up to 50 a page, the offset stepping by the page size asked, the next link read for the paging it states and never requested, and it must stay on the host and the path asked) and a sparse fieldset of status, drupal_internal__nid and path, with the credential in an Authorization header and nowhere else, never followed to a redirect and never sent over plain http; Drupal core reports no total, so the list is checked for a repeated id, a first page that differs when read again at the end, and a count when the site reports one (meta.count); a node listed with a status that is not false is could-not-check; at most 100 unpublished nodes are asked about per type (the rest are counted as not asked); then per node one GET of /node/NID on the Drupal address only, with no credential, no cookie and nothing the fetcher adds per address, redirects followed up to three times and only within the same host, at most 100 pages a run; an answer counts only when Drupal sent it (an X-Generator: Drupal header, or a Drupal generator meta tag), and when the final path is the node's path or its alias; a 403 or 404 that is Drupal's own is the node closed to a visitor; a 2xx that is Drupal's own is looked at once more with the credential (GET of the resource by its id, status only) and is the finding only when the node is still unpublished (a node published in between is could-not-check); anything else, a firewall's 403, a login page, a redirect elsewhere, a type that is not a node type, a list the credential cannot read, and a credential whose list is empty (its role may not view unpublished content), is could-not-check for that part, never a pass; a finding is a type, a node number and a status, never a title or a field",
+    "size": "S",
+    "done": "Every node you named that is not published answers a visitor with Drupal's own access denied.",
+    "estimateChanges": "A few minutes when one node is open: check who may view unpublished content under Permissions, and whether a module or a custom access rule opens the node. Allow an hour when a module such as a content access or caching layer serves unpublished nodes to everyone."
   },
   {
     "id": "payload-collection-public",
@@ -4054,6 +4080,19 @@
     "size": "S",
     "done": "The endpoint is enabled in the Stripe dashboard, or deleted if it is no longer needed.",
     "estimateChanges": "Stripe disables an endpoint after days of failures, so the failures need reading first."
+  },
+  {
+    "id": "supabase-security-advisor",
+    "severity": "medium",
+    "area": "Security & email",
+    "title": "Supabase's security advisor reports a problem",
+    "what": "Supabase's own security advisor reports a lint at ERROR or WARN level for the project.",
+    "why": "The advisor is Supabase's own reading of the project's security settings. A lint left open is a known weakness in the database behind the site, found by the vendor and waiting for someone to act.",
+    "fix": "Open Advisors, then Security Advisor, in the Supabase dashboard; each lint links to its remediation page. Fix the ERROR ones first.",
+    "tech": "read through Supabase's hosted MCP server in read-only mode (get_advisors with type security); only each lint's code (a lower-case id), level and facing are kept, never its title, description or remediation text; lints are grouped by code and level, INFO is not reported, and rls_disabled_in_public is left to supabase-rls-off when the table list was read",
+    "size": "M",
+    "done": "Supabase's security advisor shows no ERROR or WARN lint for the project.",
+    "estimateChanges": "Each lint names its own fix; some are one setting, some change how a function or a view is written."
   },
   {
     "id": "cutover-certificate-changed",

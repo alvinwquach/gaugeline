@@ -7,6 +7,7 @@ import { entries as contentstack } from "./contentstack.entry.js";
 import { entries as craft } from "./craft.entry.js";
 import { entries as datocms } from "./datocms.entry.js";
 import { entries as directus } from "./directus.entry.js";
+import { entries as drupal } from "./drupal.entry.js";
 import { entries as framer } from "./framer.entry.js";
 import { entries as genericApi } from "./generic-api.entry.js";
 import { entries as gitContent } from "./git-content.entry.js";
@@ -36,6 +37,7 @@ export const ADAPTER_ENTRIES: readonly AdapterEntry[] = [
   ...craft,
   ...datocms,
   ...directus,
+  ...drupal,
   ...framer,
   ...genericApi,
   ...gitContent,
