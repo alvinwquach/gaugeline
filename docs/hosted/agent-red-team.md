@@ -33,8 +33,7 @@ menu email twice.
 | **Kill switch.** The operator's global switch, and `GAUGELINE_AGENTS_OFF` set to `1`, empty, `true` or garbage.           | T7, T12 | The database switch; in the process, any value but unset or `0` stops, before the database is called. |
 
 **Pending (`it.todo`).** _Expired token_ (T10) waits for a decision: the registry has no expiry on an agent's
-token, only revoke, `disabled` and a flag for a token unused for 30 days. The MCP server's cases are in the next section; the writer's and the receipt chain's come in the next pull
-request.
+token, only revoke, `disabled` and a flag for a token unused for 30 days. The MCP server's cases, the writer's and the receipt chain's are in the sections below.
 
 ## The MCP server's cases
 
@@ -60,6 +59,25 @@ with its own marker word, so a leak says which attack got through.
 The expired-token case is still the one `it.todo` above: when the hosted API answers with a reason the server
 does not know (which is what an expired token would look like), the server shows nothing of the body.
 
+## The writer's cases, and the receipt chain's
+
+The writer is your own worker: it turns one approved draft into one draft pull request, after reading the
+approval row itself. These cases send it an approval that should no longer work, and check it refuses, sends
+no request, and leaves one entry in its trail. The receipt chain is what `gaugeline receipts verify` checks
+offline; its cases hand the verifier a chain that was tampered with and check it names the first bad receipt.
+
+| Case                                                                                                           | Threat  | What stops it                                                                   |
+| -------------------------------------------------------------------------------------------------------------- | ------- | ------------------------------------------------------------------------------- |
+| **Replayed approval, old.** The bar's menu fix, approved three days ago, sent again.                           | T3      | The approval expires after 72 hours: `expired`, nothing sent.                   |
+| **Replayed approval, withdrawn.** An approval followed by a decline or a withdrawal.                           | T3      | Only the writer's own outcomes may follow an approval; anything else ends it.   |
+| **Replayed approval, applied.** The same job sent again after its pull request exists, even a closed one.      | T3      | The draft's branch is looked up first: no second pull request, no file written. |
+| **Approval of an edited draft.** The text changed after approval, with or without a matching hash.             | T5      | The job's text must hash to the approved hash: `hash`, nothing sent.            |
+| **Cross-tenant job.** A job for another agency's organisation or another site.                                 | T6      | The job must match the worker's own organisation and site and the approval's.   |
+| **Kill switch.** `GAUGELINE_WRITER_STOP` set to anything but unset, empty or `0`; a pause that cannot be read. | T7, T12 | Read before each request; an unreadable pause stops (fails closed).             |
+| **Receipt replay.** A receipt copied to the end of the chain, or a second approval of one draft.               | T3      | `sequence` and `duplicate-draft` checks name the first bad receipt.             |
+| **Receipt for an edited draft.** A payload that is not the one hashed; a receipt's hash edited in place.       | T5      | `payload` and `hash` checks.                                                    |
+| **Reordered, cut or forged chain.** A swap, a missing first receipt, a changed approver role, a cut-off end.   | T3, T5  | The hash chain; `head` finds a cut-off end.                                     |
+
 ## Run it
 
 The cases need a Postgres 16 server. Point the tests at one you can throw away:
@@ -84,6 +102,17 @@ $ pnpm exec vitest run packages/mcp/src/__tests__/red-team.test.ts
  ...
  Test Files  1 passed (1)
       Tests  12 passed (12)
+```
+
+The writer's and the receipt chain's cases need no database either:
+
+```sh
+$ pnpm exec vitest run packages/writer/src/__tests__/red-team.test.ts packages/core/src/approval-receipts/__tests__/red-team.test.ts
+ ✓ red team: the approval receipt chain (T3, T5) > replayed approval: a receipt copied to the end, or a second approval of the same draft, breaks the chain
+ ✓ red team: the writer (T3, T5, T7, T12) > replayed approval (old): an approval from three days ago is refused, and nothing is sent
+ ...
+ Test Files  2 passed (2)
+      Tests  11 passed (11)
 ```
 
 Without the variable the database cases are skipped, so the normal test run on Windows and macOS does not need a
