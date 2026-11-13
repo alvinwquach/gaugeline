@@ -87,9 +87,59 @@ export const gatewayConfigSchema = z
 export type GatewayConfigResult =
   { ok: true; config: GatewayConfig } | { ok: false; problems: string[] };
 
-/** A setting's name, shown only when it is shaped like one; a pasted key used as a name is not shown. */
-const shownName = (k: string) =>
-  /^[A-Za-z][A-Za-z0-9_.-]{0,39}$/.test(k) && redactForTrace(k) === k ? k : "a setting";
+/** The settings this file has. */
+const SETTINGS = ["provider", "keyEnv", "tiers", "timeoutMs", "maxInputChars", "maxOutputTokens"];
+/** Mistakes people make, shown by name: a key, a host, a mode. */
+const KNOWN_MISTAKES: ReadonlySet<string> = new Set(
+  [
+    "apiKey",
+    "api_key",
+    "key",
+    "token",
+    "secret",
+    "password",
+    "authorization",
+    "bearer",
+    "host",
+    "baseUrl",
+    "url",
+    "endpoint",
+    "proxy",
+    "allowPrivate",
+    "mode",
+    "managed",
+    "vault",
+    "metered",
+    "metering",
+  ].map((n) => n.toLowerCase()),
+);
+
+/** The edit distance between two short words (insert, delete, change one letter). */
+function distance(a: string, b: string): number {
+  let row = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    const next = [i];
+    for (let j = 1; j <= b.length; j++)
+      next[j] = Math.min(
+        row[j]! + 1,
+        next[j - 1]! + 1,
+        row[j - 1]! + (a[i - 1] === b[j - 1] ? 0 : 1),
+      );
+    row = next;
+  }
+  return row[b.length]!;
+}
+
+/**
+ * Whether an unknown setting's name may be shown: only a mistake this page recognises, or a near miss (two edits)
+ * of a real setting. Any other name is never printed: a person may have pasted a key as a name, and a key
+ * can look like anything.
+ */
+const mayShow = (k: string): boolean =>
+  k.length <= 24 &&
+  /^[A-Za-z][A-Za-z0-9_]*$/.test(k) &&
+  (KNOWN_MISTAKES.has(k.toLowerCase()) ||
+    SETTINGS.some((s) => distance(k.toLowerCase(), s.toLowerCase()) <= 2));
 
 /** The config if `raw` is one, or the problems, one per line, each with where it is. */
 export function parseGatewayConfig(raw: unknown): GatewayConfigResult {
@@ -101,13 +151,15 @@ export function parseGatewayConfig(raw: unknown): GatewayConfigResult {
   const problems = r.error.issues.flatMap((issue) => {
     const where = issue.path.map(String).join(".");
     if (issue.code === "unrecognized_keys")
-      return issue.keys.map((k) => {
-        const name = shownName(k);
+      return issue.keys.map((k, i) => {
         const at = where === "" ? "" : `${where}.`;
-        const hint = /host|url|endpoint|proxy|private|address/i.test(name)
-          ? "where a provider is reached is kept in code, never in a file"
-          : "name the environment variable in keyEnv, never the key itself";
-        return `${at}${name}: is not a setting; ${hint}`;
+        const hint =
+          /host|url|endpoint|proxy|private|address/i.test(k) && mayShow(k)
+            ? "where a provider is reached is kept in code, never in a file"
+            : "name the environment variable in keyEnv, never the key itself";
+        return mayShow(k)
+          ? `${at}"${k}": is not a setting; ${hint}`
+          : `${where === "" ? "" : `${where}: `}setting ${i + 1} is not one this file knows; ${hint}`;
       });
     return [`${where === "" ? "the config" : where}: ${issue.message}`];
   });

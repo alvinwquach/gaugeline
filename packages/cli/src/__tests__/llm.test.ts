@@ -143,6 +143,22 @@ describe("gaugeline llm", () => {
     }
   });
 
+  it.each([
+    ["no shape the scanner knows", ["demo", "value", "a1b2c3d4e5f6g7h8i9j0"].join("-")],
+    ["a short value", ["demo", "k9x2m7"].join("-")],
+    ["a payment-key shape", SHAPED],
+  ])("never prints a key used as a setting's name (%s), in any output mode", async (_n, key) => {
+    write("gaugeline.llm.json", { ...SETTINGS, [key]: 1 });
+    for (const extra of [[], ["--json"], ["--verbose"], ["--json", "--verbose"]]) {
+      const r = await run(["llm", ...extra], { EXAMPLE_API_KEY: key });
+      expect(r.code, extra.join(" ")).toBe(2);
+      expect(r.out + r.err).not.toContain(key);
+      expect(r.err).toMatch(
+        /setting 1 is not one this file knows|holds something that looks like a key/,
+      );
+    }
+  });
+
   it("takes no word on the line: the file is named with --llm-config", () => {
     expect(parseCliArgs(["llm", "settings.json"]).kind).toBe("error");
   });

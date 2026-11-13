@@ -75,9 +75,38 @@ describe("a config with a key in it", () => {
     expect(p.join("\n")).not.toContain(SHAPED_KEY);
   });
 
-  it("does not repeat a key that is the name of a setting", () => {
-    const p = problems({ ...GOOD, [SHAPED_KEY]: 1 });
-    expect(p.join("\n")).not.toContain(SHAPED_KEY);
+  it.each([
+    ["a shape the scanner knows", SHAPED_KEY],
+    ["a shape nothing knows", PLAIN_KEY],
+    ["a short word-like value", ["demo", "k9x2m7"].join("-")],
+    ["hex", "0123456789abcdef0123456789abcdef"],
+    ["any other name", "something"],
+  ])("never echoes an unknown setting's name (%s): it is only counted", (_n, name) => {
+    const p = problems({ ...GOOD, [name]: 1 });
+    expect(p).toEqual([
+      "setting 1 is not one this file knows; name the environment variable in keyEnv, never the key itself",
+    ]);
+    expect(p.join("\n")).not.toContain(name);
+  });
+
+  it("counts each unknown setting, in the order they are written", () => {
+    const p = problems({ ...GOOD, first: 1, second: 2 });
+    expect(p.map((l) => l.slice(0, 9))).toEqual(["setting 1", "setting 2"]);
+  });
+
+  it("names a setting only when it is a mistake this page recognises or a near miss of a real one", () => {
+    for (const name of [
+      "apiKey",
+      "token",
+      "host",
+      "baseUrl",
+      "allowPrivate",
+      "provder",
+      "timeoutms",
+      "keyenv",
+      "tires",
+    ])
+      expect(problems({ ...GOOD, [name]: 1 }).join("\n"), name).toContain(`"${name}"`);
   });
 });
 
