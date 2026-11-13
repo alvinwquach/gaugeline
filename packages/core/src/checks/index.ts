@@ -6,6 +6,7 @@ import { aemAuthorLinks } from "./aem-author-links.js";
 import { aiCrawlersBlocked } from "./ai-crawlers-blocked.js";
 import { aiCrawlersIntent } from "./ai-crawlers-intent.js";
 import { aiKeyInJs } from "./ai-key-in-js.js";
+import { aiWidgetInventory } from "./ai-widget-inventory.js";
 import { angularAnalogEndpointsListed } from "./angular-analog-endpoints-listed.js";
 import { angularDevToolsPublic } from "./angular-dev-tools-public.js";
 import { angularPreviewCanonical } from "./angular-preview-canonical.js";
@@ -260,6 +261,7 @@ export const PAGE_CHECKS = [
   aiCrawlersBlocked,
   aiCrawlersIntent,
   aiKeyInJs,
+  aiWidgetInventory,
   angularAnalogEndpointsListed,
   angularDevToolsPublic,
   angularPreviewCanonical,
