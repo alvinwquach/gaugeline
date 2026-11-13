@@ -13,7 +13,13 @@ import {
   buildPayloadWith,
   type ModelInput,
 } from "../privacy.js";
-import { fieldAllowed, hidesEncodedText, normalise } from "../redaction.js";
+import {
+  credentialWithValue,
+  fieldAllowed,
+  hasValueLikeWord,
+  hidesEncodedText,
+  normalise,
+} from "../redaction.js";
 
 const LAYER_TWO = { ...DEFAULT_PAYLOAD_PARTS, allowed: () => true };
 const finding = (over: Record<string, unknown> = {}) => ({
@@ -255,8 +261,11 @@ describe("more shapes, as rules on their own and through the whole gate", () => 
     expect(whole(text).payload).not.toContain(value);
   });
 
-  it("leaves a bare 40-character run alone when there is no access key id near it", () => {
-    expect(two(AWS_SECRET).payload).toContain(AWS_SECRET);
+  it("leaves a 40-character run that is not a secret key alone: a hash, or a run with no capital or no digit", () => {
+    const hash = "a1b2c3d4e5f6a7b8c9d0a1b2c3d4e5f6a7b8c9d0";
+    const word = "abcdefghijklmnopqrstuvwxyzabcdefghijklmn";
+    for (const run of [hash, word, word.toUpperCase()])
+      expect(two(`the run ${run} is shown`).payload, run).toContain(run);
   });
 
   it("has a rule for each of the shapes the review named that the allowlist passes", () => {
@@ -301,5 +310,167 @@ describe("the four rules whose removal went unnoticed", () => {
     const r = two("AT&ampT and a&ampb");
     expect(JSON.stringify(data(r.payload).findings[0])).toContain("AT&T and a&b");
     expect(r.record.redactions.encoding).toBeGreaterThanOrEqual(1);
+  });
+});
+
+describe("a credential word with no colon or equals sign", () => {
+  const withValue = [
+    "password hunter2secret",
+    "Password is hunter2secret",
+    "my secret is hunter2",
+    "api_key; abcdef123456",
+    "define('DB_PASSWORD', 'hunter2secret');",
+    "the secret was hunterTwoSecret",
+    "token => abcdef123456",
+    "the private key abcdef123456 is in the repository",
+  ];
+
+  it.each(withValue)("withholds `%s`, and the rules alone take the value out", (text) => {
+    const w = whole(text);
+    expect(w.record.withheld).toBe(1);
+    expect(data(w.payload).findings[0]!.snippet).toBe("[withheld]");
+    expect(two(text).payload).not.toMatch(/hunter2|abcdef123456|hunterTwo/);
+    expect(two(text).record.redactions["credential-field"]).toBeGreaterThanOrEqual(1);
+  });
+
+  it.each([
+    "The password field has no label",
+    "Password reset email is slow",
+    "my secret is hunter",
+    "The token expires on 2026-11-13",
+    "The api key was rotated",
+    "a pwd of 1234",
+  ])(
+    "sends a title-like phrase with no value-like word after the credential word: `%s`",
+    (text) => {
+      expect(whole(text).record.withheld).toBe(0);
+      expect(data(whole(text).payload).findings[0]!.snippet).toBe(text);
+    },
+  );
+
+  it("states the rule exactly: a word of 4 or more characters with a letter and a digit, or 6 or more with a lower-then-upper change", () => {
+    for (const w of ["hunter2", "abcdef123456", "a1b2", "hunterTwo", "sK3y"])
+      expect(hasValueLikeWord(w), w).toBe(true);
+    for (const w of ["hunter", "2026", "1234", "a1b", "Hunter", "UPPERCASE", "label"])
+      expect(hasValueLikeWord(w), w).toBe(false);
+    expect(credentialWithValue("the password is hunter2")).toBe(true);
+    expect(credentialWithValue("hunter2 is the user, the password field is empty")).toBe(false);
+    expect(credentialWithValue("no credential word hunter2")).toBe(false);
+  });
+
+  it("reads the word inside a name: DB_PASSWORD and passwords are not the same thing", () => {
+    expect(credentialWithValue("DB_PASSWORD hunter2secret")).toBe(true);
+    expect(credentialWithValue("passwords hunter2secret")).toBe(false);
+  });
+});
+
+describe("keys in pieces, cards with other separators, a bare secret key, a key in look-alike letters", () => {
+  const split: [string, string, string][] = [
+    ["a key id in pieces", "AKIA IOSF ODNN 7EXA MPLE", "IOSF ODNN"],
+    ["a key id with hyphens", "AKIA-IOSF-ODNN-7EXA-MPLE", "IOSF-ODNN"],
+    [
+      "a model-provider key with a space after the hyphen",
+      "sk- proj- abcdefghijklmnopqrstuvwx",
+      "abcdefghij",
+    ],
+    ["a model-provider key with underscores", "sk_proj_abcdefghijklmnopqrstuvwx", "abcdefghij"],
+    ["a model-provider key in short chunks", "sk proj abcdefgh ijklmnop qrstuvwx", "abcdefgh"],
+    ["a source host token in pieces", "ghp_abcdefghij klmnopqrst uvwxyz0123", "klmnopqrst"],
+    ["a chat token in pieces", "xoxb 1234567890 abcdefghijkl", "1234567890"],
+  ];
+
+  it.each(split)("redacts %s", (_, text, value) => {
+    expect(two(text).payload).not.toContain(value);
+    expect(whole(text).payload).not.toContain(value);
+    expect(two(text).record.redactions.secret).toBeGreaterThanOrEqual(1);
+  });
+
+  it("redacts only the key, not the words around it", () => {
+    const out = JSON.stringify(
+      data(two("see AKIA IOSF ODNN 7EXA MPLE in the script").payload).findings[0],
+    );
+    expect(out).toContain("see [secret:split-key] in the script");
+  });
+
+  it("leaves a sentence that merely begins with the letters alone", () => {
+    for (const t of [
+      "the skills are the main things we need here",
+      "a disk is full and the task list is long",
+      "an ask for ghost writers needs help",
+    ])
+      expect(two(t).payload, t).toContain(t);
+  });
+
+  it.each([
+    "4111.1111.1111.1111",
+    "4111/1111/1111/1111",
+    "4111_1111_1111_1111",
+    "4111 1111-1111.1111",
+    "4111,1111,1111,1111",
+  ])("redacts the card number %s", (card) => {
+    const r = two(`the card ${card} is shown`);
+    expect(r.payload).not.toContain("4111");
+    expect(r.record.redactions.card).toBe(1);
+    expect(whole(`the card ${card} is shown`).payload).not.toContain("4111");
+  });
+
+  it("leaves a run of digits that is not a card, whatever the separator", () => {
+    expect(two("order 1111.1111.1111.1112 shipped").payload).toContain("1111.1111.1111.1112");
+  });
+
+  it("redacts a bare secret access key with no key id beside it", () => {
+    const r = two(`the value ${AWS_SECRET} is shown`);
+    expect(r.payload).not.toContain("wJalrXUtnFEMI");
+    expect(r.record.redactions.secret).toBe(1);
+    expect(whole(`the value ${AWS_SECRET} is shown`).payload).not.toContain("wJalrXUtnFEMI");
+  });
+
+  it("reads a key id written with Cyrillic look-alike letters", () => {
+    const cyr: Record<string, number> = {
+      A: 0x410,
+      K: 0x41a,
+      I: 0x406,
+      O: 0x41e,
+      S: 0x405,
+      E: 0x415,
+      X: 0x425,
+      M: 0x41c,
+      P: 0x420,
+    };
+    const disguised = [..."AKIAIOSFODNN7EXAMPLE"]
+      .map((c) => (cyr[c] ? String.fromCodePoint(cyr[c]!) : c))
+      .join("");
+    expect(disguised).not.toBe("AKIAIOSFODNN7EXAMPLE");
+    expect(two(`key ${disguised} here`).payload).not.toContain("IOSFODNN7EXAMPLE");
+    expect(whole(`key ${disguised} here`).payload).not.toMatch(/ODNN/);
+  });
+});
+
+describe("the three mutants that survived the last round", () => {
+  it("refuses a page that only the raw text shows: a check that sees the normalised text alone would miss it", () => {
+    // A page check that is fooled by the entity form, as a weaker one would be. The gate asks it about the
+    // normalised text and about the raw text; only the raw text still has the entity.
+    const entityOnly = (t: string) =>
+      t.includes("&lt;") ? { reason: "whole-page" as const, tags: 0 } : { reason: null, tags: 0 };
+    const r = buildPayloadWith(withSnippet("&lt;html&gt; here"), {
+      ...DEFAULT_PAYLOAD_PARTS,
+      pageCheck: entityOnly,
+    });
+    expect(r).toMatchObject({ ok: false, reason: "whole-page" });
+  });
+
+  const piece = (...p: string[]) => p.join("-");
+  it.each([
+    ["a chat token (xoxe)", piece("xoxe", "1234567890", "abcdefghijkl"), "[secret:slack-token]"],
+    ["a chat token (xoxc)", piece("xoxc", "1234567890", "abcdefghijkl"), "[secret:slack-token]"],
+    [
+      "a source host group token",
+      piece("glpat", "abcdefghijklmnopqrst"),
+      "[secret:source-host-token]",
+    ],
+  ])("names %s as the rule that found it", (_, key, marker) => {
+    const r = two(`it sets ${key} now`);
+    expect(r.payload).toContain(marker);
+    expect(r.payload).not.toContain(key.slice(-12));
   });
 });

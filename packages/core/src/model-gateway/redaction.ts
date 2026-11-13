@@ -384,6 +384,92 @@ const PROVIDER_KEYS: readonly (readonly [string, RegExp])[] = [
 ];
 /** A bare AWS secret access key: 40 characters of the Base64 alphabet. Looked for only when an access key id is in the text. */
 const AWS_SECRET = /(?<![A-Za-z0-9/+=])[A-Za-z0-9/+]{40}(?![A-Za-z0-9/+=])/g;
+/** Mixed case and a digit: what separates a 40-character secret key from a hash (lower-case hexadecimal) or a long word. */
+const mixedKey = (m: string) => /[a-z]/.test(m) && /[A-Z]/.test(m) && /\d/.test(m);
+
+/** A credential word, wherever it stands: `password`, `DB_PASSWORD`, `api key`, `Secret`. Not part of a longer word. */
+const CREDENTIAL_WORD =
+  "(?<![A-Za-z])(?:password|passwd|pwd|passphrase|secret|token|api[_ -]?key|apikey|private[_ -]?key)(?![A-Za-z])";
+
+/**
+ * Whether `text` holds a word that could be a credential's value: a word of 4 or more characters that has both a
+ * letter and a digit (`hunter2secret`, `abcdef123456`), or one that goes from lower case to upper case inside it
+ * (`hunterTwo`). A plain word, a number alone (a date, a PIN) and a short word are not.
+ */
+export function hasValueLikeWord(text: string): boolean {
+  for (const w of text.match(/[A-Za-z0-9_+/]+/g) ?? []) {
+    if (w.length >= 4 && /[A-Za-z]/.test(w) && /\d/.test(w)) return true;
+    if (w.length >= 6 && /[a-z][A-Z]/.test(w)) return true;
+  }
+  return false;
+}
+
+/**
+ * Whether a credential word is followed, later in the text, by a word that could be its value. The rule that
+ * withholds `Password is hunter2secret` and `define('DB_PASSWORD', 'hunter2secret')` when no `:` or `=` shows
+ * where the value is; a title such as `The password field has no label` has no such word and goes.
+ */
+export function credentialWithValue(text: string): boolean {
+  const m = new RegExp(CREDENTIAL_WORD, "i").exec(text);
+  return m !== null && hasValueLikeWord(text.slice(m.index + m[0].length));
+}
+
+/** Key shapes spelled in pieces. The first piece must be the prefix on its own; the pieces are then joined and read. */
+const SPLIT_KEYS: readonly (readonly [RegExp, RegExp])[] = [
+  [/^(?:AKIA|ASIA)[A-Z0-9]{0,16}$/, /^(?:AKIA|ASIA)[A-Z0-9]{16}/],
+  [/^sk(?:ant|proj|or|svcacct|admin)?$/, /^sk(?:ant|proj|or|svcacct|admin)?[A-Za-z0-9]{20}/],
+  [/^gh[a-z]$/, /^gh[a-z][A-Za-z0-9]{20}/],
+  [/^xox[a-z]$/, /^xox[a-z][A-Za-z0-9]{10}/],
+  [/^AIza[A-Za-z0-9]{0,30}$/, /^AIza[A-Za-z0-9]{30}/],
+  [/^glpat$/, /^glpat[A-Za-z0-9]{16}/],
+  [/^github$/, /^githubpat[A-Za-z0-9]{20}/],
+  [/^pypi$/, /^pypi[A-Za-z0-9]{20}/],
+  [/^npm$/, /^npm[A-Za-z0-9]{20}/],
+  [/^SG$/, /^SG[A-Za-z0-9]{32}/],
+];
+const MAX_JOIN_CHUNKS = 64;
+
+/** Redacts a known key shape that is spelled in pieces separated by spaces, hyphens or underscores (`AKIA IOSF ODNN 7EXA MPLE`, `sk_proj_...`). */
+function joinSplitKeys(text: string): { text: string; count: number } {
+  let count = 0;
+  const out = text.replace(/(?:[A-Za-z0-9]{1,64}[ _-]{1,2})+[A-Za-z0-9]{1,64}/g, (chain) => {
+    const chunks = [...chain.matchAll(/[A-Za-z0-9]+/g)];
+    const spans: [number, number][] = [];
+    for (let i = 0; i < chunks.length;) {
+      let hit = -1;
+      const joined = chunks
+        .slice(i, i + MAX_JOIN_CHUNKS)
+        .map((c) => c[0])
+        .join("");
+      for (const [first, shape] of SPLIT_KEYS) {
+        const m = first.test(chunks[i]![0]) ? shape.exec(joined) : null;
+        if (!m) continue;
+        let length = 0;
+        for (let j = i; j < chunks.length; j++) {
+          length += chunks[j]![0].length;
+          if (length >= m[0].length) {
+            hit = j;
+            break;
+          }
+        }
+        if (hit >= 0) break;
+      }
+      if (hit < 0) {
+        i += 1;
+        continue;
+      }
+      spans.push([chunks[i]!.index, chunks[hit]!.index + chunks[hit]![0].length]);
+      i = hit + 1;
+    }
+    let result = chain;
+    for (const [from, to] of spans.reverse()) {
+      result = `${result.slice(0, from)}[secret:split-key]${result.slice(to)}`;
+      count += 1;
+    }
+    return result;
+  });
+  return { text: out, count };
+}
 
 /** Whether `part` is one to four hexadecimal digits. */
 const hex4 = (part: string) => /^[0-9A-Fa-f]{1,4}$/.test(part);
@@ -496,22 +582,37 @@ export const DEFAULT_REDACTION_RULES: readonly RedactionRule[] = Object.freeze([
       ),
       (_m, head) => `${head}[redacted]`,
     )(withTags);
-    return { text: field.text, count: count + field.count };
+    // A credential word with no `:` or `=` after it ("password is x", "api_key; x", "'DB_PASSWORD', 'x'"): when the
+    // rest of the line holds a word that could be the value, the rest of the line goes.
+    let phrases = 0;
+    const phrase = field.text.replace(
+      new RegExp(
+        `(${CREDENTIAL_WORD}["']?\\]?(?:\\s+(?:is|was)\\s+|\\s*(?:=>|[;,])\\s*|\\s+)["']?)([^\\n]{1,512})`,
+        "gi",
+      ),
+      (m, head: string, rest: string) => {
+        if (!hasValueLikeWord(rest)) return m;
+        phrases += 1;
+        return `${head}[redacted]`;
+      },
+    );
+    return { text: phrase, count: count + field.count + phrases };
   }),
   // 7. Every key and token shape the core redaction, the key patterns and the leak detectors know.
   rule("secret", (text) => {
     let count = 0;
     let t = text;
-    const hadKeyId = /(?:AKIA|ASIA)[A-Z0-9]{16}/.test(t);
     for (const [name, re] of PROVIDER_KEYS)
       t = t.replace(new RegExp(re.source, re.flags), () => ((count += 1), `[secret:${name}]`));
-    if (hadKeyId)
-      t = t.replace(
-        new RegExp(AWS_SECRET.source, "g"),
-        () => ((count += 1), "[secret:aws-secret-key]"),
-      );
-    const out = redactSecretShapes(t);
-    return { text: out, count: count + Math.max(0, marks(out) - marks(t)) };
+    // A bare AWS secret access key: 40 characters of the Base64 alphabet with upper case, lower case and a digit.
+    t = t.replace(new RegExp(AWS_SECRET.source, "g"), (m) =>
+      mixedKey(m) ? ((count += 1), "[secret:aws-secret-key]") : m,
+    );
+    const core = redactSecretShapes(t);
+    count += Math.max(0, marks(core) - marks(t));
+    // Last: a key spelled in pieces. The whole keys are gone by now, so only what is left is read in pieces.
+    const joined = joinSplitKeys(core);
+    return { text: joined.text, count: count + joined.count };
   }),
   // 8. An IBAN, in either case: two letters, two digits and a run of letters and digits, 15 to 34 long, 10 digits or more.
   rule(
@@ -525,10 +626,10 @@ export const DEFAULT_REDACTION_RULES: readonly RedactionRule[] = Object.freeze([
       return `[iban]${m.slice(body.length)}`;
     }),
   ),
-  // 9. A card number: 13 to 19 digits, spaces or hyphens between them allowed, and a valid Luhn checksum.
+  // 9. A card number: 13 to 19 digits, one separator of any kind between them allowed, and a valid Luhn checksum.
   rule(
     "card",
-    counting(/(?<!\d)\d(?:[ -]?\d){12,18}(?!\d)/g, (m) => {
+    counting(/(?<!\d)\d(?:[^A-Za-z0-9\n]?\d){12,18}(?!\d)/g, (m) => {
       const d = digitsOf(m);
       return d.length >= 13 && d.length <= 19 && luhn(d) ? "[card]" : m;
     }),
@@ -662,4 +763,4 @@ export function hidesEncodedText(text: string): boolean {
 
 /** The gate's character check: the allowlist, and no text hidden in Base64 or hexadecimal. */
 export const fieldAllowed = (text: string): boolean =>
-  charactersAllowed(text) && !hidesEncodedText(text);
+  charactersAllowed(text) && !hidesEncodedText(text) && !credentialWithValue(text);
