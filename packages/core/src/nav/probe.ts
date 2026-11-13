@@ -2,6 +2,7 @@ import { withCampaignTags } from "../ads/tags.js";
 import type { Fetcher, Hop } from "../fetcher.js";
 import { LIMITS } from "../limits.js";
 import { probe } from "../probe.js";
+import { inKind } from "../request-log.js";
 import { isSameSite } from "../sample.js";
 import type { PageSnapshot } from "../snapshot.js";
 import { readRegions, type NavRules } from "./read-regions.js";
@@ -75,7 +76,7 @@ export async function probeNavTargets(
   return Promise.all(
     targets.map(async (t) => {
       const requested = tags ? withCampaignTags(t.url, tags) : t.url;
-      return { ...t, requested, hops: await probe(requested, fetcher) };
+      return { ...t, requested, hops: await inKind("link", () => probe(requested, fetcher)) };
     }),
   );
 }

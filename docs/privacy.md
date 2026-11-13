@@ -105,12 +105,19 @@ sites are never requested. A link that answers 401, 403, 429 or 503 with Retry-A
 listed as could not check, with its address, and a page
 that answers 200 but says "not found" (a soft 404) is out of scope.
 
+`nav-utm-lost` asks each header and footer link of the page once more, as a `HEAD` request (a `GET` only when
+the server refuses `HEAD`), with three test campaign tags added to its address
+(`utm_source=gaugeline-check`, `utm_medium=menu-test`, `utm_campaign=nav-links`: Gaugeline's own values). It
+asks at most 40 destinations on the same site, header links first, and nothing is submitted or clicked.
+
 Against the invented `links` fixture, a hardware shop with a dead garden-centre link in its header
 and footer and a paint link that redirects, version 0.1.0 prints:
 
 ```text title=Output
 ✗ Links on this page go nowhere
     "Garden centre" <a href="/garden-centre"> returned 404
+! A menu link drops campaign tags
+    1 of 4 menu links lose campaign tags: header › Paint: the 301 at hop 1 from /old-paint to /paint drops utm_source, utm_medium, utm_campaign. Gaugeline's own test values were used (utm_source=gaugeline-check, utm_medium=menu-test, utm_campaign=nav-links).
 · Links on this page go through a redirect
     /old-paint (301) ends at /paint
 ? broken-links could not be checked: refused automated readers (403) (/staff)
@@ -119,7 +126,7 @@ and footer and a paint link that redirects, version 0.1.0 prints:
     Mail records are read from DNS only with --dns. Rerun with --dns to check them.
 
 Checked 4 of 6 other pages.
-2 to look at, 1 to fix first.
+3 to look at, 1 to fix first.
 ```
 
 Each check that passed also prints a `✓ <id>` line, left out above. The output is asserted by `packages/cli/src/__tests__/links.test.ts`.

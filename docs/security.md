@@ -101,6 +101,7 @@ Each run samples a fixed amount and never more. The numbers live in one frozen o
 | Framework addresses requested    | 0       |
 | Nuxt addresses asked             | 6       |
 | Addresses inside structured data | 12      |
+| Menu and footer links (tagged)   | 40      |
 | Requests at the same time        | 5       |
 | Redirect hops followed           | 10      |
 | Body read per response           | 5 MB    |
