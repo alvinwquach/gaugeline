@@ -203,11 +203,13 @@ What it shows:
 
 ## What is still at risk
 
+- **A rolled-back call leaves no trace (accepted risk).** A trace is written in the caller's transaction; a
+  holder of the agent database login who rolls back a read leaves none; the login can reach only its own
+  organisation's pending drafts and run history. The app's own path commits every call, so its calls are
+  always traced.
 - **A call that raises is undone whole.** A call refused by an error after the policy let it through
   (another organisation's site, a payload of the wrong shape, the 200-drafts cap) leaves no trace row,
   just as it leaves no draft and no counted call. Postgres has no autonomous transactions.
-- **An agent that wraps its call in its own transaction and rolls it back** rolls back its trace row too.
-  It gains nothing from that call either: nothing was inserted.
 - **The hash is not redacted.** The hosted input hash is taken over the call's arguments as the database
   received them, because the draft itself is stored, as sent, in the drafts table for the person to
   review; the trace adds nothing to read.
