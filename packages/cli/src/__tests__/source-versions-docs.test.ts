@@ -41,6 +41,9 @@ describe("docs/guides/versions-config-licence-source.md", () => {
       "tsconfig-target-es5/fail",
       "tsconfig-target-es5/unsure",
       "a11y-spec-expects-violations/fail",
+      "starter-licence-notice-missing/fail",
+      "starter-licence-notice-missing/unsure",
+      "next-sanity-removed-api/fail",
     ]);
     for (const e of examples) expect(e.only, e.id).toContain(e.id);
   });
