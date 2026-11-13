@@ -155,8 +155,10 @@ applies it to rows, not vectors).
 - Today: row-level security on every hosted table; the agent and chat roles read no table; secrets are
   readable only through definer functions, by the worker and, one connection at a time, the
   chat endpoint (`docs/hosted/secrets.md`).
-- Planned: AG-08 is the first tool that reads hosted data for an agent: per-site token, read-only; AG-02
-  tokens scoped to an organisation; AG-10 case "cross-tenant token".
+- Today (AG-08): an agent reads hosted data only through `private.agent_list_pending` and
+  `private.agent_list_runs`, with its own registry token (scopes `read:pending`, `read:runs`), read-only; the
+  organisation comes from the token, never from the request (`docs/hosted/api.md`). Planned: AG-10 case
+  "cross-tenant token".
 - Test: `apps/hosted/db/__tests__/rls.test.ts` ("selecting org B's sites, runs, findings and drafts
   returns zero rows"), `chat.test.ts` ("another organisation's draft is not found, even for a person who
   belongs to both"), `secrets.test.ts`.

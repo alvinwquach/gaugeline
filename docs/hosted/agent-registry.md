@@ -21,13 +21,13 @@ answers for the agent and what it may draft, and one action stops it.
 The scopes are one per kind of draft and two reads. None of them writes: agents only draft, and only
 your own worker applies an approved draft ([applying an approved fix](./writer.md)).
 
-| Scope                | Lets the agent                                                                      |
-| -------------------- | ----------------------------------------------------------------------------------- |
-| `draft:pull_request` | propose a pull request                                                              |
-| `draft:email`        | propose an email                                                                    |
-| `draft:sanity_draft` | propose a Sanity draft document                                                     |
-| `read:runs`          | read one site's run history at a time, through `private.agent_list_runs` (AG-08)    |
-| `read:pending`       | list the drafts waiting for a decision through `private.agent_list_pending` (AG-08) |
+| Scope                | Lets the agent                                                                                                          |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `draft:pull_request` | propose a pull request                                                                                                  |
+| `draft:email`        | propose an email                                                                                                        |
+| `draft:sanity_draft` | propose a Sanity draft document                                                                                         |
+| `read:runs`          | read one site's run history at a time ([`GET /api/v1/runs?site=`](./api.md#agent-reads-pending-drafts-and-run-history)) |
+| `read:pending`       | list the drafts waiting for a decision (`GET /api/v1/drafts?status=pending`)                                            |
 
 **Registering is one call**, `private.register_agent(organisation, name, owner, scopes)`, for an owner or
 admin of that organisation. Nobody inserts a row any other way. The database mints the token (256 bits
