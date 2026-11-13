@@ -46,6 +46,7 @@ export const SUBCOMMANDS = [
   "receipt",
   "deploy-gate",
   "propose",
+  "source",
 ] as const;
 export type CliCommand = "check" | (typeof SUBCOMMANDS)[number];
 
@@ -267,6 +268,15 @@ export type ParsedArgs =
       force: boolean;
       dns: boolean;
       allowPrivate: boolean;
+      verbose: boolean;
+      quiet: boolean;
+    }
+  | {
+      kind: "source";
+      /** The folder to read, as typed. */
+      folder: string;
+      json: boolean;
+      ci: boolean;
       verbose: boolean;
       quiet: boolean;
     }
@@ -1332,6 +1342,26 @@ export function parseCliArgs(
       kind: "cutover",
       before: values.before,
       allowPrivate: values["allow-private"] === true,
+      verbose,
+      quiet: values.quiet === true,
+    };
+  }
+  if (command === "source") {
+    if (positionals.length !== 1)
+      return {
+        kind: "error",
+        message:
+          positionals.length === 0
+            ? "gaugeline source needs the folder of your site's source: gaugeline source ./my-site"
+            : `gaugeline source takes one folder, got ${positionals.length} words: ${positionals.join(", ")}.`,
+        hint: "For example: gaugeline source ./my-site",
+        verbose,
+      };
+    return {
+      kind: "source",
+      folder: positionals[0] ?? "",
+      json: values.json === true,
+      ci: values.ci === true,
       verbose,
       quiet: values.quiet === true,
     };

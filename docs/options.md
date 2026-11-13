@@ -748,6 +748,38 @@ folder and, with `--plan` and `--base`, sends `GET` requests to the preview; it 
 nothing, and writes the proposals to `--out`. A fixer that is not certain makes no proposal and says why. An
 example from a bookshop's redirect file: [Fix proposals](guides/fix-proposals.md).
 
+### The source command
+
+`gaugeline source --help` prints:
+
+```text title=Output
+Usage: gaugeline source <folder> [options]
+
+Read a site's source folder (a Next.js app router project) and run the checks
+that look at code, not at a page: what the project says about search (a page's
+robots setting that replaces the layout's noindex, a sitemap on a site set to
+stay out of search, robots.txt blocking a page that carries noindex), the
+Sanity publish webhook and cache, and tokens and webhook addresses in code. It
+reads files and nothing else: it makes no request, runs no code, never follows
+a link out of the folder, and never opens .env or other secret-looking files.
+A check that cannot tell says so; it never passes.
+
+Options:
+      --ci         Exit 1 when a "Fix this first" finding is found [CI]
+      --json       Print the result as JSON on stdout, and nothing else
+      --quiet      Print only results and errors
+      --verbose    Show each request, and technical detail when something goes
+                   wrong
+  -h, --help       Show this help and exit
+  -v, --version    Print the version and exit
+
+Exit codes: 0 ran, 1 --ci and a fix-first finding, 2 could not run
+```
+
+`gaugeline source` reads a project's folder and runs the checks that look at code, not at a page: three that find a site meant to stay out of search being put back in by its own settings, and others for the Sanity publish webhook and cache and for tokens in code. It sends no request, runs
+no code and never opens `.env` or other secret-looking files. A check that cannot tell says so instead of
+passing. An example from a pop-up bar's pre-launch copy: [Checks that read your source](guides/source-checks.md).
+
 ### Flags
 
 The table below is generated from `packages/cli/src/flags.ts` (`pnpm docs:flags`). Do not edit

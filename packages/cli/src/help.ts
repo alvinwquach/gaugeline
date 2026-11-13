@@ -33,6 +33,7 @@ export const COMMANDS = [
   "receipt",
   "deploy-gate",
   "propose",
+  "source",
 ] as const;
 export type Command = (typeof COMMANDS)[number];
 
@@ -291,6 +292,20 @@ export const HELP: Record<string, string> = {
       "writes each one as the hosted inbox's pull-request draft; a person approves it.",
     ].join("\n"),
     footer: "Exit codes: 0 ran, 2 could not run",
+  }),
+  source: renderHelp(FLAGS, "source", {
+    usage: "gaugeline source <folder> [options]",
+    summary: [
+      "Read a site's source folder (a Next.js app router project) and run the checks",
+      "that look at code, not at a page: what the project says about search (a page's",
+      "robots setting that replaces the layout's noindex, a sitemap on a site set to",
+      "stay out of search, robots.txt blocking a page that carries noindex), the",
+      "Sanity publish webhook and cache, and tokens and webhook addresses in code. It",
+      "reads files and nothing else: it makes no request, runs no code, never follows",
+      "a link out of the folder, and never opens .env or other secret-looking files.",
+      "A check that cannot tell says so; it never passes.",
+    ].join("\n"),
+    footer: "Exit codes: 0 ran, 1 --ci and a fix-first finding, 2 could not run",
   }),
   open: renderHelp(FLAGS, "open", {
     usage: "gaugeline open [address] [options]",

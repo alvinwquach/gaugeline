@@ -50,6 +50,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze<FlagDef[]>([
       "platform",
       "query",
       "emails",
+      "source",
     ],
   },
   {
@@ -73,6 +74,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze<FlagDef[]>([
       "emails",
       "changes",
       "receipt",
+      "source",
     ],
   },
   {
