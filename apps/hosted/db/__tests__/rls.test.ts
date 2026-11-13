@@ -73,7 +73,7 @@ const TENANT_TABLES = [
   "agent_limits",
   "agent_limit_events",
   "agent_denies",
-  // 0014: the agent trace and its per-minute overflow counters (AG-05); owners and admins only, read only.
+  // 0015: the agent trace and its per-minute overflow counters (AG-05); owners and admins only, read only.
   "agent_trace",
   "agent_trace_overflow",
 ];
