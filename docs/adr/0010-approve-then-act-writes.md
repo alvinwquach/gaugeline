@@ -238,6 +238,21 @@ cited beside them, in the writer's own branch and not before (rule 13).
 for Gmail. Deferred to v1.1: X72 and Outlook. G37's inbox, decision log and apply enqueue were never
 blocked.
 
+## Owner acknowledgements (13 Nov 2026)
+
+The owner acknowledged the three amendments that the writer pull requests flagged. Each narrows what the
+writer can do compared with the first text of this record:
+
+1. **One commit per file in v1** (flagged in part 1, #271): the writer uses the contents API, so a three-file
+   draft is three commits and no ref is ever updated.
+2. **A create-only mutation for Sanity** (flagged in part 1, X71): the registered request is the Mutations
+   API `create` of a `drafts.` id, not the Actions API; a document that already exists answers 409 and is
+   never overwritten.
+3. **A Sanity dry run is local** (flagged in part 5, X71): a dry run sends nothing to the provider.
+
+X72 (a live one-field write, decision 2) and Outlook drafts (decision 3) stay held. No CLAUDE.md sentence
+for this record is written yet; the proposed wording waits for the owner's approval.
+
 ## Alternatives
 
 - **A. Never write (the rule as it stands).** Proposals stay text: the inbox and the MCP server's fix tool
