@@ -8,7 +8,7 @@
  * The invisible-character rules are the ones the hidden-text checks use (#98): flag emoji and
  * zero-width characters inside words are recognised by the same expressions, imported, not copied.
  */
-import { FLAG_SEQUENCE, ZERO_WIDTH_IN_WORD } from "./checks/hidden-text/scan.js";
+import { FLAG_SEQUENCE, ZERO_WIDTH_IN_WORD } from "./checks/hidden-text/invisible.js";
 import type { Finding } from "./model.js";
 
 declare const untrustedBrand: unique symbol;
