@@ -355,6 +355,38 @@ describe.skipIf(!HAS_DATABASE)("agent policy and limits", () => {
       ]);
     });
 
+    it("bad-input: a tool name over 64 characters is bad input, not an unknown tool", async () => {
+      const a = await register(["read:pending"]);
+      const authorize = async (tool: string) =>
+        (
+          await owner`select allowed, reason from private.agent_authorize(${a.token}, ${tool}, 0)`
+        )[0]!;
+      expect(await authorize("x".repeat(65))).toEqual({ allowed: false, reason: "bad-input" });
+      expect(await authorize("x".repeat(64))).toEqual({
+        allowed: false,
+        reason: "tool-not-allowed",
+      });
+    });
+
+    it("timeout: a call that reaches the policy after its deadline is refused and not counted", async () => {
+      const a = await register(["read:pending"]);
+      await setLimits(a.id, { timeout_ms: 100 });
+      const since = await lastDenyId();
+      // The deadline runs from the start of the statement: this one sleeps past it before asking.
+      await owner.unsafe(`do $$ begin
+        perform pg_catalog.pg_sleep(0.3);
+        perform private.agent_authorize('${a.token}', 'read:pending', 0);
+      end $$`);
+      const rows = await owner`select reason, agent_id, window_calls, cost_day_micros
+        from public.agent_denies where id > ${since} order by id`;
+      expect(rows.map((r) => ({ ...r }))).toEqual([
+        { reason: "timeout", agent_id: a.id, window_calls: 0, cost_day_micros: "0" },
+      ]);
+      const [l] =
+        await owner`select window_calls from public.agent_limits where agent_id = ${a.id}`;
+      expect(l!.window_calls).toBe(0);
+    });
+
     it("the docs page names every reason and shows real refusals", () => {
       const docs = readFileSync(
         fileURLToPath(new URL("../../../../docs/hosted/agent-policy.md", import.meta.url)),
@@ -402,10 +434,42 @@ describe.skipIf(!HAS_DATABASE)("agent policy and limits", () => {
       expect(shadow).toHaveLength(0);
     });
 
+    it("a call that waits past its deadline for the site's lock uses no slot, and its deny row has the counts", async () => {
+      const a = await register();
+      await setLimits(a.id, { calls_per_window: 1, timeout_ms: 100 });
+      let release!: () => void;
+      const held = new Promise<void>((r) => (release = r));
+      let locked!: () => void;
+      const isLocked = new Promise<void>((r) => (locked = r));
+      const holder = owner.begin(async (tx) => {
+        await tx`select pg_advisory_xact_lock(hashtextextended(${SITE_A1}::text, 0))`;
+        locked();
+        await held;
+      });
+      await isLocked;
+      const since = await lastDenyId();
+      try {
+        expect(await call(a.token)).toBe("denied");
+      } finally {
+        release();
+        await holder;
+      }
+      const rows = await owner`select reason, window_calls, cost_day_micros
+        from public.agent_denies where id > ${since} order by id`;
+      expect(rows.map((r) => ({ ...r }))).toEqual([
+        { reason: "timeout", window_calls: 0, cost_day_micros: "0" },
+      ]);
+      const [l] =
+        await owner`select window_calls from public.agent_limits where agent_id = ${a.id}`;
+      expect(l!.window_calls).toBe(0);
+      // The one call of the window is still there.
+      expect(await call(a.token)).toBe("ok");
+    });
+
     it("a draft that finishes after the deadline is undone and logged as a timeout", async () => {
       const a = await register();
       await setLimits(a.id, { timeout_ms: 100 });
-      let seen: { id: unknown; added: number; reasons: string[] } | undefined;
+      let seen: { id: unknown; added: number; reasons: string[]; calls?: number } | undefined;
       await owner
         .begin(async (tx) => {
           // A slow insert (only in this rolled-back transaction): the draft lands after the deadline.
@@ -424,13 +488,20 @@ describe.skipIf(!HAS_DATABASE)("agent policy and limits", () => {
             await tx`select private.agent_insert_draft(${a.token}, ${SITE_A1}, 'email', ${tx.json(EMAIL)}) as id`;
           await tx.unsafe("reset role");
           const rows = await tx`select reason from public.agent_denies where id > ${since}`;
-          seen = { id: r!.id, added: (await count()) - before, reasons: rows.map((x) => x.reason) };
+          const [l] =
+            await tx`select window_calls from public.agent_limits where agent_id = ${a.id}`;
+          seen = {
+            id: r!.id,
+            added: (await count()) - before,
+            reasons: rows.map((x) => x.reason),
+            calls: l!.window_calls as number,
+          };
           throw new Rollback(); // drop the slow trigger again
         })
         .catch((e: unknown) => {
           if (!(e instanceof Rollback)) throw e;
         });
-      expect(seen).toEqual({ id: null, added: 0, reasons: ["timeout"] });
+      expect(seen).toEqual({ id: null, added: 0, reasons: ["timeout"], calls: 0 });
     });
   });
 
@@ -578,6 +649,55 @@ describe.skipIf(!HAS_DATABASE)("agent policy and limits", () => {
             (tx) => tx`select id from public.agent_denies where org_id is null`,
           ),
         ).toHaveLength(0);
+    });
+
+    it("an update with no WHERE by a member, a client viewer or another organisation's owner changes no row of A", async () => {
+      // With no WHERE and no RETURNING, the UPDATE reads no column, so only the UPDATE policy stands
+      // between the person and the rows: the SELECT policy cannot hide them.
+      await register();
+      const sets = [
+        "calls_per_window = 100",
+        "window_seconds = 120",
+        "cost_ceiling_micros = 7",
+        "timeout_ms = 1000",
+      ];
+      const orgA =
+        () => owner`select agent_id, calls_per_window, window_seconds, cost_ceiling_micros,
+        timeout_ms, updated_at, updated_by from public.agent_limits where org_id = ${ORG_A}
+        order by agent_id`;
+      const historyA = async () =>
+        Number(
+          (
+            await owner`select count(*) as n from public.agent_limit_events where org_id = ${ORG_A}`
+          )[0]!.n,
+        );
+      const before = [...(await orgA())];
+      const historyBefore = await historyA();
+      expect(before.length).toBeGreaterThan(0);
+      // Committed, so a row the policy let through would stay changed.
+      for (const userId of [USER_A_MEMBER, USER_A_CLIENT])
+        for (const set of sets)
+          expect(
+            await asPerson(
+              userId,
+              async (tx) => (await tx.unsafe(`update public.agent_limits set ${set}`)).count,
+              true,
+            ),
+            `${userId}: ${set}`,
+          ).toBe(0);
+      // B's owner changes B's rows (rolled back) and none of A's.
+      const [b] =
+        await owner`select count(*)::int as n from public.agent_limits where org_id = ${ORG_B}`;
+      for (const set of sets)
+        expect(
+          await asPerson(
+            USER_B_OWNER,
+            async (tx) => (await tx.unsafe(`update public.agent_limits set ${set}`)).count,
+          ),
+          `B owner: ${set}`,
+        ).toBe(b!.n);
+      expect([...(await orgA())]).toEqual(before);
+      expect(await historyA()).toBe(historyBefore);
     });
 
     it("an owner cannot touch the counters, the timestamps or another agent's row, or go out of range", async () => {

@@ -244,6 +244,8 @@ begin
       deadline - pg_catalog.clock_timestamp()) * 1000))::bigint || 'ms', true);
     select a.status, a.scopes into v_status, v_scopes from public.agents a where a.id = v_agent
       for no key update;
+    -- Close to redundant: the registry row lock above already serialises the calls of one agent, and no
+    -- test tells the two apart. Kept so the counters stay safe if another writer of this row is added.
     select * into v_lim from public.agent_limits l where l.agent_id = v_agent for update;
     perform pg_catalog.set_config('lock_timeout', v_lock_timeout, true);
   exception when lock_not_available then
@@ -295,7 +297,9 @@ revoke all on function private.agent_authorize(text, text, bigint)
 -- the policy first: private.agent_authorize decides on the token and the tool ("draft:<kind>") alone,
 -- before the site, the findings or the payload are looked at. A refused call returns null and inserts
 -- nothing. The rest of the call keeps to the deadline: waiting for the site's lock past it, or a draft that
--- lands after it, is undone and logged as a timeout.
+-- lands after it, is undone and logged as a timeout. The policy's call and the draft run in one block, so
+-- a timeout undoes the counted call with the draft (a refused call uses no slot and no cost), and the
+-- timeout's deny row carries the counters as they are once it is undone.
 create or replace function private.agent_insert_draft(
   agent_token text, p_site_id uuid, p_kind text, p_payload jsonb, p_finding_ids uuid[] default '{}'
 ) returns uuid
@@ -308,28 +312,30 @@ declare
   v_deadline timestamptz;
   v_lock_timeout text := pg_catalog.current_setting('lock_timeout');
   v_id uuid;
+  v_calls integer;
+  v_spent bigint;
 begin
   if pg_catalog.current_setting('transaction_isolation') = 'repeatable read' then
     raise exception 'agent drafts need READ COMMITTED or SERIALIZABLE, not REPEATABLE READ'
       using errcode = '25000';
   end if;
-  select z.allowed, z.agent_id, z.org_id, z.deadline into v_allowed, v_agent, v_org, v_deadline
-    from private.agent_authorize(agent_token, 'draft:' || p_kind, 0) z;
-  if not v_allowed then
-    return null;
-  end if;
-  if not exists (select 1 from public.sites s where s.id = p_site_id and s.org_id = v_org) then
-    raise exception 'site not found for this agent' using errcode = '42501';
-  end if;
-  if cardinality(coalesce(p_finding_ids, '{}')) > 50 then
-    raise exception 'a draft names at most 50 findings' using errcode = '54000';
-  end if;
-  if (select count(*) from public.findings f
-      where f.id = any(coalesce(p_finding_ids, '{}')) and f.org_id = v_org and f.site_id = p_site_id)
-     <> cardinality(array(select distinct pg_catalog.unnest(coalesce(p_finding_ids, '{}'::uuid[])))) then
-    raise exception 'finding not found for this site' using errcode = '42501';
-  end if;
   begin
+    select z.allowed, z.agent_id, z.org_id, z.deadline into v_allowed, v_agent, v_org, v_deadline
+      from private.agent_authorize(agent_token, 'draft:' || p_kind, 0) z;
+    if not v_allowed then
+      return null;  -- leaves the block normally: the deny row stays
+    end if;
+    if not exists (select 1 from public.sites s where s.id = p_site_id and s.org_id = v_org) then
+      raise exception 'site not found for this agent' using errcode = '42501';
+    end if;
+    if cardinality(coalesce(p_finding_ids, '{}')) > 50 then
+      raise exception 'a draft names at most 50 findings' using errcode = '54000';
+    end if;
+    if (select count(*) from public.findings f
+        where f.id = any(coalesce(p_finding_ids, '{}')) and f.org_id = v_org and f.site_id = p_site_id)
+       <> cardinality(array(select distinct pg_catalog.unnest(coalesce(p_finding_ids, '{}'::uuid[])))) then
+      raise exception 'finding not found for this site' using errcode = '42501';
+    end if;
     perform pg_catalog.set_config('lock_timeout', greatest(1, ceil(extract(epoch from
       v_deadline - pg_catalog.clock_timestamp()) * 1000))::bigint || 'ms', true);
     perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(p_site_id::text, 0));
@@ -348,7 +354,15 @@ begin
       raise exception 'past the deadline' using errcode = 'GLT01';
     end if;
   exception when lock_not_available or sqlstate 'GLT01' then
-    perform private.agent_deny(v_org, v_agent, 'draft:' || p_kind, 'timeout', 0, null, null);
+    -- The block is undone, the policy's count with it; the variables keep their values.
+    select case when l.window_started_at is null or pg_catalog.clock_timestamp()
+                  >= l.window_started_at + pg_catalog.make_interval(secs => l.window_seconds)
+                then 0 else l.window_calls end,
+           case when l.cost_day = (pg_catalog.clock_timestamp() at time zone 'UTC')::date
+                then l.cost_day_micros else 0 end
+      into v_calls, v_spent
+      from public.agent_limits l where l.agent_id = v_agent;
+    perform private.agent_deny(v_org, v_agent, 'draft:' || p_kind, 'timeout', 0, v_calls, v_spent);
     return null;
   end;
   update public.agents a set last_used_at = pg_catalog.now() where a.id = v_agent;

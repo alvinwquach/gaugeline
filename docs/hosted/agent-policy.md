@@ -7,6 +7,11 @@ it may spend, how long the call may take, and whether anyone has stopped it. The
 database, before the call does anything, and **denies by default**. Every refusal is written to a log your
 owners and admins can read, with the reason.
 
+**Planned (part 2), not in this version:** a TypeScript policy module that makes the same deny-by-default
+decision, with the same reasons, before an agent's call is sent, and kill switches read from the
+environment at every call, so the operator can stop agents without a database change. Neither exists yet:
+today every check on this page is made in the database.
+
 ## What the policy checks, in order
 
 One function, `private.agent_authorize(token, tool, cost)`, decides every agent call. The agent's draft
@@ -57,6 +62,10 @@ Two calls at once cannot both take the last place: the policy locks the agent's 
 the rest of the call, so calls of one agent are counted one after the other. The window is fixed (it
 starts at the first call after the last window ended), so a burst across the edge of two windows can reach
 twice the limit.
+
+A refused call uses no place in the window and no cost. That holds for a `timeout` that comes after the
+policy let the call through (it waited past its deadline for the site's lock, or its draft landed late):
+the counted call is undone with the draft, and the deny row holds the counters as they are once it is.
 
 ## An example: the menu fixer, limited and stopped
 
