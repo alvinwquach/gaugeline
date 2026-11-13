@@ -79,6 +79,9 @@ golden 3/3 pass; known-bad 8/8 caught; cost 1008000 micro-units
 
 A test runs this same code and fails if this page's output differs from it.
 
+The first real agent on this harness is the [triage agent](./hosted/agent-triage.md), whose golden cases run
+its own planner and whose known-bad cases replay wrong answers.
+
 ## Adding evals for a new agent
 
 1. Describe the agent: its id, its tools (never one that writes), its limits, a prompt builder, a schema

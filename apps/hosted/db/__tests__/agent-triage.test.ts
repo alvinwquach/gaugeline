@@ -136,7 +136,7 @@ describe.skipIf(!HAS_DATABASE)("the triage agent against Postgres", () => {
       await tx`select set_config('request.jwt.claims', ${JSON.stringify({ sub: USER_A_OWNER })}, true)`;
       await tx.unsafe("set local role authenticated");
       const [r] =
-        await tx`select * from private.register_agent(${ORG_A}, ${`Triage agent ${tag}`}, ${USER_A_OWNER}, ${TRIAGE_REGISTRATION.scopes as unknown as string[]})`;
+        await tx`select * from private.register_agent(${ORG_A}, ${`Triage agent ${randomBytes(4).toString("hex")}`}, ${USER_A_OWNER}, ${TRIAGE_REGISTRATION.scopes as unknown as string[]})`;
       out = { id: r!.agent_id as string, token: r!.token as string };
       const l = TRIAGE_REGISTRATION.limits;
       await tx`update agent_limits set calls_per_window = ${l.callsPerWindow}, window_seconds = ${l.windowMs / 1000},

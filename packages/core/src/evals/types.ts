@@ -29,6 +29,10 @@ export interface EvalFinding {
   checkId: string;
   title: string;
   evidence: string;
+  /** For agents that rank by urgency (AG-12). Absent in earlier sets. */
+  severity?: "high" | "medium" | "low";
+  /** The address the finding is about, for agents that count pages. */
+  url?: string;
 }
 export interface EvalInput {
   findings: readonly EvalFinding[];

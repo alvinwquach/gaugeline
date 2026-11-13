@@ -238,7 +238,8 @@ describe("traced", () => {
     await runTriage({ siteId: SITE, findings: bakery }, r.deps);
     const text = JSON.stringify(r.traces);
     for (const f of bakery)
-      for (const part of [f.title, f.evidence, f.url]) expect(text).not.toContain(part);
+      for (const part of [f.title, f.evidence, f.url].filter(Boolean))
+        expect(text).not.toContain(part);
     expect(text).not.toContain("Fix first");
   });
 

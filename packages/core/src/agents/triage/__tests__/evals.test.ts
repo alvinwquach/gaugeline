@@ -66,7 +66,8 @@ describe("the triage eval set", () => {
     expect(report.ok).toBe(true);
     expect(report.golden).toEqual({ total: 5, passed: 5 });
     expect(report.knownBad).toEqual({ total: 10, caught: 10 });
-    expect(report.costMicros).toBe(0);
+    // Only the recorded wrong answer that declared a cost has one: the real agent's cost is 0.
+    expect(report.costMicros).toBe(12_000);
   });
 
   it("the golden answers put fix-first before fix-soon, one group per cause, citing every finding once", async () => {
@@ -113,8 +114,11 @@ describe("the triage eval set", () => {
 
   it("a case with neither a recording nor a golden plan is an error, not a pass", async () => {
     const model = createReplayModel(new Map());
-    const report = await runEvals(triageEval.agent, triageEval.cases.slice(0, 1), model);
-    expect(report.results[0]!.status).toBe("error");
+    const report = await runEvals(triageEval.agent, triageEval.cases, model);
+    expect(report.ok).toBe(false);
+    expect(report.results.filter((r) => r.kind === "golden").map((r) => r.status)).toEqual(
+      Array(5).fill("error"),
+    );
   });
 
   it("the agent's tools hold nothing that writes, and its limits are the registration's", () => {
@@ -138,11 +142,11 @@ describe("the triage eval set", () => {
 });
 
 describe("the docs page", () => {
-  const page = readFileSync(
-    fileURLToPath(new URL("../../../../../../docs/hosted/agent-triage.md", import.meta.url)),
-    "utf8",
-  );
   it("shows this run's real eval report", async () => {
+    const page = readFileSync(
+      fileURLToPath(new URL("../../../../../../docs/hosted/agent-triage.md", import.meta.url)),
+      "utf8",
+    );
     expect(page).toContain(formatEvalReport(await run()));
   });
 });

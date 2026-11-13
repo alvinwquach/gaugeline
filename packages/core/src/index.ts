@@ -1849,6 +1849,7 @@ export {
 export type { AgentTraceDecision, AgentTraceInput, AgentTraceRecord } from "./agent-trace.js";
 export * from "./fixes/index.js";
 export * from "./approval-receipts/index.js";
+export * from "./agents/triage/index.js";
 export {
   EVAL_ASSERTIONS,
   EVAL_MODEL_TOOL,

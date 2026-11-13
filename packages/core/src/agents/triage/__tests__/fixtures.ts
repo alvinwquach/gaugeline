@@ -23,10 +23,12 @@ export const finding = (
 export const bakery: TriageFinding[] = [
   finding("f-101", "canonical-missing", "medium", {
     title: "Menu page has no canonical link",
+    evidence: "",
     url: "https://crumb-and-co.example/menu",
   }),
   finding("f-102", "canonical-missing", "medium", {
     title: "Pop-up page has no canonical link",
+    evidence: "",
     url: "https://crumb-and-co.example/pop-up",
   }),
   finding("f-103", "images-alt-missing", "medium", {
@@ -39,5 +41,9 @@ export const bakery: TriageFinding[] = [
     evidence: "valid until 2026-11-22",
     url: "https://crumb-and-co.example/",
   }),
-  finding("f-105", "links-vague-text", "low", { title: "A link says click here" }),
+  finding("f-105", "links-vague-text", "low", {
+    title: "A link says click here",
+    evidence: "",
+    url: "https://crumb-and-co.example/menu",
+  }),
 ];
