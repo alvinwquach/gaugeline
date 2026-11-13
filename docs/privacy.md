@@ -490,6 +490,38 @@ page goes to a Gaugeline service or any other place.
   each request's address without the query string, method, kind and outcome. Page text is cleaned and cut like
   every other page text.
 
+### Speed from Google (--pagespeed)
+
+`--pagespeed` on the page check asks Google's PageSpeed Insights about the key pages
+([Speed](guides/pagespeed.md)). It is the one flag whose purpose is to send something to a company you did not
+type, so it is off unless named and says so on stderr before the first request.
+
+- **What is sent.** One `GET https://pagespeedonline.googleapis.com/pagespeedonline/v5/runPagespeed` per page
+  (the mobile run, the performance category), at most five pages per run: the page you typed and the first
+  same-site pages of the run's sample. The `url` it carries is the page's origin and path, never its query
+  string, fragment or user name. No other host, no `POST`, no cookie, no header of Gaugeline's but its user
+  agent. Nothing about the page's content or about you.
+- **Only public pages.** Nothing is sent with `--allow-private`. An address on your computer or a private
+  network, an address written as numbers, a name with no dot, a name with a reserved or private-use ending (with
+  or without a trailing dot), a name from a wildcard service such as `nip.io`, and a name that resolves to any
+  private, loopback, link-local or metadata address (a failed lookup counts) are never sent. The check says
+  could not check and why.
+- **Only a plain page address.** A path is sent only when it is the root, or has at most 6 parts and 120
+  characters and every part is a number of up to 4 digits or a lowercase slug of whole words (at most 30
+  characters, no word over 20, each word all letters or all digits, at most 4 digits in the slug and 8 in the
+  path, no secret-looking word, nothing shaped like an email address or a date of birth). Any other path fails
+  closed: nothing is sent and the check says could not check. No rule can see a person's name or other detail
+  written as a page-name slug; you opt in with `--pagespeed` and are told the address is sent.
+- **No key.** No key is read or sent, so none can reach an address, a log, a finding or a report. Without
+  one Google's allowance is shared with every other keyless caller, and when it is used up the check says could
+  not check.
+- **What comes back is data.** Only numbers (shares of loads, a score, timings) and the address Google ended on
+  are kept, the address cut and its invisible characters shown as escapes. Nothing Google wrote is carried
+  into a finding. It is never run or followed.
+- **Not the Chrome UX Report API.** Its only method for a record is a `POST`; the same figures arrive in the
+  PageSpeed answer, so that host is not contacted (decision record 0015).
+- **No secrets, no model.** The same answers give the same findings.
+
 ### Served libraries (--libraries)
 
 `--libraries` on the page check lists the JavaScript libraries a page serves that a published advisory names
