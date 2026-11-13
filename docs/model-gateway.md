@@ -306,7 +306,8 @@ model's choice, and the same inputs always take the same path.
    `bad-request` (a 400 or 422, or a prompt the sender will not send), `rate-limited` (a 429: your own limit, a
    second provider would be sent the same payload for nothing), `redirect`, `blocked-address`, `refused` (any
    other status) and `unclassified` (an error with no class, a plain `Error` included). The payload that a
-   provider refused is never sent to another one. A second provider is another gateway you build with its own
+   provider refused is never sent to another one; the payload of a call that timed out or lost its connection may
+   already have reached the first provider (see _What a fallback means for your data_, below). A second provider is another gateway you build with its own
    adapter; adding a host to the list of reachable hosts is a change to the sending module, never a setting.
 3. **A failed check, or an answer in no usable shape: once, the `strong` tier**, on the provider that answered,
    with the plain reasons added to the prompt. The reasons are at most five lines of 120 characters, cleaned; the
@@ -329,6 +330,17 @@ model's choice, and the same inputs always take the same path.
 - **There is a budget.** A model call with no ceiling is something a person must ask for: without a budget the
   router is refused unless you pass `{ unmetered: true }`, and `unmetered` is itself refused when any gateway has a
   budget. The recorded fakes in tests and the example below have none, so they say `unmetered`.
+
+**What a fallback means for your data.** Read this before you give the router a second provider. Falling back
+means **the same prompt can be sent to both providers**. It happens after a timeout or a lost connection, and in
+those cases the first provider may already have received the whole payload (the request left your machine before the
+answer failed to come back), so you cannot assume the second provider is the only one that has seen it. It also
+happens after a 5xx, and the router decides that from the status alone, **without reading the body**: it never looks
+at what the first provider said. Any other failure (a refused key, a rate limit, a bad request, a redirect, a
+blocked address, an answer that is not JSON) does not fall back, so a payload a provider refused is not offered to
+another. Both providers must be on the sending module's list of hosts, and both are bound by the same limits: the
+payload cap, findings and ids and snippets only, never a whole page. If a second provider is not acceptable for the
+data you send, do not configure a fallback.
 
 At most **three calls** are made for one task: the first, one fallback and one escalation. No order of failures
 makes a fourth, and a test runs every script of up to three steps for each provider to show it (the worst case is an
