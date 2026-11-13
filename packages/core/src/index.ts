@@ -403,6 +403,22 @@ export type {
   DestinationKind,
 } from "./notify/destinations.js";
 export { slackChangesPayload } from "./notify/slack.js";
+export {
+  APPROVE_ACTION,
+  checkSlackResponseUrl,
+  DECLINE_ACTION,
+  EDIT_ACTION,
+  slackApprovalMessage,
+  slackDecidedMessage,
+  slackPrivateReply,
+} from "./notify/slack-approval.js";
+export type {
+  ApprovalRequest,
+  Decided,
+  SlackApprovalMessage,
+  SlackBlock,
+  SlackReply,
+} from "./notify/slack-approval.js";
 export type { ChangedFinding, SiteChanges } from "./notify/slack.js";
 export { parseSentryDsn, sentryEvent } from "./notify/sentry.js";
 export type { SentryDsn, SentryEvent } from "./notify/sentry.js";

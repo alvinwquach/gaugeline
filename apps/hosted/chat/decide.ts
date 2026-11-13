@@ -36,7 +36,15 @@ export interface ChatAction {
 }
 
 export type ChatDecision =
-  | { status: "recorded"; decision: "approved" | "declined"; decisionId: string; userId: string }
+  | {
+      status: "recorded";
+      decision: "approved" | "declined";
+      decisionId: string;
+      userId: string;
+      /** The draft's kind and payload text as the database holds them, for the reply that says what was decided. */
+      kind: string;
+      payloadText: string;
+    }
   | { status: "already-decided"; decision: string; decidedBy: string | null }
   | { status: "unknown-user" }
   | { status: "not-allowed" }
@@ -90,6 +98,8 @@ export async function decideFromChat(
             decision: r.r_decision as "approved" | "declined",
             decisionId: String(r.r_decision_id),
             userId: r.r_user_id as string,
+            kind: r.r_kind as string,
+            payloadText: r.r_payload as string,
           };
         case "already-decided":
           return {
