@@ -32,6 +32,7 @@ Landmarks are used unless `gaugeline.nav.json`, in the folder you run from, name
 | `nav-footer`       | Fix soon       | A page's footer differs from the most common one, or a required footer link is missing |
 | `nav-link-no-name` | Fix soon       | A header or footer link has no text, aria-label or labelled image                      |
 | `nav-utm-lost`     | Worth a look   | A menu link's redirect drops the campaign tags it was asked with                       |
+| `nav-link-not-200` | Fix this first | A menu link takes two or more redirects, loops, or ends on something that is not a 200 |
 
 - `nav-changed` runs with `--since last`. On the first run there is nothing saved: it is "could not
   be checked", and that run saves the menu. Without `--since last` it has nothing to compare, like
@@ -124,6 +125,56 @@ Checked 4 of 5 other pages.
 The Lantern Bar is an invented neighbourhood bar (`packages/fixtures/sites/nav-utm`). Its "What's on" link is a
 301 to `/events` with no query string; "Private hire" redirects to `/hire` and carries the tags on. The output is
 asserted by `packages/cli/src/__tests__/nav-utm.test.ts` and checked by `pnpm docs:examples`.
+
+## Menu links that don't answer 200 at once
+
+A menu link is the most-followed link on the site. `nav-link-not-200` reads the whole trail of every header and
+footer destination of the checked page on your own site, and reports the ones that do not land on a page at
+once:
+
+- **A chain.** Two or more redirects, with the hop count and each hop's status and address, for example
+  `takes 2 redirects (301 /services, 302 /our-services, 200 /care)`. The usual cause is one rule for the old address and
+  another added later for the one it points at.
+- **A loop**, or more than 10 hops, said as such.
+- **A 2xx that is not a page** (a `204`, for one).
+- **A dead menu link** (4xx or 5xx) that the link sample never reached: the sample is the first 30 same-site links,
+  so a footer link past the 30th would otherwise go unseen.
+
+What it leaves to other checks, on purpose: a single redirect is `links-via-redirect`'s; a 4xx or 5xx that the
+link sample found is `broken-links`'s; a link into a hidden section or a draft is `hidden-linked`'s and
+`drafts-live`'s. A `401`, `403` or `429` is could not check.
+
+The answers are shared, not asked again: a link the link sample already asked reuses that answer, and the others
+(at most 40 destinations in all, header first) are one HEAD each, or a GET when the server refuses HEAD.
+
+<!-- fixture: nav-chain -->
+
+```sh title=Terminal
+$ npx gaugeline marlowvets.example
+```
+
+```text title=Output
+✗ Links on this page go nowhere
+    "Our rooms" <a href="/old-rooms"> returned 404
+✗ Menu links don't answer 200 at once
+    1 of 6 menu links does not answer 200 at once: header › Vaccinations redirects in a loop (302 /vaccinations, 302 /vaccinations-2)
+! Menu links don't answer 200 at once
+    2 of 6 menu links do not answer 200 at once: header › Services takes 2 redirects (301 /services, 302 /our-services, 200 /care), header › Newsletter answers 204, not 200
+! A menu link drops campaign tags
+    1 of 6 menu links lose campaign tags: header › Services: the 301 at hop 1 from /services to /our-services drops utm_source, utm_medium, utm_campaign. Gaugeline's own test values were used (utm_source=gaugeline-check, utm_medium=menu-test, utm_campaign=nav-links).
+· Links on this page go through a redirect
+    /services (301) ends at /care
+? nav-utm-lost could not be checked: header › Vaccinations redirects in a loop, so its tags were not followed to a page (/vaccinations)
+? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
+    Mail records are read from DNS only with --dns. Rerun with --dns to check them.
+
+Checked 4 of 5 other pages.
+5 to look at, 2 to fix first.
+```
+
+Marlow Vets is an invented veterinary practice (`packages/fixtures/sites/nav-chain`): its "Services" link takes two
+redirects, "Vaccinations" loops, "Newsletter" answers 204 and "Our rooms" is a 404 that `broken-links` reports. The
+output is asserted by `packages/cli/src/__tests__/nav-chain.test.ts` and checked by `pnpm docs:examples`.
 
 ## Example
 

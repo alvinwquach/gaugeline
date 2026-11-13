@@ -1,11 +1,12 @@
 import { withCampaignTags } from "../ads/tags.js";
-import type { Fetcher, Hop } from "../fetcher.js";
+import { NetworkError } from "../errors.js";
+import { FetchError, type FetchErrorReason, type Fetcher, type Hop } from "../fetcher.js";
+import type { LinkSample } from "../links.js";
 import { LIMITS } from "../limits.js";
-import { probe } from "../probe.js";
 import { inKind } from "../request-log.js";
 import { isSameSite } from "../sample.js";
 import type { PageSnapshot } from "../snapshot.js";
-import { readRegions, type NavRules } from "./read-regions.js";
+import { destinationKey, readRegions, type NavRules } from "./read-regions.js";
 
 /**
  * The test campaign tags a menu link is asked with. They are Gaugeline's own, never a client's, and
@@ -65,6 +66,8 @@ export function navTargets(
 export interface NavProbe extends NavTarget {
   requested: string;
   hops: Hop[];
+  /** Set when the fetcher gave up before the end of the trail (a loop, too many hops). */
+  error?: FetchErrorReason;
 }
 
 /** Ask each target once (HEAD, GET when HEAD is refused), the campaign tags added when `tags` is set. */
@@ -76,7 +79,7 @@ export async function probeNavTargets(
   return Promise.all(
     targets.map(async (t) => {
       const requested = tags ? withCampaignTags(t.url, tags) : t.url;
-      return { ...t, requested, hops: await inKind("link", () => probe(requested, fetcher)) };
+      return { ...t, requested, ...(await inKind("link", () => trailOf(requested, fetcher))) };
     }),
   );
 }
@@ -103,6 +106,69 @@ export function navProbesOf(
       kind === "tagged" ? NAV_TAGS : undefined,
     );
     byKind.set(kind, pending);
+  }
+  return pending;
+}
+
+/** One destination's whole trail: every hop received, and why it stopped early (a loop, too many hops). */
+export interface NavTrail extends NavTarget {
+  hops: Hop[];
+  /** Set when the fetcher gave up before the end of the trail; the hops are what it had read. */
+  error?: FetchErrorReason;
+  /** The answer came from the run's link sample: broken-links already judges it. */
+  sampled: boolean;
+}
+
+async function trailOnce(
+  url: string,
+  fetcher: Fetcher,
+  method?: "HEAD",
+): Promise<{ hops: Hop[]; error?: FetchErrorReason }> {
+  try {
+    return { hops: await fetcher.get(url, method ? { method } : undefined) };
+  } catch (err) {
+    // A loop or too many hops is an answer about the link, not silence: keep what was read.
+    if (err instanceof FetchError) return { hops: err.hops, error: err.reason };
+    if (err instanceof NetworkError) return { hops: [] };
+    throw err;
+  }
+}
+
+/** HEAD first; GET when HEAD answers 405 or 501. Unlike probe(), a loop keeps its hops and its reason. */
+async function trailOf(url: string, fetcher: Fetcher) {
+  const head = await trailOnce(url, fetcher, "HEAD");
+  const status = head.hops.at(-1)?.status;
+  return status === 405 || status === 501 ? trailOnce(url, fetcher) : head;
+}
+
+const trails = new WeakMap<object, Promise<NavTrail[]>>();
+
+/**
+ * The page's menu destinations as plain addresses, with every hop. A destination the run's link
+ * sample already asked (same address) reuses that answer, so no link is requested twice; the others
+ * are asked once here. Shared by every check that reads the menu's trails, once per page per run.
+ */
+export function navTrailsOf(
+  page: Pick<PageSnapshot, "hops" | "finalUrl">,
+  fetcher: Fetcher,
+  rules: NavRules | undefined,
+  sample: LinkSample | undefined,
+): Promise<NavTrail[]> {
+  let pending = trails.get(page);
+  if (!pending) {
+    const known = new Map(
+      (sample?.taken ?? [])
+        .filter((l) => l.hops.length > 0)
+        .map((l) => [destinationKey(l.url), l.hops]),
+    );
+    pending = Promise.all(
+      navTargets(page, rules).taken.map(async (t): Promise<NavTrail> => {
+        const hops = known.get(destinationKey(t.url));
+        if (hops !== undefined) return { ...t, hops, sampled: true };
+        return { ...t, ...(await inKind("link", () => trailOf(t.url, fetcher))), sampled: false };
+      }),
+    );
+    trails.set(page, pending);
   }
   return pending;
 }
