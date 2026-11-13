@@ -17,8 +17,10 @@ and not built.
 - **Today.** The hosted agent that writes drafts into your [inbox](./hosted/inbox.md) with its token.
 - **Today.** The writer: not a model, but your own worker turning one approved draft into one draft pull
   request or one Gmail draft ([applying an approved fix](./hosted/writer.md)).
-- **Planned (rows AG-12 to AG-18).** Draft-only helpers: grouping findings by cause, a regression
-  watcher, a morning digest of what waits for you, and drafting checks and config for a person to review.
+- **Today.** The [pending-approvals digest](./approvals-digest.md) (row AG-14): a morning summary of what
+  waits for a decision, built from the read-only pending-approvals reads. It sends nothing yet.
+- **Planned (rows AG-12, AG-13, AG-15 to AG-18).** Draft-only helpers: grouping findings by cause, a
+  regression watcher, and drafting checks and config for a person to review.
 
 ## What an agent can do
 
