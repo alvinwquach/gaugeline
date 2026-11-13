@@ -3,17 +3,15 @@
  * a deny-list that applies whatever the customer configures (a floor), and `allowedFields` in the worker's
  * configuration for the site (the fence). The fence is required here: with none listed, every field is refused.
  *
- * The floor refuses money, links' addresses and secrets: "it never proposes a price change: prices are
- * flagged for a person" (the row's own rule). A name is read as words (`priceFrom`, `ticket_price` are
+ * The floor refuses money, a slug (it is a page's address) and secrets: "it never proposes a price change:
+ * prices are flagged for a person" (the row's own rule). A name is read as words (`priceFrom`, `ticket_price` are
  * `price from` and `ticket price`); the words below are refused as whole words, and the longer ones also
  * inside a longer name (`unitprice`). It is a deny-list, not a boundary: any field that holds a price under a
  * name this list does not know is the customer's to leave out of `allowedFields`.
  */
 
-/** Refused as a whole word of the field's name. */
-const DENIED_WORDS: ReadonlySet<string> = new Set([
-  "price",
-  "prices",
+/** Refused as a whole word of the field's name (the words in DENIED_INSIDE are refused there already). */
+export const DENIED_WORDS: ReadonlySet<string> = new Set([
   "pricing",
   "cost",
   "costs",
@@ -21,28 +19,29 @@ const DENIED_WORDS: ReadonlySet<string> = new Set([
   "fees",
   "amount",
   "amounts",
-  "currency",
-  "discount",
-  "discounts",
   "tariff",
   "tariffs",
   "charge",
   "charges",
   "deposit",
-  "payment",
-  "payments",
   "salary",
   "wage",
   "wages",
   "total",
   "slug",
-  "password",
-  "secret",
   "token",
 ]);
 
 /** Refused anywhere in the lower-cased name, so a name written as one word is caught too. */
-const DENIED_INSIDE = ["price", "currency", "discount", "payment", "password", "secret", "apikey"];
+export const DENIED_INSIDE: readonly string[] = [
+  "price",
+  "currency",
+  "discount",
+  "payment",
+  "password",
+  "secret",
+  "apikey",
+];
 
 /** The words of a field name: camelCase and snake_case split, lower-cased. */
 function words(name: string): string[] {

@@ -15,7 +15,7 @@ export const SANITY_TARGET = {
   siteId: SITE,
   projectId: "tidewtr1",
   dataset: "production",
-  apiVersion: "v2025-02-19",
+  apiVersion: "v2025-02-06",
   allowedFields: ["page.hours", "page.phone", "page.title"],
 } as const;
 

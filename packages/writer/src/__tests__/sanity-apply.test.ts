@@ -111,7 +111,7 @@ describe("dry run is the default and sends nothing", () => {
     expect(s.sent).toEqual([]);
     expect(entry).toMatchObject({ outcome: "dry_run" });
     expect(entry.planned!.map((p) => p.endpoint)).toEqual(["getDoc", "getDoc", "mutate"]);
-    expect(entry.planned![2]!.path).toBe("/v2025-02-19/data/mutate/production");
+    expect(entry.planned![2]!.path).toBe("/v2025-02-06/data/mutate/production");
     expect(JSON.stringify(entry)).not.toContain("Mon to");
     expect(d.log).toEqual([entry]);
   });
@@ -192,7 +192,7 @@ describe("the approval is read and compared before any request", () => {
     const bads = [
       { projectId: "evil.example" },
       { dataset: "a/b" },
-      { apiVersion: "2025-02-19" },
+      { apiVersion: "2025-02-06" },
       { orgId: "not-a-uuid" },
       { siteId: "not-a-uuid" },
       { allowedFields: "page.hours" as never },
@@ -294,6 +294,9 @@ describe("the payload: one document, plain names, an allowed field", () => {
     "slug",
     "password",
     "secretKey",
+    "token",
+    "accessToken",
+    "auth_token",
     "apiKey",
   ];
   for (const field of money)
@@ -563,5 +566,111 @@ describe("through the sender: the whole path, and the token goes nowhere but the
     const err = await applySanityDraft(sanityJob(), d).catch((e: unknown) => e);
     expect(String((err as Error).message)).not.toMatch(new RegExp(`${TOKEN}|tidewtr1`));
     expect(JSON.stringify(d.log)).not.toContain(TOKEN);
+  });
+});
+
+describe("an approval that was already applied is never applied again", () => {
+  it("records the replay with no request at all, even when the editor discarded the draft", async () => {
+    // The first apply wrote a draft and recorded `applied` after the approval; the draft is gone now.
+    const s = fakeSanity();
+    const d = sanityDeps({ send: s.send }, sanityJob(), { later: ["applied"] });
+    const entry = await applySanityDraft(sanityJob(), d);
+    expect(entry).toMatchObject({ outcome: "refused", reason: "duplicate" });
+    expect(s.sent).toEqual([]);
+    expect(s.docs.has(DRAFT_ID)).toBe(false);
+    expect(d.log).toEqual([entry]);
+  });
+
+  it("holds in a dry run too, and after other outcomes", async () => {
+    const dry = fakeSanity();
+    const d1 = sanityDeps({ send: dry.send, mode: "dry-run" }, sanityJob(), {
+      later: ["dry_run", "applied"],
+    });
+    expect(await applySanityDraft(sanityJob(), d1)).toMatchObject({ reason: "duplicate" });
+    expect(dry.sent).toEqual([]);
+  });
+
+  it("an earlier failure or dry run is not an application: the job may go on", async () => {
+    for (const later of [
+      [],
+      ["dry_run"],
+      ["apply_failed"],
+      ["refused"],
+      ["dry_run", "apply_failed"],
+    ]) {
+      const s = fakeSanity();
+      const d = sanityDeps({ send: s.send }, sanityJob(), { later });
+      expect(await applySanityDraft(sanityJob(), d), later.join()).toMatchObject({
+        outcome: "applied",
+      });
+      expect(s.writes()).toHaveLength(1);
+    }
+  });
+});
+
+describe("only the exact word write writes", () => {
+  for (const mode of [
+    undefined,
+    null,
+    "",
+    "Write",
+    "WRITE",
+    "write ",
+    " write",
+    "apply",
+    "true",
+    1,
+    true,
+    "dry-run",
+  ]) {
+    it(`mode ${JSON.stringify(mode)} stays a dry run`, async () => {
+      const s = fakeSanity();
+      const d = sanityDeps({ send: s.send, mode: mode as never });
+      expect(await applySanityDraft(sanityJob(), d)).toMatchObject({ outcome: "dry_run" });
+      expect(s.sent).toEqual([]);
+    });
+  }
+});
+
+describe("an answer is read only for the document that was asked for", () => {
+  /** A send that answers every read with `documents`, whatever was asked, and records the writes. */
+  const answering = (documents: unknown[]) => {
+    const sent: string[] = [];
+    const send = async (req: { endpoint: string; path: string }) => {
+      sent.push(req.endpoint);
+      if (req.endpoint === "mutate") return { status: 200, json: {} };
+      return { status: 200, json: { documents } };
+    };
+    return { sent, send };
+  };
+
+  it("a live read that answers with another document's id is a missing document", async () => {
+    const a = answering([{ ...LIVE, _id: "other-page" }]);
+    const d = sanityDeps({ send: a.send as never });
+    expect(await applySanityDraft(sanityJob(), d)).toMatchObject({
+      outcome: "refused",
+      reason: "missing",
+    });
+    expect(a.sent).toEqual(["getDoc"]);
+  });
+
+  it("a draft read that answers with another document's id is not an existing draft: it is created", async () => {
+    // The live read finds the live page; the draft read answers with the live page again (a different _id).
+    const a = answering([LIVE]);
+    const d = sanityDeps({ send: a.send as never });
+    expect(await applySanityDraft(sanityJob(), d)).toMatchObject({
+      outcome: "applied",
+      ref: DRAFT_ID,
+    });
+    expect(a.sent).toEqual(["getDoc", "getDoc", "mutate"]);
+  });
+
+  it("an answer that is not a list of documents is a missing document", async () => {
+    for (const json of [null, {}, { documents: "x" }, { documents: [null, 3, "x"] }]) {
+      const send = async () => ({ status: 200, json });
+      expect(
+        await applySanityDraft(sanityJob(), sanityDeps({ send: send as never })),
+      ).toMatchObject({ reason: "missing" });
+    }
   });
 });

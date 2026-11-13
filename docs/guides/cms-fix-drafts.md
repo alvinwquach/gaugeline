@@ -31,11 +31,12 @@ any fixed problem.
 
 ## What you set up
 
-1. A Sanity API token for the one project, kept in the worker's environment. It needs to create documents in
-   the one dataset. Pick the narrowest role your Sanity plan offers for that; whether a token can be limited to
-   drafts is a Sanity setting that we could not read from here, so check it in your project's API settings. The
-   writer sends the token in the `Authorization` header to `<project>.api.sanity.io` only, and refuses
-   redirects.
+1. A Sanity API token for the one project, kept in the worker's environment. **The same token reads and
+   writes.** It reads the live document and `drafts.<id>` (two reads before every write), so it needs read
+   access to the dataset, including its drafts, and it needs to create documents in that one dataset. Pick the
+   narrowest role your Sanity plan offers for that; whether a token can be limited to drafts is a Sanity
+   setting that we could not read from here, so check it in your project's API settings. The writer sends the
+   token in the `Authorization` header to `<project>.api.sanity.io` only, and refuses redirects.
 2. The site's target in the worker's configuration. **`allowedFields` is required**: with none, every field is
    refused.
 
@@ -45,7 +46,7 @@ const target = {
   siteId: "5e000000-0000-4000-8000-0000000000e5",
   projectId: "tidewtr1", // your Sanity project id: its host is tidewtr1.api.sanity.io
   dataset: "production",
-  apiVersion: "v2025-02-19",
+  apiVersion: "v2025-02-06", // the only version accepted: the one the request shapes were read for
   allowedFields: ["page.hours", "page.phone"], // "<document type>.<field>", no wildcards
 };
 ```
@@ -71,15 +72,15 @@ This is the real output:
   "planned": [
     {
       "endpoint": "getDoc",
-      "path": "/v2025-02-19/data/doc/production/contact-page"
+      "path": "/v2025-02-06/data/doc/production/contact-page"
     },
     {
       "endpoint": "getDoc",
-      "path": "/v2025-02-19/data/doc/production/drafts.contact-page"
+      "path": "/v2025-02-06/data/doc/production/drafts.contact-page"
     },
     {
       "endpoint": "mutate",
-      "path": "/v2025-02-19/data/mutate/production"
+      "path": "/v2025-02-06/data/mutate/production"
     }
   ]
 }
@@ -129,6 +130,7 @@ Each of these ends the job with a `refused` entry in the trail and no write. The
 | `stale`                                                                    | A field's live text no longer matches the digest in the approval                                                                                                                 |
 | `draft exists`                                                             | A draft of the document is there and does not hold the approved text                                                                                                             |
 | `document`                                                                 | The live document is too large to copy (500,000 characters of JSON)                                                                                                              |
+| `duplicate`                                                                | The trail already holds `applied` for this approval. The job makes no request, not even a read, so a draft an editor removed is not made again; a new fix needs a new approval   |
 | `kill switch`, `organisation paused`                                       | `GAUGELINE_WRITER_STOP` is set, or the organisation paused applying; checked before every request                                                                                |
 
 A request that Sanity itself refuses (a bad token, a conflict because an editor created a draft a moment

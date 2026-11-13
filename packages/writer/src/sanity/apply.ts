@@ -6,10 +6,14 @@
  * first kill switch, refusal or failed request, and appends exactly one entry to the trail.
  *
  * Before anything is sent the writer reads the approval row itself and checks it (approval.ts), then the
- * payload's shape, that every field is on the customer's `allowedFields` and not on the floor (fields.ts),
- * and the registry. In write mode it then compares the live value of each field with the digest the
- * proposal recorded (`before`): a different value means someone edited it since, and the draft is refused.
- * One write request per approval. A replay finds the draft already holding the approved value and records
+ * payload's shape, and that every field is on the customer's `allowedFields` and not on the floor
+ * (fields.ts). Every request then goes through the registry in the sender. In write mode the writer
+ * compares the live value of each field with the digest the proposal recorded (`before`): a different value
+ * means someone edited it since, and the draft is refused.
+ *
+ * One write request per approval. If the trail already holds `applied` after this approval, the job is
+ * refused as a `duplicate` before any request. If the job lost its own result (the write went through, the
+ * entry was not recorded), a replay finds the draft already holding the approved value and records
  * `applied` without a second write.
  */
 import { checkApproval, sameDigest, UUID } from "../approval.js";
@@ -17,7 +21,6 @@ import { checkDraftPayload } from "../kinds.js";
 import { stopReason, type Mode, type Switches } from "../switches.js";
 import type { Approvals, ApplyJob, Trail, TrailEntry } from "../types.js";
 import {
-  checkSanityRequest,
   isSanityTarget,
   SanityRegistryError,
   type SanityRequest,
@@ -135,6 +138,11 @@ export async function applySanityDraft(job: ApplyJob, deps: SanityApplyDeps): Pr
     return refused("field");
   }
 
+  // One write per approval: the writer's own `applied` entry after this approval ends it, with no request
+  // (not even a read), the same refusal the mailbox kind makes. A draft the editor has since removed is not
+  // made again; a new fix needs a new approval.
+  if (checked.approval.later.includes("applied")) return refused("duplicate");
+
   const liveId = payload.documentId;
   const draftId = `${DRAFTS}${liveId}`;
   const base = `/${target.apiVersion}/data`;
@@ -152,12 +160,10 @@ export async function applySanityDraft(job: ApplyJob, deps: SanityApplyDeps): Pr
     query: { returnIds: "true" },
     body: { mutations: [{ create: doc }] },
   });
-  // The plan is checked against the registry now, in every mode: a dry run that passes is a write that will
-  // not be refused for its shape. Every name in it is already plain, so this cannot fail for a payload that
-  // got this far; if it ever did, the error would stop the job before any request. The real copy of the
-  // document is built, and checked, once it is read.
+  // The plan: the two reads and the write's path. Every name in it has been checked as a plain name above,
+  // and the sender checks each request against the registry before it is sent. The real copy of the
+  // document is built once it is read.
   const planned = write({ ...payload.set, _id: draftId, _type: payload.documentType });
-  for (const r of [readLive, readDraft, planned]) checkSanityRequest(r, target);
   if (deps.mode !== "write") {
     return finish({
       outcome: "dry_run",

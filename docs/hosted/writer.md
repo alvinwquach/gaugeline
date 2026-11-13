@@ -210,7 +210,7 @@ editor to read and publish. The full walk-through, with a local example you can 
   patch, a replace, a removal, an action, a query or a live id, and it is frozen like the GitHub one. The sender
   goes to `https://<projectId>.api.sanity.io` for the project in your configuration only, over https, with
   `redirect: "error"`, the token in the `Authorization` header only, and a fixed error message if the
-  connection fails.
+  connection fails. The API version is pinned in the registry (`v2025-02-06`), not a setting.
 - **`allowedFields` is required** (`page.hours`), and prices, costs, fees, currencies, discounts, payments, slugs
   and secrets are refused even if listed. A dry run sends nothing at all.
 - The trail records the outcome, the draft's id (`drafts.<id>`), the status or the reason. Never the token,
