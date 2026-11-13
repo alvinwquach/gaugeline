@@ -1,4 +1,6 @@
 import {
+  type AgentDenyLog,
+  type AgentPolicy,
   Semaphore,
   createFetcher,
   LIMITS,
@@ -50,6 +52,16 @@ export interface ServerOptions {
   now?: () => Date;
   /** The most findings one result carries (default 40); the rest are counted and kept in the run. */
   maxFindings?: number;
+  /** --allow-tool: the only tools a call may use (repeat). Absent: every tool, as before. */
+  allowedTools?: string[];
+  /** --calls-per-minute: calls allowed per minute, every tool together (default 120; 0 stops every call). */
+  callsPerMinute?: number;
+  /** --cost-ceiling-micros: cost allowed per UTC day in micro-units (default 1000000). Every tool declares 0 today. */
+  costCeilingMicros?: number;
+  /** Read at every call for the global kill switch GAUGELINE_AGENTS_OFF (default: the live process.env). */
+  env?: Readonly<Record<string, string | undefined>>;
+  /** Where each deny is logged (default: one line on stderr). Gets the time, the tool and the reason only. */
+  onDeny?: (entry: AgentDenyLog) => void;
   /** Shared by every server made from the same options (the HTTP transport makes one per request). */
   state?: ServerState;
 }
@@ -79,6 +91,8 @@ export interface ServerState {
   gate: Semaphore;
   /** Calls that make requests and have not finished. */
   active: number;
+  /** The agent policy, made by the first server built on this state, so every server shares one budget. */
+  policy?: AgentPolicy;
 }
 
 export function createState(): ServerState {

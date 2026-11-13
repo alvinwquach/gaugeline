@@ -2,6 +2,8 @@ import { resolve } from "node:path";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { startHttp } from "./http.js";
 import { normaliseHostPort } from "./net-guard.js";
+import { DEFAULT_CALLS_PER_MINUTE, DEFAULT_COST_CEILING_MICROS, denyLine } from "./policy.js";
+import { TOOLS } from "./registry.js";
 import { SERVER_VERSION, createGaugelineServer } from "./server.js";
 import { createState } from "./state.js";
 
@@ -31,11 +33,18 @@ Options:
   --probing-origin <origin>
                           an origin probing checks may run on (repeat for more); needs --allow-probing. With probing
                           on for a call, every request of that call stays on that origin.
+  --allow-tool <name>     a tool calls may use (repeat for more). By default every tool. Any other tool is
+                          refused with the reason "scope".
+  --calls-per-minute <n>  calls allowed per minute, all tools together (default 120; 0 refuses every call)
+  --cost-ceiling-micros <n>
+                          cost allowed per UTC day, in micro-units (default 1000000). Every tool costs 0 today.
   --help, --version
 
 The token for HTTP comes from the environment (GAUGELINE_MCP_TOKEN), never from the command line. Over HTTP a token is
 required whenever --allow-private, --allow-private-host, --root, --plan-base or --allow-probing is given: every holder of
 the token shares the session's runs.
+Every call is checked first against the agent policy (the flags above). GAUGELINE_AGENTS_OFF set to anything but 0
+refuses every call (reason "kill-switch-global"); it is read at every call. Each refusal is one line on stderr.
 Probing checks run only when you start the server with --allow-probing and --probing-origin for the site. A tool call has
 no argument that turns them on, so a page that tells an assistant to ask for them gets nothing.
 `;
@@ -53,6 +62,9 @@ interface Parsed {
   allowProbing: boolean;
   probingOrigins: string[];
   root: string | undefined;
+  allowedTools: string[] | undefined;
+  callsPerMinute: number;
+  costCeilingMicros: number;
   help: boolean;
   version: boolean;
 }
@@ -71,6 +83,9 @@ export function parseArgs(argv: string[], cwd: string): Parsed {
     allowProbing: false,
     probingOrigins: [],
     root: undefined,
+    allowedTools: undefined,
+    callsPerMinute: DEFAULT_CALLS_PER_MINUTE,
+    costCeilingMicros: DEFAULT_COST_CEILING_MICROS,
     help: false,
     version: false,
   };
@@ -109,6 +124,14 @@ export function parseArgs(argv: string[], cwd: string): Parsed {
         );
       out.probingOrigins.push(new URL(v).origin);
     } else if (a === "--root") out.root = resolve(cwd, value());
+    else if (a === "--allow-tool") {
+      const v = value();
+      if (!Object.hasOwn(TOOLS, v))
+        throw new Error(`--allow-tool needs a tool name: ${Object.keys(TOOLS).join(", ")}.`);
+      (out.allowedTools ??= []).push(v);
+    } else if (a === "--calls-per-minute") out.callsPerMinute = whole(a, value(), 10_000);
+    else if (a === "--cost-ceiling-micros")
+      out.costCeilingMicros = whole(a, value(), 1_000_000_000_000);
     else if (a === "--help" || a === "-h") out.help = true;
     else if (a === "--version" || a === "-v") out.version = true;
     else throw new Error(`Unknown option ${a}. See --help.`);
@@ -119,6 +142,13 @@ export function parseArgs(argv: string[], cwd: string): Parsed {
       "--allow-probing and --probing-origin go together: probing checks run only on an origin you name.",
     );
   return out;
+}
+
+/** Digits only, 0 to max: no sign, fraction, exponent or empty value. */
+function whole(flag: string, v: string, max: number): number {
+  const n = /^\d{1,13}$/.test(v) ? Number(v) : Number.NaN;
+  if (!(n <= max)) throw new Error(`${flag} needs a whole number from 0 to ${max}.`);
+  return n;
 }
 
 export interface Io {
@@ -176,6 +206,11 @@ export async function main(argv: string[], io: Io): Promise<number> {
     allowProbing: args.allowProbing,
     probingOrigins: args.probingOrigins,
     ...(args.root !== undefined ? { root: args.root } : {}),
+    ...(args.allowedTools ? { allowedTools: args.allowedTools } : {}),
+    callsPerMinute: args.callsPerMinute,
+    costCeilingMicros: args.costCeilingMicros,
+    env: io.env,
+    onDeny: (e: Parameters<typeof denyLine>[0]) => io.stderr.write(denyLine(e)),
     state: createState(),
   };
   // Over HTTP, anything that widens what a tool can reach needs a token: without one, any process on the
