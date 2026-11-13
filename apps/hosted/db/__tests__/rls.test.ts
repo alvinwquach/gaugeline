@@ -66,11 +66,14 @@ const TENANT_TABLES = [
   // 0010: chat workspaces and which member a chat user is (X69); owners and admins only.
   "chat_connections",
   "chat_identities",
+  // 0012: the agent registry and its status history (AG-02); owners and admins only.
+  "agents",
+  "agent_events",
 ];
 
 const SERVER_ONLY = new Set(["tokens", "idempotency_keys", "jobs", "email_sends"]);
 // Readable column by column only: `select *` names the token hash, which no signed-in role may read.
-const COLUMNS_ONLY = new Set(["invites"]);
+const COLUMNS_ONLY = new Set(["invites", "agents"]);
 
 describe.skipIf(!HAS_DATABASE)("hosted database: row-level security", () => {
   let db: TestDatabase;
@@ -510,7 +513,7 @@ describe.skipIf(!HAS_DATABASE)("hosted database: row-level security", () => {
       expect(seqUpdate).toEqual([]);
       const views =
         await sql`select table_name, grantee, privilege_type from information_schema.role_table_grants
-        where table_schema = 'public' and table_name in ('draft_state', 'site_consent_current')
+        where table_schema = 'public' and table_name in ('draft_state', 'site_consent_current', 'agent_shadow_inventory')
           and grantee in ('anon', 'authenticated', 'service_role') and privilege_type <> 'SELECT'`;
       expect(views).toEqual([]);
     });

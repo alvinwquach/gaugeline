@@ -307,6 +307,10 @@ describe.skipIf(!HAS_DATABASE)("hosted database: secrets in Vault", () => {
         "member_org_ids",
         "own_findings",
         "owner_org_ids",
+        // AG-02 (the agent registry): an owner or admin registers an agent (the database mints its token)
+        // and revokes one, each in one call.
+        "register_agent",
+        "revoke_agent",
         "staff_org_ids",
       ]);
     });

@@ -26,9 +26,9 @@ approve anything: the database returns no draft to her, so there is nothing to d
 ## The agent can draft, and nothing else
 
 An agent works for one organisation, and the database decides which one from the agent's **token**,
-never from anything the agent's session can set. Each organisation's agent gets its own token from the
-hosted app; the database keeps only its SHA-256 (`private.agent_tokens`), and revoking it stops the agent
-at once.
+never from anything the agent's session can set. Each agent is a row of the
+[agent registry](./agent-registry.md), with a name, an owner, scopes and its own token from the hosted app;
+the database keeps only the token's SHA-256, and revoking the agent stops it at once.
 
 The agent's connection uses the database role `gaugeline_agent`, which holds no privilege on any table:
 it cannot read the inbox, insert a draft directly, change a draft or record a decision. Its one way in is
@@ -37,16 +37,18 @@ token's organisation and refuses a site or a finding that is not that organisati
 nobody's name. Those are missing privileges and checks in the database, not an `if` in the app, so a
 refactor cannot skip them.
 
-This is the output of the seeded test database (`apps/hosted/db/__tests__/harness.ts` and migration
-`0005_drafts_inbox.sql`), run with `psql` 16 as written, including the one invented agent token for
+This is the output of the seeded test database (`apps/hosted/db/__tests__/harness.ts` and migrations
+`0005_drafts_inbox.sql` and `0012_agent_registry.sql`), run with `psql` 16 as written, including the one invented agent token for
 Northgate Studio that the first statement adds. The session first claims to be Brightfield Web, which
 changes nothing:
 
 ```sql
--- set-up, as the schema owner: the hosted app mints a token, shows it once and keeps only its SHA-256
-insert into private.agent_tokens (org_id, token_sha256)
-  values ('0a000000-0000-4000-8000-00000000000a',
-          decode('75ba71e74f134b7296af485bd0dc6f1b6b5bee0fb953435bcb11939ed7d55099', 'hex'));
+-- set-up, as the schema owner, with a fixed invented token so the example repeats (people register an
+-- agent with private.register_agent, which mints the token; see the agent registry): its SHA-256 and
+-- prefix, a name, an owner and the one scope this agent needs
+insert into agents (org_id, name, owner_id, scopes, token_sha256, token_prefix)
+  values ('0a000000-0000-4000-8000-00000000000a', 'Menu fixer', '11111111-0000-4000-8000-000000000001',
+          '{draft:email}', '75ba71e74f134b7296af485bd0dc6f1b6b5bee0fb953435bcb11939ed7d55099', '01234567');
 
 -- as the agent role; the session claims Brightfield Web's organisation
 begin;
@@ -91,7 +93,7 @@ ROLLBACK
 BEGIN
 SET
 ERROR:  site not found for this agent
-CONTEXT:  PL/pgSQL function private.agent_insert_draft(text,uuid,text,jsonb,uuid[]) line 24 at RAISE
+CONTEXT:  PL/pgSQL function private.agent_insert_draft(text,uuid,text,jsonb,uuid[]) line 26 at RAISE
 ROLLBACK
 BEGIN
 SET
@@ -108,7 +110,7 @@ CONTEXT:  PL/pgSQL function private.drafts_check_payload() line 8 at RAISE
 SQL statement "insert into public.drafts (org_id, site_id, kind, payload, finding_ids, created_by)
     values (v_org, p_site_id, p_kind, p_payload, coalesce(p_finding_ids, '{}'), null)
     returning id"
-PL/pgSQL function private.agent_insert_draft(text,uuid,text,jsonb,uuid[]) line 45 at SQL statement
+PL/pgSQL function private.agent_insert_draft(text,uuid,text,jsonb,uuid[]) line 44 at SQL statement
 ROLLBACK
 ```
 
@@ -121,8 +123,8 @@ leave `log_statement` at `none` and `log_parameter_max_length` and `log_paramete
 `0` where the host lets you set them.
 
 What the owner sets up: a database login for the agent service that is a member of `gaugeline_agent`
-only (like the app's login, never the table owner), and one agent token per organisation, created by the
-hosted app (G35's token code). Nothing is created by this change. `agentLoginsWithOtherRoles`
+only (like the app's login, never the table owner), and one registered agent per agent program, each with
+its own token ([agent registry](./agent-registry.md)). Nothing is created by this change. `agentLoginsWithOtherRoles`
 (`apps/hosted/db/audit.ts`) lists any login that is a member of `gaugeline_agent` and also of
 `authenticated` or `service_role`; such a login could act as a person or as the server, so the list must
 be empty, like the checks in the data model page.
