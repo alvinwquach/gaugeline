@@ -103,6 +103,7 @@ import {
   formatRenewalRows,
   type RenewalRow,
   formatJunit,
+  formatOnePager,
   formatSarif,
   RENEWALS_CHECKS,
   RENEWALS_ENV_VARS,
@@ -255,6 +256,9 @@ import { VERSION } from "./version.js";
  * file. See docs/ci.md, "If GitHub rejects the upload".
  */
 const SARIF_PHYSICAL_LOCATION_FALLBACK = false;
+
+/** The largest saved run `gaugeline view --format one-pager` reads. */
+const ONE_PAGER_MAX_FILE_BYTES = 10 * 1024 * 1024;
 
 /** Shown under the mail record checks a run without --dns leaves out. */
 export const DNS_HINT =
@@ -1219,6 +1223,11 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         throw new ConfigError(`${args.file} does not exist.`, {
           hint: "Save a run with gaugeline <address> --json > run.json.",
         });
+      // A saved run is a few hundred kilobytes at most; a one-page report refuses anything over 10 MB unread.
+      if (args.onePager && statSync(path).size > ONE_PAGER_MAX_FILE_BYTES)
+        throw new ConfigError(`${args.file} is too large to be a saved run.`, {
+          hint: "Save a run with gaugeline <address> --json > run.json.",
+        });
       let saved: Result;
       try {
         saved = parseResult(JSON.parse(readFileSync(path, "utf8")));
@@ -1226,6 +1235,11 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         throw new ConfigError(`${args.file} is not a saved Gaugeline run (--json output).`, {
           hint: "Save a run with gaugeline <address> --json > run.json.",
         });
+      }
+      if (args.onePager) {
+        // Built from the saved run alone: nothing is requested, and no terminal view opens.
+        io.stdout.write(formatOnePager(saved));
+        return { outcome: ran, ci: false };
       }
       await runView({
         result: saved,
@@ -1993,7 +2007,12 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
             ? formatSarif({ ...json, failed: result.failed.map((f) => f.id) }, view)
             : args.format === "junit"
               ? formatJunit({ ...json, failed: result.failed.map((f) => f.id) }, view)
-              : `${JSON.stringify(json, null, 2)}\n`,
+              : args.format === "one-pager"
+                ? formatOnePager(
+                    { ...json, failed: result.failed.map((f) => f.id) },
+                    { notRun: dnsSkipped },
+                  )
+                : `${JSON.stringify(json, null, 2)}\n`,
         );
       } else {
         // gaugeline renewals: the list by date first (every date read, healthy or not), then what to fix.

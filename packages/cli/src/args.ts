@@ -153,10 +153,10 @@ export interface RunFlags {
   /** --suppress <id> with --suppress-until and --suppress-reason: snoozed for this run only. */
   suppress: { ids: string[]; until: string; reason: string } | undefined;
   ci: boolean;
-  /** Machine output on stdout: --json, or --format json|sarif|junit. No report file, no stderr chatter. */
+  /** Machine output on stdout: --json, or --format json|sarif|junit|one-pager. No report file, no stderr chatter. */
   json: boolean;
-  /** --format sarif or junit: which machine format stdout carries. Absent for the JSON result. */
-  format?: "sarif" | "junit";
+  /** --format sarif, junit or one-pager: what stdout carries. Absent for the JSON result. */
+  format?: "sarif" | "junit" | "one-pager";
   noOpen: boolean;
   verbose: boolean;
   quiet: boolean;
@@ -166,7 +166,7 @@ export interface RunFlags {
 export type ParsedArgs =
   | { kind: "help"; verbose: boolean; command: CliCommand }
   | { kind: "version"; verbose: boolean }
-  | { kind: "view"; file: string; verbose: boolean }
+  | { kind: "view"; file: string; onePager: boolean; verbose: boolean }
   | {
       kind: "plan";
       file: string;
@@ -601,10 +601,16 @@ export function parseCliArgs(
     };
   }
   const format = values.format;
-  if (format !== undefined && format !== "json" && format !== "sarif" && format !== "junit") {
+  if (
+    format !== undefined &&
+    format !== "json" &&
+    format !== "sarif" &&
+    format !== "junit" &&
+    format !== "one-pager"
+  ) {
     return {
       kind: "error",
-      message: `--format accepts json, sarif or junit, not "${String(format)}".`,
+      message: `--format accepts json, sarif, junit or one-pager, not "${String(format)}".`,
       hint: "For example: gaugeline example.com --format sarif > gaugeline.sarif",
       verbose,
     };
@@ -1762,7 +1768,14 @@ export function parseCliArgs(
         hint: "Save a run with gaugeline <address> --json > run.json.",
         verbose,
       };
-    return { kind: "view", file: positionals[0] ?? "", verbose };
+    if (format !== undefined && format !== "one-pager")
+      return {
+        kind: "error",
+        message: `gaugeline view takes --format one-pager, not "${format}".`,
+        hint: "For example: gaugeline view run.json --format one-pager",
+        verbose,
+      };
+    return { kind: "view", file: positionals[0] ?? "", onePager: format === "one-pager", verbose };
   }
   // gaugeline check <folder> --routes --base <address>: --routes with no glob reads the folder's
   // Next.js routes and asks the running site for each signed-in one. With a glob it keeps its
@@ -2055,7 +2068,7 @@ export function parseCliArgs(
     // The gate blocks only with --block; the CI variable alone does not turn it on.
     ci: gate ? gate.block : values.ci === true,
     json: values.json === true || format !== undefined,
-    ...(format === "sarif" || format === "junit" ? { format } : {}),
+    ...(format === "sarif" || format === "junit" || format === "one-pager" ? { format } : {}),
     noOpen: gate ? true : values["no-open"] === true,
   };
 }

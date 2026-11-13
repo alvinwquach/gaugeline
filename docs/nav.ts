@@ -30,6 +30,7 @@ export const NAV: NavGroup[] = [
     pages: [
       { slug: "running-a-check", title: "Running a check" },
       { slug: "reading-the-report", title: "Reading the report" },
+      { slug: "one-pager", title: "The one-page report" },
       { slug: "options", title: "Options" },
       { slug: "the-app", title: "Open the app" },
       { slug: "products-and-prices", title: "Products and prices" },
