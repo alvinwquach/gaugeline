@@ -12,6 +12,7 @@ import {
   privateFunctionsExecutableBy,
   tablesWithoutRls,
 } from "../audit.js";
+import { withAgent } from "../../lib/api/db.js";
 import {
   errorOf,
   freshDatabase,
@@ -231,6 +232,32 @@ describe.skipIf(!HAS_DATABASE)("agent trace", () => {
       expect(rows[0]!.output_sha256).toBe(sha(p));
       expect(rows[1]!.output_sha256).toBe(sha(r));
       expect(rows[0]!.input_sha256).toMatch(HEX64);
+    });
+
+    it("accepted risk: a read rolled back by the agent's login leaves no trace and no counted call; the app's committed path leaves one", async () => {
+      const a = await register(["read:pending"]);
+      const calls = async () =>
+        Number(
+          (await owner`select window_calls from public.agent_limits where agent_id = ${a.id}`)[0]!
+            .window_calls,
+        );
+      // The login rolls its own transaction back: the trace row and the policy's count go with it.
+      const e = await errorOf(
+        agent.begin(async (tx) => {
+          await tx.unsafe("set local role gaugeline_agent");
+          await tx`select private.agent_list_pending(${a.token})`;
+          throw new Rollback();
+        }),
+      );
+      expect(e).toBe("");
+      expect(await traceOf(a.id)).toHaveLength(0);
+      expect(await calls()).toBe(0);
+      // The app's own path (lib/api/db.ts withAgent) commits: exactly one row.
+      await withAgent(agent as never, (tx) => tx`select private.agent_list_pending(${a.token})`);
+      expect((await traceOf(a.id)).map((x) => [x.tool, x.decision])).toEqual([
+        ["read:pending", "allowed"],
+      ]);
+      expect(await calls()).toBe(1);
     });
 
     it("a refused read leaves one denied row with the reason and no output hash", async () => {

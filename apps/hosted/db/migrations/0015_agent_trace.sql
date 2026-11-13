@@ -11,6 +11,11 @@
 -- table without limit, so those calls are counted per minute in ONE row of agent_trace_overflow; and an
 -- agent's refused calls past 60 in one minute are counted there too, per reason, instead of one row each.
 --
+-- Accepted risk (independent review of AG-05): a trace is written in the caller's transaction; a holder of
+-- the agent database login who rolls back a read leaves none (nor a counted call); the login can reach only
+-- its own organisation's pending drafts and run history. The app's own path (lib/api/db.ts withAgent)
+-- commits every call, so its calls are always traced.
+--
 -- Who reaches what:
 --   agent_trace, agent_trace_overflow     owners and admins of the organisation, through RLS (read only)
 --   private.agent_trace_record            no login: only the agent's draft entry and the decisions trigger

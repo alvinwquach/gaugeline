@@ -98,6 +98,10 @@ A person in two organisations sees both, and nothing else.
   nothing else ([the inbox and approvals](./inbox.md), [the API](./api.md)). Its
   login must be a member of that role only: `agentLoginsWithOtherRoles` in `db/audit.ts` lists any login
   that could also act as `authenticated` or `service_role`.
+- **Agent traces are written in the caller's transaction (AG-05).** A trace is written in the caller's
+  transaction; a holder of the agent database login who rolls back a read leaves none; the login can reach
+  only its own organisation's pending drafts and run history. The app's own path commits every call, so
+  its calls are always traced. Accepted risk, recorded by the independent review.
 - **The app must never connect as the table owner.** The owner (`postgres` on Supabase) skips
   row-level security. Row-level security is not `FORCE`d: FORCE only binds the table owner, which runs
   the migrations and would then need its own policies, and it does nothing against a superuser or a
