@@ -61,7 +61,10 @@ export interface TrailEntry {
    * "draft", "org", "site", "hash", "withdrawn", "expired", "payload", "path", "registry"; for a mailbox
    * draft also "recipient" (every contact bounced), "duplicate" (one approval, one draft) and
    * "disconnected" (no access token stored). With an `apply_failed` status, "reconnect" means Gmail no
-   * longer accepts the token (401 or 403): the draft stays in the inbox, with a note to reconnect.
+   * longer accepts the token (401 or 403): the draft stays in the inbox, with a note to reconnect. For a
+   * Sanity draft also "field" (not allowed), "stale" (the live value changed), "missing" and "type" (the
+   * document), "draft exists" and "document" (too large to copy); there "duplicate" means this approval was
+   * already applied, and no request is made.
    */
   reason?: string;
   /** A dry run's plan: the registered endpoint and the path it would call. */

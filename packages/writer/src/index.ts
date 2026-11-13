@@ -24,6 +24,9 @@ export {
   type SanityRequest,
   type SanityTarget,
 } from "./sanity/endpoints.js";
+export { applySanityDraft, type SanityApplyDeps, type SanityApplyTarget } from "./sanity/apply.js";
+export { isAllowedField, isDeniedField } from "./sanity/fields.js";
+export { createSanityStandIn, type StandInOptions } from "./sanity/standin.js";
 export { canonicalJson, valueSha256 } from "./sanity/hash.js";
 export {
   sanitySender,

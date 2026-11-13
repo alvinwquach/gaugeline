@@ -2,7 +2,7 @@
   "name": "@gaugeline/writer",
   "version": "0.0.0",
   "private": true,
-  "description": "Applies an approved draft in the customer's own worker with the customer's own token (ADR-0010). Not a dependency of the gaugeline CLI. Never published.",
+  "description": "Applies an approved draft in the customer's own worker with the customer's own token (ADR-0010). Not a dependency of the gaugeline CLI. Private to this repository.",
   "type": "module",
   "license": "MIT",
   "engines": {
