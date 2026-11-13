@@ -12,8 +12,6 @@
  *   GAUGELINE_SUPABASE_LOCAL_ANON_KEY    the stack's anon key
  *   GAUGELINE_SUPABASE_LOCAL_JWT_SECRET  the stack's JWT secret (the test mints its admin token with it)
  *   GAUGELINE_SUPABASE_LOCAL_MAIL_URL    the stack's Mailpit address, e.g. http://127.0.0.1:54324
- *   GAUGELINE_SUPABASE_LOCAL_SERVICE_ROLE_KEY  optional: the stack's admin key, for this test's set-up
- *                                       only (else one is minted with the JWT secret); never the adapter's
  *   GAUGELINE_SUPABASE_LOCAL_JWKS        optional: the stack's public key set, when it signs ES256/RS256
  */
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -44,7 +42,10 @@ if (BASE !== "" && !HAS_DATABASE)
   throw new Error("GAUGELINE_SUPABASE_LOCAL_URL is set but GAUGELINE_TEST_DATABASE_URL is not.");
 
 const nowS = () => Math.floor(Date.now() / 1000);
-/** The local stack's admin token, for the test's own set-up only: the adapter never sees it. */
+/**
+ * An admin token minted with the local stack's JWT secret, for the test's own set-up only (creating Auth
+ * users): the adapter never sees it, and no service-role key is in the job's environment.
+ */
 const admin = () =>
   signHs256(
     { role: "service_role", iss: "supabase-local", iat: nowS(), exp: nowS() + 600 },
@@ -88,7 +89,12 @@ describe.skipIf(!RUN)(
     let f: Fixture;
     let auth: SupabaseAuth;
     // One link per person: Auth refuses a second link to the same address within its minimum interval.
-    const people = [PEOPLE.maya, PEOPLE.manager, PEOPLE.ben, PEOPLE.dev, PEOPLE.both];
+    /** An Auth user who is in no organisation: a valid sign-in, no row in members. */
+    const outsider = {
+      email: "outsider@quiet-cafe.test",
+      id: "77777777-0000-4000-8000-000000000007",
+    };
+    const people = [PEOPLE.maya, PEOPLE.manager, PEOPLE.ben, PEOPLE.dev, PEOPLE.both, outsider];
 
     beforeAll(async () => {
       f = await fixture();
@@ -144,6 +150,17 @@ describe.skipIf(!RUN)(
       const ben = await (await (await signIn(PEOPLE.ben.email)).b.get("/")).text();
       expect(ben).toContain("Maple Street Physio");
       expect(ben).not.toContain("The Tidewater Bar");
+    });
+
+    it("an Auth user in no organisation signs in and sees only the 'not a member' page, no sites", async () => {
+      const { b, res } = await signIn(outsider.email);
+      expect(res.status).toBe(303);
+      const home = await (await b.get("/")).text();
+      expect(home).toContain("You are not a member of any organisation yet.");
+      for (const site of ["The Tidewater Bar", "Juniper Pop-up Kitchen", "Maple Street Physio"])
+        expect(home).not.toContain(site);
+      expect(home).not.toContain("Northgate Studio");
+      expect(home).not.toContain("Brightfield Web");
     });
 
     it("an address that is not invited gets the same answer and no mail; a link works once", async () => {
