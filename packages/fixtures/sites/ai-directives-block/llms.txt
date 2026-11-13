@@ -1,0 +1,7 @@
+# Larkspur Family Law
+
+> An invented family law practice. Fees, hours and how to book.
+
+## Pages
+
+- [Fees](https://larkspur-family-law.example/fees): the fixed fee for a first meeting

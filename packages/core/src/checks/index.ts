@@ -4,6 +4,7 @@ import { accessPublicRead } from "./access-public-read.js";
 import { accessRoleScope } from "./access-role-scope.js";
 import { aemAuthorLinks } from "./aem-author-links.js";
 import { aiCrawlersBlocked } from "./ai-crawlers-blocked.js";
+import { aiCrawlersDirectives } from "./ai-crawlers-directives.js";
 import { aiCrawlersIntent } from "./ai-crawlers-intent.js";
 import { aiKeyInJs } from "./ai-key-in-js.js";
 import { aiWidgetInventory } from "./ai-widget-inventory.js";
@@ -260,6 +261,7 @@ export const PAGE_CHECKS = [
   accessRoleScope,
   aemAuthorLinks,
   aiCrawlersBlocked,
+  aiCrawlersDirectives,
   aiCrawlersIntent,
   aiKeyInJs,
   aiWidgetInventory,

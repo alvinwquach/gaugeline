@@ -107,6 +107,48 @@ The first finding is the older `robots-block` check (the blanket rule, for searc
 - **A discovery file**: fix the JSON or delete the file.
 - **Facts**: put the number and address in the footer as text.
 
+## Signals on the page itself, and llms.txt
+
+`robots.txt` is one place to say what you want from AI crawlers. A page can say it too: an `X-Robots-Tag` header
+(often set by a CDN rule or a framework config that nobody remembers) and a meta tag in the template. With an
+`aiCrawlers` intent in `gaugeline.ai.json`, `ai-crawlers-directives` compares those signals with it, as
+`ai-crawlers-intent` does for robots.txt:
+
+- `noai` or `noimageai`, in the header or in a robots meta tag, asks training crawlers to stay away. It counts
+  against `allow`, because you want them in. It agrees with `training-block`, `search-only` and `block`.
+- `noindex` or `none` for one crawler, in the header (`X-Robots-Tag: GPTBot: noindex`) or in a meta tag named for it
+  (`<meta name="GPTBot" content="noindex">`), counts against any intent that wants that crawler allowed.
+- A general `noindex` is about every crawler, search engines included: the `noindex` check reports it.
+- With the intent `block`, a published `llms.txt` is reported, once per site: it is a guide written for the
+  assistants you said to keep out.
+
+A signal that fails to block a crawler you want blocked is not reported here: robots.txt may block it, and
+`ai-crawlers-intent` reads that. Without an intent nothing is compared.
+
+Larkspur Family Law wants assistants to read its site, and a header from a CDN rule says `noai, noimageai` on every
+page, while a meta tag in the template tells one named crawler `noindex`. robots.txt allows everything, so
+`ai-crawlers-intent` finds nothing.
+
+<!-- fixture: ai-directives -->
+
+```sh title=Terminal
+$ npx gaugeline larkspur-family-law.example
+```
+
+```text title=Output
+! A page header, meta tag or llms.txt says something different about AI crawlers than you said you want
+    gaugeline.ai.json says to allow every AI crawler; for /, the X-Robots-Tag header says noai and noimageai for GPTBot (OpenAI), ClaudeBot (Anthropic), Google-Extended (Google), Applebot-Extended (Apple) and 2 more and the ClaudeBot meta tag says noindex for ClaudeBot (Anthropic)
+? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
+    Mail records are read from DNS only with --dns. Rerun with --dns to check them.
+
+1 to look at, none to fix first.
+```
+
+The finding names the place (the header or the tag), the directive and the crawlers it keeps away, and never any page
+text: only directives from a fixed list are read. `noai`, `noimageai` and the `Crawler: directive` form for AI
+crawlers are conventions, not part of a standard Gaugeline could read from an official page: the check's technical
+line in the [checks reference](/docs/checks) says they are from memory.
+
 ## What it requests
 
 `/robots.txt` and `/llms.txt` once each, the four `/.well-known/` paths above once each, and the
