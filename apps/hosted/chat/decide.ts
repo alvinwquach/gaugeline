@@ -54,6 +54,12 @@ export type ChatDecision =
   /** The inbox must be used: a finding the draft fixes has closed, or the payload no longer fits. */
   | { status: "open-inbox"; why: "closed-findings" | "invalid-payload" };
 
+/**
+ * The queue's `enqueueApply` runs in the CHAT LOGIN's transaction. The in-memory queue touches no table. A
+ * production queue (the jobs table, G36) must be a SECURITY DEFINER function that `gaugeline_chat` may
+ * execute and that takes the job from a decision row it checks itself: never a table privilege for
+ * `gaugeline_chat` (a test fails if the role holds any), or the chat login could insert any job.
+ */
 export interface ChatDecideDeps {
   /** The chat login: a member of gaugeline_chat only. */
   sql: postgres.Sql;

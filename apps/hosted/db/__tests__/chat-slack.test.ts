@@ -414,6 +414,46 @@ describe.skipIf(!HAS_DATABASE)("approving in Slack", () => {
     });
   });
 
+  describe("what the chat role can reach (reviewer notes c and d)", () => {
+    it("gaugeline_chat holds no privilege on any table, view, column or sequence: the apply queue must be a definer function too", async () => {
+      const rows = await owner`
+        select n.nspname || '.' || c.relname as name from pg_class c
+        join pg_namespace n on n.oid = c.relnamespace
+        where n.nspname in ('public', 'private', 'vault', 'auth')
+          and c.relkind in ('r', 'p', 'v', 'm', 'f', 'S')
+          and (case when c.relkind = 'S'
+                 then has_sequence_privilege('gaugeline_chat', c.oid, 'USAGE, SELECT, UPDATE')
+                 else has_table_privilege('gaugeline_chat', c.oid, 'SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER')
+                   or has_any_column_privilege('gaugeline_chat', c.oid, 'SELECT, INSERT, UPDATE, REFERENCES') end)
+        order by 1`;
+      expect(rows.map((r) => r.name)).toEqual([]);
+    });
+
+    it("the insert policy on links refuses a confirmed row even if the column were granted", async () => {
+      // The column grant already refuses it (a test in chat.test.ts). This is the second line: grant the
+      // column inside a transaction that is rolled back, and the policy alone must still say no.
+      class Rollback extends Error {}
+      let message = "";
+      try {
+        await owner.begin(async (tx) => {
+          await tx.unsafe("grant insert (confirmed_at) on public.chat_identities to authenticated");
+          await tx`select set_config('request.jwt.claims', ${JSON.stringify({ role: "authenticated", sub: USER_A_OWNER })}, true)`;
+          await tx.unsafe("set local role authenticated");
+          try {
+            await tx`insert into public.chat_identities (org_id, connection_id, chat_user_id, user_id, confirmed_at)
+              values (${ORG_A}, ${CONN}, 'U0PRECONFIRMED', ${USER_A_MEMBER}, now())`;
+          } catch (e) {
+            message = e instanceof Error ? e.message : String(e);
+          }
+          throw new Rollback();
+        });
+      } catch (e) {
+        if (!(e instanceof Rollback)) throw e;
+      }
+      expect(message).toMatch(/row-level security/);
+    });
+  });
+
   describe("the endpoint's own login", () => {
     it("refuses a login that can also be the server, the worker or the agent, and one that is not the chat role", async () => {
       const login = async (name: string, roles: string) => {

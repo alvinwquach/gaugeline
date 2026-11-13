@@ -369,3 +369,18 @@ connection's organisation. It cannot record one for a member who never confirmed
 viewer, or across organisations, and it cannot apply anything: your own worker re-checks every approval
 before it writes. Rotating the signing secret and removing the links closes it. Keeping the secret out of
 the endpoint altogether (verifying the signature inside the database) is not done.
+
+**A link proves "this chat id is me" from the web side only.** The admin names the chat id and the member
+confirms it while signed in to Gaugeline; nothing proves, from the Slack side, that the member controls
+that Slack account. A member who confirms a link to a chat id that is not theirs lets whoever owns that
+chat id decide as the member, with the member's consent; an admin alone cannot do it. A proof from the
+chat side (a one-time code the member's own Slack session must send back through a slash command,
+stored hashed, expiring and single use) would close it and needs the slash-command route; it is not
+built. Until then, an owner or admin checking the chat id against the person's Slack profile when they
+propose the link is the control.
+
+**The apply queue.** An approval enqueues its apply job in the chat login's own transaction. Today that is
+an in-memory queue that touches no table, and the endpoint runs only in development and tests. The real
+queue must be a `SECURITY DEFINER` function that `gaugeline_chat` may execute, checking the job against
+the decision row itself; `gaugeline_chat` must never be given a table privilege, and a test fails if it
+holds any.
