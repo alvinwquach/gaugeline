@@ -231,6 +231,55 @@ What it shows:
 Nobody signed in, the server, the worker and the agent can read or set the operator's switches; only the
 schema owner can.
 
+### The environment switch, in front of the database
+
+The hosted code that takes an agent's draft (`apps/hosted/agents/draft.ts`) also reads `GAUGELINE_AGENTS_OFF` from its own environment **at every call**. Set to anything but `0`, an empty or
+misspelt value included, it refuses every agent call with `kill-switch-global` before the database is called:
+no draft, no counted call, and no row in `agent_denies` (the database is not reached), so the refusal is
+logged by that process instead. Unset it, or set it to `0`, and the next call goes through. Use it when the
+database itself is the problem, or to stop agents without a database login; use the operator's switch above
+when you want the refusal in the organisation's deny log.
+
+**Not running anywhere yet.** Today nothing in the hosted app or worker calls this code: only its tests do.
+There is no endpoint through which an agent sends a draft over the network yet, so today an agent reaches
+the database's draft function directly, and the environment switch does not apply to that path. The switch
+protects the hosted path once the agent endpoint is built on this code (planned).
+
+When the database refuses, the same code reads the reason from the warning (only a reason on the closed list
+above, from the policy's own warning) and hands its log one entry with the time, the tool and the reason:
+
+```json title=Log entry untested="Printed by the test that throws the switch (agent-draft.test.ts)."
+{
+  "at": "2026-11-13T09:00:00.000Z",
+  "agentId": null,
+  "tool": "draft:email",
+  "reason": "kill-switch-global"
+}
+```
+
+**One authorization per call.** This code does not call `private.agent_authorize` itself: the draft
+function calls it once, first, and counts the call once in the rate window and the day's cost. Calling it
+again from the code would count every draft twice. A test drafts three times and reads the counter: 1, 2, 3;
+a refusal leaves it where it was.
+
+The agent id is null there on purpose: the code never looks the token up itself; the database's deny row holds
+the ids. No token, payload, site or text is in it. A call refused for any other cause (another organisation's
+site, a payload of the wrong shape) stays an error, as before.
+
+The same switch and the same reasons govern the [MCP server](../mcp.md#the-agent-policy), which has no
+database: there the policy runs in its own process (one budget for the server, the tools you allow).
+
+### Today and planned
+
+| Control                                   | Today                                                 | Planned                                                              |
+| ----------------------------------------- | ----------------------------------------------------- | -------------------------------------------------------------------- |
+| Scopes, rate limit, cost ceiling, timeout | in the database, before every draft (this page)       | the read tools (AG-08) call the same function                        |
+| Kill switch, one agent                    | registry status `disabled`; the operator's switch row |                                                                      |
+| Kill switch, every agent                  | the operator's switch row (database)                  | `GAUGELINE_AGENTS_OFF` on the agent endpoint                         |
+| Every deny logged                         | `agent_denies` (database)                             | the endpoint's log (env switch); traces of allowed calls too (AG-05) |
+| Cost                                      | every draft declares 0                                | model calls declare theirs (AG-22)                                   |
+| An HTTP endpoint for agents               | none yet; nothing running calls `createAgentDrafts`   | built on `createAgentDrafts` when it ships                           |
+
 ## What is logged
 
 `agent_denies` holds one row per refused call: the organisation and agent ids, the tool (only a name on

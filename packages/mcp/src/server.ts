@@ -58,7 +58,7 @@ export function createGaugelineServer(options: ServerOptions = {}): McpServer {
         const decision = policy.decide({
           agentId: MCP_AGENT_ID,
           tool: name,
-          costMicros: TOOL_COST_MICROS,
+          costMicros: options.toolCostMicros?.(name) ?? TOOL_COST_MICROS,
         });
         if (!decision.allowed)
           return {

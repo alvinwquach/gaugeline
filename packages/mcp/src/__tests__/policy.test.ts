@@ -8,7 +8,7 @@ import { createServer, type Server } from "node:http";
 import { fileURLToPath } from "node:url";
 import { AGENTS_OFF_ENV, type AgentDenyLog } from "@gaugeline/core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { HELP, parseArgs } from "../cli.js";
+import { HELP, parseArgs, serverOptions } from "../cli.js";
 import { DEFAULT_CALLS_PER_MINUTE, DEFAULT_COST_CEILING_MICROS } from "../policy.js";
 import { TOOLS } from "../registry.js";
 import { createState, type ServerOptions } from "../state.js";
@@ -192,5 +192,41 @@ describe("the policy flags", () => {
     for (const f of policyFlags) expect(HELP).toContain(`  ${f} `);
     for (const name of Object.keys(TOOLS)) expect(section).toContain(`\`${name}\``);
     expect(section).toContain(AGENTS_OFF_ENV);
+  });
+});
+
+describe("started from the command line (what main() builds)", () => {
+  it("the kill switch is read from the environment main() was given, and the deny goes to its stderr", async () => {
+    expect(process.env[AGENTS_OFF_ENV]).toBeUndefined();
+    const lines: string[] = [];
+    const env: Record<string, string | undefined> = { [AGENTS_OFF_ENV]: "1" };
+    const options = serverOptions(parseArgs([], "/"), {
+      env,
+      stderr: { write: (s: string) => lines.push(s) },
+    });
+    await withServer(options, async (call) => {
+      expect((await call("list_checks")).text).toBe(
+        "Refused by this server's agent policy: kill-switch-global.",
+      );
+      delete env[AGENTS_OFF_ENV];
+      expect((await call("list_checks")).isError).toBe(false);
+    });
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toMatch(/^gaugeline-mcp: denied tool=list_checks reason=kill-switch-global /);
+  });
+
+  it("--cost-ceiling-micros refuses the call that would pass the day's ceiling (cost-ceiling)", async () => {
+    const lines: string[] = [];
+    const options = serverOptions(parseArgs(["--cost-ceiling-micros", "5"], "/"), {
+      env: {},
+      stderr: { write: (s: string) => lines.push(s) },
+    });
+    await withServer({ ...options, toolCostMicros: () => 3 }, async (call) => {
+      expect((await call("list_checks")).isError).toBe(false);
+      expect((await call("list_checks")).text).toBe(
+        "Refused by this server's agent policy: cost-ceiling.",
+      );
+    });
+    expect(lines.map((l) => /reason=([a-z-]+)/.exec(l)?.[1])).toEqual(["cost-ceiling"]);
   });
 });

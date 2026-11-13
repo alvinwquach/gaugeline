@@ -5,7 +5,7 @@ import { normaliseHostPort } from "./net-guard.js";
 import { DEFAULT_CALLS_PER_MINUTE, DEFAULT_COST_CEILING_MICROS, denyLine } from "./policy.js";
 import { TOOLS } from "./registry.js";
 import { SERVER_VERSION, createGaugelineServer } from "./server.js";
-import { createState } from "./state.js";
+import { createState, type ServerOptions } from "./state.js";
 
 export const HELP = `gaugeline-mcp: Gaugeline as an MCP server. Read-only: it never writes, publishes or changes a site.
 
@@ -49,7 +49,7 @@ Probing checks run only when you start the server with --allow-probing and --pro
 no argument that turns them on, so a page that tells an assistant to ask for them gets nothing.
 `;
 
-interface Parsed {
+export interface Parsed {
   http: boolean;
   port: number;
   host: string;
@@ -182,6 +182,24 @@ export function installSafetyNet(io: Pick<Io, "stderr">, proc: Proc = process): 
   });
 }
 
+/** What the server is started with: the flags, and the environment and stderr of this process. */
+export function serverOptions(args: Parsed, io: Pick<Io, "env" | "stderr">): ServerOptions {
+  return {
+    allowPrivate: args.allowPrivate,
+    allowPrivateHosts: args.allowPrivateHosts,
+    planBases: args.planBases,
+    allowProbing: args.allowProbing,
+    probingOrigins: args.probingOrigins,
+    ...(args.root !== undefined ? { root: args.root } : {}),
+    ...(args.allowedTools ? { allowedTools: args.allowedTools } : {}),
+    callsPerMinute: args.callsPerMinute,
+    costCeilingMicros: args.costCeilingMicros,
+    env: io.env,
+    onDeny: (e: Parameters<typeof denyLine>[0]) => io.stderr.write(denyLine(e)),
+    state: createState(),
+  };
+}
+
 /** Returns an exit code once the server stops. stdout is the protocol in stdio mode: logs go to stderr only. */
 export async function main(argv: string[], io: Io): Promise<number> {
   let args: Parsed;
@@ -199,20 +217,7 @@ export async function main(argv: string[], io: Io): Promise<number> {
     io.stdout.write(`${SERVER_VERSION}\n`);
     return 0;
   }
-  const options = {
-    allowPrivate: args.allowPrivate,
-    allowPrivateHosts: args.allowPrivateHosts,
-    planBases: args.planBases,
-    allowProbing: args.allowProbing,
-    probingOrigins: args.probingOrigins,
-    ...(args.root !== undefined ? { root: args.root } : {}),
-    ...(args.allowedTools ? { allowedTools: args.allowedTools } : {}),
-    callsPerMinute: args.callsPerMinute,
-    costCeilingMicros: args.costCeilingMicros,
-    env: io.env,
-    onDeny: (e: Parameters<typeof denyLine>[0]) => io.stderr.write(denyLine(e)),
-    state: createState(),
-  };
+  const options = serverOptions(args, io);
   // Over HTTP, anything that widens what a tool can reach needs a token: without one, any process on the
   // machine could call the tools, and runs are shared by every caller.
   const widened =

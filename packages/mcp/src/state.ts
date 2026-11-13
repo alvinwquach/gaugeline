@@ -60,6 +60,11 @@ export interface ServerOptions {
   costCeilingMicros?: number;
   /** Read at every call for the global kill switch GAUGELINE_AGENTS_OFF (default: the live process.env). */
   env?: Readonly<Record<string, string | undefined>>;
+  /**
+   * The cost a tool call declares, in micro-units (default 0 for every tool: none calls a model). For tests,
+   * and for a later tool that does; never set from a call.
+   */
+  toolCostMicros?: (tool: string) => number;
   /** Where each deny is logged (default: one line on stderr). Gets the time, the tool and the reason only. */
   onDeny?: (entry: AgentDenyLog) => void;
   /** Shared by every server made from the same options (the HTTP transport makes one per request). */
