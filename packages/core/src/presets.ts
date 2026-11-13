@@ -85,6 +85,7 @@ export const CRM_CHECKS: readonly string[] = Object.freeze([
  * did not ask.
  */
 export const PROBING_CHECKS: readonly string[] = Object.freeze([
+  "ai-endpoint-open",
   "gated-download-open",
   "image-optimizer-open",
   "noindex-header-missing",

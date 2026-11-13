@@ -217,6 +217,21 @@ wrote it.
 - It goes through the same fetcher as every other request, so a private address is refused unless
   `--allow-private` is set. Never a `POST`.
 
+### AI routes (a probing check)
+
+With `--owner-consent` (or a `gaugeline.consent.json`) **and** a `modelEndpoints` list in `gaugeline.ai.json`, the
+`ai-endpoint-open` check asks each route you listed (a chat route, a model list) to see whether it answers with no
+login or shows a provider's error text ([AI routes that answer anyone](guides/ai-endpoints.md)). **Run it only on
+sites you own or have permission to test.** Gaugeline never picks a route of its own: a route is asked only if you
+wrote it.
+
+- One `GET` per route, once per run, at most 8. No cookie, no `Authorization` header, no query. Never a `POST`.
+- At most 16 KiB of each answer are read, only to tell a list of models, a model's reply or an error from a plain
+  refusal; the body is not kept or printed, and a finding carries a count or the names of fixed signs, never a
+  model name, a message or part of a key.
+- It goes through the same fetcher as every other request, so a private address is refused unless
+  `--allow-private` is set.
+
 ### Image optimizers (a probing check)
 
 With `--owner-consent` (or a `gaugeline.consent.json`) **and** an `imageOptimizerProbeUrl` in
