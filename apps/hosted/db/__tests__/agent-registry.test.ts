@@ -357,6 +357,38 @@ describe.skipIf(!HAS_DATABASE)("agent registry", () => {
       ).toMatch(/each scope once/);
     });
 
+    it("cannot hold a scopes array that is not flat or does not start at 1 (array_ndims, array_lower)", async () => {
+      // Each of these passes the list rule (every element is on the list) and the count rule (at most 5), so
+      // only the two flat-list rules of agents_scopes_known can refuse it.
+      const flat = [
+        ["a two-dimensional array", "'{{draft:email},{read:runs}}'::text[]"],
+        ["a three-dimensional array", "'{{{draft:email}}}'::text[]"],
+        ["a lower bound of 0", "'[0:0]={draft:email}'::text[]"],
+        ["a lower bound of 2", "'[2:3]={draft:email,read:runs}'::text[]"],
+        ["a negative lower bound", "'[-1:0]={draft:email,read:runs}'::text[]"],
+      ] as const;
+      for (const [what, literal] of flat) {
+        const e = await errorOf(
+          owner.unsafe(`insert into public.agents (org_id, name, owner_id, scopes, token_sha256, token_prefix)
+            values ('${ORG_A}', 'Shaped', '${USER_A_OWNER}', ${literal}, repeat('c', 64), 'cccccccc')`),
+        );
+        expect(e, what).toMatch(/agents_scopes_known/);
+      }
+      // The same rule on an update, and a flat list that starts at 1 is still accepted.
+      const a = await register();
+      expect(
+        await errorOf(
+          owner`update public.agents set scopes = '{{draft:email},{read:runs}}'::text[] where id = ${a.id}`,
+        ),
+      ).toMatch(/agents_scopes_known/);
+      expect(
+        await errorOf(
+          owner`update public.agents set scopes = '[1:2]={draft:email,read:runs}'::text[] where id = ${a.id}`,
+        ),
+      ).toBe("");
+      expect((await row(a.id)).scopes).toEqual(["draft:email", "read:runs"]);
+    });
+
     it("cannot set created_at, last_used_at, revoked_at, revoked_by, the origin, the organisation or the hash", async () => {
       const a = await register();
       for (const set of [
@@ -757,7 +789,7 @@ describe.skipIf(!HAS_DATABASE)("agent registry", () => {
     it("the closed scope list in the database is the app's list", async () => {
       const [c] = await owner`select pg_get_constraintdef(oid) as d from pg_constraint
         where conname = 'agents_scopes_known'`;
-      const listed = [...String(c!.d).matchAll(/'([a-z_]+:[a-z_-]+)'/g)].map((m) => m[1]);
+      const listed = [...String(c!.d).matchAll(/'([^']*)'/g)].map((m) => m[1]);
       expect(listed).toEqual([...AGENT_SCOPES]);
     });
   });
