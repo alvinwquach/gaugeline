@@ -1,5 +1,5 @@
 /**
- * gaugeline.house.json (AG-17): a site's house rules as data, the smallest shape that holds the five kinds of
+ * gaugeline.rules.json (AG-17): a site's house rules as data, the smallest shape that holds the five kinds of
  * rule the compiler understands. It is a sibling of gaugeline.ai.json, gaugeline.facts.json and the other
  * topic files, not a key in gaugeline.config.json, whose strict shape every run reads.
  *
@@ -12,10 +12,10 @@ import * as z from "zod";
 import { ConfigError } from "../errors.js";
 
 /** The live file. The compiler never writes it: a person renames a reviewed draft to this. */
-export const HOUSE_CONFIG_FILE = "gaugeline.house.json";
+export const HOUSE_CONFIG_FILE = "gaugeline.rules.json";
 /** What a draft file's name must end with, so a draft can never be the live file. */
 export const HOUSE_DRAFT_SUFFIX = ".draft.json";
-export const HOUSE_DRAFT_FILE = "gaugeline.house.draft.json";
+export const HOUSE_DRAFT_FILE = "gaugeline.rules.draft.json";
 
 export const HEADING_CASES = ["sentence", "title"] as const;
 export type HeadingCase = (typeof HEADING_CASES)[number];
@@ -98,7 +98,7 @@ export type HouseConfig = z.infer<typeof houseConfigSchema>;
 const dotted = (path: readonly PropertyKey[]): string => path.map(String).join(".");
 
 /**
- * Validate a parsed gaugeline.house.json or draft. `source` is the file's name. Every problem names its key
+ * Validate a parsed gaugeline.rules.json or draft. `source` is the file's name. Every problem names its key
  * (forbidTerms.0); the first three are listed. Throws ConfigError (exit 2 in the CLI).
  */
 export function parseHouseConfig(raw: unknown, source: string): HouseConfig {

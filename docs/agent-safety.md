@@ -29,7 +29,9 @@ and not built.
   folder of review notes and writes a draft of check candidates for a person to read. A scrub fails the draft
   on a client name, address, email or phone number. It writes no check and no code.
 - **Today (row AG-17).** The [house-rules compiler](./house-rules.md): turns a written style guide into a draft
-  config file for a person to review. It reads one local file, writes one new draft file and never the live one.
+  `gaugeline.rules.draft.json` for a person to review. It reads one local file, writes one new draft file and
+  never the live `gaugeline.rules.json`. The `house-rules-broken` check (row HOUSE-01) is plain code that reads
+  only the live file: a draft is never read, and no model or request is involved.
 - **Today (row AG-18).** The [one-page report](./one-pager.md): a cited, read-only summary of a run (the headline,
   the first fixes and what was not checked). It reads results and nothing else.
 - **Planned (row AG-16).** A draft-only helper that drafts checks for a person to review.

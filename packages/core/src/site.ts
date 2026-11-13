@@ -23,6 +23,7 @@ import { lazySanityImages, notConfigured } from "./sanity-images/read.js";
 import { lazyAppLookups } from "./apps.js";
 import { lazyCalendars } from "./calendars.js";
 import type { AiConfig } from "./ai-intent.js";
+import type { HouseConfig } from "./house-rules/schema.js";
 import { lazyLanguageGroup, type LanguageRules } from "./languages.js";
 import { lazyAccess } from "./access/probe.js";
 import type { AccessSettings } from "./access/types.js";
@@ -98,6 +99,8 @@ export interface SiteCheckOptions {
   facts?: FactsConfig;
   /** What AI crawlers should be able to do (gaugeline.ai.json). */
   ai?: AiConfig;
+  /** The site's written house rules (gaugeline.rules.json). */
+  house?: HouseConfig;
   /** The business's payment handles and links. */
   payments?: PaymentsConfig;
   /** The business listings to compare with the site (gaugeline.listings.json), with their keys already read. */
@@ -340,6 +343,7 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
       ...(opts.languageRules ? { languageRules: opts.languageRules } : {}),
       ...(opts.facts ? { facts: opts.facts } : {}),
       ...(opts.ai ? { ai: opts.ai } : {}),
+      ...(opts.house ? { house: opts.house } : {}),
       ...(opts.payments ? { payments: opts.payments } : {}),
       ...(opts.dns ? { dns: opts.dns } : {}),
       ...(opts.renewals ? { renewals: opts.renewals } : {}),

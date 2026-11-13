@@ -1,7 +1,10 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import {
   ConfigError,
+  HOUSE_CONFIG_FILE,
+  parseHouseConfig,
+  type HouseConfig,
   platformsConfigSchema,
   type PlatformsConfig,
   accessConfigSchema,
@@ -219,6 +222,42 @@ export const AI_CONFIG_FILE = "gaugeline.ai.json";
 
 export function readAiConfig(dir: string): AiConfig | undefined {
   return readJsonConfig(dir, AI_CONFIG_FILE, aiConfigSchema, "the AI crawler settings");
+}
+
+/** The most bytes of gaugeline.rules.json read: it holds at most 50 short words and three short strings. */
+const MAX_HOUSE_BYTES = 64 * 1024;
+
+/**
+ * gaugeline.rules.json: the site's house rules, read and validated by core's schema (no pattern, no path, no key it
+ * does not know). Only this file: a gaugeline.rules.draft.json is never read, so a draft nobody reviewed changes no
+ * result. Absent: undefined. Unreadable or invalid: a ConfigError naming the file and the key (exit 2).
+ */
+export function readHouseConfig(dir: string): HouseConfig | undefined {
+  const path = join(dir, HOUSE_CONFIG_FILE);
+  if (!existsSync(path)) return undefined;
+  let text: string;
+  try {
+    if (statSync(path).size > MAX_HOUSE_BYTES)
+      throw new ConfigError(`${HOUSE_CONFIG_FILE} is larger than ${MAX_HOUSE_BYTES} bytes.`, {
+        hint: "It holds a few rules, not a document. See docs/house-rules for its shape.",
+      });
+    text = readFileSync(path, "utf8");
+  } catch (err) {
+    if (err instanceof ConfigError) throw err;
+    throw new ConfigError(`Could not read ${HOUSE_CONFIG_FILE}.`, {
+      hint: `Fix the file, or remove it to run without house rules.`,
+      cause: err,
+    });
+  }
+  let json: unknown;
+  try {
+    json = JSON.parse(text);
+  } catch (err) {
+    throw new ConfigError(`${HOUSE_CONFIG_FILE} is not valid JSON: ${(err as Error).message}`, {
+      hint: "Fix the file, or remove it to run without house rules.",
+    });
+  }
+  return parseHouseConfig(json, HOUSE_CONFIG_FILE);
 }
 
 export function readTrackersConfig(dir: string): TrackersConfig | undefined {

@@ -173,7 +173,7 @@ describe("the docs page", () => {
     expect(block("Output")).toBe(
       renderHouseRulesReview(draft, { draftFile: HOUSE_DRAFT_FILE }).trimEnd(),
     );
-    expect(block("gaugeline.house.draft.json")).toBe(renderHouseDraftJson(draft).trimEnd());
+    expect(block("gaugeline.rules.draft.json")).toBe(renderHouseDraftJson(draft).trimEnd());
   });
 
   it("shows the eval report this code prints, word for word", async () => {

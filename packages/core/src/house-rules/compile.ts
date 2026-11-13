@@ -1,6 +1,6 @@
 /**
  * The house-rules compiler (AG-17): a site's written rules (a plain-text or Markdown style guide) in, a DRAFT
- * gaugeline.house.json out. Plain code, no model, no network, no clock: the same text gives the same draft.
+ * gaugeline.rules.json out. Plain code, no model, no network, no clock: the same text gives the same draft.
  *
  * The rules text is untrusted data. A line is matched against a fixed grammar and nothing else: a line no
  * pattern fits is listed as "not understood" and never guessed; a line that fits but names a pattern, a path or
@@ -122,7 +122,7 @@ function listed<T>(items: T[]): { kept: T[]; omitted: number } {
 }
 
 /**
- * Compiles a rules file into a draft. The draft's `config` is valid for gaugeline.house.json (the schema is
+ * Compiles a rules file into a draft. The draft's `config` is valid for gaugeline.rules.json (the schema is
  * the same one the draft is checked with). Throws HouseRulesInputError only for input that is not text or is
  * over the caps; every other problem is a listed line.
  */
@@ -218,7 +218,7 @@ export function compileHouseRules(text: string): HouseRulesDraft {
     refused: refused.length,
   };
   return {
-    // The schema is the last word: whatever the grammar did, the config is one gaugeline.house.json can hold.
+    // The schema is the last word: whatever the grammar did, the config is one gaugeline.rules.json can hold.
     config: houseConfigSchema.parse(config),
     understood: u.kept,
     notUnderstood: n.kept,

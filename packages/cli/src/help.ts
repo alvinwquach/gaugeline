@@ -371,7 +371,7 @@ export const HELP: Record<string, string> = {
       "no key. A line it has no pattern for is listed as not understood and never",
       "guessed; a line that names a pattern or a file path is refused; a line that",
       "gives an order is listed and ignored. It writes only a new file whose name ends",
-      "in .draft.json, never over one that exists and never gaugeline.house.json:",
+      "in .draft.json, never over one that exists and never gaugeline.rules.json:",
       "you read the draft, then rename it to adopt it.",
     ].join("\n"),
     footer: "Exit codes: 0 ran (also when nothing was understood), 2 could not run",

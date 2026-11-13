@@ -74,11 +74,11 @@ describe("gaugeline house-rules: the passing fixture (exit 0)", () => {
     expect(r.code).toBe(0);
     expect(files()).toEqual([
       "README.md",
-      "gaugeline.house.draft.json",
+      "gaugeline.rules.draft.json",
       "hostile.md",
       "style-guide.md",
     ]);
-    const draft = JSON.parse(readFileSync(join(dir, "gaugeline.house.draft.json"), "utf8"));
+    const draft = JSON.parse(readFileSync(join(dir, "gaugeline.rules.draft.json"), "utf8"));
     expect(parseHouseConfig(draft, "draft")).toEqual({
       version: 1,
       headings: { case: "sentence" },
@@ -105,7 +105,7 @@ describe("gaugeline house-rules: the passing fixture (exit 0)", () => {
     expect(j.written).toBe("mine.draft.json");
     expect(j.totals).toEqual({ lines: 7, understood: 5, notUnderstood: 2, refused: 0 });
     expect(existsSync(join(dir, "mine.draft.json"))).toBe(true);
-    expect(existsSync(join(dir, "gaugeline.house.draft.json"))).toBe(false);
+    expect(existsSync(join(dir, "gaugeline.rules.draft.json"))).toBe(false);
   });
 
   it("the docs page's example is this command's real output, and its draft is the file it writes", async () => {
@@ -113,8 +113,8 @@ describe("gaugeline house-rules: the passing fixture (exit 0)", () => {
     cpSync(join(dir, "style-guide.md"), join(dir, "gaugeline-house-style.md"));
     const r = await run(["house-rules", "--rules", "gaugeline-house-style.md"]);
     expect(r.out.trimEnd()).toBe(blocks("Output")[0]);
-    expect(readFileSync(join(dir, "gaugeline.house.draft.json"), "utf8").trimEnd()).toBe(
-      blocks("gaugeline.house.draft.json")[0],
+    expect(readFileSync(join(dir, "gaugeline.rules.draft.json"), "utf8").trimEnd()).toBe(
+      blocks("gaugeline.rules.draft.json")[0],
     );
     expect(blocks("gaugeline-house-style.md")[0]).toBe(
       readFileSync(join(dir, "style-guide.md"), "utf8").trimEnd(),
@@ -144,20 +144,20 @@ describe("gaugeline house-rules: the failing fixture (hostile lines), still exit
     const r = await run(["house-rules", "--rules", "prose.md"]);
     expect(r.code).toBe(0);
     expect(r.out).toContain("Nothing was understood, so no draft was written.");
-    expect(files()).not.toContain("gaugeline.house.draft.json");
+    expect(files()).not.toContain("gaugeline.rules.draft.json");
   });
 });
 
 describe("gaugeline house-rules never changes what is live and never overwrites", () => {
-  it("leaves an existing gaugeline.house.json exactly as it is", async () => {
-    writeFileSync(join(dir, "gaugeline.house.json"), '{ "version": 1 }\n');
+  it("leaves an existing gaugeline.rules.json exactly as it is", async () => {
+    writeFileSync(join(dir, "gaugeline.rules.json"), '{ "version": 1 }\n');
     expect((await run(["house-rules", "--rules", "style-guide.md"])).code).toBe(0);
-    expect(readFileSync(join(dir, "gaugeline.house.json"), "utf8")).toBe('{ "version": 1 }\n');
+    expect(readFileSync(join(dir, "gaugeline.rules.json"), "utf8")).toBe('{ "version": 1 }\n');
   });
 
-  it("refuses --out gaugeline.house.json, and any name that does not end in .draft.json", async () => {
+  it("refuses --out gaugeline.rules.json, and any name that does not end in .draft.json", async () => {
     for (const out of [
-      "gaugeline.house.json",
+      "gaugeline.rules.json",
       "gaugeline.config.json",
       "x.json",
       "draft.json.bak",
@@ -170,11 +170,11 @@ describe("gaugeline house-rules never changes what is live and never overwrites"
   });
 
   it("refuses a draft that already exists and leaves it untouched", async () => {
-    writeFileSync(join(dir, "gaugeline.house.draft.json"), "mine\n");
+    writeFileSync(join(dir, "gaugeline.rules.draft.json"), "mine\n");
     const r = await run(["house-rules", "--rules", "style-guide.md"]);
     expect(r.code).toBe(2);
     expect(r.err).toContain("already exists");
-    expect(readFileSync(join(dir, "gaugeline.house.draft.json"), "utf8")).toBe("mine\n");
+    expect(readFileSync(join(dir, "gaugeline.rules.draft.json"), "utf8")).toBe("mine\n");
   });
 
   it("running it twice: the second run is refused, never a silent overwrite", async () => {
@@ -218,7 +218,7 @@ describe("gaugeline house-rules: input that cannot be read is exit 2 with a plai
       expect(r.code, file).toBe(2);
       expect(r.err, file).toContain(message);
     }
-    expect(files()).not.toContain("gaugeline.house.draft.json");
+    expect(files()).not.toContain("gaugeline.rules.draft.json");
   });
 
   it("refuses a rules file over 50,000 characters even when it is under 200,000 bytes", async () => {

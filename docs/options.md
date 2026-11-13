@@ -918,13 +918,13 @@ you to review. It reads that one file and nothing else: no request, no model,
 no key. A line it has no pattern for is listed as not understood and never
 guessed; a line that names a pattern or a file path is refused; a line that
 gives an order is listed and ignored. It writes only a new file whose name ends
-in .draft.json, never over one that exists and never gaugeline.house.json:
+in .draft.json, never over one that exists and never gaugeline.rules.json:
 you read the draft, then rename it to adopt it.
 
 Options:
       --json             Print the result as JSON on stdout, and nothing else
       --out <value>      The draft file to write (default
-                         gaugeline.house.draft.json); its name must end in
+                         gaugeline.rules.draft.json); its name must end in
                          .draft.json and it must not exist yet
       --rules <value>    house-rules: the file of written rules to compile
                          (plain text or Markdown, up to 50,000 characters)
@@ -940,9 +940,10 @@ Exit codes: 0 ran (also when nothing was understood), 2 could not run
 `gaugeline house-rules` turns a site's written rules (a plain-text or Markdown style guide) into a draft
 house-rules file. It reads the one file named with `--rules`, makes no request, calls no model and needs no key,
 and writes only a new file whose name ends in `.draft.json`: never over a file that exists, and never
-`gaugeline.house.json`, which you make by renaming a draft you have read. A line it has no pattern for is listed
-as not understood, never guessed. What it understands, the file's shape and an example with its real output:
-[House rules](house-rules.md).
+`gaugeline.rules.json`, which you make by renaming a draft you have read. A line it has no pattern for is listed
+as not understood, never guessed. The `house-rules-broken` check then reads each page a run fetches against
+`gaugeline.rules.json` when that file is in the folder you run from: no flag is needed. What it understands, the
+file's shape, the check and an example with its real output: [House rules](house-rules.md).
 
 ### Flags
 

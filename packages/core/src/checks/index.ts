@@ -105,6 +105,7 @@ import { hiddenPastLaunch } from "./hidden-past-launch.js";
 import { hostDuplicate } from "./host-duplicate.js";
 import { hostPreviewIndexable } from "./host-preview-indexable.js";
 import { hostPreviewNamed } from "./host-preview-named.js";
+import { houseRulesBroken } from "./house-rules-broken.js";
 import { hreflangBadCode } from "./hreflang-bad-code.js";
 import { hreflangNotReciprocal } from "./hreflang-not-reciprocal.js";
 import { htmlHeavy } from "./html-heavy.js";
@@ -362,6 +363,7 @@ export const PAGE_CHECKS = [
   hostDuplicate,
   hostPreviewIndexable,
   hostPreviewNamed,
+  houseRulesBroken,
   hreflangBadCode,
   hreflangNotReciprocal,
   htmlHeavy,
