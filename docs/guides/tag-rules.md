@@ -58,6 +58,46 @@ Gaugeline never guesses. These are listed under could not check instead:
 After the results, one line on stderr says how many triggers were read and how many can fire. It is
 left out with `--json` and `--quiet`.
 
+## Analytics installed twice
+
+A tag manager snippet pasted into the head by one person and again by another, or a Google Analytics 4 tag that
+lives both in the page's code and in the container, counts every visit twice. It needs no export:
+`analytics-loaded-twice` counts the page's own script tags.
+
+- A Tag Manager container (`GTM-...`) found in two or more script tags (the snippet inline, or a `gtm.js`
+  address) is installed twice. The `noscript` iframe that goes with the snippet is the other half of one install
+  and is not counted.
+- A Google Analytics 4 id (`G-...`) named by two or more `gtag.js` addresses, or by two or more
+  `gtag('config', ...)` calls, is loaded or configured twice.
+- With `--trackers`, a hard-coded GA4 id on a page that also loads a container is looked for inside the container's
+  public file (one GET of `www.googletagmanager.com/gtm.js?id=...`, the file every visitor receives, at most three
+  containers, read as text and never run). The same id in both is a finding; a different id is two properties
+  and is not. A container that cannot be read is could not check, never a pass.
+- A tag added by a script after the page loads is not seen, and a paused tag or one whose trigger does not fire here
+  is not visible: the evidence says each visit "can" be counted twice.
+
+For a yoga studio whose head and footer both carry the container snippet:
+
+<!-- fixture: analytics-twice -->
+
+```sh title=Terminal
+$ npx gaugeline tidewateryoga.example
+```
+
+```text title=Output
+✗ Analytics are loaded twice on this page
+    Tag Manager container GTM-TW1D3R4 is installed 2 times on this page, so every tag in it can fire twice
+✗ Analytics are loaded twice on this page
+    Google Analytics 4 id G-TIDE000001 is configured 2 times, so each page view is sent twice
+? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
+    Mail records are read from DNS only with --dns. Rerun with --dns to check them.
+
+2 to look at, 2 to fix first.
+```
+
+The fixture is the invented `packages/fixtures/sites/analytics-twice`. The output is asserted by
+`packages/cli/src/__tests__/analytics-twice.test.ts` and checked by `pnpm docs:examples`.
+
 ## Example
 
 Against the invented `tag-rules` fixture, a bookshop whose old download trigger still waits for a
