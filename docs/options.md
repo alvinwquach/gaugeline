@@ -763,16 +763,19 @@ indexing switch that accepts more than true, a noindex test that skips
 production), the Sanity publish webhook and cache, and tokens and webhook
 addresses in code. It reads files and nothing else: it makes no request, runs
 no code, never follows a link out of the folder, and never opens .env or other
-secret-looking files. A check that cannot tell says so; it never passes.
+secret-looking files. A check that cannot tell says so; it never passes. Name
+the checks to run with --only.
 
 Options:
-      --ci         Exit 1 when a "Fix this first" finding is found [CI]
-      --json       Print the result as JSON on stdout, and nothing else
-      --quiet      Print only results and errors
-      --verbose    Show each request, and technical detail when something goes
-                   wrong
-  -h, --help       Show this help and exit
-  -v, --version    Print the version and exit
+      --ci              Exit 1 when a "Fix this first" finding is found [CI]
+      --json            Print the result as JSON on stdout, and nothing else
+      --only <value>    source: run just these checks, by id, separated by
+                        commas (an unknown id is refused)
+      --quiet           Print only results and errors
+      --verbose         Show each request, and technical detail when something
+                        goes wrong
+  -h, --help            Show this help and exit
+  -v, --version         Print the version and exit
 
 Exit codes: 0 ran, 1 --ci and a fix-first finding, 2 could not run
 ```

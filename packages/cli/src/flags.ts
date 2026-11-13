@@ -704,6 +704,14 @@ export const FLAGS: readonly FlagDef[] = Object.freeze<FlagDef[]>([
     commands: ["deploy-gate"],
   },
   {
+    name: "only",
+    type: "string",
+    description:
+      "source: run just these checks, by id, separated by commas (an unknown id is refused)",
+    since: "0.2.0",
+    commands: ["source"],
+  },
+  {
     name: "fixes",
     type: "boolean",
     description:

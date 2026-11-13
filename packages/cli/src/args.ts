@@ -275,6 +275,8 @@ export type ParsedArgs =
       kind: "source";
       /** The folder to read, as typed. */
       folder: string;
+      /** --only: run just these checks (ids). Absent: every static check. Unknown ids are refused when the command runs. */
+      only?: string[];
       json: boolean;
       ci: boolean;
       verbose: boolean;
@@ -1357,9 +1359,24 @@ export function parseCliArgs(
         hint: "For example: gaugeline source ./my-site",
         verbose,
       };
+    const only =
+      typeof values.only === "string"
+        ? values.only
+            .split(",")
+            .map((x) => x.trim())
+            .filter((x) => x !== "")
+        : undefined;
+    if (only !== undefined && only.length === 0)
+      return {
+        kind: "error",
+        message: "--only needs at least one check id: --only page-robots-overrides-layout",
+        hint: "Several ids are separated by commas. The checks reference lists every id.",
+        verbose,
+      };
     return {
       kind: "source",
       folder: positionals[0] ?? "",
+      ...(only ? { only } : {}),
       json: values.json === true,
       ci: values.ci === true,
       verbose,

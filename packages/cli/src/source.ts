@@ -17,14 +17,18 @@ const plural = (n: number, one: string, many = `${one}s`): string => `${n} ${n =
  * first" finding; 2 (a ConfigError) when the folder is not a folder.
  */
 export async function runSource(
-  args: { folder: string; json: boolean; quiet: boolean },
+  args: { folder: string; only?: readonly string[]; json: boolean; quiet: boolean },
   io: Out,
   deps: { cwd: string; now: Date; color: boolean },
 ): Promise<Outcome> {
   // As typed, without Windows separators or a trailing slash, so the report reads like the command.
   const label = args.folder.replace(/\\/g, "/").replace(/(?<=.)\/+$/, "");
   const tree = await readLocalSource(resolve(deps.cwd, args.folder), undefined, label);
-  const result = await runStaticChecks({ tree, now: deps.now });
+  const result = await runStaticChecks({
+    tree,
+    now: deps.now,
+    ...(args.only ? { only: args.only } : {}),
+  });
   const outcome: Outcome = {
     kind: "ran",
     highFindings: result.findings.filter((f) => f.severity === "high").length,
