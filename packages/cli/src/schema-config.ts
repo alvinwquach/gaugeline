@@ -22,6 +22,7 @@ import {
   documentsConfigSchema,
   factsConfigSchema,
   hiddenConfigSchema,
+  studioConfigSchema,
   staleDatesConfigSchema,
   navRulesSchema,
   aiConfigSchema,
@@ -52,6 +53,7 @@ import {
   type DocumentsConfig,
   type FactsConfig,
   type HiddenConfig,
+  type StudioConfig,
   type ImagesConfig,
   type NavRules,
   type AiConfig,
@@ -112,6 +114,7 @@ export const FRESHNESS_CONFIG_FILE = "gaugeline.freshness.json";
 export const MODEL_CONFIG_FILE = "gaugeline.model.json";
 /** Sections hidden until launch, likewise. */
 export const HIDDEN_CONFIG_FILE = "gaugeline.hidden.json";
+export const STUDIO_CONFIG_FILE = "gaugeline.studio.json";
 /** The tracking plan: which clicks must push which event, likewise. */
 export const EVENTS_CONFIG_FILE = "gaugeline.events.json";
 /** Where the menus are and which footer links are required, likewise (nav-orphans, nav-footer). */
@@ -290,6 +293,10 @@ export function readAppleExport(dir: string, config: ListingsConfig): string | u
 
 export function readHidden(dir: string): HiddenConfig | undefined {
   return readJsonConfig(dir, HIDDEN_CONFIG_FILE, hiddenConfigSchema, "hidden sections");
+}
+
+export function readStudio(dir: string): StudioConfig | undefined {
+  return readJsonConfig(dir, STUDIO_CONFIG_FILE, studioConfigSchema, "the editor studio route");
 }
 
 /** The container export gaugeline.tags.json names (relative to that file), read and parsed. */

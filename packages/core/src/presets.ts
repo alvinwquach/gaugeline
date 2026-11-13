@@ -91,6 +91,7 @@ export const PROBING_CHECKS: readonly string[] = Object.freeze([
   "not-found-200",
   "nuxt-devtools-public",
   "nuxt-preview-public",
+  "studio-response-cacheable",
 ]);
 
 /**
