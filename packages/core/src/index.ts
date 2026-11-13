@@ -391,6 +391,21 @@ export type { BuiltEmail, EmailSettings } from "./notify/email.js";
 export { discordPayload, slackPayload, webhookPayload } from "./notify/payloads.js";
 export { NOTIFY_TIMEOUT_MS, postJson, providerMessage, safeTarget } from "./notify/post.js";
 export {
+  checkDestination,
+  DESTINATION_KINDS,
+  RETRY_DELAYS_MS,
+  sendWithRetry,
+} from "./notify/destinations.js";
+export type {
+  Delivered,
+  Destination as NotifyDestination,
+  DestinationKind,
+} from "./notify/destinations.js";
+export { slackChangesPayload } from "./notify/slack.js";
+export type { ChangedFinding, SiteChanges } from "./notify/slack.js";
+export { parseSentryDsn, sentryEvent } from "./notify/sentry.js";
+export type { SentryDsn, SentryEvent } from "./notify/sentry.js";
+export {
   UPLOAD_TIMEOUT_MS,
   UPLOAD_TOKEN_ENV,
   UPLOAD_URL_ENV,
