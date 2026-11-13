@@ -21,6 +21,7 @@ import {
   requestsFileSchema,
 } from "../packages/core/src/requests-file.js";
 import { RESULT_SCHEMA_VERSION, resultSchema } from "../packages/core/src/result.js";
+import { RESULT_SCHEMA_VERSION_3, resultSchemaV3 } from "../packages/core/src/result-v3.js";
 import {
   bumpMessage,
   buildSchemaText,
@@ -35,6 +36,7 @@ const dir = fileURLToPath(new URL("../packages/core/schema/", import.meta.url));
 
 const SHAPES: ReadonlyArray<{ kind: SchemaKind; schema: z.ZodType; version: number }> = [
   { kind: "result", schema: resultSchema, version: RESULT_SCHEMA_VERSION },
+  { kind: "result", schema: resultSchemaV3, version: RESULT_SCHEMA_VERSION_3 },
   { kind: "requests", schema: requestsFileSchema, version: REQUESTS_FILE_SCHEMA_VERSION },
   { kind: "brief", schema: briefSchema, version: BRIEF_SCHEMA_VERSION },
   { kind: "advisory", schema: advisoryResultSchema, version: ADVISORY_SCHEMA_VERSION },

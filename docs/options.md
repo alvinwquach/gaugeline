@@ -60,6 +60,9 @@ Options:
       --format <value>             What stdout carries: json (as --json), sarif,
                                    junit or one-pager (a cited page; view reads
                                    a saved run)
+      --json-schema <value>        With --json: the result schema to print, 2
+                                   (the default) or 3 (also lists what
+                                   suppressions and the baseline hide)
       --no-open                    Do not open anything in a browser
       --allow-private              Allow addresses on this computer or a private
                                    network, such as 127.0.0.1 or 192.168.x.x
@@ -263,6 +266,9 @@ Options:
       --format <value>             What stdout carries: json (as --json), sarif,
                                    junit or one-pager (a cited page; view reads
                                    a saved run)
+      --json-schema <value>        With --json: the result schema to print, 2
+                                   (the default) or 3 (also lists what
+                                   suppressions and the baseline hide)
       --no-open                    Do not open anything in a browser
       --allow-private              Allow addresses on this computer or a private
                                    network, such as 127.0.0.1 or 192.168.x.x
@@ -956,7 +962,8 @@ between the markers; CI fails when it differs from the flag table.
 | --------------------------- | -------------------------------------------------------------------------------------------------------------------- | -------------------------- | ----- |
 | `--ci`                      | Exit 1 when a "Fix this first" finding is found                                                                      | `CI`                       | 0.1.0 |
 | `--json`                    | Print the result as JSON on stdout, and nothing else                                                                 |                            | 0.1.0 |
-| `--format <value>`          | What stdout carries: json (the same as --json), sarif (GitHub code scanning) or junit (any CI's test results)        |                            | 0.2.0 |
+| `--format <value>`          | What stdout carries: json (as --json), sarif, junit or one-pager (a cited page; view reads a saved run)              |                            | 0.2.0 |
+| `--json-schema <value>`     | With --json: the result schema to print, 2 (the default) or 3 (also lists what suppressions and the baseline hide)   |                            | 0.2.0 |
 | `--no-open`                 | Do not open anything in a browser                                                                                    |                            | 0.1.0 |
 | `--demo`                    | Start the app with example results about invented sites; no address is checked and nothing is requested              |                            | 0.2.0 |
 | `--ads <value>`             | Start the app with an ads export read from this file (a Meta Ads Manager or Google Ads CSV)                          |                            | 0.2.0 |
@@ -1034,7 +1041,11 @@ between the markers; CI fails when it differs from the flag table.
 | `--host <value>`            | advisory: another hostname of the client to look at, such as an old subdomain (up to 5)                              |                            | 0.2.0 |
 | `--block`                   | deploy-gate: exit 1 when a "Fix this first" finding is found; without it the gate only reports                       | `GAUGELINE_GATE_BLOCK`     | 0.2.0 |
 | `--only <value>`            | source: run just these checks, by id, separated by commas (an unknown id is refused)                                 |                            | 0.2.0 |
+| `--agent <value>`           | evals: run just this agent's eval set, by id (an agent with no set is refused)                                       |                            | 0.2.0 |
+| `--rules <value>`           | house-rules: the file of written rules to compile (plain text or Markdown, up to 50,000 characters)                  |                            | 0.2.0 |
 | `--head <value>`            | receipts verify: a head hash written down earlier, which the chain must still contain                                |                            | 0.2.0 |
+| `--review-notes <value>`    | mine: the folder of review notes (Markdown or text) to read; only lines that start with #pattern-name are used       |                            | 0.2.0 |
+| `--deny-list <value>`       | mine: a file of client names, one per line, that must never reach the draft (the scrub fails it if one does)         |                            | 0.2.0 |
 | `--fixes`                   | propose: turn fix proposals on (they are off by default); nothing is sent, the diffs are written to a file           | `GAUGELINE_FIXES`          | 0.2.0 |
 | `--repo <value>`            | propose: the project's folder on this computer (a checkout of its repository)                                        |                            | 0.2.0 |
 | `--plan <value>`            | propose: the launch plan (CSV); with --base, each old address that does not redirect gets a proposal                 |                            | 0.2.0 |
@@ -1119,8 +1130,16 @@ that scripts can validate against:
   a check with an entry is never in `passed`. Schema 2 added it; schema 1 had no such field.
 - Unknown keys are not allowed, so a misspelt field fails validation.
 - The `schema` number only changes with a new file. Published files (`result.v1.json`,
-  `result.v2.json`) are never edited in place; a new
-  shape ships as `result.v2.json` and the old file stays in the package so consumers can pin.
+  `result.v2.json`, `result.v3.json`) are never edited in place; a new shape ships as a new file and
+  the old files stay in the package so consumers can pin.
+
+`--json-schema 3` (with `--json` or `--format json`) prints schema 3 instead: the same result with
+`"schema": 3` and four more lists, `suppressed`, `expiredSuppressions`, `unmatchedSuppressions` and
+`baselined`, which say what suppressions and `--baseline` left out of `findings`. Schema 2 is the default
+and never gains a field; `--json-schema 2` is the same as leaving the flag out, and any other number is
+exit 2. The shape is published as `result.v3.json`. A runnable example is in
+[Config, baselines and suppressions](/docs/config#seeing-what-was-hidden-in-json). `--upload` and the
+saved-run commands keep reading and sending schema 2.
 
 ### The upload option
 

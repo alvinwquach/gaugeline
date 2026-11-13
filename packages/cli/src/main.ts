@@ -2,6 +2,7 @@ import {
   ConfigError,
   buildRequestsFile,
   buildResult,
+  buildResultV3,
   DEPRECATED,
   checkSite,
   deprecate,
@@ -139,6 +140,8 @@ import {
   offIds,
   registerCustomChecks,
   type Config,
+  type Suppression,
+  type SuppressionResult,
 } from "@gaugeline/core";
 import { parseCliArgs } from "./args.js";
 import { HELP } from "./help.js";
@@ -1877,9 +1880,19 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         for (const id of args.suppress.ids)
           suppressions.push({ id, until: args.suppress.until, reason: args.suppress.reason });
       const accepted = new Set<Finding>();
+      // What suppressions and the baseline hide, kept for `--json --json-schema 3`; schema 2 never lists it.
+      const muted: {
+        suppressed: SuppressionResult["suppressed"];
+        expired: Suppression[];
+        unmatched: Suppression[];
+        baselined: Finding[];
+      } = { suppressed: [], expired: [], unmatched: [], baselined: [] };
       if (suppressions.length > 0) {
         const s = applySuppressions(result.findings, suppressions, runClock);
         result.findings = s.kept;
+        muted.suppressed = s.suppressed;
+        muted.expired = s.expired;
+        muted.unmatched = s.unmatched;
         for (const e of s.expired)
           io.stderr.write(
             `Suppression of ${e.id}${e.url ? ` on ${e.url}` : ""} expired on ${e.until} (${e.reason}). It no longer applies: ${s.kept.some((f) => f.checkId === e.id) ? "the finding is back below" : "remove it from the config"}.\n`,
@@ -1907,6 +1920,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         } else {
           const d = diffFindingsBaseline(result.findings, knownBaseline);
           result.findings = d.fresh;
+          muted.baselined = d.known;
           const knownHigh = d.known.filter((f) => f.severity === "high").length;
           io.stderr.write(
             `${d.known.length} known finding${d.known.length === 1 ? "" : "s"} in ${args.baseline} left out${knownHigh > 0 ? ` (${knownHigh} Fix this first)` : ""}; ${d.fresh.length} new.\n`,
@@ -2011,7 +2025,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         return { outcome: { kind: "ran", highFindings: 0, drift: false }, ci: false };
       }
       if (args.json) {
-        const json = buildResult({
+        const resultRun = {
           url: snapshot.requestedUrl,
           startedAt,
           findings: result.findings,
@@ -2019,7 +2033,10 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           failed: [...result.failed.map((f) => f.id), ...dnsSkipped],
           couldNotCheck: result.couldNotCheck,
           sampled: result.sampled,
-        });
+        };
+        // Schema 2 is the default and is built exactly as before; schema 3 is chosen with --json-schema 3
+        // (it only goes with --json or --format json, so the other formats never see it).
+        const json = buildResult(resultRun);
         // --format sarif and junit are views of this same result; any muted findings go in as
         // `suppressed` once G29's --baseline and --suppress are on main. A check left out on
         // purpose (DNS without --dns) is a skip there, not a check that could not run.
@@ -2039,7 +2056,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
                     { ...json, failed: result.failed.map((f) => f.id) },
                     { notRun: dnsSkipped },
                   )
-                : `${JSON.stringify(json, null, 2)}\n`,
+                : `${JSON.stringify(args.jsonSchema === 3 ? buildResultV3({ ...resultRun, ...muted }) : json, null, 2)}\n`,
         );
       } else {
         // gaugeline renewals: the list by date first (every date read, healthy or not), then what to fix.

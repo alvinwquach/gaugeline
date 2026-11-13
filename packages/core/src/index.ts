@@ -36,6 +36,15 @@ export {
 } from "./result.js";
 export type { Result } from "./result.js";
 export {
+  RESULT_SCHEMA_VERSION_3,
+  SELECTABLE_RESULT_SCHEMAS,
+  buildResultV3,
+  parseResultV3,
+  resultSchemaV3,
+  suppressionEntrySchema,
+} from "./result-v3.js";
+export type { ResultV3, SelectableResultSchema, SuppressionEntry } from "./result-v3.js";
+export {
   DEFAULT_USER_AGENT,
   FetchError,
   assertReadOnly,

@@ -39,6 +39,7 @@ const SAMPLE_VALUES: Record<string, string> = {
   "legacy-review": "review.csv",
   progress: "plan-state.json",
   "save-requests": "requests.json",
+  "json-schema": "3",
   // A path that does not exist yet: a baseline is a JSON file, and an earlier flag may have written "x".
   baseline: "fresh-baseline.json",
   "suppress-until": "2099-01-01",
@@ -97,6 +98,7 @@ describe("flag table: unit", () => {
       ci: { type: "boolean" },
       json: { type: "boolean" },
       format: { type: "string" },
+      "json-schema": { type: "string" },
       "no-open": { type: "boolean" },
       "allow-private": { type: "boolean" },
       "allow-secret-key": { type: "boolean" },
@@ -174,6 +176,9 @@ describe("flag table: unit", () => {
         "      --format <value>             What stdout carries: json (as --json), sarif,",
         "                                   junit or one-pager (a cited page; view reads",
         "                                   a saved run)",
+        "      --json-schema <value>        With --json: the result schema to print, 2",
+        "                                   (the default) or 3 (also lists what",
+        "                                   suppressions and the baseline hide)",
         "      --no-open                    Do not open anything in a browser",
         "      --allow-private              Allow addresses on this computer or a private",
         "                                   network, such as 127.0.0.1 or 192.168.x.x",
@@ -669,6 +674,8 @@ describe("flag table: e2e", () => {
                                                 `${site.origin}/`,
                                                 // --routes is read by a probing check: it needs the owner's consent.
                                                 ...(f.name === "routes" ? ["--owner-consent"] : []),
+                                                // --json-schema chooses the shape of --json: it needs it.
+                                                ...(f.name === "json-schema" ? ["--json"] : []),
                                                 // A baseline and a suppression each need their partners.
                                                 ...(f.name === "update-baseline"
                                                   ? ["--baseline", "fresh-baseline.json"]
