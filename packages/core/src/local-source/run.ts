@@ -3,6 +3,8 @@ import { webhookMissingSecretStatus } from "../checks/static/webhook-missing-sec
 import { CheckRegistry, type Check } from "../model.js";
 import { buildResult, type Result } from "../result.js";
 import { runChecks } from "../run.js";
+import { cmsTokenInClientCode } from "../checks/static/cms-token-in-client-code.js";
+import { webhookUrlHardcoded } from "../checks/static/webhook-url-hardcoded.js";
 import type { SkipReason, SourceTree } from "./read.js";
 
 /**
@@ -46,6 +48,8 @@ export function staticFile(input: LocalSourceInput, path: string): StaticFile {
 export const STATIC_CHECKS: readonly Check<LocalSourceInput>[] = [
   webhookMissingSecretStatus,
   sanityCdnTaggedReads,
+  cmsTokenInClientCode,
+  webhookUrlHardcoded,
 ];
 
 export function createStaticRegistry(): CheckRegistry {
