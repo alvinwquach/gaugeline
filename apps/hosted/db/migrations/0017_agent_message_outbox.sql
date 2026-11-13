@@ -24,7 +24,7 @@
 --     and untouched, for a Slack channel that is active and takes agent messages RIGHT NOW (the opt-in is
 --     the database's, not only the worker's); a channel never has more than three digests waiting (queued or
 --     sending, in two groups, the days around today and the rest, so far-off dates cannot starve today's); the channel row
---     is locked while the guard counts and checks, so concurrent inserts and a concurrent opt-out cannot race
+--     is locked (for no key update) while the guard counts and checks, so concurrent inserts and a concurrent opt-out cannot race
 --     it; and a row only moves forward: queued to sending, sending to sent, failed, or back to queued (the
 --     worker's retry); a sent or failed row is final, and never goes straight from queued to sent.
 --   * The same tenancy: the channel, the run and the site are tied to the row's organisation by composite
@@ -94,13 +94,16 @@ begin
       raise exception 'an agent message is queued, not sent' using errcode = '23514';
     end if;
     -- The opt-in is read now, in the inserting transaction: a channel that is off, disabled, another
-    -- organisation's or not Slack takes nothing. The channel row is LOCKED first (for update): two inserts
-    -- for one channel run one after the other, so the count below sees the other's row, and a channel that
-    -- is being turned off in another transaction is waited for, then read again.
+    -- organisation's or not Slack takes nothing. The channel row is LOCKED first, for no key update: two
+    -- inserts for one channel run one after the other, so the count below sees the other's row, and a channel
+    -- being turned off in another transaction is waited for, then read again. That lock mode does not
+    -- conflict with the key-share lock a 'run' or 'test' row takes on the channel through its foreign key,
+    -- so queueing a night's findings and an agent message in two transactions cannot deadlock. Every other
+    -- writer that touches a channel and its outbox rows takes the channel first (the worker does).
     perform 1 from public.notification_channels c
       where c.id = new.channel_id and c.org_id = new.org_id and c.kind = 'slack'
         and c.status = 'active' and c.agent_messages
-      for update;
+      for no key update;
     if not found then
       raise exception 'the channel does not take agent messages' using errcode = '23514';
     end if;

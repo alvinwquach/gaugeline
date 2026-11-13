@@ -574,6 +574,20 @@ describe.skipIf(!HAS_DATABASE)("the agent message outbox kind (0017)", () => {
       );
     });
 
+    it("counts the days two either side of today as today's group, and a third day out as the far one", async () => {
+      // -2, 0 and +2 are the edges of the near group: three of them fill it.
+      for (const n of [-2, 0, 2]) await digest(CHANNEL_A, ORG_A, await day(n));
+      expect(await errorOf(digest(CHANNEL_A, ORG_A, await day(1)))).toMatch(
+        /already has three digests waiting/,
+      );
+      expect(await errorOf(digest(CHANNEL_A, ORG_A, await day(-1)))).toMatch(
+        /already has three digests waiting/,
+      );
+      // -3 and +3 are the far group's, which is empty.
+      expect(await errorOf(digest(CHANNEL_A, ORG_A, await day(-3)))).toBe("");
+      expect(await errorOf(digest(CHANNEL_A, ORG_A, await day(3)))).toBe("");
+    });
+
     it("does not cap alerts: each is tied to a real run", async () => {
       await alert(CHANNEL_A, ORG_A, SITE_A1, RUN_A1);
       await alert(CHANNEL_A, ORG_A, SITE_A1, RUN_A2);
@@ -708,6 +722,45 @@ describe.skipIf(!HAS_DATABASE)("the agent message outbox kind (0017)", () => {
       expect(
         await sql`select count(*)::int as n from public.notification_deliveries where kind = 'agent'`,
       ).toEqual([{ n: 3 }]);
+    });
+
+    it("a night's findings and an agent message queued in two transactions at once do not deadlock", async () => {
+      // Each transaction queues a 'run' row (a key-share lock on the channel through its foreign key) and then
+      // an agent row (the guard locks the channel). With a lock that conflicts with key-share each waits for
+      // the other: with for no key update neither does.
+      const [runX, runY] = [
+        "a1a60000-0000-4000-8000-0000000000c1",
+        "a1a60000-0000-4000-8000-0000000000c2",
+      ];
+      for (const r of [runX, runY])
+        await sql`insert into public.runs (id, org_id, site_id, started_at, finished_at, summary)
+          values (${r}, ${ORG_A}, ${SITE_A1}, '2026-11-12T03:00:00Z', '2026-11-12T03:01:00Z', '{}')`;
+      let arrived = 0;
+      let release: () => void = () => {};
+      const both = new Promise<void>((r) => (release = r));
+      const queueBoth = (run: string, d: string) =>
+        sql
+          .begin(async (tx) => {
+            await tx`insert into public.notification_deliveries (org_id, channel_id, kind, run_id, site_id)
+              values (${ORG_A}, ${CHANNEL_A}, 'run', ${run}, ${SITE_A1})`;
+            if (++arrived === 2) release();
+            await both;
+            await tx`insert into public.notification_deliveries (org_id, channel_id, kind, agent_kind, digest_date)
+              values (${ORG_A}, ${CHANNEL_A}, 'agent', 'approvals-digest', ${d})`;
+          })
+          .finally(release); // a failure in one never leaves the other waiting at the barrier
+      const [one, two] = await Promise.allSettled([
+        queueBoth(runX, await day(0)),
+        queueBoth(runY, await day(1)),
+      ]);
+      expect([one, two].map((r) => (r.status === "rejected" ? String(r.reason) : "ok"))).toEqual([
+        "ok",
+        "ok",
+      ]);
+      expect(
+        await sql`select kind from public.notification_deliveries where kind = 'agent'`,
+      ).toHaveLength(2);
+      await sql`delete from public.notification_deliveries where run_id in ${sql([runX, runY])}`;
     });
 
     it("an insert that is waiting while the channel is turned off is refused, not queued", async () => {
