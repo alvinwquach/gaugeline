@@ -25,7 +25,7 @@ import {
   type ModelTier,
 } from "./types.js";
 
-/** The default budget: every call is allowed and nothing is counted. AG-22 replaces it. */
+/** The default budget: every call is allowed and nothing is counted. `createBudgetLedger` (AG-22) is the one with ceilings. */
 export const NO_BUDGET: BudgetHooks = Object.freeze({
   before: () => ({ allowed: true }) as const,
   after: () => undefined,
@@ -125,6 +125,7 @@ export function createGateway(options: GatewayOptions): ModelGateway {
 
     const estimate: BudgetEstimate = {
       agentId: request.agentId,
+      callId: request.callId,
       tier: tier as ModelTier,
       provider: config.provider,
       model,
