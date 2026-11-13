@@ -253,6 +253,11 @@ above, from the policy's own warning) and hands its log one entry with the time,
 }
 ```
 
+**One authorization per call.** This code does not call `private.agent_authorize` itself: the draft
+function calls it once, first, and counts the call once in the rate window and the day's cost. Calling it
+again from the code would count every draft twice. A test drafts three times and reads the counter: 1, 2, 3;
+a refusal leaves it where it was.
+
 The agent id is null there on purpose: the code never looks the token up itself; the database's deny row holds
 the ids. No token, payload, site or text is in it. A call refused for any other cause (another organisation's
 site, a payload of the wrong shape) stays an error, as before.

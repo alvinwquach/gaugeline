@@ -173,6 +173,28 @@ describe.skipIf(!HAS_DATABASE)("the agent's draft path against Postgres", () => 
     expect(log.length).toBe(before);
   });
 
+  it("one authorization per call: each draft counts once in the rate window, a refusal counts none", async () => {
+    const a = await register(["draft:email"]);
+    const counted = async () =>
+      Number(
+        (await owner`select window_calls from public.agent_limits where agent_id = ${a.id}`)[0]!
+          .window_calls,
+      );
+    expect(await counted()).toBe(0);
+    for (let i = 1; i <= 3; i++) {
+      expect((await draft(a.token)).inserted).toBe(true);
+      expect(await counted()).toBe(i);
+    }
+    expect(await draft(a.token, "pull_request")).toEqual({ inserted: false, reason: "scope" });
+    expect(await counted()).toBe(3);
+    // The TypeScript never names the authorize function: the draft function calls it, once.
+    const source = readFileSync(
+      fileURLToPath(new URL("../../agents/draft.ts", import.meta.url)),
+      "utf8",
+    );
+    expect(source.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, "")).not.toMatch(/agent_authorize/);
+  });
+
   it("failing fixture: an agent with no scope is refused (scope), logged once, nothing inserted", async () => {
     const a = await register([]);
     const [before, rows] = [await count(), await denyRows()];
