@@ -443,6 +443,33 @@ describe("budget hooks (AG-22 fills them in)", () => {
 });
 
 describe("building a gateway", () => {
+  it("says nothing of a provider name that is not on the known list, in the error for a missing adapter", () => {
+    for (const provider of ["acme-ai", "qzvkwmplrtyhbnxc", "abc-1-def-2-ghi-3"]) {
+      let thrown: ModelGatewayError | undefined;
+      try {
+        createGateway({
+          config: { ...CONFIG, provider },
+          adapters: [testAdapter().adapter],
+          env: () => ({}),
+        });
+      } catch (e) {
+        thrown = e as ModelGatewayError;
+      }
+      expect(thrown?.code).toBe("unknown-provider");
+      expect(thrown?.message).toBe("There is no adapter for the provider [not on the known list].");
+    }
+  });
+
+  it("names a known provider that has no adapter", () => {
+    expect(() =>
+      createGateway({
+        config: { ...CONFIG, provider: "example" },
+        adapters: [testAdapter().adapter],
+        env: () => ({}),
+      }),
+    ).toThrow("There is no adapter for the provider example.");
+  });
+
   const env = () => ({ [KEY_NAME]: PLAIN_KEY });
 
   it("needs an adapter for the provider the config names", () => {

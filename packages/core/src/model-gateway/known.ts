@@ -32,16 +32,33 @@ export const KNOWN_KEY_ENVS: readonly string[] = Object.freeze([
   "XAI_API_KEY",
 ]);
 
-/** The model ids shown in full, per provider, as exact shapes. Any other id is shown masked. */
-const KNOWN_MODEL_IDS: Readonly<Record<string, RegExp>> = Object.freeze({
-  example: /^example-(small|large)(-\d{4}-\d{2}-\d{2})?$/,
-  recorded: /^recorded-(small|large)$/,
+/** Whether `yyyy-mm-dd` is a real calendar date (not 9384-71-62, not 2026-02-30). */
+function isCalendarDate(text: string): boolean {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text);
+  if (!m) return false;
+  const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const date = new Date(Date.UTC(y, mo - 1, d));
+  return (
+    y >= 2020 &&
+    date.getUTCFullYear() === y &&
+    date.getUTCMonth() === mo - 1 &&
+    date.getUTCDate() === d
+  );
+}
+
+/** The model ids shown in full, per provider, as exact shapes. Any other id is not shown at all. */
+const KNOWN_MODEL_IDS: Readonly<Record<string, (id: string) => boolean>> = Object.freeze({
+  example: (id) => {
+    const m = /^example-(small|large)(?:-(\d{4}-\d{2}-\d{2}))?$/.exec(id);
+    return m !== null && (m[2] === undefined || isCalendarDate(m[2]));
+  },
+  recorded: (id) => /^recorded-(small|large)$/.test(id),
 });
 
 export const isKnownProvider = (provider: string): boolean => KNOWN_PROVIDERS.includes(provider);
 export const isKnownKeyEnv = (name: string): boolean => KNOWN_KEY_ENVS.includes(name);
 export const isKnownModelId = (provider: string, id: string): boolean =>
-  KNOWN_MODEL_IDS[provider]?.test(id) === true;
+  KNOWN_MODEL_IDS[provider]?.(id) === true;
 
 /**
  * A name made of words and short version numbers, which is what a provider or model name is, and nothing a key
@@ -57,13 +74,76 @@ export function isNameShaped(value: string): boolean {
   return parts.length <= 10 && parts.every((p) => PART.some((re) => re.test(p)));
 }
 
-/** A config string that is not on a known list, as something safe to print: its first three characters and its length. */
-export const masked = (what: string, value: string): string =>
-  `${value.slice(0, 3)}... (a ${what} of ${value.length} characters, not on the known list)`;
+/**
+ * What a config string that is not on a known list is printed as. Not its first characters and not its length:
+ * any character of a free-form string can be key material, so none is ever shown.
+ */
+export const NOT_ON_LIST = "[not on the known list]";
 
-/** A provider as it may be printed: itself if known, else masked. */
+/** A provider as it may be printed: itself if known, else the fixed text. */
 export const shownProvider = (provider: string): string =>
-  isKnownProvider(provider) ? provider : masked("provider name", provider);
-/** A model id as it may be printed: itself if known for the provider, else masked. */
+  isKnownProvider(provider) ? provider : NOT_ON_LIST;
+/** A model id as it may be printed: itself if known for the provider, else the fixed text. */
 export const shownModelId = (provider: string, id: string): string =>
-  isKnownModelId(provider, id) ? id : masked("model id", id);
+  isKnownModelId(provider, id) ? id : NOT_ON_LIST;
+/** Whether an id is a known model id for any known provider. */
+export const isKnownAnyModel = (id: string): boolean =>
+  KNOWN_PROVIDERS.some((p) => isKnownModelId(p, id));
+/** A model id when the provider is not at hand: itself if it is known for any known provider, else the fixed text. */
+export const shownAnyModelId = (id: string): string =>
+  KNOWN_PROVIDERS.some((p) => isKnownModelId(p, id)) ? id : NOT_ON_LIST;
+
+/** Mistakes people make in a settings file, shown by name: a key, a host, a mode. */
+const KNOWN_MISTAKES: ReadonlySet<string> = new Set(
+  [
+    "apiKey",
+    "api_key",
+    "key",
+    "token",
+    "secret",
+    "password",
+    "authorization",
+    "bearer",
+    "host",
+    "baseUrl",
+    "url",
+    "endpoint",
+    "proxy",
+    "allowPrivate",
+    "mode",
+    "managed",
+    "vault",
+    "metered",
+    "metering",
+  ].map((n) => n.toLowerCase()),
+);
+
+/** The edit distance between two short words (insert, delete, change one letter). */
+function distance(a: string, b: string): number {
+  let row = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    const next = [i];
+    for (let j = 1; j <= b.length; j++)
+      next[j] = Math.min(
+        row[j]! + 1,
+        next[j - 1]! + 1,
+        row[j - 1]! + (a[i - 1] === b[j - 1] ? 0 : 1),
+      );
+    row = next;
+  }
+  return row[b.length]!;
+}
+
+/**
+ * Whether a setting's name may be shown: only a mistake this page recognises, or a near miss (two edits) of one of
+ * `settings`, the file's real ones. Any other name is never printed: a person may have pasted a key as a name.
+ */
+export const mayShowSetting = (k: string, settings: readonly string[]): boolean =>
+  k.length <= 24 &&
+  /^[A-Za-z][A-Za-z0-9_]*$/.test(k) &&
+  (KNOWN_MISTAKES.has(k.toLowerCase()) ||
+    settings.some((s) => distance(k.toLowerCase(), s.toLowerCase()) <= 2));
+
+/** A path segment or setting name for a message: itself if it may be shown, else "a setting". */
+export const shownSettingName = (k: string, settings: readonly string[]): string =>
+  mayShowSetting(k, settings) ? k : "a setting";

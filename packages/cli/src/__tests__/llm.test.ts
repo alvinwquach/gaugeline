@@ -195,7 +195,7 @@ describe("gaugeline llm", () => {
     },
   );
 
-  it("prints a provider or a model that is not on the known list as three characters and a length, in every mode", async () => {
+  it("prints a provider or a model that is not on the known list as a fixed text, with no character of it, in every mode", async () => {
     write("gaugeline.llm.json", {
       provider: "acme-ai",
       keyEnv: "OPENAI_API_KEY",
@@ -206,7 +206,8 @@ describe("gaugeline llm", () => {
       expect(r.code).toBe(0);
       expect(r.out + r.err).not.toContain("acme-ai");
       expect(r.out + r.err).not.toContain("acme-large-2026");
-      expect(r.out).toContain("acm...");
+      expect(r.out).toContain("[not on the known list]");
+      expect(r.out + r.err).not.toContain("acm");
       expect(r.out + r.err).not.toContain(KEY_VALUE);
     }
   });

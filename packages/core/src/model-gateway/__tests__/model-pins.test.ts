@@ -121,7 +121,7 @@ describe("a model change is allowed only with a passing eval pass on record", ()
       tiers: { fast: "small-model-2026-06", strong: "large-model-2026-01" },
     });
     expect(reasons(checkModelPins({ pins, reportText: report, agents: AGENTS }))).toEqual([
-      "the fast tier is pinned to small-model-2026-06 but the recorded eval pass was for small-model-2026-01",
+      "the fast tier is pinned to [not on the known list] but the recorded eval pass was for [not on the known list]",
     ]);
   });
 
@@ -276,7 +276,10 @@ describe("requireEvaluatedModels: a config only runs on models that passed", () 
     } catch (e) {
       expect((e as CouldNotRunError).code).toBe("could-not-run");
       expect((e as Error).message).toContain("the fast tier");
-      expect((e as Error).message).toContain("small-model-2026-06");
+      // A model id is a config string: not shown unless it is on the known list, and never in part.
+      expect((e as Error).message).toContain("[not on the known list]");
+      expect((e as Error).message).not.toContain("small-model-2026-06");
+      expect((e as Error).message).not.toContain("sma");
       expect((e as CouldNotRunError).hint).toContain("gaugeline evals");
     }
   });
@@ -287,7 +290,7 @@ describe("requireEvaluatedModels: a config only runs on models that passed", () 
       tiers: { ...p.tiers, fast: "small-model-2026-06" },
     }));
     expect(run).toThrow(
-      /small-model-2026-06 but the recorded eval pass was for small-model-2026-01/,
+      /\[not on the known list\] but the recorded eval pass was for \[not on the known list\]/,
     );
   });
 

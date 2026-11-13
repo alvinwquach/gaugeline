@@ -191,8 +191,9 @@ describe("what an answer costs", () => {
         agentId: "triage",
         callId: "call-1",
         tier: "fast",
-        provider: "test",
-        model: "small-model",
+        // Neither the provider nor the model is on the known list, so neither is shown, not even in part.
+        provider: "[not on the known list]",
+        model: "[not on the known list]",
         inputTokens: 2_000,
         outputTokens: 200,
         tokens: 2_200,
@@ -409,7 +410,9 @@ describe("the estimate before a run", () => {
 
   it("says which models have no price, and gives no cost", () => {
     const e = estimateRun(config(), [{ ...plan[0], model: "mystery-model" }]);
-    expect(e).toEqual({ ok: false, unpriced: ["mystery-model"] });
+    expect(e).toEqual({ ok: false, unpriced: ["[not on the known list]"] });
+    const known = estimateRun(config(), [{ ...plan[0], model: "example-large" }]);
+    expect(known).toEqual({ ok: false, unpriced: ["example-large"] });
   });
 
   it("is zero for a run with no model call (deterministic agents cost nothing)", () => {

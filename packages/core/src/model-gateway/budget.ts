@@ -18,6 +18,7 @@ import {
   type ModelPrice,
 } from "./budget-config.js";
 import { ModelGatewayError } from "./errors.js";
+import { shownAnyModelId, shownModelId, shownProvider } from "./known.js";
 import type { BudgetDecision, BudgetEstimate, BudgetHooks, ModelTier } from "./types.js";
 
 /** Four characters to a token is the gateway's rough count; an estimate, and a whole number. */
@@ -222,8 +223,9 @@ export function createBudgetLedger(options: BudgetLedgerOptions): BudgetLedger {
             agentId: spend.agentId,
             callId: spend.callId,
             tier: spend.tier,
-            provider: spend.provider,
-            model: spend.model,
+            // A config string: shown only if known, never in part (it can be key material).
+            provider: shownProvider(spend.provider),
+            model: shownModelId(spend.provider, spend.model),
             inputTokens: spend.usage.inputTokens,
             outputTokens: spend.usage.outputTokens,
             tokens: spend.usage.inputTokens + spend.usage.outputTokens,
@@ -330,7 +332,8 @@ export function estimateRun(
       costMicros: callCostMicros(price, inputTokens, p.maxOutputTokens),
     });
   }
-  if (unpriced.size > 0) return { ok: false, unpriced: [...unpriced] };
+  // The names of models with no price are config strings: shown only if known, never in part.
+  if (unpriced.size > 0) return { ok: false, unpriced: [...unpriced].map(shownAnyModelId) };
   return {
     ok: true,
     calls,

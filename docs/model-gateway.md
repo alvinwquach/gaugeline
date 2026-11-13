@@ -123,7 +123,8 @@ This sent nothing.
 The file is refused if it holds anything that looks like a key, a host, or a setting it does not know. What a file
 says is never repeated back unless it is on a closed list kept in the code: a provider, a model id and a key variable
 are printed as written only if they are known (`example`, `example-small`, `OPENAI_API_KEY`). Any other provider or
-model id is printed as its first three characters and its length, and an unknown setting as "setting 2". A key
+model id is printed as the fixed text `[not on the known list]`, with no character and no length of it, and an
+unknown setting as "setting 2". A key
 variable that is not on the list is refused without being shown or read, because a deny list could never be complete.
 To use another provider's variable, add it to the list in `known.ts`, the way a provider host is added to the
 sending module. The gateway
@@ -159,10 +160,15 @@ import {
   ModelGatewayError,
   createGateway,
   createRecordedAdapter,
+  shownModelId,
+  shownProvider,
 } from "./src/model-gateway/index.js";
 
 // What a config file holds: a provider and a model id per tier. Never a key, never a host.
-const config = { provider: "recorded", tiers: { fast: "word-small", strong: "word-large" } };
+const config = {
+  provider: "recorded",
+  tiers: { fast: "recorded-small", strong: "recorded-large" },
+};
 // One answer a model gave once, recorded under the id of the call that asked for it.
 const answers = new Map([
   [
@@ -186,7 +192,9 @@ const answer = await gateway.complete({
   callId: "reword-1",
   prompt: `Reword for the owner: the menu link gives a 404. Reply to ${["baker", "example.test"].join("@")}`,
 });
-out.push(`tier ${answer.tier} -> model ${answer.model} (provider ${answer.provider})`);
+out.push(
+  `tier ${answer.tier} -> model ${shownModelId(answer.provider, answer.model)} (provider ${shownProvider(answer.provider)})`,
+);
 out.push(`text: ${answer.text}`);
 out.push(
   `usage: ${answer.usage.inputTokens} in, ${answer.usage.outputTokens} out, ${answer.usage.costMicros} micro-units`,
@@ -212,7 +220,7 @@ console.log(out.join("\n"));
 ```
 
 ```text title=Output
-tier fast -> model word-small (provider recorded)
+tier fast -> model recorded-small (provider recorded)
 text: The menu link on the pop-up page is broken. Point it at the live menu page.
 usage: 52 in, 14 out, 800 micro-units
 advisory: true, redacted: true

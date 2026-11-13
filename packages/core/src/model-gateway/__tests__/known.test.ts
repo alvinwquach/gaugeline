@@ -4,9 +4,11 @@ import {
   KNOWN_PROVIDERS,
   isKnownKeyEnv,
   isKnownModelId,
+  NOT_ON_LIST,
   isNameShaped,
-  masked,
+  shownAnyModelId,
   shownModelId,
+  shownSettingName,
   shownProvider,
 } from "../known.js";
 
@@ -76,17 +78,46 @@ describe("isNameShaped: words and short version numbers, never a key", () => {
 });
 
 describe("what may be printed", () => {
-  it("prints a known provider and model as written, and anything else as three characters and a length", () => {
+  it("prints a known provider and model as written, and anything else as one fixed text: no character, no length", () => {
+    expect(NOT_ON_LIST).toBe("[not on the known list]");
     expect(shownProvider("example")).toBe("example");
-    expect(shownProvider("acme-ai")).toBe(
-      "acm... (a provider name of 7 characters, not on the known list)",
-    );
+    expect(shownProvider("acme-ai")).toBe(NOT_ON_LIST);
     expect(shownModelId("example", "example-small")).toBe("example-small");
-    expect(shownModelId("example", "other-model")).toBe(
-      "oth... (a model id of 11 characters, not on the known list)",
-    );
-    expect(masked("thing", "abcdef")).toBe(
-      "abc... (a thing of 6 characters, not on the known list)",
-    );
+    expect(shownModelId("example", "other-model")).toBe(NOT_ON_LIST);
+    expect(shownModelId("other", "example-small")).toBe(NOT_ON_LIST);
+    expect(shownAnyModelId("recorded-large")).toBe("recorded-large");
+    expect(shownAnyModelId("qzvkwmplrtyhbnxc")).toBe(NOT_ON_LIST);
+  });
+
+  it("gives nothing away about a string it hides: the same text for a short and a long one, a key and a word", () => {
+    for (const v of [
+      "sk-ant-qzvkwmplrtyhbnxc-fjdkslaqpwoeiru",
+      "qzvkwmplrtyhbnxc",
+      "abc-1-def-2-ghi-3",
+      "x",
+    ])
+      expect(shownProvider(v)).toBe(NOT_ON_LIST);
+  });
+
+  it("knows an example model with a date only if the date is a real one", () => {
+    for (const ok of ["example-small", "example-large-2026-01-15", "example-small-2024-02-29"])
+      expect(isKnownModelId("example", ok), ok).toBe(true);
+    for (const bad of [
+      "example-small-9384-71-62",
+      "example-small-2026-13-01",
+      "example-small-2026-02-30",
+      "example-small-2023-02-29",
+      "example-small-0000-00-00",
+      "example-small-2026-1-5",
+      "example-small-20260115",
+    ])
+      expect(isKnownModelId("example", bad), bad).toBe(false);
+  });
+
+  it("shows a setting's name only for a recognised mistake or a near miss of a real setting", () => {
+    expect(shownSettingName("apiKey", ["tiers"])).toBe("apiKey");
+    expect(shownSettingName("tires", ["tiers"])).toBe("tires");
+    expect(shownSettingName("qzvkwmplrtyhbnxc", ["tiers"])).toBe("a setting");
+    expect(shownSettingName("something", ["tiers"])).toBe("a setting");
   });
 });

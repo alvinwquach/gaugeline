@@ -221,7 +221,7 @@ describe("the config file", () => {
       },
     );
 
-    it("prints a provider or model id that is not on the known list masked: three characters and a length", () => {
+    it("prints a provider or model id that is not on the known list as a fixed text: no character and no length", () => {
       const config = readByokConfig(
         JSON.stringify({
           provider: "acme-ai",
@@ -230,11 +230,53 @@ describe("the config file", () => {
         }),
       );
       const s = describeByok(config, {}, "cli");
-      expect(s.provider).toBe("acm... (a provider name of 7 characters, not on the known list)");
-      expect(s.tiers.fast).toBe("acm... (a model id of 15 characters, not on the known list)");
+      expect(s.provider).toBe("[not on the known list]");
+      expect(s.tiers.fast).toBe("[not on the known list]");
       const text = renderByokStatus(s);
       expect(text).not.toContain("acme-ai");
       expect(text).not.toContain("acme-large-2026");
+    });
+
+    it.each([
+      ["a key with a vendor prefix", "sk-ant-qzvkwmplrtyhbnxc-fjdkslaqpwoeiru"],
+      ["a lower case letters-only key", "qzvkwmplrtyhbnxcfjdkslaqpwoeiru"],
+      ["a key of short word-and-number parts", "abc-1-def-2-ghi-3"],
+      ["a project key", "sk-proj-qzvkwmplrtyhbnxc-fjdkslaqpwoeiru"],
+    ])(
+      "shows no character and no length of %s that passes the shape rule, anywhere in the status",
+      (_n, key) => {
+        // Whether the shape rule accepts it or not, nothing of it may reach an output.
+        let config;
+        try {
+          config = readByokConfig(
+            JSON.stringify({ provider: key, keyEnv: "OPENAI_API_KEY", tiers: { fast: key } }),
+          );
+        } catch {
+          return;
+        }
+        const s = describeByok(config, {}, "cli");
+        for (const shown of [JSON.stringify(s), renderByokStatus(s)]) {
+          for (let i = 0; i + 6 <= key.length; i += 1)
+            expect(shown).not.toContain(key.slice(i, i + 6));
+          expect(shown).not.toContain(String(key.length));
+          expect(shown).toContain("[not on the known list]");
+        }
+      },
+    );
+
+    it("shows nothing of a key split across the provider and both model ids", () => {
+      const parts = ["qzvkwmplrt", "yhbnxcfjdk", "slaqpwoeiru"];
+      const config = readByokConfig(
+        JSON.stringify({
+          provider: parts[0],
+          keyEnv: "OPENAI_API_KEY",
+          tiers: { fast: parts[1], strong: parts[2] },
+        }),
+      );
+      const s = describeByok(config, {}, "worker");
+      for (const shown of [JSON.stringify(s), renderByokStatus(s)])
+        for (const p of parts)
+          for (let i = 0; i + 3 <= p.length; i += 1) expect(shown).not.toContain(p.slice(i, i + 3));
     });
 
     it("prints a known provider and a known model id as written", () => {

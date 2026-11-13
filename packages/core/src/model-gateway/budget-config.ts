@@ -6,7 +6,7 @@
  */
 import * as z from "zod";
 import { MAX_COST_MICROS } from "../agent-policy.js";
-import { redactForTrace } from "../agent-trace.js";
+import { isKnownAnyModel, mayShowSetting } from "./known.js";
 
 const MODEL_ID = /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,99}$/;
 /** The largest price: 10^10 micro-units for a million tokens (10 thousand units a million tokens). */
@@ -74,8 +74,18 @@ export type BudgetConfigResult =
   { ok: true; config: BudgetConfig } | { ok: false; problems: string[] };
 
 /** A setting's name, shown only when it is shaped like one; a pasted key used as a name is not shown. */
+/** The settings a budget config has. A price is keyed by a model id, which is never shown: it can be a key. */
+const BUDGET_SETTINGS = [
+  "ceilings",
+  "prices",
+  "perRunMicros",
+  "perDayMicros",
+  "perWorkspaceMicros",
+  "inputMicrosPerMTok",
+  "outputMicrosPerMTok",
+];
 const shownName = (k: string) =>
-  /^[A-Za-z][A-Za-z0-9_.-]{0,39}$/.test(k) && redactForTrace(k) === k ? k : "a setting";
+  mayShowSetting(k, BUDGET_SETTINGS) ? k : isKnownAnyModel(k) ? k : "an entry";
 
 /** The config if `raw` is one, or the problems, one per line, each with where it is. */
 export function parseBudgetConfig(raw: unknown): BudgetConfigResult {

@@ -75,8 +75,12 @@ describe("a config that is refused", () => {
     ["a price over 10^10", { inputMicrosPerMTok: 10_000_000_001, outputMicrosPerMTok: 1 }],
     ["an extra field", { inputMicrosPerMTok: 1, outputMicrosPerMTok: 1, currency: "x" }],
   ])("refuses %s", (_n, price) => {
+    // A price is keyed by a model id, which is never shown unless it is a known one: it can be a key.
     expect(problems({ ...GOOD, prices: { "small-model": price } }).join("\n")).toContain(
-      "prices.small-model",
+      "prices.an entry",
+    );
+    expect(problems({ ...GOOD, prices: { "example-small": price } }).join("\n")).toContain(
+      "prices.example-small",
     );
   });
 

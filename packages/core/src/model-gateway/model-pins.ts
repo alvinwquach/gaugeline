@@ -12,11 +12,11 @@
  */
 import { createHash } from "node:crypto";
 import * as z from "zod";
-import { redactForTrace } from "../agent-trace.js";
 import { CouldNotRunError } from "../errors.js";
 import { EVAL_SETS } from "../evals/registry.js";
 import { EVAL_SUITE_SCHEMA } from "../evals/suite.js";
 import { parseGatewayConfig } from "./config.js";
+import { shownAnyModelId, shownModelId, shownSettingName } from "./known.js";
 import { MODEL_TIERS, type GatewayConfigInput, type ModelTier } from "./types.js";
 
 export const MODEL_PINS_SCHEMA = 1;
@@ -71,8 +71,9 @@ export interface ModelPins {
 }
 export type ModelPinsResult = { ok: true; pins: ModelPins } | { ok: false; problems: string[] };
 
-const shownName = (k: string) =>
-  /^[A-Za-z][A-Za-z0-9_.-]{0,39}$/.test(k) && redactForTrace(k) === k ? k : "a setting";
+/** The settings a pins file has. A name is shown only if it is one of them (or a recognised mistake): a key can be a name. */
+const PIN_SETTINGS = ["schema", "provider", "tiers", "evalPass", "reportSha256", "fast", "strong"];
+const shownName = (k: string) => shownSettingName(k, PIN_SETTINGS);
 
 /** The pins if `raw` is a pins file, or the problems, each with where it is and never what was written. */
 export function parseModelPins(raw: unknown): ModelPinsResult {
@@ -153,7 +154,7 @@ export function checkModelPins(input: {
       reasons.push(`the ${tier} tier is pinned but the recorded eval pass does not cover it`);
     else if (passed !== pinned)
       reasons.push(
-        `the ${tier} tier is pinned to ${pinned} but the recorded eval pass was for ${passed}`,
+        `the ${tier} tier is pinned to ${shownAnyModelId(pinned)} but the recorded eval pass was for ${shownAnyModelId(passed)}`,
       );
   }
   const text = input.reportText;
@@ -208,7 +209,9 @@ export function requireEvaluatedModels(input: {
     const pin = pins.tiers[tier];
     if (pin === undefined) reasons.push(`the ${tier} tier is not pinned`);
     else if (pin !== used)
-      reasons.push(`the ${tier} tier is configured as ${used} but pinned to ${pin}`);
+      reasons.push(
+        `the ${tier} tier is configured as ${shownModelId(config.config.provider, used)} but pinned to ${shownModelId(pins.provider, pin)}`,
+      );
   }
   const verdict = checkModelPins({
     pins,
