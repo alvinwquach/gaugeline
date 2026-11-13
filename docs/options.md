@@ -924,7 +924,7 @@ between the markers; CI fails when it differs from the flag table.
 | `--legacy-review <value>`   | Write the old addresses read with --legacy-from to this CSV file, for review                                         |                            | 0.2.0 |
 | `--base <value>`            | The site a plan is checked against (a preview); the site emails link to; or the site to ask for --routes             |                            | 0.2.0 |
 | `--annotate <value>`        | Write a copy of the plan with a Gaugeline column saying what is wrong on each row                                    |                            | 0.2.0 |
-| `--force`                   | Let --annotate (plan), --page, --save (query), --out (brief, evals), handoff or audit replace files, never a folder  |                            | 0.2.0 |
+| `--force`                   | Let --annotate (plan), --page, --save (query), --out (brief), handoff or audit replace files, never a folder or link |                            | 0.2.0 |
 | `--progress <value>`        | With --base, say what was fixed and what is new since the last run (state file optional)                             |                            | 0.2.0 |
 | `--watch <value>`           | With --base on production: the 30-day watch from this cutover date (YYYY-MM-DD)                                      |                            | 0.2.0 |
 | `--all`                     | plan --progress: list the findings still open; run: check every site in gaugeline.sites.json                         |                            | 0.2.0 |
@@ -939,7 +939,7 @@ between the markers; CI fails when it differs from the flag table.
 | `--tag <value>`             | Check the sites in gaugeline.sites.json with this tag, such as client                                                |                            | 0.2.0 |
 | `--parallel <value>`        | Check this many sites at once (default 1); sites on one host never overlap                                           |                            | 0.2.0 |
 | `--limit <value>`           | Re-check this many of the export's pages (default 40; 0 only classifies the rows)                                    |                            | 0.2.0 |
-| `--out <value>`             | snapshot: the file (default before.json). brief, evals: the file. query --page, handoff, audit: the folder           |                            | 0.2.0 |
+| `--out <value>`             | snapshot: the file (default before.json). query --page: the folder. brief: the file. handoff, audit: the folder      |                            | 0.2.0 |
 | `--business <value>`        | brief: the business the work order is for, shown in its heading. audit: the prospect's business                      |                            | 0.2.0 |
 | `--rate <value>`            | brief: what an hour costs, in whole currency units such as 110; used with --hours-per-point                          |                            | 0.2.0 |
 | `--hours-per-point <value>` | brief: how many hours one point takes, such as 1.5; prints a range of hours, never one number                        |                            | 0.2.0 |
@@ -954,7 +954,6 @@ between the markers; CI fails when it differs from the flag table.
 | `--host <value>`            | advisory: another hostname of the client to look at, such as an old subdomain (up to 5)                              |                            | 0.2.0 |
 | `--block`                   | deploy-gate: exit 1 when a "Fix this first" finding is found; without it the gate only reports                       | `GAUGELINE_GATE_BLOCK`     | 0.2.0 |
 | `--only <value>`            | source: run just these checks, by id, separated by commas (an unknown id is refused)                                 |                            | 0.2.0 |
-| `--agent <value>`           | evals: run just this agent's eval set, by id (an agent with no set is refused)                                       |                            | 0.2.0 |
 | `--head <value>`            | receipts verify: a head hash written down earlier, which the chain must still contain                                |                            | 0.2.0 |
 | `--fixes`                   | propose: turn fix proposals on (they are off by default); nothing is sent, the diffs are written to a file           | `GAUGELINE_FIXES`          | 0.2.0 |
 | `--repo <value>`            | propose: the project's folder on this computer (a checkout of its repository)                                        |                            | 0.2.0 |
