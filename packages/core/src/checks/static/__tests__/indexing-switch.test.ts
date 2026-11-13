@@ -190,10 +190,13 @@ describe("noindex-smoke-production (FF-06)", () => {
     expect(r.passed).toEqual(["noindex-smoke-production"]);
   });
 
-  it("is unsure, not passed, with no workflow files, a test that names neither, or an unread workflow", async () => {
+  it("does not apply with no workflow files", async () => {
     const none = await smokeOf({ "package.json": "{}" });
-    expect(none.passed).toEqual([]);
-    expect(none.couldNotCheck[0]?.reason).toContain("no .github/workflows file");
+    expect(none.passed).toEqual(["noindex-smoke-production"]);
+    expect(none.couldNotCheck).toEqual([]);
+  });
+
+  it("is unsure, not passed, with a test that names neither, or an unread workflow", async () => {
     const unclear = await smokeOf({ ".github/workflows/a.yml": workflow("  workflow_dispatch:") });
     expect(unclear.passed).toEqual([]);
     expect(unclear.couldNotCheck[0]?.reason).toContain("does not say whether");

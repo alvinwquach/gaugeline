@@ -30,19 +30,14 @@ export const noindexSmokeProduction = defineCheck<LocalSourceInput>({
   what: "A CI workflow checks noindex (or X-Robots-Tag) on preview deployments, and no workflow does the same for production.",
   why: "Production is where indexing matters. A test that only watches previews proves the preview is hidden; it says nothing about the live site, so a setting changed at launch (or one that never changed) goes unnoticed.",
   fix: "Run the same test against the production deployment after each production deploy (a workflow on the main branch, or a deployment_status trigger for the Production environment). Expect the opposite there once the site is live: no noindex.",
-  tech: "static, reads .github/workflows files as text (comments are skipped) and makes no request; a workflow has the test when it mentions noindex or x-robots-tag; it targets previews when it says preview or runs on pull_request or deployment_status, and production when it says production or prod or runs on main or master; a finding when a workflow tests previews and no workflow with the test says anything about production; a workflow with the test and neither word, no workflow files, or a workflow file that could not be read is not sure; no test at all passes",
+  tech: "static, reads .github/workflows files as text (comments are skipped) and makes no request; a workflow has the test when it mentions noindex or x-robots-tag; it targets previews when it says preview or runs on pull_request or deployment_status, and production when it says production or prod or runs on main or master; a finding when a workflow tests previews and no workflow with the test says anything about production; a workflow with the test and neither word, or a workflow file that could not be read, is not sure; no workflow files, or no test at all, passes (nothing is missing)",
   run(input, ctx) {
     const { tree } = input;
     const url = `source:${tree.label}`;
     const files = [...tree.files.keys()].filter((p) => WORKFLOW.test(p)).sort();
     const left = [...tree.skipped.keys()].filter((p) => WORKFLOW.test(p));
-    if (files.length === 0) {
-      ctx.couldNotCheck?.(
-        url,
-        "no .github/workflows file was read, so what CI checks could not be judged",
-      );
-      return [];
-    }
+    // No CI file: there is no test to be missing from production, so the check does not apply.
+    if (files.length === 0) return [];
     let previewFile: { file: string; line: number } | undefined;
     let production = false;
     let unclear: string | undefined;

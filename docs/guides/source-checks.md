@@ -32,6 +32,7 @@ Read 5 files in ./harbour-bar-preview. No request was made and no code was run.
     app/sitemap.ts serves a sitemap while the site is set to stay out of search (app/layout.tsx says noindex)
 ✓ robots-disallow-hides-noindex
 ✓ indexing-switch-loose
+✓ noindex-smoke-production
 ✓ webhook-missing-secret-status
 ✓ sanity-cdn-tagged-reads
 ✓ cms-token-in-client-code
@@ -105,7 +106,7 @@ that uses it and has no `app/layout` says so and checks nothing.
   `X-Robots-Tag`) on preview deployments, and no workflow tests it on production. A workflow counts as
   testing production when it says production or prod, or runs on `main`, and as testing previews when it says
   preview or runs on `pull_request` or `deployment_status`; one workflow that says both is not judged job by
-  job. No workflow files, or a test that names neither, is not sure.
+  job. A project with no workflow files has nothing to miss and passes; a test that names neither is not sure.
 
 The command also runs the other source checks: the Sanity publish webhook and the cache (see [the webhook and cache checks](webhook-and-cache-source.md)) and tokens and webhook addresses in code. A tick names each check that passed.
 
