@@ -390,6 +390,7 @@ export type { Sheet, Workbook } from "./plan/workbook.js";
 export type { BuiltEmail, EmailSettings } from "./notify/email.js";
 export { discordPayload, slackPayload, webhookPayload } from "./notify/payloads.js";
 export { NOTIFY_TIMEOUT_MS, postJson, providerMessage, safeTarget } from "./notify/post.js";
+export type { NameResolver } from "./notify/post.js";
 export {
   checkDestination,
   DESTINATION_KINDS,

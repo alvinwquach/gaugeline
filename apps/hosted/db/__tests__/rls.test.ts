@@ -59,6 +59,10 @@ const TENANT_TABLES = [
   "invites",
   "weekly_updates",
   "weekly_update_sends",
+  // 0009: notification channels, rules and the delivery log (X67).
+  "notification_channels",
+  "notification_rules",
+  "notification_deliveries",
 ];
 
 const SERVER_ONLY = new Set(["tokens", "idempotency_keys", "jobs", "email_sends"]);

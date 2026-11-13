@@ -35,6 +35,7 @@ import {
   morningFromEnv,
   sendMorningEmails,
 } from "./email/send.js";
+import { deliverDue, type NotifyDeps, notifyDepsFrom, queueRunNotifications } from "./notify.js";
 import { runPool } from "./pool.js";
 import {
   claimJobs,
@@ -69,6 +70,10 @@ export interface WorkerDeps {
   runSite?: RunSite;
   /** How long the checks of one job may run; JOB_DEADLINE_MS unless a test shortens it. */
   deadlineMs?: number;
+  /** Tests only: stands in for queueRunNotifications, to show a failure there never fails the run. */
+  queueNotifications?: typeof queueRunNotifications;
+  /** Sends queued notifications (X67). The worker's start-up always sets it (notifyDepsFrom). */
+  notify?: NotifyDeps;
 }
 
 /** The worker's database: the app login, refused when it could read around row-level security. */
@@ -275,6 +280,15 @@ export async function processJob(
             still_open, closed, opened_fingerprints, closed_fingerprints)
           values (${job.orgId}, ${job.siteId}, ${stored.id}, ${previousRunId}, ${d.opened.length},
             ${d.stillOpen.length}, ${d.closed.length}, ${d.opened}, ${d.closed})`;
+      // Notifications (X67) go in the same transaction (an outbox row per matching channel, sent later),
+      // inside a savepoint: whatever goes wrong there is rolled back alone and logged as a fixed code; it
+      // never fails or rolls back the night's run.
+      const queue = deps.queueNotifications ?? queueRunNotifications;
+      await tx
+        .savepoint((sp) =>
+          queue(sp, { orgId: job.orgId, siteId: job.siteId, runId: stored.id, now: clock() }),
+        )
+        .catch(() => console.error(`worker: job ${job.id} notifications not queued: queue-failed`));
     });
     return "done";
   } catch (e) {
@@ -323,6 +337,14 @@ export async function runWorker(
   const now = () => (deps.now ?? (() => new Date()))();
   // The morning email (X64): every few minutes, whoever it is morning for. It is started from the claim
   // without being awaited, so it never holds a free slot while a job is due, and a failure never stops the checks.
+  // One notification sender at a time, beside the jobs (X67): a slow channel never holds a claim back.
+  let sending: Promise<unknown> | undefined;
+  const sendDue = () => {
+    if (!deps.notify || sending) return;
+    sending = deliverDue(deps.notify)
+      .catch(() => console.error("notify: sending queued notifications failed"))
+      .finally(() => (sending = undefined));
+  };
   const morningDeps = options.morning;
   const morning = morningDeps
     ? morningCadence(
@@ -338,6 +360,7 @@ export async function runWorker(
       idleMs: options.idleMs ?? 30_000,
       claim: async (free) => {
         morning?.tick();
+        sendDue();
         await releaseExpired(deps.sql, now());
         return claimJobs(deps.sql, free, now());
       },
@@ -345,6 +368,8 @@ export async function runWorker(
     });
   } finally {
     await morning?.settled();
+    // A deploy stops the worker: the send in flight finishes first.
+    await sending;
   }
 }
 
@@ -355,9 +380,11 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   openWorkerDatabase(process.env)
     .then(async (sql) => {
       try {
+        // The SecretStore is checked before the first job (docs/hosted/secrets.md): a wrong set-up stops here.
+        const notify = await notifyDepsFrom(process.env, sql);
         const morning = morningFromEnv(sql, process.env);
         if (!morning) console.error("worker: the morning email is off (RESEND_API_KEY is not set)");
-        await runWorker({ sql }, { signal: stop.signal, morning });
+        await runWorker({ sql, notify }, { signal: stop.signal, morning });
       } finally {
         await sql.end({ timeout: 5 });
       }

@@ -30,6 +30,19 @@ export interface SiteChanges {
 }
 
 const trim = (s: string, max: number) => (s.length > max ? `${s.slice(0, max - 1)}\u2026` : s);
+
+/**
+ * Cut a section that holds code spans: never through an escaped entity (&amp;), and a span the cut opened
+ * is closed again, so the rest of the message cannot be read as markup.
+ */
+export function trimSpans(s: string, max: number): string {
+  if (s.length <= max) return s;
+  let cut = s.slice(0, max - 2).replace(/&[a-z]{0,4}$/, "");
+  const open = (cut.match(/`/g) ?? []).length % 2 === 1;
+  if (open && cut.endsWith("`")) cut = cut.slice(0, -1);
+  else if (open) return `${cut}\u2026\``;
+  return `${cut}\u2026`;
+}
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 /** The one-line summary: also Slack's notification text. Page text is escaped. */
@@ -55,12 +68,13 @@ export function slackChangesPayload(c: SiteChanges, appUrl?: string): SlackPaylo
     (a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity],
   );
   for (const f of list.slice(0, MESSAGE_FINDINGS)) {
-    const page = f.url ? `\n${forSlack(f.url)}` : "";
+    // The page in a code span: page text outside one could turn on bold, italic or strike.
+    const page = f.url ? `\n\`${forSlack(f.url, 500)}\`` : "";
     blocks.push({
       type: "section",
       text: {
         type: "mrkdwn",
-        text: trim(
+        text: trimSpans(
           slackFindingText(
             f.severity,
             forSlackPlain(f.title, UNTRUSTED_CAPS.title),
