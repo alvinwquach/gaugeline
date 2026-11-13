@@ -119,6 +119,10 @@ export const UNLISTED: NavPage[] = [
   { slug: "guides/vercel-gate", title: "Hold a Vercel deploy on Gaugeline's result" },
   { slug: "guides/fix-proposals", title: "Fix proposals: a diff for what lives in your code" },
   {
+    slug: "guides/webhook-and-cache-source",
+    title: "The publish webhook and the cache, read from your code",
+  },
+  {
     slug: "guides/image-optimizers",
     title: "Open image optimizers: who can use your site to resize images",
   },

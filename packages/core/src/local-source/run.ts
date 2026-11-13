@@ -1,3 +1,5 @@
+import { sanityCdnTaggedReads } from "../checks/static/sanity-cdn-tagged-reads.js";
+import { webhookMissingSecretStatus } from "../checks/static/webhook-missing-secret-status.js";
 import { CheckRegistry, type Check } from "../model.js";
 import { buildResult, type Result } from "../result.js";
 import { runChecks } from "../run.js";
@@ -41,7 +43,10 @@ export function staticFile(input: LocalSourceInput, path: string): StaticFile {
 }
 
 /** Every static check, in the order the report lists them. */
-export const STATIC_CHECKS: readonly Check<LocalSourceInput>[] = [];
+export const STATIC_CHECKS: readonly Check<LocalSourceInput>[] = [
+  webhookMissingSecretStatus,
+  sanityCdnTaggedReads,
+];
 
 export function createStaticRegistry(): CheckRegistry {
   const registry = new CheckRegistry();
