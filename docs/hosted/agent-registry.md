@@ -14,20 +14,20 @@ answers for the agent and what it may draft, and one action stops it.
 | scopes                 | from a closed list (below), each at most once; a new agent has none unless you grant them                                                                           |
 | token prefix           | the 8 characters after `gla_` that find the agent in a list                                                                                                         |
 | token                  | **minted by the database and not stored**: shown once when the agent is registered; the database keeps its SHA-256 only. Nobody chooses a token, a hash or a prefix |
-| created, last used     | set by the database: created when registered, last used when the agent's draft is accepted                                                                          |
+| created, last used     | set by the database: created when registered, last used when a draft or a read is allowed                                                                           |
 | status                 | `active`, `disabled` (off until switched back on) or `revoked` (off for good)                                                                                       |
 | revoked at, revoked by | set by the database, from its clock and the signed-in person, when the agent is revoked                                                                             |
 
 The scopes are one per kind of draft and two reads. None of them writes: agents only draft, and only
 your own worker applies an approved draft ([applying an approved fix](./writer.md)).
 
-| Scope                | Lets the agent                                                                                       |
-| -------------------- | ---------------------------------------------------------------------------------------------------- |
-| `draft:pull_request` | propose a pull request                                                                               |
-| `draft:email`        | propose an email                                                                                     |
-| `draft:sanity_draft` | propose a Sanity draft document                                                                      |
-| `read:runs`          | read run history: **reserved**, enforced by the pending-approvals tool (AG-08); nothing reads it yet |
-| `read:pending`       | list drafts waiting for a decision: **reserved**, enforced by AG-08; nothing reads it yet            |
+| Scope                | Lets the agent                                                                      |
+| -------------------- | ----------------------------------------------------------------------------------- |
+| `draft:pull_request` | propose a pull request                                                              |
+| `draft:email`        | propose an email                                                                    |
+| `draft:sanity_draft` | propose a Sanity draft document                                                     |
+| `read:runs`          | read one site's run history at a time, through `private.agent_list_runs` (AG-08)    |
+| `read:pending`       | list the drafts waiting for a decision through `private.agent_list_pending` (AG-08) |
 
 **Registering is one call**, `private.register_agent(organisation, name, owner, scopes)`, for an owner or
 admin of that organisation. Nobody inserts a row any other way. The database mints the token (256 bits
@@ -38,7 +38,8 @@ again, so no answer ever tells you whether another agency's prefix or hash exist
 **Who sees the registry:** owners and admins of the organisation, and nobody else. A member who is not an
 admin and a client viewer see no agent, no history and no flag, and an owner of one agency never sees
 another's. The agent itself cannot read the registry: its database role (`gaugeline_agent`) holds no
-privilege on any table, and its one way in is still `private.agent_insert_draft`.
+privilege on any table: it may run `private.agent_insert_draft` and, since AG-08, the two reads
+`private.agent_list_pending` and `private.agent_list_runs`, and nothing else.
 
 ## An example: the bar's menu fixer, registered and revoked
 
@@ -204,7 +205,8 @@ What it shows:
 2. A scope that is not on the list, or one scope twice, is refused. The refusal names the rule, not the row.
 3. Nobody signed in can insert a row (so nobody picks a token), set `last_used_at`, `created_at`,
    `revoked_at` or `revoked_by`, or read a token's hash.
-4. The agent's draft is accepted, and that sets "last used". Reading the registry does not.
+4. The agent's draft is accepted, and that sets "last used" (so does an allowed read, AG-08). A person
+   reading the registry does not.
 5. **Revoke is one call**: `private.revoke_agent(id)` sets the status, the time and who did it in one
    statement and writes the history row. Revoking a revoked agent changes nothing.
 6. The token stops working for the very next call: nothing is inserted, the agent is told `revoked`, and
@@ -245,8 +247,8 @@ can be marked as migrated.
 
 ## What it does not do yet
 
-- The two `read:` scopes are reserved: AG-08 enforces them, and nothing reads hosted data for an agent
-  until then.
+- The two `read:` scopes are enforced (AG-08): a call without the scope is refused with `scope` and logged.
+  An allowed read sets "last used" too, so an agent that only reads is not flagged as unused.
 - Per-agent tool allowlists, rate limits, cost ceilings, timeouts and kill switches are on
   [agent policy and limits](./agent-policy.md) (AG-03); per-call traces are AG-05. ADR-0014 ("Agent
   safety model") lists the threats each one answers.

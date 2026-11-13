@@ -725,9 +725,12 @@ describe.skipIf(!HAS_DATABASE)("agent registry", () => {
   });
 
   describe("audit", () => {
-    it("the agent role can still run one function and read nothing; the login audits stay clean", async () => {
+    it("the agent role runs its three functions and reads no table; the login audits stay clean", async () => {
       expect(await privateFunctionsExecutableBy(owner, "gaugeline_agent")).toEqual([
         "agent_insert_draft",
+        // AG-08 (0014): the two reads, each authorized with its own scope.
+        "agent_list_pending",
+        "agent_list_runs",
       ]);
       expect(await privateFunctionsExecutableBy(owner, "anon")).toEqual([]);
       expect(await agentLoginsWithOtherRoles(owner)).toEqual([]);

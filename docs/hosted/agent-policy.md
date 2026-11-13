@@ -16,8 +16,9 @@ today every check on this page is made in the database.
 
 One function, `private.agent_authorize(token, tool, cost)`, decides every agent call. The agent's draft
 entry (`private.agent_insert_draft`) calls it first, on the token and the tool name alone (`draft:email`
-for an email draft), before it looks at the site, the findings or the payload. The read tool that lists
-pending drafts (AG-08) will call the same function. The first rule that applies is the reason:
+for an email draft), before it looks at the site, the findings or the payload. The two reads (AG-08,
+`private.agent_list_pending` and `private.agent_list_runs`) call it the same way, once, with `read:pending`
+or `read:runs`. The first rule that applies is the reason:
 
 | Reason               | When                                                                                               |
 | -------------------- | -------------------------------------------------------------------------------------------------- |
