@@ -436,6 +436,29 @@ export {
 } from "./report/brief-schema.js";
 export type { Brief, BriefEvidencePart, BriefItem, BriefNotSized } from "./report/brief-schema.js";
 export {
+  COMING_UP_DAYS,
+  RECEIPT_GROUPS,
+  buildReceipt,
+  monthName,
+  parseReceiptMonth,
+  previousMonth,
+  receiptGroupOf,
+  receiptJson,
+  receiptMarkdown,
+  receiptPrintable,
+} from "./receipt/index.js";
+export type {
+  ClientReport,
+  ComingUp,
+  Receipt,
+  ReceiptGroup,
+  ReceiptGroupId,
+  CareReceiptInput,
+  ReceiptItem,
+  ReceiptMonth,
+  ReceiptRun,
+} from "./receipt/index.js";
+export {
   RUN_SNAPSHOT_SCHEMA,
   buildRunSnapshot,
   diffSnapshots,
