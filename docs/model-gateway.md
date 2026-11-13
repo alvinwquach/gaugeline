@@ -10,8 +10,9 @@ draft**, and what it says is advice for a person to read, never a result that de
 and tested (row AG-19, part 1). **Not built.** There is no provider behind it, so nothing here can reach a
 model, and no code in it opens a connection. The one module that may send a request to a provider, from your
 own machine with your own key, is the next pull request; reading your key on the command line is
-[AG-20](https://github.com/alvinwquach/gaugeline/blob/main/docs/adr/0014-agent-safety-model.md), budgets are AG-22 and the
-privacy rules for what is sent are AG-23. The decision behind all of this is
+[AG-20](https://github.com/alvinwquach/gaugeline/blob/main/docs/adr/0014-agent-safety-model.md) and budgets are AG-22.
+What a call may carry is decided by the privacy gate (AG-23): see [What leaves your machine in a model
+call](./model-privacy.md). The decision behind all of this is
 [ADR-0005, as amended on 13 Nov 2026](https://github.com/alvinwquach/gaugeline/blob/main/docs/adr/0005-notifications-post-to-your-own-channels.md):
 your own key, from your own environment, findings and ids and snippets only, never a whole page.
 
@@ -49,7 +50,7 @@ code, not in a file.
 | `keyEnv`          | the variable's name: capitals, digits and underscores. A pasted key is refused |
 | `tiers`           | a model id for `fast`, `strong` or both                                        |
 | `timeoutMs`       | 100 to 120000, default 30000: the call is stopped after this long              |
-| `maxInputChars`   | 1 to 100000, default 100000: a longer prompt is refused and nothing is sent    |
+| `maxInputChars`   | 1 to 100000, default 100000: a longer payload is refused and nothing is sent   |
 | `maxOutputTokens` | 1 to 8192, default 1024                                                        |
 
 The file is strict. A setting the page does not know (`apiKey`, `token`, `host`, `baseUrl`, `allowPrivate`) is an
@@ -58,11 +59,14 @@ be a key someone pasted in the wrong place.
 
 ## What one call does
 
-1. Checks the tier, the ids and the size of the prompt. Nothing is read or sent yet.
-2. Reads your key from the environment **now**. It is never kept between calls, so unsetting the variable stops
+1. Checks the tier and the ids. Nothing is read or sent yet.
+2. Passes the request's `input` (a task, findings, snippets and ids, never a prompt) through the privacy gate:
+   fields are checked against an allowlist, anything shaped like a whole page is refused, secrets and personal
+   data are replaced with markers, and page text is quoted as data. A refusal is `input-refused` and nothing
+   else happens. Then the size of what would be sent is checked against `maxInputChars`.
+3. Reads your key from the environment **now**. It is never kept between calls, so unsetting the variable stops
    the next call. An unset or blank variable is `missing-key`, and the error names the variable, never a value.
-3. Refuses the call if the prompt holds your own key (`key-in-prompt`), and replaces any other secret, email
-   address or phone number in the prompt with a marker.
+   The call is refused if the input holds your own key (`key-in-prompt`).
 4. Asks the budget hooks. Today they say yes to everything; AG-22 fills them in with ceilings. Anything that is
    not a clear yes (an error, an empty answer) stops the call.
 5. Calls the adapter with a hard timeout and a signal that is aborted when it runs out.
@@ -81,11 +85,12 @@ logs nothing.
 | `unknown-provider`    | no adapter is registered for the provider                              |
 | `unknown-tier`        | the tier is not `fast` or `strong`                                     |
 | `tier-not-configured` | the config names no model for that tier                                |
-| `bad-request`         | the prompt, agent id or call id is not usable                          |
-| `input-too-large`     | the prompt is over the limit                                           |
+| `bad-request`         | the agent id or call id is not usable, or the request carries a prompt |
+| `input-refused`       | the privacy gate refused the input; the message says why and where     |
+| `input-too-large`     | what would be sent is over `maxInputChars`                             |
 | `missing-key`         | the variable is not set, blank, or the environment could not be read   |
 | `bad-key`             | the value has a space, a line break or a control character             |
-| `key-in-prompt`       | the prompt holds your own key                                          |
+| `key-in-prompt`       | the input holds your own key                                           |
 | `budget`              | the budget hooks said no, or did not say yes                           |
 | `timeout`             | no answer in time                                                      |
 | `provider-error`      | the adapter failed; its message is cleaned                             |
@@ -145,7 +150,17 @@ const answer = await gateway.complete({
   tier: "fast",
   agentId: "triage",
   callId: "reword-1",
-  prompt: `Reword for the owner: the menu link gives a 404. Reply to ${["baker", "example.test"].join("@")}`,
+  input: {
+    task: "Reword this finding for the owner in two sentences.",
+    findings: [
+      {
+        id: "f-1",
+        checkId: "broken-link",
+        title: "The menu link gives a 404",
+        snippet: `Reply to ${["baker", "example.test"].join("@")}`,
+      },
+    ],
+  },
 });
 out.push(`tier ${answer.tier} -> model ${answer.model} (provider ${answer.provider})`);
 out.push(`text: ${answer.text}`);
@@ -154,11 +169,12 @@ out.push(
 );
 out.push(`advisory: ${answer.advisory}, redacted: ${answer.redacted}`);
 
+const hello = { task: "Say hello." };
 for (const [what, request] of [
-  ["unknown tier", { tier: "ultra", agentId: "triage", callId: "reword-1", prompt: "Hi" }],
+  ["unknown tier", { tier: "ultra", agentId: "triage", callId: "reword-1", input: hello }],
   [
-    "oversized prompt",
-    { tier: "fast", agentId: "triage", callId: "reword-1", prompt: "a".repeat(100_001) },
+    "oversized input",
+    { tier: "fast", agentId: "triage", callId: "reword-1", input: { task: "a".repeat(1_001) } },
   ],
 ] as const) {
   try {
@@ -178,11 +194,11 @@ text: The menu link on the pop-up page is broken. Point it at the live menu page
 usage: 52 in, 14 out, 800 micro-units
 advisory: true, redacted: true
 unknown tier: refused (unknown-tier)
-oversized prompt: refused (input-too-large)
+oversized input: refused (input-refused)
 ```
 
-The email address in the prompt was replaced before the adapter saw it, which is what `redacted: true` says. A
-test runs this same code and fails if this page's output differs from it.
+The email address in the snippet was replaced before the adapter saw it, which is what `redacted: true` says, and
+the answer's `privacy` field counts it by kind. A test runs this same code and fails if this page's output differs from it.
 
 The eval harness gives the same report through the gateway as it does from the replay itself:
 
@@ -208,7 +224,6 @@ golden 3/3 pass; known-bad 8/8 caught; cost 1008000 micro-units
   in code, https only, no redirects, no private address, a size cap and a timeout.
 - It does not choose between tiers, retry, or fall back to a second provider (AG-21), and it does not enforce a
   budget (AG-22).
-- It does not decide what may be sent. A caller passes findings, evidence snippets and ids, never a page; the
-  redaction here is a last line of defence, and the privacy rules are AG-23.
-- A redaction by pattern misses a secret in a shape it does not know, and it replaces any run of eight or more
-  digits, which can hide a count. Read a draft before you use it.
+- It does not decide what may be sent by itself: the privacy gate does, and
+  [what it allows, refuses and cannot see](./model-privacy.md) is its own page. A redaction by pattern misses a
+  secret in a shape it does not know and cannot see a personal name. Read a draft before you use it.

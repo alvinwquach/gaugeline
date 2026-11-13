@@ -10,6 +10,11 @@ import {
   approvalsDigestCases,
   createApprovalsDigestModel,
 } from "../approvals-digest/evals.js";
+import {
+  createModelPrivacyGateModel,
+  modelPrivacyGateAgent,
+  modelPrivacyGateCases,
+} from "../model-gateway/privacy-evals.js";
 import { defineEvalSet, type EvalSet } from "./sets.js";
 
 export const EVAL_SETS: readonly EvalSet[] = [
@@ -17,6 +22,11 @@ export const EVAL_SETS: readonly EvalSet[] = [
     agent: approvalsDigestAgent,
     cases: approvalsDigestCases,
     model: createApprovalsDigestModel,
+  }),
+  defineEvalSet({
+    agent: modelPrivacyGateAgent,
+    cases: modelPrivacyGateCases,
+    model: createModelPrivacyGateModel,
   }),
   defineEvalSet({
     agent: triageEvalAgent,

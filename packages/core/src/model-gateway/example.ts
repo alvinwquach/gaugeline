@@ -28,7 +28,17 @@ export async function runExample(): Promise<string> {
     tier: "fast",
     agentId: "triage",
     callId: "reword-1",
-    prompt: `Reword for the owner: the menu link gives a 404. Reply to ${["baker", "example.test"].join("@")}`,
+    input: {
+      task: "Reword this finding for the owner in two sentences.",
+      findings: [
+        {
+          id: "f-1",
+          checkId: "broken-link",
+          title: "The menu link gives a 404",
+          snippet: `Reply to ${["baker", "example.test"].join("@")}`,
+        },
+      ],
+    },
   });
   out.push(`tier ${answer.tier} -> model ${answer.model} (provider ${answer.provider})`);
   out.push(`text: ${answer.text}`);
@@ -37,11 +47,12 @@ export async function runExample(): Promise<string> {
   );
   out.push(`advisory: ${answer.advisory}, redacted: ${answer.redacted}`);
 
+  const hello = { task: "Say hello." };
   for (const [what, request] of [
-    ["unknown tier", { tier: "ultra", agentId: "triage", callId: "reword-1", prompt: "Hi" }],
+    ["unknown tier", { tier: "ultra", agentId: "triage", callId: "reword-1", input: hello }],
     [
-      "oversized prompt",
-      { tier: "fast", agentId: "triage", callId: "reword-1", prompt: "a".repeat(100_001) },
+      "oversized input",
+      { tier: "fast", agentId: "triage", callId: "reword-1", input: { task: "a".repeat(1_001) } },
     ],
   ] as const) {
     try {

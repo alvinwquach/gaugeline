@@ -52,7 +52,11 @@ const without = (id: string): Map<string, EvalRecording> => {
 
 describe("the registry", () => {
   it("holds the real agents' sets, one per agent, in the order they are reported", () => {
-    expect(EVAL_SETS.map((s) => s.agentId)).toEqual(["approvals-digest", "triage"]);
+    expect(EVAL_SETS.map((s) => s.agentId)).toEqual([
+      "approvals-digest",
+      "model-privacy-gate",
+      "triage",
+    ]);
   });
 });
 
@@ -130,7 +134,11 @@ describe("runEvalSets: what turns the suite red", () => {
     expect(suite.schema).toBe(EVAL_SUITE_SCHEMA);
     expect(suite.ok).toBe(true);
     expect(evalFailureCount(suite)).toBe(0);
-    expect(suite.agents.map((a) => a.agentId)).toEqual(["approvals-digest", "triage"]);
+    expect(suite.agents.map((a) => a.agentId)).toEqual([
+      "approvals-digest",
+      "model-privacy-gate",
+      "triage",
+    ]);
     for (const a of suite.agents) {
       expect(a.problems, a.agentId).toEqual([]);
       expect(a.golden.total, a.agentId).toBeGreaterThan(0);
@@ -265,6 +273,7 @@ describe("formatEvalSuite", () => {
     const shipped = formatEvalSuite(await runEvalSets(EVAL_SETS));
     expect(shipped.split("\n").filter((l) => l.startsWith("agent "))).toEqual([
       "agent approvals-digest",
+      "agent model-privacy-gate",
       "agent triage",
     ]);
     expect(

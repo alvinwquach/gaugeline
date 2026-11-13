@@ -64,6 +64,8 @@ export interface EvalModelRequest {
   caseId: string;
   agentId: string;
   prompt: string;
+  /** The case's input, for a model reached through the gateway, whose privacy gate sends findings and ids only. */
+  input?: EvalInput;
 }
 /** The one way an agent reaches a model. The fake replays; a live one is manual and never in CI (AG-11). */
 export interface EvalModel {

@@ -11,6 +11,7 @@ export const GATEWAY_ERROR_CODES = [
   "unknown-tier",
   "tier-not-configured",
   "bad-request",
+  "input-refused",
   "input-too-large",
   "missing-key",
   "bad-key",

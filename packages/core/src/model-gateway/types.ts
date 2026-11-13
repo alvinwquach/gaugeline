@@ -6,6 +6,7 @@
  */
 import type { EvalRecording, EvalUsage } from "../evals/types.js";
 import type { ApiKey } from "./key.js";
+import type { ModelInput, PrivacyRecord } from "./privacy.js";
 
 /** `fast` is for wording a draft, `strong` for the check writer and the miner (AG-21 chooses between them). */
 export const MODEL_TIERS = ["fast", "strong"] as const;
@@ -39,12 +40,16 @@ export type GatewayConfigInput = Omit<
 > &
   Partial<Pick<GatewayConfig, "timeoutMs" | "maxInputChars" | "maxOutputTokens">>;
 
-/** One call. `callId` is also the key of a recording; an agent's own id and call id are ids, never text. */
+/**
+ * One call. `callId` is also the key of a recording; an agent's own id and call id are ids, never text. What
+ * the call carries is a typed `input` (a task, findings, snippets and ids), never a prompt: the privacy gate
+ * (./privacy.ts, AG-23) checks it, redacts it and builds the only text an adapter is handed.
+ */
 export interface ModelRequest {
   tier: ModelTier;
   agentId: string;
   callId: string;
-  prompt: string;
+  input: ModelInput;
 }
 
 /** What a model answered. `advisory` is always true: an answer is words for a person to read, never a verdict. */
@@ -53,8 +58,10 @@ export interface ModelAnswer extends EvalRecording {
   model: string;
   tier: ModelTier;
   advisory: true;
-  /** True when a secret or personal data was replaced in the prompt before it was sent. */
+  /** True when a secret or personal data was replaced before the call (the counts are in `privacy`). */
   redacted: boolean;
+  /** What the privacy gate did: what was sent in numbers, and what it redacted by kind and count. Never a value. */
+  privacy: PrivacyRecord;
 }
 
 /** What a provider adapter is handed. The key is wrapped: it shows as "[redacted key]" anywhere it is printed. */

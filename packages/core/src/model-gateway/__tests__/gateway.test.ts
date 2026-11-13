@@ -6,6 +6,7 @@ import { inspect } from "node:util";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createGateway } from "../gateway.js";
 import { ModelGatewayError } from "../errors.js";
+import { buildModelPayload } from "../privacy.js";
 import { MAX_ANSWER_CHARS, MAX_PROMPT_CHARS, MODEL_TIERS, type BudgetHooks } from "../types.js";
 import {
   ANSWER,
@@ -176,13 +177,18 @@ describe("the key", () => {
   });
 });
 
-describe("the prompt", () => {
+describe("the input", () => {
+  const withSnippet = (snippet: string) => ({
+    ...REQUEST,
+    input: {
+      task: "Write one line about it.",
+      findings: [{ id: "f-1", checkId: "secret-in-js", title: "A key in a script", snippet }],
+    },
+  });
+
   it("loses a key-shaped string before the adapter sees it, and says it did", async () => {
     const { gateway, calls } = setup();
-    const a = await gateway.complete({
-      ...REQUEST,
-      prompt: `The page leaks ${SHAPED_KEY} in a script. Write one line about it.`,
-    });
+    const a = await gateway.complete(withSnippet(`The page leaks ${SHAPED_KEY} in a script.`));
     expect(calls[0]!.prompt).not.toContain(SHAPED_KEY);
     expect(calls[0]!.prompt).toContain("sk_live_[redacted]");
     expect(a.redacted).toBe(true);
@@ -190,60 +196,51 @@ describe("the prompt", () => {
 
   it("also loses an email address and a phone number", async () => {
     const { gateway, calls } = setup();
-    await gateway.complete({
-      ...REQUEST,
-      prompt: `Ask ${["test.person", "example.test"].join("@")} on +1 555 010 0199.`,
-    });
-    expect(calls[0]!.prompt).toBe("Ask [email] on [phone].");
+    await gateway.complete(
+      withSnippet(`Ask ${["test.person", "example.test"].join("@")} on +1 555 010 0199.`),
+    );
+    expect(calls[0]!.prompt).toContain("Ask [email] on [phone].");
   });
 
-  it("is passed on as written when there is nothing to remove", async () => {
+  it("is passed on as the gate built it when there is nothing to remove", async () => {
     const { gateway, calls } = setup();
     const a = await gateway.complete(REQUEST);
-    expect(calls[0]!.prompt).toBe(REQUEST.prompt);
+    const built = buildModelPayload(REQUEST.input);
+    expect(built.ok && calls[0]!.prompt).toBe(built.ok && built.payload);
+    expect(calls[0]!.prompt).toContain(REQUEST.input.task);
     expect(a.redacted).toBe(false);
   });
 
   it("is refused outright when it holds the user's own key, whatever its shape", async () => {
     const { gateway, calls } = setup();
-    const e = await failure(
-      gateway.complete({ ...REQUEST, prompt: `Why does ${PLAIN_KEY} not work?` }),
-    );
+    const e = await failure(gateway.complete(withSnippet(`Why does ${PLAIN_KEY} not work?`)));
     expect(e.code).toBe("key-in-prompt");
     noKey(e);
     expect(calls).toHaveLength(0);
   });
 
-  it("is refused when it is over the cap, and the key is not even read", async () => {
-    const { gateway, calls, reads } = setup({ config: { maxInputChars: 1_000 } });
-    await expect(
-      gateway.complete({ ...REQUEST, prompt: "a".repeat(1_000) }),
-    ).resolves.toBeDefined();
-    const e = await failure(gateway.complete({ ...REQUEST, prompt: "a".repeat(1_001) }));
+  it("is refused when what would be sent is over the cap, and the key is not even read", async () => {
+    const built = buildModelPayload(REQUEST.input);
+    const size = built.ok ? built.payload.length : 0;
+    const { gateway, calls, reads } = setup({ config: { maxInputChars: size } });
+    await expect(gateway.complete(REQUEST)).resolves.toBeDefined();
+    const small = setup({ config: { maxInputChars: size - 1 } });
+    const e = await failure(small.gateway.complete(REQUEST));
     expect(e.code).toBe("input-too-large");
-    expect(e.message).toContain("1000");
+    expect(e.message).toContain(String(size - 1));
     expect(calls).toHaveLength(1);
     expect(reads()).toBe(1);
+    expect(small.reads()).toBe(0);
+    expect(small.calls).toHaveLength(0);
   });
 
-  it("has a hard cap of 100000 characters by default, and a config cannot raise it", async () => {
-    const { gateway, calls } = setup({ config: { maxInputChars: undefined } });
-    await expect(
-      gateway.complete({ ...REQUEST, prompt: "a".repeat(MAX_PROMPT_CHARS) }),
-    ).resolves.toBeDefined();
-    const e = await failure(
-      gateway.complete({ ...REQUEST, prompt: "a".repeat(MAX_PROMPT_CHARS + 1) }),
-    );
-    expect(e.code).toBe("input-too-large");
-    expect(calls).toHaveLength(1);
+  it("cannot be given a larger cap than 100000 characters in a config", () => {
     expect(() => setup({ config: { maxInputChars: MAX_PROMPT_CHARS + 1 } })).toThrow(
       expect.objectContaining({ code: "bad-config" }),
     );
   });
 
   it.each([
-    ["an empty prompt", { prompt: "" }],
-    ["a prompt that is not text", { prompt: 7 as never }],
     ["an empty call id", { callId: "" }],
     ["a call id with a line break", { callId: "a\nb" }],
     ["an agent id that is not id-shaped", { agentId: "a b" }],
@@ -367,7 +364,7 @@ describe("the provider's answer", () => {
     const a = await gateway.complete(REQUEST);
     expect(a.advisory).toBe(true);
     expect(Object.keys(a).sort()).toEqual(
-      ["advisory", "model", "provider", "redacted", "text", "tier", "usage"].sort(),
+      ["advisory", "model", "privacy", "provider", "redacted", "text", "tier", "usage"].sort(),
     );
   });
 });
@@ -397,8 +394,10 @@ describe("budget hooks (AG-22 fills them in)", () => {
         return ANSWER;
       },
     });
-    await gateway.complete({ ...REQUEST, prompt: "a".repeat(10) });
-    expect(order).toEqual(["before:fast:small-model:3:1024", "adapter", "after:1200"]);
+    await gateway.complete(REQUEST);
+    const built = buildModelPayload(REQUEST.input);
+    const tokens = Math.ceil((built.ok ? built.payload.length : 0) / 4);
+    expect(order).toEqual([`before:fast:small-model:${tokens}:1024`, "adapter", "after:1200"]);
   });
 
   it("stop the call before anything is sent when they say no", async () => {
