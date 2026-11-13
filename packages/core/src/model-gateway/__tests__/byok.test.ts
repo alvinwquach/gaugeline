@@ -18,6 +18,11 @@ import {
 import { createRecordedAdapter } from "../recorded.js";
 import { KEY_NAME, ODD_KEY, PLAIN_KEY, REQUEST, SHAPED_KEY, testAdapter } from "./helpers.js";
 
+/** An invented key in no shape the scanner knows, lower case so it fits the model id pattern. */
+const LOWER_KEY = ["demo", "value", "a1b2c3d4e5f6g7h8i9j0"].join("-");
+/** A short one: only the environment can tell it from a model id. */
+const SHORT_KEY = ["demo", "k9x2m7"].join("-");
+
 const FILE = JSON.stringify({
   provider: "test",
   keyEnv: KEY_NAME,
@@ -86,6 +91,74 @@ describe("the config file", () => {
     expect(thrown).toBeInstanceOf(ByokError);
     expect(thrown!.code).toBe("bad-config");
     for (const k of [PLAIN_KEY, SHAPED_KEY]) expect(thrown!.message).not.toContain(k);
+  });
+
+  describe("a key pasted into a field that is printed back (the key's shape is not known to any scanner)", () => {
+    const withTier = (v: string) => JSON.stringify({ ...JSON.parse(FILE), tiers: { fast: v } });
+    const withProvider = (v: string) => JSON.stringify({ ...JSON.parse(FILE), provider: v });
+    const refused = (text: string, env: Record<string, string | undefined> = {}) => {
+      let thrown: ByokError | undefined;
+      try {
+        readByokConfig(text, env);
+      } catch (e) {
+        thrown = e as ByokError;
+      }
+      expect(thrown).toBeInstanceOf(ByokError);
+      for (const k of [LOWER_KEY, SHORT_KEY, PLAIN_KEY]) expect(thrown!.message).not.toContain(k);
+      return thrown!;
+    };
+
+    it.each([
+      ["a model id", withTier],
+      ["the provider", withProvider],
+    ])("refuses the value of the key variable in %s, equal or inside a longer value", (_n, put) => {
+      const env = { [KEY_NAME]: SHORT_KEY };
+      refused(put(SHORT_KEY), env);
+      refused(put(`prefix-${SHORT_KEY}-suffix`), env);
+    });
+
+    it.each([
+      ["a model id", withTier],
+      ["the provider", withProvider],
+    ])(
+      "refuses a long unbroken run of letters and digits in %s even when the variable is not set",
+      (_n, put) => {
+        refused(put(LOWER_KEY));
+        refused(put("a".repeat(24)));
+        refused(put("0123456789abcdef0123456789abcdef"));
+      },
+    );
+
+    it("refuses a model id that is not lower case, or longer than 64 characters", () => {
+      refused(withTier("Some-Model"));
+      refused(withTier("a/b"));
+      refused(withTier(`m${"-x".repeat(40)}`));
+    });
+
+    it("still accepts the ids real models have", () => {
+      for (const id of [
+        "gpt-4o-mini-2024-07-18",
+        "model-3-5-sonnet-20241022",
+        "small-model",
+        "llama3.1:8b",
+        "model-v2.5-instruct",
+      ])
+        expect(readByokConfig(withTier(id)).tiers.fast).toBe(id);
+    });
+
+    it("also refuses a key in an object key, and in the variable name", () => {
+      refused(JSON.stringify({ ...JSON.parse(FILE), [SHORT_KEY]: 1 }), { [KEY_NAME]: SHORT_KEY });
+      refused(JSON.stringify({ ...JSON.parse(FILE), keyEnv: SHORT_KEY }), {
+        [SHORT_KEY]: SHORT_KEY,
+      });
+    });
+
+    it("prints a config-derived string only after it passed, and hides the key value if one slipped in", () => {
+      const config = { ...readByokConfig(FILE), provider: SHORT_KEY };
+      const s = describeByok(config, { [KEY_NAME]: SHORT_KEY }, "cli");
+      expect(JSON.stringify(s)).not.toContain(SHORT_KEY);
+      expect(renderByokStatus(s)).not.toContain(SHORT_KEY);
+    });
   });
 
   it("refuses a file over 20000 characters before parsing it", () => {

@@ -116,6 +116,33 @@ describe("gaugeline llm", () => {
     for (const k of [KEY_VALUE, SHAPED]) expect(r.out + r.err).not.toContain(k);
   });
 
+  it.each([
+    ["a model id", (k: string) => ({ ...SETTINGS, tiers: { fast: k } })],
+    ["the provider", (k: string) => ({ ...SETTINGS, provider: k })],
+    [
+      "a model id inside a longer one",
+      (k: string) => ({ ...SETTINGS, tiers: { fast: `x-${k}-y` } }),
+    ],
+  ])("refuses the key itself in %s, and prints it nowhere, in any output mode", async (_n, put) => {
+    const key = ["demo", "k9x2m7"].join("-");
+    write("gaugeline.llm.json", put(key));
+    for (const extra of [[], ["--json"], ["--verbose"], ["--json", "--verbose"]]) {
+      const r = await run(["llm", ...extra], { EXAMPLE_API_KEY: key });
+      expect(r.code, extra.join(" ")).toBe(2);
+      expect(r.out + r.err).not.toContain(key);
+    }
+  });
+
+  it("refuses a key in a shape nothing knows, with no variable set, and prints it nowhere", async () => {
+    const key = ["demo", "value", "a1b2c3d4e5f6g7h8i9j0"].join("-");
+    write("gaugeline.llm.json", { ...SETTINGS, tiers: { fast: key } });
+    for (const extra of [[], ["--json"], ["--verbose"]]) {
+      const r = await run(["llm", ...extra]);
+      expect(r.code).toBe(2);
+      expect(r.out + r.err).not.toContain(key);
+    }
+  });
+
   it("takes no word on the line: the file is named with --llm-config", () => {
     expect(parseCliArgs(["llm", "settings.json"]).kind).toBe("error");
   });

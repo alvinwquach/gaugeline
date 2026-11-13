@@ -5,7 +5,7 @@
  * customer's own key, never in Gaugeline's service. Gaugeline stores no key, so there is nothing to metering or
  * a vault here: mode 3 is parked with billing and refused by name. Nothing in this file sends a request.
  */
-import { secretsInValue } from "../secrets.js";
+import { secretsInValue, stringsOf } from "../secrets.js";
 import { parseGatewayConfig } from "./config.js";
 import { createGateway } from "./gateway.js";
 import { isUsableKey } from "./key.js";
@@ -33,7 +33,10 @@ export class ByokError extends Error {
  * that looks like a key, and anything the config shape refuses. An error names where the problem is and never
  * repeats what was written there.
  */
-export function readByokConfig(text: string): GatewayConfig {
+export function readByokConfig(
+  text: string,
+  env: Readonly<Record<string, string | undefined>> = {},
+): GatewayConfig {
   if (text.length > MAX_LLM_CONFIG_CHARS)
     throw new ByokError(
       "bad-config",
@@ -45,11 +48,18 @@ export function readByokConfig(text: string): GatewayConfig {
   } catch {
     throw new ByokError("bad-config", `${LLM_CONFIG_FILE} is not valid JSON.`);
   }
-  const keys = secretsInValue(raw);
-  if (keys.length > 0)
+  // The value of the variable the file names is a key whatever its shape: it may be in no field of the file.
+  const named =
+    raw !== null && typeof raw === "object" ? (raw as { keyEnv?: unknown }).keyEnv : undefined;
+  const own = typeof named === "string" ? env[named] : undefined;
+  const ownKey = own !== undefined && own.length >= 8 ? own : undefined;
+  if (
+    secretsInValue(raw).length > 0 ||
+    (ownKey !== undefined && stringsOf(raw).some((s) => s.includes(ownKey)))
+  )
     throw new ByokError(
       "bad-config",
-      `${LLM_CONFIG_FILE} holds something that looks like a key (${keys.join(", ")}). Put the key in your environment and name the variable in keyEnv.`,
+      `${LLM_CONFIG_FILE} holds something that looks like a key. Put the key in your environment and name the variable in keyEnv.`,
     );
   const parsed = parseGatewayConfig(raw);
   if (!parsed.ok)
@@ -74,13 +84,17 @@ export function describeByok(
   mode: ByokMode,
 ): ByokStatus {
   const keyEnv = config.keyEnv ?? null;
+  // A last line of defence: a config string that holds the key is never put in the status.
+  const own = keyEnv === null ? undefined : env[keyEnv];
+  const shown = (v: string) =>
+    own !== undefined && own.length >= 8 && v.includes(own) ? "[redacted key]" : v;
   const needsKey = config.provider !== RECORDED_PROVIDER;
   return {
     mode,
-    provider: config.provider,
-    tiers: config.tiers,
-    keyEnv,
-    keySet: !needsKey ? null : keyEnv === null ? false : isUsableKey(env[keyEnv]),
+    provider: shown(config.provider),
+    tiers: Object.fromEntries(Object.entries(config.tiers).map(([t, m]) => [t, shown(m)])),
+    keyEnv: keyEnv === null ? null : shown(keyEnv),
+    keySet: !needsKey ? null : keyEnv === null ? false : isUsableKey(own),
   };
 }
 

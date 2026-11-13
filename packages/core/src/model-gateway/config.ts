@@ -17,9 +17,22 @@ import {
 const PROVIDER = /^[a-z][a-z0-9-]{0,31}$/;
 /** An environment variable's name: capitals, digits and underscores. A key is never one of these (checked below). */
 const ENV_NAME = /^[A-Z][A-Z0-9_]{1,63}$/;
-const MODEL_ID = /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,99}$/;
+/** A model id is printed back, so its shape is strict: lower case, digits, dots, colons and dashes, up to 64. */
+const MODEL_ID = /^[a-z0-9][a-z0-9._:-]{0,63}$/;
+/**
+ * No real provider or model name has twenty letters and digits in a row; a key does. A value with such a run is
+ * refused, whatever its shape, so a key pasted into a field that is printed back is never accepted.
+ */
+const LONG_RUN = /[A-Za-z0-9]{20,}/;
+const noRun = (v: string) => !LONG_RUN.test(v);
 
-const modelId = z.string({ error: "must be a model id" }).regex(MODEL_ID, "must be a model id");
+const modelId = z
+  .string({ error: "must be a model id" })
+  .regex(
+    MODEL_ID,
+    "must be a model id: lower case letters, digits, dots, colons and dashes, up to 64",
+  )
+  .refine(noRun, "must be a model id, never a key");
 
 const tiers = z
   .object(Object.fromEntries(MODEL_TIERS.map((t) => [t, modelId.optional()])), {
@@ -35,7 +48,8 @@ export const gatewayConfigSchema = z
   .object({
     provider: z
       .string({ error: "must be a provider name" })
-      .regex(PROVIDER, "must be a provider name"),
+      .regex(PROVIDER, "must be a provider name")
+      .refine(noRun, "must be a provider name, never a key"),
     keyEnv: z
       .string({ error: "must be the name of an environment variable" })
       .regex(

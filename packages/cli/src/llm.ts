@@ -45,7 +45,7 @@ export function runLlm(
   }
   let status;
   try {
-    status = describeByok(readByokConfig(text), deps.env, "cli");
+    status = describeByok(readByokConfig(text, deps.env), deps.env, "cli");
   } catch (e) {
     if (e instanceof ByokError)
       throw new ConfigError(e.message.replace(LLM_CONFIG_FILE, typed), {
