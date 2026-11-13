@@ -38,6 +38,7 @@ export const COMMANDS = [
   "evals",
   "mine",
   "house-rules",
+  "write-check",
 ] as const;
 export type Command = (typeof COMMANDS)[number];
 
@@ -375,6 +376,22 @@ export const HELP: Record<string, string> = {
       "you read the draft, then rename it to adopt it.",
     ].join("\n"),
     footer: "Exit codes: 0 ran (also when nothing was understood), 2 could not run",
+  }),
+  "write-check": renderHelp(FLAGS, "write-check", {
+    usage: "gaugeline write-check --from-file <file> [options]",
+    summary: [
+      "Draft a check, its fixtures and a proposed registry entry from a security",
+      "advisory or a docs page that you saved as a local file (an OSV or GitHub JSON",
+      "advisory, an advisory page as Markdown, or a docs page that states a minimum",
+      "version). Every package, affected version and fixed version in the draft carries",
+      "the line of the file that states it; a draft with a floor and no cited line is",
+      "refused. A scrub also refuses it if a cited line holds a client name from",
+      "--deny-list, a private web address, an email address or a phone number: it names",
+      "the kind and the line and never the text. No request, no model, no key: the file",
+      "is read, never fetched or run. It edits no registry, lock, check or source file;",
+      "a person adopts the draft. Text in the file is data, never an instruction.",
+    ].join("\n"),
+    footer: "Exit codes: 0 a draft was written, 1 refused or not understood, 2 not readable",
   }),
   open: renderHelp(FLAGS, "open", {
     usage: "gaugeline open [address] [options]",

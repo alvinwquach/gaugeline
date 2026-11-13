@@ -34,7 +34,9 @@ and not built.
   only the live file: a draft is never read, and no model or request is involved.
 - **Today (row AG-18).** The [one-page report](./one-pager.md): a cited, read-only summary of a run (the headline,
   the first fixes and what was not checked). It reads results and nothing else.
-- **Planned (row AG-16).** A draft-only helper that drafts checks for a person to review.
+- **Today (row AG-16).** The [check writer](./check-writer.md): `gaugeline write-check` reads one advisory or
+  docs page you saved as a local file and writes a draft of a check, fixtures and registry entries, every claim
+  with the line of the file that states it. It fetches nothing and edits no registry, lock or source file.
 
 ## What an agent can do
 

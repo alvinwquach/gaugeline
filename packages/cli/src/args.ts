@@ -51,6 +51,7 @@ export const SUBCOMMANDS = [
   "evals",
   "mine",
   "house-rules",
+  "write-check",
 ] as const;
 export type CliCommand = "check" | (typeof SUBCOMMANDS)[number];
 
@@ -327,6 +328,17 @@ export type ParsedArgs =
       /** --deny-list: a file of names, one per line, that must never reach the draft. */
       denyList?: string;
       /** --out: the draft file (default field-findings.draft.md). */
+      out?: string;
+      verbose: boolean;
+      quiet: boolean;
+    }
+  | {
+      kind: "write-check";
+      /** --from-file: the advisory or docs page, saved as a local file. */
+      fromFile: string;
+      /** --deny-list: a file of names, one per line, that must never reach the draft. */
+      denyList?: string;
+      /** --out: the draft file (default check-writer.draft.md). */
       out?: string;
       verbose: boolean;
       quiet: boolean;
@@ -1550,6 +1562,34 @@ export function parseCliArgs(
     return {
       kind: "mine",
       reviewNotes: notes,
+      ...(typeof values["deny-list"] === "string" ? { denyList: values["deny-list"] } : {}),
+      ...(typeof values.out === "string" ? { out: values.out } : {}),
+      verbose,
+      quiet: values.quiet === true,
+    };
+  }
+  if (command === "write-check") {
+    const usage =
+      "For example: gaugeline write-check --from-file advisory.md --deny-list names.txt";
+    if (positionals.length > 0)
+      return {
+        kind: "error",
+        message: `gaugeline write-check takes its file from --from-file, not a word on the line: ${positionals.join(", ")}.`,
+        hint: usage,
+        verbose,
+      };
+    const from = typeof values["from-file"] === "string" ? values["from-file"].trim() : "";
+    if (from === "")
+      return {
+        kind: "error",
+        message:
+          "gaugeline write-check needs the advisory or docs page, saved as a file: --from-file advisory.md",
+        hint: usage,
+        verbose,
+      };
+    return {
+      kind: "write-check",
+      fromFile: from,
       ...(typeof values["deny-list"] === "string" ? { denyList: values["deny-list"] } : {}),
       ...(typeof values.out === "string" ? { out: values.out } : {}),
       verbose,

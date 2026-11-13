@@ -101,6 +101,7 @@ export const UNLISTED: NavPage[] = [
   { slug: "regression-watcher", title: "The regression watcher" },
   { slug: "field-findings-miner", title: "The field-findings miner" },
   { slug: "house-rules", title: "House rules: a written style guide as a draft config" },
+  { slug: "check-writer", title: "The check writer" },
   { slug: "changelog", title: "Changelog" },
   { slug: "reference/json-schema", title: "JSON output reference" },
   { slug: "contributing/docs-first", title: "Docs first" },
