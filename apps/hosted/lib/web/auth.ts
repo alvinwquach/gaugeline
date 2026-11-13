@@ -37,8 +37,11 @@ export interface AuthProvider {
   exchangeLink(token: string): Promise<Exchange>;
   /** The claims of an access token that is genuine, current and not signed out, else null. Never throws. */
   verify(accessToken: string): Claims | null;
-  /** End this session on the server: the same token no longer verifies. */
-  revoke(claims: Claims): Promise<void>;
+  /**
+   * End this session on the server: the same token no longer verifies. `accessToken` is the token the
+   * claims came from, for a provider that signs the session out at its own server too.
+   */
+  revoke(claims: Claims, accessToken?: string): Promise<void>;
 }
 
 const b64 = (b: Buffer | string): string => Buffer.from(b).toString("base64url");
@@ -190,21 +193,35 @@ export class StandInAuth implements AuthProvider {
 
   verify(accessToken: string): Claims | null {
     const c = verifyHs256(accessToken, this.opts.secret);
-    if (!c) return null;
-    const nowS = this.now().getTime() / 1000;
-    if (typeof c.exp !== "number" || !(c.exp > nowS) || c.exp > nowS + MAX_LIFETIME_S) return null;
-    if (typeof c.iat !== "number" || c.iat > nowS + SKEW_S) return null;
-    if (c.nbf !== undefined && (typeof c.nbf !== "number" || c.nbf > nowS + SKEW_S)) return null;
-    if (c.iss !== STAND_IN_ISSUER) return null;
-    if (c.aud !== "authenticated" || c.role !== "authenticated") return null;
-    if (typeof c.sub !== "string" || !UUID.test(c.sub)) return null;
-    if (typeof c.session_id === "string" && this.revoked.has(c.session_id)) return null;
-    return { ...(c as unknown as Claims), sub: c.sub.toLowerCase() };
+    const claims = c && claimsIfCurrent(c, STAND_IN_ISSUER, this.now());
+    if (!claims) return null;
+    if (claims.session_id && this.revoked.has(claims.session_id)) return null;
+    return claims;
   }
 
   async revoke(claims: Claims): Promise<void> {
     if (claims.session_id) this.revoked.set(claims.session_id, claims.exp);
   }
+}
+
+/**
+ * The claims of a signed payload when they are current and for a signed-in person of this issuer, else
+ * null: exp in the future and at most 30 days away, iat and nbf not in the future (60 s of skew), the
+ * issuer exactly `issuer`, aud and role `authenticated`, sub a UUID (returned in lower case).
+ */
+export function claimsIfCurrent(
+  c: Record<string, unknown>,
+  issuer: string,
+  now: Date,
+): Claims | null {
+  const nowS = now.getTime() / 1000;
+  if (typeof c.exp !== "number" || !(c.exp > nowS) || c.exp > nowS + MAX_LIFETIME_S) return null;
+  if (typeof c.iat !== "number" || c.iat > nowS + SKEW_S) return null;
+  if (c.nbf !== undefined && (typeof c.nbf !== "number" || c.nbf > nowS + SKEW_S)) return null;
+  if (c.iss !== issuer) return null;
+  if (c.aud !== "authenticated" || c.role !== "authenticated") return null;
+  if (typeof c.sub !== "string" || !UUID.test(c.sub)) return null;
+  return { ...(c as unknown as Claims), sub: c.sub.toLowerCase() };
 }
 
 const hash = (token: string): string => createHash("sha256").update(token).digest("hex");

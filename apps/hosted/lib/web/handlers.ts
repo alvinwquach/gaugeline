@@ -166,7 +166,7 @@ export async function postSignOut(request: Request, deps: WebDeps): Promise<Resp
   // End the session on the server too, so a copy of the cookie stops working at once.
   const token = readCookie(request.headers.get("cookie"), sessionCookieName(deps.secureCookies));
   const claims = token ? deps.auth.verify(token) : null;
-  if (claims) await deps.auth.revoke(claims);
+  if (claims && token) await deps.auth.revoke(claims, token);
   return redirect("/sign-in", [
     clearCookie(sessionCookieName(deps.secureCookies), deps.secureCookies),
     clearCookie(orgCookieName(deps.secureCookies), deps.secureCookies),
