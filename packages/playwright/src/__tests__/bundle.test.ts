@@ -13,6 +13,9 @@ import config from "../../tsup.config.js";
  */
 const BUDGET_BYTES = 100_000;
 
+/** tsup reads `entry` as a glob, and a glob treats the backslashes of a Windows path as escapes. */
+const forGlob = (path: string): string => path.replaceAll("\\", "/");
+
 describe("the published bundle", () => {
   it("holds no third-party package and stays small", async () => {
     const out = mkdtempSync(join(tmpdir(), "gaugeline-pw-bundle-"));
@@ -20,9 +23,9 @@ describe("the published bundle", () => {
       const options = (Array.isArray(config) ? config[0] : config) as Options;
       await build({
         ...options,
-        entry: [fileURLToPath(new URL("../index.ts", import.meta.url))],
+        entry: [forGlob(fileURLToPath(new URL("../index.ts", import.meta.url)))],
         config: false,
-        outDir: out,
+        outDir: forGlob(out),
         dts: false,
         clean: false,
         metafile: true,

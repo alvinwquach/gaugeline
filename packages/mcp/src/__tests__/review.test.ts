@@ -370,25 +370,41 @@ describe("the HTTP transport", () => {
   });
 
   it("a body that never stops is cut off at the drain limit instead of being read for ever", async () => {
-    const r = await startHttp({
-      makeServer: () => createGaugelineServer(),
-      maxDrainBytes: 2 * 1024 * 1024,
-    });
+    const maxDrainBytes = 2 * 1024 * 1024;
+    const limit = 1024 * 1024 + maxDrainBytes;
+    // Bytes already in flight when the server stops reading (socket buffers on both ends, and one pump chunk) are
+    // not under the server's control, so the test allows this much beyond the limit and no more.
+    const slack = 24 * 1024 * 1024;
+    const timeBoundMs = 8_000;
+    const r = await startHttp({ makeServer: () => createGaugelineServer(), maxDrainBytes });
     https.push(r);
     const sock = netConnect({ host: "127.0.0.1", port: r.port });
     sock.on("error", () => undefined);
     let reply = "";
     sock.on("data", (d: Buffer) => (reply += d.toString("latin1")));
     const closed = new Promise<void>((resolve) => sock.once("close", () => resolve()));
+    const started = Date.now();
+    let accepted = 0;
     sock.write(
       `POST /mcp HTTP/1.1\r\nHost: 127.0.0.1:${r.port}\r\nContent-Type: application/json\r\nAccept: application/json, text/event-stream\r\nContent-Length: ${1024 * 1024 * 1024}\r\n\r\n`,
     );
     // Push until the server hangs up; a server that reads for ever would never close and this would time out.
-    const pump = setInterval(() => sock.write(Buffer.alloc(512 * 1024, "a")), 20);
+    const chunk = 512 * 1024;
+    const pump = setInterval(
+      () =>
+        sock.write(Buffer.alloc(chunk, "a"), (e) => {
+          if (!e) accepted += chunk;
+        }),
+      20,
+    );
     await closed;
     clearInterval(pump);
-    expect(reply.startsWith("HTTP/1.1 413")).toBe(true);
-  });
+    expect(Date.now() - started).toBeLessThan(timeBoundMs);
+    expect(accepted).toBeLessThanOrEqual(limit + slack);
+    // Once the client is being cut off, Windows may discard the unread 413 when the socket closes: empty is fine,
+    // anything else than a 413 is not.
+    expect(reply === "" || reply.startsWith("HTTP/1.1 413")).toBe(true);
+  }, 20_000);
 
   it("needs a token for every option that widens what a tool can reach", async () => {
     const out: string[] = [];
