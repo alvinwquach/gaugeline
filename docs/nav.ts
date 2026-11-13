@@ -138,6 +138,8 @@ export const UNLISTED: NavPage[] = [
   {
     slug: "guides/pagespeed",
     title: "Speed: what real visitors measured, and what a lab test says",
+  },
+  {
     slug: "guides/framework-speed-causes",
     title: "Framework speed causes: what a framework leaves behind",
   },

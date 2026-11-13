@@ -67,9 +67,8 @@ low on data or power.
 ## What none of this can say
 
 These are rules over the page as sent and its own scripts. They cannot see which image a browser actually picks,
-what a minified third-party bundle does, or how fast the page feels to a visitor. `--pagespeed` reports what real
-visitors measured, and `--attribution` finds which change makes a page faster, in their own guides once they
-merge.
+what a minified third-party bundle does, or how fast the page feels to a visitor. `--pagespeed` ([Speed](./pagespeed.md)) reports what real
+visitors measured, and `--attribution` finds which change makes a page faster.
 
 ## Example: a bakery with all four
 
