@@ -48,10 +48,10 @@ function readRules(cwd: string, typed: string): string {
 }
 
 /**
- * gaugeline house-rules --rules <file>: compile a site's written rules (AG-17) into a DRAFT gaugeline.house.json
+ * gaugeline house-rules --rules <file>: compile a site's written rules (AG-17) into a DRAFT gaugeline.rules.json
  * with core's compiler. It reads the one file named and nothing else (no request, no model, no key), and writes
  * one new file whose name ends in .draft.json: never over a file that exists, and never the live
- * gaugeline.house.json. A person reads the draft and renames it to adopt it. Exit 0 when it ran (also when no
+ * gaugeline.rules.json. A person reads the draft and renames it to adopt it. Exit 0 when it ran (also when no
  * line was understood: then nothing is written), 2 (a ConfigError) when it could not run. The text of a rules
  * file is data: a line that gives an order is listed and ignored.
  */

@@ -614,7 +614,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze<FlagDef[]>([
         "The JSON report's file (default gaugeline-evals.json), in this folder or one inside it",
       mine: "The draft file, Markdown (default field-findings.draft.md)",
       "house-rules":
-        "The draft file to write (default gaugeline.house.draft.json); its name must end in .draft.json and it must not exist yet",
+        "The draft file to write (default gaugeline.rules.draft.json); its name must end in .draft.json and it must not exist yet",
     },
     since: "0.2.0",
     commands: [

@@ -5,6 +5,7 @@ import type { findingSchema } from "./result.js";
 import type { AppLookup } from "./apps.js";
 import type { CalendarRead } from "./calendars.js";
 import type { AiConfig } from "./ai-intent.js";
+import type { HouseConfig } from "./house-rules/schema.js";
 import type { FactsConfig } from "./facts/types.js";
 import type { PaymentsConfig } from "./payments/types.js";
 import type { LanguageGroup, LanguageRules } from "./languages.js";
@@ -154,6 +155,8 @@ export interface CheckContext {
   facts?: FactsConfig;
   /** What AI crawlers should be able to do (gaugeline.ai.json). */
   ai?: AiConfig;
+  /** The site's written house rules (gaugeline.rules.json), already validated. Absent: house-rules-broken asks nothing. */
+  house?: HouseConfig;
   /**
    * When documents last changed in a connected content source, by page address. Absent until a
    * source is connected (branch 30): next-stale-after-publish is then unchecked.

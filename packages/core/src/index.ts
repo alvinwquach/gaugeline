@@ -2008,6 +2008,7 @@ export {
   MAX_LISTED,
   MAX_RULES_CHARS,
   MAX_RULES_LINES,
+  MAX_HITS_PER_RULE,
   MAX_TERMS,
   REFUSAL_CODES,
   compileHouseRules,
@@ -2018,6 +2019,7 @@ export {
   houseRulesCases,
   houseRulesLines,
   parseHouseConfig,
+  readHouseRules,
   renderHouseDraftJson,
   renderHouseRulesReview,
 } from "./house-rules/index.js";
@@ -2025,7 +2027,12 @@ export type {
   ForbiddenCharName,
   HeadingCase,
   HouseConfig,
+  HouseHit,
+  HouseNotChecked,
+  HousePage,
+  HouseReading,
   HouseRulesDraft,
+  HouseViolation,
   RefusalCode,
   RulesLine,
 } from "./house-rules/index.js";

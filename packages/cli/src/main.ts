@@ -211,6 +211,7 @@ import {
   readHidden,
   readStudio,
   readAiConfig,
+  readHouseConfig,
   readLanguageRules,
   readPayments,
   readRenewalsConfig,
@@ -1357,6 +1358,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       const schemaRules = readSchemaRules(deps.cwd ?? process.cwd());
       const languageRules = readLanguageRules(deps.cwd ?? process.cwd());
       const ai = readAiConfig(deps.cwd ?? process.cwd());
+      const house = readHouseConfig(deps.cwd ?? process.cwd());
       const facts = readFacts(deps.cwd ?? process.cwd());
       const documents = readDocumentsConfig(deps.cwd ?? process.cwd());
       const payments = readPayments(deps.cwd ?? process.cwd());
@@ -1789,6 +1791,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         ...(schemaRules ? { schemaRules } : {}),
         ...(languageRules ? { languageRules } : {}),
         ...(ai ? { ai } : {}),
+        ...(house ? { house } : {}),
         ...(facts ? { facts } : {}),
         ...(documents ? { documents: { config: documents } } : {}),
         ...(payments ? { payments } : {}),

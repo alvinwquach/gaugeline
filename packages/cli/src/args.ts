@@ -292,7 +292,7 @@ export type ParsedArgs =
       kind: "house-rules";
       /** --rules: the file of written rules. */
       rules: string;
-      /** --out: the draft file to write. Absent: gaugeline.house.draft.json. */
+      /** --out: the draft file to write. Absent: gaugeline.rules.draft.json. */
       out?: string;
       json: boolean;
       verbose: boolean;

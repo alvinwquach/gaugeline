@@ -1,6 +1,6 @@
 /**
  * What a person reads and what is written (AG-17). The draft file is the config and nothing else, so renaming
- * a reviewed draft to gaugeline.house.json is the whole of adopting it. The review is plain terminal text: a
+ * a reviewed draft to gaugeline.rules.json is the whole of adopting it. The review is plain terminal text: a
  * pure function of the draft (no clock, no network). Every quoted line was cleaned and cut when the draft was
  * made, and no line of the rules file reaches the draft file.
  */
