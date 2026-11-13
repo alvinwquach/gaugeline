@@ -12,6 +12,15 @@
 -- XOR with a SHA-256 keystream from a fixed TEST key that is printed right here. It is reversible by
 -- design and protects nothing; it exists so the tests can show that the table never holds plaintext.
 
+-- A mistaken run on a real project would replace the real view and functions: refuse it.
+do $$
+begin
+  if exists (select 1 from pg_catalog.pg_extension where extname = 'supabase_vault') then
+    raise exception 'supabase_vault is installed here: this is a real Vault, do not load the test stand-in';
+  end if;
+end
+$$;
+
 create schema if not exists vault;
 revoke all on schema vault from public;
 

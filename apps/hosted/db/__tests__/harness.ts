@@ -69,7 +69,8 @@ export async function applyStandIn(sql: Sql): Promise<void> {
   await sql.unsafe(readFileSync(VAULT_STAND_IN, "utf8")).simple();
 }
 
-export type DbRole = "anon" | "authenticated" | "service_role" | "gaugeline_agent";
+export type DbRole =
+  "anon" | "authenticated" | "service_role" | "gaugeline_agent" | "gaugeline_worker";
 
 class Rollback extends Error {}
 

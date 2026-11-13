@@ -1,10 +1,15 @@
 /**
- * Secrets in Vault (V-01): only the worker's role (service_role) reaches a value, and only through
- * private.put_secret / get_secret / delete_secret. Run against the Vault stand-in (stand-in/supabase-vault.sql).
+ * Secrets in Vault (V-01): only the worker's role (gaugeline_worker) reads a value, through
+ * private.get_secret; service_role may put and delete (write-only). Run against the Vault stand-in (stand-in/supabase-vault.sql).
  */
 import postgres from "postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { privateFunctionsExecutableBy, tablesWithoutRls } from "../audit.js";
+import { randomBytes } from "node:crypto";
+import {
+  definerFunctionsWithoutEmptySearchPath,
+  privateFunctionsExecutableBy,
+  tablesWithoutRls,
+} from "../audit.js";
 import { MIGRATIONS_DIR, migrate } from "../migrate.js";
 import {
   as,
@@ -29,6 +34,7 @@ const HOOK_A = ["https://hooks.slack.test/services", "T0NORTHGATE", "B0TIDEWATER
 );
 const SIGNING_B = ["sig", "maple", "physio", "marker-b"].join("-");
 const service = { role: "service_role" as const };
+const worker = { role: "gaugeline_worker" as const };
 
 describe.skipIf(!HAS_DATABASE)("hosted database: secrets in Vault", () => {
   let db: TestDatabase;
@@ -53,7 +59,7 @@ describe.skipIf(!HAS_DATABASE)("hosted database: secrets in Vault", () => {
   });
 
   const get = (org: string, name: string) =>
-    as(sql, service, async (tx) => {
+    as(sql, worker, async (tx) => {
       const r = await tx`select private.get_secret(${org}, ${name}) as v`;
       return r[0]!.v as string | null;
     });
@@ -63,6 +69,8 @@ describe.skipIf(!HAS_DATABASE)("hosted database: secrets in Vault", () => {
       { role: "anon" },
       { role: "authenticated", userId: USER_A_OWNER },
       { role: "gaugeline_agent" },
+      { role: "service_role" },
+      { role: "gaugeline_worker" },
     ];
     for (const who of outsiders) {
       it(`${who.role} cannot select from vault.secrets, vault.decrypted_secrets or private.secret_events`, async () => {
@@ -75,9 +83,15 @@ describe.skipIf(!HAS_DATABASE)("hosted database: secrets in Vault", () => {
 
       it(`${who.role} cannot execute put_secret, get_secret, delete_secret or the Vault functions`, async () => {
         const calls = [
-          `select private.get_secret('${ORG_A}', 'slack')`,
-          `select private.put_secret('${ORG_A}', 'slack', 'webhook_url', 'https://x.test')`,
-          `select private.delete_secret('${ORG_A}', 'slack')`,
+          ...(who.role === "gaugeline_worker"
+            ? []
+            : [`select private.get_secret('${ORG_A}', 'slack')`]),
+          ...(who.role === "service_role"
+            ? []
+            : [
+                `select private.put_secret('${ORG_A}', 'slack', 'webhook_url', 'https://x.test')`,
+                `select private.delete_secret('${ORG_A}', 'slack')`,
+              ]),
           `select vault.create_secret('x')`,
           `select vault.update_secret(gen_random_uuid(), 'x')`,
         ];
@@ -87,12 +101,17 @@ describe.skipIf(!HAS_DATABASE)("hosted database: secrets in Vault", () => {
       });
     }
 
-    it("service_role cannot read Vault directly either: only through get_secret", async () => {
-      for (const rel of ["vault.secrets", "vault.decrypted_secrets"]) {
-        expect(await errorOf(as(sql, service, (tx) => tx.unsafe(`select * from ${rel}`)))).toMatch(
-          /permission denied/,
-        );
-      }
+    it("service_role (also the runs API's role) cannot read a value; the worker's role can read and nothing else", async () => {
+      expect(
+        await errorOf(as(sql, service, (tx) => tx`select private.get_secret(${ORG_A}, 'slack')`)),
+      ).toMatch(/permission denied for function get_secret/);
+      expect(await get(ORG_A, "slack")).toBe(HOOK_A);
+      expect(
+        await errorOf(as(sql, worker, (tx) => tx`select org_id from private.secret_refs`)),
+      ).toMatch(/permission denied/);
+      expect(await errorOf(as(sql, worker, (tx) => tx`select id from public.sites`))).toMatch(
+        /permission denied/,
+      );
     });
 
     it("the worker's role puts, gets and deletes for the organisation it passes", async () => {
@@ -107,12 +126,16 @@ describe.skipIf(!HAS_DATABASE)("hosted database: secrets in Vault", () => {
         const again =
           await tx`select private.put_secret(${ORG_A}, 'teams', 'signing_secret', 'sig-teams-2') as r`;
         expect(again[0]!.r).toBe("rotated");
+        await tx.unsafe("set local role gaugeline_worker");
         expect((await tx`select private.get_secret(${ORG_A}, 'teams') as v`)[0]!.v).toBe(
           "sig-teams-2",
         );
+        await tx.unsafe("set local role service_role");
         const del = await tx`select private.delete_secret(${ORG_A}, 'teams') as r`;
         expect(del[0]!.r).toBe(true);
+        await tx.unsafe("set local role gaugeline_worker");
         expect((await tx`select private.get_secret(${ORG_A}, 'teams') as v`)[0]!.v).toBeNull();
+        await tx.unsafe("set local role service_role");
         expect((await tx`select private.delete_secret(${ORG_A}, 'teams') as r`)[0]!.r).toBe(false);
       });
     });
@@ -267,9 +290,9 @@ describe.skipIf(!HAS_DATABASE)("hosted database: secrets in Vault", () => {
       expect(await tablesWithoutRls(sql, "private")).toEqual(["schema_migrations"]);
       expect(await privateFunctionsExecutableBy(sql, "service_role")).toEqual([
         "delete_secret",
-        "get_secret",
         "put_secret",
       ]);
+      expect(await privateFunctionsExecutableBy(sql, "gaugeline_worker")).toEqual(["get_secret"]);
       expect(await privateFunctionsExecutableBy(sql, "anon")).toEqual([]);
       expect(await privateFunctionsExecutableBy(sql, "gaugeline_agent")).toEqual([
         "agent_insert_draft",
@@ -282,5 +305,101 @@ describe.skipIf(!HAS_DATABASE)("hosted database: secrets in Vault", () => {
         "staff_org_ids",
       ]);
     });
+
+    it("every SECURITY DEFINER function in private pins search_path to empty", async () => {
+      expect(await definerFunctionsWithoutEmptySearchPath(sql, "private")).toEqual([]);
+      const mine = await sql`select p.proname, p.prosecdef, p.proconfig from pg_proc p
+        join pg_namespace n on n.oid = p.pronamespace
+        where n.nspname = 'private' and p.proname in
+          ('put_secret', 'get_secret', 'delete_secret', 'secret_refs_drop_vault') order by 1`;
+      expect(mine.map((r) => [r.proname, r.prosecdef, r.proconfig])).toEqual(
+        ["delete_secret", "get_secret", "put_secret", "secret_refs_drop_vault"].map((n) => [
+          n,
+          true,
+          ['search_path=""'],
+        ]),
+      );
+      // The audit itself catches a definer function without it.
+      await rolledBack(sql, async (tx) => {
+        await tx.unsafe(
+          "create function private.loose() returns int language sql security definer as 'select 1'",
+        );
+        expect(await definerFunctionsWithoutEmptySearchPath(tx, "private")).toEqual(["loose"]);
+      });
+    });
+  });
+
+  describe("concurrency", () => {
+    it("two first puts of one name at once give created then rotated, never a duplicate", async () => {
+      const other = postgres(db.url, { max: 1, onnotice: () => {} });
+      try {
+        let release!: () => void;
+        const held = new Promise<void>((r) => (release = r));
+        let firstDone!: () => void;
+        const firstPut = new Promise<void>((r) => (firstDone = r));
+        const a = sql.begin(async (tx) => {
+          await tx.unsafe("set local role service_role");
+          const r =
+            await tx`select private.put_secret(${ORG_A}, 'race', 'webhook_url', 'https://hooks.slack.test/1') as r`;
+          firstDone();
+          await held;
+          return r[0]!.r as string;
+        });
+        await firstPut;
+        const b = other.begin(async (tx) => {
+          await tx.unsafe("set local role service_role");
+          const r =
+            await tx`select private.put_secret(${ORG_A}, 'race', 'webhook_url', 'https://hooks.slack.test/2') as r`;
+          return r[0]!.r as string;
+        });
+        // b is now waiting on a's lock; let a commit.
+        await new Promise((r) => setTimeout(r, 200));
+        release();
+        expect([await a, await b]).toEqual(["created", "rotated"]);
+      } finally {
+        await sql.begin(async (tx) => {
+          await tx.unsafe("set local role service_role");
+          await tx`select private.delete_secret(${ORG_A}, 'race')`;
+        });
+        await other.end();
+      }
+    });
+
+    it("put refuses REPEATABLE READ, where the lock could not prevent a duplicate", async () => {
+      const msg = await errorOf(
+        sql.begin("isolation level repeatable read", async (tx) => {
+          await tx.unsafe("set local role service_role");
+          await tx`select private.put_secret(${ORG_A}, 'rr', 'webhook_url', 'https://hooks.slack.test/rr')`;
+        }),
+      );
+      expect(msg).toMatch(/READ COMMITTED/);
+    });
+  });
+
+  it("a Vault grant the migration cannot take back fails the deploy", async () => {
+    const grantor = `gl_platform_${randomBytes(4).toString("hex")}`;
+    const bare = await freshDatabase({ to: 5 });
+    try {
+      // Like a platform-owned grant: made by another role, so the migration owner's REVOKE leaves it.
+      await bare.sql.unsafe(`
+        create role ${grantor} nologin;
+        grant usage on schema vault to ${grantor} with grant option;
+        grant select on vault.decrypted_secrets to ${grantor} with grant option;
+        set role ${grantor};
+        grant usage on schema vault to authenticated;
+        grant select on vault.decrypted_secrets to authenticated;
+        reset role;
+      `);
+      expect(await errorOf(migrate(bare.sql, MIGRATIONS_DIR))).toMatch(
+        /Vault is reachable outside private.get_secret: .*authenticated on decrypted_secrets/,
+      );
+      const t = await bare.sql`select to_regclass('private.secret_refs') as t`;
+      expect(t[0]!.t).toBeNull();
+    } finally {
+      await bare.drop();
+      const a = postgres(db.url, { max: 1, onnotice: () => {} });
+      await a.unsafe(`drop role if exists ${grantor}`);
+      await a.end();
+    }
   });
 });

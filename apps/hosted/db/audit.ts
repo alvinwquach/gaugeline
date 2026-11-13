@@ -106,3 +106,19 @@ export async function privateFunctionsExecutableBy(sql: Query, role: string): Pr
     where n.nspname = 'private' and has_function_privilege(${role}, p.oid, 'EXECUTE') order by 1`;
   return rows.map((r) => r.proname as string);
 }
+
+/**
+ * SECURITY DEFINER functions in `schema` that do not pin `search_path` to empty. Such a function runs as
+ * its owner, so an unpinned search_path lets a caller put their own table or operator in its way.
+ */
+export async function definerFunctionsWithoutEmptySearchPath(
+  sql: Query,
+  schema = "private",
+): Promise<string[]> {
+  const rows =
+    await sql`select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = ${schema} and p.prosecdef
+      and coalesce(p.proconfig, '{}') <> array['search_path=""']
+    order by 1`;
+  return rows.map((r) => r.proname as string);
+}
