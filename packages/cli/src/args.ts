@@ -1,6 +1,7 @@
 import { parseArgs } from "node:util";
 import {
   SECRET_FLAGS,
+  SELECTABLE_RESULT_SCHEMAS,
   isCalendarDate,
   minorExponent,
   parseAddress,
@@ -165,6 +166,8 @@ export interface RunFlags {
   json: boolean;
   /** --format sarif, junit or one-pager: what stdout carries. Absent for the JSON result. */
   format?: "sarif" | "junit" | "one-pager";
+  /** --json-schema: which result schema --json prints. Absent is schema 2; only 3 changes the output. */
+  jsonSchema?: 3;
   noOpen: boolean;
   verbose: boolean;
   quiet: boolean;
@@ -549,6 +552,11 @@ export function describeParseError(
   const flag = /'(-[^' ]+)/.exec(text)?.[1] ?? "";
   if (code === "ERR_PARSE_ARGS_UNKNOWN_OPTION") {
     // A known flag on a command that does not take it: say which commands do.
+    if (flag.split("=")[0] === "--json-schema")
+      return {
+        message: `--json-schema only works with the page check (gaugeline <address>) and gaugeline launch, not with gaugeline ${command}.`,
+        hint: "Run it on one address: gaugeline example.com --json --json-schema 3.",
+      };
     if (flag.split("=")[0] === "--save-requests")
       return {
         message: `--save-requests only works with the page check (gaugeline <address>) and gaugeline launch, not with gaugeline ${command}.`,
@@ -683,6 +691,30 @@ export function parseCliArgs(
     };
   }
   if (values.version === true) return { kind: "version", verbose };
+  const jsonSchemaText =
+    typeof values["json-schema"] === "string" ? values["json-schema"].trim() : "";
+  if (typeof values["json-schema"] === "string") {
+    const hint = "For example: gaugeline example.com --json --json-schema 3.";
+    // The text must be the number as written ("03" and "3.0" are not 3), so no spelling falls back to 2 by accident.
+    if (!SELECTABLE_RESULT_SCHEMAS.some((n) => String(n) === jsonSchemaText))
+      return {
+        message:
+          jsonSchemaText === "1"
+            ? "--json-schema 1 is no longer printed: schema 1 is published as result.v1.json for anyone who pinned it. Use 2 (the default) or 3."
+            : `--json-schema accepts 2 or 3, not "${jsonSchemaText}".`,
+        kind: "error",
+        hint,
+        verbose,
+      };
+    if (values.json !== true && format !== "json")
+      return {
+        kind: "error",
+        message:
+          "--json-schema chooses the shape of --json, so it needs --json (or --format json).",
+        hint,
+        verbose,
+      };
+  }
   if (typeof values["save-requests"] === "string" && values["save-requests"].trim() === "") {
     return {
       kind: "error",
@@ -2227,6 +2259,7 @@ export function parseCliArgs(
     ...(typeof values["save-requests"] === "string"
       ? { saveRequests: values["save-requests"] }
       : {}),
+    ...(jsonSchemaText === "3" ? { jsonSchema: 3 as const } : {}),
     ...(typeof values.baseline === "string" ? { baseline: values.baseline } : {}),
     updateBaseline: values["update-baseline"] === true,
     configJsonOnly: values["config-json-only"] === true,
