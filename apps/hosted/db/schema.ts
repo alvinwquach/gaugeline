@@ -232,3 +232,47 @@ export const runChanges = pgTable(
   },
   (t) => [index("run_changes_site_idx").on(t.siteId, t.createdAt.desc())],
 ).enableRLS();
+
+export type EmailFrequency = "every_change" | "fix_first" | "off";
+
+/** Per person, per organisation (0007): the address, whether it is confirmed, and how often to write. */
+export const emailPreferences = pgTable(
+  "email_preferences",
+  {
+    orgId: uuid("org_id").notNull(),
+    userId: uuid("user_id").notNull(),
+    email: text("email"),
+    emailConfirmedAt: timestamp("email_confirmed_at", { withTimezone: true }),
+    /** Null: the default for the role (every change for owners and admins, off for members). */
+    frequency: text("frequency").$type<EmailFrequency>(),
+    timezone: text("timezone"),
+    bouncedAt: timestamp("bounced_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.orgId, t.userId] })],
+).enableRLS();
+
+export type EmailSendStatus = "sending" | "sent" | "failed";
+
+/** Server-only (0007): one morning email per person, organisation and local day. The key is the idempotency key. */
+export const emailSends = pgTable(
+  "email_sends",
+  {
+    orgId: uuid("org_id").notNull(),
+    userId: uuid("user_id").notNull(),
+    localDate: date("local_date").notNull(),
+    kind: text("kind").$type<"morning">().notNull().default("morning"),
+    status: text("status").$type<EmailSendStatus>().notNull().default("sending"),
+    attempts: integer("attempts").notNull().default(1),
+    coversFrom: timestamp("covers_from", { withTimezone: true }).notNull(),
+    coversTo: timestamp("covers_to", { withTimezone: true }).notNull(),
+    retryAfter: timestamp("retry_after", { withTimezone: true }),
+    lastError: text("last_error"),
+    createdAt: createdAt(),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+  },
+  (t) => [
+    primaryKey({ columns: [t.orgId, t.userId, t.localDate, t.kind] }),
+    index("email_sends_last_idx").on(t.orgId, t.userId, t.coversTo.desc()),
+  ],
+).enableRLS();
