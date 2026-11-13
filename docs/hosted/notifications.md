@@ -126,6 +126,54 @@ A channel is turned off, with the reason shown, when Slack or Sentry refuses it 
 revoked: `rejected`) or after three deliveries in a row fail (`failed-repeatedly`). **Send test message**
 posts a short message now; when it gets through, the channel is turned back on.
 
+## Agent messages: a place in the outbox (not sent yet)
+
+An [agent](../agent-safety.md) can build a message for the people who run a site: the
+regression watcher's alert (row AG-13) when a night's run got worse than the one before, and
+the [pending-approvals digest](../approvals-digest.md) of what waits for a decision. **Today** the outbox has a
+place for them (migration `0016_agent_message_outbox.sql`). **Not built:** nothing queues or sends one yet.
+A later row adds the worker step, and it sends through the sender this page already describes: one message
+to your own Slack channel, to the address you saved, and nowhere else.
+
+What the database holds for one:
+
+- A delivery of kind `agent` says **which** message (`agent_kind`: `regression-alert` or `approvals-digest`)
+  and **what it is about**: the run an alert is for (`subject_run_id`, with its site), or the local day a
+  digest is for (`digest_date`). It holds **no words**. As for a night's findings, the worker builds the
+  message when it sends, from your organisation's own rows, so no column can hold an address or a message.
+- A channel takes agent messages only when you turn it on (`agent_messages`, off by default), and only a
+  Slack channel can: a Sentry project takes events, not messages.
+- One row per channel and per run (an alert), or per channel and per day (a digest): queueing it twice is one
+  row.
+- The same people read it as read the rest of the log (staff of the organisation, not a client viewer), and
+  only the worker's role writes it. An agent has no privilege on it: an agent returns text, and the worker
+  queues it.
+- A row cannot point at another organisation's channel, run or site: the database refuses it.
+
+The worker queues an alert for the night's run, for a channel that takes agent messages. This is the row, as
+the seeded test database (`apps/hosted/db/__tests__/harness.ts` and migrations up to
+`0016_agent_message_outbox.sql`) returns it:
+
+```sql
+insert into public.notification_deliveries (org_id, channel_id, kind, site_id, agent_kind, subject_run_id, findings)
+values ('0a000000-0000-4000-8000-00000000000a', 'ca000000-0000-4000-8000-0000000000a1', 'agent',
+        'a1000000-0000-4000-8000-0000000000a1', 'regression-alert', 'a1a10000-0000-4000-8000-0000000000a1', 2)
+returning kind, agent_kind, status, findings
+```
+
+```json title=Output
+[
+  {
+    "kind": "agent",
+    "agent_kind": "regression-alert",
+    "status": "queued",
+    "findings": 2
+  }
+]
+```
+
+A test runs this statement and fails if the output shown here differs from what the database returns.
+
 ## Needs from the owner before launch
 
 - Nothing to create for this feature: each customer creates their own Slack incoming webhook (in their
