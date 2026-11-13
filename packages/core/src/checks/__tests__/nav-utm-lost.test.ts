@@ -211,6 +211,17 @@ describe("nav-utm-lost: what it reports", () => {
     expect(notes[0]?.reason).toBe("the menu link did not answer: header › Link /menu");
   });
 
+  it("a redirect loop is could-not-check with its own reason, not a link that did not answer", async () => {
+    const { found, notes } = await run({ "/loop": drops("/loop2"), "/loop2": drops("/loop") }, () =>
+      nav("/loop"),
+    );
+    expect(found).toEqual([]);
+    expect(notes).toHaveLength(1);
+    expect(notes[0]?.reason).toBe(
+      "header › Link /loop redirects in a loop, so its tags were not followed to a page",
+    );
+  });
+
   it("says how many menu links were not asked when the page has more than the allowance", async () => {
     const hrefs = Array.from({ length: 42 }, (_, i) => `/p${i}`);
     const { notes, server } = await run({}, () => nav(...hrefs));

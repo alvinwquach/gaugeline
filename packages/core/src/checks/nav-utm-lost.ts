@@ -45,7 +45,14 @@ export const navUtmLost = defineCheck<PageSnapshot>({
     };
     const lost: string[] = [];
     for (const p of probes) {
-      if (p.hops.length === 0) {
+      if (p.error === "loop" || p.error === "too-many-redirects") {
+        ctx.couldNotCheck?.(
+          p.url,
+          `${p.where} ${p.error === "loop" ? "redirects in a loop" : "redirects too many times"}, so its tags were not followed to a page`,
+        );
+        continue;
+      }
+      if (p.hops.length === 0 || p.error !== undefined) {
         ctx.couldNotCheck?.(p.url, `the menu link did not answer: ${p.where}`);
         continue;
       }

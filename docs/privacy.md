@@ -109,6 +109,8 @@ that answers 200 but says "not found" (a soft 404) is out of scope.
 the server refuses `HEAD`), with three test campaign tags added to its address
 (`utm_source=gaugeline-check`, `utm_medium=menu-test`, `utm_campaign=nav-links`: Gaugeline's own values). It
 asks at most 40 destinations on the same site, header links first, and nothing is submitted or clicked.
+`nav-link-not-200` reads the plain answers of those same links: a link the link sample already asked reuses that
+answer, and each of the others is one more `HEAD` (or `GET`), never twice.
 
 Against the invented `links` fixture, a hardware shop with a dead garden-centre link in its header
 and footer and a paint link that redirects, version 0.1.0 prints:

@@ -1,0 +1,7 @@
+{
+  "/services": { "status": 301, "location": "/our-services" },
+  "/our-services": { "status": 302, "location": "/care" },
+  "/vaccinations": { "status": 302, "location": "/vaccinations-2" },
+  "/vaccinations-2": { "status": 302, "location": "/vaccinations" },
+  "/newsletter": { "status": 204, "body": "" }
+}
