@@ -526,24 +526,52 @@ describe.skipIf(!HAS_DATABASE)("the agent message outbox kind (0017)", () => {
         expect(await errorOf(digest(CHANNEL_A, ORG_A, day)), day).toBe("");
     });
 
+    // The cap counts the days around the database's own today: the tests take their days from it.
+    const day = async (offset: number) =>
+      (await sql`select ((now() at time zone 'UTC')::date + ${offset}::int)::text as d`)[0]!
+        .d as string;
+
     it("holds at most three digests waiting for a channel, and takes another once one is sent", async () => {
-      for (const day of ["2026-11-10", "2026-11-11", "2026-11-12"])
-        await digest(CHANNEL_A, ORG_A, day);
-      expect(await errorOf(digest(CHANNEL_A, ORG_A, "2026-11-13"))).toMatch(
+      const [d0, d1, d2, d3] = [await day(-1), await day(0), await day(1), await day(2)] as [
+        string,
+        string,
+        string,
+        string,
+      ];
+      for (const d of [d0, d1, d2]) await digest(CHANNEL_A, ORG_A, d);
+      expect(await errorOf(digest(CHANNEL_A, ORG_A, d3))).toMatch(
         /already has three digests waiting/,
       );
       // Another channel is counted on its own.
       await enable(CHANNEL_B);
-      expect(await errorOf(digest(CHANNEL_B, ORG_B, "2026-11-13"))).toBe("");
+      expect(await errorOf(digest(CHANNEL_B, ORG_B, d1))).toBe("");
       // One is claimed and sent: it no longer waits.
       await sql`update public.notification_deliveries set status = 'sending', locked_at = now()
-        where digest_date = '2026-11-10'`;
-      expect(await errorOf(digest(CHANNEL_A, ORG_A, "2026-11-13"))).toMatch(
+        where digest_date = ${d0}`;
+      expect(await errorOf(digest(CHANNEL_A, ORG_A, d3))).toMatch(
         /already has three digests waiting/,
       );
       await sql`update public.notification_deliveries set status = 'sent', sent_at = now(), locked_at = null
-        where digest_date = '2026-11-10'`;
-      expect(await errorOf(digest(CHANNEL_A, ORG_A, "2026-11-13"))).toBe("");
+        where digest_date = ${d0}`;
+      expect(await errorOf(digest(CHANNEL_A, ORG_A, d3))).toBe("");
+    });
+
+    it("is not starved by rows dated far from today: three waiting for the end of the century leave today's free", async () => {
+      for (const d of ["2099-12-29", "2099-12-30", "2099-12-31"]) await digest(CHANNEL_A, ORG_A, d);
+      expect(await errorOf(digest(CHANNEL_A, ORG_A, await day(0)))).toBe("");
+      expect(await errorOf(digest(CHANNEL_A, ORG_A, await day(1)))).toBe("");
+      expect(await errorOf(digest(CHANNEL_A, ORG_A, await day(-1)))).toBe("");
+      expect(await errorOf(digest(CHANNEL_A, ORG_A, await day(2)))).toMatch(
+        /already has three digests waiting/,
+      );
+      // The far group has its own allowance of three: the three above fill it, a fourth far one is refused,
+      // and a row well out of today's window never uses today's.
+      expect(await errorOf(digest(CHANNEL_A, ORG_A, "2099-12-28"))).toMatch(
+        /already has three digests waiting/,
+      );
+      expect(await errorOf(digest(CHANNEL_A, ORG_A, await day(30)))).toMatch(
+        /already has three digests waiting/,
+      );
     });
 
     it("does not cap alerts: each is tied to a real run", async () => {
@@ -596,12 +624,34 @@ describe.skipIf(!HAS_DATABASE)("the agent message outbox kind (0017)", () => {
 
     it("goes queued, sending, sent and no further, and not straight from queued to sent", async () => {
       const id = await row();
-      expect(await move(id, "status = 'sent', sent_at = now()")).toMatch(/only moves forward/);
-      expect(await move(id, "status = 'failed'")).toMatch(/only moves forward/);
+      expect(await move(id, "status = 'sent', sent_at = now()")).toMatch(
+        /only moves forward|is final/,
+      );
+      expect(await move(id, "status = 'failed'")).toMatch(/only moves forward|is final/);
       expect(await move(id, "status = 'sending', locked_at = now()")).toBe("");
       expect(await move(id, "status = 'sent', sent_at = now(), locked_at = null")).toBe("");
       for (const back of ["queued", "sending", "failed"])
-        expect(await move(id, `status = '${back}'`), back).toMatch(/only moves forward/);
+        expect(await move(id, `status = '${back}'`), back).toMatch(/only moves forward|is final/);
+    });
+
+    it("makes a sent or failed row final: not rewritten, not even with the status it has", async () => {
+      const sent = await row();
+      await move(sent, "status = 'sending', locked_at = now()");
+      await move(sent, "status = 'sent', sent_at = now(), locked_at = null");
+      const failed = (await digest(CHANNEL_A, ORG_A, "2026-11-14"))[0]!.id as string;
+      await move(failed, "status = 'sending', locked_at = now()");
+      await move(failed, "status = 'failed', error_code = 'http-500', locked_at = null");
+      for (const id of [sent, failed])
+        for (const set of [
+          "status = status, sent_at = null, attempts = 0",
+          "status = status, error_code = null",
+          "findings = 99",
+          "http_status = 200",
+        ])
+          expect(await move(id, set), set).toMatch(/is final/);
+      expect(
+        await sql`select status, attempts, error_code from public.notification_deliveries where id = ${failed}`,
+      ).toEqual([{ status: "failed", attempts: 0, error_code: "http-500" }]);
     });
 
     it("keeps the worker's retry: a claimed row may go back to queued, and a failed one stays failed", async () => {
@@ -612,8 +662,10 @@ describe.skipIf(!HAS_DATABASE)("the agent message outbox kind (0017)", () => {
       expect(await move(id, "status = 'failed', error_code = 'http-500', locked_at = null")).toBe(
         "",
       );
-      expect(await move(id, "status = 'queued'")).toMatch(/only moves forward/);
-      expect(await move(id, "status = 'sent', sent_at = now()")).toMatch(/only moves forward/);
+      expect(await move(id, "status = 'queued'")).toMatch(/only moves forward|is final/);
+      expect(await move(id, "status = 'sent', sent_at = now()")).toMatch(
+        /only moves forward|is final/,
+      );
     });
 
     it("leaves the other kinds as they were: a night's run may still be written in any order", async () => {
@@ -621,6 +673,54 @@ describe.skipIf(!HAS_DATABASE)("the agent message outbox kind (0017)", () => {
         values (${ORG_A}, ${CHANNEL_A}, 'run', ${RUN_A2}, ${SITE_A1}, 'sent', now())`;
       await sql`update public.notification_deliveries set status = 'queued', sent_at = null where run_id = ${RUN_A2}`;
       await sql`delete from public.notification_deliveries where run_id = ${RUN_A2}`;
+    });
+  });
+
+  describe("concurrent inserts and an opt-out cannot race the guard", () => {
+    beforeEach(async () => {
+      await enable(CHANNEL_A);
+    });
+    // The second statement is waiting on a lock the first connection holds.
+    const blocked = async () => {
+      for (let i = 0; i < 400; i++) {
+        const w = await sql`select 1 from pg_locks where not granted`;
+        if (w.length > 0) return;
+        await new Promise((r) => setTimeout(r, 25));
+      }
+      throw new Error("the second statement never waited for the first");
+    };
+    const day = async (n: number) =>
+      (await sql`select ((now() at time zone 'UTC')::date + ${n}::int)::text as d`)[0]!.d as string;
+
+    it("two inserts at once with two digests waiting leave three, not four", async () => {
+      await digest(CHANNEL_A, ORG_A, await day(0));
+      await digest(CHANNEL_A, ORG_A, await day(1));
+      const [d2, dMinus] = [await day(2), await day(-1)];
+      let second: Promise<string> | undefined;
+      await sql.begin(async (tx) => {
+        await tx`insert into public.notification_deliveries (org_id, channel_id, kind, agent_kind, digest_date)
+          values (${ORG_A}, ${CHANNEL_A}, 'agent', 'approvals-digest', ${d2})`;
+        // Another connection tries while this one has not committed: it must wait, not count two.
+        second = errorOf(digest(CHANNEL_A, ORG_A, dMinus));
+        await blocked();
+      });
+      expect(await second).toMatch(/already has three digests waiting/);
+      expect(
+        await sql`select count(*)::int as n from public.notification_deliveries where kind = 'agent'`,
+      ).toEqual([{ n: 3 }]);
+    });
+
+    it("an insert that is waiting while the channel is turned off is refused, not queued", async () => {
+      let second: Promise<string> | undefined;
+      await sql.begin(async (tx) => {
+        await tx`update public.notification_channels set agent_messages = false where id = ${CHANNEL_A}`;
+        second = errorOf(digest(CHANNEL_A, ORG_A, "2026-11-13"));
+        await blocked();
+      });
+      expect(await second).toMatch(/the channel does not take agent messages/);
+      expect(
+        await sql`select 1 from public.notification_deliveries where kind = 'agent'`,
+      ).toHaveLength(0);
     });
   });
 

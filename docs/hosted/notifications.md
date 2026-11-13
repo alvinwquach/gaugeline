@@ -145,7 +145,7 @@ What the database holds for one:
   Slack channel can: a Sentry project takes events, not messages. The database checks it when the row is
   queued, not only the worker: a row for a channel that is off, disabled or not Slack is refused.
 - A row is queued untouched and only moves forward (queued, sending, sent or failed; a claimed row may go back to
-  queued for a retry), and a channel never has more than three digests waiting.
+  queued for a retry), and a channel never has more than three digests waiting (in each of two groups: the days around today, and the rest).
 - One row per channel and per run (an alert), or per channel and per day (a digest): queueing it twice is one
   row.
 - The same people read it as read the rest of the log (staff of the organisation, not a client viewer), and
