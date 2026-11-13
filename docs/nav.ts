@@ -214,4 +214,5 @@ export const UNLISTED: NavPage[] = [
   { slug: "hosted/notifications", title: "Hosted: findings in your Slack and Sentry" },
   { slug: "hosted/chat-approvals", title: "Hosted: approving in Slack, Discord and Teams" },
   { slug: "hosted/agent-registry", title: "Hosted: the agent registry" },
+  { slug: "hosted/agent-policy", title: "Hosted: agent policy and limits" },
 ];

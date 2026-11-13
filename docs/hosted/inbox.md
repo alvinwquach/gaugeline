@@ -33,12 +33,13 @@ the database keeps only the token's SHA-256, and revoking the agent stops it at 
 The agent's connection uses the database role `gaugeline_agent`, which holds no privilege on any table:
 it cannot read the inbox, insert a draft directly, change a draft or record a decision. Its one way in is
 the function `private.agent_insert_draft(token, site, kind, payload, finding_ids)`, which looks up the
-token's organisation and refuses a site or a finding that is not that organisation's. The draft is in
+token's organisation and refuses a site or a finding that is not that organisation's. Before any of that,
+the agent's [policy and limits](./agent-policy.md) decide whether the call may run at all. The draft is in
 nobody's name. Those are missing privileges and checks in the database, not an `if` in the app, so a
 refactor cannot skip them.
 
 This is the output of the seeded test database (`apps/hosted/db/__tests__/harness.ts` and migrations
-`0005_drafts_inbox.sql` and `0012_agent_registry.sql`), run with `psql` 16 as written, including the one invented agent token for
+`0005_drafts_inbox.sql`, `0012_agent_registry.sql` and `0013_agent_policy.sql`), run with `psql` 16 as written, including the one invented agent token for
 Northgate Studio that the first statement adds. The session first claims to be Brightfield Web, which
 changes nothing:
 
@@ -93,7 +94,7 @@ ROLLBACK
 BEGIN
 SET
 ERROR:  site not found for this agent
-CONTEXT:  PL/pgSQL function private.agent_insert_draft(text,uuid,text,jsonb,uuid[]) line 26 at RAISE
+CONTEXT:  PL/pgSQL function private.agent_insert_draft(text,uuid,text,jsonb,uuid[]) line 23 at RAISE
 ROLLBACK
 BEGIN
 SET
@@ -108,8 +109,8 @@ SET
 ERROR:  the payload does not match the email shape: payload must have exactly subject and body
 CONTEXT:  PL/pgSQL function private.drafts_check_payload() line 8 at RAISE
 SQL statement "insert into public.drafts (org_id, site_id, kind, payload, finding_ids, created_by)
-    values (v_org, p_site_id, p_kind, p_payload, coalesce(p_finding_ids, '{}'), null)
-    returning id"
+      values (v_org, p_site_id, p_kind, p_payload, coalesce(p_finding_ids, '{}'), null)
+      returning id"
 PL/pgSQL function private.agent_insert_draft(text,uuid,text,jsonb,uuid[]) line 44 at SQL statement
 ROLLBACK
 ```

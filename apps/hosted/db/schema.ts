@@ -454,3 +454,54 @@ export const agentEvents = pgTable(
   },
   (t) => [index("agent_events_agent_idx").on(t.agentId, t.id)],
 ).enableRLS();
+
+/** An agent's limits (AG-03, 0013) and the counters the policy keeps. Cost in integer micro-units. */
+export const agentLimits = pgTable("agent_limits", {
+  agentId: uuid("agent_id").primaryKey(),
+  orgId: uuid("org_id").notNull(),
+  callsPerWindow: integer("calls_per_window").notNull().default(10),
+  windowSeconds: integer("window_seconds").notNull().default(60),
+  costCeilingMicros: bigint("cost_ceiling_micros", { mode: "bigint" }).notNull().default(1000000n),
+  timeoutMs: integer("timeout_ms").notNull().default(5000),
+  windowStartedAt: timestamp("window_started_at", { withTimezone: true }),
+  windowCalls: integer("window_calls").notNull().default(0),
+  costDay: date("cost_day"),
+  costDayMicros: bigint("cost_day_micros", { mode: "bigint" }).notNull().default(0n),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedBy: uuid("updated_by"),
+}).enableRLS();
+
+/** Every value an agent's limits have had, who set them and when (append-only, written by a trigger). */
+export const agentLimitEvents = pgTable(
+  "agent_limit_events",
+  {
+    id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+    orgId: uuid("org_id").notNull(),
+    agentId: uuid("agent_id").notNull(),
+    callsPerWindow: integer("calls_per_window").notNull(),
+    windowSeconds: integer("window_seconds").notNull(),
+    costCeilingMicros: bigint("cost_ceiling_micros", { mode: "bigint" }).notNull(),
+    timeoutMs: integer("timeout_ms").notNull(),
+    changedBy: uuid("changed_by"),
+    changedAt: timestamp("changed_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("agent_limit_events_agent_idx").on(t.agentId, t.id)],
+).enableRLS();
+
+/** Every refused agent call (append-only): ids, a reason from a closed list, the tool, counts. */
+export const agentDenies = pgTable(
+  "agent_denies",
+  {
+    id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+    /** Null, with agentId, only for a token that matches no agent ("unknown-agent"). */
+    orgId: uuid("org_id"),
+    agentId: uuid("agent_id"),
+    tool: text("tool"),
+    reason: text("reason").notNull(),
+    costMicros: bigint("cost_micros", { mode: "bigint" }),
+    windowCalls: integer("window_calls"),
+    costDayMicros: bigint("cost_day_micros", { mode: "bigint" }),
+    deniedAt: timestamp("denied_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("agent_denies_org_idx").on(t.orgId, t.id.desc())],
+).enableRLS();

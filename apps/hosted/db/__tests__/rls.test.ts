@@ -69,6 +69,10 @@ const TENANT_TABLES = [
   // 0012: the agent registry and its status history (AG-02); owners and admins only.
   "agents",
   "agent_events",
+  // 0013: agent policy: limits and their history, and the deny log (AG-03); owners and admins only.
+  "agent_limits",
+  "agent_limit_events",
+  "agent_denies",
 ];
 
 const SERVER_ONLY = new Set(["tokens", "idempotency_keys", "jobs", "email_sends"]);
