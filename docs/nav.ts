@@ -254,4 +254,5 @@ export const UNLISTED: NavPage[] = [
   { slug: "hosted/agent-red-team", title: "Hosted: the red-team suite for agents" },
   { slug: "hosted/agent-trace", title: "Hosted: the agent trace" },
   { slug: "hosted/agent-scorecard", title: "Hosted: the agent scorecard" },
+  { slug: "hosted/agent-triage", title: "Hosted: the triage agent" },
 ];
