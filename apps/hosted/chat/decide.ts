@@ -36,7 +36,15 @@ export interface ChatAction {
 }
 
 export type ChatDecision =
-  | { status: "recorded"; decision: "approved" | "declined"; decisionId: string; userId: string }
+  | {
+      status: "recorded";
+      decision: "approved" | "declined";
+      decisionId: string;
+      userId: string;
+      /** The draft's kind and payload text as the database holds them, for the reply that says what was decided. */
+      kind: string;
+      payloadText: string;
+    }
   | { status: "already-decided"; decision: string; decidedBy: string | null }
   | { status: "unknown-user" }
   | { status: "not-allowed" }
@@ -46,6 +54,12 @@ export type ChatDecision =
   /** The inbox must be used: a finding the draft fixes has closed, or the payload no longer fits. */
   | { status: "open-inbox"; why: "closed-findings" | "invalid-payload" };
 
+/**
+ * The queue's `enqueueApply` runs in the CHAT LOGIN's transaction. The in-memory queue touches no table. A
+ * production queue (the jobs table, G36) must be a SECURITY DEFINER function that `gaugeline_chat` may
+ * execute and that takes the job from a decision row it checks itself: never a table privilege for
+ * `gaugeline_chat` (a test fails if the role holds any), or the chat login could insert any job.
+ */
 export interface ChatDecideDeps {
   /** The chat login: a member of gaugeline_chat only. */
   sql: postgres.Sql;
@@ -90,6 +104,8 @@ export async function decideFromChat(
             decision: r.r_decision as "approved" | "declined",
             decisionId: String(r.r_decision_id),
             userId: r.r_user_id as string,
+            kind: r.r_kind as string,
+            payloadText: r.r_payload as string,
           };
         case "already-decided":
           return {

@@ -2,9 +2,15 @@
 
 The hosted version of Gaugeline (in progress, not released) will let a team approve or decline a
 proposed fix with one button in the chat where they already talk. A draft waiting in an inbox nobody
-opens is the same as no draft. This is **part 1 of 3**: the checks a chat request must pass and the
-decision it records. The Slack message with its buttons is part 2; Discord and Teams are part 3. Nothing
-in this part sends a message or listens on an address yet.
+opens is the same as no draft. This is **part 2 of 3**. Part 1 is the checks a chat request must pass and
+the decision it records. Part 2 (this page's Slack sections) adds the Slack message with its buttons and
+the endpoint a button press goes to. Discord and Teams are part 3.
+
+**Not built yet:** posting a new proposal to the channel automatically (a worker job that picks drafts
+and a Slack channel; `sendApprovalRequest` is the function it will call), the slash command
+`/gaugeline check <address>`, and the jobs table an approval enqueues into. Until that table exists the
+endpoint runs only in development and tests and answers `503` elsewhere, rather than record an approval
+that nothing will apply.
 
 The rule that does not change: **a chat click can do only what the same person could do in the
 [inbox](./inbox.md).** It writes the same append-only decision row the inbox writes, through the same code,
@@ -59,6 +65,107 @@ signed with another secret refused: bad-signature
 Only the first goes on. The same signed request sent a second time is refused as a replay, because its
 key (the signature) was recorded the first time.
 
+## The Slack message and the button press
+
+The proposal is posted to the team's own Slack channel through an incoming webhook of **their own Slack
+app** (with interactivity turned on and the request address below). It carries what is proposed and three
+buttons: **Approve**, **Edit first** (a link that opens the inbox at that draft; pressing it records
+nothing) and **Decline**. Every piece of text the draft or the site supplies is escaped, so the `<!channel>`
+a title carries is shown and pings nobody. This is `slackApprovalMessage` and `slackDecidedMessage` from
+`@gaugeline/core`, run with `node --import tsx example.mts` in `apps/hosted`:
+
+```ts
+import { slackApprovalMessage, slackDecidedMessage } from "@gaugeline/core";
+
+const request = {
+  site: "The Tidewater Bar",
+  kind: "pull_request",
+  title: "Point the menu link at /drinks <!channel>",
+  draftId: "a1d10000-0000-4000-8000-0000000000a2",
+  inboxUrl: "https://app.example/inbox/a1d10000-0000-4000-8000-0000000000a2",
+};
+console.log(JSON.stringify(slackApprovalMessage(request), null, 2));
+const decided = slackDecidedMessage(request, {
+  decision: "approved",
+  by: "U0MEMBER",
+  at: new Date("2026-11-13T09:00:00Z"),
+});
+console.log(decided.blocks[1]!.text!.text);
+```
+
+```text
+{
+  "text": "Gaugeline proposes a pull request for The Tidewater Bar: Point the menu link at /drinks &lt;!channel&gt;",
+  "blocks": [
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": "*Gaugeline proposes a pull request for The Tidewater Bar*\nPoint the menu link at /drinks &lt;!channel&gt;"
+      }
+    },
+    {
+      "type": "actions",
+      "elements": [
+        {
+          "type": "button",
+          "text": {
+            "type": "plain_text",
+            "text": "Approve"
+          },
+          "action_id": "gaugeline_approve",
+          "value": "a1d10000-0000-4000-8000-0000000000a2",
+          "style": "primary"
+        },
+        {
+          "type": "button",
+          "text": {
+            "type": "plain_text",
+            "text": "Edit first"
+          },
+          "action_id": "gaugeline_edit",
+          "url": "https://app.example/inbox/a1d10000-0000-4000-8000-0000000000a2"
+        },
+        {
+          "type": "button",
+          "text": {
+            "type": "plain_text",
+            "text": "Decline"
+          },
+          "action_id": "gaugeline_decline",
+          "value": "a1d10000-0000-4000-8000-0000000000a2",
+          "style": "danger"
+        }
+      ]
+    }
+  ]
+}
+Approved by <@U0MEMBER> at 2026-11-13T09:00:00.000Z. Your own worker applies it next; nothing changes until it does.
+```
+
+A press is a `POST` to `/api/chat/slack/<connection id>` (Slack's "Interactivity request URL"). The body
+is a form with one field, `payload`, holding JSON. It must be a form (`application/x-www-form-urlencoded`,
+with or without a charset) and nothing else; any other type is refused before the body is read. After the
+checks below, the endpoint takes only ids of a known shape from the payload (the clicker's Slack user id,
+the workspace id, the draft id and which button), and answers Slack with `200` and an empty body.
+
+What the person then sees, sent to the `response_url` Slack gave with the press:
+
+| What happened                                        | What is sent back                                                                                  |
+| ---------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Approve or Decline by a linked, allowed member       | The message is **replaced in place**: no buttons, who decided (a mention), when, what happens next |
+| A second press, or the inbox decided first           | Only to the clicker: "already approved/declined; nothing was changed"                              |
+| An unlinked Slack user                               | Only to the clicker: not linked, ask an owner or admin; nothing recorded                           |
+| A client viewer, or another workspace                | Only to the clicker: not allowed; nothing recorded                                                 |
+| A draft of another organisation, or one that is gone | Only to the clicker: not available; nothing recorded                                               |
+| An approval of a proposal older than 72 hours        | Only to the clicker: open it in Gaugeline to review                                                |
+| A finding it fixes has closed                        | Only to the clicker: open it in Gaugeline to decide                                                |
+
+The reply goes through `postJson` in core's notify module (ADR-0005), the one place Gaugeline sends a
+`POST`, and only to `https://hooks.slack.com/actions/<ids>`: a reply address of any other shape is not sent
+to, and the decision (already recorded) stands. The reply is sent with a two-second limit; a reply that
+fails never undoes a decision. This file adds no new place that sends a request.
+
 ## What a request must pass, in this order
 
 A request stops at the first check it fails, and nothing later runs. The five answer `401` with the same
@@ -68,7 +175,7 @@ secret, a signature or a body).
 1. **Size.** The body is read up to 64 KB. A larger one, or one that sends more than it said it would,
    is refused (`413`) without being read to the end.
 2. **Connection.** The address names one connection by its id
-   (`/chat/<provider>/<connection id>`, arriving with part 2). An unknown or switched-off connection, or
+   (`/api/chat/slack/<connection id>` for Slack). An unknown or switched-off connection, or
    one for another provider, is refused. The id names a row; it is not a credential.
 3. **Secret.** The connection's signing secret is read from the secret store, never from anything the
    request says. A connection whose secret is not a signing secret has none.
@@ -247,8 +354,9 @@ signature in capitals is the same request.
 
 ## Needs from the owner before launch
 
-- Nothing to create for this part. Each customer will create their own Slack app and give the hosted app
-  its signing secret; we create no Slack app. The Slack message and the address arrive with part 2.
+- Nothing to create. Each customer creates their own Slack app (an incoming webhook, interactivity with the
+  request address above) and gives the hosted app its signing secret; we create no Slack app and no
+  account.
 - A database login for the chat endpoint that is a member of `gaugeline_chat` **only** (never
   `authenticated`, `service_role` or `gaugeline_worker`): `grant gaugeline_chat to gl_chat_login;` and
   `chatLoginsWithOtherRoles` must return `[]`.
@@ -261,3 +369,18 @@ connection's organisation. It cannot record one for a member who never confirmed
 viewer, or across organisations, and it cannot apply anything: your own worker re-checks every approval
 before it writes. Rotating the signing secret and removing the links closes it. Keeping the secret out of
 the endpoint altogether (verifying the signature inside the database) is not done.
+
+**A link proves "this chat id is me" from the web side only.** The admin names the chat id and the member
+confirms it while signed in to Gaugeline; nothing proves, from the Slack side, that the member controls
+that Slack account. A member who confirms a link to a chat id that is not theirs lets whoever owns that
+chat id decide as the member, with the member's consent; an admin alone cannot do it. A proof from the
+chat side (a one-time code the member's own Slack session must send back through a slash command,
+stored hashed, expiring and single use) would close it and needs the slash-command route; it is not
+built. Until then, an owner or admin checking the chat id against the person's Slack profile when they
+propose the link is the control.
+
+**The apply queue.** An approval enqueues its apply job in the chat login's own transaction. Today that is
+an in-memory queue that touches no table, and the endpoint runs only in development and tests. The real
+queue must be a `SECURITY DEFINER` function that `gaugeline_chat` may execute, checking the job against
+the decision row itself; `gaugeline_chat` must never be given a table privilege, and a test fails if it
+holds any.
