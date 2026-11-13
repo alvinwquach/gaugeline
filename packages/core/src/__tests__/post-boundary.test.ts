@@ -15,6 +15,11 @@ import { scan, type Category, type Finding } from "./post-scan.js";
  *   endpoint, with a body checked to be a query (ADR-0006, the owner's decision of 11 Nov 2026).
  *   It is the second and last place a request to a vendor's API is POSTed.
  * - `core/src/notify/post.ts`: notifications to the person's own channels (ADR-0005).
+ * - `core/src/model-gateway/send.ts`: ADR-0005 as amended on 13 Nov 2026 (model providers, modes 1 and 2). The
+ *   one module that sends a request to a model provider, with the person's own key. It builds one POST, over
+ *   https, to a host on its own allowlist, and opens its connection through node:https. Named here so the scan
+ *   reads it; it is a named exception, not a loosening: the scan still fails for any other file, and a second
+ *   verb or a second import in this one is caught by `model-gateway/__tests__/send.test.ts`.
  * - `app/src/api.ts`: the app's page calling its own local server with relative /api/* addresses
  *   (never a checked site): one POST to start a run, and the event stream.
  * - `writer/src/github/endpoints.ts`: ADR-0010 (accepted 12 Nov 2026). The writer's fixed registry of
@@ -38,6 +43,7 @@ const ALLOWED: Readonly<Record<string, readonly Category[]>> = {
   "core/src/transport.ts": ["method", "network"],
   "core/src/fetcher.ts": ["verb"],
   "core/src/notify/post.ts": ["verb", "network"],
+  "core/src/model-gateway/send.ts": ["verb", "network"], // ADR-0005 amendment, model providers
   "app/src/api.ts": ["verb", "network"],
   "writer/src/github/endpoints.ts": ["verb"], // ADR-0010
   "writer/src/github/send.ts": ["network", "method"], // ADR-0010

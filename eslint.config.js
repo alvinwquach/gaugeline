@@ -134,6 +134,24 @@ export default tseslint.config(
     rules: { "no-restricted-imports": ["error", CORE_RESTRICTED_IMPORTS] },
   },
   {
+    // Model calls (ADR-0005, amendment of 13 Nov 2026): the one model sender may import node:https and nothing
+    // else that opens a connection. It is core's own network rule with node:https taken out for this one file:
+    // node:http, node:net and node:tls stay restricted, and fetch and the other network globals stay banned.
+    files: ["packages/core/src/model-gateway/send.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          ...CORE_RESTRICTED_IMPORTS,
+          paths: [
+            ...CORE_RESTRICTED_IMPORTS.paths,
+            ...NETWORK_IMPORTS.filter(({ name }) => name !== "node:https" && name !== "https"),
+          ],
+        },
+      ],
+    },
+  },
+  {
     // ADR-0010: in the writer, only github/send.ts, gmail/send.ts and sanity/send.ts may open a connection. An added
     // restriction: it changes nothing for any other package.
     files: ["packages/writer/src/**/*.ts"],

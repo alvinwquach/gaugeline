@@ -87,9 +87,10 @@ describe("the eval harness through the gateway", () => {
   });
 });
 
-describe("this change has no network code and no provider SDK", () => {
+describe("apart from the one sending file, the gateway has no network code and no provider SDK", () => {
   const dir = fileURLToPath(new URL("..", import.meta.url));
-  const files = readdirSync(dir).filter((n) => n.endsWith(".ts"));
+  // send.ts is the one sending module, added in the next pull request and named in the boundary tests.
+  const files = readdirSync(dir).filter((n) => n.endsWith(".ts") && n !== "send.ts");
 
   it("finds the module's files", () => {
     expect(files).toEqual(
