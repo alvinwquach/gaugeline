@@ -76,6 +76,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze<FlagDef[]>([
       "receipt",
       "source",
       "receipts",
+      "house-rules",
     ],
   },
   {
@@ -612,9 +613,21 @@ export const FLAGS: readonly FlagDef[] = Object.freeze<FlagDef[]>([
       evals:
         "The JSON report's file (default gaugeline-evals.json), in this folder or one inside it",
       mine: "The draft file, Markdown (default field-findings.draft.md)",
+      "house-rules":
+        "The draft file to write (default gaugeline.house.draft.json); its name must end in .draft.json and it must not exist yet",
     },
     since: "0.2.0",
-    commands: ["snapshot", "query", "brief", "handoff", "audit", "propose", "evals", "mine"],
+    commands: [
+      "snapshot",
+      "query",
+      "brief",
+      "handoff",
+      "audit",
+      "propose",
+      "evals",
+      "mine",
+      "house-rules",
+    ],
   },
   {
     name: "business",
@@ -734,6 +747,14 @@ export const FLAGS: readonly FlagDef[] = Object.freeze<FlagDef[]>([
     description: "evals: run just this agent's eval set, by id (an agent with no set is refused)",
     since: "0.2.0",
     commands: ["evals"],
+  },
+  {
+    name: "rules",
+    type: "string",
+    description:
+      "house-rules: the file of written rules to compile (plain text or Markdown, up to 50,000 characters)",
+    since: "0.2.0",
+    commands: ["house-rules"],
   },
   {
     name: "head",

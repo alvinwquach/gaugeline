@@ -27,7 +27,11 @@ and not built.
 - **Today (row AG-15).** The [field-findings miner](./field-findings-miner.md): `gaugeline mine` reads a
   folder of review notes and writes a draft of check candidates for a person to read. A scrub fails the draft
   on a client name, address, email or phone number. It writes no check and no code.
-- **Planned (rows AG-16 to AG-18).** Draft-only helpers: drafting checks and config for a person to review.
+- **Today (row AG-17).** The [house-rules compiler](./house-rules.md): turns a written style guide into a draft
+  config file for a person to review. It reads one local file, writes one new draft file and never the live one.
+- **Today (row AG-18).** The [one-page report](./one-pager.md): a cited, read-only summary of a run (the headline,
+  the first fixes and what was not checked). It reads results and nothing else.
+- **Planned (row AG-16).** A draft-only helper that drafts checks for a person to review.
 
 ## What an agent can do
 

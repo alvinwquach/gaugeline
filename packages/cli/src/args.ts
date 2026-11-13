@@ -50,6 +50,7 @@ export const SUBCOMMANDS = [
   "receipts",
   "evals",
   "mine",
+  "house-rules",
 ] as const;
 export type CliCommand = "check" | (typeof SUBCOMMANDS)[number];
 
@@ -284,6 +285,16 @@ export type ParsedArgs =
       only?: string[];
       json: boolean;
       ci: boolean;
+      verbose: boolean;
+      quiet: boolean;
+    }
+  | {
+      kind: "house-rules";
+      /** --rules: the file of written rules. */
+      rules: string;
+      /** --out: the draft file to write. Absent: gaugeline.house.draft.json. */
+      out?: string;
+      json: boolean;
       verbose: boolean;
       quiet: boolean;
     }
@@ -1423,6 +1434,31 @@ export function parseCliArgs(
       ...(only ? { only } : {}),
       json: values.json === true,
       ci: values.ci === true,
+      verbose,
+      quiet: values.quiet === true,
+    };
+  }
+  if (command === "house-rules") {
+    const usage = "For example: gaugeline house-rules --rules style-guide.md";
+    if (positionals.length > 0)
+      return {
+        kind: "error",
+        message: `gaugeline house-rules takes the file with --rules, not as a word: ${positionals.join(", ")}.`,
+        hint: usage,
+        verbose,
+      };
+    if (typeof values.rules !== "string" || values.rules === "")
+      return {
+        kind: "error",
+        message: "gaugeline house-rules needs the rules file: gaugeline house-rules --rules <file>",
+        hint: usage,
+        verbose,
+      };
+    return {
+      kind: "house-rules",
+      rules: values.rules,
+      ...(typeof values.out === "string" ? { out: values.out } : {}),
+      json: values.json === true,
       verbose,
       quiet: values.quiet === true,
     };
