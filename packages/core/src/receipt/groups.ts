@@ -58,6 +58,10 @@ const SECURITY_IDS = new Set([
   "webhook-timestamp-unbounded",
   "webhook-body-read-unsafely",
   "webhook-logs-private-values",
+  // An AI provider key in the page, a chat or AI widget nobody listed, and a model route that answers anyone: exposure, not content.
+  "ai-endpoint-open",
+  "ai-key-in-js",
+  "ai-widget-inventory",
 ]);
 
 /** Words that make it a listing, an opening time or an event date. */
