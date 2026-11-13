@@ -5,8 +5,8 @@ It queues an apply job. **Your own worker**, on your machine or in your CI, clai
 writer (`packages/writer`) with **your own GitHub token**. The hosted service never holds a token that
 can write ([What it can and can't write](../writes.md#fixes-you-approve-hosted), ADR-0010).
 
-This page covers the `pull_request` kind and, near the end, the `email` kind (a Gmail draft). Sanity drafts
-(X71) use the same rules and arrive in their own pull request. Nothing changes a live field.
+This page covers the `pull_request` kind, the `email` kind (a Gmail draft, near the end) and [the Sanity
+draft kind](#sanity-drafts). Nothing changes a live field.
 
 ## An example: the bar's broken menu link
 
@@ -192,6 +192,29 @@ full page, with a runnable example and its real output, is
 The trail entry's `ref` is Gmail's draft id; the extra reasons are `recipient`, `duplicate` and `disconnected`,
 and `apply_failed` with the reason `reconnect` when Gmail answers 401 or 403. The weekly client update is not an
 `email` apply job: the inbox skips it, and the agency's own mail path sends it ([agencies](./agencies.md)).
+
+## Sanity drafts
+
+The `sanity_draft` kind turns an approved fix into **a draft of one document** in your Sanity dataset, for an
+editor to read and publish. The full walk-through, with a local example you can run, is
+[Fixes as Sanity drafts](../guides/cms-fix-drafts.md). The rules, in short:
+
+- The same approval checks as above (`checkApproval`, one function every kind uses), then the payload: a
+  plain document id, a type, the new values and, for each, the SHA-256 of the text it holds now (`before`).
+- **Two reads and one write per approval.** Read the live document and compare each field's digest with
+  `before` (a different value is `stale`); read `drafts.<id>` (if it holds the approved text the job is done,
+  if it holds anything else it is left alone: `draft exists`); then one `create` of `drafts.<id>`, a copy of the
+  live document with the fix in it. Sanity refuses a create when the id exists, so a draft an editor started a
+  moment ago cannot be overwritten.
+- **The registry has two entries**: a read of one document and that one create. There is no request for a
+  patch, a replace, a removal, an action, a query or a live id, and it is frozen like the GitHub one. The sender
+  goes to `https://<projectId>.api.sanity.io` for the project in your configuration only, over https, with
+  `redirect: "error"`, the token in the `Authorization` header only, and a fixed error message if the
+  connection fails.
+- **`allowedFields` is required** (`page.hours`), and prices, costs, fees, currencies, discounts, payments, slugs
+  and secrets are refused even if listed. A dry run sends nothing at all.
+- The trail records the outcome, the draft's id (`drafts.<id>`), the status or the reason. Never the token,
+  never a response, never the client's text.
 
 Status: the writer and its tests are built. The worker that claims jobs is G36's, and outcome rows in the
 hosted decisions log arrive with it; until then the trail and the approvals lookup are interfaces.

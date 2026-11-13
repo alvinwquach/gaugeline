@@ -108,6 +108,7 @@ export const UNLISTED: NavPage[] = [
   { slug: "guides/languages", title: "Checking language versions" },
   { slug: "guides/facts", title: "Facts that must match everywhere" },
   { slug: "guides/payments", title: "Payment details everywhere" },
+  { slug: "guides/cms-fix-drafts", title: "Fixes as Sanity drafts" },
   { slug: "guides/emails", title: "Transactional emails: the emails customers get" },
   { slug: "guides/renewals", title: "Renewals: see what lapses before the site goes dark" },
   { slug: "guides/hosting-cost", title: "Hosting cost: find what runs up the bill" },

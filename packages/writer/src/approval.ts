@@ -22,7 +22,7 @@ const MAY_FOLLOW_AN_APPROVAL: ReadonlySet<string> = new Set([
 const CLOCK_SKEW_MS = 5 * 60 * 1000;
 
 /** Two SHA-256 hex digests are equal, compared in constant time. Anything not lower-case hex is not equal. */
-function sameDigest(a: string, b: string): boolean {
+export function sameDigest(a: string, b: string): boolean {
   if (!HEX64.test(a) || !HEX64.test(b)) return false;
   return timingSafeEqual(Buffer.from(a, "hex"), Buffer.from(b, "hex"));
 }
