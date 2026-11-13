@@ -41,6 +41,8 @@ const SECURITY = new Set([
   "sensitive",
 ]);
 const SECURITY_IDS = new Set([
+  // A visitor's details in a log are a privacy leak, not a booking.
+  "form-values-in-logs",
   "script-known-bad-host",
   "zero-width-in-text",
   "script-changed",
