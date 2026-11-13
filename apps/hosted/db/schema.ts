@@ -235,7 +235,7 @@ export const runChanges = pgTable(
 
 export type EmailFrequency = "every_change" | "fix_first" | "off";
 
-/** Per person, per organisation (0006): the address, whether it is confirmed, and how often to write. */
+/** Per person, per organisation (0007): the address, whether it is confirmed, and how often to write. */
 export const emailPreferences = pgTable(
   "email_preferences",
   {
@@ -254,7 +254,7 @@ export const emailPreferences = pgTable(
 
 export type EmailSendStatus = "sending" | "sent" | "failed";
 
-/** Server-only (0006): one morning email per person, organisation and local day. The key is the idempotency key. */
+/** Server-only (0007): one morning email per person, organisation and local day. The key is the idempotency key. */
 export const emailSends = pgTable(
   "email_sends",
   {

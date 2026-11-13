@@ -51,7 +51,7 @@ const TENANT_TABLES = [
   // 0004: the queue is server-only; what changed is read like runs.
   "jobs",
   "run_changes",
-  // 0006: a person reads and changes their own email setting; the send log is the server's.
+  // 0007: a person reads and changes their own email setting; the send log is the server's.
   "email_preferences",
   "email_sends",
 ];

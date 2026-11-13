@@ -1,4 +1,4 @@
--- 0006: the morning email (X64): each person's email settings, and a log that makes "once a day" a fact
+-- 0007: the morning email (X64): each person's email settings, and a log that makes "once a day" a fact
 -- the database keeps, so a restart or a second worker never sends the same morning twice.
 --
 -- Both tables are about people's email addresses, so neither is open to a browser beyond a person's own
