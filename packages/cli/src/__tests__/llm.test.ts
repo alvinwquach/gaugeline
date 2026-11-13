@@ -222,6 +222,17 @@ describe("gaugeline llm", () => {
     },
   );
 
+  it("never prints what a person added to a setting name that is two edits from a real one, in any output mode", async () => {
+    write("gaugeline.llm.json", { ...SETTINGS, keyEnvQ9: 1, providerzX: 1 });
+    for (const extra of [[], ["--json"], ["--verbose"], ["--json", "--verbose"]]) {
+      const r = await run(["llm", ...extra]);
+      expect(r.code, extra.join(" ")).toBe(2);
+      for (const added of ["Q9", "zX", "keyEnvQ9", "providerzX"])
+        expect(r.out + r.err).not.toContain(added);
+      expect(r.err).toContain('did you mean "keyEnv"?');
+    }
+  });
+
   it("says mode 3 is parked for tiers.mode", async () => {
     write("gaugeline.llm.json", { ...SETTINGS, tiers: { fast: "example-small", mode: "managed" } });
     const r = await run(["llm"]);

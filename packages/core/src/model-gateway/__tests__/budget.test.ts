@@ -394,9 +394,25 @@ describe("the estimate before a run", () => {
     expect(e.ok).toBe(true);
     if (!e.ok) return;
     expect(e.calls).toEqual([
-      { model: "small-model", inputTokens: 2_000, maxOutputTokens: 1_000, costMicros: 1_750 },
-      { model: "small-model", inputTokens: 2_000, maxOutputTokens: 1_000, costMicros: 1_750 },
-      { model: "large-model", inputTokens: 1_000, maxOutputTokens: 500, costMicros: 10_500 },
+      // A public field: a model that is not on the known list is the fixed text, never the configured id.
+      {
+        model: "[not on the known list]",
+        inputTokens: 2_000,
+        maxOutputTokens: 1_000,
+        costMicros: 1_750,
+      },
+      {
+        model: "[not on the known list]",
+        inputTokens: 2_000,
+        maxOutputTokens: 1_000,
+        costMicros: 1_750,
+      },
+      {
+        model: "[not on the known list]",
+        inputTokens: 1_000,
+        maxOutputTokens: 500,
+        costMicros: 10_500,
+      },
     ]);
     expect(e.inputTokens).toBe(5_000);
     expect(e.outputTokens).toBe(2_500);

@@ -136,18 +136,30 @@ describe("a config with a key in it", () => {
   });
 
   it("names a setting only when it is a mistake this page recognises or a near miss of a real one", () => {
-    for (const name of [
-      "apiKey",
-      "token",
-      "host",
-      "baseUrl",
-      "allowPrivate",
-      "provder",
-      "timeoutms",
-      "keyenv",
-      "tires",
-    ])
+    for (const name of ["apiKey", "token", "host", "baseUrl", "allowPrivate"])
       expect(problems({ ...GOOD, [name]: 1 }).join("\n"), name).toContain(`"${name}"`);
+    // A near miss is named by the setting it looks like, never as the person wrote it.
+    for (const [written, canonical] of [
+      ["provder", "provider"],
+      ["timeoutms", "timeoutMs"],
+      ["keyenv", "keyEnv"],
+      ["tires", "tiers"],
+    ] as const) {
+      const text = problems({ ...GOOD, [written]: 1 }).join("\n");
+      expect(text, written).toContain(`did you mean "${canonical}"?`);
+      expect(text, written).not.toContain(written);
+    }
+  });
+
+  it("never prints any character the person added to a setting name: a near miss gives only the canonical name", () => {
+    const p = problems({ ...GOOD, keyEnvQ9: 1, providerzX: 1, apikEy: 1 });
+    expect(p).toEqual([
+      'setting 1 is not one this file knows; did you mean "keyEnv"?; name the environment variable in keyEnv, never the key itself',
+      'setting 2 is not one this file knows; did you mean "provider"?; name the environment variable in keyEnv, never the key itself',
+      '"apiKey": is not a setting; name the environment variable in keyEnv, never the key itself',
+    ]);
+    for (const user of ["Q9", "zX", "apikEy", "keyEnvQ9", "providerzX"])
+      expect(p.join("\n")).not.toContain(user);
   });
 });
 

@@ -16,7 +16,7 @@ import { CouldNotRunError } from "../errors.js";
 import { EVAL_SETS } from "../evals/registry.js";
 import { EVAL_SUITE_SCHEMA } from "../evals/suite.js";
 import { parseGatewayConfig } from "./config.js";
-import { shownAnyModelId, shownModelId, shownSettingName } from "./known.js";
+import { recognisedSetting, shownAnyModelId, shownModelId, shownPathSegment } from "./known.js";
 import { MODEL_TIERS, type GatewayConfigInput, type ModelTier } from "./types.js";
 
 export const MODEL_PINS_SCHEMA = 1;
@@ -73,7 +73,7 @@ export type ModelPinsResult = { ok: true; pins: ModelPins } | { ok: false; probl
 
 /** The settings a pins file has. A name is shown only if it is one of them (or a recognised mistake): a key can be a name. */
 const PIN_SETTINGS = ["schema", "provider", "tiers", "evalPass", "reportSha256", "fast", "strong"];
-const shownName = (k: string) => shownSettingName(k, PIN_SETTINGS);
+const shownName = (k: string) => shownPathSegment(k, PIN_SETTINGS);
 
 /** The pins if `raw` is a pins file, or the problems, each with where it is and never what was written. */
 export function parseModelPins(raw: unknown): ModelPinsResult {
@@ -82,9 +82,14 @@ export function parseModelPins(raw: unknown): ModelPinsResult {
   const problems = r.error.issues.flatMap((issue) => {
     const where = issue.path.map(String).map(shownName).join(".");
     if (issue.code === "unrecognized_keys")
-      return issue.keys.map(
-        (k) => `${where === "" ? "" : `${where}.`}${shownName(k)}: is not a setting`,
-      );
+      return issue.keys.map((k, i) => {
+        // Never the user's spelling: the canonical name of what it looks like, or only its place in the file.
+        const seen = recognisedSetting(k, PIN_SETTINGS);
+        if (seen?.kind === "mistake")
+          return `${where === "" ? "" : `${where}.`}"${seen.name}": is not a setting`;
+        const guess = seen ? `; did you mean "${seen.name}"?` : "";
+        return `${where === "" ? "" : `${where}: `}setting ${i + 1} is not one this file knows${guess}`;
+      });
     return [`${where === "" ? "the pins file" : where}: ${issue.message}`];
   });
   return { ok: false, problems };

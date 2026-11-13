@@ -326,7 +326,8 @@ export function estimateRun(
     }
     const inputTokens = estimateInputTokens(p.inputChars);
     calls.push({
-      model: p.model,
+      // A public field: the canonical id if it is a known one, else the fixed text, never a config string as written.
+      model: shownAnyModelId(p.model),
       inputTokens,
       maxOutputTokens: p.maxOutputTokens,
       costMicros: callCostMicros(price, inputTokens, p.maxOutputTokens),

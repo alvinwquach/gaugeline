@@ -1,8 +1,8 @@
 /**
  * What the gateway knows by name (AG-20). A config is a file a person wrote, and anything in it that is printed
  * back could be a key pasted in the wrong place. So the root rule is: a provider, a model id or a variable name from
- * a config is shown only if it is on a closed list kept here, and anything else is shown as its length and its first
- * three characters at most. A new provider, model or key variable is added by a change to this file and its test, the
+ * a config is shown only if it is on a closed list kept here, and anything else is shown as one fixed text, with no
+ * character of it and no length. A new provider, model or key variable is added by a change to this file and its test, the
  * way a provider host is added to the sending module.
  */
 
@@ -93,30 +93,28 @@ export const isKnownAnyModel = (id: string): boolean =>
 export const shownAnyModelId = (id: string): string =>
   KNOWN_PROVIDERS.some((p) => isKnownModelId(p, id)) ? id : NOT_ON_LIST;
 
-/** Mistakes people make in a settings file, shown by name: a key, a host, a mode. */
-const KNOWN_MISTAKES: ReadonlySet<string> = new Set(
-  [
-    "apiKey",
-    "api_key",
-    "key",
-    "token",
-    "secret",
-    "password",
-    "authorization",
-    "bearer",
-    "host",
-    "baseUrl",
-    "url",
-    "endpoint",
-    "proxy",
-    "allowPrivate",
-    "mode",
-    "managed",
-    "vault",
-    "metered",
-    "metering",
-  ].map((n) => n.toLowerCase()),
-);
+/** Mistakes people make in a settings file, by their canonical spelling: a key, a host, a mode. */
+const KNOWN_MISTAKES: readonly string[] = Object.freeze([
+  "apiKey",
+  "api_key",
+  "key",
+  "token",
+  "secret",
+  "password",
+  "authorization",
+  "bearer",
+  "host",
+  "baseUrl",
+  "url",
+  "endpoint",
+  "proxy",
+  "allowPrivate",
+  "mode",
+  "managed",
+  "vault",
+  "metered",
+  "metering",
+]);
 
 /** The edit distance between two short words (insert, delete, change one letter). */
 function distance(a: string, b: string): number {
@@ -135,15 +133,34 @@ function distance(a: string, b: string): number {
 }
 
 /**
- * Whether a setting's name may be shown: only a mistake this page recognises, or a near miss (two edits) of one of
- * `settings`, the file's real ones. Any other name is never printed: a person may have pasted a key as a name.
+ * What a setting name is, if it is a name this file recognises: `mistake` for a recognised mistake (a key, a host, a
+ * mode), `real` for a real setting or a near miss of one (two edits, any case), with the CANONICAL spelling. The
+ * user's own spelling is never returned and so never printed: a person may have pasted a key as a name, and
+ * "within two edits" would let two characters of it through. Nothing recognised: undefined.
  */
-export const mayShowSetting = (k: string, settings: readonly string[]): boolean =>
-  k.length <= 24 &&
-  /^[A-Za-z][A-Za-z0-9_]*$/.test(k) &&
-  (KNOWN_MISTAKES.has(k.toLowerCase()) ||
-    settings.some((s) => distance(k.toLowerCase(), s.toLowerCase()) <= 2));
+export function recognisedSetting(
+  k: string,
+  settings: readonly string[],
+): { name: string; kind: "mistake" | "real" } | undefined {
+  if (k.length > 24 || !/^[A-Za-z][A-Za-z0-9_]*$/.test(k)) return undefined;
+  const lower = k.toLowerCase();
+  const mistake = KNOWN_MISTAKES.find((m) => m.toLowerCase() === lower);
+  if (mistake !== undefined) return { name: mistake, kind: "mistake" };
+  let best: { name: string; d: number } | undefined;
+  for (const s of settings) {
+    const d = distance(lower, s.toLowerCase());
+    if (d <= 2 && (best === undefined || d < best.d)) best = { name: s, d };
+  }
+  return best === undefined ? undefined : { name: best.name, kind: "real" };
+}
 
-/** A path segment or setting name for a message: itself if it may be shown, else "a setting". */
+/**
+ * A path segment for a message: exactly one of the file's real settings, or a known model id (a price is keyed by
+ * one), else "an entry". Never a near miss, and never the person's own spelling.
+ */
+export const shownPathSegment = (k: string, settings: readonly string[]): string =>
+  settings.includes(k) || isKnownAnyModel(k) ? k : "an entry";
+
+/** A path segment or setting name for a message: the canonical name of a recognised setting, else "a setting". */
 export const shownSettingName = (k: string, settings: readonly string[]): string =>
-  mayShowSetting(k, settings) ? k : "a setting";
+  recognisedSetting(k, settings)?.name ?? "a setting";

@@ -13,7 +13,7 @@ import {
   type GatewayConfig,
 } from "./types.js";
 
-import { KNOWN_KEY_ENVS, isKnownKeyEnv, isNameShaped, mayShowSetting } from "./known.js";
+import { KNOWN_KEY_ENVS, isKnownKeyEnv, isNameShaped, recognisedSetting } from "./known.js";
 
 const KNOWN_KEY_ENV_LIST = KNOWN_KEY_ENVS.join(", ");
 
@@ -73,7 +73,6 @@ export type GatewayConfigResult =
 
 /** The settings this file has. */
 const SETTINGS = ["provider", "keyEnv", "tiers", "timeoutMs", "maxInputChars", "maxOutputTokens"];
-const mayShow = (k: string): boolean => mayShowSetting(k, SETTINGS);
 
 /** The config if `raw` is one, or the problems, one per line, each with where it is. */
 export function parseGatewayConfig(raw: unknown): GatewayConfigResult {
@@ -87,13 +86,15 @@ export function parseGatewayConfig(raw: unknown): GatewayConfigResult {
     if (issue.code === "unrecognized_keys")
       return issue.keys.map((k, i) => {
         const at = where === "" ? "" : `${where}.`;
+        // The user's spelling is never printed: only the canonical name of a recognised mistake or setting.
+        const seen = recognisedSetting(k, SETTINGS);
         const hint =
-          /host|url|endpoint|proxy|private|address/i.test(k) && mayShow(k)
+          seen?.kind === "mistake" && /host|url|endpoint|proxy|private|address/i.test(seen.name)
             ? "where a provider is reached is kept in code, never in a file"
             : "name the environment variable in keyEnv, never the key itself";
-        return mayShow(k)
-          ? `${at}"${k}": is not a setting; ${hint}`
-          : `${where === "" ? "" : `${where}: `}setting ${i + 1} is not one this file knows; ${hint}`;
+        if (seen?.kind === "mistake") return `${at}"${seen.name}": is not a setting; ${hint}`;
+        const guess = seen ? `; did you mean "${seen.name}"?` : "";
+        return `${where === "" ? "" : `${where}: `}setting ${i + 1} is not one this file knows${guess}; ${hint}`;
       });
     return [`${where === "" ? "the config" : where}: ${issue.message}`];
   });

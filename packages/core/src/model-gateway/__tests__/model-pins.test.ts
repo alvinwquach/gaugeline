@@ -102,6 +102,20 @@ describe("the pins file", () => {
     expect(text).not.toContain("ABC");
   });
 
+  it("never prints a setting name the person wrote, even one two edits from a real one", () => {
+    const r = parseModelPins({
+      schema: 1,
+      provider: "example",
+      tiers: { fast: "small-model", fastQ9: "x" },
+      providerzX: 1,
+      schemaQ9: 1,
+    });
+    const text = r.ok ? "" : r.problems.join("\n");
+    expect(r.ok).toBe(false);
+    for (const added of ["Q9", "zX"]) expect(text).not.toContain(added);
+    expect(text).toContain('did you mean "provider"?');
+  });
+
   it.each([null, undefined, 5, "x", []])("refuses %j", (raw) => {
     expect(parseModelPins(raw).ok).toBe(false);
   });

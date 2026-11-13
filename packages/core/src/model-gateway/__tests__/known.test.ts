@@ -8,6 +8,7 @@ import {
   isNameShaped,
   shownAnyModelId,
   shownModelId,
+  recognisedSetting,
   shownSettingName,
   shownProvider,
 } from "../known.js";
@@ -99,6 +100,27 @@ describe("what may be printed", () => {
       expect(shownProvider(v)).toBe(NOT_ON_LIST);
   });
 
+  it("never returns the person's own spelling: two added characters are not echoed, and a name two edits away gives the canonical one", () => {
+    expect(recognisedSetting("keyEnvQ9", ["keyEnv", "provider"])).toEqual({
+      name: "keyEnv",
+      kind: "real",
+    });
+    expect(recognisedSetting("providerzX", ["keyEnv", "provider"])).toEqual({
+      name: "provider",
+      kind: "real",
+    });
+    expect(recognisedSetting("KEYENV", ["keyEnv"])?.name).toBe("keyEnv");
+    expect(recognisedSetting("keyEnvQ9x", ["keyEnv"])).toBeUndefined();
+    expect(recognisedSetting("qzvkwmplrtyhbnxc", ["keyEnv"])).toBeUndefined();
+    expect(shownSettingName("keyEnvQ9", ["keyEnv"])).toBe("keyEnv");
+  });
+
+  it("has a floor on the year of a dated model id: a real date before 2020 is not a known model", () => {
+    expect(isKnownModelId("example", "example-small-2020-01-01")).toBe(true);
+    expect(isKnownModelId("example", "example-small-2019-12-31")).toBe(false);
+    expect(isKnownModelId("example", "example-small-1999-01-01")).toBe(false);
+  });
+
   it("knows an example model with a date only if the date is a real one", () => {
     for (const ok of ["example-small", "example-large-2026-01-15", "example-small-2024-02-29"])
       expect(isKnownModelId("example", ok), ok).toBe(true);
@@ -116,7 +138,8 @@ describe("what may be printed", () => {
 
   it("shows a setting's name only for a recognised mistake or a near miss of a real setting", () => {
     expect(shownSettingName("apiKey", ["tiers"])).toBe("apiKey");
-    expect(shownSettingName("tires", ["tiers"])).toBe("tires");
+    expect(shownSettingName("APIKEY", ["tiers"])).toBe("apiKey");
+    expect(shownSettingName("tires", ["tiers"])).toBe("tiers");
     expect(shownSettingName("qzvkwmplrtyhbnxc", ["tiers"])).toBe("a setting");
     expect(shownSettingName("something", ["tiers"])).toBe("a setting");
   });

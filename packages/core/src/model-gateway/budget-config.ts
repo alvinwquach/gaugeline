@@ -6,7 +6,7 @@
  */
 import * as z from "zod";
 import { MAX_COST_MICROS } from "../agent-policy.js";
-import { isKnownAnyModel, mayShowSetting } from "./known.js";
+import { recognisedSetting, shownPathSegment } from "./known.js";
 
 const MODEL_ID = /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,99}$/;
 /** The largest price: 10^10 micro-units for a million tokens (10 thousand units a million tokens). */
@@ -84,8 +84,7 @@ const BUDGET_SETTINGS = [
   "inputMicrosPerMTok",
   "outputMicrosPerMTok",
 ];
-const shownName = (k: string) =>
-  mayShowSetting(k, BUDGET_SETTINGS) ? k : isKnownAnyModel(k) ? k : "an entry";
+const shownName = (k: string) => shownPathSegment(k, BUDGET_SETTINGS);
 
 /** The config if `raw` is one, or the problems, one per line, each with where it is. */
 export function parseBudgetConfig(raw: unknown): BudgetConfigResult {
@@ -101,9 +100,14 @@ export function parseBudgetConfig(raw: unknown): BudgetConfigResult {
   const problems = r.error.issues.flatMap((issue) => {
     const where = issue.path.map(String).map(shownName).join(".");
     if (issue.code === "unrecognized_keys")
-      return issue.keys.map(
-        (k) => `${where === "" ? "" : `${where}.`}${shownName(k)}: is not a setting`,
-      );
+      return issue.keys.map((k, i) => {
+        // Never the user's spelling: the canonical name of what it looks like, or only its place in the file.
+        const seen = recognisedSetting(k, BUDGET_SETTINGS);
+        if (seen?.kind === "mistake")
+          return `${where === "" ? "" : `${where}.`}"${seen.name}": is not a setting`;
+        const guess = seen ? `; did you mean "${seen.name}"?` : "";
+        return `${where === "" ? "" : `${where}: `}setting ${i + 1} is not one this file knows${guess}`;
+      });
     return [`${where === "" ? "the config" : where}: ${issue.message}`];
   });
   return { ok: false, problems };
