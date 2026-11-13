@@ -90,6 +90,7 @@ const FIXTURES = [
   "source-maps",
   "copy-date-passed",
   "copyright-stale",
+  "framework-causes",
 ];
 
 /**
