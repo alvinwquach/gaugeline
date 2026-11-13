@@ -165,6 +165,13 @@ export const UNLISTED: NavPage[] = [
     slug: "checks/form-handlers-in-source",
     title: "Form handlers that fail quietly or let anyone in",
   },
+    slug: "checks/form-handlers-in-source",
+    title: "Form handlers that fail quietly or let anyone in",
+  },
+  {
+    slug: "checks/token-and-server-code",
+    title: "A token needed at import, and a server file that exports a constant",
+  },
   { slug: "checks/personal-data-in-source", title: "Visitors' details in analytics and logs" },
   { slug: "connectors/postgres", title: "A database as a source: Postgres and Supabase" },
   { slug: "sources/shopify", title: "Shopify as a price source" },
