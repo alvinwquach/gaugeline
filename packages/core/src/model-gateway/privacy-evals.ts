@@ -46,7 +46,6 @@ const Data = z
       z
         .object({
           id: z.string(),
-          check: z.string(),
           severity: z.string().optional(),
           title: z.string(),
           snippet: z.string().optional(),
@@ -86,7 +85,7 @@ export const modelPrivacyGateAgent: EvalAgent<PrivacyOutput> = {
   id: MODEL_PRIVACY_GATE_ID,
   tools: [],
   limits: LIMITS,
-  buildPrompt: (input) => JSON.stringify(evalInputToModelInput(MODEL_PRIVACY_GATE_ID, input)),
+  buildPrompt: (input) => JSON.stringify(evalInputToModelInput(input)),
   parse(raw) {
     const r = Output.safeParse(raw);
     if (!r.success)
@@ -101,10 +100,7 @@ export const modelPrivacyGateAgent: EvalAgent<PrivacyOutput> = {
         : { ok: false, issues: ["payload: a refused input sends nothing, so it must be empty"] };
     const data = dataOf(out.payload);
     if (!data) return { ok: false, issues: ["payload: is not the gate's payload shape"] };
-    const texts = [
-      out.payload.split("\n")[2]!,
-      ...data.findings.flatMap((f) => [f.title, f.snippet ?? ""]),
-    ];
+    const texts = data.findings.flatMap((f) => [f.title, f.snippet ?? ""]);
     const kinds = [...new Set(texts.flatMap(leaks))];
     return kinds.length > 0
       ? { ok: false, issues: kinds.map((k) => `payload: still holds ${k}`) }
@@ -223,10 +219,7 @@ const caseInput = (id: string): EvalInput => INPUTS.get(id)!;
 
 /** The payload as the harness reads it, from the real gate or from one with a part taken out. */
 function answerWith(caseId: string, parts: PayloadParts): PrivacyOutput {
-  const r = buildPayloadWith(
-    evalInputToModelInput(MODEL_PRIVACY_GATE_ID, caseInput(caseId)),
-    parts,
-  );
+  const r = buildPayloadWith(evalInputToModelInput(caseInput(caseId)), parts);
   return r.ok ? { refused: false, payload: r.payload } : { refused: true, payload: "" };
 }
 const real = (caseId: string) => answerWith(caseId, DEFAULT_PAYLOAD_PARTS);
@@ -301,7 +294,7 @@ function withUnknownId(caseId: string): PrivacyOutput {
   const base = real(caseId);
   const lines = base.payload.split("\n");
   const data = JSON.parse(lines[5]!) as { findings: Record<string, string>[] };
-  data.findings.push({ id: "f-999", check: "image-alt", title: "A finding nobody saw" });
+  data.findings.push({ id: "f-999", title: "A finding nobody saw" });
   lines[5] = JSON.stringify(data);
   return { refused: false, payload: lines.join("\n") };
 }

@@ -6,8 +6,14 @@ import { inspect } from "node:util";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createGateway } from "../gateway.js";
 import { ModelGatewayError } from "../errors.js";
-import { buildModelPayload } from "../privacy.js";
-import { MAX_ANSWER_CHARS, MAX_PROMPT_CHARS, MODEL_TIERS, type BudgetHooks } from "../types.js";
+import { TASK_TEMPLATES, buildModelPayload } from "../privacy.js";
+import {
+  MAX_ANSWER_CHARS,
+  MAX_PROMPT_CHARS,
+  MODEL_TIERS,
+  type BudgetHooks,
+  type ModelRequest,
+} from "../types.js";
 import {
   ANSWER,
   CONFIG,
@@ -178,19 +184,19 @@ describe("the key", () => {
 });
 
 describe("the input", () => {
-  const withSnippet = (snippet: string) => ({
+  const withSnippet = (snippet: string): ModelRequest => ({
     ...REQUEST,
     input: {
-      task: "Write one line about it.",
-      findings: [{ id: "f-1", checkId: "secret-in-js", title: "A key in a script", snippet }],
+      task: { template: "reword-findings" as const },
+      findings: [{ id: "f-1", title: "A key in a script", snippet }],
     },
   });
 
   it("loses a key-shaped string before the adapter sees it, and says it did", async () => {
     const { gateway, calls } = setup();
     const a = await gateway.complete(withSnippet(`The page leaks ${SHAPED_KEY} in a script.`));
-    expect(calls[0]!.prompt).not.toContain(SHAPED_KEY);
-    expect(calls[0]!.prompt).toContain("sk_live_[redacted]");
+    expect(calls[0]!.prompt.text()).not.toContain(SHAPED_KEY);
+    expect(calls[0]!.prompt.text()).toContain("sk_live_[redacted]");
     expect(a.redacted).toBe(true);
   });
 
@@ -199,15 +205,15 @@ describe("the input", () => {
     await gateway.complete(
       withSnippet(`Ask ${["test.person", "example.test"].join("@")} on +1 555 010 0199.`),
     );
-    expect(calls[0]!.prompt).toContain("Ask [email] on [phone].");
+    expect(calls[0]!.prompt.text()).toContain("Ask [email] on [phone].");
   });
 
   it("is passed on as the gate built it when there is nothing to remove", async () => {
     const { gateway, calls } = setup();
     const a = await gateway.complete(REQUEST);
     const built = buildModelPayload(REQUEST.input);
-    expect(built.ok && calls[0]!.prompt).toBe(built.ok && built.payload);
-    expect(calls[0]!.prompt).toContain(REQUEST.input.task);
+    expect(built.ok && calls[0]!.prompt.text()).toBe(built.ok && built.payload);
+    expect(calls[0]!.prompt.text()).toContain(TASK_TEMPLATES["group-findings"]);
     expect(a.redacted).toBe(false);
   });
 

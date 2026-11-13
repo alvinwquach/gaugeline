@@ -3,8 +3,9 @@
 `gaugeline <address> --json` prints one JSON object. Its shape carries a schema number; the number
 only changes with a new published schema file.
 
-Current schema number: `1` (`RESULT_SCHEMA_VERSION` in `@gaugeline/core`). The full schema is
+Default schema number: `2` (`RESULT_SCHEMA_VERSION` in `@gaugeline/core`). The full schema is
 [`packages/core/schema/result.v2.json`](../../packages/core/schema/result.v2.json); see [Options → JSON output](../options.md#json-output).
+Schema 3 is opt-in with `--json-schema 3` (see below); schema 1 is still published as `result.v1.json` and is no longer printed.
 
 ## Finding
 
@@ -26,6 +27,24 @@ Current schema number: `1` (`RESULT_SCHEMA_VERSION` in `@gaugeline/core`). The f
   "url": "https://shop.example/"
 }
 ```
+
+## Schema 3: what suppressions hide
+
+`gaugeline <address> --json --json-schema 3` prints schema 3 (`RESULT_SCHEMA_VERSION_3`, published as
+[`result.v3.json`](../../packages/core/schema/result.v3.json)): every field of schema 2 with `schema` set to
+`3`, and four lists that are always present, empty when nothing was hidden. The default stays schema 2, which never
+gains a field, so choosing 3 is always a decision of whoever reads the JSON.
+
+| Field                   | Type                            | Meaning                                                                                          |
+| ----------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `suppressed`            | `{ finding, by }[]`             | Findings an active suppression hid. `by` is the entry that did it                                |
+| `expiredSuppressions`   | `{ id, url?, until, reason }[]` | Entries past their `until` date (the last day, UTC), whether or not their finding is still there |
+| `unmatchedSuppressions` | `{ id, url?, until, reason }[]` | Active entries that matched no finding: a mistyped id, or a problem that is fixed                |
+| `baselined`             | `Finding[]`                     | Findings the `--baseline` file already knew, left out of `findings`                              |
+
+`--json-schema` accepts `2` or `3`; anything else is exit 2 with the accepted numbers. It needs `--json` (or
+`--format json`). A runnable example with its output is in
+[Config, baselines and suppressions](../config.md#seeing-what-was-hidden-in-json).
 
 ## Not in this file
 

@@ -62,7 +62,7 @@ describe("the gate's eval set", () => {
   it("covers every kind of redaction in the golden cases: none of them is left in the payload", async () => {
     const seen = new Set<string>();
     for (const c of modelPrivacyGateCases.filter((x) => x.kind === "golden")) {
-      const r = buildPayloadWith(evalInputToModelInput("x", c.input), DEFAULT_PAYLOAD_PARTS);
+      const r = buildPayloadWith(evalInputToModelInput(c.input), DEFAULT_PAYLOAD_PARTS);
       if (r.ok) for (const k of REDACTION_KINDS) if (r.record.redactions[k] > 0) seen.add(k);
     }
     for (const k of ["hidden-characters", "secret", "iban", "card", "email", "phone"])
@@ -78,7 +78,7 @@ describe("mutation-style: a gate with a guard removed turns the golden cases red
       async complete(req) {
         const c = modelPrivacyGateCases.find((x) => x.id === req.caseId)!;
         if (c.kind !== "golden") return shipped.complete(req);
-        const r = buildPayloadWith(evalInputToModelInput(req.agentId, c.input), parts);
+        const r = buildPayloadWith(evalInputToModelInput(c.input), parts);
         return {
           text: JSON.stringify(
             r.ok ? { refused: false, payload: r.payload } : { refused: true, payload: "" },

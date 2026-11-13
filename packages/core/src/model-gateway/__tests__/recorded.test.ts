@@ -88,9 +88,15 @@ describe("recording a live run", () => {
   it("holds the answers and their cost, never the prompt, the key or the model's name", async () => {
     const { gateway } = setup();
     const r = recordGateway(gateway);
-    await r.gateway.complete({ ...REQUEST, input: { task: "A unique task sentence." } });
+    await r.gateway.complete({
+      ...REQUEST,
+      input: {
+        task: { template: "reword-findings" },
+        findings: [{ id: "f-1", title: "A unique title sentence." }],
+      },
+    });
     const json = recordingsToJson(r.recordings());
-    expect(json).not.toContain("unique task");
+    expect(json).not.toContain("unique title");
     expect(json).not.toContain(CONFIG.keyEnv);
     expect(json).not.toContain("small-model");
   });

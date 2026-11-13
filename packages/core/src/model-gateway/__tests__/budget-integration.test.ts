@@ -20,13 +20,14 @@ import {
 } from "../budget.js";
 import { ModelGatewayError } from "../errors.js";
 import type { ModelInput } from "../privacy.js";
-import { sizedInput } from "./privacy-fixtures.js";
+import { buildModelPayload } from "../privacy.js";
+import { fullInput } from "./privacy-fixtures.js";
 import { createGateway } from "../gateway.js";
 import { RECORDED_PROVIDER, createRecordedAdapter } from "../recorded.js";
 import type { BudgetEstimate, ModelAdapter } from "../types.js";
 
 const BUDGET = {
-  ceilings: { perRunMicros: 3_000, perDayMicros: 10_000, perWorkspaceMicros: 100_000 },
+  ceilings: { perRunMicros: 2_800, perDayMicros: 10_000, perWorkspaceMicros: 100_000 },
   prices: { "word-small": { inputMicrosPerMTok: 250_000, outputMicrosPerMTok: 1_250_000 } },
 };
 const NOON = Date.UTC(2026, 10, 13, 12, 0, 0);
@@ -34,8 +35,10 @@ const ANSWER = {
   text: "ok",
   usage: { inputTokens: 1_800, outputTokens: 200, costMicros: 0, latencyMs: 5 },
 };
-const PROMPT_CHARS = 8_000;
-const INPUT = sizedInput(PROMPT_CHARS);
+const INPUT = fullInput();
+const built = buildModelPayload(INPUT);
+/** What the gateway counts for the largest input the gate takes: the length of the payload it builds. */
+const PROMPT_CHARS = built.ok ? built.payload.length : 0;
 
 function build(opts: { adapter?: ModelAdapter; onSpend?: (e: SpendEntry) => void } = {}) {
   const ledger = createBudgetLedger({
@@ -73,7 +76,7 @@ describe("a ledger's hooks inside the gateway", () => {
     const err = await ask(gateway, "c").catch((e: unknown) => e);
     expect(err).toBeInstanceOf(ModelGatewayError);
     expect((err as ModelGatewayError).code).toBe("budget");
-    expect((err as ModelGatewayError).message).toContain("per-run ceiling of 3000");
+    expect((err as ModelGatewayError).message).toContain("per-run ceiling of 2800");
     expect(seen).toEqual(["a", "b"]);
   });
 
@@ -82,7 +85,9 @@ describe("a ledger's hooks inside the gateway", () => {
     await ask(gateway, "a");
     await ask(gateway, "b");
     await ask(gateway, "c").catch(() => undefined);
-    const err = await ask(gateway, "d", { task: "Hi" }).catch((e: unknown) => e);
+    const err = await ask(gateway, "d", { task: { template: "reword-findings" } }).catch(
+      (e: unknown) => e,
+    );
     expect((err as ModelGatewayError).code).toBe("budget");
     expect(seen).toEqual(["a", "b"]);
   });
@@ -109,7 +114,7 @@ describe("a ledger's hooks inside the gateway", () => {
     expect(planned.ok && planned.calls[0]!.inputTokens).toBe(asked[0]!.inputTokens);
     // The gateway's output limit (1024 by default) is what the worst case used.
     expect(planned.ok && planned.costMicros).toBe(
-      callCostMicros(BUDGET.prices["word-small"], 2_000, 1_024),
+      callCostMicros(BUDGET.prices["word-small"], estimateInputTokens(PROMPT_CHARS), 1_024),
     );
   });
 
@@ -123,7 +128,9 @@ describe("a ledger's hooks inside the gateway", () => {
     };
     const { gateway, run } = build({ adapter: failing });
     await ask(gateway, "a").catch(() => undefined);
-    expect(run.committedMicros()).toBe(1_780);
+    expect(run.committedMicros()).toBe(
+      callCostMicros(BUDGET.prices["word-small"], estimateInputTokens(PROMPT_CHARS), 1_024),
+    );
   });
 
   it("makes a spend that is a valid trace record, so the scorecard has a measured cost", async () => {

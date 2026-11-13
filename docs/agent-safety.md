@@ -48,7 +48,7 @@ and not built.
   a registered agent's token that has the `read:pending` or `read:runs` scope ([the API](./hosted/api.md)).
 - **Planned (row AG-19).** Word a draft with a model. Grouping, ranking and checking stay plain code; a
   model only writes the sentences, and tests use a recorded fake, so no key is needed to run them. The
-  interface and the fake are built ([the model gateway](./model-gateway.md)); nothing reaches a model yet.
+  interface and the fake are built ([the model gateway](./model-gateway.md)); nothing is wired to a provider yet.
 
 ## What an agent cannot do
 

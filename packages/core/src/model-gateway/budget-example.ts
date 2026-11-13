@@ -15,7 +15,7 @@ import {
 export async function runBudgetExample(): Promise<string> {
   // What a budget file holds: three ceilings and a price per model, in whole micro-units (10^6 to the unit).
   const budget = {
-    ceilings: { perRunMicros: 3_000, perDayMicros: 10_000, perWorkspaceMicros: 100_000 },
+    ceilings: { perRunMicros: 2_800, perDayMicros: 10_000, perWorkspaceMicros: 100_000 },
     prices: { "word-small": { inputMicrosPerMTok: 250_000, outputMicrosPerMTok: 1_250_000 } },
   };
   const out: string[] = [];
@@ -63,18 +63,17 @@ export async function runBudgetExample(): Promise<string> {
   const words = gateway(run);
 
   // The caller may go ahead anyway; the gateway still stops the call that could pass the ceiling.
-  const findings = Array.from({ length: 18 }, (_, k) => ({
+  const findings = Array.from({ length: 10 }, (_, k) => ({
     id: `f-${k}`,
-    checkId: "broken-link",
     title: "The menu link gives a 404",
-    snippet: "menu link is broken. ".repeat(15).slice(0, 300),
+    snippet: "menu link is broken. ".repeat(15).slice(0, 200),
   }));
-  const note = { task: "Reword these findings for the owner.", findings };
+  const note = { task: { template: "reword-findings" }, findings } as const;
   for (const [callId, input] of [
     ["note-1", note],
     ["note-2", note],
     ["note-3", note],
-    ["note-4", { task: "Hi" }],
+    ["note-4", { task: { template: "reword-findings" } }],
   ] as const) {
     try {
       await words.complete({ tier: "fast", agentId: "triage", callId, input });

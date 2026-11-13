@@ -43,7 +43,7 @@ export const REQUEST = {
   tier: "fast",
   agentId: "triage",
   callId: "call-1",
-  input: { task: "Group these findings by cause.", findings: [] },
+  input: { task: { template: "group-findings" }, findings: [] },
 } as const;
 
 /** A gateway over a test adapter, with the key set in a mutable environment. */

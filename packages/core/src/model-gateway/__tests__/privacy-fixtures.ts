@@ -4,7 +4,7 @@
  * use reserved names, the phone number is in the range set aside for fiction, and the card and IBAN are the
  * published test values that belong to no one.
  */
-import { buildModelPayload, type ModelInput, type RedactionKind } from "../privacy.js";
+import type { ModelInput, RedactionKind } from "../privacy.js";
 
 export const EMAIL = ["baker", "example.test"].join("@");
 export const PHONE = "+44 20 7946 0958";
@@ -27,6 +27,11 @@ export const URL_WITH_LOGIN = ["https://", "baker", ":", "hunter2hunter2", "@int
 );
 export const PASSWORD_FIELD = '{"password": "correct-horse-battery"}';
 export const ZWSP = String.fromCodePoint(0x200b);
+export const COOKIE_LINE = "Cookie: session=abc123def456ghi789; theme=dark";
+export const SIGNED_URL =
+  "https://files.example.test/menu.png?X-Amz-Signature=abcdef0123456789abcdef&X-Amz-Expires=60";
+export const ADDRESSES =
+  "runs at 10.0.0.5:8080, on [2001:db8::8a2e:370:7334] and on localhost:3000";
 
 /**
  * One fixture per redaction kind: text that holds a value of the kind; `value`, which must not survive the
@@ -53,6 +58,16 @@ export const KIND_FIXTURES: Record<
     value: "hunter2hunter2",
     survives: "hunter2hunter2",
   },
+  cookie: {
+    text: `Response had ${COOKIE_LINE}`,
+    value: "abc123def456ghi789",
+    survives: "abc123def456ghi789",
+  },
+  "url-parameter": {
+    text: `Image served from ${SIGNED_URL}`,
+    value: "Signature=abcdef",
+    survives: "Signature=abcdef",
+  },
   "credential-field": {
     text: `Config says ${PASSWORD_FIELD}`,
     value: "correct-horse-battery",
@@ -66,6 +81,7 @@ export const KIND_FIXTURES: Record<
   iban: { text: `Pay to ${IBAN} please`, value: "GB82", survives: "GB82 WEST" },
   card: { text: `The form shows ${CARD} in a label`, value: "4111", survives: "4111" },
   email: { text: `Mail ${EMAIL} for the menu`, value: EMAIL, survives: EMAIL },
+  "network-address": { text: `The app ${ADDRESSES}`, value: "10.0.0.5", survives: "10.0.0.5" },
   phone: { text: `Call ${PHONE} for the menu`, value: "7946", survives: "7946" },
 };
 
@@ -77,31 +93,16 @@ export const WHOLE_PAGE = [
 ].join("\n");
 
 /**
- * An input whose payload is exactly `chars` characters long, for the tests that count characters (budgets):
- * as many 300-character snippets as fit, and the rest made up in the task. Findings carry plain letters, so
- * nothing in the payload is escaped and the length is the one asked for.
+ * The largest input the gate takes in a plain shape: ten findings, each with a 120-character title and a
+ * 200-character snippet of plain letters (so nothing is escaped). For the tests that count characters (budgets).
  */
-export function sizedInput(chars: number): ModelInput {
-  const finding = (k: number) => ({
-    id: `f-${k}`,
-    checkId: "menu-link",
-    title: "Menu link",
-    snippet: "a".repeat(300),
-  });
-  const length = (task: string, n: number) => {
-    const r = buildModelPayload({
-      task,
-      findings: Array.from({ length: n }, (_, k) => finding(k)),
-    });
-    if (!r.ok) throw new Error(`refused: ${r.reason}`);
-    return r.payload.length;
-  };
-  let n = 0;
-  while (n < 20 && length("Reword.", n + 1) <= chars) n += 1;
-  const pad = chars - length("Reword.", n);
-  if (pad < 0 || pad > 900) throw new Error("this size cannot be built from whole findings");
+export function fullInput(): ModelInput {
   return {
-    task: `Reword.${"a".repeat(pad)}`,
-    findings: Array.from({ length: n }, (_, k) => finding(k)),
+    task: { template: "reword-findings" },
+    findings: Array.from({ length: 10 }, (_, k) => ({
+      id: `f-${k}`,
+      title: "t".repeat(120),
+      snippet: "a".repeat(200),
+    })),
   };
 }

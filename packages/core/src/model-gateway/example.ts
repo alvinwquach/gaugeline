@@ -29,11 +29,10 @@ export async function runExample(): Promise<string> {
     agentId: "triage",
     callId: "reword-1",
     input: {
-      task: "Reword this finding for the owner in two sentences.",
+      task: { template: "reword-findings" },
       findings: [
         {
           id: "f-1",
-          checkId: "broken-link",
           title: "The menu link gives a 404",
           snippet: `Reply to ${["baker", "example.test"].join("@")}`,
         },
@@ -47,12 +46,20 @@ export async function runExample(): Promise<string> {
   );
   out.push(`advisory: ${answer.advisory}, redacted: ${answer.redacted}`);
 
-  const hello = { task: "Say hello." };
+  const hello = { task: { template: "reword-findings" } };
   for (const [what, request] of [
     ["unknown tier", { tier: "ultra", agentId: "triage", callId: "reword-1", input: hello }],
     [
       "oversized input",
-      { tier: "fast", agentId: "triage", callId: "reword-1", input: { task: "a".repeat(1_001) } },
+      {
+        tier: "fast",
+        agentId: "triage",
+        callId: "reword-1",
+        input: {
+          task: { template: "reword-findings" },
+          findings: [{ id: "f-1", title: "a".repeat(4_001) }],
+        },
+      },
     ],
   ] as const) {
     try {

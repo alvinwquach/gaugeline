@@ -7,6 +7,8 @@
 import { EvalReplayError, createReplayModel, parseRecording } from "../evals/replay.js";
 import type { EvalRecording } from "../evals/types.js";
 import { secretsInValue } from "../secrets.js";
+import { ModelGatewayError } from "./errors.js";
+import { isGatedPayload } from "./gated.js";
 import type { ModelAdapter, ModelGateway } from "./types.js";
 
 /** The provider name of the fake. It needs no key variable and has no host. */
@@ -23,8 +25,15 @@ export function createRecordedAdapter(
   return {
     provider: RECORDED_PROVIDER,
     needsKey: false,
-    complete: ({ callId, model, prompt }) =>
-      replay.complete({ caseId: callId, agentId: model, prompt }),
+    async complete({ callId, model, prompt }) {
+      // Like the sender: only a payload the privacy gate built is taken.
+      if (!isGatedPayload(prompt))
+        throw new ModelGatewayError(
+          "bad-request",
+          "The adapter was handed a prompt that did not come from the privacy gate.",
+        );
+      return replay.complete({ caseId: callId, agentId: model, prompt: prompt.text() });
+    },
   };
 }
 

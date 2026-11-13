@@ -88,6 +88,14 @@ export const FLAGS: readonly FlagDef[] = Object.freeze<FlagDef[]>([
     commands: ["check", "deploy-gate", "launch", "renewals", "cost", "backups", "view"],
   },
   {
+    name: "json-schema",
+    type: "string",
+    description:
+      "With --json: the result schema to print, 2 (the default) or 3 (also lists what suppressions and the baseline hide)",
+    since: "0.2.0",
+    commands: ["check", "launch", "renewals", "cost", "backups"],
+  },
+  {
     name: "no-open",
     type: "boolean",
     description: "Do not open anything in a browser",

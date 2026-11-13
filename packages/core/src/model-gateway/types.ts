@@ -6,6 +6,7 @@
  */
 import type { EvalRecording, EvalUsage } from "../evals/types.js";
 import type { ApiKey } from "./key.js";
+import type { GatedPayload } from "./gated.js";
 import type { ModelInput, PrivacyRecord } from "./privacy.js";
 
 /** `fast` is for wording a draft, `strong` for the check writer and the miner (AG-21 chooses between them). */
@@ -67,7 +68,8 @@ export interface ModelAnswer extends EvalRecording {
 /** What a provider adapter is handed. The key is wrapped: it shows as "[redacted key]" anywhere it is printed. */
 export interface AdapterCall {
   model: string;
-  prompt: string;
+  /** What the privacy gate built. An adapter sends this and nothing else: a plain string is not a payload and does not compile. */
+  prompt: GatedPayload;
   callId: string;
   maxOutputTokens: number;
   /** Aborted at the timeout. An adapter passes it on to whatever it calls. */

@@ -63,7 +63,7 @@ describe("a gateway only from evaluated models", () => {
       tier: "fast",
       agentId: "triage",
       callId: "note-1",
-      input: { task: "Hi" },
+      input: { task: { template: "reword-findings" } },
     });
     expect(a.model).toBe("recorded-small");
   });

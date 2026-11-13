@@ -4,7 +4,7 @@
  * (never in CI, docs/agent-evals.md) that goes through the same size, key, privacy and timeout rules.
  *
  * What is sent is the case's findings (id, check id, severity, title and the evidence as a snippet) and a fixed
- * task naming the agent, never the harness's own prompt, which carries every finding whole. A case's page text,
+ * task template, never the harness's own prompt, which carries every finding whole. A case's page text,
  * page addresses and hosted reads are left out: the gateway sends findings, snippets and ids only (AG-23).
  */
 import type { EvalInput, EvalModel } from "../evals/types.js";
@@ -12,19 +12,15 @@ import { ModelGatewayError } from "./errors.js";
 import type { ModelFinding, ModelInput } from "./privacy.js";
 import type { ModelGateway, ModelTier } from "./types.js";
 
-/** What the gateway is sent for one eval case: the findings only, as the privacy gate's input. */
-export function evalInputToModelInput(agentId: string, input: EvalInput): ModelInput {
+/** What the gateway is sent for one eval case: the findings only (id, severity, title, evidence as a snippet). */
+export function evalInputToModelInput(input: EvalInput): ModelInput {
   const findings: ModelFinding[] = input.findings.map((f) => ({
     id: f.id,
-    checkId: f.checkId,
     ...(f.severity ? { severity: f.severity } : {}),
     title: f.title,
     ...(f.evidence === "" ? {} : { snippet: f.evidence }),
   }));
-  return {
-    task: `Answer for the agent ${agentId} as JSON only, in the shape that agent expects.`,
-    findings,
-  };
+  return { task: { template: "answer-as-json" }, findings };
 }
 
 export function gatewayEvalModel(gateway: ModelGateway, tier: ModelTier): EvalModel {
@@ -39,7 +35,7 @@ export function gatewayEvalModel(gateway: ModelGateway, tier: ModelTier): EvalMo
         tier,
         agentId,
         callId: caseId,
-        input: evalInputToModelInput(agentId, input),
+        input: evalInputToModelInput(input),
       });
       return {
         text: a.text,

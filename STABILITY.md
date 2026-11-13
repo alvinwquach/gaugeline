@@ -8,7 +8,10 @@ what will not change without a major version, and what can change at any time.
 - **Commands and flags**, as listed on the Options page and each command's docs page.
 - **Exit codes**: 0 (ran), 1 (`--ci` and a "Fix this first" finding), 2 (could not run).
 - **The `--json` shape**, identified by its schema number (`"schema": 2`, published as
-  `packages/core/schema/result.v2.json`).
+  `packages/core/schema/result.v2.json`). Schema 2 is the default and never gains a field. Schema 3
+  (`--json-schema 3`, published as `result.v3.json`) adds the lists of what suppressions and the baseline
+  hide; it is chosen explicitly, so choosing it is the reader's decision. Schema 1 is still published and
+  no longer printed.
 - **The `--save-requests` file shape**, identified by its own `schemaVersion` (`2`, published as
   `packages/core/schema/requests.v2.json`; version 1 is still published and still read). Version 2 adds
   read-only queries (ADR-0006) as requests of kind `query`. It changes independently of the `--json` shape.

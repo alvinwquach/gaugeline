@@ -16,7 +16,6 @@ import { ANSWER, PLAIN_KEY, REQUEST, setup } from "./helpers.js";
 
 const finding = (over: Record<string, unknown> = {}) => ({
   id: "f-1",
-  checkId: "image-alt",
   severity: "high",
   title: "An image has no alternative text",
   snippet: '<img src="/menu.png">',
@@ -26,7 +25,7 @@ const finding = (over: Record<string, unknown> = {}) => ({
 const request = (inputOver: Record<string, unknown> = {}): ModelRequest =>
   ({
     ...REQUEST,
-    input: { task: "Reword these findings.", findings: [finding()], ...inputOver },
+    input: { task: { template: "reword-findings" }, findings: [finding()], ...inputOver },
   }) as unknown as ModelRequest;
 const failure = async (p: Promise<unknown>): Promise<ModelGatewayError> => {
   try {
@@ -44,7 +43,7 @@ describe("what an adapter is handed", () => {
     const r = request();
     await gateway.complete(r);
     const built = buildModelPayload(r.input);
-    expect(built.ok && calls[0]!.prompt).toBe(built.ok && built.payload);
+    expect(built.ok && calls[0]!.prompt.text()).toBe(built.ok && built.payload);
   });
 
   it("holds no email, phone or key from a finding, and the call record counts them by kind", async () => {
@@ -54,7 +53,7 @@ describe("what an adapter is handed", () => {
         findings: [finding({ snippet: `${EMAIL} ${PHONE} ${STRIPE_KEY}` })],
       }),
     );
-    const prompt = calls[0]!.prompt;
+    const prompt = calls[0]!.prompt.text();
     for (const v of [EMAIL, "7946", STRIPE_KEY]) expect(prompt).not.toContain(v);
     expect(a.redacted).toBe(true);
     expect(a.privacy.redactions).toMatchObject({ email: 1, phone: 1, secret: 1 });
@@ -80,7 +79,7 @@ describe("what an adapter is handed", () => {
       },
     });
     await gateway.complete(request());
-    expect(seen).toEqual([Math.ceil(calls[0]!.prompt.length / 4)]);
+    expect(seen).toEqual([Math.ceil(calls[0]!.prompt.text().length / 4)]);
   });
 });
 
@@ -179,10 +178,13 @@ describe("with the recorded fake", () => {
     const inner = createRecordedAdapter(recordings);
     const gateway = createGateway({
       config,
-      adapters: [{ ...inner, complete: (c) => (seen.push(c.prompt), inner.complete(c)) }],
+      adapters: [{ ...inner, complete: (c) => (seen.push(c.prompt.text()), inner.complete(c)) }],
       env: () => ({}),
     });
-    const a = await gateway.complete({ ...request({ task: `Write to ${EMAIL}.` }), callId: "c-1" });
+    const a = await gateway.complete({
+      ...request({ findings: [finding({ snippet: `Write to ${EMAIL}.` })] }),
+      callId: "c-1",
+    });
     expect(a.text).toBe(ANSWER.text);
     expect(seen[0]).not.toContain(EMAIL);
     expect(seen[0]).toContain("[email]");
@@ -194,7 +196,7 @@ describe("with the recorded fake", () => {
     const inner = createRecordedAdapter(new Map([["case-1", ANSWER]]));
     const gateway = createGateway({
       config,
-      adapters: [{ ...inner, complete: (c) => (seen.push(c.prompt), inner.complete(c)) }],
+      adapters: [{ ...inner, complete: (c) => (seen.push(c.prompt.text()), inner.complete(c)) }],
       env: () => ({}),
     });
     const model = gatewayEvalModel(gateway, "fast");

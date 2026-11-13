@@ -165,7 +165,7 @@ export function createGateway(options: GatewayOptions): ModelGateway {
       raw = await Promise.race([
         adapter!.complete({
           model,
-          prompt: sent,
+          prompt: built.gated,
           callId: request.callId,
           maxOutputTokens: config.maxOutputTokens,
           signal: abort.signal,
