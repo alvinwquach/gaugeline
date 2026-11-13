@@ -46,7 +46,8 @@ export function routeTo(port: number): { request: RequestFn; seen: Seen[] } {
   const seen: Seen[] = [];
   const request: RequestFn = (url, options, cb) => {
     seen.push({ url, options });
-    const { lookup: _lookup, ...rest } = options;
+    // A plain http request cannot take the https agent or the lookup; the lookup is tested on its own and on the real path.
+    const { lookup: _lookup, agent: _agent, ...rest } = options;
     return httpRequest({ ...rest, host: "127.0.0.1", port, path: url.pathname + url.search }, cb);
   };
   return { request, seen };

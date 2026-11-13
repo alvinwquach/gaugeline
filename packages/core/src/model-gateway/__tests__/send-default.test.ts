@@ -3,10 +3,19 @@ import { EventEmitter } from "node:events";
 import { describe, expect, it, vi } from "vitest";
 import { KEY_NAME, PLAIN_KEY, REQUEST } from "./helpers.js";
 
-const calls: Array<{ url: URL; method?: string }> = [];
+const { calls, FakeAgent } = vi.hoisted(() => ({
+  calls: [] as Array<{ url: URL; method?: string; agent?: unknown }>,
+  FakeAgent: class {},
+}));
 vi.mock("node:https", () => ({
-  request: (url: URL, options: { method?: string }, cb: (res: unknown) => void) => {
-    calls.push({ url, method: options.method });
+  Agent: FakeAgent,
+  globalAgent: { global: true },
+  request: (
+    url: URL,
+    options: { method?: string; agent?: unknown },
+    cb: (res: unknown) => void,
+  ) => {
+    calls.push({ url, method: options.method, agent: options.agent });
     const req = new EventEmitter() as EventEmitter & { end(b: Buffer): void; destroy(): void };
     req.destroy = () => undefined;
     req.end = () => {
@@ -16,7 +25,7 @@ vi.mock("node:https", () => ({
         destroy(): void;
       };
       res.statusCode = 200;
-      res.headers = {};
+      res.headers = { "content-type": "application/json" };
       res.destroy = () => undefined;
       cb(res);
       res.emit(
@@ -42,5 +51,9 @@ describe("the default transport", () => {
     expect(calls.map((c) => `${c.method} ${c.url.href}`)).toEqual([
       "POST https://api.example.test/v1/complete",
     ]);
+  });
+
+  it("gives the request its own agent, never the global one that carries Node's env proxy", () => {
+    expect(calls[0]!.agent).toBeInstanceOf(FakeAgent);
   });
 });

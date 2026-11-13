@@ -220,6 +220,10 @@ that opens a connection fails both.
 - **No redirects, no private addresses.** A 3xx is an error and is never followed. A name that resolves to a
   loopback, private, link-local, shared (CGNAT) or cloud-metadata address is refused when the connection is made,
   with the same rule the fetcher uses, even if one of several answers is public.
+- **Its own connection, and only JSON back.** The request uses its own https agent, never Node's global one, so
+  Node's built-in proxy support (`NODE_USE_ENV_PROXY` or `--use-env-proxy`) cannot route it around the address
+  check: a test runs it with that support on. A 2xx answer is read only when its content type is
+  `application/json` (with `charset=utf-8`, if any); anything else is refused without being read or repeated.
 - **A hard timeout.** 60 seconds at most, whatever the config says, and the request is destroyed when the gateway
   gives up sooner. The answer is read up to 256 KB.
 - **Plain errors.** An error says the host and a status or an error code. It never repeats the answer, the

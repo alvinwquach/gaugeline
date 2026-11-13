@@ -12,6 +12,9 @@
  * - It never follows a redirect (a 3xx is an error), reads at most MAX_RESPONSE_BYTES, and refuses a name
  *   that resolves to a loopback, private, link-local, CGNAT or metadata address, at connect time, with the
  *   same rule the fetcher uses (../addresses.ts).
+ * - It uses its own https agent, never the global one. Node's built-in proxy support (NODE_USE_ENV_PROXY or
+ *   --use-env-proxy) is carried by the global agents, and a proxied request never calls `lookup`, so with the
+ *   global agent a name that rebinds to a private address would not be refused. The own agent has no proxy.
  * - It stops after HARD_TIMEOUT_MS whatever the config says, and when the gateway aborts it.
  * - It says what failed with the host, a status or an error code, never with the body or the provider's words.
  *
@@ -20,7 +23,7 @@
  * owner's decision, made by adding an entry here.
  */
 import { lookup as dnsLookup, type LookupAddress, type LookupOptions } from "node:dns";
-import { request as httpsRequest, type RequestOptions } from "node:https";
+import { Agent as HttpsAgent, request as httpsRequest, type RequestOptions } from "node:https";
 import { isIP } from "node:net";
 import type { Readable } from "node:stream";
 import { isBlockedAddress } from "../addresses.js";
@@ -60,6 +63,8 @@ export const HARD_TIMEOUT_MS = 60_000;
 
 /** A document's own elements: a snippet may quote one tag, a page has these. */
 const WHOLE_PAGE = /<!doctype\b|<html[\s>]|<head[\s>]|<body[\s>]/i;
+/** An answer is read only as JSON: application/json, with an optional charset. */
+const JSON_TYPE = /^application\/json\s*(;\s*charset=("?)utf-8\2\s*)?$/i;
 /** Thrown inside a lookup when a name resolves to an address outside the public internet. */
 const NOT_PUBLIC = "EGAUGELINENOTPUBLIC";
 
@@ -69,7 +74,7 @@ export interface RequestLike {
   end(data: Buffer): unknown;
   destroy(): unknown;
 }
-export type ResponseLike = Readable & { statusCode?: number };
+export type ResponseLike = Readable & { statusCode?: number; headers?: Record<string, unknown> };
 /** Sends one request. The default is node:https; a test hands in one that goes to a local server. */
 export type RequestFn = (
   url: URL,
@@ -157,12 +162,15 @@ export function createProviderAdapter(
   const lookup = publicLookup(options.resolve ?? (dnsLookup as unknown as NameResolver));
   const now = options.now ?? (() => performance.now());
   const url = new URL(`https://${entry.host}${entry.path}`);
+  // Not the global agent: see the header. No keep-alive, so nothing outlives the call.
+  const agent = new HttpsAgent({ keepAlive: false });
 
   return {
     provider,
     needsKey: true,
     complete(call: AdapterCall): Promise<unknown> {
       const { key } = call;
+      const secrets = key === undefined ? [] : [key.reveal()];
       if (key === undefined)
         return Promise.reject(
           new ModelGatewayError("missing-key", "No key was given to the sender."),
@@ -202,7 +210,7 @@ export function createProviderAdapter(
         const fail = (code: ModelGatewayError["code"], message: string) =>
           finish(() => {
             req?.destroy();
-            reject(new ModelGatewayError(code, message));
+            reject(new ModelGatewayError(code, message, secrets));
           });
         function onAbort() {
           fail("timeout", `${entry!.host} did not answer in time.`);
@@ -222,6 +230,7 @@ export function createProviderAdapter(
             url,
             {
               method: "POST",
+              agent,
               lookup: lookup as unknown as RequestOptions["lookup"],
               headers: {
                 accept: "application/json",
@@ -244,6 +253,14 @@ export function createProviderAdapter(
                 res.destroy();
                 return fail("provider-error", `${entry.host} answered ${status}.`);
               }
+              if (!JSON_TYPE.test(String(res.headers?.["content-type"] ?? "")))
+                return (
+                  res.destroy(),
+                  fail(
+                    "bad-answer",
+                    `${entry.host} answered something that is not JSON; it was not read.`,
+                  )
+                );
               const chunks: Buffer[] = [];
               let size = 0;
               res.on("data", (c: Buffer) => {

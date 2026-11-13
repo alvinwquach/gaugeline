@@ -3,6 +3,7 @@
  * request function the test hands in: a real client request to a server on a loopback address, or one that
  * never answers. Nothing here reaches a provider, a DNS server or a real key.
  */
+import { execFileSync } from "node:child_process";
 import { EventEmitter } from "node:events";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import type { ClientRequest, ServerResponse } from "node:http";
@@ -306,6 +307,45 @@ describe("what comes back", () => {
   });
 
   it.each([
+    ["text/html"],
+    ["text/plain"],
+    ["text/json"],
+    ["application/jsonp"],
+    ["application/json-seq"],
+    ["application/vnd.api+json"],
+    ["application/json; charset=latin1"],
+    ["application/json; boundary=x"],
+    [""],
+  ])(
+    "refuses a 2xx answer whose content type is %j, without reading or repeating its body",
+    async (type) => {
+      const s = await startServer((_req, res) => {
+        res.writeHead(200, type === "" ? {} : { "content-type": type });
+        res.end(JSON.stringify({ ...ANSWER, text: "BODY-WORDS-THAT-MUST-NOT-APPEAR" }));
+      });
+      const e = await failure(over(routeTo(s.port).request).complete(REQUEST));
+      await s.close();
+      expect(e.code).toBe("bad-answer");
+      expect(e.message).toMatch(/not JSON/);
+      expect(e.message).not.toContain("BODY-WORDS");
+    },
+  );
+
+  it.each([
+    "application/json",
+    "Application/JSON",
+    "application/json; charset=utf-8",
+    'application/json;charset="UTF-8"',
+  ])("accepts the content type %j", async (type) => {
+    const s = await startServer((_req, res) => {
+      res.writeHead(200, { "content-type": type });
+      res.end(JSON.stringify(ANSWER));
+    });
+    await expect(over(routeTo(s.port).request).complete(REQUEST)).resolves.toBeDefined();
+    await s.close();
+  });
+
+  it.each([
     ["text that is not JSON", "<html>oops</html>"],
     ["JSON that is a list", "[]"],
     ["no text", JSON.stringify({ usage: ANSWER.usage })],
@@ -434,6 +474,62 @@ describe("no private, loopback, link-local or metadata address (the fetcher's ow
     expect(r.err?.code).toBe("EGAUGELINENOTPUBLIC");
   });
 
+  it.each(["not-an-ip", "localhost", "", "10.0.0.1.5", "example.test", "[::1]"])(
+    "refuses an answer that is not an address at all (%j)",
+    async (answer) => {
+      const r = await (await lookupFor(answers(answer)))();
+      expect(r.err?.code).toBe("EGAUGELINENOTPUBLIC");
+    },
+  );
+
+  it("is asked by the real https client: with no request function given, the lookup is the one the sender passed", async () => {
+    const asked: string[] = [];
+    const adapter = createProviderAdapter("example", {
+      resolve: (host, _o, cb) => {
+        asked.push(host);
+        cb(null, [{ address: "127.0.0.1", family: 4 }]);
+      },
+    });
+    const g = createGateway({
+      config: CONFIG,
+      adapters: [adapter],
+      env: () => ({ [KEY_NAME]: PLAIN_KEY }),
+    });
+    const e = await failure(g.complete(REQUEST));
+    expect(e.message).toBe("api.example.test is not a public address: nothing was sent");
+    expect(asked.length).toBeGreaterThan(0);
+    expect(new Set(asked)).toEqual(new Set(["api.example.test"]));
+  });
+
+  it.each([
+    ["NODE_USE_ENV_PROXY=1", [], { NODE_USE_ENV_PROXY: "1" }],
+    ["--use-env-proxy", ["--use-env-proxy"], {}],
+  ])(
+    "still runs when Node's own proxy support is on (%s): the lookup is called and the proxy is never used",
+    (_n, flags, env) => {
+      if (flags.length > 0 && !process.allowedNodeEnvironmentFlags.has("--use-env-proxy")) return;
+      const root = fileURLToPath(new URL("../../../../../", import.meta.url));
+      const child = fileURLToPath(new URL("./send-proxy-child.mjs", import.meta.url));
+      const out = execFileSync(process.execPath, [...flags, "--import", "tsx", child], {
+        cwd: root,
+        env: { ...process.env, ...env },
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"],
+        timeout: 90_000,
+      });
+      const last = JSON.parse(out.trim().split("\n").pop()!) as {
+        code: string;
+        message: string;
+        lookups: number;
+        proxyHits: string[];
+      };
+      expect(last.message).toBe("api.example.test is not a public address: nothing was sent");
+      expect(last.lookups).toBeGreaterThan(0);
+      expect(last.proxyHits).toEqual([]);
+    },
+    120_000,
+  );
+
   it("refuses a name that resolves to nothing", async () => {
     const r = await (await lookupFor(answers()))();
     expect(r.err?.code).toBe("EGAUGELINENOTPUBLIC");
@@ -497,6 +593,61 @@ describe("no private, loopback, link-local or metadata address (the fetcher's ow
   });
 });
 
+describe("the adapter scrubs its own errors", () => {
+  const raise = (make: (url: URL) => Error) =>
+    createProviderAdapter("example", {
+      request: (url) => {
+        const req = new EventEmitter() as ClientRequest;
+        (req as unknown as { end(): void }).end = () => req.emit("error", make(url));
+        (req as unknown as { destroy(): void }).destroy = () => undefined;
+        return req;
+      },
+    });
+  const call = (
+    adapter: ReturnType<typeof createProviderAdapter>,
+    signal = new AbortController().signal,
+  ) =>
+    adapter.complete({
+      model: "m",
+      prompt: "hi",
+      callId: "c",
+      maxOutputTokens: 5,
+      signal,
+      key: new ApiKey(PLAIN_KEY),
+    });
+
+  it("removes the key from an error code the client raised, before the gateway sees it", async () => {
+    const adapter = raise(() =>
+      Object.assign(new Error("x"), {
+        code: `E_${PLAIN_KEY}_${Buffer.from(PLAIN_KEY).toString("base64")}`,
+      }),
+    );
+    const e = await failure(call(adapter));
+    expect(e).toBeInstanceOf(ModelGatewayError);
+    expect(e.message).not.toContain(PLAIN_KEY);
+    expect(e.message).not.toContain(Buffer.from(PLAIN_KEY).toString("base64"));
+    expect(e.message).toContain("could not be reached");
+  });
+
+  it("does the same for every other error it raises", async () => {
+    const s = await startServer((_req, res) => json(res, 401, "nope"));
+    for (const adapter of [
+      createProviderAdapter("example", { request: routeTo(s.port).request }),
+    ]) {
+      const e = await failure(call(adapter));
+      expect(e.message).not.toContain(PLAIN_KEY);
+    }
+    await s.close();
+    const aborted = new AbortController();
+    aborted.abort();
+    const e = await failure(
+      call(createProviderAdapter("example", { request: hangingRequest().request }), aborted.signal),
+    );
+    expect(e.code).toBe("timeout");
+    expect(e.message).not.toContain(PLAIN_KEY);
+  });
+});
+
 describe("keys", () => {
   it("never appear in an error, even when the provider echoes the request", async () => {
     const s = await startServer((req, res, body) =>
@@ -532,6 +683,22 @@ describe("where this module sits", () => {
       ].sort(),
     );
     expect(text).not.toMatch(/\bfetch\s*\(|from "(node:)?http"|http:\/\/|process\s*\.\s*env/);
+  });
+
+  it("is the only model-gateway entry in the post-boundary list, as a file and for verb and network only", () => {
+    const root = fileURLToPath(new URL("../../../../../", import.meta.url));
+    const t = readFileSync(join(root, "packages/core/src/__tests__/post-boundary.test.ts"), "utf8");
+    const list = t.slice(t.indexOf("const ALLOWED"), t.indexOf("const packagesDir"));
+    const entries = [...list.matchAll(/^\s*"([^"]+)":\s*\[([^\]]*)\]/gm)].map((m) => [
+      m[1]!,
+      m[2]!.replace(/\s/g, ""),
+    ]);
+    expect(entries.filter(([k]) => k!.includes("model-gateway"))).toEqual([
+      ["core/src/model-gateway/send.ts", '"verb","network"'],
+    ]);
+    // Every entry is one file: no folder, no wildcard, no pattern.
+    for (const [k] of entries) expect(k, k).toMatch(/^[a-z-]+\/src\/[A-Za-z0-9_./-]+\.ts$/);
+    expect(list).not.toMatch(/[*?]|\.startsWith|\.test\(/);
   });
 
   it("is not imported by any other source file: nothing calls it yet, and no test or CI run can reach a provider", () => {
