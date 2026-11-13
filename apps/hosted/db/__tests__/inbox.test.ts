@@ -45,6 +45,16 @@ const PR_PAYLOAD = {
 };
 /** An invented agent token, built at run time (never a key-shaped literal in the source). */
 const token = () => ["gla", randomBytes(24).toString("hex")].join("_");
+/** What a proposer records for a field's published value (X71): the app and the database check only its shape. */
+const digestOf = (field: string) => createHash("sha256").update(field).digest("hex");
+/** A sanity payload with the `before` digests its `set` needs. Other payloads are returned unchanged. */
+function withBefore(payload: unknown): unknown {
+  const p = payload as { set?: unknown; before?: unknown } | null;
+  if (!p || typeof p !== "object" || typeof p.set !== "object" || p.set === null || "before" in p)
+    return payload;
+  const before = Object.fromEntries(Object.keys(p.set).map((k) => [k, digestOf(k)]));
+  return { ...p, before };
+}
 const sha256 = (s: string) => createHash("sha256").update(s, "utf8").digest("hex");
 
 describe.skipIf(!HAS_DATABASE)("drafts inbox", () => {
@@ -534,14 +544,18 @@ describe.skipIf(!HAS_DATABASE)("drafts inbox", () => {
 
     it("a sanity draft cannot set Sanity's system fields, through the app or directly", async () => {
       const id = randomUUID();
-      const payload = { documentId: "menu", documentType: "page", set: { title: "Opening hours" } };
+      const payload = withBefore({
+        documentId: "menu",
+        documentType: "page",
+        set: { title: "Opening hours" },
+      });
       await sql`insert into public.drafts (id, org_id, site_id, kind, payload)
-        values (${id}, ${ORG_A}, ${SITE_A1}, 'sanity_draft', ${sql.json(payload)})`;
-      const hostile = {
+        values (${id}, ${ORG_A}, ${SITE_A1}, 'sanity_draft', ${sql.json(payload as never)})`;
+      const hostile = withBefore({
         documentId: "menu",
         documentType: "page",
         set: { _id: "menu", _type: "page", title: "x" },
-      };
+      });
       const r = await decide(sql, owner, id, { kind: "edit", payload: hostile }, queue);
       expect(r.status).toBe("invalid-payload");
       expect(await directDecision(id, hostile)).toMatch(/does not match the sanity_draft shape/);
@@ -690,7 +704,26 @@ describe.skipIf(!HAS_DATABASE)("drafts inbox", () => {
     ];
 
     it("gives the same verdict as the app's shapes on a list of payloads", async () => {
-      for (const [kind, payload] of CORPUS) {
+      const before = Object.fromEntries([["hours", digestOf("hours")]]);
+      const sanityBase = { documentId: "menu", documentType: "page", set: { hours: "x" } };
+      const BEFORE_CASES: [string, unknown][] = [
+        ["sanity_draft", { ...sanityBase, before }],
+        ["sanity_draft", sanityBase], // no before
+        ["sanity_draft", { ...sanityBase, before: {} }],
+        ["sanity_draft", { ...sanityBase, before: "x" }],
+        ["sanity_draft", { ...sanityBase, before: [] }],
+        ["sanity_draft", { ...sanityBase, before: { phone: digestOf("phone") } }],
+        ["sanity_draft", { ...sanityBase, before: { ...before, phone: digestOf("phone") } }],
+        ["sanity_draft", { ...sanityBase, before: { hours: digestOf("hours").toUpperCase() } }],
+        ["sanity_draft", { ...sanityBase, before: { hours: digestOf("hours").slice(1) } }],
+        ["sanity_draft", { ...sanityBase, before: { hours: 5 } }],
+        ["sanity_draft", { ...sanityBase, before: { hours: null } }],
+        ["sanity_draft", { ...sanityBase, before, extra: 1 }],
+      ];
+      for (const [kind, payload] of [
+        ...CORPUS.map(([k, p]): [string, unknown] => [k, withBefore(p)]),
+        ...BEFORE_CASES,
+      ]) {
         const [row] =
           await sql`select private.draft_payload_problem(${kind}, ${sql.json(payload as never)}) as problem`;
         const appOk = checkDraftPayload(kind, payload).ok;
@@ -703,7 +736,7 @@ describe.skipIf(!HAS_DATABASE)("drafts inbox", () => {
 
   describe("numbers the database holds as exact decimals (the app only ever sees a parsed double)", () => {
     const sanityText = (n: string) =>
-      `{"documentId": "menu", "documentType": "page", "set": {"n": ${n}}}`;
+      `{"documentId": "menu", "documentType": "page", "set": {"n": ${n}}, "before": {"n": "${digestOf("n")}"}}`;
     // [JSON text, whether the database accepts it, whether the app accepts the text's parsed value].
     const NUMBERS: [string, boolean, boolean][] = [
       ["9.99999999999999999999e14", false, false], // under 1e15 as a decimal, 1e15 as a double

@@ -4,6 +4,7 @@
  * the writer can read, and the writer must never accept what the inbox would have refused: so on every
  * payload below the two agree, except for the paths on the writer's own list.
  */
+import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { checkDraftPayload as inbox } from "../../../../apps/hosted/inbox/kinds.js";
 import { checkDraftPayload as writer, isSafeRepoPath } from "../kinds.js";
@@ -132,11 +133,61 @@ const SAME: [string, string, unknown][] = [
   ["unknown_kind", "an unregistered kind", {}],
 ];
 
+/** The digest a proposer records for a field's live value (X71); the checks read only its shape. */
+const digest = (field: string) => createHash("sha256").update(field).digest("hex");
+/** A sanity payload gets the `before` its `set` needs; anything else is returned as it is. */
+function withBefore(payload: unknown): unknown {
+  const p = payload as { set?: unknown; before?: unknown } | null;
+  if (!p || typeof p !== "object" || typeof p.set !== "object" || p.set === null || "before" in p)
+    return payload;
+  return { ...p, before: Object.fromEntries(Object.keys(p.set).map((k) => [k, digest(k)])) };
+}
+
+const sanityBase = { documentId: "menu", documentType: "page", set: { hours: "Mon to Sat" } };
+const BEFORE: [string, string, unknown][] = [
+  ["sanity_draft", "its before", { ...sanityBase, before: { hours: digest("hours") } }],
+  ["sanity_draft", "no before", sanityBase],
+  ["sanity_draft", "an empty before", { ...sanityBase, before: {} }],
+  ["sanity_draft", "a before for another field", { ...sanityBase, before: { phone: digest("p") } }],
+  [
+    "sanity_draft",
+    "a before with an extra field",
+    { ...sanityBase, before: { hours: digest("h"), phone: digest("p") } },
+  ],
+  [
+    "sanity_draft",
+    "an upper-case digest",
+    { ...sanityBase, before: { hours: digest("h").toUpperCase() } },
+  ],
+  ["sanity_draft", "a short digest", { ...sanityBase, before: { hours: digest("h").slice(1) } }],
+  ["sanity_draft", "a number for a digest", { ...sanityBase, before: { hours: 5 } }],
+  [
+    "sanity_draft",
+    "an underscore field in before",
+    { ...sanityBase, before: { _rev: digest("r") } },
+  ],
+  ["sanity_draft", "before that is a list", { ...sanityBase, before: [digest("h")] }],
+];
+
 describe("the writer's shape checks agree with the inbox's", () => {
-  for (const [kind, name, payload] of SAME)
+  for (const [kind, name, payload] of [
+    ...SAME.map(([k, n, p]): [string, string, unknown] => [k, n, withBefore(p)]),
+    ...BEFORE,
+  ])
     it(`${kind}: ${name}`, () => {
       expect(writer(kind, payload).ok).toBe(inbox(kind, payload).ok);
     });
+
+  it("a sanity payload with its before digests is accepted by both", () => {
+    const p = withBefore(sanityBase);
+    expect(writer("sanity_draft", p).ok).toBe(true);
+    expect(inbox("sanity_draft", p).ok).toBe(true);
+  });
+
+  it("a sanity payload without before is refused by both", () => {
+    expect(writer("sanity_draft", sanityBase).ok).toBe(false);
+    expect(inbox("sanity_draft", sanityBase).ok).toBe(false);
+  });
 });
 
 describe("the writer accepts nothing the inbox refuses; only its own path list is stricter", () => {

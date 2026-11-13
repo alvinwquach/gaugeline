@@ -182,22 +182,43 @@ const plainNumber = z
   .refine((n) => n === 0 || (Math.abs(n) >= 1e-6 && Math.abs(n) < 1e15), "is out of range")
   .refine((n) => n === 0 || Number(n.toPrecision(15)) === n, "has more than 15 significant digits");
 
-/** One Sanity document's fields. The writer adds the `drafts.` prefix; the payload cannot name it. */
-const sanityDraft = z.strictObject({
-  documentId: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/, "is not a plain document id"),
-  documentType: z.string().regex(/^[A-Za-z][A-Za-z0-9_]{0,63}$/, "is not a document type"),
-  // A field name starts with a letter: the underscore names are Sanity's own (_id, _type, _rev, ...), set
-  // by the content system, never by a draft. Names have no dots, so there are no nested paths to check.
-  set: z
-    .record(
-      z.string().regex(/^[A-Za-z][A-Za-z0-9_]{0,63}$/, "is not a plain field name"),
-      z.union([prose(2_000), plainNumber, z.boolean(), z.null()]),
-    )
-    .refine(
-      (o) => Object.keys(o).length >= 1 && Object.keys(o).length <= 20,
-      "sets 1 to 20 fields",
+/** A Sanity field name: it starts with a letter, so Sanity's own `_id`, `_type`, `_rev` can never be set. */
+const FIELD_NAME = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
+
+/**
+ * One Sanity document's fields. The writer adds the `drafts.` prefix; the payload cannot name it. `before`
+ * holds, for each field in `set`, the SHA-256 (lower-case hex) of the field's live value when the fix
+ * was proposed, so the writer can refuse a draft whose live value changed since (X71). The hash is of
+ * the value's canonical JSON text (packages/writer/src/sanity/hash.ts), never the value: the approval row
+ * stores digests of what a person saw, not the client's content.
+ */
+const sanityDraft = z
+  .strictObject({
+    documentId: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/, "is not a plain document id"),
+    documentType: z.string().regex(/^[A-Za-z][A-Za-z0-9_]{0,63}$/, "is not a document type"),
+    // Names have no dots, so there are no nested paths to check.
+    set: z
+      .record(
+        z.string().regex(FIELD_NAME, "is not a plain field name"),
+        z.union([prose(2_000), plainNumber, z.boolean(), z.null()]),
+      )
+      .refine(
+        (o) => Object.keys(o).length >= 1 && Object.keys(o).length <= 20,
+        "sets 1 to 20 fields",
+      ),
+    before: z.record(
+      z.string().regex(FIELD_NAME, "is not a plain field name"),
+      z.string().regex(/^[0-9a-f]{64}$/, "is not a SHA-256 digest in lower-case hex"),
     ),
-});
+  })
+  .refine(
+    (p) => {
+      const a = Object.keys(p.set).sort();
+      const b = Object.keys(p.before).sort();
+      return a.length === b.length && a.every((k, i) => k === b[i]);
+    },
+    { message: "names the same fields as set", path: ["before"] },
+  );
 
 const SCHEMAS = { pull_request: pullRequest, email, sanity_draft: sanityDraft } as const;
 
