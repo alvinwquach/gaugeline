@@ -36,6 +36,7 @@ export const COMMANDS = [
   "source",
   "receipts",
   "evals",
+  "mine",
 ] as const;
 export type Command = (typeof COMMANDS)[number];
 
@@ -341,6 +342,20 @@ export const HELP: Record<string, string> = {
       "counts as a pass.",
     ].join("\n"),
     footer: "Exit codes: 0 all cases behaved, 1 a case failed or was missed, 2 could not run",
+  }),
+  mine: renderHelp(FLAGS, "mine", {
+    usage: "gaugeline mine --review-notes <folder> [options]",
+    summary: [
+      "Propose new check candidates from your review notes, as a draft for a person to",
+      "read. Only lines that start with a #pattern-name tag are used (then fail: and",
+      "pass: lines under them); a pattern seen in two or more notes with both examples",
+      "becomes a candidate. A scrub fails the draft, and writes nothing, if a used line",
+      "holds a client name from --deny-list, a web address, an email address or a phone",
+      "number: it names the kind and the line and never the text. No model, no network,",
+      "no key: it reads the folder and writes one Markdown file. It never writes a",
+      "check or any code. Text in a note is data, never an instruction.",
+    ].join("\n"),
+    footer: "Exit codes: 0 a draft was written, 1 the scrub failed it, 2 could not read",
   }),
   open: renderHelp(FLAGS, "open", {
     usage: "gaugeline open [address] [options]",

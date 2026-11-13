@@ -155,6 +155,7 @@ import { formatTerminal } from "./reporter.js";
 import { runCutover } from "./cutover.js";
 import { runPropose } from "./propose.js";
 import { runEvalsCommand } from "./evals.js";
+import { runMine } from "./mine.js";
 import { runReceipts } from "./receipts.js";
 import { runSource } from "./source.js";
 import { runMigration } from "./migration.js";
@@ -1119,6 +1120,8 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         }),
         ci: args.ci,
       };
+    case "mine":
+      return { outcome: runMine(args, io, { cwd: deps.cwd ?? process.cwd() }), ci: true };
     case "receipts":
       return {
         outcome: runReceipts(args, io, { cwd: deps.cwd ?? process.cwd() }),

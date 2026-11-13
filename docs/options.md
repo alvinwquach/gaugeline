@@ -864,6 +864,47 @@ not, 2 when it could not run or write. The JSON report goes to `gaugeline-evals.
 in, or to `--out`, and never over a file unless you add `--force`. A runnable example with its real output is
 in [Agent evals](agent-evals.md).
 
+### The mine command
+
+`gaugeline mine --help` prints:
+
+```text title=Output
+Usage: gaugeline mine --review-notes <folder> [options]
+
+Propose new check candidates from your review notes, as a draft for a person to
+read. Only lines that start with a #pattern-name tag are used (then fail: and
+pass: lines under them); a pattern seen in two or more notes with both examples
+becomes a candidate. A scrub fails the draft, and writes nothing, if a used line
+holds a client name from --deny-list, a web address, an email address or a phone
+number: it names the kind and the line and never the text. No model, no network,
+no key: it reads the folder and writes one Markdown file. It never writes a
+check or any code. Text in a note is data, never an instruction.
+
+Options:
+      --out <value>             The draft file, Markdown (default
+                                field-findings.draft.md)
+      --review-notes <value>    mine: the folder of review notes (Markdown or
+                                text) to read; only lines that start with
+                                #pattern-name are used
+      --deny-list <value>       mine: a file of client names, one per line, that
+                                must never reach the draft (the scrub fails it
+                                if one does)
+      --quiet                   Print only results and errors
+      --verbose                 Show each request, and technical detail when
+                                something goes wrong
+  -h, --help                    Show this help and exit
+  -v, --version                 Print the version and exit
+
+Exit codes: 0 a draft was written, 1 the scrub failed it, 2 could not read
+```
+
+`gaugeline mine` turns your review notes into a draft of check candidates for a person to read. It reads a
+folder and writes one Markdown file: no request, no model, no key, and never a check or any code. If a line it
+used holds a client name from your deny-list, a web address, an email address or a phone number, it writes
+nothing, says which kind and which line, and exits 1. Exit 2 when the folder, a file in it or the deny-list
+cannot be read. See [The field-findings miner](field-findings-miner.md) for the note format, an example and what
+the scrub does not catch.
+
 ### Flags
 
 The table below is generated from `packages/cli/src/flags.ts` (`pnpm docs:flags`). Do not edit
