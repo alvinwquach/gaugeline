@@ -1,4 +1,4 @@
-import { EVENT_WAIT_MS, NO_OBSERVER } from "../events/observe.js";
+import { EVENT_WAIT_MS, NO_OBSERVER, eventsOf } from "../events/observe.js";
 import { defineCheck, type Finding } from "../model.js";
 import type { PageSnapshot } from "../snapshot.js";
 import { shortUrl } from "./site-helpers.js";
@@ -39,7 +39,7 @@ export const eventsUnlisted = defineCheck<PageSnapshot>({
       if (!target) continue;
       const what = `"${target.text}"${target.destination ? ` (${shortUrl(target.destination, origin)})` : ""}`;
       const seen = new Set<string>();
-      for (const p of click.pushes) {
+      for (const p of eventsOf(click)) {
         const name = p.data.event;
         if (typeof name !== "string" || name === "" || p.atMs > EVENT_WAIT_MS) continue;
         if (listed.has(name) || OWN.test(name) || seen.has(name)) continue;

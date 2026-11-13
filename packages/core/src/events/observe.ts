@@ -1,4 +1,5 @@
 import { load, type CheerioAPI } from "cheerio/slim";
+import { selectClickable } from "./observation.js";
 import type { createDomStream } from "htmlparser2";
 import type { PageSnapshot } from "../snapshot.js";
 import type { EventRule, EventsConfig, Region } from "./types.js";
@@ -34,6 +35,16 @@ export interface ClickTarget {
   newTab: boolean;
 }
 
+/** An analytics request the page tried to make after a click: what it would have sent. It was never delivered. */
+export interface SentEvent {
+  atMs: number;
+  host: string;
+  /** The event name the request carried, cleaned and cut. */
+  name: string;
+  /** The event's parameters as text: names from a closed alphabet, values cleaned and cut. */
+  params: Record<string, string>;
+}
+
 /** What the observer saw after clicking one target. */
 export interface ObservedClick {
   path: string;
@@ -41,9 +52,20 @@ export interface ObservedClick {
   pushes: { atMs: number; data: Record<string, unknown> }[];
   /** Analytics requests intercepted and recorded, never delivered (their hosts only). */
   blocked: string[];
+  /** What those requests would have sent: the event name and parameters read from the request the page made. */
+  sent?: SentEvent[];
+  /** Set when the element could not be clicked or watched: the reason, in a sentence. Never a pass. */
+  unobserved?: string;
 }
 
-export type ObserveResult = { clicks: ObservedClick[] } | { unchecked: string };
+/**
+ * What the observer returns. `clicks` is at the desktop width. With a phone read, `phone` is the same
+ * targets clicked at the phone width. `focusOrder` is the listed links' paths in the order the Tab key
+ * moved focus to them (at the desktop width), each once.
+ */
+export type ObserveResult =
+  | { clicks: ObservedClick[]; phone?: ObservedClick[]; focusOrder?: string[] }
+  | { unchecked: string };
 
 export interface EventObserver {
   observe(input: {
@@ -136,6 +158,19 @@ export function clickTargets(page: PageSnapshot, config: EventsConfig): ClickTar
   return out.slice(0, MAX_EVENT_TARGETS);
 }
 
+/**
+ * Everything a click sent, as the objects a dataLayer push would be: the pushes, then each analytics
+ * request the page tried to make whose event name no push already carried (a page that does both for one
+ * event is one event, not two).
+ */
+export function eventsOf(click: ObservedClick): { atMs: number; data: Record<string, unknown> }[] {
+  const named = new Set(click.pushes.map((p) => p.data.event));
+  const fromRequests = (click.sent ?? [])
+    .filter((s) => !named.has(s.name))
+    .map((s) => ({ atMs: s.atMs, data: { event: s.name, ...s.params } }));
+  return [...click.pushes, ...fromRequests];
+}
+
 /** A parameter counts as filled when it is a non-empty string, a number or a boolean. */
 function filled(v: unknown): boolean {
   if (typeof v === "string") return v.trim() !== "";
@@ -143,6 +178,7 @@ function filled(v: unknown): boolean {
 }
 
 export type ClickVerdict =
+  | { state: "unobserved"; reason: string }
   | { state: "ok"; sent: Record<string, unknown> }
   | { state: "silent"; lateMs?: number }
   | { state: "twice"; count: number; sent: Record<string, unknown> }
@@ -157,7 +193,8 @@ export function judgeClick(
   click: ObservedClick | undefined,
   waitMs = EVENT_WAIT_MS,
 ): ClickVerdict {
-  const named = (click?.pushes ?? []).filter((p) => p.data.event === rule.event);
+  if (click?.unobserved !== undefined) return { state: "unobserved", reason: click.unobserved };
+  const named = (click ? eventsOf(click) : []).filter((p) => p.data.event === rule.event);
   const inTime = named.filter((p) => p.atMs <= waitMs);
   const first = inTime[0];
   if (!first) {
@@ -192,14 +229,34 @@ export function lazyEvents(opts: {
   return () =>
     (pending ??= (async () => {
       const targets = clickTargets(opts.page, opts.config);
-      const result: ObserveResult = opts.observer
+      // Links only: what the observer is asked to click is the plan's links, and the rest is reported as not observed.
+      const { click, skipped } = selectClickable(targets, opts.config, opts.page);
+      let result: ObserveResult = opts.observer
         ? await opts.observer.observe({
             page: opts.page.finalUrl,
-            targets,
+            targets: click,
             ...(opts.config.consent ? { consent: opts.config.consent } : {}),
             waitMs: EVENT_WAIT_MS,
           })
         : { unchecked: NO_OBSERVER };
+      if ("clicks" in result && skipped.length > 0) {
+        // An observer that already answered for a path (a recording does) is not overruled.
+        const seen = new Set(result.clicks.map((c) => c.path));
+        const seenPhone = new Set((result.phone ?? []).map((c) => c.path));
+        const left = skipped.map((s) => ({
+          path: s.path,
+          pushes: [],
+          blocked: [],
+          unobserved: s.reason,
+        }));
+        result = {
+          ...result,
+          clicks: [...result.clicks, ...left.filter((c) => !seen.has(c.path))],
+          ...(result.phone
+            ? { phone: [...result.phone, ...left.filter((c) => !seenPhone.has(c.path))] }
+            : {}),
+        };
+      }
       return { config: opts.config, targets, result };
     })());
 }
