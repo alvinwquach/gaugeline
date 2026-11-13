@@ -84,6 +84,7 @@ describe("check-adr: integration", () => {
       "0012-platform-checks.md",
       "0013-self-hosting.md",
       "0014-agent-safety-model.md",
+      "0015-pagespeed-and-crux.md",
       "README.md",
     ]);
     expect(checkAdrs(files, files.find((f) => f.name === "README.md")?.text ?? "")).toEqual([]);

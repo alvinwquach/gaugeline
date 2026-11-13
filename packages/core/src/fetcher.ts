@@ -216,6 +216,11 @@ export interface GetOptions {
   /** Send `headers` only to hops on the first address's origin: a redirect elsewhere gets none. */
   headersSameOrigin?: boolean;
   /**
+   * Wait this many milliseconds for each answer instead of the fetcher's own limit, up to 120,000. For a public
+   * API that is slow by design (PageSpeed Insights runs a whole page load before it answers).
+   */
+  timeoutMs?: number;
+  /**
    * Ask again even though this address was already asked in this run, and keep the new answer. For a
    * retry after "slow down": without it the fetcher would hand back the same refusal it remembers.
    */
@@ -287,6 +292,9 @@ export function assertReadOnly(method: string): void {
 export { normaliseUrl };
 
 const REDIRECTS = new Set([301, 302, 303, 307, 308]);
+
+/** The longest one request may be given to answer with GetOptions.timeoutMs. */
+const MAX_REQUEST_TIMEOUT_MS = 120_000;
 
 /** A gzip file (a sitemap.xml.gz) rather than a gzip Content-Encoding: the first two bytes. */
 function isGzipFile(buf: Buffer): boolean {
@@ -559,11 +567,13 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
       peek?: PeekOptions;
       maxBytes?: number;
       binary?: boolean;
+      timeoutMs?: number;
       /** A query that `query()` has already checked against an allowlist: the only way method is POST. */
       query?: { body: string; allow: string };
     } = {},
   ): Promise<{ hop: Hop; location: string | null }> {
     const query = extra.query;
+    const waitMs = Math.min(Math.max(extra.timeoutMs ?? timeoutMs, 1), MAX_REQUEST_TIMEOUT_MS);
     if (query === undefined) assertReadOnly(method);
     else if (method !== "POST") throw new TypeError("A query is sent with POST.");
     return gate.run(async () => {
@@ -596,7 +606,7 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
             ...(extra.anonymous || query !== undefined ? {} : options.headersFor?.(target)),
           },
           ...(query === undefined ? {} : { body: query.body }),
-          timeoutMs,
+          timeoutMs: waitMs,
         });
       } catch (err) {
         options.onRequest?.({
@@ -609,7 +619,7 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
           note({ status: null, error: errorOf(err) });
           throw err;
         }
-        const d = describeNetworkFailure(url, err, timeoutMs);
+        const d = describeNetworkFailure(url, err, waitMs);
         const failure = new FetchError(d.reason, d.message, url, [], err, d.hint);
         note({ status: null, error: errorOf(failure) });
         throw failure;
@@ -633,7 +643,7 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
           note({ status: null, error: "timeout" });
           throw new FetchError(
             "timeout",
-            `${hostOf(url)} did not send the start of the file within ${timeoutMs / 1000} seconds.`,
+            `${hostOf(url)} did not send the start of the file within ${waitMs / 1000} seconds.`,
             url,
             [],
             err,
@@ -659,7 +669,7 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
           note({ status: null, error: "timeout" });
           throw new FetchError(
             "timeout",
-            `${hostOf(url)} did not finish sending the page within ${timeoutMs / 1000} seconds.`,
+            `${hostOf(url)} did not finish sending the page within ${waitMs / 1000} seconds.`,
             url,
             [],
             err,
@@ -697,6 +707,7 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
             ...(opts.peek ? { peek: opts.peek } : {}),
             ...(opts.maxBytes === undefined ? {} : { maxBytes: opts.maxBytes }),
             ...(opts.binary && method === "GET" ? { binary: true } : {}),
+            ...(opts.timeoutMs === undefined ? {} : { timeoutMs: opts.timeoutMs }),
           },
         );
       } catch (err) {
@@ -746,7 +757,7 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
     const method = opts.method ?? "GET";
     assertReadOnly(method);
     const normal = normaliseUrl(url);
-    const key = `${method} ${normal}${opts.headers ? ` ${JSON.stringify(Object.entries(opts.headers).sort())}` : ""}${opts.headersSameOrigin ? " same-origin" : ""}${opts.anonymous ? " anonymous" : ""}${opts.binary ? " binary" : ""}${opts.peek ? ` peek:${opts.peek.maxBytes}` : ""}${opts.maxBytes === undefined ? "" : ` max:${opts.maxBytes}`}${opts.maxRedirects === undefined ? "" : ` redirects:${opts.maxRedirects}`}`;
+    const key = `${method} ${normal}${opts.headers ? ` ${JSON.stringify(Object.entries(opts.headers).sort())}` : ""}${opts.headersSameOrigin ? " same-origin" : ""}${opts.anonymous ? " anonymous" : ""}${opts.binary ? " binary" : ""}${opts.peek ? ` peek:${opts.peek.maxBytes}` : ""}${opts.maxBytes === undefined ? "" : ` max:${opts.maxBytes}`}${opts.maxRedirects === undefined ? "" : ` redirects:${opts.maxRedirects}`}${opts.timeoutMs === undefined ? "" : ` wait:${opts.timeoutMs}`}`;
     if (opts.fresh) memo.delete(key);
     let pending = memo.get(key);
     if (!pending) {

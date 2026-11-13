@@ -20,5 +20,6 @@ with a new record.
 | [0012](0012-platform-checks.md)                             | Creator platform checks: one adapter per platform, and a test account before a line is written               | proposed | 2026-11-12 |
 | [0013](0013-self-hosting.md)                                | Self-hosting waits for a hosted schema that has stopped moving                                               | proposed | 2026-11-12 |
 | [0014](0014-agent-safety-model.md)                          | Agent safety model: registered agents, drafts only, deny by default, every call traced                       | accepted | 2026-11-13 |
+| [0015](0015-pagespeed-and-crux.md)                          | Speed from PageSpeed Insights: one GET host, real visitors decide, no key, no POST                           | proposed | 2026-11-13 |
 
 Start a new record from [0000-template.md](0000-template.md).

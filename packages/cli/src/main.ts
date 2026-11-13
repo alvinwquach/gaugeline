@@ -120,7 +120,10 @@ import {
   addTrackerChecks,
   createTrackers,
   addLibraryChecks,
+  addPageSpeedChecks,
   createLibraries,
+  createPageSpeed,
+  PAGESPEED_PAGE_CAP,
   addWordPressChecks,
   addPublishedChecks,
   createPublished,
@@ -1581,12 +1584,18 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         libraryChecking && deps.registry === undefined
           ? addLibraryChecks(trackedRegistry)
           : trackedRegistry;
+      // The PageSpeed checks (Google's PageSpeed Insights: real-user vitals decide, lab scores are advice), only with --pagespeed.
+      const pageSpeedChecking = args.pagespeed;
+      const pageSpeedRegistry =
+        pageSpeedChecking && deps.registry === undefined
+          ? addPageSpeedChecks(libraryRegistry)
+          : libraryRegistry;
       // The WordPress checks (versions against wordpress.org, the REST API's list of users), only with --wordpress.
       const wordpressChecking = args.wordpress;
       const wordpressRegistry =
         wordpressChecking && deps.registry === undefined
-          ? addWordPressChecks(libraryRegistry)
-          : libraryRegistry;
+          ? addWordPressChecks(pageSpeedRegistry)
+          : pageSpeedRegistry;
       // The published-not-live checks (changed CMS items against their pages), only with --published.
       const publishedChecking = args.published;
       const publishedRegistry =
@@ -1724,6 +1733,13 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         : undefined;
       // What the library check reads: the script files the page names, with GET through the fetcher.
       const libraries = libraryChecking ? createLibraries(fetcher) : undefined;
+      // What the PageSpeed checks read: one GET of Google's PageSpeed Insights per key page, keyless. The page
+      // address (no query string) leaves the machine, so the person is told once, before the first request.
+      const pageSpeed = pageSpeedChecking ? createPageSpeed(fetcher) : undefined;
+      if (pageSpeed && !args.quiet)
+        io.stderr.write(
+          `--pagespeed sends the address of each page it reads (at most ${PAGESPEED_PAGE_CAP}, no query string) to Google's PageSpeed Insights, and only for public pages.\n`,
+        );
       // What the WordPress checks read: wordpress.org's current releases and the site's REST users route, GET only.
       const wordpress = wordpressChecking ? createWordPress(fetcher) : undefined;
       // What the backups checks read: Supabase's and Sanity's backup status with the tokens in the environment
@@ -1815,6 +1831,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         ...(cost ? { cost } : {}),
         ...(trackers ? { trackers } : {}),
         ...(libraries ? { libraries } : {}),
+        ...(pageSpeed ? { pageSpeed } : {}),
         ...(wordpress ? { wordpress } : {}),
         ...(published ? { published } : {}),
         ...(sanityImages ? { sanityImages } : {}),

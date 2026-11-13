@@ -1704,6 +1704,18 @@ export { sensitiveReason, collectsDetails } from "./trackers/sensitive.js";
 
 export { LIBRARY_CHECKS } from "./checks/libraries.js";
 export { addLibraryChecks } from "./libraries/registry.js";
+export { PAGESPEED_CHECKS } from "./checks/pagespeed.js";
+export { addPageSpeedChecks } from "./pagespeed/registry.js";
+export {
+  createPageSpeed,
+  PAGESPEED_HOSTS,
+  PAGESPEED_ORIGIN,
+  PAGESPEED_PAGE_CAP,
+  sendableAddress,
+} from "./pagespeed/reader.js";
+export type { PageSpeed, PageSpeedReading } from "./pagespeed/reader.js";
+export { parsePageSpeed, VITALS } from "./pagespeed/vitals.js";
+export type { PageSpeedAnswer, VitalVerdict, VitalId } from "./pagespeed/vitals.js";
 export { createLibraries, LIBRARY_SCRIPT_CAP } from "./libraries/reader.js";
 
 // C-01: the WordPress checks (wp-outdated, wp-users-exposed), off unless --wordpress

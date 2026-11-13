@@ -83,6 +83,9 @@ Options:
       --renderer <value>           Also load the page in a browser you installed
                                    (playwright), to read what scripts add; never
                                    downloads one
+      --pagespeed                  Also read Google's PageSpeed Insights:
+                                   real-user vitals decide, lab is advice; sends
+                                   page addresses to Google
       --libraries                  Also check the JavaScript files a page loads
                                    for libraries with a published advisory
       --wordpress                  Also check a WordPress site's versions
@@ -1426,6 +1429,24 @@ npx gaugeline bakery.example --renderer playwright
 (`GAUGELINE_BROWSER_PATH`, then Playwright's own folder, then Chrome, Chromium or Edge):
 [Rendered pages](rendered-pages.md). What it sends:
 [Privacy and safety](privacy.md#rendered-pages-renderer-playwright).
+
+### The pagespeed option
+
+`--pagespeed` asks Google's PageSpeed Insights about the key pages (the page you typed and the first same-site
+pages of the run's sample, at most five) and reports two things apart: what **real visitors** measured (Largest
+Contentful Paint, Interaction to Next Paint and Cumulative Layout Shift at the 75th percentile), which decides
+pass or fail, and a **lab score** from one simulated phone load, which is advice and never fails a page. It is
+off unless you name it.
+
+```sh
+npx gaugeline pantry.example --pagespeed
+```
+
+It sends the address of each public page (no query string) to Google, with one `GET` and no key, and says so
+on stderr first. A private or local address is never sent. Without a key the quota is shared and can be used
+up; the check then says could not check, never a pass. Missing real-user data is could not check too.
+What it reads and how it decides: [Speed](guides/pagespeed.md). What it sends:
+[Privacy and safety](privacy.md#speed-from-google-pagespeed).
 
 ### The libraries option
 
