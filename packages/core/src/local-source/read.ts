@@ -109,6 +109,9 @@ const LOCKFILES = new Set([
   "npm-shrinkwrap.json",
 ]);
 
+/** Licence files by name, read although they have no extension (`LICENSE`, `LICENCE`, `COPYING`, `NOTICE`). */
+const LICENCE_FILES = /^(?:licen[cs]e|copying|notice)$/i;
+
 /** Code files: a name with "secret" in it (lib/secrets.ts) is code about secrets, not a secret. */
 const CODE_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts"]);
 
@@ -264,7 +267,8 @@ export async function readLocalSource(
         continue;
       }
       const isLock = LOCKFILES.has(name);
-      if (!isLock && !READ_EXTENSIONS.has(extname(name).toLowerCase())) continue;
+      if (!isLock && !LICENCE_FILES.test(name) && !READ_EXTENSIONS.has(extname(name).toLowerCase()))
+        continue;
       // Other dot files (.gitignore, .editorconfig) are not what the checks read.
       if (name.startsWith(".")) continue;
       if (rel === GITHUB) continue;

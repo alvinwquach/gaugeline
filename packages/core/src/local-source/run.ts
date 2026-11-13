@@ -13,6 +13,8 @@ import { webhookTimestampUnbounded } from "../checks/static/webhook-timestamp-un
 import { revalidateTimeAndTagMixed } from "../checks/static/revalidate-time-and-tag-mixed.js";
 import { webhookBodyReadUnsafely } from "../checks/static/webhook-body-read-unsafely.js";
 import { webhookLogsPrivateValues } from "../checks/static/webhook-logs-private-values.js";
+import { nextSanityRemovedApi } from "../checks/static/next-sanity-removed-api.js";
+import { starterLicenceNoticeMissing } from "../checks/static/starter-licence-notice-missing.js";
 import { a11ySpecExpectsViolations } from "../checks/static/a11y-spec-expects-violations.js";
 import { tsconfigTargetEs5 } from "../checks/static/tsconfig-target-es5.js";
 import { nextVersionAdvisory } from "../checks/static/next-version-advisory.js";
@@ -98,6 +100,8 @@ export const STATIC_CHECKS: readonly Check<LocalSourceInput>[] = [
   nextVersionAdvisory,
   tsconfigTargetEs5,
   a11ySpecExpectsViolations,
+  starterLicenceNoticeMissing,
+  nextSanityRemovedApi,
 ];
 
 export function createStaticRegistry(): CheckRegistry {

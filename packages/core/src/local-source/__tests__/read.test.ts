@@ -315,3 +315,15 @@ describe("readLocalSource: the folder", () => {
     expect(tree.truncated).toBe(false);
   });
 });
+
+describe("readLocalSource: licence files", () => {
+  it("reads LICENSE, LICENCE, COPYING and NOTICE although they have no extension, and no other extensionless file", async () => {
+    for (const name of ["LICENSE", "LICENCE", "COPYING", "NOTICE", "license"])
+      put(root, name, `text of ${name}`);
+    put(root, "Makefile", "all:");
+    put(root, "LICENSE-notes", "x");
+    const tree = await readLocalSource(root);
+    expect(sourcePaths(tree)).toEqual(["COPYING", "LICENCE", "LICENSE", "NOTICE", "license"]);
+    expect(tree.files.get("LICENSE")).toBe("text of LICENSE");
+  });
+});

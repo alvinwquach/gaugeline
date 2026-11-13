@@ -178,3 +178,80 @@ Read 2 files in ./quayside-pub. No request was made and no code was run.
 ```
 
 Assert that there are none, and fix what the scan finds. If a test deliberately scans a broken page to prove the scanner works, keep it, name the page and the test so that is clear, and add the same scan of the real page with `toEqual([])`. A test file the reader left out (too large, unreadable) with nothing found is reported as not sure. The check reads tests; it never runs them.
+
+## A starter's licence notice that is not in the folder
+
+`starter-licence-notice-missing` (fix soon) looks for the one thing the MIT and ISC licences ask of everyone who uses the code: that the copyright and permission notice stay with copies of it [docs] (ISC: permission is granted "provided that the above copyright notice and this permission notice appear in all copies"; MIT: the notice "shall be included in all copies or substantial portions of the Software"; <https://raw.githubusercontent.com/spdx/license-list-data/main/text/ISC.txt>, <https://raw.githubusercontent.com/spdx/license-list-data/main/text/MIT.txt>, read 2026-11-11).
+
+**What it can and cannot say.** Gaugeline cannot see where code came from, and it never says that code was copied. It says that no file in the folder holds the MIT or ISC permission sentence, and it says what made that matter:
+
+- `package.json` declares the MIT or ISC licence, or
+- the README says the project is based on, forked or cloned from, or built from a starter, template or boilerplate.
+
+A notice found in any file passes: a `LICENSE` file (with no extension too), a `NOTICE` or `THIRD_PARTY_LICENSES` file, the README or a comment at the top of a source file. A licence file that holds some other text (a proprietary notice, a different licence) is reported as not sure, because Gaugeline cannot tell whether a starter's notice was kept. **A folder with no notice and nothing that says where the code came from is also not sure, never a pass**: the check cannot tell whether a notice was removed from a project it has no reason to connect to a starter.
+
+Corner Clinic is an invented clinic. Its site was made from a public Next.js starter, its `package.json` still says MIT, and the starter's `LICENSE` file was deleted:
+
+<!-- source-fixture: starter-licence-notice-missing/fail -->
+
+```text title="Terminal" untested="Reads a project folder. packages/cli/src/__tests__/source-versions-docs.test.ts runs the same command on the same invented folder (packages/fixtures/source/starter-licence-notice-missing/fail) and compares the Output block with what it prints."
+$ npx gaugeline source ./corner-clinic --only starter-licence-notice-missing
+```
+
+```text title=Output
+Read 2 files in ./corner-clinic. No request was made and no code was run.
+
+! The licence notice of a starter project is not in the folder
+    package.json:4: package.json declares the MIT licence, and no file in the folder holds the MIT or ISC licence text.
+! The licence notice of a starter project is not in the folder
+    README.md:5: the README says the project was made from a starter or template, and no file in the folder holds the MIT or ISC licence text.
+
+2 to look at, none to fix first.
+```
+
+Copy the starter's `LICENSE` file into the project, keeping its copyright line. If nothing from a starter is in the project, say so in the README or change the `license` field. For a folder with no signal at all:
+
+<!-- source-fixture: starter-licence-notice-missing/unsure -->
+
+```text title="Terminal" untested="Reads a project folder. packages/cli/src/__tests__/source-versions-docs.test.ts runs the same command on the same invented folder (packages/fixtures/source/starter-licence-notice-missing/unsure) and compares the Output block with what it prints."
+$ npx gaugeline source ./corner-clinic --only starter-licence-notice-missing
+```
+
+```text title=Output
+Read 2 files in ./corner-clinic. No request was made and no code was run.
+
+? starter-licence-notice-missing could not be checked: no MIT or ISC licence text is in the folder, and nothing in it says where the code came from, so Gaugeline cannot tell whether a notice was removed. (source:./corner-clinic)
+
+Nothing to look at.
+```
+
+**Uncited.** That a project made from a starter counts as a copy in the licence's sense is not something Gaugeline can know, so the check text does not say it. This is not legal advice.
+
+## Draft mode code written for next-sanity 12, on next-sanity 13
+
+`next-sanity-removed-api` (advice) finds code that was copied from a site built on next-sanity 12 into one that installs next-sanity 13, and still uses something the new major removed. The migration guide for that upgrade [docs] (<https://raw.githubusercontent.com/sanity-io/next-sanity/main/packages/next-sanity/MIGRATE-v12-to-v13.md>, read 2026-11-11, when next-sanity 13.4.0 was the latest) lists as removed:
+
+- the hooks `useDraftModePerspective`, `useIsLivePreview` and `useDraftModeEnvironment` (imported from `next-sanity/hooks`);
+- the `stega` and `fetchOptions` options of `defineLive`;
+- the `refreshOnFocus`, `refreshOnReconnect`, `refreshOnMount`, `intervalOnGoAway` and `tag` props of `<SanityLive>`.
+
+The check reads the installed version from the lockfile and does nothing below 13, where all of these exist. It reads the names as written: an import of a hook, a prop written directly on a `<SanityLive>` tag, an option written directly in the options of `defineLive` (a `stega` setting on the client inside it is not the removed option). When it sees one of these names and cannot read which next-sanity version is installed, it says it is not sure. It does not check the other changes in the guide, such as the new `action` prop or the changed `onGoAway` signature.
+
+<!-- source-fixture: next-sanity-removed-api/fail -->
+
+```text title="Terminal" untested="Reads a project folder. packages/cli/src/__tests__/source-versions-docs.test.ts runs the same command on the same invented folder (packages/fixtures/source/next-sanity-removed-api/fail) and compares the Output block with what it prints."
+$ npx gaugeline source ./corner-clinic --only next-sanity-removed-api
+```
+
+```text title=Output
+Read 3 files in ./corner-clinic. No request was made and no code was run.
+
+· Draft mode code uses an API that next-sanity 13 removed
+    app/DebugStatus.tsx:2: useDraftModePerspective (a hook) was removed in next-sanity 13, and package.json:6 installs 13.4.0.
+· Draft mode code uses an API that next-sanity 13 removed
+    app/layout.tsx:8: refreshOnFocus (a SanityLive prop) was removed in next-sanity 13, and package.json:6 installs 13.4.0.
+
+2 to look at, none to fix first.
+```
+
+The guide gives the replacement for each: `useDraftModePerspective` becomes the `resolvePerspectiveFromCookies` helper in a server component, `useDraftModeEnvironment` becomes `useVisualEditingEnvironment`, and `useIsLivePreview` becomes `useIsPresentationTool` for a page shown in Presentation. The removed `<SanityLive>` props can each be put back as a small component, and the guide shows how.
