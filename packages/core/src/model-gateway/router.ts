@@ -18,6 +18,7 @@
 import { AGENT_ANSWER_ISSUES, type AnswerCheck, type CheckVerdict } from "./check.js";
 import { ModelGatewayError, type FailureClass } from "./errors.js";
 import { sanitise } from "../untrusted.js";
+import { NO_BUDGET } from "./gateway.js";
 import type { ModelAnswer, ModelGateway, ModelTier } from "./types.js";
 
 export type { AnswerCheck, CheckVerdict } from "./check.js";
@@ -92,7 +93,28 @@ function repairPrompt(prompt: string, issues: readonly string[]): string {
   ].join("\n");
 }
 
-export function createRouter(gateways: { primary: ModelGateway; fallback?: ModelGateway }): Router {
+export interface RouterOptions {
+  /** Refuse to build a router whose gateways have no budget (`NO_BUDGET`). For hosted use, where a ceiling is required. */
+  requireBudget?: boolean;
+}
+
+/**
+ * A router over a primary gateway and, optionally, a fallback. Both gateways must have been built from the SAME
+ * budget object (the same `RunBudget`, so one run's ceilings count both providers' calls): a fallback with its
+ * own budget, or with none, would let a call skip the ceilings the first provider obeys. A router that cannot
+ * meet this is not built. With `requireBudget`, a router with no budget at all is refused too.
+ */
+export function createRouter(
+  gateways: { primary: ModelGateway; fallback?: ModelGateway },
+  options: RouterOptions = {},
+): Router {
+  if (gateways.fallback && gateways.fallback.budget !== gateways.primary.budget)
+    throw new ModelGatewayError(
+      "bad-config",
+      "The primary and fallback gateways must be built from the same budget, or the fallback would skip its ceilings.",
+    );
+  if (options.requireBudget === true && gateways.primary.budget === NO_BUDGET)
+    throw new ModelGatewayError("bad-config", "The router needs a budget: its gateways have none.");
   async function route<O>(request: RouteRequest, check: AnswerCheck<O>): Promise<RouteOutcome<O>> {
     const attempts: RouteAttempt[] = [];
     let cost = 0;

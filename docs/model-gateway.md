@@ -311,6 +311,14 @@ model's choice, and the same inputs always take the same path.
    holds your key), **stops at once**: a second provider would meet the same problem, or use your key for nothing.
    The budget itself is the gateway's hook (row AG-22); the router only obeys it.
 
+**One budget for both providers.** A fallback must not be a way round the ceilings. The two gateways must be
+built from the **same** budget object (hand the one `RunBudget` from the [budget ledger](./model-budgets.md) to
+both as `budget`), and `createRouter` refuses to build otherwise: a fallback with a budget of its own, with none
+while the first has one, or with a wrapper that only looks the same, is an error (`bad-config`), because the second
+provider's calls would not be counted against the run's ceilings. A gateway shows the budget it uses as
+`gateway.budget`. Pass `{ requireBudget: true }` as the second argument to refuse a router whose gateways have no
+budget at all, which is what a hosted caller should do.
+
 At most four calls are made for one task. The check is plain code you give it; for an agent with an
 [eval set](./agent-evals.md), `agentAnswerCheck` runs the same schema, cited-id, invented-number and write-call
 assertions on the live answer. What comes out is `advisory` (an answer that passed the check, for a person to read)

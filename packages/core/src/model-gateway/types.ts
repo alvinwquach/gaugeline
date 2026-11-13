@@ -108,5 +108,7 @@ export interface GatewayOptions {
 /** The one way an agent reaches a model. */
 export interface ModelGateway {
   readonly provider: string;
+  /** The budget this gateway asks before every call (`NO_BUDGET` when it was built with none). A router compares them. */
+  readonly budget: BudgetHooks;
   complete(request: ModelRequest): Promise<ModelAnswer>;
 }

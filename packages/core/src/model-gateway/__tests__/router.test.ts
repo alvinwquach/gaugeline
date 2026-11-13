@@ -7,7 +7,8 @@ import { describe, expect, it } from "vitest";
 import { triage } from "../../evals/example/triage.js";
 import type { EvalRecording } from "../../evals/types.js";
 import { ModelGatewayError, type FailureClass, type GatewayErrorCode } from "../errors.js";
-import { createGateway } from "../gateway.js";
+import { NO_BUDGET, createGateway } from "../gateway.js";
+import { createBudgetLedger } from "../budget.js";
 import {
   MAX_CALLS_PER_ROUTE,
   FALLBACK_FAILURES,
@@ -434,10 +435,10 @@ describe("budget: a stop, not a retry (AG-22 fills the hook in)", () => {
   it("stops at once, with no fallback and no escalation", async () => {
     const a = provider("a", [rec(GOOD)]);
     const b = provider("b", [rec(GOOD)]);
-    const r = await createRouter({ primary: a.gateway(deny), fallback: b.gateway() }).route(
-      REQ,
-      check,
-    );
+    const r = await createRouter({
+      primary: a.gateway(deny),
+      fallback: b.gateway(deny),
+    }).route(REQ, check);
     expect(r).toMatchObject({ kind: "unsure", reason: "budget" });
     expect(a.calls.length + b.calls.length).toBe(0);
   });
@@ -524,5 +525,126 @@ describe("agentAnswerCheck: the AG-09 assertions on a live answer", () => {
   it("refuses a tool call that writes or is not allowed", async () => {
     const v = await verdict(GOOD, [{ tool: "publish_site" }]);
     expect(v.ok === false && v.issues.join(" ")).toMatch(/no-write-call/);
+  });
+});
+
+describe("one budget for both gateways: a fallback cannot skip the ceilings", () => {
+  const ledger = () =>
+    createBudgetLedger({
+      config: {
+        ceilings: { perRunMicros: 5_000, perDayMicros: 100_000, perWorkspaceMicros: 100_000 },
+        prices: {
+          "a-fast": { inputMicrosPerMTok: 250_000, outputMicrosPerMTok: 1_250_000 },
+          "b-fast": { inputMicrosPerMTok: 250_000, outputMicrosPerMTok: 1_250_000 },
+          "a-strong": { inputMicrosPerMTok: 250_000, outputMicrosPerMTok: 1_250_000 },
+          "b-strong": { inputMicrosPerMTok: 250_000, outputMicrosPerMTok: 1_250_000 },
+        },
+      },
+      now: () => Date.UTC(2026, 10, 13, 12, 0, 0),
+    });
+
+  it("exposes the budget a gateway uses, and NO_BUDGET when it has none", () => {
+    expect(provider("a", []).gateway().budget).toBe(NO_BUDGET);
+    const mine = ledger().forRun("workspace-a");
+    expect(provider("a", []).gateway(mine).budget).toBe(mine);
+  });
+
+  it("refuses to build a router whose fallback has no budget while the primary has one (the bypass)", () => {
+    const run = ledger().forRun("workspace-a");
+    const a = provider("a", [rec(GOOD)]);
+    const b = provider("b", [rec(GOOD)]);
+    expect(() => createRouter({ primary: a.gateway(run), fallback: b.gateway() })).toThrow(
+      ModelGatewayError,
+    );
+    expect(() => createRouter({ primary: a.gateway(), fallback: b.gateway(run) })).toThrow(
+      /the same budget/,
+    );
+    expect(a.calls.length + b.calls.length).toBe(0);
+  });
+
+  it("refuses two different budgets, even two runs of one ledger: they would each count only their own calls", () => {
+    const l = ledger();
+    const a = provider("a", []);
+    const b = provider("b", []);
+    expect(() =>
+      createRouter({
+        primary: a.gateway(l.forRun("workspace-a")),
+        fallback: b.gateway(l.forRun("workspace-a")),
+      }),
+    ).toThrow(/the same budget/);
+    expect(() =>
+      createRouter({
+        primary: a.gateway(ledger().forRun("workspace-a")),
+        fallback: b.gateway(ledger().forRun("workspace-a")),
+      }),
+    ).toThrow(ModelGatewayError);
+  });
+
+  it("refuses a budget that only looks the same: a wrapper around the hooks is a different object", () => {
+    const run = ledger().forRun("workspace-a");
+    const wrapped = { before: (e: never) => run.before(e), after: (e: never) => run.after(e) };
+    const a = provider("a", []);
+    const b = provider("b", []);
+    expect(() =>
+      createRouter({ primary: a.gateway(run), fallback: b.gateway(wrapped as BudgetHooks) }),
+    ).toThrow(ModelGatewayError);
+  });
+
+  it("builds when both gateways were made from the one budget object", () => {
+    const run = ledger().forRun("workspace-a");
+    const a = provider("a", []);
+    const b = provider("b", []);
+    expect(() => createRouter({ primary: a.gateway(run), fallback: b.gateway(run) })).not.toThrow();
+  });
+
+  it("with requireBudget, refuses a router that has no budget at all, with or without a fallback", () => {
+    const a = provider("a", []);
+    const b = provider("b", []);
+    expect(() => createRouter({ primary: a.gateway() }, { requireBudget: true })).toThrow(
+      /needs a budget/,
+    );
+    expect(() =>
+      createRouter({ primary: a.gateway(), fallback: b.gateway() }, { requireBudget: true }),
+    ).toThrow(/needs a budget/);
+    const run = ledger().forRun("workspace-a");
+    expect(() =>
+      createRouter({ primary: a.gateway(run), fallback: b.gateway(run) }, { requireBudget: true }),
+    ).not.toThrow();
+  });
+
+  it("counts the fallback's call against the same run: an outage then a fallback spends one ceiling", async () => {
+    const run = ledger().forRun("workspace-a");
+    const a = provider("a", [{ fail: "timeout" }]);
+    const b = provider("b", [rec(GOOD), rec(GOOD)]);
+    const prompt = "x".repeat(8_000);
+    const r = await createRouter({ primary: a.gateway(run), fallback: b.gateway(run) }).route(
+      { ...REQ, prompt },
+      check,
+    );
+    expect(r.kind).toBe("advisory");
+    // The failed call's worst case (1750) stays held, and the fallback's answer is charged beside it.
+    expect(run.committedMicros()).toBeGreaterThan(1_750);
+  });
+
+  it("stops the fallback when the shared ceiling is spent by the call that failed", async () => {
+    // Each call can cost up to 1780 (2000 tokens in, 1024 out at these prices): two do not fit in 2000.
+    const run = createBudgetLedger({
+      config: {
+        ceilings: { perRunMicros: 2_000, perDayMicros: 100_000, perWorkspaceMicros: 100_000 },
+        prices: {
+          "a-fast": { inputMicrosPerMTok: 250_000, outputMicrosPerMTok: 1_250_000 },
+          "b-fast": { inputMicrosPerMTok: 250_000, outputMicrosPerMTok: 1_250_000 },
+        },
+      },
+      now: () => Date.UTC(2026, 10, 13, 12, 0, 0),
+    }).forRun("workspace-a");
+    const a = provider("a", [{ fail: "timeout" }]);
+    const b = provider("b", [rec(GOOD)]);
+    const out = await createRouter({ primary: a.gateway(run), fallback: b.gateway(run) }).route(
+      { ...REQ, prompt: "x".repeat(8_000) },
+      check,
+    );
+    expect(out).toMatchObject({ kind: "unsure", reason: "budget" });
+    expect(b.calls).toHaveLength(0);
   });
 });

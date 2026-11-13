@@ -2144,6 +2144,7 @@ export type {
   RouteAttempt,
   RouteOutcome,
   RouteRequest,
+  RouterOptions,
   Router,
   RunBudget,
   RunEstimate,

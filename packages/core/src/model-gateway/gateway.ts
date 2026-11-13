@@ -204,5 +204,5 @@ export function createGateway(options: GatewayOptions): ModelGateway {
     };
   }
 
-  return { provider: config.provider, complete: call };
+  return { provider: config.provider, budget, complete: call };
 }
