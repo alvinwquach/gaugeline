@@ -31,7 +31,7 @@ const refused = (url: string) => {
 };
 
 describe("sendableAddress: only a public page's name and a path that is not a secret leave", () => {
-  it("sends the origin and path, never a query, a fragment, a user name or a path parameter", () => {
+  it("sends the origin and path, never a query, a fragment or a user name", () => {
     // Built from pieces: a user name and password in an address is what the community check looks for.
     const withUser = ["https://", "someone", ":", "pw", "@", "shop.invented-store.com", "/"].join(
       "",
@@ -43,10 +43,6 @@ describe("sendableAddress: only a public page's name and a path that is not a se
     expect(sendableAddress(withUser)).toEqual({
       ok: true,
       url: "https://shop.invented-store.com/",
-    });
-    expect(sendableAddress("https://shop.invented-store.com/menu;jsessionid=ABC/page")).toEqual({
-      ok: true,
-      url: "https://shop.invented-store.com/menu/page",
     });
   });
 
@@ -104,27 +100,78 @@ describe("sendableAddress: only a public page's name and a path that is not a se
       refused(url);
   });
 
-  it("refuses a path with a part that looks like a token, a reset or invite link or a session", () => {
+  it("sends only a plain path: every part a lowercase word-like slug, at most 6 parts and 120 characters", () => {
     for (const path of [
+      "/",
+      "/menu",
+      "/menu/",
+      "/about-us/",
+      "/about-us/our-story",
+      "/blog/new-opening",
+      "/a/b/c/d/e/f",
+      "/p1",
+    ])
+      expect(sendableAddress(`https://shop.invented-store.com${path}`).ok, path).toBe(true);
+  });
+
+  it("refuses every other path, with the reason that nothing was asked of Google", () => {
+    const long = `/${"a".repeat(10_000)}`;
+    for (const path of [
+      // tokens and codes of every shape
+      "/s/eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dBjftJeZ4CVPmB92K27uhbUJU1p1r",
+      "/r/sk_live~51HxyzAbCdEfGhIjKlMnOpQr",
+      "/p/Zm9vYmFyYmF6+Nzg5MA",
       "/reset/3f2a9c1b7d4e5a6f8b0c1d2e3f4a5b6c/",
       "/u/123e4567-e89b-12d3-a456-426614174000",
       "/a/AbCdEfGhIjKlMnOpQrStUvWxYz",
+      "/otp/839201",
+      "/verify/ab12cd34ef56",
+      "/unsubscribe/x9Yz8w7V6u5T",
+      "/u:pw@x/",
+      "/x=1",
+      // encodings and parameters
+      "/a/%3Ftoken=1",
+      "/a/%253Ftoken=1",
+      "/a/b%23c",
+      "/menu;jsessionid=ABC",
+      "/%E0%A4%A",
+      "/caf%C3%A9",
+      "/caf\u00e9",
+      "/xn--caf-dma",
+      // shape
+      "/Menu",
+      "/about_us",
+      "/2026",
+      "/1abc",
+      "/a.b",
+      "/a+b",
+      "/a~b",
+      "/-a",
+      "/menu//",
+      "//menu",
+      "/a/b/c/d/e/f/g",
+      long,
+      // a slug that says it is a secret
       "/account/reset-password",
-      "/invite/abc",
+      "/invite-friends",
       "/my-session/start",
       "/api-key/list",
       "/token",
-      "/a/%3Ftoken=1",
-      "/a/b%23c",
-      "/x=1",
-      "/%E0%A4%A",
-    ])
-      refused(`https://shop.invented-store.com${path}`);
+    ]) {
+      const r = sendableAddress(`https://shop.invented-store.com${path}`);
+      expect(r.ok, path.slice(0, 40)).toBe(false);
+      if (!r.ok) expect(r.reason).toContain("nothing was asked of Google");
+    }
   });
 
-  it("sends an ordinary path, a short one and a long one made of words", () => {
-    for (const path of ["/", "/menu", "/about-us/our-story", "/blog/2026/11/fresh-bread-daily"])
-      expect(sendableAddress(`https://shop.invented-store.com${path}`).ok, path).toBe(true);
+  it("allows 40 characters in a part and not 41, and 120 in all and not 121", () => {
+    const part = (n: number) => `/a${"b".repeat(n - 1)}`;
+    expect(sendableAddress(`https://shop.invented-store.com${part(40)}`).ok).toBe(true);
+    expect(sendableAddress(`https://shop.invented-store.com${part(41)}`).ok).toBe(false);
+    const ok120 = `${part(40)}${part(40)}${part(37)}`; // 3 slashes + 117 letters = 120
+    expect(ok120).toHaveLength(120);
+    expect(sendableAddress(`https://shop.invented-store.com${ok120}`).ok).toBe(true);
+    expect(sendableAddress(`https://shop.invented-store.com${ok120}c`).ok).toBe(false);
   });
 
   it("only lets an invented name through when the tests say so", () => {
@@ -162,17 +209,16 @@ describe("createPageSpeed: one GET of Google's PageSpeed Insights, nothing else"
     expect(new URL(PAGESPEED_ORIGIN).hostname).toBe(PAGESPEED_HOSTS[0]);
   });
 
-  it("sends a page's address without its query string, fragment or path parameter", async () => {
+  it("sends a page's address without its query string or fragment", async () => {
     const { psi, seen } = reader({
       "https://bakery.example/menu": {
         status: 200,
         body: answer("https://bakery.example/menu", { lab: { score: 0.8 } }),
       },
     });
-    await psi.read("https://bakery.example/menu;sid=X1?session=SECRET123#x");
+    await psi.read("https://bakery.example/menu?session=SECRET123#x");
     expect(new URL(seen[0]?.url ?? "").searchParams.get("url")).toBe("https://bakery.example/menu");
     expect(seen[0]?.url).not.toContain("SECRET123");
-    expect(seen[0]?.url).not.toContain("X1");
   });
 
   it("reads each address once, even when asked with different query strings", async () => {

@@ -83,9 +83,19 @@ const WILDCARD_DNS = [
 const underDomain = (host: string, domain: string): boolean =>
   host === domain || host.endsWith(`.${domain}`);
 
-/** A path segment that looks like it carries a secret: a long token, or a word that says so. */
-const TOKEN_SHAPE = /^[A-Za-z0-9_-]{24,}$/;
-const SECRET_WORDS = /token|key|secret|reset|invite|session|password|passwd|auth/i;
+/**
+ * The only shape of path that is sent: every segment a lowercase word-like slug (a letter first, then letters,
+ * digits and dashes, at most 40), at most six segments and 120 characters, an optional trailing slash, or the
+ * root. Anything else (a digit-only part, a dot, an underscore, upper case, an encoded character, a `:` or `@`,
+ * an empty part, a long path) fails closed: it can be a token, a code, a session or a user name, and a page
+ * address that is not plain is not worth the risk of sending.
+ */
+const SLUG = /^[a-z][a-z0-9-]{0,39}$/;
+const MAX_SEGMENTS = 6;
+const MAX_PATH_CHARS = 120;
+/** A slug that says it is a secret is not sent either (a reset or invite link, a session, a key). */
+const SECRET_WORDS =
+  /token|key|secret|reset|invite|session|password|passwd|auth|verify|otp|unsubscribe/;
 
 /** Why a name is not a public site's, or undefined when its spelling is fine (what it resolves to is checked later). */
 function nameProblem(host: string): string | undefined {
@@ -101,30 +111,28 @@ function nameProblem(host: string): string | undefined {
   return undefined;
 }
 
-/** Why a path may not be sent, or undefined. Only a path that is clearly not a secret goes out. */
+/** What is said when a page's address is not plain. */
+const PLAIN_ADDRESS =
+  "This page's address does not look like a plain public page address, so it was not sent to Google (nothing was asked of Google).";
+
+/** Why a path may not be sent, or undefined: only a plain path made of word-like slugs is. */
 function pathProblem(pathname: string): string | undefined {
-  if (/%(?:3f|23|3d|3b)/i.test(pathname))
-    return "its path holds an encoded query or parameter mark";
-  for (const raw of pathname.split("/")) {
-    const segment = raw.split(";")[0] ?? "";
-    let decoded = segment;
-    try {
-      decoded = decodeURIComponent(segment);
-    } catch {
-      return "its path is not readable";
-    }
-    if (TOKEN_SHAPE.test(decoded) || SECRET_WORDS.test(decoded) || decoded.includes("="))
-      return "a part of its path looks like it carries a secret";
-  }
+  const plain = PLAIN_ADDRESS;
+  if (pathname === "/") return undefined;
+  if (pathname.length > MAX_PATH_CHARS || !pathname.startsWith("/")) return plain;
+  const parts = pathname.slice(1).replace(/\/$/, "").split("/");
+  if (parts.length > MAX_SEGMENTS) return plain;
+  for (const part of parts)
+    if (!SLUG.test(part) || part.startsWith("xn--") || SECRET_WORDS.test(part)) return plain;
   return undefined;
 }
 
 /**
  * The address that may leave: a public page's origin and path, with no query string, fragment, user name or
- * path parameter (`;jsessionid=...`). Google reads only the public web, so a loopback or private address, an
+ * path parameter. Google reads only the public web, so a loopback or private address, an
  * address typed as numbers, a name with no dot or a reserved or private-use name (a trailing dot is dropped
  * first) is never sent: it would fail there and tell Google the name of something internal. A path with a part
- * that looks like a token, a reset or invite link or a session is not sent either. What a name resolves to is
+ * that is not a plain lowercase slug (see SLUG) is not sent either. What a name resolves to is
  * checked by the reader before the address is sent.
  */
 export function sendableAddress(
@@ -133,7 +141,7 @@ export function sendableAddress(
 ): { ok: true; url: string } | { ok: false; reason: string } {
   const refuse = (why: string) => ({
     ok: false as const,
-    reason: `PageSpeed Insights reads only public pages, and this address was not sent to Google: ${why}.`,
+    reason: `PageSpeed Insights reads only public pages, and this address was not sent to Google (nothing was asked of Google): ${why}.`,
   });
   let u: URL;
   try {
@@ -148,12 +156,8 @@ export function sendableAddress(
   if (name !== undefined && !(opts.reservedNamesAllowed && isInventedName(host)))
     return refuse(name);
   const path = pathProblem(u.pathname);
-  if (path !== undefined) return refuse(path);
-  const clean = u.pathname
-    .split("/")
-    .map((segment) => segment.split(";")[0] ?? "")
-    .join("/");
-  return { ok: true, url: `${u.protocol}//${host}${u.port ? `:${u.port}` : ""}${clean}` };
+  if (path !== undefined) return { ok: false, reason: path };
+  return { ok: true, url: `${u.protocol}//${host}${u.port ? `:${u.port}` : ""}${u.pathname}` };
 }
 
 /** Test sites are invented under `.example`, `.test` and `.invalid`, which a real run never sends. */

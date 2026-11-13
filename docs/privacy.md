@@ -506,8 +506,10 @@ type, so it is off unless named and says so on stderr before the first request.
   or without a trailing dot), a name from a wildcard service such as `nip.io`, and a name that resolves to any
   private, loopback, link-local or metadata address (a failed lookup counts) are never sent. The check says
   could not check and why.
-- **Only a path that is not a secret.** No path parameter goes out, and a path with a part that looks like a
-  token, a reset, invite or session link, or an encoded query mark is not sent.
+- **Only a plain page address.** A path is sent only when every part is a lowercase word (a letter first, then
+  letters, digits and dashes, at most 40), with at most 6 parts and 120 characters and no secret word in it
+  (`token`, `key`, `reset`, `invite`, `session` and the like). Any other path fails closed: nothing is sent and
+  the check says could not check.
 - **No key.** No key is read or sent, so none can reach an address, a log, a finding or a report. Without
   one Google's allowance is shared with every other keyless caller, and when it is used up the check says could
   not check.

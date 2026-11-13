@@ -31,9 +31,13 @@ This is the one flag whose job is to send something to a company you did not typ
   address written in it (`nip.io`, `sslip.io`) and a name that resolves, on this computer, to any private,
   loopback, link-local or metadata address are never sent. If the name cannot be looked up, it is not sent.
   The check says could not check, and says why. A staging site behind a login cannot be read either.
-- **Only a path that is not a secret.** The path goes out without parameters (`;jsessionid=...`). A path with a
-  part that looks like a token (24 or more letters, digits, dashes or underscores), a word such as `token`,
-  `key`, `secret`, `reset`, `invite`, `session` or `password`, or an encoded `?`, `#` or `=` is not sent.
+- **Only a plain page address.** A path goes out only when every part is a lowercase word (a letter first, then
+  letters, digits and dashes, at most 40), there are at most 6 parts and 120 characters, and no part says
+  `token`, `key`, `secret`, `reset`, `invite`, `session`, `password`, `verify`, `otp` or `unsubscribe`. The root
+  and `/menu`, `/about-us/` or `/blog/new-opening` are sent. Anything else (a digit-only part, a capital letter, a
+  dot, an underscore, an encoded character, a `:` or `@`, an empty part, a very long path) fails closed: the page
+  is could not check, "this page's address does not look like a plain public page address, so it was not sent",
+  and nothing was asked of Google.
 - **One call at a time.** Google's answers are slow, so the calls go one after another and never fill every slot
   the run's own requests to your site need.
 - **One `GET` each, to one host.** Never a `POST`, never another host. Gaugeline says so on stderr before the
