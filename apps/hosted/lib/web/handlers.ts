@@ -11,6 +11,8 @@ import { dashboardBody } from "./dashboard-view.js";
 import { markup } from "./html.js";
 import { lastNight } from "./last-night.js";
 import { nightBody } from "./last-night-view.js";
+import { agentScorecard } from "./scorecard.js";
+import { scorecardBody } from "./scorecard-view.js";
 import { redirect, respondHtml, respondText, STYLES, type Shell } from "./layout.js";
 import { listMemberships, listSites, pickOrg, ROLE_LABEL, type Membership } from "./memberships.js";
 import {
@@ -247,6 +249,24 @@ export function lastNightPage(request: Request, deps: WebDeps): Promise<Response
 <p class="muted">${shell.current.orgName}</p>
 ${nightBody(sites, shell.current.role)}`,
       { ...shell, active: "last-night" },
+    );
+  });
+}
+
+/** The agent scorecard (AG-07): owners and admins only; the query runs as the signed-in person (RLS). */
+export function agentsPage(request: Request, deps: WebDeps): Promise<Response> {
+  return signedIn(request, deps, async ({ tx, shell }) => {
+    if (!shell) return redirect("/");
+    const { current } = shell;
+    const admin = current.role === "owner" || current.role === "admin";
+    const agents = admin ? await agentScorecard(tx, current.orgId) : [];
+    return respondHtml(
+      200,
+      "Agents",
+      markup`<h1>Agents</h1>
+<p class="muted">${current.orgName}</p>
+${scorecardBody(agents, current.role)}`,
+      { ...shell, active: "agents" },
     );
   });
 }
