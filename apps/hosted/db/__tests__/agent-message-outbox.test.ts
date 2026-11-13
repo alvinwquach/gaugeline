@@ -49,10 +49,12 @@ describe.skipIf(!HAS_DATABASE)("the agent message outbox kind (0017)", () => {
       await q`select n.nspname || '.' || p.proname as f from pg_proc p join pg_namespace n on n.oid = p.pronamespace
         where n.nspname in ('public', 'private') order by 1`
     ).map((r) => r.f as string);
+  // Roles belong to the whole server, and other test files create theirs (gl_*) at the same time: only the
+  // product's own roles are compared.
   const roles = async (q: Sql) =>
-    (await q`select rolname from pg_roles where rolname !~ '^pg_' order by 1`).map(
-      (r) => r.rolname as string,
-    );
+    (
+      await q`select rolname from pg_roles where rolname ~ '^(gaugeline_|anon|authenticated|service_role)' order by 1`
+    ).map((r) => r.rolname as string);
 
   const service = { role: "service_role" as const };
   const ownerA = { role: "authenticated" as const, userId: USER_A_OWNER };
