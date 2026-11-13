@@ -424,7 +424,7 @@ describe.skipIf(!HAS_DATABASE)("the hosted scopes for AG-15 and AG-17", () => {
     it("the tools the policy lists are the old scopes, exactly; the deny log and trace lists did not grow", async () => {
       const [fn] = await sql`select prosrc from pg_proc where proname = 'agent_authorize'`;
       const m = /c_tools constant text\[\] := array\[([^\]]+)\]/.exec(String(fn!.prosrc));
-      const listed = [...m![1]!.matchAll(/'([a-z_]+:[a-z_-]+)'/g)].map((x) => x[1]);
+      const listed = [...m![1]!.matchAll(/'([^']*)'/g)].map((x) => x[1]);
       expect(listed).toEqual(OLD_SCOPES);
       expect([...SCOPES_NOT_YET_IN_POLICY]).toEqual([...NEW_SCOPES]);
       for (const table of ["agent_denies", "agent_trace"]) {
@@ -437,7 +437,7 @@ describe.skipIf(!HAS_DATABASE)("the hosted scopes for AG-15 and AG-17", () => {
   });
 
   describe("mutations of the constraint are caught (the checks above fail if the constraint is weakened)", () => {
-    const listOf = (def: string) => [...def.matchAll(/'([a-z_]+:[a-z_-]+)'/g)].map((m) => m[1]);
+    const listOf = (def: string) => [...def.matchAll(/'([^']*)'/g)].map((m) => m[1]);
     const constraintDef = async (q: Sql | postgres.TransactionSql) =>
       String(
         (
