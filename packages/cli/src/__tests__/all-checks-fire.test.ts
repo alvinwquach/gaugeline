@@ -75,6 +75,7 @@ const FIXTURES = [
   "image-optimizer",
   "error-pages",
   "noindex-header-missing",
+  "ai-directives",
   "studio-cacheable",
   "ai-key-in-js",
   "ai-widgets",
