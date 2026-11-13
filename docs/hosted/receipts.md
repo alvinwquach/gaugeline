@@ -85,7 +85,10 @@ receipt can be shared without the page text or a secret pasted into a draft.
   `person` when the signed-in person recorded their own choice (the session's real database role is
   `authenticated` and its user is the decider; request claims alone are not enough), `service` otherwise. A receipt written by
   the service role carries a service marker: the server may record a decision in anyone's name, and a chat
-  approval is recorded by the chat function after it checks the click's signature. The marker is not part of
+  approval is recorded by the chat function after it checks the click's signature. `person` means "written
+  under the signed-in user's database role and identity as the application server asserted it". It does not
+  protect against a compromised application server, or against the runs API's own login, which can act as
+  any user by design; `service` marks decisions written without that context (the service role, chat). The marker is not part of
   the hashed record (its format is fixed); owners and admins download it from `GET /receipts/writers`, one
   line per receipt: `{"seq":1,"writtenBy":"person"}`.
 - **Linked to the agent trace.** When an agent proposed the draft, the same decision also writes a row in

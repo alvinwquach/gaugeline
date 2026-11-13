@@ -26,8 +26,11 @@ create table public.receipts (
   -- session's real role is `authenticated` (SET ROLE, which needs membership of that role; claims cannot set
   -- it) and auth.uid() is the row's decided_by. 'service' for every other writer: service_role, which may
   -- insert any decided_by and set any claims; the chat approval function (gaugeline_chat), which maps a
-  -- verified chat click to a member; the table owner; anything else. Not hashed: it sits beside the chain,
-  -- in the writers export.
+  -- verified chat click to a member; the table owner; anything else. So 'person' means: written under the
+  -- signed-in user's database role and identity as the application server asserted it. It does not protect
+  -- against a compromised application server or the runs API login, which is a member of authenticated by
+  -- design and can act as any user. 'service' marks decisions written without that context (service role,
+  -- chat). Not hashed: it sits beside the chain, in the writers export.
   written_by text not null check (written_by in ('person', 'service')),
   created_at timestamptz not null default now(),
   -- One chain per organisation: no two receipts at one position, none following the same receipt (a fork),
@@ -68,8 +71,9 @@ revoke all on private.receipt_heads from public, anon, authenticated, service_ro
 -- is written only from inside a trigger (trigger depth 2 or more): inserted at seq 0, then moved forward one
 -- receipt at a time. What this stops: a role with a grant (none has one) and the table owner's plain
 -- DELETE, TRUNCATE, INSERT or UPDATE. What it does not stop: the table owner, who can disable this trigger,
--- or create a trigger of their own on another table that writes the head from depth 2 (one step forward at a
--- time, still), or rebuild the whole chain. Those are the operator's powers the docs name; a head hash kept
+-- set session_replication_role = replica (which skips ordinary triggers), create a trigger of their own on
+-- another table that writes the head from depth 2 (one step forward at a time, still), or rebuild the whole
+-- chain. Those are the operator's powers the docs name; a head hash kept
 -- outside the database is what finds them.
 create function private.receipt_heads_guard() returns trigger
 language plpgsql set search_path = ''
