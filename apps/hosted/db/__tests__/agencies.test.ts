@@ -43,6 +43,8 @@ const MONDAY = "2026-11-09";
 const BAR_TEXT = { subject: "Your site this week", body: "All checked, nothing found." };
 const KITCHEN_TEXT = { subject: "Your site this week", body: "One broken link was fixed." };
 
+type Tx = Parameters<Parameters<typeof as>[2]>[0];
+
 const sha = (token: string): string => createHash("sha256").update(token, "utf8").digest("hex");
 // Built at run time, so nothing token-shaped sits in the source.
 const token = (n: number): string => `glinv_${String(n).repeat(40)}`;
@@ -266,10 +268,15 @@ describe.skipIf(!HAS_DATABASE)(
     });
 
     describe("a site moved from one client to another", () => {
-      it("keeps its old updates where they were and joins the new client's next update", async () => {
+      const asUserIn = async (tx: Tx, userId: string) => {
+        await tx.unsafe("reset role");
+        await tx`select set_config('request.jwt.claims', ${JSON.stringify({ sub: userId })}, true)`;
+        await tx.unsafe("set local role authenticated");
+      };
+
+      it("keeps its old updates with the old client, and a new update under the old client is refused", async () => {
         await rolledBack(sql, async (tx) => {
-          await tx`select set_config('request.jwt.claims', ${JSON.stringify({ sub: USER_A_ADMIN })}, true)`;
-          await tx.unsafe("set local role authenticated");
+          await asUserIn(tx, USER_A_ADMIN);
           const moved =
             await tx`update public.sites set client_id = ${CLIENT_BAR} where id = ${SITE_A2} returning id`;
           expect(moved).toHaveLength(1);
@@ -277,7 +284,6 @@ describe.skipIf(!HAS_DATABASE)(
             await tx`select client_id, site_ids from public.weekly_updates where id = ${UPDATE_KITCHEN}`;
           expect(old[0]).toEqual({ client_id: CLIENT_KITCHEN, site_ids: [SITE_A2] });
           await tx.unsafe("reset role");
-          // The kitchen client no longer has that site: an update naming it under the old client is refused.
           const draft = await tx`insert into public.drafts (org_id, site_id, kind, payload)
           values (${ORG_A}, ${SITE_A2}, 'email', ${tx.json(KITCHEN_TEXT)}) returning id`;
           const msg = await errorOf(
@@ -291,13 +297,43 @@ describe.skipIf(!HAS_DATABASE)(
           );
           expect(msg).toMatch(/must belong to its client/);
         });
-        // The viewer of the moved site still sees the update that was sent for it.
-        const seen = await as(
-          sql,
-          viewerKitchen,
-          (tx) => tx`select update_id from public.weekly_update_sends`,
-        );
-        expect(seen.map((r) => r.update_id)).toEqual([UPDATE_KITCHEN]);
+      });
+
+      it("revokes the site's viewers and pending viewer invites, so the old client's viewer reads nothing", async () => {
+        await rolledBack(sql, async (tx) => {
+          await tx`insert into public.invites (org_id, email, role, site_id, invited_by, token_sha256)
+            values (${ORG_A}, 'organiser@juniper-popup.test', 'client', ${SITE_A2}, ${USER_A_ADMIN}, ${sha(token(7))})`;
+          await asUserIn(tx, USER_A_ADMIN);
+          await tx`update public.sites set client_id = ${CLIENT_BAR} where id = ${SITE_A2}`;
+          await tx.unsafe("reset role");
+          const left = await tx`select user_id from public.members where site_id = ${SITE_A2}`;
+          expect(left).toEqual([]);
+          const invite =
+            await tx`select revoked_at from public.invites where token_sha256 = ${sha(token(7))}`;
+          expect(invite[0]!.revoked_at).not.toBeNull();
+          await asUserIn(tx, USER_A_CLIENT2);
+          const seen = {
+            sites: await tx`select id from public.sites`,
+            runs: await tx`select id from public.runs`,
+            findings: await tx`select id from public.findings`,
+            sends: await tx`select id from public.weekly_update_sends`,
+          };
+          for (const [k, rows] of Object.entries(seen)) expect(rows, k).toEqual([]);
+        });
+      });
+
+      it("a new viewer of the moved site cannot read the old client's sent update", async () => {
+        await rolledBack(sql, async (tx) => {
+          await asUserIn(tx, USER_A_ADMIN);
+          await tx`update public.sites set client_id = ${CLIENT_BAR} where id = ${SITE_A2}`;
+          await tx.unsafe("reset role");
+          const newcomer = "33333333-0000-4000-8000-000000000003";
+          await tx`insert into public.members (org_id, user_id, role, site_id)
+            values (${ORG_A}, ${newcomer}, 'client', ${SITE_A2})`;
+          await asUserIn(tx, newcomer);
+          expect((await tx`select id from public.sites`).map((r) => r.id)).toEqual([SITE_A2]);
+          expect(await tx`select update_id from public.weekly_update_sends`).toEqual([]);
+        });
       });
     });
 
@@ -423,6 +459,36 @@ describe.skipIf(!HAS_DATABASE)(
         expect(await errorOf(invite(adminA, "client", SITE_B1, 1))).toMatch(/foreign key/);
         expect(await errorOf(invite(adminA, "client", null, 1))).toMatch(/invites_check/);
         expect(await errorOf(invite(ownerB, "client", SITE_A1, 1))).toMatch(/row-level security/);
+      });
+
+      it("an admin cannot revoke an invite for an owner; an owner can", async () => {
+        await rolledBack(sql, async (tx) => {
+          await tx`insert into public.invites (org_id, email, role, invited_by, token_sha256)
+          values (${ORG_A}, 'partner@northgate.test', 'owner', ${USER_A_OWNER}, ${sha(token(8))})`;
+          const revoke = async (userId: string) => {
+            await tx`select set_config('request.jwt.claims', ${JSON.stringify({ sub: userId })}, true)`;
+            await tx.unsafe("set local role authenticated");
+            const r = await tx`update public.invites set revoked_at = now()
+            where email = 'partner@northgate.test' returning 1`;
+            await tx.unsafe("reset role");
+            return r.length;
+          };
+          expect(await revoke(USER_A_ADMIN)).toBe(0);
+          expect(await revoke(USER_A_OWNER)).toBe(1);
+        });
+      });
+
+      it("a client name is one line: no line break, control or bidirectional-control character", async () => {
+        for (const name of ["Bar\u202e", "Bar\nKitchen", "Bar\u0007"]) {
+          const msg = await errorOf(
+            as(
+              sql,
+              ownerA,
+              (tx) => tx`insert into public.clients (org_id, name) values (${ORG_A}, ${name})`,
+            ),
+          );
+          expect(msg, JSON.stringify(name)).toMatch(/clients_name_one_line/);
+        }
       });
 
       it("the token hash, the expiry and the acceptance are never written or read by a signed-in person", async () => {

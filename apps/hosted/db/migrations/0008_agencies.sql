@@ -12,7 +12,10 @@
 create table public.clients (
   id uuid primary key default gen_random_uuid(),
   org_id uuid not null references public.organisations (org_id) on delete cascade,
-  name text not null check (length(name) between 1 and 200),
+  -- One line, by the same character rule as a draft's subject (private.draft_text_problem, single-line): no
+  -- control, line-break or bidirectional-control character. Inline, because a check runs as the inserter.
+  name text not null constraint clients_name_one_line check (length(name) between 1 and 200
+    and name !~ '[\u0001-\u001f\u007f-\u009f\u2028\u2029\u202a-\u202e\u2066-\u2069\ufffe\uffff]'),
   created_at timestamptz not null default now(),
   unique (id, org_id),
   unique (org_id, name)
@@ -114,10 +117,17 @@ create policy invites_update on public.invites for update to authenticated
 create policy weekly_updates_select on public.weekly_updates for select to authenticated
   using (org_id in (select private.staff_org_ids()));
 
+-- A client viewer reads a sent update when every site it covered is their site AND their site belongs to the
+-- update's client now: a site later moved to another client does not carry the old client's updates to the
+-- new client's viewers. (Moving a site also removes its viewers, below; this holds even without that.)
 create policy weekly_update_sends_select on public.weekly_update_sends for select to authenticated
   using (org_id in (select private.staff_org_ids())
     or (org_id in (select private.member_org_ids())
-        and site_ids <@ array(select private.client_site_ids())));
+        and site_ids <@ array(select private.client_site_ids())
+        and exists (select 1 from public.sites s
+                    where s.id in (select private.client_site_ids())
+                      and s.org_id = weekly_update_sends.org_id
+                      and s.client_id = weekly_update_sends.client_id)));
 
 -- Grants: take back the defaults, then name the columns. No id, time, token-derived or trigger-filled
 -- column is writable by anyone but the owner.
@@ -264,3 +274,23 @@ end
 $$;
 revoke all on function private.accept_invite(text) from public, anon, authenticated, service_role;
 grant execute on function private.accept_invite(text) to authenticated;
+
+-- Moving a site away from a client removes the site's client viewers and revokes its pending viewer invites:
+-- they were let in for that client's site, and the new client has not let them in. Grouping a site that had
+-- no client keeps its viewers. SECURITY DEFINER: the admin who moves the site may not be able to read invites'
+-- hashes, and the change must happen whoever moves it.
+create function private.site_client_moved() returns trigger
+language plpgsql security definer set search_path = ''
+as $$
+begin
+  if old.client_id is not null and new.client_id is distinct from old.client_id then
+    delete from public.members m where m.site_id = old.id and m.role = 'client';
+    update public.invites i set revoked_at = now()
+      where i.site_id = old.id and i.revoked_at is null and i.accepted_at is null;
+  end if;
+  return new;
+end
+$$;
+revoke all on function private.site_client_moved() from public;
+create trigger sites_client_moved after update of client_id on public.sites
+  for each row execute function private.site_client_moved();

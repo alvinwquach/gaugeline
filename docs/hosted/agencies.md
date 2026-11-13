@@ -81,9 +81,15 @@ most one client (`sites.client_id`). The key covers the organisation too, so a s
 under another agency's client. Owners and admins create clients and move sites between them; members read
 them; client viewers do not see the list at all.
 
-To move a site to another client, set its `client_id`. Updates already written for the old client keep
-the site in their snapshot (see the weekly update below), so history does not move with it. A client that
-still has sites cannot be deleted: move its sites first.
+To move a site to another client, set its `client_id`. Moving a site **removes its client viewers and
+revokes its pending viewer invites**: they were let in by the old client, and the new client has not let them
+in. Invite the new client's people again. (Grouping a site that had no client keeps its viewers.) Updates
+already written for the old client stay with the old client: no viewer of the moved site can read them,
+because a viewer reads an update only while their site belongs to that update's client. A client that still
+has sites cannot be deleted: move its sites first.
+
+A client's name is one line: the database refuses a line break, a control character or a
+bidirectional-control character in it, because the name goes into the weekly update's subject.
 
 ## Client viewers
 
@@ -91,6 +97,11 @@ A client viewer is a member with role `client` and exactly one site (`members.si
 security lets them read that site, its runs, findings, what changed and its consent record, and nothing
 else: no drafts, no decisions, no clients, no other member. They cannot write anything, and they cannot
 change their own role or site (only owners and admins change members, and only an owner touches an owner).
+
+**Limitation: one site per viewer.** A viewer is bound to exactly one site, and a weekly update covering
+several sites of one client is readable only by someone who may see all of them. So a client with two or more
+sites has no viewer who can read its weekly update in the app today (the agency still sends it by email once
+the mail path is connected). Viewers bound to a whole client are a later change to the role model.
 
 ## Invites
 
