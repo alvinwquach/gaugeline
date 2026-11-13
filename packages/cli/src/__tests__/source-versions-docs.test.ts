@@ -38,6 +38,9 @@ describe("docs/guides/versions-config-licence-source.md", () => {
       "zod-version-advisory/unsure",
       "next-version-advisory/fail",
       "next-version-advisory/unsure",
+      "tsconfig-target-es5/fail",
+      "tsconfig-target-es5/unsure",
+      "a11y-spec-expects-violations/fail",
     ]);
     for (const e of examples) expect(e.only, e.id).toContain(e.id);
   });

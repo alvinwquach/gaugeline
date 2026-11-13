@@ -1,0 +1,10 @@
+{
+  // Settings for the pub's site.
+  "compilerOptions": {
+    "target": "es5",
+    "lib": ["dom", "esnext"],
+    "strict": true,
+    "jsx": "preserve" /* Next rewrites this */
+  },
+  "include": ["**/*.ts", "**/*.tsx"]
+}

@@ -112,3 +112,69 @@ Sources for this check: GHSA-2464-fhr4-w9xw, GHSA-673q-mjm6-r5xr and GHSA-p3m5-5
 ### What a pass means
 
 A pass says only that the installed version is outside every range in Gaugeline's list, which was compared with its pages on 2026-11-11. An advisory published after that day is not in the list, and a pass is not a statement that the version is safe.
+
+## A tsconfig that targets es5 on a modern Next.js app
+
+`tsconfig-target-es5` (advice) reads the `tsconfig.json` of a Next.js 13 or later app and finds `compilerOptions.target` set to `es5`, directly or through a tsconfig it extends by a relative path. es5 is the language level of browsers from over a decade ago; a modern app is built for current ones, so the setting asks the tools that read it to treat modern language features as missing. It is usually a leftover from an older project that was copied into a new one.
+
+A tsconfig is JSON with comments and trailing commas, and Gaugeline reads it that way. It follows `extends` through files in the folder. A config that extends a package (`"extends": "some-package/tsconfig.json"`) or a file that is not in the folder, and sets no target of its own, is reported as not sure: Gaugeline reads no code outside the folder you name, so it cannot tell.
+
+Quayside Pub is an invented pub whose site was started from an old template:
+
+<!-- source-fixture: tsconfig-target-es5/fail -->
+
+```text title="Terminal" untested="Reads a project folder. packages/cli/src/__tests__/source-versions-docs.test.ts runs the same command on the same invented folder (packages/fixtures/source/tsconfig-target-es5/fail) and compares the Output block with what it prints."
+$ npx gaugeline source ./quayside-pub --only tsconfig-target-es5
+```
+
+```text title=Output
+Read 2 files in ./quayside-pub. No request was made and no code was run.
+
+· tsconfig targets es5 on a modern Next.js app
+    tsconfig.json:4: compilerOptions.target is es5.
+
+1 to look at, none to fix first.
+```
+
+Set `target` to `es2017` or later (the tsconfig that `create-next-app` writes is a good reference) and check that the project still compiles. When the tsconfig extends a package, the answer looks like this:
+
+<!-- source-fixture: tsconfig-target-es5/unsure -->
+
+```text title="Terminal" untested="Reads a project folder. packages/cli/src/__tests__/source-versions-docs.test.ts runs the same command on the same invented folder (packages/fixtures/source/tsconfig-target-es5/unsure) and compares the Output block with what it prints."
+$ npx gaugeline source ./quayside-pub --only tsconfig-target-es5
+```
+
+```text title=Output
+Read 2 files in ./quayside-pub. No request was made and no code was run.
+
+? tsconfig-target-es5 could not be checked: tsconfig.json extends a configuration that is not a file in the folder, so Gaugeline cannot tell its target. (source:./quayside-pub)
+
+Nothing to look at.
+```
+
+**Uncited.** Gaugeline has not confirmed what Next.js itself does with `target`: the TypeScript page of the Next.js documentation (v16.4.1) says nothing about it, and the browser-support guide was not at the path tried. The check says what es5 is, and that the setting can make the code bigger; it does not say Next.js down-levels the code. Grounded Code was not connected.
+
+## An accessibility test that passes when the page has violations
+
+`a11y-spec-expects-violations` (fix soon) reads the test files of the folder (a `.test` or `.spec` file, or a code file in a `tests`, `test`, `e2e` or `__tests__` folder). In a test that uses axe (`@axe-core/playwright`, `axe-core`, `jest-axe`, `vitest-axe`, `cypress-axe`, `AxeBuilder` or `checkA11y`), an assertion that violations **exist** is a finding: `toBeGreaterThan(0)`, `toBeGreaterThanOrEqual(1)`, `toBeTruthy()`, `not.toEqual([])`, `not.toBe(0)` or `expect(violations.length > 0).toBe(true)`. Such a test is green while the page is inaccessible, and turns red on the day someone fixes the page.
+
+Playwright's accessibility guide asserts the opposite, `expect(accessibilityScanResults.violations).toEqual([])` [docs] (<https://raw.githubusercontent.com/microsoft/playwright/main/docs/src/accessibility-testing-js.md>, lines 47, 62 and 92, read 2026-11-11).
+
+Quayside Pub's booking page has an accessibility test that someone wrote against the page as it was, and made pass:
+
+<!-- source-fixture: a11y-spec-expects-violations/fail -->
+
+```text title="Terminal" untested="Reads a project folder. packages/cli/src/__tests__/source-versions-docs.test.ts runs the same command on the same invented folder (packages/fixtures/source/a11y-spec-expects-violations/fail) and compares the Output block with what it prints."
+$ npx gaugeline source ./quayside-pub --only a11y-spec-expects-violations
+```
+
+```text title=Output
+Read 2 files in ./quayside-pub. No request was made and no code was run.
+
+! An accessibility test passes when the page has violations
+    e2e/booking.spec.ts:7: the test expects accessibility violations to exist, so it passes while the page has them.
+
+1 to look at, none to fix first.
+```
+
+Assert that there are none, and fix what the scan finds. If a test deliberately scans a broken page to prove the scanner works, keep it, name the page and the test so that is clear, and add the same scan of the real page with `toEqual([])`. A test file the reader left out (too large, unreadable) with nothing found is reported as not sure. The check reads tests; it never runs them.
