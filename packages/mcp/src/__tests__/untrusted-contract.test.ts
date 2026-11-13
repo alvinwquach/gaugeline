@@ -5,10 +5,13 @@
  * is fixed text. A test walks each tool's output for a hostile page and finds every canary the page
  * planted: all of them must be inside a declared slot.
  */
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { UNTRUSTED_CAPS } from "@gaugeline/core";
 import { TOOLS } from "../registry.js";
-import { CANARIES, CANARY, INJECTION, startHostileSite } from "./hostile-site.js";
+import { CANARIES, CANARY, HIDDEN, INJECTION, TAGGED, startHostileSite } from "./hostile-site.js";
 import type { HostileSite } from "./hostile-site.js";
 import { connect, jsonOf, textOf, type Connected } from "./helpers.js";
 import { findLeaks, walkSlots } from "./untrusted-walk.js";
@@ -16,7 +19,10 @@ import { findLeaks, walkSlots } from "./untrusted-walk.js";
 type ToolName = keyof typeof TOOLS;
 
 let site: HostileSite;
+let root: string;
 let c: Connected;
+/** Every slot path each tool delivered, across all the calls below. */
+const seen = new Map<string, Set<string>>();
 
 const call = (name: ToolName, args: Record<string, unknown>) =>
   c.client.callTool({ name, arguments: args });
@@ -51,6 +57,7 @@ function expectContract(tool: ToolName, result: unknown) {
   const declared = new Set(TOOLS[tool].untrustedSlots ?? []);
   for (const slot of slots) {
     expect(declared.has(slot.path), `${tool}: ${slot.path} is not a declared slot`).toBe(true);
+    seen.set(tool, (seen.get(tool) ?? new Set()).add(slot.path));
     expect(Object.keys(slot.field).sort()).toEqual([
       "source",
       "strippedDirectives",
@@ -81,12 +88,29 @@ function expectContract(tool: ToolName, result: unknown) {
 
 beforeAll(async () => {
   site = await startHostileSite();
-  c = await connect({ allowPrivate: true });
+  root = mkdtempSync(join(tmpdir(), "gaugeline-ag01-"));
+  mkdirSync(join(root, "plans"));
+  const cell = `${CANARY.plan} ${INJECTION}${HIDDEN}${TAGGED}`;
+  writeFileSync(
+    join(root, "hostile.csv"),
+    [
+      "Page,URL,Title Tag,H1,Legacy URL",
+      `"${cell}",/a,"${cell}",One,/${CANARY.legacy}-a`,
+      `Two,/b,"${cell}",Two,/${CANARY.legacy}-b`,
+      `Three,//evil.example/${CANARY.offBase},Three,Three,`,
+    ].join("\n"),
+  );
+  // 400 rows that share one title tag: one finding that covers every line.
+  const many = ["Page,URL,Title Tag,H1"];
+  for (let i = 0; i < 400; i++) many.push(`P${i},/p${i},Same title,Same title`);
+  writeFileSync(join(root, "many.csv"), many.join("\n"));
+  c = await connect({ allowPrivate: true, root, planBases: [site.origin] });
 });
 
 afterAll(async () => {
   await c.close();
   await site.close();
+  rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
 });
 
 describe("the walker finds a leak (the naive result)", () => {
@@ -174,6 +198,15 @@ describe("explain_finding", () => {
     expect(findLeaks(r.text)).toEqual([]);
     expect(r.text).not.toContain("attacker.example");
   });
+
+  it("clean case: a plan finding's group key is delivered in its slot", async () => {
+    const plan = jsonOf<{ findings: { id: string; group?: unknown }[] }>(
+      await call("plan_check", { planFile: "hostile.csv", url: site.origin }),
+    );
+    const grouped = plan.findings.find((f) => f.group);
+    expect(grouped).toBeDefined();
+    expectContract("explain_finding", await call("explain_finding", { id: grouped?.id ?? "" }));
+  });
 });
 
 describe("compare_runs", () => {
@@ -203,6 +236,90 @@ describe("compare_runs", () => {
   });
 });
 
+/** A plan run, for the tools that read a plan finding. */
+async function planRun(planFile: string) {
+  return jsonOf<{ runId: string; findings: { id: string; group?: unknown }[] }>(
+    await call("plan_check", { planFile, url: site.origin }),
+  );
+}
+
+describe("plan findings through the other tools", () => {
+  it("clean case: compare_runs delivers a plan finding's group key only in its slot", async () => {
+    const a = await planRun("hostile.csv");
+    const b = await planRun("many.csv");
+    expectContract("compare_runs", await call("compare_runs", { a: a.runId, b: b.runId }));
+  });
+
+  it("clean case: draft_fix gives a plan finding in words, with its group key only in the slot", async () => {
+    const plan = await planRun("hostile.csv");
+    const id = plan.findings.find((f) => f.group)?.id ?? "";
+    const out = expectContract("draft_fix", await call("draft_fix", { findingId: id })) as {
+      patchKind: string;
+    };
+    expect(out.patchKind).toBe("words");
+  });
+});
+
+describe("plan_check", () => {
+  it("clean case: hostile plan cells (injection text, hidden characters) come back only in slots", async () => {
+    const out = expectContract(
+      "plan_check",
+      await call("plan_check", { planFile: "hostile.csv", url: site.origin }),
+    ) as { couldNotCheck: { reason: { untrusted: boolean } }[] };
+    // The row that points off the preview is reported by line number and a fixed sentence.
+    expect(out.couldNotCheck.length).toBeGreaterThan(0);
+    expect(JSON.stringify(out)).not.toContain("evil.example");
+  });
+
+  it("leak case: one finding that covers 400 rows lists a bounded number of lines", async () => {
+    const out = jsonOf<{
+      findings: { group?: { lines: number[]; linesTotal?: number } }[];
+    }>(await call("plan_check", { planFile: "many.csv", url: site.origin }));
+    const g = out.findings.map((f) => f.group).find((x) => x?.linesTotal !== undefined);
+    expect(g).toBeDefined();
+    expect(g?.lines.length).toBeLessThanOrEqual(50);
+    expect(g?.linesTotal).toBe(400);
+  });
+});
+
+describe("draft_fix", () => {
+  const draftFor = async (path: string, checks: string[]) => {
+    const run = jsonOf<{ findings: { id: string; checkId: string }[] }>(
+      await call("run_check", { url: `${site.origin}${path}`, checks }),
+    );
+    const id = run.findings.find((f) => f.checkId === checks[0])?.id ?? "";
+    expect(id, `a ${checks[0]} finding for ${path}`).not.toBe("");
+    return call("draft_fix", { findingId: id });
+  };
+
+  it("clean case: a plain page gets a diff, page lines only inside the labelled diff, nothing applied", async () => {
+    const out = expectContract("draft_fix", await draftFor("/plain", ["viewport"])) as {
+      patchKind: string;
+      patch: { text: string };
+      applied: boolean;
+    };
+    expect(out.applied).toBe(false);
+    expect(out.patchKind).toBe("unified-diff");
+    expect(out.patch.text).toContain('+  <meta name="viewport"');
+  });
+
+  it("leak case: a page line holding ``` is not quoted into the diff, so it cannot close a code fence", async () => {
+    const out = expectContract("draft_fix", await draftFor("/fence", ["viewport"])) as {
+      patchKind: string;
+      patch: unknown;
+    };
+    expect(JSON.stringify(out.patch)).not.toContain("```");
+    expect(out.patchKind).toBe("words");
+  });
+
+  it("clean case: a page whose lines hold hidden characters gets the change in words, not a diff", async () => {
+    const out = expectContract("draft_fix", await draftFor("/", ["viewport"])) as {
+      patchKind: string;
+    };
+    expect(out.patchKind).toBe("words");
+  });
+});
+
 describe("list_checks", () => {
   it("clean case: carries no page text and no slot", async () => {
     const out = expectContract("list_checks", await call("list_checks", {}));
@@ -219,6 +336,13 @@ describe("the whole surface", () => {
     for (const t of tools) {
       const def = TOOLS[t.name as ToolName];
       expect(t._meta?.["gaugeline/untrustedSlots"] ?? [], t.name).toEqual(def.untrustedSlots ?? []);
+    }
+  });
+
+  it("clean case: every declared slot was delivered by some call above, so no declaration is stale", () => {
+    for (const [name, def] of Object.entries(TOOLS)) {
+      for (const slot of def.untrustedSlots ?? [])
+        expect(seen.get(name)?.has(slot), `${name} never delivered ${slot}`).toBe(true);
     }
   });
 
