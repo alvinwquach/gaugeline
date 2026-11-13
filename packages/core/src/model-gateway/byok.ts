@@ -19,6 +19,20 @@ export const MAX_LLM_CONFIG_CHARS = 20_000;
 export const BYOK_MODES = ["cli", "worker"] as const;
 export type ByokMode = (typeof BYOK_MODES)[number];
 
+/** Settings that ask for a key Gaugeline would hold, or for metering: mode 3, which is parked. */
+const MODE_3_SETTINGS: ReadonlySet<string> = new Set([
+  "mode",
+  "managed",
+  "managedkey",
+  "vault",
+  "metered",
+  "metering",
+  "meter",
+  "billing",
+]);
+export const MODE_3_MESSAGE =
+  "Mode 3 (a key Gaugeline holds for you, with metering) is parked with billing. Only your own key is supported: mode 1, the command line, and mode 2, your own worker.";
+
 export class ByokError extends Error {
   readonly code: "mode-not-supported" | "bad-config";
   constructor(code: ByokError["code"], message: string) {
@@ -48,6 +62,10 @@ export function readByokConfig(
   } catch {
     throw new ByokError("bad-config", `${LLM_CONFIG_FILE} is not valid JSON.`);
   }
+  if (raw !== null && typeof raw === "object" && !Array.isArray(raw))
+    for (const name of Object.keys(raw))
+      if (MODE_3_SETTINGS.has(name.toLowerCase()))
+        throw new ByokError("mode-not-supported", MODE_3_MESSAGE);
   // The value of the variable the file names is a key whatever its shape: it may be in no field of the file.
   const named =
     raw !== null && typeof raw === "object" ? (raw as { keyEnv?: unknown }).keyEnv : undefined;
@@ -129,9 +147,6 @@ export function createByokGateway(
 ): ModelGateway {
   const { mode, ...rest } = options;
   if (!(BYOK_MODES as readonly string[]).includes(mode))
-    throw new ByokError(
-      "mode-not-supported",
-      "Only your own key is supported (mode 1, the command line, and mode 2, your own worker). A key Gaugeline holds (mode 3) is parked.",
-    );
+    throw new ByokError("mode-not-supported", MODE_3_MESSAGE);
   return createGateway(rest);
 }

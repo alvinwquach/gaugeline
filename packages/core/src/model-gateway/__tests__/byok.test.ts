@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
   BYOK_MODES,
+  MODE_3_MESSAGE,
   ByokError,
   LLM_CONFIG_FILE,
   createByokGateway,
@@ -160,6 +161,32 @@ describe("the config file", () => {
       expect(renderByokStatus(s)).not.toContain(SHORT_KEY);
     });
   });
+
+  it.each([
+    ["mode", { mode: "managed" }],
+    ["Mode", { Mode: 3 }],
+    ["managed", { managed: true }],
+    ["vault", { vault: { path: "secret/model" } }],
+    ["metered", { metered: true }],
+    ["metering", { metering: { perDay: 5 } }],
+    ["billing", { billing: "plan" }],
+  ])(
+    "says mode 3 is parked when the file asks for it (%s), not that the setting is unknown",
+    (_n, extra) => {
+      let thrown: ByokError | undefined;
+      try {
+        readByokConfig(JSON.stringify({ ...JSON.parse(FILE), ...extra }));
+      } catch (e) {
+        thrown = e as ByokError;
+      }
+      expect(thrown).toBeInstanceOf(ByokError);
+      expect(thrown!.code).toBe("mode-not-supported");
+      expect(thrown!.message).toBe(MODE_3_MESSAGE);
+      expect(thrown!.message).toMatch(
+        /Mode 3 \(a key Gaugeline holds for you, with metering\) is parked/,
+      );
+    },
+  );
 
   it("refuses a file over 20000 characters before parsing it", () => {
     expect(() => readByokConfig(`{"provider":"x"${" ".repeat(20_001)}}`)).toThrow(/20000/);

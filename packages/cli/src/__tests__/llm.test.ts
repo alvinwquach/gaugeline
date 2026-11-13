@@ -159,6 +159,16 @@ describe("gaugeline llm", () => {
     }
   });
 
+  it.each([{ mode: "managed" }, { vault: { path: "x" } }, { metered: true }])(
+    "says mode 3 is parked when the file asks for it (%j), and exits 2",
+    async (extra) => {
+      write("gaugeline.llm.json", { ...SETTINGS, ...extra });
+      const r = await run(["llm"]);
+      expect(r.code).toBe(2);
+      expect(r.err).toContain("Mode 3 (a key Gaugeline holds for you, with metering) is parked");
+    },
+  );
+
   it("takes no word on the line: the file is named with --llm-config", () => {
     expect(parseCliArgs(["llm", "settings.json"]).kind).toBe("error");
   });
