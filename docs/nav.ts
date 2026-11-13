@@ -134,6 +134,10 @@ export const UNLISTED: NavPage[] = [
     title: "Wasted cache clears and a client in the config, read from your code",
   },
   {
+    slug: "guides/form-library-and-presentation-source",
+    title: "A form library in the browser and visual editing with no routes, read from your code",
+  },
+  {
     slug: "guides/image-optimizers",
     title: "Open image optimizers: who can use your site to resize images",
   },

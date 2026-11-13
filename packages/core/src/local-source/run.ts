@@ -25,10 +25,12 @@ import { buildResult, type Result } from "../result.js";
 import { runChecks } from "../run.js";
 import { cmsClientInFrameworkConfig } from "../checks/static/cms-client-in-framework-config.js";
 import { cmsTokenInClientCode } from "../checks/static/cms-token-in-client-code.js";
+import { formValidationInClientBundle } from "../checks/static/form-validation-in-client-bundle.js";
 import { formFailureShowsSuccess } from "../checks/static/form-failure-shows-success.js";
 import { formPostUnguarded } from "../checks/static/form-post-unguarded.js";
 import { formValuesInLogs } from "../checks/static/form-values-in-logs.js";
 import { personalDataInAnalytics } from "../checks/static/personal-data-in-analytics.js";
+import { presentationMainDocumentsMissing } from "../checks/static/presentation-main-documents-missing.js";
 import { tokenRequiredAtImport } from "../checks/static/token-required-at-import.js";
 import { useServerExportsNotAsync } from "../checks/static/use-server-exports-not-async.js";
 import { webhookPurgesDraftIds } from "../checks/static/webhook-purges-draft-ids.js";
@@ -106,6 +108,8 @@ export const STATIC_CHECKS: readonly Check<LocalSourceInput>[] = [
   nextSanityRemovedApi,
   webhookPurgesDraftIds,
   cmsClientInFrameworkConfig,
+  formValidationInClientBundle,
+  presentationMainDocumentsMissing,
 ];
 
 export function createStaticRegistry(): CheckRegistry {
