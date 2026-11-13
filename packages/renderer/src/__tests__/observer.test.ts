@@ -31,6 +31,8 @@ interface Scenario {
   ) => void | Promise<void>;
   /** Every call into the page, and closing a context, never returns. */
   hang?: boolean;
+  /** The width at which the page cannot be loaded. */
+  failWidth?: number;
 }
 
 const target = (path: string, text = path): ClickTarget => ({
@@ -62,8 +64,9 @@ function fakeBrowser(s: Scenario) {
       body: Readable.from([Buffer.from("<p>ok</p>")]),
     });
   const browser = {
-    newContext: () => {
+    newContext: (opts?: { viewport?: { width: number } }) => {
       log.contexts += 1;
+      const width = opts?.viewport?.width;
       let handler: ((route: unknown) => Promise<void>) | undefined;
       let url = "https://site.example/";
       let mark = 1;
@@ -94,6 +97,7 @@ function fakeBrowser(s: Scenario) {
         mainFrame: () => main,
         url: () => url,
         goto: async (to: string) => {
+          if (width !== undefined && width === s.failWidth) throw new Error("net::ERR_TIMED_OUT");
           log.gotos.push(to);
           url = to;
           mark += 1;
@@ -420,6 +424,40 @@ describe("the click observer: the keyboard", () => {
     });
     clicksOf(await o.observe(INPUT([target("a1")])));
     expect(log.presses).toHaveLength(200);
+  });
+});
+
+describe("the click observer: a read it could not make says why", () => {
+  it("names the width a page would not load at, and still returns the desktop read", async () => {
+    const { o } = observer({ inspect: { a1: OK }, focus: [0, -2], failWidth: 375 });
+    const r = clicksOf(await o.observe(INPUT([target("a1")])));
+    expect(r.phone).toBeUndefined();
+    expect(r.phoneUnchecked).toMatch(/did not load at 375 px/);
+    expect(r.clicks).toHaveLength(1);
+    expect(r.focusOrder).toEqual(["a1"]);
+  });
+
+  it("a keyboard that never leaves the page is not read as links it never reached", async () => {
+    const { o, log } = observer({
+      inspect: { a1: OK, a2: OK },
+      focus: [0, ...Array.from({ length: 1000 }, () => -1)],
+    });
+    const r = clicksOf(await o.observe(INPUT([target("a1"), target("a2")])));
+    expect(log.presses).toHaveLength(200);
+    expect(r.focusOrder).toBeUndefined();
+    expect(r.focusUnchecked).toBe(
+      "the Tab key was pressed 200 times and had not reached 1 of the plan's links or the end of the page",
+    );
+  });
+
+  it("after 200 presses with every listed link reached, the order is read as it is", async () => {
+    const { o } = observer({
+      inspect: { a1: OK, a2: OK },
+      focus: [1, 0, ...Array.from({ length: 1000 }, () => -1)],
+    });
+    const r = clicksOf(await o.observe(INPUT([target("a1"), target("a2")])));
+    expect(r.focusOrder).toEqual(["a2", "a1"]);
+    expect(r.focusUnchecked).toBeUndefined();
   });
 });
 

@@ -164,6 +164,8 @@ export function acceptPush(entry: unknown, kept: Push[], used: { chars: number }
 interface ViewportRead {
   clicks: ObservedClick[];
   focusOrder?: string[];
+  /** Why the Tab order was not read, when it was asked for and could not be. */
+  focusUnchecked?: string;
 }
 
 type ViewportResult = ViewportRead | { unchecked: string };
@@ -432,20 +434,34 @@ export function createClickObserver(deps: ObserverDeps): EventObserver {
     // The Tab key, from the top of a fresh page: which listed links take focus, in what order.
     if (hung || stop.stopped) return { clicks };
     const f = await fresh(undefined);
-    if ("unchecked" in f) return { clicks };
+    if ("unchecked" in f)
+      return { clicks, focusUnchecked: `the Tab order was not read: ${f.unchecked}` };
     try {
       const paths = input.targets.map((t) => t.path);
       const order: string[] = [];
+      let ended = false;
       for (let stopAt = 0; stopAt < MAX_TAB_STOPS && !stop.stopped; stopAt++) {
         await bounded(f.opened.page.keyboard.press("Tab"));
         const at = (await bounded(f.opened.page.evaluate(focusExpression(paths)))) as number;
-        if (at === -2) break;
+        if (at === -2) {
+          ended = true;
+          break;
+        }
         const path = paths[at];
         if (at >= 0 && path !== undefined && !order.includes(path)) order.push(path);
       }
+      // Never reached the end of the page and never reached some links: they may be further on, not unreachable.
+      const missing = paths.filter((p) => !order.includes(p)).length;
+      if (!ended && missing > 0)
+        return {
+          clicks,
+          focusUnchecked: stop.stopped
+            ? "the observation reached its time limit before the Tab key was done"
+            : `the Tab key was pressed ${MAX_TAB_STOPS} times and had not reached ${missing} of the plan's links or the end of the page`,
+        };
       return { clicks, focusOrder: order };
-    } catch {
-      return { clicks };
+    } catch (err) {
+      return { clicks, focusUnchecked: `the Tab key could not be pressed: ${firstLine(err)}` };
     } finally {
       await release(f.opened);
     }
@@ -467,8 +483,9 @@ export function createClickObserver(deps: ObserverDeps): EventObserver {
         if ("unchecked" in desktop) return { unchecked: desktop.unchecked };
         return {
           clicks: desktop.clicks,
-          ...("clicks" in phone ? { phone: phone.clicks } : {}),
+          ...("clicks" in phone ? { phone: phone.clicks } : { phoneUnchecked: phone.unchecked }),
           ...(desktop.focusOrder ? { focusOrder: desktop.focusOrder } : {}),
+          ...(desktop.focusUnchecked ? { focusUnchecked: desktop.focusUnchecked } : {}),
         };
       });
       let timer: NodeJS.Timeout | undefined;

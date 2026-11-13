@@ -150,9 +150,10 @@ page reported: pushes to `dataLayer` and the analytics requests the page tried t
 never sent. Only links are clicked (never a button, an input or anything in a form), at most 20, and a link to
 another site only when the plan names it by selector, with its navigation cancelled, and a navigation that would
 leave the site (a redirect included) is refused. Every click gets a fresh browser context with the page loaded
-again, so nothing one click stored reaches the next. A click that cannot be watched is could not check. The Tab key is pressed (and
-nothing else is typed) to read the order the keyboard reaches the listed links in. What it reads and how the checks
-judge it: [Click events](./guides/click-events.md).
+again, so nothing one click stored reaches the next. A click that cannot be watched is could not check. The Tab key is
+pressed (and nothing else is typed) to read the order the keyboard reaches the listed links in. The phone read and the
+keyboard read are judged by `events-parity` and `events-tab-order`. What it reads and how the checks judge it:
+[Click events](./guides/click-events.md#on-a-phone-and-with-the-keyboard).
 
 ## The caps
 
