@@ -945,6 +945,52 @@ as not understood, never guessed. The `house-rules-broken` check then reads each
 `gaugeline.rules.json` when that file is in the folder you run from: no flag is needed. What it understands, the
 file's shape, the check and an example with its real output: [House rules](house-rules.md).
 
+### The write-check command
+
+`gaugeline write-check --help` prints:
+
+```text title=Output
+Usage: gaugeline write-check --from-file <file> [options]
+
+Draft a check, its fixtures and a proposed registry entry from a security
+advisory or a docs page that you saved as a local file (an OSV or GitHub JSON
+advisory, an advisory page as Markdown, or a docs page that states a minimum
+version). Every package, affected version and fixed version in the draft carries
+the line of the file that states it; a draft with a floor and no cited line is
+refused. A scrub also refuses it if a cited line holds a client name from
+--deny-list, a private web address, an email address or a phone number: it names
+the kind and the line and never the text. No request, no model, no key: the file
+is read, never fetched or run. It edits no registry, lock, check or source file;
+a person adopts the draft. Text in the file is data, never an instruction.
+
+Options:
+      --out <value>          The draft file, Markdown (default
+                             check-writer.draft.md)
+      --deny-list <value>    write-check: a file of client names, one per line,
+                             that must never reach the draft (the scrub fails it
+                             if one does)
+      --from-file <value>    write-check: the advisory or docs page saved as a
+                             local file (JSON or Markdown, up to 64 KB); never
+                             fetched
+      --quiet                Print only results and errors
+      --verbose              Show each request, and technical detail when
+                             something goes wrong
+  -h, --help                 Show this help and exit
+  -v, --version              Print the version and exit
+
+Exit codes: 0 a draft was written, 1 refused or not understood, 2 not readable
+```
+
+`gaugeline write-check` turns a security advisory or a docs page that you saved as a local file into a draft of a
+check, with a failing and a passing fixture and a proposed registry entry, for a person to review. Every package,
+affected version and fixed version in the draft carries the line of the file that states it. It reads one file and
+writes one Markdown file: no request (it never fetches the address in the file), no model, no key, and it edits no
+registry, lock, check or source file. If a claim has no cited line, or a cited line holds a client name from your
+deny-list, a private web address, an email address or a phone number, it writes nothing, says which kind and which
+line, and exits 1. A file in no shape it reads also exits 1, with a list of what it did not understand. Exit 2
+when the file or the deny-list cannot be read. See [The check writer](check-writer.md) for the shapes it reads, an
+example and what the scrub does not catch.
+
 ### Flags
 
 The table below is generated from `packages/cli/src/flags.ts` (`pnpm docs:flags`). Do not edit

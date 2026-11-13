@@ -615,6 +615,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze<FlagDef[]>([
       mine: "The draft file, Markdown (default field-findings.draft.md)",
       "house-rules":
         "The draft file to write (default gaugeline.rules.draft.json); its name must end in .draft.json and it must not exist yet",
+      "write-check": "The draft file, Markdown (default check-writer.draft.md)",
     },
     since: "0.2.0",
     commands: [
@@ -627,6 +628,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze<FlagDef[]>([
       "evals",
       "mine",
       "house-rules",
+      "write-check",
     ],
   },
   {
@@ -776,9 +778,22 @@ export const FLAGS: readonly FlagDef[] = Object.freeze<FlagDef[]>([
     name: "deny-list",
     type: "string",
     description:
-      "mine: a file of client names, one per line, that must never reach the draft (the scrub fails it if one does)",
+      "mine, write-check: client names, one per line, to keep out of the draft (the scrub fails it if one gets in)",
+    commandDescriptions: {
+      mine: "mine: a file of client names, one per line, that must never reach the draft (the scrub fails it if one does)",
+      "write-check":
+        "write-check: a file of client names, one per line, that must never reach the draft (the scrub fails it if one does)",
+    },
     since: "0.2.0",
-    commands: ["mine"],
+    commands: ["mine", "write-check"],
+  },
+  {
+    name: "from-file",
+    type: "string",
+    description:
+      "write-check: the advisory or docs page saved as a local file (JSON or Markdown, up to 64 KB); never fetched",
+    since: "0.2.0",
+    commands: ["write-check"],
   },
   {
     name: "fixes",

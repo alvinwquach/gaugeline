@@ -158,6 +158,7 @@ import { runPropose } from "./propose.js";
 import { runEvalsCommand } from "./evals.js";
 import { runMine } from "./mine.js";
 import { runHouseRules } from "./house-rules.js";
+import { runWriteCheck } from "./write-check.js";
 import { runReceipts } from "./receipts.js";
 import { runSource } from "./source.js";
 import { runMigration } from "./migration.js";
@@ -1133,6 +1134,8 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         outcome: runHouseRules(args, io, { cwd: deps.cwd ?? process.cwd() }),
         ci: false,
       };
+    case "write-check":
+      return { outcome: runWriteCheck(args, io, { cwd: deps.cwd ?? process.cwd() }), ci: true };
     case "receipts":
       return {
         outcome: runReceipts(args, io, { cwd: deps.cwd ?? process.cwd() }),
