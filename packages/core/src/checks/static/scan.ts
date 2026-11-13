@@ -1,6 +1,7 @@
 import { posix } from "node:path";
 import type { Finding } from "../../model.js";
 import type { SourceTree } from "../../local-source/read.js";
+import { closeOf, lineOf, scanSource } from "./source-scan.js";
 
 /**
  * Reading source text for the static checks (batch FF). Plain string work, no compiler (the
@@ -9,6 +10,8 @@ import type { SourceTree } from "../../local-source/read.js";
  * view keeps the length of the original, so an index in one is an index in all and a line number is
  * the line of the file. Nothing here prints a file's text: a check says a file and a line.
  */
+
+export { lineOf };
 
 /** Source files by name. `.d.ts` files hold types only. */
 const CODE_FILE = /\.(?:[cm]?[jt]s|[jt]sx)$/;
@@ -41,109 +44,17 @@ export function notReadReason(tree: SourceTree): string | undefined {
 }
 
 /**
- * `text` with comments replaced by spaces (newlines kept). With `blank`, the text inside string and
- * template literals and regular-expression literals is blanked too, the quotes kept; the code in a
- * `${...}` stays. Unterminated strings end at the line. A regular expression is told from a division
- * by the character before the slash, which is right for ordinary code.
+ * `text` with comments blanked (newlines kept); with `blank`, the text of strings and templates is
+ * blanked too and the quotes and the `${...}` code stay. The same scanner every static check uses
+ * (source-scan.ts), so a position in one view is the position in the other.
  */
 export function scrub(text: string, blank: boolean): string {
-  const out = text.split("");
-  const clear = (from: number, to: number): void => {
-    for (let k = from; k < to; k++) if (out[k] !== "\n" && out[k] !== "\r") out[k] = " ";
-  };
-  /** Open `${` expressions inside templates: the brace depth at which each one ends. */
-  const stack: number[] = [];
-  let braces = 0;
-  let lastSignificant = "";
-  let i = 0;
-  /** Reads template text from `from`; returns the index to carry on from (after the closing backtick, or after a `${`). */
-  const readTemplate = (from: number): number => {
-    let k = from;
-    while (k < text.length) {
-      const c = text[k];
-      if (c === "\\") k += 2;
-      else if (c === "`") {
-        if (blank) clear(from, k);
-        return k + 1;
-      } else if (c === "$" && text[k + 1] === "{") {
-        if (blank) clear(from, k);
-        stack.push(braces);
-        braces++;
-        return k + 2;
-      } else k++;
-    }
-    if (blank) clear(from, text.length);
-    return text.length;
-  };
-  while (i < text.length) {
-    const c = text[i] ?? "";
-    const next = text[i + 1];
-    if (c === "/" && next === "/") {
-      const end = text.indexOf("\n", i);
-      const stop = end < 0 ? text.length : end;
-      clear(i, stop);
-      i = stop;
-    } else if (c === "/" && next === "*") {
-      const end = text.indexOf("*/", i + 2);
-      const stop = end < 0 ? text.length : end + 2;
-      clear(i, stop);
-      i = stop;
-    } else if (c === '"' || c === "'") {
-      let k = i + 1;
-      while (k < text.length && text[k] !== c && text[k] !== "\n") k += text[k] === "\\" ? 2 : 1;
-      if (blank) clear(i + 1, Math.min(k, text.length));
-      i = Math.min(k, text.length - 1) + 1;
-      lastSignificant = c;
-    } else if (c === "`") {
-      i = readTemplate(i + 1);
-      lastSignificant = "`";
-    } else if (
-      c === "/" &&
-      (lastSignificant === "" || "(,=:[!&|?{};+-*%<>~^".includes(lastSignificant))
-    ) {
-      let k = i + 1;
-      let inClass = false;
-      while (k < text.length && text[k] !== "\n") {
-        const d = text[k];
-        if (d === "\\") k++;
-        else if (d === "[") inClass = true;
-        else if (d === "]") inClass = false;
-        else if (d === "/" && !inClass) break;
-        k++;
-      }
-      if (text[k] === "/") {
-        if (blank) clear(i + 1, k);
-        i = k + 1;
-        lastSignificant = "/";
-      } else {
-        i++;
-        lastSignificant = "/";
-      }
-    } else {
-      if (c === "{") braces++;
-      else if (c === "}") {
-        braces--;
-        if (stack.length > 0 && stack[stack.length - 1] === braces) {
-          stack.pop();
-          // Back in the template text that follows the expression.
-          i = readTemplate(i + 1);
-          lastSignificant = "`";
-          continue;
-        }
-      }
-      if (!/\s/.test(c)) lastSignificant = c;
-      i++;
-    }
-  }
-  return out.join("");
+  const scanned = scanSource(text);
+  return blank ? scanned.bare : scanned.code;
 }
 
-/** The 1-based line of `index` in `text`. */
-export function lineOf(text: string, index: number): number {
-  let line = 1;
-  for (let k = text.indexOf("\n"); k >= 0 && k < index; k = text.indexOf("\n", k + 1)) line++;
-  return line;
-}
+/** The index of the bracket that closes the one at `open` in a scrubbed view; -1 when it never closes. */
+export const matching = closeOf;
 
 /** True when the file's first statement is the directive `"use client"` (or `use server`, ...). */
 export function hasDirective(text: string, directive: string): boolean {

@@ -30,17 +30,11 @@ describe("scrub", () => {
     expect(scrub('const u = "https://a.example/x"; // gone', false)).not.toContain("gone");
   });
 
-  it("blanks string, template and regex text on request, keeps quotes and ${} code", () => {
-    const out = scrub("f('secret', `a ${email} b`, /sec[/]ret/)", true);
+  it("blanks string and template text on request, keeps quotes and ${} code", () => {
+    const out = scrub("f('secret', `a ${email} b`)", true);
     expect(out).not.toContain("secret");
-    expect(out).toContain("${email}");
-    expect(out).toMatch(/f\('\s+', `\s+\$\{email\}\s+`, \/\s+\/\)/);
+    expect(out).toMatch(/f\('\s+', `\s+\$\{email\}\s+`\)/);
     expect(scrub("f('secret')", false)).toContain("secret");
-  });
-
-  it("treats a slash after an identifier as division, not a regular expression", () => {
-    const code = scrub("const r = a / b; const s = 'x'; // c", true);
-    expect(code).toContain("a / b");
   });
 
   it("copes with an unterminated string and a file ending in a template", () => {
