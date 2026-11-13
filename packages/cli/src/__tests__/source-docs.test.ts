@@ -51,6 +51,24 @@ describe("docs/guides/source-checks.md: the example is real output", () => {
     );
   });
 
+  it("the bar's indexing switch and its CI", async () => {
+    expect(page).toContain("$ npx gaugeline source ./harbour-bar-switch");
+    const out: string[] = [];
+    const code = await main(
+      ["source", "./harbour-bar-switch"],
+      {
+        stdout: { write: (s: string) => out.push(s) },
+        stderr: { write: () => true },
+        env: { NO_COLOR: "1" },
+      },
+      { cwd: FIXTURES, now: () => new Date("2026-11-13T12:00:00Z") },
+    );
+    expect(code).toBe(0);
+    expect(out.join("").trimEnd()).toBe(
+      expectedOutput("guides/source-checks", "Another example: a switch that accepts too much"),
+    );
+  });
+
   it("promises what the command promises", () => {
     expect(page).toContain("It only reads.");
     expect(page).toMatch(/never opened/);

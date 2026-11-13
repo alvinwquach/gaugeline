@@ -1,3 +1,5 @@
+import { indexingSwitchLoose } from "../checks/static/indexing-switch-loose.js";
+import { noindexSmokeProduction } from "../checks/static/noindex-smoke-production.js";
 import { pageRobotsOverridesLayout } from "../checks/static/page-robots-overrides-layout.js";
 import { robotsDisallowHidesNoindex } from "../checks/static/robots-disallow-hides-noindex.js";
 import { sitemapWhileIndexingOff } from "../checks/static/sitemap-while-indexing-off.js";
@@ -54,6 +56,8 @@ export const STATIC_CHECKS: readonly Check<LocalSourceInput>[] = [
   pageRobotsOverridesLayout,
   sitemapWhileIndexingOff,
   robotsDisallowHidesNoindex,
+  indexingSwitchLoose,
+  noindexSmokeProduction,
   webhookMissingSecretStatus,
   sanityCdnTaggedReads,
   cmsTokenInClientCode,
