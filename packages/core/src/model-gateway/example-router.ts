@@ -40,18 +40,22 @@ export async function runRoutingExample(): Promise<string> {
       ? { ok: true, value: text }
       : { ok: false, issues: ["the note must be one short sentence with no digits"] };
 
-  const router = createRouter({
-    primary: gatewayOf(
-      "alpha",
-      [
-        ["note-1", "Your menu page lost its canonical link on 12 November and nobody noticed."],
-        ["note-1:escalated", "The menu page has no canonical link."],
-        ["note-3", "Found 7 pages with the same problem, which is worse than last week."],
-      ],
-      ["note-2"],
-    ),
-    fallback: gatewayOf("beta", [["note-2", "The pop-up page loads slowly."]]),
-  });
+  // Recorded answers cost nothing, so these gateways have no budget and the router is told so: `unmetered`.
+  const router = createRouter(
+    {
+      primary: gatewayOf(
+        "alpha",
+        [
+          ["note-1", "Your menu page lost its canonical link on 12 November and nobody noticed."],
+          ["note-1:escalated", "The menu page has no canonical link."],
+          ["note-3", "Found 7 pages with the same problem, which is worse than last week."],
+        ],
+        ["note-2"],
+      ),
+      fallback: gatewayOf("beta", [["note-2", "The pop-up page loads slowly."]]),
+    },
+    { unmetered: true },
+  );
 
   const out: string[] = [];
   for (const [task, callId] of [

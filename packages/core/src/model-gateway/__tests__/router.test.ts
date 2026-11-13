@@ -8,6 +8,7 @@ import { triage } from "../../evals/example/triage.js";
 import type { EvalRecording } from "../../evals/types.js";
 import { ModelGatewayError, type FailureClass, type GatewayErrorCode } from "../errors.js";
 import { NO_BUDGET, createGateway } from "../gateway.js";
+import { recordGateway } from "../recorded.js";
 import { createBudgetLedger } from "../budget.js";
 import {
   MAX_CALLS_PER_ROUTE,
@@ -16,11 +17,22 @@ import {
   MODEL_TASKS,
   TASK_TIERS,
   agentAnswerCheck,
-  createRouter,
+  createRouter as buildRouter,
   type AnswerCheck,
+  type RouterOptions,
   type RouteRequest,
 } from "../router.js";
-import type { BudgetHooks, ModelAdapter } from "../types.js";
+import type { BudgetHooks, ModelAdapter, ModelGateway } from "../types.js";
+
+/**
+ * A router for the tests that have no budget to speak of: it says so with `unmetered`, which the router allows
+ * only when no gateway has a budget. Tests of a metered router pass their budget and get the plain router.
+ */
+const createRouter = (gateways: Parameters<typeof buildRouter>[0], options: RouterOptions = {}) =>
+  buildRouter(
+    gateways,
+    gateways.primary.budget === NO_BUDGET ? { unmetered: true, ...options } : options,
+  );
 
 const usage = (costMicros = 100) => ({
   inputTokens: 10,
@@ -597,19 +609,77 @@ describe("one budget for both gateways: a fallback cannot skip the ceilings", ()
     expect(() => createRouter({ primary: a.gateway(run), fallback: b.gateway(run) })).not.toThrow();
   });
 
-  it("with requireBudget, refuses a router that has no budget at all, with or without a fallback", () => {
+  it("refuses, by default, a router whose gateways have no budget at all: a budget is required unless said otherwise", () => {
     const a = provider("a", []);
     const b = provider("b", []);
-    expect(() => createRouter({ primary: a.gateway() }, { requireBudget: true })).toThrow(
+    expect(() => buildRouter({ primary: a.gateway() })).toThrow(/needs a budget/);
+    expect(() => buildRouter({ primary: a.gateway(), fallback: b.gateway() })).toThrow(
       /needs a budget/,
     );
+    const run = ledger().forRun("workspace-a");
+    expect(() => buildRouter({ primary: a.gateway(run), fallback: b.gateway(run) })).not.toThrow();
+  });
+
+  it("allows no budget only with `unmetered: true`, and refuses that when any budget is configured", () => {
+    const a = provider("a", []);
+    const b = provider("b", []);
     expect(() =>
-      createRouter({ primary: a.gateway(), fallback: b.gateway() }, { requireBudget: true }),
-    ).toThrow(/needs a budget/);
+      buildRouter({ primary: a.gateway(), fallback: b.gateway() }, { unmetered: true }),
+    ).not.toThrow();
     const run = ledger().forRun("workspace-a");
     expect(() =>
-      createRouter({ primary: a.gateway(run), fallback: b.gateway(run) }, { requireBudget: true }),
-    ).not.toThrow();
+      buildRouter({ primary: a.gateway(run), fallback: b.gateway(run) }, { unmetered: true }),
+    ).toThrow(/unmetered.*budget/);
+    expect(() => buildRouter({ primary: a.gateway(run) }, { unmetered: true })).toThrow(
+      /unmetered.*budget/,
+    );
+    expect(() => buildRouter({ primary: a.gateway() }, { unmetered: true })).not.toThrow();
+    for (const unmetered of [false, "yes" as never, 1 as never])
+      expect(() => buildRouter({ primary: a.gateway() }, { unmetered })).toThrow(/needs a budget/);
+  });
+
+  describe("only a gateway made by createGateway is accepted: a hand-built one could be metered in name only", () => {
+    const run = () => ledger().forRun("workspace-a");
+    const free = () => provider("free", [rec(GOOD)]);
+
+    it("refuses an object that borrows the real budget and brings its own, free, complete (the bypass)", async () => {
+      const r = run();
+      const real = provider("a", []).gateway(r);
+      const f = free();
+      const handBuilt = { provider: "a", budget: real.budget, complete: f.gateway().complete };
+      expect(() => buildRouter({ primary: real, fallback: handBuilt })).toThrow(
+        /made by createGateway/,
+      );
+      expect(() => buildRouter({ primary: handBuilt })).toThrow(ModelGatewayError);
+      expect(f.calls).toHaveLength(0);
+    });
+
+    it.each([
+      ["a copy by spread", (g: ModelGateway) => ({ ...g })],
+      ["an object that inherits from it", (g: ModelGateway) => Object.create(g) as ModelGateway],
+      ["a proxy of it", (g: ModelGateway) => new Proxy(g, {})],
+      [
+        "a wrapper that calls it",
+        (g: ModelGateway) => ({ ...g, complete: (r: never) => g.complete(r) }),
+      ],
+      ["something that is not an object", () => "gateway" as never],
+      ["null", () => null as never],
+    ])("refuses %s", (_n, make) => {
+      const r = run();
+      const real = provider("a", []).gateway(r);
+      expect(() => buildRouter({ primary: make(real) })).toThrow(ModelGatewayError);
+      expect(() => buildRouter({ primary: real, fallback: make(real) })).toThrow(ModelGatewayError);
+    });
+
+    it("accepts the gateways createGateway made, and the recorded gateway's own wrapper is not one of them", () => {
+      const r = run();
+      const a = provider("a", []).gateway(r);
+      const b = provider("b", []).gateway(r);
+      expect(() => buildRouter({ primary: a, fallback: b })).not.toThrow();
+      expect(() => buildRouter({ primary: recordGateway(a).gateway })).toThrow(
+        /made by createGateway/,
+      );
+    });
   });
 
   it("counts the fallback's call against the same run: an outage then a fallback spends one ceiling", async () => {

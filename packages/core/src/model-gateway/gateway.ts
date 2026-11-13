@@ -51,6 +51,11 @@ function decision(d: unknown): BudgetDecision {
   return { allowed: false, reason: "the budget check gave no clear answer" };
 }
 
+/** The gateways `createGateway` has made. A router accepts only these: an object built by hand could say it has a budget and spend none. */
+const MADE = new WeakSet<object>();
+export const isMadeGateway = (g: unknown): g is ModelGateway =>
+  typeof g === "object" && g !== null && MADE.has(g);
+
 export function createGateway(options: GatewayOptions): ModelGateway {
   const parsed = parseGatewayConfig(options.config);
   if (!parsed.ok)
@@ -209,5 +214,7 @@ export function createGateway(options: GatewayOptions): ModelGateway {
     };
   }
 
-  return { provider: config.provider, budget, complete: call };
+  const gateway: ModelGateway = { provider: config.provider, budget, complete: call };
+  MADE.add(gateway);
+  return gateway;
 }

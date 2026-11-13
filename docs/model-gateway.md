@@ -317,13 +317,18 @@ model's choice, and the same inputs always take the same path.
    holds your key), **stops at once**: a second provider would meet the same problem, or use your key for nothing.
    The budget itself is the gateway's hook (row AG-22); the router only obeys it.
 
-**One budget for both providers.** A fallback must not be a way round the ceilings. The two gateways must be
-built from the **same** budget object (hand the one `RunBudget` from the [budget ledger](./model-budgets.md) to
-both as `budget`), and `createRouter` refuses to build otherwise: a fallback with a budget of its own, with none
-while the first has one, or with a wrapper that only looks the same, is an error (`bad-config`), because the second
-provider's calls would not be counted against the run's ceilings. A gateway shows the budget it uses as
-`gateway.budget`. Pass `{ requireBudget: true }` as the second argument to refuse a router whose gateways have no
-budget at all, which is what a hosted caller should do.
+**One budget for both providers, and a budget at all.** A fallback must not be a way round the ceilings, so
+`createRouter` refuses to build unless three things hold (each is a `bad-config` error):
+
+- **Both gateways were made by `createGateway`.** A router takes only those: an object built by hand, or a copy,
+  wrapper or proxy of a real one, could say it has a budget and spend none.
+- **They share the same budget object.** Hand the one `RunBudget` from the [budget ledger](./model-budgets.md) to
+  both as `budget`. A fallback with a budget of its own, with none while the first has one, or with a wrapper that
+  only looks the same, is refused, because the second provider's calls would not be counted against the run's
+  ceilings. A gateway shows the budget it uses as `gateway.budget`.
+- **There is a budget.** A model call with no ceiling is something a person must ask for: without a budget the
+  router is refused unless you pass `{ unmetered: true }`, and `unmetered` is itself refused when any gateway has a
+  budget. The recorded fakes in tests and the example below have none, so they say `unmetered`.
 
 At most **three calls** are made for one task: the first, one fallback and one escalation. No order of failures
 makes a fourth, and a test runs every script of up to three steps for each provider to show it (the worst case is an
@@ -379,18 +384,22 @@ const oneSentence: AnswerCheck<string> = ({ text }) =>
     ? { ok: true, value: text }
     : { ok: false, issues: ["the note must be one short sentence with no digits"] };
 
-const router = createRouter({
-  primary: gatewayOf(
-    "alpha",
-    [
-      ["note-1", "Your menu page lost its canonical link on 12 November and nobody noticed."],
-      ["note-1:escalated", "The menu page has no canonical link."],
-      ["note-3", "Found 7 pages with the same problem, which is worse than last week."],
-    ],
-    ["note-2"],
-  ),
-  fallback: gatewayOf("beta", [["note-2", "The pop-up page loads slowly."]]),
-});
+// Recorded answers cost nothing, so these gateways have no budget and the router is told so: `unmetered`.
+const router = createRouter(
+  {
+    primary: gatewayOf(
+      "alpha",
+      [
+        ["note-1", "Your menu page lost its canonical link on 12 November and nobody noticed."],
+        ["note-1:escalated", "The menu page has no canonical link."],
+        ["note-3", "Found 7 pages with the same problem, which is worse than last week."],
+      ],
+      ["note-2"],
+    ),
+    fallback: gatewayOf("beta", [["note-2", "The pop-up page loads slowly."]]),
+  },
+  { unmetered: true },
+);
 
 const out: string[] = [];
 for (const [task, callId] of [

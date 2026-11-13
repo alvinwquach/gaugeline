@@ -22,7 +22,7 @@
 import { AGENT_ANSWER_ISSUES, type AnswerCheck, type CheckVerdict } from "./check.js";
 import { ModelGatewayError, type FailureClass } from "./errors.js";
 import { sanitise } from "../untrusted.js";
-import { NO_BUDGET } from "./gateway.js";
+import { NO_BUDGET, isMadeGateway } from "./gateway.js";
 import type { ModelAnswer, ModelGateway, ModelTier } from "./types.js";
 
 export type { AnswerCheck, CheckVerdict } from "./check.js";
@@ -108,8 +108,11 @@ function repairPrompt(prompt: string, issues: readonly string[]): string {
 }
 
 export interface RouterOptions {
-  /** Refuse to build a router whose gateways have no budget (`NO_BUDGET`). For hosted use, where a ceiling is required. */
-  requireBudget?: boolean;
+  /**
+   * Say the router has no budget. Allowed only when no gateway has one; refused when any budget is configured.
+   * Without it a router needs a budget: a model call with no ceiling is something a person must ask for.
+   */
+  unmetered?: boolean;
   /** The most calls for one task, 1 to 3 (default 3). It can be lowered, never raised. */
   maxCalls?: number;
   /** The most time all the calls of one task may take together, in whole milliseconds, 1000 to 600000 (default 120000). */
@@ -119,22 +122,38 @@ export interface RouterOptions {
 }
 
 /**
- * A router over a primary gateway and, optionally, a fallback. Both gateways must have been built from the SAME
- * budget object (the same `RunBudget`, so one run's ceilings count both providers' calls): a fallback with its
- * own budget, or with none, would let a call skip the ceilings the first provider obeys. A router that cannot
- * meet this is not built. With `requireBudget`, a router with no budget at all is refused too.
+ * A router over a primary gateway and, optionally, a fallback. Three things must hold, or it is not built:
+ * both gateways were made by `createGateway` (an object built by hand could claim a budget and spend none);
+ * they share the SAME budget object (the same `RunBudget`, so one run's ceilings count both providers' calls: a
+ * fallback with its own budget, or none, would let a call skip the ceilings the first provider obeys); and there
+ * is a budget at all, unless `unmetered: true` says otherwise, which is itself refused when any budget exists.
  */
 export function createRouter(
   gateways: { primary: ModelGateway; fallback?: ModelGateway },
   options: RouterOptions = {},
 ): Router {
+  for (const g of [gateways.primary, gateways.fallback])
+    if (g !== undefined && !isMadeGateway(g))
+      throw new ModelGatewayError(
+        "bad-config",
+        "The router takes only gateways made by createGateway: one built by hand could skip the budget.",
+      );
   if (gateways.fallback && gateways.fallback.budget !== gateways.primary.budget)
     throw new ModelGatewayError(
       "bad-config",
       "The primary and fallback gateways must be built from the same budget, or the fallback would skip its ceilings.",
     );
-  if (options.requireBudget === true && gateways.primary.budget === NO_BUDGET)
-    throw new ModelGatewayError("bad-config", "The router needs a budget: its gateways have none.");
+  const budgeted = gateways.primary.budget !== NO_BUDGET;
+  if (options.unmetered === true && budgeted)
+    throw new ModelGatewayError(
+      "bad-config",
+      "The router cannot be unmetered when a budget is configured: drop unmetered, or drop the budget.",
+    );
+  if (options.unmetered !== true && !budgeted)
+    throw new ModelGatewayError(
+      "bad-config",
+      "The router needs a budget: its gateways have none. Build them with one, or say unmetered: true.",
+    );
   const maxCalls = options.maxCalls ?? MAX_CALLS_PER_ROUTE;
   if (!Number.isInteger(maxCalls) || maxCalls < 1 || maxCalls > MAX_CALLS_PER_ROUTE)
     throw new ModelGatewayError(

@@ -259,10 +259,10 @@ describe("two providers: the payload goes to the second one only after an outage
   async function twoProviders(first: (res: ServerResponse) => void, second = ANSWER) {
     const a = await startServer((_req, res) => first(res));
     const b = await startServer((_req, res) => reply(res, 200, second));
-    const router = createRouter({
-      primary: over(routeTo(a.port).request),
-      fallback: over(routeTo(b.port).request),
-    });
+    const router = createRouter(
+      { primary: over(routeTo(a.port).request), fallback: over(routeTo(b.port).request) },
+      { unmetered: true },
+    );
     const check = (answer: { text: string }) => ({ ok: true as const, value: answer.text });
     const r = await router.route(
       { task: "wording", agentId: "triage", callId: "route-1", prompt: "Reword the menu note." },
