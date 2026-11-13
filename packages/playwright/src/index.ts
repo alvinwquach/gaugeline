@@ -10,10 +10,11 @@ export type { Content, ContentOptions, PublishedDoc, Reader, SkippedDoc } from "
  */
 export const test = base.extend<{ content: Content; gaugeline: ContentOptions }>({
   gaugeline: [{}, { option: true }],
-  content: async ({ gaugeline }, use, testInfo) => {
+  content: async ({ gaugeline, baseURL }, use, testInfo) => {
     await use(
       createContent(gaugeline, {
         env: process.env,
+        baseURL,
         annotate: (type, description) => testInfo.annotations.push({ type, description }),
       }),
     );

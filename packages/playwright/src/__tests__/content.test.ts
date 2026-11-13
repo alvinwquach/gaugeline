@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import {
   createContent,
   defaultFetcher,
+  MAX_REQUESTS,
   readerFromEnv,
   resolveUrl,
   type ContentOptions,
@@ -20,8 +21,8 @@ const DATASET = JSON.parse(
 ) as Dataset;
 
 // Built at run time: a token-shaped string must not sit in the repository as one piece.
-const TOKEN = ["sk", "viewer", "tidewater", "0042"].join("");
-const ENV = { SANITY_PROJECT_ID: "tidewater1", SANITY_DATASET: "production", SANITY_TOKEN: TOKEN };
+const TOKEN = ["sk", "viewer", "fernhill", "0042"].join("");
+const ENV = { SANITY_PROJECT_ID: "fernhill1", SANITY_DATASET: "production", SANITY_TOKEN: TOKEN };
 const ROUTES = { product: "/products/{slug}" };
 const ROUTES_OPT = { routes: ROUTES };
 /** The products that have a page (the gift card has no slug and no address). */
@@ -64,35 +65,25 @@ describe("resolveUrl: unit", () => {
     });
   });
 
-  it("keeps an absolute https address and a path as they are", () => {
-    expect(resolveUrl({ _id: "a", url: "https://shop.example/p/1" }, "product", {})).toEqual({
-      url: "https://shop.example/p/1",
+  it("keeps a path, and an absolute address only on the site's own origin or an allowed one", () => {
+    const base = { baseURL: "https://shop.example" };
+    expect(resolveUrl({ _id: "a", url: "/p/1?x=2" }, "product", base)).toEqual({ url: "/p/1?x=2" });
+    // Same origin: handed back as a path, never as the raw string.
+    expect(resolveUrl({ _id: "a", url: "https://shop.example/p/1#top" }, "product", base)).toEqual({
+      url: "/p/1",
     });
-  });
-
-  it("gives a reason, not an address, when nothing resolves", () => {
-    expect(resolveUrl({ _id: "a" }, "product", {})).toMatchObject({ reason: expect.any(String) });
-    expect(resolveUrl(doc, "page", ROUTES_OPT)).toMatchObject({ reason: expect.any(String) });
-    expect(resolveUrl({ _id: "a", slug: { current: "" } }, "product", ROUTES_OPT)).toMatchObject({
-      reason: expect.any(String),
+    expect(resolveUrl({ _id: "a", url: "HTTPS://SHOP.EXAMPLE/p/1" }, "product", base)).toEqual({
+      url: "/p/1",
     });
+    // Another origin only when it is listed.
+    const other = { _id: "a", url: "https://cdn.shop.example/p/1" };
+    expect(resolveUrl(other, "product", base)).toMatchObject({ reason: expect.any(String) });
+    expect(
+      resolveUrl(other, "product", { ...base, allowedOrigins: ["https://cdn.shop.example"] }),
+    ).toEqual({ url: "https://cdn.shop.example/p/1" });
   });
 
-  it("refuses addresses that are not a path or an http(s) address", () => {
-    for (const url of [
-      "javascript:alert(1)",
-      "file:///etc/hosts",
-      "//other.example/x",
-      "data:text/html,x",
-      "products/relative",
-      "",
-    ])
-      expect(resolveUrl({ _id: "a", url }, "product", {})).toMatchObject({
-        reason: expect.any(String),
-      });
-  });
-
-  it("refuses private, loopback, link-local and metadata addresses unless allowPrivate is set", () => {
+  it("refuses private, loopback, link-local and metadata addresses even when their origin is allowed, unless allowPrivate is set", () => {
     const local = ["local", "host"].join("");
     for (const url of [
       "http://127.0.0.1:3000/p",
@@ -103,17 +94,98 @@ describe("resolveUrl: unit", () => {
       "http://2130706433/p",
       `http://${local}:3000/p`,
       `http://shop.${local}/p`,
-    ])
-      expect(resolveUrl({ _id: "a", url }, "product", {})).toMatchObject({
+    ]) {
+      const allowedOrigins = [new URL(url).origin];
+      expect(resolveUrl({ _id: "a", url }, "product", { allowedOrigins })).toMatchObject({
         reason: expect.stringContaining("private"),
       });
-    expect(
-      resolveUrl({ _id: "a", url: "http://127.0.0.1:3000/p" }, "product", { allowPrivate: true }),
-    ).toEqual({
-      url: "http://127.0.0.1:3000/p",
-    });
+      expect(
+        resolveUrl({ _id: "a", url }, "product", { allowedOrigins, allowPrivate: true }),
+      ).toEqual({ url: new URL(url).href });
+    }
   });
 });
+
+/** Built at run time: an address with user info is not stored as one piece. */
+const AT = "@";
+
+describe("resolveUrl: content is data, so a document cannot send the browser elsewhere", () => {
+  const base = { baseURL: "https://shop.example" };
+  const refused = (url: string, extra: Record<string, unknown> = {}) =>
+    resolveUrl({ _id: "a", url }, "product", { ...base, ...extra });
+
+  it.each([
+    ["another site", "https://evil.example/x"],
+    ["an upper-case scheme", "HTTPS://evil.example"],
+    ["user info", ["http://user", "evil.example"].join(AT)],
+    ["user info that names the real host", ["https://shop.example", "evil.example/"].join(AT)],
+    ["a protocol-relative address", "//evil.example"],
+    ["a backslash that the parser reads as a slash", "/\\evil.example"],
+    ["a tab inside the slashes", "/\t/evil.example"],
+    ["a newline inside the slashes", "/\n/evil.example"],
+    ["a carriage return", "/\r/evil.example"],
+    ["a C1 control character", "/\u0085/evil.example"],
+    ["a null byte", "/a\u0000b"],
+    ["a backslash anywhere", "/a\\b"],
+    ["a cloud metadata name", "http://metadata.google.internal/"],
+    ["a javascript address", "javascript:alert(1)"],
+    ["a data address", "data:text/html,x"],
+    ["a file address", "file:///etc/hosts"],
+    ["a path that changes when normalised (dot segments)", "/a/../../b"],
+    ["a path that changes when normalised (a space)", "/a b"],
+    ["a relative path", "products/x"],
+  ])("refuses %s", (_name, url) => {
+    expect(refused(url)).toMatchObject({ reason: expect.any(String) });
+  });
+
+  it("refuses a user-info and a private-name address on an allowed origin too", () => {
+    expect(
+      refused(["http://user", "cdn.shop.example/x"].join(AT), {
+        allowedOrigins: ["http://cdn.shop.example"],
+      }),
+    ).toMatchObject({ reason: expect.stringContaining("user") });
+    expect(
+      refused("http://metadata.google.internal/", {
+        allowedOrigins: ["http://metadata.google.internal"],
+      }),
+    ).toMatchObject({ reason: expect.stringContaining("private") });
+  });
+
+  it("keeps an encoded slash or backslash as text: it opens a path on the same site", () => {
+    for (const path of ["/%2f%2fevil.example", "/%5cevil.example", "/a%2Fb"]) {
+      const got = refused(path);
+      expect(got).toEqual({ url: path });
+      expect(new URL((got as { url: string }).url, base.baseURL).origin).toBe(base.baseURL);
+    }
+  });
+
+  it("with no baseURL only paths are accepted, and a path never leaves the site", () => {
+    expect(resolveUrl({ _id: "a", url: "/p" }, "product", {})).toEqual({ url: "/p" });
+    expect(resolveUrl({ _id: "a", url: "https://shop.example/p" }, "product", {})).toMatchObject({
+      reason: expect.any(String),
+    });
+    expect(resolveUrl({ _id: "a", url: "/\\evil.example" }, "product", {})).toMatchObject({
+      reason: expect.any(String),
+    });
+  });
+
+  it("a route's slug is encoded, so a slug cannot add a path segment or a host", () => {
+    const routes = { product: "/products/{slug}" };
+    expect(resolveUrl({ _id: "a", slug: "../../x" }, "product", { ...base, routes })).toEqual({
+      url: "/products/..%2F..%2Fx",
+    });
+    expect(resolveUrl({ _id: "a", slug: ".." }, "product", { ...base, routes })).toMatchObject({
+      reason: expect.any(String),
+    });
+    expect(resolveUrl({ _id: "a", slug: "a/b" }, "product", { ...base, routes })).toEqual({
+      url: "/products/a%2Fb",
+    });
+    expect(
+      resolveUrl({ _id: "a", slug: "//evil.example" }, "product", { ...base, routes }),
+    ).toEqual({ url: "/products/%2F%2Fevil.example" });
+  });
+});
+
 describe("content.published: integration over recorded content", () => {
   it("yields { url, ...fields } for every published document of the type", async () => {
     const { content } = rig();
@@ -263,7 +335,189 @@ describe("rule 6: the helper reads Sanity through the fetcher, which refuses pri
       resolver: () => Promise.resolve([{ address: "127.0.0.1", family: 4 as const }]),
     });
     await expect(
-      fetcher.get("https://tidewater1.api.sanity.io/v2021-10-21/data/query/production?query=1"),
+      fetcher.get("https://fernhill1.api.sanity.io/v2021-10-21/data/query/production?query=1"),
     ).rejects.toThrow(/loopback|private/i);
+  });
+});
+
+/** A reader over a made-up list of documents of one type, in _id order, answering the walk's two question shapes. */
+function listReader(ids: () => Iterable<string>, seen: { requests: number }) {
+  return (groq: string): Promise<unknown> => {
+    seen.requests++;
+    const after = /_id > "([^"]*)"/.exec(groq)?.[1] ?? "";
+    const size = Number(/\[0\.\.\.(\d+)\]/.exec(groq)?.[1] ?? "100");
+    const wanted = /_id in \[([^\]]*)\]/.exec(groq)?.[1];
+    const all = [...ids()];
+    if (wanted !== undefined) {
+      const set = new Set((JSON.parse(`[${wanted}]`) as string[]) ?? []);
+      return Promise.resolve(
+        all.filter((id) => set.has(id)).map((_id) => ({ _id, _type: "post", url: `/p/${_id}` })),
+      );
+    }
+    return Promise.resolve(
+      all
+        .filter((id) => id > after)
+        .slice(0, size)
+        .map((_id) => ({ _id, _type: "post", url: `/p/${_id}` })),
+    );
+  };
+}
+
+const quiet = { annotate: () => undefined, env: {} };
+
+describe("a reader that never ends cannot loop forever: requests, documents and ids are capped", () => {
+  it("stops with a clear error when a page repeats and the cursor does not move forward", async () => {
+    const seen = { requests: 0 };
+    const stuck = () => {
+      seen.requests++;
+      return Promise.resolve([
+        { _id: "post-1", url: "/p/1" },
+        { _id: "post-2", url: "/p/2" },
+      ]);
+    };
+    const content = createContent({ read: stuck, pageSize: 2 }, quiet);
+    await expect(collect(content.published("post"))).rejects.toThrow(/did not move forward/);
+    expect(seen.requests).toBeLessThan(5);
+  });
+
+  it("stops when the cursor goes backwards", async () => {
+    let n = 0;
+    const content = createContent(
+      {
+        read: () =>
+          Promise.resolve(
+            n++ === 0
+              ? [
+                  { _id: "b", url: "/b" },
+                  { _id: "c", url: "/c" },
+                ]
+              : [
+                  { _id: "a", url: "/a" },
+                  { _id: "b", url: "/b" },
+                ],
+          ),
+        pageSize: 2,
+      },
+      quiet,
+    );
+    await expect(collect(content.published("post"))).rejects.toThrow(/did not move forward/);
+  });
+
+  it("stops at the document cap, saying what to do, and never asks for more than the cap allows", async () => {
+    const seen = { requests: 0 };
+    // An endless list, a page at a time: the reader hands out only what was asked for.
+    const read = (groq: string) => {
+      seen.requests++;
+      const size = Number(/\[0\.\.\.(\d+)\]/.exec(groq)?.[1]);
+      const start = Number(/_id > "post-(\d+)"/.exec(groq)?.[1] ?? "-1") + 1;
+      return Promise.resolve(
+        Array.from({ length: size }, (_, i) => ({
+          _id: `post-${String(start + i).padStart(9, "0")}`,
+          url: "/p",
+        })),
+      );
+    };
+    const content = createContent({ read, maxDocuments: 250, pageSize: 100 }, quiet);
+    let got = 0;
+    await expect(
+      (async () => {
+        for await (const doc of content.published("post")) got += doc._id === "" ? 0 : 1;
+      })(),
+    ).rejects.toThrow(/more than 250 .*sample/s);
+    expect(got).toBe(250);
+    expect(seen.requests).toBeLessThanOrEqual(4);
+  });
+
+  it("stops at the request cap when a reader answers with ever-new ids in tiny pages", async () => {
+    const seen = { requests: 0 };
+    const read = () => {
+      const i = seen.requests++;
+      return Promise.resolve([{ _id: `post-${String(i).padStart(9, "0")}`, url: "/p" }]);
+    };
+    const content = createContent({ read, pageSize: 1, maxDocuments: 50_000 }, quiet);
+    await expect(collect(content.published("post"))).rejects.toThrow(/more than \d+ requests/);
+    expect(seen.requests).toBeLessThanOrEqual(MAX_REQUESTS + 1);
+  });
+
+  it("a sample stops collecting ids at the cap instead of holding millions in memory", async () => {
+    const seen = { requests: 0 };
+    const read = (groq: string) => {
+      const size = Number(/\[0\.\.\.(\d+)\]/.exec(groq)?.[1]);
+      const start = seen.requests++ * size;
+      return Promise.resolve(
+        Array.from({ length: size }, (_, i) => ({
+          _id: `post-${String(start + i).padStart(9, "0")}`,
+        })),
+      );
+    };
+    const content = createContent({ read }, quiet);
+    await expect(collect(content.sample("post", 5))).rejects.toThrow(/more than 50,?000/);
+    expect(seen.requests).toBeLessThanOrEqual(60);
+  });
+
+  it("a sample's own requests are capped too, and n is held to the document cap", async () => {
+    const seen = { requests: 0 };
+    const ids = Array.from({ length: 30 }, (_, i) => `post-${String(i).padStart(3, "0")}`);
+    const content = createContent({ read: listReader(() => ids, seen), maxDocuments: 10 }, quiet);
+    const got = await collect(content.sample("post", 1000));
+    expect(got).toHaveLength(10);
+  });
+
+  it("a reader that behaves is not affected: a long list under the caps is read to the end", async () => {
+    const seen = { requests: 0 };
+    const ids = Array.from({ length: 450 }, (_, i) => `post-${String(i).padStart(4, "0")}`);
+    const content = createContent({ read: listReader(() => ids, seen), pageSize: 100 }, quiet);
+    expect(await collect(content.published("post"))).toHaveLength(450);
+    expect(seen.requests).toBe(5);
+  });
+
+  it("refuses an option that would defeat the caps", () => {
+    const read = () => Promise.resolve([]);
+    expect(() => createContent({ read, maxDocuments: 0 }, quiet)).toThrow(RangeError);
+    expect(() => createContent({ read, maxDocuments: 1_000_000 }, quiet)).toThrow(/50,?000/);
+    expect(() => createContent({ read, pageSize: 0 }, quiet)).toThrow(RangeError);
+    expect(() => createContent({ read, pageSize: 5000 }, quiet)).toThrow(RangeError);
+    expect(() => createContent({ read, pageSize: 1.5 }, quiet)).toThrow(RangeError);
+  });
+});
+
+describe("ids from content are data: drafts are skipped and the annotation is clean", () => {
+  it("skips drafts. and versions. ids from any reader, and does not count them as documents", async () => {
+    const docs = [
+      { _id: "drafts.a", url: "/a" },
+      { _id: "post-1", url: "/p/1" },
+      { _id: "versions.r1.post-2", url: "/p/2" },
+      { _id: "post-3", url: "/p/3" },
+    ];
+    const content = createContent({ read: () => Promise.resolve(docs), pageSize: 100 }, quiet);
+    expect((await collect(content.published("post"))).map((d) => d._id)).toEqual([
+      "post-1",
+      "post-3",
+    ]);
+  });
+
+  it("a page that holds only drafts does not end the walk early", async () => {
+    const pages = [[{ _id: "drafts.a" }, { _id: "drafts.b" }], [{ _id: "post-1", url: "/p/1" }]];
+    let n = 0;
+    const content = createContent(
+      { read: () => Promise.resolve(pages[n++] ?? []), pageSize: 2 },
+      quiet,
+    );
+    expect((await collect(content.published("post"))).map((d) => d._id)).toEqual(["post-1"]);
+  });
+
+  it("strips control characters and cuts a long id before it reaches the report", async () => {
+    const annotations: string[] = [];
+    const hostile = `x\u001b[31m\n${"y".repeat(500)}`;
+    const content = createContent(
+      { read: () => Promise.resolve([{ _id: hostile }, { _id: "post-ok", url: "/p" }]) },
+      { annotate: (t, d) => annotations.push(`${t}: ${d}`), env: {} },
+    );
+    await collect(content.published("post"));
+    expect(annotations).toHaveLength(1);
+    const line = annotations[0] ?? "";
+    expect([...line].some((ch) => (ch.codePointAt(0) ?? 0) < 0x20)).toBe(false);
+    expect(line.length).toBeLessThan(400);
+    expect(content.skipped[0]?.id.length).toBeLessThan(200);
   });
 });

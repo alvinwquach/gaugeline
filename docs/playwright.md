@@ -39,7 +39,7 @@ Set `SANITY_PROJECT_ID`, `SANITY_DATASET` (default `production`) and, for a priv
 
 Pass `product.url` as the second argument to `expect`. Playwright puts it first in the failure message, so a failure names the page.
 
-Here is what it printed against the repository's fixture shop, Tidewater Coffee Roasters (an invented business), with its content recorded in a file. The fixture's spec is [`e2e/playwright-helper.spec.ts`](https://github.com/alvinwquach/gaugeline/blob/main/e2e/playwright-helper.spec.ts):
+Here is what it printed against the repository's fixture shop, Fernhill Roasters (an invented business), with its content recorded in a file. The fixture's spec is [`e2e/playwright-helper.spec.ts`](https://github.com/alvinwquach/gaugeline/blob/main/e2e/playwright-helper.spec.ts):
 
 ```text
 Running 4 tests using 1 worker
@@ -100,28 +100,46 @@ The same happens when documents exist but none of them has an address.
 
 A document can exist without a page: a gift card, a settings document, a product nobody has given a slug. For each document the helper needs an address to open. It uses, in order:
 
-1. the document's `url` field (change the name with `urlField`). A path starting with `/` or a full `http(s)` address;
+1. the document's `url` field (change the name with `urlField`). A path starting with one `/`, or a full `http(s)` address on your own site;
 2. the route for its type with the slug filled in: `routes: { product: "/products/{slug}" }`. The slug can be a plain string or a Sanity `slug` field.
 
-A document with neither is left out of the loop, and the helper tells you: it is added to `content.skipped` (`{ id, type, reason }`) and to the test report as a `gaugeline-skipped` annotation. It does not fail the test, because a document with no page is normal, and it is not silent either.
+A document with neither, or with an address the helper will not open (see [A document cannot send your test elsewhere](#a-document-cannot-send-your-test-elsewhere)), is left out of the loop, and the helper tells you: it is added to `content.skipped` (`{ id, type, reason }`) and to the test report as a `gaugeline-skipped` annotation. It does not fail the test, because a document with no page is normal, and it is not silent either.
 
 ## Options
 
 Set them for a file with `test.use({ gaugeline: { ... } })`, or for the whole suite in the `use` block of `playwright.config.ts`.
 
-| Option         | Default                                   | What it does                                                                |
-| -------------- | ----------------------------------------- | --------------------------------------------------------------------------- |
-| `projectId`    | `SANITY_PROJECT_ID`                       | The Sanity project to read.                                                 |
-| `dataset`      | `SANITY_DATASET`, then `production`       | The dataset to read.                                                        |
-| `token`        | `SANITY_TOKEN`                            | A read-only token (Viewer role), for a private dataset.                     |
-| `seed`         | `GAUGELINE_SEED`, then today's date (UTC) | Seeds `content.sample`.                                                     |
-| `urlField`     | `url`                                     | The field that holds a document's address.                                  |
-| `routes`       | none                                      | A path for each type that has no address field, with `{slug}` in it.        |
-| `allowPrivate` | `false`                                   | Allow an absolute address on a private or loopback host (a local dev site). |
-| `pageSize`     | `100`                                     | Documents asked for per request.                                            |
-| `read`         | Sanity, with one GET per request          | Replace the read, for example with recorded content in your own tests.      |
+| Option           | Default                                   | What it does                                                            |
+| ---------------- | ----------------------------------------- | ----------------------------------------------------------------------- |
+| `projectId`      | `SANITY_PROJECT_ID`                       | The Sanity project to read.                                             |
+| `dataset`        | `SANITY_DATASET`, then `production`       | The dataset to read.                                                    |
+| `token`          | `SANITY_TOKEN`                            | A read-only token (Viewer role), for a private dataset.                 |
+| `seed`           | `GAUGELINE_SEED`, then today's date (UTC) | Seeds `content.sample`.                                                 |
+| `urlField`       | `url`                                     | The field that holds a document's address.                              |
+| `routes`         | none                                      | A path for each type that has no address field, with `{slug}` in it.    |
+| `baseURL`        | Playwright's `baseURL`                    | The site the pages are on. A document's address must be on it.          |
+| `allowedOrigins` | none                                      | Other origins a document may point at, e.g. `["https://shop.example"]`. |
+| `allowPrivate`   | `false`                                   | Let an allowed origin be a private, loopback or metadata host.          |
+| `pageSize`       | `100`                                     | Documents asked for per request, 1 to 1000.                             |
+| `maxDocuments`   | `10000`                                   | The most documents one call reads, 1 to 50,000.                         |
+| `read`           | Sanity, with one GET per request          | Replace the read, for example with recorded content in your own tests.  |
 
-An absolute address on a private, loopback, link-local or metadata host is skipped with a reason unless `allowPrivate` is set. A site on your own machine (`http://127.0.0.1:3000`) is the usual reason to set it; the relative paths in the example need none, because Playwright's `baseURL` decides where they open.
+A site on your own machine (`http://127.0.0.1:3000`) is fine as `baseURL`: it is your own site, so it needs no option. `allowPrivate` is only for an extra origin you list in `allowedOrigins` that is itself private.
+
+## A document cannot send your test elsewhere
+
+Content is data: whoever can edit a document in Sanity can put anything in its `url` field, and your CI browser would open it. So the helper never hands a test a raw string. Every address is read the way the browser will read it, and what comes back is a path on your site (`/products/ember-house-blend`), or an absolute address only for an origin you listed in `allowedOrigins`. A document is skipped, with the reason in `content.skipped`, when its address:
+
+- is on another site (`https://evil.example/x`, in any letter case), unless the origin is in `allowedOrigins`;
+- is protocol-relative (`//evil.example`), or has a user name or password (`https://user@evil.example`);
+- has a backslash or a control character, a tab or a line break included (browsers read `/\evil.example` as another site);
+- changes when it is read: dot segments, a space or other unescaped characters (percent-encode them);
+- names a private, loopback, link-local or metadata host (`169.254.169.254`, `metadata.google.internal`), even when listed, unless `allowPrivate` is set;
+- is not http or https (`javascript:`, `data:`, `file:`).
+
+## Big types
+
+A reader that never ends must not hang your CI, so a call stops with an error that says why when a page repeats instead of moving forward, after 300 requests, and at `maxDocuments` (10,000 by default; at most 50,000). When a type has more documents than that, `published` fails and tells you to use `content.sample(type, n)`; a sample lists the ids of the type (at most 50,000 of them) to draw from. Drafts and release versions (ids starting `drafts.` or `versions.`) are never counted or opened, whatever answers.
 
 ## What it reads, and what it never does
 

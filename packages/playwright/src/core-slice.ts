@@ -7,3 +7,4 @@ export { createFetcher } from "../../core/src/fetcher.js";
 export type { Fetcher, FetcherOptions } from "../../core/src/fetcher.js";
 export { createSanityRead } from "../../core/src/connectors/sanity.js";
 export { isBlockedAddress } from "../../core/src/addresses.js";
+export { sanitise } from "../../core/src/untrusted.js";

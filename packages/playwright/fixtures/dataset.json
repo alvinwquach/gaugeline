@@ -1,5 +1,5 @@
 {
-  "note": "Invented content for Tidewater Coffee Roasters, a made-up shop. Nothing here is a real client's data.",
+  "note": "Invented content for Fernhill Roasters, a made-up shop. Nothing here is a real client's data.",
   "documents": [
     {
       "_id": "p-ember",
@@ -55,7 +55,7 @@
     {
       "_id": "siteSettings",
       "_type": "siteSettings",
-      "title": "Tidewater Coffee Roasters"
+      "title": "Fernhill Roasters"
     }
   ]
 }

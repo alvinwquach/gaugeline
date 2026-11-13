@@ -9,7 +9,7 @@ import { expect, test as base } from "../packages/playwright/src/index.js";
 import { sanityCountsTransport } from "../packages/testkit/src/index.js";
 
 /**
- * The Playwright helper (G33) against a fixture shop and recorded content: Tidewater Coffee Roasters,
+ * The Playwright helper (G33) against a fixture shop and recorded content: Fernhill Roasters,
  * invented. The shop's pages are served on 127.0.0.1 by this file; the content is the helper's
  * invented dataset, read through the same reader the helper uses, over a stand-in for Sanity's
  * query API. No real site, no real Sanity project, no real key.
@@ -22,9 +22,9 @@ const dataset = JSON.parse(
 ) as { documents: Record<string, unknown>[] };
 
 /** Built at run time: a token-shaped string must not sit in the repository as one piece. */
-const TOKEN = ["sk", "viewer", "tidewater", "0042"].join("");
+const TOKEN = ["sk", "viewer", "fernhill", "0042"].join("");
 const read = readerFromEnv(
-  { SANITY_PROJECT_ID: "tidewater1", SANITY_DATASET: "production", SANITY_TOKEN: TOKEN },
+  { SANITY_PROJECT_ID: "fernhill1", SANITY_DATASET: "production", SANITY_TOKEN: TOKEN },
   createFetcher({
     transport: sanityCountsTransport({ types: {}, content: { all: dataset.documents } }),
     timeoutMs: 5000,
@@ -60,7 +60,7 @@ const test = base.extend<{ planted: Record<string, string> }>({
   },
 });
 
-test.use({ gaugeline: { read, routes: { product: "/products/{slug}" }, seed: "tidewater" } });
+test.use({ gaugeline: { read, routes: { product: "/products/{slug}" }, seed: "fernhill" } });
 
 test("the docs example: every product shows the checkout price", async ({ page, content }) => {
   let visited = 0;
