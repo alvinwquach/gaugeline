@@ -18,6 +18,7 @@ import { UNTRUSTED_CAPS, sanitise } from "../untrusted.js";
 import { issueGatedPayload, type GatedPayload } from "./gated.js";
 import {
   DEFAULT_REDACTION_RULES,
+  FailClosed,
   MAX_TAGS_PER_FIELD,
   MAX_TAGS_TOTAL,
   REDACTION_KINDS,
@@ -33,7 +34,7 @@ export type { PageVerdict, RedactionKind, RedactionRule };
 /** The bounds of one input. A config can lower the payload size (`maxInputChars`), never raise any of these. */
 export const MODEL_INPUT_LIMITS = Object.freeze({
   maxFindings: 10,
-  maxIds: 20,
+  maxIds: 10,
   /** An id is a short prefix and a number, or a UUID: 36 characters at most. */
   maxIdChars: 36,
   maxTitleChars: UNTRUSTED_CAPS.title,
@@ -257,10 +258,16 @@ function processText(
   if (lines > L.maxLinesPerField) return refuse("many-lines", at);
   let text = raw;
   const found = { ...counts };
-  for (const r of p.redactions) {
-    const out = r.apply(text);
-    text = out.text;
-    found[r.kind] += out.count;
+  try {
+    for (const r of p.redactions) {
+      const out = r.apply(text);
+      text = out.text;
+      found[r.kind] += out.count;
+    }
+  } catch (err) {
+    // A rule that cannot make the text safe says so: the field is refused, never half cleaned.
+    if (err instanceof FailClosed) return refuse("bad-field", at);
+    throw err;
   }
   const verdict = p.pageCheck(text);
   const first = verdict.reason ?? p.pageCheck(raw).reason;
@@ -402,20 +409,20 @@ export function buildModelPayload(input: unknown): GatedResult {
 export const WHAT_LEAVES: readonly string[] = Object.freeze([
   "the task: one of a short list of sentences Gaugeline's own code wrote, and at most one fixed reason a last answer was refused",
   "for each finding (at most 10): its id, its severity, its title and one short evidence snippet (at most 300 characters, 2,000 in all)",
-  "extra ids: a draft's id or a related finding's id, in the one id shape (a short prefix and a number, or a UUID)",
+  "extra ids (at most 10): a draft's id or a related finding's id, in the one id shape (a short prefix and a number, or a UUID)",
   "your key, but only in one request header to the provider's host, never inside the text",
 ]);
 export const WHAT_STAYS: readonly string[] = Object.freeze([
   "a whole page, its HTML or any response body from the checked site (refused, never trimmed)",
   "any field that is not on the allowlist, and any id, title or snippet that breaks its rules (refused, not dropped); there is no field for a page address, a header or a cookie",
-  "keys, tokens and passwords in a known shape, private keys, cookie values, secret-named web address parameters, card and IBAN numbers, email addresses, network addresses and phone numbers (replaced by a marker)",
-  "hidden and control characters, and accents on Latin letters (removed)",
+  "keys and tokens in a known shape (model providers, payment, source hosts, cloud, chat and mail services), private keys, cookie values, secret-named web address parameters, the value after a credential name (up to six words), the value of a password field, card and IBAN numbers, email addresses, network addresses and phone numbers (replaced by a marker)",
+  "text hidden in HTML entities, percent escapes or JSON string escapes (decoded up to three layers deep first; deeper is refused), hidden and control characters, and accents on Latin letters (removed)",
 ]);
 export const NOT_DETECTED: readonly string[] = Object.freeze([
   "personal names: no rule can tell a name from a word",
   "street addresses, postcodes and place names",
   "a business's trading name, a product or a price written in ordinary words",
-  "a secret in a shape no rule knows",
+  "a secret in a shape no rule knows, and a password or secret written in a sentence without a credential name in front of it",
   "a web address quoted inside a snippet: only a password, token or signature in it is removed",
   "a header quoted inside a snippet, other than Cookie, Set-Cookie and Authorization",
   "a card number that fails its checksum, or a phone number outside 8 to 15 digits",

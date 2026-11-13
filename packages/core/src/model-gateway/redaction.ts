@@ -8,6 +8,7 @@ import { EMAIL_PATTERN, PHONE_PATTERN, redactSecretShapes } from "../agent-trace
 
 /** The kinds of redaction, in the order they run. Each has one rule and one fixture in the tests. */
 export const REDACTION_KINDS = [
+  "encoding",
   "hidden-characters",
   "private-key",
   "url-credentials",
@@ -67,9 +68,10 @@ const HIDDEN = new RegExp(
 const MARK_AFTER_ASCII = /(?<=[A-Za-z0-9])\p{M}+/gu;
 
 /** Cyrillic and Greek letters that read as Latin ones, by code point. Used only inside a token that has an ASCII letter. */
-const LOOKALIKES: ReadonlyMap<string, string> = new Map(
+export const LOOKALIKES: ReadonlyMap<string, string> = new Map(
   (
     [
+      [0x043a, "k"],
       [0x0430, "a"],
       [0x0435, "e"],
       [0x043e, "o"],
@@ -129,6 +131,100 @@ const LOOKALIKE_SET = `[${[...LOOKALIKES.keys()].join("")}]`;
 const HAS_LOOKALIKE = new RegExp(LOOKALIKE_SET, "u");
 const LOOKALIKE_CHARS = new RegExp(LOOKALIKE_SET, "gu");
 
+/** Thrown by a rule that cannot make a text safe to send. The gate turns it into a refusal: nothing is sent. */
+export class FailClosed extends Error {}
+
+/** Named entities worth decoding: the punctuation a credential is written with. Others are left as written. */
+const NAMED: Readonly<Record<string, string>> = {
+  amp: "&",
+  lt: "<",
+  gt: ">",
+  quot: '"',
+  apos: "'",
+  nbsp: " ",
+  colon: ":",
+  equals: "=",
+  commat: "@",
+  period: ".",
+  sol: "/",
+  bsol: "\\",
+  lpar: "(",
+  rpar: ")",
+  lbrack: "[",
+  rbrack: "]",
+  lsqb: "[",
+  rsqb: "]",
+  lcub: "{",
+  rcub: "}",
+  num: "#",
+  excl: "!",
+  quest: "?",
+  percnt: "%",
+  plus: "+",
+  comma: ",",
+  semi: ";",
+  lowbar: "_",
+  hyphen: "-",
+  dash: "-",
+  ast: "*",
+  dollar: "$",
+  grave: "`",
+  hat: "^",
+  vert: "|",
+  tilde: "~",
+  Tab: " ",
+  NewLine: " ",
+};
+/** The few names that browsers read with no semicolon; every other name needs its semicolon to count. */
+const LEGACY = new Set(["amp", "lt", "gt", "quot", "nbsp"]);
+const MAX_ROUNDS = 3;
+
+const codePoint = (n: number) =>
+  Number.isInteger(n) && n > 0 && n <= 0x10ffff && !(n >= 0xd800 && n <= 0xdfff)
+    ? String.fromCodePoint(n)
+    : null;
+
+/** One round of decoding: entities, percent escapes and JSON string escapes. */
+function decodeOnce(text: string): { text: string; count: number } {
+  let count = 0;
+  let t = text.replace(
+    /&(?:#(\d{1,7})|#[xX]([0-9a-fA-F]{1,6})|([A-Za-z][A-Za-z0-9]{1,31}));?/g,
+    (m, dec: string | undefined, hexa: string | undefined, name: string | undefined) => {
+      let out: string | null | undefined;
+      if (dec !== undefined) out = codePoint(Number(dec));
+      else if (hexa !== undefined) out = codePoint(parseInt(hexa, 16));
+      else if (name !== undefined && Object.hasOwn(NAMED, name))
+        out = m.endsWith(";") || LEGACY.has(name) ? NAMED[name] : undefined;
+      if (out === null || out === undefined) return m;
+      count += 1;
+      return out;
+    },
+  );
+  t = t.replace(/(?:%[0-9A-Fa-f]{2})+/g, (run) => {
+    let out: string;
+    try {
+      out = decodeURIComponent(run);
+    } catch {
+      // Not valid UTF-8 as a whole: read the plain ASCII ones, leave the rest.
+      out = run.replace(/%([0-7][0-9A-Fa-f])/g, (_m, h: string) =>
+        String.fromCharCode(parseInt(h, 16)),
+      );
+    }
+    if (out !== run) count += 1;
+    return out;
+  });
+  t = t.replace(
+    /\\(?:u([0-9a-fA-F]{4})|x([0-9a-fA-F]{2})|(["'\\/])|([nrt]))/g,
+    (_m, u: string | undefined, x: string | undefined, q: string | undefined) => {
+      count += 1;
+      if (u !== undefined) return String.fromCharCode(parseInt(u, 16));
+      if (x !== undefined) return String.fromCharCode(parseInt(x, 16));
+      return q ?? " ";
+    },
+  );
+  return { text: t, count };
+}
+
 const strip = (text: string) => {
   let count = 0;
   const out = text.replace(HIDDEN, () => ((count += 1), ""));
@@ -154,11 +250,31 @@ function luhn(digits: string): boolean {
 const IBAN_LENGTH = [15, 34] as const;
 const IBAN_MIN_DIGITS = 10;
 
+/** Names a credential is written under. No leading boundary: `x_api_key` and `myApiKey` count too. */
 const CREDENTIAL_NAMES =
-  "password|passwd|pwd|passphrase|secret|client[_-]?secret|api[_-]?key|x-api-key|apikey|access[_-]?token|auth[_-]?token|refresh[_-]?token|id[_-]?token|private[_-]?key|token|authorization";
+  "password|passwd|pwd|passphrase|secret[_-]?key|secret|client[_-]?secret|api[_-]?key|x-api-key|apikey|access[_-]?key|access[_-]?token|auth[_-]?token|refresh[_-]?token|id[_-]?token|private[_-]?key[_-]?id|private[_-]?key|credentials?|session[_-]?id|token|authorization|auth";
 /** Query and cookie parameter names that carry a credential or a signature (an S3 or CDN signed address, a login code). */
 const SECRET_PARAMS =
-  "x-amz-[a-z0-9-]+|signature|sig|token|key|access_token|id_token|refresh_token|auth|authorization|code|session|sid|password|secret|apikey|api_key|jwt|credential|client_secret";
+  "x-amz-[a-z0-9-]+|signature|sig|token|key|access_token|id_token|refresh_token|auth|authorization|code|session|sid|password|secret|apikey|api_key|jwt|credential|client_secret|private_key|private_key_id|access_key|secret_key|passwd|pwd";
+/** A value that is not quoted: up to six words, ending at a quote, a comma, a semicolon, an ampersand, a bracket or the end of the line. */
+const VALUE_WORD = "[^\\s\"'&<>,;]{1,256}";
+const VALUE_PHRASE = `${VALUE_WORD}(?:[ \\t]+${VALUE_WORD}){0,5}`;
+const FORM_NAMES = `(?:${CREDENTIAL_NAMES}|current-password|new-password)`;
+
+/** Provider key shapes, each with a name for the marker. Checked before the core rules so the count is theirs. */
+const PROVIDER_KEYS: readonly (readonly [string, RegExp])[] = [
+  ["model-provider-key", /\bsk-(?:ant-|proj-|or-|svcacct-|admin-)?[A-Za-z0-9_-]{20,}/g],
+  ["google-api-key", /\bAIza[0-9A-Za-z_-]{30,}/g],
+  ["slack-token", /\bxox[a-z]-[A-Za-z0-9-]{10,}/g],
+  [
+    "source-host-token",
+    /\bgh[a-z]_[A-Za-z0-9]{20,}|\bgithub_pat_[A-Za-z0-9_]{20,}|\bglpat-[A-Za-z0-9_-]{16,}/g,
+  ],
+  ["package-token", /\bnpm_[A-Za-z0-9]{20,}/g],
+  ["mail-api-key", /\bSG\.[A-Za-z0-9_-]{16,}\.[A-Za-z0-9_-]{16,}/g],
+  ["generic-prefixed-key", /\b(?:key|hf|ya29|pk_live|pk_test)[-_.][A-Za-z0-9_-]{24,}/g],
+  ["cloud-access-key", /\b(?:AKIA|ASIA)[A-Z0-9]{16}\b/g],
+];
 
 /** Whether `part` is one to four hexadecimal digits. */
 const hex4 = (part: string) => /^[0-9A-Fa-f]{1,4}$/.test(part);
@@ -176,6 +292,25 @@ function isIPv6(body: string): boolean {
 const octets = (m: string) => m.split(".").every((p) => Number(p) <= 255);
 
 export const DEFAULT_REDACTION_RULES: readonly RedactionRule[] = Object.freeze([
+  // 0. Decode what a page can hide a value behind: HTML entities (with or without the semicolon), percent
+  //    escapes and JSON string escapes, up to three layers deep. The rules below run on the decoded text, and the
+  //    decoded text is what is sent, never the original. A text that is still encoded after three rounds is not
+  //    cleaned: it is refused.
+  rule("encoding", (text) => {
+    // Hidden characters can split an entity or an escape ("&#6" + zero-width space + "5;"), so they are read out
+    // of the copy that is decoded. When nothing needs decoding the text goes on untouched, and the next rule
+    // removes and counts them as before.
+    let t = strip(text).out;
+    let count = 0;
+    for (let round = 0; round < MAX_ROUNDS; round++) {
+      const r = decodeOnce(t);
+      if (r.text === t) return count === 0 ? { text, count: 0 } : { text: t, count };
+      t = r.text;
+      count += r.count;
+    }
+    if (decodeOnce(t).text !== t) throw new FailClosed("encoded more than three layers deep");
+    return { text: t, count };
+  }),
   // 1. Normalise (full-width letters become ASCII, accents on an ASCII letter are dropped, so a key split by a
   //    combining mark is whole), remove every character a reader cannot see, and read a Cyrillic or Greek
   //    look-alike inside a word that has Latin letters as the Latin letter.
@@ -220,25 +355,47 @@ export const DEFAULT_REDACTION_RULES: readonly RedactionRule[] = Object.freeze([
   rule(
     "url-parameter",
     counting(
-      new RegExp(`([?&;](?:${SECRET_PARAMS})=)[^&#\\s"';]{1,512}`, "gi"),
+      new RegExp(`([?&;](?:${SECRET_PARAMS})=)[^&#\\s"';<>]{1,512}`, "gi"),
       (_m, head) => `${head}[redacted]`,
     ),
   ),
-  // 6. A named credential and its value: "password": "...", token=..., Authorization: Bearer ...
-  rule(
-    "credential-field",
-    counting(
+  // 6. A named credential and the whole of its value: "password": "...", token=..., Authorization: Bearer ...,
+  //    password = four words in a row, and the value of an input field named like one.
+  rule("credential-field", (text) => {
+    let count = 0;
+    const withTags = text.replace(
+      /<(?:input|textarea|select|option|button)\b[^<>]{0,600}>/gi,
+      (tag) => {
+        const named = new RegExp(
+          `(?:name|id|type|autocomplete)\\s*=\\s*["']?${FORM_NAMES}|type\\s*=\\s*["']?password`,
+          "i",
+        );
+        if (!named.test(tag)) return tag;
+        const cleaned = tag.replace(
+          /(\bvalue\s*=\s*)("[^"]*"|'[^']*'|[^\s>]+)/gi,
+          (_m, head: string) => `${head}"[redacted]"`,
+        );
+        if (cleaned !== tag) count += 1;
+        return cleaned;
+      },
+    );
+    const field = counting(
       new RegExp(
-        `(["']?\\b(?:${CREDENTIAL_NAMES})["']?\\s*[:=]\\s*)(?:(?:Bearer|Basic|Digest|Token)\\s+)?("[^"\\n]{1,512}"|'[^'\\n]{1,512}'|[^\\s"',;&}\\])]{6,512})`,
+        `(["']?(?:${CREDENTIAL_NAMES})["']?\\s*[:=]\\s*)(?:(?:Bearer|Basic|Digest|Token)\\s+)?("[^"\\n]{1,512}"|'[^'\\n]{1,512}'|${VALUE_PHRASE})`,
         "gi",
       ),
       (_m, head) => `${head}[redacted]`,
-    ),
-  ),
+    )(withTags);
+    return { text: field.text, count: count + field.count };
+  }),
   // 7. Every key and token shape the core redaction, the key patterns and the leak detectors know.
   rule("secret", (text) => {
-    const out = redactSecretShapes(text);
-    return { text: out, count: Math.max(0, marks(out) - marks(text)) };
+    let count = 0;
+    let t = text;
+    for (const [name, re] of PROVIDER_KEYS)
+      t = t.replace(new RegExp(re.source, re.flags), () => ((count += 1), `[secret:${name}]`));
+    const out = redactSecretShapes(t);
+    return { text: out, count: count + Math.max(0, marks(out) - marks(t)) };
   }),
   // 8. An IBAN, in either case: two letters, two digits and a run of letters and digits, 15 to 34 long, 10 digits or more.
   rule(
@@ -301,18 +458,20 @@ export const MAX_TAGS_PER_FIELD = 3;
 export const MAX_TAGS_TOTAL = 8;
 
 /**
- * A page's own structure: a doctype or comment, the document elements, and the elements that wrap the body of a
- * page or run code (main, article, section, nav, header, footer, aside, script, style, svg, iframe, template).
+ * A page's own structure and what runs code or reaches out: a doctype or comment; the document elements; the
+ * elements that wrap the body of a page, embed another document or run code; forms and password fields;
+ * `meta`, `base` and `link`; and an event-handler attribute (`onerror=`).
  */
 const PAGE_TAG =
-  /<\s*!\s*doctype\b|<!--|<\s*\/?\s*(?:html|head|body|main|article|section|nav|header|footer|aside|script|style|svg|iframe|template|noscript)(?![A-Za-z0-9])/i;
+  /<\s*!\s*doctype\b|<!--|<\s*\/?\s*(?:html|head|body|main|article|section|nav|header|footer|aside|script|style|svg|iframe|template|noscript|object|embed|frameset|frame|meta|base|link|form|applet)(?![A-Za-z0-9])|[\s"'/]on[a-z]{3,20}\s*=|type\s*=\s*["']?password/i;
 const TAG = /<[!/]?[A-Za-z!-][^<>]{0,300}>/g;
 /** A bracket written as an entity (with or without its semicolon), a percent escape or a script escape. */
 const ENCODED_LT = /&(?:lt|#0*60|#x0*3c);?|%3c|\\u003c|\\x3c|\\074/gi;
 const ENCODED_GT = /&(?:gt|#0*62|#x0*3e);?|%3e|\\u003e|\\x3e|\\076/gi;
-/** A run that could be Base64 or Base64url: decoded and read as text, so an encoded page is read as the page it is. */
-const BASE64_RUN = /[A-Za-z0-9+/_-]{12,}={0,2}/g;
-const MAX_BASE64_RUNS = 20;
+/** A run that could be Base64 or Base64url, long enough to hold a doctype. Every run is decoded and read. */
+const BASE64_RUN = /[A-Za-z0-9+/_-]{20,}={0,2}/g;
+/** An opening tag, a closing tag, a declaration or an instruction. */
+const TAG_OPENER = /<[A-Za-z!/?]/;
 
 export interface PageVerdict {
   reason: "whole-page" | "many-tags" | null;
@@ -321,18 +480,31 @@ export interface PageVerdict {
 
 const decodeBrackets = (text: string) => text.replace(ENCODED_LT, "<").replace(ENCODED_GT, ">");
 
-/** Whether `text` is shaped like a page: a page element, a page hidden in Base64, or more than a few tags. */
+/** Whether `bytes` read as text: mostly printable ASCII. Random bytes from a word that only looks like Base64 do not. */
+function readsAsText(bytes: string): boolean {
+  let printable = 0;
+  for (let i = 0; i < bytes.length; i++) {
+    const c = bytes.charCodeAt(i);
+    if ((c >= 0x20 && c <= 0x7e) || c === 0x09 || c === 0x0a || c === 0x0d) printable += 1;
+  }
+  return bytes.length > 0 && printable / bytes.length >= 0.85;
+}
+
+/**
+ * Whether `text` is shaped like a page: a page element, a page hidden in Base64 (every long run is decoded, and a
+ * decode that reads as text and holds a tag is a page), or more than a few tags.
+ */
 export function pageShape(text: string): PageVerdict {
   const t = decodeBrackets(text);
   const tags = t.match(TAG)?.length ?? 0;
   if (PAGE_TAG.test(t)) return { reason: "whole-page", tags };
-  let runs = 0;
   for (const m of t.matchAll(BASE64_RUN)) {
-    if ((runs += 1) > MAX_BASE64_RUNS) break;
     const decoded = Buffer.from(m[0].replace(/-/g, "+").replace(/_/g, "/"), "base64").toString(
       "latin1",
     );
-    if (PAGE_TAG.test(decodeBrackets(decoded))) return { reason: "whole-page", tags };
+    if (!readsAsText(decoded)) continue;
+    const readable = decodeBrackets(decoded);
+    if (PAGE_TAG.test(readable) || TAG_OPENER.test(readable)) return { reason: "whole-page", tags };
   }
   return { reason: tags > MAX_TAGS_PER_FIELD ? "many-tags" : null, tags };
 }

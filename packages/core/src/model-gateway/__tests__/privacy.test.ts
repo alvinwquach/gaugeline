@@ -300,14 +300,14 @@ describe("the allowlist of fields", () => {
     expect(refusal(input({ findings: [finding(over)] })).reason).toBe("bad-field");
   });
 
-  it("refuses more than 10 findings and more than 20 ids", () => {
+  it("refuses more than 10 findings and more than 10 ids", () => {
     expect(
       sent(input({ findings: manyFindings(MODEL_INPUT_LIMITS.maxFindings) })).record.findings,
     ).toBe(10);
     expect(refusal(input({ findings: manyFindings(11) })).reason).toBe("too-many-findings");
     const ids = (n: number) => Array.from({ length: n }, (_, k) => `d-${k}`);
-    expect(sent(input({ ids: ids(20) })).record.ids).toBe(20);
-    expect(refusal(input({ ids: ids(21) })).reason).toBe("too-many-findings");
+    expect(sent(input({ ids: ids(10) })).record.ids).toBe(10);
+    expect(refusal(input({ ids: ids(11) })).reason).toBe("too-many-findings");
   });
 
   it("keeps the findings' order and does not merge or drop any", () => {
@@ -519,6 +519,7 @@ describe("redaction, one kind at a time", () => {
 
   it("applies the rules in a fixed order, hidden characters first, and phone last", () => {
     expect([...REDACTION_KINDS]).toEqual([
+      "encoding",
       "hidden-characters",
       "private-key",
       "url-credentials",
