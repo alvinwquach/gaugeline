@@ -210,6 +210,35 @@ Read 1 file in ./marlowe-street-dental. No request was made and no code was run.
 2 to look at, none to fix first.
 ```
 
+## A read cached for a time and by a tag
+
+`revalidate-time-and-tag-mixed` (fix soon) finds one read that sets both a `revalidate` time and
+`tags` (a fetch's `next` option, or the options of `unstable_cache`), or a file that sets
+`export const revalidate` while its own reads use tags. With tags, the content changes when an editor
+publishes and your webhook clears the tag. With a time as well, the same read also refreshes on a
+timer, so the page can change with no publish, and a missed webhook is hidden until the timer runs
+out. Both are documented Next.js options for different jobs; pick one per read.
+
+`revalidate: false` and `revalidate: 0` are not timers and are not reported. A `revalidate` that is not
+a number or `false` is reported as could not check.
+
+Blue Heron Pop-Up is an invented pop-up bar that lists its next dates from Sanity.
+
+<!-- source-fixture: revalidate-time-and-tag-mixed/fail -->
+
+```sh title=Terminal untested="The docs runner points every example at a fixture website, and this command reads a folder. packages/cli/src/__tests__/source-webhook-docs.test.ts runs the same command on the same invented folder (packages/fixtures/source/revalidate-time-and-tag-mixed/fail) and compares the Output block with what it prints."
+$ npx gaugeline source ./blue-heron-pop-up
+```
+
+```sh title=Output
+Read 3 files in ./blue-heron-pop-up. No request was made and no code was run.
+
+! A read is cached for a time and by a tag
+    lib/events.ts:8: this read sets a revalidate time and tags, so it changes on a timer and on publish.
+
+1 to look at, none to fix first.
+```
+
 ## What could not be checked
 
 A code file that was too large to read, or could not be read, makes both checks report could not

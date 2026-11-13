@@ -32,6 +32,7 @@ describe("docs/guides/webhook-and-cache-source.md", () => {
       "webhook-timestamp-unbounded",
       "webhook-body-read-unsafely",
       "webhook-logs-private-values",
+      "revalidate-time-and-tag-mixed",
     ]);
   });
 
