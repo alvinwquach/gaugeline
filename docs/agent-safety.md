@@ -43,7 +43,8 @@ and not built.
 - **Today (row AG-08).** Read the list of drafts waiting for you, and a site's run history, read-only, with
   a registered agent's token that has the `read:pending` or `read:runs` scope ([the API](./hosted/api.md)).
 - **Planned (row AG-19).** Word a draft with a model. Grouping, ranking and checking stay plain code; a
-  model only writes the sentences, and tests use a recorded fake, so no key is needed to run them.
+  model only writes the sentences, and tests use a recorded fake, so no key is needed to run them. The
+  interface and the fake are built ([the model gateway](./model-gateway.md)); nothing reaches a model yet.
 
 ## What an agent cannot do
 
