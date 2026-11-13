@@ -7,6 +7,7 @@ import { aiCrawlersBlocked } from "./ai-crawlers-blocked.js";
 import { aiCrawlersDirectives } from "./ai-crawlers-directives.js";
 import { aiCrawlersIntent } from "./ai-crawlers-intent.js";
 import { aiEndpointOpen } from "./ai-endpoint-open.js";
+import { aiInputNoDisclosure } from "./ai-input-no-disclosure.js";
 import { aiKeyInJs } from "./ai-key-in-js.js";
 import { aiWidgetInventory } from "./ai-widget-inventory.js";
 import { angularAnalogEndpointsListed } from "./angular-analog-endpoints-listed.js";
@@ -267,6 +268,7 @@ export const PAGE_CHECKS = [
   aiCrawlersDirectives,
   aiCrawlersIntent,
   aiEndpointOpen,
+  aiInputNoDisclosure,
   aiKeyInJs,
   aiWidgetInventory,
   angularAnalogEndpointsListed,
