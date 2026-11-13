@@ -25,6 +25,8 @@ if (!HAS_DATABASE && process.env.GAUGELINE_REQUIRE_TEST_DATABASE === "1") {
 export type Sql = postgres.Sql;
 
 const STAND_IN = fileURLToPath(new URL("../stand-in/supabase-auth.sql", import.meta.url));
+/** Supabase Vault does not exist in plain Postgres: a test-only copy of its names (never on Supabase). */
+const VAULT_STAND_IN = fileURLToPath(new URL("../stand-in/supabase-vault.sql", import.meta.url));
 
 export interface TestDatabase {
   /** A superuser connection to the fresh database (the migration owner, like "postgres" on Supabase). */
@@ -64,9 +66,10 @@ export async function freshDatabase(options: { to?: number } = {}): Promise<Test
 
 export async function applyStandIn(sql: Sql): Promise<void> {
   await sql.unsafe(readFileSync(STAND_IN, "utf8")).simple();
+  await sql.unsafe(readFileSync(VAULT_STAND_IN, "utf8")).simple();
 }
 
-export type DbRole = "anon" | "authenticated" | "service_role";
+export type DbRole = "anon" | "authenticated" | "service_role" | "gaugeline_agent";
 
 class Rollback extends Error {}
 

@@ -95,3 +95,14 @@ export async function agentLoginsWithOtherRoles(sql: Query): Promise<string[]> {
     order by 1`;
   return rows.map((r) => r.rolname as string);
 }
+
+/**
+ * Functions in schema `private` that `role` may execute, by name. A function there is server-only unless a
+ * migration grants it on purpose, and the tests list exactly which ones each role may call.
+ */
+export async function privateFunctionsExecutableBy(sql: Query, role: string): Promise<string[]> {
+  const rows = await sql`select distinct p.proname from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'private' and has_function_privilege(${role}, p.oid, 'EXECUTE') order by 1`;
+  return rows.map((r) => r.proname as string);
+}
