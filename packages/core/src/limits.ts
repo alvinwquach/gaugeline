@@ -56,6 +56,8 @@ export const LIMITS = Object.freeze({
   /** Addresses a Nuxt check asks once each: the page's own payload file, a preview query, the dev tools route. */
   nuxtAddresses: 6,
   structuredDataAddresses: 12,
+  /** Menu and footer destinations on the checked page that the navigation checks ask: header first, each once. */
+  navLinks: 40,
   concurrency: 5,
   redirectHops: 10,
   bodyBytes: 5 * 1024 * 1024,
