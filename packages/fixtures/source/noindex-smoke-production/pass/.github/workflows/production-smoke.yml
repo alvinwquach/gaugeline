@@ -1,0 +1,11 @@
+name: Production smoke test
+on:
+  deployment_status:
+
+jobs:
+  indexable:
+    if: github.event.deployment_status.state == 'success' && github.event.deployment_status.environment == 'Production'
+    runs-on: ubuntu-latest
+    steps:
+      - name: The live site does not say noindex
+        run: "! curl -sI https://harbourbar.example/ | grep -i noindex"

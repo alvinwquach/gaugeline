@@ -1,0 +1,11 @@
+name: Preview smoke test
+on:
+  deployment_status:
+
+jobs:
+  smoke:
+    if: github.event.deployment_status.state == 'success' && github.event.deployment_status.environment == 'Preview'
+    runs-on: ubuntu-latest
+    steps:
+      - name: The preview says noindex
+        run: curl -sI "${{ github.event.deployment_status.target_url }}" | grep -i "x-robots-tag:.*noindex"
