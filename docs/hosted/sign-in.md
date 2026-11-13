@@ -160,8 +160,9 @@ pnpm --filter @gaugeline/hosted dev
 | ---------------------------- | ------------------------------------------------------------------------------- |
 | `GAUGELINE_WEB_DATABASE_URL` | the app's own login (a member of `authenticated` only), not the owner's address |
 | `GAUGELINE_APP_URL`          | the public address; `https://` makes cookies `Secure`                           |
-| `GAUGELINE_AUTH`             | `stand-in`. Anything else is "not configured" and every page answers 503        |
+| `GAUGELINE_AUTH`             | `supabase` or `stand-in`. Anything else is "not configured": every page is 503  |
 | `GAUGELINE_STANDIN_*`        | the stand-in's signing secret and its list of addresses and user ids            |
+| `SUPABASE_*`                 | Supabase Auth's settings; see "Signing in with Supabase Auth" below             |
 
 The stand-in has no mail server: the link is printed in the terminal that runs it. It runs only when
 `NODE_ENV` is exactly `development` or `test` (unset, `Production`, `staging` and every other value are
@@ -171,33 +172,88 @@ least 16 different ones, and the development server (`pnpm --filter @gaugeline/h
 (`pnpm exec vitest run apps/hosted`) need a Postgres server you can create databases on; see
 [data model and tenancy](/hosted/data-model).
 
-## The stand-in and what replaces it
+## The stand-in and Supabase Auth
 
-Sign-in sits behind an interface, `AuthProvider` (`requestLink`, `exchangeLink`, `verify`). The stand-in
-signs an HS256 token with the claims Supabase Auth puts in an access token: `sub`, `aud`
+Sign-in sits behind an interface, `AuthProvider` (`requestLink`, `exchangeLink`, `verify`, `revoke`). The
+stand-in signs an HS256 token with the claims Supabase Auth puts in an access token: `sub`, `aud`
 (`authenticated`), `role` (`authenticated`), `email`, `session_id`, `aal`, `is_anonymous`, `iat` and
-`exp`. That is what the policies read through `auth.uid()`, so they run here exactly as they will. No
-Supabase account or project exists; nothing here reaches one.
+`exp`. That is what the policies read through `auth.uid()`, so they run the same with either provider.
 
-What the owner creates when the real project is made (none of this exists yet; the names are from
-Supabase's auth source, and the vendor's own pages were not reachable when this was written):
+## Signing in with Supabase Auth
 
-1. A Supabase project, and its Postgres.
-2. Auth: the email provider on, passwords off, "confirm email" on, sign-ups off (people are invited into
-   an organisation), a 15-minute link expiry, and the app's address as the site URL and redirect URL.
-3. Mail: custom SMTP (Resend) so links come from the product's own domain.
-4. The token's signing key, and the same key (or its public key set) given to the app so `verify` can
-   check tokens. The app verifies the token itself; it does not ask Supabase on each request.
+With `GAUGELINE_AUTH=supabase` the same pages talk to Supabase Auth instead. Nothing a person sees
+changes: the same form, the same "Check your email" answer, the same "Sign in" button behind the link.
+
+| Variable              | What it is                                                                              |
+| --------------------- | --------------------------------------------------------------------------------------- |
+| `SUPABASE_URL`        | the project's address, `https://` and nothing after the host                            |
+| `SUPABASE_ANON_KEY`   | the anon (publishable) key. A service-role or secret key is refused at start-up         |
+| `SUPABASE_JWT_SECRET` | the project's JWT secret, if it signs tokens with a shared secret (HS256)               |
+| `SUPABASE_JWKS`       | the project's public signing keys (ES256 or RS256), the JSON its key-set address serves |
+
+Set `SUPABASE_JWT_SECRET`, `SUPABASE_JWKS` or both. The server refuses to start when a value is missing or
+weak: an address that is not `https` (plain `http` only to `127.0.0.1` in development or test, for the
+local Supabase stack), has a user, path or query; no anon key; a key that is really a service-role or
+secret key; a JWT secret under 32 characters; a key set holding a private key. The error names the
+variable, never its value. Sign-in never reads `SUPABASE_SERVICE_ROLE_KEY` (a test checks it).
+
+What each step does:
+
+| Step            | Request to Supabase Auth                                    | Notes                                                                                    |
+| --------------- | ----------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Ask for a link  | `POST /auth/v1/otp` with `{email, create_user: false}`      | Only people already invited get a link. The page answers after the same fixed time       |
+| Open the link   | nothing (the page shows the "Sign in" button)               | A mail scanner opening the link does not use it up                                       |
+| Press "Sign in" | `POST /auth/v1/verify` with `{type: "email", token_hash}`   | Any refusal says the link is no longer valid                                             |
+| Every page      | none: the token is checked here                             | HS256 with the secret, or ES256/RS256 with the key of the token's `kid` only             |
+| Sign out        | `POST /auth/v1/logout?scope=local` with the session's token | The session is also put on the local revocation list, so it ends here even if that fails |
+
+Every request carries the anon key as `apikey`, follows no redirect, gives up after 10 seconds and reads at
+most 64 KB of answer. What Supabase answers is never shown in a page or written to a log: a failure logs
+one line with the step and the status, such as `[auth] supabase otp failed: 422`.
+
+A token is accepted only if its issuer is exactly `SUPABASE_URL` + `/auth/v1`, its audience and role are
+`authenticated` (never `anon` or `service_role`), it has a `session_id`, is not an anonymous user's, and
+passes the same time and shape rules as the stand-in's. The session lasts as long as Supabase's access
+token (an hour by default) and then asks for a new link.
+
+Supabase's magic link template has to send people to this app's verify page with the link's token hash.
+In Auth, Email Templates, Magic Link, the link is:
+
+```html
+<a href="{{ .SiteURL }}/sign-in/verify?token={{ .TokenHash }}">Sign in</a>
+```
+
+The adapter's tests run against a recording stand-in for Supabase Auth and check each request against
+Supabase's published API:
+
+```text
+$ pnpm exec vitest run apps/hosted/app/__tests__/supabase-auth.test.ts
+
+ Test Files  1 passed (1)
+      Tests  27 passed (27)
+```
+
+What the owner creates (none of this exists yet; nothing in this repository creates it):
+
+1. A Supabase project on a paid plan, and its Postgres.
+2. Auth: the email provider on with magic links, sign-ups off (people are invited into an organisation), a
+   15-minute link expiry, the Magic Link template above, and the app's address as the Site URL with
+   `/sign-in/verify` on the redirect allow-list.
+3. Mail: custom SMTP so links come from the product's own domain (a separate task).
+4. `SUPABASE_URL`, `SUPABASE_ANON_KEY` and `SUPABASE_JWKS` (or `SUPABASE_JWT_SECRET`) as server secrets
+   of the app, and `GAUGELINE_AUTH=supabase`.
 5. The app's login role (NOINHERIT, a member of `authenticated`), and its address as
    `GAUGELINE_WEB_DATABASE_URL`.
-6. A Supabase-backed `AuthProvider`, and `GAUGELINE_AUTH` set to it.
 
 ## Not here yet
 
-- Refresh tokens: the stand-in's session lasts 8 hours and then asks for a new link.
-- Durable sign-out and links: the stand-in keeps the revocation list and the unused links in memory, so they
-  are lost on a restart and not shared by two server processes. The real provider keeps its own sessions.
-- Rate limits on asking for a link (the real provider has its own).
+- Refresh tokens: a session lasts as long as its access token (8 hours with the stand-in, Supabase's
+  setting with Supabase) and then asks for a new link.
+- Durable sign-out: the local revocation list is in memory, so it is lost on a restart and not shared by
+  two server processes. With Supabase, the session is also ended at Supabase; with the stand-in, its
+  unused links are in memory too.
+- Rate limits on asking for a link beyond Supabase's own.
+- Sign-in with Google or GitHub, and two-factor sign-in.
 - Creating an organisation and inviting people (agencies, X66).
 - Adding a site and verifying that you own it, and the nightly time. The hosted service cannot check a
   site until ownership is verified, so adding sites has its own change.
