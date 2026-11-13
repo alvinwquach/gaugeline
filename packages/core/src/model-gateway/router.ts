@@ -167,20 +167,25 @@ export function createRouter(
       `deadlineMs must be a whole number from ${MIN_DEADLINE_MS} to ${MAX_DEADLINE_MS}.`,
     );
   const now = options.now ?? (() => performance.now());
-  /** The call's answer, or OUT_OF_TIME when `ms` pass first. The timer is always cleared. */
-  async function within<T>(call: Promise<T>, ms: number): Promise<T> {
-    let timer: ReturnType<typeof setTimeout> | undefined;
+  /** The call's answer, or OUT_OF_TIME when the route's signal aborts first. The listener is always removed. */
+  async function within<T>(call: () => Promise<T>, signal: AbortSignal): Promise<T> {
+    let onAbort: (() => void) | undefined;
+    const pending = new Promise<T>((resolve) => resolve(call()));
     try {
       return await Promise.race([
-        call,
+        pending,
         new Promise<never>((_, reject) => {
-          timer = setTimeout(() => reject(OUT_OF_TIME), ms);
+          if (signal.aborted) reject(OUT_OF_TIME);
+          else {
+            onAbort = () => reject(OUT_OF_TIME);
+            signal.addEventListener("abort", onAbort, { once: true });
+          }
         }),
       ]);
     } finally {
-      clearTimeout(timer);
+      if (onAbort) signal.removeEventListener("abort", onAbort);
       // A call that lost the race may still reject later: nothing is left waiting on it.
-      call.catch(() => undefined);
+      pending.catch(() => undefined);
     }
   }
 
@@ -194,7 +199,11 @@ export function createRouter(
     }
   }
 
-  async function route<O>(request: RouteRequest, check: AnswerCheck<O>): Promise<RouteOutcome<O>> {
+  async function run<O>(
+    request: RouteRequest,
+    check: AnswerCheck<O>,
+    ctl: AbortController,
+  ): Promise<RouteOutcome<O>> {
     const attempts: RouteAttempt[] = [];
     let cost = 0;
     const unsure = (
@@ -235,14 +244,16 @@ export function createRouter(
       let answer: ModelAnswer;
       try {
         answer = await within(
-          gateway.complete({
-            tier,
-            agentId: request.agentId,
-            callId,
-            prompt,
-            timeoutMs: Math.max(1, Math.floor(left)),
-          }),
-          left,
+          () =>
+            gateway.complete({
+              tier,
+              agentId: request.agentId,
+              callId,
+              prompt,
+              timeoutMs: Math.max(1, Math.floor(left)),
+              signal: ctl.signal,
+            }),
+          ctl.signal,
         );
       } catch (err) {
         if (err === OUT_OF_TIME) {
@@ -332,6 +343,18 @@ export function createRouter(
       callId = `${request.callId}:escalated`;
     }
     return unsure("calls", "The most calls this router may make for one task were used.");
+  }
+
+  /** One task. The route owns an abort signal for all of its calls: the deadline aborts it, and a call that is aborted sends nothing. */
+  async function route<O>(request: RouteRequest, check: AnswerCheck<O>): Promise<RouteOutcome<O>> {
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), deadlineMs);
+    try {
+      return await run(request, check, ctl);
+    } finally {
+      clearTimeout(timer);
+      ctl.abort(); // anything still running for this task is told to stop
+    }
   }
   return { route };
 }

@@ -322,8 +322,7 @@ model's choice, and the same inputs always take the same path.
 `createRouter` refuses to build unless three things hold (each is a `bad-config` error):
 
 - **Both gateways were made by `createGateway`.** A router takes only those: an object built by hand, or a copy,
-  wrapper or proxy of a real one, could say it has a budget and spend none.
-- **They share the same budget object.** Hand the one `RunBudget` from the [budget ledger](./model-budgets.md) to
+  wrapper or proxy of a real one, could say it has a budget and spend none. - **They share the same budget object.** Hand the one `RunBudget` from the [budget ledger](./model-budgets.md) to
   both as `budget`. A fallback with a budget of its own, with none while the first has one, or with a wrapper that
   only looks the same, is refused, because the second provider's calls would not be counted against the run's
   ceilings. A gateway shows the budget it uses as `gateway.budget`.
@@ -346,11 +345,14 @@ At most **three calls** are made for one task: the first, one fallback and one e
 makes a fourth, and a test runs every script of up to three steps for each provider to show it (the worst case is an
 escalation that meets an outage, or an outage whose fallback then fails the check). `maxCalls` can lower the cap,
 never raise it. The time all the calls of a task take together has a **deadline**, two minutes by default
-(`deadlineMs`, 1000 to 600000). It holds inside a call as well as between calls: each call is given the time that is
-left (the gateway, and so the sender, uses the shorter of that and its own limit, 60 seconds for the sender), the
-router stops waiting at the deadline whatever the gateway does, and an answer that arrives after it is not used
-(its cost is kept). A task therefore never runs past its deadline, and a clock that gives nothing usable, or runs
-backwards, counts as no time left. The check is plain code you give it; for an agent with an
+(`deadlineMs`, 1000 to 600000). It holds inside a call as well as between calls. The router owns one abort signal for the whole task and
+aborts it at the deadline. Each call is given the time that is left, and that time covers the budget check as well
+as the provider: the gateway starts its clock before it asks the budget, stops waiting for a check that outlasts it,
+and **never calls the adapter once the call has been aborted**, whatever order things finish in (it looks again
+after every wait). The sender uses the shorter of that time and its own 60 seconds. The router also stops waiting at
+the deadline whatever the gateway does, and an answer that arrives after it is not used (its cost is kept). A task
+therefore never runs past its deadline, nothing is sent after the router has given up, and a clock that gives
+nothing usable, or runs backwards, counts as no time left. The check is plain code you give it; for an agent with an
 [eval set](./agent-evals.md), `agentAnswerCheck` runs the same schema, cited-id, invented-number and write-call
 assertions on the live answer. What comes out is `advisory` (an answer that passed the check, for a person to read)
 or `unsure`, with the reason: `failed-checks`, `outage`, `budget`, `refused`, `deadline` (the task's time was used)

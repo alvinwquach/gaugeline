@@ -6,7 +6,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { FAILURE_CLASSES, GATEWAY_ERROR_CODES, ModelGatewayError } from "../errors.js";
 import { createGateway } from "../gateway.js";
-import type { ModelAdapter } from "../types.js";
+import type { BudgetHooks, ModelAdapter } from "../types.js";
 import { CONFIG, KEY_NAME, PLAIN_KEY, REQUEST } from "./helpers.js";
 
 describe("the failure class of an error", () => {
@@ -160,4 +160,136 @@ describe("a request's own time limit", () => {
       expect(e).toMatchObject({ code: "bad-request" });
     },
   );
+});
+
+describe("the call's time covers the budget check, and an abort stops it before anything is sent", () => {
+  afterEach(() => vi.useRealTimers());
+  const adapterThatCounts = () => {
+    let calls = 0;
+    const adapter: ModelAdapter = {
+      provider: "test",
+      needsKey: true,
+      async complete() {
+        calls += 1;
+        return {
+          text: "ok",
+          usage: { inputTokens: 1, outputTokens: 1, costMicros: 1, latencyMs: 1 },
+        };
+      },
+    };
+    return { adapter, calls: () => calls };
+  };
+  const gatewayWith = (adapter: ModelAdapter, budget?: BudgetHooks, timeoutMs = 30_000) =>
+    createGateway({
+      config: { ...CONFIG, timeoutMs },
+      adapters: [adapter],
+      env: () => ({ [KEY_NAME]: PLAIN_KEY }),
+      ...(budget ? { budget } : {}),
+    });
+
+  it("a budget check that outlasts the limit ends the call at the limit, and the adapter is never called, even late", async () => {
+    vi.useFakeTimers();
+    const slow: BudgetHooks = {
+      before: () => new Promise((res) => setTimeout(() => res({ allowed: true }), 1_500)),
+      after: () => undefined,
+    };
+    const { adapter, calls } = adapterThatCounts();
+    const done = gatewayWith(adapter, slow)
+      .complete({ ...REQUEST, timeoutMs: 1_000 })
+      .catch((e: ModelGatewayError) => e);
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(await done).toMatchObject({ code: "timeout", failure: "outage" });
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(calls()).toBe(0);
+  });
+
+  it("the config's own limit covers the budget check too", async () => {
+    vi.useFakeTimers();
+    const slow: BudgetHooks = {
+      before: () => new Promise((res) => setTimeout(() => res({ allowed: true }), 5_000)),
+      after: () => undefined,
+    };
+    const { adapter, calls } = adapterThatCounts();
+    const done = gatewayWith(adapter, slow, 1_000)
+      .complete(REQUEST)
+      .catch((e: ModelGatewayError) => e);
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(await done).toMatchObject({ code: "timeout" });
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(calls()).toBe(0);
+  });
+
+  it("the budget check is told the call's limit", async () => {
+    let seen: number | undefined;
+    const { adapter } = adapterThatCounts();
+    await gatewayWith(adapter, {
+      before: (e) => ((seen = e.timeoutMs), { allowed: true }),
+      after: () => undefined,
+    }).complete({ ...REQUEST, timeoutMs: 4_000 });
+    expect(seen).toBe(4_000);
+  });
+
+  it("a signal that is already aborted sends nothing", async () => {
+    const { adapter, calls } = adapterThatCounts();
+    const ctl = new AbortController();
+    ctl.abort();
+    const e = await gatewayWith(adapter)
+      .complete({ ...REQUEST, signal: ctl.signal })
+      .catch((x: ModelGatewayError) => x);
+    expect(e).toMatchObject({ code: "timeout", failure: "outage" });
+    expect(calls()).toBe(0);
+  });
+
+  it("a signal aborted while the budget check runs, and then allowed, still sends nothing (checked after the await)", async () => {
+    const { adapter, calls } = adapterThatCounts();
+    const ctl = new AbortController();
+    const hook: BudgetHooks = {
+      before: () => (ctl.abort(), { allowed: true }),
+      after: () => undefined,
+    };
+    const e = await gatewayWith(adapter, hook)
+      .complete({ ...REQUEST, signal: ctl.signal })
+      .catch((x: ModelGatewayError) => x);
+    expect(e).toMatchObject({ code: "timeout" });
+    expect(calls()).toBe(0);
+  });
+
+  it("a signal aborted during the adapter call stops the adapter's own signal and ends the call", async () => {
+    let theirs: AbortSignal | undefined;
+    const adapter: ModelAdapter = {
+      provider: "test",
+      needsKey: true,
+      complete: ({ signal }) => ((theirs = signal), new Promise(() => undefined)),
+    };
+    const ctl = new AbortController();
+    const done = gatewayWith(adapter)
+      .complete({ ...REQUEST, signal: ctl.signal })
+      .catch((x: ModelGatewayError) => x);
+    await Promise.resolve();
+    await new Promise((r) => setTimeout(r, 5));
+    ctl.abort();
+    expect(await done).toMatchObject({ code: "timeout" });
+    expect(theirs?.aborted).toBe(true);
+  });
+
+  it("refuses a signal that is not one", async () => {
+    const { adapter, calls } = adapterThatCounts();
+    for (const signal of ["x", {}, 5, { aborted: false }] as never[]) {
+      const e = await gatewayWith(adapter)
+        .complete({ ...REQUEST, signal })
+        .catch((x: ModelGatewayError) => x);
+      expect(e).toMatchObject({ code: "bad-request" });
+    }
+    expect(calls()).toBe(0);
+  });
+
+  it("leaves no timer and no listener behind after a call", async () => {
+    vi.useFakeTimers();
+    const { adapter } = adapterThatCounts();
+    const ctl = new AbortController();
+    await gatewayWith(adapter).complete({ ...REQUEST, signal: ctl.signal });
+    expect(vi.getTimerCount()).toBe(0);
+    ctl.abort(); // nothing is listening any more: no unhandled rejection
+    await vi.advanceTimersByTimeAsync(1);
+  });
 });

@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { triage } from "../../evals/example/triage.js";
 import type { EvalRecording } from "../../evals/types.js";
 import { ModelGatewayError, type FailureClass, type GatewayErrorCode } from "../errors.js";
+import * as gatewayModule from "../gateway.js";
 import { NO_BUDGET, createGateway } from "../gateway.js";
 import { recordGateway } from "../recorded.js";
 import { createBudgetLedger } from "../budget.js";
@@ -799,7 +800,7 @@ describe("the most calls and the most time one task may take", () => {
     /** A clock the scripted providers move: call number i of a provider takes ms[i] milliseconds. */
     const world = () => {
       const t = { now: 1_000_000 };
-      const make = (name: string, ms: number[], steps: Step[]) => {
+      const make = (name: string, ms: number[], steps: Step[], budget?: BudgetHooks) => {
         let i = 0;
         const calls: string[] = [];
         const adapter: ModelAdapter = {
@@ -817,6 +818,7 @@ describe("the most calls and the most time one task may take", () => {
           config: { provider: name, tiers: { fast: `${name}-fast`, strong: `${name}-strong` } },
           adapters: [adapter],
           env: () => ({}),
+          ...(budget ? { budget } : {}),
         });
         return { gateway, calls };
       };
@@ -1035,50 +1037,95 @@ describe("the most calls and the most time one task may take", () => {
         expect(at).toBe(2_000);
       });
 
-      it("ends a gateway that never settles as unsure at the deadline: the router does not wait for it", async () => {
+      it("ends a gateway that never settles as unsure at the deadline: the router's own race, with nothing else to rely on", async () => {
         vi.useFakeTimers({ now: 5_000_000 });
-        const real = provider("a", [rec(GOOD)]).gateway();
-        // Test only: a gateway whose own limit does not work, to show the router does not rely on it.
-        Object.assign(real, { complete: () => new Promise<never>(() => undefined) });
+        // Test only: a gateway that ignores its time limit and its signal, let through the made-by-createGateway rule.
+        const never = {
+          provider: "a",
+          budget: NO_BUDGET,
+          complete: () => new Promise<never>(() => undefined),
+        };
+        vi.spyOn(gatewayModule, "isMadeGateway").mockReturnValue(true);
         const t0 = Date.now();
         let at = -1;
-        const done = createRouter({ primary: real }, { deadlineMs: 5_000, now: () => Date.now() })
+        const done = createRouter({ primary: never }, { deadlineMs: 5_000, now: () => Date.now() })
           .route(REQ, check)
           .then((r) => ((at = Date.now() - t0), r));
-        await vi.advanceTimersByTimeAsync(5_000);
+        await vi.advanceTimersByTimeAsync(4_999);
+        expect(at).toBe(-1);
+        await vi.advanceTimersByTimeAsync(1);
         expect(await done).toMatchObject({ kind: "unsure", reason: "deadline" });
         expect(at).toBe(5_000);
+        expect(vi.getTimerCount()).toBe(0);
       });
 
-      it("passes the time left to the gateway, so the sender's own limit is the shorter of the two", async () => {
-        const w = world();
-        const spy = createGateway({
-          config: { provider: "s", tiers: { fast: "s-fast", strong: "s-strong" } },
-          adapters: [
-            {
-              provider: "s",
-              needsKey: false,
-              async complete() {
-                w.t.now += 10_000;
-                return BAD;
-              },
-            },
-          ],
+      it("a budget check that takes longer than the deadline never lets the adapter be called (1.5 s hook, 1 s deadline)", async () => {
+        vi.useFakeTimers({ now: 5_000_000 });
+        const slow: BudgetHooks = {
+          before: () => new Promise((res) => setTimeout(() => res({ allowed: true }), 1_500)),
+          after: () => undefined,
+        };
+        const a = provider("a", [rec(GOOD)]);
+        const t0 = Date.now();
+        let at = -1;
+        const done = createRouter(
+          { primary: a.gateway(slow) },
+          { deadlineMs: 1_000, now: () => Date.now() },
+        )
+          .route(REQ, check)
+          .then((r) => ((at = Date.now() - t0), r));
+        await vi.advanceTimersByTimeAsync(1_000);
+        expect(await done).toMatchObject({ kind: "unsure", reason: "deadline" });
+        expect(at).toBe(1_000);
+        await vi.advanceTimersByTimeAsync(5_000);
+        expect(a.calls).toHaveLength(0); // the adapter was never called, not even late
+      });
+
+      it("hands its signal to the call: at the deadline the adapter's own signal is aborted, even when the call's own limit is later", async () => {
+        vi.useFakeTimers({ now: 5_000_000 });
+        // The clock the router is given stands still, so each call's own limit is the whole deadline, and the
+        // router's signal (which counts from the start of the task) is what stops the second call at 5 seconds.
+        const signals: AbortSignal[] = [];
+        let i = 0;
+        const adapter: ModelAdapter = {
+          provider: "a",
+          needsKey: false,
+          complete: ({ signal }) => {
+            signals.push(signal);
+            if (i++ === 0) return new Promise((res) => setTimeout(() => res(BAD), 2_000));
+            return new Promise(() => undefined);
+          },
+        };
+        const g = createGateway({
+          config: { provider: "a", tiers: { fast: "a-fast", strong: "a-strong" } },
+          adapters: [adapter],
           env: () => ({}),
         });
-        const limits: number[] = [];
-        const inner = spy.complete;
-        Object.assign(spy, {
-          complete: (req: Parameters<typeof inner>[0]) => {
-            limits.push(req.timeoutMs ?? -1);
-            return inner(req);
-          },
-        });
-        await createRouter({ primary: spy }, { deadlineMs: 60_000, now: () => w.t.now }).route(
+        const done = createRouter({ primary: g }, { deadlineMs: 5_000, now: () => 0 }).route(
           REQ,
           check,
         );
-        expect(limits).toEqual([60_000, 50_000]);
+        await vi.advanceTimersByTimeAsync(4_999);
+        expect(signals).toHaveLength(2);
+        expect(signals[1]!.aborted).toBe(false);
+        await vi.advanceTimersByTimeAsync(1);
+        expect(signals[1]!.aborted).toBe(true);
+        expect(await done).toMatchObject({ kind: "unsure", reason: "deadline" });
+      });
+
+      it("the budget check is told the time left, and its time counts against it", async () => {
+        const w = world();
+        const seen: Array<number | undefined> = [];
+        const spy: BudgetHooks = {
+          before: (e) => (seen.push(e.timeoutMs), { allowed: true }),
+          after: () => undefined,
+        };
+        const a = w.make("a", [10_000, 5_000], [BAD, rec(GOOD)], spy);
+        await createRouter(
+          { primary: a.gateway },
+          { deadlineMs: 25_000, now: () => w.t.now },
+        ).route(REQ, check);
+        expect(seen).toEqual([25_000, 15_000]);
       });
     });
 
