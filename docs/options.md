@@ -576,7 +576,7 @@ with a Formspree form: [gaugeline init](guides/init.md).
 `gaugeline changes --help` prints:
 
 ```text title=Output
-Usage: gaugeline changes <site> [--since <date|run-id>] [options]
+Usage: gaugeline changes <site> [--since <date|run-id>] [--before-after]
 
 For each finding that is new since the run before (or since a date or run id),
 show what changed on the page and what the records say changed it: a content
@@ -586,12 +586,16 @@ evidence, never a verdict. Reads the runs that --since last saves in
 .gaugeline/runs, and GETs the content system's history and the host's
 deployment list when gaugeline.changes.json names them. Read only; never
 guesses an author. For this command --since takes a date such as 2026-11-01
-or a run id such as r-20261101T100000Z.
+or a run id such as r-20261101T100000Z. With --before-after it instead prints
+the findings of two saved runs side by side (fixed, new, still there) and
+makes no request.
 
 Options:
       --json             Print the result as JSON on stdout, and nothing else
       --since <value>    Findings that appeared after this date (2026-11-01) or
                          run id (r-20261101T100000Z)
+      --before-after     Print two saved runs side by side: fixed, new and still
+                         there (--since names the before run)
       --quiet            Print only results and errors
       --verbose          Show each request, and technical detail when something
                          goes wrong
@@ -604,7 +608,8 @@ Exit codes: 0 ran, 2 could not run
 `gaugeline changes <site>` lists the findings that are new since the run before, or since a date or run id, and for each
 what changed on the page and what the content system's history and the host's deployments say about when. It reads the
 runs that `--since last` saves and, only when `gaugeline.changes.json` names them, makes `GET` requests to Sanity's history
-and to Vercel or Netlify. The label is evidence, never a verdict. An example from a pop-up bar:
+and to Vercel or Netlify. The label is evidence, never a verdict. With `--before-after` it instead prints the findings of
+two saved runs side by side (fixed, new, still there) and makes no request. An example from a pop-up bar:
 [What changed, and who changed it](guides/what-changed.md).
 
 ### The receipt command

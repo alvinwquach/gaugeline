@@ -241,6 +241,14 @@ export const FLAGS: readonly FlagDef[] = Object.freeze<FlagDef[]>([
     commands: ["check", "delivery", "changes"],
   },
   {
+    name: "before-after",
+    type: "boolean",
+    description:
+      "Print two saved runs side by side: fixed, new and still there (--since names the before run)",
+    since: "0.2.0",
+    commands: ["changes"],
+  },
+  {
     name: "coming-up",
     type: "boolean",
     description:

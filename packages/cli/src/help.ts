@@ -236,7 +236,7 @@ export const HELP: Record<string, string> = {
     footer: "Exit codes: 0 ran, 2 could not run",
   }),
   changes: renderHelp(FLAGS, "changes", {
-    usage: "gaugeline changes <site> [--since <date|run-id>] [options]",
+    usage: "gaugeline changes <site> [--since <date|run-id>] [--before-after]",
     summary: [
       "For each finding that is new since the run before (or since a date or run id),",
       "show what changed on the page and what the records say changed it: a content",
@@ -246,7 +246,9 @@ export const HELP: Record<string, string> = {
       ".gaugeline/runs, and GETs the content system's history and the host's",
       "deployment list when gaugeline.changes.json names them. Read only; never",
       "guesses an author. For this command --since takes a date such as 2026-11-01",
-      "or a run id such as r-20261101T100000Z.",
+      "or a run id such as r-20261101T100000Z. With --before-after it instead prints",
+      "the findings of two saved runs side by side (fixed, new, still there) and",
+      "makes no request.",
     ].join("\n"),
     footer: "Exit codes: 0 ran, 2 could not run",
   }),
