@@ -7,6 +7,7 @@ import { contractEntries as contentstack } from "./contentstack.contract.js";
 import { contractEntries as craft } from "./craft.contract.js";
 import { contractEntries as datocms } from "./datocms.contract.js";
 import { contractEntries as directus } from "./directus.contract.js";
+import { contractEntries as drupal } from "./drupal.contract.js";
 import { contractEntries as framer } from "./framer.contract.js";
 import { contractEntries as genericApi } from "./generic-api.contract.js";
 import { contractEntries as gitContent } from "./git-content.contract.js";
@@ -36,6 +37,7 @@ export const CONTRACT_ENTRIES: readonly ContractEntry[] = [
   ...craft,
   ...datocms,
   ...directus,
+  ...drupal,
   ...framer,
   ...genericApi,
   ...gitContent,

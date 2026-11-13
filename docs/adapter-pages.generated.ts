@@ -20,6 +20,7 @@ export const ADAPTER_PAGES: { slug: string; title: string }[] = [
   { slug: "integrations/craft", title: "Craft CMS: content checks for sites built on Craft CMS" },
   { slug: "integrations/datocms", title: "DatoCMS: content checks for sites built on DatoCMS" },
   { slug: "integrations/directus", title: "Directus: content checks for sites built on Directus" },
+  { slug: "integrations/drupal", title: "Drupal: content checks for sites built on Drupal" },
   { slug: "integrations/framer", title: "Framer: content checks for sites built on Framer (beta)" },
   {
     slug: "integrations/generic-api",
