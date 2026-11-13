@@ -129,10 +129,10 @@ and has no default:
 - `memory`: a `Map` in the process, for tests and local development. It runs only when `NODE_ENV` is
   exactly `development` or `test`; unset, `staging`, `production` or anything else is refused.
 
-**Required for X67 (not wired yet):** nothing calls `secretStoreFrom` today, because nothing reads a
-secret yet. The first row that does (X67, notifications) must call it once at the worker's start-up,
-next to the database check, so a missing or wrong `GAUGELINE_SECRET_STORE`, or a worker login without
-`gaugeline_worker`, stops the worker before its first job instead of failing a notification later.
+**Wired by X67:** the worker calls `secretStoreFrom` once at start-up (`notifyDepsFrom` in
+`apps/hosted/worker/notify.ts`), next to the database check, so a missing or wrong
+`GAUGELINE_SECRET_STORE`, or a vault store on a worker login without `gaugeline_worker`, stops the worker
+before its first job instead of failing a notification later.
 
 Every failure is a `SecretError` with a code (`invalid-org`, `invalid-name`, `invalid-kind`,
 `invalid-value`, `kind-mismatch`, `unavailable`) and a fixed message. A lost race that fails twice is

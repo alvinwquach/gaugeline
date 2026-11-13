@@ -197,4 +197,5 @@ export const UNLISTED: NavPage[] = [
   { slug: "hosted/last-night", title: "Hosted: what happened last night" },
   { slug: "hosted/agencies", title: "Hosted: agencies, client viewers and the weekly update" },
   { slug: "hosted/secrets", title: "Hosted: where secrets live" },
+  { slug: "hosted/notifications", title: "Hosted: findings in your Slack and Sentry" },
 ];

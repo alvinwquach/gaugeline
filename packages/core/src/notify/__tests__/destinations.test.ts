@@ -244,3 +244,64 @@ describe("sending: the address guard and retries", () => {
     expect(r).toMatchObject({ ok: true, attempts: 2 });
   });
 });
+
+describe("review probes", () => {
+  it.each([
+    ["cloud metadata", SLACK.replace("hooks.slack.com", "169.254.169.254")],
+    ["IPv6 loopback", SLACK.replace("hooks.slack.com", "[::1]")],
+    [
+      "the vendor's host in the path",
+      SLACK.replace("hooks.slack.com/services", "evil.test/hooks.slack.com/services"),
+    ],
+  ])("refuses a Slack address that is %s", (_, url) => {
+    expect(checkDestination("slack", url).ok).toBe(false);
+  });
+
+  it("publicOnly refuses an IPv6 loopback literal and a metadata address before connecting", async () => {
+    expect((await postJson("http://[::1]:9/hook", {}, { publicOnly: true })).error).toMatch(
+      /not a public address/,
+    );
+    expect((await postJson("http://169.254.169.254/x", {}, { publicOnly: true })).error).toMatch(
+      /not a public address/,
+    );
+  });
+
+  it("a redirect from a destination is never followed", async () => {
+    const target = await startServer({}, (_q, res) => void res.end("ok"));
+    servers.push(target);
+    const hook = await startServer(
+      {},
+      (_q, res) => void res.writeHead(302, { location: `${target.origin}/elsewhere` }).end(),
+    );
+    servers.push(hook);
+    const r = await postJson(`${hook.origin}/hook`, { text: "x" });
+    expect(r).toMatchObject({ ok: false, status: 302 });
+    expect(target.log).toHaveLength(0);
+  });
+
+  it("a page link cannot turn on Slack formatting: it is shown in a code span", () => {
+    const p = slackChangesPayload({
+      site: "S",
+      siteUrl: "https://s.test",
+      opened: [finding({ url: "https://s.test/*bold*_it_~s~" })],
+      closed: 0,
+      stillOpen: 0,
+    });
+    const section = p.blocks[1]!.text!.text;
+    expect(section).toContain("`https://s.test/*bold*_it_~s~`");
+  });
+
+  it("a cut section never leaves a code span open", () => {
+    const p = slackChangesPayload({
+      site: "S",
+      siteUrl: "https://s.test",
+      opened: [finding({ evidence: "&".repeat(5000), url: `https://s.test/${"&".repeat(3000)}` })],
+      closed: 0,
+      stillOpen: 0,
+    });
+    const section = p.blocks[1]!.text!.text;
+    expect(section.length).toBeLessThanOrEqual(3000);
+    expect((section.match(/`/g) ?? []).length % 2).toBe(0);
+    expect(section).not.toMatch(/&[a-z]*$/); // no half entity at the cut
+  });
+});

@@ -14,6 +14,7 @@ import {
   jsonb,
   pgTable,
   primaryKey,
+  smallint,
   text,
   timestamp,
   uniqueIndex,
@@ -332,3 +333,53 @@ export const emailSends = pgTable(
     index("email_sends_last_idx").on(t.orgId, t.userId, t.coversTo.desc()),
   ],
 ).enableRLS();
+
+/** An organisation's Slack channel or Sentry project (X67). The address is a Vault secret: name and host only. */
+export const notificationChannels = pgTable("notification_channels", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orgId: uuid("org_id").notNull(),
+  kind: text("kind").$type<"slack" | "sentry">().notNull(),
+  label: text("label").notNull(),
+  host: text("host").notNull(),
+  secretName: text("secret_name").notNull(),
+  status: text("status").$type<"active" | "disabled">().notNull().default("active"),
+  failures: integer("failures").notNull().default(0),
+  disabledReason: text("disabled_reason").$type<
+    "rejected" | "failed-repeatedly" | "address-refused"
+  >(),
+  disabledAt: timestamp("disabled_at", { withTimezone: true }),
+  createdAt: createdAt(),
+}).enableRLS();
+
+/** Which findings go to a channel, and when. */
+export const notificationRules = pgTable("notification_rules", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orgId: uuid("org_id").notNull(),
+  channelId: uuid("channel_id").notNull(),
+  siteId: uuid("site_id"),
+  minSeverity: text("min_severity").$type<"high" | "medium" | "low">().notNull().default("high"),
+  checkIds: text("check_ids").array(),
+  onlyChanges: boolean("only_changes").notNull().default(true),
+  quietStart: smallint("quiet_start"),
+  quietEnd: smallint("quiet_end"),
+  createdAt: createdAt(),
+}).enableRLS();
+
+/** The outbox and delivery log: a status, a count and a short code. Never an address or a message body. */
+export const notificationDeliveries = pgTable("notification_deliveries", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orgId: uuid("org_id").notNull(),
+  channelId: uuid("channel_id").notNull(),
+  kind: text("kind").$type<"run" | "test">().notNull(),
+  runId: uuid("run_id"),
+  siteId: uuid("site_id"),
+  status: text("status").$type<"queued" | "sending" | "sent" | "failed">().notNull(),
+  sendAfter: timestamp("send_after", { withTimezone: true }).notNull().defaultNow(),
+  lockedAt: timestamp("locked_at", { withTimezone: true }),
+  attempts: integer("attempts").notNull().default(0),
+  httpStatus: integer("http_status"),
+  errorCode: text("error_code"),
+  findings: integer("findings").notNull().default(0),
+  sentAt: timestamp("sent_at", { withTimezone: true }),
+  createdAt: createdAt(),
+}).enableRLS();

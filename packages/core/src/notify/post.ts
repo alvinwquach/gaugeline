@@ -35,11 +35,8 @@ export interface PostResult {
 /** Thrown inside a lookup when a name resolves to an address outside the public internet. */
 const NOT_PUBLIC = "EGAUGELINENOTPUBLIC";
 
-/**
- * A lookup that refuses loopback, private, link-local and metadata addresses (core's address guard), for
- * sends to an address a hosted organisation saved: the connection goes to the address that was checked.
- */
-function publicLookup(
+/** A name lookup in the shape of node:dns lookup (the default). Tests stand in for it; production never does. */
+export type NameResolver = (
   hostname: string,
   options: LookupOptions,
   callback: (
@@ -47,18 +44,25 @@ function publicLookup(
     address: string | LookupAddress[],
     family?: number,
   ) => void,
-): void {
-  dnsLookup(hostname, options, (err, address, family) => {
-    if (err) return callback(err, address, family);
-    const list = Array.isArray(address) ? address.map((a) => a.address) : [address];
-    if (list.length === 0 || list.some((a) => isBlockedAddress(a)))
-      return callback(
-        Object.assign(new Error("not a public address"), { code: NOT_PUBLIC }),
-        address,
-        family,
-      );
-    callback(null, address, family);
-  });
+) => void;
+
+/**
+ * A lookup that refuses loopback, private, link-local and metadata addresses (core's address guard), for
+ * sends to an address a hosted organisation saved: the connection goes to the address that was checked.
+ */
+function publicLookup(resolve: NameResolver): NameResolver {
+  return (hostname, options, callback) =>
+    resolve(hostname, options, (err, address, family) => {
+      if (err) return callback(err, address, family);
+      const list = Array.isArray(address) ? address.map((a) => a.address) : [address];
+      if (list.length === 0 || list.some((a) => isBlockedAddress(a)))
+        return callback(
+          Object.assign(new Error("not a public address"), { code: NOT_PUBLIC }),
+          address,
+          family,
+        );
+      callback(null, address, family);
+    });
 }
 
 /** The host of a webhook address, for messages; its path is the secret part. */
@@ -80,6 +84,8 @@ export function postJson(
     readError?: boolean;
     /** Refuse, before connecting, an address that is or resolves to a non-public one (hosted sends). */
     publicOnly?: boolean;
+    /** With publicOnly: the name lookup whose answer is checked (node:dns lookup unless a test stands in). */
+    resolve?: NameResolver;
   } = {},
 ): Promise<PostResult> {
   const timeoutMs = opts.timeoutMs ?? NOTIFY_TIMEOUT_MS;
@@ -115,7 +121,9 @@ export function postJson(
       u,
       {
         method: "POST",
-        ...(opts.publicOnly ? { lookup: publicLookup } : {}),
+        ...(opts.publicOnly
+          ? { lookup: publicLookup(opts.resolve ?? (dnsLookup as unknown as NameResolver)) }
+          : {}),
         headers: {
           "content-type": "application/json",
           "content-length": String(data.length),
