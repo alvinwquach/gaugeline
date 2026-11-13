@@ -12,7 +12,7 @@ import type { EventRule, EventsConfig, Region } from "./types.js";
  */
 
 /** htmlparser2's element node (domhandler's Element), named without depending on domhandler. */
-type DomElement = Parameters<NonNullable<Parameters<typeof createDomStream>[2]>>[0];
+export type DomElement = Parameters<NonNullable<Parameters<typeof createDomStream>[2]>>[0];
 
 /** The most elements one run clicks. Proposed: the spec names no number. */
 export const MAX_EVENT_TARGETS = 20;

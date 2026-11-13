@@ -1,9 +1,9 @@
-import { load, type CheerioAPI } from "cheerio/slim";
+import { load } from "cheerio/slim";
 import type { PageSnapshot } from "../snapshot.js";
-import { regionOf } from "./observe.js";
+import { regionOf, type DomElement } from "./observe.js";
 import type { EventsConfig } from "./types.js";
 
-type El = Parameters<CheerioAPI>[0];
+type El = DomElement;
 
 /** One element that lacks attributes its rule requires. */
 export interface MissingAttributes {
