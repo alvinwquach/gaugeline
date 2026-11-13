@@ -6,7 +6,7 @@
  */
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { migrate, MIGRATIONS_DIR } from "../migrate.js";
 import { tablesWithoutRls } from "../audit.js";
 import {
@@ -91,6 +91,15 @@ describe.skipIf(!HAS_DATABASE)("the agent message outbox kind (0017)", () => {
   afterAll(async () => {
     await db?.drop();
   });
+  // Every test starts with an empty agent outbox and the channels as they were: the rules under test are the
+  // database's, and one test's rows (three waiting digests, say) must not decide another's.
+  afterEach(async () => {
+    await sql`delete from public.notification_deliveries where kind = 'agent'`;
+    await sql`update public.notification_channels set agent_messages = false, status = 'active',
+      disabled_reason = null, disabled_at = null`;
+  });
+  const enable = (...ids: string[]) =>
+    sql`update public.notification_channels set agent_messages = true where id in ${sql(ids)}`;
 
   describe("the upgrade", () => {
     it("keeps the rows that were there, and every old kind still works", async () => {
@@ -151,6 +160,9 @@ describe.skipIf(!HAS_DATABASE)("the agent message outbox kind (0017)", () => {
   });
 
   describe("what a row may hold", () => {
+    beforeEach(async () => {
+      await enable(CHANNEL_A);
+    });
     it("accepts a regression alert for a run, and a digest for a day", async () => {
       const a = await as(
         sql,
@@ -311,9 +323,11 @@ describe.skipIf(!HAS_DATABASE)("the agent message outbox kind (0017)", () => {
   });
 
   describe("tenancy", () => {
-    beforeAll(async () => {
+    beforeEach(async () => {
+      await enable(CHANNEL_A, CHANNEL_B);
       await alert(CHANNEL_B, ORG_B, SITE_B1, RUN_B1);
       await digest(CHANNEL_B, ORG_B, "2026-11-13");
+      await digest(CHANNEL_A, ORG_A, "2026-11-13");
     });
 
     it("org A's staff read org A's agent rows and no row of org B", async () => {
@@ -364,7 +378,7 @@ describe.skipIf(!HAS_DATABASE)("the agent message outbox kind (0017)", () => {
     it("a row cannot point at another organisation's channel, run or site", async () => {
       // Org A's rows with org B's channel; org B's with org A's run; org A's alert for org B's site and run.
       expect(await errorOf(alert(CHANNEL_B, ORG_A, SITE_A1, RUN_A2))).toMatch(
-        /notification_deliveries_channel_id_org_id_fkey/,
+        /notification_deliveries_channel_id_org_id_fkey|does not take agent messages/,
       );
       expect(await errorOf(alert(CHANNEL_B, ORG_B, SITE_B1, RUN_A2))).toMatch(
         /notification_deliveries_subject_run_fkey/,
@@ -376,13 +390,17 @@ describe.skipIf(!HAS_DATABASE)("the agent message outbox kind (0017)", () => {
         /notification_deliveries_subject_run_fkey/,
       );
       expect(await errorOf(digest(CHANNEL_B, ORG_A, "2026-11-20"))).toMatch(
-        /notification_deliveries_channel_id_org_id_fkey/,
+        /notification_deliveries_channel_id_org_id_fkey|does not take agent messages/,
       );
     });
   });
 
   describe("who writes", () => {
-    it("the server's role queues a row and updates only the five delivery columns", async () => {
+    beforeEach(async () => {
+      await enable(CHANNEL_A);
+    });
+
+    it("the server's role queues a row and updates only the eight delivery columns", async () => {
       const queued = await as(sql, service, async (tx) => {
         const [r] =
           await tx`insert into public.notification_deliveries (org_id, channel_id, kind, agent_kind, digest_date)
@@ -401,6 +419,7 @@ describe.skipIf(!HAS_DATABASE)("the agent message outbox kind (0017)", () => {
       for (const who of [
         ownerA,
         memberA,
+        clientA,
         { role: "anon" as const },
         { role: "gaugeline_agent" as const },
       ]) {
@@ -438,6 +457,171 @@ describe.skipIf(!HAS_DATABASE)("the agent message outbox kind (0017)", () => {
     });
   });
 
+  describe("the database enforces the channel's opt-in", () => {
+    const asServer = (fn: Parameters<typeof as>[2]) => as(sql, service, fn);
+
+    it("refuses a row for a channel that does not take agent messages, as every role that may insert", async () => {
+      for (const run of [
+        () => errorOf(digest(CHANNEL_A, ORG_A, "2026-11-13")),
+        () => errorOf(alert(CHANNEL_A, ORG_A, SITE_A1, RUN_A2)),
+        () =>
+          errorOf(
+            asServer(
+              (tx) =>
+                tx`insert into public.notification_deliveries (org_id, channel_id, kind, agent_kind, digest_date)
+                  values (${ORG_A}, ${CHANNEL_A}, 'agent', 'approvals-digest', '2026-11-13')`,
+            ),
+          ),
+      ])
+        expect(await run()).toMatch(/the channel does not take agent messages/);
+    });
+
+    it("refuses a row for a disabled channel, and for a Sentry project", async () => {
+      await enable(CHANNEL_A);
+      await sql`update public.notification_channels set status = 'disabled', disabled_reason = 'rejected',
+        disabled_at = now() where id = ${CHANNEL_A}`;
+      expect(await errorOf(digest(CHANNEL_A, ORG_A, "2026-11-13"))).toMatch(
+        /the channel does not take agent messages/,
+      );
+      expect(
+        await errorOf(
+          sql`insert into public.notification_deliveries (org_id, channel_id, kind, agent_kind, digest_date)
+            values (${ORG_A}, ${CHANNEL_A_SENTRY}, 'agent', 'approvals-digest', '2026-11-13')`,
+        ),
+      ).toMatch(/the channel does not take agent messages/);
+    });
+
+    it("reads the opt-in at the moment of the insert: turned off, nothing more is queued, and what was queued stays", async () => {
+      await enable(CHANNEL_A);
+      await digest(CHANNEL_A, ORG_A, "2026-11-13");
+      await sql`update public.notification_channels set agent_messages = false where id = ${CHANNEL_A}`;
+      expect(await errorOf(digest(CHANNEL_A, ORG_A, "2026-11-14"))).toMatch(
+        /does not take agent messages/,
+      );
+      expect(
+        await sql`select digest_date::text as d from public.notification_deliveries where kind = 'agent'`,
+      ).toEqual([{ d: "2026-11-13" }]);
+    });
+
+    it("leaves the other kinds alone: a night's run is queued for a channel that does not take agent messages", async () => {
+      await sql`insert into public.notification_deliveries (org_id, channel_id, kind, run_id, site_id)
+        values (${ORG_A}, ${CHANNEL_A}, 'run', ${RUN_A2}, ${SITE_A1})`;
+      await sql`delete from public.notification_deliveries where run_id = ${RUN_A2}`;
+    });
+  });
+
+  describe("a digest's day and how many wait", () => {
+    beforeEach(async () => {
+      await enable(CHANNEL_A);
+    });
+
+    it("refuses a day before this table existed and a day past the century, and takes the days between", async () => {
+      for (const day of ["2026-10-31", "1999-01-01", "2100-01-01", "9999-12-31"])
+        expect(await errorOf(digest(CHANNEL_A, ORG_A, day)), day).toMatch(
+          /notification_deliveries_digest_date_sane/,
+        );
+      for (const day of ["2026-11-01", "2026-11-13", "2099-12-31"])
+        expect(await errorOf(digest(CHANNEL_A, ORG_A, day)), day).toBe("");
+    });
+
+    it("holds at most three digests waiting for a channel, and takes another once one is sent", async () => {
+      for (const day of ["2026-11-10", "2026-11-11", "2026-11-12"])
+        await digest(CHANNEL_A, ORG_A, day);
+      expect(await errorOf(digest(CHANNEL_A, ORG_A, "2026-11-13"))).toMatch(
+        /already has three digests waiting/,
+      );
+      // Another channel is counted on its own.
+      await enable(CHANNEL_B);
+      expect(await errorOf(digest(CHANNEL_B, ORG_B, "2026-11-13"))).toBe("");
+      // One is claimed and sent: it no longer waits.
+      await sql`update public.notification_deliveries set status = 'sending', locked_at = now()
+        where digest_date = '2026-11-10'`;
+      expect(await errorOf(digest(CHANNEL_A, ORG_A, "2026-11-13"))).toMatch(
+        /already has three digests waiting/,
+      );
+      await sql`update public.notification_deliveries set status = 'sent', sent_at = now(), locked_at = null
+        where digest_date = '2026-11-10'`;
+      expect(await errorOf(digest(CHANNEL_A, ORG_A, "2026-11-13"))).toBe("");
+    });
+
+    it("does not cap alerts: each is tied to a real run", async () => {
+      await alert(CHANNEL_A, ORG_A, SITE_A1, RUN_A1);
+      await alert(CHANNEL_A, ORG_A, SITE_A1, RUN_A2);
+      expect(
+        await sql`select 1 from public.notification_deliveries where kind = 'agent'`,
+      ).toHaveLength(2);
+    });
+  });
+
+  describe("a row only moves forward", () => {
+    beforeEach(async () => {
+      await enable(CHANNEL_A);
+    });
+    const row = async () => (await digest(CHANNEL_A, ORG_A, "2026-11-13"))[0]!.id as string;
+    // Committed updates by the schema owner: the trigger runs for every role, and each step sees the last.
+    const move = (id: string, set: string) =>
+      errorOf(sql.unsafe(`update public.notification_deliveries set ${set} where id = '${id}'`));
+
+    it("is inserted queued and untouched, never already sent, failed, claimed or with a code", async () => {
+      for (const cols of [
+        "status, sent_at",
+        "status",
+        "status, locked_at",
+        "attempts",
+        "http_status",
+        "error_code",
+      ] as const) {
+        const values: Record<string, string> = {
+          status: cols.startsWith("status")
+            ? cols === "status"
+              ? "'failed'"
+              : "'sent'"
+            : "'queued'",
+          sent_at: "now()",
+          locked_at: "now()",
+          attempts: "1",
+          http_status: "200",
+          error_code: "'http-200'",
+        };
+        const names = cols.split(", ");
+        const stmt = `insert into public.notification_deliveries (org_id, channel_id, kind, agent_kind, digest_date, ${names.join(", ")})
+          values ('${ORG_A}', '${CHANNEL_A}', 'agent', 'approvals-digest', '2026-11-13', ${names.map((n) => values[n]).join(", ")})`;
+        expect(await errorOf(sql.unsafe(stmt)), cols).toMatch(
+          /an agent message is queued, not sent/,
+        );
+      }
+    });
+
+    it("goes queued, sending, sent and no further, and not straight from queued to sent", async () => {
+      const id = await row();
+      expect(await move(id, "status = 'sent', sent_at = now()")).toMatch(/only moves forward/);
+      expect(await move(id, "status = 'failed'")).toMatch(/only moves forward/);
+      expect(await move(id, "status = 'sending', locked_at = now()")).toBe("");
+      expect(await move(id, "status = 'sent', sent_at = now(), locked_at = null")).toBe("");
+      for (const back of ["queued", "sending", "failed"])
+        expect(await move(id, `status = '${back}'`), back).toMatch(/only moves forward/);
+    });
+
+    it("keeps the worker's retry: a claimed row may go back to queued, and a failed one stays failed", async () => {
+      const id = await row();
+      expect(await move(id, "status = 'sending', locked_at = now()")).toBe("");
+      expect(await move(id, "status = 'queued', locked_at = null")).toBe("");
+      expect(await move(id, "status = 'sending', locked_at = now()")).toBe("");
+      expect(await move(id, "status = 'failed', error_code = 'http-500', locked_at = null")).toBe(
+        "",
+      );
+      expect(await move(id, "status = 'queued'")).toMatch(/only moves forward/);
+      expect(await move(id, "status = 'sent', sent_at = now()")).toMatch(/only moves forward/);
+    });
+
+    it("leaves the other kinds as they were: a night's run may still be written in any order", async () => {
+      await sql`insert into public.notification_deliveries (org_id, channel_id, kind, run_id, site_id, status, sent_at)
+        values (${ORG_A}, ${CHANNEL_A}, 'run', ${RUN_A2}, ${SITE_A1}, 'sent', now())`;
+      await sql`update public.notification_deliveries set status = 'queued', sent_at = null where run_id = ${RUN_A2}`;
+      await sql`delete from public.notification_deliveries where run_id = ${RUN_A2}`;
+    });
+  });
+
   describe("the docs page", () => {
     const page = readFileSync(
       fileURLToPath(new URL("../../../../docs/hosted/notifications.md", import.meta.url)),
@@ -450,9 +634,10 @@ describe.skipIf(!HAS_DATABASE)("the agent message outbox kind (0017)", () => {
       expect(sqlBlock).toBeDefined();
       let rows: unknown;
       await rolledBack(sql, async (tx) => {
-        // Earlier tests queued this very alert for good: the page shows the first one, on a clean outbox.
-        await tx`delete from public.notification_deliveries where agent_kind is not null`;
-        rows = await tx.unsafe(sqlBlock!);
+        // The page shows two statements: the channel takes agent messages, then the alert is queued.
+        const statements = sqlBlock!.split(/;\s*\n\s*(?=\S)/);
+        expect(statements).toHaveLength(2);
+        for (const st of statements) rows = await tx.unsafe(st);
       });
       expect(JSON.stringify(rows, null, 2)).toBe(output);
     });
@@ -463,9 +648,16 @@ describe.skipIf(!HAS_DATABASE)("the agent message outbox kind (0017)", () => {
       expect(await tablesWithoutRls(sql)).toEqual([]);
     });
 
-    it("adds no table, no function and no role, and no grant to an agent", async () => {
+    it("adds no table and no role, one trigger function that no role can run, and no grant to an agent", async () => {
       expect(await tables(sql)).toEqual(before.tables);
-      expect(await functions(sql)).toEqual(before.functions);
+      expect(await functions(sql)).toEqual(
+        [...before.functions, "private.agent_delivery_guard"].sort(),
+      );
+      const who = await sql`select r.rolname, has_function_privilege(r.rolname,
+          'private.agent_delivery_guard()', 'execute') as can
+        from pg_roles r where r.rolname in ('anon', 'authenticated', 'service_role', 'gaugeline_agent', 'gaugeline_worker')
+        order by 1`;
+      expect(who.every((r) => r.can === false)).toBe(true);
       expect(await roles(sql)).toEqual(before.roles);
       const grants = await sql`select grantee, table_name, privilege_type
         from information_schema.role_table_grants

@@ -15,10 +15,16 @@
 --     column can hold an address or a message, and the log keeps a status, a number and a short code.
 --   * One row per channel and per subject (a run, or a local day), by a partial unique index: queueing it
 --     twice, or from two workers, is one row.
---   * No new role, no new login, no new function and no new grant. The table-level grants of 0009 already
---     cover the new columns: signed-in staff of the organisation SELECT through the same policy, and only
---     service_role inserts, and updates the same five delivery columns. gaugeline_agent still holds nothing
+--   * No new role, no new login and no new grant on the table. The table-level grants of 0009 already cover
+--     the new columns: signed-in staff of the organisation SELECT through the same policy, and only
+--     service_role inserts, and updates the same eight delivery columns. gaugeline_agent still holds nothing
 --     on this table, and an agent never queues a row: it returns text, and the worker queues.
+--   * The database enforces the rules a worker's bug could break, for agent rows only, in one trigger
+--     (private.agent_delivery_guard, run by the caller, executable by no role): a row is inserted as queued
+--     and untouched, for a Slack channel that is active and takes agent messages RIGHT NOW (the opt-in is
+--     the database's, not only the worker's); a channel never has more than three digests waiting (queued or
+--     sending); and a row only moves forward: queued to sending, sending to sent, failed, or back to queued
+--     (the worker's retry), never out of sent or failed and never straight from queued to sent.
 --   * The same tenancy: the channel, the run and the site are tied to the row's organisation by composite
 --     foreign keys, so an agent message for one organisation cannot point at another's channel or run.
 --
@@ -66,3 +72,53 @@ create unique index notification_deliveries_agent_alert_once
   on public.notification_deliveries (channel_id, subject_run_id) where agent_kind = 'regression-alert';
 create unique index notification_deliveries_agent_digest_once
   on public.notification_deliveries (channel_id, digest_date) where agent_kind = 'approvals-digest';
+
+-- A digest's day must be one the table could hold: not before this table existed and not past the century.
+-- A check cannot use the clock (the worker's clock is injected, so is every test's), so this rejects
+-- absurd days; the trigger's cap of three waiting digests per channel bounds how many can sit in the queue.
+alter table public.notification_deliveries
+  add constraint notification_deliveries_digest_date_sane
+  check (digest_date is null or digest_date between date '2026-11-01' and date '2099-12-31');
+
+create function private.agent_delivery_guard() returns trigger
+language plpgsql set search_path = ''
+as $$
+declare
+  v_waiting integer;
+begin
+  if tg_op = 'INSERT' then
+    if new.status <> 'queued' or new.attempts <> 0 or new.locked_at is not null or new.sent_at is not null
+       or new.http_status is not null or new.error_code is not null then
+      raise exception 'an agent message is queued, not sent' using errcode = '23514';
+    end if;
+    -- The opt-in is read now, in the inserting transaction: a channel that is off, disabled, another
+    -- organisation's or not Slack takes nothing.
+    if not exists (select 1 from public.notification_channels c
+        where c.id = new.channel_id and c.org_id = new.org_id and c.kind = 'slack'
+          and c.status = 'active' and c.agent_messages) then
+      raise exception 'the channel does not take agent messages' using errcode = '23514';
+    end if;
+    if new.agent_kind = 'approvals-digest' then
+      select pg_catalog.count(*) into v_waiting from public.notification_deliveries d
+        where d.channel_id = new.channel_id and d.agent_kind = 'approvals-digest'
+          and d.status in ('queued', 'sending');
+      if v_waiting >= 3 then
+        raise exception 'the channel already has three digests waiting' using errcode = '23514';
+      end if;
+    end if;
+    return new;
+  end if;
+  if old.status = new.status
+     or (old.status = 'queued' and new.status = 'sending')
+     or (old.status = 'sending' and new.status in ('queued', 'sent', 'failed')) then
+    return new;
+  end if;
+  raise exception 'an agent message only moves forward' using errcode = '23514';
+end;
+$$;
+revoke all on function private.agent_delivery_guard() from public, anon, authenticated, service_role, gaugeline_agent;
+
+create trigger notification_deliveries_agent_guard
+  before insert or update on public.notification_deliveries
+  for each row when (new.kind = 'agent')
+  execute function private.agent_delivery_guard();

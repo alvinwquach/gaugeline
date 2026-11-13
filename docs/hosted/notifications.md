@@ -142,7 +142,10 @@ What the database holds for one:
   digest is for (`digest_date`). It holds **no words**. As for a night's findings, the worker builds the
   message when it sends, from your organisation's own rows, so no column can hold an address or a message.
 - A channel takes agent messages only when you turn it on (`agent_messages`, off by default), and only a
-  Slack channel can: a Sentry project takes events, not messages.
+  Slack channel can: a Sentry project takes events, not messages. The database checks it when the row is
+  queued, not only the worker: a row for a channel that is off, disabled or not Slack is refused.
+- A row is queued untouched and only moves forward (queued, sending, sent or failed; a claimed row may go back to
+  queued for a retry), and a channel never has more than three digests waiting.
 - One row per channel and per run (an alert), or per channel and per day (a digest): queueing it twice is one
   row.
 - The same people read it as read the rest of the log (staff of the organisation, not a client viewer), and
@@ -150,11 +153,15 @@ What the database holds for one:
   queues it.
 - A row cannot point at another organisation's channel, run or site: the database refuses it.
 
-The worker queues an alert for the night's run, for a channel that takes agent messages. This is the row, as
+The database refuses a row for a channel that does not take agent messages, so the channel is turned on first.
+The worker then queues an alert for the night's run. This is the row, as
 the seeded test database (`apps/hosted/db/__tests__/harness.ts` and migrations up to
 `0017_agent_message_outbox.sql`) returns it:
 
 ```sql
+update public.notification_channels set agent_messages = true
+where id = 'ca000000-0000-4000-8000-0000000000a1';
+
 insert into public.notification_deliveries (org_id, channel_id, kind, site_id, agent_kind, subject_run_id, findings)
 values ('0a000000-0000-4000-8000-00000000000a', 'ca000000-0000-4000-8000-0000000000a1', 'agent',
         'a1000000-0000-4000-8000-0000000000a1', 'regression-alert', 'a1a10000-0000-4000-8000-0000000000a1', 2)
