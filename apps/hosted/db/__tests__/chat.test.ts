@@ -51,7 +51,8 @@ const CONN_B = "c1000000-0000-4000-8000-0000000000b1"; // Brightfield's Slack
 const CONN_OFF = "c1000000-0000-4000-8000-0000000000a4"; // disabled
 const LOGIN = `gl_chat_login_${randomBytes(4).toString("hex")}`;
 const TEAM = "T0NORTHGATE";
-const NOW = new Date("2026-11-13T09:00:00Z");
+// The database decides expiry by its own clock, so the tests age drafts from the real one.
+const NOW = new Date();
 const nowSeconds = Math.floor(NOW.getTime() / 1000);
 
 /** The signature Slack would send for a raw body. */
@@ -82,15 +83,15 @@ describe.skipIf(!HAS_DATABASE)("chat approvals: database and decision core", () 
         ('${CONN_A_HOOK}', '${ORG_A}', 'slack', 'Wrong secret kind', null, 'hook', 'active'),
         ('${CONN_OFF}', '${ORG_A}', 'slack', 'Switched off', null, 'chat-slack', 'disabled'),
         ('${CONN_B}', '${ORG_B}', 'slack', 'Brightfield Slack', null, 'chat-slack', 'active');
-      insert into public.chat_identities (org_id, connection_id, chat_user_id, user_id) values
-        ('${ORG_A}', '${CONN_A}', 'U0OWNER', '${USER_A_OWNER}'),
-        ('${ORG_A}', '${CONN_A}', 'U0MEMBER', '${USER_A_MEMBER}'),
-        ('${ORG_A}', '${CONN_A}', 'U0CLIENT', '${USER_A_CLIENT}'),
-        ('${ORG_A}', '${CONN_A}', 'U0BOTH', '${USER_BOTH}');
+      insert into public.chat_identities (org_id, connection_id, chat_user_id, user_id, confirmed_at) values
+        ('${ORG_A}', '${CONN_A}', 'U0OWNER', '${USER_A_OWNER}', now()),
+        ('${ORG_A}', '${CONN_A}', 'U0MEMBER', '${USER_A_MEMBER}', now()),
+        ('${ORG_A}', '${CONN_A}', 'U0CLIENT', '${USER_A_CLIENT}', now()),
+        ('${ORG_A}', '${CONN_A}', 'U0BOTH', '${USER_BOTH}', now());
     `);
-    // The chat endpoint's login: a member of the two roles it needs and nothing else, like the app's.
+    // The chat endpoint's login: a member of gaugeline_chat and nothing else (not `authenticated`).
     await owner.unsafe(`create role ${LOGIN} login noinherit password 'chat-test-login'`);
-    await owner.unsafe(`grant gaugeline_chat, authenticated to ${LOGIN}`);
+    await owner.unsafe(`grant gaugeline_chat to ${LOGIN}`);
     const u = new URL(db.url);
     u.username = LOGIN;
     u.password = "chat-test-login";
@@ -123,14 +124,14 @@ describe.skipIf(!HAS_DATABASE)("chat approvals: database and decision core", () 
     ...over,
   });
   const connection = async (id = CONN_A) => (await store.connection(id))!;
-  const decideDeps = () => ({ sql: chat, store, queue, now: () => NOW });
+  const decideDeps = () => ({ sql: chat, queue });
 
   describe("the chat endpoint's role", () => {
     it("can run exactly four functions, reads no table, and is not a path to the server", async () => {
       expect(await privateFunctionsExecutableBy(owner, "gaugeline_chat")).toEqual([
         "chat_claim_request",
         "chat_connection",
-        "chat_member",
+        "chat_decide",
         "chat_signing_secret",
       ]);
       for (const role of [
@@ -147,6 +148,28 @@ describe.skipIf(!HAS_DATABASE)("chat approvals: database and decision core", () 
         ).toEqual([]);
       }
       expect(await chatLoginsWithOtherRoles(owner)).toEqual([]);
+      // The deploy check flags a login that can also be a signed-in person, the server, the worker or the agent.
+      const names: string[] = [];
+      try {
+        for (const other of [
+          "authenticated",
+          "anon",
+          "service_role",
+          "gaugeline_worker",
+          "gaugeline_agent",
+        ]) {
+          const name = `gl_chat_extra_${randomBytes(3).toString("hex")}`;
+          names.push(name);
+          await owner.unsafe(
+            `create role ${name} login; grant gaugeline_chat, ${other} to ${name}`,
+          );
+          expect(await chatLoginsWithOtherRoles(owner), other).toEqual([name]);
+          await owner.unsafe(`drop role ${name}`);
+          names.pop();
+        }
+      } finally {
+        for (const n of names) await owner.unsafe(`drop role if exists ${n}`);
+      }
       expect(await connectionSkipsRls(chat)).toBe(false);
       expect(await tablesWithoutRls(owner, "private")).toEqual(["schema_migrations"]);
       expect(await tablesWithoutRls(owner)).toEqual([]);
@@ -178,6 +201,7 @@ describe.skipIf(!HAS_DATABASE)("chat approvals: database and decision core", () 
       const calls = [
         `select private.chat_signing_secret('${CONN_A}')`,
         `select private.chat_claim_request('${CONN_A}', 'aaaaaaaaaaaa')`,
+        `select private.chat_decide('${CONN_A}', 'U0OWNER', '${randomUUID()}', 'approve')`,
         `select * from private.chat_requests`,
       ];
       for (const role of [
@@ -208,10 +232,14 @@ describe.skipIf(!HAS_DATABASE)("chat approvals: database and decision core", () 
         CONN_OFF,
       ]);
       expect(o.identities).toHaveLength(4);
-      for (const u of [USER_A_MEMBER, USER_A_CLIENT]) {
+      // A member or client sees no connection, and only their own links (to confirm or remove them).
+      for (const [u, own] of [
+        [USER_A_MEMBER, "U0MEMBER"],
+        [USER_A_CLIENT, "U0CLIENT"],
+      ] as const) {
         const s = await seen(u);
         expect(s.connections).toEqual([]);
-        expect(s.identities).toEqual([]);
+        expect(s.identities).toEqual([{ chat_user_id: own }]);
       }
       // Only an owner or admin may link, and only inside their own organisation.
       const link = (userId: string, org: string, conn: string, user: string) =>
@@ -284,29 +312,6 @@ describe.skipIf(!HAS_DATABASE)("chat approvals: database and decision core", () 
       ).toHaveLength(0);
     });
 
-    it("finds the member a chat user is, with their role, in this connection only", async () => {
-      expect(await store.member(CONN_A, "U0MEMBER")).toEqual({
-        userId: USER_A_MEMBER,
-        role: "member",
-      });
-      expect(await store.member(CONN_A, "U0CLIENT")).toEqual({
-        userId: USER_A_CLIENT,
-        role: "client",
-      });
-      expect(await store.member(CONN_A, "U0NOBODY")).toBeUndefined();
-      expect(await store.member(CONN_B, "U0MEMBER")).toBeUndefined();
-      expect(await store.member(CONN_A, "u0member")).toBeUndefined(); // ids are exact
-    });
-
-    it("a member who leaves the organisation takes their link with them", async () => {
-      const gone = randomUUID();
-      await owner`insert into public.members (org_id, user_id, role) values (${ORG_A}, ${gone}, 'member')`;
-      await owner`insert into public.chat_identities (org_id, connection_id, chat_user_id, user_id) values (${ORG_A}, ${CONN_A}, 'U0LEAVER', ${gone})`;
-      expect((await store.member(CONN_A, "U0LEAVER"))?.userId).toBe(gone);
-      await owner`delete from public.members where org_id = ${ORG_A} and user_id = ${gone}`;
-      expect(await store.member(CONN_A, "U0LEAVER")).toBeUndefined();
-    });
-
     it("deleting the secret deletes the connection (it never outlives the key)", async () => {
       await owner.begin(async (tx) => {
         await tx.unsafe("set local role service_role");
@@ -358,6 +363,17 @@ describe.skipIf(!HAS_DATABASE)("chat approvals: database and decision core", () 
       expect(again).toEqual({ ok: false, status: 401, reason: "replayed" });
       const bad = await run(signed({ body: b + "x", key: sign(SECRET_A, b, nowSeconds) }));
       expect(bad).toEqual({ ok: false, status: 401, reason: "bad-signature" });
+    });
+
+    it("a copy of an accepted signature in another letter case is the same request: refused as a replay", async () => {
+      const b = body + "&t=" + randomBytes(4).toString("hex");
+      const original = signed({ body: b });
+      expect((await run(original)).ok).toBe(true);
+      const shouting = signed({
+        body: b,
+        key: "v0=" + sign(SECRET_A, b, nowSeconds).slice(3).toUpperCase(),
+      });
+      expect(await run(shouting)).toEqual({ ok: false, status: 401, reason: "replayed" });
     });
 
     it("a request that fails the signature does not use up its key", async () => {
@@ -608,16 +624,225 @@ describe.skipIf(!HAS_DATABASE)("chat approvals: database and decision core", () 
       void RUN_A1;
     });
 
-    it("the chat endpoint's login cannot write a decision in someone else's name", async () => {
+    it("a draft that fixes a finding of another site is refused (the inbox's own check, in SQL)", async () => {
+      const id = randomUUID();
+      const [other] =
+        await owner`select id from public.findings where site_id <> ${SITE_A1} limit 1`;
+      await owner`insert into public.drafts (id, org_id, site_id, kind, payload, finding_ids)
+        values (${id}, ${ORG_A}, ${SITE_A1}, 'email', ${owner.json({ subject: "x", body: "y" })}, ${[other!.id as string]})`;
+      expect(await decideFromChat(decideDeps(), await connection(), act({ draftId: id }))).toEqual({
+        status: "open-inbox",
+        why: "invalid-payload",
+      });
+      expect(await rows(id)).toHaveLength(0);
+    });
+  });
+
+  describe("a chat login cannot be anyone (review finding 1)", () => {
+    const asChatLogin = (q: (tx: postgres.TransactionSql) => Promise<unknown>) =>
+      errorOf(chat.begin(async (tx) => void (await q(tx))));
+    const claim = (tx: postgres.TransactionSql, who: string) =>
+      tx`select set_config('request.jwt.claims', ${JSON.stringify({ role: "authenticated", sub: who })}, true)`;
+
+    it("setting a victim's claims and switching to authenticated is refused: the role is not the login's to take", async () => {
       const id = await draft();
-      const msg = await errorOf(
-        chat.begin(async (tx) => {
-          await tx`select set_config('request.jwt.claims', ${JSON.stringify({ role: "authenticated", sub: USER_A_MEMBER })}, true)`;
+      for (const victim of [USER_A_OWNER, USER_A_MEMBER, USER_BOTH]) {
+        const msg = await asChatLogin(async (tx) => {
+          await claim(tx, victim);
           await tx.unsafe("set local role authenticated");
-          await tx`insert into public.decisions (org_id, draft_id, decision, decided_by) values (${ORG_A}, ${id}, 'approved', ${USER_A_OWNER})`;
+          await tx`insert into public.decisions (org_id, draft_id, decision, decided_by)
+            values (${ORG_A}, ${id}, 'approved', ${victim})`;
+        });
+        expect(msg, victim).toMatch(/permission denied to set role|must be member/);
+      }
+      for (const role of [
+        "service_role",
+        "gaugeline_worker",
+        "gaugeline_agent",
+        "anon",
+        "postgres",
+      ])
+        expect(await asChatLogin((tx) => tx.unsafe(`set local role ${role}`)), role).toMatch(
+          /permission denied to set role|must be member|does not exist/,
+        );
+      expect(await rows(id)).toHaveLength(0);
+    });
+
+    it("as the login itself it can read no draft, decision, connection id or link, with or without claims", async () => {
+      for (const q of [
+        "select * from public.drafts",
+        "select * from public.decisions",
+        "select * from public.chat_connections",
+        "select * from public.chat_identities",
+        "select * from public.members",
+      ])
+        expect(
+          await asChatLogin(async (tx) => {
+            await claim(tx, USER_A_OWNER);
+            await tx.unsafe(q);
+          }),
+          q,
+        ).toMatch(/permission denied/);
+    });
+
+    it("chat_decide takes no member from the caller, so there is no name to forge: every refusal writes nothing", async () => {
+      const mine = await draft();
+      const theirs = await draft(ORG_B, SITE_B1);
+      const call = async (conn: string, user: string, d: string, choice = "approve") =>
+        (
+          await chat.begin(async (tx) => {
+            await tx.unsafe("set local role gaugeline_chat");
+            return tx`select r_status from private.chat_decide(${conn}, ${user}, ${d}, ${choice})`;
+          })
+        )[0]!.r_status;
+      expect(await call(CONN_A, "U0NOBODY", mine)).toBe("unknown-user"); // not linked
+      expect(await call(CONN_A, "U0CLIENT", mine)).toBe("not-allowed"); // a client viewer
+      expect(await call(CONN_A, "U0OWNER", theirs)).toBe("not-found"); // another organisation's draft
+      expect(await call(CONN_B, "U0OWNER", mine)).toBe("unknown-user"); // a link is per connection
+      expect(await call(CONN_OFF, "U0OWNER", mine)).toBe("not-found"); // a disabled connection
+      expect(await call(randomUUID(), "U0OWNER", mine)).toBe("not-found");
+      expect(
+        await asChatLogin(async (tx) => {
+          await tx.unsafe("set local role gaugeline_chat");
+          await tx`select * from private.chat_decide(${CONN_A}, 'U0OWNER', ${mine}, 'maybe')`;
+        }),
+      ).toMatch(/choice must be/);
+      expect(await rows(mine)).toHaveLength(0);
+      expect(await rows(theirs)).toHaveLength(0);
+      expect(await call(CONN_A, "U0OWNER", mine)).toBe("recorded");
+      expect(await rows(mine)).toEqual([{ decision: "approved", decided_by: USER_A_OWNER }]);
+    });
+  });
+
+  describe("a link counts only once the member confirms it (review finding 2)", () => {
+    // Committed, unlike as(): these tests change what the links say and read it back.
+    const asUser = (userId: string, fn: (tx: postgres.TransactionSql) => Promise<unknown>) =>
+      errorOf(
+        owner.begin(async (tx) => {
+          await tx`select set_config('request.jwt.claims', ${JSON.stringify({ role: "authenticated", sub: userId })}, true)`;
+          await tx.unsafe("set local role authenticated");
+          await fn(tx);
         }),
       );
-      expect(msg).toMatch(/row-level security/);
+    const propose = (adminUser: string, chatUser: string, member: string) =>
+      asUser(
+        adminUser,
+        (tx) => tx`insert into public.chat_identities (org_id, connection_id, chat_user_id, user_id)
+          values (${ORG_A}, ${CONN_A}, ${chatUser}, ${member})`,
+      );
+    const cleanup = (chatUser: string) =>
+      owner`delete from public.chat_identities where connection_id = ${CONN_A} and chat_user_id = ${chatUser}`;
+
+    it("an admin's link to the owner does not let them decide as the owner until the owner confirms it", async () => {
+      const id = await draft();
+      // USER_BOTH is a member of A (not an admin there): use the owner to stand in as the admin who proposes.
+      await owner`update public.members set role = 'admin' where org_id = ${ORG_A} and user_id = ${USER_BOTH}`;
+      try {
+        expect(await propose(USER_BOTH, "U0FORGER", USER_A_OWNER)).toBe("");
+        const pending =
+          await owner`select confirmed_at from public.chat_identities where chat_user_id = 'U0FORGER'`;
+        expect(pending).toEqual([{ confirmed_at: null }]);
+        const r = await decideFromChat(
+          decideDeps(),
+          await connection(),
+          act({ draftId: id, chatUserId: "U0FORGER" }),
+        );
+        expect(r).toEqual({ status: "unknown-user" });
+        expect(await rows(id)).toHaveLength(0);
+
+        // The proposer cannot confirm it for the owner, or set the stamp themselves.
+        const byAdmin = await owner.begin(async (tx) => {
+          await tx`select set_config('request.jwt.claims', ${JSON.stringify({ role: "authenticated", sub: USER_BOTH })}, true)`;
+          await tx.unsafe("set local role authenticated");
+          return tx`update public.chat_identities set confirmed_at = now() where chat_user_id = 'U0FORGER' returning 1`;
+        });
+        expect(byAdmin).toHaveLength(0);
+        expect(
+          await propose(USER_BOTH, "U0OTHER", USER_A_OWNER).then(() =>
+            asUser(
+              USER_BOTH,
+              (
+                tx,
+              ) => tx`insert into public.chat_identities (org_id, connection_id, chat_user_id, user_id, confirmed_at)
+            values (${ORG_A}, ${CONN_A}, 'U0PRE', ${USER_A_OWNER}, now())`,
+            ),
+          ),
+        ).toMatch(/permission denied/);
+
+        // The owner, signed in, confirms their own link; now it counts, and is stamped by the database.
+        const confirmed = await owner.begin(async (tx) => {
+          await tx`select set_config('request.jwt.claims', ${JSON.stringify({ role: "authenticated", sub: USER_A_OWNER })}, true)`;
+          await tx.unsafe("set local role authenticated");
+          return tx`update public.chat_identities set confirmed_at = '2001-01-01' where chat_user_id = 'U0FORGER' returning confirmed_at`;
+        });
+        expect(confirmed).toHaveLength(1);
+        expect((confirmed[0]!.confirmed_at as Date).getFullYear()).toBeGreaterThan(2020); // the trigger stamps now()
+        expect(
+          (
+            await decideFromChat(
+              decideDeps(),
+              await connection(),
+              act({ draftId: id, chatUserId: "U0FORGER" }),
+            )
+          ).status,
+        ).toBe("recorded");
+        expect(await rows(id)).toEqual([{ decision: "approved", decided_by: USER_A_OWNER }]);
+      } finally {
+        await cleanup("U0FORGER");
+        await cleanup("U0OTHER");
+        await owner`update public.members set role = 'member' where org_id = ${ORG_A} and user_id = ${USER_BOTH}`;
+      }
+    });
+
+    it("a confirmation cannot be undone or re-pointed by the member, and a member cannot link anyone but through an admin", async () => {
+      await owner`insert into public.chat_identities (org_id, connection_id, chat_user_id, user_id) values (${ORG_A}, ${CONN_A}, 'U0PEND', ${USER_A_MEMBER})`;
+      try {
+        const mine = (q: (tx: postgres.TransactionSql) => Promise<unknown>) =>
+          asUser(USER_A_MEMBER, q);
+        expect(
+          await mine(
+            (tx) =>
+              tx`update public.chat_identities set confirmed_at = now() where chat_user_id = 'U0PEND'`,
+          ),
+        ).toBe("");
+        // Confirmed once: it cannot be cleared, and no other column is writable.
+        const cleared = await owner.begin(async (tx) => {
+          await tx`select set_config('request.jwt.claims', ${JSON.stringify({ role: "authenticated", sub: USER_A_MEMBER })}, true)`;
+          await tx.unsafe("set local role authenticated");
+          return tx`update public.chat_identities set confirmed_at = null where chat_user_id = 'U0PEND' returning 1`;
+        });
+        expect(cleared).toHaveLength(0);
+        expect(
+          await mine(
+            (tx) =>
+              tx`update public.chat_identities set user_id = ${USER_A_OWNER} where chat_user_id = 'U0PEND'`,
+          ),
+        ).toMatch(/permission denied/);
+        expect(
+          await mine(
+            (tx) =>
+              tx`update public.chat_identities set chat_user_id = 'U0ELSE' where chat_user_id = 'U0PEND'`,
+          ),
+        ).toMatch(/permission denied/);
+        expect(await propose(USER_A_MEMBER, "U0SELF", USER_A_MEMBER)).toMatch(/row-level security/);
+        // They may remove their own link.
+        expect(
+          await mine((tx) => tx`delete from public.chat_identities where chat_user_id = 'U0PEND'`),
+        ).toBe("");
+      } finally {
+        await cleanup("U0PEND");
+      }
+    });
+
+    it("a member sees only their own links; an admin sees the organisation's", async () => {
+      const seen = (userId: string) =>
+        as(
+          owner,
+          { role: "authenticated", userId },
+          (tx) => tx`select chat_user_id from public.chat_identities order by 1`,
+        );
+      expect((await seen(USER_A_MEMBER)).map((r) => r.chat_user_id)).toEqual(["U0MEMBER"]);
+      expect((await seen(USER_A_OWNER)).length).toBeGreaterThanOrEqual(4);
     });
   });
 });

@@ -148,14 +148,14 @@ changing the variable and restarting the server and the worker.
 
 ## What a breach could reach
 
-| If someone got...                                          | They could read                                            | They could not read                                     |
-| ---------------------------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------- |
-| a signed-in person's session                               | their organisations' rows and secret names                 | any secret value, any other organisation                |
-| a copy of the database or a backup                         | the Vault table, encrypted                                 | the values: Vault's key is not in the database          |
-| the runs API's or settings API's `service_role` connection | secret names; it can overwrite or delete a secret          | any secret value: `get_secret` needs `gaugeline_worker` |
-| the worker's connection (`gaugeline_worker`)               | every organisation's webhook URLs and chat signing secrets | CMS tokens, the GitHub App key: they were never here    |
-| the chat endpoint's connection (`gaugeline_chat`)          | one connection's signing secret, if it knows the id        | webhook URLs, any table, another way into Vault         |
-| the database owner role (`postgres`)                       | everything in the database, Vault included                 | CMS tokens, the GitHub App key                          |
+| If someone got...                                          | They could read                                                                                                  | They could not read                                     |
+| ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| a signed-in person's session                               | their organisations' rows and secret names                                                                       | any secret value, any other organisation                |
+| a copy of the database or a backup                         | the Vault table, encrypted                                                                                       | the values: Vault's key is not in the database          |
+| the runs API's or settings API's `service_role` connection | secret names; it can overwrite or delete a secret                                                                | any secret value: `get_secret` needs `gaugeline_worker` |
+| the worker's connection (`gaugeline_worker`)               | every organisation's webhook URLs and chat signing secrets                                                       | CMS tokens, the GitHub App key: they were never here    |
+| the chat endpoint's connection (`gaugeline_chat`)          | one connection's signing secret, if it knows the id; it can record an approval for a member who confirmed a link | webhook URLs, any table, another way into Vault         |
+| the database owner role (`postgres`)                       | everything in the database, Vault included                                                                       | CMS tokens, the GitHub App key                          |
 
 So a full breach of the hosted app can post into customers' notification channels and forge chat
 approvals, and both are fixed by rotating those secrets. It cannot read or change a customer's site or

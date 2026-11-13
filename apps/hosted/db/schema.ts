@@ -396,7 +396,7 @@ export const chatConnections = pgTable("chat_connections", {
   createdAt: createdAt(),
 }).enableRLS();
 
-/** Which member a chat user is, per connection. */
+/** Which member a chat user is, per connection: proposed by an admin, confirmed by the member. */
 export const chatIdentities = pgTable(
   "chat_identities",
   {
@@ -405,6 +405,8 @@ export const chatIdentities = pgTable(
     chatUserId: text("chat_user_id").notNull(),
     userId: uuid("user_id").notNull(),
     createdAt: createdAt(),
+    /** Set by the member themself (signed in); a link counts only once it is. */
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
   },
   (t) => [
     primaryKey({ columns: [t.connectionId, t.chatUserId] }),

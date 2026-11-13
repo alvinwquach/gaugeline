@@ -124,12 +124,13 @@ export async function definerFunctionsWithoutEmptySearchPath(
 }
 
 /**
- * Login roles that can act as the chat endpoint (`gaugeline_chat`, 0010) and also as the server, the worker
- * or the drafts agent. The chat login reads one connection's signing secret and writes decisions as the
- * signed-in member (`authenticated`, which it must also be a member of); a login that could also become
- * `service_role` or `gaugeline_worker` would not be limited to that. Membership counts however it is
- * reached; superusers are left out. Returns the names, so [] means safe (also on a database with no
- * `gaugeline_chat` yet).
+ * Login roles that can act as the chat endpoint (`gaugeline_chat`, 0010) and also as a signed-in person
+ * (`authenticated`), the server, the worker or the drafts agent. The chat login may run four functions and
+ * nothing else: private.chat_decide finds the member from a link that member confirmed. A login that could
+ * also `set role authenticated` could claim to be any person and write a decision in their name, so the
+ * login must be a member of `gaugeline_chat` only, like the agent's login (agentLoginsWithOtherRoles).
+ * Membership counts however it is reached; superusers are left out. Returns the names, so [] means safe
+ * (also on a database with no `gaugeline_chat` yet).
  */
 export async function chatLoginsWithOtherRoles(sql: Query): Promise<string[]> {
   const rows = await sql`
@@ -138,7 +139,7 @@ export async function chatLoginsWithOtherRoles(sql: Query): Promise<string[]> {
       and pg_has_role(r.oid, chat.oid, 'MEMBER')
       and exists (
         select 1 from pg_roles other
-        where other.rolname in ('service_role', 'gaugeline_worker', 'gaugeline_agent')
+        where other.rolname in ('authenticated', 'anon', 'service_role', 'gaugeline_worker', 'gaugeline_agent')
           and pg_has_role(r.oid, other.oid, 'MEMBER'))
     order by 1`;
   return rows.map((r) => r.rolname as string);
