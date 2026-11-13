@@ -46,6 +46,8 @@ function.
 
 - **Every draft call**, in the same transaction as the call: `allowed` with the new draft's id, or
   `denied` with the reason. A refused call still writes its trace row and still inserts no draft.
+- **Every read** of pending drafts or of a site's runs ([AG-08's reads](./agent-registry.md)): `allowed`
+  with the hash of the answer, or `denied` with the reason. The answer itself is not stored.
 - **Every approval or decline of an agent's draft**, from the inbox or from a chat button (both record the
   decision the same way): `approved` (an approval of an edited draft counts as approved) or `declined`,
   with the member who decided. A person's own draft is not an agent call and has no trace row.
@@ -64,9 +66,9 @@ The trace cannot be grown without limit by someone hammering it:
 ## An example: the menu fixer's trace
 
 Northgate Studio's owner registers an agent that drafts emails about The Tidewater Bar's menu. It drafts
-one email, is refused a pull request, and someone tries a made-up token twice. The owner approves the
+one email, is refused a pull request and a read of pending drafts, and someone tries a made-up token twice. The owner approves the
 email and reads the trace. This is the output of the seeded test database
-(`apps/hosted/db/__tests__/harness.ts` and migrations up to `0014_agent_trace.sql`), run with `psql` 16 as
+(`apps/hosted/db/__tests__/harness.ts` and migrations up to `0015_agent_trace.sql`), run with `psql` 16 as
 written, as the schema owner switching roles the way the app's and the agent's logins do:
 
 ```sql
@@ -79,13 +81,14 @@ select agent_id, token as menu_fixer_token
   from private.register_agent('0a000000-0000-4000-8000-00000000000a', 'Menu fixer',
                               '11111111-0000-4000-8000-000000000001', '{draft:email}') \gset
 
--- 2. the agent's calls (the agent's own role): one allowed, one refused, two with a made-up token
+-- 2. the agent's calls (the agent's own role): one allowed, one refused, a read it has no scope for, two with a made-up token
 reset role;
 set role gaugeline_agent;
 select private.agent_insert_draft($1, $2, $3, $4) as draft_id
   \bind :menu_fixer_token 'a1000000-0000-4000-8000-0000000000a1' 'email' '{"subject":"Your menu link is fixed","body":"The drinks page is back."}' \gset
 select private.agent_insert_draft($1, $2, $3, $4) is not null as inserted
   \bind :menu_fixer_token 'a1000000-0000-4000-8000-0000000000a1' 'pull_request' '{"title":"Fix the menu link"}' \g
+select private.agent_list_pending($1) as pending \bind :menu_fixer_token \g
 select private.agent_insert_draft($1, $2, $3, $4) is not null as inserted
   \bind 'gla_00000000_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' 'a1000000-0000-4000-8000-0000000000a1' 'email' '{}' \g
 select private.agent_insert_draft($1, $2, $3, $4) is not null as inserted
@@ -130,6 +133,12 @@ WARNING:  agent call denied: scope
  f
 (1 row)
 
+WARNING:  agent call denied: scope
+                pending
+---------------------------------------
+ {"reason": "scope", "allowed": false}
+(1 row)
+
 WARNING:  agent call denied: unknown-agent
  inserted
 ----------
@@ -147,10 +156,11 @@ SET
 INSERT 0 1
         tool        | decision | reason |    input     |    output    | timed | tokens | cost_micros |             approver_id
 --------------------+----------+--------+--------------+--------------+-------+--------+-------------+--------------------------------------
- draft:email        | allowed  |        | 96a5b841d3f0 | e359c3c3b434 | t     |      0 |           0 |
+ draft:email        | allowed  |        | 96a5b841d3f0 | 5d871dbaee8b | t     |      0 |           0 |
  draft:pull_request | denied   | scope  | 202f45d8ea9d |              | t     |      0 |           0 |
+ read:pending       | denied   | scope  | 980a40e6a5d1 |              | t     |      0 |           0 |
  draft:email        | approved |        | 95d14ada0482 |              | t     |      0 |           0 | 11111111-0000-4000-8000-000000000001
-(3 rows)
+(4 rows)
 
  unknown_rows_seen
 -------------------
@@ -183,7 +193,7 @@ CONTEXT:  PL/pgSQL function private.refuse_change() line 3 at RAISE
 What it shows:
 
 1. One row per call: the allowed email (with the hash of its input and of the draft id it returned), the
-   refused pull request (the reason, no output), and the owner's approval (the approved payload's hash and
+   refused pull request and the refused read (the reason, no output), and the owner's approval (the approved payload's hash and
    her id). Tokens and cost are 0: nothing ran a model. The output hash differs on every run (it is the
    hash of a new draft id); the input hashes do not.
 2. The made-up tokens left no row in the trace, only a count for the minute, which only the schema owner
