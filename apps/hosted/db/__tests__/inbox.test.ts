@@ -82,6 +82,8 @@ describe.skipIf(!HAS_DATABASE)("drafts inbox", () => {
         values (${org}, ${`Inbox test agent ${sha256(t).slice(0, 8)}`}, ${ownerId},
           '{draft:pull_request,draft:email,draft:sanity_draft}', ${sha256(t)}, ${sha256(t).slice(0, 8)})
         returning id`;
+      // These tests fill a site to its 200-draft cap; the rate limit (AG-03) has its own tests.
+      await sql`update public.agent_limits set calls_per_window = 10000 where agent_id = ${a!.id as string}`;
       if (revoked)
         await sql`update public.agents set status = 'revoked' where id = ${a!.id as string}`;
     }
@@ -116,11 +118,21 @@ describe.skipIf(!HAS_DATABASE)("drafts inbox", () => {
       }),
     );
   }
-  const agentInsert = (t: string, site: string, kind = "pull_request", findings: string[] = []) =>
-    asAgent(
-      (tx) =>
-        tx`select private.agent_insert_draft(${t}, ${site}, ${kind}, ${sql.json(PR_PAYLOAD)}, ${findings}::uuid[])`,
-    );
+  /** "" when a draft was inserted, the error, or "denied" when the policy (AG-03) refused the call. */
+  const agentInsert = async (
+    t: string,
+    site: string,
+    kind = "pull_request",
+    findings: string[] = [],
+  ) => {
+    let id: unknown;
+    const e = await asAgent(async (tx) => {
+      const [r] =
+        await tx`select private.agent_insert_draft(${t}, ${site}, ${kind}, ${sql.json(PR_PAYLOAD)}, ${findings}::uuid[]) as id`;
+      id = r!.id;
+    });
+    return e !== "" ? e : id === null ? "denied" : "";
+  };
 
   describe("the agent (the database refuses, not the app)", () => {
     it("inserts a draft into its token's organisation, in nobody's name", async () => {
@@ -154,7 +166,7 @@ describe.skipIf(!HAS_DATABASE)("drafts inbox", () => {
 
     it("refuses an unknown, revoked or short token", async () => {
       for (const t of [token(), TOKEN_REVOKED, "short"])
-        expect(await agentInsert(t, SITE_A1)).toMatch(/agent token not recognised/);
+        expect(await agentInsert(t, SITE_A1)).toBe("denied");
     });
 
     it("another organisation's token writes only into that organisation", async () => {
@@ -168,7 +180,7 @@ describe.skipIf(!HAS_DATABASE)("drafts inbox", () => {
         /finding not found/,
       );
       // Deny by default (0011): no agent holds a scope for a kind that is not registered.
-      expect(await agentInsert(TOKEN_A, SITE_A1, "shell_exec")).toMatch(/no scope to draft/);
+      expect(await agentInsert(TOKEN_A, SITE_A1, "shell_exec")).toBe("denied");
     });
 
     it("cannot insert a decision, change a draft, or read anything", async () => {

@@ -124,14 +124,24 @@ describe.skipIf(!HAS_DATABASE)("agent registry", () => {
     fn: (tx: postgres.TransactionSql) => Promise<unknown>,
   ) => errorOf(asPerson(userId, fn));
 
-  /** The agent's own login drafts an email with `token`; commits. "" or the error. */
-  const agentDraft = (token: string, kind = "email", payload: object = EMAIL) =>
-    errorOf(
+  /**
+   * The agent's own login drafts an email with `token`; commits. "" when a draft was inserted, the error,
+   * or "denied: <reason>" when the policy (AG-03, 0013) refused it and logged the reason.
+   */
+  const agentDraft = async (token: string, kind = "email", payload: object = EMAIL) => {
+    let id: unknown;
+    const e = await errorOf(
       agent.begin(async (tx) => {
         await tx.unsafe("set local role gaugeline_agent");
-        await tx`select private.agent_insert_draft(${token}, ${SITE_A1}, ${kind}, ${tx.json(payload as never)})`;
+        const [r] =
+          await tx`select private.agent_insert_draft(${token}, ${SITE_A1}, ${kind}, ${tx.json(payload as never)}) as id`;
+        id = r!.id;
       }),
     );
+    if (e !== "" || id !== null) return e;
+    const [d] = await owner`select reason from public.agent_denies order by id desc limit 1`;
+    return `denied: ${d!.reason as string}`;
+  };
 
   /** Register through the one door, as `by` on the person's login; roll back unless `commit`. */
   const registerAs = (
@@ -262,10 +272,9 @@ describe.skipIf(!HAS_DATABASE)("agent registry", () => {
     it("a new agent has no scope by default and can draft nothing (deny by default)", async () => {
       const a = await register({ scopes: [] });
       expect((await row(a.id)).scopes).toEqual([]);
-      for (const kind of DRAFT_KINDS)
-        expect(await agentDraft(a.token, kind)).toMatch(/no scope to draft this kind/);
+      for (const kind of DRAFT_KINDS) expect(await agentDraft(a.token, kind)).toBe("denied: scope");
       const emailOnly = await register({ scopes: ["draft:email"] });
-      expect(await agentDraft(emailOnly.token, "pull_request")).toMatch(/no scope to draft/);
+      expect(await agentDraft(emailOnly.token, "pull_request")).toBe("denied: scope");
     });
   });
 
@@ -477,7 +486,7 @@ describe.skipIf(!HAS_DATABASE)("agent registry", () => {
         agent_revoked_by: USER_A_OWNER,
       });
       expect(r!.agent_revoked_at).toBeInstanceOf(Date);
-      expect(await agentDraft(a.token)).toMatch(/agent token not recognised/);
+      expect(await agentDraft(a.token)).toBe("denied: revoked");
       expect(await history(a.id)).toEqual([
         { from_status: null, to_status: "active", changed_by: USER_A_OWNER },
         { from_status: "active", to_status: "revoked", changed_by: USER_A_OWNER },
@@ -547,7 +556,7 @@ describe.skipIf(!HAS_DATABASE)("agent registry", () => {
       await new Promise((r) => setTimeout(r, 200));
       release();
       await revoke;
-      expect(await draft).toMatch(/agent token not recognised/);
+      expect(await draft).toBe("denied: revoked");
     });
 
     it("a disabled agent is refused until it is enabled again; both changes are in the history", async () => {
@@ -559,7 +568,7 @@ describe.skipIf(!HAS_DATABASE)("agent registry", () => {
           true,
         );
       await set("disabled");
-      expect(await agentDraft(a.token)).toMatch(/agent token not recognised/);
+      expect(await agentDraft(a.token)).toBe("denied: disabled");
       expect((await row(a.id)).revoked_at).toBeNull();
       await set("active");
       expect(await agentDraft(a.token)).toBe("");
@@ -599,7 +608,7 @@ describe.skipIf(!HAS_DATABASE)("agent registry", () => {
         true,
       );
       expect((await row(a.id)).last_used_at).toBeNull();
-      expect(await agentDraft(a.token, "pull_request")).toMatch(/no scope/);
+      expect(await agentDraft(a.token, "pull_request")).toBe("denied: scope");
       expect(await agentDraft(a.token, "email", { subject: "x" })).toMatch(/payload/);
       expect((await row(a.id)).last_used_at).toBeNull();
       expect(await agentDraft(a.token)).toBe("");
@@ -688,15 +697,20 @@ describe.skipIf(!HAS_DATABASE)("agent registry", () => {
         ]);
         expect(rows[0]!.token_sha256).toBe(hashAgentToken(live));
         expect((await old.sql`select to_regclass('private.agent_tokens') as t`)[0]!.t).toBeNull();
-        const draft = (t: string) =>
-          errorOf(
+        const draft = async (t: string) => {
+          let id: unknown;
+          const e = await errorOf(
             old.sql.begin(async (tx) => {
               await tx.unsafe("set local role gaugeline_agent");
-              await tx`select private.agent_insert_draft(${t}, ${SITE_A1}, 'email', ${tx.json(EMAIL)})`;
+              const [r] =
+                await tx`select private.agent_insert_draft(${t}, ${SITE_A1}, 'email', ${tx.json(EMAIL)}) as id`;
+              id = r!.id;
             }),
           );
+          return e !== "" ? e : id === null ? "denied" : "";
+        };
         expect(await draft(live)).toBe("");
-        expect(await draft(gone)).toMatch(/agent token not recognised/);
+        expect(await draft(gone)).toBe("denied");
         const flagged = await old.sql`select name, reasons from public.agent_shadow_inventory`;
         expect([...flagged]).toEqual([{ name: "Agent token 1", reasons: ["no-owner"] }]);
         const ev = await old.sql`select to_status, changed_by from public.agent_events order by id`;
@@ -725,15 +739,14 @@ describe.skipIf(!HAS_DATABASE)("agent registry", () => {
       expect(await definerFunctionsWithoutEmptySearchPath(owner)).toEqual([]);
     });
 
-    it("the docs example names the real line of the refusal it shows", async () => {
+    it("the docs example shows the refusal the policy gives (0013): a warning and nothing inserted", async () => {
       const docs = readFileSync(
         fileURLToPath(new URL("../../../../docs/hosted/agent-registry.md", import.meta.url)),
         "utf8",
       );
-      const m = /function private\.agent_insert_draft\(.*?\) line (\d+) at RAISE/.exec(docs);
-      const [fn] = await owner`select prosrc from pg_proc where proname = 'agent_insert_draft'`;
-      const line = String(fn!.prosrc).split("\n")[Number(m![1]) - 1] ?? "";
-      expect(line).toMatch(/raise exception 'agent token not recognised'/);
+      expect(docs).toContain("WARNING:  agent call denied: revoked\n inserted\n----------\n f\n");
+      const [fn] = await owner`select prosrc from pg_proc where proname = 'agent_deny'`;
+      expect(String(fn!.prosrc)).toContain("raise warning 'agent call denied: %', p_reason");
     });
 
     it("the closed scope list in the database is the app's list", async () => {

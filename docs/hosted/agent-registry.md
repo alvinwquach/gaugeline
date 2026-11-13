@@ -45,7 +45,7 @@ privilege on any table, and its one way in is still `private.agent_insert_draft`
 Northgate Studio runs an agent that drafts fixes for The Tidewater Bar's menu links. Its owner registers
 it with two scopes, the agent drafts an email, and then she revokes it. A second agent belongs to a
 freelancer who then leaves the agency. This is the output of the seeded test database
-(`apps/hosted/db/__tests__/harness.ts` and migration `0012_agent_registry.sql`), run with `psql` 16 as
+(`apps/hosted/db/__tests__/harness.ts` and migrations `0012_agent_registry.sql` and `0013_agent_policy.sql`), run with `psql` 16 as
 written, as the schema owner switching roles the way the app's and the agent's logins do. The token is
 random on every run, so the example keeps it in a psql variable and prints only that it has the right
 shape:
@@ -161,8 +161,12 @@ SET
 
 RESET
 SET
-ERROR:  agent token not recognised
-CONTEXT:  PL/pgSQL function private.agent_insert_draft(text,uuid,text,jsonb,uuid[]) line 20 at RAISE
+WARNING:  agent call denied: revoked
+ inserted
+----------
+ f
+(1 row)
+
 RESET
 SET
  from_status | to_status |              changed_by
@@ -203,7 +207,8 @@ What it shows:
 4. The agent's draft is accepted, and that sets "last used". Reading the registry does not.
 5. **Revoke is one call**: `private.revoke_agent(id)` sets the status, the time and who did it in one
    statement and writes the history row. Revoking a revoked agent changes nothing.
-6. The token stops working for the very next call. A call that was already running when the revoke
+6. The token stops working for the very next call: nothing is inserted, the agent is told `revoked`, and
+   the refusal is in the [deny log](./agent-policy.md). A call that was already running when the revoke
    committed waits for it and is then refused.
 7. Every status change is kept, with who made it and when. Nobody can change or delete that history.
 8. The shadow-agent inventory flags the freelancer's agent: it has no owner any more.
@@ -242,8 +247,9 @@ can be marked as migrated.
 
 - The two `read:` scopes are reserved: AG-08 enforces them, and nothing reads hosted data for an agent
   until then.
-- Per-agent tool allowlists, rate limits, cost ceilings and kill switches are AG-03, and per-call traces
-  are AG-05. ADR-0014 ("Agent safety model") lists the threats each one answers.
+- Per-agent tool allowlists, rate limits, cost ceilings, timeouts and kill switches are on
+  [agent policy and limits](./agent-policy.md) (AG-03); per-call traces are AG-05. ADR-0014 ("Agent
+  safety model") lists the threats each one answers.
 - There is no page for the registry yet; it is the next step (a list, register and revoke under the
   organisation's settings, for owners and admins).
 - An agent run entirely on someone's own machine against the local MCP server is not in the registry: the
