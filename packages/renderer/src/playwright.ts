@@ -53,7 +53,7 @@ export interface PlaywrightRendererOptions {
   /** How bytes leave: the fetcher's transport, which refuses private addresses unless the run allows them. */
   transport: Transport;
   limits?: Partial<RenderLimits>;
-  /** Where the driver comes from. Default: `import("playwright-core")`, on the first page. */
+  /** Where the driver comes from. Default: `import("playwright-core")`, when availability is first looked up or the first page is asked for. */
   loadDriver?: () => Promise<Driver>;
   env?: NodeJS.ProcessEnv;
   exists?: FindBrowserOptions["exists"];

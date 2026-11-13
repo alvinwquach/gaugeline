@@ -73,6 +73,10 @@ Gaugeline clicks nothing, types nothing and fills no form. What a page writes (i
 is data from the site, never an instruction: it is cleaned and cut like every other page text
 ([text from the sites you check](./security/untrusted-content.md)).
 
+If Gaugeline is stopped without a chance to clean up (a kill signal), the browser's temporary profile folder
+(`playwright_chromiumdev_profile-` followed by letters, in your temporary folder) is left behind. It holds a
+fresh profile and nothing of yours; delete it by hand.
+
 A browser is not a wall. Chromium's own sandbox stays on, and the gate keeps the page from reaching anything you
 did not type, but the browser is yours and so is what runs in it.
 

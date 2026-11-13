@@ -109,6 +109,30 @@ describe.skipIf(skipReason !== undefined)("the Playwright adapter in a real brow
     expect(site.hits.get("/search.html")).toBeUndefined();
   }, 60_000);
 
+  test("stops a form a page submits by clicking its own button: the submit event is cancelled", async () => {
+    const page = rendered(await render("/form-click.html"));
+    expect(page.blocked.form).toBeGreaterThanOrEqual(1);
+    expect(page.finalUrl).toBe(`${site.origin}/form-click.html`);
+    expect(site.hits.get("/search.html")).toBeUndefined();
+  });
+
+  test("is could-not-check for a page that is slower than the time cap, at that cap", async () => {
+    const slow = createPlaywrightRenderer({
+      transport: createNetworkTransport({ allowPrivate: true, target: site.origin }),
+      chromiumSandbox: process.getuid?.() !== 0,
+      limits: { ms: 1000 },
+    });
+    try {
+      const started = Date.now();
+      const answer = refused(await slow.render({ url: `${site.origin}/slow` }));
+      // The browser gave up at the cap (the page needs 3 s), not at the hang guard 5 s after it.
+      expect(answer.reason).toMatch(/did not load|time/);
+      expect(Date.now() - started).toBeLessThan(2900);
+    } finally {
+      await slow.close();
+    }
+  });
+
   test("blocks analytics beacons, wherever they go", async () => {
     const page = rendered(await render("/beacon.html"));
     expect(page.blocked.analytics).toBe(2);

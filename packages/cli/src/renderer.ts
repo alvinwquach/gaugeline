@@ -9,8 +9,8 @@ import {
 /**
  * Starts the renderer a run asked for with `--renderer playwright` (ADR-0009, accepted in part on 13 Nov
  * 2026). This is the only place the adapter package is imported, and the import is dynamic: a run that does
- * not name a renderer never loads it, and the adapter never loads playwright-core until the first page is
- * rendered (a test asserts both).
+ * not name a renderer never loads it, and the adapter never loads playwright-core until the renderer starts, which
+ * is when the first page is asked for or availability is looked up (a test asserts both).
  *
  * The renderer gets the same network rules the fetcher has: the transport refuses private, loopback,
  * link-local and metadata addresses unless the run said --allow-private, and then only for the address

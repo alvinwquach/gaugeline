@@ -1,7 +1,28 @@
 {
-  "/to-private": { "status": 302, "location": "http://169.254.169.254/latest/meta-data/" },
-  "/to-other-port": { "status": 302, "location": "http://127.0.0.1:1/" },
-  "/ok-redirect": { "status": 302, "location": "/about.html" },
-  "/loop": { "status": 302, "location": "/loop" },
-  "/huge": { "bodyBytes": 3000000 }
+  "/to-private": {
+    "status": 302,
+    "location": "http://169.254.169.254/latest/meta-data/"
+  },
+  "/to-other-port": {
+    "status": 302,
+    "location": "http://127.0.0.1:1/"
+  },
+  "/ok-redirect": {
+    "status": 302,
+    "location": "/about.html"
+  },
+  "/loop": {
+    "status": 302,
+    "location": "/loop"
+  },
+  "/huge": {
+    "bodyBytes": 3000000
+  },
+  "/slow": {
+    "delayMs": 3000,
+    "body": "<!doctype html><title>slow</title><p>slow</p>",
+    "headers": {
+      "content-type": "text/html; charset=utf-8"
+    }
+  }
 }

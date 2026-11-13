@@ -63,6 +63,7 @@ function fakeDriver(scenario: Scenario = {}) {
     popupsClosed: 0,
     dialogsDismissed: 0,
     wsHandlers: [] as unknown[],
+    gotoOptions: [] as unknown[],
   };
   const driver = {
     chromium: {
@@ -118,7 +119,8 @@ function fakeDriver(scenario: Scenario = {}) {
                 page = {
                   on: (e: string, l: (arg: unknown) => unknown) => listeners.set(e, l),
                   mainFrame: () => mainFrame,
-                  goto: async (url: string) => {
+                  goto: async (url: string, gotoOptions?: unknown) => {
+                    log.gotoOptions.push(gotoOptions);
                     if (scenario.hang) return new Promise(() => undefined);
                     const nav = await fire({ url, type: "document" });
                     if (nav.abort.mock.calls.length > 0)
@@ -288,6 +290,12 @@ describe("the Playwright adapter: a page that loads", () => {
         expect(options).not.toHaveProperty(key);
     }
     expect(log.launches).toHaveLength(1);
+  });
+
+  it("gives the browser the page's time cap, and waits for the load", async () => {
+    const { r, log } = renderer({}, { limits: { ms: 1234 } });
+    await r.render(PAGE);
+    expect(log.gotoOptions).toEqual([{ timeout: 1234, waitUntil: "load" }]);
   });
 
   it("uses the viewport it is given", async () => {
