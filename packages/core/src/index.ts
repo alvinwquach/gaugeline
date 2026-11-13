@@ -2071,8 +2071,6 @@ export {
   estimateInputTokens,
   estimateRun,
   createByokGateway,
-  createGateway,
-  createRecordedAdapter,
   describeByok,
   gatewayEvalModel,
   checkModelPins,

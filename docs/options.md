@@ -1130,7 +1130,8 @@ between the markers; CI fails when it differs from the flag table.
 | `--rules <value>`           | house-rules: the file of written rules to compile (plain text or Markdown, up to 50,000 characters)                  |                            | 0.2.0 |
 | `--head <value>`            | receipts verify: a head hash written down earlier, which the chain must still contain                                |                            | 0.2.0 |
 | `--review-notes <value>`    | mine: the folder of review notes (Markdown or text) to read; only lines that start with #pattern-name are used       |                            | 0.2.0 |
-| `--deny-list <value>`       | mine: a file of client names, one per line, that must never reach the draft (the scrub fails it if one does)         |                            | 0.2.0 |
+| `--deny-list <value>`       | mine, write-check: client names, one per line, to keep out of the draft (the scrub fails it if one gets in)          |                            | 0.2.0 |
+| `--from-file <value>`       | write-check: the advisory or docs page saved as a local file (JSON or Markdown, up to 64 KB); never fetched          |                            | 0.2.0 |
 | `--fixes`                   | propose: turn fix proposals on (they are off by default); nothing is sent, the diffs are written to a file           | `GAUGELINE_FIXES`          | 0.2.0 |
 | `--repo <value>`            | propose: the project's folder on this computer (a checkout of its repository)                                        |                            | 0.2.0 |
 | `--plan <value>`            | propose: the launch plan (CSV); with --base, each old address that does not redirect gets a proposal                 |                            | 0.2.0 |
