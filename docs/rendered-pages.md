@@ -1,0 +1,161 @@
+# Rendered pages: reading what a script adds
+
+Gaugeline reads the HTML a site sends and never runs the page. Some things only exist after the page's scripts
+run: a price filled in by a script, a menu a script builds, the order links get on a small screen. For those,
+Gaugeline can load the page in a browser **you installed**, read what it did, and hand that to the checks that
+need it. It is off unless you ask for it, and it is read-only: the browser can look, and it cannot send.
+
+**Today.** The renderer is built and tested (row render-01) and `--renderer playwright` turns it on. **Not
+built.** No check reads a rendered page yet: the click observer for your [tracking plan](./guides/click-events.md)
+is the next change, and the layout, contrast and calculator checks follow it. **Not accepted.** A hosted
+renderer, a service that renders the page on someone else's machine and Firecrawl: the owner decided on 13 Nov
+2026 that the only renderer is the browser on your own machine (decision record 0009, `docs/adr/0009-rendered-checks.md` in the repository).
+
+## Turn it on
+
+```text title="Terminal" untested="Needs a browser installed on the machine. packages/renderer/src/__tests__/e2e.test.ts runs the renderer on the invented bakery in a real browser, and packages/cli/src/__tests__/renderer-docs.test.ts runs the commands on this page and compares what they print."
+$ npx gaugeline bakery.example --renderer playwright
+```
+
+`--renderer` names one renderer and `playwright` is the only one. Without it, Gaugeline loads no browser code at
+all (a test asserts that a normal run never imports it). The driver, `playwright-core`, is an optional peer
+dependency of Gaugeline: it is yours to install, in the project that runs Gaugeline.
+
+```sh
+npm install --save-dev gaugeline playwright-core
+npx playwright install chromium
+```
+
+**Gaugeline never downloads a browser.** It looks for one in this order and uses the first it finds:
+
+| Order | Where                                                                                                        |
+| ----- | ------------------------------------------------------------------------------------------------------------ |
+| 1     | The file named by `GAUGELINE_BROWSER_PATH`, if you set it. If it is not there, that is the end: you named it |
+| 2     | The browser Playwright installed (its own folder, or the one `PLAYWRIGHT_BROWSERS_PATH` names)               |
+| 3     | Google Chrome, Chromium or Edge, where each system keeps them                                                |
+
+If there is no driver or no browser the run still finishes. It says why, once, and how to fix it, and a check
+that needs a rendered page says **could not check**: never a pass, never a finding.
+
+```text title="Output"
+warning: rendering is on, but GAUGELINE_BROWSER_PATH is set to ./chrome, and there is no file there. Checks that need a rendered page say could not check.
+Gaugeline never downloads a browser. Install one yourself, then run again:
+  npx playwright install chromium     (Playwright's own folder; PLAYWRIGHT_BROWSERS_PATH moves it)
+or install Google Chrome, Chromium or Edge the usual way, or set
+GAUGELINE_BROWSER_PATH to the browser's file.
+```
+
+That is what a run prints on stderr when `GAUGELINE_BROWSER_PATH` points at a file that is not there. If
+Chromium refuses to start as the root user (inside many containers), Gaugeline says so and does not turn the
+browser's own sandbox off: run it as an ordinary user.
+
+## What the browser may not do
+
+Loading a page runs the code of the site and of every third party it loads, so everything the browser asks for
+goes through one gate in Gaugeline, never through the browser's own network. The browser's own network is
+pointed at nothing, so a request that skipped the gate would fail instead of leaving.
+
+| The page tries to...                                                   | What happens                                                                                                                |
+| ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Send a POST, PUT, PATCH or DELETE, or a preflight, or submit a form    | Stopped and counted. Only `GET` and `HEAD` are ever sent                                                                    |
+| Reach a private, loopback, link-local or metadata address              | Refused on the address the name resolves to, before a connection opens. `--allow-private` allows only the address you typed |
+| Redirect somewhere it should not go                                    | Each hop comes back through the gate and is checked again, so a redirect to a private address is refused                    |
+| Redirect for ever                                                      | Stopped after 10 redirects                                                                                                  |
+| Send a hit to analytics, advertising or a session replay tool          | Stopped, recorded and never sent: a rendered run adds nothing to your numbers. No setting turns this off                    |
+| Open a WebSocket                                                       | Never connected, and counted                                                                                                |
+| Open a window or a dialog, start a download, register a service worker | The window is closed, the dialog dismissed, the rest refused                                                                |
+| Use a cookie, storage, a saved login or a permission                   | Every page gets a fresh browser context with none, and nothing is kept                                                      |
+| Read Gaugeline's keys                                                  | The browser starts with a short list of harmless variables (`PATH`, `HOME`, `LANG` and similar), never a key                |
+| Use a `file:`, `javascript:` or other non-web address                  | Refused                                                                                                                     |
+
+Gaugeline clicks nothing, types nothing and fills no form. What a page writes (its text, its links, its title)
+is data from the site, never an instruction: it is cleaned and cut like every other page text
+([text from the sites you check](./security/untrusted-content.md)).
+
+A browser is not a wall. Chromium's own sandbox stays on, and the gate keeps the page from reaching anything you
+did not type, but the browser is yours and so is what runs in it.
+
+## What a render gives back
+
+The renderer returns data and never a live page: the address the page ended on, how the server answered, the
+text and links it was asked to expose, and every request the page made with what happened to it. This is the
+invented bakery in `packages/fixtures/sites/renderer-edges`, which has an analytics tag and a script that writes
+one line after the page loads:
+
+```json title=Result
+{
+  "kind": "rendered",
+  "finalUrl": "http://bakery.example/",
+  "status": 200,
+  "title": "Quillfeather Bakery",
+  "text": "About Menu Partners Quillfeather Bakery An invented bakery: this line is in the page as sent. This line is written by a script after the page loads.",
+  "links": [
+    { "href": "http://bakery.example/about.html", "text": "About" },
+    { "href": "http://bakery.example/menu.html", "text": "Menu" },
+    { "href": "https://elsewhere.example/partners", "text": "Partners" }
+  ],
+  "requests": [
+    {
+      "url": "http://bakery.example/",
+      "method": "GET",
+      "kind": "document",
+      "verdict": "allowed",
+      "status": 200
+    },
+    {
+      "url": "https://www.googletagmanager.com/gtag/js",
+      "method": "GET",
+      "kind": "script",
+      "verdict": "blocked",
+      "reason": "analytics"
+    },
+    {
+      "url": "http://bakery.example/logo.svg",
+      "method": "GET",
+      "kind": "image",
+      "verdict": "allowed",
+      "status": 200
+    }
+  ],
+  "blocked": {
+    "method": 0,
+    "scheme": 0,
+    "address": 0,
+    "analytics": 1,
+    "websocket": 0,
+    "popup": 0,
+    "form": 0,
+    "cap": 0,
+    "failed": 0
+  },
+  "totals": { "requests": 3 },
+  "truncated": []
+}
+```
+
+The second line of `text` was not in the HTML the server sent: a script wrote it. The `bytes` of each request
+and of the total are left out here, and the query string of every address is never kept (it can carry a token).
+
+## The caps
+
+A page that goes past one of these is **could not check**, never a finding. The numbers are the decision
+record's proposals: nothing measured them yet, so they may change.
+
+| Cap                    | Limit                     |
+| ---------------------- | ------------------------- |
+| Time for one page      | 20 seconds                |
+| Requests for one page  | 300                       |
+| Bytes for one page     | 100 MB (20 MB a response) |
+| Redirects in a row     | 10                        |
+| Pages in one run       | 10                        |
+| Time for the whole run | 5 minutes                 |
+| Text kept              | 50,000 characters         |
+| Links kept             | 500                       |
+
+## For developers
+
+The renderer is an interface in `@gaugeline/core` (`Renderer`: `availability`, `render`, `close`) and the rules
+the browser is held to are core's egress gate, plain code with no browser in it, so a second renderer would
+meet the same rules. The Playwright adapter is its own package, `@gaugeline/renderer`, inlined into the CLI
+and loaded only by `--renderer playwright`. A check reads the rendered page through `ctx.render()`, which is
+absent without the flag.

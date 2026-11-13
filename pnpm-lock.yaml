@@ -131,6 +131,9 @@ importers:
 
   packages/cli:
     dependencies:
+      playwright-core:
+        specifier: '>=1.48.0 <2'
+        version: 1.63.0
       typescript:
         specifier: '>=5.0.0 <7'
         version: 5.9.3
@@ -147,6 +150,9 @@ importers:
       '@gaugeline/documents':
         specifier: workspace:*
         version: link:../documents
+      '@gaugeline/renderer':
+        specifier: workspace:*
+        version: link:../renderer
 
   packages/core:
     dependencies:
@@ -211,6 +217,21 @@ importers:
         specifier: workspace:*
         version: link:../testkit
       '@playwright/test':
+        specifier: 1.63.0
+        version: 1.63.0
+
+  packages/renderer:
+    devDependencies:
+      '@gaugeline/core':
+        specifier: workspace:*
+        version: link:../core
+      '@gaugeline/fixtures':
+        specifier: workspace:*
+        version: link:../fixtures
+      '@gaugeline/testkit':
+        specifier: workspace:*
+        version: link:../testkit
+      playwright-core:
         specifier: 1.63.0
         version: 1.63.0
 

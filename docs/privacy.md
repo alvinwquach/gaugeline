@@ -462,6 +462,24 @@ What it prints: the kind of tracker, the id it carries (a public identifier in t
 page's path and why the page counts. Never page text, a form field name or a form value, and never a verdict
 on whether a tracker is allowed. Nothing is submitted and no one is logged in.
 
+### Rendered pages (--renderer playwright)
+
+`--renderer playwright` loads the page in a browser you installed, so the page's own scripts run
+([Rendered pages](rendered-pages.md)). Off unless named. The browser runs on your machine and nothing about the
+page goes to a Gaugeline service or any other place.
+
+- **What is requested.** The page and what it loads, by `GET` and `HEAD` only, through the same transport the
+  fetcher uses: a private, loopback, link-local or metadata address is refused unless you typed it and passed
+  `--allow-private`, and every redirect is checked again at each hop.
+- **What is never requested.** Anything but `GET` and `HEAD`, a form submission, a WebSocket, a window, a
+  `file:` or other non-web address, and any analytics, advertising or session replay host: a rendered run adds
+  no visit to your numbers.
+- **What the browser holds.** A fresh context for every page with no cookie, storage, login or permission, and
+  an environment with none of your keys. Nothing is clicked, typed or submitted.
+- **What is kept.** The renderer hands back the address the page ended on, its status, its text and links, and
+  each request's address without the query string, method, kind and outcome. Page text is cleaned and cut like
+  every other page text.
+
 ### Served libraries (--libraries)
 
 `--libraries` on the page check lists the JavaScript libraries a page serves that a published advisory names

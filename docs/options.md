@@ -1349,6 +1349,24 @@ Settings: `gaugeline.trackers.json` (`sensitivePaths`: exact paths or `/folder/*
 does not see: [Trackers on sensitive pages](guides/trackers-on-sensitive-pages.md). What it sends:
 [Privacy and safety](privacy.md#trackers-on-sensitive-pages-trackers).
 
+### The renderer option
+
+`--renderer playwright` loads the page in a browser **you installed**, to read what a script adds. It is off
+unless you name it, and it is read-only: only `GET` and `HEAD` leave the browser, private addresses are
+refused, analytics and advertising hits are stopped and never sent, nothing is clicked, typed or submitted, and
+each page gets a fresh browser with no cookies or storage. Gaugeline never downloads a browser: with none
+found (or no `playwright-core`), the run finishes, says how to install one, and any check that needs a
+rendered page says could not check.
+
+```sh
+npx gaugeline bakery.example --renderer playwright
+```
+
+`playwright` is the only renderer. What it does, the caps, and how Gaugeline finds the browser
+(`GAUGELINE_BROWSER_PATH`, then Playwright's own folder, then Chrome, Chromium or Edge):
+[Rendered pages](rendered-pages.md). What it sends:
+[Privacy and safety](privacy.md#rendered-pages-renderer-playwright).
+
 ### The libraries option
 
 `--libraries` adds one check to the page check: the version of jQuery, jQuery UI, Lodash, Moment.js, Bootstrap

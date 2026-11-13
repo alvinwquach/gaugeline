@@ -2119,3 +2119,27 @@ export type {
   RegistryState,
   WriteResult,
 } from "./check-writer/index.js";
+export {
+  BLOCK_REASONS,
+  DEFAULT_RENDER_LIMITS,
+  RENDERER_NAMES,
+  emptyBlocked,
+} from "./render/types.js";
+export type {
+  BlockReason,
+  RenderCouldNotCheck,
+  RenderLimits,
+  RenderRequest,
+  RenderResult,
+  RenderedLink,
+  RenderedPage,
+  RenderedRequest,
+  Renderer,
+  RendererAvailability,
+  RendererName,
+} from "./render/types.js";
+export { lazyRender } from "./render/lazy.js";
+export type { LazyRender, RenderSource } from "./render/lazy.js";
+export { ANALYTICS_HOSTS, isAnalyticsRequest } from "./render/deny-hosts.js";
+export { createEgressGate } from "./render/gate.js";
+export type { CapName, EgressGate, GateAnswer, GateRequest, GateState } from "./render/gate.js";

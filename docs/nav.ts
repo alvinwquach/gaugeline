@@ -100,6 +100,7 @@ export const UNLISTED: NavPage[] = [
   { slug: "approvals-digest", title: "The pending-approvals digest" },
   { slug: "regression-watcher", title: "The regression watcher" },
   { slug: "field-findings-miner", title: "The field-findings miner" },
+  { slug: "rendered-pages", title: "Rendered pages: reading what a script adds" },
   { slug: "house-rules", title: "House rules: a written style guide as a draft config" },
   { slug: "check-writer", title: "The check writer" },
   { slug: "changelog", title: "Changelog" },
