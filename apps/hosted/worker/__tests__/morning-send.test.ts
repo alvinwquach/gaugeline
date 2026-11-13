@@ -55,6 +55,50 @@ function sink(answer: () => { ok: boolean; status?: number } | "throw" = () => (
   return { sent, send };
 }
 
+/**
+ * The same connection, with one transaction held back. `step` is which transaction of a pass (1 = the
+ * recipients, 2 = the plan, 3 = the claim). `hold(n)` runs before that transaction opens; `at` counts how
+ * many passes got there. Each pass needs its own wrapper, because the count is per pass.
+ */
+function gate(sql: Sql, step: number, hold: (n: number) => Promise<void> | void): { sql: Sql } {
+  let begins = 0;
+  const wrapped = new Proxy(sql, {
+    get(target, prop) {
+      if (prop === "begin") {
+        return async (...args: unknown[]) => {
+          begins += 1;
+          if (begins === step) await hold(begins);
+          return (target.begin as (...a: unknown[]) => unknown)(...args);
+        };
+      }
+      const value = Reflect.get(target, prop, target) as unknown;
+      return typeof value === "function" ? value.bind(target) : value;
+    },
+  });
+  return { sql: wrapped as Sql };
+}
+
+/** A barrier for `parties` callers: it opens when all have arrived (or after two seconds, so a test fails rather than hangs). */
+function barrier(parties: number) {
+  let arrived = 0;
+  let open!: () => void;
+  const opened = new Promise<void>((r) => (open = r));
+  const timer = setTimeout(open, 2000);
+  return {
+    get arrived() {
+      return arrived;
+    },
+    async wait() {
+      arrived += 1;
+      if (arrived >= parties) {
+        clearTimeout(timer);
+        open();
+      }
+      await opened;
+    },
+  };
+}
+
 describe.skipIf(!HAS_DATABASE)("the morning email", () => {
   let db: TestDatabase;
   let owner: Sql;
@@ -269,6 +313,87 @@ describe.skipIf(!HAS_DATABASE)("the morning email", () => {
     await sendMorningEmails(deps(s), min(60)); // later the same morning: still the same day
     expect(s.sent).toHaveLength(2);
     expect(await rows()).toHaveLength(2);
+  });
+
+  it("two workers that both planned before either claimed: exactly one sends (the claim decides, not the plan)", async () => {
+    await person(ORG_A, USER_A_OWNER);
+    await changed(ORG_A, SITE_A1, [["Broken link on the menu page", "high"]]);
+    const s = sink();
+    // Three passes; each is held at its third transaction (the claim) until all three have finished
+    // planning, so every one of them saw "no row yet" and holds a plan. Only the claim can stop a repeat.
+    const gateAtClaim = barrier(3);
+    const passes = [0, 1, 2].map(() =>
+      sendMorningEmails(
+        deps(
+          s,
+          gate(app.sql, 3, () => gateAtClaim.wait()),
+        ),
+        NOW,
+      ),
+    );
+    const reports = await Promise.all(passes);
+    expect(gateAtClaim.arrived).toBe(3); // the interleave really happened: all planned before any claimed
+    expect(s.sent).toHaveLength(1);
+    expect(reports.reduce((n, r) => n + r.sent, 0)).toBe(1);
+    expect(await rows()).toMatchObject([{ status: "sent", attempts: 1 }]);
+  });
+
+  it("two workers retrying the same failed row after planning together: exactly one retry is sent", async () => {
+    await person(ORG_A, USER_A_OWNER);
+    await changed(ORG_A, SITE_A1, [["Broken link on the menu page", "high"]]);
+    const failing = sink(() => ({ ok: false, status: 503 }));
+    await sendMorningEmails(deps(failing), NOW);
+    expect(await rows()).toMatchObject([{ status: "failed", attempts: 1 }]);
+    const s = sink();
+    const gateAtClaim = barrier(2);
+    await Promise.all(
+      [0, 1].map(() =>
+        sendMorningEmails(
+          deps(
+            s,
+            gate(app.sql, 3, () => gateAtClaim.wait()),
+          ),
+          min(15),
+        ),
+      ),
+    );
+    expect(gateAtClaim.arrived).toBe(2);
+    expect(s.sent).toHaveLength(1);
+    expect(await rows()).toMatchObject([{ status: "sent", attempts: 2 }]);
+  });
+
+  it("what the failure paths log: a code or an error's name, never its words, and never the key", async () => {
+    await person(ORG_A, USER_A_OWNER);
+    await changed(ORG_A, SITE_A1, [["Broken link on the menu page", "high"]]);
+    const spies = (["log", "info", "warn", "error", "debug"] as const).map((m) =>
+      vi.spyOn(console, m).mockImplementation(() => {}),
+    );
+    try {
+      // (1) The database throws something whose message carries the key (the outer catch).
+      const broken = gate(app.sql, 2, () => {
+        throw new Error(`connection string postgres://worker:${KEY}@db.example.test failed`);
+      });
+      const s = sink();
+      expect(await sendMorningEmails(deps(s, broken), NOW)).toEqual({ sent: 0, failed: 0 });
+      expect(s.sent).toEqual([]);
+      // (2) The mail service answers 503 with the key in its words, and (3) the send throws with it.
+      const words = sink(() => ({ ok: false, status: 503 }));
+      const loud: Sender = async (req) => ({
+        ...(await words.send(req)),
+        error: `provider said: bad key ${KEY}`,
+      });
+      await sendMorningEmails(deps({ send: loud }), NOW);
+      expect(await rows()).toMatchObject([{ status: "failed", last_error: "provider-busy" }]);
+      await sendMorningEmails(deps(sink(() => "throw")), min(15));
+      expect(await rows()).toMatchObject([{ status: "failed", last_error: "send-threw" }]);
+      const logged = spies.flatMap((spy) => spy.mock.calls).map((c) => c.map(String).join(" "));
+      expect(logged).toEqual(["morning email: Error for one recipient"]);
+      expect(logged.join("\n")).not.toContain(KEY);
+      expect(logged.join("\n")).not.toContain("connection string");
+      expect(JSON.stringify(await owner`select * from public.email_sends`)).not.toContain(KEY);
+    } finally {
+      for (const spy of spies) spy.mockRestore();
+    }
   });
 
   it("the next morning reports only what changed since the last email", async () => {

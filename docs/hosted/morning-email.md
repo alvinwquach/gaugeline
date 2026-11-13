@@ -64,6 +64,10 @@ core's `sanitise` (the same cleaning as every other output: hidden characters, l
 marks out, length capped) and are then escaped for HTML. A title with `<script>` or a fake `Bcc:` line comes
 out as harmless text.
 
+One thing the cleaning cannot do: if a page puts a web address in a finding title, it appears as plain
+text, and some mail programs turn plain-text addresses into links. Treat an address in a title as
+something a page wrote, not something Gaugeline vouches for.
+
 ## The link at the bottom
 
 It is signed with a server secret (HMAC-SHA256), names one person in one organisation, and works for 90
