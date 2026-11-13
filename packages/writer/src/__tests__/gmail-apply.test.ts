@@ -1,3 +1,4 @@
+// check-community: allow-email (invented recipients at reserved .example domains: the draft tests, and the address shapes the builder accepts)
 /**
  * X75, integration against the stand-in mailbox: an approved email draft becomes one Gmail draft, nothing
  * is sent, and each refusal (no approval, a changed payload, an expired approval, a recipient that is not

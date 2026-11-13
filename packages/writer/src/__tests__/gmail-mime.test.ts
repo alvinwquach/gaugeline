@@ -1,3 +1,4 @@
+// check-community: allow-email (invented recipients at reserved .example domains: the draft tests, and the address shapes the builder accepts)
 /**
  * X75, unit: the draft is built by one small pure function (RFC 5322 and RFC 2045, base64url `raw`). The
  * same input is the same bytes, a header cannot be injected through the recipient or the subject, and a
@@ -184,5 +185,19 @@ describe("readRaw only reads what buildRaw writes", () => {
   it("refuses a body that is not valid base64", () => {
     const text = good.replace(/\r\n\r\n[\s\S]*$/, "\r\n\r\n!!!!");
     expect(() => readRaw(raw(text))).toThrow(MimeError);
+  });
+
+  it("refuses a message that is not the canonical bytes buildRaw writes (same words, another encoding)", () => {
+    // A plain subject written as an encoded word reads the same but is not what the builder writes.
+    const encoded = `=?UTF-8?B?${Buffer.from(MAIL.subject).toString("base64")}?=`;
+    const other = good.replace(`Subject: ${MAIL.subject}`, `Subject: ${encoded}`);
+    expect(() => readRaw(raw(other))).toThrow(MimeError);
+    // Lower-case To addresses written in another case are another message.
+    const upper = good.replace(CONTACTS[0]!, CONTACTS[0]!.toUpperCase());
+    expect(readRaw(raw(upper)).to[0]).toBe(CONTACTS[0]!.toUpperCase());
+    // A body wrapped at another width is another message.
+    const body = good.split("\r\n\r\n")[1]!.replace(/\r\n/g, "");
+    const rewrapped = good.split("\r\n\r\n")[0] + "\r\n\r\n" + body.match(/.{1,40}/g)!.join("\r\n");
+    expect(() => readRaw(raw(rewrapped))).toThrow(MimeError);
   });
 });

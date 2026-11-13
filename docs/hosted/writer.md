@@ -5,8 +5,8 @@ It queues an apply job. **Your own worker**, on your machine or in your CI, clai
 writer (`packages/writer`) with **your own GitHub token**. The hosted service never holds a token that
 can write ([What it can and can't write](../writes.md#fixes-you-approve-hosted), ADR-0010).
 
-This page covers the `pull_request` kind. Sanity drafts (X71) and Gmail drafts (X75) use the same rules
-and arrive in their own pull requests. Nothing changes a live field.
+This page covers the `pull_request` kind and, near the end, the `email` kind (a Gmail draft). Sanity drafts
+(X71) use the same rules and arrive in their own pull request. Nothing changes a live field.
 
 ## An example: the bar's broken menu link
 
@@ -178,6 +178,20 @@ const target = {
   allowedPrefixes: ["content/", "public/menu/"], // optional; the default is the floor only
 };
 ```
+
+## Email drafts (the `email` kind)
+
+An approved `email` draft becomes one draft in **your own Gmail Drafts**, addressed to the site's configured
+contacts, and is never sent. `applyEmailDraft` (or `emailDraftWriter(deps).apply(job)`) runs the same approval
+checks as above, then builds one plain-text message and makes one request, `POST /gmail/v1/users/me/drafts`, to
+`gmail.googleapis.com` with your OAuth access token. The registry has that one request and no send. The one scope
+to grant is `gmail.drafts.create`. The recipients come from your worker's configuration, never from the note. The
+full page, with a runnable example and its real output, is
+[Drafts in your own mailbox: Gmail](../guides/mailbox-drafts.md).
+
+The trail entry's `ref` is Gmail's draft id; the extra reasons are `recipient`, `duplicate` and `disconnected`,
+and `apply_failed` with the reason `reconnect` when Gmail answers 401 or 403. The weekly client update is not an
+`email` apply job: the inbox skips it, and the agency's own mail path sends it ([agencies](./agencies.md)).
 
 Status: the writer and its tests are built. The worker that claims jobs is G36's, and outcome rows in the
 hosted decisions log arrive with it; until then the trail and the approvals lookup are interfaces.

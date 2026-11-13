@@ -1,3 +1,4 @@
+// check-community: allow-email (invented recipients at reserved .example domains: the draft tests, and the address shapes the builder accepts)
 /**
  * X75: the Gmail registry knows one request, `users.drafts.create`, and nothing that sends. The scope the
  * customer grants is the one that can only create drafts. A request that is not that request, to anyone but

@@ -1,3 +1,4 @@
+// check-community: allow-email (invented recipients at reserved .example domains: the draft tests, and the address shapes the builder accepts)
 /**
  * X75: the Gmail sender is the writer's second place that opens a connection. It calls the global fetch
  * (so the post-boundary scan sees it), to https://gmail.googleapis.com only, after the registry has

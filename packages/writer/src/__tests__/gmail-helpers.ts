@@ -1,3 +1,4 @@
+// check-community: allow-email (invented recipients at reserved .example domains: the draft tests, and the address shapes the builder accepts)
 /**
  * Shared stand-ins for the Gmail draft tests: an invented mailbox that implements `users.drafts.create`
  * and nothing else (any other request it sees is recorded as a violation and answered 404), an approvals
