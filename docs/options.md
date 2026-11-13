@@ -853,6 +853,7 @@ between the markers; CI fails when it differs from the flag table.
 | `--owner-consent`           | Run the probing checks, which ask routes for what they protect with no login; only on sites you may test             |                            | 0.2.0 |
 | `--routes <value>`          | With --owner-consent: download routes in files matching this glob (repeatable); no glob: a folder's signed-in routes |                            | 0.2.0 |
 | `--since <value>`           | Page check: compare with the last run (the only value is last). delivery: the window to read, such as 7d             |                            | 0.2.0 |
+| `--before-after`            | Print two saved runs side by side: fixed, new and still there (--since names the before run)                         |                            | 0.2.0 |
 | `--coming-up`               | Also read what lapses in the next 60 days (domain, certificates, tokens) for Coming up                               |                            | 0.2.0 |
 | `--month <value>`           | The month a receipt covers, as yyyy-mm in UTC (default: the last whole month)                                        |                            | 0.2.0 |
 | `--client-reported <value>` | A fix your client reported first, as a check id with an optional page (payment-link-dead@/visit); repeatable         |                            | 0.2.0 |

@@ -10,6 +10,12 @@ export const AREA_ORDER: readonly string[] = [
 export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area: string]>> = {
   "access-public-read": ["Anyone can read a table you didn't make public", "Security & email"],
   "access-role-scope": ["A signed-in user can read other people's rows", "Security & email"],
+  "ai-endpoint-open": [
+    "An AI route on your site answers anyone or shows the provider's error text",
+    "Security & email",
+  ],
+  "ai-key-in-js": ["An AI provider's key is in your site's JavaScript", "Security & email"],
+  "analytics-loaded-twice": ["Analytics are loaded twice on this page", "Leads"],
   "angular-dev-tools-public": [
     "The live Angular site is serving its development tools",
     "Launch day",
@@ -95,6 +101,7 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "The data sent with a page has private fields or unpublished posts",
     "Security & email",
   ],
+  "hidden-agent-bait": ["Hidden text on the page talks to AI agents", "Security & email"],
   "hidden-ai-directive": [
     "Hidden text on the page gives orders to AI assistants",
     "Security & email",
@@ -152,12 +159,17 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "Visitors",
   ],
   "model-unexpanded": ["A page shows a raw reference where content should be", "Visitors"],
+  "nav-link-not-200": ["Menu links don't answer 200 at once", "Visitors"],
   "next-draft-public": ["Anyone can switch on draft mode", "Launch day"],
   "next-preview-canonical": [
     "The live site points search engines at a preview deployment",
     "Launch day",
   ],
   noindex: ["This page asks search engines not to list it", "Search & sharing"],
+  "noindex-header-missing": [
+    "A route the page metadata does not reach has no noindex header",
+    "Search & sharing",
+  ],
   "nuxt-dev-build-live": ["This Nuxt site is running its development server", "Security & email"],
   "nuxt-devtools-public": ["The Nuxt DevTools are reachable", "Security & email"],
   "nuxt-preview-canonical": [
@@ -275,6 +287,7 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "A canonical points somewhere other than the planned page",
     "Launch day",
   ],
+  "plan-moved-not-indexable": ["A moved page is set not to be indexed", "Launch day"],
   "plan-redirect-missing": ["An old address doesn't redirect", "Launch day"],
   "plan-redirect-not-301": ["An old address redirects with a temporary status", "Launch day"],
   "plan-redirect-wrong-destination": [
@@ -343,6 +356,51 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   ],
   "webhook-failing": ["A webhook endpoint is not receiving its events", "Sales & prices"],
   "supabase-rls-off": ["A Supabase table has row-level security off", "Security & email"],
+  "page-robots-overrides-layout": [
+    "A page's robots setting replaces the layout's noindex",
+    "Search & sharing",
+  ],
+  "sitemap-while-indexing-off": [
+    "A sitemap is served while the site is set to stay out of search",
+    "Search & sharing",
+  ],
+  "robots-disallow-hides-noindex": [
+    "Pages marked noindex are also blocked in robots.txt",
+    "Search & sharing",
+  ],
+  "webhook-missing-secret-status": [
+    "A missing webhook secret is answered with the wrong status",
+    "Security & email",
+  ],
+  "sanity-cdn-tagged-reads": [
+    "The Sanity client reads through the CDN, and the reads are cached by tag",
+    "Visitors",
+  ],
+  "cms-token-in-client-code": [
+    "A content-system token is in code that is sent to the browser",
+    "Security & email",
+  ],
+  "webhook-url-hardcoded": ["A webhook URL is written in the source code", "Security & email"],
+  "personal-data-in-analytics": [
+    "A visitor's email, phone or form values are sent to analytics",
+    "Security & email",
+  ],
+  "form-values-in-logs": [
+    "A visitor's email, phone or form values are written to a log or an error report",
+    "Security & email",
+  ],
+  "form-failure-shows-success": [
+    "A form shows 'sent' even when sending the message failed",
+    "Leads",
+  ],
+  "zod-version-advisory": [
+    "The installed zod version has a published security advisory",
+    "Security & email",
+  ],
+  "next-version-advisory": [
+    "The installed Next.js version has published security advisories",
+    "Security & email",
+  ],
   "cutover-canonical-host": ["The bare domain and www don't settle on one address", "Launch day"],
   "cutover-mail-changed": ["The domain's mail records changed at cutover", "Security & email"],
   "migration-page-missing": ["A page from the old site is missing on the new one", "Launch day"],
@@ -421,9 +479,21 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "A published page links to the editors' side of Adobe Experience Manager",
     "Security & email",
   ],
+  "ai-crawlers-directives": [
+    "Your page signals to AI crawlers differ from what you said you want",
+    "Search & sharing",
+  ],
   "ai-crawlers-intent": [
     "Your robots.txt does not do what you said you want for AI crawlers",
     "Search & sharing",
+  ],
+  "ai-input-no-disclosure": [
+    "Visitors can type to an AI service and the page does not say so",
+    "Security & email",
+  ],
+  "ai-widget-inventory": [
+    "A chat or AI widget loads on your page that you have not listed",
+    "Security & email",
   ],
   "angular-ssr-error-200": ["An Angular error is served as a normal page", "Launch day"],
   "app-smart-banner-mismatch": ["The iPhone app banner promotes a different app", "Visitors"],
@@ -494,8 +564,10 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "nav-changed": ["The menu changed since the last run", "Visitors"],
   "nav-footer": ["The footer isn't the same on every page", "Visitors"],
   "nav-home-links": ["Menu items go to the homepage", "Visitors"],
+  "nav-link-no-name": ["Some menu links have no name", "Visitors"],
   "nav-orphans": ["Pages in the sitemap that no page links to", "Visitors"],
   "nav-parity": ["The mobile menu is missing links the desktop menu has", "Visitors"],
+  "nav-utm-lost": ["A menu link drops campaign tags", "Visitors"],
   "next-stale-after-publish": ["The page still shows an old copy after an edit", "Launch day"],
   "not-found-200": ["Pages that do not exist answer 200", "Search & sharing"],
   "nuxt-framework-file-listed": ["A Nuxt data file is named as a page", "Search & sharing"],
@@ -570,6 +642,10 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   ],
   "tags-dead-rules": ["A tracking rule points at something that no longer exists", "Leads"],
   "tags-duplicate": ["Two tags send the same event at the same moment", "Leads"],
+  "tracking-attributes-missing": [
+    "Some links are missing an attribute your tracking plan requires",
+    "Leads",
+  ],
   viewport: ["This page isn't set up for phone screens", "Visitors"],
   "plan-title-drift": ["A title tag isn't what the plan says", "Launch day"],
   "plan-h1-drift": ["An H1 isn't what the plan says", "Launch day"],
@@ -635,6 +711,55 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "Supabase's security advisor reports a problem",
     "Security & email",
   ],
+  "indexing-switch-loose": ['The indexing switch accepts more than "true"', "Search & sharing"],
+  "noindex-smoke-production": [
+    "The noindex smoke test runs on previews but not on production",
+    "Search & sharing",
+  ],
+  "webhook-signature-compared-plainly": [
+    "The webhook signature is compared with a plain comparison",
+    "Security & email",
+  ],
+  "webhook-timestamp-unbounded": [
+    "The webhook's signed timestamp has no age limit",
+    "Security & email",
+  ],
+  "webhook-body-read-unsafely": [
+    "The webhook body is parsed before its signature is checked, or read with no size limit",
+    "Security & email",
+  ],
+  "webhook-logs-private-values": [
+    "The webhook receiver writes the body, an id or a secret to its logs",
+    "Security & email",
+  ],
+  "revalidate-time-and-tag-mixed": ["A read is cached for a time and by a tag", "Visitors"],
+  "groq-reference-not-expanded": ["A query asks for a reference without following it", "Visitors"],
+  "image-alt-not-validated": ["An image field can be published with no alt text", "Visitors"],
+  "section-type-component-mismatch": [
+    "A page section and its component do not match",
+    "Launch day",
+  ],
+  "stega-not-cleaned": ["Sanity's hidden editing text is not cleaned where it must be", "Visitors"],
+  "form-post-unguarded": [
+    "A form endpoint accepts posts with no origin check, honeypot or token",
+    "Leads",
+  ],
+  "token-required-at-import": [
+    "A module needs the content token just to be imported",
+    "Launch day",
+  ],
+  "use-server-exports-not-async": [
+    "A 'use server' file exports something that is not an async function",
+    "Launch day",
+  ],
+  "a11y-spec-expects-violations": [
+    "An accessibility test passes when the page has violations",
+    "Visitors",
+  ],
+  "starter-licence-notice-missing": [
+    "The licence notice of a starter project is not in the folder",
+    "Launch day",
+  ],
   "cutover-certificate-changed": [
     "The certificate no longer covers a name it did",
     "Security & email",
@@ -698,6 +823,7 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "email-dmarc-none": ["Your DMARC policy only watches", "Security & email"],
   "event-missing-fields": ["Some events are missing details search engines need", "Visitors"],
   "events-distinct": ["Two menu links report the same click", "Leads"],
+  "events-unlisted": ["A click sends an event your tracking plan does not list", "Leads"],
   "forms-many-providers": ["Several form services on one page", "Leads"],
   "gatsby-data-unshown": [
     "The data sent with a Gatsby page has text the page does not show",
@@ -731,6 +857,7 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "Visitors",
   ],
   "schema-breadcrumb-start": ["Breadcrumbs don't start where your guide says", "Search & sharing"],
+  "studio-response-cacheable": ["The editor studio can be cached", "Launch day"],
   "sveltekit-data-unshown": ["The page's data has text the page does not show", "Security & email"],
   "tel-format": ["A phone link may not dial correctly", "Visitors"],
   "temp-host-canonical": ["A temporary address doesn't name the real one", "Launch day"],
@@ -764,6 +891,24 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   ],
   "query-field-partial": ["A field your query asks for is missing on some documents", "Visitors"],
   "generated-total-missing": ["A document has no stated total", "Visitors"],
+  "tsconfig-target-es5": ["tsconfig targets es5 on a modern Next.js app", "Visitors"],
+  "next-sanity-removed-api": [
+    "Draft mode code uses an API that next-sanity 13 removed",
+    "Launch day",
+  ],
+  "webhook-purges-draft-ids": ["A publish webhook clears the cache for draft ids too", "Visitors"],
+  "cms-client-in-framework-config": [
+    "A content client is created when the framework's config file loads",
+    "Launch day",
+  ],
+  "form-validation-in-client-bundle": [
+    "A form loads its validation library into the browser only to read field names",
+    "Visitors",
+  ],
+  "presentation-main-documents-missing": [
+    "Visual editing is set up with no route mapped to a document",
+    "Launch day",
+  ],
 };
 export const CHECK_TEXT: Readonly<
   Record<string, readonly [what: string, why: string, fix: string, tech: string]>
@@ -779,6 +924,24 @@ export const CHECK_TEXT: Readonly<
     "Any customer who signs up can read every other customer's records, and nobody sees it from the site.",
     "Change the table's read policy so a user sees only rows where the owner column is their own id (auth.uid()).",
     "Supabase: per configured test user and per table with an owner column, one HEAD /rest/v1/<table>?select=*&<owner>=neq.<user id> with that user's token and Prefer: count=exact; a count above 0 is a finding. Tokens come from the environment and are only ever sent in the Authorization header",
+  ],
+  "ai-endpoint-open": [
+    "A route you listed as a model endpoint answered a plain GET with no login: it listed its models, replied as a model would, or showed the provider's own error text (a provider error type, a fragment of the key, a stack trace or a server path). Gaugeline names the route and what it saw, never the text.",
+    "A model route that answers anyone lets strangers run your model account up, read what the model was told to do, or use your site as a free relay. An error that passes the provider's message through tells them which provider and model you use, and sometimes part of your key.",
+    "Put a login, a signed session or a rate limit in front of the route, and answer an error with a short message of your own: catch the provider's error on the server, log it there, and send back a plain status.",
+    "probing check, off without --owner-consent and a modelEndpoints entry in gaugeline.ai.json: one GET each of the routes you list (at most 8, each a path starting with /), once per run, to the site's own origin with no cookie, no Authorization header and no query, at most 16384 bytes of each answer read and never kept; Gaugeline never picks a route itself and never sends a POST, so a route that needs a POST and answers 405 is shown as closed, which says nothing about a POST. A JSON list of models (an OpenAI-style data list of models, or a models list with names) or a model's reply (choices, candidates, a text content block, or a response with a model) answered with 2xx is a high finding that gives the route and a count, never a model name; a provider error type, a provider message, a masked key fragment, a stack trace, a server file path or an SDK error class in the body of any answer is a medium finding that names the signs and none of the text; 401, 403 and 405 and plain answers pass; 404, 429, a 5xx with no such text and no answer are could-not-check. The shapes are from memory (uncited)",
+  ],
+  "ai-key-in-js": [
+    "A key for an AI service (OpenAI, Anthropic, Google Gemini, Groq, Hugging Face and others) is in JavaScript the site sends to every visitor. Gaugeline names the provider and the file, never the key.",
+    "Anyone can copy it from their browser and run models on your account. You pay for what they use, and some providers let a key read the files and conversations stored under your account.",
+    "Revoke the key in the provider's dashboard now, make a new one, and keep it on the server: call the model from a server route or a server action, and never put the key in code the browser loads or in a variable the framework exposes to the browser (a NEXT_PUBLIC_ or VITE_ name).",
+    "Inline scripts of any type (JSON data blocks included) and up to 15 same-site script files (GET, first 5 MB each, the files secret-in-js reads) matched against the shapes in checks/ai-keys/detectors.ts: a prefixed key (OpenAI sk-proj-, sk-svcacct-, sk-admin- and the older sk- with T3BlbkFJ; Anthropic sk-ant-; Hugging Face hf_; Replicate r8_; Groq gsk_; OpenRouter sk-or-v1-; Perplexity pplx-; xAI xai-; ElevenLabs sk_ and 48 hex) with a length floor and no placeholder or run of one character; a Google key (AIza) only when the Gemini API, its host or its SDK is named within 400 characters, because the same shape is the public browser key of Maps and Firebase; a provider whose keys have no prefix (Cohere, Mistral, Together AI and others) only when the name of the value says the provider and key, token or secret, and the value mixes letters and digits at 3.5 bits per character or more. One finding per provider and file, with a byte offset; no character of the value is kept, so none can be printed. Third-party script files are not read. A key shape is from memory, not from a provider's page (uncited), so a new provider's shape is added by a branch that names its source",
+  ],
+  "analytics-loaded-twice": [
+    "The page installs the same Tag Manager container twice, loads or configures the same Google Analytics 4 id twice, or sends a Google Analytics 4 id both from its own gtag code and from its Tag Manager container.",
+    "Every visit, lead and sale is counted twice, so conversion numbers and the ad bidding that learns from them are wrong, and a before-and-after comparison of a new menu measures the doubling, not the menu.",
+    "Keep one install: delete the second snippet, or take the Google Analytics 4 tag out of the page's code (or out of the container) so the id is sent from one place.",
+    "The page's script tags (addresses and inline code), no request: a Tag Manager container id (GTM-...) found in 2 or more of them (the noscript iframe is the other half of one install and is not counted); a GA4 measurement id (G-...) named by 2 or more gtag.js addresses, or by 2 or more gtag('config', id) calls. With --trackers and a hard-coded GA4 id on a page that also loads a container, the container's public file (one GET each of www.googletagmanager.com/gtm.js?id=..., at most 3, the file every visitor receives, read as text and never run) is searched for the same measurement id; a container that cannot be read, or is longer than the size cap, is could-not-check. A tag a script adds after the page loads is not seen, and the finding says \"can\" be counted twice: a tag that is paused or has a trigger that does not fire here is not visible",
   ],
   "angular-dev-tools-public": [
     "A page of this Angular or Analog site loads the Vite dev client or the dev server's component update address. Those exist only when the site runs from `ng serve` or `analog dev`.",
@@ -1020,6 +1183,12 @@ export const CHECK_TEXT: Readonly<
     "Ask only for the fields the page shows (not the whole User or Post type), and keep draft and private posts behind an authenticated request.",
     "Headless WordPress sites only, from the page already read, no extra request. The __NEXT_DATA__ script is read as JSON (up to 1 MB, 100,000 nodes, 12 levels deep; a larger or cut one is could not check) and walked once. Names only, never values: field names matched by word against password, passwd, secret, token, credential, ssn, salt, bearer, authorization, cvv, iban, private, apiKey, accessKey, secretKey, privateKey, authKey, internalNote (is.../has... flags are left out); email, username, capabilities, roles and registeredDate on a node whose __typename is User; and a count of nodes whose status is draft, auto-draft, pending, private or future. The names are matched by their words, which is a guess (uncited)",
   ],
+  "hidden-agent-bait": [
+    "Text that visitors can't see, or a comment in the page's code, speaks to AI agents or assistants (for example 'If you are an AI agent, ...'), and may ask them to recommend, buy, click or send something.",
+    "AI agents that browse and act for a person read text that the person never sees. Whoever planted it can try to steer what the agent says or does for your visitors, and it is one of the commonest signs a site has been tampered with or left with a rogue SEO script.",
+    "Find where the text comes from (a plugin, a theme file, a content field, an injected script or an SEO template) and remove it. Then find out how it got there, and change the passwords and keys that could have put it there.",
+    "text under hidden, aria-hidden, display:none, visibility:hidden, font-size:0, opacity:0, an off-screen left or top, text coloured as its own background, noscript, or an HTML comment (the scan hidden-ai-directive uses), that contains an opening addressed to AI agents (if you are an AI or LLM or chatbot, attention or note to or for AI agents, and similar) or an AI noun with a must, should or please and an act (recommend, buy, click, send, visit); bare agent, assistant and bot do not count on their own. Text that already contains a phrase from data/ai-directives.json is left to hidden-ai-directive. An address is medium and an instruction to act is high; text is escaped and cut at 120 characters; at most 10 findings per page. Styles from a stylesheet or class are not read. The wording is from memory (uncited)",
+  ],
   "hidden-ai-directive": [
     "Text that visitors can't see, or a comment in the page's code, speaks to an AI assistant (for example 'ignore previous instructions').",
     "It is one of the commonest signs a site has been tampered with. Assistants and crawlers read text that visitors never see, so whoever planted it can steer what they say about your business.",
@@ -1200,6 +1369,12 @@ export const CHECK_TEXT: Readonly<
     "Follow the reference in the query (author->{name}) or print the field you meant, not the object. A page that shows an id on purpose goes under idsShownOn in gaugeline.model.json.",
     'Read from the HTML as sent, without JavaScript, on the checked page and the few it links to: visible text (scripts, styles and templates removed) with [object Object], a _ref key with its id or a quoted _type key; links and images whose address holds [object Object]; and JSON the page embeds (__NEXT_DATA__ and application/json scripts) holding an object with _type "reference" and a _ref. An asset reference (image-\u2026, file-\u2026) is how Sanity stores a picture, so it is not reported. At most five places per page; pages under idsShownOn are skipped. The evidence is the page, the piece of it and the id. Nothing is asked of Sanity',
   ],
+  "nav-link-not-200": [
+    "A link in the header or footer menu takes two or more redirects, ends in a redirect loop, answers 4xx or 5xx, or answers a 2xx that is not 200 (204, for one).",
+    "The menu is the part of the site every visitor and every crawler follows first. Each extra hop is a round trip and a place for tracking and rankings to be lost, and a menu link that does not land on a page is a dead end on every page of the site.",
+    "Point the menu link at the address it ends at, so it needs no redirect, and fix or remove one that errors. Where an old address must keep working, redirect it once, straight to the final page.",
+    "header and footer a[href] of the checked page on the same site, each once (at most 40, header first; a longer menu is listed under could not check); one HEAD each (GET if HEAD answers 405 or 501), every hop kept, with an address the link sample already asked reused and not asked again. Two or more 3xx hops is a chain (the count and each hop's status and address are the evidence); a loop or more than 10 hops is reported as such; a final status that is not 200 is reported (a 4xx or 5xx that the link sample found is broken-links's and is left to it); 401, 403 and 429 are could-not-check. A single redirect is links-via-redirect's, and a link into a hidden section or a draft is hidden-linked's and drafts-live's: nothing is added for them",
+  ],
   "next-draft-public": [
     "A draft or preview route on this Next.js site turns draft mode on for a request that carries no secret.",
     "Anyone who visits that address sees unpublished content (prices, announcements, pages nobody approved) as if it were live.",
@@ -1217,6 +1392,12 @@ export const CHECK_TEXT: Readonly<
     "If that isn't on purpose, the page is invisible in search.",
     "Remove noindex from pages you want found.",
     '<meta name="robots" content="noindex">',
+  ],
+  "noindex-header-missing": [
+    "The site is set to stay out of search, and an address its pages' metadata does not reach (the made-up not-found address, and each route you listed) answers without noindex in the X-Robots-Tag header or in the page.",
+    "A robots meta tag only covers HTML pages that set it. A not-found page, the studio, an API route or a file can only be kept out of search by a header; without it a hidden site can still be found through them.",
+    "Send X-Robots-Tag: noindex for those routes while the site is hidden: a headers() entry in next.config for each, or one proxy rule for every response. Remove it at launch.",
+    'probing check, off without --owner-consent and a gaugeline.hidden.json section that hides the whole site ("match": "/*"): one GET each of /gaugeline-not-found-3f9c2a71 and of the routes in noindexRoutes there (at most 8), no cookie or Authorization, at most 16384 bytes of each answer read and never kept, once per run; Gaugeline never picks a route such as /studio itself. A 2xx answer with no noindex in X-Robots-Tag or in a robots meta tag is a finding; 401, 403, 404 and 410 on the made-up address are not; a listed route that answers 404, 429, a 5xx or nothing is could-not-check',
   ],
   "nuxt-dev-build-live": [
     "A page of this Nuxt site loads Vite's dev server client (/_nuxt/@vite/client) or other dev-only files, or its payload carries the Nuxt DevTools state.",
@@ -1402,7 +1583,7 @@ export const CHECK_TEXT: Readonly<
     "A secret key (a Stripe secret or restricted key, a Sanity token, a Contentful, Contentstack or Storyblok preview token, or a long random value named like a secret) is in JavaScript the site sends to every visitor.",
     "Anyone can read it in their browser and use it as you: take payments, read customer data or change your content.",
     "Revoke the key in the provider's dashboard now, make a new one, and keep it on the server: never in code the browser loads.",
-    'Inline scripts and up to 15 same-site script files (GET, first 5 MB each) matched against the detectors in checks/leaks/detectors.ts; publishable keys (pk_) are ignored; a Contentful preview token is a 43-character value named like a token or key next to the preview.contentful.com host, and a finding for it names the kind and the place only, with no character of the token; a Contentstack preview token is a value of "cs" and hex named like a token or key, and either "preview" is in its name in a file that names Contentstack or the Live Preview host (preview.contentstack.com) is in the same object; it is reported the same way, with no character of it; a Contentstack delivery token is public by design and is never reported; a Storyblok preview token is 20 to 32 letters and digits named like a token or key, and either "preview" is in its name in a file that names Storyblok or a draft version (version: "draft") is asked for in the same object; it is reported the same way, with no character of it; a Storyblok public token looks the same and is public by design, so it is never reported; a 43-character Contentful delivery token (a value in a place that names Contentful or createClient, and not the Preview API) is public by design and is never reported; the other values are redacted to their first 6 and last 2 characters before a finding exists; names are capped at 40 characters each side of the word token or key, so a hostile file is scanned in linear time',
+    'Inline scripts and up to 15 same-site script files (GET, first 5 MB each) matched against the detectors in checks/leaks/detectors.ts; publishable keys (pk_) are ignored; a Contentful preview token is a 43-character value named like a token or key next to the preview.contentful.com host, and a finding for it names the kind and the place only, with no character of the token; a Contentstack preview token is a value of "cs" and hex named like a token or key, and either "preview" is in its name in a file that names Contentstack or the Live Preview host (preview.contentstack.com) is in the same object; it is reported the same way, with no character of it; a Contentstack delivery token is public by design and is never reported; a Storyblok preview token is 20 to 32 letters and digits named like a token or key, and either "preview" is in its name in a file that names Storyblok or a draft version (version: "draft") is asked for in the same object; it is reported the same way, with no character of it; a Storyblok public token looks the same and is public by design, so it is never reported; a 43-character Contentful delivery token (a value in a place that names Contentful or createClient, and not the Preview API) is public by design and is never reported; a value that ai-key-in-js reports as an AI provider key is left to that check; the other values are redacted to their first 6 and last 2 characters before a finding exists; names are capped at 40 characters each side of the word token or key, so a hostile file is scanned in linear time',
   ],
   "sitemap-dead": [
     "Pages listed in the sitemap return an error (4xx or 5xx).",
@@ -1523,6 +1704,12 @@ export const CHECK_TEXT: Readonly<
     "Search engines index the canonical: the new page won't be listed, the old address will.",
     "Point the canonical at the page's own planned address on production.",
     "The canonical's path (lower case, no trailing slash) against the row's path, on the preview's host or the plan's production host, with or without www",
+  ],
+  "plan-moved-not-indexable": [
+    "A page that replaces an old address (a row with a Legacy URL) is set not to be indexed: a robots meta tag or X-Robots-Tag header says noindex.",
+    "The old address now redirects to a page that search engines are told to leave out, so the ranking the redirect was meant to move has nowhere to go and the page drops out of results.",
+    "Remove the noindex from the moved pages when the site goes live. A staging setting is usually the cause.",
+    "Plan rows with a Legacy URL whose path differs from the row's. The page already fetched on --base: robots meta content and X-Robots-Tag containing noindex or none (a bot-named directive such as googlebot: noindex counts); no request beyond the one each planned page already gets (robots.txt is not read: the plan check asks one request per planned path and legacy address). When every page read, two or more, is set that way it is the preview's own switch: those rows are could-not-check, never a finding. The canonical of a moved page is judged by plan-canonical-elsewhere",
   ],
   "plan-redirect-missing": [
     "An old address in the plan's Legacy URL column still answers 200 or 404 on the preview instead of redirecting.",
@@ -1770,6 +1957,78 @@ export const CHECK_TEXT: Readonly<
     "In the Supabase dashboard, open the table and enable row-level security, then add a policy for each thing visitors should do (for example, insert their own booking, read the menu). Test the site after: a table with no policy refuses everything.",
     "read through Supabase's hosted MCP server in read-only mode for the configured project only (list_tables with schemas [\"public\"], verbose false); a table whose rls_enabled is false is a finding; the evidence is the table's name, cleaned and cut to 40 characters, and its row estimate; a table whose rls_enabled is not a boolean, an unread tool or a stopped read is could-not-check",
   ],
+  "page-robots-overrides-layout": [
+    "A page (or a nested layout) sets its own robots metadata without noindex, below a layout that says noindex. Next.js does not combine the two: the page's value replaces the layout's.",
+    "The layout reads as if it keeps the whole site out of search, but this page puts itself back in. It can be indexed while everything else is hidden, and nobody notices because the layout still says noindex. For a site that must stay out of search until launch, that is a page the whole world can find.",
+    "Set `index: false` in the page's own robots value, or remove the page's robots so the layout's applies. If the layout reads a setting (an environment variable), read the same one in the page.",
+    "static, reads the app router's layout and page files in the folder as text and makes no request; a robots value is noindex (index: false, or a noindex string), index (index: true), unspecified (an object with no index) or dynamic (anything Gaugeline would have to run to know); a page or nested layout whose value is index or unspecified, below the closest layout that sets robots as noindex or dynamic, is a finding; a dynamic value below a noindex layout is not sure; a project with the pages router and no app router is not sure; one with neither passes",
+  ],
+  "sitemap-while-indexing-off": [
+    "The site is set to stay out of search (noindex in the root layout, or Disallow: / in robots.txt), and the folder still has a sitemap file or a Sitemap line in robots.txt.",
+    "A sitemap exists to give search engines a list of pages to crawl. Handing over that list for a site you have asked them not to index works against your own setting, and a pop-up, a staging copy or a client site before launch ends up listed for every crawler that reads robots.txt.",
+    "Remove the sitemap file and the Sitemap line while the site is hidden, or make the sitemap return an empty list when indexing is off, and put it back at launch.",
+    "static, reads the folder as text and makes no request; sitemap files are app/sitemap.(ts|js), app/sitemap.xml/route.(ts|js), public/sitemap*.xml and a Sitemap line in public/robots.txt or app/robots.txt; the site is off when the root layout's robots is noindex or robots.txt disallows /; when a setting decides it (an environment variable in the layout or in app/robots.ts) the check is not sure; no sitemap passes",
+  ],
+  "robots-disallow-hides-noindex": [
+    "robots.txt tells crawlers not to fetch pages that also carry noindex in their metadata.",
+    "A crawler that may not fetch a page cannot read the noindex in it, so the instruction may never be seen. The address can still turn up in search results, from links elsewhere, with no description. For a page meant to stay out of search, noindex only works where the crawler is allowed to read it.",
+    "Take the page out of robots.txt's Disallow rules and keep noindex, so the instruction can be read. A login is the other reliable way to keep a page out.",
+    "static, reads public/robots.txt, app/robots.txt or app/robots.ts and the app router's layout and page files as text and makes no request; a page is noindex when its own robots (or the closest layout's) is index: false or a noindex string; a page is blocked when a Disallow rule for * matches its address up to its first dynamic segment; one finding names the first three pages; an app/robots.ts built from code, or a robots value built from code, is not sure; no noindex page passes",
+  ],
+  "webhook-missing-secret-status": [
+    "The code that receives a Sanity publish webhook answers a request with a 4xx or a 2xx status when its secret is not set, or lets the null that next-sanity returns for a missing secret through.",
+    "With no secret set the receiver cannot tell a real publish from anyone's request. A 200 accepts every request. A 4xx tells the sender the request itself was wrong, and senders generally treat that as a delivery that will not succeed on a retry, so publishes can stop reaching the site until someone notices; a 5xx says the receiver is at fault, which is the status a sender is expected to retry. (Gaugeline has not confirmed Sanity's own retry rules from its documentation.) next-sanity's parseBody returns null for isValidSignature when no secret is passed, so a test written as `=== false` lets that request through.",
+    "Where the secret is read from the environment, return a 500 (or throw) when it is missing, before the signature is looked at, and log that the secret is not set. With parseBody, test `isValidSignature !== true` instead of `=== false`.",
+    "reads the code files of the folder named, never runs them; a receiver is a file that imports @sanity/webhook or next-sanity/webhook, reads the sanity-webhook-signature header, or is a route that revalidates behind a secret; the branch taken when the secret read from process.env is missing is an if that tests it; a status option, .status() or a throw is the answer (a bare response is 200); 5xx passes, any other status is a finding; parseBody tested with === false and no such branch is a finding; no branch, a status that is not a number or a receiver that reads no secret is could-not-check; the finding names the file, the line and the status, never the secret, the body or an id",
+  ],
+  "sanity-cdn-tagged-reads": [
+    "A Sanity client is created with useCdn: true in a site whose reads are cached by tag and cleared when an editor publishes.",
+    "useCdn: true makes the client read through Sanity's edge cache, which the client's documentation says to switch off to bypass it. A site that clears a tag when an editor publishes, and then reads again, can be handed the copy from before the publish by the edge cache, and then keep it until the next revalidation. The page can then keep showing the old menu or the old event although the publish worked.",
+    "Set useCdn: false on the client that reads published content for pages cached by tag. Keep true for reads that are not cached by tag and do not need to show a publish at once, such as a client-side search.",
+    "reads the code files of the folder named, never runs them; a client is a createClient call in a file that imports @sanity/client or next-sanity; the useCdn option is read from the call's own options object; reads are cached by tag when any code file has a next option with tags, or calls revalidateTag or updateTag; useCdn true with such a file is a finding naming the client's file and line and the first file that uses tags; useCdn from an expression, a client with no useCdn, or options that are not written in the call are could-not-check; nothing else in the call (project id, token) is printed",
+  ],
+  "cms-token-in-client-code": [
+    "The source reads a content-system token (Sanity, Contentful and others) in a NEXT_PUBLIC_ variable, or in a module that a client component imports.",
+    "A NEXT_PUBLIC_ value is copied into the JavaScript every visitor downloads, so anyone can read the token from the page and use it against your content: a read token shows your unpublished drafts, a write token can change or delete them. A module a client component imports is built for the browser too, where a server-only variable is empty, and the usual quick fix is to rename the variable with NEXT_PUBLIC_.",
+    "Keep the token in a variable without NEXT_PUBLIC_, read it only in a server module (a route handler, a server component or a server function), and put import 'server-only' at the top of that module so a client import fails the build. Pass the content to client components as props. If a token was ever published, create a new one and delete the old.",
+    "reads the folder's source files only (never .env files; values are not kept); a NEXT_PUBLIC_ variable whose name has a content system's name and ends in TOKEN, SECRET or KEY is a finding; so is a module that reads such a variable, has no import of server-only, and is reached from a file whose first statement is 'use client' through relative imports and the @/ and ~/ shortcuts (type-only imports are ignored); the finding is the file, the line and the variable's name; Pages Router pages and other aliases are not followed; no source file read, or some left out, is could-not-check",
+  ],
+  "webhook-url-hardcoded": [
+    "The source contains the full address of an incoming webhook (Slack, Discord, Zapier, Make and others) as text.",
+    "A webhook address is its own password: whoever has it can post to the channel, sheet or automation behind it. Written in source, it is in every copy of the repository and, for code that ships to the browser, in the page itself. Someone can then fill the kitchen channel with fake orders or trigger an automation that emails your customers.",
+    "Create a new webhook at the service (the old one is exposed), put the address in an environment variable on the server (for example KITCHEN_WEBHOOK_URL) and read it with process.env where it is used. Delete the old webhook.",
+    "reads the folder's code files and .github/workflows files (comments are skipped, .env files are never read); an https URL whose host and path match an incoming-webhook service (Slack, Discord, Microsoft Teams, Zapier, Make, IFTTT, n8n, Pipedream, Google Chat) or a /webhook or /hooks path with a segment of 16 or more letters, digits, - or _ is a finding; a placeholder (almost no variety) and a URL with a ${} in its path are not; the URL is never kept or printed, only the file, the line and the service; no source file read, or some left out, is could-not-check",
+  ],
+  "personal-data-in-analytics": [
+    "A call to the data layer, Google Analytics, a pixel or an analytics client is given a visitor's email, phone number or the values of a form.",
+    "Analytics and ad tools are run by other companies. An email or a phone number sent to one of them reaches a third party, and a clinic's or a coach's enquiry form can carry health or personal details. It is hard to take back, and it can break the promise in the site's privacy notice.",
+    "Send the event and a fact that is not about the person (for example enquiry_sent and the form's name) and leave the field out. If you need it for conversion matching, send it from the server with the visitor's consent, hashed, rather than from the page.",
+    "reads the folder's code files (.env files never); a call whose callee is dataLayer.push, _paq.push, gtag, fbq, ttq.*, plausible, umami.*, posthog.*, mixpanel.*, amplitude.*, analytics.*, segment.*, heap.*, va.*, sendGTMEvent or sendGAEvent, and whose arguments hold a personal field name (email, phone, mobile, first_name, last_name, full_name, postcode and the like) as a key with a non-literal value, as a variable or as a member (values.email, formData.get('email')), or, in a file that handles a form, the whole form, is a finding; a value hashed or masked in the same expression is not; the finding is the file, the line, the call and the field's name, never a value; no source file read, or some left out, is could-not-check",
+  ],
+  "form-values-in-logs": [
+    "A log call or an error report is given a visitor's email, phone number or the values of a form they submitted.",
+    "Logs and error reports are kept, searched and read by more people than the form's inbox, often for months and by an outside service. An enquiry form for a clinic or a coach can carry health or personal details, and they then sit in a place nobody thought of as holding them.",
+    "Log what happened and not who it happened to: the form's name, a status, an id for the submission. For Sentry and similar tools, do not put the form in extra data or set the user's email; turn on the tool's scrubbing of personal data as a second line.",
+    "reads the folder's code files (.env files never); a call to console.log, info, warn, error, debug or trace, a logger or log method, or any method of Sentry, Bugsnag, Rollbar or Honeybadger, whose arguments hold a personal field name (email, phone, mobile, first_name, last_name, full_name, postcode and the like) as a key with a non-literal value, as a variable or as a member (values.email, formData.get('email')), or, in a file that handles a form, the whole form, is a finding; a value hashed or masked in the same expression is not; the finding is the file, the line, the call and the field's name, never a value; no source file read, or some left out, is could-not-check",
+  ],
+  "form-failure-shows-success": [
+    "A form handler catches an error from sending the email or the webhook and still returns or shows success.",
+    "When the send fails, the visitor believes their booking, order or question went through, and nobody receives it. The lead is lost without anyone knowing: the site looks healthy, the inbox is quiet, and the visitor does not call to ask.",
+    "In the catch block, return an error the form shows (a message and, for a bar or a clinic, the phone number), set a failing status code, and log the failure without the visitor's details. Only show success after the send's answer was ok.",
+    "reads the folder's code files (.env files never); a try block holding a send (.send(, sendMail, sendEmail, emails.send, axios.post, .post( or fetch with method POST) whose catch block returns success (ok, success, sent or submitted true, a status of ok or success, Response.json with ok true, a redirect to a thank-you path, setSent(true) and the like) and has no throw, ok false, error value, 4xx or 5xx status or error state, is a finding; the finding is the file and the line of the catch; a fetch whose answer is never checked is not found; no source file read, or some left out, is could-not-check",
+  ],
+  "zod-version-advisory": [
+    "The version of zod that the lockfile installs is below 4.6.6, the version that fixes GHSA-mrhx-c7xc-m3w5 (memory exhaustion when validating oversized constrained collections).",
+    "A form or an API route that validates input with zod can be made to use all its memory by an oversized request body, which takes the site down for everyone. The fix is a version bump, and a bump is easy to forget because nothing in the page shows it.",
+    "Update zod to 4.6.6 or later (npm install zod@latest, or the same with pnpm or yarn) and commit the lockfile. A project on zod 3 has no fixed 3.x release, so it leaves the range only by moving to zod 4, which is a migration, not a bump.",
+    "static, reads package.json and the lockfile (pnpm-lock.yaml, package-lock.json, npm-shrinkwrap.json or yarn.lock) as text and makes no request; the installed version is the lockfile's, never the range in package.json; the advisory list is packages/core/src/data/library-advisories.json (zod, verified, checked 2026-11-11); a version from 4.0.0 up to but not including 4.6.6 is a finding that names the file, the version and the advisory id; zod 3 and earlier is not sure, because the advisory's text names 4.6.5 as the last affected version and has no fixed 3.x release; a pre-release, a version that cannot be read, or a range with no lockfile is not sure; nothing else of a file is printed",
+  ],
+  "next-version-advisory": [
+    "The version of Next.js that the lockfile installs is below 16.4.1 on the 16 line, or below 15.5.28 on the 15 line: the versions that fix GHSA-2464-fhr4-w9xw (remote code execution in the image optimization API with SVG files), GHSA-673q-mjm6-r5xr (remote code execution in use cache functions that return typed arrays) and GHSA-p3m5-59mp-jv5r (denial of service in the App Router with Server Actions).",
+    "Two of the three are rated critical: a visitor with no login could run code on the server that serves the site. A pop-up bar's booking page and a clinic's enquiry form run on the same server as the rest of the site. The fix is a version bump, and nothing on the page shows that it is missing.",
+    "Update Next.js to 16.4.1 or later (16 line) or 15.5.28 or later (15 line), reinstall, and commit the lockfile. The floor is different on each line, so do not move a 15 project to 16 only to fix this.",
+    "static, reads package.json and the lockfile (pnpm-lock.yaml, package-lock.json, npm-shrinkwrap.json or yarn.lock) as text and makes no request; the installed version is the lockfile's, never the range in package.json; the advisory list is packages/core/src/data/library-advisories.json (next, verified, checked 2026-11-11), with one fixed version per line; a version in a listed range on the 15 or 16 line is a finding that names the file, the version and the advisory ids; a version below 15 is not sure, because the advisories reach it but no fixed release exists on its line; a pre-release, a version that cannot be read, a range with no lockfile or an advisory not yet compared with its page is not sure; a pass says only that the version is outside every range in the list, so an advisory published after 2026-11-11 is not in it; nothing else of a file is printed",
+  ],
   "cutover-canonical-host": [
     "Of the bare domain and www, exactly one should answer 200 and the other redirect to it permanently (301 or 308). After cutover, both answer, neither does, or the redirect is temporary.",
     "Two live copies split links and ranking between them; a missing one is a dead address for everyone who types it; a temporary redirect tells search engines to keep the old one.",
@@ -1932,11 +2191,29 @@ export const CHECK_TEXT: Readonly<
     "Change each link to the page's public address on the publish host. In the page's component, use a link field that stores the content path and let the site's link rewriting build the public address, instead of pasting the editor's address.",
     "a[href] on the page whose host is author.{domain} or author-p{n}-e{n}.adobeaemcloud.com (any path), or whose path on the page's own host starts /editor.html, /crx/ or /libs/, or is /ui with a #/aem fragment (adapters/shared/aem-author.ts). Only the links the page already serves are read; nothing else is requested. Evidence shows host and path, never a query string.",
   ],
+  "ai-crawlers-directives": [
+    "You said what AI crawlers should be able to do (aiCrawlers in gaugeline.ai.json). The page sends a header or a meta tag that keeps a crawler you want away (noai, or noindex for one named crawler), or you want none of them and the site still publishes llms.txt, a guide written for AI assistants.",
+    "robots.txt is only one place to say it. A header from a CDN rule or a meta tag from a theme can quietly shut out the assistants you want to be found by, and a published llms.txt invites the ones you said to keep out.",
+    "Remove the header or meta tag that blocks a crawler you want, or change aiCrawlers in gaugeline.ai.json if the signal is right and the intent changed. If you want no AI crawler on the site, remove llms.txt.",
+    "Only with an aiCrawlers intent in gaugeline.ai.json. Reads the page's X-Robots-Tag header (read to 4,096 characters) and its meta tags named robots or for a known AI crawler (packages/core/src/data/ai-agents.json); a directive counts only from a fixed list. noai and noimageai count against the training crawlers (or the one named); noindex and none count against a crawler named in the header or in a crawler's own meta tag; a general noindex is the noindex check's. A signal that agrees with the intent is fine, and one that fails to block a crawler you want blocked is left to ai-crawlers-intent, which reads robots.txt. With the intent block, /llms.txt (read by the run, found with a 2xx plain-text answer) is a finding, once per site. noai and the Crawler: directive form are conventions from memory (uncited). No request is made; page text is never printed",
+  ],
   "ai-crawlers-intent": [
     "You said what AI crawlers should be able to do (aiCrawlers in gaugeline.ai.json), and robots.txt does the opposite for one or more known crawlers. Gaugeline names them and says whether a rule names them or the rule for every crawler decides.",
     "A rule copied from a staging site, or a plugin's default, can shut assistants out of a site that wants to be found by them, or let training crawlers in when you meant to keep them out.",
     "Edit robots.txt so each crawler listed gets the group you want, or change aiCrawlers in gaugeline.ai.json if the rules are right and the intent changed.",
     "for each known AI user-agent token (packages/core/src/data/ai-agents.json), isAllowed(robots.txt, token, /) differs from the aiCrawlers intent for its purpose; no robots.txt means every crawler is allowed",
+  ],
+  "ai-input-no-disclosure": [
+    "What a visitor types into a form, a chat box or an assistant on this page goes to an AI service run by another company, and nothing on the page says that an AI or a bot is answering. Gaugeline names where the input goes and says it found no such words.",
+    "People type different things to a person and to a machine, and many will want to know who else sees it. Whether a notice is required where a business operates is a question for the client and their own counsel; Gaugeline does not say. Telling visitors is cheap and is what most of them would expect.",
+    'Say it in plain words next to the box or in its placeholder, for example "Answers here come from an AI assistant and may be wrong", and check the privacy notice mentions that what visitors type is sent to the AI provider.',
+    "Three kinds of flow, from the page's own HTML and scripts: a form whose action is the API host of a model provider (a fixed list of 15 hosts in packages/core/src/ai-disclosure/flows.ts); an AI assistant widget from the vendors table of ai-widget-inventory (those marked ai); and a script (inline, or one of up to 15 same-site script files) that writes a provider's host as an address while the page has a textarea or a text input. A disclosure is any of a fixed list of phrases (AI, artificial intelligence, chatbot, virtual or automated assistant, language model, generated by an AI, powered by a named model, bot) in the page's visible text, a placeholder, an aria-label, a title or an image alt; text in scripts, styles, templates and comments is not read. A page with a flow and none of the phrases is one medium finding naming the hosts and widgets, never page text, a field or a query. A flow built at run time from parts of an address, one on another page, or one inside a widget's own frame is not seen. The hosts are from memory (uncited). No request is made",
+  ],
+  "ai-widget-inventory": [
+    "A chat or AI assistant widget from another company loads on the page, and it is not on the allowed list in gaugeline.ai.json (or you have no list yet). Gaugeline names each one and where it loads from.",
+    "What a visitor types into a widget goes to its company, and many sites have a widget nobody remembers adding: a trial left on, a plugin's default, an assistant a salesperson turned on. The owner should know which ones are there.",
+    "For each one, find who added it (a plugin, the tag manager, a theme setting). Remove the ones you do not want. Put the ones you do want in aiWidgets.allowed in gaugeline.ai.json, by name or by host, and the finding goes.",
+    "Script and iframe addresses and inline scripts in the page's HTML (the first 16,384 characters of each inline script) matched against a fixed table of 23 vendors (packages/core/src/ai-widgets/vendors.ts), once per vendor; a host matches itself and its subdomains, never a look-alike; page text and comments are never read as a widget. With aiWidgets.allowed in gaugeline.ai.json, one medium finding lists the widgets not on it (an entry is a vendor id or a host or a parent of it; an empty list allows none); with no list, one low finding lists what loads. A widget a script adds after the page loads, and a widget loaded by a tag manager container, are not seen; vendor hosts are from memory (uncited). No request is made.",
   ],
   "angular-ssr-error-200": [
     "A page of this Angular or Analog site answers 200 OK but its text contains an Angular error code, an injector error, a browser-only ReferenceError or a stack trace through @angular.",
@@ -2190,6 +2467,12 @@ export const CHECK_TEXT: Readonly<
     "Point each menu item at its own page, or remove it until the page exists.",
     "a nav or header a[href] resolving to / whose text (or aria-label) is not Home or the site's name",
   ],
+  "nav-link-no-name": [
+    "A link in the header or footer holds only an icon, an image with no alt text or nothing at all, and has no aria-label.",
+    'A screen reader reads it as just "link", so a visitor who cannot see the icon cannot tell the basket from the phone number, and voice control has no name to say.',
+    'Add an aria-label that says where the link goes (aria-label="Basket"), or give its image alt text, or add text that only screen readers see.',
+    "no request. a[href] inside the header (header, nav, [role=banner], or gaugeline.nav.json regions.header) or footer (footer, [role=contentinfo], or regions.footer) whose accessible name is empty after aria-labelledby, aria-label, the content (text, an image's alt, an svg title, a labelled descendant) and the title attribute; hidden and aria-hidden content adds nothing; whitespace, no-break space and zero-width characters are empty; CSS is not applied, so text hidden by a stylesheet counts as a name",
+  ],
   "nav-orphans": [
     "Addresses the sitemap lists that none of the pages read link to, in their menus, footers or text.",
     "Visitors can only reach them from search or an old bookmark, and search engines treat a page nothing links to as unimportant.",
@@ -2201,6 +2484,12 @@ export const CHECK_TEXT: Readonly<
     "Most visitors are on a phone: a page missing from the mobile menu is missing for them.",
     "Add the missing links to the mobile menu, or build both menus from one list.",
     "The separate mobile menu's destinations (gaugeline.nav.json regions.mobile, or a [data-mobile-menu], #mobile-menu or .mobile-menu element) against the header's. A menu toggle whose menu isn't in the HTML is could not check: it is built at a phone width, which needs a rendered read (not on yet)",
+  ],
+  "nav-utm-lost": [
+    "A link in the header or footer menu goes through a redirect that drops utm_source, utm_medium or utm_campaign.",
+    "A visit that arrives with campaign tags loses them at the redirect, so the report credits no campaign and the menu pages look like they bring nothing in.",
+    "Make the redirect pass the query string on, or point the menu link at the address it ends at.",
+    "header and footer a[href] of the checked page on the same site, each once (at most 40, header first; a longer menu is listed under could not check); one HEAD each (GET if HEAD answers 405 or 501) with utm_source, utm_medium, utm_campaign added after the link's own query, Gaugeline's own values and never a client's; the keys on the first address against the last, values compared after decoding, order ignored, the first redirect that drops a key named with its status. A final status of 4xx or 5xx is not judged here (broken-links does); 401, 403 and 429 are could-not-check; a script that rewrites the address is not seen",
   ],
   "next-stale-after-publish": [
     "With a content source connected, this Next.js page is still a cached copy made before its document last changed, more than 10 minutes after the change.",
@@ -2411,6 +2700,12 @@ export const CHECK_TEXT: Readonly<
     "Every lead, download or sale is counted twice, so conversion numbers and the ad bidding built on them are wrong.",
     "Keep one of the tags and pause or delete the other (usually the copy).",
     "The container export named in gaugeline.tags.json, read without requests. GA4 event tags are the same when the event name and the measurement ID match; any other tag type when its type and every setting match. Paused tags are left out",
+  ],
+  "tracking-attributes-missing": [
+    "A link or element that a line under attributes in gaugeline.events.json selects has no value for an attribute the plan requires, such as data-track on every nav link.",
+    "A tag that reads the attribute to name the click gets nothing for these links, so their clicks go unnamed or unreported and before-and-after comparisons of the menu stop meaning anything.",
+    "Add the attribute, with a value, to those links, ideally in the one component or template that renders the menu.",
+    "no request. Each attributes line of gaugeline.events.json: every a[href] in the region (nav, header, footer or main, as the click plan reads regions; javascript: links left out), or every element the CSS selector matches. An attribute with no value, or only spaces, is missing. One finding per line, with the count and the first three",
   ],
   viewport: [
     "The page has no viewport meta tag, so phones show it zoomed out as if on a desktop screen.",
@@ -2658,6 +2953,102 @@ export const CHECK_TEXT: Readonly<
     "Open Advisors, then Security Advisor, in the Supabase dashboard; each lint links to its remediation page. Fix the ERROR ones first.",
     "read through Supabase's hosted MCP server in read-only mode (get_advisors with type security); only each lint's code (a lower-case id), level and facing are kept, never its title, description or remediation text; lints are grouped by code and level, INFO is not reported, and rls_disabled_in_public is left to supabase-rls-off when the table list was read",
   ],
+  "indexing-switch-loose": [
+    'The environment variable that turns indexing on is accepted when it is `1`, `yes`, any non-empty text, or anything but one word, instead of only the exact text "true".',
+    "An environment variable is text, and people mistype it. If anything but `true` turns indexing on, an unset variable on a new preview, a typo or a value of `1` puts a site that should be hidden in front of search engines. Only an exact `true` should do that.",
+    'Compare it with the exact text: `process.env.INDEXING === "true"`. Remove `!== "false"`, `Boolean(...)`, `!!...` and the bare `?` test, and set the variable to the word `true` on the host that should be indexed.',
+    'static, reads the folder\'s code files as text and makes no request; a read of an environment variable belongs to the indexing switch when it is inside a robots value, a robots file or near an X-Robots-Tag header, or its name has INDEX, CRAWL, ROBOTS or SEO in it; === "true" (also after toLowerCase or trim) passes; another literal, !== a literal, Boolean(...), !!..., !..., a bare ?, && or || test, or the value passed on as it is, is a finding; a name that reads the other way round (NO_INDEX, BLOCK_CRAWLERS), !== "true", and a test that could not be read are not sure; the value is never printed, only the variable name, the file and the line',
+  ],
+  "noindex-smoke-production": [
+    "A CI workflow checks noindex (or X-Robots-Tag) on preview deployments, and no workflow does the same for production.",
+    "Production is where indexing matters. A test that only watches previews proves the preview is hidden; it says nothing about the live site, so a setting changed at launch (or one that never changed) goes unnoticed.",
+    "Run the same test against the production deployment after each production deploy (a workflow on the main branch, or a deployment_status trigger for the Production environment). Expect the opposite there once the site is live: no noindex.",
+    "static, reads .github/workflows files as text (comments are skipped) and makes no request; a workflow has the test when it mentions noindex or x-robots-tag; it targets previews when it says preview or runs on pull_request or deployment_status, and production when it says production or prod or runs on main or master; a finding when a workflow tests previews and no workflow with the test says anything about production; a workflow with the test and neither word, or a workflow file that could not be read, is not sure; no workflow files, or no test at all, passes (nothing is missing)",
+  ],
+  "webhook-signature-compared-plainly": [
+    "The code that receives a Sanity publish webhook compares the signature (or a shared secret) with ===, !==, == or !=, instead of a constant-time comparison.",
+    "A plain comparison stops at the first character that differs, so how long it takes can tell a caller how much of a guess was right. A constant-time comparison takes the same time whatever the input. The official @sanity/webhook helper, read in its source at 4.0.4, itself compares with a plain `!==`, so using it is reported as advice, not as a failure.",
+    "Compare with crypto.timingSafeEqual on two Buffers, after checking their lengths are equal (timingSafeEqual throws when they differ, so return a 401 first).",
+    "reads the code files of the folder named, never runs them; a receiver is a file that imports @sanity/webhook or next-sanity/webhook, reads the sanity-webhook-signature header, or is a route that revalidates behind a secret; a finding is a ===, !==, == or != with a signature, hmac, digest, hash, secret or token on one side and something that is not a literal, a length, a type test or a yes-or-no on the other; timingSafeEqual in the file passes; the official helper alone is an advice finding (worth knowing) and not a failure; a receiver with none of these is could-not-check; the finding names the file and the line, never the values",
+  ],
+  "webhook-timestamp-unbounded": [
+    "The code that receives a Sanity publish webhook reads the signed timestamp but does not reject one that is old, or one that is in the future.",
+    "The signature covers the timestamp and the body, but a request that was captured once stays valid for as long as nothing compares the timestamp with the time now. Anyone who can capture a delivery can send it again. The official @sanity/webhook helper, read in its source at 4.0.4, makes no age check, so a receiver that only uses it has none, and is reported as advice.",
+    "Read t from the signature header, and reject the request with a 401 when Math.abs(Date.now() - t) is more than a few minutes (five is common). Check the signature first, so the rejection does not leak which part was wrong.",
+    "reads the code files of the folder named, never runs them; a receiver is a file that imports @sanity/webhook or next-sanity/webhook, reads the sanity-webhook-signature header, or is a route that revalidates behind a secret; a file that reads the timestamp (a t= pattern, or a name such as timestamp or signedAt) and never compares it with Date.now() is a finding; Math.abs of the distance passes; an age test without a future test, or the other way round, is a finding; a file that only uses the official helper is an advice finding (worth knowing); a comparison Gaugeline cannot read, or a receiver with no timestamp and no helper, is could-not-check; the finding names the file and the line, never the values",
+  ],
+  "webhook-body-read-unsafely": [
+    "The code that receives a Sanity publish webhook parses the body (req.json(), or Next's parsed req.body) before the signature is checked over the raw body, or reads the whole body with no size limit.",
+    "The signature is over the raw bytes the sender sent, and the helper's documentation says to pass it the payload straight from the request, not a re-encoded JSON string. Parsing first and signing the re-encoded value can make a valid delivery fail, or hide a difference between what was signed and what is used. A body read in full with no size limit can be made to use a lot of memory by anyone who sends one, before the signature is looked at.",
+    "Check the Content-Length header against a limit (64 KB is plenty for a publish), read the body once as text with req.text(), check the signature over that text, and only then JSON.parse it. In a pages/api route, export config with api.bodyParser set to false.",
+    "reads the code files of the folder named, never runs them; a receiver is a file that imports @sanity/webhook or next-sanity/webhook, reads the sanity-webhook-signature header, or is a route that revalidates behind a secret; req.json() with no raw read, or JSON.parse before the first signature step, or req.body in a pages/api route without bodyParser false, is a finding; a raw read or the helper's parseBody with no content-length check, stream reader or limit option is a finding; a receiver with neither a body read nor the helper is could-not-check; the finding names the file and the line, never the body",
+  ],
+  "webhook-logs-private-values": [
+    "The code that receives a Sanity publish webhook writes the request body, a document id, the signature or the secret to a log.",
+    "Logs are kept, copied to other tools and read by more people than the content or the secret was meant for. A publish body holds the document's content (a clinic's notice, a customer's name in a booking), and a secret in a log is a secret that has leaked.",
+    "Log what happened, not what was received: the document type, the status you answered with, a count. If you need to trace one delivery, log a short random id you made up, not Sanity's document id.",
+    "reads the code files of the folder named, never runs them; a receiver is a file that imports @sanity/webhook or next-sanity/webhook, reads the sanity-webhook-signature header, or is a route that revalidates behind a secret; the arguments of every console, logger or log call (log, info, warn, error, debug, trace) are read, strings blanked; a name for the body (body, rawBody, payload, req.body), a document id (_id, documentId), the signature, or the secret read from process.env, is a finding that names the kind, the file and the line, never the value; nothing else in the call is printed",
+  ],
+  "revalidate-time-and-tag-mixed": [
+    "One read sets both a revalidate time and tags, or a file sets a revalidate time for a page whose reads use tags.",
+    "With tags, the content changes when an editor publishes and your webhook clears the tag. With a revalidate time as well, the same read is also refreshed on a timer, so the page can change with no publish, and a missed webhook is hidden until the timer runs out. Both are documented Next.js options for different jobs; together, it is hard to say from the code when a page will change.",
+    "Pick one per read. If a publish clears the tag, drop the revalidate time. If you want a timer (for a feed with no webhook), drop the tags.",
+    "reads the code files of the folder named, never runs them; a revalidate that is a number above zero, in an object that also has a tags option (a fetch's next option, or unstable_cache's options), or as a file's own `revalidate` setting in a file whose fetches use tags, is a finding naming the file and the line; revalidate false or 0 is not a timer; a revalidate that is not a number or false, in an object with tags, is could-not-check; the finding never prints the tags or the time",
+  ],
+  "groq-reference-not-expanded": [
+    "A GROQ query lists a reference field (an author, a category, a linked page) and does not follow it with ->, so the result holds a reference and not the document.",
+    "A page built from that result has an id where the author's name, the category's title or the linked page's address should be: a link that goes nowhere, a name that is missing, or the text [object Object] on the page.",
+    "Follow the reference and say what you want from it: author->{ name, 'photo': image.asset->url }. For a list of references, author[]->{ name }.",
+    "reads the folder's code files (.env files never): the names of the schema fields declared with type reference (also as the members of an array of references), and the GROQ queries written as string or template literals that start with *[; a projection item that is exactly such a name, or an alias of it, and is not followed by -> is a finding (the file, the line and the field's name); a name used elsewhere in the schema for a non-reference field is a false positive; no query is run; no schema in the folder, or no query written in the source, is could-not-check",
+  ],
+  "image-alt-not-validated": [
+    "A Sanity schema has an image field with no alt-text field, or an alt-text field an editor is not required to fill in.",
+    "Alt text is what a screen reader says and what shows when a picture does not load. If the editor can leave it empty, some pictures will go live without it, and nobody sees the gap until someone who cannot see the picture visits.",
+    "Add a field to the image: defineField({ name: 'alt', type: 'string', title: 'Alternative text', validation: (Rule) => Rule.required() }). For a picture that is only decoration, give editors an explicit choice rather than an empty field.",
+    "reads the folder's code files (.env files never); in the files that define a Sanity schema, an object with type image whose fields list has no field named alt, altText or alt_text, or whose alt field has no validation calling required(, is a finding (the file, the line and the field's name); an image type defined once and reused is read where it is defined; no Sanity schema in the folder is could-not-check; the page-side half (an image block with no asset) is not read here",
+  ],
+  "section-type-component-mismatch": [
+    "A section the schema lets editors add has no component in the page renderer, or the renderer has a component that no schema section matches.",
+    "A section with no component renders nothing: an editor adds a gallery to the page, publishes, and the page looks the same. A component with no schema is code nobody can reach, and it tends to be copied around until someone changes the wrong one.",
+    "For each section the schema lists, add its component to the renderer's map (or its case). For a component with no section, either add the section to the schema's list or delete the component.",
+    "reads the folder's code files (.env files never); the type names listed as members of an array field named sections, blocks, pageBuilder, content or modules in the files that define a schema, against the renderer: the files outside the schema that mention _type; a section name that appears quoted in no renderer file is a finding (the schema file and line); a renderer object with two or more name: Component entries, one of whose keys matches no name in the schema, is a finding (the renderer file and line); no section array in the schema, or no renderer file, is could-not-check",
+  ],
+  "stega-not-cleaned": [
+    "The project turns on Sanity's click-to-edit encoding, and a file that fetches content compares it, builds a link or attribute from it, or uses it in metadata without stegaClean.",
+    "Click-to-edit works by hiding invisible characters inside the text a query returns. Where that text is compared with a word, used as a link, or put in a page title, the hidden characters make the comparison false, the link wrong or the title carry junk, and it only happens in preview, so it is hard to see.",
+    "Wrap the value in stegaClean (from @sanity/client/stega) before you compare it, use it in a URL or attribute, or put it in metadata. Leave visible text as it comes, so click-to-edit keeps working.",
+    "reads the folder's code files (.env files never); looks first for the setup (stega: true or an object, defineLive, VisualEditing, studioUrl): none found means nothing is encoded and the check passes; then, in each file that fetches Sanity content (.fetch(, sanityFetch(, urlFor() and does not mention stegaClean, a metadata title or description built from a property, a property compared with a string literal (fields starting with an underscore are left alone), or an href, src, id, target or rel built from a property, is a finding (the file, the line and what it is); over-cleaned visible text needs a rendered page and is not read; no source file read, or some left out, is could-not-check",
+  ],
+  "form-post-unguarded": [
+    "A route handler or API route takes a form submission and has no check of where it came from, no honeypot field and no signed or captcha token.",
+    "Anyone, or any script, can post to the address. The kitchen channel and the inbox fill with spam, a booking list fills with fake dates, and another site can make a visitor's browser post to yours.",
+    "Check the Origin header against your own site, add a hidden honeypot field that a person never fills in, and add a captcha or a signed token if spam continues. Or move the form to a Server Action, where Next compares the Origin with the site's host for you.",
+    "reads the folder's code files (.env files never); a route.ts handler that exports POST, or a pages/api route, that reads the submitted body and has none of: the Origin or Referer header, a honeypot, a captcha or signed token (Turnstile, reCAPTCHA, hCaptcha, CSRF, nonce, HMAC, signature), a session check, is a finding; paths named webhook, hooks, stripe, cron, auth, callback, revalidate, trpc or graphql are not forms and are left alone; Server Actions are not looked at; when a middleware or proxy file mentions an origin or token check the result is could-not-check; the finding is the file and the line of POST; no source file read, or some left out, is could-not-check",
+  ],
+  "token-required-at-import": [
+    "A module throws, at the top level, when a content-system token (Sanity, Contentful and others) is not set.",
+    "Everything that imports the module, even for a page that never reads a draft, now fails without the secret: every build, every test run, every preview and every CI job. A freelancer ends up putting a fake token in each of them, and a missing token breaks the whole site instead of the one page that needed it.",
+    "Read the token inside the function that needs it (the draft preview, the write), and throw there. Public published reads need no token at all.",
+    "reads the folder's code files (.env files never); at the top level of a module (not inside a function or block), an if whose condition reads a variable named like a content-system token (a content system's name and TOKEN, SECRET or KEY) or a constant set from it and whose body throws, an invariant or assert call of it, or the variable followed by ?? or || and a throw, is a finding; the finding is the file, the line and the variable's name; NEXT_PUBLIC_ names, scripts, seed, migrations and bin folders, *.config.* files and sanity.cli files are left alone; no source file read, or some left out, is could-not-check",
+  ],
+  "use-server-exports-not-async": [
+    "A file that starts with 'use server' exports a constant, a plain function, a class or an enum next to its server functions.",
+    "A 'use server' file is a file of server functions that client components import and call, and the examples in Next.js's documentation export only async functions there. A constant or helper exported from it is not a server function and does not belong in it. Putting the value in a module of its own keeps the file's exports honest.",
+    "Move the constant, helper or class to another module and import it where needed. If it must stay on the server, start that module with import 'server-only', so a client import fails the build.",
+    "reads the folder's code files (.env files never); in a file whose first statement is 'use server', a top-level export of a const, let or var whose value is plainly not async (a literal, object, array, new, class, function, non-async arrow), a non-async function, a class or an enum is a finding; type-only exports are ignored; an export whose kind the text cannot settle (a wrapped call, an imported name, export *) is could-not-check; the finding is the file, the line and the exported name; no source file read, or some left out, is could-not-check",
+  ],
+  "a11y-spec-expects-violations": [
+    "A test that scans a page with axe asserts that violations exist (greater than 0, not equal to an empty list) instead of asserting that there are none.",
+    "The test is green while the page is inaccessible, and turns red on the day the page is fixed. Everyone who sees a green accessibility test believes the page was checked and found clean. For a bar's booking page or a clinic's contact form, that is a person who cannot book.",
+    "Assert that there are none: expect(results.violations).toEqual([]), as Playwright's accessibility guide does. If a test deliberately scans a broken page to prove the scanner works, keep it, name the page and the test so that is clear, and add the same scan of the real page with the assertion above.",
+    "static, reads the test files of the folder (a .test or .spec file, or a code file in a tests, test, e2e or __tests__ folder) as text, never runs them, and makes no request; a test is an accessibility test when it mentions an axe package (@axe-core/playwright, axe-core, jest-axe, vitest-axe, cypress-axe), AxeBuilder or checkA11y; in one, an expect of something named violations compared with toBeGreaterThan(0), toBeGreaterThanOrEqual(1), toBeTruthy(), not.toEqual([]) or not.toBe(0), or expect(violations > 0).toBe(true), is a finding that names the file and line; a test file that was not read, with nothing found, is not sure; only the file and line are printed",
+  ],
+  "starter-licence-notice-missing": [
+    "The folder says its code is MIT or ISC licensed, or says it was made from a starter or template, and no file in it holds the MIT or ISC licence text.",
+    "The MIT and ISC licences let anyone use the code on one condition: the copyright and permission notice must stay with copies of it. Starting a client's site from a public starter and deleting its LICENSE file breaks that condition, and it is the kind of thing a client's lawyer or an acquirer finds in the first hour. Gaugeline cannot see where the code came from: it can only say that a notice is missing and what made that matter. It does not say that anything was copied.",
+    "Copy the starter's LICENSE file into the project (or its text into a NOTICE or THIRD_PARTY_LICENSES file), keeping the copyright line. If nothing from a starter is in the project, say so in the README, or change the license field in package.json.",
+    "static, reads the folder's text files (including a LICENSE, LICENCE, COPYING or NOTICE file with no extension) and makes no request; a notice is the permission sentence of the MIT or ISC licence found in any file; a finding when no file holds one and package.json declares MIT or ISC, or the README says the project is based on, forked or cloned from, or built from a starter, template or boilerplate, naming the file and line and never printing text; a licence file that holds some other text, or a folder the reader did not finish, is not sure; no notice and nothing that says where the code came from is not sure, never a pass; a notice found anywhere passes",
+  ],
   "cutover-certificate-changed": [
     "The https certificate after cutover lacks a name the one before covered (www, a subdomain), or there is no certificate where there was one.",
     "Visitors on the name that dropped off see a security warning instead of the site.",
@@ -2820,6 +3211,12 @@ export const CHECK_TEXT: Readonly<
     "Add the parent menu (or another value that tells them apart) to the event both links send.",
     "Links that passed events-fire, grouped by destination: two with different parent menus whose events carry the same values for the plan's parameters. Needs a rendered read (G39): until then it is could not check",
   ],
+  "events-unlisted": [
+    "Clicking an element the plan selects makes the page push an event to dataLayer whose name no line of gaugeline.events.json (or the CSV spec) lists.",
+    "An event nobody planned is usually a tag someone added or a second install: the numbers it feeds are not the ones the plan describes, and a before-and-after comparison cannot tell the two apart.",
+    "Add the event to the plan if it is wanted, or remove the tag or handler that sends it.",
+    "Each element a plan line selects is clicked in the rendered page with analytics requests intercepted and never delivered (the same read as events-fire, at most 20 elements), and the dataLayer pushes within 1500 ms are read. A pushed event name that no events line names is listed; the tag manager's own gtm.* events and pushes with no event name are left out; the same event on several links is one finding. The spec's events that never fire are events-fire's. Needs a rendered read (G39): until then it is could not check",
+  ],
   "forms-many-providers": [
     "Forms or form scripts from more than one service (for example HubSpot and Typeform) are on the same page.",
     "Leads from one page end up in different places, and each service needs its own tracking, consent and follow-up.",
@@ -2927,6 +3324,12 @@ export const CHECK_TEXT: Readonly<
     "Search results show the breadcrumb trail; one that starts somewhere else on some pages looks inconsistent and can point at the wrong page.",
     "Start every BreadcrumbList with the configured first item, for example Home at /.",
     "the lowest-position ListItem's name or URL differs from breadcrumbs.firstName / breadcrumbs.firstUrl in gaugeline.schema.json (name case ignored, URL resolved)",
+  ],
+  "studio-response-cacheable": [
+    "A studio route you listed answers 200 with no no-store in its Cache-Control header (no header at all, or one with other directives).",
+    "A response that may be stored can be shown again from a browser or a shared cache after the studio has changed, so an editor can be handed an old page of it. no-store is the directive that says a response must not be stored in any cache. (Gaugeline has not confirmed from Sanity's documentation how a studio is cached.)",
+    "Send Cache-Control: no-store for the studio's route: a headers() entry in next.config for an embedded studio, or a rule in the settings of the host that serves it.",
+    "probing check, off without --owner-consent and a gaugeline.studio.json that names the studio's route (studioRoutes, at most 4): one GET of each, no cookie or Authorization, at most 4096 bytes of each answer read and never kept, once per run; Gaugeline never picks a route such as /studio itself. A 2xx answer, after redirects, whose Cache-Control has no no-store directive is a finding; 401 and 403 are not; a route that answers 404, 410, 429, a 5xx or nothing is could-not-check; the finding names the route and the status, never a header value",
   ],
   "sveltekit-data-unshown": [
     "This SvelteKit page's __data.json has text fields whose text is nowhere on the page a visitor reads.",
@@ -3053,6 +3456,42 @@ export const CHECK_TEXT: Readonly<
     "Either the pipeline skipped the field or the field was renamed. It is not a mismatch, because nothing was promised, but a page that prints the total prints a blank.",
     "Open the document by its id and fill the stated field in, or check the field name in the rule against your schema.",
     "one GET of the query endpoint for each rule (perspective=published, so drafts are never read); the filter does the comparing, so only ids and whole numbers come back, never a stated number, a part or any other field: the type's document count, the _id of the documents that have no stated number, and the _id of those where stated != coalesce(math::sum(parts), 0); a part that does not dereference is null and math::sum skips it; exact equality on the numbers, and the stated field or a part that is not a number on some document is exit 2 and nothing is reported; !defined(stated)",
+  ],
+  "tsconfig-target-es5": [
+    "The tsconfig.json of a Next.js 13 or later app sets compilerOptions.target to es5, directly or through a tsconfig it extends.",
+    "es5 is the language level of browsers from over a decade ago. A modern Next.js app is built for current browsers, so the setting asks tools that read it to treat modern language features as missing and to write them out the long way, which can make the code bigger and slower for no visitor's benefit. Gaugeline has not confirmed what Next.js itself does with it.",
+    "Set target to es2017 or later (create-next-app's own tsconfig is a good reference), and check that the project still compiles. If an old library needs the setting, keep it in that library's own tsconfig.",
+    "static, reads tsconfig.json files and package.json as text and makes no request; only a tsconfig whose nearest package.json declares next 13 or later is read; comments and trailing commas are tolerated; extends is followed through relative files inside the folder (the last entry of an array wins); compilerOptions.target compared without case is es5: a finding that names the file and line that sets it; an extends that is a package, a file not in the folder, a file that was not read or that cannot be parsed, with no target of its own, is not sure; no target set, or es2017 or later, passes; the value of no other option is printed",
+  ],
+  "next-sanity-removed-api": [
+    "The code imports a draft mode hook, or sets an option or a prop, that next-sanity 12 had and next-sanity 13 removed, and the installed version is 13 or later.",
+    "Code copied from a site built on next-sanity 12 compiles in places and fails in others, and the failure is in preview: the editors' draft mode breaks or quietly stops refreshing while the published site looks fine, so it is noticed when a client first tries to preview a change.",
+    "Follow next-sanity's v12 to v13 migration guide for each name listed: useDraftModePerspective becomes the resolvePerspectiveFromCookies helper in a server component, useIsLivePreview and useDraftModeEnvironment are replaced by useIsPresentationTool and useVisualEditingEnvironment, and the removed SanityLive props and defineLive options are dropped or replaced as the guide describes.",
+    "static, reads the code files and package.json as text and makes no request; the installed version comes from the lockfile; it applies only when it is 13 or later; a finding for each import of useDraftModePerspective, useIsLivePreview or useDraftModeEnvironment from next-sanity or next-sanity/hooks, each of refreshOnFocus, refreshOnReconnect, refreshOnMount, intervalOnGoAway or tag written directly on a <SanityLive> tag, and each of stega or fetchOptions written directly in the options of defineLive, naming the file, line and name; a version below 13 is not a finding; a version that cannot be read, or no next-sanity in any package.json, with one of these names in the code, is not sure; no such name passes; no other text of a file is printed",
+  ],
+  "webhook-purges-draft-ids": [
+    "The code that receives a Sanity publish webhook reads the document id and clears the cache, and nothing in it skips an id that starts with drafts. or versions.",
+    "Sanity keeps a draft under an id that starts with drafts. (and a content release version under versions.). If the webhook is also sent for those, every saved draft clears the cache: the site refetches content no visitor can see, and an editor typing for an afternoon keeps the cache cold. (Gaugeline has not confirmed from Sanity's documentation which documents a webhook is sent for.)",
+    "Return early, before the cache is cleared, when the id starts with drafts. or versions.; or set the webhook in Sanity to send published documents only. Either is enough.",
+    "reads the code files of the folder named, never runs them; a receiver is a file that imports @sanity/webhook or next-sanity/webhook, reads the sanity-webhook-signature header, or is a route that revalidates behind a secret; a call to revalidateTag, revalidatePath or updateTag in a receiver that reads the document id (_id, documentId, docId, ids) and has no mention of drafts. or versions., and no getPublishedId, isDraftId, isVersionId or isPublishedId call, is a finding at the first such call; a receiver that clears the cache and never reads an id is could-not-check, because the webhook's own settings in Sanity may already exclude drafts; the finding names the file and the line, never an id, a tag or the secret",
+  ],
+  "cms-client-in-framework-config": [
+    "A framework's config file (next.config, nuxt.config, astro.config and similar) makes a client for a content system such as Sanity or Contentful at the top level, or imports a module that does.",
+    "Every build, every test run and every tool that reads the config now runs the client's setup and needs its settings, so a fake project id ends up in each of them, and the setup runs at build time whether or not a page needs it.",
+    "Keep the config file free of clients. Make the client in the function that reads content, and keep the few values the config needs (a redirect list, an image host) as plain data, or generate them in a script that runs before the build.",
+    "reads the code files of the folder named, never runs them; looks at next.config, nuxt.config, astro.config, svelte.config, remix.config, vite.config, react-router.config and gatsby-config files (.js, .mjs, .cjs, .ts); a file that imports a content-system package (@sanity/client, next-sanity, contentful, @prismicio/client, @directus/sdk, DatoCMS, Storyblok, Contentstack, Kontent, Ghost, Strapi) and calls createClient, createDirectus, createDeliveryClient, createManagementClient, createPrismicClient or new <Name>Client outside a function is a finding at that line; so is a config that imports a local module that does; a call inside a function or a dynamic import is not; no source file read, or some left out, is could-not-check; the finding names the file and the line, never a setting",
+  ],
+  "form-validation-in-client-bundle": [
+    "A client component imports a schema (zod, yup, valibot and similar) or defines one, and the only thing it does with it is read its field names (.shape, .keyof()).",
+    "Everything a client component imports is sent to the visitor's browser. The validation library, and the whole schema with its rules, are downloaded on every page with the form, so that the page can list a few field names a plain array would hold.",
+    "Export the field names as a plain list, or derive them in a server component and pass them in. Keep the schema where the submission is validated, on the server.",
+    'reads the code files of the folder named, never runs them; a file that starts with "use client" and imports, from a local module that loads zod, yup, valibot, joi, superstruct or arktype, a schema declared as const x = <lib>.object(...), or declares one itself after importing the library, and whose every use of it is .shape, .keyof(), .entries or .fields (a use only in a type does not count) is a finding at the import; a parse, safeParse, validate or resolver call means the browser validates and is left alone; a use Gaugeline cannot read (assigned, passed on, exported) is could-not-check; no source file read, or some left out, is could-not-check; the finding names the files and the library, never a field name',
+  ],
+  "presentation-main-documents-missing": [
+    "The Presentation tool is configured with no resolve.mainDocuments (no resolve option, a resolve with only locations, or an empty list), so no route of the site is mapped to the document it shows.",
+    "Presentation can open the document behind a page only when it is told which route shows which document. Without that mapping an editor looking at a page in the preview cannot jump to the document to edit it. (Gaugeline has not confirmed from Sanity's documentation the message the editor sees.)",
+    "Add resolve.mainDocuments to presentationTool, with defineDocuments: for each kind of page, its route (/menu/:slug) and the type or GROQ filter of the document it shows. Add locations as well if editors should see where a document is used.",
+    "reads the code files of the folder named, never runs them; a call of presentationTool in a file that imports it from sanity/presentation or @sanity/presentation, with its options written in the call, and no resolve option, a resolve object with no mainDocuments, or an empty mainDocuments list, is a finding at the call; options that are not written in the call, a spread, or a resolve that is not an object written in the call is could-not-check; the routes are not compared with the site's pages; no source file read, or some left out, is could-not-check; the finding names the file and the line, never a route or a project id",
   ],
 };
 export const SAMPLE_NOUNS: Readonly<Record<string, readonly [one: string, many: string]>> = {
