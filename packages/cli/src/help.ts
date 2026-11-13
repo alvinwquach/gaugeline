@@ -35,6 +35,7 @@ export const COMMANDS = [
   "propose",
   "source",
   "receipts",
+  "evals",
 ] as const;
 export type Command = (typeof COMMANDS)[number];
 
@@ -326,6 +327,20 @@ export const HELP: Record<string, string> = {
       "care-plan receipt: a different command.)",
     ].join("\n"),
     footer: "Exit codes: 0 the chain checks out, 1 a problem found, 2 could not read",
+  }),
+  evals: renderHelp(FLAGS, "evals", {
+    usage: "gaugeline evals [--agent <id>] [--out <file>] [options]",
+    summary: [
+      "Run the offline eval sets of Gaugeline's agents from their recorded model",
+      "answers, with no key, no network and no secret, and print each agent's pass",
+      "rate, refusal rate and cost. Cost is added up from the recorded answers only;",
+      "with none it says not measured. Writes the same numbers to a JSON report,",
+      "gaugeline-evals.json in this folder unless --out says otherwise, and never",
+      "over a file unless --force. Exits 1 when a golden case fails or a known-bad",
+      "case is not caught. There is no live-model mode: a model's opinion never",
+      "counts as a pass.",
+    ].join("\n"),
+    footer: "Exit codes: 0 all cases behaved, 1 a case failed or was missed, 2 could not run",
   }),
   open: renderHelp(FLAGS, "open", {
     usage: "gaugeline open [address] [options]",
