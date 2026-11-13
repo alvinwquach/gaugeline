@@ -1,0 +1,1 @@
+{"body": "The launch plan moves /drinks to /menu.", "files": [{"path": "public/_redirects", "content": "/drinks /menu 301\n"}], "title": "Redirect /drinks to /menu"}

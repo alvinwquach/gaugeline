@@ -153,6 +153,7 @@ import { formatLegacyTable, formatPlanSummary } from "./plan.js";
 import { formatTerminal } from "./reporter.js";
 import { runCutover } from "./cutover.js";
 import { runPropose } from "./propose.js";
+import { runReceipts } from "./receipts.js";
 import { runSource } from "./source.js";
 import { runMigration } from "./migration.js";
 import { runAdvisory } from "./advisory.js";
@@ -1110,6 +1111,11 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           color: useColor(io.stdout, io.env ?? {}),
         }),
         ci: args.ci,
+      };
+    case "receipts":
+      return {
+        outcome: runReceipts(args, io, { cwd: deps.cwd ?? process.cwd() }),
+        ci: true,
       };
     case "propose":
       return {
