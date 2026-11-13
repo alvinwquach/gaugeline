@@ -25,6 +25,7 @@ import {
 import { AGENT_URL_ENV, openAgentDatabase } from "../../../lib/api/agent-db.js";
 import { getPendingDraft, getPendingDrafts } from "../../../lib/api/agent-reads.js";
 import { encodeCursor } from "../../../lib/api/cursor.js";
+import { type Sql as ApiSql, withAgent } from "../../../lib/api/db.js";
 import { getRunFindings, getRuns, postRun } from "../../../lib/api/handlers.js";
 import { mintToken } from "../../../lib/api/tokens.js";
 import { appLogin } from "./app-login.js";
@@ -342,6 +343,28 @@ describe.skipIf(!HAS_DATABASE)("agent reads API: integration", () => {
       } finally {
         await both.drop();
       }
+    });
+
+    it("refuses a login that skips row-level security (the owner) for that reason", async () => {
+      await expect(openAgentDatabase({ [AGENT_URL_ENV]: db.url })).rejects.toThrow(
+        /skips row-level security/,
+      );
+    });
+
+    it("withAgent runs nothing when the role switch did not take", async () => {
+      // A stand-in connection whose transaction reports another role after `set local role`.
+      let ran = false;
+      const tx = Object.assign(async () => [{ u: "service_role" }], { unsafe: async () => [] });
+      const fake = {
+        begin: async (fn: (t: unknown) => Promise<unknown>) => fn(tx),
+      } as unknown as ApiSql;
+      await expect(
+        withAgent(fake, async () => {
+          ran = true;
+          return 1;
+        }),
+      ).rejects.toThrow(/must run as gaugeline_agent/);
+      expect(ran).toBe(false);
     });
 
     it("an agent's reads never touch the service_role connection", async () => {
