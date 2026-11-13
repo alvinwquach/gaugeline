@@ -1,11 +1,11 @@
 # ADR-0014: Agent safety model: registered agents, drafts only, deny by default, every call traced
 
-Status: proposed Date: 2026-11-13
+Status: accepted Date: 2026-11-13
 
-**Waiting for the owner's decision.** This record proposes; it changes no code, no flag and no line of
-CLAUDE.md. Row AG-04 of batch AG. The batch calls it "ADR-0011"; 0011 to 0013 are taken (#251), so
-it is 0014. It changes neither ADR-0005 nor ADR-0010: where a later row would need either changed, it
-says so under "What would change it".
+**Accepted by the owner on 13 Nov 2026.** This record changes no code, no flag and no line of CLAUDE.md.
+Row AG-04 of batch AG. The batch calls it "ADR-0011"; 0011 to 0013 are taken (#251), so it is 0014. It changes
+neither ADR-0005 nor ADR-0010: where a later row needs either changed, it says so under "What would change
+it". ADR-0005 has since been amended by the owner for model providers (modes 1 and 2); see that record.
 
 ## Context
 
