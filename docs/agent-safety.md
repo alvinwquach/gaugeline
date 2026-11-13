@@ -22,8 +22,9 @@ and not built.
   model, registered, limited, traced and evaluated offline.
 - **Today (row AG-14).** The [pending-approvals digest](./approvals-digest.md): a morning summary of what
   waits for a decision, built from the read-only pending-approvals reads. It sends nothing yet.
-- **Planned (rows AG-13, AG-15 to AG-18).** Draft-only helpers: a regression watcher, and drafting checks
-  and config for a person to review.
+- **Today (row AG-13).** The [regression watcher](./regression-watcher.md): compares each run with the last
+  and returns a message only when something got worse. It sends nothing yet.
+- **Planned (rows AG-15 to AG-18).** Draft-only helpers: drafting checks and config for a person to review.
 
 ## What an agent can do
 

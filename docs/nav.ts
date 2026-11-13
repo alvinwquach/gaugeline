@@ -96,6 +96,7 @@ export const UNLISTED: NavPage[] = [
   { slug: "agent-safety", title: "Agents: what they can and cannot do" },
   { slug: "agent-evals", title: "Agent evals: prove an agent before it ships" },
   { slug: "approvals-digest", title: "The pending-approvals digest" },
+  { slug: "regression-watcher", title: "The regression watcher" },
   { slug: "changelog", title: "Changelog" },
   { slug: "reference/json-schema", title: "JSON output reference" },
   { slug: "contributing/docs-first", title: "Docs first" },

@@ -1902,3 +1902,25 @@ export type {
   ApprovalsDigestKind,
   ApprovalsDigestOptions,
 } from "./approvals-digest/index.js";
+export {
+  MAX_REGRESSION_ID,
+  MAX_REGRESSION_LISTED,
+  MAX_REGRESSION_FINDINGS,
+  REGRESSION_WATCHER_AGENT,
+  RegressionInputError,
+  buildRegressionMessage,
+  buildRegressionReport,
+  createRegressionWatcherModel,
+  regressionFindingsFromResult,
+  regressionReportSchema,
+  regressionWatcherAgent,
+  regressionWatcherCases,
+} from "./agents/regression-watcher/index.js";
+export type {
+  RegressionFinding,
+  RegressionListed,
+  RegressionMessage,
+  RegressionMessageOptions,
+  RegressionReport,
+  RegressionWorsened,
+} from "./agents/regression-watcher/index.js";
