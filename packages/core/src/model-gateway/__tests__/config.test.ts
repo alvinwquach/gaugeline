@@ -65,6 +65,37 @@ describe("a config with a key in it", () => {
     if (value !== "") expect(p.join("\n")).not.toContain(value);
   });
 
+  it.each([
+    "GITHUB_TOKEN",
+    "AWS_SECRET_ACCESS_KEY",
+    "NPM_TOKEN",
+    "PATH",
+    "HOME",
+    "DATABASE_URL",
+    "MODEL",
+    "EXAMPLE_KEY",
+    "EXAMPLE_API_TOKEN",
+    "STRIPE_API_KEY",
+    "GITHUB_API_KEY",
+    "SUPABASE_SERVICE_API_KEY",
+    "AWS_API_KEY",
+  ])("refuses %s as keyEnv: only a variable for a model key, and never the value", (name) => {
+    const p = problems({ ...GOOD, keyEnv: name });
+    expect(p).toHaveLength(1);
+    expect(p[0]).toMatch(/^keyEnv: must be /);
+    expect(p[0]).not.toContain(name);
+  });
+
+  it.each([
+    "EXAMPLE_API_KEY",
+    "MYPROVIDER_API_KEY",
+    "A_API_KEY",
+    "OPEN_MODEL_API_KEY",
+    "AZURE_MODEL_API_KEY",
+  ])("accepts %s as keyEnv", (name) => {
+    expect(parseGatewayConfig({ ...GOOD, keyEnv: name }).ok).toBe(true);
+  });
+
   it("does not repeat a pasted key from any other place in the config", () => {
     const p = problems({
       provider: SHAPED_KEY,

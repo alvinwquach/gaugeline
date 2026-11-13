@@ -15,8 +15,15 @@ import {
 } from "./types.js";
 
 const PROVIDER = /^[a-z][a-z0-9-]{0,31}$/;
-/** An environment variable's name: capitals, digits and underscores. A key is never one of these (checked below). */
-const ENV_NAME = /^[A-Z][A-Z0-9_]{1,63}$/;
+/**
+ * The variable that holds a model key: capitals, digits and underscores, ending in _API_KEY. Any other name
+ * (GITHUB_TOKEN, AWS_SECRET_ACCESS_KEY, NPM_TOKEN, PATH) is refused, so a file cannot make Gaugeline send some
+ * other secret to a model provider, or tell anyone whether it is set (ADR-0014, "confused deputy").
+ */
+const ENV_NAME = /^[A-Z][A-Z0-9_]{0,55}_API_KEY$/;
+/** Services Gaugeline itself works with: a key for one of them is not a model key, whatever the suffix. */
+const NOT_A_MODEL_KEY =
+  /(^|_)(GITHUB|GITLAB|STRIPE|SLACK|DISCORD|RESEND|SANITY|SUPABASE|GMAIL|NPM|AWS|DATABASE|SENTRY)(_|$)/;
 /** A model id is printed back, so its shape is strict: lower case, digits, dots, colons and dashes, up to 64. */
 const MODEL_ID = /^[a-z0-9][a-z0-9._:-]{0,63}$/;
 /**
@@ -52,9 +59,9 @@ export const gatewayConfigSchema = z
       .refine(noRun, "must be a provider name, never a key"),
     keyEnv: z
       .string({ error: "must be the name of an environment variable" })
-      .regex(
-        ENV_NAME,
-        "must be the name of an environment variable, in capitals, never the key itself",
+      .refine(
+        (v) => ENV_NAME.test(v) && !NOT_A_MODEL_KEY.test(v),
+        "must be the name of the variable that holds your model key: capitals, ending in _API_KEY, and not a key for another service. Never the key itself",
       )
       // A key in capitals and digits fits the pattern above; the redaction rules know the shapes of real ones.
       .refine(

@@ -43,14 +43,14 @@ code, not in a file.
 }
 ```
 
-| Setting           | Meaning                                                                        |
-| ----------------- | ------------------------------------------------------------------------------ |
-| `provider`        | a lower-case name; the gateway needs an adapter registered under it            |
-| `keyEnv`          | the variable's name: capitals, digits and underscores. A pasted key is refused |
-| `tiers`           | a model id for `fast`, `strong` or both                                        |
-| `timeoutMs`       | 100 to 120000, default 30000: the call is stopped after this long              |
-| `maxInputChars`   | 1 to 100000, default 100000: a longer prompt is refused and nothing is sent    |
-| `maxOutputTokens` | 1 to 8192, default 1024                                                        |
+| Setting           | Meaning                                                                                                                                                    |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `provider`        | a lower-case name; the gateway needs an adapter registered under it                                                                                        |
+| `keyEnv`          | the name of the variable that holds your key: capitals, ending in `_API_KEY`. Any other name (`GITHUB_TOKEN`, `PATH`) or a pasted key is refused           |
+| `tiers`           | a model id for `fast`, `strong` or both: lower case letters, digits, dots, colons and dashes, up to 64, and no run of 20 letters or digits (that is a key) |
+| `timeoutMs`       | 100 to 120000, default 30000: the call is stopped after this long                                                                                          |
+| `maxInputChars`   | 1 to 100000, default 100000: a longer prompt is refused and nothing is sent                                                                                |
+| `maxOutputTokens` | 1 to 8192, default 1024                                                                                                                                    |
 
 The file is strict. A setting the page does not know (`apiKey`, `token`, `host`, `baseUrl`, `allowPrivate`) is an
 error, and an error says where the problem is and never repeats what was written there, because the value may
