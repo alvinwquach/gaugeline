@@ -1853,7 +1853,6 @@ export * from "./agents/triage/index.js";
 export {
   EVAL_ASSERTIONS,
   EVAL_MODEL_TOOL,
-  EVAL_SETS,
   EVAL_SUITE_SCHEMA,
   EvalReplayError,
   MAX_EVAL_INPUT_CHARS,
@@ -1870,6 +1869,7 @@ export {
   summariseEval,
   validateEvalSet,
 } from "./evals/index.js";
+export { EVAL_SETS } from "./evals/registry.js";
 export type {
   EvalAssertionResult,
   EvalAgent,

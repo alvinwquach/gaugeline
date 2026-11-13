@@ -87,18 +87,23 @@ its own planner and whose known-bad cases replay wrong answers.
 
 `gaugeline evals` runs every agent's eval set from its recorded model answers and prints, for each agent, how
 many cases behaved, how many answers a guard refused and what the recorded answers cost. It reads no
-environment variable, makes no request and needs no key, so it is safe in CI. A studio that keeps a triage
-agent for a bakery pop-up's findings runs it in the project's folder:
+environment variable, makes no request and needs no key, so it is safe in CI. A studio that lets the triage
+agent group a bakery pop-up's findings runs it in the project's folder:
 
 ```text title="Terminal" untested="The command writes a report file into the working folder. packages/cli/src/__tests__/evals-docs.test.ts runs it in an empty folder and compares the output."
 $ npx gaugeline evals
 ```
 
 ```text title="Output"
+agent approvals-digest
+  pass rate     10 of 10 cases (100%): golden 3 of 3 pass, known-bad 7 of 7 caught
+  refusal rate  5 of 10 cases (50%): the answer was stopped by schema, limits or no-write-call
+  cost          60000 micro-units over 9 cases with a recorded answer
+
 agent triage
-  pass rate     11 of 11 cases (100%): golden 3 of 3 pass, known-bad 8 of 8 caught
-  refusal rate  6 of 11 cases (55%): the answer was stopped by schema, limits or no-write-call
-  cost          1008000 micro-units over 10 cases with a recorded answer
+  pass rate     15 of 15 cases (100%): golden 5 of 5 pass, known-bad 10 of 10 caught
+  refusal rate  8 of 15 cases (53%): the answer was stopped by schema, limits or no-write-call
+  cost          12000 micro-units over 14 cases with a recorded answer
 
 Result: every golden case passed and every known-bad case was caught.
 ```
@@ -112,8 +117,8 @@ It also prints `Report written to gaugeline-evals.json` on stderr, and exits 0.
   schema, it broke a limit (or the input was over the size cap and never reached the model), or it tried a
   write call or a tool it was not given. The other assertions are about content, not refusals.
 - **Cost.** Added up, in whole micro-units, from the cases a recorded answer was replayed for. It is never
-  estimated: a case with no recorded answer adds nothing, and an agent with none says
-  `not measured` and the file has `null`.
+  estimated. An agent that is plain code, with no model, records 0 for its own cases. A case with no recorded
+  answer adds nothing, and an agent with none says `not measured` and the file has `null`.
 - **Exit code.** 0 when every golden case passed and every known-bad case was caught. 1 when a golden case
   failed, a known-bad case got through, a case errored or a set could not be run. 2 when the command itself
   could not run or write, for example an unknown `--agent`, no eval sets at all, or a file in the way.

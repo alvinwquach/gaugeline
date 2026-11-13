@@ -126,19 +126,24 @@ describe("gaugeline evals: a green run (exit 0)", () => {
     const r = await run(["evals"]);
     expect(r.code).toBe(0);
     expect(r.out).toBe(`${formatEvalSuite(await runEvalSets(EVAL_SETS))}\n`);
-    expect(r.out).toContain("pass rate     11 of 11 cases (100%)");
-    expect(r.out).toContain("refusal rate  6 of 11 cases (55%)");
-    expect(r.out).toContain("cost          1008000 micro-units over 10 cases");
+    expect(r.out).toContain("agent approvals-digest\n  pass rate     10 of 10 cases (100%)");
+    expect(r.out).toContain("agent triage\n  pass rate     15 of 15 cases (100%)");
+    expect(r.out).toContain("refusal rate  8 of 15 cases (53%)");
+    expect(r.out).toContain("cost          12000 micro-units over 14 cases");
     expect(r.err).toBe("Report written to gaugeline-evals.json\n");
     const file = readFileSync(join(dir, "gaugeline-evals.json"), "utf8");
     expect(file).toBe(`${JSON.stringify(await runEvalSets(EVAL_SETS), null, 2)}\n`);
     const parsed = JSON.parse(file);
     expect(parsed.ok).toBe(true);
-    expect(parsed.agents[0]).toMatchObject({
+    expect(parsed.agents.map((a: { agentId: string }) => a.agentId)).toEqual([
+      "approvals-digest",
+      "triage",
+    ]);
+    expect(parsed.agents[1]).toMatchObject({
       agentId: "triage",
       passRatePercent: 100,
-      refusalRatePercent: 55,
-      cost: { measured: true, micros: 1_008_000, cases: 10 },
+      refusalRatePercent: 53,
+      cost: { measured: true, micros: 12_000, cases: 14 },
     });
     // No clock, no machine: nothing in the file changes from run to run or from computer to computer.
     expect(file).not.toMatch(/\d{4}-\d{2}-\d{2}T/);
@@ -297,7 +302,7 @@ describe("gaugeline evals: edge cases (exit 2, nothing written)", () => {
     const r = await run(["evals", "--agent", "nobody"]);
     expect(r.code).toBe(2);
     expect(r.err).toContain('There is no eval set for agent "nobody".');
-    expect(r.err).toContain("The agents with eval sets are: triage.");
+    expect(r.err).toContain("The agents with eval sets are: approvals-digest, triage.");
     nothingWritten();
   });
 
@@ -330,7 +335,7 @@ describe("gaugeline evals: edge cases (exit 2, nothing written)", () => {
     };
     const r = await run(["evals", "--out", "locked/evals.json"], { evalsFs: fs });
     expect(r.code).toBe(2);
-    expect(r.out).toContain("pass rate     11 of 11 cases (100%)");
+    expect(r.out).toContain("pass rate     15 of 15 cases (100%)");
     expect(r.err).toContain('Could not write "locked/evals.json" (EACCES). Nothing was written.');
     expect(readdirSync(dir)).toEqual([]);
   });

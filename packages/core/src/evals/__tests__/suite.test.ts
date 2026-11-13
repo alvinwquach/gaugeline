@@ -8,7 +8,8 @@ import { ConfigError } from "../../errors.js";
 import { triage } from "../example/triage.js";
 import { createReplayModel } from "../replay.js";
 import { runEvals } from "../run.js";
-import { EVAL_SETS, defineEvalSet } from "../sets.js";
+import { EVAL_SETS } from "../registry.js";
+import { defineEvalSet } from "../sets.js";
 import {
   EVAL_SUITE_SCHEMA,
   evalFailureCount,
@@ -24,7 +25,11 @@ afterEach(() => {
 });
 
 const triageSet = (recordings: ReadonlyMap<string, EvalRecording> = triage.recordings) =>
-  defineEvalSet({ agent: triage.agent, cases: triage.cases, recordings });
+  defineEvalSet({
+    agent: triage.agent,
+    cases: triage.cases,
+    model: () => createReplayModel(recordings),
+  });
 /** A clean answer to the missing-id case, so nothing fails and the known-bad case slips through. */
 const slipsThrough: EvalRecording = {
   usage: triage.recordings.get("golden-one-urgent")!.usage,
@@ -46,8 +51,8 @@ const without = (id: string): Map<string, EvalRecording> => {
 };
 
 describe("the registry", () => {
-  it("holds the triage example, once, with a recording for every case", () => {
-    expect(EVAL_SETS.map((s) => s.agentId)).toEqual(["triage"]);
+  it("holds the real agents' sets, one per agent, in the order they are reported", () => {
+    expect(EVAL_SETS.map((s) => s.agentId)).toEqual(["approvals-digest", "triage"]);
   });
 });
 
@@ -125,7 +130,13 @@ describe("runEvalSets: what turns the suite red", () => {
     expect(suite.schema).toBe(EVAL_SUITE_SCHEMA);
     expect(suite.ok).toBe(true);
     expect(evalFailureCount(suite)).toBe(0);
-    expect(suite.agents.map((a) => a.agentId)).toEqual(["triage"]);
+    expect(suite.agents.map((a) => a.agentId)).toEqual(["approvals-digest", "triage"]);
+    for (const a of suite.agents) {
+      expect(a.problems, a.agentId).toEqual([]);
+      expect(a.golden.total, a.agentId).toBeGreaterThan(0);
+      expect(a.knownBad.total, a.agentId).toBeGreaterThan(0);
+      expect(a.passRatePercent, a.agentId).toBe(100);
+    }
   });
 
   it("a known-bad case nothing catches is a failure", async () => {
@@ -250,8 +261,16 @@ describe("runEvalSets: what turns the suite red", () => {
 });
 
 describe("formatEvalSuite", () => {
-  it("prints pass rate, refusal rate and cost per agent for the shipped sets", async () => {
-    expect(formatEvalSuite(await runEvalSets(EVAL_SETS))).toBe(
+  it("prints pass rate, refusal rate and cost per agent, one block each", async () => {
+    const shipped = formatEvalSuite(await runEvalSets(EVAL_SETS));
+    expect(shipped.split("\n").filter((l) => l.startsWith("agent "))).toEqual([
+      "agent approvals-digest",
+      "agent triage",
+    ]);
+    expect(
+      shipped.endsWith("Result: every golden case passed and every known-bad case was caught."),
+    ).toBe(true);
+    expect(formatEvalSuite(await runEvalSets([triageSet()]))).toBe(
       [
         "agent triage",
         "  pass rate     11 of 11 cases (100%): golden 3 of 3 pass, known-bad 8 of 8 caught",
