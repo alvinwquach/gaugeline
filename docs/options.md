@@ -77,6 +77,9 @@ Options:
       --trackers                   Also list the trackers on pages with a form
                                    or a path you listed, and what a tag manager
                                    holds
+      --renderer <value>           Also load the page in a browser you installed
+                                   (playwright), to read what scripts add; never
+                                   downloads one
       --libraries                  Also check the JavaScript files a page loads
                                    for libraries with a published advisory
       --wordpress                  Also check a WordPress site's versions
