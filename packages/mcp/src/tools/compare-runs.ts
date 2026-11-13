@@ -1,7 +1,7 @@
 import * as z from "zod";
 import { ToolError, type ToolContext } from "../state.js";
 import { findingId } from "../agent-text.js";
-import { findingsForAgent } from "./shared.js";
+import { findingsForAgent, idToken } from "./shared.js";
 
 export const compareRunsInput = {
   a: z.string().min(1).max(40).describe("The earlier run id, from run_check or plan_check."),
@@ -18,7 +18,7 @@ export async function compareRuns(
   const missing = [!a ? args.a : undefined, !b ? args.b : undefined].filter(Boolean);
   if (!a || !b)
     throw new ToolError(
-      `No run ${missing.map((m) => JSON.stringify(m)).join(" or ")} in this session. A run id comes from run_check or plan_check; this server keeps the last 20.`,
+      `No run ${missing.map((m) => idToken(String(m))).join(" or ")} in this session. A run id comes from run_check or plan_check; this server keeps the last 20.`,
     );
   const before = new Set(a.findings.map(findingId));
   const after = new Set(b.findings.map(findingId));

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createPageRegistry, markUntrusted, type Finding } from "@gaugeline/core";
-import { findingForAgent } from "../agent-text.js";
+import { MAX_GROUP_LINES, findingForAgent } from "../agent-text.js";
 
 const hostile: Finding = {
   checkId: "canonical-elsewhere",
@@ -43,5 +43,37 @@ describe("page text for the model", () => {
     const t = markUntrusted(text, { source: "x", maxChars: 100 });
     expect(t.text).toBe(text);
     expect(t.truncated).toBe(false);
+  });
+
+  it("leak case: a standalone hidden character and a one-cluster flood do not reach the model", () => {
+    const f = findingForAgent(
+      {
+        ...hostile,
+        title: "Menu\u2062\u2063",
+        evidence: `"hreflang fr\u2062" a${"\u0301".repeat(50_000)}`,
+      },
+      createPageRegistry(),
+    );
+    expect(f.title.text).toBe("Menu\\u{2062}\\u{2063}");
+    expect(f.evidence.text).toContain("fr\\u{2062}");
+    expect(f.evidence.truncated).toBe(true);
+    expect(f.evidence.text.length).toBeLessThan(2000);
+  });
+
+  it("leak case: a plan finding that covers thousands of rows lists the first lines and the total", () => {
+    const lines = Array.from({ length: 3000 }, (_, i) => i + 2);
+    const f = findingForAgent(
+      { ...hostile, checkId: "plan-duplicate-title", group: { key: "Same title", lines } },
+      createPageRegistry(),
+    );
+    expect(f.group?.lines).toHaveLength(MAX_GROUP_LINES);
+    expect(f.group?.linesTotal).toBe(3000);
+    expect(f.group?.key.untrusted).toBe(true);
+    const few = findingForAgent(
+      { ...hostile, group: { key: "k", lines: [2, 3] } },
+      createPageRegistry(),
+    );
+    expect(few.group?.lines).toEqual([2, 3]);
+    expect(few.group?.linesTotal).toBeUndefined();
   });
 });

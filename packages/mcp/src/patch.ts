@@ -21,12 +21,21 @@ export interface BuiltPatch {
   note: string;
 }
 
+/** The most leading spaces a quoted line may have, and what closes a Markdown code fence. */
+const MAX_INDENT = 40;
+const FENCE = /`{3,}|~{3,}/;
+
 /** A line of page text that survives markUntrusted unchanged (leading spaces are layout, kept as they are). */
 function quotable(line: string): string | undefined {
   const indent = /^ */.exec(line)?.[0] ?? "";
+  // Layout, not a payload: a line indented by thousands of spaces is not quoted.
+  if (indent.length > MAX_INDENT) return undefined;
   const rest = line.slice(indent.length);
   if (rest === "") return line === "" ? "" : undefined;
   const field = markUntrusted(rest, { source: "patch context", maxChars: 200 });
+  // A run of three backticks or tildes would close the code fence the diff is shown in, and what
+  // follows it would read as the assistant's own text.
+  if (FENCE.test(rest)) return undefined;
   return field.text === rest && !field.truncated ? line : undefined;
 }
 

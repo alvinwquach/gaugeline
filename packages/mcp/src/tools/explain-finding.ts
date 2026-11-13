@@ -8,6 +8,7 @@ import {
 } from "@gaugeline/core";
 import { ToolError, type StoredRun, type ToolContext } from "../state.js";
 import { findingId, findingForAgent } from "../agent-text.js";
+import { idToken } from "./shared.js";
 
 export const explainFindingInput = {
   id: z
@@ -66,6 +67,6 @@ export async function explainFinding(
   const check = checkById(args.id);
   if (check) return { check: describeCheck(check) };
   throw new ToolError(
-    `No finding or check has the id ${JSON.stringify(args.id.slice(0, 60))} in this session. Run run_check first, or use an id from list_checks.`,
+    `No finding or check has the id ${idToken(args.id)} in this session. Run run_check first, or use an id from list_checks.`,
   );
 }

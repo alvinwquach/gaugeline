@@ -1,7 +1,7 @@
 import * as z from "zod";
 import { EMAIL_PRESET, PROBING_CHECKS, checkSite, createPageRegistry } from "@gaugeline/core";
 import { ToolError, remember, type ToolContext } from "../state.js";
-import { couldNotCheckForAgent, findingsForAgent, urlSchema } from "./shared.js";
+import { couldNotCheckForAgent, findingsForAgent, idToken, urlSchema } from "./shared.js";
 
 export const runCheckInput = {
   url: urlSchema.describe("The page to check, as a full http or https address."),
@@ -45,7 +45,9 @@ export async function runCheck(args: z.infer<z.ZodObject<typeof runCheckInput>>,
   const skip = args.flags?.skip ?? [];
   const unknown = [...(args.checks ?? []), ...skip].filter((id) => !registry.has(id));
   if (unknown.length > 0)
-    throw new ToolError(`Unknown check id: ${[...new Set(unknown)].join(", ")}. See list_checks.`);
+    throw new ToolError(
+      `Unknown check id: ${[...new Set(unknown)].slice(0, 5).map(idToken).join(", ")}. See list_checks.`,
+    );
   const consent = args.ownerConsent === true;
   // A probing check asked for by id still needs consent: it is dropped here, and said so.
   const withheld = consent ? [] : (args.checks ?? []).filter((id) => PROBING_CHECKS.includes(id));
