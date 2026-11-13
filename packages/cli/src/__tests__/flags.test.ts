@@ -451,6 +451,8 @@ describe("flag table: e2e", () => {
         const sourceOnly = f.commands.length === 1 && f.commands[0] === "source";
         // receipts verify reads a chain file: its own flag (--head) is proved the same way, with --help.
         const receiptsOnly = f.commands.length === 1 && f.commands[0] === "receipts";
+        // evals runs recorded eval sets and writes a report file: its own flag (--agent) is proved with --help.
+        const evalsOnly = f.commands.length === 1 && f.commands[0] === "evals";
         // brief runs the page check and writes a work order: its own flags are proved on a run.
         const briefOnly = f.commands.length === 1 && f.commands[0] === "brief";
         // --business is brief's and audit's, proved on brief. audit --pack runs the page check too, and its own flags
@@ -478,6 +480,7 @@ describe("flag table: e2e", () => {
           !proposeOnly &&
           !sourceOnly &&
           !receiptsOnly &&
+          !evalsOnly &&
           !briefOnly &&
           !businessFlag &&
           !auditOnly &&
@@ -598,7 +601,8 @@ describe("flag table: e2e", () => {
                                   queryOnly ||
                                   proposeOnly ||
                                   sourceOnly ||
-                                  receiptsOnly
+                                  receiptsOnly ||
+                                  evalsOnly
                                 ? [
                                     deliveryOnly
                                       ? "delivery"
@@ -610,7 +614,9 @@ describe("flag table: e2e", () => {
                                             ? "source"
                                             : receiptsOnly
                                               ? "receipts"
-                                              : "query",
+                                              : evalsOnly
+                                                ? "evals"
+                                                : "query",
                                     `--${f.name}`,
                                     ...value,
                                     "--help",
