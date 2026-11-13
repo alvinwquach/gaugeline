@@ -43,7 +43,7 @@ export interface ApprovalRequest {
 }
 
 const trim = (s: string, max: number) => (s.length > max ? `${s.slice(0, max - 1)}…` : s);
-const KIND_WORDS: Record<string, string> = {
+export const KIND_WORDS: Record<string, string> = {
   pull_request: "a pull request",
   email: "an email draft",
   sanity_draft: "a content draft",

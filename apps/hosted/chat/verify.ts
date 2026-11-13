@@ -6,7 +6,13 @@
  * The check is on the RAW body bytes, before anything parses them: a parsed and re-encoded body is not the
  * body that was signed, and parsing unverified input is how a forged request reaches a parser.
  */
-import { createHmac, timingSafeEqual } from "node:crypto";
+import {
+  createHash,
+  createHmac,
+  createPublicKey,
+  timingSafeEqual,
+  verify as edVerify,
+} from "node:crypto";
 
 /** The largest request body read at all. A Slack interaction is a few kilobytes. */
 export const MAX_CHAT_BODY = 64 * 1024;
@@ -96,6 +102,70 @@ export function slackVerifier(input: {
     rawBody: input.rawBody,
     signature: input.headers.get("x-slack-signature"),
     timestamp: input.headers.get("x-slack-request-timestamp"),
+    now: input.now,
+  });
+}
+
+export interface DiscordRequest {
+  /** The application's public key: 64 hex characters, from Discord's developer portal. Public, not secret. */
+  publicKey: string;
+  rawBody: Uint8Array;
+  /** The `X-Signature-Ed25519` header: 128 hex characters. */
+  signature: string | null;
+  /** The `X-Signature-Timestamp` header: whole seconds since the epoch. */
+  timestamp: string | null;
+  now: Date;
+}
+
+const HEX_KEY = /^[0-9a-f]{64}$/i;
+const HEX_SIGNATURE = /^[0-9a-f]{128}$/i;
+/** The fixed prefix of an Ed25519 public key in DER (SubjectPublicKeyInfo), RFC 8410. */
+const ED25519_SPKI = Buffer.from("302a300506032b6570032100", "hex");
+
+/**
+ * Discord's scheme: an Ed25519 signature, from the application's key, over the `X-Signature-Timestamp`
+ * header followed by the raw body (Discord's interactions overview, "Validating Security Request Headers").
+ * A failure is answered 401. Discord's page names no freshness window; this one applies the same five
+ * minutes as Slack's, in both directions (uncited: a rule of this file). The replay key is the SHA-256 of
+ * what was signed, not the signature, so a second way of writing the same signature is still the same
+ * request.
+ */
+export function verifyDiscord(req: DiscordRequest): Verified {
+  if (!req.publicKey || req.signature === null || req.timestamp === null)
+    return { ok: false, reason: "missing-header" };
+  if (!SECONDS.test(req.timestamp)) return { ok: false, reason: "bad-timestamp" };
+  const skew = Math.abs(Math.floor(req.now.getTime() / 1000) - Number(req.timestamp));
+  if (skew > MAX_SKEW_SECONDS) return { ok: false, reason: "stale" };
+  if (!HEX_SIGNATURE.test(req.signature) || !HEX_KEY.test(req.publicKey))
+    return { ok: false, reason: "bad-signature" };
+  const signed = Buffer.concat([Buffer.from(req.timestamp, "utf8"), req.rawBody]);
+  let good = false;
+  try {
+    const key = createPublicKey({
+      key: Buffer.concat([ED25519_SPKI, Buffer.from(req.publicKey, "hex")]),
+      format: "der",
+      type: "spki",
+    });
+    good = edVerify(null, signed, key, Buffer.from(req.signature, "hex"));
+  } catch {
+    good = false;
+  }
+  if (!good) return { ok: false, reason: "bad-signature" };
+  return { ok: true, requestKey: createHash("sha256").update(signed).digest("hex") };
+}
+
+/** A Discord request's verifier in the shape `authenticate` takes; the connection's "secret" is the public key. */
+export function discordVerifier(input: {
+  secret: string;
+  rawBody: Buffer;
+  headers: Headers;
+  now: Date;
+}): Verified {
+  return verifyDiscord({
+    publicKey: input.secret,
+    rawBody: input.rawBody,
+    signature: input.headers.get("x-signature-ed25519"),
+    timestamp: input.headers.get("x-signature-timestamp"),
     now: input.now,
   });
 }

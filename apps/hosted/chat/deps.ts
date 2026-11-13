@@ -9,6 +9,7 @@
 import postgres from "postgres";
 import { chatLoginsWithOtherRoles, connectionSkipsRls } from "../db/audit.js";
 import { MemoryApplyQueue } from "../inbox/inbox.js";
+import type { DiscordDeps } from "./discord.js";
 import type { SlackDeps } from "./slack.js";
 import { CHAT_ROLE, sqlChatStore } from "./store.js";
 
@@ -75,4 +76,10 @@ export async function closeSlackDeps(): Promise<void> {
   const open = shared;
   shared = undefined;
   if (open) await (await open.catch(() => undefined))?.sql.end({ timeout: 1 });
+}
+
+/** The same endpoint login and queue as Slack's, without Slack's reply sender: Discord answers in its response. */
+export async function getDiscordDeps(): Promise<DiscordDeps> {
+  const { reply: _reply, ...deps } = await getSlackDeps();
+  return deps;
 }

@@ -349,8 +349,9 @@ describe.skipIf(!HAS_DATABASE)("approving in Slack", () => {
     expect(queue.jobs.has(id)).toBe(true);
   });
 
-  it("a signed body in any content type but a form is a 400 and is not parsed", async () => {
+  it("a signed body in any content type but a form is a 400 before anything is claimed or looked up", async () => {
     const { id, ts } = await proposal();
+    const p = slack.press(ts, "gaugeline_approve", "U0MEMBER");
     for (const type of [
       "application/json",
       "multipart/form-data; boundary=x",
@@ -358,17 +359,22 @@ describe.skipIf(!HAS_DATABASE)("approving in Slack", () => {
       "application/x-www-form-urlencoded-evil",
       "",
     ]) {
-      const p = slack.press(ts, "gaugeline_approve", "U0MEMBER");
-      if (type) p.headers["content-type"] = type;
-      else delete p.headers["content-type"];
-      expect((await send(p)).status, type).toBe(400);
+      const headers = { ...p.headers };
+      if (type) headers["content-type"] = type;
+      else delete headers["content-type"];
+      expect((await send({ ...p, headers })).status, type).toBe(400);
     }
     expect(await decisions(id)).toHaveLength(0);
-    // The form type Slack sends is accepted, with or without a charset.
-    const ok = slack.press(ts, "gaugeline_approve", "U0MEMBER");
-    ok.headers["content-type"] = "application/x-www-form-urlencoded; charset=utf-8";
+    // The SAME signed request, sent as the form Slack sends, is still accepted: refusing the type used up
+    // nothing (no replay key was claimed, and the connection was not even looked up).
+    const ok = {
+      ...p,
+      headers: { ...p.headers, "content-type": "application/x-www-form-urlencoded; charset=utf-8" },
+    };
     expect((await send(ok)).status).toBe(200);
     expect(await decisions(id)).toHaveLength(1);
+    // And now that one is used up.
+    expect((await send(ok)).status).toBe(401);
   });
 
   it("a malformed body that IS signed is a 400 and records nothing", async () => {

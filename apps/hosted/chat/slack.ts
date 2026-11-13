@@ -24,13 +24,9 @@ import {
 } from "@gaugeline/core";
 import type postgres from "postgres";
 import type { ApplyQueue } from "../inbox/inbox.js";
-import {
-  decideFromChat,
-  PROPOSAL_EXPIRY_MS,
-  type ChatAction,
-  type ChatDecision,
-} from "./decide.js";
+import { decideFromChat, type ChatAction, type ChatDecision } from "./decide.js";
 import { authenticate, rejection } from "./receive.js";
+import { alreadyText, refusalText, titleOf } from "./replies.js";
 import type { ChatStore } from "./store.js";
 import { slackVerifier } from "./verify.js";
 
@@ -104,45 +100,20 @@ export function parseInteraction(rawBody: Buffer, contentType: string | null): I
   };
 }
 
-/**
- * What the reply says was decided: the draft's kind and its one-line title, from the row the database
- * returned (the draft's payload as approved), never from the clicked message. The site's name is not
- * returned, so it is not repeated.
- */
+/** What the reply says was decided: the draft's kind and one-line title, from the row the database returned. */
 function summaryOf(
   kind: string,
   payloadText: string,
   draftId: string,
   appUrl?: string,
 ): ApprovalRequest {
-  let title = "A proposed change";
-  try {
-    const p = JSON.parse(payloadText) as Record<string, unknown>;
-    const found = [p.title, p.subject, p.documentId].find(
-      (v): v is string => typeof v === "string",
-    );
-    if (found) title = found;
-  } catch {
-    // The database holds only objects that fit their kind; a payload that does not parse is not shown.
-  }
   return {
     kind,
-    title,
+    title: titleOf(payloadText),
     draftId,
     ...(appUrl ? { inboxUrl: `${appUrl.replace(/\/+$/, "")}/inbox/${draftId}` } : {}),
   };
 }
-
-const PRIVATE: Record<Exclude<ChatDecision["status"], "recorded" | "already-decided">, string> = {
-  "unknown-user":
-    "Your Slack account is not linked to a Gaugeline member, so nothing was recorded. Ask an owner or admin to link it.",
-  "not-allowed": "You are not allowed to decide proposals in Gaugeline. Nothing was recorded.",
-  "wrong-workspace": "You are not allowed to decide proposals in Gaugeline. Nothing was recorded.",
-  "not-found": "That proposal is not available any more. Nothing was recorded.",
-  expired: `That proposal is more than ${PROPOSAL_EXPIRY_MS / 3_600_000} hours old and can no longer be approved here. Open it in Gaugeline to review it.`,
-  "open-inbox":
-    "A finding this proposal fixes has closed, or the proposal changed. Open it in Gaugeline to decide. Nothing was recorded.",
-};
 
 /** What to send back for a result: the clicked message replaced, or a private line for the clicker. */
 function answer(
@@ -157,11 +128,8 @@ function answer(
       by: slackUser,
       at: (deps.now ?? (() => new Date()))(),
     });
-  if (result.status === "already-decided")
-    return slackPrivateReply(
-      `That proposal was already ${result.decision === "declined" ? "declined" : "approved"}. Nothing was changed.`,
-    );
-  return slackPrivateReply(PRIVATE[result.status]);
+  if (result.status === "already-decided") return slackPrivateReply(alreadyText(result.decision));
+  return slackPrivateReply(refusalText(result.status, "Slack"));
 }
 
 /** Slack wants an answer to the request itself within three seconds; the reply to the person follows it. */
