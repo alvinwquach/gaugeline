@@ -7,8 +7,10 @@ fixed, or came down a step, is counted and never raises an alert, and a night wi
 at all. It is [agent](./agent-safety.md) work with the same rules as every agent: it **drafts nothing, writes
 nothing, sends nothing and edits nothing**. It returns a message; a person decides what to do about it.
 
-**Today.** The comparison and the message are built and tested (row AG-13) as code in `@gaugeline/core`.
-**Not built.** Nothing sends the message and nothing runs it on a schedule; see "What is missing" below.
+**Today.** The comparison and the message are built and tested (row AG-13) as code in `@gaugeline/core`, and the
+hosted worker compares each night's run with the one before and sends the alert to a Slack channel that takes
+agent messages ([agent messages in your Slack channel](./hosted/notifications.md#agent-messages-in-your-slack-channel)).
+**Not built:** a button for turning it on, and email.
 
 ## What it compares
 
@@ -138,11 +140,11 @@ golden 4/4 pass; known-bad 8/8 caught; cost 60000 micro-units
 
 ## What is missing, and what you do to run it for real
 
-The watcher returns a message object and stops there. Gaugeline's one way to send to your own Slack or email
-([ADR-0005](https://github.com/alvinwquach/gaugeline/blob/main/docs/adr/0005-notifications-post-to-your-own-channels.md))
-sends a check's findings, and the hosted channels are queued with a night's run, so neither can carry an agent's
-message yet. This row adds no sender and no POST. Two later rows add the missing pieces: a queue for agent
-messages, and a worker step that sends them through the existing sending file. Until then:
+In the hosted worker, the finding ids are the stored findings' fingerprints, and the two runs are the night's
+run and the last one the worker made for the site; a check that did not run in either is left out of both,
+so a crashed check is not a regression. The Slack message is built from the report when it is sent. Missing:
+a button for turning agent messages on for a channel (until then the app's server calls `setAgentMessages`),
+and email. To use it on your own runs without the hosted app:
 
 1. Keep the findings of each night's run: the CLI's `--json` output has them, and
    `regressionFindingsFromResult` turns a result into the rows the watcher reads.
@@ -151,8 +153,8 @@ messages, and a worker step that sends them through the existing sending file. U
 3. Paste or pipe `message.body` where you want it.
 
 The hosted run history an agent can read ([the API](./hosted/api.md#agent-reads-pending-drafts-and-run-history))
-holds a count summary of each run, not its findings, so the watcher cannot yet read its two runs through its
-own token: a hosted worker that already holds a night's findings will hand them in when the delivery row lands.
+holds a count summary of each run, not its findings, so the watcher does not read its runs through an agent
+token: the worker already holds the findings and hands them in.
 
 ## What it does not catch
 

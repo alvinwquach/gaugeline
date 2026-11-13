@@ -27,7 +27,8 @@ import { secretsInValue } from "../lib/api/secrets.js";
 import { openDatabase } from "../lib/api/startup.js";
 import { cleanFindings, cleanReason, fitLimits, settleCrossField, stripNul } from "./clean.js";
 import { bounded, DeadlineError, guardFetcher } from "./deadline.js";
-import { diffRuns } from "./diff.js";
+import { diffRuns, notRunIn } from "./diff.js";
+import { queueMorningDigests, queueRegressionAlert } from "./agent-messages.js";
 import { morningCadence } from "./email/cadence.js";
 import {
   type MorningDeps,
@@ -72,6 +73,8 @@ export interface WorkerDeps {
   deadlineMs?: number;
   /** Tests only: stands in for queueRunNotifications, to show a failure there never fails the run. */
   queueNotifications?: typeof queueRunNotifications;
+  /** Tests only: stands in for queueRegressionAlert, to show a failure there never fails the run. */
+  queueAgentMessages?: typeof queueRegressionAlert;
   /** Sends queued notifications (X67). The worker's start-up always sets it (notifyDepsFrom). */
   notify?: NotifyDeps;
 }
@@ -179,17 +182,6 @@ const consentedNow = async (tx: Tx, siteId: string): Promise<boolean> =>
       ) as consented`
   )[0]!.consented === true;
 
-/** What a run's summary says did not give an answer: checks that threw or could not check. */
-const notRunIn = (summary: unknown): string[] => {
-  const s = (summary ?? {}) as { failed?: unknown; couldNotCheck?: unknown };
-  const ids = (xs: unknown, pick: (x: unknown) => unknown) =>
-    (Array.isArray(xs) ? xs : []).map(pick).filter((x): x is string => typeof x === "string");
-  return [
-    ...ids(s.failed, (x) => x),
-    ...ids(s.couldNotCheck, (x) => (x as { id?: unknown } | null)?.id),
-  ];
-};
-
 /**
  * Run one claimed job to its end. Never throws: a failure is recorded on the job.
  *
@@ -289,6 +281,16 @@ export async function processJob(
           queue(sp, { orgId: job.orgId, siteId: job.siteId, runId: stored.id, now: clock() }),
         )
         .catch(() => console.error(`worker: job ${job.id} notifications not queued: queue-failed`));
+      // An agent's alert (AG-13), in its own savepoint: it queues only when the run got worse than the one
+      // before, only for a channel that takes agent messages, and a failure there is as harmless as above.
+      const queueAgent = deps.queueAgentMessages ?? queueRegressionAlert;
+      await tx
+        .savepoint((sp) =>
+          queueAgent(sp, { orgId: job.orgId, siteId: job.siteId, runId: stored.id, now: clock() }),
+        )
+        .catch(() =>
+          console.error(`worker: job ${job.id} agent messages not queued: queue-failed`),
+        );
     });
     return "done";
   } catch (e) {
@@ -332,6 +334,8 @@ export async function runWorker(
     morningStep?: (deps: MorningDeps, now: Date) => Promise<unknown>;
     /** For tests: how often the step is due (MORNING_EVERY_MS unless given). */
     morningEveryMs?: number;
+    /** For tests: the step that queues the morning digests (queueMorningDigests unless given). */
+    agentDigestStep?: (sql: Sql, now: Date) => Promise<unknown>;
   },
 ): Promise<void> {
   const now = () => (deps.now ?? (() => new Date()))();
@@ -353,6 +357,16 @@ export async function runWorker(
         options.morningEveryMs ?? MORNING_EVERY_MS,
       )
     : undefined;
+  // The morning digest of waiting drafts (AG-14): it only queues rows, on its own cadence and the worker's
+  // clock, for the sender above to send. Only when notifications are on at all.
+  const digests = deps.notify
+    ? morningCadence(
+        (at) => (options.agentDigestStep ?? queueMorningDigests)(deps.sql, at),
+        now,
+        options.morningEveryMs ?? MORNING_EVERY_MS,
+        "agent digest",
+      )
+    : undefined;
   try {
     await runPool({
       signal: options.signal,
@@ -360,6 +374,7 @@ export async function runWorker(
       idleMs: options.idleMs ?? 30_000,
       claim: async (free) => {
         morning?.tick();
+        digests?.tick();
         sendDue();
         await releaseExpired(deps.sql, now());
         return claimJobs(deps.sql, free, now());
@@ -368,6 +383,7 @@ export async function runWorker(
     });
   } finally {
     await morning?.settled();
+    await digests?.settled();
     // A deploy stops the worker: the send in flight finishes first.
     await sending;
   }

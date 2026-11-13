@@ -9,6 +9,10 @@
  * keeps a status, a count, an HTTP status and a short code: never an address, a header or a message body.
  * A channel that fails three deliveries in a row, or is refused outright (a revoked webhook), is disabled
  * with a reason; a test message that gets through turns it back on.
+ *
+ * An agent's message (AG-13 regression alert, AG-14 morning digest) is a delivery of kind "agent": agent-messages.ts
+ * queues it and builds its words; the sending below is the same, to the same address, through the same POST module.
+ * No other file sends it, and nothing here adds a host or a request of another shape.
  */
 import { randomUUID } from "node:crypto";
 import {
@@ -26,6 +30,7 @@ import {
   slackChangesPayload,
 } from "@gaugeline/core";
 import { type Sql, type Tx, withService } from "../lib/api/db.js";
+import { type AgentDelivery, agentBodies } from "./agent-messages.js";
 import { SecretError, type SecretStore, secretStoreFrom } from "./secrets.js";
 
 type PostResult = Awaited<ReturnType<typeof postJson>>;
@@ -323,14 +328,8 @@ export async function queueRunNotifications(
 
 // --- Sending ----------------------------------------------------------------------------------------
 
-interface Claimed {
-  id: string;
-  orgId: string;
-  channelId: string;
-  kind: "run" | "test";
-  runId: string | null;
-  siteId: string | null;
-}
+/** A delivery a worker has claimed. A row of kind "agent" (0016) says which agent message, never its words. */
+type Claimed = AgentDelivery;
 
 /** Build the bodies for one delivery: one Slack message, or one Sentry event per finding. */
 async function bodies(
@@ -340,6 +339,9 @@ async function bodies(
   label: string,
 ): Promise<{ bodies: unknown[]; findings: number }> {
   const now = (deps.now ?? (() => new Date()))();
+  // An agent's message (AG-13, AG-14): its words are built here, as a night's findings are, and sent below
+  // by the same loop through the same sender as everything else in this file.
+  if (d.kind === "agent") return agentBodies(deps, d);
   if (d.kind === "test") {
     const testFinding: ChangedFinding = {
       checkId: "test-message",
@@ -398,13 +400,20 @@ async function deliver(deps: NotifyDeps, d: Claimed): Promise<Delivered> {
   const send = sender(deps);
   const chRows = await withService(
     deps.sql,
-    (tx) => tx`select kind, label, secret_name, status from public.notification_channels
+    (
+      tx,
+    ) => tx`select kind, label, secret_name, status, agent_messages from public.notification_channels
       where id = ${d.channelId} and org_id = ${d.orgId}`,
   );
   const ch = chRows[0];
   let outcome: Delivered;
   let findings = 0;
-  if (!ch || (ch.status !== "active" && d.kind === "run")) {
+  // A channel that is off, or no longer takes agent messages, is not asked: not its fault, so no strike.
+  if (
+    !ch ||
+    (ch.status !== "active" && d.kind !== "test") ||
+    (d.kind === "agent" && ch.agent_messages !== true)
+  ) {
     outcome = { ok: false, attempts: 0, error: "channel-disabled" };
   } else {
     let address: string | null;
@@ -476,16 +485,20 @@ export async function deliverDue(deps: NotifyDeps, limit = 20): Promise<number> 
       where d.id in (select id from public.notification_deliveries
         where status = 'queued' and send_after <= ${now}
         order by send_after, id limit ${limit} for update skip locked)
-      returning id, org_id, channel_id, kind, run_id, site_id`,
+      returning id, org_id, channel_id, kind, run_id, site_id, agent_kind, subject_run_id,
+        digest_date::text as digest_date`,
   );
   for (const r of claimed)
     await deliverSafely(deps, {
       id: r.id as string,
       orgId: r.org_id as string,
       channelId: r.channel_id as string,
-      kind: r.kind as "run" | "test",
+      kind: r.kind as "run" | "test" | "agent",
       runId: (r.run_id as string | null) ?? null,
       siteId: (r.site_id as string | null) ?? null,
+      agentKind: (r.agent_kind as Claimed["agentKind"]) ?? null,
+      subjectRunId: (r.subject_run_id as string | null) ?? null,
+      digestDate: (r.digest_date as string | null) ?? null,
     });
   return claimed.length;
 }
@@ -565,6 +578,9 @@ export async function sendTestMessage(
     kind: "test",
     runId: null,
     siteId: null,
+    agentKind: null,
+    subjectRunId: null,
+    digestDate: null,
   });
   return { ok: r.ok, code: deliveryCode(r) };
 }

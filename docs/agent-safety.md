@@ -21,9 +21,10 @@ and not built.
   cause, puts the urgent causes first and writes one email draft per cause into your inbox. Plain code, no
   model, registered, limited, traced and evaluated offline.
 - **Today (row AG-14).** The [pending-approvals digest](./approvals-digest.md): a morning summary of what
-  waits for a decision, built from the read-only pending-approvals reads. It sends nothing yet.
+  waits for a decision, built from the read-only pending-approvals reads. The hosted worker can send it to
+  your Slack channel once a day.
 - **Today (row AG-13).** The [regression watcher](./regression-watcher.md): compares each run with the last
-  and returns a message only when something got worse. It sends nothing yet.
+  and returns a message only when something got worse. The hosted worker can send it to your Slack channel.
 - **Today (row AG-15).** The [field-findings miner](./field-findings-miner.md): `gaugeline mine` reads a
   folder of review notes and writes a draft of check candidates for a person to read. A scrub fails the draft
   on a client name, address, email or phone number. It writes no check and no code.

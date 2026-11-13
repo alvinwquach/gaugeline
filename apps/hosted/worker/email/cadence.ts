@@ -17,6 +17,8 @@ export function morningCadence(
   step: (now: Date) => Promise<unknown>,
   clock: () => Date,
   everyMs: number,
+  /** What the fixed log line calls the step. */
+  label = "morning email",
 ): MorningCadence {
   let last = Number.NEGATIVE_INFINITY;
   let inFlight: Promise<void> | undefined;
@@ -31,9 +33,7 @@ export function morningCadence(
           await step(now);
         } catch {
           // A fixed line: the error's own words could carry an address or a key.
-          console.error(
-            "worker: the morning email step failed; it is tried again at the next look",
-          );
+          console.error(`worker: the ${label} step failed; it is tried again at the next look`);
         }
       })().finally(() => {
         if (inFlight === run) inFlight = undefined;
