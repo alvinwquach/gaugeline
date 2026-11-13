@@ -31,8 +31,8 @@ import { EXAMPLE_NOW, EXAMPLE_STYLE_GUIDE } from "../example.js";
 const run = () => runEvals(houseRulesAgent, houseRulesCases, createHouseRulesModel());
 
 describe("registered and limited", () => {
-  it("asks for no hosted scope and holds one read tool and none that writes", () => {
-    expect(HOUSE_RULES_AGENT.scopes).toEqual([]);
+  it("asks for one scope, read:rules-file, and holds one read tool and none that writes", () => {
+    expect(HOUSE_RULES_AGENT.scopes).toEqual(["read:rules-file"]);
     expect(HOUSE_RULES_AGENT.tools).toEqual(["read:rules-file"]);
     expect(HOUSE_RULES_AGENT.tools.some(isWriteTool)).toBe(false);
     expect(HOUSE_RULES_AGENT.id).toBe("house-rules-compiler");

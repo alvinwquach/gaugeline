@@ -10,15 +10,25 @@ import { createHash } from "node:crypto";
 import { DRAFT_KINDS } from "../inbox/kinds.js";
 
 /**
- * The closed list of scopes: one per draft kind, and two read scopes for the pending-approvals tool (AG-08).
- * Nothing that writes, publishes, sends or merges.
+ * The closed list of scopes: one per draft kind, two read scopes for the pending-approvals tool (AG-08) and
+ * two for the agents that read a local file (AG-15's `read:notes`, AG-17's `read:rules-file`). Nothing that
+ * writes, publishes, sends or merges.
  */
 export const AGENT_SCOPES = [
   ...DRAFT_KINDS.map((k) => `draft:${k}` as const),
   "read:runs",
   "read:pending",
+  "read:notes",
+  "read:rules-file",
 ] as const;
 export type AgentScope = (typeof AGENT_SCOPES)[number];
+
+/**
+ * Scopes the registry accepts that the policy's closed tool list (private.agent_authorize, 0013) does not hold
+ * yet: a call with either is refused as `tool-not-allowed`, so registering an agent with one lets it do
+ * nothing until a later, reviewed change adds the tool. A test keeps this list and the policy's equal.
+ */
+export const SCOPES_NOT_YET_IN_POLICY = ["read:notes", "read:rules-file"] as const;
 
 export const AGENT_STATUSES = ["active", "disabled", "revoked"] as const;
 export type AgentStatus = (typeof AGENT_STATUSES)[number];

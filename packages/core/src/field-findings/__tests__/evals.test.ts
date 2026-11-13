@@ -31,9 +31,9 @@ const run = () => runEvals(fieldFindingsMinerAgent, fieldFindingsCases, createFi
 const NOW = Date.UTC(2026, 10, 13, 12, 0, 0);
 
 describe("registered and limited", () => {
-  it("is one local read: no hosted scope, and no tool that writes", () => {
+  it("is one read: the scope read:notes is its only scope, and no tool writes", () => {
     expect(FIELD_FINDINGS_MINER_AGENT.tools).toEqual(["read:notes"]);
-    expect(FIELD_FINDINGS_MINER_AGENT.scopes).toEqual([]);
+    expect(FIELD_FINDINGS_MINER_AGENT.scopes).toEqual(["read:notes"]);
     expect(FIELD_FINDINGS_MINER_AGENT.tools.some(isWriteTool)).toBe(false);
   });
 

@@ -205,10 +205,11 @@ link) and every example sits in a fenced block it cannot close.
 
 ## It is registered, limited, traced and evaluated
 
-- **Registered.** The code's descriptor, `FIELD_FINDINGS_MINER_AGENT`, holds one tool, `read:notes`, and no
-  tool that writes. It reads a folder on your own computer, so it asks for no hosted scope and draws no token.
-  Running it from the hosted app would need a new scope in the [registry](./hosted/agent-registry.md)'s closed
-  list, which is its own reviewed change and is not part of this row.
+- **Registered.** The code's descriptor, `FIELD_FINDINGS_MINER_AGENT`, holds one scope and one tool, both
+  `read:notes`, and no tool that writes. It reads a folder on your own computer, so it draws no token. The hosted
+  [registry](./hosted/agent-registry.md#the-two-scopes-for-agents-that-read-a-local-file)'s closed list holds the
+  scope, so the owner can register the agent; the policy does not list the tool yet, so a hosted call is refused
+  until a later reviewed change adds it.
 - **Limited.** At most 10 runs a minute, a cost ceiling of 50,000 micro-units a day (it costs nothing today)
   and a 5 second timeout, from the [agent policy](./hosted/agent-policy.md); a test refuses any other tool.
 - **Traced.** Its one read is recorded like every agent call ([agent trace](./hosted/agent-trace.md)), with
