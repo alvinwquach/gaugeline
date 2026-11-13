@@ -80,7 +80,7 @@ const set = defineEvalSet({
 });
 const report = `${JSON.stringify(await runEvalSets([set]), null, 2)}\n`;
 const hash = reportSha256(report);
-out.push(`report: ${report.split("\n").length - 1} lines, sha256 ${hash.slice(0, 12)}...`);
+out.push(`report: ${report.split("\n").length - 1} lines, sha256 ${hash.slice(0, 10)}...`);
 
 // The pins file: the model of each tier, and the pass that covers them (a person records it).
 const passed = { fast: "small-model-2026-01", strong: "large-model-2026-01" };
@@ -132,7 +132,7 @@ console.log(out.join("\n"));
 ```
 
 ```text title=Output
-report: 148 lines, sha256 b86e2991a8a5...
+report: 148 lines, sha256 b86e2991a8...
 the pinned models: allowed
 a newer fast model: refused
   The pinned models are not allowed to run: the fast tier is pinned to small-model-2026-06 but the recorded eval pass was for small-model-2026-01.

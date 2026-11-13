@@ -16,7 +16,7 @@ export async function runModelPinsExample(): Promise<string> {
   });
   const report = `${JSON.stringify(await runEvalSets([set]), null, 2)}\n`;
   const hash = reportSha256(report);
-  out.push(`report: ${report.split("\n").length - 1} lines, sha256 ${hash.slice(0, 12)}...`);
+  out.push(`report: ${report.split("\n").length - 1} lines, sha256 ${hash.slice(0, 10)}...`);
 
   // The pins file: the model of each tier, and the pass that covers them (a person records it).
   const passed = { fast: "small-model-2026-01", strong: "large-model-2026-01" };
