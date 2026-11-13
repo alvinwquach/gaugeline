@@ -261,7 +261,10 @@ describe.skipIf(!HAS_DATABASE)("sign in and the shell", () => {
 
 describe("the route table and the files the host serves", () => {
   const appDir = fileURLToPath(new URL("..", import.meta.url));
-  it("every route has its route.ts, and every route.ts (outside the API) is in the table", () => {
+  // Route Handlers that are not in the table because they do not use the web app's session or login: the
+  // morning email's preference page is opened with a signed token and has its own dependencies (X64).
+  const STANDALONE = ["/email/preferences"];
+  it("every route has its route.ts, and every route.ts (outside the API) is in the table or named as standalone", () => {
     for (const r of ROUTES) {
       const dir = r.path === "/" ? "" : r.path.slice(1);
       expect(existsSync(join(appDir, dir, "route.ts")), r.path).toBe(true);
@@ -275,7 +278,18 @@ describe("the route table and the files the host serves", () => {
       }
     };
     walk(appDir, "");
-    expect(found.sort()).toEqual([...new Set(ROUTES.map((r) => r.path))].sort());
+    expect(found.sort()).toEqual(
+      [...new Set([...ROUTES.map((r) => r.path), ...STANDALONE])].sort(),
+    );
+    for (const path of STANDALONE) {
+      expect(
+        ROUTES.some((r) => r.path === path),
+        `${path} is in the table and standalone`,
+      ).toBe(false);
+      expect(readFileSync(join(appDir, path.slice(1), "route.ts"), "utf8"), path).toMatch(
+        /export const GET\b/,
+      );
+    }
     for (const r of ROUTES) {
       const dir = r.path === "/" ? "" : r.path.slice(1);
       const src = readFileSync(join(appDir, dir, "route.ts"), "utf8");

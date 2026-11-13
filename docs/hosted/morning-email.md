@@ -70,9 +70,24 @@ something a page wrote, not something Gaugeline vouches for.
 
 ## The link at the bottom
 
-It is signed with a server secret (HMAC-SHA256), names one person in one organisation, and works for 90
-days. It lets the holder change that person's email setting and nothing else: it does not sign anyone in and
-sets no session.
+It opens `/email/preferences?t=...`, a small page with three buttons: every change, fix first only, no
+email. The link is signed with a server secret (HMAC-SHA256), names one person in one organisation, and
+works for 90 days. It changes that person's email setting and nothing else: it does not sign anyone in and
+sets no cookie.
+
+- Opening the link changes nothing. Mail programs and scanners open links, so only the button (a POST that
+  carries the signed token) saves a choice.
+- The page does not show the address, loads nothing from elsewhere, and is not cached, framed or passed on
+  as a referrer, since the address contains the token.
+- The token is in the address of the page (`?t=...`), so it shows up in the access logs of the host and of
+  anything in front of it (a proxy or CDN). Treat those logs as holding working links for up to 90 days.
+- A link stays valid for 90 days and cannot be revoked one at a time; the only way to cancel every link at
+  once is to change `GAUGELINE_EMAIL_TOKEN_SECRET`. A link whose signature has been respelled (padding,
+  extra characters, another base64 alphabet) is refused.
+- A bad, expired or tampered link gets "This link does not work" and changes nothing.
+- A POST with `List-Unsubscribe=One-Click` (RFC 8058) turns the email off. The email does not yet send the
+  `List-Unsubscribe` header that mail programs use to show their own unsubscribe button; that needs a field
+  in core's `postEmail` and is left for when the sender domain is set up.
 
 ## How it sends
 
@@ -85,7 +100,7 @@ RESEND_API_KEY=...                      # the Resend key
 GAUGELINE_EMAIL_FROM="Gaugeline <morning@yourdomain.example>"
 GAUGELINE_DASHBOARD_URL=https://app.yourdomain.example/
 GAUGELINE_APP_URL=https://app.yourdomain.example/   # optional; where the preference page is
-GAUGELINE_EMAIL_TOKEN_SECRET=...        # 32 or more random characters
+GAUGELINE_EMAIL_TOKEN_SECRET=...        # 32 or more characters, at least 8 different (use a random value)
 ```
 
 Without `RESEND_API_KEY` the step is off and the worker says so once at start-up. With a key but a missing
