@@ -10,7 +10,7 @@
  * payload hashes to the approval's hash, that nothing was recorded after it that withdraws it, and that
  * it is under 72 hours old. Then the payload's shape, the paths, and the registry (ADR-0010 part 3).
  */
-import { createHash, timingSafeEqual } from "node:crypto";
+import { checkApproval, APPROVAL_TTL_MS, UUID } from "../approval.js";
 import { checkDraftPayload, isAllowedPath } from "../kinds.js";
 import { stopReason, type Mode, type Switches } from "../switches.js";
 import type { Approvals, ApplyJob, Trail, TrailEntry } from "../types.js";
@@ -53,25 +53,12 @@ class Stop extends Error {
   }
 }
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-const HEX64 = /^[0-9a-f]{64}$/;
-/** How long an approval stays good (ADR-0010 part 2: proposed 72 hours, uncited). */
-export const APPROVAL_TTL_MS = 72 * 60 * 60 * 1000;
+export { APPROVAL_TTL_MS };
 /** A dry run has not read the base branch yet: this stands in for its commit so the plan can be checked. */
 const PLACEHOLDER_SHA = "0".repeat(40);
 
 const OWNER = /^[A-Za-z0-9-]{1,39}$/;
 const REPO_NAME = /^[A-Za-z0-9._-]{1,100}$/;
-/** The outcomes the writer itself records after an approval; any other word that follows one is a withdrawal. */
-const MAY_FOLLOW_AN_APPROVAL: ReadonlySet<string> = new Set([
-  "dry_run",
-  "apply_failed",
-  "refused",
-  "applied",
-]);
-/** How far ahead of the worker's clock a decision may be dated (clock skew between the database and the worker). */
-const CLOCK_SKEW_MS = 5 * 60 * 1000;
-
 /**
  * True when the configured target is plain names: no dot segment, no slash in an owner or repo, and a base
  * that is a branch name (not a full ref, no "..").
@@ -86,12 +73,6 @@ function validTarget(t: GithubTarget): boolean {
     !dots(t.repo) &&
     isPlainBranchName(t.base)
   );
-}
-
-/** Two SHA-256 hex digests are equal, compared in constant time. Anything not lower-case hex is not equal. */
-function sameDigest(a: string, b: string): boolean {
-  if (!HEX64.test(a) || !HEX64.test(b)) return false;
-  return timingSafeEqual(Buffer.from(a, "hex"), Buffer.from(b, "hex"));
 }
 
 interface PullRequestPayload {
@@ -171,39 +152,8 @@ export async function applyPullRequest(job: ApplyJob, deps: ApplyDeps): Promise<
   if (stopped) return refused(stopped);
 
   // The approval row, read here, is the authority; the job only says which one to read.
-  let approval;
-  try {
-    approval = await deps.approvals.find(job.decisionId);
-  } catch {
-    approval = null;
-  }
-  if (!approval || (approval.decision !== "approved" && approval.decision !== "edited")) {
-    return refused("approval");
-  }
-  if (approval.decisionId !== job.decisionId || approval.draftId !== job.draftId) {
-    return refused("draft");
-  }
-  if (approval.orgId !== job.orgId || job.orgId !== target.orgId) return refused("org");
-  if (approval.siteId !== job.siteId || job.siteId !== target.siteId) return refused("site");
-  if (approval.kind !== job.kind) return refused("kind");
-  const computed = createHash("sha256").update(job.payloadText, "utf8").digest("hex");
-  if (
-    !sameDigest(computed, approval.payloadSha256) ||
-    !sameDigest(job.payloadSha256, approval.payloadSha256)
-  ) {
-    return refused("hash");
-  }
-  // Only the outcomes the writer itself records may follow an approval. Anything else ("declined",
-  // "withdrawn", "Withdrawn", a word this version does not know) ends it.
-  if (approval.later.some((d) => !MAY_FOLLOW_AN_APPROVAL.has(d))) return refused("withdrawn");
-  const decidedAt = approval.decidedAt.getTime();
-  const now = (deps.now ?? (() => new Date()))().getTime();
-  if (!(decidedAt <= now + CLOCK_SKEW_MS)) return refused("approval");
-  const expires = Math.min(
-    decidedAt + APPROVAL_TTL_MS,
-    approval.expiresAt?.getTime() ?? Number.POSITIVE_INFINITY,
-  );
-  if (!(now < expires)) return refused("expired");
+  const checked = await checkApproval(job, deps);
+  if (!checked.ok) return refused(checked.reason);
 
   // The payload must match the kind's fixed shape: the same schema the inbox checked before it recorded
   // the approval.

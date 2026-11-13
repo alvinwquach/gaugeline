@@ -48,7 +48,7 @@ const NETWORK_IMPORTS = [
   })),
 ];
 
-/** ADR-0010: the writer's one connection is packages/writer/src/github/send.ts, through fetch. */
+/** ADR-0010: the writer's connections are packages/writer/src/github/send.ts and gmail/send.ts (X75), through fetch. */
 const WRITER_NETWORK_GLOBALS = ["fetch", "XMLHttpRequest", "WebSocket", "EventSource"];
 
 export default tseslint.config(
@@ -144,7 +144,8 @@ export default tseslint.config(
           paths: ["node:http", "http", "node:https", "https", "node:http2", "http2"].map(
             (name) => ({
               name,
-              message: "Only packages/writer/src/github/send.ts may make requests (ADR-0010).",
+              message:
+                "Only packages/writer/src/github/send.ts and gmail/send.ts may make requests (ADR-0010).",
             }),
           ),
         },
@@ -153,20 +154,22 @@ export default tseslint.config(
         "error",
         ...WRITER_NETWORK_GLOBALS.map((name) => ({
           name,
-          message: "Only packages/writer/src/github/send.ts may make requests (ADR-0010).",
+          message:
+            "Only packages/writer/src/github/send.ts and gmail/send.ts may make requests (ADR-0010).",
         })),
       ],
     },
   },
   {
-    // The sender calls fetch (and nothing else that opens a connection).
-    files: ["packages/writer/src/github/send.ts"],
+    // The senders call fetch (and nothing else that opens a connection).
+    files: ["packages/writer/src/github/send.ts", "packages/writer/src/gmail/send.ts"],
     rules: {
       "no-restricted-globals": [
         "error",
         ...WRITER_NETWORK_GLOBALS.filter((name) => name !== "fetch").map((name) => ({
           name,
-          message: "Only fetch, in packages/writer/src/github/send.ts (ADR-0010).",
+          message:
+            "Only fetch, in packages/writer/src/github/send.ts and gmail/send.ts (ADR-0010).",
         })),
       ],
     },
