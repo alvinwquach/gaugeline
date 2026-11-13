@@ -1,7 +1,7 @@
 /**
  * Approval receipts (AG-06): one record per decided draft, chained per organisation by hash, and the
  * offline check of a chain. The hosted database writes the same records in the transaction that records
- * a decision (migration 0014_receipts.sql builds the same canonical text in SQL; a test runs both over
+ * a decision (migration 0016_receipts.sql builds the same canonical text in SQL; a test runs both over
  * one set of inputs), and `gaugeline receipts verify` runs verifyApprovalReceipts on an exported file.
  *
  * What a chain proves: no receipt in it was changed, removed, added or moved after the next one was

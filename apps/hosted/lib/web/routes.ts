@@ -16,6 +16,7 @@ import {
   verifyPage,
 } from "./handlers.js";
 import { clientUpdatePage, clientsPage } from "./clients.js";
+import { receiptWritersDownload, receiptsDownload } from "./receipts.js";
 import type { WebDeps } from "./deps.js";
 import { respondText, withHsts } from "./layout.js";
 
@@ -39,6 +40,8 @@ export const ROUTES: Route[] = [
   r("/agents", { GET: agentsPage }),
   r("/clients", { GET: clientsPage }),
   r("/clients/update", { GET: clientUpdatePage }),
+  r("/receipts", { GET: receiptsDownload }),
+  r("/receipts/writers", { GET: receiptWritersDownload }),
   r("/sign-in", { GET: signInPage, POST: postSignIn }),
   r("/sign-in/verify", { GET: verifyPage, POST: postVerify }),
   r("/sign-out", { POST: postSignOut }),

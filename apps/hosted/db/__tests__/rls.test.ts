@@ -76,6 +76,8 @@ const TENANT_TABLES = [
   // 0015: the agent trace and its per-minute overflow counters (AG-05); owners and admins only, read only.
   "agent_trace",
   "agent_trace_overflow",
+  // 0016: approval receipts (AG-06); owners and admins read, nobody writes but the decisions trigger.
+  "receipts",
 ];
 
 const SERVER_ONLY = new Set(["tokens", "idempotency_keys", "jobs", "email_sends"]);

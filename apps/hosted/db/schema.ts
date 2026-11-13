@@ -544,3 +544,17 @@ export const agentTraceOverflow = pgTable("agent_trace_overflow", {
   reason: text("reason").notNull(),
   calls: bigint("calls", { mode: "number" }).notNull(),
 }).enableRLS();
+
+/** One approval receipt per person's choice (AG-06, 0016): the canonical line and its place in the chain. */
+export const receipts = pgTable("receipts", {
+  id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+  orgId: uuid("org_id").notNull(),
+  seq: bigint("seq", { mode: "number" }).notNull(),
+  decisionId: bigint("decision_id", { mode: "number" }).notNull().unique(),
+  draftId: uuid("draft_id").notNull(),
+  prev: text("prev").notNull(),
+  hash: text("hash").notNull().unique(),
+  record: text("record").notNull(),
+  writtenBy: text("written_by").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}).enableRLS();
