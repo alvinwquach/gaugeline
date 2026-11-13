@@ -80,6 +80,9 @@ receipt can be shared without the page text or a secret pasted into a draft.
   client viewers, the server's `service_role`, the agent and the worker read nothing. `GET /receipts`
   checks the role first and answers `403` to anyone else, so nobody is handed an empty chain that would
   verify as "nothing happened".
+- **Linked to the agent trace.** When an agent proposed the draft, the same decision also writes a row in
+  `public.agent_trace` (AG-05) with the same `draft_id`, so a receipt's `draft` finds the agent and tool that
+  proposed it. A person's own draft has no trace row.
 - **The same code checks it.** The canonical text is built in SQL (`private.receipt_text`) and in
   `@gaugeline/core`; a test builds both from the same inputs, and the export test runs the same verifier as
   the command.
