@@ -56,7 +56,7 @@ interface SupabaseReadEntry {
   rules: Readonly<Record<string, McpArgumentRule>>;
   arguments: Readonly<Record<string, unknown>>;
   /**
-   * PLACEHOLDER: the hash of the hand-written recording in adapters/__tests__/supabase-mcp-fake.ts,
+   * PLACEHOLDER: the hash of the hand-written recording in packages/testkit/src/supabase-mcp.ts,
    * not of the vendor's live listing. Until the owner records the real `tools/list`, a live server
    * fails this lock and the read is could-not-check ("the vendor changed this tool").
    */

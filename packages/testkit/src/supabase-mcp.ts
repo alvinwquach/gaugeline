@@ -1,5 +1,5 @@
 import { Readable } from "node:stream";
-import type { Transport } from "../../fetcher.js";
+import type { Transport } from "@gaugeline/core";
 
 /**
  * A fake of Supabase's hosted MCP server in read-only mode, as an injected transport: no socket,

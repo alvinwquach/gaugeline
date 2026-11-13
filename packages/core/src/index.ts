@@ -1165,7 +1165,9 @@ export type { SupabasePlatformInput } from "./checks/supabase-platform.js";
 export {
   PROJECT_REF as SUPABASE_PROJECT_REF,
   SUPABASE_ACCESS_TOKEN,
+  platformsConfigSchema,
 } from "./sources/supabase-config.js";
+export type { PlatformsConfig } from "./sources/supabase-config.js";
 export type { SupabaseRead } from "./adapters/supabase-mcp-read.js";
 export type { DeliveryOptions, DeliveryRun, WebhooksOptions, WebhooksRun } from "./delivery/run.js";
 export {

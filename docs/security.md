@@ -34,8 +34,9 @@ value a person reviewed: a server's mark is required and never enough on its own
 in read-only mode, holds a tool named like a write is not trusted for anything, and a server that asks
 Gaugeline a question mid-answer ends the read. An answer is data: only the fields the entry names are
 kept, by type (a name is cleaned and cut to 40 characters, a text is kept as a hash), and every
-failure is reported as "could not check" in Gaugeline's own words, never the server's. No platform is
-read this way yet.
+failure is reported as "could not check" in Gaugeline's own words, never the server's. One platform is
+read this way so far: `gaugeline platform` with no flag reads a Supabase project named in
+`gaugeline.platforms.json` (see [Supabase through its own MCP server](sources/supabase-mcp.md)).
 
 ## Addresses Gaugeline will not request
 

@@ -838,12 +838,17 @@ cut to a size limit, when it can fail and how its own versioned schema will chan
 ### The delivery and platform commands
 
 Two commands read accounts you own instead of a site. Neither takes an address, and both are read only:
-every request is a `GET`, the keys come from the environment and never reach a log, a finding or a
-report, and what is printed is counts, hosts and days, never a name, an address, an order or a payload.
+the keys come from the environment and never reach a log, a finding or a report, and what is printed is
+counts, hosts and days, never a name, an address, an order or a payload. `gaugeline delivery` and
+`gaugeline platform --webhooks` send only `GET` requests. `gaugeline platform` with no flag asks
+Supabase's own MCP server, in its read-only mode, for one project: those requests are `POST`s of a
+read-only question to one registered address ([ADR-0006](https://github.com/alvinwquach/gaugeline/blob/main/docs/adr/0006-read-only-post-queries.md)),
+never a write.
 
 ```sh
 npx gaugeline delivery --paid --sent --since 7d
 npx gaugeline platform --webhooks
+npx gaugeline platform
 ```
 
 - `gaugeline delivery --paid --sent [--since 7d]` counts the orders paid in Stripe (`STRIPE_API_KEY`)
@@ -854,7 +859,14 @@ npx gaugeline platform --webhooks
 - `gaugeline platform --webhooks` reads Stripe's webhook endpoints and the events that were never
   delivered, and reports an enabled endpoint with events older than an hour still waiting
   (`webhook-failing`) and a disabled endpoint (`webhook-disabled`).
-- Both take `--json` (the schema 2 result and nothing else), `--ci` (exit 1 for a "Fix this first"
+- `gaugeline platform` with no flag reads the platforms named in `gaugeline.platforms.json` in the
+  folder you run it from. Supabase is the one so far: `{ "supabase": { "projectRef": "<20-character id>" } }`,
+  with the token in `SUPABASE_ACCESS_TOKEN` (a key in the file is refused). It reports a table in the
+  `public` schema with row-level security off (`supabase-rls-off`) and the lints Supabase's security
+  advisor raises (`supabase-security-advisor`). Without the file, and without `--webhooks`, it is exit 2
+  and says so. The steps and what is kept are in [Supabase through its own MCP
+  server](sources/supabase-mcp.md).
+- All take `--json` (the schema 2 result and nothing else), `--ci` (exit 1 for a "Fix this first"
   finding) and `--allow-secret-key`. A missing or refused key is exit 2 and names the variable.
 
 What they read, what keys to make, and how the match is made: [Paid downloads and

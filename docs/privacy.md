@@ -271,6 +271,13 @@ never in an address. They list Checkout Sessions (with the payment intent and ch
 a refund), the emails Resend lists as sent, Stripe's webhook endpoints and the events with undelivered
 webhooks. They never send, resend, replay, retry or enqueue anything, and no request has a body.
 
+`gaugeline platform` with no flag is the one exception to "no request has a body". It reads the Supabase
+project named in `gaugeline.platforms.json` through Supabase's own MCP server, in its read-only mode, and
+its requests are `POST`s of a JSON-RPC message to one registered address (ADR-0006), through the fetcher
+only: `initialize`, the initialized notice, `tools/list` and three read tools with fixed arguments. It
+never calls a tool that can write, and the token goes in one header ([Supabase through its own MCP
+server](sources/supabase-mcp.md#what-gaugeline-sends-and-what-it-keeps)).
+
 What they read and keep: per order, when it was paid and the address on it; per email, when it was
 sent and its recipients. The subject, the sender, the body, an amount, a name, an order id and an event
 payload are not read into anything. In memory, the addresses are hashed (SHA-256 of the lower-cased
