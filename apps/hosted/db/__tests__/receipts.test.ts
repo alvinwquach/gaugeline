@@ -491,6 +491,26 @@ describe.skipIf(!HAS_DATABASE)("approval receipts", () => {
       );
     });
 
+    it("even the table owner cannot delete, truncate, move or plant a chain head", async () => {
+      for (const w of [
+        `delete from private.receipt_heads where org_id = '${ORG_A}'`,
+        "truncate private.receipt_heads",
+        `update private.receipt_heads set seq = 0, hash = '${"0".repeat(64)}' where org_id = '${ORG_A}'`,
+        `insert into private.receipt_heads (org_id, seq, hash)
+           values ('${ORG_B}', 0, '${"0".repeat(64)}') on conflict (org_id) do update set seq = 0`,
+      ])
+        expect(await errorOf(owner.begin((tx) => tx.unsafe(w))), w).toMatch(
+          /append-only|written only by the decisions trigger/,
+        );
+      // The heads are where they were: the next decision still chains on.
+      await person(
+        USER_A_OWNER,
+        (tx) => decide(tx, ORG_A, draftId(12), "approved", USER_A_OWNER),
+        true,
+      );
+      expect(verifyApprovalReceipts(await chainOf(ORG_A)).ok).toBe(true);
+    });
+
     it("the chain head is private: no role reads or writes it", async () => {
       for (const [login, role, user] of [
         ["person", "authenticated", USER_A_OWNER],

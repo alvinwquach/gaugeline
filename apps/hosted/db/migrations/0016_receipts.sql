@@ -62,6 +62,35 @@ alter table private.receipt_heads enable row level security;
 revoke all on private.receipt_heads from public, anon, authenticated, service_role, gaugeline_agent,
   gaugeline_worker;
 
+-- A head row is never deleted (the next decision would restart the chain at 1 and collide with it), and it
+-- is written only by private.decisions_write_receipt, from inside the decisions trigger (trigger depth 2):
+-- inserted once at seq 0, then moved forward one receipt at a time. The table owner's own statements are
+-- refused too; like every trigger here, the owner can still disable it (see the top of this file).
+create function private.receipt_heads_guard() returns trigger
+language plpgsql set search_path = ''
+as $$
+begin
+  if tg_op = 'DELETE' then
+    raise exception 'receipt_heads is append-only: DELETE is not allowed' using errcode = '42501';
+  end if;
+  if pg_catalog.pg_trigger_depth() < 2 then
+    raise exception 'receipt_heads is written only by the decisions trigger' using errcode = '42501';
+  end if;
+  if tg_op = 'INSERT' and new.seq <> 0 then
+    raise exception 'a chain head starts at 0' using errcode = '23514';
+  end if;
+  if tg_op = 'UPDATE' and (new.org_id <> old.org_id or new.seq <> old.seq + 1) then
+    raise exception 'a chain head moves forward one receipt at a time' using errcode = '23514';
+  end if;
+  return new;
+end
+$$;
+revoke all on function private.receipt_heads_guard() from public, anon, authenticated, service_role;
+create trigger receipt_heads_guard before insert or update or delete on private.receipt_heads
+  for each row execute function private.receipt_heads_guard();
+create trigger receipt_heads_no_truncate before truncate on private.receipt_heads
+  for each statement execute function private.refuse_change();
+
 -- The canonical JSON of one receipt (packages/core/src/approval-receipts/canonical.ts): keys sorted, no
 -- whitespace, integers only, strings as JSON writes them. Without p_hash, the text the hash is taken over;
 -- with it, the line itself. Every string goes through to_json, which escapes like JSON.stringify for the
