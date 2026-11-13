@@ -297,10 +297,13 @@ token is replaced with `[redacted]`.
 | `404`  | `not_found`                                                 | another organisation's draft or site, or a draft that is not pending    |
 | `429`  | `denied`                                                    | the agent's rate limit or daily cost ceiling                            |
 | `503`  | `agents_not_configured`                                     | the server has no agent login (`GAUGELINE_AGENT_DATABASE_URL`)          |
+| `503`  | `agents_unavailable`                                        | the agent login is set but was refused (uploads keep working)           |
 
 **How it is held.** The API answers an agent's token on a third database login,
-`GAUGELINE_AGENT_DATABASE_URL`: a member of `gaugeline_agent` and nothing else (the server refuses to start
-otherwise). That role holds no table. It runs `private.agent_list_pending` and `private.agent_list_runs`,
+`GAUGELINE_AGENT_DATABASE_URL`: a member of `gaugeline_agent` and nothing else. A login that is anything
+else, or does not answer, turns off the agent reads only (`503` `agents_unavailable`; it is tried again a
+minute later, and the server's log says `refused` or an error code, never the address): uploads and site tokens
+keep working. That role holds no table. It runs `private.agent_list_pending` and `private.agent_list_runs`,
 which take the organisation from the token and call the policy (`private.agent_authorize`) exactly once with
 their scope; a refused call reads nothing. An agent's token never reaches the `service_role` connection.
 `GAUGELINE_AGENTS_OFF` on the server refuses every agent request before the database. Nothing here approves:

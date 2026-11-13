@@ -24,6 +24,8 @@ export interface ApiDeps {
   sql: Sql;
   /** The agent's own login (agent-db.ts), when GAUGELINE_AGENT_DATABASE_URL is set; never service_role. */
   agentSql?: Sql;
+  /** GAUGELINE_AGENT_DATABASE_URL is set but its login was refused: agent reads answer 503 (deps.ts). */
+  agentUnavailable?: boolean;
 }
 
 const FINDINGS_PER_INSERT = 1000;

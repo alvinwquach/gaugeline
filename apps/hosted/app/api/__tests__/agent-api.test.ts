@@ -367,6 +367,56 @@ describe.skipIf(!HAS_DATABASE)("agent reads API: integration", () => {
       expect(ran).toBe(false);
     });
 
+    it("a wrong agent login turns off agent reads only: uploads and site tokens keep working", async () => {
+      vi.resetModules();
+      const { getDeps, AGENT_RETRY_MS } = await import("../../../lib/api/deps.js");
+      const { APP_URL_ENV } = await import("../../../lib/api/startup.js");
+      vi.stubEnv(APP_URL_ENV, app.url);
+      // The app login is not a member of gaugeline_agent: set, but wrong.
+      vi.stubEnv(AGENT_URL_ENV, app.url);
+      const lines: string[] = [];
+      vi.spyOn(console, "error").mockImplementation((...a: unknown[]) => {
+        lines.push(a.map(String).join(" "));
+      });
+      let t = 1_000_000;
+      const d = await getDeps(() => t);
+      expect(lines).toEqual(["agent api: the agent login was not opened: refused"]);
+      try {
+        expect(d.agentUnavailable).toBe(true);
+        expect(d.agentSql).toBeUndefined();
+        expect((await get(`/runs?site=${SITE_A1}`, siteToken, d)).status).toBe(200);
+        const up = await postRun(
+          new Request(`${BASE}/runs`, {
+            method: "POST",
+            headers: { authorization: `Bearer ${siteToken}`, "content-type": "application/json" },
+            body: JSON.stringify(result()),
+          }),
+          d,
+        );
+        expect(up.status).toBe(201);
+        const a = await register(["read:pending"]);
+        const r = await get("/drafts", a.token, d);
+        const text = await r.text();
+        expect(r.status).toBe(503);
+        expect(JSON.parse(text)).toMatchObject({ code: "agents_unavailable" });
+        const secretBits = [new URL(app.url).password, new URL(app.url).host, app.role];
+        for (const bit of secretBits) {
+          expect(text).not.toContain(bit);
+          expect(lines.join("\n")).not.toContain(bit);
+        }
+        // Not retried within the minute; retried after it, and a fixed login then serves agent reads.
+        vi.stubEnv(AGENT_URL_ENV, agentLogin.url);
+        expect((await getDeps(() => t + 1000)).agentUnavailable).toBe(true);
+        t += AGENT_RETRY_MS;
+        const fixed = await getDeps(() => t);
+        expect(fixed.agentSql).toBeDefined();
+        expect((await get("/drafts", a.token, fixed)).status).toBe(200);
+        await fixed.agentSql?.end({ timeout: 1 });
+      } finally {
+        await d.sql.end({ timeout: 1 });
+      }
+    });
+
     it("an agent's reads never touch the service_role connection", async () => {
       const a = await register(["read:pending"]);
       const sql = postgres("postgres://127.0.0.1:1/none", { max: 1 }); // would fail if used

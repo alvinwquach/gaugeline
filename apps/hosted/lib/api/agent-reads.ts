@@ -69,6 +69,12 @@ function gate(req: Request, deps: ApiDeps): { token: string } | Response {
   const token = agentBearer(req.headers.get("authorization"));
   if (!token) return UNAUTHORIZED_AGENT();
   if (agentsOff(process.env)) return denied("kill-switch-global");
+  if (deps.agentUnavailable)
+    return problem(
+      503,
+      "agents_unavailable",
+      "Agent reads are off: the server's agent login is set but was refused. Uploads and site tokens are not affected.",
+    );
   if (!deps.agentSql)
     return problem(503, "agents_not_configured", "Agent reads are not set up on this server.");
   return { token };
