@@ -1815,4 +1815,22 @@ export {
   stripAnsi,
 } from "./untrusted-output.js";
 export type { OutputFormat, SafeText } from "./untrusted-output.js";
+export {
+  AGENT_DENY_REASONS,
+  AGENTS_OFF_ENV,
+  MAX_COST_MICROS,
+  agentsOff,
+  createAgentPolicy,
+  isAgentDenyReason,
+} from "./agent-policy.js";
+export type {
+  AgentCall,
+  AgentDecision,
+  AgentDenyLog,
+  AgentDenyReason,
+  AgentLimits,
+  AgentPolicy,
+  AgentPolicyConfig,
+  AgentRule,
+} from "./agent-policy.js";
 export * from "./fixes/index.js";
