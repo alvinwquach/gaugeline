@@ -121,3 +121,60 @@ export function groqQueries(view: View): Query[] {
   }
   return out;
 }
+
+/** Names a schema array may hold that are not a section: Sanity's own types. */
+export const BUILTIN_TYPES = new Set([
+  "array",
+  "block",
+  "boolean",
+  "date",
+  "datetime",
+  "document",
+  "file",
+  "geopoint",
+  "image",
+  "number",
+  "object",
+  "reference",
+  "slug",
+  "span",
+  "string",
+  "text",
+  "url",
+  "crossDatasetReference",
+]);
+
+/**
+ * The type names a schema lists as members of an array field whose name says it holds sections
+ * (`sections`, `blocks`, `pageBuilder`, `content`, `modules`): `of: [{ type: "hero" }, ...]`.
+ */
+export function sectionTypes(
+  types: readonly SchemaType[],
+): { name: string; file: string; index: number; view: View }[] {
+  const out: { name: string; file: string; index: number; view: View }[] = [];
+  const seen = new Set<string>();
+  for (const t of types) {
+    if (BUILTIN_TYPES.has(t.type) || t.name === undefined) continue;
+    if (!/^(?:sections?|blocks?|pageBuilder|content|modules|components)$/i.test(t.name)) continue;
+    // A member of `of: [ ... ]`: the object has no `name` of its own, and the bracket around it follows `of:`.
+    if (ownString(t.view, t.obj, "name") !== undefined) continue;
+    let depth = 0;
+    let open = -1;
+    for (let k = t.obj.start - 1; k >= 0; k--) {
+      const c = t.view.bare[k];
+      if (c === "]") depth++;
+      else if (c === "[") {
+        if (depth === 0) {
+          open = k;
+          break;
+        }
+        depth--;
+      }
+    }
+    if (open < 0 || !/\bof\s*:\s*$/.test(t.view.code.slice(Math.max(0, open - 16), open))) continue;
+    if (seen.has(t.type)) continue;
+    seen.add(t.type);
+    out.push({ name: t.type, file: t.file, index: t.index, view: t.view });
+  }
+  return out;
+}

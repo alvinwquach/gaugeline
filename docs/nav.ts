@@ -157,6 +157,10 @@ export const UNLISTED: NavPage[] = [
     slug: "checks/sanity-schema-in-source",
     title: "Sanity schema and queries: references and alt text",
   },
+  {
+    slug: "checks/sections-and-stega-in-source",
+    title: "Page sections and Sanity's hidden editing text",
+  },
   { slug: "checks/personal-data-in-source", title: "Visitors' details in analytics and logs" },
   { slug: "connectors/postgres", title: "A database as a source: Postgres and Supabase" },
   { slug: "sources/shopify", title: "Shopify as a price source" },
