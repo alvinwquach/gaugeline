@@ -1,4 +1,4 @@
--- 0016: a kind of outbox row for an agent's message (AG-13, AG-14; ADR-0005, ADR-0014). Run as the schema owner
+-- 0017: a kind of outbox row for an agent's message (AG-13, AG-14; ADR-0005, ADR-0014). Run as the schema owner
 -- ("postgres" on Supabase). The file takes the next free number when it merges (the migrator refuses gaps
 -- and repeats).
 --

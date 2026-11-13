@@ -348,7 +348,7 @@ export const notificationChannels = pgTable("notification_channels", {
     "rejected" | "failed-repeatedly" | "address-refused"
   >(),
   disabledAt: timestamp("disabled_at", { withTimezone: true }),
-  /** Takes an agent's message (a regression alert, the morning digest) as well as findings: Slack only (0016). */
+  /** Takes an agent's message (a regression alert, the morning digest) as well as findings: Slack only (0017). */
   agentMessages: boolean("agent_messages").notNull().default(false),
   createdAt: createdAt(),
 }).enableRLS();
@@ -370,7 +370,7 @@ export const notificationRules = pgTable("notification_rules", {
 /**
  * The outbox and delivery log: a status, a count and a short code. Never an address or a message body. A row of
  * kind "agent" names which agent message (agentKind) and what it is about (a run, or a local day); the worker
- * builds the words at send time (0016).
+ * builds the words at send time (0017).
  */
 export const notificationDeliveries = pgTable("notification_deliveries", {
   id: uuid("id").primaryKey().defaultRandom(),

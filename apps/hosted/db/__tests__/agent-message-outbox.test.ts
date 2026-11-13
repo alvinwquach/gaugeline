@@ -1,5 +1,5 @@
 /**
- * The outbox kind for an agent's message (0016, AG-13 and AG-14), against a real Postgres: what the new
+ * The outbox kind for an agent's message (0017, AG-13 and AG-14), against a real Postgres: what the new
  * columns and constraints accept and refuse, that the old kinds survive the upgrade, that two organisations
  * never see or point at each other's rows, and that nobody gains a grant (no body column, no write for
  * a signed-in person or for an agent). Skipped without GAUGELINE_TEST_DATABASE_URL.
@@ -36,7 +36,7 @@ const CHANNEL_A_SENTRY = "ca000000-0000-4000-8000-0000000000a2";
 const CHANNEL_B = "cb000000-0000-4000-8000-0000000000b1"; // Brightfield's Slack channel
 const RUN_A2 = "a1a20000-0000-4000-8000-0000000000a2"; // a second night at the same site
 
-describe.skipIf(!HAS_DATABASE)("the agent message outbox kind (0016)", () => {
+describe.skipIf(!HAS_DATABASE)("the agent message outbox kind (0017)", () => {
   let db: TestDatabase;
   let sql: Sql;
   let before: { tables: string[]; functions: string[]; roles: string[] };
@@ -68,8 +68,8 @@ describe.skipIf(!HAS_DATABASE)("the agent message outbox kind (0016)", () => {
       values (${org}, ${channel}, 'agent', 'approvals-digest', ${day}) returning id`;
 
   beforeAll(async () => {
-    // The previous version first, with a night's delivery and a test message in it, then 0016 on top.
-    db = await freshDatabase({ to: 15 });
+    // The previous version first, with a night's delivery and a test message in it, then 0017 on top.
+    db = await freshDatabase({ to: 16 });
     sql = db.sql;
     await seed(sql);
     await sql`insert into public.notification_channels (id, org_id, kind, label, host, secret_name) values

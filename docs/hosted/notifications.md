@@ -131,7 +131,7 @@ posts a short message now; when it gets through, the channel is turned back on.
 An [agent](../agent-safety.md) can build a message for the people who run a site: the
 regression watcher's alert (row AG-13) when a night's run got worse than the one before, and
 the [pending-approvals digest](../approvals-digest.md) of what waits for a decision. **Today** the outbox has a
-place for them (migration `0016_agent_message_outbox.sql`). **Not built:** nothing queues or sends one yet.
+place for them (migration `0017_agent_message_outbox.sql`). **Not built:** nothing queues or sends one yet.
 A later row adds the worker step, and it sends through the sender this page already describes: one message
 to your own Slack channel, to the address you saved, and nowhere else.
 
@@ -152,7 +152,7 @@ What the database holds for one:
 
 The worker queues an alert for the night's run, for a channel that takes agent messages. This is the row, as
 the seeded test database (`apps/hosted/db/__tests__/harness.ts` and migrations up to
-`0016_agent_message_outbox.sql`) returns it:
+`0017_agent_message_outbox.sql`) returns it:
 
 ```sql
 insert into public.notification_deliveries (org_id, channel_id, kind, site_id, agent_kind, subject_run_id, findings)
