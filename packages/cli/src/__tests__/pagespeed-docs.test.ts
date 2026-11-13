@@ -61,7 +61,11 @@ describe("docs/guides/pagespeed.md: the command it shows", () => {
       },
       {
         cwd: mkdtempSync(join(tmpdir(), "gaugeline-pagespeed-docs-")),
-        fetcher: { transport },
+        fetcher: {
+          transport,
+          resolver: () => Promise.resolve([{ address: "93.184.216.35", family: 4 }]),
+        },
+        pageSpeed: { reservedNamesAllowed: true },
       } as never,
     );
     const stdout = out.join("").split("\n");

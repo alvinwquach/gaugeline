@@ -1061,6 +1061,7 @@ between the markers; CI fails when it differs from the flag table.
 | `--cost`                    | Also check what runs up the hosting bill: pages that change on every visit, the cache and usage jumps                |                            | 0.2.0 |
 | `--trackers`                | Also list the trackers on pages with a form or a path you listed, and what a tag manager holds                       |                            | 0.2.0 |
 | `--renderer <value>`        | Also load the page in a browser you installed (playwright), to read what scripts add; never downloads one            |                            | 0.2.0 |
+| `--pagespeed`               | Also read Google's PageSpeed Insights: real-user vitals decide, lab is advice; sends page addresses to Google        |                            | 0.2.0 |
 | `--libraries`               | Also check the JavaScript files a page loads for libraries with a published advisory                                 |                            | 0.2.0 |
 | `--wordpress`               | Also check a WordPress site's versions against the current releases, and whether it lists its users                  |                            | 0.2.0 |
 | `--backups`                 | Also check when the client's content and database were last backed up (Supabase, Sanity, an export folder)           |                            | 0.2.0 |

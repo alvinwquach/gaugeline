@@ -33,6 +33,14 @@ describe("fetcher.get with timeoutMs", () => {
     expect(waits).toEqual([120_000, 1]);
   });
 
+  it("does not honour a wait that is not a finite number: the fetcher's own applies", async () => {
+    const { waits, transport } = recording();
+    const f = createFetcher({ transport, timeoutMs: 10_000 });
+    await f.get("https://one.example/", { timeoutMs: Number.NaN });
+    await f.get("https://two.example/", { timeoutMs: Number.POSITIVE_INFINITY });
+    expect(waits).toEqual([10_000, 10_000]);
+  });
+
   it("is part of the memo key: the same address with a different wait is asked again", async () => {
     const { waits, transport } = recording();
     const f = createFetcher({ transport });

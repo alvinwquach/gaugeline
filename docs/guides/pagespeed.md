@@ -24,9 +24,18 @@ This is the one flag whose job is to send something to a company you did not typ
 - **The address of each page it reads**, without its query string, its fragment or any user name, to
   `pagespeedonline.googleapis.com`. At most five pages per run: the page you typed, then the first same-site
   pages Gaugeline sampled. Nothing else is sent, and nothing about your site's content.
-- **Only public pages.** Google reads the public web. An address on your computer, a private network
-  address, an address written as numbers and a name with no dot are never sent: the check says could not
-  check, and says why. A staging site behind a login cannot be read either.
+- **Only public pages.** Google reads the public web. Nothing is sent when the run has `--allow-private`.
+  An address on your computer or a private network, an address written as numbers, a name with no dot, a
+  name with a reserved or private-use ending (`.local`, `.internal`, `.test`, `.example`, `.home.arpa`,
+  `.staging` and the like, with or without a trailing dot), a name from a service that turns any name into the
+  address written in it (`nip.io`, `sslip.io`) and a name that resolves, on this computer, to any private,
+  loopback, link-local or metadata address are never sent. If the name cannot be looked up, it is not sent.
+  The check says could not check, and says why. A staging site behind a login cannot be read either.
+- **Only a path that is not a secret.** The path goes out without parameters (`;jsessionid=...`). A path with a
+  part that looks like a token (24 or more letters, digits, dashes or underscores), a word such as `token`,
+  `key`, `secret`, `reset`, `invite`, `session` or `password`, or an encoded `?`, `#` or `=` is not sent.
+- **One call at a time.** Google's answers are slow, so the calls go one after another and never fill every slot
+  the run's own requests to your site need.
 - **One `GET` each, to one host.** Never a `POST`, never another host. Gaugeline says so on stderr before the
   first request. The host is on the registered list in decision record 0015 (`docs/adr/0015-pagespeed-and-crux.md` in the repository).
 
@@ -91,7 +100,7 @@ $ npx gaugeline corner-pantry.example --pagespeed
 ```
 
 ```text title="Stderr, before the first request"
---pagespeed sends the address of each page it reads (at most 5, no query string) to Google's PageSpeed Insights, and only for public pages.
+--pagespeed sends the address of each page it reads (at most 5, no query string) to Google's PageSpeed Insights, only for public pages, and nothing at all with --allow-private.
 ```
 
 The first finding is the one to act on: real visitors wait for that picture. The second only helps find why:

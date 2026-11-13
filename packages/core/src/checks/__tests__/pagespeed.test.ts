@@ -22,7 +22,10 @@ const ok = (url: string, o: AnswerOptions): Reply => ({ status: 200, body: answe
 
 function setup(replies: Record<string, Reply>, others: string[] = []) {
   const world = pageSpeedTransport(replies);
-  const pageSpeed: PageSpeed = createPageSpeed(createFetcher({ transport: world.transport }));
+  const pageSpeed: PageSpeed = createPageSpeed(createFetcher({ transport: world.transport }), {
+    resolver: () => Promise.resolve([{ address: "93.184.216.35", family: 4 }]),
+    reservedNamesAllowed: true,
+  });
   const notes: { url: string; reason: string }[] = [];
   const ctx: CheckContext = {
     warn: () => undefined,
@@ -155,7 +158,7 @@ describe("pagespeed-field-vitals: real visitors decide", () => {
       await pagespeedFieldVitals.run(page({ finalUrl: "http://127.0.0.1:4100/" }), ctx),
     ).toEqual([]);
     expect(seen).toEqual([]);
-    expect(notes[0]?.reason).toContain("not one");
+    expect(notes[0]?.reason).toContain("not sent to Google");
   });
 
   it("reads the checked page and the next pages of the sample, at most five, and says how many it left out", async () => {

@@ -26,7 +26,7 @@ export type VitalId = (typeof VITAL_IDS)[number];
 
 export type VitalVerdict = "good" | "needs-improvement" | "poor";
 
-/** Shares are whole thousandths (750 is 75.0%): integers, so "at least 75%" has no rounding edge. */
+/** For display, shares are whole thousandths cut down (750 is 75.0%); the verdict is decided on the raw shares. */
 export interface FieldMetric {
   id: VitalId;
   verdict: VitalVerdict;
@@ -102,10 +102,14 @@ function readMetric(id: VitalId, raw: unknown): FieldMetric | string {
   if (Math.abs(total - 1) > 0.02) return "the shares do not add up to 100%";
   if (!edgeMatches(id, good.max, VITALS[id].good) || !edgeMatches(id, middle.max, VITALS[id].poor))
     return "the buckets are not web.dev's good and poor limits";
-  const goodPermille = Math.round((shares[0] as number) * 1000);
-  const poorPermille = Math.round((shares[2] as number) * 1000);
+  // The verdict is the exact comparison on the raw shares, as web.dev states it: good is at least 75% of
+  // loads in the good bucket, poor is more than 25% in the poor bucket. Rounding first would let 74.95% pass.
+  const [goodShare, , poorShare] = shares as [number, number, number];
   const verdict: VitalVerdict =
-    goodPermille >= 750 ? "good" : poorPermille > 250 ? "poor" : "needs-improvement";
+    goodShare >= 0.75 ? "good" : poorShare > 0.25 ? "poor" : "needs-improvement";
+  // For display, whole thousandths cut down (never up), so a share just under 75% never shows as 75%.
+  const goodPermille = Math.floor(goodShare * 1000 + 1e-6);
+  const poorPermille = Math.floor(poorShare * 1000 + 1e-6);
   return { id, verdict, goodPermille, poorPermille };
 }
 
@@ -161,7 +165,7 @@ function readLab(json: Record<string, unknown>): LabRead {
   const categories = isRecord(lh.categories) ? lh.categories : {};
   const perf = isRecord(categories.performance) ? categories.performance : {};
   const score = num(perf.score);
-  if (score === undefined)
+  if (score === undefined || score < 0 || score > 1)
     return { kind: "none", reason: "Lighthouse gave no performance score for this page." };
   const audits = isRecord(lh.audits) ? lh.audits : {};
   const value = (id: string): number | undefined => {

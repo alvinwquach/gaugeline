@@ -2,7 +2,7 @@ import { mkdtempSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Readable } from "node:stream";
-import { PAGESPEED_HOSTS, resultSchema, type Transport } from "@gaugeline/core";
+import { PAGESPEED_HOSTS, resultSchema, type Resolver, type Transport } from "@gaugeline/core";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   answer,
@@ -34,6 +34,7 @@ function folder(): string {
 }
 
 const HOST = "corner-pantry.example";
+const PUBLIC: Resolver = () => Promise.resolve([{ address: "93.184.216.35", family: 4 }]);
 const HOME = `https://${HOST}/`;
 const GOOD = [0.9, 0.05, 0.05] as const;
 
@@ -64,7 +65,11 @@ async function run(argv: string[], replies: Record<string, Reply>) {
       stderr: { write: (s) => err.push(s) },
       env: { NO_COLOR: "1" },
     },
-    { cwd: folder(), fetcher: { transport } } as never,
+    {
+      cwd: folder(),
+      fetcher: { transport, resolver: PUBLIC },
+      pageSpeed: { reservedNamesAllowed: true },
+    } as never,
   );
   return {
     code,
@@ -169,6 +174,51 @@ describe("gaugeline check --pagespeed: end to end (the invented shop, in memory)
     expect(r.err.match(/--pagespeed sends/g)).toHaveLength(1);
   });
 
+  it("sends nothing to Google when the run allows private addresses, even for a public-looking name", async () => {
+    const r = await run(
+      [HOST, "--pagespeed", "--allow-private", "--json", "--no-open", "--quiet"],
+      {
+        [HOME]: ok({ field: { lcp: [0.4, 0.2, 0.4], inp: GOOD, cls: GOOD } }),
+      },
+    );
+    expect(r.asked).toEqual([]);
+    expect(r.seen.some((s) => s.url.includes("googleapis.com"))).toBe(false);
+    const got = parsed(r.out);
+    expect(got.field.findings).toEqual([]);
+    expect(got.field.couldNotCheck[0]?.reason).toContain("--allow-private");
+  });
+
+  it("sends nothing for a name that resolves to a private address", async () => {
+    const out: string[] = [];
+    const seen: string[] = [];
+    const transport: Transport = (url, req) => {
+      seen.push(url.hostname);
+      return url.hostname === HOST
+        ? staticSite(HOST, join(SITES_DIR, "old-theme-shop"), () =>
+            Promise.reject(new Error("no")),
+          )(url, req)
+        : Promise.reject(new Error("no"));
+    };
+    await main(
+      [HOST, "--pagespeed", "--json", "--no-open", "--quiet"],
+      {
+        stdout: { write: (s) => out.push(s) },
+        stderr: { write: () => true },
+        env: { NO_COLOR: "1" },
+      },
+      {
+        cwd: folder(),
+        fetcher: {
+          transport,
+          resolver: () => Promise.resolve([{ address: "10.0.0.5", family: 4 }]),
+        },
+        pageSpeed: { reservedNamesAllowed: true },
+      } as never,
+    );
+    expect(seen.some((h) => h.endsWith("googleapis.com"))).toBe(false);
+    expect(parsed(out.join("")).field.couldNotCheck[0]?.reason).toContain("not sent to Google");
+  });
+
   it("sends nothing to Google for an address on this computer", async () => {
     const out: string[] = [];
     let touched = false;
@@ -183,7 +233,11 @@ describe("gaugeline check --pagespeed: end to end (the invented shop, in memory)
         stderr: { write: () => true },
         env: { NO_COLOR: "1" },
       },
-      { cwd: folder(), fetcher: { transport } } as never,
+      {
+        cwd: folder(),
+        fetcher: { transport, resolver: PUBLIC },
+        pageSpeed: { reservedNamesAllowed: true },
+      } as never,
     );
     expect(touched).toBe(false);
   });

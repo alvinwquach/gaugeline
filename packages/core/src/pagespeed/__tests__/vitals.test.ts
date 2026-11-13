@@ -54,6 +54,16 @@ describe("parsePageSpeed: real-user data (the field), decided from the buckets",
     expect(b.field.metrics[0]?.verdict).toBe("needs-improvement");
   });
 
+  it("decides on the raw share: 74.95% good is not good, though it shows as a share under 75%", () => {
+    const a = parsePageSpeed(answer(PAGE, { field: { lcp: [0.7495, 0.15, 0.1005] } }));
+    if (a.field.kind !== "field") throw new Error("no field");
+    expect(a.field.metrics[0]).toMatchObject({ verdict: "needs-improvement", goodPermille: 749 });
+    // 25.05% poor is more than 25%.
+    const b = parsePageSpeed(answer(PAGE, { field: { lcp: [0.5, 0.2495, 0.2505] } }));
+    if (b.field.kind !== "field") throw new Error("no field");
+    expect(b.field.metrics[0]?.verdict).toBe("poor");
+  });
+
   it("accepts the layout shift scored 0.1 and 0.25 as well as scaled by 100", () => {
     const raw = answer(PAGE, { field: { lcp: [0.8, 0.1, 0.1] } }) as unknown as Raw;
     raw.loadingExperience.metrics.CUMULATIVE_LAYOUT_SHIFT_SCORE = metric(
@@ -173,6 +183,16 @@ describe("parsePageSpeed: lab data (Lighthouse), advice only", () => {
       kind: "none",
       reason: expect.stringContaining("no performance score"),
     });
+  });
+
+  it("refuses a score outside 0 to 1, so no impossible score is ever shown", () => {
+    for (const score of [-5, 1.0001, 1e308, -0.0001])
+      expect(parsePageSpeed(answer(PAGE, { lab: { score } })).lab).toEqual({
+        kind: "none",
+        reason: expect.stringContaining("no performance score"),
+      });
+    expect(parsePageSpeed(answer(PAGE, { lab: { score: 0 } })).lab).toMatchObject({ score: 0 });
+    expect(parsePageSpeed(answer(PAGE, { lab: { score: 1 } })).lab).toMatchObject({ score: 100 });
   });
 
   it("treats a Lighthouse runtime error as no lab run", () => {

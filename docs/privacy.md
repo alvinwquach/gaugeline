@@ -501,9 +501,13 @@ type, so it is off unless named and says so on stderr before the first request.
   same-site pages of the run's sample. The `url` it carries is the page's origin and path, never its query
   string, fragment or user name. No other host, no `POST`, no cookie, no header of Gaugeline's but its user
   agent. Nothing about the page's content or about you.
-- **Only public pages.** An address on your computer or a private network, an address written as numbers, a
-  name with no dot and a name ending in `.local`, `.internal` or the like are never sent. The check says could
-  not check and why.
+- **Only public pages.** Nothing is sent with `--allow-private`. An address on your computer or a private
+  network, an address written as numbers, a name with no dot, a name with a reserved or private-use ending (with
+  or without a trailing dot), a name from a wildcard service such as `nip.io`, and a name that resolves to any
+  private, loopback, link-local or metadata address (a failed lookup counts) are never sent. The check says
+  could not check and why.
+- **Only a path that is not a secret.** No path parameter goes out, and a path with a part that looks like a
+  token, a reset, invite or session link, or an encoded query mark is not sent.
 - **No key.** No key is read or sent, so none can reach an address, a log, a finding or a report. Without
   one Google's allowance is shared with every other keyless caller, and when it is used up the check says could
   not check.

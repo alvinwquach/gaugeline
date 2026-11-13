@@ -573,7 +573,12 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
     } = {},
   ): Promise<{ hop: Hop; location: string | null }> {
     const query = extra.query;
-    const waitMs = Math.min(Math.max(extra.timeoutMs ?? timeoutMs, 1), MAX_REQUEST_TIMEOUT_MS);
+    const asked = extra.timeoutMs;
+    // A wait that is not a finite number is not honoured: the fetcher's own applies.
+    const waitMs =
+      asked === undefined || !Number.isFinite(asked)
+        ? timeoutMs
+        : Math.min(Math.max(asked, 1), MAX_REQUEST_TIMEOUT_MS);
     if (query === undefined) assertReadOnly(method);
     else if (method !== "POST") throw new TypeError("A query is sent with POST.");
     return gate.run(async () => {
