@@ -136,7 +136,7 @@ $ npx gaugeline larkspur-family-law.example
 ```
 
 ```text title=Output
-! A page header, meta tag or llms.txt says something different about AI crawlers than you said you want
+! Your page signals to AI crawlers differ from what you said you want
     gaugeline.ai.json says to allow every AI crawler; for /, the X-Robots-Tag header says noai and noimageai for GPTBot (OpenAI), ClaudeBot (Anthropic), Google-Extended (Google), Applebot-Extended (Apple) and 2 more and the ClaudeBot meta tag says noindex for ClaudeBot (Anthropic)
 ? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
     Mail records are read from DNS only with --dns. Rerun with --dns to check them.

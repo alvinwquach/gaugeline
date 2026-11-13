@@ -36,8 +36,7 @@ export const aiCrawlersDirectives = defineCheck<PageSnapshot>({
     "A header set by a CDN rule, a framework config or a plugin is found by looking at each; a meta tag from a theme is one template edit.",
   area: "Search & sharing",
   severity: "medium",
-  title:
-    "A page header, meta tag or llms.txt says something different about AI crawlers than you said you want",
+  title: "Your page signals to AI crawlers differ from what you said you want",
   what: "You said what AI crawlers should be able to do (aiCrawlers in gaugeline.ai.json). The page sends a header or a meta tag that keeps a crawler you want away (noai, or noindex for one named crawler), or you want none of them and the site still publishes llms.txt, a guide written for AI assistants.",
   why: "robots.txt is only one place to say it. A header from a CDN rule or a meta tag from a theme can quietly shut out the assistants you want to be found by, and a published llms.txt invites the ones you said to keep out.",
   fix: "Remove the header or meta tag that blocks a crawler you want, or change aiCrawlers in gaugeline.ai.json if the signal is right and the intent changed. If you want no AI crawler on the site, remove llms.txt.",
