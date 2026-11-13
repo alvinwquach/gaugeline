@@ -25,12 +25,19 @@ Options:
                           private address is reachable, and --allow-private is not needed.
   --root <folder>         the folder plan_check reads plan files from. plan_check is off without --root and --plan-base.
   --plan-base <origin>    an origin plan_check may check a plan against (repeat for more)
+  --allow-probing         let probing checks run (they ask for non-public paths such as /.env or a download route, with
+                          no login). Alone it enables nothing: it needs --probing-origin. Run only on sites you own
+                          or have permission to test.
+  --probing-origin <origin>
+                          an origin probing checks may run on (repeat for more); needs --allow-probing. With probing
+                          on for a call, every request of that call stays on that origin.
   --help, --version
 
 The token for HTTP comes from the environment (GAUGELINE_MCP_TOKEN), never from the command line. Over HTTP a token is
-required whenever --allow-private, --allow-private-host, --root or --plan-base is given: every holder of the token shares
-the session's runs.
-Probing checks run only when a tool call passes ownerConsent: true; there is no flag that turns them on.
+required whenever --allow-private, --allow-private-host, --root, --plan-base or --allow-probing is given: every holder of
+the token shares the session's runs.
+Probing checks run only when you start the server with --allow-probing and --probing-origin for the site. A tool call has
+no argument that turns them on, so a page that tells an assistant to ask for them gets nothing.
 `;
 
 interface Parsed {
@@ -43,6 +50,8 @@ interface Parsed {
   allowPrivate: boolean;
   allowPrivateHosts: string[];
   planBases: string[];
+  allowProbing: boolean;
+  probingOrigins: string[];
   root: string | undefined;
   help: boolean;
   version: boolean;
@@ -59,6 +68,8 @@ export function parseArgs(argv: string[], cwd: string): Parsed {
     allowPrivate: false,
     allowPrivateHosts: [],
     planBases: [],
+    allowProbing: false,
+    probingOrigins: [],
     root: undefined,
     help: false,
     version: false,
@@ -89,11 +100,24 @@ export function parseArgs(argv: string[], cwd: string): Parsed {
           "--plan-base needs an http or https origin, for example https://preview.harbourline.example.",
         );
       out.planBases.push(new URL(v).origin);
+    } else if (a === "--allow-probing") out.allowProbing = true;
+    else if (a === "--probing-origin") {
+      const v = value();
+      if (!URL.canParse(v) || !/^https?:$/.test(new URL(v).protocol))
+        throw new Error(
+          "--probing-origin needs an http or https origin, for example https://harbourline.example.",
+        );
+      out.probingOrigins.push(new URL(v).origin);
     } else if (a === "--root") out.root = resolve(cwd, value());
     else if (a === "--help" || a === "-h") out.help = true;
     else if (a === "--version" || a === "-v") out.version = true;
     else throw new Error(`Unknown option ${a}. See --help.`);
   }
+  // One without the other enables nothing, so say so instead of starting a server that looks configured.
+  if (out.allowProbing !== out.probingOrigins.length > 0 && !out.help && !out.version)
+    throw new Error(
+      "--allow-probing and --probing-origin go together: probing checks run only on an origin you name.",
+    );
   return out;
 }
 
@@ -149,6 +173,8 @@ export async function main(argv: string[], io: Io): Promise<number> {
     allowPrivate: args.allowPrivate,
     allowPrivateHosts: args.allowPrivateHosts,
     planBases: args.planBases,
+    allowProbing: args.allowProbing,
+    probingOrigins: args.probingOrigins,
     ...(args.root !== undefined ? { root: args.root } : {}),
     state: createState(),
   };
@@ -158,10 +184,11 @@ export async function main(argv: string[], io: Io): Promise<number> {
     args.allowPrivate ||
     args.allowPrivateHosts.length > 0 ||
     args.root !== undefined ||
-    args.planBases.length > 0;
+    args.planBases.length > 0 ||
+    args.allowProbing;
   if (args.http && widened && !io.env.GAUGELINE_MCP_TOKEN) {
     io.stderr.write(
-      "Over HTTP, --allow-private, --allow-private-host, --root and --plan-base need a token: set GAUGELINE_MCP_TOKEN.\n",
+      "Over HTTP, --allow-private, --allow-private-host, --root, --plan-base and --allow-probing need a token: set GAUGELINE_MCP_TOKEN.\n",
     );
     return 2;
   }

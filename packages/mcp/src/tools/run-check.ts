@@ -1,6 +1,6 @@
 import * as z from "zod";
 import { EMAIL_PRESET, PROBING_CHECKS, checkSite, createPageRegistry } from "@gaugeline/core";
-import { ToolError, remember, type ToolContext } from "../state.js";
+import { ToolError, probingAllowedFor, remember, type ToolContext } from "../state.js";
 import { couldNotCheckForAgent, findingsForAgent, idToken, urlSchema } from "./shared.js";
 
 export const runCheckInput = {
@@ -25,11 +25,17 @@ export const runCheckInput = {
     ),
   ownerConsent: z
     .boolean()
-    .default(false)
+    .optional()
     .describe(
-      "Probing checks ask for non-public paths. They run only when this is true, set by the person who owns the site, for this call only. Never infer it.",
+      "Ignored. A tool call cannot turn on probing checks; only the person who started this server can, with --allow-probing and --probing-origin. Do not pass it.",
     ),
 };
+
+/** What the operator, not the caller, must do. Fixed text: no caller or page text is ever in it. */
+const OPERATOR_MUST =
+  "Probing checks run only if the operator (the person who runs this server) started it with --allow-probing and --probing-origin <this site's origin>; a tool call cannot turn them on.";
+const OWNER_CONSENT_IGNORED =
+  "ownerConsent has no effect: a tool call cannot turn on probing checks. Only the person who runs this server can, with --allow-probing and --probing-origin <the site's origin>.";
 
 /** The checks Gaugeline lists as could-not-run when DNS is off (this server never reads DNS). */
 /** The page as served, kept only if it is HTML and small enough to build a patch against. */
@@ -48,20 +54,25 @@ export async function runCheck(args: z.infer<z.ZodObject<typeof runCheckInput>>,
     throw new ToolError(
       `Unknown check id: ${[...new Set(unknown)].slice(0, 5).map(idToken).join(", ")}. See list_checks.`,
     );
-  const consent = args.ownerConsent === true;
-  // A probing check asked for by id still needs consent: it is dropped here, and said so.
+  // Probing is the operator's decision (flag + origin list), never the caller's: ownerConsent is ignored.
+  const consent = probingAllowedFor(ctx.options, args.url);
+  const ignored =
+    args.ownerConsent === undefined ? {} : { ownerConsentIgnored: OWNER_CONSENT_IGNORED };
+  // A probing check asked for by id still needs the grant: it is dropped here, and said so.
   const withheld = consent ? [] : (args.checks ?? []).filter((id) => PROBING_CHECKS.includes(id));
   const only = args.checks?.filter((id) => !withheld.includes(id));
   if (args.checks !== undefined && (only?.length ?? 0) === 0)
     throw new ToolError(
-      `${withheld.join(", ")} ${withheld.length === 1 ? "is a probing check" : "are probing checks"} and run only when the site's owner passes ownerConsent: true. Nothing was requested.`,
+      `${withheld.join(", ")} ${withheld.length === 1 ? "is a probing check" : "are probing checks"}. ${OPERATOR_MUST} Nothing was requested.`,
     );
   const dnsOff = EMAIL_PRESET.filter((id) => registry.has(id));
   const startedAt = ctx.now();
   const { snapshot, result, budget, unreachable } = await checkSite({
     tolerateUnreachable: true,
     address: args.url,
-    fetcher: ctx.fetcherFor(args.url),
+    // With probing on, every request of the call stays on the origin the operator named: a redirect to
+    // another origin is not followed, so the grant cannot reach a site the operator did not list.
+    fetcher: ctx.fetcherFor(args.url, consent ? new URL(args.url).origin : undefined),
     registry,
     ...(only ? { only } : {}),
     skip: [...skip, ...dnsOff],
@@ -78,6 +89,7 @@ export async function runCheck(args: z.infer<z.ZodObject<typeof runCheckInput>>,
       findings: [],
       ...couldNotCheckForAgent([{ id: "page", reason: unreachable }]),
       probingConsent: consent,
+      ...ignored,
     };
   const run = remember(ctx.state, {
     kind: "site",
@@ -106,11 +118,10 @@ export async function runCheck(args: z.infer<z.ZodObject<typeof runCheckInput>>,
     ...couldNotCheckForAgent(result.couldNotCheck),
     notRun: {
       dns: { ids: dnsOff, hint: "DNS checks are opt-in and this server does not read DNS." },
-      ...(withheld.length > 0
-        ? { probing: { ids: withheld, hint: "Needs ownerConsent: true on this call." } }
-        : {}),
+      ...(withheld.length > 0 ? { probing: { ids: withheld, hint: OPERATOR_MUST } } : {}),
     },
     sampled: budget.summary(),
     probingConsent: consent,
+    ...ignored,
   };
 }

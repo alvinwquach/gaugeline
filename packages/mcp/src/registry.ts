@@ -63,7 +63,7 @@ export const TOOLS = {
     kind: "read",
     title: "Check a page",
     summary:
-      "Checks one public page and its site with Gaugeline: GET and HEAD requests only, private addresses refused. Probing checks (non-public paths) run only if ownerConsent is true on this call.",
+      "Checks one public page and its site with Gaugeline: GET and HEAD requests only, private addresses refused. Probing checks (non-public paths) run only if the person who runs this server turned them on for the site; a call cannot.",
     pageText: true,
     untrustedSlots: [...findingSlots("findings[]", false), "couldNotCheck[].reason"],
     requests: true,

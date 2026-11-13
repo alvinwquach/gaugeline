@@ -33,6 +33,14 @@ export interface ServerOptions {
   root?: string;
   /** --plan-base: the origins plan_check may check a plan against. Without at least one, plan_check is not offered. */
   planBases?: string[];
+  /**
+   * --allow-probing: the operator's switch for probing checks (CLAUDE.md rule 14: non-public paths such as
+   * /.env or a download route, asked for with no login). Alone it enables nothing: a call is probed only if
+   * its origin is also in `probingOrigins`. A tool call has no argument that can turn it on.
+   */
+  allowProbing?: boolean;
+  /** --probing-origin: the origins the operator says may be probed (repeat for more). Needs `allowProbing`. */
+  probingOrigins?: string[];
   /** The most calls that make requests and may be running or waiting at once (default 16); beyond it a call is refused. */
   maxActiveCalls?: number;
   /** The longest one tool call may run, in milliseconds (default 120000): checked before every hop, and the call is answered at the limit. */
@@ -96,6 +104,18 @@ export interface ToolContext {
   maxFindings: number;
   /** The one way a tool reaches a site: the core fetcher (GET and HEAD only, private addresses refused). */
   fetcherFor(target: string, onlyOrigin?: string): Fetcher;
+}
+
+/**
+ * Whether probing checks may run for a call on this address. Only the operator decides: the flag AND the
+ * address's origin in the operator's list. Nothing a tool call or a page says is read here.
+ */
+export function probingAllowedFor(options: ServerOptions, url: string): boolean {
+  if (options.allowProbing !== true || !URL.canParse(url)) return false;
+  const origin = new URL(url).origin;
+  return (options.probingOrigins ?? []).some(
+    (o) => URL.canParse(o) && new URL(o).origin === origin,
+  );
 }
 
 export function contextFor(options: ServerOptions, state: ServerState): ToolContext {
