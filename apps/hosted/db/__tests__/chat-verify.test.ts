@@ -2,13 +2,21 @@
  * Chat request verification (X69): Slack's signature scheme and the body cap, as plain functions. No database.
  * The signing secret is invented and built at run time, so no key-shaped string sits in the source.
  */
-import { createHmac, randomBytes } from "node:crypto";
+import {
+  createHash,
+  createHmac,
+  generateKeyPairSync,
+  randomBytes,
+  sign as edSign,
+} from "node:crypto";
 import { describe, expect, it } from "vitest";
 import {
   MAX_CHAT_BODY,
   MAX_SKEW_SECONDS,
   readCappedBody,
+  discordVerifier,
   slackVerifier,
+  verifyDiscord,
   verifySlack,
 } from "../../chat/verify.js";
 
@@ -176,5 +184,107 @@ describe("readCappedBody", () => {
   it("refuses a content-length that is not a plain number", async () => {
     for (const len of ["-1", "1e3", "0x10", "1.5"])
       expect(await readCappedBody(post("x", { "content-length": len }))).toBeUndefined();
+  });
+});
+
+describe("verifyDiscord", () => {
+  const { publicKey, privateKey } = generateKeyPairSync("ed25519");
+  const KEY = publicKey.export({ format: "der", type: "spki" }).subarray(-32).toString("hex");
+  const OTHER = generateKeyPairSync("ed25519");
+  const BODY_D = Buffer.from(JSON.stringify({ type: 3, data: { custom_id: "x" } }), "utf8");
+  /** What Discord sends: Ed25519 over the timestamp header followed by the raw body, as 128 hex characters. */
+  const signD = (body: Uint8Array, ts: number | string, key = privateKey) =>
+    edSign(null, Buffer.concat([Buffer.from(String(ts)), body]), key).toString("hex");
+  const reqD = (over: Partial<Parameters<typeof verifyDiscord>[0]> = {}) => ({
+    publicKey: KEY,
+    rawBody: BODY_D,
+    signature: signD(BODY_D, nowSeconds),
+    timestamp: String(nowSeconds),
+    now: NOW,
+    ...over,
+  });
+
+  it("accepts a request signed by the application's key, keyed by the hash of what was signed", () => {
+    const expected = createHash("sha256")
+      .update(Buffer.concat([Buffer.from(String(nowSeconds)), BODY_D]))
+      .digest("hex");
+    expect(verifyDiscord(reqD())).toEqual({ ok: true, requestKey: expected });
+    // Upper-case hex is the same request: the key is not the signature's spelling.
+    const shouting = verifyDiscord(reqD({ signature: signD(BODY_D, nowSeconds).toUpperCase() }));
+    expect(shouting).toEqual({ ok: true, requestKey: expected });
+  });
+
+  it("refuses another key, another body, another timestamp", () => {
+    expect(verifyDiscord(reqD({ signature: signD(BODY_D, nowSeconds, OTHER.privateKey) }))).toEqual(
+      { ok: false, reason: "bad-signature" },
+    );
+    expect(verifyDiscord(reqD({ rawBody: Buffer.from(BODY_D.toString() + " ") }))).toEqual({
+      ok: false,
+      reason: "bad-signature",
+    });
+    expect(verifyDiscord(reqD({ timestamp: String(nowSeconds + 1) }))).toEqual({
+      ok: false,
+      reason: "bad-signature",
+    });
+    const otherKey = OTHER.publicKey
+      .export({ format: "der", type: "spki" })
+      .subarray(-32)
+      .toString("hex");
+    expect(verifyDiscord(reqD({ publicKey: otherKey }))).toEqual({
+      ok: false,
+      reason: "bad-signature",
+    });
+  });
+
+  it("checks the raw bytes, and the window in both directions", () => {
+    const bytes = Buffer.from([0xff, 0xfe, 0x00, 0x41]);
+    expect(verifyDiscord(reqD({ rawBody: bytes, signature: signD(bytes, nowSeconds) })).ok).toBe(
+      true,
+    );
+    for (const ts of [nowSeconds - MAX_SKEW_SECONDS, nowSeconds + MAX_SKEW_SECONDS])
+      expect(verifyDiscord(reqD({ timestamp: String(ts), signature: signD(BODY_D, ts) })).ok).toBe(
+        true,
+      );
+    for (const ts of [nowSeconds - MAX_SKEW_SECONDS - 1, nowSeconds + MAX_SKEW_SECONDS + 1])
+      expect(verifyDiscord(reqD({ timestamp: String(ts), signature: signD(BODY_D, ts) }))).toEqual({
+        ok: false,
+        reason: "stale",
+      });
+  });
+
+  it("refuses missing headers, a malformed timestamp, signature or key, and never throws on garbage", () => {
+    expect(verifyDiscord(reqD({ signature: null }))).toEqual({
+      ok: false,
+      reason: "missing-header",
+    });
+    expect(verifyDiscord(reqD({ timestamp: null }))).toEqual({
+      ok: false,
+      reason: "missing-header",
+    });
+    expect(verifyDiscord(reqD({ publicKey: "" }))).toEqual({ ok: false, reason: "missing-header" });
+    for (const ts of ["", "1e9", "0x10", "-5", "1.5", " 1"])
+      expect(verifyDiscord(reqD({ timestamp: ts })), ts).toEqual({
+        ok: false,
+        reason: "bad-timestamp",
+      });
+    const good = signD(BODY_D, nowSeconds);
+    for (const sig of ["", good.slice(2), good + "00", good.replace(/.$/, "g"), "00".repeat(64)])
+      expect(verifyDiscord(reqD({ signature: sig })), sig).toEqual({
+        ok: false,
+        reason: "bad-signature",
+      });
+    for (const key of ["zz".repeat(32), KEY.slice(2), KEY + "00", "00".repeat(32)])
+      expect(verifyDiscord(reqD({ publicKey: key })).ok, key).toBe(false);
+  });
+
+  it("discordVerifier reads the two headers", () => {
+    const headers = new Headers({
+      "x-signature-ed25519": signD(BODY_D, nowSeconds),
+      "x-signature-timestamp": String(nowSeconds),
+    });
+    expect(discordVerifier({ secret: KEY, rawBody: BODY_D, headers, now: NOW }).ok).toBe(true);
+    expect(
+      discordVerifier({ secret: KEY, rawBody: BODY_D, headers: new Headers(), now: NOW }),
+    ).toEqual({ ok: false, reason: "missing-header" });
   });
 });

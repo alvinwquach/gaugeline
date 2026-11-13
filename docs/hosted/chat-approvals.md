@@ -2,15 +2,15 @@
 
 The hosted version of Gaugeline (in progress, not released) will let a team approve or decline a
 proposed fix with one button in the chat where they already talk. A draft waiting in an inbox nobody
-opens is the same as no draft. This is **part 2 of 3**. Part 1 is the checks a chat request must pass and
-the decision it records. Part 2 (this page's Slack sections) adds the Slack message with its buttons and
-the endpoint a button press goes to. Discord and Teams are part 3.
+opens is the same as no draft. This is built in three parts: the checks a chat request must pass and the
+decision it records; Slack; and Discord (this page's Discord section). **Teams is not built**: see
+[Teams](#teams-not-built-yet).
 
 **Not built yet:** posting a new proposal to the channel automatically (a worker job that picks drafts
-and a Slack channel; `sendApprovalRequest` is the function it will call), the slash command
-`/gaugeline check <address>`, and the jobs table an approval enqueues into. Until that table exists the
-endpoint runs only in development and tests and answers `503` elsewhere, rather than record an approval
-that nothing will apply.
+and a channel; `sendApprovalRequest` and `sendDiscordApprovalRequest` are what it will call), the Slack
+slash command `/gaugeline check <address>`, the jobs table an approval enqueues into, and Teams. Until the
+table exists the endpoints run only in development and tests and answer `503` elsewhere, rather than
+record an approval that nothing will apply.
 
 The rule that does not change: **a chat click can do only what the same person could do in the
 [inbox](./inbox.md).** It writes the same append-only decision row the inbox writes, through the same code,
@@ -166,6 +166,162 @@ The reply goes through `postJson` in core's notify module (ADR-0005), the one pl
 to, and the decision (already recorded) stands. The reply is sent with a two-second limit; a reply that
 fails never undoes a decision. This file adds no new place that sends a request.
 
+## Discord
+
+Discord works the same way with three differences. **It answers in the HTTP response**: a press is a
+`POST` to `/api/chat/discord/<connection id>` (the application's "Interactions Endpoint URL"), and the
+endpoint replaces the message or shows a private line by what it returns (callback type 7, or type 4 with
+the ephemeral flag), so the endpoint sends no request of its own. **The signature is Ed25519**: the
+`X-Signature-Ed25519` header is a signature, by the application's key, over the `X-Signature-Timestamp`
+header followed by the raw body. The "secret" is the application's **public** key (64 hex characters);
+it is kept like every other signing value. And **a PING must be answered**: when the address is saved,
+Discord sends `type: 1` and expects `{"type":1}` back, and it expects a `401` for a bad signature.
+
+A press is `type: 3` with `data.custom_id` set to `gaugeline_approve:<draft id>` or
+`gaugeline_decline:<draft id>` (the action and the draft's id, nothing else), `member.user.id` for the
+person and `guild_id` for the server. The connection names its server (`workspace_ref`), and a press from
+another server, or from a direct message (which has no server), decides nothing. The checks are the same
+as Slack's: size, connection, signature and a five-minute window (Discord's page names no window; this is
+this file's own rule, uncited), a replay key (the hash of what was signed, so two spellings of the same
+signature are one request), then `private.chat_decide`. The body must be `application/json` and is refused
+otherwise before anything is looked up. This is `discordVerifier` and `discordApprovalMessage`, run with
+`node --import tsx example.mts` in `apps/hosted`, with an invented key from a fixed seed:
+
+```ts
+import { createPrivateKey, createPublicKey, sign } from "node:crypto";
+import { discordApprovalMessage } from "@gaugeline/core";
+import { discordVerifier } from "./chat/verify.js";
+
+// An invented application key, from a fixed seed so the output below is the same every time.
+const seed = Buffer.alloc(32, 7);
+const priv = createPrivateKey({
+  key: Buffer.concat([Buffer.from("302e020100300506032b657004220420", "hex"), seed]),
+  format: "der",
+  type: "pkcs8",
+});
+const publicKey = createPublicKey(priv)
+  .export({ format: "der", type: "spki" })
+  .subarray(-32)
+  .toString("hex");
+const now = new Date("2026-11-13T09:00:00Z");
+const ts = Math.floor(now.getTime() / 1000);
+const body = JSON.stringify({
+  type: 3,
+  data: {
+    component_type: 2,
+    custom_id: "gaugeline_approve:a1d10000-0000-4000-8000-0000000000a2",
+  },
+});
+const check = (label: string, b: string, t: number, signature: string) => {
+  const headers = new Headers({
+    "x-signature-ed25519": signature,
+    "x-signature-timestamp": String(t),
+  });
+  const r = discordVerifier({ secret: publicKey, rawBody: Buffer.from(b), headers, now });
+  console.log(
+    label.padEnd(30),
+    r.ok ? "accepted, key " + r.requestKey.slice(0, 12) + "..." : "refused: " + r.reason,
+  );
+};
+const signed = (b: string, t: number) => sign(null, Buffer.from(`${t}${b}`), priv).toString("hex");
+
+check("signed by the application", body, ts, signed(body, ts));
+check("body changed by one byte", body + " ", ts, signed(body, ts));
+check("six minutes old", body, ts - 360, signed(body, ts - 360));
+check("signed by another key", body, ts, "ab".repeat(64));
+
+const m = discordApprovalMessage({
+  site: "The Tidewater Bar",
+  kind: "pull_request",
+  title: "Point the menu link at /drinks @everyone",
+  draftId: "a1d10000-0000-4000-8000-0000000000a2",
+  inboxUrl: "https://app.example/inbox/a1d10000-0000-4000-8000-0000000000a2",
+});
+console.log(JSON.stringify(m, null, 2));
+```
+
+```text
+signed by the application      accepted, key 382d39704f53...
+body changed by one byte       refused: bad-signature
+six minutes old                refused: stale
+signed by another key          refused: bad-signature
+{
+  "allowed_mentions": {
+    "parse": []
+  },
+  "embeds": [
+    {
+      "title": "Gaugeline proposes a pull request for The Tidewater Bar",
+      "description": "Point the menu link at /drinks \\@everyone",
+      "color": 4674663
+    }
+  ],
+  "components": [
+    {
+      "type": 1,
+      "components": [
+        {
+          "type": 2,
+          "style": 3,
+          "label": "Approve",
+          "custom_id": "gaugeline_approve:a1d10000-0000-4000-8000-0000000000a2"
+        },
+        {
+          "type": 2,
+          "style": 5,
+          "label": "Edit first",
+          "url": "https://app.example/inbox/a1d10000-0000-4000-8000-0000000000a2"
+        },
+        {
+          "type": 2,
+          "style": 4,
+          "label": "Decline",
+          "custom_id": "gaugeline_decline:a1d10000-0000-4000-8000-0000000000a2"
+        }
+      ]
+    }
+  ]
+}
+```
+
+The message pings nobody (`allowed_mentions` is empty, and the `@everyone` a title carries is shown
+escaped). **Edit first** is a link button: pressing it opens the inbox and sends Gaugeline nothing.
+The proposal is posted to the team's own channel through a webhook of their own Discord application, to
+`https://discord.com/api/webhooks/<id>/<token>` only (the host is pinned, `checkDiscordWebhook`), with
+`with_components=true` appended, because Discord ignores the buttons without it. The POST is core's
+`postJson` (ADR-0005), the one existing place Gaugeline sends one.
+
+## Connecting a workspace
+
+`connectChat` (`apps/hosted/chat/connect.ts`, run by the settings API or the worker, never by the chat
+login) stores the signing value in Vault and then the connection. **A connection must name its workspace**
+(a Slack team id or a Discord server id), because the workspace check is what stops a signed request from
+another workspace of the same application; a connection with none is refused at creation, and a row written
+any other way decides nothing (`decideFromChat` refuses it). Connecting the same workspace again keeps one
+connection and rotates the secret.
+
+## Teams: not built yet
+
+Teams is not built, and the reason is a choice the owner has to make. What Microsoft's documentation says
+(the Teams "Outgoing Webhooks" page, read from its source in the `MicrosoftDocs/msteams-docs` repository):
+
+- An outgoing webhook is signed: the request has an `Authorization: HMAC <value>` header, the value being
+  the base64 of an HMAC-SHA256 of the UTF-8 request body, keyed with the base64-decoded security token
+  shown once when the webhook is created. That is as simple to verify as Slack's.
+- But it is invoked only when a person **@mentions** the webhook in a public channel, and **an Adaptive
+  Card in an outgoing webhook supports only `openURL` actions**: it cannot carry an Approve button that
+  sends a press back. So a Teams proposal cannot have the one-click Approve and Decline the other two have.
+- A button that sends a press back needs a **bot** (a Bot Framework registration), whose requests carry a
+  JWT checked against Microsoft's published signing keys. That is an Azure registration (an account) and a
+  key fetch by the hosted app, an outbound request outside the fetcher. The Bot Framework authentication
+  page could not be fetched from this session, so the JWT scheme is not cited here.
+
+The options: (1) **text commands over the outgoing webhook**: a person writes `@Gaugeline approve <draft
+id>` in the channel, the request is HMAC-verified, and the answer goes back in the response. No account
+beyond the webhook, but no button, and a draft id has to be typed or pasted. (2) **A bot**, with buttons,
+which needs the Azure registration and the key fetch. (3) **Leave Teams out of v1.** Nothing about Teams
+is built until this is decided.
+
 ## What a request must pass, in this order
 
 A request stops at the first check it fails, and nothing later runs. The five answer `401` with the same
@@ -189,7 +345,7 @@ secret, a signature or a body).
 
 Slack's scheme is HMAC-SHA256 of `v0:<timestamp>:<raw body>` under the app's signing secret, with a
 five-minute window. Slack's own reference code refuses only an old timestamp; this also refuses one from
-the future. Discord uses an Ed25519 signature and Teams a bearer token or an HMAC; those arrive with part 3.
+the future. Discord's scheme is in the Discord section; Teams is not built.
 
 ## Who the click is
 

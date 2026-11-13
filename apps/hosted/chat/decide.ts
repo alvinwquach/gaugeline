@@ -8,7 +8,8 @@
  * and a compromised endpoint can do no more than a confirmed, allowed member's own press could.
  *
  * What this file does, in order:
- *   1. the signed request named this workspace (a payload for another workspace is refused);
+ *   1. the signed request named this connection's workspace (a payload for another one, or a connection
+ *      with none recorded, is refused);
  *   2. the database decides (see chat_decide: unknown or unconfirmed user, client viewer, another
  *      organisation's draft, already decided, expired, closed finding);
  *   3. an approval enqueues the apply job in the same transaction, from the row the database returns. The
@@ -81,7 +82,9 @@ export async function decideFromChat(
   connection: ChatConnection,
   action: ChatAction,
 ): Promise<ChatDecision> {
-  if (connection.workspaceRef !== null && action.workspace !== connection.workspaceRef)
+  // A connection with no workspace id checks nothing about where a press came from, so it decides nothing:
+  // connectChat requires one, and a row written any other way fails closed here.
+  if (connection.workspaceRef === null || action.workspace !== connection.workspaceRef)
     return { status: "wrong-workspace" };
   if (!UUID.test(action.draftId)) return { status: "not-found" };
   try {

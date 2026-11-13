@@ -412,6 +412,18 @@ export {
   slackDecidedMessage,
   slackPrivateReply,
 } from "./notify/slack-approval.js";
+export {
+  checkDiscordWebhook,
+  DISCORD_ACK,
+  DISCORD_APPROVE,
+  DISCORD_DECLINE,
+  DISCORD_PONG,
+  discordApprovalMessage,
+  discordDecidedData,
+  discordPrivateReply,
+  discordUpdateMessage,
+} from "./notify/discord-approval.js";
+export type { DiscordEmbed, DiscordMessage } from "./notify/discord-approval.js";
 export type {
   ApprovalRequest,
   Decided,
