@@ -229,7 +229,7 @@ Blue Heron Pop-Up is an invented pop-up bar that lists its next dates from Sanit
 <!-- source-fixture: revalidate-time-and-tag-mixed/fail -->
 
 ```sh title=Terminal untested="The docs runner points every example at a fixture website, and this command reads a folder. packages/cli/src/__tests__/source-webhook-docs.test.ts runs the same command on the same invented folder (packages/fixtures/source/revalidate-time-and-tag-mixed/fail) and compares the Output block with what it prints."
-$ npx gaugeline source ./blue-heron-pop-up
+$ npx gaugeline source ./blue-heron-pop-up --only revalidate-time-and-tag-mixed
 ```
 
 ```sh title=Output
