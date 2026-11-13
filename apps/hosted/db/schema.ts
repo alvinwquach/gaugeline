@@ -37,6 +37,8 @@ export const sites = pgTable("sites", {
   createdAt: createdAt(),
   /** A paused site gets no nightly job (0004). */
   active: boolean("active").notNull().default(true),
+  /** The agency's client this site is grouped under (X66); null when ungrouped. */
+  clientId: uuid("client_id"),
 }).enableRLS();
 
 export type MemberRole = "owner" | "admin" | "member" | "client";
@@ -232,6 +234,60 @@ export const runChanges = pgTable(
   },
   (t) => [index("run_changes_site_idx").on(t.siteId, t.createdAt.desc())],
 ).enableRLS();
+
+/** An agency's client (X66): one business, which may have several sites. Staff only. */
+export const clients = pgTable("clients", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orgId: uuid("org_id").notNull(),
+  name: text("name").notNull(),
+  createdAt: createdAt(),
+}).enableRLS();
+
+/** An invitation as data (X66): only the SHA-256 of its token is stored; nothing here sends an email. */
+export const invites = pgTable(
+  "invites",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id").notNull(),
+    email: text("email").notNull(),
+    role: text("role").$type<MemberRole>().notNull(),
+    siteId: uuid("site_id"),
+    invitedBy: uuid("invited_by").notNull(),
+    tokenSha256: text("token_sha256").notNull().unique(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: createdAt(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    acceptedBy: uuid("accepted_by"),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+  },
+  (t) => [index("invites_org_idx").on(t.orgId, t.createdAt.desc())],
+).enableRLS();
+
+/** The weekly update drafted for one client (X66). Append-only; approved in the drafts inbox. */
+export const weeklyUpdates = pgTable("weekly_updates", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orgId: uuid("org_id").notNull(),
+  clientId: uuid("client_id").notNull(),
+  weekStart: date("week_start").notNull(),
+  siteIds: uuid("site_ids").array().notNull(),
+  subject: text("subject").notNull(),
+  body: text("body").notNull(),
+  draftId: uuid("draft_id").notNull().unique(),
+  createdAt: createdAt(),
+}).enableRLS();
+
+/** A weekly update as sent (X66): one row per update, its text filled from the approval. Append-only. */
+export const weeklyUpdateSends = pgTable("weekly_update_sends", {
+  id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+  orgId: uuid("org_id").notNull(),
+  updateId: uuid("update_id").notNull().unique(),
+  decisionId: bigint("decision_id", { mode: "number" }).notNull(),
+  clientId: uuid("client_id"),
+  siteIds: uuid("site_ids").array(),
+  subject: text("subject"),
+  body: text("body"),
+  sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+}).enableRLS();
 
 export type EmailFrequency = "every_change" | "fix_first" | "off";
 

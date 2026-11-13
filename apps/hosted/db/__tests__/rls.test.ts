@@ -54,9 +54,16 @@ const TENANT_TABLES = [
   // 0007: a person reads and changes their own email setting; the send log is the server's.
   "email_preferences",
   "email_sends",
+  // Agencies (X66): clients, invites as data, the weekly update and its send record.
+  "clients",
+  "invites",
+  "weekly_updates",
+  "weekly_update_sends",
 ];
 
 const SERVER_ONLY = new Set(["tokens", "idempotency_keys", "jobs", "email_sends"]);
+// Readable column by column only: `select *` names the token hash, which no signed-in role may read.
+const COLUMNS_ONLY = new Set(["invites"]);
 
 describe.skipIf(!HAS_DATABASE)("hosted database: row-level security", () => {
   let db: TestDatabase;
@@ -560,7 +567,7 @@ describe.skipIf(!HAS_DATABASE)("hosted database: row-level security", () => {
             }),
           );
           // anon has no grant at all; a stranger has the grant but RLS returns nothing.
-          if (who.role === "anon" || SERVER_ONLY.has(table))
+          if (who.role === "anon" || SERVER_ONLY.has(table) || COLUMNS_ONLY.has(table))
             expect(msg, table).toMatch(/permission denied/);
           else expect(msg, table).toBe("");
         }

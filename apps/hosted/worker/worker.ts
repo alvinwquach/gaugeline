@@ -28,6 +28,13 @@ import { openDatabase } from "../lib/api/startup.js";
 import { cleanFindings, cleanReason, fitLimits, settleCrossField, stripNul } from "./clean.js";
 import { bounded, DeadlineError, guardFetcher } from "./deadline.js";
 import { diffRuns } from "./diff.js";
+import { morningCadence } from "./email/cadence.js";
+import {
+  type MorningDeps,
+  MORNING_EVERY_MS,
+  morningFromEnv,
+  sendMorningEmails,
+} from "./email/send.js";
 import { runPool } from "./pool.js";
 import {
   claimJobs,
@@ -302,19 +309,43 @@ export async function workOnce(deps: WorkerDeps, limit = 4): Promise<number> {
  */
 export async function runWorker(
   deps: WorkerDeps,
-  options: { signal: AbortSignal; limit?: number; idleMs?: number },
+  options: {
+    signal: AbortSignal;
+    limit?: number;
+    idleMs?: number;
+    morning?: MorningDeps | null;
+    /** For tests: the step run on the morning cadence (sendMorningEmails unless given). */
+    morningStep?: (deps: MorningDeps, now: Date) => Promise<unknown>;
+    /** For tests: how often the step is due (MORNING_EVERY_MS unless given). */
+    morningEveryMs?: number;
+  },
 ): Promise<void> {
   const now = () => (deps.now ?? (() => new Date()))();
-  await runPool({
-    signal: options.signal,
-    limit: options.limit ?? 4,
-    idleMs: options.idleMs ?? 30_000,
-    claim: async (free) => {
-      await releaseExpired(deps.sql, now());
-      return claimJobs(deps.sql, free, now());
-    },
-    work: (job) => processJob(deps, job),
-  });
+  // The morning email (X64): every few minutes, whoever it is morning for. It is started from the claim
+  // without being awaited, so it never holds a free slot while a job is due, and a failure never stops the checks.
+  const morningDeps = options.morning;
+  const morning = morningDeps
+    ? morningCadence(
+        (at) => (options.morningStep ?? sendMorningEmails)(morningDeps, at),
+        now,
+        options.morningEveryMs ?? MORNING_EVERY_MS,
+      )
+    : undefined;
+  try {
+    await runPool({
+      signal: options.signal,
+      limit: options.limit ?? 4,
+      idleMs: options.idleMs ?? 30_000,
+      claim: async (free) => {
+        morning?.tick();
+        await releaseExpired(deps.sql, now());
+        return claimJobs(deps.sql, free, now());
+      },
+      work: (job) => processJob(deps, job),
+    });
+  } finally {
+    await morning?.settled();
+  }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
@@ -324,7 +355,9 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   openWorkerDatabase(process.env)
     .then(async (sql) => {
       try {
-        await runWorker({ sql }, { signal: stop.signal });
+        const morning = morningFromEnv(sql, process.env);
+        if (!morning) console.error("worker: the morning email is off (RESEND_API_KEY is not set)");
+        await runWorker({ sql }, { signal: stop.signal, morning });
       } finally {
         await sql.end({ timeout: 5 });
       }

@@ -191,9 +191,11 @@ export const UNLISTED: NavPage[] = [
   { slug: "hosted/api", title: "Hosted: the runs API (v1)" },
   { slug: "hosted/schedules", title: "Hosted: schedules and history" },
   { slug: "hosted/inbox", title: "Hosted: the inbox and approvals" },
+  { slug: "hosted/morning-email", title: "Hosted: the morning email" },
   { slug: "hosted/plan", title: "Hosted app plan" },
   { slug: "hosted/sign-in", title: "Hosted: sign in and the shell" },
   { slug: "hosted/dashboard", title: "Hosted: the dashboard" },
   { slug: "hosted/last-night", title: "Hosted: what happened last night" },
+  { slug: "hosted/agencies", title: "Hosted: agencies, client viewers and the weekly update" },
   { slug: "hosted/secrets", title: "Hosted: where secrets live" },
 ];

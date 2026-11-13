@@ -46,18 +46,19 @@ ERROR:  new row violates row-level security policy for table "sites"
 
 Every table has an `org_id` column and row-level security turned on.
 
-| Table               | What a row is                                                      | Notes                                                                                                 |
-| ------------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
-| `organisations`     | an agency or a business                                            | created by the server; owners and admins can rename it                                                |
-| `members`           | one person's role in one organisation                              | a `client` row names exactly one site                                                                 |
-| `sites`             | a site the organisation looks after                                | `timezone` sets when the nightly run starts                                                           |
-| `runs`              | one run of the checks against one site                             | `summary` holds counts, never the report                                                              |
-| `findings`          | one problem a run found                                            | `check_id`, `severity`, `title`, `evidence` (one line, at most 1000 characters), `url`, `fingerprint` |
-| `drafts`            | a proposed change waiting for a person                             | append-only; its state is the latest decision, not a column                                           |
-| `decisions`         | who approved, edited or declined a draft, and when                 | append-only                                                                                           |
-| `site_consents`     | the site owner's consent to probing checks                         | append-only                                                                                           |
-| `email_preferences` | one person's morning-email address and setting in one organisation | a person reads and changes only their own setting; the address is set by the server                   |
-| `email_sends`       | one morning email to one person on one local day                   | server-only; the key (person, organisation, day) is what stops a second copy                          |
+| Table                                                         | What a row is                                                      | Notes                                                                                                 |
+| ------------------------------------------------------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| `organisations`                                               | an agency or a business                                            | created by the server; owners and admins can rename it                                                |
+| `members`                                                     | one person's role in one organisation                              | a `client` row names exactly one site                                                                 |
+| `sites`                                                       | a site the organisation looks after                                | `timezone` sets when the nightly run starts                                                           |
+| `runs`                                                        | one run of the checks against one site                             | `summary` holds counts, never the report                                                              |
+| `findings`                                                    | one problem a run found                                            | `check_id`, `severity`, `title`, `evidence` (one line, at most 1000 characters), `url`, `fingerprint` |
+| `drafts`                                                      | a proposed change waiting for a person                             | append-only; its state is the latest decision, not a column                                           |
+| `decisions`                                                   | who approved, edited or declined a draft, and when                 | append-only                                                                                           |
+| `site_consents`                                               | the site owner's consent to probing checks                         | append-only                                                                                           |
+| `email_preferences`                                           | one person's morning-email address and setting in one organisation | a person reads and changes only their own setting; the address is set by the server                   |
+| `email_sends`                                                 | one morning email to one person on one local day                   | server-only; the key (person, organisation, day) is what stops a second copy                          |
+| `clients`, `invites`, `weekly_updates`, `weekly_update_sends` | an agency's clients, invites and weekly updates                    | see [agencies](./agencies.md)                                                                         |
 
 **No page content is stored.** A finding keeps the one evidence line the CLI prints, the address and a
 fingerprint. The database refuses a longer evidence value.
@@ -190,7 +191,7 @@ organisation that leaves needs an owner-run procedure; that decision is open (se
 
 ## Email settings
 
-The morning email (X64) needs a person's address, so the
+The morning email (see [Hosted: the morning email](./morning-email.md)) needs a person's address, so the
 address lives in `email_preferences`, one row per person and organisation, and nowhere else.
 
 - The server sets the address and when it was confirmed (signing in with it confirms it). Nothing is

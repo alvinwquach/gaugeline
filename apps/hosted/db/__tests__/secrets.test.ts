@@ -298,6 +298,8 @@ describe.skipIf(!HAS_DATABASE)("hosted database: secrets in Vault", () => {
         "agent_insert_draft",
       ]);
       expect(await privateFunctionsExecutableBy(sql, "authenticated")).toEqual([
+        // X66 (the agencies migration): a signed-in person accepts an invite sent to their email.
+        "accept_invite",
         "admin_org_ids",
         "client_site_ids",
         "member_org_ids",
