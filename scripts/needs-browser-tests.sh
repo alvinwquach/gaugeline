@@ -27,6 +27,7 @@ patterns='^docs/
 ^packages/core/src/checks/
 ^packages/app/
 ^packages/app-server/
+^packages/playwright/
 ^scripts/(build-docs|check-docs|gen-checks|changelog-to-docs|build-demo|docs-examples)\.ts$
 ^scripts/lib/
 ^package\.json$
