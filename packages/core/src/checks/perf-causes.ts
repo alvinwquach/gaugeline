@@ -17,6 +17,9 @@ import { isHtmlPage } from "./page.js";
 
 const clip = (text: string): string => escapeInvisible(text, 160);
 
+/** An image is a hero, worth asking to be prioritised, when its width attribute says it is shown this wide or wider. */
+const HERO_WIDTH = 800;
+
 const htmlOf = (page: PageSnapshot): string => page.hops.at(-1)?.body ?? "";
 
 /** The page's inline scripts as the snapshot kept them (the start of each). */
@@ -133,7 +136,7 @@ export const perfLcpImage = defineCheck<PageSnapshot>({
   what: "The first large content image of the page, which is usually the largest paint, is lazy-loaded, or is neither preloaded nor marked fetchpriority high, or is asked for at more than twice the width it is shown.",
   why: "The largest paint is the number search engines and visitors judge a page's speed by. An image that the browser is told to wait for, that it finds late, or that is several times larger than needed delays it directly.",
   fix: 'Remove loading=lazy from the first large image, add fetchpriority="high" (or a preload link for it), and ask for it at about the width it is shown: a srcset and sizes, and a width parameter no larger than needed.',
-  tech: "The first img in the page's HTML outside a header, nav or footer, not named like a logo or icon and not under 300 by 100 pixels. Medium when it has loading=lazy, or when a width parameter or a Next.js image address asks for at least twice the width attribute and 1600 pixels (2560 when there is no width attribute); low when it only lacks both a preload link for its address and fetchpriority high. This is a guess at which image the browser picks, which is why the finding says the first large image; it fetches no image and the same page gives the same finding",
+  tech: "The first img in the page's HTML outside a header, nav or footer, not named like a logo or icon and not under 300 by 100 pixels. Medium when it has loading=lazy, or when a width parameter or a Next.js image address asks for at least twice the width attribute and 1600 pixels (2560 when there is no width attribute); low when it is written 800 pixels wide or more and lacks both a preload link for its address and fetchpriority high (an image with no width attribute, or a narrower one, is not asked to be prioritised: most pages have one). This is a guess at which image the browser picks, which is why the finding says the first large image; it fetches no image and the same page gives the same finding",
   run(page) {
     if (!isHtmlPage(page)) return [];
     const hero = heroImage(htmlOf(page), page.finalUrl);
@@ -143,7 +146,12 @@ export const perfLcpImage = defineCheck<PageSnapshot>({
     if (hero.lazy) {
       problems.push("is lazy-loaded, so the browser waits to fetch it");
       medium = true;
-    } else if (!hero.priorityHigh && !hero.preloaded) {
+    } else if (
+      !hero.priorityHigh &&
+      !hero.preloaded &&
+      hero.width !== undefined &&
+      hero.width >= HERO_WIDTH
+    ) {
       problems.push(
         'is not preloaded and has no fetchpriority="high", so the browser finds it late',
       );

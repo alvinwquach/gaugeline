@@ -33,7 +33,8 @@ tiny, and says so: it is a guess at which image the browser picks, not a measure
 
 - **Lazy** (`loading="lazy"`): the browser waits to fetch the image. Medium.
 - **Not preloaded and not high priority** (no `fetchpriority="high"`, no preload link for its address): the
-  browser finds it late. Low.
+  browser finds it late. Low, and only for an image written 800 pixels wide or more: a smaller one, or one with
+  no width written, is not asked to be prioritised, because almost every page has one.
 - **Oversized**: its address asks for at least twice the width it is shown at and 1600 pixels or more (a `w=`
   parameter or a Next.js image address), or 2560 pixels when there is no width. Medium.
 

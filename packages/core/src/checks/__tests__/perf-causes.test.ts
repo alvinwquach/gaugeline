@@ -193,6 +193,13 @@ describe("perf-lcp-image", () => {
     ]);
   });
 
+  it("does not ask a smaller image, or one with no width written, to be prioritised", async () => {
+    for (const s of [img('width="640" height="400"'), img(""), img('width="799"')])
+      expect(await perfLcpImage.run(s.snap, s.ctx)).toEqual([]);
+    const exactly = img('width="800"');
+    expect(await perfLcpImage.run(exactly.snap, exactly.ctx)).toHaveLength(1);
+  });
+
   it("is quiet when the image is marked high priority or preloaded", async () => {
     for (const s of [
       img('width="1200" fetchpriority="high"'),
