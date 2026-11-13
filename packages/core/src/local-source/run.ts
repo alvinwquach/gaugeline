@@ -1,3 +1,6 @@
+import { pageRobotsOverridesLayout } from "../checks/static/page-robots-overrides-layout.js";
+import { robotsDisallowHidesNoindex } from "../checks/static/robots-disallow-hides-noindex.js";
+import { sitemapWhileIndexingOff } from "../checks/static/sitemap-while-indexing-off.js";
 import { sanityCdnTaggedReads } from "../checks/static/sanity-cdn-tagged-reads.js";
 import { webhookMissingSecretStatus } from "../checks/static/webhook-missing-secret-status.js";
 import { CheckRegistry, type Check } from "../model.js";
@@ -46,6 +49,9 @@ export function staticFile(input: LocalSourceInput, path: string): StaticFile {
 
 /** Every static check, in the order the report lists them. */
 export const STATIC_CHECKS: readonly Check<LocalSourceInput>[] = [
+  pageRobotsOverridesLayout,
+  sitemapWhileIndexingOff,
+  robotsDisallowHidesNoindex,
   webhookMissingSecretStatus,
   sanityCdnTaggedReads,
   cmsTokenInClientCode,
