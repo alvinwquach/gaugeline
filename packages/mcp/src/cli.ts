@@ -2,6 +2,7 @@ import { resolve } from "node:path";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { startHttp } from "./http.js";
 import { normaliseHostPort } from "./net-guard.js";
+import { hostedFromEnv } from "./tools/hosted.js";
 import { DEFAULT_CALLS_PER_MINUTE, DEFAULT_COST_CEILING_MICROS, denyLine } from "./policy.js";
 import { TOOLS } from "./registry.js";
 import { SERVER_VERSION, createGaugelineServer } from "./server.js";
@@ -45,6 +46,9 @@ required whenever --allow-private, --allow-private-host, --root, --plan-base or 
 the token shares the session's runs.
 Every call is checked first against the agent policy (the flags above). GAUGELINE_AGENTS_OFF set to anything but 0
 refuses every call (reason "kill-switch-global"); it is read at every call. Each refusal is one line on stderr.
+list_pending_approvals and read_run_history are offered only when the environment holds GAUGELINE_HOSTED_API (the
+hosted API's https address) and GAUGELINE_AGENT_TOKEN (a registered agent's token with read:pending and read:runs).
+They read; nothing here approves. Over HTTP they need GAUGELINE_MCP_TOKEN too.
 Probing checks run only when you start the server with --allow-probing and --probing-origin for the site. A tool call has
 no argument that turns them on, so a page that tells an assistant to ask for them gets nothing.
 `;
@@ -184,7 +188,9 @@ export function installSafetyNet(io: Pick<Io, "stderr">, proc: Proc = process): 
 
 /** What the server is started with: the flags, and the environment and stderr of this process. */
 export function serverOptions(args: Parsed, io: Pick<Io, "env" | "stderr">): ServerOptions {
+  const hosted = hostedFromEnv(io.env);
   return {
+    ...(hosted ? { hosted } : {}),
     allowPrivate: args.allowPrivate,
     allowPrivateHosts: args.allowPrivateHosts,
     planBases: args.planBases,
@@ -217,7 +223,14 @@ export async function main(argv: string[], io: Io): Promise<number> {
     io.stdout.write(`${SERVER_VERSION}\n`);
     return 0;
   }
-  const options = serverOptions(args, io);
+  let options: ServerOptions;
+  try {
+    options = serverOptions(args, io);
+  } catch (e) {
+    // hostedFromEnv's messages name the variables, never their values.
+    io.stderr.write(`${(e as Error).message}\n`);
+    return 2;
+  }
   // Over HTTP, anything that widens what a tool can reach needs a token: without one, any process on the
   // machine could call the tools, and runs are shared by every caller.
   const widened =
@@ -225,10 +238,11 @@ export async function main(argv: string[], io: Io): Promise<number> {
     args.allowPrivateHosts.length > 0 ||
     args.root !== undefined ||
     args.planBases.length > 0 ||
-    args.allowProbing;
+    args.allowProbing ||
+    options.hosted !== undefined;
   if (args.http && widened && !io.env.GAUGELINE_MCP_TOKEN) {
     io.stderr.write(
-      "Over HTTP, --allow-private, --allow-private-host, --root, --plan-base and --allow-probing need a token: set GAUGELINE_MCP_TOKEN.\n",
+      "Over HTTP, --allow-private, --allow-private-host, --root, --plan-base, --allow-probing and GAUGELINE_HOSTED_API need a token: set GAUGELINE_MCP_TOKEN.\n",
     );
     return 2;
   }

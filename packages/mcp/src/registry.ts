@@ -15,6 +15,13 @@ import type { ServerOptions, ToolContext } from "./state.js";
 import { compareRuns, compareRunsInput } from "./tools/compare-runs.js";
 import { draftFix, draftFixInput } from "./tools/draft-fix.js";
 import { explainFinding, explainFindingInput } from "./tools/explain-finding.js";
+import {
+  hostedEnabled,
+  listPendingApprovals,
+  listPendingInput,
+  readRunHistory,
+  runHistoryInput,
+} from "./tools/hosted.js";
 import { listChecks, listChecksInput } from "./tools/list-checks.js";
 import { planCheck, planCheckInput } from "./tools/plan-check.js";
 import { runCheck, runCheckInput } from "./tools/run-check.js";
@@ -114,6 +121,30 @@ export const TOOLS = {
     enabled: (o) => Boolean(o.root) && (o.planBases?.length ?? 0) > 0,
     inputSchema: planCheckInput,
     run: planCheck,
+  }),
+  list_pending_approvals: tool({
+    kind: "read",
+    title: "List drafts waiting for approval",
+    summary:
+      "Lists the drafts in the hosted inbox that wait for a person's decision (newest first, at most 50 a page): ids, kind, a title and short excerpt, the payload's hash, when it expires. It approves nothing: a person decides in the inbox. Offered only when the operator set GAUGELINE_HOSTED_API and GAUGELINE_AGENT_TOKEN; one GET to that address.",
+    // The title and excerpt are an agent's words, which may quote a page.
+    pageText: true,
+    untrustedSlots: ["drafts[].title", "drafts[].excerpt"],
+    requests: true,
+    enabled: hostedEnabled,
+    inputSchema: listPendingInput,
+    run: listPendingApprovals,
+  }),
+  read_run_history: tool({
+    kind: "read",
+    title: "Read a site's run history",
+    summary:
+      "Reads one site's runs from the hosted workspace, newest first, at most 50 a page: when each ran and its counts by severity. Offered only when the operator set GAUGELINE_HOSTED_API and GAUGELINE_AGENT_TOKEN; one GET to that address.",
+    pageText: false,
+    requests: true,
+    enabled: hostedEnabled,
+    inputSchema: runHistoryInput,
+    run: readRunHistory,
   }),
   draft_fix: tool({
     kind: "draft",

@@ -6,6 +6,7 @@
  * planted: all of them must be inside a declared slot.
  */
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -325,6 +326,76 @@ describe("list_checks", () => {
     const out = expectContract("list_checks", await call("list_checks", {}));
     expect(walkSlots(out).slots).toEqual([]);
     expect(TOOLS.list_checks.untrustedSlots ?? []).toEqual([]);
+  });
+});
+
+describe("list_pending_approvals and read_run_history (AG-08)", () => {
+  // A stand-in hosted API whose drafts quote the hostile page: an agent's words may carry page text.
+  let api: Server;
+  let hosted: Connected;
+  const words = `${CANARY.title} ${INJECTION}${HIDDEN}${TAGGED} ${"y".repeat(5000)}`;
+  beforeAll(async () => {
+    api = createServer((req, res) => {
+      res.writeHead(200, { "content-type": "application/json" });
+      const draft = {
+        id: "a1d20000-0000-4000-8000-0000000000a2",
+        siteId: "a1000000-0000-4000-8000-0000000000a1",
+        kind: "email",
+        title: { untrusted: true, source: "draft title", text: words },
+        excerpt: {
+          untrusted: true,
+          source: "draft excerpt",
+          text: `${CANARY.description} ${words}`,
+        },
+        payloadSha256: "c".repeat(64),
+        createdAt: "2026-11-13T09:15:00.000Z",
+        expiresAt: "2026-11-16T09:15:00.000Z",
+        findingIds: [],
+      };
+      const run = {
+        id: "a1a10000-0000-4000-8000-0000000000a1",
+        startedAt: "2026-11-10T03:00:00.000Z",
+        finishedAt: null,
+        summary: { high: 1, url: `https://x.test/${CANARY.link}`, failed: [CANARY.meta] },
+      };
+      res.end(
+        JSON.stringify(
+          (req.url ?? "").startsWith("/api/v1/drafts")
+            ? { drafts: [draft], nextCursor: null }
+            : { runs: [run], nextCursor: null },
+        ),
+      );
+    });
+    await new Promise<void>((r) => api.listen(0, "127.0.0.1", r));
+    const base = `http://127.0.0.1:${(api.address() as { port: number }).port}/api/v1`;
+    hosted = await connect({
+      allowPrivate: true,
+      hosted: { base, token: ["gla", "0a1b2c3d", "T".repeat(43)].join("_") },
+    });
+  });
+  afterAll(async () => {
+    await hosted.close();
+    await new Promise((r) => api.close(r));
+  });
+
+  it("clean case: an agent's words that quote a page come back only in the title and excerpt slots", async () => {
+    const out = expectContract(
+      "list_pending_approvals",
+      await hosted.client.callTool({ name: "list_pending_approvals", arguments: {} }),
+    );
+    expect(JSON.stringify(out)).toContain(CANARY.title);
+  });
+
+  it("clean case: run history carries counts only, none of the upload's text", async () => {
+    const out = expectContract(
+      "read_run_history",
+      await hosted.client.callTool({
+        name: "read_run_history",
+        arguments: { site: "a1000000-0000-4000-8000-0000000000a1" },
+      }),
+    );
+    expect(walkSlots(out).slots).toEqual([]);
+    expect(JSON.stringify(out)).not.toContain(CANARY.link);
   });
 });
 

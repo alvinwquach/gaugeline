@@ -67,6 +67,11 @@ export interface ServerOptions {
   toolCostMicros?: (tool: string) => number;
   /** Where each deny is logged (default: one line on stderr). Gets the time, the tool and the reason only. */
   onDeny?: (entry: AgentDenyLog) => void;
+  /**
+   * The hosted API and the agent's own token (AG-08), from GAUGELINE_HOSTED_API and GAUGELINE_AGENT_TOKEN
+   * only (cli.ts). Without it list_pending_approvals and read_run_history are not offered. Never a tool argument.
+   */
+  hosted?: { base: string; token: string };
   /** Shared by every server made from the same options (the HTTP transport makes one per request). */
   state?: ServerState;
 }
