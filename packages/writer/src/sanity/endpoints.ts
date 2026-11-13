@@ -25,7 +25,7 @@ export interface SanityRequest {
 export interface SanityTarget {
   projectId: string;
   dataset: string;
-  /** "v" and a date: the API version the requests are written for. */
+  /** The API version the requests are written for: only the pinned one (`SANITY_API_VERSIONS`) is accepted. */
   apiVersion: string;
 }
 
@@ -51,27 +51,27 @@ export const SANITY_ENDPOINTS: Readonly<Record<SanityEndpointId, Endpoint>> = Ob
 
 const PROJECT_ID = /^[a-z0-9][a-z0-9-]{0,30}$/;
 const DATASET = /^[a-z0-9][a-z0-9_-]{0,63}$/;
-const API_VERSION = /^v(\d{4})-(\d{2})-(\d{2})$/;
+/**
+ * The one API version the request shapes were read for: the date in the Sanity client README's examples
+ * (`apiVersion: '2025-02-06'`) when the registry was written. A customer's configuration cannot name another;
+ * a later version is a change to this list, made with the shapes re-read, not a setting.
+ */
+export const SANITY_API_VERSIONS: readonly string[] = Object.freeze(["v2025-02-06"]);
 /** A document id the writer will read or name: letters, digits, `_` and `-`, not starting with `_`. */
 const PLAIN_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
 /** A document type, and a field name: a letter first, so Sanity's own `_id`, `_type`, `_rev` are never named. */
 const FIELD = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
 const DRAFTS = "drafts.";
 
-/** True when `target` is plain names: a lower-case project id and dataset, and "v" with a real calendar date. */
+/** True when `target` is plain names (a lower-case project id and dataset) and the pinned API version. */
 export function isSanityTarget(t: SanityTarget): boolean {
-  const v = typeof t.apiVersion === "string" ? API_VERSION.exec(t.apiVersion) : null;
-  if (!v) return false;
-  const [year, month, day] = [Number(v[1]), Number(v[2]), Number(v[3])];
-  const date = new Date(Date.UTC(year, month - 1, day));
   return (
     typeof t.projectId === "string" &&
     PROJECT_ID.test(t.projectId) &&
     typeof t.dataset === "string" &&
     DATASET.test(t.dataset) &&
-    date.getUTCFullYear() === year &&
-    date.getUTCMonth() === month - 1 &&
-    date.getUTCDate() === day
+    typeof t.apiVersion === "string" &&
+    SANITY_API_VERSIONS.includes(t.apiVersion)
   );
 }
 

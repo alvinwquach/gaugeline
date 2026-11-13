@@ -17,6 +17,7 @@ export {
   checkSanityRequest,
   isPlainDocumentId,
   isSanityTarget,
+  SANITY_API_VERSIONS,
   SANITY_ENDPOINTS,
   SanityRegistryError,
   type SanityEndpointId,

@@ -8,13 +8,14 @@ import {
   checkSanityRequest,
   isPlainDocumentId,
   isSanityTarget,
+  SANITY_API_VERSIONS,
   SANITY_ENDPOINTS,
   SanityRegistryError,
   type SanityRequest,
   type SanityTarget,
 } from "../sanity/endpoints.js";
 
-const T: SanityTarget = { projectId: "tidewtr1", dataset: "production", apiVersion: "v2025-02-19" };
+const T: SanityTarget = { projectId: "tidewtr1", dataset: "production", apiVersion: "v2025-02-06" };
 const DOC = `/${T.apiVersion}/data/doc/${T.dataset}`;
 const MUTATE = `/${T.apiVersion}/data/mutate/${T.dataset}`;
 // Words the registry must never accept, built so this file does not spell them out.
@@ -176,6 +177,12 @@ describe("each guard refuses its own fault", () => {
 });
 
 describe("the target is checked as plain names", () => {
+  it("pins the API version to the one the request shapes were read for", () => {
+    expect(SANITY_API_VERSIONS).toEqual(["v2025-02-06"]);
+    expect(Object.isFrozen(SANITY_API_VERSIONS)).toBe(true);
+    expect(() => (SANITY_API_VERSIONS as string[]).push("v2025-02-19")).toThrow();
+  });
+
   it("accepts a plain project id, dataset and API version", () => {
     expect(isSanityTarget(T)).toBe(true);
     expect(isSanityTarget({ ...T, dataset: "staging_2" })).toBe(true);
@@ -194,12 +201,16 @@ describe("the target is checked as plain names", () => {
     { dataset: "a/b" },
     { dataset: "a..b" },
     { dataset: "~x" },
-    { apiVersion: "2025-02-19" },
-    { apiVersion: "v2025-13-01" },
-    { apiVersion: "v2025-02-30" },
+    { apiVersion: "2025-02-06" },
+    { apiVersion: "v2025-13-01" }, // not a date
+    { apiVersion: "v2025-02-30" }, // not a date
+    { apiVersion: "v2025-02-19" }, // a real date, but not the version the request shapes were read for
+    { apiVersion: "v2021-03-25" },
+    { apiVersion: "v2025-02-06 " },
+    { apiVersion: "V2025-02-06" },
     { apiVersion: "vX" },
     { apiVersion: "v1" },
-    { apiVersion: "v2025-02-19/../x" },
+    { apiVersion: "v2025-02-06/../x" },
   ])
     it(`refuses ${JSON.stringify(bad)}`, () => {
       expect(isSanityTarget({ ...T, ...bad })).toBe(false);
