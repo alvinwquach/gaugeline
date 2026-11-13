@@ -46,8 +46,11 @@ sitemap was tidied, and the other two findings are the same. Run from `packages/
 `node --import tsx example.mts`:
 
 ```ts
-import { buildRegressionMessage, buildRegressionReport } from "./src/regression-watcher/index.js";
-import { EXAMPLE_CURRENT, EXAMPLE_PREVIOUS } from "./src/regression-watcher/example.js";
+import {
+  buildRegressionMessage,
+  buildRegressionReport,
+} from "./src/agents/regression-watcher/index.js";
+import { EXAMPLE_CURRENT, EXAMPLE_PREVIOUS } from "./src/agents/regression-watcher/example.js";
 
 const report = buildRegressionReport(EXAMPLE_PREVIOUS, EXAMPLE_CURRENT);
 const message = buildRegressionMessage(report, { siteName: "Saltmarsh Bakery" });

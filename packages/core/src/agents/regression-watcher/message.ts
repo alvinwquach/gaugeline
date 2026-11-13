@@ -8,8 +8,8 @@
  * every title and the site name is escaped (a page-derived word is text, never a link, tag, mention or
  * heading). The message holds no address: it does not know the hosted app's routes.
  */
-import { SEVERITY_LABEL } from "../model.js";
-import { forMarkdown } from "../untrusted-output.js";
+import { SEVERITY_LABEL } from "../../model.js";
+import { forMarkdown } from "../../untrusted-output.js";
 import type { RegressionReport } from "./compare.js";
 
 /** An agent's message for the person who owns the site. `kind` names the shape for whatever delivers it. */

@@ -6,9 +6,9 @@
  * and no case calls a model, because v1 needs none. A later wording step would sit behind the same EvalModel
  * with a recorded fake.
  */
-import type { AgentLimits } from "../agent-policy.js";
-import { createReplayModel } from "../evals/replay.js";
-import { MAX_EVAL_INPUT_CHARS } from "../evals/types.js";
+import type { AgentLimits } from "../../agent-policy.js";
+import { createReplayModel } from "../../evals/replay.js";
+import { MAX_EVAL_INPUT_CHARS } from "../../evals/types.js";
 import type {
   EvalAgent,
   EvalAssertionId,
@@ -17,8 +17,8 @@ import type {
   EvalInput,
   EvalModel,
   EvalRecording,
-} from "../evals/types.js";
-import { markUntrusted } from "../untrusted.js";
+} from "../../evals/types.js";
+import { markUntrusted } from "../../untrusted.js";
 import { buildRegressionReport, regressionReportSchema, type RegressionReport } from "./compare.js";
 import { EXAMPLE_CURRENT, EXAMPLE_PREVIOUS } from "./example.js";
 

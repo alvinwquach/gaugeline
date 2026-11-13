@@ -10,9 +10,9 @@
  * everything else a finding carries are never read.
  */
 import * as z from "zod";
-import { SEVERITIES, SEVERITY_ORDER, type Severity } from "../model.js";
-import type { Result } from "../result.js";
-import { sanitise, UNTRUSTED_CAPS } from "../untrusted.js";
+import { SEVERITIES, SEVERITY_ORDER, type Severity } from "../../model.js";
+import type { Result } from "../../result.js";
+import { sanitise, UNTRUSTED_CAPS } from "../../untrusted.js";
 
 /** Most findings one run may hold. Over it the input is refused (a site's run holds far fewer). */
 export const MAX_REGRESSION_FINDINGS = 2000;

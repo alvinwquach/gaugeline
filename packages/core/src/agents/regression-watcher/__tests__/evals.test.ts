@@ -15,7 +15,7 @@ import {
   runEvals,
   traceHash,
   validateEvalSet,
-} from "../../index.js";
+} from "../../../index.js";
 import {
   REGRESSION_WATCHER_AGENT,
   buildRegressionMessage,
@@ -161,7 +161,7 @@ describe("evaluated", () => {
 
 describe("the docs page", () => {
   const page = readFileSync(
-    fileURLToPath(new URL("../../../../../docs/regression-watcher.md", import.meta.url)),
+    fileURLToPath(new URL("../../../../../../docs/regression-watcher.md", import.meta.url)),
     "utf8",
   );
   const block = (title: string) =>

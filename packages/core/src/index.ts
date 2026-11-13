@@ -1915,7 +1915,7 @@ export {
   regressionReportSchema,
   regressionWatcherAgent,
   regressionWatcherCases,
-} from "./regression-watcher/index.js";
+} from "./agents/regression-watcher/index.js";
 export type {
   RegressionFinding,
   RegressionListed,
@@ -1923,4 +1923,4 @@ export type {
   RegressionMessageOptions,
   RegressionReport,
   RegressionWorsened,
-} from "./regression-watcher/index.js";
+} from "./agents/regression-watcher/index.js";

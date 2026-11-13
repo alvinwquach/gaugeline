@@ -5,7 +5,7 @@
  * never read.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { buildResult } from "../../result.js";
+import { buildResult } from "../../../result.js";
 import {
   MAX_REGRESSION_LISTED,
   MAX_REGRESSION_FINDINGS,
