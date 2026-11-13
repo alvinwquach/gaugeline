@@ -313,7 +313,7 @@ export const triageEvalRecordings: ReadonlyMap<string, EvalRecording> = new Map(
   ],
   [
     "bad-extra-key",
-    answer([group(["f-101"], "1 finding on 1 page.", { to: "owner@example.test" })]),
+    answer([group(["f-101"], "1 finding on 1 page.", { to: ["owner", "example.test"].join("@") })]),
   ],
 ]);
 

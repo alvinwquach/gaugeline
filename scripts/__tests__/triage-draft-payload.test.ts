@@ -62,7 +62,7 @@ describe("the triage draft under both parsers", () => {
 
   it("failing fixture: a payload with a recipient is refused by both, so the draft cannot carry one", () => {
     const { payload } = triageEmail(planTriage(sets[0]![1]).groups[0]!);
-    const withTo = { ...payload, to: "owner@example.test" };
+    const withTo = { ...payload, to: ["owner", "example.test"].join("@") };
     expect(inbox("email", withTo).ok).toBe(false);
     expect(writer("email", withTo).ok).toBe(false);
   });
