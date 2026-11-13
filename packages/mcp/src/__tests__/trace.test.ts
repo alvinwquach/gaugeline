@@ -124,6 +124,27 @@ describe("one trace line per call, the shared shape", () => {
   });
 });
 
+describe("the agent id is the server's own, never the caller's", () => {
+  it("arguments that name another agent do not change the record's agentId", async () => {
+    const sink = memorySink();
+    await calls({ trace: sink }, async (call) => {
+      await call("list_checks", { agentId: "attacker-agent", agent_id: "attacker-agent" });
+      await call("explain_finding", { id: "attacker-agent" });
+      await call("run_check", { url, checks: ["viewport"], agentId: "attacker-agent" });
+    });
+    expect(sink.records.length).toBeGreaterThanOrEqual(2);
+    for (const r of sink.records) expect(r.agentId).toBe(MCP_AGENT_ID);
+  });
+
+  it("the server's code sets agentId from the fixed identity only (any other source fails here)", () => {
+    const src = readFileSync(fileURLToPath(new URL("../server.ts", import.meta.url)), "utf8");
+    const uses = [...src.matchAll(/agentId:\s*([^,\n}]+)/g)].map((m) => m[1]!.trim());
+    expect(uses.length).toBeGreaterThanOrEqual(2);
+    expect(new Set(uses)).toEqual(new Set(["MCP_AGENT_ID"]));
+    expect(MCP_AGENT_ID).toBe("gaugeline-mcp");
+  });
+});
+
 describe("nothing from the call or the page is stored", () => {
   it("a URL with a key in its query and a page with an email leave neither in the trace line", async () => {
     const out: string[] = [];
