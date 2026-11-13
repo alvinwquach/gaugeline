@@ -235,7 +235,12 @@ describe.skipIf(!HAS_DATABASE)("hosted notifications: database, Vault and stand-
     expect(queued).toBe(1);
     // Queuing twice (a retried job) adds nothing.
     await sql.begin((tx) =>
-      queueRunNotifications(tx, { orgId: ORG_A, siteId: SITE_A1, runId: RUN_A1, now: new Date() }),
+      queueRunNotifications(tx, {
+        orgId: ORG_A,
+        siteId: SITE_A1,
+        runId: RUN_A1,
+        now: new Date("2026-11-13T12:00:00Z"),
+      }),
     );
     expect(await deliverDue(deps())).toBe(1);
     expect(hits).toHaveLength(1);
@@ -309,7 +314,12 @@ describe.skipIf(!HAS_DATABASE)("hosted notifications: database, Vault and stand-
         '/menu links to /drinks-2025 (404)', 'https://tidewater-bar.test/menu', '0123456789abcdef')`;
     for (const run of [RUN_A1, RUN_2])
       await sql.begin((tx) =>
-        queueRunNotifications(tx, { orgId: ORG_A, siteId: SITE_A1, runId: run, now: new Date() }),
+        queueRunNotifications(tx, {
+          orgId: ORG_A,
+          siteId: SITE_A1,
+          runId: run,
+          now: new Date("2026-11-13T12:00:00Z"),
+        }),
       );
     await deliverDue(deps());
     const sentry = hits.filter((h) => h.path === "/api/4500000000000002/store/");
