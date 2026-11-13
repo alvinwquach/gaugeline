@@ -235,6 +235,17 @@ const BUILT_TEXT: Record<(typeof BUILT_CHECK_IDS)[number], CheckTextAt> = {
     fix: "Add the section with that id, or change the row to the id the page uses.",
     tech: "The row's fragment against every element id in the HTML the preview sends",
   },
+  "plan-moved-not-indexable": {
+    size: "S",
+    done: "Each moved page can be indexed: no noindex in the page or its headers, and no robots.txt rule that blocks it.",
+    estimateChanges:
+      "A noindex left from the staging site is one setting; a robots.txt copied from staging is one file.",
+    severity: "high",
+    what: "A page that replaces an old address (a row with a Legacy URL) is set not to be indexed: a robots meta tag or X-Robots-Tag header says noindex, or robots.txt blocks its path for Googlebot.",
+    why: "The old address now redirects to a page that search engines are told to leave out, so the ranking the redirect was meant to move has nowhere to go and the page drops out of results.",
+    fix: "Remove the noindex (or the robots.txt rule) from the moved pages when the site goes live. Staging settings are usually the cause.",
+    tech: "Plan rows with a Legacy URL whose path differs from the row's. The page already fetched on --base: robots meta content and X-Robots-Tag containing noindex or none (a bot-named directive such as googlebot: noindex counts); one GET of /robots.txt on --base, only when a page has moved, and the longest matching rule for Googlebot (Allow wins a tie). When every page read, two or more, is set that way it is the preview's own switch: those rows are could-not-check, never a finding. The canonical of a moved page is judged by plan-canonical-elsewhere",
+  },
 };
 
 export const planBuiltChecks = BUILT_CHECK_IDS.map((id) =>
