@@ -2,11 +2,20 @@
  * The program shown on docs/model-gateway.md. A test runs it and compares what it returns with the page, word
  * for word, and checks that every line of the page's code is a line of this file.
  */
-import { ModelGatewayError, createGateway, createRecordedAdapter } from "./index.js";
+import {
+  ModelGatewayError,
+  createGateway,
+  createRecordedAdapter,
+  shownModelId,
+  shownProvider,
+} from "./index.js";
 
 export async function runExample(): Promise<string> {
   // What a config file holds: a provider and a model id per tier. Never a key, never a host.
-  const config = { provider: "recorded", tiers: { fast: "word-small", strong: "word-large" } };
+  const config = {
+    provider: "recorded",
+    tiers: { fast: "recorded-small", strong: "recorded-large" },
+  };
   // One answer a model gave once, recorded under the id of the call that asked for it.
   const answers = new Map([
     [
@@ -30,7 +39,9 @@ export async function runExample(): Promise<string> {
     callId: "reword-1",
     prompt: `Reword for the owner: the menu link gives a 404. Reply to ${["baker", "example.test"].join("@")}`,
   });
-  out.push(`tier ${answer.tier} -> model ${answer.model} (provider ${answer.provider})`);
+  out.push(
+    `tier ${answer.tier} -> model ${shownModelId(answer.provider, answer.model)} (provider ${shownProvider(answer.provider)})`,
+  );
   out.push(`text: ${answer.text}`);
   out.push(
     `usage: ${answer.usage.inputTokens} in, ${answer.usage.outputTokens} out, ${answer.usage.costMicros} micro-units`,

@@ -191,8 +191,9 @@ describe("what an answer costs", () => {
         agentId: "triage",
         callId: "call-1",
         tier: "fast",
-        provider: "test",
-        model: "small-model",
+        // Neither the provider nor the model is on the known list, so neither is shown, not even in part.
+        provider: "[not on the known list]",
+        model: "[not on the known list]",
         inputTokens: 2_000,
         outputTokens: 200,
         tokens: 2_200,
@@ -393,9 +394,25 @@ describe("the estimate before a run", () => {
     expect(e.ok).toBe(true);
     if (!e.ok) return;
     expect(e.calls).toEqual([
-      { model: "small-model", inputTokens: 2_000, maxOutputTokens: 1_000, costMicros: 1_750 },
-      { model: "small-model", inputTokens: 2_000, maxOutputTokens: 1_000, costMicros: 1_750 },
-      { model: "large-model", inputTokens: 1_000, maxOutputTokens: 500, costMicros: 10_500 },
+      // A public field: a model that is not on the known list is the fixed text, never the configured id.
+      {
+        model: "[not on the known list]",
+        inputTokens: 2_000,
+        maxOutputTokens: 1_000,
+        costMicros: 1_750,
+      },
+      {
+        model: "[not on the known list]",
+        inputTokens: 2_000,
+        maxOutputTokens: 1_000,
+        costMicros: 1_750,
+      },
+      {
+        model: "[not on the known list]",
+        inputTokens: 1_000,
+        maxOutputTokens: 500,
+        costMicros: 10_500,
+      },
     ]);
     expect(e.inputTokens).toBe(5_000);
     expect(e.outputTokens).toBe(2_500);
@@ -409,7 +426,9 @@ describe("the estimate before a run", () => {
 
   it("says which models have no price, and gives no cost", () => {
     const e = estimateRun(config(), [{ ...plan[0], model: "mystery-model" }]);
-    expect(e).toEqual({ ok: false, unpriced: ["mystery-model"] });
+    expect(e).toEqual({ ok: false, unpriced: ["[not on the known list]"] });
+    const known = estimateRun(config(), [{ ...plan[0], model: "example-large" }]);
+    expect(known).toEqual({ ok: false, unpriced: ["example-large"] });
   });
 
   it("is zero for a run with no model call (deterministic agents cost nothing)", () => {

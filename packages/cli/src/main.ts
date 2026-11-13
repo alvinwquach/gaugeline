@@ -162,6 +162,7 @@ import { runEvalsCommand } from "./evals.js";
 import { runMine } from "./mine.js";
 import { runHouseRules } from "./house-rules.js";
 import { runWriteCheck } from "./write-check.js";
+import { runLlm } from "./llm.js";
 import { runReceipts } from "./receipts.js";
 import { startRenderer, type StartRendererOptions } from "./renderer.js";
 import { runSource } from "./source.js";
@@ -1135,6 +1136,14 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       };
     case "mine":
       return { outcome: runMine(args, io, { cwd: deps.cwd ?? process.cwd() }), ci: true };
+    case "llm":
+      return {
+        outcome: runLlm(args, io, {
+          cwd: deps.cwd ?? process.cwd(),
+          env: io.env ?? process.env,
+        }),
+        ci: false,
+      };
     case "house-rules":
       return {
         outcome: runHouseRules(args, io, { cwd: deps.cwd ?? process.cwd() }),

@@ -69,7 +69,9 @@ describe("a gateway only from evaluated models", () => {
     const change = () =>
       gatewayFor({ provider: RECORDED_PROVIDER, tiers: newer }, pins({ tiers: newer }));
     expect(change).toThrow(CouldNotRunError);
-    expect(change).toThrow(/recorded-small-v2 but the recorded eval pass was for recorded-small/);
+    expect(change).toThrow(
+      /\[not on the known list\] but the recorded eval pass was for recorded-small/,
+    );
   });
 
   it("is built again once the pass is recorded for the new model", async () => {

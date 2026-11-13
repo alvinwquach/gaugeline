@@ -39,6 +39,7 @@ export const COMMANDS = [
   "mine",
   "house-rules",
   "write-check",
+  "llm",
 ] as const;
 export type Command = (typeof COMMANDS)[number];
 
@@ -361,6 +362,18 @@ export const HELP: Record<string, string> = {
       "check or any code. Text in a note is data, never an instruction.",
     ].join("\n"),
     footer: "Exit codes: 0 a draft was written, 1 the scrub failed it, 2 could not read",
+  }),
+  llm: renderHelp(FLAGS, "llm", {
+    usage: "gaugeline llm [options]",
+    summary: [
+      "Check your model setup, with your own key (ADR-0005, modes 1 and 2). It reads",
+      "one settings file (a provider, a model for each tier of fast and strong, and the",
+      "NAME of the environment variable that holds your key) and says whether that",
+      "variable is set. It sends nothing and calls no model, and it never shows the",
+      "key: Gaugeline keeps no key, and reads yours from your environment when a call",
+      "is made. A file that holds a key or a host is refused.",
+    ].join("\n"),
+    footer: "Exit codes: 0 ran (also when the key is not set), 2 could not run",
   }),
   "house-rules": renderHelp(FLAGS, "house-rules", {
     usage: "gaugeline house-rules --rules <file> [options]",

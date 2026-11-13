@@ -5,7 +5,6 @@
  * repeats what was written there (a person may have pasted a key into the wrong place).
  */
 import * as z from "zod";
-import { redactForTrace } from "../agent-trace.js";
 import {
   DEFAULT_MAX_OUTPUT_TOKENS,
   DEFAULT_TIMEOUT_MS,
@@ -14,12 +13,16 @@ import {
   type GatewayConfig,
 } from "./types.js";
 
-const PROVIDER = /^[a-z][a-z0-9-]{0,31}$/;
-/** An environment variable's name: capitals, digits and underscores. A key is never one of these (checked below). */
-const ENV_NAME = /^[A-Z][A-Z0-9_]{1,63}$/;
-const MODEL_ID = /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,99}$/;
+import { KNOWN_KEY_ENVS, isKnownKeyEnv, isNameShaped, recognisedSetting } from "./known.js";
 
-const modelId = z.string({ error: "must be a model id" }).regex(MODEL_ID, "must be a model id");
+const KNOWN_KEY_ENV_LIST = KNOWN_KEY_ENVS.join(", ");
+
+const modelId = z
+  .string({ error: "must be a model id" })
+  .refine(
+    isNameShaped,
+    "must be a model id: words and short version numbers in lower case, joined by dashes, dots or colons (a key is never one)",
+  );
 
 const tiers = z
   .object(Object.fromEntries(MODEL_TIERS.map((t) => [t, modelId.optional()])), {
@@ -35,17 +38,12 @@ export const gatewayConfigSchema = z
   .object({
     provider: z
       .string({ error: "must be a provider name" })
-      .regex(PROVIDER, "must be a provider name"),
+      .refine(isNameShaped, "must be a provider name: lower case words, joined by dashes"),
     keyEnv: z
       .string({ error: "must be the name of an environment variable" })
-      .regex(
-        ENV_NAME,
-        "must be the name of an environment variable, in capitals, never the key itself",
-      )
-      // A key in capitals and digits fits the pattern above; the redaction rules know the shapes of real ones.
       .refine(
-        (v) => redactForTrace(v) === v,
-        "must be the name of an environment variable, never the key itself",
+        isKnownKeyEnv,
+        `must be a variable a model key is kept in (${KNOWN_KEY_ENV_LIST}); add yours to the known list in the code, never the key itself`,
       )
       .optional(),
     tiers,
@@ -73,9 +71,8 @@ export const gatewayConfigSchema = z
 export type GatewayConfigResult =
   { ok: true; config: GatewayConfig } | { ok: false; problems: string[] };
 
-/** A setting's name, shown only when it is shaped like one; a pasted key used as a name is not shown. */
-const shownName = (k: string) =>
-  /^[A-Za-z][A-Za-z0-9_.-]{0,39}$/.test(k) && redactForTrace(k) === k ? k : "a setting";
+/** The settings this file has. */
+const SETTINGS = ["provider", "keyEnv", "tiers", "timeoutMs", "maxInputChars", "maxOutputTokens"];
 
 /** The config if `raw` is one, or the problems, one per line, each with where it is. */
 export function parseGatewayConfig(raw: unknown): GatewayConfigResult {
@@ -87,13 +84,17 @@ export function parseGatewayConfig(raw: unknown): GatewayConfigResult {
   const problems = r.error.issues.flatMap((issue) => {
     const where = issue.path.map(String).join(".");
     if (issue.code === "unrecognized_keys")
-      return issue.keys.map((k) => {
-        const name = shownName(k);
+      return issue.keys.map((k, i) => {
         const at = where === "" ? "" : `${where}.`;
-        const hint = /host|url|endpoint|proxy|private|address/i.test(name)
-          ? "where a provider is reached is kept in code, never in a file"
-          : "name the environment variable in keyEnv, never the key itself";
-        return `${at}${name}: is not a setting; ${hint}`;
+        // The user's spelling is never printed: only the canonical name of a recognised mistake or setting.
+        const seen = recognisedSetting(k, SETTINGS);
+        const hint =
+          seen?.kind === "mistake" && /host|url|endpoint|proxy|private|address/i.test(seen.name)
+            ? "where a provider is reached is kept in code, never in a file"
+            : "name the environment variable in keyEnv, never the key itself";
+        if (seen?.kind === "mistake") return `${at}"${seen.name}": is not a setting; ${hint}`;
+        const guess = seen ? `; did you mean "${seen.name}"?` : "";
+        return `${where === "" ? "" : `${where}: `}setting ${i + 1} is not one this file knows${guess}; ${hint}`;
       });
     return [`${where === "" ? "the config" : where}: ${issue.message}`];
   });
