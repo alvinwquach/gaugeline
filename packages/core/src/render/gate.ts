@@ -137,6 +137,12 @@ async function readCapped(
 export function createEgressGate(opts: {
   transport: Transport;
   limits?: Partial<RenderLimits>;
+  /**
+   * A refusal the load asked for itself (a variant that takes scripts from other sites away), judged on the address
+   * a request names and on every address a redirect names, before anything is sent. It can only add refusals: a
+   * request it lets through is judged by every other rule here.
+   */
+  refuse?: (target: string, req: GateRequest) => boolean;
 }): EgressGate {
   const limits: RenderLimits = { ...DEFAULT_RENDER_LIMITS, ...opts.limits };
   const requests: RenderedRequest[] = [];
@@ -198,6 +204,15 @@ export function createEgressGate(opts: {
     return out;
   }
 
+  /** The load's own refusal, failing closed: a callback that throws refuses the request. */
+  const refusedByLoad = (target: string, req: GateRequest): boolean => {
+    try {
+      return opts.refuse?.(target, req) === true;
+    } catch {
+      return true;
+    }
+  };
+
   async function handle(req: GateRequest): Promise<GateAnswer> {
     total += 1;
     if (closed) return block(req, "cap");
@@ -210,6 +225,7 @@ export function createEgressGate(opts: {
     if (req.frame === "popup") return block(req, "popup");
     const first = refusal(req.url);
     if (first !== undefined) return block(req, first);
+    if (refusedByLoad(req.url, req)) return block(req, "variant");
 
     const navigation = req.kind === "document";
     if (navigation && req.frame === "main") redirectPending = false;
@@ -240,6 +256,7 @@ export function createEgressGate(opts: {
         }
         const why = refusal(next);
         if (why !== undefined) return block(req, why, next);
+        if (refusedByLoad(next, req)) return block(req, "variant", next);
         if (navigation) {
           navHops += 1;
           if (navHops > limits.redirects) {

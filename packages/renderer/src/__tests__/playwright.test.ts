@@ -679,11 +679,55 @@ describe("the Playwright adapter: nothing but the gate answers a request", () =>
       // named as a literal.
       expect(text, file).not.toMatch(/Input\.(?:dispatch|insert|emulate|synthesize)\w*/);
       expect(text, file).not.toMatch(/\bInput\b\s*\./);
-      for (const m of text.matchAll(/\.send\(\s*([^,)]*)/g))
-        expect(m[1]?.trim(), `${file}: send(...)`).toBe('"Page.enable"');
+      expect(disallowedSends(file, text), `${file}: send(...)`).toEqual([]);
     }
     // Each click comes after looking in the page: the consent link is found by its text, a listed link is inspected.
     expect(observer.indexOf("findLinkByText(")).toBeLessThan(observer.indexOf(".click("));
     expect(observer.indexOf("inspectExpression(")).toBeLessThan(observer.lastIndexOf(".click("));
+  });
+});
+
+/**
+ * The protocol calls a file of the adapter may make, as literals: `Page.enable` anywhere (the form-navigation
+ * report), and `PerformanceTimeline.enable` in performance.ts only (PERF-02: the browser's own report of the
+ * largest paint, read only). Anything else, or a call whose name is not a literal, is returned.
+ */
+function disallowedSends(file: string, text: string): string[] {
+  const allowed = file === "performance.ts" ? '"PerformanceTimeline.enable"' : '"Page.enable"';
+  return [...text.matchAll(/\.send\(\s*([^,)]*)/g)]
+    .map((m) => m[1]?.trim() ?? "")
+    .filter((name) => name !== allowed);
+}
+
+describe("the scan of protocol calls", () => {
+  it("allows Page.enable in any file and PerformanceTimeline.enable in performance.ts only", () => {
+    expect(disallowedSends("session.ts", 'cdp.send("Page.enable");')).toEqual([]);
+    expect(
+      disallowedSends("performance.ts", 'session.send("PerformanceTimeline.enable", {})'),
+    ).toEqual([]);
+  });
+
+  it("rejects every other call, and a name that is not a literal", () => {
+    for (const call of [
+      'cdp.send("Input.dispatchMouseEvent", {})',
+      'cdp.send("Page.navigate", {})',
+      'cdp.send("Network.enable")',
+      'cdp.send("Performance.getMetrics")',
+      'cdp.send("Runtime.evaluate", {})',
+      'cdp.send("Page.enable2")',
+      "cdp.send(method, {})",
+      'cdp.send("Page" + ".enable")',
+    ])
+      expect(disallowedSends("observer.ts", call).length, call).toBeGreaterThan(0);
+  });
+
+  it("rejects PerformanceTimeline.enable outside performance.ts, and Page.enable inside it", () => {
+    expect(disallowedSends("session.ts", 'cdp.send("PerformanceTimeline.enable")')).toHaveLength(1);
+    expect(disallowedSends("performance.ts", 'cdp.send("Page.enable")')).toHaveLength(1);
+  });
+
+  it("rejects a second protocol call in performance.ts", () => {
+    const text = 'a.send("PerformanceTimeline.enable", {}); a.send("Performance.enable");';
+    expect(disallowedSends("performance.ts", text)).toEqual(['"Performance.enable"']);
   });
 });

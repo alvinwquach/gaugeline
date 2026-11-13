@@ -8,7 +8,7 @@ export interface RenderSource {
 
 /** The run's page, rendered on first use. */
 export type LazyRender = (
-  options?: Pick<RenderRequest, "viewport" | "expose">,
+  options?: Pick<RenderRequest, "viewport" | "expose" | "variant" | "measure">,
 ) => Promise<RenderResult>;
 
 /**
@@ -24,7 +24,12 @@ export function lazyRender(opts: { url: string } & RenderSource): LazyRender {
       return Promise.resolve(
         unavailable ?? { kind: "could-not-check", reason: "no renderer is running" },
       );
-    const key = JSON.stringify([options.viewport ?? null, options.expose ?? null]);
+    const key = JSON.stringify([
+      options.viewport ?? null,
+      options.expose ?? null,
+      options.variant ?? null,
+      options.measure ?? null,
+    ]);
     let read = reads.get(key);
     if (!read) {
       read = renderer.render({ url: opts.url, ...options });

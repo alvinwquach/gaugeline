@@ -2223,8 +2223,10 @@ export {
 } from "./render/types.js";
 export type {
   BlockReason,
+  PagePerformance,
   RenderCouldNotCheck,
   RenderLimits,
+  RenderMeasure,
   RenderRequest,
   RenderResult,
   RenderedLink,
@@ -2233,6 +2235,7 @@ export type {
   Renderer,
   RendererAvailability,
   RendererName,
+  RenderVariant,
 } from "./render/types.js";
 export { lazyRender } from "./render/lazy.js";
 export type { LazyRender, RenderSource } from "./render/lazy.js";
@@ -2250,4 +2253,9 @@ export {
 export type { A11yRead } from "./a11y/types.js";
 export { A11Y_CHECKS } from "./checks/a11y-rendered.js";
 export { addRenderedA11yChecks } from "./a11y/registry.js";
+export { ATTRIBUTION_CHECKS } from "./checks/perf-attribution.js";
+export { addAttributionChecks } from "./render/attribution-registry.js";
+export { isThirdParty, siteKey } from "./render/third-party.js";
+export { attributeSpeed, MIN_MOVE, VARIANT_NAMES } from "./render/attribution.js";
+export type { Attribution, Measure, Move, VariantName } from "./render/attribution.js";
 export type { CapName, EgressGate, GateAnswer, GateRequest, GateState } from "./render/gate.js";

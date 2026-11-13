@@ -111,6 +111,10 @@ export const UNLISTED: NavPage[] = [
     slug: "guides/rendered-accessibility",
     title: "Rendered accessibility: what the browser computes",
   },
+  {
+    slug: "guides/speed-attribution",
+    title: "Speed attribution: which change makes the page faster",
+  },
   { slug: "house-rules", title: "House rules: a written style guide as a draft config" },
   { slug: "check-writer", title: "The check writer" },
   { slug: "changelog", title: "Changelog" },
