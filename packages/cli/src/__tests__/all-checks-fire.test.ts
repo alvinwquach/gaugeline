@@ -65,6 +65,7 @@ const FIXTURES = [
   "nav-events",
   "nav-after",
   "nav-names",
+  "nav-utm",
   "tampered",
   "stripe-test-mode",
   "form-checks",

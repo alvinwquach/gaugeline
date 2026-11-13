@@ -153,6 +153,7 @@ import { navLabelDrift } from "./nav-label-drift.js";
 import { navLinkNoName } from "./nav-link-no-name.js";
 import { navOrphans } from "./nav-orphans.js";
 import { navParity } from "./nav-parity.js";
+import { navUtmLost } from "./nav-utm-lost.js";
 import { nextDraftPublic } from "./next-draft-public.js";
 import { nextPreviewCanonical } from "./next-preview-canonical.js";
 import { nextStaleAfterPublish } from "./next-stale-after-publish.js";
@@ -400,6 +401,7 @@ export const PAGE_CHECKS = [
   navLinkNoName,
   navOrphans,
   navParity,
+  navUtmLost,
   nextDraftPublic,
   nextPreviewCanonical,
   nextStaleAfterPublish,

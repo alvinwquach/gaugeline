@@ -31,6 +31,7 @@ Landmarks are used unless `gaugeline.nav.json`, in the folder you run from, name
 | `nav-parity`       | Fix soon       | The separate mobile menu lacks destinations the desktop menu has                       |
 | `nav-footer`       | Fix soon       | A page's footer differs from the most common one, or a required footer link is missing |
 | `nav-link-no-name` | Fix soon       | A header or footer link has no text, aria-label or labelled image                      |
+| `nav-utm-lost`     | Worth a look   | A menu link's redirect drops the campaign tags it was asked with                       |
 
 - `nav-changed` runs with `--since last`. On the first run there is nothing saved: it is "could not
   be checked", and that run saves the menu. Without `--since last` it has nothing to compare, like
@@ -78,6 +79,51 @@ $ npx gaugeline millracephysio.example
 Millrace Physio is an invented physiotherapy clinic (`packages/fixtures/sites/nav-names`). Its envelope and phone
 icons and its footer image link have no name; the icon with `aria-label="Book a visit"` is fine. The output is
 asserted by `packages/cli/src/__tests__/nav-names.test.ts` and checked by `pnpm docs:examples`.
+
+## Menu links and campaign tags
+
+A visit that arrives with `utm_` tags is only counted for its campaign if the tags survive every redirect. A
+menu link that redirects without passing the query string on is the quiet way to lose them. For a bar, a
+pop-up or a clinic that has just moved its pages, the "What's on" and "Private hire" links are usually the
+ones that redirect.
+
+`nav-utm-lost` asks every header and footer destination of the checked page on your own site once, with three
+test tags added (`utm_source=gaugeline-check`, `utm_medium=menu-test`, `utm_campaign=nav-links`: Gaugeline's own
+values, never yours), and compares the tags on the first address with the last:
+
+- It sends one HEAD per destination (a GET only when the server answers 405 or 501), through the same fetcher
+  as every other check: nothing is submitted and nothing is clicked.
+- At most 40 destinations are asked, header links first. A longer menu says how many were not asked, under
+  could not check.
+- A redirect that keeps the tags passes. One that drops any of them is a finding that names the link, the
+  redirect's status, the hop and the tags it dropped.
+- A link that ends in 404 or 500 is not judged here (`broken-links` reports it). A `401`, `403` or `429` is
+  could not check.
+- Only redirects are followed: a script that rewrites the address after the page loads is not seen.
+
+<!-- fixture: nav-utm -->
+
+```sh title=Terminal
+$ npx gaugeline lanternbar.example
+```
+
+```text title=Output
+! A menu link drops campaign tags
+    1 of 6 menu links lose campaign tags: header › What's on: the 301 at hop 1 from /whats-on to /events drops utm_source, utm_medium, utm_campaign. Gaugeline's own test values were used (utm_source=gaugeline-check, utm_medium=menu-test, utm_campaign=nav-links).
+· Links on this page go through a redirect
+    /whats-on (301) ends at /events
+· Links on this page go through a redirect
+    /private-hire (301) ends at /hire?utm_source=gaugeline-check&utm_medium=menu-test&utm_campaign=nav-links
+? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
+    Mail records are read from DNS only with --dns. Rerun with --dns to check them.
+
+Checked 4 of 5 other pages.
+3 to look at, none to fix first.
+```
+
+The Lantern Bar is an invented neighbourhood bar (`packages/fixtures/sites/nav-utm`). Its "What's on" link is a
+301 to `/events` with no query string; "Private hire" redirects to `/hire` and carries the tags on. The output is
+asserted by `packages/cli/src/__tests__/nav-utm.test.ts` and checked by `pnpm docs:examples`.
 
 ## Example
 
