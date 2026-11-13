@@ -472,8 +472,9 @@ page goes to a Gaugeline service or any other place.
   fetcher uses: a private, loopback, link-local or metadata address is refused unless you typed it and passed
   `--allow-private`, and every redirect is checked again at each hop.
 - **What is never requested.** Anything but `GET` and `HEAD`, a form submission, a WebSocket, WebRTC and
-  WebTransport (they send UDP outside the page's web requests, so the browser is started with WebRTC limited to
-  a proxy that goes nowhere and the names are removed from the page), a window, and a `file:` or other non-web
+  WebTransport (they send UDP outside the page's web requests: the browser is started with WebRTC limited to a
+  proxy that goes nowhere, and the names are removed from the page; a dedicated worker can still see
+  `WebTransport`, where it fails and sends nothing), a window, and a `file:` or other non-web
   address.
 - **Analytics, and what can still reach yours.** A request to a host on a fixed list of analytics,
   advertising and session replay services (Google Analytics and Tag Manager, Meta, LinkedIn, TikTok, Bing,

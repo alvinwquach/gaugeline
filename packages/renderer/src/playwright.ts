@@ -77,12 +77,26 @@ const LAUNCH_ENV = [
   "SystemRoot",
   "windir",
   "USERPROFILE",
+/**
+ * Chromium's switches. The memory cap is the ADR's (1 GiB). WebRTC sends UDP outside the HTTP stack, so it may
+ * use UDP only through a proxy, and the proxy goes nowhere (a test launches a browser with exactly these and
+ * listens on a UDP port).
+ */
+export const BROWSER_ARGS: readonly string[] = Object.freeze([
+  "--js-flags=--max-old-space-size=1024",
+  // Measured on Chromium 1243: the forced policy alone stops it in the headless shell and not in the full
+  // browser, the plain policy alone the other way round, so both, with the permission check.
+  "--force-webrtc-ip-handling-policy=disable_non_proxied_udp",
+  "--webrtc-ip-handling-policy=disable_non_proxied_udp",
+  "--enforce-webrtc-ip-permission-check",
+]);
+
   "LOCALAPPDATA",
   "APPDATA",
 ] as const;
 
 /** Where the browser's own network points: nowhere. Port 9 is "discard", and nothing listens on a closed port. */
-const NO_NETWORK = { server: "http://127.0.0.1:9", bypass: "<-loopback>" } as const;
+export const NO_NETWORK = { server: "http://127.0.0.1:9", bypass: "<-loopback>" } as const;
 
 /** Extra time after the page's own limit before the hang guard gives up on the browser. */
 const HANG_GUARD_MS = 5000;
@@ -187,12 +201,7 @@ export function createPlaywrightRenderer(options: PlaywrightRendererOptions): Re
         chromiumSandbox: options.chromiumSandbox ?? true,
         env: launchEnv(env),
         proxy: { ...NO_NETWORK },
-        args: [
-          "--js-flags=--max-old-space-size=1024",
-          // WebRTC sends UDP outside the HTTP stack: only through a proxy, and the proxy goes nowhere.
-          "--force-webrtc-ip-handling-policy=disable_non_proxied_udp",
-          "--webrtc-ip-handling-policy=disable_non_proxied_udp",
-        ],
+        args: [...BROWSER_ARGS],
         handleSIGINT: false,
         handleSIGTERM: false,
         handleSIGHUP: false,
