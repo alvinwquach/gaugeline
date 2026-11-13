@@ -74,6 +74,13 @@ draft. Nothing else writes. A live write of one field on one record (part 6) is 
 | `email`        | Gmail: `users.drafts.create`. Outlook: held to v1.1                                                                          | Gmail OAuth with the one scope `gmail.drafts.create`                             |
 | `record_field` | Held to v1.1. Then: one `PATCH` (or documented single-field update) to one record id, with the revision guard                | A token for that one system, separate from its read-only key                     |
 
+- **One commit per file in v1 (flagged for the owner, PR #271).** The table says "create a blob, tree and
+  commit". The first writer (`packages/writer`) commits each file with the Contents API instead
+  (`PUT /repos/{owner}/{repo}/contents/{path}` on the draft's own branch), so a draft of three files makes
+  three commits on `gaugeline/<proposal id>`. It needs the same permission (`contents` write), adds no
+  endpoint outside the registry, and the pull request still shows one diff. A single commit through the
+  Git Data API (blob, tree, commit, then move the ref) would add four registered requests and a ref update
+  (a `PATCH`, which part 7 and the scans currently forbid), so it is left to the owner to ask for later.
 - **Separate keys.** Every write credential is a separate environment variable from the read-only key the
   same platform's adapter uses, and is optional. A run of `gaugeline` (the checker) never reads it: the
   checker and the writer are different processes and different packages, so the thing that observes and

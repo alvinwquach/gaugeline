@@ -1,0 +1,22 @@
+{
+  "name": "@gaugeline/writer",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Applies an approved draft in the customer's own worker with the customer's own token (ADR-0010). Not a dependency of the gaugeline CLI. Never published.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./kinds": "./src/kinds.ts"
+  },
+  "dependencies": {
+    "@gaugeline/core": "workspace:*",
+    "zod": "4.6.7"
+  }
+}
