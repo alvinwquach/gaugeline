@@ -223,13 +223,21 @@ describe("page-robots-overrides-layout (FF-04)", () => {
     expect(r.couldNotCheck).toHaveLength(1);
   });
 
-  it("is unsure when there is no app router folder", async () => {
+  it("passes a folder that has no Next.js router at all: the check does not apply", async () => {
+    const r = await run(
+      inline({ "lib/util.ts": "export const x = 1;" }),
+      "page-robots-overrides-layout",
+    );
+    expect(r.passed).toEqual(["page-robots-overrides-layout"]);
+  });
+
+  it("is unsure when the project uses the pages router", async () => {
     const r = await run(
       inline({ "pages/index.tsx": "export default () => null" }),
       "page-robots-overrides-layout",
     );
     expect(r.passed).toEqual([]);
-    expect(r.couldNotCheck[0]?.reason).toContain("no app folder");
+    expect(r.couldNotCheck[0]?.reason).toContain("pages router");
   });
 
   it("a nested layout that re-enables indexing is a finding too, and a page that sets no robots is not", async () => {
@@ -410,8 +418,13 @@ describe("robots-disallow-hides-noindex (FF-01)", () => {
 describe("the three together", () => {
   it("raise one finding each on the pre-launch bar copy, in the same order every run", async () => {
     const tree = await fixture("harbour-bar-preview");
-    const a = await runStaticChecks({ tree, now: NOW });
-    const b = await runStaticChecks({ tree, now: NOW });
+    const only = [
+      "page-robots-overrides-layout",
+      "sitemap-while-indexing-off",
+      "robots-disallow-hides-noindex",
+    ];
+    const a = await runStaticChecks({ tree, now: NOW, only });
+    const b = await runStaticChecks({ tree, now: NOW, only });
     expect(a).toEqual(b);
     expect(a.findings.map((f) => f.checkId)).toEqual([
       "page-robots-overrides-layout",

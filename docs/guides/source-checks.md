@@ -31,14 +31,16 @@ Read 5 files in ./harbour-bar-preview. No request was made and no code was run.
 ✗ A sitemap is served while the site is set to stay out of search
     app/sitemap.ts serves a sitemap while the site is set to stay out of search (app/layout.tsx says noindex)
 ✓ robots-disallow-hides-noindex
+✓ webhook-missing-secret-status
+✓ sanity-cdn-tagged-reads
 
 2 to look at, 2 to fix first.
 ```
 
 ## The checks
 
-These read the Next.js app router (`app/` or `src/app/`). The pages router is not read yet; a folder
-without an `app/layout` says so and checks nothing.
+These read the Next.js app router (`app/` or `src/app/`). The pages router is not read yet; a project
+that uses it and has no `app/layout` says so and checks nothing.
 
 - `page-robots-overrides-layout` (fix first): a page, or a nested layout, sets its own `robots` metadata
   without noindex, below a layout that says noindex. Next.js merges metadata shallowly, so the page's
@@ -55,6 +57,8 @@ without an `app/layout` says so and checks nothing.
   and the address can still turn up in results. Rules are matched the way crawlers read them; a route with
   a dynamic segment (`/menu/[slug]`) counts as blocked only by a rule that covers everything before the
   segment. A `robots.ts` that builds its rules from code is not sure.
+
+The command also runs the two checks for the Sanity publish webhook and the cache, described in [the webhook and cache checks](webhook-and-cache-source.md).
 
 The first check cites the Next.js page on merging metadata; the other two rest on what the Next.js file
 conventions say a sitemap and a `robots` file are for, and on the way crawlers are documented to treat a

@@ -24,14 +24,21 @@ export const pageRobotsOverridesLayout = defineCheck<LocalSourceInput>({
   what: "A page (or a nested layout) sets its own robots metadata without noindex, below a layout that says noindex. Next.js does not combine the two: the page's value replaces the layout's.",
   why: "The layout reads as if it keeps the whole site out of search, but this page puts itself back in. It can be indexed while everything else is hidden, and nobody notices because the layout still says noindex. For a site that must stay out of search until launch, that is a page the whole world can find.",
   fix: "Set `index: false` in the page's own robots value, or remove the page's robots so the layout's applies. If the layout reads a setting (an environment variable), read the same one in the page.",
-  tech: "static, reads the app router's layout and page files in the folder as text and makes no request; a robots value is noindex (index: false, or a noindex string), index (index: true), unspecified (an object with no index) or dynamic (anything Gaugeline would have to run to know); a page or nested layout whose value is index or unspecified, below the closest layout that sets robots as noindex or dynamic, is a finding; a dynamic value below a noindex layout is not sure; no app folder with a layout is not sure",
+  tech: "static, reads the app router's layout and page files in the folder as text and makes no request; a robots value is noindex (index: false, or a noindex string), index (index: true), unspecified (an object with no index) or dynamic (anything Gaugeline would have to run to know); a page or nested layout whose value is index or unspecified, below the closest layout that sets robots as noindex or dynamic, is a finding; a dynamic value below a noindex layout is not sure; a project with the pages router and no app router is not sure; one with neither passes",
   run(input, ctx) {
     const segments = appSegments(input.tree);
     if (!segments.some((s) => s.kind === "layout")) {
-      ctx.couldNotCheck?.(
-        `source:${input.tree.label}`,
-        "no app folder with a layout.tsx was found (the pages router is not read), so the metadata could not be compared",
-      );
+      // A project with no app router is nothing this check applies to; one that uses the pages router
+      // may well have the problem in a form Gaugeline does not read, so it says so.
+      if (
+        [...input.tree.files.keys()].some((p) =>
+          /(^|\/)pages\/(index|_app)\.(tsx|ts|jsx|js)$/.test(p),
+        )
+      )
+        ctx.couldNotCheck?.(
+          `source:${input.tree.label}`,
+          "the project uses the pages router, which is not read, so its robots settings could not be compared",
+        );
       return [];
     }
     const out: Finding[] = [];
