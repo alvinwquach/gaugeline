@@ -14,6 +14,7 @@ export type AnswerCheck<O> = (answer: ModelAnswer) => CheckVerdict<O> | Promise<
 /** The fixed reasons the router and the agent check give when they have nothing more specific. */
 export const AGENT_ANSWER_ISSUES = Object.freeze({
   notJson: "schema: the answer is not valid JSON",
+  badAnswer: "schema: the answer was not in the expected shape",
   checkFailed: "the check could not run on this answer",
 });
 

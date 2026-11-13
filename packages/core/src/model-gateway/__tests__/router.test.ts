@@ -6,12 +6,12 @@
 import { describe, expect, it } from "vitest";
 import { triage } from "../../evals/example/triage.js";
 import type { EvalRecording } from "../../evals/types.js";
-import { ModelGatewayError, type GatewayErrorCode } from "../errors.js";
+import { ModelGatewayError, type FailureClass, type GatewayErrorCode } from "../errors.js";
 import { createGateway } from "../gateway.js";
 import {
   MAX_CALLS_PER_ROUTE,
+  FALLBACK_FAILURES,
   MODEL_TASKS,
-  OUTAGE_CODES,
   TASK_TIERS,
   agentAnswerCheck,
   createRouter,
@@ -39,7 +39,7 @@ const GOOD = JSON.stringify({
 const CASE = triage.cases.find((c) => c.id === "bad-missing-id")!;
 const BAD = triage.recordings.get("bad-missing-id")!;
 
-type Step = EvalRecording | { fail: GatewayErrorCode | "plain" };
+type Step = EvalRecording | { fail: GatewayErrorCode | "plain" } | { error: () => unknown };
 /** A scripted provider: one step per call, in order. Records the tier's model, call id and prompt of each call. */
 function provider(name: string, steps: Step[]) {
   const calls: Array<{ model: string; callId: string; prompt: string }> = [];
@@ -50,6 +50,7 @@ function provider(name: string, steps: Step[]) {
       calls.push({ model: call.model, callId: call.callId, prompt: call.prompt });
       const step = steps[calls.length - 1];
       if (!step) throw new Error("the script ran out");
+      if ("error" in step) throw step.error();
       if ("fail" in step) {
         if (step.fail === "plain") throw new Error("down");
         throw new ModelGatewayError(step.fail, `scripted ${step.fail}`);
@@ -67,6 +68,11 @@ function provider(name: string, steps: Step[]) {
   return { calls, gateway };
 }
 const rec = (text: string, cost = 100): EvalRecording => ({ text, usage: usage(cost) });
+/** An adapter error of a class, the way the sender throws one: the code is provider-error, the class says what it was. */
+const failing = (failure: FailureClass, message = "the provider answered.") => ({
+  error: () => new ModelGatewayError("provider-error", message, [], failure),
+});
+const outage = (message = "api.example.test answered 503.") => failing("outage", message);
 const REQ: RouteRequest = {
   task: "wording",
   agentId: "triage",
@@ -213,28 +219,25 @@ describe("escalation: once, from fast to strong, on a failed check", () => {
 });
 
 describe("fallback: once, to a second provider, on an outage", () => {
-  it.each(OUTAGE_CODES)(
-    "goes to the second provider on %s, with the same task, tier and prompt",
-    async (code) => {
-      const a = provider("a", [{ fail: code === "provider-error" ? "plain" : code }]);
-      const b = provider("b", [rec(GOOD)]);
-      const r = await createRouter({ primary: a.gateway(), fallback: b.gateway() }).route(
-        REQ,
-        check,
-      );
-      expect(r).toMatchObject({ kind: "advisory", provider: "b", tier: "fast" });
-      expect(b.calls[0]).toEqual({ model: "b-fast", callId: "route-1", prompt: REQ.prompt });
-      if (r.kind === "advisory")
-        expect(r.attempts.map((x) => [x.provider, x.outcome])).toEqual([
-          ["a", "outage"],
-          ["b", "accepted"],
-        ]);
-    },
-  );
+  it.each([
+    ["a timeout", { fail: "timeout" } as Step],
+    ["an outage the adapter classed (a 5xx, a lost connection)", outage()],
+  ])("goes to the second provider on %s, with the same task, tier and prompt", async (_n, step) => {
+    const a = provider("a", [step]);
+    const b = provider("b", [rec(GOOD)]);
+    const r = await createRouter({ primary: a.gateway(), fallback: b.gateway() }).route(REQ, check);
+    expect(r).toMatchObject({ kind: "advisory", provider: "b", tier: "fast" });
+    expect(b.calls[0]).toEqual({ model: "b-fast", callId: "route-1", prompt: REQ.prompt });
+    if (r.kind === "advisory")
+      expect(r.attempts.map((x) => [x.provider, x.outcome])).toEqual([
+        ["a", "outage"],
+        ["b", "accepted"],
+      ]);
+  });
 
   it("is unsure when both providers are out, after exactly two calls", async () => {
     const a = provider("a", [{ fail: "timeout" }]);
-    const b = provider("b", [{ fail: "plain" }]);
+    const b = provider("b", [outage()]);
     const r = await createRouter({ primary: a.gateway(), fallback: b.gateway() }).route(REQ, check);
     expect(r).toMatchObject({ kind: "unsure", reason: "outage" });
     expect(a.calls.length + b.calls.length).toBe(2);
@@ -286,6 +289,142 @@ describe("fallback: once, to a second provider, on an outage", () => {
   });
 });
 
+describe("which failures fall back: by class, never by words (the payload goes to a second provider only after an outage)", () => {
+  const code = (c: GatewayErrorCode, failure: FailureClass, message: string) => ({
+    error: () => new ModelGatewayError(c, message, [], failure),
+  });
+  /** What the sender says for each status or error, by the class it gives it (docs/model-gateway.md). */
+  const FALLS_BACK: Array<[string, Step]> = [
+    ["a timeout", { fail: "timeout" }],
+    ["a 500", failing("outage", "api.example.test answered 500.")],
+    ["a 502", failing("outage", "api.example.test answered 502.")],
+    ["a 503", failing("outage", "api.example.test answered 503.")],
+    ["a 504", failing("outage", "api.example.test answered 504.")],
+    [
+      "a refused connection (ECONNREFUSED)",
+      failing("outage", "could not be reached (ECONNREFUSED)"),
+    ],
+    ["a reset connection (ECONNRESET)", failing("outage", "could not be reached (ECONNRESET)")],
+    [
+      "a name that does not resolve (ENOTFOUND)",
+      failing("outage", "could not be reached (ENOTFOUND)"),
+    ],
+    ["an outage whose words say 401", failing("outage", "401 unauthorized")],
+    ["an outage whose words say content policy", failing("outage", "content policy refusal")],
+  ];
+  const STAYS: Array<[string, Step]> = [
+    [
+      "a 301 redirect",
+      failing("redirect", "api.example.test answered a redirect, which is not followed."),
+    ],
+    ["a 400", failing("bad-request", "api.example.test answered 400.")],
+    ["a 401", failing("bad-key", "api.example.test answered 401.")],
+    ["a 403", failing("bad-key", "api.example.test answered 403.")],
+    ["a 404", failing("refused", "api.example.test answered 404.")],
+    ["a 408", failing("refused", "api.example.test answered 408.")],
+    ["a 422", failing("bad-request", "api.example.test answered 422.")],
+    ["a 429 rate limit", failing("rate-limited", "api.example.test answered 429.")],
+    [
+      "a private address",
+      failing("blocked-address", "api.example.test is not a public address: nothing was sent"),
+    ],
+    ["a refusal whose words say 503 timeout", failing("refused", "503 timeout")],
+    [
+      "a provider body that contains 503",
+      failing("refused", "api.example.test answered 400 and the body said 503"),
+    ],
+    [
+      "a provider-error with no class and the words 'timeout'",
+      code("provider-error", "unclassified", "timeout"),
+    ],
+    ["a plain Error", { fail: "plain" }],
+    ["a plain Error whose message is '503 timeout'", { error: () => new Error("503 timeout") }],
+    ["something thrown that is not an Error", { error: () => "503" }],
+    [
+      "an object that says it is an outage",
+      { error: () => ({ failure: "outage", code: "timeout" }) },
+    ],
+  ];
+
+  it.each(FALLS_BACK)("%s goes to the second provider, once", async (_n, step) => {
+    const a = provider("a", [step, rec(GOOD)]);
+    const b = provider("b", [rec(GOOD)]);
+    const r = await createRouter({ primary: a.gateway(), fallback: b.gateway() }).route(REQ, check);
+    expect(r).toMatchObject({ kind: "advisory", provider: "b" });
+    expect(a.calls).toHaveLength(1);
+    expect(b.calls).toHaveLength(1);
+  });
+
+  it.each(STAYS)(
+    "%s is refused: the payload is not sent to the second provider",
+    async (_n, step) => {
+      const a = provider("a", [step, rec(GOOD)]);
+      const b = provider("b", [rec(GOOD)]);
+      const r = await createRouter({ primary: a.gateway(), fallback: b.gateway() }).route(
+        REQ,
+        check,
+      );
+      expect(r).toMatchObject({ kind: "unsure", reason: "refused" });
+      expect(b.calls).toHaveLength(0);
+      expect(a.calls).toHaveLength(1);
+      if (r.kind === "unsure") expect(r.attempts.map((x) => x.outcome)).toEqual(["stopped"]);
+    },
+  );
+
+  it("falls back on exactly one class, and on no other", () => {
+    expect([...FALLBACK_FAILURES]).toEqual(["outage"]);
+  });
+
+  it("a malformed answer (not JSON, wrong shape) is a failed answer: strong tier on the same provider, never a fallback", async () => {
+    for (const failure of ["not-json", "bad-answer"] as const) {
+      const a = provider("a", [code("bad-answer", failure, "not JSON"), rec(GOOD)]);
+      const b = provider("b", [rec(GOOD)]);
+      const r = await createRouter({ primary: a.gateway(), fallback: b.gateway() }).route(
+        REQ,
+        check,
+      );
+      expect(r).toMatchObject({ kind: "advisory", provider: "a", tier: "strong" });
+      expect(a.calls.map((c) => c.model)).toEqual(["a-fast", "a-strong"]);
+      expect(b.calls).toHaveLength(0);
+      if (r.kind === "advisory")
+        expect(r.attempts.map((x) => x.outcome)).toEqual(["failed-checks", "accepted"]);
+    }
+  });
+
+  it("a second malformed answer, or one from a strong task, is unsure and goes nowhere else", async () => {
+    const twice = provider("a", [
+      code("bad-answer", "not-json", "x"),
+      code("bad-answer", "not-json", "x"),
+    ]);
+    const b = provider("b", [rec(GOOD)]);
+    const r = await createRouter({ primary: twice.gateway(), fallback: b.gateway() }).route(
+      REQ,
+      check,
+    );
+    expect(r).toMatchObject({ kind: "unsure", reason: "failed-checks" });
+    const strong = provider("a", [code("bad-answer", "not-json", "x"), rec(GOOD)]);
+    const s = await createRouter({ primary: strong.gateway(), fallback: b.gateway() }).route(
+      { ...REQ, task: "miner" },
+      check,
+    );
+    expect(s).toMatchObject({ kind: "unsure", reason: "failed-checks" });
+    expect(strong.calls).toHaveLength(1);
+    expect(b.calls).toHaveLength(0);
+  });
+
+  it("never reads the message: the same words fall back or not by class alone", async () => {
+    for (const words of ["503", "timeout", "ECONNRESET", "401 unauthorized", "all is well"]) {
+      const yes = provider("a", [failing("outage", words)]);
+      const no = provider("a", [failing("refused", words)]);
+      const b1 = provider("b", [rec(GOOD)]);
+      const b2 = provider("b", [rec(GOOD)]);
+      await createRouter({ primary: yes.gateway(), fallback: b1.gateway() }).route(REQ, check);
+      await createRouter({ primary: no.gateway(), fallback: b2.gateway() }).route(REQ, check);
+      expect([words, b1.calls.length, b2.calls.length]).toEqual([words, 1, 0]);
+    }
+  });
+});
+
 describe("budget: a stop, not a retry (AG-22 fills the hook in)", () => {
   const deny: BudgetHooks = {
     before: () => ({ allowed: false, reason: "the ceiling is spent" }),
@@ -319,7 +458,7 @@ describe("budget: a stop, not a retry (AG-22 fills the hook in)", () => {
 
 describe("the outcome carries no key and no provider words", () => {
   it("an outage's detail is fixed words, not the provider's error", async () => {
-    const a = provider("a", [{ fail: "plain" }]);
+    const a = provider("a", [outage("api.example.test answered 503 with a body")]);
     const r = await createRouter({ primary: a.gateway() }).route(REQ, check);
     expect(r.kind === "unsure" && r.detail).toBe(
       "The provider could not be reached or did not answer in time.",

@@ -4,18 +4,19 @@
  * short fixed list:
  *
  *   1. the task's tier on the first provider;
- *   2. on an outage (no answer in time, the provider failed, a malformed answer), once, the same call on the
- *      second provider, if there is one;
- *   3. on an answer that fails the check, once, the strong tier with the plain reasons added to the prompt
- *      (never the first answer), on the provider that answered;
+ *   2. on an outage, once, the same call on the second provider, if there is one. An outage is what the
+ *      adapter's error says it is by its CLASS (a timeout, a lost connection, a 5xx), never by its words. A
+ *      refusal (a key the provider rejects, a rate limit, a bad request, a redirect, a blocked address, an
+ *      answer that is not JSON) is not an outage: the payload is not sent to a second provider after it;
+ *   3. on an answer that fails the check, or is malformed, once, the strong tier with the plain reasons added
+ *      to the prompt (never the first answer), on the provider that answered;
  *   4. on a budget stop, or any refusal that is not an outage (a missing key, a prompt too large), stop.
  *
  * At most four calls. The outcome is `advisory` (words for a person to read) or `unsure`: it has no way to say
  * pass, and nothing here gates a build. No clock, no randomness, no network: a gateway does the calling.
  */
 import { AGENT_ANSWER_ISSUES, type AnswerCheck, type CheckVerdict } from "./check.js";
-import type { GatewayErrorCode } from "./errors.js";
-import { ModelGatewayError } from "./errors.js";
+import { ModelGatewayError, type FailureClass } from "./errors.js";
 import { sanitise } from "../untrusted.js";
 import type { ModelAnswer, ModelGateway, ModelTier } from "./types.js";
 
@@ -33,12 +34,8 @@ export const TASK_TIERS: Readonly<Record<ModelTask, ModelTier>> = Object.freeze(
   miner: "strong",
 });
 
-/** The gateway errors that mean the provider is out, as opposed to a problem a second provider would share. */
-export const OUTAGE_CODES: readonly GatewayErrorCode[] = Object.freeze([
-  "timeout",
-  "provider-error",
-  "bad-answer",
-]);
+/** The failure classes that mean the provider is out. Anything else would meet the same problem on a second provider. */
+export const FALLBACK_FAILURES: readonly FailureClass[] = Object.freeze(["outage"] as const);
 /** The first call, the fallback, the escalation and its fallback. */
 export const MAX_CALLS_PER_ROUTE = 4;
 const MAX_ISSUES = 5;
@@ -122,13 +119,13 @@ export function createRouter(gateways: { primary: ModelGateway; fallback?: Model
       try {
         answer = await gateway.complete({ tier, agentId: request.agentId, callId, prompt });
       } catch (err) {
-        const code: GatewayErrorCode | undefined =
-          err instanceof ModelGatewayError ? err.code : undefined;
-        if (code === "budget") {
+        const typed = err instanceof ModelGatewayError ? err : undefined;
+        if (typed?.code === "budget") {
           attempts.push({ tier, provider: gateway.provider, outcome: "stopped", costMicros: 0 });
           return unsure("budget", "The budget stopped the call.");
         }
-        if (code !== undefined && OUTAGE_CODES.includes(code)) {
+        // By the error's class, never its message: only an outage may be tried on another provider.
+        if (typed && FALLBACK_FAILURES.includes(typed.failure)) {
           attempts.push({ tier, provider: gateway.provider, outcome: "outage", costMicros: 0 });
           if (!usedFallback && gateways.fallback) {
             usedFallback = true;
@@ -137,8 +134,24 @@ export function createRouter(gateways: { primary: ModelGateway; fallback?: Model
           }
           return unsure("outage", "The provider could not be reached or did not answer in time.");
         }
+        if (typed?.code === "bad-answer") {
+          // A malformed answer is a failed answer, not an outage: the same provider's strong tier, once.
+          attempts.push({
+            tier,
+            provider: gateway.provider,
+            outcome: "failed-checks",
+            costMicros: 0,
+          });
+          if (escalated || tier !== "fast")
+            return unsure("failed-checks", AGENT_ANSWER_ISSUES.badAnswer);
+          escalated = true;
+          tier = "strong";
+          prompt = repairPrompt(request.prompt, [AGENT_ANSWER_ISSUES.badAnswer]);
+          callId = `${request.callId}:escalated`;
+          continue;
+        }
         attempts.push({ tier, provider: gateway.provider, outcome: "stopped", costMicros: 0 });
-        return unsure("refused", `The gateway refused the call (${code ?? "error"}).`);
+        return unsure("refused", `The gateway refused the call (${typed?.code ?? "error"}).`);
       }
       cost += answer.usage.costMicros;
       let verdict: CheckVerdict<O>;

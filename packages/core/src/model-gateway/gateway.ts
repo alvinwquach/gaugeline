@@ -174,8 +174,9 @@ export function createGateway(options: GatewayOptions): ModelGateway {
       ]);
     } catch (err) {
       const secrets = secret ? [secret] : [];
+      // The class is the adapter's: kept, never worked out from the message. A plain Error has none.
       if (err instanceof ModelGatewayError)
-        throw new ModelGatewayError(err.code, err.message, secrets);
+        throw new ModelGatewayError(err.code, err.message, secrets, err.failure);
       const said = err instanceof Error ? err.message : "no message";
       return fail("provider-error", `The ${config.provider} adapter failed: ${said}`, secrets);
     } finally {

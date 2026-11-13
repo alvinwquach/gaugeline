@@ -293,12 +293,20 @@ model's choice, and the same inputs always take the same path.
 | `miner`        | `strong` |
 
 1. **The task's tier, on the first provider.**
-2. **An outage: once, the same call on a second provider**, if you gave one. An outage is no answer in time, a
-   provider failure, or an answer in no usable shape. A second provider is another gateway you build with its own
+2. **An outage: once, the same call on a second provider**, if you gave one. An outage is a timeout, a lost
+   connection or a 5xx answer, and **nothing else**. It is decided by the _class_ the adapter gave its error
+   (`failure: "outage"`), never by the words of the message, so a provider's body that happens to say "503" or
+   "timeout" changes nothing. Every other class is a refusal and stops the task: `bad-key` (a 401 or 403),
+   `bad-request` (a 400 or 422, or a prompt the sender will not send), `rate-limited` (a 429: your own limit, a
+   second provider would be sent the same payload for nothing), `redirect`, `blocked-address`, `refused` (any
+   other status) and `unclassified` (an error with no class, a plain `Error` included). The payload that a
+   provider refused is never sent to another one. A second provider is another gateway you build with its own
    adapter; adding a host to the list of reachable hosts is a change to the sending module, never a setting.
-3. **A failed check: once, the `strong` tier**, on the provider that answered, with the plain reasons added to the
-   prompt. The reasons are at most five lines of 120 characters, cleaned; the first answer is never repeated. A
-   `strong` task has no higher tier, so one failed answer ends there.
+3. **A failed check, or an answer in no usable shape: once, the `strong` tier**, on the provider that answered,
+   with the plain reasons added to the prompt. The reasons are at most five lines of 120 characters, cleaned; the
+   first answer is never repeated. A `strong` task has no higher tier, so one failed answer ends there. An answer
+   that is not JSON, or not the expected shape, is a failed answer like this, never a reason to try another
+   provider.
 4. **A budget stop, or any refusal that is not an outage** (a missing key, a prompt that is too large, a prompt that
    holds your key), **stops at once**: a second provider would meet the same problem, or use your key for nothing.
    The budget itself is the gateway's hook (row AG-22); the router only obeys it.
@@ -312,6 +320,7 @@ every answer received is added up, including one that failed the check.
 
 ```ts title=RouteExample
 import {
+  ModelGatewayError,
   createGateway,
   createRecordedAdapter,
   createRouter,
@@ -321,14 +330,26 @@ import {
 const usage = { inputTokens: 40, outputTokens: 12, costMicros: 900, latencyMs: 300 };
 const answer = (text: string) => ({ text, usage });
 // A gateway over answers recorded once, keyed by call id. The second call of a task is "<id>:escalated".
-const gatewayOf = (provider: string, answers: [string, string][]) =>
-  createGateway({
+// `down` lists the calls this provider does not answer in time: a timeout is an outage.
+const gatewayOf = (provider: string, answers: [string, string][], down: string[] = []) => {
+  const recorded = createRecordedAdapter(new Map(answers.map(([id, t]) => [id, answer(t)])));
+  return createGateway({
     config: { provider, tiers: { fast: `${provider}-small`, strong: `${provider}-large` } },
     adapters: [
-      { ...createRecordedAdapter(new Map(answers.map(([id, t]) => [id, answer(t)]))), provider },
+      {
+        ...recorded,
+        provider,
+        complete: (call) =>
+          down.includes(call.callId)
+            ? Promise.reject(
+                new ModelGatewayError("timeout", `${provider} did not answer in time.`),
+              )
+            : recorded.complete(call),
+      },
     ],
     env: () => ({}),
   });
+};
 // A plain rule: the answer must be one sentence under 80 characters, with no digits.
 const oneSentence: AnswerCheck<string> = ({ text }) =>
   text.length < 80 && !/\d/.test(text)
@@ -336,11 +357,15 @@ const oneSentence: AnswerCheck<string> = ({ text }) =>
     : { ok: false, issues: ["the note must be one short sentence with no digits"] };
 
 const router = createRouter({
-  primary: gatewayOf("alpha", [
-    ["note-1", "Your menu page lost its canonical link on 12 November and nobody noticed."],
-    ["note-1:escalated", "The menu page has no canonical link."],
-    ["note-3", "Found 7 pages with the same problem, which is worse than last week."],
-  ]),
+  primary: gatewayOf(
+    "alpha",
+    [
+      ["note-1", "Your menu page lost its canonical link on 12 November and nobody noticed."],
+      ["note-1:escalated", "The menu page has no canonical link."],
+      ["note-3", "Found 7 pages with the same problem, which is worse than last week."],
+    ],
+    ["note-2"],
+  ),
   fallback: gatewayOf("beta", [["note-2", "The pop-up page loads slowly."]]),
 });
 
@@ -361,7 +386,6 @@ for (const [task, callId] of [
       : `${task}: unsure, ${r.reason} (${path})`,
   );
 }
-
 console.log(out.join("\n"));
 ```
 
