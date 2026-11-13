@@ -4,6 +4,7 @@ import { ToolError, type ToolContext } from "../state.js";
 import { findingForAgent, markUntrusted } from "../agent-text.js";
 import { buildPatch } from "../patch.js";
 import { checkById, findFinding } from "./explain-finding.js";
+import { idToken } from "./shared.js";
 
 export const draftFixInput = {
   findingId: z
@@ -22,7 +23,7 @@ export async function draftFix(args: z.infer<z.ZodObject<typeof draftFixInput>>,
   const hit = findFinding(ctx, args.findingId);
   if (!hit)
     throw new ToolError(
-      `No finding with the id ${JSON.stringify(args.findingId.slice(0, 60))} in this session. Run run_check first.`,
+      `No finding with the id ${idToken(args.findingId)} in this session. Run run_check first.`,
     );
   const check = checkById(hit.finding.checkId, hit.run);
   if (!check)

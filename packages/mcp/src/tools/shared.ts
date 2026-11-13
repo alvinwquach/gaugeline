@@ -28,6 +28,15 @@ export function findingsForAgent(run: StoredRun, max: number, findings = run.fin
   };
 }
 
+/**
+ * A caller's value quoted back in a message the server writes. The caller may be an assistant that was
+ * handed page text, so only something shaped like one of our ids (letters, digits, dots, colons,
+ * hyphens, at most 60) is repeated; anything else is named by a fixed phrase and never echoed.
+ */
+export function idToken(value: string): string {
+  return /^[A-Za-z0-9._:-]{1,60}$/.test(value) ? JSON.stringify(value) : "(not a valid id)";
+}
+
 const IPV4 = /\b\d{1,3}(?:\.\d{1,3}){3}\b/g;
 const IPV6 = /\b[0-9a-f]{0,4}(?::[0-9a-f]{0,4}){2,7}\b/gi;
 

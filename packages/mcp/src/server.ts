@@ -1,5 +1,11 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { TOOLS, assertLabelled, describeTool, type ToolDef } from "./registry.js";
+import {
+  TOOLS,
+  assertLabelled,
+  assertUntrustedSlots,
+  describeTool,
+  type ToolDef,
+} from "./registry.js";
 import { DEFAULT_CALL_MS, contextFor, createState, type ServerOptions } from "./state.js";
 import { ToolError } from "./errors.js";
 import { asToolError } from "./tools/shared.js";
@@ -16,6 +22,7 @@ const SLACK_MS = 2000;
 
 export function createGaugelineServer(options: ServerOptions = {}): McpServer {
   assertLabelled(TOOLS);
+  assertUntrustedSlots(TOOLS);
   const state = options.state ?? createState();
   const ctx = contextFor(options, state);
   const server = new McpServer({ name: SERVER_NAME, version: SERVER_VERSION });
@@ -40,7 +47,8 @@ export function createGaugelineServer(options: ServerOptions = {}): McpServer {
           idempotentHint: true,
           openWorldHint: def.requests,
         },
-        _meta: { "gaugeline/kind": def.kind },
+        // Fixed text only: the kind, and the places in a result where text from the site sits.
+        _meta: { "gaugeline/kind": def.kind, "gaugeline/untrustedSlots": def.untrustedSlots ?? [] },
       },
       async (args: unknown) => {
         // Calls that make requests wait behind one shared in-flight limit; the waiting line is bounded, so

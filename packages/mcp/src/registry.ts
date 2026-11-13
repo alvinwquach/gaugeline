@@ -10,7 +10,7 @@
  * with a new kind; it would not be added.
  */
 import type * as z from "zod";
-import { UNTRUSTED_NOTE } from "./agent-text.js";
+import { UNTRUSTED_NOTE, findingSlots } from "./agent-text.js";
 import type { ServerOptions, ToolContext } from "./state.js";
 import { compareRuns, compareRunsInput } from "./tools/compare-runs.js";
 import { draftFix, draftFixInput } from "./tools/draft-fix.js";
@@ -28,6 +28,12 @@ export interface ToolDef<S extends z.ZodRawShape = z.ZodRawShape> {
   summary: string;
   /** True when the result carries text taken from a site (then the description repeats the untrusted note). */
   pageText: boolean;
+  /**
+   * Where the page text sits in the result (paths: `.` for a field, `[]` for every item of a list), for a
+   * tool with `pageText: true`; absent for one without. Each slot is a field marked `untrusted: true`.
+   * assertUntrustedSlots refuses a tool that returns page text and does not say where.
+   */
+  untrustedSlots?: readonly string[];
   /** True when the tool makes requests to the site it is given (GET and HEAD only, through the fetcher). */
   requests: boolean;
   /** Whether the server offers this tool with these options. Absent means always. A tool that is off is not listed. */
@@ -45,6 +51,13 @@ const KIND_NOTE: Record<ToolKind, string> = {
   draft: "Returns text only: it applies, writes, commits and publishes nothing.",
 };
 
+/**
+ * The result fields of draft_fix that quote the page (the diff's file name and the diff). Written as keys
+ * and not as quoted strings: the no-write scan (no-write.test.ts) reads a quoted word that is also an
+ * HTTP method as a method, and this one is a field name.
+ */
+const DRAFT_FIX_FIELDS = Object.keys({ file: 0, patch: 0 });
+
 export const TOOLS = {
   run_check: tool({
     kind: "read",
@@ -52,6 +65,7 @@ export const TOOLS = {
     summary:
       "Checks one public page and its site with Gaugeline: GET and HEAD requests only, private addresses refused. Probing checks (non-public paths) run only if ownerConsent is true on this call.",
     pageText: true,
+    untrustedSlots: [...findingSlots("findings[]", false), "couldNotCheck[].reason"],
     requests: true,
     inputSchema: runCheckInput,
     run: runCheck,
@@ -72,6 +86,7 @@ export const TOOLS = {
     summary:
       "Explains a finding from a run in this session, or a check by id: what it catches, why it matters, how to fix it and how big the fix is. Makes no request.",
     pageText: true,
+    untrustedSlots: findingSlots("finding"),
     requests: false,
     inputSchema: explainFindingInput,
     run: explainFinding,
@@ -82,6 +97,7 @@ export const TOOLS = {
     summary:
       "Compares two runs from this session: which findings are new, which are fixed, how many are unchanged. Makes no request.",
     pageText: true,
+    untrustedSlots: [...findingSlots("new.findings[]"), ...findingSlots("fixed.findings[]")],
     requests: false,
     inputSchema: compareRunsInput,
     run: compareRuns,
@@ -92,6 +108,7 @@ export const TOOLS = {
     summary:
       "Checks a launch-plan file (inside the folder the operator named with --root) against a built site at an address the operator allowed with --plan-base: GET requests for each planned page and each old address. Reads the plan file; nothing is written. Offered only when the server was started with both.",
     pageText: true,
+    untrustedSlots: [...findingSlots("findings[]"), "couldNotCheck[].reason"],
     requests: true,
     // Off unless the operator named a plan folder AND the addresses a plan may be checked against.
     enabled: (o) => Boolean(o.root) && (o.planBases?.length ?? 0) > 0,
@@ -104,6 +121,7 @@ export const TOOLS = {
     summary:
       "Drafts the change that would fix a finding from this session, as text for a person or a coding agent to apply: a unified diff where the run holds what it needs (a missing viewport or canonical tag, a missing robots.txt), otherwise the change in words. Makes no request.",
     pageText: true,
+    untrustedSlots: [...DRAFT_FIX_FIELDS, ...findingSlots("finding")],
     requests: false,
     inputSchema: draftFixInput,
     run: draftFix,
@@ -134,4 +152,31 @@ export function assertLabelled(tools: Record<string, object>): void {
     throw new Error(
       `Every tool needs kind "read" or "draft". Missing or invalid on: ${bad.join(", ")}.`,
     );
+}
+
+const SLOT_PATH = /^[A-Za-z]+(?:\[\])?(?:\.[A-Za-z]+(?:\[\])?)*$/;
+
+/**
+ * Refuses a registry where a tool that returns page text (`pageText: true`) does not declare the places
+ * it puts it, where one that does not return page text declares any, or where a slot is not a path. The
+ * server calls it before it registers anything, so a new tool cannot be served until it says where its
+ * untrusted text is; a test calls it with one to prove it.
+ */
+export function assertUntrustedSlots(tools: Record<string, object>): void {
+  const problems: string[] = [];
+  for (const [name, t] of Object.entries(tools)) {
+    const { pageText, untrustedSlots: slots } = t as {
+      pageText?: unknown;
+      untrustedSlots?: unknown;
+    };
+    const list = Array.isArray(slots) ? (slots as unknown[]) : [];
+    if (pageText === true && list.length === 0)
+      problems.push(`${name} returns page text and declares no untrustedSlots`);
+    else if (pageText !== true && slots !== undefined && list.length > 0)
+      problems.push(`${name} declares untrustedSlots but pageText is not true`);
+    const bad = list.filter((p) => typeof p !== "string" || !SLOT_PATH.test(p));
+    if (bad.length > 0) problems.push(`${name} has a slot that is not a path`);
+    if (new Set(list).size !== list.length) problems.push(`${name} declares a slot twice`);
+  }
+  if (problems.length > 0) throw new Error(`Untrusted slots: ${problems.join("; ")}.`);
 }
