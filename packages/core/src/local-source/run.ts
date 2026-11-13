@@ -22,6 +22,8 @@ import { formFailureShowsSuccess } from "../checks/static/form-failure-shows-suc
 import { formPostUnguarded } from "../checks/static/form-post-unguarded.js";
 import { formValuesInLogs } from "../checks/static/form-values-in-logs.js";
 import { personalDataInAnalytics } from "../checks/static/personal-data-in-analytics.js";
+import { tokenRequiredAtImport } from "../checks/static/token-required-at-import.js";
+import { useServerExportsNotAsync } from "../checks/static/use-server-exports-not-async.js";
 import { webhookUrlHardcoded } from "../checks/static/webhook-url-hardcoded.js";
 import type { SkipReason, SourceTree } from "./read.js";
 
@@ -86,6 +88,8 @@ export const STATIC_CHECKS: readonly Check<LocalSourceInput>[] = [
   stegaNotCleaned,
   formFailureShowsSuccess,
   formPostUnguarded,
+  tokenRequiredAtImport,
+  useServerExportsNotAsync,
 ];
 
 export function createStaticRegistry(): CheckRegistry {

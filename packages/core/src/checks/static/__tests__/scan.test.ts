@@ -5,6 +5,7 @@ import {
   importsOf,
   isCmsTokenName,
   isSourcePath,
+  depthMap,
   lineOf,
   matchingBack,
   notReadReason,
@@ -55,6 +56,14 @@ describe("small helpers", () => {
     const close = code.indexOf("} catch");
     expect(matchingBack(code, close)).toBe(code.indexOf("{"));
     expect(matchingBack(code, 0)).toBe(-1);
+  });
+
+  it("depthMap says 0 at the top of the module only", () => {
+    const code = "const a = 1;\nfunction f() {\n  if (x) { y(); }\n}\nz();";
+    const depth = depthMap(code);
+    expect(depth[code.indexOf("const")]).toBe(0);
+    expect(depth[code.indexOf("y()")]).toBe(2);
+    expect(depth[code.indexOf("z()")]).toBe(0);
   });
 
   it("hasDirective reads the first statements only", () => {

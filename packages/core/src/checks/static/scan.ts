@@ -56,6 +56,20 @@ export function scrub(text: string, blank: boolean): string {
 /** The index of the bracket that closes the one at `open` in a scrubbed view; -1 when it never closes. */
 export const matching = closeOf;
 
+/** For each index, how many `{`, `(` and `[` are open before it: 0 means the top level of the module. */
+export function depthMap(code: string): Int32Array {
+  const depth = new Int32Array(code.length + 1);
+  let d = 0;
+  for (let k = 0; k < code.length; k++) {
+    depth[k] = d;
+    const c = code[k];
+    if (c === "{" || c === "(" || c === "[") d++;
+    else if (c === "}" || c === ")" || c === "]") d = Math.max(0, d - 1);
+  }
+  depth[code.length] = d;
+  return depth;
+}
+
 const OPENER: Readonly<Record<string, string>> = { ")": "(", "]": "[", "}": "{" };
 
 /** The index of the bracket that opens the one at `close` in a scrubbed view; -1 when there is none. */
