@@ -108,6 +108,19 @@ describe.skipIf(!HAS_DATABASE)("agent scorecard", () => {
     expect((await card(PEOPLE.ben, ORG_B)).map((a) => a.id)).not.toContain(fixer);
   });
 
+  it("a person who is admin of one organisation and member of another sees only the first's agents, each under its own organisation", async () => {
+    const [r] = await asUser(
+      f.appSql,
+      claims(PEOPLE.ben),
+      (tx) =>
+        tx`select * from private.register_agent(${ORG_B}, 'Physio booking reader', ${PEOPLE.ben.id}, ${["read:runs"]})`,
+    );
+    const bAgent = r!.agent_id as string;
+    expect((await card(PEOPLE.both, ORG_B)).map((a) => a.id)).toEqual([bAgent]);
+    // A member of Northgate: nothing of Northgate, and Brightfield's agent is not listed under Northgate.
+    expect(await card(PEOPLE.both, ORG_A)).toEqual([]);
+  });
+
   it("through the page: rates in whole percent, blanks in words, the reason escaped, and owners only", async () => {
     expect((await f.browser().get("/agents")).status).toBe(303);
     const b = f.browser();
@@ -134,5 +147,12 @@ describe.skipIf(!HAS_DATABASE)("agent scorecard", () => {
     expect(page).toContain("Only owners and admins");
     expect(page).not.toContain("Menu fixer");
     expect(await (await dev.get("/")).text()).not.toContain('href="/agents"');
+  });
+
+  it("denies counted per minute past the trace's bound are added to the agent's denies", async () => {
+    await f.owner`insert into public.agent_trace_overflow (minute, org_id, agent_id, reason, calls)
+      values ('2026-11-12T08:00:00Z', ${ORG_A}, ${fixer}, 'scope', 7)`;
+    const a = (await card(PEOPLE.maya)).find((x) => x.id === fixer)!;
+    expect(a.denies).toBe(2 + 7);
   });
 });
