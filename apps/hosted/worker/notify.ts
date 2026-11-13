@@ -295,7 +295,7 @@ export async function queueRunNotifications(
 
 // --- Sending ----------------------------------------------------------------------------------------
 
-/** A delivery a worker has claimed. A row of kind "agent" (0016) says which agent message, never its words. */
+/** A delivery a worker has claimed. A row of kind "agent" (0017) says which agent message, never its words. */
 type Claimed = AgentDelivery;
 
 /** Build the bodies for one delivery: one Slack message, or one Sentry event per finding. */

@@ -5,7 +5,7 @@
  * request: a queued row is sent by notify.ts's deliverDue, through the one sender every notification uses
  * (core's notify/post.ts), to the address on the channel and nowhere else.
  *
- * The outbox row (migration 0016) says WHICH message and what it is about, never the words. The words are
+ * The outbox row (migration 0017) says WHICH message and what it is about, never the words. The words are
  * built here when the row is sent, from the organisation's own rows, so they are always that organisation's
  * and a stale queue cannot send stale text. An agent never queues a row: it returns text, and this file, which
  * runs as service_role in the worker, queues. A row is queued only for a Slack channel that takes agent
