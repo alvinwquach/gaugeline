@@ -116,6 +116,29 @@ grant gaugeline_worker to gl_worker_login;
 The worker then switches to `gaugeline_worker` for the one transaction that reads a value, the way it
 switches to `service_role` for everything else.
 
+## From the worker's code
+
+The worker reaches secrets through one interface, `SecretStore` in `apps/hosted/worker/secrets.ts`:
+`put(orgId, name, kind, value)`, `get(orgId, name)` (null when missing), `delete(orgId, name)` and
+`list(orgId)` (names, kinds and dates, never a value). `GAUGELINE_SECRET_STORE` picks the implementation
+and has no default:
+
+- `vault`: the functions above on the worker's database login. `put`, `delete` and `list` run as
+  `service_role`; `get` runs as `gaugeline_worker` (so the login must be granted it, see "The worker's
+  login"). A put that loses a race with another first put of the same name is retried once and rotates.
+- `memory`: a `Map` in the process, for tests and local development. It runs only when `NODE_ENV` is
+  exactly `development` or `test`; unset, `staging`, `production` or anything else is refused.
+
+**Required for X67 (not wired yet):** nothing calls `secretStoreFrom` today, because nothing reads a
+secret yet. The first row that does (X67, notifications) must call it once at the worker's start-up,
+next to the database check, so a missing or wrong `GAUGELINE_SECRET_STORE`, or a worker login without
+`gaugeline_worker`, stops the worker before its first job instead of failing a notification later.
+
+Every failure is a `SecretError` with a code (`invalid-org`, `invalid-name`, `invalid-kind`,
+`invalid-value`, `kind-mismatch`, `unavailable`) and a fixed message. A lost race that fails twice is
+`unavailable`. A database error is replaced, not
+wrapped, because a driver error can carry the query's parameters, and the parameters include the value.
+
 ## Rotation
 
 Put the new value under the same name: `private.put_secret` replaces it in Vault, sets `rotated_at` and
