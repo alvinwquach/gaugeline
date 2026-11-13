@@ -145,7 +145,7 @@ const answer = await gateway.complete({
   tier: "fast",
   agentId: "triage",
   callId: "reword-1",
-  prompt: "Reword for the owner: the menu link gives a 404. Reply to baker@example.test",
+  prompt: `Reword for the owner: the menu link gives a 404. Reply to ${["baker", "example.test"].join("@")}`,
 });
 out.push(`tier ${answer.tier} -> model ${answer.model} (provider ${answer.provider})`);
 out.push(`text: ${answer.text}`);

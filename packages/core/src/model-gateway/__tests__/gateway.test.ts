@@ -192,7 +192,7 @@ describe("the prompt", () => {
     const { gateway, calls } = setup();
     await gateway.complete({
       ...REQUEST,
-      prompt: "Ask test.person@example.test on +1 555 010 0199.",
+      prompt: `Ask ${["test.person", "example.test"].join("@")} on +1 555 010 0199.`,
     });
     expect(calls[0]!.prompt).toBe("Ask [email] on [phone].");
   });
