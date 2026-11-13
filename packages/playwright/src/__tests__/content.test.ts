@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import {
   createContent,
   defaultFetcher,
+  hasHiddenCharacter,
   MAX_REQUESTS,
   readerFromEnv,
   resolveUrl,
@@ -519,5 +520,65 @@ describe("ids from content are data: drafts are skipped and the annotation is cl
     expect([...line].some((ch) => (ch.codePointAt(0) ?? 0) < 0x20)).toBe(false);
     expect(line.length).toBeLessThan(400);
     expect(content.skipped[0]?.id.length).toBeLessThan(200);
+  });
+});
+
+describe("hasHiddenCharacter", () => {
+  it("is true for a backslash and for every control character a URL parser strips or rewrites", () => {
+    for (const code of [0x00, 0x09, 0x0a, 0x0d, 0x1f, 0x7f, 0x80, 0x85, 0x9f])
+      expect(hasHiddenCharacter(`/a${String.fromCharCode(code)}b`)).toBe(true);
+    expect(hasHiddenCharacter("/a\\b")).toBe(true);
+  });
+
+  it("is false for ordinary paths, addresses and letters of any script", () => {
+    for (const text of [
+      "/products/ember",
+      "https://shop.example/p?x=1#y",
+      "/caf%C3%A9",
+      "/\u00e9",
+      "/\u4e2d",
+    ])
+      expect(hasHiddenCharacter(text)).toBe(false);
+  });
+
+  it("is what turns such an address away, with its own reason", () => {
+    for (const url of ["/\\evil.example", "/\t/evil.example", "/a\u0085b"])
+      expect(resolveUrl({ _id: "a", url }, "product", { baseURL: "https://shop.example" })).toEqual(
+        { reason: expect.stringContaining("backslash or a control character") },
+      );
+  });
+});
+
+describe("a sample's request caps are sized for the sample", () => {
+  const idsOf = (n: number) =>
+    Array.from({ length: n }, (_, i) => `post-${String(i).padStart(6, "0")}`);
+
+  it("draws 10,000 of 50,000 documents: 50 id requests and 250 fetches, more than the cap together, and it works", async () => {
+    const seen = { requests: 0 };
+    const ids = idsOf(50_000);
+    const content = createContent({ read: listReader(() => ids, seen) }, quiet);
+    const got = await collect(content.sample("post", 10_000));
+    expect(got).toHaveLength(10_000);
+    expect(seen.requests).toBeGreaterThan(MAX_REQUESTS);
+  }, 60_000);
+
+  it("a reader that hides ever-new drafts in full pages stops with a message that is not about sampling", async () => {
+    let i = 0;
+    const read = () =>
+      Promise.resolve(
+        Array.from({ length: 1000 }, () => ({ _id: `drafts.d-${String(i++).padStart(9, "0")}` })),
+      );
+    const content = createContent({ read }, quiet);
+    const err = (await collect(content.sample("post", 5)).catch((e: unknown) => e)) as Error;
+    expect(err.message).toMatch(/Stopped after 300 requests/);
+    expect(err.message).not.toMatch(/Use content\.sample/);
+  });
+
+  it("published still tells a user with a huge type to use sample", async () => {
+    let i = 0;
+    const read = () =>
+      Promise.resolve([{ _id: `post-${String(i++).padStart(9, "0")}`, url: "/p" }]);
+    const content = createContent({ read, pageSize: 1, maxDocuments: 50_000 }, quiet);
+    await expect(collect(content.published("post"))).rejects.toThrow(/Use content\.sample/);
   });
 });

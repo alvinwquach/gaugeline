@@ -135,7 +135,7 @@ const SCHEME = /^[A-Za-z][A-Za-z0-9+.-]*:/;
 const NO_BASE = "http://gaugeline.invalid";
 
 /** A control character (C0, DEL, C1) or a backslash: the URL parser strips or rewrites these, so a path with one is not what it looks like. */
-function hasHiddenCharacter(text: string): boolean {
+export function hasHiddenCharacter(text: string): boolean {
   for (const ch of text) {
     const c = ch.codePointAt(0) ?? 0;
     if (c <= 0x1f || (c >= 0x7f && c <= 0x9f) || ch === "\\") return true;
@@ -301,13 +301,17 @@ export function createContent(options: ContentOptions, context: ContentContext):
   /** What one `published` or `sample` call has asked for so far: a reader cannot make it loop forever. */
   interface Budget {
     requests: number;
+    /** The most requests this part of the call may make. */
+    limit: number;
+    /** What to say when the limit is hit: what the user can do about it. */
+    hint: string;
   }
+  const budgetFor = (hint: string, limit = MAX_REQUESTS): Budget => ({ requests: 0, limit, hint });
 
   const rows = async (groq: string, budget: Budget): Promise<Record<string, unknown>[]> => {
-    if (++budget.requests > MAX_REQUESTS)
+    if (++budget.requests > budget.limit)
       throw new Error(
-        `Stopped after ${String(MAX_REQUESTS)} requests: more than ${String(MAX_REQUESTS)} requests were needed to read this type. ` +
-          `Use content.sample(type, n) for a large type.`,
+        `Stopped after ${String(budget.limit)} requests: more than ${String(budget.limit)} requests were needed to read this type. ${budget.hint}`,
       );
     const result = await read(groq);
     if (!Array.isArray(result))
@@ -397,7 +401,7 @@ export function createContent(options: ContentOptions, context: ContentContext):
           "{...}",
           pageSize,
           maxDocuments,
-          { requests: 0 },
+          budgetFor("Use content.sample(type, n) for a large type."),
           `There are more than ${COUNT_FORMAT(maxDocuments)} published "${type}" documents. Test a sample of them with content.sample("${type}", n), or raise maxDocuments (at most ${COUNT_FORMAT(HARD_MAX_DOCUMENTS)}).`,
         ),
       ),
@@ -410,14 +414,18 @@ export function createContent(options: ContentOptions, context: ContentContext):
   async function* sampled(type: string, n: number): AsyncGenerator<Record<string, unknown>> {
     assertSampleSize(n);
     const t = typed(type);
-    const budget: Budget = { requests: 0 };
+    // Listing the ids and fetching the chosen documents are counted apart: the fetches are bounded by
+    // how many were chosen (a reader cannot add to them), the listing by the cap.
+    const listing = budgetFor(
+      "The type is too large or the reader is not answering; narrow the type.",
+    );
     const ids: string[] = [];
     for await (const row of walk(
       type,
       "{_id}",
       ID_PAGE,
       HARD_MAX_DOCUMENTS,
-      budget,
+      listing,
       `There are more than ${COUNT_FORMAT(HARD_MAX_DOCUMENTS)} published "${type}" documents, more than a sample can be drawn from. Narrow the type, or test it with your own query.`,
     ))
       if (typeof row._id === "string") ids.push(row._id);
@@ -425,12 +433,16 @@ export function createContent(options: ContentOptions, context: ContentContext):
     context.annotate("gaugeline-seed", seed);
     const chosen = sampleSeeded(ids, Math.min(n, maxDocuments), seed);
     const byId = new Map<string, Record<string, unknown>>();
+    const fetching = budgetFor(
+      "The reader is not answering the way Sanity does.",
+      Math.ceil(chosen.length / ID_CHUNK),
+    );
     for (let at = 0; at < chosen.length; at += ID_CHUNK) {
       const chunk = chosen.slice(at, at + ID_CHUNK);
       const asked = new Set(chunk);
       const found = await rows(
         `*[_type == ${t} && _id in [${chunk.map((id) => JSON.stringify(id)).join(", ")}]]{...}`,
-        budget,
+        fetching,
       );
       for (const doc of found)
         if (typeof doc._id === "string" && asked.has(doc._id) && isPublishedId(doc._id))
