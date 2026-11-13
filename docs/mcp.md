@@ -6,7 +6,7 @@ Let AI assistants check a site, and draft a fix, before anyone changes anything.
 
 | Tool              | Kind    | Does                                                                                                                                                                            |
 | ----------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `run_check`       | `read`  | Checks one page and its site: `GET` and `HEAD` only. Probing checks need `ownerConsent: true` on that one call.                                                                 |
+| `run_check`       | `read`  | Checks one page and its site: `GET` and `HEAD` only. Probing checks run only if you started the server with `--allow-probing` and `--probing-origin` for the site.              |
 | `list_checks`     | `read`  | Lists the checks, by area or framework. No request.                                                                                                                             |
 | `explain_finding` | `read`  | Says what a finding catches, why it matters, how to fix it and how big the fix is. No request.                                                                                  |
 | `compare_runs`    | `read`  | Which findings are new, which are fixed, between two runs in the session. No request.                                                                                           |
@@ -186,9 +186,30 @@ $ cd packages/mcp && node example.mjs
 
 The server also prints its one-line start banner on stderr, above this. The page's own words stay, in a slot labelled as the page's, so the assistant can report what the page says and does not obey it. The zero-width space and the two tag characters are shown as `\u{200B}`, `\u{E0041}` and `\u{E0042}`, so a reader sees that something was hidden there and no raw hidden character reaches the assistant. The `title` is the check's own sentence; nothing in the result outside the slots repeats a word of the page.
 
-## Probing checks need the owner, every time
+## Probing checks need the operator, every time
 
-Checks that ask for a path that is not public (see [privacy and safety](./security.md)) run only when a call passes `ownerConsent: true`. It defaults to `false`, it is a boolean (the string `"true"` is refused), it is not remembered for the next call, and asking for a probing check by id does not skip it. Pass it only when the person who owns the site has said so.
+Checks that ask for a path that is not public (see [privacy and safety](./security.md)), such as `/.env`, a download route with no login or a made-up address, are off. They run only when **you**, the person who starts the server, say so, for one site:
+
+```json title=Settings untested="A settings snippet for an assistant, not a command."
+{
+  "mcpServers": {
+    "gaugeline": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "gaugeline-mcp",
+        "--allow-probing",
+        "--probing-origin",
+        "https://harbourline.example"
+      ]
+    }
+  }
+}
+```
+
+Both flags are needed (`--probing-origin` repeats for more sites, and the server refuses to start with one and not the other), and run only on sites you own or have permission to test. A call is probed only if the address it checks has exactly that origin (scheme, host and port). While a call is probed, every request it makes stays on that origin: a redirect to another origin is not followed, so the permission cannot reach a site you did not name. Over HTTP the flags need the token, like `--allow-private`.
+
+A tool call has no way to turn probing on. `run_check` still accepts an `ownerConsent` argument for older clients, but it is ignored: it enables nothing, and the result says so (`ownerConsentIgnored`). A page that tells an assistant to ask for probing checks gets nothing, and a probing check asked for by id on a site you did not name is refused with a sentence that tells you, not the assistant, what to start the server with. This is stricter than the command line, where `--owner-consent` or a `gaugeline.consent.json` in the folder is enough: the server has no folder of its own to hold a consent file, so the origin list is its equivalent.
 
 ## Over HTTP
 
