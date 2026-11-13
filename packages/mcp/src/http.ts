@@ -16,6 +16,12 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 
 export const MCP_PATH = "/mcp";
 const MAX_BODY_BYTES = 1024 * 1024;
+/**
+ * After a body passes the limit it is read and thrown away, not kept, so the 413 can be answered on a quiet
+ * connection. A client that sends more than this, or for longer than the time limit, is cut off.
+ */
+const MAX_DRAIN_BYTES = 16 * 1024 * 1024;
+const MAX_DRAIN_MS = 10_000;
 
 export interface HttpOptions {
   /** What to serve: one fresh server per request. */
@@ -30,6 +36,8 @@ export interface HttpOptions {
   allowedHosts?: string[];
   /** Origin header values accepted. By default none: a request that carries an Origin is refused. */
   allowedOrigins?: string[];
+  /** How much of an oversize body is read and discarded before the connection is cut off. Default 16 MiB. */
+  maxDrainBytes?: number;
 }
 
 export interface RunningHttp {
@@ -52,32 +60,58 @@ function refuse(res: ServerResponse, status: number, message: string, headers = 
   res.end(JSON.stringify({ jsonrpc: "2.0", error: { code: -32000, message }, id: null }));
 }
 
-function readBody(req: IncomingMessage): Promise<unknown> {
+/** The body passed the limit. `drained` is true when the client finished sending it, so the socket is quiet. */
+class BodyTooLarge extends RangeError {
+  constructor(readonly drained: boolean) {
+    super("body too large");
+  }
+}
+
+/**
+ * Read the JSON body. Past the limit the bytes are counted and discarded (never kept), and the error is raised
+ * only when the client has finished sending, or has sent too much (maxDrain) or taken too long. Closing a socket
+ * that still has unread data makes Windows and macOS reset the connection, and the client then never reads the
+ * 413 that was already written (it sees ECONNRESET or EPIPE instead).
+ */
+function readBody(req: IncomingMessage, maxDrain: number): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
     let size = 0;
     let over = false;
+    let settled = false;
+    let timer: NodeJS.Timeout | undefined;
+    const settle = (done: () => void) => {
+      if (settled) return;
+      settled = true;
+      if (timer) clearTimeout(timer);
+      done();
+    };
     req.on("data", (c: Buffer) => {
-      if (over) return;
       size += c.length;
+      if (over) {
+        if (size > MAX_BODY_BYTES + maxDrain) settle(() => reject(new BodyTooLarge(false)));
+        return;
+      }
       if (size > MAX_BODY_BYTES) {
-        // Stop keeping it, and answer now: the connection is closed after the 413 is written, not before.
         over = true;
         chunks.length = 0;
-        reject(new RangeError("body too large"));
+        timer = setTimeout(() => settle(() => reject(new BodyTooLarge(false))), MAX_DRAIN_MS);
+        timer.unref();
         return;
       }
       chunks.push(c);
     });
     req.on("end", () => {
-      if (over) return;
+      if (over) return settle(() => reject(new BodyTooLarge(true)));
       try {
-        resolve(JSON.parse(Buffer.concat(chunks).toString("utf8")));
+        const parsed: unknown = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+        settle(() => resolve(parsed));
       } catch (e) {
-        reject(e);
+        settle(() => reject(e));
       }
     });
-    req.on("error", reject);
+    req.on("error", (e) => settle(() => reject(e)));
+    req.on("close", () => settle(() => reject(new Error("request closed before its body ended"))));
   });
 }
 
@@ -136,11 +170,12 @@ export async function startHttp(opts: HttpOptions): Promise<RunningHttp> {
       });
     let body: unknown;
     try {
-      body = await readBody(req);
+      body = await readBody(req, opts.maxDrainBytes ?? MAX_DRAIN_BYTES);
     } catch (e) {
-      if (e instanceof RangeError) {
+      if (e instanceof BodyTooLarge) {
         refuse(res, 413, "Request body too large", { connection: "close" });
-        res.once("finish", () => req.destroy());
+        // Drained: the socket closes by itself once the 413 is sent. Not drained: the client will not stop, so cut it off.
+        if (!e.drained) res.once("finish", () => req.destroy());
         return;
       }
       return refuse(res, 400, "Bad request body");
