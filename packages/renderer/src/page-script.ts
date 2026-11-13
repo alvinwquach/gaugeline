@@ -23,6 +23,23 @@ export const FORM_GUARD = `(() => {
   HTMLFormElement.prototype.requestSubmit = note;
 })();`;
 
+/**
+ * Runs before any script of the page, in every frame. WebRTC, WebTransport and media capture open UDP
+ * sockets and microphones outside the browser's HTTP stack, so the gate and the closed proxy never see them:
+ * the browser is also started with WebRTC limited to proxied UDP (and the proxy goes nowhere), and these
+ * names are taken away so a page that asks gets a TypeError. A hostile page may recover a name from a
+ * frame; the launch flag and the closed proxy are what stop the packets.
+ */
+export const NETWORK_GUARD = `(() => {
+  const gone = ["RTCPeerConnection", "webkitRTCPeerConnection", "RTCDataChannel", "RTCSessionDescription", "RTCIceCandidate", "WebTransport"];
+  for (const name of gone) {
+    try { Object.defineProperty(window, name, { value: undefined, configurable: false, writable: false }); } catch (e) { /* kept */ }
+  }
+  for (const name of ["mediaDevices", "getUserMedia", "webkitGetUserMedia", "mozGetUserMedia"]) {
+    try { Object.defineProperty(navigator, name, { value: undefined, configurable: false, writable: false }); } catch (e) { /* kept */ }
+  }
+})();`;
+
 export interface DomRead {
   title: string;
   text: string;

@@ -24,7 +24,13 @@ import {
   installHint,
   type FindBrowserOptions,
 } from "./browser.js";
-import { FORM_COUNTER, FORM_GUARD, readDomExpression, type DomRead } from "./page-script.js";
+import {
+  FORM_COUNTER,
+  FORM_GUARD,
+  NETWORK_GUARD,
+  readDomExpression,
+  type DomRead,
+} from "./page-script.js";
 
 /**
  * The local Playwright adapter (ADR-0009, accepted in part on 13 Nov 2026): the person's own installed
@@ -181,7 +187,12 @@ export function createPlaywrightRenderer(options: PlaywrightRendererOptions): Re
         chromiumSandbox: options.chromiumSandbox ?? true,
         env: launchEnv(env),
         proxy: { ...NO_NETWORK },
-        args: ["--js-flags=--max-old-space-size=1024"],
+        args: [
+          "--js-flags=--max-old-space-size=1024",
+          // WebRTC sends UDP outside the HTTP stack: only through a proxy, and the proxy goes nowhere.
+          "--force-webrtc-ip-handling-policy=disable_non_proxied_udp",
+          "--webrtc-ip-handling-policy=disable_non_proxied_udp",
+        ],
         handleSIGINT: false,
         handleSIGTERM: false,
         handleSIGHUP: false,
@@ -217,6 +228,7 @@ export function createPlaywrightRenderer(options: PlaywrightRendererOptions): Re
       let lastActivity = now();
       await context.exposeFunction(FORM_COUNTER, () => gate.note("form"));
       await context.addInitScript(FORM_GUARD);
+      await context.addInitScript(NETWORK_GUARD);
       await context.route(/.*/, async (route) => {
         lastActivity = now();
         const req = route.request();

@@ -16,6 +16,7 @@ An invented bakery (Quillfeather Bakery) whose pages each try one thing a render
 | `/loop`             | Redirects to itself, for ever                                                                               |
 | `/huge`             | Answers three million bytes                                                                                 |
 | `/many.html`        | Asks for four hundred images                                                                                |
+| `/webrtc.html?port=N` | Opens WebRTC peer connections (STUN and TURN to loopback UDP port N), a WebTransport and a media request |
 | `/state.html`       | Reads its cookies and storage into its title, then sets them, to show each render starts with none          |
 | `/private-sub.html` | Asks for an image on a private address and a frame on a metadata address                                    |
 

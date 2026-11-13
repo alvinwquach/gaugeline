@@ -1,3 +1,4 @@
+import { createSocket } from "node:dgram";
 import { existsSync } from "node:fs";
 import { createNetworkTransport, type RenderRequest, type RenderResult } from "@gaugeline/core";
 import { startFixture, type Fixture } from "@gaugeline/fixtures";
@@ -169,6 +170,26 @@ describe.skipIf(skipReason !== undefined)("the Playwright adapter in a real brow
     const page = rendered(await render("/private-sub.html"));
     expect(page.blocked.address).toBe(2);
   }, 60_000);
+
+  test("sends no UDP packet: WebRTC, WebTransport and media capture reach nothing", async () => {
+    // A local UDP listener the run did not allow: a STUN and a TURN server, and a WebTransport endpoint.
+    const udp = createSocket("udp4");
+    let packets = 0;
+    udp.on("message", () => (packets += 1));
+    await new Promise<void>((resolve) => udp.bind(0, "127.0.0.1", resolve));
+    try {
+      const page = rendered(await render(`/webrtc.html?port=${udp.address().port}`));
+      // The names are gone, so the page's own attempts fail at once.
+      expect(page.title).toContain("rtc:TypeError");
+      expect(page.title).toContain("webTransport:TypeError");
+      expect(page.title).toContain("media:TypeError");
+      // Time for any packet a missed attempt would send.
+      await new Promise((r) => setTimeout(r, 1500));
+      expect(packets).toBe(0);
+    } finally {
+      udp.close();
+    }
+  });
 
   test("gives every page a fresh browser state, at the viewport it is asked for", async () => {
     const one = rendered(await render("/state.html", { viewport: { width: 375, height: 667 } }));

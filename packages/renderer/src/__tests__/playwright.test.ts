@@ -325,6 +325,10 @@ describe("the Playwright adapter: how the browser is started", () => {
     // The browser's own network goes nowhere: everything it needs is answered by the gate.
     expect(launch.proxy.server).toMatch(/^http:\/\/127\.0\.0\.1:\d+$/);
     expect(launch.proxy.bypass).toBe("<-loopback>");
+    // WebRTC may use UDP only through that proxy: it opens sockets the gate never sees.
+    expect((launch as unknown as { args: string[] }).args).toEqual(
+      expect.arrayContaining(["--force-webrtc-ip-handling-policy=disable_non_proxied_udp"]),
+    );
   });
 
   it("leaves Chromium's sandbox on unless a caller turns it off", async () => {
@@ -336,8 +340,10 @@ describe("the Playwright adapter: how the browser is started", () => {
   it("registers the form guard and the WebSocket block before the page loads", async () => {
     const { r, log } = renderer({ fireForm: true, firePopup: true, fireDialog: true });
     const page = rendered(await r.render(PAGE));
-    expect(log.initScripts).toHaveLength(1);
+    expect(log.initScripts).toHaveLength(2);
     expect(String(log.initScripts[0])).toContain("submit");
+    expect(String(log.initScripts[1])).toContain("RTCPeerConnection");
+    expect(String(log.initScripts[1])).toContain("WebTransport");
     expect(log.wsHandlers).toHaveLength(1);
     expect(page.blocked.form).toBe(1);
     expect(page.blocked.popup).toBe(1);
