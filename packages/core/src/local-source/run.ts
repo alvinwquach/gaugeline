@@ -13,6 +13,8 @@ import { webhookTimestampUnbounded } from "../checks/static/webhook-timestamp-un
 import { revalidateTimeAndTagMixed } from "../checks/static/revalidate-time-and-tag-mixed.js";
 import { webhookBodyReadUnsafely } from "../checks/static/webhook-body-read-unsafely.js";
 import { webhookLogsPrivateValues } from "../checks/static/webhook-logs-private-values.js";
+import { nextVersionAdvisory } from "../checks/static/next-version-advisory.js";
+import { zodVersionAdvisory } from "../checks/static/zod-version-advisory.js";
 import { webhookMissingSecretStatus } from "../checks/static/webhook-missing-secret-status.js";
 import { CheckRegistry, type Check } from "../model.js";
 import { buildResult, type Result } from "../result.js";
@@ -90,6 +92,8 @@ export const STATIC_CHECKS: readonly Check<LocalSourceInput>[] = [
   formPostUnguarded,
   tokenRequiredAtImport,
   useServerExportsNotAsync,
+  zodVersionAdvisory,
+  nextVersionAdvisory,
 ];
 
 export function createStaticRegistry(): CheckRegistry {

@@ -22,7 +22,7 @@ export const runOne = (check: Check<LocalSourceInput>, tree: SourceTree) =>
   runStaticChecks({ tree, now: NOW, registry: new CheckRegistry().register(check) });
 
 /** An invented fixture folder under packages/fixtures/source, read the way a person's folder is. */
-export const fixtureTree = (id: string, kind: "fail" | "pass"): Promise<SourceTree> =>
+export const fixtureTree = (id: string, kind: "fail" | "pass" | "unsure"): Promise<SourceTree> =>
   readLocalSource(
     fileURLToPath(new URL(`../../../../../fixtures/source/${id}/${kind}`, import.meta.url)),
     undefined,
