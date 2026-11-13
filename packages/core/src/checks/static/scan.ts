@@ -56,6 +56,22 @@ export function scrub(text: string, blank: boolean): string {
 /** The index of the bracket that closes the one at `open` in a scrubbed view; -1 when it never closes. */
 export const matching = closeOf;
 
+const OPENER: Readonly<Record<string, string>> = { ")": "(", "]": "[", "}": "{" };
+
+/** The index of the bracket that opens the one at `close` in a scrubbed view; -1 when there is none. */
+export function matchingBack(code: string, close: number): number {
+  const closer = code[close] ?? "";
+  const opener = OPENER[closer];
+  if (opener === undefined) return -1;
+  let depth = 0;
+  for (let k = close; k >= 0; k--) {
+    const c = code[k];
+    if (c === closer) depth++;
+    else if (c === opener && --depth === 0) return k;
+  }
+  return -1;
+}
+
 /** True when the file's first statement is the directive `"use client"` (or `use server`, ...). */
 export function hasDirective(text: string, directive: string): boolean {
   const head = scrub(text, false).trimStart();

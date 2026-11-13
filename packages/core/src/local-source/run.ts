@@ -18,6 +18,8 @@ import { CheckRegistry, type Check } from "../model.js";
 import { buildResult, type Result } from "../result.js";
 import { runChecks } from "../run.js";
 import { cmsTokenInClientCode } from "../checks/static/cms-token-in-client-code.js";
+import { formFailureShowsSuccess } from "../checks/static/form-failure-shows-success.js";
+import { formPostUnguarded } from "../checks/static/form-post-unguarded.js";
 import { formValuesInLogs } from "../checks/static/form-values-in-logs.js";
 import { personalDataInAnalytics } from "../checks/static/personal-data-in-analytics.js";
 import { webhookUrlHardcoded } from "../checks/static/webhook-url-hardcoded.js";
@@ -82,6 +84,8 @@ export const STATIC_CHECKS: readonly Check<LocalSourceInput>[] = [
   imageAltNotValidated,
   sectionTypeComponentMismatch,
   stegaNotCleaned,
+  formFailureShowsSuccess,
+  formPostUnguarded,
 ];
 
 export function createStaticRegistry(): CheckRegistry {
