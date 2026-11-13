@@ -257,7 +257,7 @@ export const HELP: Record<string, string> = {
       "did' unless you mark it --client-reported, and then it is listed as 'fixed after",
       "you told us'. It restates the runs that --since last saves in .gaugeline/runs:",
       "it never estimates money or traffic and reads nothing else, except with",
-      "--renewals, which also reads the domain's registration and the certificates",
+      "--coming-up, which also reads the domain's registration and the certificates",
       "(GET only) for what lapses in the next 60 days. Prints Markdown, --json, or one",
       "printable page with --printable. Read only; it writes no file.",
     ].join("\n"),

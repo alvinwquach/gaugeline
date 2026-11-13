@@ -24,7 +24,7 @@ count.
 - **Still open.** A finding that is still there at the end of the month is listed as still open, not as a fix.
 - **Dates and months.** Months and days are UTC, so the same month gives the same receipt on every computer. The
   default month is the last whole month; a month that is not over is the month so far.
-- **Coming up.** With `--renewals`, what lapses in the next 60 days: the domain's registration, the
+- **Coming up.** With `--coming-up`, what lapses in the next 60 days: the domain's registration, the
   certificates, and any token you set up, read the way [`gaugeline renewals`](renewals.md) reads them (the
   public registry and the certificate, `GET` and `HEAD` only). Without it the receipt reads nothing but your own run
   history.
@@ -83,7 +83,7 @@ Paste the Markdown into the update you send, or print the page.
 
 ## Coming up
 
-With `--renewals`, a section like this is added when something lapses within 60 days:
+With `--coming-up`, a section like this is added when something lapses within 60 days:
 
 ```text title=Output
 ## Coming up
@@ -120,11 +120,11 @@ check ran at all it says so and does not claim a quiet month.
 | ------------------------------- | ---------------------------------------------------------------------------------- |
 | `--month <yyyy-mm>`             | The month to report, in UTC. Default: the last whole month                         |
 | `--client-reported <id[@page]>` | A fix your client reported first (repeatable); listed as "fixed after you told us" |
-| `--renewals`                    | Also read what lapses in the next 60 days, for "Coming up"                         |
+| `--coming-up`                   | Also read what lapses in the next 60 days, for "Coming up"                         |
 | `--printable`                   | One page to print instead of Markdown                                              |
 | `--json`                        | The same receipt as JSON on stdout                                                 |
 
-See [options](/docs/options) for every flag, and [Renewals](renewals.md) for what `--renewals` reads.
+See [options](/docs/options) for every flag, and [Renewals](renewals.md) for what `--coming-up` reads.
 
 ## How much history there is
 

@@ -459,7 +459,7 @@ small record of each page when a run uses `--since last`, in `.gaugeline/runs/` 
 ### The care-plan receipt (gaugeline receipt)
 
 `gaugeline receipt` ([The care-plan receipt](guides/care-plan-receipt.md)) reads the run history in `.gaugeline/runs/`
-described above and prints a month's summary of it. It keeps nothing new and writes no file. With `--renewals` it
+described above and prints a month's summary of it. It keeps nothing new and writes no file. With `--coming-up` it
 makes the requests `gaugeline renewals` makes, and only those: the registry's public RDAP server for the domain, and
 one `HEAD` of each certificate host. It adds no field to the history, never sends the receipt anywhere, and holds no
 key, header or page text: the titles in it are the finding titles the history already kept.

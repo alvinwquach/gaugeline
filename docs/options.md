@@ -621,17 +621,15 @@ site and content, renewals, security signals). A fix is 'before your customers
 did' unless you mark it --client-reported, and then it is listed as 'fixed after
 you told us'. It restates the runs that --since last saves in .gaugeline/runs:
 it never estimates money or traffic and reads nothing else, except with
---renewals, which also reads the domain's registration and the certificates
+--coming-up, which also reads the domain's registration and the certificates
 (GET only) for what lapses in the next 60 days. Prints Markdown, --json, or one
 printable page with --printable. Read only; it writes no file.
 
 Options:
       --json                       Print the result as JSON on stdout, and
                                    nothing else
-      --renewals                   Also read what lapses in the next 60 days
-                                   (the domain's registration, the certificates
-                                   and any token you set up) for the Coming up
-                                   list
+      --coming-up                  Also read what lapses in the next 60 days
+                                   (domain, certificates, tokens) for Coming up
       --month <value>              The month a receipt covers, as yyyy-mm in UTC
                                    (default: the last whole month)
       --client-reported <value>    A fix your client reported first, as a check
@@ -650,7 +648,7 @@ Exit codes: 0 ran, 2 could not run
 
 `gaugeline receipt <site>` counts the findings that were opened and fixed in a month from the runs that `--since last`
 saves, and prints them in plain groups with the dates, ready for a care-plan client. It writes no file. Only
-`--renewals` asks anything, and only what `gaugeline renewals` asks, with `GET` and `HEAD`. It never estimates money or
+`--coming-up` asks anything, and only what `gaugeline renewals` asks, with `GET` and `HEAD`. It never estimates money or
 traffic. See [The care-plan receipt](guides/care-plan-receipt.md).
 
 ### The deploy-gate command
@@ -727,6 +725,7 @@ between the markers; CI fails when it differs from the flag table.
 | `--owner-consent`           | Run the probing checks, which ask routes for what they protect with no login; only on sites you may test             |                            | 0.2.0 |
 | `--routes <value>`          | With --owner-consent: download routes in files matching this glob (repeatable); no glob: a folder's signed-in routes |                            | 0.2.0 |
 | `--since <value>`           | Page check: compare with the last run (the only value is last). delivery: the window to read, such as 7d             |                            | 0.2.0 |
+| `--coming-up`               | Also read what lapses in the next 60 days (domain, certificates, tokens) for Coming up                               |                            | 0.2.0 |
 | `--month <value>`           | The month a receipt covers, as yyyy-mm in UTC (default: the last whole month)                                        |                            | 0.2.0 |
 | `--client-reported <value>` | A fix your client reported first, as a check id with an optional page (payment-link-dead@/visit); repeatable         |                            | 0.2.0 |
 | `--printable`               | Print the receipt as one page to print or save as a PDF, instead of Markdown                                         |                            | 0.2.0 |

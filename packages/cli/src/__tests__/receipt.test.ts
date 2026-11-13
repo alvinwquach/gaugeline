@@ -89,7 +89,7 @@ describe("gaugeline receipt: arguments and help", () => {
       month: "2026-10",
       json: false,
       printable: false,
-      renewals: false,
+      comingUp: false,
       clientReported: [],
     });
     expect(
@@ -100,7 +100,7 @@ describe("gaugeline receipt: arguments and help", () => {
           "--month",
           "2026-10",
           "--json",
-          "--renewals",
+          "--coming-up",
           "--client-reported",
           "payment-link-dead@/visit",
           "--client-reported",
@@ -111,7 +111,7 @@ describe("gaugeline receipt: arguments and help", () => {
     ).toMatchObject({
       json: true,
       printable: false,
-      renewals: true,
+      comingUp: true,
       clientReported: [{ checkId: "payment-link-dead", path: "/visit" }, { checkId: "noindex" }],
     });
   });
@@ -148,7 +148,7 @@ describe("gaugeline receipt: arguments and help", () => {
       expect(FLAGS.find((f) => f.name === name)?.commands, name).toEqual(["receipt"]);
     expect(parseCliArgs([SITE, "--month", "2026-10"], {}).kind).toBe("error");
     expect(FLAGS.find((f) => f.name === "json")?.commands).toContain("receipt");
-    expect(FLAGS.find((f) => f.name === "renewals")?.commands).toContain("receipt");
+    expect(FLAGS.find((f) => f.name === "coming-up")?.commands).toEqual(["receipt"]);
   });
 
   it("every flag the help lists for receipt is in docs/options.md, and the help names the command", () => {
@@ -162,7 +162,7 @@ describe("gaugeline receipt: arguments and help", () => {
         "--month",
         "--json",
         "--printable",
-        "--renewals",
+        "--coming-up",
         "--client-reported",
       ]),
     );
@@ -230,7 +230,7 @@ describe("gaugeline receipt: end to end", () => {
     );
   });
 
-  it("reads the renewals only when asked, and lists what is due in 60 days as coming up", async () => {
+  it("reads the renewals only with --coming-up, and lists what is due in 60 days as coming up", async () => {
     const cwd = tmp();
     october(cwd);
     let calls = 0;
@@ -242,7 +242,7 @@ describe("gaugeline receipt: end to end", () => {
     const without = await run(["receipt", SITE, "--month", "2026-10"], cwd, { renewalRows });
     expect(calls).toBe(0);
     expect(without.out).not.toContain("Coming up");
-    const withIt = await run(["receipt", SITE, "--month", "2026-10", "--renewals"], cwd, {
+    const withIt = await run(["receipt", SITE, "--month", "2026-10", "--coming-up"], cwd, {
       renewalRows,
     });
     expect(calls).toBe(1);
@@ -252,7 +252,7 @@ describe("gaugeline receipt: end to end", () => {
   it("a renewals read that fails leaves the receipt whole and says so on stderr", async () => {
     const cwd = tmp();
     october(cwd);
-    const r = await run(["receipt", SITE, "--month", "2026-10", "--renewals"], cwd, {
+    const r = await run(["receipt", SITE, "--month", "2026-10", "--coming-up"], cwd, {
       renewalRows: async () => {
         throw new Error("the registry did not answer");
       },

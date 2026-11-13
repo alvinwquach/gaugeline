@@ -249,8 +249,8 @@ export type ParsedArgs =
       json: boolean;
       /** --printable: the one-page printable version instead of the Markdown block. */
       printable: boolean;
-      /** --renewals: also read what lapses in the next 60 days, for "coming up". */
-      renewals: boolean;
+      /** --coming-up: also read what lapses in the next 60 days, for "coming up". */
+      comingUp: boolean;
       /** --client-reported: fixes the client reported first, by check id and optionally page path. */
       clientReported: { checkId: string; path?: string }[];
       verbose: boolean;
@@ -1465,7 +1465,7 @@ export function parseCliArgs(
       ...(typeof values.month === "string" ? { month: values.month } : {}),
       json: values.json === true,
       printable: values.printable === true,
-      renewals: values.renewals === true,
+      comingUp: values["coming-up"] === true,
       clientReported: reported,
       verbose,
       quiet: values.quiet === true,

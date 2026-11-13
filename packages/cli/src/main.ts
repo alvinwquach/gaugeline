@@ -1156,7 +1156,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
             ...(args.month ? { month: args.month } : {}),
             json: args.json,
             printable: args.printable,
-            renewals: args.renewals,
+            comingUp: args.comingUp,
             clientReported: args.clientReported,
             quiet: args.quiet,
           },

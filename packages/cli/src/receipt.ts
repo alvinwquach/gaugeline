@@ -35,7 +35,7 @@ export interface ReceiptDeps {
 
 /**
  * gaugeline receipt <site>: what Gaugeline caught in a month, from the runs `--since last` keeps.
- * It reads the local runs store and prints; it writes no file and sends nothing. Only --renewals
+ * It reads the local runs store and prints; it writes no file and sends nothing. Only --coming-up
  * asks anything, and only what `gaugeline renewals` asks (the registry and the certificates, GET).
  */
 export async function runReceipt(
@@ -44,7 +44,7 @@ export async function runReceipt(
     month?: string;
     json: boolean;
     printable: boolean;
-    renewals: boolean;
+    comingUp: boolean;
     clientReported: { checkId: string; path?: string }[];
     quiet: boolean;
   },
@@ -68,7 +68,7 @@ export async function runReceipt(
     );
 
   let rows: RenewalRow[] = [];
-  if (args.renewals) {
+  if (args.comingUp) {
     try {
       rows = await (deps.renewalRows ?? readRows(io, cwd, deps))(url.hostname, deps.now);
     } catch (err) {

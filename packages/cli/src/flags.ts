@@ -157,12 +157,8 @@ export const FLAGS: readonly FlagDef[] = Object.freeze<FlagDef[]>([
     type: "boolean",
     description:
       "Also check what lapses: the domain's registration, the certificates and any token you set up",
-    commandDescriptions: {
-      receipt:
-        "Also read what lapses in the next 60 days (the domain's registration, the certificates and any token you set up) for the Coming up list",
-    },
     since: "0.2.0",
-    commands: ["check", "run", "receipt"],
+    commands: ["check", "run"],
   },
   {
     name: "cost",
@@ -239,6 +235,14 @@ export const FLAGS: readonly FlagDef[] = Object.freeze<FlagDef[]>([
     },
     since: "0.2.0",
     commands: ["check", "delivery", "changes"],
+  },
+  {
+    name: "coming-up",
+    type: "boolean",
+    description:
+      "Also read what lapses in the next 60 days (domain, certificates, tokens) for Coming up",
+    since: "0.2.0",
+    commands: ["receipt"],
   },
   {
     name: "month",
