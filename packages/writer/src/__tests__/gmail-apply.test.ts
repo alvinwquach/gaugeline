@@ -5,7 +5,7 @@
  * the customer's, a stop, a revoked token) leaves a trail entry and no request.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { applyEmailDraft } from "../gmail/apply.js";
+import { applyEmailDraft, DraftCreatedError } from "../gmail/apply.js";
 import { APPROVAL_TTL_MS } from "../approval.js";
 import type { Approval, TrailEntry } from "../types.js";
 import { KILL_SWITCH_ENV } from "../switches.js";
@@ -178,6 +178,12 @@ describe("recipients come from the customer's configured contacts, never from th
       ["maya@tidewater-bar.example,spy@evil.example"],
       [],
       Array.from({ length: 6 }, (_, i) => `c${i}@tidewater-bar.example`),
+      // Four plain addresses of 250 characters do not fit one header line.
+      Array.from(
+        { length: 4 },
+        (_, i) =>
+          `${"a".repeat(60)}@${"b".repeat(60)}.${"c".repeat(60)}.${"d".repeat(55)}.${i}x.example`,
+      ),
     ]) {
       const r = mailRig();
       r.deps.target = { ...r.deps.target, contacts };
@@ -389,3 +395,54 @@ describe("what is recorded and what is said", () => {
 });
 
 export type { TrailEntry };
+
+describe("Gmail created the draft but the trail could not be written", () => {
+  it("never records apply_failed, keeps the claim, and a retry creates no second draft", async () => {
+    const r = mailRig();
+    const recorded: string[] = [];
+    r.deps.trail = {
+      record: async (e) => {
+        recorded.push(e.outcome);
+        if (e.outcome === "applied") throw new Error(`database said ${GMAIL_TOKEN}`);
+      },
+    };
+    const err = await applyEmailDraft(r.job, r.deps).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(DraftCreatedError);
+    expect((err as DraftCreatedError).ref).toBe("r1000");
+    // One fixed message: nothing from the trail's own error, so no token or database text.
+    expect(String(err)).not.toContain(GMAIL_TOKEN);
+    expect(String(err)).not.toContain("database said");
+    expect(r.gmail.drafts).toHaveLength(1);
+    expect(recorded).toEqual(["applied"]);
+    // The retry (the worker re-claims the job) is refused as a duplicate and makes no request.
+    r.deps.trail = { record: async (e) => void recorded.push(e.outcome) };
+    const again = await applyEmailDraft(r.job, r.deps);
+    expect(again).toMatchObject({ outcome: "refused", reason: "duplicate" });
+    expect(r.gmail.drafts).toHaveLength(1);
+    expect(r.gmail.requests).toHaveLength(1);
+    expect(recorded).not.toContain("apply_failed");
+  });
+});
+
+describe("only the exact word write creates a draft", () => {
+  for (const mode of [
+    undefined,
+    null,
+    "",
+    "Write",
+    "WRITE",
+    "apply",
+    "true",
+    "1",
+    1,
+    true,
+    "dry-run",
+    " write",
+  ])
+    it(`mode ${JSON.stringify(mode)} is a dry run`, async () => {
+      const r = mailRig({ mode: mode as never });
+      const out = await applyEmailDraft(r.job, r.deps);
+      expect(out.outcome).toBe("dry_run");
+      expect(r.gmail.requests).toEqual([]);
+    });
+});

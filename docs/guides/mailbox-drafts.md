@@ -82,14 +82,24 @@ const deps = {
 await emailDraftWriter(deps).apply(job);
 ```
 
-## What you grant: one scope
+## What you grant: one scope, and where the token lives
 
 Connect the mailbox with the OAuth scope `https://www.googleapis.com/auth/gmail.drafts.create` ("Compose new
 draft emails") and no other. It can create a draft. It cannot read your mail and it cannot send: Gmail's method
 that sends a draft does not accept it. The wider `gmail.compose` scope would also let the code send, so the
-writer does not ask for it, and its tests fail if any file names it.
+writer does not ask for it, and a test fails if any file in the Gmail code (`packages/writer/src/gmail/`) names it
+or another Gmail scope.
 
 Gaugeline never asks to read or send from a personal mailbox.
+
+**The access token is an environment variable on your worker**, `GAUGELINE_GMAIL_ACCESS_TOKEN` by default
+(`tokenFromEnv(name)` reads any other capitalised name). It is a write credential, so it is separate from every
+read-only key, and the hosted service never holds it (ADR-0010). The writer reads it at each request, checks its
+shape (visible characters, no space, at most 4096) and sends it nowhere but the `Authorization` header. A missing
+or malformed token is one fixed error, and the value is never in it. There is no refresh flow: when the token
+expires or is revoked, Gmail answers 401 and you reconnect (below). A source behind the same `TokenSource`
+interface (for example a secret store, `tokenFromStore`) may replace it, but the environment variable is the v1
+way: the hosted secret store has no Gmail secret kind yet.
 
 ## What the writer checks first
 
@@ -100,7 +110,9 @@ the subject and the body), nothing withdrew it, and it is under 72 hours old. Th
 - The note is a subject and a body and nothing else. A `to`, `cc` or `bcc` in it is refused.
 - The recipients are the contacts you configured, minus any that bounced. A contact that is not a plain address
   (a display name, a comma, a line break) refuses the job. If none is left, the job is refused.
-- A line break, a control character or a bidirectional control in the subject is refused, not escaped. The body
+- A line break, a control character, an invisible character (zero-width, joiners, the byte order mark, soft
+  hyphen, tag characters) or a bidirectional control in the subject is refused, not escaped: you approve text you
+  can see. The recipients must fit one header line (900 characters joined). The body
   is plain text: each line is cleaned of terminal escapes, tag characters and bidirectional controls, and zero-width
   characters inside a word are shown as `\u{200B}`.
 - The message is built by one small function (RFC 5322 headers, an RFC 2047 subject when it is not plain ASCII,
@@ -113,16 +125,23 @@ the subject and the body), nothing withdrew it, and it is under 72 hours old. Th
 ## One approval, one draft
 
 A second apply of the same approval is refused as `duplicate`, whether it is the same process, a record that
-already says `applied`, or two calls at once. Gmail has no idempotency key and the scope cannot list drafts, so if
-the network drops after Gmail created a draft and before the trail entry was written, a retry can leave one extra
-draft in Drafts. You delete it; nothing here can send it.
+already says `applied`, or two calls at once. Gmail has no idempotency key and the scope cannot list drafts.
+
+- If Gmail answers 200 and then the trail entry cannot be written, the draft exists. The writer never records
+  `apply_failed` for it, keeps the decision claimed (a retry is refused as `duplicate`) and throws a
+  `DraftCreatedError` whose message is fixed and whose `ref` is Gmail's draft id. To reconcile, record the
+  `applied` entry for that decision yourself with that `ref` **before restarting the worker**: the claim lives
+  in the process, and after a restart only an `applied` entry stops a second draft. If you cannot, look in Drafts
+  and delete the duplicate; nothing here can send it.
+- If the network drops before Gmail answers, nobody knows whether the draft exists: the entry is `apply_failed`
+  with no status, and a retry can leave one extra draft in Drafts. You delete it.
 
 ## If the token stops working
 
 - Gmail answers 401 or 403 (revoked, expired, scope removed): the entry is `apply_failed` with that status and the
   reason `reconnect`. The draft stays in the inbox, with a note to reconnect the mailbox.
-- You disconnect the mailbox: the worker's stored token is deleted. The writer reads the token before every
-  request, so the next draft is refused as `disconnected` and no request is made.
+- You disconnect the mailbox: you unset the variable (or delete the stored token). The writer reads the token
+  before every request, so the next draft is refused as `disconnected` and no request is made.
 - The token is sent in the `Authorization` header to `gmail.googleapis.com` only, over https, with redirects
   refused. It is never in a log, a trail entry, an error or a request address.
 

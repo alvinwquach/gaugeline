@@ -21,9 +21,22 @@ import { stopReason, type Mode, type Switches } from "../switches.js";
 import type { Approvals, ApplyJob, Trail, TrailEntry } from "../types.js";
 import { RegistryError } from "../github/endpoints.js";
 import { checkGmailRequest, DRAFTS_PATH, type GmailRequest } from "./endpoints.js";
-import { isPlainAddress, MAX_RECIPIENTS, MimeError, buildRaw } from "./mime.js";
+import { isPlainAddress, MAX_RECIPIENTS, MAX_TO_LENGTH, MimeError, buildRaw } from "./mime.js";
 import { MailTokenError, type CreateDraft } from "./send.js";
 import { mailBody } from "./text.js";
+
+/**
+ * Gmail created the draft, and then the trail entry for it could not be written. The draft exists: nothing
+ * is recorded as failed, the decision stays claimed (a retry is refused as a duplicate), and this error,
+ * with a fixed message that carries nothing from the trail's own error, tells the worker. `ref` is Gmail's
+ * draft id (when it is a plain id): record the `applied` entry by hand with it before the worker restarts.
+ */
+export class DraftCreatedError extends Error {
+  constructor(readonly ref?: string) {
+    super("Gmail created the draft but its trail entry could not be written: do not retry");
+    this.name = "DraftCreatedError";
+  }
+}
 
 export interface MailTarget {
   /** The organisation this worker serves. A job for another organisation is refused. */
@@ -69,7 +82,8 @@ function validTarget(t: MailTarget): boolean {
     Array.isArray(t.contacts) &&
     t.contacts.length >= 1 &&
     t.contacts.length <= MAX_RECIPIENTS &&
-    t.contacts.every(isPlainAddress)
+    t.contacts.every(isPlainAddress) &&
+    t.contacts.join(", ").length <= MAX_TO_LENGTH
   );
 }
 
@@ -86,12 +100,16 @@ export async function applyEmailDraft(job: ApplyJob, deps: MailDeps): Promise<Tr
     return entry;
   }
   claimed.set(key, true);
-  let entry: TrailEntry | undefined;
+  let keep = false; // the claim is kept for a created draft, and only for one
   try {
-    entry = await run(job, deps);
+    const entry = await run(job, deps);
+    keep = entry.outcome === "applied";
     return entry;
+  } catch (e) {
+    keep = e instanceof DraftCreatedError;
+    throw e;
   } finally {
-    if (entry?.outcome !== "applied") claimed.set(key, false);
+    claimed.set(key, keep);
   }
 }
 
@@ -156,11 +174,13 @@ async function run(job: ApplyJob, deps: MailDeps): Promise<TrailEntry> {
   // The switches again, before the request.
   const why = await stopReason(deps);
   if (why) return refused(why);
+  let created: { ref?: string } | undefined;
   try {
     const res = await deps.createDraft(request);
     if (res.status === 200) {
       const id = res.json?.id;
-      return await finish({ outcome: "applied", ...(id && DRAFT_ID.test(id) ? { ref: id } : {}) });
+      created = id && DRAFT_ID.test(id) ? { ref: id } : {};
+      return await finish({ outcome: "applied", ...created });
     }
     // A token Gmail does not accept (revoked, expired, or a scope removed): the draft stays in the inbox.
     const reconnect = res.status === 401 || res.status === 403;
@@ -170,6 +190,8 @@ async function run(job: ApplyJob, deps: MailDeps): Promise<TrailEntry> {
       ...(reconnect ? { reason: "reconnect" } : {}),
     });
   } catch (e) {
+    // The draft exists: never record a failure for it, and say so with one fixed error.
+    if (created) throw new DraftCreatedError(created.ref);
     if (e instanceof MailTokenError) return refused("disconnected");
     if (e instanceof RegistryError) return refused("registry");
     // Anything else (the network failed): leave a trail entry, then let the worker see the error.

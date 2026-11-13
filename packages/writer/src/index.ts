@@ -36,7 +36,12 @@ export {
   type EmailDraftWriter,
   type SanityDraftWriter,
 } from "./drafts.js";
-export { applyEmailDraft, type MailDeps, type MailTarget } from "./gmail/apply.js";
+export {
+  applyEmailDraft,
+  DraftCreatedError,
+  type MailDeps,
+  type MailTarget,
+} from "./gmail/apply.js";
 export {
   checkGmailRequest,
   DRAFTS_PATH,
@@ -47,8 +52,10 @@ export {
 export { buildMessage, buildRaw, isPlainAddress, MimeError, readRaw } from "./gmail/mime.js";
 export {
   draftsUrl,
+  GMAIL_TOKEN_ENV,
   gmailSender,
   MailTokenError,
+  tokenFromEnv,
   tokenFromStore,
   type CreateDraft,
   type GmailResponse,

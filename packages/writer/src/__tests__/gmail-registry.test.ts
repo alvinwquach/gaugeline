@@ -156,6 +156,17 @@ describe("checkGmailRequest refuses everything but one draft to the configured c
     }
   });
 
+  it("refuses a well-formed message that is past the size cap", () => {
+    const big = buildRaw({ to: CONTACTS, subject: MAIL.subject, body: "x".repeat(110_000) });
+    expect(big.length).toBeGreaterThan(100_000);
+    refused({ ...valid, body: { message: { raw: big } } });
+    const ok = buildRaw({ to: CONTACTS, subject: MAIL.subject, body: "x".repeat(40_000) });
+    expect(ok.length).toBeLessThan(100_000);
+    expect(() =>
+      checkGmailRequest({ ...valid, body: { message: { raw: ok } } }, CONTACTS),
+    ).not.toThrow();
+  });
+
   it("refuses a request that is not an object, or whose path is not text", () => {
     refused(null);
     refused("createDraft");

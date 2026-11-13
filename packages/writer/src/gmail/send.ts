@@ -51,7 +51,24 @@ export function draftsUrl(path: string): URL {
   return url;
 }
 
-/** A token source over a store with the SecretStore's `get` (V-01): one organisation's named secret. */
+/** The environment variable the customer's Gmail access token is read from (ADR-0010 part 1): the worker's own, separate from every read-only key. */
+export const GMAIL_TOKEN_ENV = "GAUGELINE_GMAIL_ACCESS_TOKEN";
+
+/**
+ * The default token source (the v1 way): a named environment variable on the worker, read at each request.
+ * A missing or empty variable is null; a malformed value is refused by the sender's shape check. Either way
+ * the sender throws the one fixed MailTokenError, which never carries the value.
+ */
+export function tokenFromEnv(
+  name: string = GMAIL_TOKEN_ENV,
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): TokenSource {
+  if (!/^[A-Z][A-Z0-9_]{0,63}$/.test(name))
+    throw new Error("the token's name must be an environment variable name in capitals");
+  return async () => env[name] || null;
+}
+
+/** An alternative source over a store with the SecretStore's `get` (V-01): one organisation's named secret. */
 export function tokenFromStore(
   store: { get(orgId: string, name: string): Promise<string | null> },
   orgId: string,

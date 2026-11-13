@@ -33,12 +33,21 @@ export function isPlainAddress(address: unknown): address is string {
   return typeof address === "string" && address.length <= 254 && ADDRESS.test(address);
 }
 
-/** Line breaks (CR, LF, NEL, LS, PS), C0 and C1 controls, and bidirectional controls. */
+/**
+ * Line breaks (CR, LF, NEL, LS, PS), C0 and C1 controls, and everything a person cannot see in a subject:
+ * Unicode format characters (category Cf: zero-width space, joiners, the byte order mark, soft hyphen,
+ * word joiner, invisible operators and the bidirectional controls) and the tag characters (U+E0000 block).
+ */
 /* eslint-disable no-control-regex -- the point is to find control characters */
-const HEADER_BAD =
-  /[\u0000-\u001f\u007f-\u009f\u2028\u2029\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069\uFFFE\uFFFF]/u;
+const HEADER_BAD = /[\u0000-\u001f\u007f-\u009f\u2028\u2029\p{Cf}\u{E0000}-\u{E007F}\uFFFE\uFFFF]/u;
 const BODY_BAD = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f\u2028\u2029]/u;
 /* eslint-enable no-control-regex */
+
+/**
+ * The most the recipients may take in the To line (joined with ", "). RFC 5322 allows 998 characters in a
+ * line; five addresses of 253 characters would pass it, so the writer refuses a list this long and does not fold.
+ */
+export const MAX_TO_LENGTH = 900;
 
 const CRLF = "\r\n";
 
@@ -71,8 +80,12 @@ function check(parts: MailParts): void {
     throw new MimeError(`a draft has 1 to ${MAX_RECIPIENTS} recipients`);
   for (const a of parts.to)
     if (!isPlainAddress(a)) throw new MimeError("a recipient is not a plain address");
+  if (parts.to.join(", ").length > MAX_TO_LENGTH)
+    throw new MimeError("the recipients do not fit one header line");
   if (typeof parts.subject !== "string" || parts.subject === "" || HEADER_BAD.test(parts.subject))
-    throw new MimeError("the subject is empty or has a line break, control or bidi character");
+    throw new MimeError(
+      "the subject is empty or has a line break, control, invisible or bidi character",
+    );
   if (typeof parts.body !== "string" || BODY_BAD.test(parts.body))
     throw new MimeError("the body has a control character");
 }

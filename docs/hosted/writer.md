@@ -184,7 +184,7 @@ const target = {
 An approved `email` draft becomes one draft in **your own Gmail Drafts**, addressed to the site's configured
 contacts, and is never sent. `applyEmailDraft` (or `emailDraftWriter(deps).apply(job)`) runs the same approval
 checks as above, then builds one plain-text message and makes one request, `POST /gmail/v1/users/me/drafts`, to
-`gmail.googleapis.com` with your OAuth access token. The registry has that one request and no send. The one scope
+`gmail.googleapis.com` with your OAuth access token, read at each request from the worker's environment variable `GAUGELINE_GMAIL_ACCESS_TOKEN`. The registry has that one request and no send. The one scope
 to grant is `gmail.drafts.create`. The recipients come from your worker's configuration, never from the note. The
 full page, with a runnable example and its real output, is
 [Drafts in your own mailbox: Gmail](../guides/mailbox-drafts.md).

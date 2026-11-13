@@ -5,7 +5,14 @@
  * message built here reads back as exactly the parts that went in.
  */
 import { describe, expect, it } from "vitest";
-import { buildMessage, buildRaw, isPlainAddress, MimeError, readRaw } from "../gmail/mime.js";
+import {
+  buildMessage,
+  buildRaw,
+  isPlainAddress,
+  MAX_TO_LENGTH,
+  MimeError,
+  readRaw,
+} from "../gmail/mime.js";
 import { CONTACTS, MAIL } from "./gmail-helpers.js";
 
 const parts = { to: CONTACTS, ...MAIL };
@@ -104,6 +111,17 @@ describe("header injection is refused, not escaped (X75 edge cases)", () => {
     ["a right-to-left isolate", "invoice \u2067x"],
     ["a left-to-right mark", "x\u200Ey"],
     ["an empty subject", ""],
+    ["a zero-width space", "invoice\u200Bpaid"],
+    ["a zero-width joiner", "a\u200Db"],
+    ["a byte order mark", "\uFEFFhello"],
+    ["a soft hyphen", "inv\u00ADoice"],
+    ["a word joiner", "a\u2060b"],
+    ["an invisible separator", "a\u2063b"],
+    ["a tag character", "hello\u{E0041}"],
+    ["an unassigned character in the tag block", "hello\u{E0002}"],
+    ["the first code point of the tag block", "hello\u{E0000}"],
+    ["a tag cancel", "hello\u{E007F}"],
+    ["a variation selector tag run", "x\u{E0020}\u{E0021}"],
   ] as const;
   for (const [name, subject] of injections)
     it(`refuses ${name}`, () => {
@@ -137,6 +155,22 @@ describe("header injection is refused, not escaped (X75 edge cases)", () => {
   it("accepts the plain addresses a client contact list holds", () => {
     for (const a of ["maya@tidewater-bar.example", "o.brien+news@pop-up.example", "a@b.co"])
       expect(isPlainAddress(a), a).toBe(true);
+  });
+
+  it("refuses a To line past the 998-character limit of RFC 5322 (five long contacts)", () => {
+    const long = (n: number) =>
+      `${"a".repeat(60)}@${"b".repeat(60)}.${"c".repeat(60)}.${"d".repeat(60)}.${n}x.example`;
+    const to = [1, 2, 3, 4, 5].map(long);
+    expect(to.every(isPlainAddress)).toBe(true);
+    expect(`To: ${to.join(", ")}`.length).toBeGreaterThan(998);
+    expect(() => buildMessage({ ...parts, to })).toThrow(MimeError);
+    expect(`To: ${to.slice(0, 3).join(", ")}`.length).toBeLessThan(MAX_TO_LENGTH);
+    expect(() => buildMessage({ ...parts, to: to.slice(0, 3) })).not.toThrow();
+  });
+
+  it("every header line of a built message is under 998 characters", () => {
+    const text = buildMessage({ ...parts, subject: "x".repeat(200) });
+    for (const l of text.split("\r\n")) expect(l.length).toBeLessThanOrEqual(998);
   });
 
   it("refuses no recipients, and more than five", () => {
