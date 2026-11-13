@@ -1,5 +1,5 @@
--- 0014: approval receipts (AG-06). Renumber at merge: AG-05's migration may take this number first (the
--- migrator refuses gaps, so this file follows whatever is last on main).
+-- 0016: approval receipts (AG-06). It follows AG-05's 0015 (the migrator refuses gaps, so this file runs
+-- only once 0015 is on main).
 --
 -- One receipt per person's choice on a draft (approved, edited, declined), written by the same transaction
 -- that records the choice: an AFTER INSERT trigger on public.decisions. Nothing about a decisions row changes

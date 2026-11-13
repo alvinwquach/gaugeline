@@ -543,7 +543,9 @@ export const agentTraceOverflow = pgTable("agent_trace_overflow", {
   agentId: uuid("agent_id"),
   reason: text("reason").notNull(),
   calls: bigint("calls", { mode: "number" }).notNull(),
-/** One approval receipt per person's choice (AG-06, 0014): the canonical line and its place in the chain. */
+}).enableRLS();
+
+/** One approval receipt per person's choice (AG-06, 0016): the canonical line and its place in the chain. */
 export const receipts = pgTable("receipts", {
   id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
   orgId: uuid("org_id").notNull(),

@@ -293,6 +293,7 @@ describe.skipIf(!HAS_DATABASE)("hosted database: secrets in Vault", () => {
         "put_secret",
       ]);
       expect(await privateFunctionsExecutableBy(sql, "gaugeline_worker")).toEqual(["get_secret"]);
+      // AG-06 (0016): receipt_text and decisions_write_receipt are executable by no role (only the trigger).
       expect(await privateFunctionsExecutableBy(sql, "anon")).toEqual([]);
       expect(await privateFunctionsExecutableBy(sql, "gaugeline_agent")).toEqual([
         "agent_insert_draft",
