@@ -4,17 +4,22 @@
  *   In CI the body comes from the pull_request event (GITHUB_EVENT_PATH).
  */
 import { existsSync, readFileSync } from "node:fs";
-import { parsePr } from "./parse-pr.js";
+import { bannedTextProblems, parsePr } from "./parse-pr.js";
 
 const file = process.argv.slice(2).find((a) => a !== "--");
 const eventPath = process.env.GITHUB_EVENT_PATH;
-const body = file
-  ? readFileSync(file, "utf8")
-  : eventPath && existsSync(eventPath)
-    ? ((JSON.parse(readFileSync(eventPath, "utf8")) as { pull_request?: { body?: string | null } })
-        .pull_request?.body ?? "")
-    : "";
+const pull =
+  !file && eventPath && existsSync(eventPath)
+    ? (
+        JSON.parse(readFileSync(eventPath, "utf8")) as {
+          pull_request?: { body?: string | null; title?: string | null };
+        }
+      ).pull_request
+    : undefined;
+const body = file ? readFileSync(file, "utf8") : (pull?.body ?? "");
 const parsed = parsePr(body);
+// Auto-merge skips the human merge gate, so the title and body are checked here instead.
+parsed.problems.push(...bannedTextProblems({ title: pull?.title, body }));
 for (const p of parsed.problems) process.stderr.write(`pr:check: ${p}\n`);
 if (parsed.problems.length > 0) process.exitCode = 1;
 else
