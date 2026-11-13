@@ -66,6 +66,7 @@ const FIXTURES = [
   "nav-after",
   "nav-chain",
   "analytics-twice",
+  "nav-events-csv",
   "nav-names",
   "nav-utm",
   "nav-attributes",

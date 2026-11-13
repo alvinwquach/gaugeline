@@ -1,0 +1,3 @@
+Region,Selector,Event,Parameters,Attributes
+nav,,menu_click,"link_text, link_url, menu_parent",
+,button.book,book_click,button_text,

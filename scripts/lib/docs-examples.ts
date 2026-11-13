@@ -281,7 +281,7 @@ export async function runExample(
     // A fixture with a runs/ folder carries saved runs for `gaugeline changes`: they are copied into
     // .gaugeline/runs/<host>/ of the same temporary folder, so the example reads real history.
     const dir = join(SITES_DIR, e.fixture);
-    const settings = readdirSync(dir).filter((n) => /^gaugeline\.[a-z-]+\.json$/.test(n));
+    const settings = readdirSync(dir).filter((n) => /^gaugeline\.[a-z-]+\.(?:json|csv)$/.test(n));
     const saved = join(dir, "runs");
     const cwd =
       settings.length > 0 || existsSync(saved)
