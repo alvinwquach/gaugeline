@@ -41,13 +41,14 @@ The tests are `packages/core/src/query/__tests__/mutations.test.ts` and `package
 
 ## Local files it writes
 
-"Read-only" on this page is a promise about systems: REST, GraphQL, GROQ, SQL, webhooks and queues are read and never changed. It is not a promise that nothing is ever written to your own computer. Three commands put files into your own repository, and the boundary is the same for all of them: they write local files only, and never touch a live system, a dataset or a payment provider.
+"Read-only" on this page is a promise about systems: REST, GraphQL, GROQ, SQL, webhooks and queues are read and never changed. It is not a promise that nothing is ever written to your own computer. Four commands put files into your own repository, and the boundary is the same for all of them: they write local files only, and never touch a live system, a dataset or a payment provider.
 
-| Command                  | What it writes                                                      | Where                                                              |
-| ------------------------ | ------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| `--fix`                  | Edits to files that already exist, on a branch                      | Your repository                                                    |
-| `gaugeline query --page` | Three new files: `queries.ts`, `types.ts` and `page.tsx`            | The folder `--out` names, inside the folder you ran the command in |
-| `gaugeline query --save` | One baseline file of names: check ids, types, fields and file paths | The file `--save` names, inside the folder you ran the command in  |
+| Command                  | What it writes                                                                                    | Where                                                              |
+| ------------------------ | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `--fix`                  | Edits to files that already exist, on a branch                                                    | Your repository                                                    |
+| `gaugeline query --page` | Three new files: `queries.ts`, `types.ts` and `page.tsx`                                          | The folder `--out` names, inside the folder you ran the command in |
+| `gaugeline query --save` | One baseline file of names: check ids, types, fields and file paths                               | The file `--save` names, inside the folder you ran the command in  |
+| `gaugeline propose`      | One proposals file: each proposed change as a diff, with its finding. It edits none of your files | The file `--out` names (default `gaugeline.proposals.json`)        |
 
 The reports a check saves (`--save-requests`, `snapshot --out`, `plan --annotate`, `digest`) are files about a check, written where you name them, and none of them changes your code.
 

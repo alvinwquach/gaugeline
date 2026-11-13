@@ -445,6 +445,8 @@ describe("flag table: e2e", () => {
         const platformOnly = f.commands.length === 1 && f.commands[0] === "platform";
         // query --dupes reads a dataset (SANITY_PROJECT_ID), so it is proved the same way, with --help.
         const queryOnly = f.commands.length === 1 && f.commands[0] === "query";
+        // propose reads a folder and findings: its own flags are proved the same way, with --help.
+        const proposeOnly = f.commands.length === 1 && f.commands[0] === "propose";
         // brief runs the page check and writes a work order: its own flags are proved on a run.
         const briefOnly = f.commands.length === 1 && f.commands[0] === "brief";
         // --business is brief's and audit's, proved on brief. audit --pack runs the page check too, and its own flags
@@ -467,6 +469,7 @@ describe("flag table: e2e", () => {
           !deliveryOnly &&
           !platformOnly &&
           !queryOnly &&
+          !proposeOnly &&
           !briefOnly &&
           !businessFlag &&
           !auditOnly &&
@@ -571,9 +574,15 @@ describe("flag table: e2e", () => {
                                 `--${f.name}`,
                                 join(scratch, "snapshot.json"),
                               ]
-                            : deliveryOnly || platformOnly || queryOnly
+                            : deliveryOnly || platformOnly || queryOnly || proposeOnly
                               ? [
-                                  deliveryOnly ? "delivery" : platformOnly ? "platform" : "query",
+                                  deliveryOnly
+                                    ? "delivery"
+                                    : platformOnly
+                                      ? "platform"
+                                      : proposeOnly
+                                        ? "propose"
+                                        : "query",
                                   `--${f.name}`,
                                   ...value,
                                   "--help",

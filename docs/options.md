@@ -697,6 +697,54 @@ blocking on, and `--ci` is not accepted here. It refuses to run, with exit 2, wh
 deployment is production. Probing checks stay off unless `--owner-consent` is on the command line. Per-host
 snippets and an example from a dentist's Netlify preview: [Deploy gates](guides/deploy-gates.md).
 
+### The propose command
+
+`gaugeline propose --help` prints:
+
+```text title=Output
+Usage: gaugeline propose --fixes --repo <folder> [<run.json>] [options]
+
+Turn findings that live in your code into proposals: a unified diff, the finding
+it answers, the file it changes and how it is checked again. Two fixers: a
+missing redirect (Netlify _redirects or vercel.json) from --plan and --base, and
+a structured-data value that disagrees with the page, from a saved run
+(gaugeline <address> --json > run.json). A fixer that is not certain makes no
+proposal and says why. Off by default: add --fixes (or GAUGELINE_FIXES=1).
+It reads the folder and sends GET requests to --base; it changes nothing and
+sends nothing: the diffs are printed and written to --out.
+
+Options:
+      --allow-private         Allow addresses on this computer or a private
+                              network, such as 127.0.0.1 or 192.168.x.x
+      --base <value>          The site a plan is checked against (a preview);
+                              the site emails link to; or the site to ask for
+                              --routes
+      --out <value>           The proposals file (default
+                              gaugeline.proposals.json)
+      --fixes                 propose: turn fix proposals on (they are off by
+                              default); nothing is sent, the diffs are written
+                              to a file [GAUGELINE_FIXES]
+      --repo <value>          propose: the project's folder on this computer (a
+                              checkout of its repository)
+      --plan <value>          propose: the launch plan (CSV); with --base, each
+                              old address that does not redirect gets a proposal
+      --repository <value>    propose: the repository's name on GitHub
+                              (owner/name), written into each proposal; optional
+      --quiet                 Print only results and errors
+      --verbose               Show each request, and technical detail when
+                              something goes wrong
+  -h, --help                  Show this help and exit
+  -v, --version               Print the version and exit
+
+Exit codes: 0 ran, 2 could not run
+```
+
+`gaugeline propose` turns a finding that lives in your code into a proposal: a unified diff, the finding it
+answers and how it is checked again. It is off until `--fixes` (or `GAUGELINE_FIXES`). It reads your project's
+folder and, with `--plan` and `--base`, sends `GET` requests to the preview; it changes nothing and sends
+nothing, and writes the proposals to `--out`. A fixer that is not certain makes no proposal and says why. An
+example from a bookshop's redirect file: [Fix proposals](guides/fix-proposals.md).
+
 ### Flags
 
 The table below is generated from `packages/cli/src/flags.ts` (`pnpm docs:flags`). Do not edit
@@ -784,6 +832,10 @@ between the markers; CI fails when it differs from the flag table.
 | `--package <value>`         | advisory: a package@range to use instead of looking the id up in OSV (repeatable)                                    |                            | 0.2.0 |
 | `--host <value>`            | advisory: another hostname of the client to look at, such as an old subdomain (up to 5)                              |                            | 0.2.0 |
 | `--block`                   | deploy-gate: exit 1 when a "Fix this first" finding is found; without it the gate only reports                       | `GAUGELINE_GATE_BLOCK`     | 0.2.0 |
+| `--fixes`                   | propose: turn fix proposals on (they are off by default); nothing is sent, the diffs are written to a file           | `GAUGELINE_FIXES`          | 0.2.0 |
+| `--repo <value>`            | propose: the project's folder on this computer (a checkout of its repository)                                        |                            | 0.2.0 |
+| `--plan <value>`            | propose: the launch plan (CSV); with --base, each old address that does not redirect gets a proposal                 |                            | 0.2.0 |
+| `--repository <value>`      | propose: the repository's name on GitHub (owner/name), written into each proposal; optional                          |                            | 0.2.0 |
 | `--dry-run`                 | init: print the settings files it would write, and write nothing                                                     |                            | 0.2.0 |
 | `--note`                    | advisory: print the short note for the client (Markdown) instead of the report                                       |                            | 0.2.0 |
 | `--runs <value>`            | The folder of saved runs (each one saved with --json) to read                                                        |                            | 0.2.0 |

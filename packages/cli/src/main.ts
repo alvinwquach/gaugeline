@@ -152,6 +152,7 @@ import { runDigest } from "./digest.js";
 import { formatLegacyTable, formatPlanSummary } from "./plan.js";
 import { formatTerminal } from "./reporter.js";
 import { runCutover } from "./cutover.js";
+import { runPropose } from "./propose.js";
 import { runMigration } from "./migration.js";
 import { runAdvisory } from "./advisory.js";
 import { runInit } from "./init.js";
@@ -1099,6 +1100,14 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           { ...deps, ...(deps.now ? {} : io.now ? { now: io.now } : {}) },
         ),
         ci: true,
+      };
+    case "propose":
+      return {
+        outcome: await runPropose(args, io, {
+          ...(deps.cwd ? { cwd: deps.cwd } : {}),
+          ...(deps.fetcher ? { fetcher: deps.fetcher } : {}),
+        }),
+        ci: false,
       };
     case "migration":
       return {

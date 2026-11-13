@@ -32,6 +32,7 @@ export const COMMANDS = [
   "changes",
   "receipt",
   "deploy-gate",
+  "propose",
 ] as const;
 export type Command = (typeof COMMANDS)[number];
 
@@ -275,6 +276,20 @@ export const HELP: Record<string, string> = {
       "code stays 0 until you add --block.",
     ].join("\n"),
     footer: "Exit codes: 0 ran, 1 --block and a fix-first finding, 2 could not run",
+  }),
+  propose: renderHelp(FLAGS, "propose", {
+    usage: "gaugeline propose --fixes --repo <folder> [<run.json>] [options]",
+    summary: [
+      "Turn findings that live in your code into proposals: a unified diff, the finding",
+      "it answers, the file it changes and how it is checked again. Two fixers: a",
+      "missing redirect (Netlify _redirects or vercel.json) from --plan and --base, and",
+      "a structured-data value that disagrees with the page, from a saved run",
+      "(gaugeline <address> --json > run.json). A fixer that is not certain makes no",
+      "proposal and says why. Off by default: add --fixes (or GAUGELINE_FIXES=1).",
+      "It reads the folder and sends GET requests to --base; it changes nothing and",
+      "sends nothing: the diffs are printed and written to --out.",
+    ].join("\n"),
+    footer: "Exit codes: 0 ran, 2 could not run",
   }),
   open: renderHelp(FLAGS, "open", {
     usage: "gaugeline open [address] [options]",
