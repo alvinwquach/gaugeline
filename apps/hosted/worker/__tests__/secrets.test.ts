@@ -3,6 +3,7 @@
  * (integration, against the Vault stand-in), plus what never leaks: no value in list, errors or logs.
  */
 import { inspect } from "node:util";
+import type postgres from "postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   freshDatabase,
@@ -118,6 +119,26 @@ describe.skipIf(!HAS_DATABASE)("vault store", () => {
     ).toBe("invalid-org");
   });
 
+  it("get reads as gaugeline_worker, not service_role", async () => {
+    const s = vaultSecretStore(db.sql);
+    await s.put(ORG_A, "who-reads", "webhook_url", "https://hooks.slack.test/w");
+    const seen: string[] = [];
+    const spy = new Proxy(db.sql, {
+      get(target, prop, recv) {
+        if (prop !== "begin") return Reflect.get(target, prop, recv) as unknown;
+        return (fn: (tx: postgres.TransactionSql) => Promise<unknown>) =>
+          target.begin(async (tx) => {
+            const out = await fn(tx);
+            seen.push(((await tx`select current_user as u`)[0]!.u as string) ?? "");
+            return out;
+          });
+      },
+    });
+    expect(await vaultSecretStore(spy).get(ORG_A, "who-reads")).toBe("https://hooks.slack.test/w");
+    expect(seen).toEqual(["gaugeline_worker"]);
+    await s.delete(ORG_A, "who-reads");
+  });
+
   it("records each put and delete in the audit log", async () => {
     const s = vaultSecretStore(db.sql);
     await s.put(ORG_A, "role-check", "webhook_url", "https://hooks.slack.test/r");
@@ -132,15 +153,54 @@ describe.skipIf(!HAS_DATABASE)("vault store", () => {
 });
 
 describe("secretStoreFrom (configuration)", () => {
-  it("picks memory only outside production, and refuses an unknown or missing store", () => {
+  it("picks memory only when NODE_ENV is exactly development or test, and refuses an unknown or missing store", () => {
     expect(secretStoreFrom({ GAUGELINE_SECRET_STORE: "memory", NODE_ENV: "test" })).toBeDefined();
-    expect(() =>
-      secretStoreFrom({ GAUGELINE_SECRET_STORE: "memory", NODE_ENV: "production" }),
-    ).toThrow(/memory/);
+    expect(
+      secretStoreFrom({ GAUGELINE_SECRET_STORE: "memory", NODE_ENV: "development" }),
+    ).toBeDefined();
+    for (const NODE_ENV of ["production", "staging", "", undefined, "Test"]) {
+      expect(() => secretStoreFrom({ GAUGELINE_SECRET_STORE: "memory", NODE_ENV })).toThrow(
+        /memory/,
+      );
+    }
     expect(() => secretStoreFrom({ GAUGELINE_SECRET_STORE: "file" })).toThrow(
       /GAUGELINE_SECRET_STORE/,
     );
     expect(() => secretStoreFrom({})).toThrow(/GAUGELINE_SECRET_STORE/);
     expect(() => secretStoreFrom({ GAUGELINE_SECRET_STORE: "vault" })).toThrow(/database/);
+  });
+});
+
+describe("vault store: a put that loses a race is retried once, then rotates", () => {
+  /** A stand-in connection: the first put fails as a duplicate (the error text holds the value). */
+  function fakeSql(errors: { code: string }[]) {
+    const calls: string[] = [];
+    const tx = Object.assign(
+      async (strings: TemplateStringsArray) => {
+        const text = strings.join("?");
+        calls.push(text);
+        if (text.includes("current_user")) return [{ u: "service_role" }];
+        const e = errors.shift();
+        if (e) throw Object.assign(new Error("duplicate key; value marker-race"), e);
+        return [{ r: "rotated" }];
+      },
+      { unsafe: async () => [] },
+    );
+    const sql = { begin: async (fn: (t: typeof tx) => Promise<unknown>) => fn(tx) };
+    return { sql: sql as unknown as postgres.Sql, calls };
+  }
+
+  it("23505 and 40001 are retried once; a second failure is unavailable without the value", async () => {
+    for (const code of ["23505", "40001"]) {
+      const f = fakeSql([{ code }]);
+      expect(await vaultSecretStore(f.sql).put(ORG_A, "race", "webhook_url", "marker-v")).toBe(
+        "rotated",
+      );
+      expect(f.calls.filter((c) => c.includes("put_secret"))).toHaveLength(2);
+    }
+    const twice = fakeSql([{ code: "23505" }, { code: "23505" }]);
+    expect(
+      await codeOf(vaultSecretStore(twice.sql).put(ORG_A, "race", "webhook_url", "marker-v")),
+    ).toBe("unavailable");
   });
 });

@@ -1,7 +1,8 @@
 /**
  * Secrets an organisation gives the hosted app (V-01): notification webhook URLs (X67) and chat signing
- * secrets (X69). The Vault store calls private.put_secret / get_secret / delete_secret (migration 0006) as
- * service_role; the memory store is for unit tests and is refused in production.
+ * secrets (X69). The Vault store calls private.put_secret / delete_secret (migration 0006) as service_role
+ * and private.get_secret as gaugeline_worker, the only role that may read a value; the memory store runs
+ * only when NODE_ENV is exactly development or test.
  *
  * Nothing here ever puts a value into a log, an error message or a list: errors are a SecretError with a
  * code and a fixed message, and a database error is replaced, not wrapped, because a driver error can
@@ -129,22 +130,44 @@ async function guarded<T>(fn: () => Promise<T>): Promise<T> {
   }
 }
 
+/** A first put that lost a race to another first put (23505), or a serialization failure (40001). */
+function lostRace(e: unknown): boolean {
+  const code = (e as { code?: string }).code;
+  return code === "23505" || code === "40001";
+}
+
+const WORKER_ROLE = "gaugeline_worker";
+
+/** One transaction as gaugeline_worker, the only role that may execute private.get_secret. */
+async function withWorker<T>(sql: postgres.Sql, fn: (tx: postgres.TransactionSql) => Promise<T>) {
+  return (await sql.begin(async (tx) => {
+    await tx.unsafe(`set local role ${WORKER_ROLE}`);
+    await tx.unsafe("set local statement_timeout = 30000");
+    const rows = await tx`select current_user as u`;
+    if (rows[0]?.u !== WORKER_ROLE) throw new SecretError("unavailable");
+    return fn(tx);
+  })) as T;
+}
+
 /** Supabase Vault through migration 0006's functions, one service_role transaction per call. */
 export function vaultSecretStore(sql: postgres.Sql): SecretStore {
   return {
     async put(orgId, name, kind, value) {
       checkPut(orgId, name, kind, value);
-      return guarded(() =>
+      const once = () =>
         withService(sql, async (tx) => {
           const r = await tx`select private.put_secret(${orgId}, ${name}, ${kind}, ${value}) as r`;
           return r[0]!.r as "created" | "rotated";
-        }),
+        });
+      // A lost race is retried once: by then the other put has committed, so this one rotates.
+      return guarded(() =>
+        once().catch((e: unknown) => (lostRace(e) ? once() : Promise.reject(e))),
       );
     },
     async get(orgId, name) {
       checkKey(orgId, name);
       return guarded(() =>
-        withService(sql, async (tx) => {
+        withWorker(sql, async (tx) => {
           const r = await tx`select private.get_secret(${orgId}, ${name}) as v`;
           return (r[0]?.v as string | null) ?? null;
         }),
@@ -179,7 +202,7 @@ export function vaultSecretStore(sql: postgres.Sql): SecretStore {
 
 /**
  * Pick the store from GAUGELINE_SECRET_STORE: "vault" (needs the worker's database connection) or
- * "memory" (tests and local development only; refused when NODE_ENV is production). No default, so a
+ * "memory" (only when NODE_ENV is exactly development or test, like the stand-in auth). No default, so a
  * deploy that forgot the variable fails at start-up instead of silently keeping secrets in memory.
  */
 export function secretStoreFrom(
@@ -193,8 +216,10 @@ export function secretStoreFrom(
     return vaultSecretStore(sql);
   }
   if (kind === "memory") {
-    if (env.NODE_ENV === "production")
-      throw new Error("GAUGELINE_SECRET_STORE=memory is for tests; production uses vault");
+    if (env.NODE_ENV !== "development" && env.NODE_ENV !== "test")
+      throw new Error(
+        "GAUGELINE_SECRET_STORE=memory runs only when NODE_ENV is exactly development or test; use vault",
+      );
     return memorySecretStore();
   }
   throw new Error('GAUGELINE_SECRET_STORE must be "vault" or "memory"');
