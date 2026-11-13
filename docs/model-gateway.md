@@ -272,8 +272,14 @@ that opens a connection fails both.
   `application/json` (with `charset=utf-8`, if any); anything else is refused without being read or repeated.
 - **A hard timeout.** 60 seconds at most, whatever the config says, and the request is destroyed when the gateway
   gives up sooner. The answer is read up to 256 KB.
-- **Plain errors.** An error says the host and a status or an error code. It never repeats the answer, the
-  request, an address or a key.
+- **Plain errors, with a class.** An error says the host and a status or an error code. It never repeats the answer,
+  the request, an address or a key. It also carries a class, decided by the status or the error code and never by
+  words: a 5xx, a lost connection (`ECONNREFUSED`, `ECONNRESET`, `ETIMEDOUT`, `EHOSTUNREACH`, `ENETUNREACH`,
+  `ENOTFOUND`, `EAI_AGAIN`, `EPIPE`) and a timeout are an `outage`; 401 and 403 are `bad-key`; 429 is
+  `rate-limited`; 400 and 422 (and a prompt the sender will not send) are `bad-request`; a 3xx is `redirect`; a name
+  that resolves to a private address is `blocked-address`; an answer that is not JSON is `not-json` and one in the
+  wrong shape is `bad-answer`; any other status is `refused` and any other error code is `unclassified`. The
+  [router](#routing-and-escalation) tries a second provider after an `outage` and after nothing else.
 
 The request is a POST of `{ model, prompt, max_output_tokens }` with `Authorization: Bearer <key>`, and the answer is
 `{ text, usage: { input_tokens, output_tokens } }`; the cost is worked out in whole micro-units from a price in
@@ -281,12 +287,175 @@ the list. No provider SDK is used. No real provider is chosen yet: that is a dec
 adding an entry. Tests never reach a provider: they hand the sender a request function that talks to a server on
 a loopback address, or one that never answers.
 
+## Routing and escalation
+
+A router decides which tier a task uses and what to do when an answer is no good. It is a short fixed list, not a
+model's choice, and the same inputs always take the same path.
+
+| Task           | Tier     |
+| -------------- | -------- |
+| `wording`      | `fast`   |
+| `check-writer` | `strong` |
+| `miner`        | `strong` |
+
+1. **The task's tier, on the first provider.**
+2. **An outage: once, the same call on a second provider**, if you gave one. An outage is a timeout, a lost
+   connection or a 5xx answer, and **nothing else**. It is decided by the _class_ the adapter gave its error
+   (`failure: "outage"`), never by the words of the message, so a provider's body that happens to say "503" or
+   "timeout" changes nothing. Every other class is a refusal and stops the task: `bad-key` (a 401 or 403),
+   `bad-request` (a 400 or 422, or a prompt the sender will not send), `rate-limited` (a 429: your own limit, a
+   second provider would be sent the same payload for nothing), `redirect`, `blocked-address`, `refused` (any
+   other status) and `unclassified` (an error with no class, a plain `Error` included). The payload that a
+   provider refused is never sent to another one; the payload of a call that timed out or lost its connection may
+   already have reached the first provider (see _What a fallback means for your data_, below). A second provider is another gateway you build with its own
+   adapter; adding a host to the list of reachable hosts is a change to the sending module, never a setting.
+3. **A failed check, or an answer in no usable shape: once, the `strong` tier**, on the provider that answered,
+   with the plain reasons added to the prompt. The reasons are at most five lines of 120 characters, cleaned; the
+   first answer is never repeated. A `strong` task has no higher tier, so one failed answer ends there. An answer
+   that is not JSON, or not the expected shape, is a failed answer like this, never a reason to try another
+   provider.
+4. **A budget stop, or any refusal that is not an outage** (a missing key, a prompt that is too large, a prompt that
+   holds your key), **stops at once**: a second provider would meet the same problem, or use your key for nothing.
+   The budget itself is the gateway's hook (row AG-22); the router only obeys it.
+
+**One budget for both providers, and a budget at all.** A fallback must not be a way round the ceilings, so
+`createRouter` refuses to build unless three things hold (each is a `bad-config` error):
+
+- **Both gateways were made by `createGateway`.** A router takes only those: an object built by hand, or a copy,
+  wrapper or proxy of a real one, could say it has a budget and spend none. A made gateway is frozen, with the
+  budget it was given: its `complete` and `budget` cannot be assigned, redefined or deleted. The router reads each
+  gateway **once**, when it is built, keeps the `complete` it found then and calls that, never the property again,
+  and never reads the settings object again: a getter that passes the checks and then returns something else is not
+  asked a second time.
+- **They share the same budget object.** Hand the one `RunBudget` from the [budget ledger](./model-budgets.md) to
+  both as `budget`. A fallback with a budget of its own, with none while the first has one, or with a wrapper that
+  only looks the same, is refused, because the second provider's calls would not be counted against the run's
+  ceilings. A gateway shows the budget it uses as `gateway.budget`.
+- **There is a budget.** A model call with no ceiling is something a person must ask for: without a budget the
+  router is refused unless you pass `{ unmetered: true }`, and `unmetered` is itself refused when any gateway has a
+  budget. The recorded fakes in tests and the example below have none, so they say `unmetered`.
+
+**What a fallback means for your data.** Read this before you give the router a second provider. Falling back
+means **the same prompt can be sent to both providers**. It happens after a timeout or a lost connection, and in
+those cases the first provider may already have received the whole payload (the request left your machine before the
+answer failed to come back), so you cannot assume the second provider is the only one that has seen it. It also
+happens after a 5xx, and the router decides that from the status alone, **without reading the body**: it never looks
+at what the first provider said. Any other failure (a refused key, a rate limit, a bad request, a redirect, a
+blocked address, an answer that is not JSON) does not fall back, so a payload a provider refused is not offered to
+another. Both providers must be on the sending module's list of hosts, and both are bound by the same limits: the
+payload cap, findings and ids and snippets only, never a whole page. If a second provider is not acceptable for the
+data you send, do not configure a fallback.
+
+At most **three calls** are made for one task: the first, one fallback and one escalation. No order of failures
+makes a fourth, and a test runs every script of up to three steps for each provider to show it (the worst case is an
+escalation that meets an outage, or an outage whose fallback then fails the check). `maxCalls` can lower the cap,
+never raise it. The time all the calls of a task take together has a **deadline**, two minutes by default
+(`deadlineMs`, 1000 to 600000). It holds inside a call as well as between calls. The router owns one abort signal for the whole task and
+aborts it at the deadline. Each call is given the time that is left, and that time covers the budget check as well
+as the provider: the gateway starts its clock before it asks the budget, stops waiting for a check that outlasts it,
+and **never calls the adapter once the call has been aborted**, whatever order things finish in (it looks again
+after every wait). The sender uses the shorter of that time and its own 60 seconds. The router also stops waiting at
+the deadline whatever the gateway does, and an answer that arrives after it is not used (its cost is kept). A task
+therefore never runs past its deadline, nothing is sent after the router has given up, and a clock that gives
+nothing usable, or runs backwards, counts as no time left. The check is plain code you give it; for an agent with an
+[eval set](./agent-evals.md), `agentAnswerCheck` runs the same schema, cited-id, invented-number and write-call
+assertions on the live answer. What comes out is `advisory` (an answer that passed the check, for a person to read)
+or `unsure`, with the reason: `failed-checks`, `outage`, `budget`, `refused`, `deadline` (the task's time was used)
+or `calls` (a lowered `maxCalls` was used). There is no outcome that says
+pass, and nothing here gates a build. Each attempt is listed with its provider, tier and result, and the cost of
+every answer received is added up, including one that failed the check.
+
+```ts title=RouteExample
+import {
+  ModelGatewayError,
+  createGateway,
+  createRecordedAdapter,
+  createRouter,
+  type AnswerCheck,
+} from "./src/model-gateway/index.js";
+
+const usage = { inputTokens: 40, outputTokens: 12, costMicros: 900, latencyMs: 300 };
+const answer = (text: string) => ({ text, usage });
+// A gateway over answers recorded once, keyed by call id. The second call of a task is "<id>:escalated".
+// `down` lists the calls this provider does not answer in time: a timeout is an outage.
+const gatewayOf = (provider: string, answers: [string, string][], down: string[] = []) => {
+  const recorded = createRecordedAdapter(new Map(answers.map(([id, t]) => [id, answer(t)])));
+  return createGateway({
+    config: { provider, tiers: { fast: `${provider}-small`, strong: `${provider}-large` } },
+    adapters: [
+      {
+        ...recorded,
+        provider,
+        complete: (call) =>
+          down.includes(call.callId)
+            ? Promise.reject(
+                new ModelGatewayError("timeout", `${provider} did not answer in time.`),
+              )
+            : recorded.complete(call),
+      },
+    ],
+    env: () => ({}),
+  });
+};
+// A plain rule: the answer must be one sentence under 80 characters, with no digits.
+const oneSentence: AnswerCheck<string> = ({ text }) =>
+  text.length < 80 && !/\d/.test(text)
+    ? { ok: true, value: text }
+    : { ok: false, issues: ["the note must be one short sentence with no digits"] };
+
+// Recorded answers cost nothing, so these gateways have no budget and the router is told so: `unmetered`.
+const router = createRouter(
+  {
+    primary: gatewayOf(
+      "alpha",
+      [
+        ["note-1", "Your menu page lost its canonical link on 12 November and nobody noticed."],
+        ["note-1:escalated", "The menu page has no canonical link."],
+        ["note-3", "Found 7 pages with the same problem, which is worse than last week."],
+      ],
+      ["note-2"],
+    ),
+    fallback: gatewayOf("beta", [["note-2", "The pop-up page loads slowly."]]),
+  },
+  { unmetered: true },
+);
+
+const out: string[] = [];
+for (const [task, callId] of [
+  ["wording", "note-1"],
+  ["wording", "note-2"],
+  ["miner", "note-3"],
+] as const) {
+  const r = await router.route(
+    { task, agentId: "triage", callId, prompt: "Word this finding." },
+    oneSentence,
+  );
+  const path = r.attempts.map((a) => `${a.provider}/${a.tier} ${a.outcome}`).join(", ");
+  out.push(
+    r.kind === "advisory"
+      ? `${task}: advisory, "${r.value}" (${path})`
+      : `${task}: unsure, ${r.reason} (${path})`,
+  );
+}
+console.log(out.join("\n"));
+```
+
+```text title=RouteOutput
+wording: advisory, "The menu page has no canonical link." (alpha/fast failed-checks, alpha/strong accepted)
+wording: advisory, "The pop-up page loads slowly." (alpha/fast outage, beta/fast accepted)
+miner: unsure, failed-checks (alpha/strong failed-checks)
+```
+
+The first note was too long and had a digit, so the `fast` answer failed the check and the `strong` one passed.
+The second had no answer from `alpha`, so `beta` answered. The third was a `miner` task, which uses `strong`, and
+its one answer failed, so it is `unsure`.
+
 ## What it does not do
 
 - It does not call a provider by itself. Nothing uses the sending module yet; wiring your key in on the command
   line is AG-20.
-- It does not choose between tiers, retry, or fall back to a second provider (AG-21), and it does not enforce a
-  budget by itself: the [budget ledger](./model-budgets.md) (AG-22) is handed to it as `budget`.
+- It does not enforce a budget by itself: the [budget ledger](./model-budgets.md) (AG-22) is handed to the gateway as
+  `budget`, and the router stops when it says no.
 - It does not decide what may be sent. A caller passes findings, evidence snippets and ids, never a page; the
   redaction here is a last line of defence, and the privacy rules are AG-23.
 - A redaction by pattern misses a secret in a shape it does not know, and it replaces any run of eight or more

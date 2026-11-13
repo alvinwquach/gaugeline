@@ -45,6 +45,10 @@ export interface ModelRequest {
   agentId: string;
   callId: string;
   prompt: string;
+  /** A time limit for this call alone, in whole milliseconds. It can shorten the config's limit, never lengthen it. */
+  timeoutMs?: number;
+  /** Aborted by the caller (the router at its deadline): the call stops, and nothing is sent once it is aborted. */
+  signal?: AbortSignal;
 }
 
 /** What a model answered. `advisory` is always true: an answer is words for a person to read, never a verdict. */
@@ -86,6 +90,8 @@ export interface BudgetEstimate {
   model: string;
   inputTokens: number;
   maxOutputTokens: number;
+  /** The time the call has, this budget check included, in milliseconds. A check that outlasts it ends the call. */
+  timeoutMs?: number;
 }
 export type BudgetDecision = { allowed: true } | { allowed: false; reason: string };
 
@@ -108,5 +114,7 @@ export interface GatewayOptions {
 /** The one way an agent reaches a model. */
 export interface ModelGateway {
   readonly provider: string;
+  /** The budget this gateway asks before every call (`NO_BUDGET` when it was built with none). A router compares them. */
+  readonly budget: BudgetHooks;
   complete(request: ModelRequest): Promise<ModelAnswer>;
 }
