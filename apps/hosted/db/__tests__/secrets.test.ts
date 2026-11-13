@@ -315,6 +315,8 @@ describe.skipIf(!HAS_DATABASE)("hosted database: secrets in Vault", () => {
         // and revokes one, each in one call.
         "register_agent",
         "revoke_agent",
+        // AG-02b (0018): an owner or admin sets or clears an agent token's expiry.
+        "set_agent_expiry",
         "staff_org_ids",
       ]);
     });
