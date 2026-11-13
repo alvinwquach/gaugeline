@@ -611,9 +611,10 @@ export const FLAGS: readonly FlagDef[] = Object.freeze<FlagDef[]>([
       propose: "The proposals file (default gaugeline.proposals.json)",
       evals:
         "The JSON report's file (default gaugeline-evals.json), in this folder or one inside it",
+      mine: "The draft file, Markdown (default field-findings.draft.md)",
     },
     since: "0.2.0",
-    commands: ["snapshot", "query", "brief", "handoff", "audit", "propose", "evals"],
+    commands: ["snapshot", "query", "brief", "handoff", "audit", "propose", "evals", "mine"],
   },
   {
     name: "business",
@@ -741,6 +742,22 @@ export const FLAGS: readonly FlagDef[] = Object.freeze<FlagDef[]>([
       "receipts verify: a head hash written down earlier, which the chain must still contain",
     since: "0.2.0",
     commands: ["receipts"],
+  },
+  {
+    name: "review-notes",
+    type: "string",
+    description:
+      "mine: the folder of review notes (Markdown or text) to read; only lines that start with #pattern-name are used",
+    since: "0.2.0",
+    commands: ["mine"],
+  },
+  {
+    name: "deny-list",
+    type: "string",
+    description:
+      "mine: a file of client names, one per line, that must never reach the draft (the scrub fails it if one does)",
+    since: "0.2.0",
+    commands: ["mine"],
   },
   {
     name: "fixes",

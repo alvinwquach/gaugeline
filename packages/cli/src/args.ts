@@ -49,6 +49,7 @@ export const SUBCOMMANDS = [
   "source",
   "receipts",
   "evals",
+  "mine",
 ] as const;
 export type CliCommand = "check" | (typeof SUBCOMMANDS)[number];
 
@@ -305,6 +306,17 @@ export type ParsedArgs =
       /** --out: the JSON report's file, inside the folder the command ran in. */
       out: string;
       force: boolean;
+      verbose: boolean;
+      quiet: boolean;
+    }
+  | {
+      kind: "mine";
+      /** --review-notes: the folder of review notes (Markdown or text) to read. */
+      reviewNotes: string;
+      /** --deny-list: a file of names, one per line, that must never reach the draft. */
+      denyList?: string;
+      /** --out: the draft file (default field-findings.draft.md). */
+      out?: string;
       verbose: boolean;
       quiet: boolean;
     }
@@ -1472,6 +1484,32 @@ export function parseCliArgs(
       ...(agent !== undefined ? { agent } : {}),
       out,
       force: values.force === true,
+      verbose,
+      quiet: values.quiet === true,
+    };
+  }
+  if (command === "mine") {
+    const usage = "For example: gaugeline mine --review-notes ./review-notes --deny-list names.txt";
+    if (positionals.length > 0)
+      return {
+        kind: "error",
+        message: `gaugeline mine takes its folder from --review-notes, not a word on the line: ${positionals.join(", ")}.`,
+        hint: usage,
+        verbose,
+      };
+    const notes = typeof values["review-notes"] === "string" ? values["review-notes"].trim() : "";
+    if (notes === "")
+      return {
+        kind: "error",
+        message: "gaugeline mine needs the folder of review notes: --review-notes ./review-notes",
+        hint: usage,
+        verbose,
+      };
+    return {
+      kind: "mine",
+      reviewNotes: notes,
+      ...(typeof values["deny-list"] === "string" ? { denyList: values["deny-list"] } : {}),
+      ...(typeof values.out === "string" ? { out: values.out } : {}),
       verbose,
       quiet: values.quiet === true,
     };
