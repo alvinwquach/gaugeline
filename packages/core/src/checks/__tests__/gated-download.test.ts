@@ -306,6 +306,7 @@ describe("gated-download-open: a probing check", () => {
     expect(PROBING_CHECKS).toEqual([
       "gated-download-open",
       "image-optimizer-open",
+      "noindex-header-missing",
       "not-found-200",
       "nuxt-devtools-public",
       "nuxt-preview-public",

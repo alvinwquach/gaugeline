@@ -18,7 +18,18 @@ export const hiddenSectionSchema = z
   .strict();
 
 export const hiddenConfigSchema = z
-  .object({ hidden: z.array(hiddenSectionSchema).min(1) })
+  .object({
+    hidden: z.array(hiddenSectionSchema).min(1),
+    /**
+     * Routes the pages' metadata does not reach (the editor studio, an API route, a file), which should
+     * still send noindex while the whole site is hidden (a "/*" section). Only noindex-header-missing
+     * asks them, once each, and only with --owner-consent: Gaugeline never picks one of its own.
+     */
+    noindexRoutes: z
+      .array(z.string().regex(/^\/[^\s*?#]*$/, "must be a path starting with /, with no * ? or #"))
+      .max(8, "at most 8 routes")
+      .optional(),
+  })
   .strict();
 
 export type HiddenSection = z.infer<typeof hiddenSectionSchema>;
