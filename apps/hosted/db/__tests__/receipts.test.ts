@@ -47,6 +47,7 @@ const LOGINS = {
   server: `gl_rcpt_server_${tag}`,
   agent: `gl_rcpt_agent_${tag}`,
   worker: `gl_rcpt_worker_${tag}`,
+  chat: `gl_rcpt_chat_${tag}`,
 } as const;
 const PASSWORD = "receipts-test-login";
 
@@ -76,11 +77,12 @@ describe.skipIf(!HAS_DATABASE)("approval receipts", () => {
       create role ${LOGINS.person} login noinherit password '${PASSWORD}' in role authenticated;
       create role ${LOGINS.server} login noinherit password '${PASSWORD}' in role service_role;
       create role ${LOGINS.agent} login noinherit password '${PASSWORD}' in role gaugeline_agent;
-      create role ${LOGINS.worker} login noinherit password '${PASSWORD}' in role gaugeline_worker;`);
+      create role ${LOGINS.worker} login noinherit password '${PASSWORD}' in role gaugeline_worker;
+      create role ${LOGINS.chat} login noinherit password '${PASSWORD}' in role gaugeline_chat;`);
     for (const k of Object.keys(LOGINS) as (keyof typeof LOGINS)[])
       conn[k] = postgres(loginUrl(LOGINS[k]), { max: 4, onnotice: () => {} });
     // Drafts for the tests below, as the server (the owner here) would write them.
-    for (let n = 1; n <= 12; n++)
+    for (let n = 1; n <= 14; n++)
       await owner`insert into public.drafts (id, org_id, site_id, kind, payload)
         values (${draftId(n)}, ${ORG_A}, ${SITE_A2}, 'email', ${owner.json(EMAIL(n))})`;
   });
@@ -341,6 +343,54 @@ describe.skipIf(!HAS_DATABASE)("approval receipts", () => {
         true,
       );
       expect(await writerOf(id)).toBe("person");
+    });
+
+    it("the server cannot pass for the person: service_role forging both claim settings still writes 'service'", async () => {
+      const id = await on(
+        "server",
+        "service_role",
+        null,
+        async (tx) => {
+          await tx`select set_config('request.jwt.claims', ${JSON.stringify({ role: "authenticated", sub: USER_A_OWNER })}, true)`;
+          await tx`select set_config('request.jwt.claim.sub', ${USER_A_OWNER}, true)`;
+          // The claims now say the owner, and auth.uid() agrees; the session's real role is still service_role.
+          const [who] = await tx`select auth.uid() as uid, current_setting('role') as role`;
+          expect(who).toEqual({ uid: USER_A_OWNER, role: "service_role" });
+          expect(
+            await errorOf(tx.savepoint((sp) => sp.unsafe("set local role authenticated"))),
+          ).toMatch(/permission denied/);
+          return (await decide(tx, ORG_A, draftId(13), "approved", USER_A_OWNER))[0]!.id;
+        },
+        true,
+      );
+      expect(await writerOf(id)).toBe("service");
+    });
+
+    it("a chat approval works and is 'service' by design: chat_decide writes in the mapped member's name", async () => {
+      const conn = "c9000000-0000-4000-8000-0000000000a9";
+      await owner`select private.put_secret(${ORG_A}, 'receipts-chat', 'signing_secret', 'not-a-real-secret')`;
+      await owner`insert into public.chat_connections (id, org_id, provider, label, workspace_ref, secret_name, status)
+        values (${conn}, ${ORG_A}, 'slack', 'Receipts test', 'T0RECEIPTS', 'receipts-chat', 'active')`;
+      await owner`insert into public.chat_identities (org_id, connection_id, chat_user_id, user_id, confirmed_at)
+        values (${ORG_A}, ${conn}, 'U0RCPTOWNER', ${USER_A_OWNER}, now())`;
+      const r = await on(
+        "chat",
+        "gaugeline_chat",
+        USER_A_OWNER,
+        async (tx) =>
+          (
+            await tx`select r_status, r_decision_id from private.chat_decide(${conn}, 'U0RCPTOWNER', ${draftId(14)}, 'approve')`
+          )[0],
+        true,
+      );
+      expect(r!.r_status).toBe("recorded");
+      const [rec] =
+        await owner`select record, written_by from public.receipts where decision_id = ${r!.r_decision_id}`;
+      expect(JSON.parse(rec!.record as string)).toMatchObject({
+        approver: { member: USER_A_OWNER, role: "owner" },
+      });
+      expect(rec!.written_by).toBe("service");
+      expect(verifyApprovalReceipts(await chainOf(ORG_A)).ok).toBe(true);
     });
 
     it("the server writing a decision in the owner's name is 'service': the receipt says owner, the marker says who wrote it", async () => {

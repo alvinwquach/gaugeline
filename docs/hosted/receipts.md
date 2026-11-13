@@ -82,7 +82,8 @@ receipt can be shared without the page text or a secret pasted into a draft.
   verify as "nothing happened".
 - **Who wrote it.** A receipt names the person in whose name the decision was recorded, and their role in
   that organisation at that moment. Beside each receipt the database also keeps who wrote the decision:
-  `person` when the signed-in person recorded their own choice, `service` otherwise. A receipt written by
+  `person` when the signed-in person recorded their own choice (the session's real database role is
+  `authenticated` and its user is the decider; request claims alone are not enough), `service` otherwise. A receipt written by
   the service role carries a service marker: the server may record a decision in anyone's name, and a chat
   approval is recorded by the chat function after it checks the click's signature. The marker is not part of
   the hashed record (its format is fixed); owners and admins download it from `GET /receipts/writers`, one
