@@ -194,4 +194,5 @@ export const UNLISTED: NavPage[] = [
   { slug: "hosted/sign-in", title: "Hosted: sign in and the shell" },
   { slug: "hosted/dashboard", title: "Hosted: the dashboard" },
   { slug: "hosted/last-night", title: "Hosted: what happened last night" },
+  { slug: "hosted/secrets", title: "Hosted: where secrets live" },
 ];
