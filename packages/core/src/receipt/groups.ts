@@ -50,6 +50,8 @@ const SECURITY_IDS = new Set([
   "cutover-mail-changed",
   "cutover-records-changed",
   "cutover-certificate-changed",
+  // A webhook address in the source is a secret, not a booking.
+  "webhook-url-hardcoded",
 ]);
 
 /** Words that make it a listing, an opening time or an event date. */
