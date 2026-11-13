@@ -1229,4 +1229,46 @@ describe("a gateway cannot be swapped or forged after the router is built", () =
     expect(good.calls).toHaveLength(1);
     expect(evil.calls).toHaveLength(0);
   });
+
+  it("reads each gateway once, when the router is built: a getter that passes the check and then returns a forgery is not used", async () => {
+    const r = run();
+    const good = provider("a", [rec(GOOD)]);
+    const forged = provider("forged", [rec(GOOD)]);
+    const real = good.gateway(r);
+    const fake = { provider: "a", budget: real.budget, complete: forged.gateway().complete };
+    let primaryReads = 0;
+    let fallbackReads = 0;
+    const config = {
+      get primary() {
+        primaryReads += 1;
+        return primaryReads === 1 ? real : (fake as unknown as ModelGateway);
+      },
+      get fallback() {
+        fallbackReads += 1;
+        return fallbackReads === 1 ? real : (fake as unknown as ModelGateway);
+      },
+    };
+    const router = buildRouter(config);
+    expect([primaryReads, fallbackReads]).toEqual([1, 1]);
+    for (let i = 0; i < 2; i++)
+      await router.route({ ...REQ, callId: `route-${i}` }, check).catch(() => undefined);
+    expect([primaryReads, fallbackReads]).toEqual([1, 1]);
+    expect(forged.calls).toHaveLength(0);
+    expect(good.calls.length).toBeGreaterThan(0);
+  });
+
+  it("reads its options once too: a getter on them is not asked again at route time", async () => {
+    const a = provider("a", [rec(GOOD)]);
+    let reads = 0;
+    const options = {
+      unmetered: true,
+      get deadlineMs() {
+        reads += 1;
+        return 60_000;
+      },
+    };
+    const router = buildRouter({ primary: a.gateway() }, options);
+    await router.route(REQ, check);
+    expect(reads).toBe(1);
+  });
 });

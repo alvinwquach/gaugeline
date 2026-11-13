@@ -323,8 +323,10 @@ model's choice, and the same inputs always take the same path.
 
 - **Both gateways were made by `createGateway`.** A router takes only those: an object built by hand, or a copy,
   wrapper or proxy of a real one, could say it has a budget and spend none. A made gateway is frozen, with the
-  budget it was given: its `complete` and `budget` cannot be assigned, redefined or deleted. The router keeps the
-  `complete` it found when it was built and calls that, never the property again.
+  budget it was given: its `complete` and `budget` cannot be assigned, redefined or deleted. The router reads each
+  gateway **once**, when it is built, keeps the `complete` it found then and calls that, never the property again,
+  and never reads the settings object again: a getter that passes the checks and then returns something else is not
+  asked a second time.
 - **They share the same budget object.** Hand the one `RunBudget` from the [budget ledger](./model-budgets.md) to
   both as `budget`. A fallback with a budget of its own, with none while the first has one, or with a wrapper that
   only looks the same, is refused, because the second provider's calls would not be counted against the run's

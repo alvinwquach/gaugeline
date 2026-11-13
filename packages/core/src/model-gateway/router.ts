@@ -132,49 +132,59 @@ export function createRouter(
   gateways: { primary: ModelGateway; fallback?: ModelGateway },
   options: RouterOptions = {},
 ): Router {
-  for (const g of [gateways.primary, gateways.fallback])
+  // Everything is read ONCE, here. Nothing below touches `gateways` or `options` again, so a getter that
+  // passes the checks and then returns something else is never asked a second time.
+  const primary = gateways.primary;
+  const fallback = gateways.fallback;
+  const settings = {
+    unmetered: options.unmetered,
+    maxCalls: options.maxCalls,
+    deadlineMs: options.deadlineMs,
+    now: options.now,
+  };
+  for (const g of [primary, fallback])
     if (g !== undefined && !isMadeGateway(g))
       throw new ModelGatewayError(
         "bad-config",
         "The router takes only gateways made by createGateway: one built by hand could skip the budget.",
       );
-  if (gateways.fallback && gateways.fallback.budget !== gateways.primary.budget)
+  if (fallback && fallback.budget !== primary.budget)
     throw new ModelGatewayError(
       "bad-config",
       "The primary and fallback gateways must be built from the same budget, or the fallback would skip its ceilings.",
     );
-  const budgeted = gateways.primary.budget !== NO_BUDGET;
-  if (options.unmetered === true && budgeted)
+  const budgeted = primary.budget !== NO_BUDGET;
+  if (settings.unmetered === true && budgeted)
     throw new ModelGatewayError(
       "bad-config",
       "The router cannot be unmetered when a budget is configured: drop unmetered, or drop the budget.",
     );
-  if (options.unmetered !== true && !budgeted)
+  if (settings.unmetered !== true && !budgeted)
     throw new ModelGatewayError(
       "bad-config",
       "The router needs a budget: its gateways have none. Build them with one, or say unmetered: true.",
     );
-  const maxCalls = options.maxCalls ?? MAX_CALLS_PER_ROUTE;
+  const maxCalls = settings.maxCalls ?? MAX_CALLS_PER_ROUTE;
   if (!Number.isInteger(maxCalls) || maxCalls < 1 || maxCalls > MAX_CALLS_PER_ROUTE)
     throw new ModelGatewayError(
       "bad-config",
       `maxCalls must be a whole number from 1 to ${MAX_CALLS_PER_ROUTE}.`,
     );
-  const deadlineMs = options.deadlineMs ?? DEFAULT_ROUTE_DEADLINE_MS;
+  const deadlineMs = settings.deadlineMs ?? DEFAULT_ROUTE_DEADLINE_MS;
   if (!Number.isInteger(deadlineMs) || deadlineMs < MIN_DEADLINE_MS || deadlineMs > MAX_DEADLINE_MS)
     throw new ModelGatewayError(
       "bad-config",
       `deadlineMs must be a whole number from ${MIN_DEADLINE_MS} to ${MAX_DEADLINE_MS}.`,
     );
-  const now = options.now ?? (() => performance.now());
+  const now = settings.now ?? (() => performance.now());
   // What the router calls is what the gateway was when the router was built: its `complete` as it was then, not
   // whatever the property says at call time.
   const first = Object.freeze({
-    provider: gateways.primary.provider,
-    complete: gateways.primary.complete,
+    provider: primary.provider,
+    complete: primary.complete,
   });
-  const second = gateways.fallback
-    ? Object.freeze({ provider: gateways.fallback.provider, complete: gateways.fallback.complete })
+  const second = fallback
+    ? Object.freeze({ provider: fallback.provider, complete: fallback.complete })
     : undefined;
 
   /** The call's answer, or OUT_OF_TIME when the route's signal aborts first. The listener is always removed. */
