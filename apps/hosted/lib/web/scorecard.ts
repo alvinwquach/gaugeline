@@ -19,7 +19,8 @@ export interface DeclineReason {
 export interface AgentCounts {
   id: string;
   name: string;
-  status: "active" | "disabled" | "revoked";
+  /** `expired`: still `active` in the registry, but its token's expiry has passed (AG-02b), so it is refused. */
+  status: "active" | "disabled" | "revoked" | "expired";
   prefix: string | null;
   /** Allowed calls (drafts and reads). */
   calls: number;
@@ -89,7 +90,10 @@ export function scoreOf(c: AgentCounts): Score {
 
 /** Every agent of `orgId` the signed-in person may see, with its counts. Four queries, none per agent. */
 export async function agentScorecard(tx: Tx, orgId: string): Promise<AgentCounts[]> {
-  const agents = await tx`select a.id, a.name, a.status, a.token_prefix from public.agents a
+  const agents = await tx`select a.id, a.name, a.token_prefix,
+      case when a.status = 'active' and a.expires_at is not null and a.expires_at <= pg_catalog.clock_timestamp()
+        then 'expired' else a.status end as status
+    from public.agents a
     where a.org_id = ${orgId} order by a.name, a.id`;
   if (agents.length === 0) return [];
   const trace = await tx`select t.agent_id,

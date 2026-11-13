@@ -86,7 +86,9 @@ describe.skipIf(!HAS_DATABASE)("the agent message outbox kind (0017)", () => {
       functions: await functions(sql),
       roles: await roles(sql),
     };
-    await migrate(sql, MIGRATIONS_DIR);
+    // 0017 only: a migration after it (0018, an agent's token expiry) adds its own function, which this
+    // file's "adds one trigger function" question must not count.
+    await migrate(sql, MIGRATIONS_DIR, { to: 17 });
     await sql`insert into public.runs (id, org_id, site_id, started_at, finished_at, summary)
       values (${RUN_A2}, ${ORG_A}, ${SITE_A1}, '2026-11-11T03:00:00Z', '2026-11-11T03:01:00Z', '{}')`;
   });

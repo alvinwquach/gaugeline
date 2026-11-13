@@ -101,6 +101,20 @@ describe.skipIf(!HAS_DATABASE)("agent scorecard", () => {
     expect(by[idle]).toMatchObject({ calls: 0, denies: 0, approved: 0, declined: 0 });
   });
 
+  it("an agent whose token has expired shows as expired, never as active; clearing the expiry shows it as active again", async () => {
+    const e = await register("Expiring reader", ["read:runs"]);
+    const statusOf = async () => (await card(PEOPLE.maya)).find((a) => a.id === e.id)!.status;
+    expect(await statusOf()).toBe("active");
+    await f.owner`update public.agents set expires_at = now() + interval '1 hour' where id = ${e.id}`;
+    expect(await statusOf()).toBe("active");
+    await f.owner`update public.agents set expires_at = now() - interval '1 minute' where id = ${e.id}`;
+    expect(await statusOf()).toBe("expired");
+    await f.owner`update public.agents set status = 'disabled' where id = ${e.id}`;
+    expect(await statusOf()).toBe("disabled");
+    await f.owner`update public.agents set status = 'revoked' where id = ${e.id}`;
+    expect(await statusOf()).toBe("revoked");
+  });
+
   it("a member, a client viewer and another organisation's owner see no agent of Northgate", async () => {
     expect(await card(PEOPLE.dev)).toEqual([]);
     expect(await card(PEOPLE.manager)).toEqual([]);

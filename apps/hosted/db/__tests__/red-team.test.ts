@@ -175,10 +175,37 @@ describe.skipIf(!HAS_DATABASE)("red team: the hosted database (T2 to T10)", () =
     expect([unknown, (await lastDeny())!.reason]).toEqual(["denied", "unknown-agent"]);
   });
 
-  // T10. The registry has no `expires_at` on an agent token (AG-02 chose revoke and a 30-day idle flag).
-  it.todo(
-    "expired token: an agent token past its expiry is refused (no control yet: agents have no expiry column; needs an owner decision)",
-  );
+  // T10. Control: private.agent_authorize reads an agent whose expires_at has passed as `disabled` (AG-02b,
+  // 0018); the expiry is set only by an owner or admin of the agent's organisation, through one function.
+  it("expired token: an agent token past its expiry is refused as disabled, logged, and writes nothing", async () => {
+    const t = await register(ORG_A);
+    expect(await draft(t, SITE_A1)).toBe("ok");
+    await sql`update public.agents set expires_at = now() - interval '1 minute'
+      where token_sha256 = ${sha256(t)}`;
+    const before = await draftCount();
+    expect(await draft(t, SITE_A1)).toBe("denied");
+    expect(await draftCount()).toBe(before);
+    expect(await lastDeny()).toMatchObject({ reason: "disabled", org_id: ORG_A });
+    // Not an agent's to change: its own role cannot clear the expiry, and a token past it reads nothing.
+    const [a] = await sql`select id from public.agents where token_sha256 = ${sha256(t)}`;
+    const msg = await sql
+      .begin(async (tx) => {
+        await tx.unsafe("set local role gaugeline_agent");
+        await tx.unsafe(`select private.set_agent_expiry('${a!.id as string}', null, false)`);
+      })
+      .then(
+        () => "",
+        (e: Error) => e.message,
+      );
+    expect(msg).toMatch(/permission denied/);
+    const read = await sql.begin(async (tx) => {
+      await tx.unsafe("set local role gaugeline_agent");
+      const [r] =
+        await tx`select private.agent_list_pending(${t}, 50, null, null, null, null) as p`;
+      return r!.p;
+    });
+    expect(read).toEqual({ allowed: false, reason: "disabled" });
+  });
 
   // T7. Control: private.agent_authorize checks the declared cost against the day's ceiling before the call.
   it("cost-cap breach: the call that would pass the day's ceiling is refused, logged, and not counted", async () => {

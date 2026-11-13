@@ -219,7 +219,175 @@ What it shows:
 A revoked agent cannot be switched back on, renamed or given new scopes: register a new one, which gets a
 new token. An agent's owner cannot be cleared by hand while they are still staff: name another owner
 instead. The owner is cleared only when they leave the organisation (or stay on as a client viewer). To pause an agent instead, set its status to `disabled` and back to `active` later. Both changes
-are in the history.
+are in the history. To end a token on a date, see [token expiry](#token-expiry).
+
+## Token expiry
+
+By default an agent's token does not expire; you stop it by revoking or disabling it. If you would rather
+a token ends on its own (a contractor's agent for a month, a trial), give the agent an expiry time. Past
+that time the token is refused exactly like a disabled agent's: the call inserts nothing, uses none of the
+agent's rate limit or cost allowance, does not count as "last used", and is written to the
+[deny log](./agent-policy.md) and the [trace](./agent-trace.md) with the reason `disabled`. Nothing in the
+answer, the log or the trace says the token "expired": the reason is one of the eleven that already existed,
+so the answer tells a caller nothing it did not know about a disabled agent. The scorecard
+([agent scorecard](./agent-scorecard.md)) shows such an agent as `expired` instead of `active`, so it is
+not mistaken for one that is working.
+
+- **No expiry is the default**, and every agent that existed before this was added has none: nothing about
+  them changed.
+- **One call sets or clears it**: `private.set_agent_expiry(agent, time, allow_past)`, for an owner or admin
+  of the agent's organisation, like `private.revoke_agent`. There is no new role and no new login. Another
+  organisation's agent reads "agent not found". The agent's own database role cannot call it, so a token
+  cannot extend itself, and nobody signed in can write the column directly.
+- **A time in the past is refused** unless you pass `allow_past` as `true`: that ends the token now, which
+  is something to do on purpose and not with a mistyped date. `infinity` is refused too: clear the expiry
+  (`null`) for a token that never expires.
+- **It can be brought back**: setting a later time, or `null`, makes the same token work again, which is
+  why the reason is `disabled` and not `revoked`. A revoked agent's expiry cannot change: revoking is final.
+- **The database's own clock decides.** Each call reads the clock as it makes the decision, so a long
+  transaction cannot keep an expired token alive. The server's clock and the database's are never compared.
+- It is **not recorded in the history**: the registry history (`agent_events`) keeps statuses. The expiry on
+  the row is the current one.
+
+An example on the seeded test database (the same set-up as above, with migration `0018_agent_token_expiry.sql`
+applied): the owner registers the menu fixer, gives it 30 days, tries a date in the past by mistake, ends the
+token on purpose, and gives it back.
+
+```sql
+-- Northgate Studio's owner, signed in
+set role authenticated;
+select set_config('request.jwt.claims', '{"sub":"11111111-0000-4000-8000-000000000001"}', false) is not null as signed_in;
+
+-- 1. register an agent: no expiry unless you set one
+select agent_id, token as menu_fixer_token
+  from private.register_agent('0a000000-0000-4000-8000-00000000000a', 'Menu fixer',
+                              '11111111-0000-4000-8000-000000000001', '{draft:email}') \gset
+select name, status, expires_at from agents;
+
+-- 2. a token for 30 days
+select agent_expires_at > now() as expires_in_the_future
+  from private.set_agent_expiry(:'agent_id', now() + interval '30 days');
+
+-- 3. a time already past is refused, unless you mean it
+select * from private.set_agent_expiry(:'agent_id', now() - interval '1 day');
+
+-- 4. the agent drafts before the expiry
+reset role;
+set role gaugeline_agent;
+select private.agent_insert_draft($1, $2, $3, $4) is not null as inserted
+  \bind :menu_fixer_token 'a1000000-0000-4000-8000-0000000000a1' 'email' '{"subject":"Your menu link is fixed","body":"The drinks page is back."}' \g
+
+-- 5. the agent cannot move its own expiry
+select private.set_agent_expiry(:'agent_id', null);
+
+-- 6. end the token now, on purpose
+reset role;
+set role authenticated;
+select agent_expires_at <= now() as already_passed
+  from private.set_agent_expiry(:'agent_id', now(), true);
+
+-- 7. the same token, a moment later
+reset role;
+set role gaugeline_agent;
+select private.agent_insert_draft($1, $2, $3, $4) is not null as inserted
+  \bind :menu_fixer_token 'a1000000-0000-4000-8000-0000000000a1' 'email' '{"subject":"Again","body":"Once more."}' \g
+
+-- 8. the refusal is in the deny log, as `disabled`
+reset role;
+set role authenticated;
+select reason from agent_denies order by id desc limit 1;
+
+-- 9. a member who is not an owner or admin cannot give it back
+select set_config('request.jwt.claims', '{"sub":"11111111-0000-4000-8000-000000000002"}', false) is not null as signed_in;
+select * from private.set_agent_expiry(:'agent_id', null);
+
+-- 10. the owner clears the expiry: the same token works again
+select set_config('request.jwt.claims', '{"sub":"11111111-0000-4000-8000-000000000001"}', false) is not null as signed_in;
+select agent_expires_at is null as never_expires from private.set_agent_expiry(:'agent_id', null);
+reset role;
+set role gaugeline_agent;
+select private.agent_insert_draft($1, $2, $3, $4) is not null as inserted
+  \bind :menu_fixer_token 'a1000000-0000-4000-8000-0000000000a1' 'email' '{"subject":"Once more","body":"Back at work."}' \g
+```
+
+```text
+SET
+ signed_in
+-----------
+ t
+(1 row)
+
+    name    | status | expires_at
+------------+--------+------------
+ Menu fixer | active |
+(1 row)
+
+ expires_in_the_future
+-----------------------
+ t
+(1 row)
+
+ERROR:  that expiry is in the past and would end the token now; pass p_allow_past = true to do that on purpose
+CONTEXT:  PL/pgSQL function private.set_agent_expiry(uuid,timestamp with time zone,boolean) line 25 at RAISE
+RESET
+SET
+ inserted
+----------
+ t
+(1 row)
+
+ERROR:  permission denied for function set_agent_expiry
+RESET
+SET
+ already_passed
+----------------
+ t
+(1 row)
+
+RESET
+SET
+WARNING:  agent call denied: disabled
+ inserted
+----------
+ f
+(1 row)
+
+RESET
+SET
+  reason
+----------
+ disabled
+(1 row)
+
+ signed_in
+-----------
+ t
+(1 row)
+
+ERROR:  agent not found
+CONTEXT:  PL/pgSQL function private.set_agent_expiry(uuid,timestamp with time zone,boolean) line 15 at RAISE
+ signed_in
+-----------
+ t
+(1 row)
+
+ never_expires
+---------------
+ t
+(1 row)
+
+RESET
+SET
+ inserted
+----------
+ t
+(1 row)
+```
+
+What it shows: a new agent has no expiry (1); a future time is accepted (2); a past time is refused unless
+asked for (3); the agent drafts before it passes (4); the agent cannot call the function (5); ending the token
+on purpose (6) makes its next call a refusal with the reason `disabled`, in the deny log (7, 8); a member
+cannot undo it (9); the owner can (10).
 
 ## Shadow agents: the inventory
 

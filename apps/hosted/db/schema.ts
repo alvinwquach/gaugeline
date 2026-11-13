@@ -447,6 +447,8 @@ export const agents = pgTable(
     lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
     revokedAt: timestamp("revoked_at", { withTimezone: true }),
     revokedBy: uuid("revoked_by"),
+    /** Null: never expires. Past: refused like `disabled` (AG-02b, 0018). Set only by set_agent_expiry. */
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
   },
   (t) => [index("agents_org_idx").on(t.orgId, t.createdAt.desc())],
 ).enableRLS();

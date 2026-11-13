@@ -20,19 +20,19 @@ for an email draft), before it looks at the site, the findings or the payload. T
 `private.agent_list_pending` and `private.agent_list_runs`) call it the same way, once, with `read:pending`
 or `read:runs` ([the API](./api.md#agent-reads-pending-drafts-and-run-history)). The first rule that applies is the reason:
 
-| Reason               | When                                                                                               |
-| -------------------- | -------------------------------------------------------------------------------------------------- |
-| `unknown-agent`      | the token matches no agent                                                                         |
-| `revoked`            | the agent was revoked; this wins over every other reason                                           |
-| `kill-switch-global` | the operator has stopped every agent (below)                                                       |
-| `disabled`           | an owner or admin set the agent's status to `disabled`                                             |
-| `kill-switch-agent`  | the operator has stopped this one agent                                                            |
-| `bad-input`          | the call names no tool, or declares a cost that is missing, negative or over 10^12                 |
-| `tool-not-allowed`   | the tool is not on the closed list (the registry's scopes); nothing that writes is on it           |
-| `scope`              | the tool is on the list, but the agent's scopes do not name it. A new agent has no scope           |
-| `timeout`            | the call cannot finish within the agent's timeout (it waited too long for a lock, or ran too long) |
-| `rate-limit`         | the agent has used all its calls for the current window                                            |
-| `cost-ceiling`       | the call's declared cost would take the agent over its ceiling for the day (UTC)                   |
+| Reason               | When                                                                                                                         |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `unknown-agent`      | the token matches no agent                                                                                                   |
+| `revoked`            | the agent was revoked; this wins over every other reason                                                                     |
+| `kill-switch-global` | the operator has stopped every agent (below)                                                                                 |
+| `disabled`           | an owner or admin set the agent's status to `disabled`, or its token's [expiry](./agent-registry.md#token-expiry) has passed |
+| `kill-switch-agent`  | the operator has stopped this one agent                                                                                      |
+| `bad-input`          | the call names no tool, or declares a cost that is missing, negative or over 10^12                                           |
+| `tool-not-allowed`   | the tool is not on the closed list (the registry's scopes); nothing that writes is on it                                     |
+| `scope`              | the tool is on the list, but the agent's scopes do not name it. A new agent has no scope                                     |
+| `timeout`            | the call cannot finish within the agent's timeout (it waited too long for a lock, or ran too long)                           |
+| `rate-limit`         | the agent has used all its calls for the current window                                                                      |
+| `cost-ceiling`       | the call's declared cost would take the agent over its ceiling for the day (UTC)                                             |
 
 A refused call inserts nothing and returns null. The agent gets a warning that names the reason
 (`agent call denied: rate-limit`) and nothing else; it is not told about the site or the payload.

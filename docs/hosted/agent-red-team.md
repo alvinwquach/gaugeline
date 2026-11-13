@@ -25,15 +25,19 @@ menu email twice.
 | **Approval of an edited draft.** The draft changed after review, or an edit sent after approval.                          | T5      | Drafts are append-only; the database hashes the payload at the decision; the job carries that hash.   |
 | **Cross-tenant token.** One agency's agent drafts into, names a finding of, or reads from another agency's site.          | T6      | The agent's organisation comes from its token's registry row, never from the call. Reads find none.   |
 | **Revoked agent.** An agent revoked a moment ago calls again, and an unknown token calls.                                 | T10     | Only an active registry row is recognised; the refusal is logged with its reason and writes nothing.  |
-| **Expired token.** An agent token past an expiry date.                                                                    | T10     | Not built: agent tokens have no expiry. Listed as a pending case below.                               |
+| **Expired token.** An agent token past an expiry date.                                                                    | T10     | `private.agent_authorize` reads a token past its `expires_at` as `disabled`: logged, nothing written. |
 | **Cost-cap breach.** A call that would take the agent past its day's ceiling, a negative cost, a cost over 10^12.         | T7      | `private.agent_authorize` checks the declared cost first; a refused call is not counted.              |
 | **Runaway loop.** More calls than the window allows.                                                                      | T7      | The per-agent rate limit; the call after the last place inserts nothing.                              |
 | **Oversized input.** 51 findings, a payload over 16 KiB, a 201-character token.                                           | T7, T9  | The entry's own limits and the token length bound.                                                    |
 | **Malformed tool output.** A draft with an unknown key, a wrong type, a bidirectional control or a line break in a title. | T9      | The database checks each kind's fixed shape when a draft is written.                                  |
 | **Kill switch.** The operator's global switch, and `GAUGELINE_AGENTS_OFF` set to `1`, empty, `true` or garbage.           | T7, T12 | The database switch; in the process, any value but unset or `0` stops, before the database is called. |
 
-**Pending (`it.todo`).** _Expired token_ (T10) waits for a decision: the registry has no expiry on an agent's
-token, only revoke, `disabled` and a flag for a token unused for 30 days. The MCP server's cases, the writer's and the receipt chain's are in the sections below.
+**Expired token (T10)** is a real case since agent tokens got an optional expiry ([token expiry](./agent-registry.md#token-expiry)):
+an agent whose expiry is a minute in the past is refused as `disabled` on a draft and on a read, nothing is
+inserted, the refusal is in the deny log, and the agent's own database role cannot move the expiry. The
+case's own tests in `agent-expiry.test.ts` go further: the same refusal as a disabled agent, no new reason
+code, revoked and the operator's switch still first, and each rule broken in turn to show a test fails.
+The MCP server's cases, the writer's and the receipt chain's are in the sections below.
 
 ## The MCP server's cases
 
@@ -56,8 +60,8 @@ with its own marker word, so a leak says which attack got through.
 | **Revoked agent.** The hosted API refuses the agent's token as revoked.                                                                           | T10     | The refusal is passed on as its reason only; no draft is shown.                                                                                                                 |
 | **Cross-tenant token.** The API says another agency's site is not found for this agent.                                                           | T6      | The tool shows "Not found for this agent." and nothing from the body.                                                                                                           |
 
-The expired-token case is still the one `it.todo` above: when the hosted API answers with a reason the server
-does not know (which is what an expired token would look like), the server shows nothing of the body.
+An expired token reaches the server as the reason `disabled`, which it passes on like `revoked`; a reason this
+server does not know shows nothing of the body.
 
 ## The writer's cases, and the receipt chain's
 
@@ -87,10 +91,10 @@ $ export GAUGELINE_TEST_DATABASE_URL=postgres://postgres:gaugeline-test@127.0.0.
 $ pnpm exec vitest run apps/hosted/db/__tests__/red-team.test.ts
  ✓ red team: the hosted database (T2 to T10) > double-click approve: the same draft approved five times at once writes one decision and one job
  ✓ red team: the hosted database (T2 to T10) > revoked agent: its next call is refused, logged as revoked, and writes nothing
- □ red team: the hosted database (T2 to T10) > expired token: an agent token past its expiry is refused (no control yet: agents have no expiry column; needs an owner decision)
+ ✓ red team: the hosted database (T2 to T10) > expired token: an agent token past its expiry is refused as disabled, logged, and writes nothing
  ...
  Test Files  1 passed (1)
-      Tests  11 passed | 1 todo (12)
+      Tests  12 passed (12)
 ```
 
 The MCP cases need no database:
