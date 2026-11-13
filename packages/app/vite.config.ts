@@ -20,6 +20,13 @@ export default defineConfig({
         entryFileNames: "assets/[name]-[hash].js",
         chunkFileNames: "assets/[name]-[hash].js",
         assetFileNames: "assets/[name]-[hash][extname]",
+        // The text of every check (what it catches, why, how to fix it) grows with each check Gaugeline
+        // ships, and is most of the app. It is its own file, so no single file nears the size limit in
+        // scripts/embed-client.mjs. The entry still imports it: nothing loads later or differently.
+        manualChunks(id) {
+          if (id.endsWith("/src/check-titles.ts")) return "check-text";
+          return undefined;
+        },
       },
     },
   },
