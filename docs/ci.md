@@ -25,11 +25,12 @@ Vercel and Netlify both report preview deployments to GitHub, so this runs again
 
 `--format` chooses what stdout carries. Both formats are views of the same run: the findings and their evidence line, nothing from the page beyond that line, and no key (a secret in an evidence line is replaced before it is written). Stdout is the result and nothing else, no report file is written, and the exit codes are the same as without it: 0, 1 with `--ci` and a "Fix this first" finding, 2 when the run could not be done.
 
-| Value   | What it is                                                                                          | Where it goes                                  |
-| ------- | --------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
-| `json`  | The result, the same as `--json`                                                                    | Scripts                                        |
-| `sarif` | [SARIF 2.1.0](https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.html), one rule per check | GitHub code scanning and other SARIF viewers   |
-| `junit` | JUnit XML (`testsuites`, `testsuite`, `testcase`)                                                   | Jenkins, GitLab, CircleCI, any test-result tab |
+| Value       | What it is                                                                                                                             | Where it goes                                  |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| `json`      | The result, the same as `--json`                                                                                                       | Scripts                                        |
+| `sarif`     | [SARIF 2.1.0](https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.html), one rule per check                                    | GitHub code scanning and other SARIF viewers   |
+| `junit`     | JUnit XML (`testsuites`, `testsuite`, `testcase`)                                                                                      | Jenkins, GitLab, CircleCI, any test-result tab |
+| `one-pager` | One printable Markdown page: the first fixes, each with its check, and what was not checked. See [the one-page report](./one-pager.md) | A client, a ticket, a PDF                      |
 
 Say a studio checks the preview of a dental practice's new site. The run writes SARIF to a file and still fails the job on a broken link:
 

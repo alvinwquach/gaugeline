@@ -163,6 +163,9 @@ export const HELP: Record<string, string> = {
     summary: [
       "Open a saved run (gaugeline <address> --json > run.json) in a terminal view.",
       "Keys: j/k move, enter expand, / filter, d dismiss with a reason, q quit.",
+      "With --format one-pager it prints one page instead: the headline, the first",
+      "things to fix with the check and source of each, and what was not checked.",
+      "It makes no request: it is built from the saved run alone.",
     ].join("\n"),
     footer: "Exit codes: 0 viewed, 2 the file could not be read",
   }),

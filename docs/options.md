@@ -57,9 +57,9 @@ Options:
                                    found [CI]
       --json                       Print the result as JSON on stdout, and
                                    nothing else
-      --format <value>             What stdout carries: json (the same as
-                                   --json), sarif (GitHub code scanning) or
-                                   junit (any CI's test results)
+      --format <value>             What stdout carries: json (as --json), sarif,
+                                   junit or one-pager (a cited page; view reads
+                                   a saved run)
       --no-open                    Do not open anything in a browser
       --allow-private              Allow addresses on this computer or a private
                                    network, such as 127.0.0.1 or 192.168.x.x
@@ -260,9 +260,9 @@ Options:
                                    found [CI]
       --json                       Print the result as JSON on stdout, and
                                    nothing else
-      --format <value>             What stdout carries: json (the same as
-                                   --json), sarif (GitHub code scanning) or
-                                   junit (any CI's test results)
+      --format <value>             What stdout carries: json (as --json), sarif,
+                                   junit or one-pager (a cited page; view reads
+                                   a saved run)
       --no-open                    Do not open anything in a browser
       --allow-private              Allow addresses on this computer or a private
                                    network, such as 127.0.0.1 or 192.168.x.x
@@ -673,9 +673,8 @@ code stays 0 until you add --block.
 
 Options:
       --json              Print the result as JSON on stdout, and nothing else
-      --format <value>    What stdout carries: json (the same as --json), sarif
-                          (GitHub code scanning) or junit (any CI's test
-                          results)
+      --format <value>    What stdout carries: json (as --json), sarif, junit or
+                          one-pager (a cited page; view reads a saved run)
       --allow-private     Allow addresses on this computer or a private network,
                           such as 127.0.0.1 or 192.168.x.x
       --dns               Also read the domain's mail records (SPF and DMARC)

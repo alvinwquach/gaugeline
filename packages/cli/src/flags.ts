@@ -82,9 +82,9 @@ export const FLAGS: readonly FlagDef[] = Object.freeze<FlagDef[]>([
     name: "format",
     type: "string",
     description:
-      "What stdout carries: json (the same as --json), sarif (GitHub code scanning) or junit (any CI's test results)",
+      "What stdout carries: json (as --json), sarif, junit or one-pager (a cited page; view reads a saved run)",
     since: "0.2.0",
-    commands: ["check", "deploy-gate", "launch", "renewals", "cost", "backups"],
+    commands: ["check", "deploy-gate", "launch", "renewals", "cost", "backups", "view"],
   },
   {
     name: "no-open",

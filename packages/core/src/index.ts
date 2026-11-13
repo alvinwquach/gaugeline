@@ -447,6 +447,25 @@ export type { ReportInput } from "./report/html.js";
 export { EVIDENCE_LIMIT, formatJunit, formatSarif } from "./report/formats.js";
 export type { FormatOptions, SuppressedFinding } from "./report/formats.js";
 export {
+  ONE_PAGER_FIX_FIRST_MAX,
+  ONE_PAGER_MAX_FINDINGS,
+  ONE_PAGER_ROWS_MAX,
+  buildOnePager,
+  formatOnePager,
+  onePagerCounts,
+  onePagerProse,
+  onePagerSchema,
+  renderOnePagerMarkdown,
+} from "./report/one-pager.js";
+export type { OnePager, OnePagerItem } from "./report/one-pager.js";
+export {
+  EXAMPLE_ONE_PAGER_RUN,
+  createOnePagerEvalModel,
+  onePagerCases,
+  onePagerEvalAgent,
+  onePagerPageProblems,
+} from "./report/one-pager-evals.js";
+export {
   buildBrief,
   costRange,
   escapeMarkdown,
