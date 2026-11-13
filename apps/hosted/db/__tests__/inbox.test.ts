@@ -71,13 +71,20 @@ describe.skipIf(!HAS_DATABASE)("drafts inbox", () => {
     db = await freshDatabase();
     sql = db.sql;
     await seed(sql);
-    for (const [org, t, revoked] of [
-      [ORG_A, TOKEN_A, false],
-      [ORG_B, TOKEN_B, false],
-      [ORG_A, TOKEN_REVOKED, true],
-    ] as const)
-      await sql`insert into private.agent_tokens (org_id, token_sha256, revoked_at)
-        values (${org}, sha256(convert_to(${t}, 'UTF8')), ${revoked ? new Date() : null})`;
+    // Registered agents (0011) with every draft scope; then one is revoked.
+    for (const [org, ownerId, t, revoked] of [
+      [ORG_A, USER_A_OWNER, TOKEN_A, false],
+      [ORG_B, USER_B_OWNER, TOKEN_B, false],
+      [ORG_A, USER_A_OWNER, TOKEN_REVOKED, true],
+    ] as const) {
+      const [a] =
+        await sql`insert into public.agents (org_id, name, owner_id, scopes, token_sha256, token_prefix)
+        values (${org}, ${`Inbox test agent ${sha256(t).slice(0, 8)}`}, ${ownerId},
+          '{draft:pull_request,draft:email,draft:sanity_draft}', ${sha256(t)}, ${sha256(t).slice(0, 8)})
+        returning id`;
+      if (revoked)
+        await sql`update public.agents set status = 'revoked' where id = ${a!.id as string}`;
+    }
   });
   afterAll(async () => {
     await db?.drop();
@@ -160,7 +167,8 @@ describe.skipIf(!HAS_DATABASE)("drafts inbox", () => {
       expect(await agentInsert(TOKEN_A, SITE_A1, "pull_request", [fb!.id])).toMatch(
         /finding not found/,
       );
-      expect(await agentInsert(TOKEN_A, SITE_A1, "shell_exec")).toMatch(/drafts_kind_check/);
+      // Deny by default (0011): no agent holds a scope for a kind that is not registered.
+      expect(await agentInsert(TOKEN_A, SITE_A1, "shell_exec")).toMatch(/no scope to draft/);
     });
 
     it("cannot insert a decision, change a draft, or read anything", async () => {
@@ -173,7 +181,8 @@ describe.skipIf(!HAS_DATABASE)("drafts inbox", () => {
         `select * from public.drafts`,
         `select * from public.draft_state`,
         `select * from public.decisions`,
-        `select * from private.agent_tokens`,
+        `select id from public.agents`,
+        `select id from public.agent_events`,
       ])
         expect(await asAgent((tx) => tx.unsafe(stmt)), stmt).toMatch(/permission denied/);
     });

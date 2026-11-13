@@ -413,3 +413,44 @@ export const chatIdentities = pgTable(
     index("chat_identities_user_idx").on(t.orgId, t.userId),
   ],
 ).enableRLS();
+
+/** A registered agent (AG-02): owner, scopes and the SHA-256 of its token, never the token (0012). */
+export const agents = pgTable(
+  "agents",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id").notNull(),
+    name: text("name").notNull(),
+    /** Null for a token migrated from 0005, or once the owner has left: the shadow inventory flags it. */
+    ownerId: uuid("owner_id"),
+    scopes: text("scopes")
+      .array()
+      .notNull()
+      .default(sql`'{}'`),
+    tokenSha256: text("token_sha256").notNull().unique(),
+    tokenPrefix: text("token_prefix").unique(),
+    /** "migrated_0005" only for tokens moved in from 0005 (no prefix); every later agent is "registered". */
+    origin: text("origin").$type<"registered" | "migrated_0005">().notNull().default("registered"),
+    status: text("status").$type<"active" | "disabled" | "revoked">().notNull().default("active"),
+    createdAt: createdAt(),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    revokedBy: uuid("revoked_by"),
+  },
+  (t) => [index("agents_org_idx").on(t.orgId, t.createdAt.desc())],
+).enableRLS();
+
+/** Every status an agent has had, who set it and when (append-only, written by a trigger). */
+export const agentEvents = pgTable(
+  "agent_events",
+  {
+    id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+    orgId: uuid("org_id").notNull(),
+    agentId: uuid("agent_id").notNull(),
+    fromStatus: text("from_status"),
+    toStatus: text("to_status").notNull(),
+    changedBy: uuid("changed_by"),
+    changedAt: timestamp("changed_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("agent_events_agent_idx").on(t.agentId, t.id)],
+).enableRLS();

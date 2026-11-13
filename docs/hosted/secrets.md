@@ -69,7 +69,7 @@ LINE 1: select decrypted_secret from vault.decrypted_secrets;
 | GitHub App private key (fix proposals, ADR-0010)                            | the customer's worker environment. **Never stored**    | only the customer's worker                                                                             |
 | Notification webhook URLs (Slack, Sentry, GitHub; X67)                      | Supabase Vault, one per organisation and name          | the hosted worker (`gaugeline_worker`) only                                                            |
 | Chat approval signing secrets (Slack, Discord, Teams; X69)                  | Supabase Vault, one per organisation and name          | the chat endpoint (`gaugeline_chat`), one connection at a time ([chat approvals](./chat-approvals.md)) |
-| Site upload tokens and agent tokens                                         | a SHA-256 hash only (`tokens`, `private.agent_tokens`) | nobody: the token itself is shown once, then gone                                                      |
+| Site upload tokens and agent tokens                                         | a SHA-256 hash only (`tokens`, `agents`)               | nobody: the token itself is shown once, then gone                                                      |
 | Server secrets (`SUPABASE_SERVICE_ROLE_KEY`, database URLs, the Resend key) | the server's environment variables                     | the server process; never a table, log or report                                                       |
 
 "We never hold your keys" (G35) is about the first two rows: anything that can read or write a
