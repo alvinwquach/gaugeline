@@ -23,7 +23,8 @@ grant select (expires_at) on public.agents to authenticated;
 -- unless the caller passes p_allow_past = true: that ends the token now, which is a thing to do on purpose
 -- and not by a mistyped date. Null clears the expiry (the token never expires, and an expired agent works
 -- again): clearing is explicit too, so it is a separate value, not a default. A revoked agent cannot change.
--- The database's clock decides what is past.
+-- The database's clock decides what is past: clock_timestamp(), as in agent_authorize, never the
+-- transaction's start time, so a long transaction cannot slip a past time through.
 create function private.set_agent_expiry(p_agent uuid, p_expires_at timestamptz,
   p_allow_past boolean default false)
 returns table (agent_id uuid, agent_expires_at timestamptz)
@@ -51,7 +52,7 @@ begin
     raise exception 'an expiry is a date and time; clear it (null) for a token that never expires'
       using errcode = '22023';
   end if;
-  if p_expires_at <= pg_catalog.now() and not coalesce(p_allow_past, false) then
+  if p_expires_at <= pg_catalog.clock_timestamp() and not coalesce(p_allow_past, false) then
     raise exception 'that expiry is in the past and would end the token now; pass p_allow_past = true to do that on purpose'
       using errcode = '22023';
   end if;

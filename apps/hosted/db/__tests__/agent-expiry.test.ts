@@ -297,6 +297,21 @@ describe.skipIf(!HAS_DATABASE)("agent token expiry", () => {
       expect(await agentDraft(a.token)).toBe("denied: disabled");
     });
 
+    it("a time that has passed by the database's own clock is refused even inside a long transaction", async () => {
+      const a = await register();
+      // The transaction's now() stays at its start: a millisecond ago by the clock, after a short wait, is
+      // later than that start but already past. (The wait only orders the two times; no real day is used.)
+      const msg = await personError(USER_A_OWNER, async (tx) => {
+        await tx`select pg_catalog.pg_sleep(0.05)`;
+        await tx.unsafe(
+          `select * from private.set_agent_expiry($1::uuid, pg_catalog.clock_timestamp() - interval '1 millisecond', false)`,
+          [a.id],
+        );
+      });
+      expect(msg).toMatch(/in the past/);
+      expect((await row(a.id)).expires_at).toBeNull();
+    });
+
     it("a time that is not a date and time (infinity) is refused: clear it to never expire", async () => {
       const a = await register();
       for (const at of ["'infinity'", "'-infinity'"])
