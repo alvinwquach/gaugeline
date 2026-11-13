@@ -6,6 +6,7 @@ import {
   isCmsTokenName,
   isSourcePath,
   lineOf,
+  matchingBack,
   notReadReason,
   resolveImport,
   scrub,
@@ -47,6 +48,13 @@ describe("small helpers", () => {
   it("lineOf is 1-based", () => {
     expect(lineOf("a\nb\nc", 0)).toBe(1);
     expect(lineOf("a\nb\nc", 4)).toBe(3);
+  });
+
+  it("matchingBack finds the bracket that opens a block", () => {
+    const code = "try { a({ b: 1 }); } catch {}";
+    const close = code.indexOf("} catch");
+    expect(matchingBack(code, close)).toBe(code.indexOf("{"));
+    expect(matchingBack(code, 0)).toBe(-1);
   });
 
   it("hasDirective reads the first statements only", () => {
