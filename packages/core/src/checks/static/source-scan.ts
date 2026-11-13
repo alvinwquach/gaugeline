@@ -276,3 +276,23 @@ export function operandAfter(bare: string, from: number): string {
   }
   return bare.slice(start, i).trim();
 }
+
+/** The `{ ... }` block that directly holds the position `at` (in `bare`), as its start and end; undefined at the top level. */
+export function enclosingBlock(
+  bare: string,
+  at: number,
+): { start: number; end: number } | undefined {
+  let depth = 0;
+  for (let i = at - 1; i >= 0; i--) {
+    const c = bare[i];
+    if (c === "}") depth++;
+    else if (c === "{") {
+      if (depth === 0) {
+        const end = closeOf(bare, i);
+        return end < 0 ? undefined : { start: i, end };
+      }
+      depth--;
+    }
+  }
+  return undefined;
+}
