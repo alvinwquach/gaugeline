@@ -322,7 +322,10 @@ model's choice, and the same inputs always take the same path.
 `createRouter` refuses to build unless three things hold (each is a `bad-config` error):
 
 - **Both gateways were made by `createGateway`.** A router takes only those: an object built by hand, or a copy,
-  wrapper or proxy of a real one, could say it has a budget and spend none. - **They share the same budget object.** Hand the one `RunBudget` from the [budget ledger](./model-budgets.md) to
+  wrapper or proxy of a real one, could say it has a budget and spend none. A made gateway is frozen, with the
+  budget it was given: its `complete` and `budget` cannot be assigned, redefined or deleted. The router keeps the
+  `complete` it found when it was built and calls that, never the property again.
+- **They share the same budget object.** Hand the one `RunBudget` from the [budget ledger](./model-budgets.md) to
   both as `budget`. A fallback with a budget of its own, with none while the first has one, or with a wrapper that
   only looks the same, is refused, because the second provider's calls would not be counted against the run's
   ceilings. A gateway shows the budget it uses as `gateway.budget`.

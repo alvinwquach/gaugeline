@@ -167,6 +167,16 @@ export function createRouter(
       `deadlineMs must be a whole number from ${MIN_DEADLINE_MS} to ${MAX_DEADLINE_MS}.`,
     );
   const now = options.now ?? (() => performance.now());
+  // What the router calls is what the gateway was when the router was built: its `complete` as it was then, not
+  // whatever the property says at call time.
+  const first = Object.freeze({
+    provider: gateways.primary.provider,
+    complete: gateways.primary.complete,
+  });
+  const second = gateways.fallback
+    ? Object.freeze({ provider: gateways.fallback.provider, complete: gateways.fallback.complete })
+    : undefined;
+
   /** The call's answer, or OUT_OF_TIME when the route's signal aborts first. The listener is always removed. */
   async function within<T>(call: () => Promise<T>, signal: AbortSignal): Promise<T> {
     let onAbort: (() => void) | undefined;
@@ -221,7 +231,7 @@ export function createRouter(
     let escalated = false;
     let prompt = request.prompt;
     let callId = request.callId;
-    let gateway = gateways.primary;
+    let gateway = first;
     let usedFallback = false;
 
     const started = reading();
@@ -268,9 +278,9 @@ export function createRouter(
         // By the error's class, never its message: only an outage may be tried on another provider.
         if (typed && FALLBACK_FAILURES.includes(typed.failure)) {
           attempts.push({ tier, provider: gateway.provider, outcome: "outage", costMicros: 0 });
-          if (!usedFallback && gateways.fallback) {
+          if (!usedFallback && second) {
             usedFallback = true;
-            gateway = gateways.fallback;
+            gateway = second;
             continue;
           }
           return unsure("outage", "The provider could not be reached or did not answer in time.");

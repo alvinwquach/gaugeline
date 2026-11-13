@@ -236,11 +236,14 @@ export function createGateway(options: GatewayOptions): ModelGateway {
     };
   }
 
-  const gateway: ModelGateway = {
+  // Frozen, with the budget it was given: `complete` and `budget` cannot be assigned, redefined or deleted, so a
+  // made gateway cannot be turned into one that skips its ceilings.
+  if (options.budget) Object.freeze(options.budget);
+  const gateway: ModelGateway = Object.freeze({
     provider: config.provider,
     budget,
     complete: call,
-  };
+  });
   MADE.add(gateway);
   return gateway;
 }

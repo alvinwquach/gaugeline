@@ -1145,3 +1145,88 @@ describe("the most calls and the most time one task may take", () => {
     });
   });
 });
+
+describe("a gateway cannot be swapped or forged after the router is built", () => {
+  const run = () =>
+    createBudgetLedger({
+      config: {
+        ceilings: { perRunMicros: 50_000, perDayMicros: 100_000, perWorkspaceMicros: 100_000 },
+        prices: {
+          "a-fast": { inputMicrosPerMTok: 250_000, outputMicrosPerMTok: 1_250_000 },
+          "a-strong": { inputMicrosPerMTok: 250_000, outputMicrosPerMTok: 1_250_000 },
+        },
+      },
+      now: () => Date.UTC(2026, 10, 13, 12, 0, 0),
+    }).forRun("workspace-a");
+
+  it("a gateway made by createGateway is frozen, with a complete and a budget that cannot be assigned, defined or deleted", () => {
+    const r = run();
+    const real = provider("a", []).gateway(r);
+    expect(Object.isFrozen(real)).toBe(true);
+    const free = provider("free", [rec(GOOD)]);
+    expect(() => {
+      (real as { complete: unknown }).complete = free.gateway().complete;
+    }).toThrow(TypeError);
+    expect(() => {
+      (real as { budget: unknown }).budget = NO_BUDGET;
+    }).toThrow(TypeError);
+    expect(() =>
+      Object.defineProperty(real, "complete", { value: free.gateway().complete }),
+    ).toThrow(TypeError);
+    expect(() => {
+      delete (real as { complete?: unknown }).complete;
+    }).toThrow(TypeError);
+    for (const key of ["complete", "budget", "provider"] as const)
+      expect(Object.getOwnPropertyDescriptor(real, key)).toMatchObject({
+        writable: false,
+        configurable: false,
+      });
+    expect(free.calls).toHaveLength(0);
+  });
+
+  it("the budget a gateway was given is frozen too, so its hooks cannot be swapped", () => {
+    const r = run();
+    provider("a", []).gateway(r);
+    expect(Object.isFrozen(r)).toBe(true);
+    expect(() => {
+      (r as { before: unknown }).before = () => ({ allowed: true });
+    }).toThrow(TypeError);
+  });
+
+  it("after the swap fails, a route still goes through the real gateway and its budget", async () => {
+    const r = run();
+    const a = provider("a", [rec(GOOD)]);
+    const real = a.gateway(r);
+    const free = provider("free", [rec(GOOD)]);
+    const router = buildRouter({ primary: real });
+    try {
+      (real as { complete: unknown }).complete = free.gateway().complete;
+    } catch {
+      // refused, as it should be
+    }
+    const out = await router.route(REQ, check);
+    expect(out.kind).toBe("advisory");
+    expect(a.calls).toHaveLength(1);
+    expect(free.calls).toHaveLength(0);
+    expect(r.committedMicros()).toBeGreaterThan(0);
+  });
+
+  it("calls the function it captured when it was built, not whatever the gateway's complete is at call time", async () => {
+    // Test only: a gateway object that is not frozen, let through the made-by-createGateway rule.
+    vi.spyOn(gatewayModule, "isMadeGateway").mockReturnValue(true);
+    const good = provider("good", [rec(GOOD)]);
+    const evil = provider("evil", [rec(GOOD)]);
+    const hand = {
+      provider: "good",
+      budget: NO_BUDGET,
+      complete: good.gateway().complete,
+    } as { provider: string; budget: BudgetHooks; complete: ModelGateway["complete"] };
+    const router = buildRouter({ primary: hand }, { unmetered: true });
+    hand.complete = evil.gateway().complete;
+    hand.provider = "evil";
+    const out = await router.route(REQ, check);
+    expect(out).toMatchObject({ kind: "advisory", provider: "good" });
+    expect(good.calls).toHaveLength(1);
+    expect(evil.calls).toHaveLength(0);
+  });
+});
