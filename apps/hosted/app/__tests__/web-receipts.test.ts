@@ -52,6 +52,21 @@ describe.skipIf(!HAS_DATABASE)("GET /receipts", () => {
     expect(res.headers.get("location")).toBe("/sign-in?next=%2Freceipts");
   });
 
+  it("GET /receipts/writers: who wrote each receipt, beside the chain, for owners and admins only", async () => {
+    const b = f.browser();
+    await b.signIn(PEOPLE.maya.email);
+    const res = await b.get("/receipts/writers");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-disposition")).toBe(
+      'attachment; filename="receipt-writers.jsonl"',
+    );
+    // The seed's decision was written by the migration owner standing in for the server: a service marker.
+    expect(await res.text()).toBe(`${JSON.stringify({ seq: 1, writtenBy: "service" })}\n`);
+    const dev = f.browser();
+    await dev.signIn(PEOPLE.dev.email);
+    expect((await dev.get("/receipts/writers")).status).toBe(403);
+  });
+
   it("a member of Northgate who is admin elsewhere cannot download Northgate's chain", async () => {
     const b = f.browser();
     await b.signIn(PEOPLE.both.email);

@@ -16,7 +16,11 @@ import {
   verifyApprovalReceipts,
   type ApprovalReceiptInput,
 } from "@gaugeline/core";
-import { exportReceipts, ReceiptsExportRefused } from "../../lib/web/receipts.js";
+import {
+  exportReceipts,
+  exportReceiptWriters,
+  ReceiptsExportRefused,
+} from "../../lib/web/receipts.js";
 import {
   DRAFT_A1,
   DRAFT_B1,
@@ -76,7 +80,7 @@ describe.skipIf(!HAS_DATABASE)("approval receipts", () => {
     for (const k of Object.keys(LOGINS) as (keyof typeof LOGINS)[])
       conn[k] = postgres(loginUrl(LOGINS[k]), { max: 4, onnotice: () => {} });
     // Drafts for the tests below, as the server (the owner here) would write them.
-    for (let n = 1; n <= 8; n++)
+    for (let n = 1; n <= 12; n++)
       await owner`insert into public.drafts (id, org_id, site_id, kind, payload)
         values (${draftId(n)}, ${ORG_A}, ${SITE_A2}, 'email', ${owner.json(EMAIL(n))})`;
   });
@@ -324,6 +328,41 @@ describe.skipIf(!HAS_DATABASE)("approval receipts", () => {
     });
   });
 
+  describe("who wrote the decision, and the approver's role in the draft's own organisation", () => {
+    const writerOf = async (decisionId: unknown) =>
+      (
+        await owner`select written_by from public.receipts where decision_id = ${decisionId as string}`
+      )[0]?.written_by;
+
+    it("the signed-in person recording their own choice is 'person'", async () => {
+      const id = await person(
+        USER_A_OWNER,
+        async (tx) => (await decide(tx, ORG_A, draftId(9), "approved", USER_A_OWNER))[0]!.id,
+        true,
+      );
+      expect(await writerOf(id)).toBe("person");
+    });
+
+    it("the server writing a decision in the owner's name is 'service': the receipt says owner, the marker says who wrote it", async () => {
+      const id = await on(
+        "server",
+        "service_role",
+        null,
+        async (tx) => (await decide(tx, ORG_A, draftId(10), "approved", USER_A_OWNER))[0]!.id,
+        true,
+      );
+      const [r] =
+        await owner`select record, written_by from public.receipts where decision_id = ${id}`;
+      expect(JSON.parse(r!.record as string)).toMatchObject({ approver: { role: "owner" } });
+      expect(r!.written_by).toBe("service");
+      const writers = await person(USER_A_OWNER, (tx) => exportReceiptWriters(tx, ORG_A));
+      const seq = Number(JSON.parse(r!.record as string).seq);
+      expect(writers.split("\n")).toContain(JSON.stringify({ seq, writtenBy: "service" }));
+      // The writers file sits beside the chain: the chain itself still verifies, byte for byte as before.
+      expect(verifyApprovalReceipts(await chainOf(ORG_A)).ok).toBe(true);
+    });
+  });
+
   describe("two choices at the same moment chain without a fork", () => {
     it("both receipts are present, consecutive, and the chain verifies", async () => {
       const count = async () =>
@@ -421,9 +460,9 @@ describe.skipIf(!HAS_DATABASE)("approval receipts", () => {
         return owner.begin(
           (
             tx,
-          ) => tx`insert into public.receipts (org_id, seq, decision_id, draft_id, prev, hash, record)
+          ) => tx`insert into public.receipts (org_id, seq, decision_id, draft_id, prev, hash, record, written_by)
           values (${ORG_B}, ${r.seq as number}, ${r.decision as number}, ${r.draft as string}, ${r.prev as string},
-            ${"f".repeat(64)}, '{}')`,
+            ${"f".repeat(64)}, '{}', 'service')`,
         );
       };
       expect(await errorOf(row({ seq: first!.seq }))).toMatch(/receipts_org_id_seq_key/);

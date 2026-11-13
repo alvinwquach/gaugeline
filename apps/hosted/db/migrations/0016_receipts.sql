@@ -22,6 +22,11 @@ create table public.receipts (
   hash text not null unique check (hash ~ '^[0-9a-f]{64}$'),
   -- The canonical JSON line, exactly as exported and verified (about 600 bytes).
   record text not null check (octet_length(record) <= 2048),
+  -- Who wrote the decision, which the hashed record cannot say (its format is fixed): 'person' when the
+  -- signed-in person (auth.uid()) is the decided_by of the row, 'service' for every other writer (the
+  -- server's service_role, which may insert any decided_by, and the chat approval function, which maps a
+  -- verified chat click to a member). Not hashed: it sits beside the chain, in the writers export.
+  written_by text not null check (written_by in ('person', 'service')),
   created_at timestamptz not null default now(),
   -- One chain per organisation: no two receipts at one position, none following the same receipt (a fork),
   -- and one receipt per draft (one choice per draft, 0005).
@@ -115,7 +120,7 @@ begin
     raise exception 'a receipt needs the draft and the hash of the payload that was decided'
       using errcode = '23514';
   end if;
-  -- The role at this moment; null when the person deciding is not a member (the server, writing as itself).
+  -- The role at this moment in the draft's own organisation; null when decided_by is not a member there.
   select m.role into v_role from public.members m
     where m.org_id = new.org_id and m.user_id = new.decided_by;
   insert into private.receipt_heads (org_id, seq, hash) values (new.org_id, 0, pg_catalog.repeat('0', 64))
@@ -125,10 +130,11 @@ begin
   v_hash := pg_catalog.encode(pg_catalog.sha256(pg_catalog.convert_to(private.receipt_text(
     new.org_id, v_seq, new.draft_id, new.id, v_kind, new.decision, v_payload_sha256, new.decided_by, v_role,
     new.decided_at, v_head.hash, null), 'UTF8')), 'hex');
-  insert into public.receipts (org_id, seq, decision_id, draft_id, prev, hash, record)
+  insert into public.receipts (org_id, seq, decision_id, draft_id, prev, hash, record, written_by)
     values (new.org_id, v_seq, new.id, new.draft_id, v_head.hash, v_hash, private.receipt_text(
       new.org_id, v_seq, new.draft_id, new.id, v_kind, new.decision, v_payload_sha256, new.decided_by,
-      v_role, new.decided_at, v_head.hash, v_hash));
+      v_role, new.decided_at, v_head.hash, v_hash),
+      case when (select auth.uid()) = new.decided_by then 'person' else 'service' end);
   update private.receipt_heads set seq = v_seq, hash = v_hash where org_id = new.org_id;
   return null;
 end

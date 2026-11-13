@@ -555,5 +555,6 @@ export const receipts = pgTable("receipts", {
   prev: text("prev").notNull(),
   hash: text("hash").notNull().unique(),
   record: text("record").notNull(),
+  writtenBy: text("written_by").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }).enableRLS();
