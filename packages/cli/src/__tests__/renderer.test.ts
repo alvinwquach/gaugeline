@@ -8,6 +8,7 @@ import {
   type PageSnapshot,
   type RenderResult,
   type Renderer,
+  type Transport,
 } from "@gaugeline/core";
 import type { createPlaywrightRenderer as createAdapter } from "@gaugeline/renderer";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -256,6 +257,60 @@ describe("--renderer playwright: a run that names it", () => {
   it("prints no hint under --quiet", async () => {
     const { err } = await run(["--renderer", "playwright", "--quiet"], {});
     expect(err).not.toContain("install one");
+  });
+});
+
+describe("startRenderer: the network rules of the real transport", () => {
+  let other: FixtureServer;
+  beforeAll(async () => {
+    other = await startServer({ "/": html("<html><title>Other</title></html>") });
+  });
+  afterAll(async () => {
+    await other.close();
+  });
+
+  /** The transport startRenderer builds, with no replacement, as the renderer's adapter would get it. */
+  async function transportFor(address: string, allowPrivate: boolean): Promise<Transport> {
+    let got: Transport | undefined;
+    await startRenderer({
+      name: "playwright",
+      address,
+      allowPrivate,
+      env: {},
+      create: ({ transport }) => {
+        got = transport;
+        return {
+          name: "playwright",
+          availability: () => Promise.resolve({ kind: "available", detail: "fake" }),
+          render: () => Promise.resolve(page("x")),
+          close: () => Promise.resolve(),
+        };
+      },
+    });
+    if (!got) throw new Error("no transport");
+    return got;
+  }
+  const ask = (t: Transport, url: string) =>
+    t(new URL(url), { method: "GET", headers: {}, timeoutMs: 5000 }).then((r) => {
+      r.body.destroy();
+      return r.status;
+    });
+
+  it("refuses a loopback address without --allow-private", async () => {
+    const t = await transportFor(`${site.origin}/`, false);
+    await expect(ask(t, `${site.origin}/`)).rejects.toMatchObject({ reason: "blocked-address" });
+  });
+
+  it("with --allow-private reaches the address typed, and no other private address", async () => {
+    const t = await transportFor(`${site.origin}/`, true);
+    await expect(ask(t, `${site.origin}/`)).resolves.toBe(200);
+    // Another loopback port is a different host and port: refused, as the fetcher refuses a redirect to it.
+    await expect(ask(t, `${other.origin}/`)).rejects.toMatchObject({
+      reason: "private-address-refused",
+    });
+    await expect(ask(t, "http://169.254.169.254/latest/meta-data/")).rejects.toMatchObject({
+      reason: "private-address-refused",
+    });
   });
 });
 
