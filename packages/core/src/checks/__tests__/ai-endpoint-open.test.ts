@@ -274,8 +274,7 @@ describe("ai-endpoint-open: what it finds", () => {
       {
         checkId: "ai-endpoint-open",
         severity: "high",
-        title:
-          "An AI endpoint on your site answers with no login or shows the provider's error text",
+        title: "An AI route on your site answers anyone or shows the provider's error text",
         evidence: "/v1/models answers 200 and lists 4 models to anyone, with no login",
         url: `${server.origin}/v1/models`,
       },

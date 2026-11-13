@@ -32,7 +32,7 @@ export const aiEndpointOpen = defineCheck<PageSnapshot>({
     "Putting a login or a rate limit on the route is the work; a route built on a framework's AI helper usually has one place to do it. Stopping the raw error text is one catch block.",
   area: "Security & email",
   severity: "high",
-  title: "An AI endpoint on your site answers with no login or shows the provider's error text",
+  title: "An AI route on your site answers anyone or shows the provider's error text",
   what: "A route you listed as a model endpoint answered a plain GET with no login: it listed its models, replied as a model would, or showed the provider's own error text (a provider error type, a fragment of the key, a stack trace or a server path). Gaugeline names the route and what it saw, never the text.",
   why: "A model route that answers anyone lets strangers run your model account up, read what the model was told to do, or use your site as a free relay. An error that passes the provider's message through tells them which provider and model you use, and sometimes part of your key.",
   fix: "Put a login, a signed session or a rate limit in front of the route, and answer an error with a short message of your own: catch the provider's error on the server, log it there, and send back a plain status.",

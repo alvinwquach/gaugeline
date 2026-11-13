@@ -37,9 +37,9 @@ $ npx gaugeline cedar-row-tea.example --owner-consent
 ```
 
 ```text title=Output
-✗ An AI endpoint on your site answers with no login or shows the provider's error text
+✗ An AI route on your site answers anyone or shows the provider's error text
     ./models answers 200 and lists 2 models to anyone, with no login
-! An AI endpoint on your site answers with no login or shows the provider's error text
+! An AI route on your site answers anyone or shows the provider's error text
     ./chat answers 401 with the provider's own error text: a provider error type, a provider message, a key fragment
 ? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
     Mail records are read from DNS only with --dns. Rerun with --dns to check them.
