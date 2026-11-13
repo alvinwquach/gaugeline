@@ -471,9 +471,19 @@ page goes to a Gaugeline service or any other place.
 - **What is requested.** The page and what it loads, by `GET` and `HEAD` only, through the same transport the
   fetcher uses: a private, loopback, link-local or metadata address is refused unless you typed it and passed
   `--allow-private`, and every redirect is checked again at each hop.
-- **What is never requested.** Anything but `GET` and `HEAD`, a form submission, a WebSocket, a window, a
-  `file:` or other non-web address, and any analytics, advertising or session replay host: a rendered run adds
-  no visit to your numbers.
+- **What is never requested.** Anything but `GET` and `HEAD`, a form submission, a WebSocket, WebRTC and
+  WebTransport (they send UDP outside the page's web requests, so the browser is started with WebRTC limited to
+  a proxy that goes nowhere and the names are removed from the page), a window, and a `file:` or other non-web
+  address.
+- **Analytics, and what can still reach yours.** A request to a host on a fixed list of analytics,
+  advertising and session replay services (Google Analytics and Tag Manager, Meta, LinkedIn, TikTok, Bing,
+  Hotjar, Clarity, FullStory, Mixpanel, Segment, Plausible, Yandex Metrica, Cloudflare Web Analytics, Matomo
+  and Piwik hosted, and others) is stopped and recorded, and so is a request to a small list of analytics files
+  and endpoints on any address, such as `/gtm.js`, `/gtag/js`, `/_vercel/insights`, `/matomo.js`,
+  `/piwik.js` and `/cdn-cgi/rum`. That list is not complete. Analytics a site runs from its own address under
+  a name not on the list, or a tool not named, is not recognised: the page's own scripts can still make those
+  requests to the site, as `GET` or `HEAD`, and a rendered run may then count as a visit. Gaugeline does not
+  say a rendered run adds nothing to your numbers; filter its visits out if that matters.
 - **What the browser holds.** A fresh context for every page with no cookie, storage, login or permission, and
   an environment with none of your keys. Nothing is clicked, typed or submitted.
 - **What is kept.** The renderer hands back the address the page ended on, its status, its text and links, and

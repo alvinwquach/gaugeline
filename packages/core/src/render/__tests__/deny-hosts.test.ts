@@ -29,6 +29,25 @@ describe("the built-in analytics deny list", () => {
     "https://bat.bing.com/action/0",
     "https://www.google.com/g/collect?v=2",
     "https://www.google.com/pagead/1p-user-list/123",
+    "https://mc.yandex.ru/metrika/tag.js",
+    "https://mc.yandex.com/watch/12345",
+    "https://static.cloudflareinsights.com/beacon.min.js",
+    "https://cloudflareinsights.com/cdn-cgi/rum",
+    "https://vitals.vercel-insights.com/v1/vitals",
+    "https://cdn.matomo.cloud/example.matomo.cloud/container_ABC.js",
+    "https://example.piwik.pro/ppms.js",
+    // The same files and endpoints, served from the site's own address
+    "https://site.example/gtm.js?id=GTM-ABCD123",
+    "https://site.example/gtag/js?id=G-ABCDEF1234",
+    "http://127.0.0.1:4000/_vercel/insights/script.js",
+    "https://site.example/_vercel/insights/view",
+    "https://site.example/_vercel/speed-insights/script.js",
+    "https://site.example/matomo.js",
+    "https://site.example/matomo.php?idsite=1&rec=1",
+    "https://site.example/piwik.js",
+    "https://site.example/piwik.php",
+    "https://site.example/cdn-cgi/rum?",
+    "https://site.example/cdn-cgi/beacon/performance",
   ])("blocks %s", (u) => {
     expect(yes(u)).toBe(true);
   });
@@ -41,6 +60,14 @@ describe("the built-in analytics deny list", () => {
     "https://google-analytics.com.example.org/",
     "https://fonts.gstatic.com/s/font.woff2",
     "http://127.0.0.1:8080/collect",
+    // A path is its own and what is under it, never a longer name or a deeper place with that name
+    "https://site.example/gtm.json",
+    "https://site.example/blog/gtm.js",
+    "https://site.example/gtag/jsx",
+    "https://site.example/_vercel/image?url=%2Fa.png",
+    "https://site.example/cdn-cgi/image/width=80/a.png",
+    "https://site.example/matomo.html",
+    "https://www.facebook.com/trending",
   ])("leaves %s alone", (u) => {
     expect(yes(u)).toBe(false);
   });
@@ -72,6 +99,9 @@ describe("the built-in analytics deny list", () => {
 
   it("is a frozen list of lower-case entries", () => {
     expect(Object.isFrozen(ANALYTICS_HOSTS)).toBe(true);
-    for (const e of ANALYTICS_HOSTS) expect(e.host).toBe(e.host.toLowerCase());
+    for (const e of ANALYTICS_HOSTS) {
+      expect(e.host ?? "").toBe((e.host ?? "").toLowerCase());
+      expect(e.host !== undefined || e.path !== undefined).toBe(true);
+    }
   });
 });

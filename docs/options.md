@@ -1356,7 +1356,7 @@ does not see: [Trackers on sensitive pages](guides/trackers-on-sensitive-pages.m
 
 `--renderer playwright` loads the page in a browser **you installed**, to read what a script adds. It is off
 unless you name it, and it is read-only: only `GET` and `HEAD` leave the browser, private addresses are
-refused, analytics and advertising hits are stopped and never sent, nothing is clicked, typed or submitted, and
+refused, requests to a list of analytics and advertising services are stopped (a site's own analytics under another name may still be asked), nothing is clicked, typed or submitted, and
 each page gets a fresh browser with no cookies or storage. Gaugeline never downloads a browser: with none
 found (or no `playwright-core`), the run finishes, says how to install one, and any check that needs a
 rendered page says could not check.

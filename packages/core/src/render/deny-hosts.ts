@@ -9,16 +9,24 @@
  * of the analytics tools sites use. A test names every fingerprinted kind and asserts a host here covers it.
  *
  * An entry is a host (it also covers every subdomain) and, for a host the site may use for other things,
- * a path prefix.
+ * a path. An entry with a path and no host is an analytics file or endpoint a site serves from its own
+ * address (a tag manager proxied through the site, Vercel's and Cloudflare's collection endpoints, a
+ * self-hosted Matomo): it is blocked on any host. A path matches itself and everything under it.
+ *
+ * What this cannot do: a first-party analytics endpoint under a name it does not list is not recognised, so
+ * a rendered page's own requests to the site's own analytics may still arrive (through the gate, as GET or
+ * HEAD). The docs say so.
  */
 export interface DenyEntry {
-  host: string;
-  /** Only requests whose path starts with this. */
+  /** Absent: any host (a same-origin path). */
+  host?: string;
+  /** Only requests at this path or under it. */
   path?: string;
 }
 
 const e = (host: string, path?: string): DenyEntry =>
   path === undefined ? { host } : { host, path };
+const own = (path: string): DenyEntry => ({ path });
 
 export const ANALYTICS_HOSTS: readonly DenyEntry[] = Object.freeze([
   // Google
@@ -71,14 +79,35 @@ export const ANALYTICS_HOSTS: readonly DenyEntry[] = Object.freeze([
   e("track.hubspot.com"),
   e("pi.pardot.com"),
   e("munchkin.marketo.net"),
+  // Others a site loads: Yandex Metrica, Cloudflare Web Analytics, Vercel, Matomo and Piwik hosted
+  e("mc.yandex.ru"),
+  e("mc.yandex.com"),
+  e("cloudflareinsights.com"),
+  e("vercel-insights.com"),
+  e("matomo.cloud"),
+  e("piwik.pro"),
+  // The same files and endpoints, served from the site's own address
+  own("/gtm.js"),
+  own("/gtag/js"),
+  own("/_vercel/insights"),
+  own("/_vercel/speed-insights"),
+  own("/matomo.js"),
+  own("/matomo.php"),
+  own("/piwik.js"),
+  own("/piwik.php"),
+  own("/cdn-cgi/rum"),
+  own("/cdn-cgi/beacon"),
 ]);
 
-/** Whether a request is to an analytics, advertising or session-replay host. */
+const atPath = (pathname: string, path: string): boolean =>
+  pathname === path || pathname.startsWith(`${path}/`);
+
+/** Whether a request is to an analytics, advertising or session-replay host, or an analytics path. */
 export function isAnalyticsRequest(url: URL): boolean {
   const host = url.hostname.toLowerCase().replace(/\.$/, "");
   return ANALYTICS_HOSTS.some(
     (entry) =>
-      (host === entry.host || host.endsWith(`.${entry.host}`)) &&
-      (entry.path === undefined || url.pathname.startsWith(entry.path)),
+      (entry.host === undefined || host === entry.host || host.endsWith(`.${entry.host}`)) &&
+      (entry.path === undefined || atPath(url.pathname, entry.path)),
   );
 }
