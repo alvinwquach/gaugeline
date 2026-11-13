@@ -1,4 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { type AgentDenyReason, agentTraceRecord, traceHash } from "@gaugeline/core";
 import {
   TOOLS,
   assertLabelled,
@@ -30,6 +31,7 @@ export function createGaugelineServer(options: ServerOptions = {}): McpServer {
   const limit = options.maxActiveCalls ?? 16;
   state.policy ??= createServerPolicy(options);
   const policy = state.policy;
+  const clock = () => (options.now ? options.now().getTime() : Date.now());
   // The operator's own plan bases stay readable in an error; every other address is withheld.
   const keep = (options.planBases ?? []).flatMap((b) =>
     URL.canParse(b) ? [new URL(b).origin, new URL(b).host] : [],
@@ -54,20 +56,53 @@ export function createGaugelineServer(options: ServerOptions = {}): McpServer {
         _meta: { "gaugeline/kind": def.kind, "gaugeline/untrustedSlots": def.untrustedSlots ?? [] },
       },
       async (args: unknown) => {
+        const started = clock();
+        const cost = options.toolCostMicros?.(name) ?? TOOL_COST_MICROS;
+        // One trace line per call, written after the call is answered (AG-05). Failure-safe: nothing the
+        // trace does can change or fail the call. Only hashes of the arguments and result are kept.
+        const trace = (outcome: { reason?: AgentDenyReason; data?: unknown; error?: boolean }) => {
+          const sink = options.trace;
+          if (!sink) return;
+          const ended = clock();
+          setImmediate(() => {
+            try {
+              sink.write(
+                agentTraceRecord({
+                  at: new Date(started).toISOString(),
+                  agentId: MCP_AGENT_ID,
+                  tool: name,
+                  inputSha256: traceHash(args),
+                  outputSha256: "data" in outcome ? traceHash(outcome.data) : null,
+                  latencyMs: Math.max(0, Math.floor(ended - started)),
+                  tokens: 0,
+                  costMicros: Number.isSafeInteger(cost) && cost >= 0 ? cost : 0,
+                  decision: outcome.reason ? "denied" : "allowed",
+                  reason: outcome.reason ?? null,
+                  error: outcome.error === true,
+                }),
+              );
+            } catch {
+              // A trace that cannot be built or written is dropped; the call has been answered.
+            }
+          });
+        };
         // The policy first: before the busy check, the tool body and any request. A deny says the reason only.
         const decision = policy.decide({
           agentId: MCP_AGENT_ID,
           tool: name,
-          costMicros: options.toolCostMicros?.(name) ?? TOOL_COST_MICROS,
+          costMicros: cost,
         });
-        if (!decision.allowed)
+        if (!decision.allowed) {
+          trace({ reason: decision.reason ?? "bad-input" });
           return {
             isError: true,
             content: [{ type: "text" as const, text: refusal(decision.reason ?? "bad-input") }],
           };
+        }
         // Calls that make requests wait behind one shared in-flight limit; the waiting line is bounded, so
         // a flood is refused with a clear message instead of queueing memory and time without end.
-        if (def.requests && state.active >= limit)
+        if (def.requests && state.active >= limit) {
+          trace({ error: true });
           return {
             isError: true,
             content: [
@@ -77,6 +112,7 @@ export function createGaugelineServer(options: ServerOptions = {}): McpServer {
               },
             ],
           };
+        }
         // The slot is held until the WORK settles, not until the caller is answered: a call that hit its
         // time limit is still running below for a moment, and it must still count against the cap.
         const work = (async () => def.run(args as never, ctx))();
@@ -89,9 +125,11 @@ export function createGaugelineServer(options: ServerOptions = {}): McpServer {
         }
         try {
           const data = await withDeadline(work, (options.maxCallMs ?? DEFAULT_CALL_MS) + SLACK_MS);
+          trace({ data });
           return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
         } catch (err) {
           const e = asToolError(err, keep);
+          trace({ error: true });
           return { isError: true, content: [{ type: "text" as const, text: e.message }] };
         }
       },

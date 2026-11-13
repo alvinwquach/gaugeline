@@ -229,6 +229,32 @@ To listen on another address you must pass `--allow-non-loopback`, name each hos
 
 A request body larger than 1 MiB is answered with `413` and `Connection: close`. Before answering, the server reads and throws away the rest of that body for up to 16 MiB or 10 seconds, whichever comes first, so a client that is still sending (on Windows and macOS especially) receives the `413` instead of a reset connection. After that limit the connection is closed. None of the discarded bytes is kept, and nothing about the limits can be changed from the command line.
 
+## The trace
+
+Start the server with `--trace` and it writes one JSON line per tool call to stderr, its log stream, for an operator who wants a record of what an assistant did. It is **off by default**. The server writes no file itself (it never writes files at all); keep the lines where you like, for example with `2>>gaugeline-mcp.log`, and pick them out with `grep '^{"v":1'`.
+
+| Flag      | Default | What it does                                             |
+| --------- | ------- | -------------------------------------------------------- |
+| `--trace` | off     | one JSON line per tool call on stderr, with no arguments |
+
+Each line holds the facts the hosted agent trace keeps per call (see [agent policy](./hosted/agent-policy.md)), with `v` (the line's version) and `error` added and no organisation (this server has one operator): the agent id (`gaugeline-mcp`, this server's stand-in, since it has one operator and no registry), the tool, the SHA-256 of the call's arguments and of its result, the latency in whole milliseconds, tokens and cost (integers, always 0: no tool runs a model), the decision (`allowed` or `denied`), the policy's reason for a deny, and `error` for an allowed call that ended in an error or found the server busy. `approverId` and `draftId` are always empty here: this server makes no drafts and approves nothing.
+
+**What is never in it:** the arguments, the address you checked (or its query), the page's text, a finding, a key or an email address. Before anything is hashed, every string is put in Unicode NFC and has secrets (the same key shapes Gaugeline redacts everywhere), email addresses and phone numbers replaced by fixed markers, and object keys are sorted, so the same call always gives the same hash and a hash is never taken over a raw secret. A string over 100,000 characters is hashed as its length only.
+
+**It never gets in the way of a call.** The line is written after the call is answered; a write that fails is counted and dropped; when stderr cannot keep up (more than 1 MiB waiting), lines are dropped instead of held in memory. A call the protocol layer rejects for arguments of the wrong shape never reaches the server's code (no policy check, no tool, no request) and has no line.
+
+This is stderr for three calls to a server started with `--allow-tool list_checks --allow-tool explain_finding --trace`: `list_checks` for one area, `run_check` on a pop-up kitchen's menu page with a token in its query (refused: `scope`), and `explain_finding` with an id no run has:
+
+```text title=stderr
+gaugeline-mcp 0.1.0 serving over stdio (read-only)
+{"v":1,"at":"2026-11-13T13:52:16.030Z","agentId":"gaugeline-mcp","tool":"list_checks","inputSha256":"2df29516c18cccb0308e7c45c6a97596b462fba6200f1bf863dc2d32cfdfb6cb","outputSha256":"a91da3f86a7478ac7d93040383a3738c107cf2b8a6ff1bdbb59474dc27ddbd53","latencyMs":1,"tokens":0,"costMicros":0,"decision":"allowed","reason":null,"approverId":null,"draftId":null,"error":false}
+gaugeline-mcp: denied tool=run_check reason=scope at=2026-11-13T13:52:16.049Z
+{"v":1,"at":"2026-11-13T13:52:16.049Z","agentId":"gaugeline-mcp","tool":"run_check","inputSha256":"e5d8f01102e941fcd29262f1bff09e3a51fb0aa19d1ad3694496155565258aa5","outputSha256":null,"latencyMs":0,"tokens":0,"costMicros":0,"decision":"denied","reason":"scope","approverId":null,"draftId":null,"error":false}
+{"v":1,"at":"2026-11-13T13:52:16.051Z","agentId":"gaugeline-mcp","tool":"explain_finding","inputSha256":"5781faa8e0966840f798ca25d0fa7656c15b190d4a7efe6e5e5d3fd2fbcdfaaf","outputSha256":null,"latencyMs":0,"tokens":0,"costMicros":0,"decision":"allowed","reason":null,"approverId":null,"draftId":null,"error":true}
+```
+
+The address, its token and the area name are in none of the lines.
+
 ## The agent policy
 
 Every tool call is checked **before** it runs, against a policy you set when you start the server, and is refused unless the policy allows it. The check runs before the tool's own code, so a refused call makes no request to any site and reads no file. With none of these flags, the server behaves as before: every tool the server offers (`run_check`, `list_checks`, `explain_finding`, `compare_runs`, `plan_check`, `draft_fix`, and `list_pending_approvals` and `read_run_history` when configured) is allowed, at up to 120 calls a minute.
@@ -348,5 +374,5 @@ The work order (`gaugeline brief`) is built from two functions in the core packa
 
 ## In this version
 
-- stdio and streamable HTTP, six tools (eight with the hosted API configured), one registry, stateless HTTP, an agent policy checked before every call.
+- stdio and streamable HTTP, six tools (eight with the hosted API configured), one registry, stateless HTTP, an agent policy checked before every call, an optional trace line for every call (`--trace`).
 - Not offered: the CLI flags that read a config file or a credential, DNS checks, and any tool that changes anything.
