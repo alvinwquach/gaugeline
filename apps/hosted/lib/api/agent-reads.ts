@@ -56,7 +56,10 @@ function denied(reason: string): Response {
   console.warn("agent api: denied", reason);
   if (reason === "unknown-agent" || reason === "revoked" || reason === "disabled")
     return UNAUTHORIZED_AGENT(reason);
-  const status = reason === "rate-limit" || reason === "cost-ceiling" ? 429 : 403;
+  // A read that ran past the agent's time limit may work if tried again: 503, like a busy server. The
+  // mapping of reasons to statuses is this API's own choice (uncited).
+  const status =
+    reason === "rate-limit" || reason === "cost-ceiling" ? 429 : reason === "timeout" ? 503 : 403;
   return json(status, {
     code: "denied",
     message: `Refused by the agent policy: ${reason}.`,

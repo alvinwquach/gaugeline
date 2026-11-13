@@ -158,6 +158,31 @@ describe.skipIf(!HAS_DATABASE)("agent reads API: integration", () => {
       expect((await get(`/runs?site=${SITE_A1}`, siteToken, { sql: app.sql })).status).toBe(200);
     });
 
+    it("a read past the agent's time limit is 503 timeout, and the deny is logged", async () => {
+      const a = await register(["read:pending"]);
+      await owner`update public.agent_limits set timeout_ms = 100 where agent_id = ${a.id}`;
+      // Another call of the same agent holds its registry row (as the policy itself does, FOR NO KEY UPDATE),
+      // so this call's policy lock waits past the deadline.
+      let release!: () => void;
+      const held = new Promise<void>((r) => (release = r));
+      let locked!: () => void;
+      const isLocked = new Promise<void>((r) => (locked = r));
+      const holder = owner.begin(async (tx) => {
+        await tx`select 1 from public.agents where id = ${a.id} for no key update`;
+        locked();
+        await held;
+      });
+      await isLocked;
+      try {
+        const r = await get("/drafts", a.token);
+        expect([r.status, (await body(r)).reason]).toEqual([503, "timeout"]);
+      } finally {
+        release();
+        await holder;
+      }
+      expect([...(await denies(a.id))]).toEqual([{ tool: "read:pending", reason: "timeout" }]);
+    });
+
     it("rate limit: 429 with the reason", async () => {
       const a = await register(["read:pending"]);
       await owner`update public.agent_limits set calls_per_window = 1 where agent_id = ${a.id}`;

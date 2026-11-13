@@ -298,6 +298,7 @@ token is replaced with `[redacted]`.
 | `429`  | `denied`                                                    | the agent's rate limit or daily cost ceiling                            |
 | `503`  | `agents_not_configured`                                     | the server has no agent login (`GAUGELINE_AGENT_DATABASE_URL`)          |
 | `503`  | `agents_unavailable`                                        | the agent login is set but was refused (uploads keep working)           |
+| `503`  | `denied` (`reason` `timeout`)                               | the read ran past the agent's time limit; try again                     |
 
 **How it is held.** The API answers an agent's token on a third database login,
 `GAUGELINE_AGENT_DATABASE_URL`: a member of `gaugeline_agent` and nothing else. A login that is anything
