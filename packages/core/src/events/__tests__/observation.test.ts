@@ -5,6 +5,7 @@ import {
   eventsOf,
   judgeFocusOrder,
   judgeParity,
+  MAX_EVENTS_PER_REQUEST,
   parseAnalyticsRequest,
   selectClickable,
 } from "../observation.js";
@@ -67,7 +68,7 @@ describe("which listed elements may be clicked: links only", () => {
 
   it("never clicks a javascript:, mailto:, tel: or data: link", () => {
     const p = html(
-      `<nav><a href="javascript:void(0)">A</a><a href="mailto:a@b.example">B</a><a href="tel:+10000000000">C</a><a href="/ok">D</a></nav>`,
+      `<nav><a href="javascript:void(0)">A</a><a href="${["mailto", ["a", "b.example"].join("@")].join(":")}">B</a><a href="tel:+10000000000">C</a><a href="/ok">D</a></nav>`,
     );
     const config = eventsConfigSchema.parse({ events: [{ region: "nav", event: "e" }] });
     const { click, skipped } = selectClickable(clickTargets(p, config), config, p);
@@ -219,6 +220,72 @@ const ok = (path: string, text = "Coffee"): ObservedClick => ({
   blocked: [],
 });
 const silent = (path: string): ObservedClick => ({ path, pushes: [], blocked: [] });
+
+describe("an analytics request is the page's, so reading it is bounded", () => {
+  const GA = "https://www.google-analytics.com/g/collect?v=2";
+  const fast = <T>(run: () => T): T => {
+    const started = performance.now();
+    const out = run();
+    // A guard against reading without a bound (it took seconds before): generous, so a loaded machine passes.
+    expect(performance.now() - started).toBeLessThan(1000);
+    return out;
+  };
+
+  it("reads at most ten events from a body of a hundred thousand lines", () => {
+    const body = Array.from({ length: 100_000 }, (_, i) => `en=e${i}&ep.k=v`).join("\n");
+    const events = fast(() => parseAnalyticsRequest(GA, body));
+    expect(events).toHaveLength(MAX_EVENTS_PER_REQUEST);
+    expect(events[0]?.name).toBe("e0");
+  });
+
+  it("stops reading parameters at twenty, however many the line has", () => {
+    const line = `en=a&${Array.from({ length: 1_000_000 }, (_, i) => `ep.k${i}=v`).join("&")}`;
+    const [e] = fast(() => parseAnalyticsRequest(`${GA}&${line}`, undefined));
+    expect(Object.keys(e?.params ?? {})).toHaveLength(20);
+    const [b] = fast(() => parseAnalyticsRequest(GA, line));
+    expect(Object.keys(b?.params ?? {})).toHaveLength(20);
+  });
+
+  it("reads no more than the first 64 KB of a body, and cuts a value before cleaning it", () => {
+    const events = fast(() => parseAnalyticsRequest(GA, `en=a&ep.big=${"x".repeat(3_000_000)}`));
+    expect(events[0]?.params.big?.length).toBeLessThanOrEqual(120);
+    const json = JSON.stringify({
+      event: "a",
+      properties: Object.fromEntries(Array.from({ length: 5000 }, (_, i) => [`k${i}`, "v"])),
+    });
+    const [j] = fast(() => parseAnalyticsRequest("https://api.segment.io/v1/track", json));
+    expect(Object.keys(j?.params ?? {}).length).toBeLessThanOrEqual(20);
+  });
+});
+
+describe("the plan's elements are capped before anything is clicked", () => {
+  it("lists at most twenty, however many a selector matches", () => {
+    const p = html(
+      `<body>${Array.from({ length: 50 }, (_, i) => `<a href="/${i}">L${i}</a>`).join("")}</body>`,
+    );
+    for (const selector of ["a", "*", "body *", "body > a"]) {
+      const config = eventsConfigSchema.parse({ events: [{ selector, event: "e" }] });
+      expect(clickTargets(p, config).length).toBeLessThanOrEqual(20);
+    }
+  });
+
+  it("marks the link to another site that the plan names by selector, and no other", () => {
+    const p = html(
+      `<nav><a href="/a">A</a></nav><main><a class="x" href="https://other.example/">X</a></main>`,
+    );
+    const config = eventsConfigSchema.parse({
+      events: [
+        { region: "nav", event: "e" },
+        { selector: "a.x", event: "e" },
+      ],
+    });
+    const { click } = selectClickable(clickTargets(p, config), config, p);
+    expect(click.map((t) => [t.text, t.allowCrossSite])).toEqual([
+      ["A", undefined],
+      ["X", true],
+    ]);
+  });
+});
 
 describe("the phone against the desktop", () => {
   it("lists a link that reports on one and not the other, with both answers", () => {

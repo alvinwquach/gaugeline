@@ -33,6 +33,11 @@ export interface ClickTarget {
   parent?: string;
   /** target="_blank": the observer must keep the page and still see the push. */
   newTab: boolean;
+  /**
+   * Set by selectClickable on a link to another site that the plan names by selector: the only kind of
+   * cross-site link an observer may click (its navigation is still cancelled).
+   */
+  allowCrossSite?: boolean;
 }
 
 /** An analytics request the page tried to make after a click: what it would have sent. It was never delivered. */
@@ -54,6 +59,8 @@ export interface ObservedClick {
   blocked: string[];
   /** What those requests would have sent: the event name and parameters read from the request the page made. */
   sent?: SentEvent[];
+  /** Hosts a navigation after the click was refused for (it would have left the page's site): never visited. */
+  refusedNavigation?: string[];
   /** Set when the element could not be clicked or watched: the reason, in a sentence. Never a pass. */
   unobserved?: string;
 }

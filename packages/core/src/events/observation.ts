@@ -84,7 +84,7 @@ export function selectClickable(
       );
       continue;
     }
-    click.push(t);
+    click.push(named && url.origin !== own ? { ...t, allowCrossSite: true } : t);
   }
   return { click, skipped };
 }
@@ -156,7 +156,13 @@ export function judgeFocusOrder(read: EventsRead): FocusReport {
 
 const NAME = /^[A-Za-z0-9_.-]{1,40}$/;
 const MAX_PARAMS = 20;
-const text = (value: string): string => sanitise(value, 120).text;
+/** At most this many events are read from one request, this much of its body and this much of an address. */
+export const MAX_EVENTS_PER_REQUEST = 10;
+export const MAX_REQUEST_BODY_CHARS = 64 * 1024;
+const MAX_LINE_CHARS = 16 * 1024;
+/** A value is cut before it is cleaned, so a megabyte of text is never walked. */
+const MAX_VALUE_READ = 500;
+const text = (value: string): string => sanitise(value.slice(0, MAX_VALUE_READ), 120).text;
 
 interface ParsedEvent {
   host: string;
@@ -164,18 +170,23 @@ interface ParsedEvent {
   params: Record<string, string>;
 }
 
+/** The parameters of one event line: stops reading at MAX_PARAMS, so a line of a million costs the same as twenty. */
 function fromPairs(
   host: string,
-  pairs: URLSearchParams,
-  name: string | null,
+  line: string,
+  nameKey: string,
   keys: (k: string) => string | undefined,
 ): ParsedEvent[] {
+  const pairs = new URLSearchParams(line.slice(0, MAX_LINE_CHARS));
+  const name = pairs.get(nameKey);
   if (name === null || name === "") return [];
   const params: Record<string, string> = {};
+  let count = 0;
   for (const [k, v] of pairs) {
     const key = keys(k);
-    if (key === undefined || !NAME.test(key) || Object.keys(params).length >= MAX_PARAMS) continue;
+    if (key === undefined || !NAME.test(key)) continue;
     params[key] = text(v);
+    if (++count >= MAX_PARAMS) break;
   }
   return [{ host, name: text(name), params }];
 }
@@ -185,7 +196,9 @@ function fromPairs(
  * made it with: Google Analytics 4 (`en`, `ep.` and `epn.` parameters, one event a line in a body), Meta's
  * pixel (`ev`, `cd[...]`), and a JSON body with an `event` (Segment and the like). Only the event name and
  * its parameters are read: an identifier, a client id or a page address in the request is never kept. What
- * the page wrote is cleaned and cut. A request this does not recognise gives no event.
+ * the page wrote is cleaned and cut. A request this does not recognise gives no event. The request is the
+ * page's, so it is bounded: at most MAX_EVENTS_PER_REQUEST events, MAX_REQUEST_BODY_CHARS of body, 20
+ * parameters an event, and a value cut at 120 characters.
  */
 export function parseAnalyticsRequest(rawUrl: string, body: string | undefined): ParsedEvent[] {
   let url: URL;
@@ -195,25 +208,30 @@ export function parseAnalyticsRequest(rawUrl: string, body: string | undefined):
     return [];
   }
   const host = url.hostname.toLowerCase();
+  const read = body?.slice(0, MAX_REQUEST_BODY_CHARS);
   if (url.pathname.endsWith("/g/collect")) {
     const ga = (k: string) =>
       k.startsWith("ep.") ? k.slice(3) : k.startsWith("epn.") ? k.slice(4) : undefined;
-    const lines =
-      body !== undefined && body.trim() !== "" ? body.split("\n") : [url.search.slice(1)];
-    return lines.flatMap((line) => {
-      const pairs = new URLSearchParams(line);
-      return fromPairs(host, pairs, pairs.get("en"), ga);
-    });
+    const out: ParsedEvent[] = [];
+    // The body is one event a line; with none, the address is the event. Lines are cut off one at a time.
+    let from = 0;
+    const source = read !== undefined && read.trim() !== "" ? read : url.search.slice(1);
+    while (from <= source.length && out.length < MAX_EVENTS_PER_REQUEST) {
+      let to = source.indexOf("\n", from);
+      if (to === -1) to = source.length;
+      out.push(...fromPairs(host, source.slice(from, to), "en", ga));
+      from = to + 1;
+    }
+    return out.slice(0, MAX_EVENTS_PER_REQUEST);
   }
   if (host.endsWith("facebook.com") && url.pathname.startsWith("/tr")) {
-    const pairs = url.searchParams;
-    return fromPairs(host, pairs, pairs.get("ev"), (k) =>
+    return fromPairs(host, url.search.slice(1), "ev", (k) =>
       /^cd\[[^\]]+\]$/.test(k) ? k.slice(3, -1) : undefined,
     );
   }
-  if (body !== undefined) {
+  if (read !== undefined) {
     try {
-      const json: unknown = JSON.parse(body);
+      const json: unknown = JSON.parse(read);
       if (typeof json === "object" && json !== null && !Array.isArray(json)) {
         const o = json as Record<string, unknown>;
         if (typeof o.event === "string" && o.event !== "") {
@@ -224,10 +242,18 @@ export function parseAnalyticsRequest(rawUrl: string, body: string | undefined):
               ? (o.properties as Record<string, unknown>)
               : {};
           const params: Record<string, string> = {};
-          for (const [k, v] of Object.entries(source)) {
-            if (!NAME.test(k) || Object.keys(params).length >= MAX_PARAMS) continue;
-            if (typeof v === "string" || typeof v === "number" || typeof v === "boolean")
+          let count = 0;
+          // for...in with a break: Object.entries would build the whole list of a huge object first.
+          for (const k in source) {
+            if (!Object.hasOwn(source, k)) continue;
+            const v = source[k];
+            if (
+              NAME.test(k) &&
+              (typeof v === "string" || typeof v === "number" || typeof v === "boolean")
+            ) {
               params[k] = text(String(v));
+              if (++count >= MAX_PARAMS) break;
+            }
           }
           return [{ host, name: text(o.event), params }];
         }
