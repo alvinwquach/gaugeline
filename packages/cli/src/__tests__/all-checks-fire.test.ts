@@ -82,6 +82,7 @@ const FIXTURES = [
   "ai-key-in-js",
   "ai-widgets",
   "ai-endpoints",
+  "ai-disclosure",
   "checkout-after",
   "printed-menu",
   "source-maps",

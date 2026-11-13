@@ -32,6 +32,7 @@ const text = (value: string, max: number): string => sanitise(value, max).text;
  */
 export const PAGE_CHECK_SKIP: readonly string[] = Object.freeze([
   "ai-crawlers-blocked",
+  "ai-input-no-disclosure",
   "ai-key-in-js",
   "dev-tools-in-production",
   "document-hours-mismatch",
