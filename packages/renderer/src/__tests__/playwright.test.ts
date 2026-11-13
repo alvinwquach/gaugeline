@@ -560,6 +560,11 @@ describe("the Playwright adapter: nothing but the gate answers a request", () =>
     expect(observer.match(/\.click\(/g)).toHaveLength(2);
     expect(observer.match(/\.press\(/g)).toEqual([".press("]);
     expect(observer).toContain('.press("Tab")');
+    // No other key, anywhere: not down, up, type or insertText either, in any file.
+    for (const [file, text] of Object.entries(all)) {
+      expect(text, file).not.toMatch(/keyboard\.(?:down|up|type|insertText|press\((?!"Tab"\)))/);
+      expect(text, file).not.toMatch(/\binsertText\b/);
+    }
     expect(observer).not.toMatch(
       /\.dblclick\(|\.tap\(|\.fill\(|\.type\(|\.pressSequentially\(|\.check\(|\.selectOption\(|\.dispatchEvent\(|\.setInputFiles\(|\.hover\(|\.dragTo\(|\.mouse\b|\.touchscreen\b|\.requestSubmit|\.submit\(/,
     );

@@ -40,10 +40,17 @@ reason.
   whose address is not http or https are never clicked; they are reported as not observed, with the reason, and
   that is could not check, never a pass. A link to another site is clicked only when the plan names it by a
   selector (a region such as `nav` is not a list of other sites to visit), and then the browser does not go
-  there: the page's own handlers run and the move is cancelled.
-- A click that navigates away is undone by loading the page again, so every click starts from the page the plan
-  describes. Each element is clicked once at a desktop width (1280 px) and once at a phone width (375 px).
-  A link that is not visible at a width is not observed there.
+  there: the page's own handlers run and the move is cancelled. A click that would take the page to another site
+  any other way, such as a link on this site that redirects there, is refused: the other site is never asked.
+  What is clicked is checked again in the page as the click lands: if a script changed the link's address to
+  something that is not a web address, or swapped the link for a button, the click is stopped.
+- **Every click starts from a fresh page.** Each click gets a new browser context that loads the page again, so
+  no cookie, storage or cache from an earlier click is there. Each element is clicked once at a desktop width
+  (1280 px) and once at a phone width (375 px). A link that is not visible at a width is not observed there.
+- **The plan's author is responsible for what it lists.** A link on your own site that the plan lists is
+  clicked, whatever it is called: `/logout` or `/account/delete?confirm=1` is a `GET` with no credentials, in a
+  fresh context, so it does nothing to a signed-in visitor, but a plain link that changes something on a `GET`
+  would. List only links that are safe to visit.
 - Every analytics request a click starts is intercepted and recorded, never delivered. What it would have sent
   (the event name and its parameters, read from the request; never an identifier) counts as the click's event,
   beside the pushes to `dataLayer` (including `gtag('event', ...)`). The analytics libraries themselves are not

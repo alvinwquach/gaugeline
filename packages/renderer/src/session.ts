@@ -24,6 +24,13 @@ export interface OpenOptions {
   onAnalytics?: (attempt: AnalyticsAttempt) => void;
   /** Functions the page may call by name (the observer's capture of a push). They only receive what the page sends: data. */
   bindings?: Readonly<Record<string, (...args: never[]) => void>>;
+  /**
+   * Asked for each document the main frame is about to load. False: it is aborted and `onNavigationRefused` is
+   * told, and nothing is asked of that address: how a click is kept from leaving the page's site, whether the
+   * link says so or a redirect on the same site does.
+   */
+  allowNavigation?: (url: URL) => boolean;
+  onNavigationRefused?: (url: URL) => void;
   /** More scripts to run before the page's own, in every frame. */
   scripts?: readonly string[];
 }
@@ -64,6 +71,19 @@ export async function openPage(b: Playwright.Browser, options: OpenOptions): Pro
         if (f.page() === ref.page) frame = f === ref.page?.mainFrame() ? "main" : "sub";
       } catch {
         frame = "popup";
+      }
+      if (options.allowNavigation && req.resourceType() === "document" && frame === "main") {
+        let target: URL | undefined;
+        try {
+          target = new URL(req.url());
+        } catch {
+          target = undefined;
+        }
+        if (target && !options.allowNavigation(target)) {
+          options.onNavigationRefused?.(target);
+          await route.abort("blockedbyclient").catch(() => undefined);
+          return;
+        }
       }
       if (options.onAnalytics) {
         let analytics = false;

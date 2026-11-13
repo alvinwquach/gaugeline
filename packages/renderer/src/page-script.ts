@@ -83,6 +83,9 @@ export const readDomExpression = (ask: DomAsk): string => `((ask) => ({
  * page's own click handlers still run and can still report, but the browser does not leave for a site the
  * plan did not name. `__glMark` is new in every document, so a click that loaded a new page can be told.
  */
+/** The name the page calls when a click was stopped because it was not on a link. */
+export const REFUSED_BINDING = "__glRefused";
+
 export const OBSERVER_SCRIPT = `(() => {
   const grab = (x) => {
     try {
@@ -118,9 +121,20 @@ export const OBSERVER_SCRIPT = `(() => {
   let current = hook([]);
   Object.defineProperty(window, "dataLayer", { configurable: true, get: () => current, set: (v) => { current = hook(v); } });
   Object.defineProperty(window, "__glMark", { value: Math.random() });
+  // Every click is checked as it happens, whatever was meant: it must land on a link to a web address, not in a
+  // form, and not on or in a button, an input or anything else that acts. If a page swapped the link for
+  // something else under the pointer, or rewrote its address, the click is stopped before any handler sees it.
   window.addEventListener("click", (e) => {
-    const a = e.target && e.target.closest ? e.target.closest("a[href]") : null;
-    if (a && a.origin !== location.origin) e.preventDefault();
+    const t = e.target;
+    const a = t && t.closest ? t.closest("a[href]") : null;
+    const acts = t && t.closest ? t.closest("button, input, select, textarea, summary, label, [role=button], [contenteditable]") : null;
+    if (!a || a.closest("form") || acts || !/^https?:$/.test(a.protocol)) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      try { window.${REFUSED_BINDING}("what was clicked was not a link to a web address"); } catch (err) { /* nobody is listening */ }
+      return;
+    }
+    if (a.origin !== location.origin) e.preventDefault();
   }, true);
 })();`;
 
@@ -129,6 +143,10 @@ export interface TargetInspection {
   isLink?: boolean;
   inForm?: boolean;
   visible?: boolean;
+  /** Its address is http or https now (a script may have changed it). */
+  webAddress?: boolean;
+  /** Its address is on another origin than the page's. */
+  crossSite?: boolean;
 }
 
 /** Evaluated in the page: is this still a visible link that is not in a form? Reads, never acts. */
@@ -142,6 +160,8 @@ export const inspectExpression = (path: string): string => `((path) => {
     found: true,
     isLink: el.tagName === "A" && el.hasAttribute("href"),
     inForm: !!el.closest("form"),
+    webAddress: /^https?:$/.test(el.protocol),
+    crossSite: el.origin !== location.origin,
     visible: r.width > 0 && r.height > 0 && cs.visibility !== "hidden" && cs.display !== "none" && !el.closest("[hidden]"),
   };
 })(${JSON.stringify(path)})`;

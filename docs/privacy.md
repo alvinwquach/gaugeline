@@ -487,8 +487,10 @@ page goes to a Gaugeline service or any other place.
   say a rendered run adds nothing to your numbers; filter its visits out if that matters.
 - **Clicks.** With a tracking plan, the plan's links are clicked, once each, at two widths (links only, never a
   button, an input or anything in a form). A click is not a request Gaugeline makes: what the page then asks for
-  goes through the same gate, a link to another site is not followed, and an analytics request is read for its
-  event name and parameters and dropped.
+  goes through the same gate, a link to another site is not followed and a navigation that would leave the site
+  (a redirect included) is refused and never asked for, every click gets a fresh browser context with no cookie
+  or storage from an earlier one, and an analytics request is read for its event name and parameters and
+  dropped. A link on your own site that the plan lists is clicked as a `GET` whatever it is called.
 - **What the browser holds.** A fresh context for every page with no cookie, storage, login or permission, and
   an environment with none of your keys. Nothing is clicked, typed or submitted.
 - **What is kept.** The renderer hands back the address the page ended on, its status, its text and links, and

@@ -1,14 +1,22 @@
 import { Readable } from "node:stream";
 import type { ClickTarget, ObserveResult, Transport } from "@gaugeline/core";
 import { describe, expect, it, vi } from "vitest";
-import { createClickObserver } from "../observer.js";
+import { acceptPush, createClickObserver } from "../observer.js";
+import { OBSERVER_SCRIPT, findLinkByText, inspectExpression } from "../page-script.js";
 
 /**
  * The click observer against a fake browser: which elements it will click, what it does after a click
  * that navigates, how far the Tab key goes. The real browser is in observer.e2e.test.ts.
  */
 
-type Inspection = { found: boolean; isLink?: boolean; inForm?: boolean; visible?: boolean };
+type Inspection = {
+  found: boolean;
+  isLink?: boolean;
+  inForm?: boolean;
+  visible?: boolean;
+  webAddress?: boolean;
+  crossSite?: boolean;
+};
 interface Scenario {
   inspect: Record<string, Inspection>;
   /** Paths whose click changes the address. */
@@ -16,6 +24,8 @@ interface Scenario {
   /** Answers to the focus expression, one a Tab press. */
   focus?: number[];
   consentPath?: string | null;
+  /** Run during a click, with the functions the page was given (the page handing over a push, say). */
+  during?: (bindings: Record<string, (...a: unknown[]) => void>) => void;
 }
 
 const target = (path: string, text = path): ClickTarget => ({
@@ -53,6 +63,7 @@ function fakeBrowser(s: Scenario) {
       let mark = 1;
       let focusAt = 0;
       const main = { page: () => page };
+      const bindings: Record<string, (...a: unknown[]) => void> = {};
       const page = {
         on: () => undefined,
         mainFrame: () => main,
@@ -81,6 +92,7 @@ function fakeBrowser(s: Scenario) {
           first: () => ({
             click: () => {
               log.clicks.push(path);
+              s.during?.(bindings);
               if (s.navigates?.includes(path)) {
                 url = `https://site.example/after-${path}`;
                 mark += 1;
@@ -106,7 +118,10 @@ function fakeBrowser(s: Scenario) {
         route: (_p: unknown, h: typeof handler) => ((handler = h), Promise.resolve()),
         routeWebSocket: () => Promise.resolve(),
         addInitScript: () => Promise.resolve(),
-        exposeFunction: () => Promise.resolve(),
+        exposeFunction: (name: string, fn: (...a: unknown[]) => void) => (
+          (bindings[name] = fn),
+          Promise.resolve()
+        ),
         newPage: () => Promise.resolve(page),
         close: () => Promise.resolve(),
       });
@@ -133,7 +148,14 @@ const clicksOf = (r: ObserveResult) => {
   if ("unchecked" in r) throw new Error(`unchecked: ${r.unchecked}`);
   return r;
 };
-const OK: Inspection = { found: true, isLink: true, inForm: false, visible: true };
+const OK: Inspection = {
+  found: true,
+  isLink: true,
+  inForm: false,
+  visible: true,
+  webAddress: true,
+  crossSite: false,
+};
 
 describe("the click observer: links only", () => {
   it("clicks a visible link outside a form, and nothing else, saying why for each it leaves", async () => {
@@ -170,13 +192,131 @@ describe("the click observer: links only", () => {
   });
 });
 
-describe("the click observer: a click that navigates", () => {
-  it("is reverted by loading the original page again, before the next click", async () => {
+describe("the click observer: every click starts from a fresh page", () => {
+  it("opens a fresh browser context and loads the page again for each click, and one for the keyboard", async () => {
     const { o, log } = observer({ inspect: { a1: OK, a2: OK }, navigates: ["a1"] });
     await o.observe(INPUT([target("a1"), target("a2")]));
-    // For each width: the page, then the page again after a1 changed the address (a2 did not).
-    expect(log.gotos.filter((g) => g === "https://site.example/")).toHaveLength(2 * 3 - 1);
-    expect(log.clicks).toEqual(expect.arrayContaining(["a1", "a2"]));
+    // Desktop: two clicks and the Tab read; phone: two clicks. A context is never reused, so no cookie or
+    // storage a click set is there for the next.
+    expect(log.contexts).toBe(5);
+    expect(log.gotos).toHaveLength(5);
+    expect(new Set(log.gotos)).toEqual(new Set(["https://site.example/"]));
+  });
+});
+
+describe("the click observer: guards that need no browser to test", () => {
+  it("does not click a link whose address a script changed to something that is not a web address", async () => {
+    const { o, log } = observer({ inspect: { a1: { ...OK, webAddress: false } } });
+    const r = clicksOf(await o.observe(INPUT([target("a1")])));
+    expect(log.clicks).toEqual([]);
+    expect(r.clicks[0]?.unobserved).toMatch(/not a web address/);
+  });
+
+  it("clicks a link that goes to another site only when the plan named it", async () => {
+    const away: Inspection = { ...OK, crossSite: true };
+    const unnamed = observer({ inspect: { a1: away } });
+    expect(clicksOf(await unnamed.o.observe(INPUT([target("a1")]))).clicks[0]?.unobserved).toMatch(
+      /another site/,
+    );
+    expect(unnamed.log.clicks).toEqual([]);
+    const named = observer({ inspect: { a1: away } });
+    await named.o.observe(INPUT([{ ...target("a1"), allowCrossSite: true }]));
+    expect(named.log.clicks).toEqual(["a1", "a1"]);
+  });
+
+  it("is not told a click happened when the page stopped it: it was not on a link", async () => {
+    const { o } = observer({
+      inspect: { a1: OK },
+      during: (b) => b.__glRefused?.("what was clicked was not a link to a web address"),
+    });
+    const r = clicksOf(await o.observe(INPUT([target("a1")])));
+    expect(r.clicks[0]?.unobserved).toMatch(/the click was stopped/);
+    expect(r.clicks[0]?.pushes).toEqual([]);
+  });
+
+  it("keeps what a page hands over within bounds, whatever the page's own script did", async () => {
+    const huge = { event: "e", big: "A".repeat(3_000_000), nested: { a: 1 }, list: [1, 2], ok: 3 };
+    const many = Object.fromEntries(Array.from({ length: 5000 }, (_, i) => [`k${i}`, "v"]));
+    const { o } = observer({
+      inspect: { a1: OK },
+      during: (b) => {
+        const t = Date.now() + 1;
+        b.__glPush?.({ t, x: huge });
+        b.__glPush?.({ t, x: many });
+        for (let i = 0; i < 500; i++) b.__glPush?.({ t, x: { event: `e${i}` } });
+        b.__glPush?.("not an object");
+        b.__glPush?.({ t: "late", x: {} });
+      },
+    });
+    const r = clicksOf(await o.observe(INPUT([target("a1")])));
+    const pushes = r.clicks[0]?.pushes ?? [];
+    expect(pushes.length).toBeLessThanOrEqual(200);
+    const first = pushes[0]?.data as Record<string, unknown>;
+    expect(String(first.big).length).toBeLessThanOrEqual(300);
+    expect(first).not.toHaveProperty("nested");
+    expect(first).not.toHaveProperty("list");
+    expect(first.ok).toBe(3);
+    expect(Object.keys(pushes[1]?.data ?? {}).length).toBeLessThanOrEqual(30);
+  });
+
+  it("acceptPush stops at the total number of characters", () => {
+    const kept: { t: number; x: Record<string, unknown> }[] = [];
+    const used = { chars: 0 };
+    const wide = Object.fromEntries(
+      Array.from({ length: 30 }, (_, i) => [`k${i}`, "x".repeat(300)]),
+    );
+    for (let i = 0; i < 200; i++) acceptPush({ t: 1, x: wide }, kept, used);
+    // About 9,000 characters a push: the 100,000 bound is reached long before 200 pushes.
+    expect(used.chars).toBeLessThan(100_000 + 9_500);
+    expect(kept.length).toBeLessThan(15);
+  });
+
+  it("stops clicking when its time limit passes, not only waiting", async () => {
+    const targets = Array.from({ length: 10 }, (_, i) => target(`a${i}`));
+    const inspect = Object.fromEntries(targets.map((t) => [t.path, OK]));
+    const fake = fakeBrowser({ inspect });
+    const o = createClickObserver({
+      getBrowser: () => Promise.resolve(fake.browser as never),
+      transport: fake.transport,
+      now: Date.now,
+      reserve: () => undefined,
+      settleMs: 0,
+      limitMs: 60,
+    });
+    const r = await o.observe(INPUT(targets, { waitMs: 100 }));
+    expect(r).toMatchObject({ unchecked: expect.stringContaining("longer than") });
+    const clicksAtReturn = fake.log.clicks.length;
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    // The work stopped: only the clicks already under way finished, not the other 18.
+    expect(fake.log.clicks.length).toBeLessThanOrEqual(clicksAtReturn + 2);
+    expect(fake.log.clicks.length).toBeLessThan(10);
+  });
+
+  it("the page-side guards say what they check (they run in the browser, so these are read, not run)", () => {
+    // Every click as it lands: a link, a web address, not in a form, not on or in anything that acts.
+    for (const clause of [
+      'closest("a[href]")',
+      'a.closest("form")',
+      "button, input, select, textarea, summary",
+      "^https?:$",
+      "stopImmediatePropagation",
+      "preventDefault",
+      "a.origin !== location.origin",
+    ])
+      expect(OBSERVER_SCRIPT, clause).toContain(clause);
+    const inspect = inspectExpression("a");
+    for (const clause of [
+      'el.tagName === "A"',
+      'hasAttribute("href")',
+      'closest("form")',
+      "^https?:$",
+      "el.origin",
+    ])
+      expect(inspect, clause).toContain(clause);
+  });
+
+  it("finds the consent link outside forms only", () => {
+    expect(findLinkByText("Accept")).toContain('!a.closest("form")');
   });
 });
 
