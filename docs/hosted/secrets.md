@@ -116,6 +116,21 @@ grant gaugeline_worker to gl_worker_login;
 The worker then switches to `gaugeline_worker` for the one transaction that reads a value, the way it
 switches to `service_role` for everything else.
 
+## From the worker's code
+
+The worker reaches secrets through one interface, `SecretStore` in `apps/hosted/worker/secrets.ts`:
+`put(orgId, name, kind, value)`, `get(orgId, name)` (null when missing), `delete(orgId, name)` and
+`list(orgId)` (names, kinds and dates, never a value). `GAUGELINE_SECRET_STORE` picks the implementation
+and has no default:
+
+- `vault`: the functions above, one `service_role` transaction per call, on the worker's database login.
+- `memory`: a `Map` in the process, for tests and local development. Refused when `NODE_ENV` is
+  `production`.
+
+Every failure is a `SecretError` with a code (`invalid-org`, `invalid-name`, `invalid-kind`,
+`invalid-value`, `kind-mismatch`, `unavailable`) and a fixed message. A database error is replaced, not
+wrapped, because a driver error can carry the query's parameters, and the parameters include the value.
+
 ## Rotation
 
 Put the new value under the same name: `private.put_secret` replaces it in Vault, sets `rotated_at` and
