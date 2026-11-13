@@ -65,6 +65,47 @@ describe("a config with a key in it", () => {
     if (value !== "") expect(p.join("\n")).not.toContain(value);
   });
 
+  it.each([
+    "GITHUB_TOKEN",
+    "AWS_SECRET_ACCESS_KEY",
+    "NPM_TOKEN",
+    "PATH",
+    "HOME",
+    "DATABASE_URL",
+    "GH_API_KEY",
+    "TWILIO_API_KEY",
+    "SENDGRID_API_KEY",
+    "CLOUDFLARE_API_KEY",
+    "VERCEL_API_KEY",
+    "SHOPIFY_API_KEY",
+    "MAILGUN_API_KEY",
+    "LINEAR_API_KEY",
+    "STRIPESECRET_API_KEY",
+    "MYPROVIDER_API_KEY",
+    "MY_CUSTOM_API_KEY",
+    "EXAMPLE_KEY",
+    "EXAMPLE_API_TOKEN",
+    "STRIPE_API_KEY",
+    "GITHUB_API_KEY",
+    "SUPABASE_SERVICE_API_KEY",
+    "AWS_API_KEY",
+  ])("refuses %s as keyEnv: only a variable for a model key, and never the value", (name) => {
+    const p = problems({ ...GOOD, keyEnv: name });
+    expect(p).toHaveLength(1);
+    expect(p[0]).toMatch(/^keyEnv: must be /);
+    expect(p[0]).not.toContain(name);
+  });
+
+  it.each([
+    "EXAMPLE_API_KEY",
+    "ANTHROPIC_API_KEY",
+    "OPENAI_API_KEY",
+    "GAUGELINE_MODEL_API_KEY",
+    "MISTRAL_API_KEY",
+  ])("accepts %s as keyEnv", (name) => {
+    expect(parseGatewayConfig({ ...GOOD, keyEnv: name }).ok).toBe(true);
+  });
+
   it("does not repeat a pasted key from any other place in the config", () => {
     const p = problems({
       provider: SHAPED_KEY,
@@ -75,9 +116,50 @@ describe("a config with a key in it", () => {
     expect(p.join("\n")).not.toContain(SHAPED_KEY);
   });
 
-  it("does not repeat a key that is the name of a setting", () => {
-    const p = problems({ ...GOOD, [SHAPED_KEY]: 1 });
-    expect(p.join("\n")).not.toContain(SHAPED_KEY);
+  it.each([
+    ["a shape the scanner knows", SHAPED_KEY],
+    ["a shape nothing knows", PLAIN_KEY],
+    ["a short word-like value", ["demo", "k9x2m7"].join("-")],
+    ["hex", "0123456789abcdef0123456789abcdef"],
+    ["any other name", "something"],
+  ])("never echoes an unknown setting's name (%s): it is only counted", (_n, name) => {
+    const p = problems({ ...GOOD, [name]: 1 });
+    expect(p).toEqual([
+      "setting 1 is not one this file knows; name the environment variable in keyEnv, never the key itself",
+    ]);
+    expect(p.join("\n")).not.toContain(name);
+  });
+
+  it("counts each unknown setting, in the order they are written", () => {
+    const p = problems({ ...GOOD, first: 1, second: 2 });
+    expect(p.map((l) => l.slice(0, 9))).toEqual(["setting 1", "setting 2"]);
+  });
+
+  it("names a setting only when it is a mistake this page recognises or a near miss of a real one", () => {
+    for (const name of ["apiKey", "token", "host", "baseUrl", "allowPrivate"])
+      expect(problems({ ...GOOD, [name]: 1 }).join("\n"), name).toContain(`"${name}"`);
+    // A near miss is named by the setting it looks like, never as the person wrote it.
+    for (const [written, canonical] of [
+      ["provder", "provider"],
+      ["timeoutms", "timeoutMs"],
+      ["keyenv", "keyEnv"],
+      ["tires", "tiers"],
+    ] as const) {
+      const text = problems({ ...GOOD, [written]: 1 }).join("\n");
+      expect(text, written).toContain(`did you mean "${canonical}"?`);
+      expect(text, written).not.toContain(written);
+    }
+  });
+
+  it("never prints any character the person added to a setting name: a near miss gives only the canonical name", () => {
+    const p = problems({ ...GOOD, keyEnvQ9: 1, providerzX: 1, apikEy: 1 });
+    expect(p).toEqual([
+      'setting 1 is not one this file knows; did you mean "keyEnv"?; name the environment variable in keyEnv, never the key itself',
+      'setting 2 is not one this file knows; did you mean "provider"?; name the environment variable in keyEnv, never the key itself',
+      '"apiKey": is not a setting; name the environment variable in keyEnv, never the key itself',
+    ]);
+    for (const user of ["Q9", "zX", "apikEy", "keyEnvQ9", "providerzX"])
+      expect(p.join("\n")).not.toContain(user);
   });
 });
 

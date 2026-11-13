@@ -3,7 +3,7 @@ import { createGateway } from "../gateway.js";
 import type { AdapterCall, GatewayOptions, ModelAdapter, GatewayConfig } from "../types.js";
 
 /** Key-shaped test values are built from pieces so no key-looking literal sits in the repository. */
-export const KEY_NAME = "EXAMPLE_PROVIDER_API_KEY";
+export const KEY_NAME = "EXAMPLE_API_KEY";
 /** An invented key value that no pattern matches: it can only be found by comparing with it. */
 export const PLAIN_KEY = ["demo", "value", "A1b2C3d4E5f6G7h8I9j0"].join("-");
 /** An invented value with the characters that a URL, a header and JSON each write differently. */

@@ -7,6 +7,12 @@ import { redactForTrace } from "../agent-trace.js";
 import { sanitise } from "../untrusted.js";
 
 const SHOWN = "[redacted key]";
+/** A key is one line of printable characters without spaces, 8 to 512 of them. */
+const KEY_SHAPE = /^[\x21-\x7e]{8,512}$/;
+
+/** Whether a value read from the environment can be a key: set, one line, no space, no control character. */
+export const isUsableKey = (value: string | undefined): value is string =>
+  value !== undefined && KEY_SHAPE.test(value);
 /** A secret shorter than this is a word, not a key: scrubbing it would damage ordinary text. */
 const MIN_SECRET = 8;
 /** The most characters an error message keeps. */

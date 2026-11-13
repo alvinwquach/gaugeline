@@ -913,6 +913,41 @@ nothing, says which kind and which line, and exits 1. Exit 2 when the folder, a 
 cannot be read. See [The field-findings miner](field-findings-miner.md) for the note format, an example and what
 the scrub does not catch.
 
+### The llm command
+
+`gaugeline llm --help` prints:
+
+```text title=Output
+Usage: gaugeline llm [options]
+
+Check your model setup, with your own key (ADR-0005, modes 1 and 2). It reads
+one settings file (a provider, a model for each tier of fast and strong, and the
+NAME of the environment variable that holds your key) and says whether that
+variable is set. It sends nothing and calls no model, and it never shows the
+key: Gaugeline keeps no key, and reads yours from your environment when a call
+is made. A file that holds a key or a host is refused.
+
+Options:
+      --json                  Print the result as JSON on stdout, and nothing
+                              else
+      --llm-config <value>    llm: the model settings file (default
+                              gaugeline.llm.json); it names your key's variable,
+                              never the key
+      --quiet                 Print only results and errors
+      --verbose               Show each request, and technical detail when
+                              something goes wrong
+  -h, --help                  Show this help and exit
+  -v, --version               Print the version and exit
+
+Exit codes: 0 ran (also when the key is not set), 2 could not run
+```
+
+`gaugeline llm` checks the model setup you would use for an agent that words a draft, with your own key. It
+reads the one settings file named with `--llm-config` (default `gaugeline.llm.json`) and the one environment
+variable that file names, and says whether that variable holds a usable key. It makes no request, calls no model
+and never shows the key. A file that holds a key, a host or any setting it does not know is refused. The file's
+shape, the two modes and what Gaugeline keeps: [The model gateway](model-gateway.md#your-own-key).
+
 ### The house-rules command
 
 `gaugeline house-rules --help` prints:
@@ -1022,6 +1057,7 @@ between the markers; CI fails when it differs from the flag table.
 | `--renewals`                | Also check what lapses: the domain's registration, the certificates and any token you set up                         |                            | 0.2.0 |
 | `--cost`                    | Also check what runs up the hosting bill: pages that change on every visit, the cache and usage jumps                |                            | 0.2.0 |
 | `--trackers`                | Also list the trackers on pages with a form or a path you listed, and what a tag manager holds                       |                            | 0.2.0 |
+| `--renderer <value>`        | Also load the page in a browser you installed (playwright), to read what scripts add; never downloads one            |                            | 0.2.0 |
 | `--libraries`               | Also check the JavaScript files a page loads for libraries with a published advisory                                 |                            | 0.2.0 |
 | `--wordpress`               | Also check a WordPress site's versions against the current releases, and whether it lists its users                  |                            | 0.2.0 |
 | `--backups`                 | Also check when the client's content and database were last backed up (Supabase, Sanity, an export folder)           |                            | 0.2.0 |
@@ -1091,10 +1127,12 @@ between the markers; CI fails when it differs from the flag table.
 | `--block`                   | deploy-gate: exit 1 when a "Fix this first" finding is found; without it the gate only reports                       | `GAUGELINE_GATE_BLOCK`     | 0.2.0 |
 | `--only <value>`            | source: run just these checks, by id, separated by commas (an unknown id is refused)                                 |                            | 0.2.0 |
 | `--agent <value>`           | evals: run just this agent's eval set, by id (an agent with no set is refused)                                       |                            | 0.2.0 |
+| `--llm-config <value>`      | llm: the model settings file (default gaugeline.llm.json); it names your key's variable, never the key               |                            | 0.2.0 |
 | `--rules <value>`           | house-rules: the file of written rules to compile (plain text or Markdown, up to 50,000 characters)                  |                            | 0.2.0 |
 | `--head <value>`            | receipts verify: a head hash written down earlier, which the chain must still contain                                |                            | 0.2.0 |
 | `--review-notes <value>`    | mine: the folder of review notes (Markdown or text) to read; only lines that start with #pattern-name are used       |                            | 0.2.0 |
-| `--deny-list <value>`       | mine: a file of client names, one per line, that must never reach the draft (the scrub fails it if one does)         |                            | 0.2.0 |
+| `--deny-list <value>`       | mine, write-check: client names, one per line, to keep out of the draft (the scrub fails it if one gets in)          |                            | 0.2.0 |
+| `--from-file <value>`       | write-check: the advisory or docs page saved as a local file (JSON or Markdown, up to 64 KB); never fetched          |                            | 0.2.0 |
 | `--fixes`                   | propose: turn fix proposals on (they are off by default); nothing is sent, the diffs are written to a file           | `GAUGELINE_FIXES`          | 0.2.0 |
 | `--repo <value>`            | propose: the project's folder on this computer (a checkout of its repository)                                        |                            | 0.2.0 |
 | `--plan <value>`            | propose: the launch plan (CSV); with --base, each old address that does not redirect gets a proposal                 |                            | 0.2.0 |

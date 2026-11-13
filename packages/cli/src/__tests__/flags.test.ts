@@ -471,6 +471,8 @@ describe("flag table: e2e", () => {
         const writeCheckOnly = f.commands.length === 1 && f.commands[0] === "write-check";
         // --deny-list is mine's and write-check's: proved on mine.
         const denyListFlag = f.commands.join() === "mine,write-check";
+        // llm reads a settings file: its own flag (--llm-config) is proved the same way, with --help.
+        const llmOnly = f.commands.length === 1 && f.commands[0] === "llm";
         // brief runs the page check and writes a work order: its own flags are proved on a run.
         const briefOnly = f.commands.length === 1 && f.commands[0] === "brief";
         // --business is brief's and audit's, proved on brief. audit --pack runs the page check too, and its own flags
@@ -503,6 +505,7 @@ describe("flag table: e2e", () => {
           !houseRulesOnly &&
           !writeCheckOnly &&
           !denyListFlag &&
+          !llmOnly &&
           !briefOnly &&
           !businessFlag &&
           !auditOnly &&
@@ -628,7 +631,8 @@ describe("flag table: e2e", () => {
                                   mineOnly ||
                                   houseRulesOnly ||
                                   writeCheckOnly ||
-                                  denyListFlag
+                                  denyListFlag ||
+                                  llmOnly
                                 ? [
                                     deliveryOnly
                                       ? "delivery"
@@ -648,7 +652,9 @@ describe("flag table: e2e", () => {
                                                     ? "house-rules"
                                                     : writeCheckOnly
                                                       ? "write-check"
-                                                      : "query",
+                                                      : llmOnly
+                                                        ? "llm"
+                                                        : "query",
                                     `--${f.name}`,
                                     ...value,
                                     "--help",

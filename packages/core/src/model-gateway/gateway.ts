@@ -9,7 +9,8 @@ import { parseRecording } from "../evals/replay.js";
 import { stringsOf } from "../secrets.js";
 import { parseGatewayConfig } from "./config.js";
 import { ModelGatewayError, type GatewayErrorCode } from "./errors.js";
-import { ApiKey } from "./key.js";
+import { shownProvider } from "./known.js";
+import { ApiKey, isUsableKey } from "./key.js";
 import { REDACTION_KINDS, buildModelPayload } from "./privacy.js";
 import {
   MAX_ANSWER_CHARS,
@@ -33,8 +34,6 @@ export const NO_BUDGET: BudgetHooks = Object.freeze({
 });
 
 const ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
-/** A key is one line of printable characters, without spaces. */
-const KEY_SHAPE = /^[\x21-\x7e]{8,512}$/;
 /** Four characters to a token is the usual rough count; it is an estimate and a whole number. */
 const CHARS_PER_TOKEN = 4;
 
@@ -65,7 +64,10 @@ export function createGateway(options: GatewayOptions): ModelGateway {
   }
   const adapter = providers.get(config.provider);
   if (!adapter)
-    return fail("unknown-provider", `There is no adapter for the provider "${config.provider}".`);
+    return fail(
+      "unknown-provider",
+      `There is no adapter for the provider ${shownProvider(config.provider)}.`,
+    );
   if (adapter.needsKey && config.keyEnv === undefined)
     return fail(
       "bad-config",
@@ -86,7 +88,7 @@ export function createGateway(options: GatewayOptions): ModelGateway {
     }
     if (value === undefined || value.trim() === "")
       return fail("missing-key", `The environment variable ${name} is not set.`);
-    if (!KEY_SHAPE.test(value))
+    if (!isUsableKey(value))
       return fail(
         "bad-key",
         `The value of ${name} cannot be a key: it has a space, a line break or a control character.`,

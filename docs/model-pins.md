@@ -135,7 +135,7 @@ console.log(out.join("\n"));
 report: 148 lines, sha256 b86e2991a8...
 the pinned models: allowed
 a newer fast model: refused
-  The pinned models are not allowed to run: the fast tier is pinned to small-model-2026-06 but the recorded eval pass was for small-model-2026-01.
+  The pinned models are not allowed to run: the fast tier is pinned to [not on the known list] but the recorded eval pass was for [not on the known list].
 new model, pass recorded: allowed
 a report edited by hand: refused
   The pinned models are not allowed to run: the eval report does not match the hash recorded for the pass.

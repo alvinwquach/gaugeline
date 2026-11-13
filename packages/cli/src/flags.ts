@@ -77,6 +77,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze<FlagDef[]>([
       "source",
       "receipts",
       "house-rules",
+      "llm",
     ],
   },
   {
@@ -765,6 +766,14 @@ export const FLAGS: readonly FlagDef[] = Object.freeze<FlagDef[]>([
     description: "evals: run just this agent's eval set, by id (an agent with no set is refused)",
     since: "0.2.0",
     commands: ["evals"],
+  },
+  {
+    name: "llm-config",
+    type: "string",
+    description:
+      "llm: the model settings file (default gaugeline.llm.json); it names your key's variable, never the key",
+    since: "0.2.0",
+    commands: ["llm"],
   },
   {
     name: "rules",

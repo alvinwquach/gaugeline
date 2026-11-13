@@ -75,8 +75,12 @@ describe("a config that is refused", () => {
     ["a price over 10^10", { inputMicrosPerMTok: 10_000_000_001, outputMicrosPerMTok: 1 }],
     ["an extra field", { inputMicrosPerMTok: 1, outputMicrosPerMTok: 1, currency: "x" }],
   ])("refuses %s", (_n, price) => {
+    // A price is keyed by a model id, which is never shown unless it is a known one: it can be a key.
     expect(problems({ ...GOOD, prices: { "small-model": price } }).join("\n")).toContain(
-      "prices.small-model",
+      "prices.an entry",
+    );
+    expect(problems({ ...GOOD, prices: { "example-small": price } }).join("\n")).toContain(
+      "prices.example-small",
     );
   });
 
@@ -95,6 +99,19 @@ describe("a config that is refused", () => {
     expect(text).not.toContain(pasted);
     expect(text).toContain("apiKey");
     expect(text).toContain("host");
+  });
+
+  it("never prints a setting name the person wrote, even one two edits from a real one", () => {
+    const p = problems({ ...GOOD, ceilingsQ9: 1, pricesQ9: 1, perRunMicros: 1 });
+    const text = p.join("\n");
+    expect(text).not.toContain("Q9");
+    expect(text).toContain('did you mean "ceilings"?');
+    const inPrice = problems({
+      ...GOOD,
+      prices: { pricesQ9: { inputMicrosPerMTok: 1 } },
+    }).join("\n");
+    expect(inPrice).not.toContain("Q9");
+    expect(inPrice).toContain("prices.an entry");
   });
 
   it("refuses a value that is not an object, with where it is", () => {
