@@ -560,14 +560,22 @@ describe("the Playwright adapter: nothing but the gate answers a request", () =>
     expect(observer.match(/\.click\(/g)).toHaveLength(2);
     expect(observer.match(/\.press\(/g)).toEqual([".press("]);
     expect(observer).toContain('.press("Tab")');
-    // No other key, anywhere: not down, up, type or insertText either, in any file.
+    // No other key, anywhere, however it is reached: the keyboard may be named only in one call, `.press("Tab")`.
     for (const [file, text] of Object.entries(all)) {
-      expect(text, file).not.toMatch(/keyboard\.(?:down|up|type|insertText|press\((?!"Tab"\)))/);
-      expect(text, file).not.toMatch(/\binsertText\b/);
+      expect(text.match(/\bkeyboard\b/g)?.length ?? 0, `${file}: keyboard`).toBe(
+        text.match(/\bkeyboard\.press\("Tab"\)/g)?.length ?? 0,
+      );
+      expect(text, file).not.toMatch(/\binsertText\b|\bsendCharacter\b/);
+      // Not by bracket access to a method (`keyboard["down"]`, `obj["click"]`), not by name held in a variable.
+      expect(text, file).not.toMatch(
+        /\[\s*["'`](?:press|down|up|type|insertText|sendCharacter|click|dblclick|tap|fill|check|hover|dispatchEvent|submit|requestSubmit)["'`]\s*\]/,
+      );
+      // Not by the protocol underneath: no input event is dispatched, and the one protocol call is Page.enable.
+      expect(text, file).not.toMatch(/Input\.(?:dispatch|insert|emulate|synthesize)\w*/);
+      expect(text, file).not.toMatch(/\bInput\b\s*\./);
+      const sends = [...text.matchAll(/\.send\(\s*["'`]([^"'`]+)["'`]/g)].map((m) => m[1]);
+      for (const method of sends) expect(["Page.enable"], `${file}: ${method}`).toContain(method);
     }
-    expect(observer).not.toMatch(
-      /\.dblclick\(|\.tap\(|\.fill\(|\.type\(|\.pressSequentially\(|\.check\(|\.selectOption\(|\.dispatchEvent\(|\.setInputFiles\(|\.hover\(|\.dragTo\(|\.mouse\b|\.touchscreen\b|\.requestSubmit|\.submit\(/,
-    );
     // Each click comes after looking in the page: the consent link is found by its text, a listed link is inspected.
     expect(observer.indexOf("findLinkByText(")).toBeLessThan(observer.indexOf(".click("));
     expect(observer.indexOf("inspectExpression(")).toBeLessThan(observer.lastIndexOf(".click("));
