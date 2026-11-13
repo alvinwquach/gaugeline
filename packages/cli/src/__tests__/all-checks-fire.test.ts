@@ -64,6 +64,7 @@ const FIXTURES = [
   "tag-rules",
   "nav-events",
   "nav-after",
+  "nav-names",
   "tampered",
   "stripe-test-mode",
   "form-checks",
