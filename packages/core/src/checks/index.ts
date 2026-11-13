@@ -149,6 +149,7 @@ import { navChanged } from "./nav-changed.js";
 import { navFooter } from "./nav-footer.js";
 import { navHomeLinks } from "./nav-home-links.js";
 import { navLabelDrift } from "./nav-label-drift.js";
+import { navLinkNoName } from "./nav-link-no-name.js";
 import { navOrphans } from "./nav-orphans.js";
 import { navParity } from "./nav-parity.js";
 import { nextDraftPublic } from "./next-draft-public.js";
@@ -393,6 +394,7 @@ export const PAGE_CHECKS = [
   navFooter,
   navHomeLinks,
   navLabelDrift,
+  navLinkNoName,
   navOrphans,
   navParity,
   nextDraftPublic,
