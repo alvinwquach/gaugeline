@@ -160,5 +160,5 @@ allows for model providers, and it will never run in CI. A model's opinion about
 
 A number written as a word ("three pages") is not checked, and a well-formed answer can still say something
 wrong: a person reads every draft before it goes anywhere. A replay proves the harness catches what was
-recorded, not that a new model version behaves the same; re-recording on a model change is
-[planned](https://github.com/alvinwquach/gaugeline/blob/main/docs/adr/0014-agent-safety-model.md) (AG-24).
+recorded, not that a new model version behaves the same. A change of model is held until this report has been
+run and recorded for it: see [pinned models](./model-pins.md) (AG-24).
