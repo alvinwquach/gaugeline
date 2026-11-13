@@ -343,6 +343,39 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   ],
   "webhook-failing": ["A webhook endpoint is not receiving its events", "Sales & prices"],
   "supabase-rls-off": ["A Supabase table has row-level security off", "Security & email"],
+  "page-robots-overrides-layout": [
+    "A page's robots setting replaces the layout's noindex",
+    "Search & sharing",
+  ],
+  "sitemap-while-indexing-off": [
+    "A sitemap is served while the site is set to stay out of search",
+    "Search & sharing",
+  ],
+  "robots-disallow-hides-noindex": [
+    "Pages marked noindex are also blocked in robots.txt",
+    "Search & sharing",
+  ],
+  "webhook-missing-secret-status": [
+    "A missing webhook secret is answered with the wrong status",
+    "Security & email",
+  ],
+  "sanity-cdn-tagged-reads": [
+    "The Sanity client reads through the CDN, and the reads are cached by tag",
+    "Visitors",
+  ],
+  "cms-token-in-client-code": [
+    "A content-system token is in code that is sent to the browser",
+    "Security & email",
+  ],
+  "webhook-url-hardcoded": ["A webhook URL is written in the source code", "Security & email"],
+  "personal-data-in-analytics": [
+    "A visitor's email, phone or form values are sent to analytics",
+    "Security & email",
+  ],
+  "form-values-in-logs": [
+    "A visitor's email, phone or form values are written to a log or an error report",
+    "Security & email",
+  ],
   "cutover-canonical-host": ["The bare domain and www don't settle on one address", "Launch day"],
   "cutover-mail-changed": ["The domain's mail records changed at cutover", "Security & email"],
   "migration-page-missing": ["A page from the old site is missing on the new one", "Launch day"],
@@ -633,6 +666,19 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "webhook-disabled": ["A webhook endpoint is switched off", "Sales & prices"],
   "supabase-security-advisor": [
     "Supabase's security advisor reports a problem",
+    "Security & email",
+  ],
+  "indexing-switch-loose": ['The indexing switch accepts more than "true"', "Search & sharing"],
+  "noindex-smoke-production": [
+    "The noindex smoke test runs on previews but not on production",
+    "Search & sharing",
+  ],
+  "webhook-signature-compared-plainly": [
+    "The webhook signature is compared with a plain comparison",
+    "Security & email",
+  ],
+  "webhook-timestamp-unbounded": [
+    "The webhook's signed timestamp has no age limit",
     "Security & email",
   ],
   "cutover-certificate-changed": [
@@ -1770,6 +1816,60 @@ export const CHECK_TEXT: Readonly<
     "In the Supabase dashboard, open the table and enable row-level security, then add a policy for each thing visitors should do (for example, insert their own booking, read the menu). Test the site after: a table with no policy refuses everything.",
     "read through Supabase's hosted MCP server in read-only mode for the configured project only (list_tables with schemas [\"public\"], verbose false); a table whose rls_enabled is false is a finding; the evidence is the table's name, cleaned and cut to 40 characters, and its row estimate; a table whose rls_enabled is not a boolean, an unread tool or a stopped read is could-not-check",
   ],
+  "page-robots-overrides-layout": [
+    "A page (or a nested layout) sets its own robots metadata without noindex, below a layout that says noindex. Next.js does not combine the two: the page's value replaces the layout's.",
+    "The layout reads as if it keeps the whole site out of search, but this page puts itself back in. It can be indexed while everything else is hidden, and nobody notices because the layout still says noindex. For a site that must stay out of search until launch, that is a page the whole world can find.",
+    "Set `index: false` in the page's own robots value, or remove the page's robots so the layout's applies. If the layout reads a setting (an environment variable), read the same one in the page.",
+    "static, reads the app router's layout and page files in the folder as text and makes no request; a robots value is noindex (index: false, or a noindex string), index (index: true), unspecified (an object with no index) or dynamic (anything Gaugeline would have to run to know); a page or nested layout whose value is index or unspecified, below the closest layout that sets robots as noindex or dynamic, is a finding; a dynamic value below a noindex layout is not sure; a project with the pages router and no app router is not sure; one with neither passes",
+  ],
+  "sitemap-while-indexing-off": [
+    "The site is set to stay out of search (noindex in the root layout, or Disallow: / in robots.txt), and the folder still has a sitemap file or a Sitemap line in robots.txt.",
+    "A sitemap exists to give search engines a list of pages to crawl. Handing over that list for a site you have asked them not to index works against your own setting, and a pop-up, a staging copy or a client site before launch ends up listed for every crawler that reads robots.txt.",
+    "Remove the sitemap file and the Sitemap line while the site is hidden, or make the sitemap return an empty list when indexing is off, and put it back at launch.",
+    "static, reads the folder as text and makes no request; sitemap files are app/sitemap.(ts|js), app/sitemap.xml/route.(ts|js), public/sitemap*.xml and a Sitemap line in public/robots.txt or app/robots.txt; the site is off when the root layout's robots is noindex or robots.txt disallows /; when a setting decides it (an environment variable in the layout or in app/robots.ts) the check is not sure; no sitemap passes",
+  ],
+  "robots-disallow-hides-noindex": [
+    "robots.txt tells crawlers not to fetch pages that also carry noindex in their metadata.",
+    "A crawler that may not fetch a page cannot read the noindex in it, so the instruction may never be seen. The address can still turn up in search results, from links elsewhere, with no description. For a page meant to stay out of search, noindex only works where the crawler is allowed to read it.",
+    "Take the page out of robots.txt's Disallow rules and keep noindex, so the instruction can be read. A login is the other reliable way to keep a page out.",
+    "static, reads public/robots.txt, app/robots.txt or app/robots.ts and the app router's layout and page files as text and makes no request; a page is noindex when its own robots (or the closest layout's) is index: false or a noindex string; a page is blocked when a Disallow rule for * matches its address up to its first dynamic segment; one finding names the first three pages; an app/robots.ts built from code, or a robots value built from code, is not sure; no noindex page passes",
+  ],
+  "webhook-missing-secret-status": [
+    "The code that receives a Sanity publish webhook answers a request with a 4xx or a 2xx status when its secret is not set, or lets the null that next-sanity returns for a missing secret through.",
+    "With no secret set the receiver cannot tell a real publish from anyone's request. A 200 accepts every request. A 4xx tells the sender the request itself was wrong, and senders generally treat that as a delivery that will not succeed on a retry, so publishes can stop reaching the site until someone notices; a 5xx says the receiver is at fault, which is the status a sender is expected to retry. (Gaugeline has not confirmed Sanity's own retry rules from its documentation.) next-sanity's parseBody returns null for isValidSignature when no secret is passed, so a test written as `=== false` lets that request through.",
+    "Where the secret is read from the environment, return a 500 (or throw) when it is missing, before the signature is looked at, and log that the secret is not set. With parseBody, test `isValidSignature !== true` instead of `=== false`.",
+    "reads the code files of the folder named, never runs them; a receiver is a file that imports @sanity/webhook or next-sanity/webhook, reads the sanity-webhook-signature header, or is a route that revalidates behind a secret; the branch taken when the secret read from process.env is missing is an if that tests it; a status option, .status() or a throw is the answer (a bare response is 200); 5xx passes, any other status is a finding; parseBody tested with === false and no such branch is a finding; no branch, a status that is not a number or a receiver that reads no secret is could-not-check; the finding names the file, the line and the status, never the secret, the body or an id",
+  ],
+  "sanity-cdn-tagged-reads": [
+    "A Sanity client is created with useCdn: true in a site whose reads are cached by tag and cleared when an editor publishes.",
+    "useCdn: true makes the client read through Sanity's edge cache, which the client's documentation says to switch off to bypass it. A site that clears a tag when an editor publishes, and then reads again, can be handed the copy from before the publish by the edge cache, and then keep it until the next revalidation. The page can then keep showing the old menu or the old event although the publish worked.",
+    "Set useCdn: false on the client that reads published content for pages cached by tag. Keep true for reads that are not cached by tag and do not need to show a publish at once, such as a client-side search.",
+    "reads the code files of the folder named, never runs them; a client is a createClient call in a file that imports @sanity/client or next-sanity; the useCdn option is read from the call's own options object; reads are cached by tag when any code file has a next option with tags, or calls revalidateTag or updateTag; useCdn true with such a file is a finding naming the client's file and line and the first file that uses tags; useCdn from an expression, a client with no useCdn, or options that are not written in the call are could-not-check; nothing else in the call (project id, token) is printed",
+  ],
+  "cms-token-in-client-code": [
+    "The source reads a content-system token (Sanity, Contentful and others) in a NEXT_PUBLIC_ variable, or in a module that a client component imports.",
+    "A NEXT_PUBLIC_ value is copied into the JavaScript every visitor downloads, so anyone can read the token from the page and use it against your content: a read token shows your unpublished drafts, a write token can change or delete them. A module a client component imports is built for the browser too, where a server-only variable is empty, and the usual quick fix is to rename the variable with NEXT_PUBLIC_.",
+    "Keep the token in a variable without NEXT_PUBLIC_, read it only in a server module (a route handler, a server component or a server function), and put import 'server-only' at the top of that module so a client import fails the build. Pass the content to client components as props. If a token was ever published, create a new one and delete the old.",
+    "reads the folder's source files only (never .env files; values are not kept); a NEXT_PUBLIC_ variable whose name has a content system's name and ends in TOKEN, SECRET or KEY is a finding; so is a module that reads such a variable, has no import of server-only, and is reached from a file whose first statement is 'use client' through relative imports and the @/ and ~/ shortcuts (type-only imports are ignored); the finding is the file, the line and the variable's name; Pages Router pages and other aliases are not followed; no source file read, or some left out, is could-not-check",
+  ],
+  "webhook-url-hardcoded": [
+    "The source contains the full address of an incoming webhook (Slack, Discord, Zapier, Make and others) as text.",
+    "A webhook address is its own password: whoever has it can post to the channel, sheet or automation behind it. Written in source, it is in every copy of the repository and, for code that ships to the browser, in the page itself. Someone can then fill the kitchen channel with fake orders or trigger an automation that emails your customers.",
+    "Create a new webhook at the service (the old one is exposed), put the address in an environment variable on the server (for example KITCHEN_WEBHOOK_URL) and read it with process.env where it is used. Delete the old webhook.",
+    "reads the folder's code files and .github/workflows files (comments are skipped, .env files are never read); an https URL whose host and path match an incoming-webhook service (Slack, Discord, Microsoft Teams, Zapier, Make, IFTTT, n8n, Pipedream, Google Chat) or a /webhook or /hooks path with a segment of 16 or more letters, digits, - or _ is a finding; a placeholder (almost no variety) and a URL with a ${} in its path are not; the URL is never kept or printed, only the file, the line and the service; no source file read, or some left out, is could-not-check",
+  ],
+  "personal-data-in-analytics": [
+    "A call to the data layer, Google Analytics, a pixel or an analytics client is given a visitor's email, phone number or the values of a form.",
+    "Analytics and ad tools are run by other companies. An email or a phone number sent to one of them reaches a third party, and a clinic's or a coach's enquiry form can carry health or personal details. It is hard to take back, and it can break the promise in the site's privacy notice.",
+    "Send the event and a fact that is not about the person (for example enquiry_sent and the form's name) and leave the field out. If you need it for conversion matching, send it from the server with the visitor's consent, hashed, rather than from the page.",
+    "reads the folder's code files (.env files never); a call whose callee is dataLayer.push, _paq.push, gtag, fbq, ttq.*, plausible, umami.*, posthog.*, mixpanel.*, amplitude.*, analytics.*, segment.*, heap.*, va.*, sendGTMEvent or sendGAEvent, and whose arguments hold a personal field name (email, phone, mobile, first_name, last_name, full_name, postcode and the like) as a key with a non-literal value, as a variable or as a member (values.email, formData.get('email')), or, in a file that handles a form, the whole form, is a finding; a value hashed or masked in the same expression is not; the finding is the file, the line, the call and the field's name, never a value; no source file read, or some left out, is could-not-check",
+  ],
+  "form-values-in-logs": [
+    "A log call or an error report is given a visitor's email, phone number or the values of a form they submitted.",
+    "Logs and error reports are kept, searched and read by more people than the form's inbox, often for months and by an outside service. An enquiry form for a clinic or a coach can carry health or personal details, and they then sit in a place nobody thought of as holding them.",
+    "Log what happened and not who it happened to: the form's name, a status, an id for the submission. For Sentry and similar tools, do not put the form in extra data or set the user's email; turn on the tool's scrubbing of personal data as a second line.",
+    "reads the folder's code files (.env files never); a call to console.log, info, warn, error, debug or trace, a logger or log method, or any method of Sentry, Bugsnag, Rollbar or Honeybadger, whose arguments hold a personal field name (email, phone, mobile, first_name, last_name, full_name, postcode and the like) as a key with a non-literal value, as a variable or as a member (values.email, formData.get('email')), or, in a file that handles a form, the whole form, is a finding; a value hashed or masked in the same expression is not; the finding is the file, the line, the call and the field's name, never a value; no source file read, or some left out, is could-not-check",
+  ],
   "cutover-canonical-host": [
     "Of the bare domain and www, exactly one should answer 200 and the other redirect to it permanently (301 or 308). After cutover, both answer, neither does, or the redirect is temporary.",
     "Two live copies split links and ranking between them; a missing one is a dead address for everyone who types it; a temporary redirect tells search engines to keep the old one.",
@@ -2657,6 +2757,30 @@ export const CHECK_TEXT: Readonly<
     "The advisor is Supabase's own reading of the project's security settings. A lint left open is a known weakness in the database behind the site, found by the vendor and waiting for someone to act.",
     "Open Advisors, then Security Advisor, in the Supabase dashboard; each lint links to its remediation page. Fix the ERROR ones first.",
     "read through Supabase's hosted MCP server in read-only mode (get_advisors with type security); only each lint's code (a lower-case id), level and facing are kept, never its title, description or remediation text; lints are grouped by code and level, INFO is not reported, and rls_disabled_in_public is left to supabase-rls-off when the table list was read",
+  ],
+  "indexing-switch-loose": [
+    'The environment variable that turns indexing on is accepted when it is `1`, `yes`, any non-empty text, or anything but one word, instead of only the exact text "true".',
+    "An environment variable is text, and people mistype it. If anything but `true` turns indexing on, an unset variable on a new preview, a typo or a value of `1` puts a site that should be hidden in front of search engines. Only an exact `true` should do that.",
+    'Compare it with the exact text: `process.env.INDEXING === "true"`. Remove `!== "false"`, `Boolean(...)`, `!!...` and the bare `?` test, and set the variable to the word `true` on the host that should be indexed.',
+    'static, reads the folder\'s code files as text and makes no request; a read of an environment variable belongs to the indexing switch when it is inside a robots value, a robots file or near an X-Robots-Tag header, or its name has INDEX, CRAWL, ROBOTS or SEO in it; === "true" (also after toLowerCase or trim) passes; another literal, !== a literal, Boolean(...), !!..., !..., a bare ?, && or || test, or the value passed on as it is, is a finding; a name that reads the other way round (NO_INDEX, BLOCK_CRAWLERS), !== "true", and a test that could not be read are not sure; the value is never printed, only the variable name, the file and the line',
+  ],
+  "noindex-smoke-production": [
+    "A CI workflow checks noindex (or X-Robots-Tag) on preview deployments, and no workflow does the same for production.",
+    "Production is where indexing matters. A test that only watches previews proves the preview is hidden; it says nothing about the live site, so a setting changed at launch (or one that never changed) goes unnoticed.",
+    "Run the same test against the production deployment after each production deploy (a workflow on the main branch, or a deployment_status trigger for the Production environment). Expect the opposite there once the site is live: no noindex.",
+    "static, reads .github/workflows files as text (comments are skipped) and makes no request; a workflow has the test when it mentions noindex or x-robots-tag; it targets previews when it says preview or runs on pull_request or deployment_status, and production when it says production or prod or runs on main or master; a finding when a workflow tests previews and no workflow with the test says anything about production; a workflow with the test and neither word, or a workflow file that could not be read, is not sure; no workflow files, or no test at all, passes (nothing is missing)",
+  ],
+  "webhook-signature-compared-plainly": [
+    "The code that receives a Sanity publish webhook compares the signature (or a shared secret) with ===, !==, == or !=, instead of a constant-time comparison.",
+    "A plain comparison stops at the first character that differs, so how long it takes can tell a caller how much of a guess was right. A constant-time comparison takes the same time whatever the input. The official @sanity/webhook helper, read in its source at 4.0.4, itself compares with a plain `!==`, so using it is reported as advice, not as a failure.",
+    "Compare with crypto.timingSafeEqual on two Buffers, after checking their lengths are equal (timingSafeEqual throws when they differ, so return a 401 first).",
+    "reads the code files of the folder named, never runs them; a receiver is a file that imports @sanity/webhook or next-sanity/webhook, reads the sanity-webhook-signature header, or is a route that revalidates behind a secret; a finding is a ===, !==, == or != with a signature, hmac, digest, hash, secret or token on one side and something that is not a literal, a length, a type test or a yes-or-no on the other; timingSafeEqual in the file passes; the official helper alone is an advice finding (worth knowing) and not a failure; a receiver with none of these is could-not-check; the finding names the file and the line, never the values",
+  ],
+  "webhook-timestamp-unbounded": [
+    "The code that receives a Sanity publish webhook reads the signed timestamp but does not reject one that is old, or one that is in the future.",
+    "The signature covers the timestamp and the body, but a request that was captured once stays valid for as long as nothing compares the timestamp with the time now. Anyone who can capture a delivery can send it again. The official @sanity/webhook helper, read in its source at 4.0.4, makes no age check, so a receiver that only uses it has none, and is reported as advice.",
+    "Read t from the signature header, and reject the request with a 401 when Math.abs(Date.now() - t) is more than a few minutes (five is common). Check the signature first, so the rejection does not leak which part was wrong.",
+    "reads the code files of the folder named, never runs them; a receiver is a file that imports @sanity/webhook or next-sanity/webhook, reads the sanity-webhook-signature header, or is a route that revalidates behind a secret; a file that reads the timestamp (a t= pattern, or a name such as timestamp or signedAt) and never compares it with Date.now() is a finding; Math.abs of the distance passes; an age test without a future test, or the other way round, is a finding; a file that only uses the official helper is an advice finding (worth knowing); a comparison Gaugeline cannot read, or a receiver with no timestamp and no helper, is could-not-check; the finding names the file and the line, never the values",
   ],
   "cutover-certificate-changed": [
     "The https certificate after cutover lacks a name the one before covered (www, a subdomain), or there is no certificate where there was one.",

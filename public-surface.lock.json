@@ -309,6 +309,20 @@
       "verbose",
       "version"
     ],
+    "propose": [
+      "allow-private",
+      "base",
+      "fixes",
+      "help",
+      "out",
+      "plan",
+      "quiet",
+      "repo",
+      "repository",
+      "to-inbox",
+      "verbose",
+      "version"
+    ],
     "query": [
       "against",
       "allow-private",
@@ -383,6 +397,14 @@
       "allow-private",
       "help",
       "out",
+      "quiet",
+      "verbose",
+      "version"
+    ],
+    "source": [
+      "ci",
+      "help",
+      "json",
       "quiet",
       "verbose",
       "version"
@@ -898,6 +920,7 @@
   "envVars": [
     "CI",
     "FORCE_COLOR",
+    "GAUGELINE_FIXES",
     "GAUGELINE_GATE_BLOCK",
     "GAUGELINE_NO_EXEC_CONFIG",
     "NO_COLOR"
