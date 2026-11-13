@@ -5,6 +5,7 @@ import { protectionMessage, protectionOf, type PreviewAuth } from "../fetch/prev
 import { buildSnapshot, type PageSnapshot } from "../snapshot.js";
 import { addressKey, groupBy, textKey } from "./keys.js";
 import type { PlanRow } from "./read.js";
+import { legacyPath, splitLegacy } from "./redirects.js";
 
 /**
  * The built site against the plan: each planned path on --base (a preview), fetched once with GET,
@@ -16,6 +17,7 @@ export const BUILT_CHECK_IDS = [
   "plan-h1-drift",
   "plan-canonical-elsewhere",
   "plan-anchor-missing",
+  "plan-moved-not-indexable",
 ] as const;
 
 function lower(url: string): { host: string; path: string } | undefined {
@@ -76,7 +78,47 @@ export const BUILT_TITLES: Readonly<Record<(typeof BUILT_CHECK_IDS)[number], str
   "plan-h1-drift": "An H1 isn't what the plan says",
   "plan-canonical-elsewhere": "A canonical points somewhere other than the planned page",
   "plan-anchor-missing": "A planned #section isn't on the page",
+  "plan-moved-not-indexable": "A moved page is set not to be indexed",
 };
+
+const NOINDEX = /(^|[\s,:])(noindex|none)(\s*(,|$)|$)/i;
+
+const trimPath = (path: string) => {
+  const p = path.toLowerCase().replace(/\/+$/, "");
+  return p === "" ? "/" : p;
+};
+
+/** The first old address of these rows whose path is not the page's own: the page has moved. */
+function movedFrom(rows: readonly PlanRow[]): { legacy: string; lines: number[] } | undefined {
+  const lines: number[] = [];
+  let legacy: string | undefined;
+  for (const r of rows)
+    for (const l of splitLegacy(r.legacyUrl)) {
+      const p = legacyPath(l);
+      if (!p || trimPath(p.path) === trimPath(r.path)) continue;
+      legacy ??= p.path;
+      if (!lines.includes(r.line)) lines.push(r.line);
+    }
+  return legacy === undefined ? undefined : { legacy, lines };
+}
+
+/** Why a page can't be indexed: what it sends (a robots meta tag, an X-Robots-Tag header). */
+function indexability(
+  hop: { headers: Record<string, string> } | undefined,
+  page: PageSnapshot,
+): string[] {
+  const why: string[] = [];
+  if (page.metaRobots && NOINDEX.test(page.metaRobots))
+    why.push(`says noindex in <meta name="robots" content="${page.metaRobots}">`);
+  const header = hop?.headers["x-robots-tag"];
+  if (header && NOINDEX.test(header))
+    why.push(`says noindex in the X-Robots-Tag header (${header})`);
+  return why;
+}
+
+/** Said when every page read is set not to be indexed: that is the preview's switch, not a moved page's. */
+export const HIDDEN_PREVIEW_REASON =
+  "every page read on the preview is set not to be indexed, so a moved page's own setting can't be told from the preview's: run the plan again against the live site after launch";
 
 /** Every row on one fetched page, compared with it. */
 function compare(
@@ -208,6 +250,8 @@ export async function checkBuilt(
   const out: Finding[] = [];
   const couldNotCheck: BuiltCouldNotCheck[] = [];
   let done = 0;
+  /** Every page that was read, with why it can't be indexed: the moved ones are judged after the loop. */
+  const states: { path: string; url: string; group: readonly PlanRow[]; why: string[] }[] = [];
   for (const group of groups) {
     const path = group[0]?.path ?? "/";
     const url = new URL(path, origin).href;
@@ -250,7 +294,31 @@ export async function checkBuilt(
       );
       continue;
     }
-    out.push(...compare(buildSnapshot(hops), group, origin, file));
+    const snapshot = buildSnapshot(hops);
+    out.push(...compare(snapshot, group, origin, file));
+    states.push({ path, url, group, why: indexability(last, snapshot) });
+  }
+  // A moved page set not to be indexed is a finding. When every page read is set that way (two or
+  // more), it is the preview's own switch and says nothing about the moved page: could not check.
+  const hidden = states.length >= 2 && states.every((st) => st.why.length > 0);
+  for (const st of states) {
+    const moved = movedFrom(st.group);
+    if (!moved || st.why.length === 0) continue;
+    if (hidden) {
+      couldNotCheck.push({ url: st.url, reason: HIDDEN_PREVIEW_REASON, lines: moved.lines });
+      continue;
+    }
+    out.push(
+      finding(
+        "plan-moved-not-indexable",
+        "high",
+        BUILT_TITLES["plan-moved-not-indexable"],
+        st.path,
+        st.group.filter((r) => moved.lines.includes(r.line)),
+        `${st.path} (moved from ${moved.legacy}) ${st.why.join("; and ")}`,
+        file,
+      ),
+    );
   }
   const first = (f: Finding) => f.group?.lines[0] ?? 0;
   return {
