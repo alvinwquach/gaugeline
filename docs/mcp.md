@@ -274,7 +274,7 @@ One without the other, a token that is not an agent's, or an address that is not
 
 - **Read-only.** One `GET` per call, through the same fetcher as `run_check`: the private-address rule applies, the request goes to the configured origin only, and a redirect is refused, not followed. The token is sent in one header to that origin, and is in no result, error or log line.
 - **It approves nothing.** There is no tool that approves, edits or declines a draft: a person does that in the inbox. The hosted policy refuses an agent without the scope (`scope`), and the tool passes on only that reason.
-- **Safe fields.** A draft is its ids, kind, a title and a short excerpt in untrusted slots (re-cleaned and redacted here, whatever the API sent), the SHA-256 of its payload, and when it expires (72 hours after it was made). A run is its times and its counts by severity; the address and check ids its upload named are not passed on. At most 50 a page.
+- **Safe fields.** A draft is its ids, kind, a title and a short excerpt in untrusted slots (re-cleaned and redacted here, whatever the API sent), the SHA-256 of its payload, and when it expires (72 hours after it was made). A run is its times and its counts by severity; the address and check ids its upload named are not passed on. At most 50 a page, and an answer over 1 MB (counted in bytes) is refused whole.
 
 ### An example: the bar's morning check
 

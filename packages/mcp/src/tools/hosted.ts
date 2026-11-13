@@ -126,9 +126,14 @@ async function getJson(ctx: ToolContext, path: string, query: URLSearchParams): 
     throw new ToolError(
       "The hosted API answered with a redirect, which is not followed. Check GAUGELINE_HOSTED_API.",
     );
+  // Over the cap (in bytes, as read): refused whole, even if the part that arrived would parse.
+  if (hop.truncated)
+    throw new ToolError(
+      "The hosted API's answer was over 1 MB, so none of it is shown. Ask for a smaller page.",
+    );
   let body: unknown;
   try {
-    body = hop.truncated ? undefined : JSON.parse(hop.body ?? "");
+    body = JSON.parse(hop.body ?? "");
   } catch {
     body = undefined;
   }

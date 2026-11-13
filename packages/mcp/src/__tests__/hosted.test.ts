@@ -293,6 +293,31 @@ describe("list_pending_approvals", () => {
     expect(textOf(await call("list_pending_approvals")).isError).toBe(true);
   });
 
+  it("the 1 MB cap counts bytes: 900 KB of two-byte characters is shown, 1.06 MB of them is not", async () => {
+    // One draft whose excerpt is padded with "\u00e9" (two bytes in UTF-8): the character count stays
+    // under a million either way, so only a byte count tells the two apart.
+    const padded = (n: number) => (_: IncomingMessage, res: ServerResponse) => {
+      const d = { ...pendingPage.drafts[0], excerpt: { text: "\u00e9".repeat(n) } };
+      json(res, 200, { drafts: [d], nextCursor: null });
+    };
+    reply = padded(450_000);
+    expect(textOf(await call("list_pending_approvals")).isError).toBe(false);
+    reply = padded(530_000);
+    expect(textOf(await call("list_pending_approvals"))).toEqual({
+      isError: true,
+      text: "The hosted API's answer was over 1 MB, so none of it is shown. Ask for a smaller page.",
+    });
+  });
+
+  it("a cut answer is refused even when the part that arrived would parse", async () => {
+    // A valid page followed by 1.1 MB of spaces: the first megabyte parses as JSON, but it was cut.
+    reply = (_, res) => {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(`${JSON.stringify(pendingPage)}${" ".repeat(1_100_000)}`);
+    };
+    expect(textOf(await call("list_pending_approvals")).text).toMatch(/over 1 MB/);
+  });
+
   it("refuses arguments out of bounds before any request", async () => {
     for (const args of [{ limit: 51 }, { limit: 0 }, { cursor: "a&b=c" }, { site: "not-a-site" }])
       expect(textOf(await call("list_pending_approvals", args)).isError, JSON.stringify(args)).toBe(
