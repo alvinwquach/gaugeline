@@ -101,6 +101,7 @@ import {
   HANDOFF_CHECKS,
   HANDOFF_ENV_VARS,
   formatRenewalRows,
+  type RenewalRow,
   formatJunit,
   formatSarif,
   RENEWALS_CHECKS,
@@ -155,6 +156,7 @@ import { runMigration } from "./migration.js";
 import { runAdvisory } from "./advisory.js";
 import { runInit } from "./init.js";
 import { runChanges } from "./changes.js";
+import { runReceipt } from "./receipt.js";
 import { buildRunRecord, saveRun } from "./runs.js";
 import { gateVerdict } from "./deploy-gate.js";
 import { readImageSettings } from "./image-settings.js";
@@ -304,6 +306,8 @@ export interface Deps {
   retentionDays?: number;
   /** `gaugeline renewals`, `--renewals`: where the registry's bootstrap file is and the port https answers on. Tests only. */
   renewals?: { bootstrapUrl?: string; port?: number };
+  /** `gaugeline receipt --renewals`: what the renewals reader returns. Tests pass rows; the default is the F-01 reader. */
+  renewalRows?: (host: string, now: Date) => Promise<RenewalRow[]>;
   /** `gaugeline cost`, `--cost`: how long to wait between the two visits to a page, and how the wait is made. Tests pass one that does not wait. */
   cost?: { delayMs?: number; sleep?: (ms: number) => Promise<void> };
   /** `gaugeline backups`, `--backups`: how an export folder is listed. Defaults to reading the disk. */
@@ -1140,6 +1144,29 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           {
             ...(deps.cwd ? { cwd: deps.cwd } : {}),
             ...(deps.fetcher ? { fetcher: deps.fetcher } : {}),
+          },
+        ),
+        ci: false,
+      };
+    case "receipt":
+      return {
+        outcome: await runReceipt(
+          {
+            address: args.address,
+            ...(args.month ? { month: args.month } : {}),
+            json: args.json,
+            printable: args.printable,
+            renewals: args.renewals,
+            clientReported: args.clientReported,
+            quiet: args.quiet,
+          },
+          { stdout: io.stdout, stderr: io.stderr, ...(io.env ? { env: io.env } : {}) },
+          {
+            ...(deps.cwd ? { cwd: deps.cwd } : {}),
+            now: (deps.now ?? io.now ?? (() => new Date()))(),
+            ...(deps.fetcher ? { fetcher: deps.fetcher } : {}),
+            ...(deps.renewals ? { renewals: deps.renewals } : {}),
+            ...(deps.renewalRows ? { renewalRows: deps.renewalRows } : {}),
           },
         ),
         ci: false,

@@ -30,6 +30,7 @@ export const COMMANDS = [
   "advisory",
   "init",
   "changes",
+  "receipt",
   "deploy-gate",
 ] as const;
 export type Command = (typeof COMMANDS)[number];
@@ -243,6 +244,22 @@ export const HELP: Record<string, string> = {
       "deployment list when gaugeline.changes.json names them. Read only; never",
       "guesses an author. For this command --since takes a date such as 2026-11-01",
       "or a run id such as r-20261101T100000Z.",
+    ].join("\n"),
+    footer: "Exit codes: 0 ran, 2 could not run",
+  }),
+  receipt: renderHelp(FLAGS, "receipt", {
+    usage: "gaugeline receipt <site> [--month <yyyy-mm>] [options]",
+    summary: [
+      "What Gaugeline caught for a site in a month, for a care-plan client: the",
+      "findings that opened and were fixed, with the day each was first seen and the",
+      "day it was fixed, in plain groups (booking and payments, listings and hours,",
+      "site and content, renewals, security signals). A fix is 'before your customers",
+      "did' unless you mark it --client-reported, and then it is listed as 'fixed after",
+      "you told us'. It restates the runs that --since last saves in .gaugeline/runs:",
+      "it never estimates money or traffic and reads nothing else, except with",
+      "--renewals, which also reads the domain's registration and the certificates",
+      "(GET only) for what lapses in the next 60 days. Prints Markdown, --json, or one",
+      "printable page with --printable. Read only; it writes no file.",
     ].join("\n"),
     footer: "Exit codes: 0 ran, 2 could not run",
   }),

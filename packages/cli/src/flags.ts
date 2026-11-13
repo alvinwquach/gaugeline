@@ -27,7 +27,7 @@ export interface FlagDef {
   deprecated?: { since: string; removeIn: string; use?: string };
 }
 
-export const FLAGS: readonly FlagDef[] = Object.freeze([
+export const FLAGS: readonly FlagDef[] = Object.freeze<FlagDef[]>([
   {
     name: "ci",
     type: "boolean",
@@ -72,6 +72,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
       "query",
       "emails",
       "changes",
+      "receipt",
     ],
   },
   {
@@ -156,8 +157,12 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     type: "boolean",
     description:
       "Also check what lapses: the domain's registration, the certificates and any token you set up",
+    commandDescriptions: {
+      receipt:
+        "Also read what lapses in the next 60 days (the domain's registration, the certificates and any token you set up) for the Coming up list",
+    },
     since: "0.2.0",
-    commands: ["check", "run"],
+    commands: ["check", "run", "receipt"],
   },
   {
     name: "cost",
@@ -234,6 +239,29 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     },
     since: "0.2.0",
     commands: ["check", "delivery", "changes"],
+  },
+  {
+    name: "month",
+    type: "string",
+    description: "The month a receipt covers, as yyyy-mm in UTC (default: the last whole month)",
+    since: "0.2.0",
+    commands: ["receipt"],
+  },
+  {
+    name: "client-reported",
+    type: "string",
+    description:
+      "A fix your client reported first, as a check id with an optional page (payment-link-dead@/visit); repeatable",
+    since: "0.2.0",
+    commands: ["receipt"],
+    multiple: true,
+  },
+  {
+    name: "printable",
+    type: "boolean",
+    description: "Print the receipt as one page to print or save as a PDF, instead of Markdown",
+    since: "0.2.0",
+    commands: ["receipt"],
   },
   {
     name: "paid",

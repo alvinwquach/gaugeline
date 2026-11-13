@@ -100,7 +100,6 @@ describe("gaugeline receipt: arguments and help", () => {
           "--month",
           "2026-10",
           "--json",
-          "--printable",
           "--renewals",
           "--client-reported",
           "payment-link-dead@/visit",
@@ -111,9 +110,16 @@ describe("gaugeline receipt: arguments and help", () => {
       ),
     ).toMatchObject({
       json: true,
-      printable: true,
+      printable: false,
       renewals: true,
       clientReported: [{ checkId: "payment-link-dead", path: "/visit" }, { checkId: "noindex" }],
+    });
+  });
+
+  it("--printable is its own flag", () => {
+    expect(parseCliArgs(["receipt", SITE, "--printable"], {})).toMatchObject({
+      printable: true,
+      json: false,
     });
   });
 
@@ -177,7 +183,7 @@ describe("gaugeline receipt: end to end", () => {
     expect(r.out).toContain(`# ${SITE}: October 2026`);
     expect(r.out).toContain("3 fixed before your customers did");
     expect(r.out).toContain(
-      "A listing shows different opening hours (on /, seen Tue 6 Oct, fixed by Thu 8 Oct)",
+      "**A listing shows different opening hours** (on /, seen Tue 6 Oct, fixed by Thu 8 Oct)",
     );
     expect(r.out).toContain("The domain's registration runs out soon");
     expect(r.out).toContain("31 daily checks");
@@ -240,7 +246,7 @@ describe("gaugeline receipt: end to end", () => {
       renewalRows,
     });
     expect(calls).toBe(1);
-    expect(withIt.out).toContain(`Domain ${SITE}: expires 20 Dec 2026, 37 days`);
+    expect(withIt.out).toContain(`Domain ${SITE}: expires 20 Dec 2026, 36 days`);
   });
 
   it("a renewals read that fails leaves the receipt whole and says so on stderr", async () => {

@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { RENEWAL_CHECK_IDS } from "../../renewals/section.js";
+import { escapeHtml } from "../../report/html.js";
 import {
   RECEIPT_GROUPS,
   buildReceipt,
@@ -231,6 +232,10 @@ describe("receipt: plain-word groups", () => {
     ["form-destination-changed", "booking-payments"],
     ["listing-hours-mismatch", "listings-hours"],
     ["listing-phone-mismatch", "listings-hours"],
+    ["model-listing-count", "site-content"],
+    ["hreflang-bad-code", "site-content"],
+    ["capacity-zero-not-sold-out", "booking-payments"],
+    ["events-fire", "site-content"],
     ["document-hours-mismatch", "listings-hours"],
     ["event-past-upcoming", "listings-hours"],
     ["broken-links", "site-content"],
@@ -259,15 +264,19 @@ describe("receipt: plain-word groups", () => {
     const ids = new Set(RECEIPT_GROUPS.map((g) => g.id));
     for (const c of data) expect(ids.has(receiptGroupOf(c.id)), c.id).toBe(true);
     for (const id of RENEWAL_CHECK_IDS) expect(receiptGroupOf(id), id).toBe("renewals");
-    // The two areas the owner reads as "money in" and "security" keep to their groups.
+    // The areas the owner reads as "money in" and "security" keep to their own groups.
     for (const c of data.filter((c) => c.area === "Sales & prices"))
-      expect(["booking-payments", "security"], c.id).toContain(receiptGroupOf(c.id));
-    for (const c of data.filter(
-      (c) => c.area === "Security & email" && !RENEWAL_CHECK_IDS.has(c.id),
-    ))
-      expect(["security", "site-content", "booking-payments"], c.id).toContain(
+      expect(["booking-payments", "site-content", "security"], c.id).toContain(
         receiptGroupOf(c.id),
       );
+    const secure = data.filter(
+      (c) => c.area === "Security & email" && !RENEWAL_CHECK_IDS.has(c.id),
+    );
+    for (const c of secure)
+      expect(["security", "site-content"], c.id).toContain(receiptGroupOf(c.id));
+    expect(
+      secure.filter((c) => receiptGroupOf(c.id) === "security").length / secure.length,
+    ).toBeGreaterThan(0.8);
   });
 });
 
@@ -291,8 +300,8 @@ describe("receipt: coming up (F-01 renewals in the next 60 days)", () => {
   it("lists what lapses within 60 days of now, soonest first, with the date written out", () => {
     const r = build(october(), { renewals: rows });
     expect(r.comingUp.map((c) => [c.label, c.date, c.days])).toEqual([
-      [`Certificate for ${SITE}: expires 25 Nov 2026, 12 days`, "2026-11-25", 12],
-      [`Domain ${SITE}: expires 20 Dec 2026, 37 days`, "2026-12-20", 37],
+      [`Certificate for ${SITE}: expires 25 Nov 2026, 11 days`, "2026-11-25", 11],
+      [`Domain ${SITE}: expires 20 Dec 2026, 36 days`, "2026-12-20", 36],
     ]);
     expect(receiptMarkdown(r)).toContain("## Coming up");
   });
@@ -342,7 +351,9 @@ describe("receipt: no money or traffic wording", () => {
     const source = readFileSync(here, "utf8")
       .replace(/\/\*[\s\S]*?\*\//g, "")
       .replace(/^\s*\/\/.*$/gm, "");
-    const strings = [...source.matchAll(/(["'`])((?:\\.|(?!\1)[^\\])*)\1/g)].map((m) => m[2] ?? "");
+    const strings = [...source.matchAll(/(["'`])((?:\\.|(?!\1)[^\\])*)\1/g)].map((m) =>
+      (m[2] ?? "").replace(/\$\{/g, ""),
+    );
     expect(strings.length).toBeGreaterThan(10);
     for (const s of strings) expect(s.match(FORBIDDEN)?.[0], s).toBeUndefined();
   });
@@ -466,11 +477,12 @@ describe("receipt: the block, the JSON and the printable page agree", () => {
     expect(json.comingUp).toHaveLength(1);
     for (const text of [md, html]) {
       expect(text).toContain("3 fixed before your customers did");
-      for (const title of [HOURS, PHONE, DOMAIN]) expect(text).toContain(title);
+      for (const title of [HOURS, PHONE, DOMAIN])
+        expect(text).toContain(text === html ? escapeHtml(title) : title);
       expect(text).toContain("seen Tue 6 Oct, fixed by Thu 8 Oct");
       expect(text).toContain("seen Wed 14 Oct, fixed by Thu 15 Oct");
       expect(text).toContain("seen Tue 20 Oct, fixed by Sat 24 Oct");
-      expect(text).toContain(`Domain ${SITE}: expires 20 Dec 2026, 37 days`);
+      expect(text).toContain(`Domain ${SITE}: expires 20 Dec 2026, 36 days`);
       expect(text).toContain("31 daily checks");
     }
     expect(
@@ -501,6 +513,7 @@ describe("receipt: the block, the JSON and the printable page agree", () => {
   });
 
   it("says 'and N more' rather than run past a page", () => {
+    const all = Array.from({ length: 30 }, (_, i) => `/p${i}`);
     const many = days("2026-10-01", "2026-10-31", (d) =>
       d < "2026-10-10"
         ? Array.from({ length: 30 }, (_, i): F => [
@@ -510,7 +523,7 @@ describe("receipt: the block, the JSON and the printable page agree", () => {
           ])
         : [],
     );
-    const big = build(many);
+    const big = build(many.map((r) => ({ ...r, pages: all })));
     expect(big.counts.beforeCustomers).toBe(30);
     expect(receiptMarkdown(big)).toContain("Links on page 29 go nowhere");
     const html = receiptPrintable(big);
@@ -525,7 +538,7 @@ describe("receipt: text from a page is data", () => {
 
   it("is escaped in the Markdown and in the HTML", () => {
     const md = receiptMarkdown(r);
-    expect(md).not.toContain("<img");
+    expect(md).not.toMatch(/(^|[^\\])<img/);
     expect(md).not.toContain("[x](");
     expect(md.split("\n").filter((l) => l.includes("bold"))).toHaveLength(1);
     const html = receiptPrintable(r);

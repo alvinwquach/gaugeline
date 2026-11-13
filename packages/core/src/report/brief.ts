@@ -179,7 +179,10 @@ function hostOf(address: string): string {
  * A Markdown table with its columns padded to one width, so it reads as a table in a text editor too
  * (the numbers are right-aligned). The cells are already escaped.
  */
-function table(head: readonly string[], rows: readonly (readonly string[])[]): string[] {
+export function markdownTable(
+  head: readonly string[],
+  rows: readonly (readonly string[])[],
+): string[] {
   const widths = head.map((h, c) => Math.max(3, h.length, ...rows.map((r) => (r[c] ?? "").length)));
   const right = head.length - 1;
   const line = (cells: readonly string[]): string =>
@@ -402,7 +405,7 @@ export function renderBriefMarkdown(brief: Brief): string {
     out.push(
       `${plural(items.length, "item is", "items are")} worth paying to fix, ${plural(points, "point")} in all.`,
       "",
-      ...table(
+      ...markdownTable(
         ["#", "Item", "Size", "Points"],
         items.map((item, i) => [
           String(i + 1),

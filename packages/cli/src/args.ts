@@ -4,6 +4,7 @@ import {
   isCalendarDate,
   minorExponent,
   parseAddress,
+  parseReceiptMonth,
   parseSince,
   safeLogoUrl,
 } from "@gaugeline/core";
@@ -42,6 +43,7 @@ export const SUBCOMMANDS = [
   "advisory",
   "init",
   "changes",
+  "receipt",
   "deploy-gate",
 ] as const;
 export type CliCommand = "check" | (typeof SUBCOMMANDS)[number];
@@ -235,6 +237,22 @@ export type ParsedArgs =
       /** --since as typed: a date or a run id. Checked when the command runs. */
       since?: string;
       json: boolean;
+      verbose: boolean;
+      quiet: boolean;
+    }
+  | {
+      kind: "receipt";
+      /** The site's address, https unless it was typed with http. */
+      address: string;
+      /** --month, yyyy-mm. Absent: the last whole month, taken from the clock when the command runs. */
+      month?: string;
+      json: boolean;
+      /** --printable: the one-page printable version instead of the Markdown block. */
+      printable: boolean;
+      /** --renewals: also read what lapses in the next 60 days, for "coming up". */
+      renewals: boolean;
+      /** --client-reported: fixes the client reported first, by check id and optionally page path. */
+      clientReported: { checkId: string; path?: string }[];
       verbose: boolean;
       quiet: boolean;
     }
@@ -1385,6 +1403,70 @@ export function parseCliArgs(
       address: site.url.href,
       ...(typeof values.since === "string" ? { since: values.since } : {}),
       json: values.json === true,
+      verbose,
+      quiet: values.quiet === true,
+    };
+  }
+  if (command === "receipt") {
+    const hint = "For example: gaugeline receipt harbourbar.example --month 2026-10";
+    if (positionals.length !== 1)
+      return {
+        kind: "error",
+        message:
+          positionals.length === 0
+            ? "gaugeline receipt needs the site: gaugeline receipt harbourbar.example --month 2026-10"
+            : `gaugeline receipt takes one site, got ${positionals.length} words: ${positionals.join(", ")}.`,
+        hint: "Type the site like harbourbar.example or https://harbourbar.example.",
+        verbose,
+      };
+    const site = parseAddress(positionals[0] ?? "");
+    if (!site.ok)
+      return {
+        kind: "error",
+        message: `The site's address: ${site.reason}`,
+        hint: "Type the site like harbourbar.example or https://harbourbar.example.",
+        verbose,
+      };
+    if (typeof values.month === "string" && parseReceiptMonth(values.month) === undefined)
+      return {
+        kind: "error",
+        message: `--month needs a month as yyyy-mm, such as 2026-10, not "${values.month}".`,
+        hint,
+        verbose,
+      };
+    if (values.json === true && values.printable === true)
+      return {
+        kind: "error",
+        message:
+          "Choose --json or --printable, not both: --json and --printable each replace the Markdown block.",
+        hint,
+        verbose,
+      };
+    const reported: { checkId: string; path?: string }[] = [];
+    const given = values["client-reported"];
+    for (const text of Array.isArray(given)
+      ? given.map(String)
+      : typeof given === "string"
+        ? [given]
+        : []) {
+      const m = /^([a-z0-9]+(?:-[a-z0-9]+)*)(?:@(\/\S*))?$/.exec(text);
+      if (!m)
+        return {
+          kind: "error",
+          message: `--client-reported needs a check id, and optionally a page, such as payment-link-dead@/visit, not "${text}".`,
+          hint: "The check id is in the receipt's --json and in the checks reference.",
+          verbose,
+        };
+      reported.push({ checkId: m[1] ?? "", ...(m[2] ? { path: m[2] } : {}) });
+    }
+    return {
+      kind: "receipt",
+      address: site.url.href,
+      ...(typeof values.month === "string" ? { month: values.month } : {}),
+      json: values.json === true,
+      printable: values.printable === true,
+      renewals: values.renewals === true,
+      clientReported: reported,
       verbose,
       quiet: values.quiet === true,
     };

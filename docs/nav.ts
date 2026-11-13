@@ -183,6 +183,7 @@ export const UNLISTED: NavPage[] = [
   { slug: "guides/navigation", title: "Navigation and footer: what changed" },
   { slug: "guides/page-snapshots", title: "Page snapshots: what each page lost" },
   { slug: "guides/what-changed", title: "What changed, and who changed it" },
+  { slug: "guides/care-plan-receipt", title: "The care-plan receipt" },
   { slug: "guides/cutover", title: "Cutover: what changed on the day" },
   { slug: "guides/many-sites", title: "Many sites from one file" },
   { slug: "guides/ci-templates", title: "CI templates: GitLab CI, Bitbucket Pipelines, CircleCI" },
