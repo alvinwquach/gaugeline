@@ -31,6 +31,7 @@ import {
 } from "@gaugeline/core";
 import { type Sql, type Tx, withService } from "../lib/api/db.js";
 import { type AgentDelivery, agentBodies } from "./agent-messages.js";
+import { sendAfter } from "./quiet-hours.js";
 import { SecretError, type SecretStore, secretStoreFrom } from "./secrets.js";
 
 type PostResult = Awaited<ReturnType<typeof postJson>>;
@@ -109,41 +110,7 @@ export function matchesRule(rule: RuleFilter, f: { checkId: string; severity: Se
   return rule.checkIds === null || rule.checkIds.includes(f.checkId);
 }
 
-/** The zone if this runtime knows it, else UTC (as the dashboard does): Postgres knows names ICU does not. */
-function knownZone(zone: string): string {
-  try {
-    new Intl.DateTimeFormat("en-GB", { timeZone: zone });
-    return zone;
-  } catch {
-    return "UTC";
-  }
-}
-
-function localHour(at: Date, zone: string): number {
-  const h = new Intl.DateTimeFormat("en-GB", { timeZone: zone, hour: "2-digit", hourCycle: "h23" })
-    .formatToParts(at)
-    .find((p) => p.type === "hour")?.value;
-  return Number(h ?? "0");
-}
-
-/**
- * When a message may go: now, or the first minute after quiet hours end in the site's own zone. Hours are
- * whole local hours, start inclusive and end exclusive; a span that crosses midnight (22 to 7) works, and
- * the walk is by minute, so a clock change cannot skip or repeat the end hour.
- */
-export function sendAfter(now: Date, zone: string, start: number | null, end: number | null): Date {
-  if (start === null || end === null || start === end) return now;
-  zone = knownZone(zone);
-  const quiet = (h: number) => (start < end ? h >= start && h < end : h >= start || h < end);
-  if (!quiet(localHour(now, zone))) return now;
-  const t = new Date(now);
-  t.setUTCSeconds(0, 0);
-  for (let i = 0; i < 26 * 60; i++) {
-    t.setUTCMinutes(t.getUTCMinutes() + 1);
-    if (!quiet(localHour(t, zone))) return t;
-  }
-  return now;
-}
+export { sendAfter };
 
 /** The delivery log's code for a send: never the error text, which names a host and could carry more. */
 export function deliveryCode(r: Delivered): string | null {
@@ -454,6 +421,10 @@ async function deliver(deps: NotifyDeps, d: Claimed): Promise<Delivered> {
         findings = ${findings}, sent_at = ${outcome.ok ? now : null}, locked_at = null
       where id = ${d.id}`;
     if (!ch || code === "channel-disabled") return;
+    // An agent message (0017) never counts toward a channel's strikes, and a success of one does not clear
+    // them: a burst of agent messages failing must not switch off the findings that share the channel. What
+    // says the address itself is wrong (revoked, refused as not public) still turns the channel off.
+    if (d.kind === "agent" && !(outcome.permanent || code === "address-refused")) return;
     if (outcome.ok)
       await tx`update public.notification_channels set failures = 0, status = 'active',
           disabled_reason = null, disabled_at = null where id = ${d.channelId}`;

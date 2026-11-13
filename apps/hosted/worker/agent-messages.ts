@@ -19,6 +19,7 @@ import {
   type ApprovalsDigest,
   buildApprovalsDigest,
   buildRegressionReport,
+  forSlack,
   forSlackPlain,
   redact,
   type RegressionReport,
@@ -27,6 +28,7 @@ import {
 import { type Sql, type Tx, withService } from "../lib/api/db.js";
 import { localMorning } from "./email/morning.js";
 import { notRunIn } from "./diff.js";
+import { sendAfter } from "./quiet-hours.js";
 
 /** The words in a Slack section may be this long (Slack's own limit is 3000). */
 const SECTION_MAX = 2800;
@@ -38,11 +40,18 @@ type SlackBlock = { type: "section"; text: { type: "mrkdwn"; text: string } };
 export interface SlackAgentPayload {
   text: string;
   blocks: SlackBlock[];
+  /** Slack is asked to make no preview of any address in the message (unverified for webhooks, see the page). */
+  unfurl_links: false;
+  unfurl_media: false;
 }
 
-/** Cut a section without leaving half an entity (&am) behind. */
-const cut = (s: string, max = SECTION_MAX): string =>
-  s.length <= max ? s : `${s.slice(0, max - 1).replace(/&[a-z]{0,4}$/, "")}…`;
+/** Cut a section without leaving half an entity (&am) or an open code span behind. */
+const cut = (s: string, max = SECTION_MAX): string => {
+  if (s.length <= max) return s;
+  let out = s.slice(0, max - 2).replace(/&[a-z]{0,4}$/, "");
+  if ((out.match(/`/g) ?? []).length % 2 === 1) out += "`";
+  return `${out}\u2026`;
+};
 const section = (text: string): SlackBlock => ({
   type: "section",
   text: { type: "mrkdwn", text: cut(text) },
@@ -51,22 +60,52 @@ const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one :
 const SITE_NAME_MAX = 80;
 const TITLE_MAX = 120;
 
+/**
+ * Text from a page or from an agent, made safe to show in Slack. Two layers: an address in it is defanged
+ * (its scheme is written `scheme[:]//` and `www.` as `www[.]`), and the whole text goes inside a code span,
+ * where Slack makes no link of a bare address, a domain or a mention. Characters that mean something to
+ * Slack (&, <, >) are entities, and a backtick in the text cannot close the span (forSlack makes it an
+ * apostrophe). The only links in a message are the ones this file builds from the app's own address.
+ */
+const defang = (t: string): string =>
+  t.replace(/\b([a-z][a-z0-9+.-]*):\/\//gi, "$1[:]//").replace(/\bwww\./gi, "www[.]");
+const untrusted = (t: string, max: number): string => `\`${forSlack(defang(t), max)}\``;
+/** The same text for a place that cannot hold a span (Slack's plain notification line). */
+const plain = (t: string, max: number): string => forSlackPlain(defang(t), max);
+
+/** What each message carries about the message itself. Links off, so no address gets a preview. */
+const payload = (text: string, blocks: SlackBlock[]): SlackAgentPayload => ({
+  text,
+  blocks,
+  unfurl_links: false,
+  unfurl_media: false,
+});
+
+/** At most this many alerts a channel is sent in a day: many sites worse in one night are not many pings. */
+export const ALERTS_PER_CHANNEL_PER_DAY = 10;
+
 // --- The two Slack messages (pure) ------------------------------------------------------------------
 
-/** The alert for a report that got worse: what went up, what is new, how many were fixed. */
+/**
+ * The alert for a report that got worse: what went up, what is new, how many were fixed. `capped` adds the
+ * line saying this channel's allowance of alerts for the day is used.
+ */
 export function slackRegressionPayload(
   report: RegressionReport,
   siteName: string,
   siteLink?: string,
+  capped = false,
 ): SlackAgentPayload {
   const worse = report.counts.added + report.counts.worsened;
-  const head = `Gaugeline: ${forSlackPlain(siteName, SITE_NAME_MAX)}: ${plural(worse, "finding", "findings")} got worse`;
-  const blocks: SlackBlock[] = [section(`*${head}*`)];
+  const what = `${plural(worse, "finding", "findings")} got worse`;
+  const blocks: SlackBlock[] = [
+    section(`*Gaugeline*: ${untrusted(siteName, SITE_NAME_MAX)}: *${what}*`),
+  ];
   const up = report.worsened
     .slice(0, LISTED)
     .map(
       (w) =>
-        `*${SEVERITY_LABEL[w.severity]}* (was ${SEVERITY_LABEL[w.from]}): ${forSlackPlain(w.title, TITLE_MAX)}`,
+        `*${SEVERITY_LABEL[w.severity]}* (was ${SEVERITY_LABEL[w.from]}): ${untrusted(w.title, TITLE_MAX)}`,
     );
   if (up.length > 0) {
     const more = report.counts.worsened - up.length;
@@ -76,17 +115,20 @@ export function slackRegressionPayload(
   }
   const fresh = report.added
     .slice(0, LISTED)
-    .map((a) => `*${SEVERITY_LABEL[a.severity]}*: ${forSlackPlain(a.title, TITLE_MAX)}`);
+    .map((a) => `*${SEVERITY_LABEL[a.severity]}*: ${untrusted(a.title, TITLE_MAX)}`);
   if (fresh.length > 0) {
     const more = report.counts.added - fresh.length;
     blocks.push(section(["New", ...fresh, ...(more > 0 ? [`and ${more} more`] : [])].join("\n")));
   }
   const tail = [
     report.counts.resolved > 0 ? `${report.counts.resolved} fixed since the last run` : "",
+    capped
+      ? `This channel gets at most ${ALERTS_PER_CHANNEL_PER_DAY} alerts a day: other sites may have got worse too`
+      : "",
     siteLink ? `<${siteLink}|Open in Gaugeline>` : "",
   ].filter((t) => t !== "");
-  if (tail.length > 0) blocks.push(section(tail.join(" · ")));
-  return { text: head, blocks };
+  if (tail.length > 0) blocks.push(section(tail.join(" \u00B7 ")));
+  return payload(`Gaugeline: ${plain(siteName, SITE_NAME_MAX)}: ${what}`, blocks);
 }
 
 /** The morning digest: the headline, the busiest sites, and the drafts that need a decision first. */
@@ -94,21 +136,23 @@ export function slackDigestPayload(d: ApprovalsDigest): SlackAgentPayload {
   const head = `Gaugeline: ${d.headline}`;
   const blocks: SlackBlock[] = [section(`*${head}*`)];
   const sites = d.sites.slice(0, LISTED).map((s) => {
-    const name =
-      s.name === null ? `Site ${s.siteId.slice(0, 8)}` : forSlackPlain(s.name, SITE_NAME_MAX);
+    const name = s.name === null ? `Site ${s.siteId.slice(0, 8)}` : s.name;
     const parts = [
       plural(s.pending, "draft waits", "drafts wait"),
       s.overdue > 0 ? `${s.overdue} older than ${d.staleAfterHours} h` : "",
       s.expiring > 0 ? `${s.expiring} expire within ${d.expiringWithinHours} h` : "",
     ].filter((p) => p !== "");
-    return `*${name}*: ${parts.join(", ")}`;
+    return `${untrusted(name, SITE_NAME_MAX)}: ${parts.join(", ")}`;
   });
-  if (sites.length > 0) blocks.push(section(sites.join("\n")));
+  if (sites.length > 0) {
+    const more = d.sites.length - sites.length;
+    blocks.push(section([...sites, ...(more > 0 ? [`and ${more} more sites`] : [])].join("\n")));
+  }
   const items = d.attention.slice(0, LISTED).map((i) => {
     const left =
       i.hoursLeft === 0 ? "under 1 hour left" : `${plural(i.hoursLeft, "hour", "hours")} left`;
     const link = i.link ? ` <${i.link}|Open>` : "";
-    return `${i.kind.replace("_", " ")}, ${plural(i.ageHours, "hour", "hours")} old, ${left}: ${forSlackPlain(i.title, TITLE_MAX)}${link}`;
+    return `${i.kind.replace("_", " ")}, ${plural(i.ageHours, "hour", "hours")} old, ${left}: ${untrusted(i.title, TITLE_MAX)}${link}`;
   });
   if (items.length > 0) {
     const more = d.attention.length - items.length + d.attentionOmitted;
@@ -129,8 +173,8 @@ export function slackDigestPayload(d: ApprovalsDigest): SlackAgentPayload {
     d.inboxUrl ? `<${d.inboxUrl}|Open the inbox>` : "",
     "Nothing here approves anything: a person decides each draft",
   ].filter((t) => t !== "");
-  blocks.push(section(tail.join(" · ")));
-  return { text: head, blocks };
+  blocks.push(section(tail.join(" \u00B7 ")));
+  return payload(head, blocks);
 }
 
 // --- Which channels take them -----------------------------------------------------------------------
@@ -224,9 +268,23 @@ export async function regressionReportFor(tx: Tx, runId: string): Promise<Regres
 }
 
 /**
+ * Alerts already queued or sent for a channel in the day around `at`: the allowance is counted on when the
+ * alert is due (send_after), a day either side of the time asked about.
+ */
+async function alertsForChannel(tx: Tx, channelId: string, at: Date): Promise<number> {
+  const rows = await tx`select count(*)::int as n from public.notification_deliveries
+    where channel_id = ${channelId} and agent_kind = 'regression-alert'
+      and send_after > ${new Date(at.getTime() - 24 * HOUR_MS)}
+      and send_after <= ${new Date(at.getTime() + 24 * HOUR_MS)}`;
+  return rows[0]!.n as number;
+}
+
+/**
  * In the transaction that stores a night's run: when the run got worse than the one before, queue one alert
- * per channel that takes agent messages. Nothing when it did not, so a quiet night sends nothing. Idempotent
- * per channel and run. Returns how many rows it queued.
+ * per channel that takes agent messages, if the channel has not had its ${ALERTS_PER_CHANNEL_PER_DAY} for the
+ * day. Nothing when it did not get worse, so a quiet night sends nothing. An alert waits for the end of the
+ * quiet hours of the channel's rules for the site (the same rule findings follow), and is idempotent per
+ * channel and run. Returns how many rows it queued.
  */
 export async function queueRegressionAlert(
   tx: Tx,
@@ -237,12 +295,29 @@ export async function queueRegressionAlert(
   const report = await regressionReportFor(tx, run.runId);
   if (!report || !report.worse) return 0;
   const worse = report.counts.added + report.counts.worsened;
+  const zone = (await tx`select timezone from public.sites where id = ${run.siteId}`)[0]
+    ?.timezone as string | undefined;
   let queued = 0;
   for (const c of channels) {
+    if ((await alertsForChannel(tx, c.id as string, run.now)) >= ALERTS_PER_CHANNEL_PER_DAY)
+      continue;
+    // The latest end of the channel's quiet hours wins, so no rule's quiet time is broken.
+    const rules = await tx`select quiet_start, quiet_end from public.notification_rules
+      where channel_id = ${c.id} and org_id = ${run.orgId} and (site_id = ${run.siteId} or site_id is null)`;
+    const at = rules
+      .map((r) =>
+        sendAfter(
+          run.now,
+          zone ?? "UTC",
+          (r.quiet_start as number | null) ?? null,
+          (r.quiet_end as number | null) ?? null,
+        ),
+      )
+      .reduce((a, b) => (b > a ? b : a), run.now);
     const r =
       await tx`insert into public.notification_deliveries (org_id, channel_id, kind, site_id, agent_kind,
         subject_run_id, send_after, findings)
-      values (${run.orgId}, ${c.id}, 'agent', ${run.siteId}, 'regression-alert', ${run.runId}, ${run.now}, ${worse})
+      values (${run.orgId}, ${c.id}, 'agent', ${run.siteId}, 'regression-alert', ${run.runId}, ${at}, ${worse})
       on conflict do nothing returning id`;
     queued += r.length;
   }
@@ -373,6 +448,8 @@ export async function agentBodies(
             report,
             site.name as string,
             appUrl ? `${appUrl}/sites/${d.siteId}` : undefined,
+            // The channel's allowance for the day is used: say that other sites may have got worse too.
+            (await alertsForChannel(tx, d.channelId, now)) >= ALERTS_PER_CHANNEL_PER_DAY,
           ),
         ],
         findings: report.counts.added + report.counts.worsened,

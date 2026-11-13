@@ -148,20 +148,30 @@ How it is kept safe, in the same terms as the rest of this page:
 
 - **One sender.** An agent message is a delivery of kind `agent` in the same outbox. It is sent by the same loop,
   through the same one POST module, to the address on the channel (checked again before every send, public
-  addresses only), at most once, with the same log and the same three-failures rule. No new file sends, no new
-  host is allowed, and a test fails if one does.
+  addresses only), at most once, with the same log. No new file sends, no new host is allowed, and a test fails
+  if one does. A failing agent message does not count toward the three-failures rule and a success does not
+  clear it, so a burst of agent messages cannot switch off the findings that share the channel; a webhook
+  Slack says is gone (or an address that is not public) still turns the channel off, as for findings.
 - **No words are stored.** The row says which message and what it is about: the run an alert is for, or the
   local day a digest is for. The worker builds the words when it sends, from your organisation's own rows, so
   no column can hold an address or a message, and a message is never another organisation's.
 - **Once.** One row per channel and run (an alert) or per channel and day (a digest): a restart, a second worker
   or a second look is one row.
-- **Text from a page is data.** A finding's title and a draft's title are cleaned, cut and escaped for Slack: a
-  `<!channel>` in a title is shown as text and pings nobody. Key-shaped strings in a draft's title are
-  redacted. The digest's links are your app's address plus a draft's id.
+- **Text from a page is data.** A finding's title, a draft's title and a site's name are cleaned, cut and
+  escaped for Slack (`&`, `<` and `>` become entities, so `<!channel>` is shown as text and pings nobody), and
+  each is put inside a code span, where Slack makes no link of an address, a domain or a mention. An address in
+  it is also defanged (`https://` is written `https[:]//`, `www.` as `www[.]`), and the message asks Slack for
+  no preview of any address (`unfurl_links` and `unfurl_media` off; whether a Slack incoming webhook honours
+  them is unverified). The only links in a message are the ones the code builds from your app's address: your
+  site's page, the inbox, and a draft's id. Key-shaped strings in a draft's title are redacted.
+- **No flood.** A channel gets at most 10 alerts in a day. When many sites get worse in one night, the first ten
+  are sent, the tenth says other sites may have got worse too, and the rest are not queued. The digest is one
+  message a day.
 - **An agent queues nothing.** The agent role has no privilege on the outbox. The worker, as the server's role,
   queues the row; the agent code only returns text.
-- **Quiet hours are not applied.** The alert goes out when the night's run finishes and the digest in the morning
-  window; the quiet hours of a [rule](#rules) belong to the rule that sends findings.
+- **Quiet hours.** An alert waits for the end of the quiet hours of the channel's [rules](#rules) for that site,
+  as findings do; with no rule it goes out when the night's run finishes. The digest goes out in the morning
+  window.
 
 This is the alert for a night that got worse, as the worker builds it (run with `node --import tsx example.mts`
 in `apps/hosted`). The page's own `<!channel>` is shown as text:
@@ -191,7 +201,11 @@ const report = buildRegressionReport(
     findings: [
       row("f-201", "medium", "Menu page has no canonical link"),
       row("f-203", "high", "Certificate expires in 9 days"),
-      row("f-205", "high", "Booking form has no submit button <!channel>"),
+      row(
+        "f-205",
+        "high",
+        "Booking form has no submit button <!channel> https://evil.example/login",
+      ),
     ],
   },
 );
@@ -212,21 +226,21 @@ console.log(
       "type": "section",
       "text": {
         "type": "mrkdwn",
-        "text": "*Gaugeline: Juniper Pop-up Kitchen: 2 findings got worse*"
+        "text": "*Gaugeline*: `Juniper Pop-up Kitchen`: *2 findings got worse*"
       }
     },
     {
       "type": "section",
       "text": {
         "type": "mrkdwn",
-        "text": "Went up in severity\n*Fix this first* (was Worth knowing): Certificate expires in 9 days"
+        "text": "Went up in severity\n*Fix this first* (was Worth knowing): `Certificate expires in 9 days`"
       }
     },
     {
       "type": "section",
       "text": {
         "type": "mrkdwn",
-        "text": "New\n*Fix this first*: Booking form has no submit button &lt;!channel&gt;"
+        "text": "New\n*Fix this first*: `Booking form has no submit button &lt;!channel&gt; https[:]//evil.example/login`"
       }
     },
     {
@@ -236,7 +250,9 @@ console.log(
         "text": "1 fixed since the last run · <https://app.northgate.test/sites/a2|Open in Gaugeline>"
       }
     }
-  ]
+  ],
+  "unfurl_links": false,
+  "unfurl_media": false
 }
 ```
 
