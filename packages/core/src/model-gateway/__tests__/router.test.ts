@@ -3,7 +3,7 @@
  * second provider on an outage, a stop on budget, and an outcome that is never "pass". Gateways here are over
  * recorded or scripted adapters: no network, no key, no real clock.
  */
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { triage } from "../../evals/example/triage.js";
 import type { EvalRecording } from "../../evals/types.js";
 import { ModelGatewayError, type FailureClass, type GatewayErrorCode } from "../errors.js";
@@ -759,13 +759,13 @@ describe("the most calls and the most time one task may take", () => {
 
     it("stops before the next call once the time spent reaches it, with its own reason", async () => {
       const w = world();
-      const a = w.make("a", [50_000], [outage()]);
-      const b = w.make("b", [50_000], [BAD, rec(GOOD)]);
+      const a = w.make("a", [30_000], [outage()]);
+      const b = w.make("b", [30_000], [BAD, rec(GOOD)]);
       const r = await createRouter(
         { primary: a.gateway, fallback: b.gateway },
         { deadlineMs: 60_000, now: () => w.t.now },
       ).route(REQ, check);
-      // The outage took 50s, under 60s: the fallback ran and took 50s more: the escalation never starts.
+      // The outage took 30s and the fallback 30s more, to the instant: the escalation never starts.
       expect(a.calls).toEqual(["route-1"]);
       expect(b.calls).toEqual(["route-1"]);
       expect(r).toMatchObject({ kind: "unsure", reason: "deadline" });
@@ -839,6 +839,177 @@ describe("the most calls and the most time one task may take", () => {
       ).route(REQ, check);
       expect(r).toMatchObject({ kind: "unsure", reason: "deadline" });
       expect(a.calls).toHaveLength(1);
+    });
+
+    describe("the deadline holds inside a call too, not only between calls", () => {
+      afterEach(() => vi.useRealTimers());
+
+      it("an answer that arrives after the deadline is not accepted (a 3 second call under a 1 second deadline), and its cost is kept", async () => {
+        const w = world();
+        const a = w.make("a", [3_000], [rec(GOOD, 777)]);
+        const r = await createRouter(
+          { primary: a.gateway },
+          { deadlineMs: 1_000, now: () => w.t.now },
+        ).route(REQ, check);
+        expect(r).toMatchObject({ kind: "unsure", reason: "deadline", costMicros: 777 });
+        expect(r.attempts.map((x) => x.outcome)).toEqual(["stopped"]);
+      });
+
+      it("accepts an answer that arrives exactly at the deadline, and refuses one a millisecond later", async () => {
+        for (const [took, kind] of [
+          [1_000, "advisory"],
+          [1_001, "unsure"],
+        ] as const) {
+          const w = world();
+          const a = w.make("a", [took], [rec(GOOD)]);
+          const r = await createRouter(
+            { primary: a.gateway },
+            { deadlineMs: 1_000, now: () => w.t.now },
+          ).route(REQ, check);
+          expect([took, r.kind]).toEqual([took, kind]);
+        }
+      });
+
+      it("starts no call at the instant the deadline is reached (the boundary is included)", async () => {
+        const w = world();
+        const a = w.make("a", [30_000, 0], [BAD, rec(GOOD)]);
+        const r = await createRouter(
+          { primary: a.gateway },
+          { deadlineMs: 30_000, now: () => w.t.now },
+        ).route(REQ, check);
+        expect(r).toMatchObject({ kind: "unsure", reason: "deadline" });
+        expect(a.calls).toHaveLength(1);
+        // One millisecond short of it, the escalation still runs.
+        const w2 = world();
+        const a2 = w2.make("a", [29_999, 0], [BAD, rec(GOOD)]);
+        const r2 = await createRouter(
+          { primary: a2.gateway },
+          { deadlineMs: 30_000, now: () => w2.t.now },
+        ).route(REQ, check);
+        expect(r2.kind).toBe("advisory");
+      });
+
+      /** A provider that takes `ms` to answer or to fail, and stops when told to (as the sender does). */
+      const timed = (name: string, steps: Array<{ ms: number; then: Step }>) => {
+        let i = 0;
+        const started: number[] = [];
+        const adapter: ModelAdapter = {
+          provider: name,
+          needsKey: false,
+          complete: ({ signal }) => {
+            const step = steps[i++]!;
+            started.push(Date.now());
+            return new Promise((resolve, reject) => {
+              const t = setTimeout(() => {
+                if ("error" in step.then) reject(step.then.error());
+                else resolve(step.then);
+              }, step.ms);
+              signal.addEventListener("abort", () => {
+                clearTimeout(t);
+                reject(new ModelGatewayError("timeout", `${name} did not answer in time.`));
+              });
+            });
+          },
+        };
+        const gateway = createGateway({
+          config: {
+            provider: name,
+            tiers: { fast: `${name}-fast`, strong: `${name}-strong` },
+            timeoutMs: 120_000,
+          },
+          adapters: [adapter],
+          env: () => ({}),
+        });
+        return { gateway, started };
+      };
+
+      it("cuts each call at the time left: three 60 second calls take 120 seconds, not 180", async () => {
+        vi.useFakeTimers({ now: 5_000_000 });
+        const a = timed("a", [{ ms: 60_000, then: outage() }]);
+        const b = timed("b", [
+          { ms: 59_000, then: BAD },
+          { ms: 60_000, then: rec(GOOD) },
+        ]);
+        const t0 = Date.now();
+        let at = -1;
+        const done = createRouter(
+          { primary: a.gateway, fallback: b.gateway },
+          { deadlineMs: 120_000, now: () => Date.now() },
+        )
+          .route(REQ, check)
+          .then((r) => ((at = Date.now() - t0), r));
+        await vi.advanceTimersByTimeAsync(200_000);
+        const r = await done;
+        // Outage at 60s, the fallback fails the check at 119s, and the escalation has 1s left and is cut there.
+        expect(r).toMatchObject({ kind: "unsure", reason: "deadline" });
+        expect(at).toBe(120_000);
+        expect(b.started.map((x) => x - t0)).toEqual([60_000, 119_000]);
+        expect(r.attempts.map((x) => x.outcome)).toEqual(["outage", "failed-checks", "stopped"]);
+      });
+
+      it("ends the task at the deadline, to the millisecond, whatever each call would take", async () => {
+        vi.useFakeTimers({ now: 5_000_000 });
+        const a = timed("a", [{ ms: 600_000, then: rec(GOOD) }]);
+        const t0 = Date.now();
+        let at = -1;
+        const done = createRouter(
+          { primary: a.gateway },
+          { deadlineMs: 2_000, now: () => Date.now() },
+        )
+          .route(REQ, check)
+          .then((r) => ((at = Date.now() - t0), r));
+        await vi.advanceTimersByTimeAsync(1_999);
+        expect(at).toBe(-1);
+        await vi.advanceTimersByTimeAsync(1);
+        expect(await done).toMatchObject({ kind: "unsure", reason: "deadline" });
+        expect(at).toBe(2_000);
+      });
+
+      it("ends a gateway that never settles as unsure at the deadline: the router does not wait for it", async () => {
+        vi.useFakeTimers({ now: 5_000_000 });
+        const real = provider("a", [rec(GOOD)]).gateway();
+        // Test only: a gateway whose own limit does not work, to show the router does not rely on it.
+        Object.assign(real, { complete: () => new Promise<never>(() => undefined) });
+        const t0 = Date.now();
+        let at = -1;
+        const done = createRouter({ primary: real }, { deadlineMs: 5_000, now: () => Date.now() })
+          .route(REQ, check)
+          .then((r) => ((at = Date.now() - t0), r));
+        await vi.advanceTimersByTimeAsync(5_000);
+        expect(await done).toMatchObject({ kind: "unsure", reason: "deadline" });
+        expect(at).toBe(5_000);
+      });
+
+      it("passes the time left to the gateway, so the sender's own limit is the shorter of the two", async () => {
+        const w = world();
+        const spy = createGateway({
+          config: { provider: "s", tiers: { fast: "s-fast", strong: "s-strong" } },
+          adapters: [
+            {
+              provider: "s",
+              needsKey: false,
+              async complete() {
+                w.t.now += 10_000;
+                return BAD;
+              },
+            },
+          ],
+          env: () => ({}),
+        });
+        const limits: number[] = [];
+        const inner = spy.complete;
+        Object.assign(spy, {
+          complete: (req: Parameters<typeof inner>[0]) => {
+            limits.push(req.timeoutMs ?? -1);
+            return inner(req);
+          },
+        });
+        await createRouter({ primary: spy }, { deadlineMs: 60_000, now: () => w.t.now }).route(
+          REQ,
+          check,
+        );
+        expect(limits).toEqual([60_000, 50_000]);
+      });
     });
 
     it.each([0, 999, 600_001, 1.5, Number.NaN, "60000" as never])(

@@ -45,6 +45,8 @@ export interface ModelRequest {
   agentId: string;
   callId: string;
   prompt: string;
+  /** A time limit for this call alone, in whole milliseconds. It can shorten the config's limit, never lengthen it. */
+  timeoutMs?: number;
 }
 
 /** What a model answered. `advisory` is always true: an answer is words for a person to read, never a verdict. */

@@ -305,3 +305,31 @@ describe("two providers: the payload goes to the second one only after an outage
     expect(r).toMatchObject({ kind: "unsure", reason: "failed-checks" });
   });
 });
+
+describe("the sender's own time limit is the shorter of its own and the time the task has left", () => {
+  it("a request that never answers is cut at the router's deadline, not at the sender's 60 seconds", async () => {
+    vi.useFakeTimers({ now: 5_000_000 });
+    const { request, destroyed } = hangingRequest();
+    const g = createGateway({
+      config: { ...CONFIG, timeoutMs: 120_000 },
+      adapters: [createProviderAdapter("example", { request })],
+      env: () => ({ [KEY_NAME]: PLAIN_KEY }),
+    });
+    const t0 = Date.now();
+    let at = -1;
+    const done = createRouter({ primary: g }, {
+      deadlineMs: 2_000,
+      now: () => Date.now(),
+      unmetered: true,
+    } as never)
+      .route(
+        { task: "wording", agentId: "triage", callId: "r", prompt: "Reword." },
+        (a: { text: string }) => ({ ok: true as const, value: a.text }),
+      )
+      .then((r) => ((at = Date.now() - t0), r));
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(await done).toMatchObject({ kind: "unsure", reason: "deadline" });
+    expect(at).toBe(2_000);
+    expect(destroyed()).toBe(1);
+  });
+});

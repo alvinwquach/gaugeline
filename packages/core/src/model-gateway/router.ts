@@ -13,10 +13,11 @@
  *   4. on a budget stop, or any refusal that is not an outage (a missing key, a prompt too large), stop.
  *
  * At most three calls (the first, one fallback, one escalation: no order of failures makes a fourth), and a
- * deadline on the time all of them take together, checked before each call. The outcome is `advisory` (words for
+ * deadline on the time all of them take together. The outcome is `advisory` (words for
  * a person to read) or `unsure`: it has no way to say pass, and nothing here gates a build. No randomness and no
  * network: a gateway does the calling. The only clock is a monotonic reading handed in (`now`), used for the
- * deadline.
+ * deadline, which holds inside a call too: each call gets the time left as its own limit, the router stops waiting
+ * at the deadline, and a late answer is not used.
  */
 import { AGENT_ANSWER_ISSUES, type AnswerCheck, type CheckVerdict } from "./check.js";
 import { ModelGatewayError, type FailureClass } from "./errors.js";
@@ -49,6 +50,8 @@ export const MAX_CALLS_PER_ROUTE = 3;
 /** The time all the calls of one task may take together, from the start of the task. A call in flight still has its own timeout. */
 export const DEFAULT_ROUTE_DEADLINE_MS = 120_000;
 const MIN_DEADLINE_MS = 1_000;
+/** What `within` rejects with when the time is up. Never leaves this module. */
+const OUT_OF_TIME = Symbol("out of time");
 const MAX_DEADLINE_MS = 600_000;
 const MAX_ISSUES = 5;
 const MAX_ISSUE_CHARS = 120;
@@ -145,6 +148,23 @@ export function createRouter(
       `deadlineMs must be a whole number from ${MIN_DEADLINE_MS} to ${MAX_DEADLINE_MS}.`,
     );
   const now = options.now ?? (() => performance.now());
+  /** The call's answer, or OUT_OF_TIME when `ms` pass first. The timer is always cleared. */
+  async function within<T>(call: Promise<T>, ms: number): Promise<T> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      return await Promise.race([
+        call,
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(() => reject(OUT_OF_TIME), ms);
+        }),
+      ]);
+    } finally {
+      clearTimeout(timer);
+      // A call that lost the race may still reject later: nothing is left waiting on it.
+      call.catch(() => undefined);
+    }
+  }
+
   /** The clock now, or null when it gives nothing usable. */
   function reading(): number | null {
     try {
@@ -190,10 +210,26 @@ export function createRouter(
       )
         return unsure("deadline", "The time one task may take was used.");
       last = at;
+      // The time left is the call's own limit (the gateway, and so the sender, uses the shorter of that and
+      // its own), and the router stops waiting at it too, whatever the gateway does.
+      const left = deadlineMs - (at - started);
       let answer: ModelAnswer;
       try {
-        answer = await gateway.complete({ tier, agentId: request.agentId, callId, prompt });
+        answer = await within(
+          gateway.complete({
+            tier,
+            agentId: request.agentId,
+            callId,
+            prompt,
+            timeoutMs: Math.max(1, Math.floor(left)),
+          }),
+          left,
+        );
       } catch (err) {
+        if (err === OUT_OF_TIME) {
+          attempts.push({ tier, provider: gateway.provider, outcome: "stopped", costMicros: 0 });
+          return unsure("deadline", "The time one task may take was used.");
+        }
         const typed = err instanceof ModelGatewayError ? err : undefined;
         if (typed?.code === "budget") {
           attempts.push({ tier, provider: gateway.provider, outcome: "stopped", costMicros: 0 });
@@ -229,6 +265,17 @@ export function createRouter(
         return unsure("refused", `The gateway refused the call (${typed?.code ?? "error"}).`);
       }
       cost += answer.usage.costMicros;
+      // An answer that came after the deadline is not used (it is paid for, so its cost stays).
+      const arrived = reading();
+      if (arrived === null || arrived < at || arrived - started > deadlineMs) {
+        attempts.push({
+          tier,
+          provider: answer.provider,
+          outcome: "stopped",
+          costMicros: answer.usage.costMicros,
+        });
+        return unsure("deadline", "The time one task may take was used.");
+      }
       let verdict: CheckVerdict<O>;
       try {
         verdict = await check(answer);

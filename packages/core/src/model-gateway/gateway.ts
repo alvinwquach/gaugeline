@@ -119,6 +119,11 @@ export function createGateway(options: GatewayOptions): ModelGateway {
         `The prompt is over the ${maxChars} character limit; nothing was sent.`,
       );
 
+    const own: unknown = request.timeoutMs;
+    if (own !== undefined && (typeof own !== "number" || !Number.isSafeInteger(own) || own < 1))
+      return fail("bad-request", "timeoutMs must be a whole number of milliseconds, 1 or more.");
+    const limitMs = Math.min(config.timeoutMs, (own as number | undefined) ?? config.timeoutMs);
+
     const key = readKey();
     const secret = key?.reveal();
     if (secret !== undefined && prompt.includes(secret))
@@ -166,10 +171,10 @@ export function createGateway(options: GatewayOptions): ModelGateway {
             reject(
               new ModelGatewayError(
                 "timeout",
-                `The provider did not answer within ${config.timeoutMs / 1000} seconds.`,
+                `The provider did not answer within ${limitMs / 1000} seconds.`,
               ),
             );
-          }, config.timeoutMs);
+          }, limitMs);
         }),
       ]);
     } catch (err) {

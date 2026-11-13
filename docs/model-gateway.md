@@ -329,9 +329,11 @@ At most **three calls** are made for one task: the first, one fallback and one e
 makes a fourth, and a test runs every script of up to three steps for each provider to show it (the worst case is an
 escalation that meets an outage, or an outage whose fallback then fails the check). `maxCalls` can lower the cap,
 never raise it. The time all the calls of a task take together has a **deadline**, two minutes by default
-(`deadlineMs`, 1000 to 600000), checked before each call; a clock that gives nothing usable, or runs backwards, counts
-as no time left. A call already in flight still has its own timeout, so the deadline is the most time a task will
-_start_ a call, not a hard stop of one that is running. The check is plain code you give it; for an agent with an
+(`deadlineMs`, 1000 to 600000). It holds inside a call as well as between calls: each call is given the time that is
+left (the gateway, and so the sender, uses the shorter of that and its own limit, 60 seconds for the sender), the
+router stops waiting at the deadline whatever the gateway does, and an answer that arrives after it is not used
+(its cost is kept). A task therefore never runs past its deadline, and a clock that gives nothing usable, or runs
+backwards, counts as no time left. The check is plain code you give it; for an agent with an
 [eval set](./agent-evals.md), `agentAnswerCheck` runs the same schema, cited-id, invented-number and write-call
 assertions on the live answer. What comes out is `advisory` (an answer that passed the check, for a person to read)
 or `unsure`, with the reason: `failed-checks`, `outage`, `budget`, `refused`, `deadline` (the task's time was used)

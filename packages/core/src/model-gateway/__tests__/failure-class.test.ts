@@ -3,7 +3,7 @@
  * read from its message: only an outage (a timeout, a lost connection, a 5xx) may be tried on a second
  * provider. The gateway keeps the class the adapter gave, and a failure with no class is not an outage.
  */
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { FAILURE_CLASSES, GATEWAY_ERROR_CODES, ModelGatewayError } from "../errors.js";
 import { createGateway } from "../gateway.js";
 import type { ModelAdapter } from "../types.js";
@@ -108,4 +108,56 @@ describe("the gateway keeps the class of what the adapter threw", () => {
     const b = await g2.complete(REQUEST).catch((e: ModelGatewayError) => e);
     expect(b).toMatchObject({ code: "bad-answer", failure: "bad-answer" });
   });
+});
+
+describe("a request's own time limit", () => {
+  afterEach(() => vi.useRealTimers());
+  /** A provider that never answers, but stops when it is told to, as the sender does. */
+  const stuck: ModelAdapter = {
+    provider: "test",
+    needsKey: true,
+    complete: ({ signal }) =>
+      new Promise((_, reject) =>
+        signal.addEventListener("abort", () =>
+          reject(new ModelGatewayError("timeout", "the provider did not answer in time.")),
+        ),
+      ),
+  };
+  const gateway = (timeoutMs: number) =>
+    createGateway({
+      config: { ...CONFIG, timeoutMs },
+      adapters: [stuck],
+      env: () => ({ [KEY_NAME]: PLAIN_KEY }),
+    });
+
+  it("shortens the call: the gateway stops it at the request's limit, not the config's", async () => {
+    vi.useFakeTimers();
+    const g = gateway(30_000);
+    const done = g.complete({ ...REQUEST, timeoutMs: 2_000 }).catch((e: ModelGatewayError) => e);
+    await vi.advanceTimersByTimeAsync(1_999);
+    let settled = false;
+    void done.then(() => (settled = true));
+    await Promise.resolve();
+    expect(settled).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(await done).toMatchObject({ code: "timeout", failure: "outage" });
+  });
+
+  it("never lengthens it: a request limit over the config's is the config's", async () => {
+    vi.useFakeTimers();
+    const g = gateway(1_000);
+    const done = g.complete({ ...REQUEST, timeoutMs: 60_000 }).catch((e: ModelGatewayError) => e);
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(await done).toMatchObject({ code: "timeout" });
+  });
+
+  it.each([0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY, "5" as never])(
+    "refuses a limit of %s before anything is sent",
+    async (timeoutMs) => {
+      const e = await gateway(1_000)
+        .complete({ ...REQUEST, timeoutMs })
+        .catch((x: ModelGatewayError) => x);
+      expect(e).toMatchObject({ code: "bad-request" });
+    },
+  );
 });
