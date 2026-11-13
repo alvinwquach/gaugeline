@@ -174,8 +174,9 @@ describe("noindex-header-missing: what it finds", () => {
   it("does not take a noindex meta tag on a non-HTML answer as the header", async () => {
     const { found } = await run({
       [NOT_FOUND_PATH]: reply(404),
-      "/studio": (_q, res) =>
-        res.writeHead(200, { "content-type": "application/json" }).end('{"robots":"noindex"}'),
+      "/studio": (_q, res) => {
+        res.writeHead(200, { "content-type": "application/json" }).end('{"robots":"noindex"}');
+      },
     });
     expect(found).toHaveLength(1);
   });
