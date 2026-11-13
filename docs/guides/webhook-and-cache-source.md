@@ -32,10 +32,12 @@ reported as could not check: Gaugeline cannot tell what it answers, and it does 
 Harbor Lane Taproom is an invented bar. Its site clears the cached events and menu when the owner
 publishes, and its receiver answers 401 when the secret is not set.
 
+Each example names the checks on this page with `--only`, so a check added to Gaugeline later does not change what the page prints.
+
 <!-- source-fixture: webhook-missing-secret-status/fail -->
 
 ```sh title=Terminal untested="The docs runner points every example at a fixture website, and this command reads a folder. packages/cli/src/__tests__/source-webhook-docs.test.ts runs the same command on the same invented folder (packages/fixtures/source/webhook-missing-secret-status/fail) and compares the Output block with what it prints."
-$ npx gaugeline source ./harbor-lane-taproom
+$ npx gaugeline source ./harbor-lane-taproom --only webhook-missing-secret-status,sanity-cdn-tagged-reads,webhook-signature-compared-plainly,webhook-timestamp-unbounded,webhook-body-read-unsafely,webhook-logs-private-values
 ```
 
 ```sh title=Output
@@ -81,7 +83,7 @@ in the call are reported as could not check: Gaugeline has not confirmed what th
 <!-- source-fixture: sanity-cdn-tagged-reads/fail -->
 
 ```sh title=Terminal untested="The docs runner points every example at a fixture website, and this command reads a folder. packages/cli/src/__tests__/source-webhook-docs.test.ts runs the same command on the same invented folder (packages/fixtures/source/sanity-cdn-tagged-reads/fail) and compares the Output block with what it prints."
-$ npx gaugeline source ./harbor-lane-taproom
+$ npx gaugeline source ./harbor-lane-taproom --only webhook-missing-secret-status,sanity-cdn-tagged-reads,webhook-signature-compared-plainly,webhook-timestamp-unbounded,webhook-body-read-unsafely,webhook-logs-private-values
 ```
 
 ```sh title=Output
@@ -110,7 +112,7 @@ Bluebell Clinic is an invented clinic whose site shows its opening hours from Sa
 <!-- source-fixture: webhook-signature-compared-plainly/fail -->
 
 ```sh title=Terminal untested="The docs runner points every example at a fixture website, and this command reads a folder. packages/cli/src/__tests__/source-webhook-docs.test.ts runs the same command on the same invented folder (packages/fixtures/source/webhook-signature-compared-plainly/fail) and compares the Output block with what it prints."
-$ npx gaugeline source ./bluebell-clinic
+$ npx gaugeline source ./bluebell-clinic --only webhook-missing-secret-status,sanity-cdn-tagged-reads,webhook-signature-compared-plainly,webhook-timestamp-unbounded,webhook-body-read-unsafely,webhook-logs-private-values
 ```
 
 ```sh title=Output
@@ -137,7 +139,7 @@ read as a limit on the timestamp is reported as could not check.
 <!-- source-fixture: webhook-timestamp-unbounded/fail -->
 
 ```sh title=Terminal untested="The docs runner points every example at a fixture website, and this command reads a folder. packages/cli/src/__tests__/source-webhook-docs.test.ts runs the same command on the same invented folder (packages/fixtures/source/webhook-timestamp-unbounded/fail) and compares the Output block with what it prints."
-$ npx gaugeline source ./bluebell-clinic
+$ npx gaugeline source ./bluebell-clinic --only webhook-missing-secret-status,sanity-cdn-tagged-reads,webhook-signature-compared-plainly,webhook-timestamp-unbounded,webhook-body-read-unsafely,webhook-logs-private-values
 ```
 
 ```sh title=Output
@@ -166,7 +168,7 @@ Fennel Lane Bakery is an invented bakery whose menu is published from Sanity.
 <!-- source-fixture: webhook-body-read-unsafely/fail -->
 
 ```sh title=Terminal untested="The docs runner points every example at a fixture website, and this command reads a folder. packages/cli/src/__tests__/source-webhook-docs.test.ts runs the same command on the same invented folder (packages/fixtures/source/webhook-body-read-unsafely/fail) and compares the Output block with what it prints."
-$ npx gaugeline source ./fennel-lane-bakery
+$ npx gaugeline source ./fennel-lane-bakery --only webhook-missing-secret-status,sanity-cdn-tagged-reads,webhook-signature-compared-plainly,webhook-timestamp-unbounded,webhook-body-read-unsafely,webhook-logs-private-values
 ```
 
 ```sh title=Output
@@ -196,7 +198,7 @@ Marlowe Street Dental is an invented clinic.
 <!-- source-fixture: webhook-logs-private-values/fail -->
 
 ```sh title=Terminal untested="The docs runner points every example at a fixture website, and this command reads a folder. packages/cli/src/__tests__/source-webhook-docs.test.ts runs the same command on the same invented folder (packages/fixtures/source/webhook-logs-private-values/fail) and compares the Output block with what it prints."
-$ npx gaugeline source ./marlowe-street-dental
+$ npx gaugeline source ./marlowe-street-dental --only webhook-missing-secret-status,sanity-cdn-tagged-reads,webhook-signature-compared-plainly,webhook-timestamp-unbounded,webhook-body-read-unsafely,webhook-logs-private-values
 ```
 
 ```sh title=Output
