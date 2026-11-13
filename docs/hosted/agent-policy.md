@@ -231,6 +231,46 @@ What it shows:
 Nobody signed in, the server, the worker and the agent can read or set the operator's switches; only the
 schema owner can.
 
+### The environment switch, in front of the database
+
+The hosted code that takes an agent's draft (`apps/hosted/agents/draft.ts`, for the worker and the app) also
+reads `GAUGELINE_AGENTS_OFF` from its own environment **at every call**. Set to anything but `0`, an empty or
+misspelt value included, it refuses every agent call with `kill-switch-global` before the database is called:
+no draft, no counted call, and no row in `agent_denies` (the database is not reached), so the refusal is
+logged by that process instead. Unset it, or set it to `0`, and the next call goes through. Use it when the
+database itself is the problem, or to stop agents without a database login; use the operator's switch above
+when you want the refusal in the organisation's deny log.
+
+When the database refuses, the same code reads the reason from the warning (only a reason on the closed list
+above, from the policy's own warning) and hands its log one entry with the time, the tool and the reason:
+
+```json title=Log entry untested="Printed by the test that throws the switch (agent-draft.test.ts)."
+{
+  "at": "2026-11-13T09:00:00.000Z",
+  "agentId": null,
+  "tool": "draft:email",
+  "reason": "kill-switch-global"
+}
+```
+
+The agent id is null there on purpose: the code never looks the token up itself; the database's deny row holds
+the ids. No token, payload, site or text is in it. A call refused for any other cause (another organisation's
+site, a payload of the wrong shape) stays an error, as before.
+
+The same switch and the same reasons govern the [MCP server](../mcp.md#the-agent-policy), which has no
+database: there the policy runs in its own process (one budget for the server, the tools you allow).
+
+### Today and planned
+
+| Control                                   | Today                                                     | Planned                                       |
+| ----------------------------------------- | --------------------------------------------------------- | --------------------------------------------- |
+| Scopes, rate limit, cost ceiling, timeout | in the database, before every draft (this page)           | the read tools (AG-08) call the same function |
+| Kill switch, one agent                    | registry status `disabled`; the operator's switch row     |                                               |
+| Kill switch, every agent                  | the operator's switch row; `GAUGELINE_AGENTS_OFF`         |                                               |
+| Every deny logged                         | `agent_denies` (database); the process's log (env switch) | per-call traces of allowed calls too (AG-05)  |
+| Cost                                      | every draft declares 0                                    | model calls declare theirs (AG-22)            |
+| An HTTP endpoint for agents               | none yet: the worker or app calls `createAgentDrafts`     | when the hosted API for agents ships          |
+
 ## What is logged
 
 `agent_denies` holds one row per refused call: the organisation and agent ids, the tool (only a name on
