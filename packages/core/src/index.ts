@@ -1846,3 +1846,35 @@ export {
 export type { AgentTraceDecision, AgentTraceInput, AgentTraceRecord } from "./agent-trace.js";
 export * from "./fixes/index.js";
 export * from "./approval-receipts/index.js";
+export {
+  EVAL_ASSERTIONS,
+  EVAL_MODEL_TOOL,
+  EvalReplayError,
+  MAX_EVAL_INPUT_CHARS,
+  createReplayModel,
+  formatEvalReport,
+  isWriteTool,
+  parseRecording,
+  runEvals,
+  validateEvalSet,
+} from "./evals/index.js";
+export type {
+  EvalAssertionResult,
+  EvalAgent,
+  EvalAssertionId,
+  EvalCase,
+  EvalCaseResult,
+  EvalFinding,
+  EvalInput,
+  EvalJudge,
+  EvalJudgement,
+  EvalModel,
+  EvalModelRequest,
+  EvalRecording,
+  EvalReport,
+  EvalToolCall,
+  EvalUsage,
+  GoldenCase,
+  JudgedVerdict,
+  KnownBadCase,
+} from "./evals/index.js";
