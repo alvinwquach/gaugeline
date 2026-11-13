@@ -1,22 +1,8 @@
-// Run by send.test.ts in a child process with Node's env proxy switched on. Prints one JSON line: what the
-// sender did when the proxy variables point at a local proxy and the name resolves to a private address.
-import { createServer } from "node:http";
+// Run by send.test.ts in a child process that is started with Node's env proxy on and the proxy variables already
+// set to a local proxy the test owns. Prints one JSON line: what the sender did when the name resolves to a private
+// address. The proxy and its hit count live in the test, not here.
 import { createProviderAdapter } from "../send.ts";
 import { ApiKey } from "../key.ts";
-
-const hits = [];
-const proxy = createServer();
-proxy.on("connect", (req, socket) => {
-  hits.push(req.url);
-  socket.end("HTTP/1.1 502 Bad Gateway\r\n\r\n");
-});
-proxy.on("request", (req, res) => {
-  hits.push(req.url);
-  res.writeHead(502).end();
-});
-await new Promise((r) => proxy.listen(0, "127.0.0.1", r));
-process.env.HTTPS_PROXY = `http://127.0.0.1:${proxy.address().port}`;
-process.env.https_proxy = process.env.HTTPS_PROXY;
 
 let lookups = 0;
 const adapter = createProviderAdapter("example", {
@@ -39,6 +25,5 @@ try {
 } catch (e) {
   result = { code: e.code, message: e.message };
 }
-console.log(JSON.stringify({ ...result, lookups, proxyHits: hits }));
-proxy.close();
+console.log(JSON.stringify({ ...result, lookups }));
 process.exit(0);

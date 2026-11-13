@@ -3,11 +3,13 @@
  * request function the test hands in: a real client request to a server on a loopback address, or one that
  * never answers. Nothing here reaches a provider, a DNS server or a real key.
  */
-import { execFileSync } from "node:child_process";
+import { execFile } from "node:child_process";
 import { EventEmitter } from "node:events";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import type { ClientRequest, ServerResponse } from "node:http";
-import { isIP } from "node:net";
+import { createServer } from "node:http";
+import { isIP, type AddressInfo } from "node:net";
+import { promisify } from "node:util";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ESLint } from "eslint";
@@ -506,26 +508,58 @@ describe("no private, loopback, link-local or metadata address (the fetcher's ow
     ["--use-env-proxy", ["--use-env-proxy"], {}],
   ])(
     "still runs when Node's own proxy support is on (%s): the lookup is called and the proxy is never used",
-    (_n, flags, env) => {
+    async (_n, flags, extra) => {
       if (flags.length > 0 && !process.allowedNodeEnvironmentFlags.has("--use-env-proxy")) return;
+      // The proxy is here, in the test, and the child is started with the proxy variables already set:
+      // Node reads them when it builds its global agents at startup, so setting them later would test nothing.
+      const hits: string[] = [];
+      const proxy = createServer();
+      proxy.on("connect", (req, socket) => {
+        hits.push(String(req.url));
+        socket.end("HTTP/1.1 502 Bad Gateway\r\n\r\n");
+      });
+      proxy.on("request", (req, res) => {
+        hits.push(String(req.url));
+        res.writeHead(502).end();
+      });
+      await new Promise<void>((r) => proxy.listen(0, "127.0.0.1", r));
+      const url = `http://127.0.0.1:${(proxy.address() as AddressInfo).port}`;
       const root = fileURLToPath(new URL("../../../../../", import.meta.url));
       const child = fileURLToPath(new URL("./send-proxy-child.mjs", import.meta.url));
-      const out = execFileSync(process.execPath, [...flags, "--import", "tsx", child], {
-        cwd: root,
-        env: { ...process.env, ...env },
-        encoding: "utf8",
-        stdio: ["ignore", "pipe", "ignore"],
-        timeout: 90_000,
-      });
-      const last = JSON.parse(out.trim().split("\n").pop()!) as {
-        code: string;
-        message: string;
-        lookups: number;
-        proxyHits: string[];
-      };
-      expect(last.message).toBe("api.example.test is not a public address: nothing was sent");
-      expect(last.lookups).toBeGreaterThan(0);
-      expect(last.proxyHits).toEqual([]);
+      try {
+        // Whatever proxy this machine has is replaced, so the run is the same here and in CI.
+        const env = { ...process.env } as Record<string, string | undefined>;
+        for (const k of Object.keys(env))
+          if (/^(https?_proxy|all_proxy|no_proxy|node_use_env_proxy)$/i.test(k)) delete env[k];
+        const { stdout } = await promisify(execFile)(
+          process.execPath,
+          [...flags, "--import", "tsx", child],
+          {
+            cwd: root,
+            env: {
+              ...env,
+              ...extra,
+              HTTPS_PROXY: url,
+              https_proxy: url,
+              HTTP_PROXY: url,
+              http_proxy: url,
+              NO_PROXY: "",
+              no_proxy: "",
+            },
+            encoding: "utf8",
+            timeout: 90_000,
+          },
+        );
+        const last = JSON.parse(stdout.trim().split("\n").pop()!) as {
+          message: string;
+          lookups: number;
+        };
+        expect(last.message).toBe("api.example.test is not a public address: nothing was sent");
+        expect(last.lookups).toBeGreaterThan(0);
+        expect(hits).toEqual([]);
+      } finally {
+        await new Promise<void>((r) => proxy.close(() => r()));
+      }
     },
     120_000,
   );
