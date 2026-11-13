@@ -319,10 +319,17 @@ provider's calls would not be counted against the run's ceilings. A gateway show
 `gateway.budget`. Pass `{ requireBudget: true }` as the second argument to refuse a router whose gateways have no
 budget at all, which is what a hosted caller should do.
 
-At most four calls are made for one task. The check is plain code you give it; for an agent with an
+At most **three calls** are made for one task: the first, one fallback and one escalation. No order of failures
+makes a fourth, and a test runs every script of up to three steps for each provider to show it (the worst case is an
+escalation that meets an outage, or an outage whose fallback then fails the check). `maxCalls` can lower the cap,
+never raise it. The time all the calls of a task take together has a **deadline**, two minutes by default
+(`deadlineMs`, 1000 to 600000), checked before each call; a clock that gives nothing usable, or runs backwards, counts
+as no time left. A call already in flight still has its own timeout, so the deadline is the most time a task will
+_start_ a call, not a hard stop of one that is running. The check is plain code you give it; for an agent with an
 [eval set](./agent-evals.md), `agentAnswerCheck` runs the same schema, cited-id, invented-number and write-call
 assertions on the live answer. What comes out is `advisory` (an answer that passed the check, for a person to read)
-or `unsure`, with the reason: `failed-checks`, `outage`, `budget` or `refused`. There is no outcome that says
+or `unsure`, with the reason: `failed-checks`, `outage`, `budget`, `refused`, `deadline` (the task's time was used)
+or `calls` (a lowered `maxCalls` was used). There is no outcome that says
 pass, and nothing here gates a build. Each attempt is listed with its provider, tier and result, and the cost of
 every answer received is added up, including one that failed the check.
 

@@ -11,6 +11,7 @@ import { NO_BUDGET, createGateway } from "../gateway.js";
 import { createBudgetLedger } from "../budget.js";
 import {
   MAX_CALLS_PER_ROUTE,
+  DEFAULT_ROUTE_DEADLINE_MS,
   FALLBACK_FAILURES,
   MODEL_TASKS,
   TASK_TIERS,
@@ -280,13 +281,12 @@ describe("fallback: once, to a second provider, on an outage", () => {
     expect(b.calls.map((c) => c.model)).toEqual(["b-fast", "b-strong"]);
   });
 
-  it("can fall back during an escalation too, and never makes more than four calls", async () => {
+  it("can fall back during an escalation too: that is three calls, the most there is", async () => {
     const a = provider("a", [BAD, { fail: "timeout" }]);
     const b = provider("b", [rec(GOOD)]);
     const r = await createRouter({ primary: a.gateway(), fallback: b.gateway() }).route(REQ, check);
     expect(r).toMatchObject({ kind: "advisory", provider: "b", tier: "strong" });
-    expect(MAX_CALLS_PER_ROUTE).toBe(4);
-    expect(a.calls.length + b.calls.length).toBeLessThanOrEqual(MAX_CALLS_PER_ROUTE);
+    expect(a.calls.length + b.calls.length).toBe(MAX_CALLS_PER_ROUTE);
   });
 });
 
@@ -646,5 +646,214 @@ describe("one budget for both gateways: a fallback cannot skip the ceilings", ()
     );
     expect(out).toMatchObject({ kind: "unsure", reason: "budget" });
     expect(b.calls).toHaveLength(0);
+  });
+});
+
+describe("the most calls and the most time one task may take", () => {
+  const GOODS = [rec(GOOD), rec(GOOD), rec(GOOD)];
+  /** Every script of up to three steps for each provider, from a small alphabet of what a provider can do. */
+  const ALPHABET: Array<[string, Step]> = [
+    ["good", rec(GOOD)],
+    ["bad", BAD],
+    ["outage", outage()],
+    ["refused", failing("bad-key")],
+    ["malformed", { error: () => new ModelGatewayError("bad-answer", "x", [], "not-json") }],
+  ];
+  function* scripts(): Generator<[Array<[string, Step]>, Array<[string, Step]>]> {
+    const per = (n: number): Array<[string, Step]>[] =>
+      n === 0
+        ? [[]]
+        : ALPHABET.flatMap((x) => per(n - 1).map((rest) => [x, ...rest] as Array<[string, Step]>));
+    for (const a of per(3)) for (const b of per(3)) yield [a, b];
+  }
+  const run = async (maxCalls?: number) => {
+    let most = 0;
+    let n = 0;
+    for (const [sa, sb] of scripts()) {
+      const a = provider(
+        "a",
+        sa.map(([, st]) => st),
+      );
+      const b = provider(
+        "b",
+        sb.map(([, st]) => st),
+      );
+      const r = await createRouter(
+        { primary: a.gateway(), fallback: b.gateway() },
+        maxCalls === undefined ? {} : { maxCalls },
+      ).route(REQ, check);
+      most = Math.max(most, a.calls.length + b.calls.length);
+      n += 1;
+      expect(["advisory", "unsure"]).toContain(r.kind);
+    }
+    return { most, n };
+  };
+
+  it("is three calls, and no script of answers and failures ever makes a fourth (15625 scripts)", async () => {
+    expect(MAX_CALLS_PER_ROUTE).toBe(3);
+    const { most, n } = await run();
+    expect(n).toBe(15_625);
+    expect(most).toBe(MAX_CALLS_PER_ROUTE);
+  });
+
+  it("can be set lower, and then the same worst case stops there with its own reason", async () => {
+    for (const cap of [1, 2]) {
+      const { most } = await run(cap);
+      expect(most).toBe(cap);
+    }
+    const a = provider("a", [BAD, rec(GOOD)]);
+    const r = await createRouter({ primary: a.gateway() }, { maxCalls: 1 }).route(REQ, check);
+    expect(r).toMatchObject({ kind: "unsure", reason: "calls" });
+    expect(a.calls).toHaveLength(1);
+    expect(r.attempts).toHaveLength(1);
+  });
+
+  it("cannot be set higher than three, below one, or to anything but a whole number", () => {
+    const a = provider("a", GOODS);
+    for (const maxCalls of [
+      0,
+      4,
+      1000,
+      -1,
+      1.5,
+      Number.NaN,
+      Number.POSITIVE_INFINITY,
+      "3" as never,
+    ])
+      expect(() => createRouter({ primary: a.gateway() }, { maxCalls }), String(maxCalls)).toThrow(
+        ModelGatewayError,
+      );
+  });
+
+  describe("the deadline: the time all the calls of a task may take together", () => {
+    /** A clock the scripted providers move: call number i of a provider takes ms[i] milliseconds. */
+    const world = () => {
+      const t = { now: 1_000_000 };
+      const make = (name: string, ms: number[], steps: Step[]) => {
+        let i = 0;
+        const calls: string[] = [];
+        const adapter: ModelAdapter = {
+          provider: name,
+          needsKey: false,
+          async complete(call) {
+            calls.push(call.callId);
+            t.now += ms[i] ?? 0;
+            const step = steps[i++]!;
+            if ("error" in step) throw step.error();
+            return step as EvalRecording;
+          },
+        };
+        const gateway = createGateway({
+          config: { provider: name, tiers: { fast: `${name}-fast`, strong: `${name}-strong` } },
+          adapters: [adapter],
+          env: () => ({}),
+        });
+        return { gateway, calls };
+      };
+      return { t, make };
+    };
+
+    it("is two minutes by default", () => {
+      expect(DEFAULT_ROUTE_DEADLINE_MS).toBe(120_000);
+    });
+
+    it("stops before the next call once the time spent reaches it, with its own reason", async () => {
+      const w = world();
+      const a = w.make("a", [50_000], [outage()]);
+      const b = w.make("b", [50_000], [BAD, rec(GOOD)]);
+      const r = await createRouter(
+        { primary: a.gateway, fallback: b.gateway },
+        { deadlineMs: 60_000, now: () => w.t.now },
+      ).route(REQ, check);
+      // The outage took 50s, under 60s: the fallback ran and took 50s more: the escalation never starts.
+      expect(a.calls).toEqual(["route-1"]);
+      expect(b.calls).toEqual(["route-1"]);
+      expect(r).toMatchObject({ kind: "unsure", reason: "deadline" });
+      expect(r.attempts.map((x) => x.outcome)).toEqual(["outage", "failed-checks"]);
+    });
+
+    it("lets the next call run while there is time left", async () => {
+      const w = world();
+      const a = w.make("a", [20_000, 20_000], [BAD, rec(GOOD)]);
+      const r = await createRouter(
+        { primary: a.gateway },
+        { deadlineMs: 60_000, now: () => w.t.now },
+      ).route(REQ, check);
+      expect(r).toMatchObject({ kind: "advisory", tier: "strong" });
+    });
+
+    it("counts a fallback's time too: an outage that takes a minute leaves the second provider no time", async () => {
+      const w = world();
+      const a = w.make("a", [61_000], [outage()]);
+      const b = w.make("b", [0], [rec(GOOD)]);
+      const r = await createRouter(
+        { primary: a.gateway, fallback: b.gateway },
+        { deadlineMs: 60_000, now: () => w.t.now },
+      ).route(REQ, check);
+      expect(r).toMatchObject({ kind: "unsure", reason: "deadline" });
+      expect(b.calls).toHaveLength(0);
+      expect(r.attempts.map((x) => x.outcome)).toEqual(["outage"]);
+    });
+
+    it("measures from when the task started, not from the clock's own zero", async () => {
+      const w = world();
+      w.t.now = 9_000_000_000;
+      const a = w.make("a", [10, 10], [BAD, rec(GOOD)]);
+      const r = await createRouter(
+        { primary: a.gateway },
+        { deadlineMs: 60_000, now: () => w.t.now },
+      ).route(REQ, check);
+      expect(r.kind).toBe("advisory");
+    });
+
+    it("uses two minutes when none is given", async () => {
+      const w = world();
+      const a = w.make("a", [130_000], [outage()]);
+      const b = w.make("b", [0], [rec(GOOD)]);
+      const r = await createRouter(
+        { primary: a.gateway, fallback: b.gateway },
+        { now: () => w.t.now },
+      ).route(REQ, check);
+      expect(r).toMatchObject({ kind: "unsure", reason: "deadline" });
+      expect(b.calls).toHaveLength(0);
+    });
+
+    it("fails closed when the clock gives nothing usable", async () => {
+      const a = provider("a", [rec(GOOD)]);
+      for (const bad of [Number.NaN, Number.POSITIVE_INFINITY]) {
+        const r = await createRouter({ primary: a.gateway() }, { now: () => bad }).route(
+          REQ,
+          check,
+        );
+        expect(r).toMatchObject({ kind: "unsure", reason: "deadline" });
+      }
+      expect(a.calls).toHaveLength(0);
+    });
+
+    it("fails closed when the clock runs backwards: it does not give a task more time", async () => {
+      const w = world();
+      const a = w.make("a", [-500_000, 0], [BAD, rec(GOOD)]);
+      const r = await createRouter(
+        { primary: a.gateway },
+        { deadlineMs: 60_000, now: () => w.t.now },
+      ).route(REQ, check);
+      expect(r).toMatchObject({ kind: "unsure", reason: "deadline" });
+      expect(a.calls).toHaveLength(1);
+    });
+
+    it.each([0, 999, 600_001, 1.5, Number.NaN, "60000" as never])(
+      "refuses a deadline of %s",
+      (deadlineMs) => {
+        expect(() =>
+          createRouter({ primary: provider("a", []).gateway() }, { deadlineMs }),
+        ).toThrow(ModelGatewayError);
+      },
+    );
+
+    it("has a default clock that works, so a router needs no option to have a deadline", async () => {
+      const a = provider("a", [rec(GOOD)]);
+      const r = await createRouter({ primary: a.gateway() }).route(REQ, check);
+      expect(r.kind).toBe("advisory");
+    });
   });
 });

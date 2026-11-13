@@ -12,8 +12,11 @@
  *      to the prompt (never the first answer), on the provider that answered;
  *   4. on a budget stop, or any refusal that is not an outage (a missing key, a prompt too large), stop.
  *
- * At most four calls. The outcome is `advisory` (words for a person to read) or `unsure`: it has no way to say
- * pass, and nothing here gates a build. No clock, no randomness, no network: a gateway does the calling.
+ * At most three calls (the first, one fallback, one escalation: no order of failures makes a fourth), and a
+ * deadline on the time all of them take together, checked before each call. The outcome is `advisory` (words for
+ * a person to read) or `unsure`: it has no way to say pass, and nothing here gates a build. No randomness and no
+ * network: a gateway does the calling. The only clock is a monotonic reading handed in (`now`), used for the
+ * deadline.
  */
 import { AGENT_ANSWER_ISSUES, type AnswerCheck, type CheckVerdict } from "./check.js";
 import { ModelGatewayError, type FailureClass } from "./errors.js";
@@ -37,8 +40,16 @@ export const TASK_TIERS: Readonly<Record<ModelTask, ModelTier>> = Object.freeze(
 
 /** The failure classes that mean the provider is out. Anything else would meet the same problem on a second provider. */
 export const FALLBACK_FAILURES: readonly FailureClass[] = Object.freeze(["outage"] as const);
-/** The first call, the fallback, the escalation and its fallback. */
-export const MAX_CALLS_PER_ROUTE = 4;
+/**
+ * The first call, one fallback and one escalation. The worst case is an escalation that meets an outage, or an
+ * outage whose fallback then fails the check: three calls, and a test runs every script of up to three steps per
+ * provider to show there is no fourth.
+ */
+export const MAX_CALLS_PER_ROUTE = 3;
+/** The time all the calls of one task may take together, from the start of the task. A call in flight still has its own timeout. */
+export const DEFAULT_ROUTE_DEADLINE_MS = 120_000;
+const MIN_DEADLINE_MS = 1_000;
+const MAX_DEADLINE_MS = 600_000;
 const MAX_ISSUES = 5;
 const MAX_ISSUE_CHARS = 120;
 const MAX_CALL_ID = 100;
@@ -69,7 +80,7 @@ export type RouteOutcome<O> =
     }
   | {
       kind: "unsure";
-      reason: "failed-checks" | "outage" | "budget" | "refused";
+      reason: "failed-checks" | "outage" | "budget" | "refused" | "deadline" | "calls";
       /** Fixed words, or the plain reasons a check gave. Never the provider's words. */
       detail: string;
       attempts: RouteAttempt[];
@@ -96,6 +107,12 @@ function repairPrompt(prompt: string, issues: readonly string[]): string {
 export interface RouterOptions {
   /** Refuse to build a router whose gateways have no budget (`NO_BUDGET`). For hosted use, where a ceiling is required. */
   requireBudget?: boolean;
+  /** The most calls for one task, 1 to 3 (default 3). It can be lowered, never raised. */
+  maxCalls?: number;
+  /** The most time all the calls of one task may take together, in whole milliseconds, 1000 to 600000 (default 120000). */
+  deadlineMs?: number;
+  /** A monotonic reading in milliseconds (default `performance.now`). Tests hand one in. */
+  now?: () => number;
 }
 
 /**
@@ -115,6 +132,29 @@ export function createRouter(
     );
   if (options.requireBudget === true && gateways.primary.budget === NO_BUDGET)
     throw new ModelGatewayError("bad-config", "The router needs a budget: its gateways have none.");
+  const maxCalls = options.maxCalls ?? MAX_CALLS_PER_ROUTE;
+  if (!Number.isInteger(maxCalls) || maxCalls < 1 || maxCalls > MAX_CALLS_PER_ROUTE)
+    throw new ModelGatewayError(
+      "bad-config",
+      `maxCalls must be a whole number from 1 to ${MAX_CALLS_PER_ROUTE}.`,
+    );
+  const deadlineMs = options.deadlineMs ?? DEFAULT_ROUTE_DEADLINE_MS;
+  if (!Number.isInteger(deadlineMs) || deadlineMs < MIN_DEADLINE_MS || deadlineMs > MAX_DEADLINE_MS)
+    throw new ModelGatewayError(
+      "bad-config",
+      `deadlineMs must be a whole number from ${MIN_DEADLINE_MS} to ${MAX_DEADLINE_MS}.`,
+    );
+  const now = options.now ?? (() => performance.now());
+  /** The clock now, or null when it gives nothing usable. */
+  function reading(): number | null {
+    try {
+      const t = now();
+      return typeof t === "number" && Number.isFinite(t) ? t : null;
+    } catch {
+      return null;
+    }
+  }
+
   async function route<O>(request: RouteRequest, check: AnswerCheck<O>): Promise<RouteOutcome<O>> {
     const attempts: RouteAttempt[] = [];
     let cost = 0;
@@ -136,7 +176,20 @@ export function createRouter(
     let gateway = gateways.primary;
     let usedFallback = false;
 
-    for (let calls = 0; calls < MAX_CALLS_PER_ROUTE; calls++) {
+    const started = reading();
+    let last = started;
+    for (let calls = 0; calls < maxCalls; calls++) {
+      // Before every call: has the task had its time? A clock that gives nothing usable, or goes back, is no time left.
+      const at = reading();
+      if (
+        at === null ||
+        started === null ||
+        last === null ||
+        at < last ||
+        at - started >= deadlineMs
+      )
+        return unsure("deadline", "The time one task may take was used.");
+      last = at;
       let answer: ModelAnswer;
       try {
         answer = await gateway.complete({ tier, agentId: request.agentId, callId, prompt });
@@ -212,7 +265,7 @@ export function createRouter(
       prompt = repairPrompt(request.prompt, verdict.issues);
       callId = `${request.callId}:escalated`;
     }
-    return unsure("outage", "The most calls one task may make were used.");
+    return unsure("calls", "The most calls this router may make for one task were used.");
   }
   return { route };
 }
