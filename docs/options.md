@@ -1272,7 +1272,7 @@ to test.** Without either, nothing is asked and the check is not listed.
 `by` says who agreed and `on` says when, so a shared repository records it once. A run with consent
 prints one line on stderr saying probing checks are on.
 
-There are twenty-six probing checks: `image-optimizer-open`, described in
+There are twenty-seven probing checks: `ai-endpoint-open`, described in [AI routes that answer anyone](guides/ai-endpoints.md) (one `GET` of each route you list under `modelEndpoints` in `gaugeline.ai.json`, never a `POST`), `image-optimizer-open`, described in
 [Open image optimizers](guides/image-optimizers.md#what-it-asks-the-running-site-a-probing-check) (it also needs an
 address you chose, in `gaugeline.images.json`, below), `not-found-200`, described in [Error pages that answer 200](guides/error-pages.md#not-found-200-what-the-site-does-for-an-address-that-does-not-exist) (one `GET` of an address made up from your own site's address), `noindex-header-missing`, described in [Routes your page metadata does not reach](guides/noindex-header.md) (up to nine `GET`s: the made-up address and the routes you list in `gaugeline.hidden.json`), `studio-response-cacheable`, described in [Is the editor studio cached?](guides/studio-caching.md) (one `GET` of each studio route you name in `gaugeline.studio.json`, at most four), `gated-download-open`, described in
 [Paid downloads and delivery](delivery.md#a-download-route-that-hands-the-file-to-anyone),

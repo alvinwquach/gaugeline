@@ -304,6 +304,7 @@ describe("gated-download-open: a probing check", () => {
 
   it("is on the probing list, so a run without consent leaves it out and with consent runs it", async () => {
     expect(PROBING_CHECKS).toEqual([
+      "ai-endpoint-open",
       "gated-download-open",
       "image-optimizer-open",
       "noindex-header-missing",

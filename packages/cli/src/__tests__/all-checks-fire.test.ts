@@ -79,6 +79,7 @@ const FIXTURES = [
   "studio-cacheable",
   "ai-key-in-js",
   "ai-widgets",
+  "ai-endpoints",
   "checkout-after",
   "printed-menu",
   "source-maps",

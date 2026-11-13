@@ -27,6 +27,14 @@ export const aiConfigSchema = z.strictObject({
   aiWidgets: z
     .strictObject({ allowed: z.array(z.string().regex(WIDGET_NAME)).max(100) })
     .optional(),
+  /**
+   * Routes on the site that talk to a model (ai-endpoint-open, AI-12, a probing check): paths such as "/api/chat" or
+   * "/v1/models". Only these are asked, once each with a GET, and only with --owner-consent. Gaugeline never picks one.
+   */
+  modelEndpoints: z
+    .array(z.string().regex(/^\/[^\s*?#]*$/, "must be a path starting with /, with no * ? or #"))
+    .max(8, "at most 8 routes")
+    .optional(),
 });
 export type AiConfig = z.infer<typeof aiConfigSchema>;
 
