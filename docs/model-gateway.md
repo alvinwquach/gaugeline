@@ -281,12 +281,106 @@ the list. No provider SDK is used. No real provider is chosen yet: that is a dec
 adding an entry. Tests never reach a provider: they hand the sender a request function that talks to a server on
 a loopback address, or one that never answers.
 
+## Routing and escalation
+
+A router decides which tier a task uses and what to do when an answer is no good. It is a short fixed list, not a
+model's choice, and the same inputs always take the same path.
+
+| Task           | Tier     |
+| -------------- | -------- |
+| `wording`      | `fast`   |
+| `check-writer` | `strong` |
+| `miner`        | `strong` |
+
+1. **The task's tier, on the first provider.**
+2. **An outage: once, the same call on a second provider**, if you gave one. An outage is no answer in time, a
+   provider failure, or an answer in no usable shape. A second provider is another gateway you build with its own
+   adapter; adding a host to the list of reachable hosts is a change to the sending module, never a setting.
+3. **A failed check: once, the `strong` tier**, on the provider that answered, with the plain reasons added to the
+   prompt. The reasons are at most five lines of 120 characters, cleaned; the first answer is never repeated. A
+   `strong` task has no higher tier, so one failed answer ends there.
+4. **A budget stop, or any refusal that is not an outage** (a missing key, a prompt that is too large, a prompt that
+   holds your key), **stops at once**: a second provider would meet the same problem, or use your key for nothing.
+   The budget itself is the gateway's hook (row AG-22); the router only obeys it.
+
+At most four calls are made for one task. The check is plain code you give it; for an agent with an
+[eval set](./agent-evals.md), `agentAnswerCheck` runs the same schema, cited-id, invented-number and write-call
+assertions on the live answer. What comes out is `advisory` (an answer that passed the check, for a person to read)
+or `unsure`, with the reason: `failed-checks`, `outage`, `budget` or `refused`. There is no outcome that says
+pass, and nothing here gates a build. Each attempt is listed with its provider, tier and result, and the cost of
+every answer received is added up, including one that failed the check.
+
+```ts title=RouteExample
+import {
+  createGateway,
+  createRecordedAdapter,
+  createRouter,
+  type AnswerCheck,
+} from "./src/model-gateway/index.js";
+
+const usage = { inputTokens: 40, outputTokens: 12, costMicros: 900, latencyMs: 300 };
+const answer = (text: string) => ({ text, usage });
+// A gateway over answers recorded once, keyed by call id. The second call of a task is "<id>:escalated".
+const gatewayOf = (provider: string, answers: [string, string][]) =>
+  createGateway({
+    config: { provider, tiers: { fast: `${provider}-small`, strong: `${provider}-large` } },
+    adapters: [
+      { ...createRecordedAdapter(new Map(answers.map(([id, t]) => [id, answer(t)]))), provider },
+    ],
+    env: () => ({}),
+  });
+// A plain rule: the answer must be one sentence under 80 characters, with no digits.
+const oneSentence: AnswerCheck<string> = ({ text }) =>
+  text.length < 80 && !/\d/.test(text)
+    ? { ok: true, value: text }
+    : { ok: false, issues: ["the note must be one short sentence with no digits"] };
+
+const router = createRouter({
+  primary: gatewayOf("alpha", [
+    ["note-1", "Your menu page lost its canonical link on 12 November and nobody noticed."],
+    ["note-1:escalated", "The menu page has no canonical link."],
+    ["note-3", "Found 7 pages with the same problem, which is worse than last week."],
+  ]),
+  fallback: gatewayOf("beta", [["note-2", "The pop-up page loads slowly."]]),
+});
+
+const out: string[] = [];
+for (const [task, callId] of [
+  ["wording", "note-1"],
+  ["wording", "note-2"],
+  ["miner", "note-3"],
+] as const) {
+  const r = await router.route(
+    { task, agentId: "triage", callId, prompt: "Word this finding." },
+    oneSentence,
+  );
+  const path = r.attempts.map((a) => `${a.provider}/${a.tier} ${a.outcome}`).join(", ");
+  out.push(
+    r.kind === "advisory"
+      ? `${task}: advisory, "${r.value}" (${path})`
+      : `${task}: unsure, ${r.reason} (${path})`,
+  );
+}
+
+console.log(out.join("\n"));
+```
+
+```text title=RouteOutput
+wording: advisory, "The menu page has no canonical link." (alpha/fast failed-checks, alpha/strong accepted)
+wording: advisory, "The pop-up page loads slowly." (alpha/fast outage, beta/fast accepted)
+miner: unsure, failed-checks (alpha/strong failed-checks)
+```
+
+The first note was too long and had a digit, so the `fast` answer failed the check and the `strong` one passed.
+The second had no answer from `alpha`, so `beta` answered. The third was a `miner` task, which uses `strong`, and
+its one answer failed, so it is `unsure`.
+
 ## What it does not do
 
 - It does not call a provider by itself. Nothing uses the sending module yet; wiring your key in on the command
   line is AG-20.
-- It does not choose between tiers, retry, or fall back to a second provider (AG-21), and it does not enforce a
-  budget by itself: the [budget ledger](./model-budgets.md) (AG-22) is handed to it as `budget`.
+- It does not enforce a budget by itself: the [budget ledger](./model-budgets.md) (AG-22) is handed to the gateway as
+  `budget`, and the router stops when it says no.
 - It does not decide what may be sent. A caller passes findings, evidence snippets and ids, never a page; the
   redaction here is a last line of defence, and the privacy rules are AG-23.
 - A redaction by pattern misses a secret in a shape it does not know, and it replaces any run of eight or more
