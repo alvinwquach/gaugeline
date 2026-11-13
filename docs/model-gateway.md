@@ -1,4 +1,4 @@
-# The model gateway: one way to reach a model, with nothing to send yet
+# The model gateway: one way to reach a model
 
 If an agent ever words a draft for you (a note to a bakery owner about a broken menu link), it should reach a
 model one way, and that way should be easy to check: it never prints your key, it never sends more than it was
@@ -6,10 +6,10 @@ given, it stops when it takes too long, and in a test it needs no key and no net
 one way. It is [agent](./agent-safety.md) plumbing with the same rules as every agent: a model **only words a
 draft**, and what it says is advice for a person to read, never a result that decides anything.
 
-**Today.** The interface, the two tiers, the config shape, the recorded fake and the hooks for budgets are built
-and tested (row AG-19, part 1). **Not built.** There is no provider behind it, so nothing here can reach a
-model, and no code in it opens a connection. The one module that may send a request to a provider, from your
-own machine with your own key, is the next pull request; reading your key on the command line is
+**Today.** The interface, the two tiers, the config shape, the recorded fake, the hooks for budgets and the one
+module that sends a request to a provider are built and tested (row AG-19). **Not wired.** Nothing calls the
+sending module yet, and its only provider entry is an example on a reserved name that never resolves, so
+nothing here can reach a model today. Reading your key on the command line is
 [AG-20](https://github.com/alvinwquach/gaugeline/blob/main/docs/adr/0014-agent-safety-model.md), budgets are built ([model budgets](./model-budgets.md), AG-22) and the
 privacy rules for what is sent are AG-23. The decision behind all of this is
 [ADR-0005, as amended on 13 Nov 2026](https://github.com/alvinwquach/gaugeline/blob/main/docs/adr/0005-notifications-post-to-your-own-channels.md):
@@ -203,10 +203,38 @@ known-bad  bad-malformed-output      caught (schema)
 golden 3/3 pass; known-bad 8/8 caught; cost 1008000 micro-units
 ```
 
+## The one sending module
+
+`packages/core/src/model-gateway/send.ts` is the only file that sends a request to a model provider. It is not
+the fetcher and not the notification sender, and the lint rule and the boundary test name it, so a second file
+that opens a connection fails both.
+
+- **A list of hosts, in code.** The module can reach only the hosts on `PROVIDER_HOSTS`: an exact lower-case name,
+  https, one path. A caller names a provider (`example`), never a host or a path, and no config or flag can add
+  one. A provider is added by a change to that list and to its test.
+- **Your key, at call time.** The gateway reads it from your environment and hands it to the sender for that call;
+  it goes into one header and nowhere else. It is not in the body, an error, a log or a recording.
+- **A bounded payload.** At most 16000 bytes of prompt, and text that is a whole page (a document type line, or an
+  `html`, `head` or `body` element) is refused. A finding may quote one tag; a page cannot get through. This is a
+  tripwire: what may be sent is decided by the caller and the privacy rules (AG-23).
+- **No redirects, no private addresses.** A 3xx is an error and is never followed. A name that resolves to a
+  loopback, private, link-local, shared (CGNAT) or cloud-metadata address is refused when the connection is made,
+  with the same rule the fetcher uses, even if one of several answers is public.
+- **A hard timeout.** 60 seconds at most, whatever the config says, and the request is destroyed when the gateway
+  gives up sooner. The answer is read up to 256 KB.
+- **Plain errors.** An error says the host and a status or an error code. It never repeats the answer, the
+  request, an address or a key.
+
+The request is a POST of `{ model, prompt, max_output_tokens }` with `Authorization: Bearer <key>`, and the answer is
+`{ text, usage: { input_tokens, output_tokens } }`; the cost is worked out in whole micro-units from a price in
+the list. No provider SDK is used. No real provider is chosen yet: that is a decision for the owner, made by
+adding an entry. Tests never reach a provider: they hand the sender a request function that talks to a server on
+a loopback address, or one that never answers.
+
 ## What it does not do
 
-- It does not send anything. The next pull request adds the one sending module, with a list of provider hosts
-  in code, https only, no redirects, no private address, a size cap and a timeout.
+- It does not call a provider by itself. Nothing uses the sending module yet; wiring your key in on the command
+  line is AG-20.
 - It does not choose between tiers, retry, or fall back to a second provider (AG-21), and it does not enforce a
   budget by itself: the [budget ledger](./model-budgets.md) (AG-22) is handed to it as `budget`.
 - It does not decide what may be sent. A caller passes findings, evidence snippets and ids, never a page; the
