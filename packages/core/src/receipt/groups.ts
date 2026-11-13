@@ -62,6 +62,8 @@ const SECURITY_IDS = new Set([
   "ai-endpoint-open",
   "ai-key-in-js",
   "ai-widget-inventory",
+  // What a visitor types goes to an AI provider with no notice: a privacy signal, not content.
+  "ai-input-no-disclosure",
 ]);
 
 /** Words that make it a listing, an opening time or an event date. */
