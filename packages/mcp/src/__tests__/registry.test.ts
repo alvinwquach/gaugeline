@@ -4,13 +4,16 @@ import { UNTRUSTED_NOTE } from "../agent-text.js";
 import { connect } from "./helpers.js";
 
 describe("the tool registry", () => {
-  it("has exactly the six tools, in one object", () => {
+  it("has exactly the eight tools, in one object", () => {
     expect(Object.keys(TOOLS).sort()).toEqual([
       "compare_runs",
       "draft_fix",
       "explain_finding",
       "list_checks",
+      // AG-08: read-only, offered only when the operator configured the hosted API and an agent token.
+      "list_pending_approvals",
       "plan_check",
+      "read_run_history",
       "run_check",
     ]);
   });
@@ -51,6 +54,10 @@ describe("the tool registry", () => {
     const { client, close } = await connect({
       root: process.cwd(),
       planBases: ["https://preview.harbourline.example"],
+      hosted: {
+        base: "https://hosted.example/api/v1",
+        token: ["gla", "0a1b2c3d", "T".repeat(43)].join("_"),
+      },
     });
     const { tools } = await client.listTools();
     expect(tools.map((t) => t.name).sort()).toEqual(Object.keys(TOOLS).sort());

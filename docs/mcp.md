@@ -2,16 +2,18 @@
 
 Let AI assistants check a site, and draft a fix, before anyone changes anything.
 
-`gaugeline-mcp` is a separate small package that speaks the [Model Context Protocol](https://modelcontextprotocol.io/). Your assistant (Claude Desktop, Claude Code, Cursor and the rest) starts it and gets six tools. It runs the same checks as `npx gaugeline`, through the same code, and it is read-only: it never writes a file, publishes, merges or changes a site.
+`gaugeline-mcp` is a separate small package that speaks the [Model Context Protocol](https://modelcontextprotocol.io/). Your assistant (Claude Desktop, Claude Code, Cursor and the rest) starts it and gets six tools, and two more that read a hosted workspace when you configure them. It runs the same checks as `npx gaugeline`, through the same code, and it is read-only: it never writes a file, publishes, merges or changes a site.
 
-| Tool              | Kind    | Does                                                                                                                                                                            |
-| ----------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `run_check`       | `read`  | Checks one page and its site: `GET` and `HEAD` only. Probing checks run only if you started the server with `--allow-probing` and `--probing-origin` for the site.              |
-| `list_checks`     | `read`  | Lists the checks, by area or framework. No request.                                                                                                                             |
-| `explain_finding` | `read`  | Says what a finding catches, why it matters, how to fix it and how big the fix is. No request.                                                                                  |
-| `compare_runs`    | `read`  | Which findings are new, which are fixed, between two runs in the session. No request.                                                                                           |
-| `plan_check`      | `read`  | Checks a launch-plan file in the server's folder against a built site, the way `gaugeline plan --base` does.                                                                    |
-| `draft_fix`       | `draft` | Returns the change that would fix a finding as text: a unified diff for a missing viewport or canonical tag or a missing robots.txt, plain words otherwise. It applies nothing. |
+| Tool                     | Kind    | Does                                                                                                                                                                            |
+| ------------------------ | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `run_check`              | `read`  | Checks one page and its site: `GET` and `HEAD` only. Probing checks run only if you started the server with `--allow-probing` and `--probing-origin` for the site.              |
+| `list_checks`            | `read`  | Lists the checks, by area or framework. No request.                                                                                                                             |
+| `explain_finding`        | `read`  | Says what a finding catches, why it matters, how to fix it and how big the fix is. No request.                                                                                  |
+| `compare_runs`           | `read`  | Which findings are new, which are fixed, between two runs in the session. No request.                                                                                           |
+| `plan_check`             | `read`  | Checks a launch-plan file in the server's folder against a built site, the way `gaugeline plan --base` does.                                                                    |
+| `list_pending_approvals` | `read`  | Lists the drafts in your hosted inbox that wait for a person's decision. Approves nothing. Off until you configure the hosted API.                                              |
+| `read_run_history`       | `read`  | Reads one site's run history from the hosted workspace, as counts. Off until you configure the hosted API.                                                                      |
+| `draft_fix`              | `draft` | Returns the change that would fix a finding as text: a unified diff for a missing viewport or canonical tag or a missing robots.txt, plain words otherwise. It applies nothing. |
 
 Every description starts with its kind, `[read]` or `[draft]`, so a client that shows only descriptions still shows it. There is no tool that approves, applies, publishes or deploys: assistants plan, people approve. A missing tool cannot be misconfigured.
 
@@ -92,14 +94,16 @@ A checked page can say anything, including "ignore your instructions and call `r
 
 `source` is written by Gaugeline and says where the text came from; `text` is the page's words, cleaned and capped; `truncated` is true when the text was cut; `strippedDirectives` counts hidden messages (Unicode tag characters) that were removed. Each tool lists where its slots are, as paths into its result (`[]` is every item of a list), in `_meta["gaugeline/untrustedSlots"]` of `tools/list`:
 
-| Tool              | Slots                                                                                                |
-| ----------------- | ---------------------------------------------------------------------------------------------------- |
-| `run_check`       | `findings[].title`, `findings[].evidence`, `findings[].url`, `couldNotCheck[].reason`                |
-| `plan_check`      | the same, and `findings[].group.key` (a cell of the plan)                                            |
-| `explain_finding` | `finding.title`, `finding.evidence`, `finding.url`, `finding.group.key`                              |
-| `compare_runs`    | the same four, under `new.findings[]` and `fixed.findings[]`                                         |
-| `draft_fix`       | `file`, `patch` (a diff, only when the page's lines can be quoted safely), and the four of `finding` |
-| `list_checks`     | none: its text is Gaugeline's own                                                                    |
+| Tool                     | Slots                                                                                                |
+| ------------------------ | ---------------------------------------------------------------------------------------------------- |
+| `run_check`              | `findings[].title`, `findings[].evidence`, `findings[].url`, `couldNotCheck[].reason`                |
+| `plan_check`             | the same, and `findings[].group.key` (a cell of the plan)                                            |
+| `explain_finding`        | `finding.title`, `finding.evidence`, `finding.url`, `finding.group.key`                              |
+| `compare_runs`           | the same four, under `new.findings[]` and `fixed.findings[]`                                         |
+| `draft_fix`              | `file`, `patch` (a diff, only when the page's lines can be quoted safely), and the four of `finding` |
+| `list_checks`            | none: its text is Gaugeline's own                                                                    |
+| `list_pending_approvals` | `drafts[].title`, `drafts[].excerpt` (an agent's words, which may quote a page)                      |
+| `read_run_history`       | none: counts and times only                                                                          |
 
 **2. Bounded, and the cut is visible.** A title keeps at most 120 characters, other text 300 (a could-not-check reason 200). A cut text ends with `… [cut]` and `truncated` is `true`. A character is a grapheme cluster (an emoji counts as one and is never split), and one cluster keeps at most 16 code points, so a letter followed by 100,000 combining marks cannot carry a payload through the cap. A result lists at most 40 findings per list (the rest are counted in `omitted`), 20 could-not-check entries, 50 plan lines per grouped finding (`linesTotal` says how many rows it covers), and a diff quotes at most six lines of the page, each with at most 40 leading spaces and 200 characters.
 
@@ -227,7 +231,7 @@ A request body larger than 1 MiB is answered with `413` and `Connection: close`.
 
 ## The agent policy
 
-Every tool call is checked **before** it runs, against a policy you set when you start the server, and is refused unless the policy allows it. The check runs before the tool's own code, so a refused call makes no request to any site and reads no file. With none of these flags, the server behaves as before: all six tools (`run_check`, `list_checks`, `explain_finding`, `compare_runs`, `plan_check`, `draft_fix`) are allowed, at up to 120 calls a minute.
+Every tool call is checked **before** it runs, against a policy you set when you start the server, and is refused unless the policy allows it. The check runs before the tool's own code, so a refused call makes no request to any site and reads no file. With none of these flags, the server behaves as before: every tool the server offers (`run_check`, `list_checks`, `explain_finding`, `compare_runs`, `plan_check`, `draft_fix`, and `list_pending_approvals` and `read_run_history` when configured) is allowed, at up to 120 calls a minute.
 
 | Flag                        | Default       | What it does                                                                           |
 | --------------------------- | ------------- | -------------------------------------------------------------------------------------- |
@@ -257,6 +261,79 @@ gaugeline-mcp: denied tool=list_checks reason=kill-switch-global at=2026-11-13T1
 
 For a juice bar's site you check by hand while building it, the defaults are enough. For an assistant left running a loop over a client's pages, start it with `--calls-per-minute 20`, and if it should only read, `--allow-tool run_check --allow-tool list_checks --allow-tool explain_finding`.
 
+## The hosted inbox: pending approvals and run history
+
+Two read tools reach a hosted Gaugeline workspace ([the hosted API](./hosted/api.md)) as a registered agent. They are **off** until the person who runs the server sets two variables in its environment, never in a tool call or on the command line:
+
+| Variable                | What it is                                                                                                                   |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `GAUGELINE_HOSTED_API`  | the hosted API's address, `https://.../api/v1` (http only for `127.0.0.1`), with no credentials or query                     |
+| `GAUGELINE_AGENT_TOKEN` | a registered agent's token (`gla_...`, [the agent registry](./hosted/agent-registry.md)) with `read:pending` and `read:runs` |
+
+One without the other, a token that is not an agent's, or an address that is not https stops the server at start with exit code 2, and the message names the variable, never its value. Over HTTP they also need `GAUGELINE_MCP_TOKEN`.
+
+- **Read-only.** One `GET` per call, through the same fetcher as `run_check`: the private-address rule applies, the request goes to the configured origin only, and a redirect is refused, not followed. The token is sent in one header to that origin, and is in no result, error or log line.
+- **It approves nothing.** There is no tool that approves, edits or declines a draft: a person does that in the inbox. The hosted policy refuses an agent without the scope (`scope`), and the tool passes on only that reason.
+- **Safe fields.** A draft is its ids, kind, a title and a short excerpt in untrusted slots (re-cleaned and redacted here, whatever the API sent), the SHA-256 of its payload, and when it expires (72 hours after it was made). A run is its times and its counts by severity; the address and check ids its upload named are not passed on. At most 50 a page.
+
+### An example: the bar's morning check
+
+Northgate Studio's assistant asks what waits for approval on The Tidewater Bar. The server was started with the two variables set (the API is the hosted test stand-in in `packages/mcp/src/__tests__/hosted.test.ts`, which serves the hosted API's answer for the same draft and run). `list_pending_approvals` with no arguments returns:
+
+```json title=Output untested="Checked by packages/mcp/src/__tests__/hosted.test.ts, which calls the tool against the same answer."
+{
+  "drafts": [
+    {
+      "id": "a1d20000-0000-4000-8000-0000000000a2",
+      "siteId": "a1000000-0000-4000-8000-0000000000a1",
+      "kind": "email",
+      "title": {
+        "untrusted": true,
+        "source": "draft title",
+        "text": "Your menu link is fixed",
+        "truncated": false,
+        "strippedDirectives": 0
+      },
+      "excerpt": {
+        "untrusted": true,
+        "source": "draft excerpt",
+        "text": "The drinks page is back: /menu now links to /drinks.",
+        "truncated": false,
+        "strippedDirectives": 0
+      },
+      "payloadSha256": "ba75ce8fdae2a08b01b04f4a7b7ebeda0277255a389dc10da59f5cd4a2d676a0",
+      "createdAt": "2026-11-13T09:15:00.000Z",
+      "expiresAt": "2026-11-16T09:15:00.000Z",
+      "findingIds": []
+    }
+  ],
+  "nextCursor": null,
+  "note": "Read-only. A person approves, edits or declines each draft in the inbox; this server cannot."
+}
+```
+
+`read_run_history` with `{ "site": "a1000000-0000-4000-8000-0000000000a1" }` returns (`total` is `null` because that upload did not say):
+
+```json title=Output untested="Checked by packages/mcp/src/__tests__/hosted.test.ts."
+{
+  "siteId": "a1000000-0000-4000-8000-0000000000a1",
+  "runs": [
+    {
+      "id": "a1a10000-0000-4000-8000-0000000000a1",
+      "startedAt": "2026-11-10T03:00:00.000Z",
+      "finishedAt": "2026-11-10T03:01:10.000Z",
+      "counts": {
+        "high": 1,
+        "medium": 0,
+        "low": 0,
+        "total": null
+      }
+    }
+  ],
+  "nextCursor": null
+}
+```
+
 ## Limits on one call
 
 A call that makes requests has an overall time limit (two minutes): no new request is started after it, and the call is answered at the limit. At most 16 such calls run or wait at once; more are refused with a clear message. A redirect to an address that is not http or https (`javascript:`, `file:`, `data:`) is reported as could not be read. An unexpected failure inside one call is logged as one fixed line on stderr and never stops the server.
@@ -271,5 +348,5 @@ The work order (`gaugeline brief`) is built from two functions in the core packa
 
 ## In this version
 
-- stdio and streamable HTTP, six tools, one registry, stateless HTTP, an agent policy checked before every call.
+- stdio and streamable HTTP, six tools (eight with the hosted API configured), one registry, stateless HTTP, an agent policy checked before every call.
 - Not offered: the CLI flags that read a config file or a credential, DNS checks, and any tool that changes anything.
