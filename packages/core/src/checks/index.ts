@@ -162,6 +162,7 @@ import { nuxtPreviewCanonical } from "./nuxt-preview-canonical.js";
 import { nuxtPreviewPublic } from "./nuxt-preview-public.js";
 import { nuxtPrivateState } from "./nuxt-private-state.js";
 import { noindex } from "./noindex.js";
+import { noindexHeaderMissing } from "./noindex-header-missing.js";
 import { notFound200 } from "./not-found-200.js";
 import { ogImageBroken } from "./og-image-broken.js";
 import { ogImageMissing } from "./og-image-missing.js";
@@ -398,6 +399,7 @@ export const PAGE_CHECKS = [
   nextPreviewCanonical,
   nextStaleAfterPublish,
   noindex,
+  noindexHeaderMissing,
   notFound200,
   nuxtDevBuildLive,
   nuxtDevtoolsPublic,

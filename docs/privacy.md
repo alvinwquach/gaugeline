@@ -178,6 +178,21 @@ sites you own or have permission to test.** Without consent nothing is asked.
 - It goes through the same fetcher as every other request, so a private address is refused unless
   `--allow-private` is set. Never a `POST`.
 
+### Routes the page metadata does not reach (a probing check)
+
+With `--owner-consent` (or a `gaugeline.consent.json`) **and** a `gaugeline.hidden.json` with a section that
+matches `/*` (the whole site is hidden), the `noindex-header-missing` check asks for the made-up address above
+and for the routes you listed under `noindexRoutes` in that file (the editor studio, an API route, a file), to
+see whether each sends `X-Robots-Tag: noindex` ([Routes your page metadata does not reach](guides/noindex-header.md)).
+**Run it only on sites you own or have permission to test.** Gaugeline never picks a route of its own: a
+route is asked only if you wrote it.
+
+- One `GET` per address, once per run, at most 9. No cookie, no `Authorization` header, no query.
+- At most 16 KiB of each answer are read, only for the status, the `X-Robots-Tag` header and a robots meta
+  tag; the body is not kept or printed.
+- It goes through the same fetcher as every other request, so a private address is refused unless
+  `--allow-private` is set. Never a `POST`.
+
 ### Image optimizers (a probing check)
 
 With `--owner-consent` (or a `gaugeline.consent.json`) **and** an `imageOptimizerProbeUrl` in

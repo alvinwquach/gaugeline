@@ -1,0 +1,25 @@
+{
+  "/studio": {
+    "status": 200,
+    "headers": {
+      "content-type": "text/html; charset=utf-8"
+    },
+    "body": "<!doctype html><html lang=\"en\"><head><title>Studio</title></head><body><div id=\"studio\">Sign in to edit the cafe's pages.</div></body></html>"
+  },
+  "/api/health": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "x-robots-tag": "noindex"
+    },
+    "body": "{\"ok\":true}"
+  },
+  "/gaugeline-not-found-3f9c2a71": {
+    "status": 404,
+    "headers": {
+      "content-type": "text/html; charset=utf-8",
+      "x-robots-tag": "noindex"
+    },
+    "body": "<!doctype html><html lang=\"en\"><head><title>Not found</title></head><body>Not found</body></html>"
+  }
+}

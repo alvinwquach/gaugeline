@@ -71,6 +71,7 @@ const FIXTURES = [
   "gated-downloads",
   "image-optimizer",
   "error-pages",
+  "noindex-header-missing",
   "checkout-after",
   "printed-menu",
   "source-maps",

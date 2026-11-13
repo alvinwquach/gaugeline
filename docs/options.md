@@ -1231,9 +1231,9 @@ to test.** Without either, nothing is asked and the check is not listed.
 `by` says who agreed and `on` says when, so a shared repository records it once. A run with consent
 prints one line on stderr saying probing checks are on.
 
-There are twenty-four probing checks: `image-optimizer-open`, described in
+There are twenty-five probing checks: `image-optimizer-open`, described in
 [Open image optimizers](guides/image-optimizers.md#what-it-asks-the-running-site-a-probing-check) (it also needs an
-address you chose, in `gaugeline.images.json`, below), `not-found-200`, described in [Error pages that answer 200](guides/error-pages.md#not-found-200-what-the-site-does-for-an-address-that-does-not-exist) (one `GET` of an address made up from your own site's address), `gated-download-open`, described in
+address you chose, in `gaugeline.images.json`, below), `not-found-200`, described in [Error pages that answer 200](guides/error-pages.md#not-found-200-what-the-site-does-for-an-address-that-does-not-exist) (one `GET` of an address made up from your own site's address), `noindex-header-missing`, described in [Routes your page metadata does not reach](guides/noindex-header.md) (up to nine `GET`s: the made-up address and the routes you list in `gaugeline.hidden.json`), `gated-download-open`, described in
 [Paid downloads and delivery](delivery.md#a-download-route-that-hands-the-file-to-anyone),
 `route-hidden-not-protected`, described in [Routes that are hidden, not protected](protected-routes.md),
 `nuxt-devtools-public` and `nuxt-preview-public`, described in
