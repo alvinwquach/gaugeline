@@ -348,6 +348,8 @@ export const notificationChannels = pgTable("notification_channels", {
     "rejected" | "failed-repeatedly" | "address-refused"
   >(),
   disabledAt: timestamp("disabled_at", { withTimezone: true }),
+  /** Takes an agent's message (a regression alert, the morning digest) as well as findings: Slack only (0017). */
+  agentMessages: boolean("agent_messages").notNull().default(false),
   createdAt: createdAt(),
 }).enableRLS();
 
@@ -365,14 +367,23 @@ export const notificationRules = pgTable("notification_rules", {
   createdAt: createdAt(),
 }).enableRLS();
 
-/** The outbox and delivery log: a status, a count and a short code. Never an address or a message body. */
+/**
+ * The outbox and delivery log: a status, a count and a short code. Never an address or a message body. A row of
+ * kind "agent" names which agent message (agentKind) and what it is about (a run, or a local day); the worker
+ * builds the words at send time (0017).
+ */
 export const notificationDeliveries = pgTable("notification_deliveries", {
   id: uuid("id").primaryKey().defaultRandom(),
   orgId: uuid("org_id").notNull(),
   channelId: uuid("channel_id").notNull(),
-  kind: text("kind").$type<"run" | "test">().notNull(),
+  kind: text("kind").$type<"run" | "test" | "agent">().notNull(),
   runId: uuid("run_id"),
   siteId: uuid("site_id"),
+  agentKind: text("agent_kind").$type<"regression-alert" | "approvals-digest">(),
+  /** A regression alert: the later run of the two compared. */
+  subjectRunId: uuid("subject_run_id"),
+  /** A digest: the local day it is for. */
+  digestDate: date("digest_date"),
   status: text("status").$type<"queued" | "sending" | "sent" | "failed">().notNull(),
   sendAfter: timestamp("send_after", { withTimezone: true }).notNull().defaultNow(),
   lockedAt: timestamp("locked_at", { withTimezone: true }),
