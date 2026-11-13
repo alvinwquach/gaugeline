@@ -12,6 +12,7 @@ import {
   readPlan,
   redirectProposal,
   structuredDataProposals,
+  toInboxDraft,
   type FetcherOptions,
   type Outcome,
   type Proposal,
@@ -88,6 +89,7 @@ export async function runPropose(
     plan?: string;
     base?: string;
     repository?: string;
+    toInbox?: string;
     out: string;
     fixes: boolean;
     allowPrivate: boolean;
@@ -204,6 +206,24 @@ export async function runPropose(
     );
   } else {
     io.stdout.write("No proposals: nothing was written and nothing was sent.\n");
+  }
+  if (args.toInbox !== undefined && list.length > 0) {
+    // The inbox's draft carries the whole new text of each file, so each diff is applied to the file as it is.
+    const drafts = [];
+    for (const p of list) {
+      const text = files.find((f) => f.path === p.target.path)?.text ?? "";
+      const draft = toInboxDraft(p, text);
+      if (isRefusal(draft)) io.stderr.write(`No inbox draft for ${p.id}: ${draft.refused}\n`);
+      else drafts.push(draft);
+    }
+    writeFileSync(
+      resolve(cwd, args.toInbox),
+      `${JSON.stringify({ version: 1, drafts }, null, 2)}\n`,
+      { flag: "w" },
+    );
+    io.stdout.write(
+      `${drafts.length} inbox draft${drafts.length === 1 ? "" : "s"} written to ${args.toInbox}. Nothing was sent: a person approves a draft in the inbox first.\n`,
+    );
   }
   return { kind: "ran", highFindings: 0, drift: false };
 }

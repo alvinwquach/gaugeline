@@ -31,7 +31,16 @@ describe("docs/options.md: gaugeline propose --help", () => {
       expect(HELP.propose, `--${f.name} in --help`).toContain(`--${f.name}`);
       expect(options, `--${f.name} in docs/options.md`).toContain(`\`--${f.name}`);
     }
-    for (const name of ["fixes", "repo", "plan", "base", "repository", "out", "allow-private"])
+    for (const name of [
+      "fixes",
+      "repo",
+      "plan",
+      "base",
+      "repository",
+      "to-inbox",
+      "out",
+      "allow-private",
+    ])
       expect(page, `--${name} in the guide`).toContain(`--${name}`);
   });
 });
@@ -83,6 +92,23 @@ describe("docs/guides/fix-proposals.md: the examples are real output", () => {
     } finally {
       await site.close();
     }
+  });
+
+  it("the inbox draft (the page's third command): the file the page shows", async () => {
+    expect(page).toContain(
+      "$ npx gaugeline propose run.json --fixes --repo ./cedar-bar --to-inbox inbox.json",
+    );
+    await run(dir, [
+      "propose",
+      "run.json",
+      "--fixes",
+      "--repo",
+      "./cedar-bar",
+      "--to-inbox",
+      "inbox.json",
+    ]);
+    const shown = /````json title="inbox\.json"\n([\s\S]*?)````/.exec(page)?.[1];
+    expect(readFileSync(join(dir, "inbox.json"), "utf8")).toBe(shown);
   });
 
   it("the bar's phone number (the page's second command)", async () => {

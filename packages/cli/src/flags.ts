@@ -726,6 +726,14 @@ export const FLAGS: readonly FlagDef[] = Object.freeze<FlagDef[]>([
     commands: ["propose"],
   },
   {
+    name: "to-inbox",
+    type: "string",
+    description:
+      "propose: also write each proposal as the hosted inbox's pull-request draft (JSON) to this file",
+    since: "0.2.0",
+    commands: ["propose"],
+  },
+  {
     name: "repository",
     type: "string",
     description:
