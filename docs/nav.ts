@@ -121,6 +121,7 @@ export const UNLISTED: NavPage[] = [
   { slug: "guides/deploy-gates", title: "Deploy gates: check a preview before it goes live" },
   { slug: "guides/vercel-gate", title: "Hold a Vercel deploy on Gaugeline's result" },
   { slug: "guides/fix-proposals", title: "Fix proposals: a diff for what lives in your code" },
+  { slug: "guides/verify-receipts", title: "Verify approval receipts" },
   {
     slug: "guides/webhook-and-cache-source",
     title: "The publish webhook and the cache, read from your code",

@@ -75,6 +75,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze<FlagDef[]>([
       "changes",
       "receipt",
       "source",
+      "receipts",
     ],
   },
   {
@@ -710,6 +711,14 @@ export const FLAGS: readonly FlagDef[] = Object.freeze<FlagDef[]>([
       "source: run just these checks, by id, separated by commas (an unknown id is refused)",
     since: "0.2.0",
     commands: ["source"],
+  },
+  {
+    name: "head",
+    type: "string",
+    description:
+      "receipts verify: a head hash written down earlier, which the chain must still contain",
+    since: "0.2.0",
+    commands: ["receipts"],
   },
   {
     name: "fixes",

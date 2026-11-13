@@ -1,0 +1,1 @@
+{"set": {"openingHours": "Thu-Sat 5pm-11pm"}, "documentId": "venue-hours", "documentType": "venue"}

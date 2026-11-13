@@ -47,6 +47,7 @@ export const SUBCOMMANDS = [
   "deploy-gate",
   "propose",
   "source",
+  "receipts",
 ] as const;
 export type CliCommand = "check" | (typeof SUBCOMMANDS)[number];
 
@@ -279,6 +280,18 @@ export type ParsedArgs =
       only?: string[];
       json: boolean;
       ci: boolean;
+      verbose: boolean;
+      quiet: boolean;
+    }
+  | {
+      kind: "receipts";
+      /** The one action: verify. */
+      action: "verify";
+      /** A chain file (JSON lines) or a folder holding receipts.jsonl and, optionally, payloads/. */
+      path: string;
+      /** --head: a head hash written down earlier; the chain must still contain it. */
+      head?: string;
+      json: boolean;
       verbose: boolean;
       quiet: boolean;
     }
@@ -1379,6 +1392,40 @@ export function parseCliArgs(
       ...(only ? { only } : {}),
       json: values.json === true,
       ci: values.ci === true,
+      verbose,
+      quiet: values.quiet === true,
+    };
+  }
+  if (command === "receipts") {
+    const usage = "For example: gaugeline receipts verify receipts.jsonl";
+    const [action, path, ...extra] = positionals;
+    if (action !== "verify")
+      return {
+        kind: "error",
+        message:
+          action === undefined
+            ? "gaugeline receipts needs an action: gaugeline receipts verify <file|folder>"
+            : `gaugeline receipts has one action, verify, not "${action}": gaugeline receipts verify <file|folder>`,
+        hint: usage,
+        verbose,
+      };
+    if (path === undefined || extra.length > 0)
+      return {
+        kind: "error",
+        message:
+          path === undefined
+            ? "gaugeline receipts verify needs the chain: gaugeline receipts verify <file|folder>"
+            : `gaugeline receipts verify takes one file or folder, got ${extra.length + 1}: ${[path, ...extra].join(", ")}.`,
+        hint: usage,
+        verbose,
+      };
+    const head = typeof values.head === "string" ? values.head : undefined;
+    return {
+      kind: "receipts",
+      action,
+      path,
+      ...(head !== undefined ? { head } : {}),
+      json: values.json === true,
       verbose,
       quiet: values.quiet === true,
     };

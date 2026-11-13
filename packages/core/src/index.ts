@@ -1836,3 +1836,4 @@ export type {
   AgentRule,
 } from "./agent-policy.js";
 export * from "./fixes/index.js";
+export * from "./approval-receipts/index.js";

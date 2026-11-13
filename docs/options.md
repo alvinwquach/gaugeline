@@ -784,6 +784,42 @@ Exit codes: 0 ran, 1 --ci and a fix-first finding, 2 could not run
 no code and never opens `.env` or other secret-looking files. A check that cannot tell says so instead of
 passing. An example from a pop-up bar's pre-launch copy: [Checks that read your source](guides/source-checks.md).
 
+### The receipts command
+
+`gaugeline receipts --help` prints:
+
+```text title=Output
+Usage: gaugeline receipts verify <file|folder> [options]
+
+Check an exported chain of approval receipts with no network and no key: every
+receipt's hash, each link to the one before, the genesis value, the order, and
+no gaps, forks or repeated drafts. A folder holds receipts.jsonl and, if you
+kept them, the approved payloads as payloads/<draft id>.txt, each checked
+against its receipt and never printed. Stops at the first broken receipt and
+says which and why. Tamper evidence, not a signature: whoever controls the
+database can rebuild the whole chain; --head with a head hash you wrote down
+elsewhere finds that, and a cut-off end. (gaugeline receipt, singular, is the
+care-plan receipt: a different command.)
+
+Options:
+      --json            Print the result as JSON on stdout, and nothing else
+      --head <value>    receipts verify: a head hash written down earlier, which
+                        the chain must still contain
+      --quiet           Print only results and errors
+      --verbose         Show each request, and technical detail when something
+                        goes wrong
+  -h, --help            Show this help and exit
+  -v, --version         Print the version and exit
+
+Exit codes: 0 the chain checks out, 1 a problem found, 2 could not read
+```
+
+`gaugeline receipts verify` checks a chain of approval receipts exported from the hosted inbox, on your own
+computer, with no network and no key. It is not the care-plan receipt (`gaugeline receipt`, above). Exit 0
+when the chain checks out, 1 at the first broken receipt (which one and why), 2 when the file cannot be read.
+It is tamper evidence, not a signature: see [Verify approval receipts](guides/verify-receipts.md) for what it
+does and does not prove.
+
 ### Flags
 
 The table below is generated from `packages/cli/src/flags.ts` (`pnpm docs:flags`). Do not edit
@@ -871,6 +907,8 @@ between the markers; CI fails when it differs from the flag table.
 | `--package <value>`         | advisory: a package@range to use instead of looking the id up in OSV (repeatable)                                    |                            | 0.2.0 |
 | `--host <value>`            | advisory: another hostname of the client to look at, such as an old subdomain (up to 5)                              |                            | 0.2.0 |
 | `--block`                   | deploy-gate: exit 1 when a "Fix this first" finding is found; without it the gate only reports                       | `GAUGELINE_GATE_BLOCK`     | 0.2.0 |
+| `--only <value>`            | source: run just these checks, by id, separated by commas (an unknown id is refused)                                 |                            | 0.2.0 |
+| `--head <value>`            | receipts verify: a head hash written down earlier, which the chain must still contain                                |                            | 0.2.0 |
 | `--fixes`                   | propose: turn fix proposals on (they are off by default); nothing is sent, the diffs are written to a file           | `GAUGELINE_FIXES`          | 0.2.0 |
 | `--repo <value>`            | propose: the project's folder on this computer (a checkout of its repository)                                        |                            | 0.2.0 |
 | `--plan <value>`            | propose: the launch plan (CSV); with --base, each old address that does not redirect gets a proposal                 |                            | 0.2.0 |

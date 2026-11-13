@@ -449,6 +449,8 @@ describe("flag table: e2e", () => {
         const proposeOnly = f.commands.length === 1 && f.commands[0] === "propose";
         // source reads a folder of source: its own flag (--only) is proved the same way, with --help.
         const sourceOnly = f.commands.length === 1 && f.commands[0] === "source";
+        // receipts verify reads a chain file: its own flag (--head) is proved the same way, with --help.
+        const receiptsOnly = f.commands.length === 1 && f.commands[0] === "receipts";
         // brief runs the page check and writes a work order: its own flags are proved on a run.
         const briefOnly = f.commands.length === 1 && f.commands[0] === "brief";
         // --business is brief's and audit's, proved on brief. audit --pack runs the page check too, and its own flags
@@ -473,6 +475,7 @@ describe("flag table: e2e", () => {
           !queryOnly &&
           !proposeOnly &&
           !sourceOnly &&
+          !receiptsOnly &&
           !briefOnly &&
           !businessFlag &&
           !auditOnly &&
@@ -577,7 +580,12 @@ describe("flag table: e2e", () => {
                                 `--${f.name}`,
                                 join(scratch, "snapshot.json"),
                               ]
-                            : deliveryOnly || platformOnly || queryOnly || proposeOnly || sourceOnly
+                            : deliveryOnly ||
+                                platformOnly ||
+                                queryOnly ||
+                                proposeOnly ||
+                                sourceOnly ||
+                                receiptsOnly
                               ? [
                                   deliveryOnly
                                     ? "delivery"
@@ -587,7 +595,9 @@ describe("flag table: e2e", () => {
                                         ? "propose"
                                         : sourceOnly
                                           ? "source"
-                                          : "query",
+                                          : receiptsOnly
+                                            ? "receipts"
+                                            : "query",
                                   `--${f.name}`,
                                   ...value,
                                   "--help",
