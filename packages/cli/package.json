@@ -46,9 +46,13 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "peerDependencies": {
+    "playwright-core": ">=1.48.0 <2",
     "typescript": ">=5.0.0 <7"
   },
   "peerDependenciesMeta": {
+    "playwright-core": {
+      "optional": true
+    },
     "typescript": {
       "optional": true
     }
@@ -57,7 +61,8 @@
     "@gaugeline/app": "workspace:*",
     "@gaugeline/app-server": "workspace:*",
     "@gaugeline/core": "workspace:*",
-    "@gaugeline/documents": "workspace:*"
+    "@gaugeline/documents": "workspace:*",
+    "@gaugeline/renderer": "workspace:*"
   },
   "private": false
 }

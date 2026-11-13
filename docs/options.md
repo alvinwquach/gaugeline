@@ -77,6 +77,9 @@ Options:
       --trackers                   Also list the trackers on pages with a form
                                    or a path you listed, and what a tag manager
                                    holds
+      --renderer <value>           Also load the page in a browser you installed
+                                   (playwright), to read what scripts add; never
+                                   downloads one
       --libraries                  Also check the JavaScript files a page loads
                                    for libraries with a published advisory
       --wordpress                  Also check a WordPress site's versions
@@ -1348,6 +1351,24 @@ It checks the page you give it. `gaugeline run --all --trackers` adds it to ever
 Settings: `gaugeline.trackers.json` (`sensitivePaths`: exact paths or `/folder/*`). What it lists and what it
 does not see: [Trackers on sensitive pages](guides/trackers-on-sensitive-pages.md). What it sends:
 [Privacy and safety](privacy.md#trackers-on-sensitive-pages-trackers).
+
+### The renderer option
+
+`--renderer playwright` loads the page in a browser **you installed**, to read what a script adds. It is off
+unless you name it, and it is read-only: only `GET` and `HEAD` leave the browser, private addresses are
+refused, requests to a list of analytics and advertising services are stopped (a site's own analytics under another name may still be asked), nothing is clicked, typed or submitted, and
+each page gets a fresh browser with no cookies or storage. Gaugeline never downloads a browser: with none
+found (or no `playwright-core`), the run finishes, says how to install one, and any check that needs a
+rendered page says could not check.
+
+```sh
+npx gaugeline bakery.example --renderer playwright
+```
+
+`playwright` is the only renderer. What it does, the caps, and how Gaugeline finds the browser
+(`GAUGELINE_BROWSER_PATH`, then Playwright's own folder, then Chrome, Chromium or Edge):
+[Rendered pages](rendered-pages.md). What it sends:
+[Privacy and safety](privacy.md#rendered-pages-renderer-playwright).
 
 ### The libraries option
 

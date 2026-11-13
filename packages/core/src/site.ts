@@ -39,6 +39,7 @@ import type { WordPress } from "./wordpress/reader.js";
 import type { HiddenConfig } from "./hidden.js";
 import type { StudioConfig } from "./studio.js";
 import { lazyEvents, type EventObserver } from "./events/observe.js";
+import { lazyRender, type RenderSource } from "./render/lazy.js";
 import type { EventsConfig } from "./events/types.js";
 import type { ImageSettings } from "./images/config.js";
 import type { NavRules } from "./nav/read-regions.js";
@@ -162,6 +163,8 @@ export interface SiteCheckOptions {
   events?: EventsConfig;
   /** Clicks the plan's elements in a rendered page. None until rendered reads (G39): could not check. */
   eventObserver?: EventObserver;
+  /** The renderer for this run, or why there is none (`--renderer playwright`). Absent: no rendered read is made. */
+  rendering?: RenderSource;
   /** A Tag Manager container export, already read from its file. */
   tags?: TagContainer;
   /** The last run's snapshot (--since last): the change checks compare with it. */
@@ -359,6 +362,9 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
       ...(opts.nav ? { navRules: opts.nav } : {}),
       ...(opts.staleDates ? { staleDates: opts.staleDates } : {}),
       ...(container && tagRules ? { tagContainer: container, tagRules } : {}),
+      ...(opts.rendering
+        ? { render: lazyRender({ url: snapshot.finalUrl, ...opts.rendering }) }
+        : {}),
       ...(opts.events
         ? {
             eventsConfig: opts.events,

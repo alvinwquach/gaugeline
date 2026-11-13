@@ -6,7 +6,9 @@ import {
   parseAddress,
   parseReceiptMonth,
   parseSince,
+  RENDERER_NAMES,
   safeLogoUrl,
+  type RendererName,
 } from "@gaugeline/core";
 import { resolveDeployGate, type GateHost } from "./deploy-gate.js";
 import { HELP } from "./help.js";
@@ -123,6 +125,8 @@ export interface RunFlags {
   cost: boolean;
   /** --trackers: add the tracker checks (trackers on pages with a form or a listed sensitive path, and what a Tag Manager container holds). */
   trackers: boolean;
+  /** --renderer: the browser renderer the run may use for rendered reads. Absent: nothing is rendered. */
+  renderer?: RendererName;
   /** --libraries: add the library check (JavaScript libraries the page loads, with the published advisories that name their version). */
   libraries: boolean;
   /** --wordpress: add the WordPress checks (versions shown against wordpress.org's current releases, and the REST API's list of users). */
@@ -643,6 +647,15 @@ export function parseCliArgs(
       kind: "error",
       message: `--since accepts only last in this version, not "${String(values.since)}".`,
       hint: "Use --since last to compare with the previous run of this site.",
+      verbose,
+    };
+  }
+  const renderer = values.renderer;
+  if (renderer !== undefined && !(RENDERER_NAMES as readonly unknown[]).includes(renderer)) {
+    return {
+      kind: "error",
+      message: `--renderer accepts ${RENDERER_NAMES.join(", ")}, not "${String(renderer)}".`,
+      hint: "For example: gaugeline example.com --renderer playwright",
       verbose,
     };
   }
@@ -2188,6 +2201,7 @@ export function parseCliArgs(
     renewals: values.renewals === true || command === "renewals",
     cost: values.cost === true || command === "cost",
     trackers: values.trackers === true,
+    ...(renderer !== undefined ? { renderer: renderer as RendererName } : {}),
     libraries: values.libraries === true,
     wordpress: values.wordpress === true,
     backups: values.backups === true || command === "backups",

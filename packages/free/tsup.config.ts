@@ -11,7 +11,9 @@ export default defineConfig({
   noExternal: ["@gaugeline/core"],
   // The TypeScript compiler (9 MB) is loaded only by `gaugeline query`, from beside the package: an optional
   // peer dependency, never bundled. It would be most of the tarball and the size budget forbids it.
-  external: ["typescript"],
+  // playwright-core is the person's own and imported only by the renderer adapter (`--renderer playwright` on the
+  // gaugeline CLI, which this package's launch command does not offer): never bundled.
+  external: ["typescript", "playwright-core"],
   dts: false,
   clean: true,
   minify: true,

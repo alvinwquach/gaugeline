@@ -160,6 +160,7 @@ import { runMine } from "./mine.js";
 import { runHouseRules } from "./house-rules.js";
 import { runWriteCheck } from "./write-check.js";
 import { runReceipts } from "./receipts.js";
+import { startRenderer, type StartRendererOptions } from "./renderer.js";
 import { runSource } from "./source.js";
 import { runMigration } from "./migration.js";
 import { runAdvisory } from "./advisory.js";
@@ -304,6 +305,8 @@ export interface Deps {
   /** The checks to run. Defaults to every page check. */
   registry?: CheckRegistry;
   fetcher?: FetcherOptions;
+  /** `--renderer`: makes the renderer instead of the Playwright adapter. Tests pass a fake. */
+  renderer?: StartRendererOptions["create"];
   /** Public DNS for the email record checks. Defaults to node:dns/promises; tests pass a fake. */
   dns?: DnsReader;
   /** Defaults to the package version; tests pass one to see 0.0.x and 0.1.0 behaviour. */
@@ -1770,10 +1773,31 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
             ),
           )
         : undefined;
+      // --renderer playwright: the user's own browser, started only now and only when named. No browser or
+      // no driver is not a failure of the run: rendered reads are could-not-check, and the person is told how
+      // to install one. Everything that leaves the browser goes through the transport's address refusal.
+      const rendering = args.renderer
+        ? await startRenderer({
+            name: args.renderer,
+            address: args.address,
+            allowPrivate: args.allowPrivate,
+            ...(deps.fetcher?.transport ? { transport: deps.fetcher.transport } : {}),
+            ...(deps.fetcher?.hosts ? { hosts: deps.fetcher.hosts } : {}),
+            env: io.env ?? {},
+            ...(deps.renderer ? { create: deps.renderer } : {}),
+          })
+        : undefined;
+      if (rendering?.problem) {
+        log.warn(
+          `rendering is on, but ${rendering.problem.reason.replace(/\.$/, "")}. Checks that need a rendered page say could not check.`,
+        );
+        if (rendering.problem.hint && !args.quiet) io.stderr.write(`${rendering.problem.hint}\n`);
+      } else if (rendering?.detail) log.debug(`rendering: ${rendering.detail}`);
       const checking = checkSite({
         address: args.input,
         fetcher,
         registry,
+        ...(rendering ? { rendering: rendering.source } : {}),
         ...(renewals ? { renewals } : {}),
         ...(handoff ? { handoff } : {}),
         ...(cost ? { cost } : {}),
@@ -1831,7 +1855,9 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         requests: requestLog,
         page: pageDeclared,
         unreachable,
-      } = await (requestsTarget ? requestsTarget.guard(checking) : checking);
+      } = await (requestsTarget ? requestsTarget.guard(checking) : checking).finally(() =>
+        rendering?.close(),
+      );
       // A site that does not answer is the usual sign of a lapsed domain: say so, and carry on.
       if (unreachable !== undefined && !args.quiet)
         io.stderr.write(
