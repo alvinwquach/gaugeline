@@ -233,13 +233,17 @@ schema owner can.
 
 ### The environment switch, in front of the database
 
-The hosted code that takes an agent's draft (`apps/hosted/agents/draft.ts`, for the worker and the app) also
-reads `GAUGELINE_AGENTS_OFF` from its own environment **at every call**. Set to anything but `0`, an empty or
+The hosted code that takes an agent's draft (`apps/hosted/agents/draft.ts`) also reads `GAUGELINE_AGENTS_OFF` from its own environment **at every call**. Set to anything but `0`, an empty or
 misspelt value included, it refuses every agent call with `kill-switch-global` before the database is called:
 no draft, no counted call, and no row in `agent_denies` (the database is not reached), so the refusal is
 logged by that process instead. Unset it, or set it to `0`, and the next call goes through. Use it when the
 database itself is the problem, or to stop agents without a database login; use the operator's switch above
 when you want the refusal in the organisation's deny log.
+
+**Not running anywhere yet.** Today nothing in the hosted app or worker calls this code: only its tests do.
+There is no endpoint through which an agent sends a draft over the network yet, so today an agent reaches
+the database's draft function directly, and the environment switch does not apply to that path. The switch
+protects the hosted path once the agent endpoint is built on this code (planned).
 
 When the database refuses, the same code reads the reason from the warning (only a reason on the closed list
 above, from the policy's own warning) and hands its log one entry with the time, the tool and the reason:
@@ -267,14 +271,14 @@ database: there the policy runs in its own process (one budget for the server, t
 
 ### Today and planned
 
-| Control                                   | Today                                                     | Planned                                       |
-| ----------------------------------------- | --------------------------------------------------------- | --------------------------------------------- |
-| Scopes, rate limit, cost ceiling, timeout | in the database, before every draft (this page)           | the read tools (AG-08) call the same function |
-| Kill switch, one agent                    | registry status `disabled`; the operator's switch row     |                                               |
-| Kill switch, every agent                  | the operator's switch row; `GAUGELINE_AGENTS_OFF`         |                                               |
-| Every deny logged                         | `agent_denies` (database); the process's log (env switch) | per-call traces of allowed calls too (AG-05)  |
-| Cost                                      | every draft declares 0                                    | model calls declare theirs (AG-22)            |
-| An HTTP endpoint for agents               | none yet: the worker or app calls `createAgentDrafts`     | when the hosted API for agents ships          |
+| Control                                   | Today                                                 | Planned                                                              |
+| ----------------------------------------- | ----------------------------------------------------- | -------------------------------------------------------------------- |
+| Scopes, rate limit, cost ceiling, timeout | in the database, before every draft (this page)       | the read tools (AG-08) call the same function                        |
+| Kill switch, one agent                    | registry status `disabled`; the operator's switch row |                                                                      |
+| Kill switch, every agent                  | the operator's switch row (database)                  | `GAUGELINE_AGENTS_OFF` on the agent endpoint                         |
+| Every deny logged                         | `agent_denies` (database)                             | the endpoint's log (env switch); traces of allowed calls too (AG-05) |
+| Cost                                      | every draft declares 0                                | model calls declare theirs (AG-22)                                   |
+| An HTTP endpoint for agents               | none yet; nothing running calls `createAgentDrafts`   | built on `createAgentDrafts` when it ships                           |
 
 ## What is logged
 

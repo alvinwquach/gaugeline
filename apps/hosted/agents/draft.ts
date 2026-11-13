@@ -88,7 +88,9 @@ export function createAgentDrafts(deps: AgentDraftDeps) {
     const db = sql;
     const id = await db.begin(async (tx) => {
       await tx.unsafe("set local role gaugeline_agent");
-      // The refusal arrives as a WARNING: make sure the session does not hide it.
+      // The refusal arrives as a WARNING: make sure the session does not hide it. If a warning were hidden
+      // anyway, the null below would come with no reason and the call throws (fail closed); a test sets the
+      // login's client_min_messages to error and checks the refusal is still read.
       await tx.unsafe("set local client_min_messages = warning");
       const [row] = await tx`select private.agent_insert_draft(${call.token}, ${call.siteId},
         ${call.kind}, ${tx.json(call.payload as never)}, ${call.findingIds ?? []}::uuid[]) as id`;

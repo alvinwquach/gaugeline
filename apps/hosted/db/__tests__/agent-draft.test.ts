@@ -263,6 +263,30 @@ describe.skipIf(!HAS_DATABASE)("the agent's draft path against Postgres", () => 
     ]);
   });
 
+  it("a login that hides warnings still has its refusal read (the path shows warnings for its own call)", async () => {
+    const quiet = createAgentDrafts({
+      connect: (onnotice) =>
+        postgres(loginUrl(AGENT), {
+          max: 1,
+          onnotice,
+          connection: { client_min_messages: "error" },
+        }),
+      env: {},
+      onDeny: () => {},
+    });
+    try {
+      const a = await register([]);
+      expect(
+        await quiet.draft({ token: a.token, siteId: SITE_A1, kind: "email", payload: EMAIL }),
+      ).toEqual({
+        inserted: false,
+        reason: "scope",
+      });
+    } finally {
+      await quiet.end();
+    }
+  });
+
   it("an error that is not a policy refusal stays an error (another organisation's site)", async () => {
     const a = await register(["draft:email"]);
     await expect(
