@@ -357,6 +357,7 @@ export async function checkSite(opts: SiteCheckOptions): Promise<SiteCheck> {
       ...(container && tagRules ? { tagContainer: container, tagRules } : {}),
       ...(opts.events
         ? {
+            eventsConfig: opts.events,
             events: lazyEvents({
               page: snapshot,
               config: opts.events,

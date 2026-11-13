@@ -25,6 +25,7 @@ import type { ImageSettings } from "./images/config.js";
 import type { NavRules } from "./nav/read-regions.js";
 import type { ContentNow, PagesConfig } from "./snapshot/compare.js";
 import type { EventsRead } from "./events/observe.js";
+import type { EventsConfig } from "./events/types.js";
 import type { TagAnalysis } from "./tags/analyse.js";
 import type { TagContainer } from "./tags/read-container.js";
 import type { RunSnapshot } from "./run-snapshot.js";
@@ -184,6 +185,8 @@ export interface CheckContext {
   expectedChanges?: PagesConfig["expectedChanges"];
   /** The tracking plan's elements, clicked by the run's observer, once on first use (gaugeline.events.json). */
   events?: () => Promise<EventsRead>;
+  /** The tracking plan itself (gaugeline.events.json), for the checks that read the page and click nothing. */
+  eventsConfig?: EventsConfig;
   /** The Tag Manager container export named in gaugeline.tags.json, read from the file only. */
   tagContainer?: TagContainer;
   /** That container's triggers judged against the pages read, once on first use. */

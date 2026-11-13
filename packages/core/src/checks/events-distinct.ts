@@ -16,7 +16,8 @@ export const eventsDistinct = defineCheck<PageSnapshot>({
   fix: "Add the parent menu (or another value that tells them apart) to the event both links send.",
   tech: "Links that passed events-fire, grouped by destination: two with different parent menus whose events carry the same values for the plan's parameters. Needs a rendered read (G39): until then it is could not check",
   async run(page, ctx) {
-    if (!ctx.events) return [];
+    // A plan with only attribute rules has no click to wait for.
+    if (!ctx.events || ctx.eventsConfig?.events.length === 0) return [];
     const read = await ctx.events();
     if ("unchecked" in read.result) {
       ctx.couldNotCheck?.(page.finalUrl, read.result.unchecked);

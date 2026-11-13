@@ -250,6 +250,7 @@ import { telFormat } from "./tel-format.js";
 import { tempHostCanonical } from "./temp-host-canonical.js";
 import { tempHostLinks } from "./temp-host-links.js";
 import { thinHtml } from "./thin-html.js";
+import { trackingAttributesMissing } from "./tracking-attributes-missing.js";
 import { viewport } from "./viewport.js";
 import { wellKnownInvalid } from "./well-known-invalid.js";
 import { zeroWidthInText } from "./zero-width-in-text.js";
@@ -502,6 +503,7 @@ export const PAGE_CHECKS = [
   tempHostCanonical,
   tempHostLinks,
   thinHtml,
+  trackingAttributesMissing,
   viewport,
   wellKnownInvalid,
   zeroWidthInText,

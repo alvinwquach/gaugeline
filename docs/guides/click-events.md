@@ -49,6 +49,55 @@ analytics makes both checks could not check, with the reason.
 `gaugeline events export`, which writes the observed events as a CSV to start a tracking plan from,
 arrives with the rendered read.
 
+## Attributes every link must carry
+
+Clicks need a rendered read, but whether a link carries the attribute your tag reads does not: it is in the HTML
+the site sends. Under `attributes` in the same `gaugeline.events.json`, name the elements (a CSS selector, or every
+link in a region) and the attributes each must have, with a value:
+
+```json
+{
+  "attributes": [
+    { "region": "nav", "require": ["data-track"] },
+    { "selector": "a.book-now", "require": ["data-track", "data-location"] }
+  ]
+}
+```
+
+A plan may hold only `attributes`, only `events`, or both. A line with both a selector and a region, or neither,
+stops the run (exit 2), and so does an attribute name with a space or a quote in it.
+
+- `tracking-attributes-missing` reports one finding per line: how many of the elements it selected lack an
+  attribute, which attribute, and the first three links by their text and address.
+- An attribute with no value (`data-track=""`) or only spaces is missing: a tag that reads it gets nothing.
+- Regions are read as the click plan reads them: a link inside a `nav` is `nav` even when the `nav` sits in a
+  `header`; `javascript:` links are left out.
+- Nothing is requested or clicked: the check reads the page the run already fetched.
+
+For a bicycle repair shop that tags its menu links for a before-and-after comparison, with Hire and Contact left
+untagged and one of its two "Book" buttons missing the location:
+
+<!-- fixture: nav-attributes -->
+
+```sh title=Terminal
+$ npx gaugeline spokeandchain.example
+```
+
+```text title=Output
+! Some links are missing an attribute your tracking plan requires
+    nav links: 2 of 4 have no data-track: "Hire" (/hire), "Contact" (/contact)
+! Some links are missing an attribute your tracking plan requires
+    a.book-now: 1 of 2 have no data-location: "Book a hire bike" (/hire)
+? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
+    Mail records are read from DNS only with --dns. Rerun with --dns to check them.
+
+Checked 4 of 5 other pages.
+2 to look at, none to fix first.
+```
+
+The invented fixture is `packages/fixtures/sites/nav-attributes`. The output is asserted by
+`packages/cli/src/__tests__/nav-attributes.test.ts` and checked by `pnpm docs:examples`.
+
 ## Example
 
 Against the invented `nav-events` fixture, a coffee roastery whose rebuilt menu declares every nav
