@@ -64,6 +64,8 @@ const SECURITY_IDS = new Set([
   "ai-widget-inventory",
   // What a visitor types goes to an AI provider with no notice: a privacy signal, not content.
   "ai-input-no-disclosure",
+  // An AI agent is told to act by text a visitor cannot see: tampering, not content.
+  "hidden-agent-bait",
 ]);
 
 /** Words that make it a listing, an opening time or an event date. */
