@@ -4,6 +4,7 @@
  * development and the end-to-end tests.
  */
 import {
+  agentsPage,
   home,
   lastNightPage,
   postOrg,
@@ -35,6 +36,7 @@ const r = (path: string, handlers: Route["handlers"]): Route => ({
 export const ROUTES: Route[] = [
   r("/", { GET: home }),
   r("/last-night", { GET: lastNightPage }),
+  r("/agents", { GET: agentsPage }),
   r("/clients", { GET: clientsPage }),
   r("/clients/update", { GET: clientUpdatePage }),
   r("/sign-in", { GET: signInPage, POST: postSignIn }),
