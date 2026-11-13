@@ -711,7 +711,8 @@ a structured-data value that disagrees with the page, from a saved run
 (gaugeline <address> --json > run.json). A fixer that is not certain makes no
 proposal and says why. Off by default: add --fixes (or GAUGELINE_FIXES=1).
 It reads the folder and sends GET requests to --base; it changes nothing and
-sends nothing: the diffs are printed and written to --out.
+sends nothing: the diffs are printed and written to --out. --to-inbox also
+writes each one as the hosted inbox's pull-request draft; a person approves it.
 
 Options:
       --allow-private         Allow addresses on this computer or a private
@@ -728,6 +729,8 @@ Options:
                               checkout of its repository)
       --plan <value>          propose: the launch plan (CSV); with --base, each
                               old address that does not redirect gets a proposal
+      --to-inbox <value>      propose: also write each proposal as the hosted
+                              inbox's pull-request draft (JSON) to this file
       --repository <value>    propose: the repository's name on GitHub
                               (owner/name), written into each proposal; optional
       --quiet                 Print only results and errors
@@ -835,6 +838,7 @@ between the markers; CI fails when it differs from the flag table.
 | `--fixes`                   | propose: turn fix proposals on (they are off by default); nothing is sent, the diffs are written to a file           | `GAUGELINE_FIXES`          | 0.2.0 |
 | `--repo <value>`            | propose: the project's folder on this computer (a checkout of its repository)                                        |                            | 0.2.0 |
 | `--plan <value>`            | propose: the launch plan (CSV); with --base, each old address that does not redirect gets a proposal                 |                            | 0.2.0 |
+| `--to-inbox <value>`        | propose: also write each proposal as the hosted inbox's pull-request draft (JSON) to this file                       |                            | 0.2.0 |
 | `--repository <value>`      | propose: the repository's name on GitHub (owner/name), written into each proposal; optional                          |                            | 0.2.0 |
 | `--dry-run`                 | init: print the settings files it would write, and write nothing                                                     |                            | 0.2.0 |
 | `--note`                    | advisory: print the short note for the client (Markdown) instead of the report                                       |                            | 0.2.0 |

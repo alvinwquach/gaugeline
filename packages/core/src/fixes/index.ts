@@ -22,3 +22,5 @@ export { fixRedirect, redirectProposal } from "./redirect.js";
 export type { RedirectRequest, RepoFile } from "./redirect.js";
 export { fixStructuredData, structuredDataProposals } from "./structured-data.js";
 export type { Disagreement } from "./structured-data.js";
+export { toInboxDraft } from "./draft.js";
+export type { InboxDraft, PullRequestPayload } from "./draft.js";

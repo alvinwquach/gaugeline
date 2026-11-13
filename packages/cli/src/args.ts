@@ -278,6 +278,8 @@ export type ParsedArgs =
       plan?: string;
       base?: string;
       repository?: string;
+      /** --to-inbox: write the proposals as the hosted inbox's pull_request drafts to this file. */
+      toInbox?: string;
       out: string;
       fixes: boolean;
       allowPrivate: boolean;
@@ -1349,6 +1351,7 @@ export function parseCliArgs(
     const plan = text("plan");
     const base = text("base");
     const repository = text("repository");
+    const toInbox = text("to-inbox");
     if (positionals.length > 1)
       return problem(
         `gaugeline propose takes one saved run, got ${positionals.length}: ${positionals.join(", ")}.`,
@@ -1381,6 +1384,7 @@ export function parseCliArgs(
       ...(plan !== undefined ? { plan } : {}),
       ...(base !== undefined ? { base } : {}),
       ...(repository !== undefined ? { repository } : {}),
+      ...(toInbox !== undefined ? { toInbox } : {}),
       out: text("out") ?? "gaugeline.proposals.json",
       fixes: values.fixes === true,
       allowPrivate: values["allow-private"] === true,

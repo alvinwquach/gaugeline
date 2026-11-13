@@ -121,6 +121,7 @@ an instruction.
 | `--repo <folder>`    | The project's folder on your computer. Read only                                         |
 | `--plan <file>`      | The launch plan (CSV). With `--base`, each old address that does not redirect is checked |
 | `--base <address>`   | The preview the plan is checked against                                                  |
+| `--to-inbox <file>`  | Also write each proposal as the inbox's pull-request draft (JSON)                        |
 | `--repository <o/n>` | The GitHub repository (`owner/name`), written into each proposal. Optional               |
 | `--out <file>`       | The proposals file. Default `gaugeline.proposals.json`                                   |
 | `--allow-private`    | Allow a preview on this computer or a private network                                    |
@@ -130,11 +131,50 @@ changed by hand is refused. `docs/options.md` has the full `--help`.
 
 ## Applying a proposal
 
-This page is about the part that only reads. Applying one is a separate, approved step: the proposal
-becomes a **draft** in [the hosted inbox](../hosted/inbox.md), a person approves it, and **your own worker**
-opens a draft pull request with **your own token** ([applying an approved fix](../hosted/writer.md),
-ADR-0010). The command line never opens a pull request, never
-merges and never holds a write token.
+`propose` only reads. Applying one is a separate, approved step: the proposal becomes a **draft** in
+[the hosted inbox](../hosted/inbox.md), a person approves it, and **your own worker** opens a draft pull
+request with **your own token** ([applying an approved fix](../hosted/writer.md), ADR-0010). The command
+line never opens a pull request, never merges and never holds a write token.
+
+`--to-inbox <file>` writes each proposal as the inbox's `pull_request` draft: a title, a description (the
+finding, its evidence, the diff and how it is checked again) and the whole new text of the file. For the
+bar's phone number:
+
+```text title="Terminal" untested="Needs a saved run and a project folder. packages/cli/src/__tests__/propose-docs.test.ts runs this command in an invented folder and compares the file."
+$ npx gaugeline propose run.json --fixes --repo ./cedar-bar --to-inbox inbox.json
+```
+
+It prints `1 inbox draft written to inbox.json. Nothing was sent: a person approves a draft in the inbox
+first.` after the diff, and the file holds:
+
+````json title="inbox.json"
+{
+  "version": 1,
+  "drafts": [
+    {
+      "kind": "pull_request",
+      "proposalId": "px_0bb74bada19bf0c8",
+      "payload": {
+        "title": "Correct \"+1 555 0100\" to \"+1 555 0142\" in the structured data of /about",
+        "body": "Gaugeline proposes this change for the finding `facts-match` on https://cedarbar.example/.\n\nEvidence:\n\n```\nphone: declared \"+1 555 0142\", as on /; /about has \"+1 555 0100\" (structured data)\n```\n\nFile: `src/layout.html`\n\nThe change:\n\n```diff\n--- a/src/layout.html\n+++ b/src/layout.html\n@@ -7,7 +7,7 @@\n         \"@context\": \"https://schema.org\",\n         \"@type\": \"BarOrPub\",\n         \"name\": \"Cedar Bar\",\n-        \"telephone\": \"+1 555 0100\"\n+        \"telephone\": \"+1 555 0142\"\n       }\n     </script>\n   </head>\n```\n\nHow it is checked again: Run gaugeline on the pull request's preview: the structured data of /about must read \"+1 555 0142\" and facts-match must not report it.\n\nProposal px_0bb74bada19bf0c8. It is a draft: read the diff, change it if it is wrong, and merge it yourself.",
+        "files": [
+          {
+            "path": "src/layout.html",
+            "content": "<!doctype html>\n<html lang=\"en\">\n  <head>\n    <title>Cedar Bar</title>\n    <script type=\"application/ld+json\">\n      {\n        \"@context\": \"https://schema.org\",\n        \"@type\": \"BarOrPub\",\n        \"name\": \"Cedar Bar\",\n        \"telephone\": \"+1 555 0142\"\n      }\n    </script>\n  </head>\n  <body>\n    <p>Call us on <a href=\"tel:+15550142\">555 0142</a>.</p>\n  </body>\n</html>\n"
+          }
+        ]
+      }
+    }
+  ]
+}
+````
+
+The payload names no repository, branch or recipient: the worker's own configuration fixes them, and the
+inbox and the writer both refuse a payload that tries. A test (`scripts/__tests__/fix-draft-payload.test.ts`)
+parses every payload this makes with the inbox's checker and the writer's. The inbox adds the finding ids
+and the site; this command does not know them. Because a pull request carries whole files, a draft is
+refused (with the reason on stderr) when the file is over 100,000 characters or the draft is over 16,384
+bytes, or when the file is no longer the text the proposal was made from.
 
 `gaugeline apply` and posting the re-check result on the pull request are not built yet (v1.1): both would
 write from the command line, which ADR-0010 keeps out of it.
