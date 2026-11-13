@@ -62,6 +62,49 @@ const SAME: [string, string, unknown][] = [
     "a payload over the byte limit",
     pr({ body: "x".repeat(20_000), files: [{ path: "a.md", content: "y".repeat(2000) }] }),
   ],
+  ["pull_request", "a title with U+FFFE", pr({ title: "a\uFFFEb" })],
+  ["pull_request", "a title with U+FFFF", pr({ title: "a\uFFFFb" })],
+  ["pull_request", "a body with U+FFFF (allowed in prose)", pr({ body: "a\uFFFFb" })],
+  ["pull_request", "a title with a bidirectional isolate", pr({ title: "a\u2066b" })],
+  ["pull_request", "a title with a tab", pr({ title: "a\tb" })],
+  ["pull_request", "a path with a trailing dot on a folder", file("content./menu.md")],
+  [
+    "pull_request",
+    "three paths, two the same but for case",
+    pr({
+      files: [
+        { path: "c/a.md", content: "" },
+        { path: "c/b.md", content: "" },
+        { path: "C/B.md", content: "" },
+      ],
+    }),
+  ],
+  [
+    "sanity_draft",
+    "15 significant digits",
+    { documentId: "menu", documentType: "page", set: { n: 123456789012345 } },
+  ],
+  [
+    "sanity_draft",
+    "16 significant digits",
+    { documentId: "menu", documentType: "page", set: { n: 1234567890123456 } },
+  ],
+  ["sanity_draft", "1e-7", { documentId: "menu", documentType: "page", set: { n: 1e-7 } }],
+  ["sanity_draft", "1e-6", { documentId: "menu", documentType: "page", set: { n: 1e-6 } }],
+  [
+    "sanity_draft",
+    "a long field name",
+    { documentId: "menu", documentType: "page", set: { ["a".repeat(65)]: 1 } },
+  ],
+  [
+    "sanity_draft",
+    "21 fields",
+    {
+      documentId: "menu",
+      documentType: "page",
+      set: Object.fromEntries(Array.from({ length: 21 }, (_, i) => [`f${i}`, i])),
+    },
+  ],
   ["email", "a draft", { subject: "Hello", body: "Hi" }],
   ["email", "a recipient", { subject: "Hello", body: "Hi", to: "x" }],
   [
