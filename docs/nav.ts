@@ -165,9 +165,6 @@ export const UNLISTED: NavPage[] = [
     slug: "checks/form-handlers-in-source",
     title: "Form handlers that fail quietly or let anyone in",
   },
-    slug: "checks/form-handlers-in-source",
-    title: "Form handlers that fail quietly or let anyone in",
-  },
   {
     slug: "checks/token-and-server-code",
     title: "A token needed at import, and a server file that exports a constant",
