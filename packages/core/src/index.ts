@@ -1881,3 +1881,23 @@ export type {
   JudgedVerdict,
   KnownBadCase,
 } from "./evals/index.js";
+export {
+  APPROVALS_DIGEST_AGENT,
+  APPROVALS_DIGEST_KINDS,
+  APPROVAL_WINDOW_HOURS,
+  ApprovalsDigestInputError,
+  MAX_ATTENTION,
+  MAX_DIGEST_ROWS,
+  approvalsDigestAgent,
+  approvalsDigestCases,
+  approvalsDigestSchema,
+  buildApprovalsDigest,
+  createApprovalsDigestModel,
+  renderApprovalsDigestMarkdown,
+} from "./approvals-digest/index.js";
+export type {
+  ApprovalsDigest,
+  ApprovalsDigestItem,
+  ApprovalsDigestKind,
+  ApprovalsDigestOptions,
+} from "./approvals-digest/index.js";
