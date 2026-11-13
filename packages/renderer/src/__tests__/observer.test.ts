@@ -25,7 +25,12 @@ interface Scenario {
   focus?: number[];
   consentPath?: string | null;
   /** Run during a click, with the functions the page was given (the page handing over a push, say). */
-  during?: (bindings: Record<string, (...a: unknown[]) => void>) => void;
+  during?: (
+    bindings: Record<string, (...a: unknown[]) => void>,
+    request: (r: { url: string; from?: "main" | "sub" }) => Promise<{ aborted: boolean }>,
+  ) => void | Promise<void>;
+  /** Every call into the page, and closing a context, never returns. */
+  hang?: boolean;
 }
 
 const target = (path: string, text = path): ClickTarget => ({
@@ -48,6 +53,7 @@ function fakeBrowser(s: Scenario) {
     gotos: [] as string[],
     presses: [] as string[],
     contexts: 0,
+    browserClosed: 0,
   };
   const transport: Transport = () =>
     Promise.resolve({
@@ -63,6 +69,25 @@ function fakeBrowser(s: Scenario) {
       let mark = 1;
       let focusAt = 0;
       const main = { page: () => page };
+      const sub = { page: () => page };
+      /** The page asking for a document, as the browser would, answered by whatever guards the context has. */
+      const request = async (r: { url: string; from?: "main" | "sub" }) => {
+        let aborted = false;
+        const route = {
+          request: () => ({
+            url: () => r.url,
+            method: () => "GET",
+            resourceType: () => "document",
+            headers: () => ({}),
+            postData: () => null,
+            frame: () => (r.from === "sub" ? sub : main),
+          }),
+          fulfill: () => Promise.resolve(),
+          abort: () => ((aborted = true), Promise.resolve()),
+        };
+        await handler?.(route);
+        return { aborted };
+      };
       const bindings: Record<string, (...a: unknown[]) => void> = {};
       const page = {
         on: () => undefined,
@@ -90,19 +115,19 @@ function fakeBrowser(s: Scenario) {
         },
         locator: (path: string) => ({
           first: () => ({
-            click: () => {
+            click: async () => {
               log.clicks.push(path);
-              s.during?.(bindings);
+              await s.during?.(bindings, request);
               if (s.navigates?.includes(path)) {
                 url = `https://site.example/after-${path}`;
                 mark += 1;
               }
-              return Promise.resolve();
             },
           }),
         }),
         keyboard: { press: (k: string) => (log.presses.push(k), Promise.resolve()) },
         evaluate: (expr: string) => {
+          if (s.hang) return new Promise(() => undefined);
           if (expr.includes("getBoundingClientRect")) {
             const path = JSON.parse(/\}\)\((".*")\)$/s.exec(expr)?.[1] ?? '""') as string;
             return Promise.resolve(s.inspect[path] ?? { found: false });
@@ -123,9 +148,10 @@ function fakeBrowser(s: Scenario) {
           Promise.resolve()
         ),
         newPage: () => Promise.resolve(page),
-        close: () => Promise.resolve(),
+        close: () => (s.hang ? new Promise<void>(() => undefined) : Promise.resolve()),
       });
     },
+    close: () => ((log.browserClosed += 1), Promise.resolve()),
   };
   return { browser, transport, log };
 }
@@ -315,8 +341,66 @@ describe("the click observer: guards that need no browser to test", () => {
       expect(inspect, clause).toContain(clause);
   });
 
+  it("refuses a frame's document during a click and a document on another site, and answers the page's own", async () => {
+    const seen: { sub?: boolean; away?: boolean; own?: boolean } = {};
+    const { o } = observer({
+      inspect: { a1: OK },
+      during: async (_b, request) => {
+        seen.sub = (
+          await request({ url: "https://site.example/xgetform?q=secret", from: "sub" })
+        ).aborted;
+        seen.away = (await request({ url: "https://redirected.example/landing" })).aborted;
+        seen.own = (await request({ url: "https://site.example/next" })).aborted;
+      },
+    });
+    const r = clicksOf(await o.observe(INPUT([target("a1")])));
+    expect(seen).toEqual({ sub: true, away: true, own: false });
+    expect(r.clicks[0]?.refusedNavigation).toEqual(["site.example", "redirected.example"]);
+  });
+
   it("finds the consent link outside forms only", () => {
     expect(findLinkByText("Accept")).toContain('!a.closest("form")');
+  });
+});
+
+describe("the click observer: a page that never returns", () => {
+  function hung(extra: { abandonBrowser?: () => Promise<void> } = {}) {
+    const fake = fakeBrowser({ inspect: { a1: OK }, hang: true });
+    const o = createClickObserver({
+      getBrowser: () => Promise.resolve(fake.browser as never),
+      transport: fake.transport,
+      now: Date.now,
+      reserve: () => undefined,
+      settleMs: 0,
+      limitMs: 40,
+      closeMs: 30,
+      ...extra,
+    });
+    return { o, ...fake };
+  }
+
+  it("closes the browser itself when a page in use will not close at the limit", async () => {
+    const abandon = vi.fn(() => Promise.resolve());
+    const { o } = hung({ abandonBrowser: abandon });
+    expect(await o.observe(INPUT([target("a1")]))).toMatchObject({
+      unchecked: expect.stringContaining("longer than"),
+    });
+    expect(abandon).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves the browser alone when the pages close", async () => {
+    const abandon = vi.fn(() => Promise.resolve());
+    const fake = fakeBrowser({ inspect: { a1: OK } });
+    const o = createClickObserver({
+      getBrowser: () => Promise.resolve(fake.browser as never),
+      transport: fake.transport,
+      now: Date.now,
+      reserve: () => undefined,
+      settleMs: 0,
+      abandonBrowser: abandon,
+    });
+    clicksOf(await o.observe(INPUT([target("a1")])));
+    expect(abandon).not.toHaveBeenCalled();
   });
 });
 

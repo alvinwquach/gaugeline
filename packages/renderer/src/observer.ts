@@ -71,6 +71,8 @@ export interface ObserverDeps {
    * browser, which ends every process it started. A later render starts a new one.
    */
   abandonBrowser?: () => Promise<void>;
+  /** How long a context is given to close at the limit before the browser goes. Default 2 s. */
+  closeMs?: number;
 }
 
 /** A page's own limits for one click: it is loaded again for each. */
@@ -476,7 +478,9 @@ export function createClickObserver(deps: ObserverDeps): EventObserver {
           // (a page that never returns cannot hold the run up: if one will not close, the browser goes).
           stop.stopped = true;
           void (async () => {
-            const closed = await Promise.all([...open].map((o) => closeWithin(o, 2000)));
+            const closed = await Promise.all(
+              [...open].map((o) => closeWithin(o, deps.closeMs ?? 2000)),
+            );
             if (closed.includes(false))
               await Promise.race([deps.abandonBrowser?.().catch(() => undefined), sleep(5000)]);
             resolve({

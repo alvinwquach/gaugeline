@@ -42,6 +42,20 @@ export interface OpenOptions {
   scripts?: readonly string[];
 }
 
+/**
+ * An address as the browser's form report and its request both can be compared: without the fragment (the
+ * report keeps it, the request does not). An `%23` is part of the query, not a fragment, and stays.
+ */
+export function withoutFragment(address: string): string {
+  try {
+    const url = new URL(address);
+    url.hash = "";
+    return url.href;
+  } catch {
+    return address;
+  }
+}
+
 export interface OpenedPage {
   context: Playwright.BrowserContext;
   page: Playwright.Page;
@@ -81,7 +95,7 @@ export async function openPage(b: Playwright.Browser, options: OpenOptions): Pro
       } catch {
         frame = "popup";
       }
-      if (req.resourceType() === "document" && formNavigations.has(req.url())) {
+      if (req.resourceType() === "document" && formNavigations.has(withoutFragment(req.url()))) {
         // The browser said this document is the answer to a form being submitted (whatever realm the form
         // is in): a form is never submitted, so nothing is asked for it.
         gate.note("form");
@@ -168,7 +182,7 @@ export async function openPage(b: Playwright.Browser, options: OpenOptions): Pro
             event.reason.startsWith("formSubmission") &&
             event.url
           )
-            formNavigations.add(event.url);
+            formNavigations.add(withoutFragment(event.url));
         }) as never,
       );
     } catch {

@@ -490,7 +490,7 @@ page goes to a Gaugeline service or any other place.
   goes through the same gate, a link to another site is not followed and a navigation that would leave the site
   (a redirect included) is refused and never asked for, every click gets a fresh browser context with no cookie
   or storage from an earlier one, and an analytics request is read for its event name and parameters and
-  dropped. A link on your own site that the plan lists is clicked as a `GET` whatever it is called.
+  dropped. A link on your own site that the plan lists is clicked as a `GET` whatever it is called. A page's own script can still send the browser to another address on your site during a click (`location.href = '/x?id=1'`, a meta refresh, a `fetch` with a query): those are plain `GET` requests behind the same gate, no different from the page loading, and Gaugeline does not tell them from the page's own behaviour.
 - **What the browser holds.** A fresh context for every page with no cookie, storage, login or permission, and
   an environment with none of your keys. Nothing is clicked, typed or submitted.
 - **What is kept.** The renderer hands back the address the page ended on, its status, its text and links, and

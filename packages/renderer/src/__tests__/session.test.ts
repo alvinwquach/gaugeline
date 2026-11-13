@@ -1,7 +1,7 @@
 import { Readable } from "node:stream";
 import { createEgressGate, type Transport } from "@gaugeline/core";
 import { describe, expect, it, vi } from "vitest";
-import { openPage } from "../session.js";
+import { openPage, withoutFragment } from "../session.js";
 
 /**
  * What the browser is held to, with no browser: the layer that answers each request the page makes (navigations
@@ -106,6 +106,17 @@ describe("a navigation that would leave the page's site is refused, whatever ask
   });
 });
 
+describe("an address without its fragment", () => {
+  it("drops a fragment and keeps the rest, an encoded one included", () => {
+    expect(withoutFragment("https://a.example/p?q=1#frag")).toBe("https://a.example/p?q=1");
+    expect(withoutFragment("https://a.example/p?q=1%23frag")).toBe(
+      "https://a.example/p?q=1%23frag",
+    );
+    expect(withoutFragment("https://a.example/p#")).toBe("https://a.example/p");
+    expect(withoutFragment("not an address#x")).toBe("not an address#x");
+  });
+});
+
 describe("a frame a click made is not asked for", () => {
   it("aborts a frame's document while a click is under way, and answers it before", async () => {
     let clicking = false;
@@ -139,6 +150,26 @@ describe("a form's target is not asked for: the browser says which navigation is
     }
     expect(s.asked).toEqual([]);
     expect(s.gate.state.blocked.form).toBe(2);
+  });
+
+  it("matches a form whose action has a fragment: the browser's report keeps it, the request does not", async () => {
+    const s = setup();
+    await s.open();
+    s.fireCdp({ reason: "formSubmissionGet", url: "https://site.example/xfrag?q=secret#frag" });
+    const route = await s.request({ url: "https://site.example/xfrag?q=secret" });
+    expect(route.abort).toHaveBeenCalled();
+    expect(s.asked).toEqual([]);
+  });
+
+  it("matches a form whose action has a fragment on both sides, and an encoded one that is not a fragment", async () => {
+    const s = setup();
+    await s.open();
+    s.fireCdp({ reason: "formSubmissionGet", url: "https://site.example/a?q=1#x" });
+    s.fireCdp({ reason: "formSubmissionGet", url: "https://site.example/b?q=1%23x#y" });
+    expect((await s.request({ url: "https://site.example/a?q=1#x" })).abort).toHaveBeenCalled();
+    expect((await s.request({ url: "https://site.example/b?q=1%23x" })).abort).toHaveBeenCalled();
+    // `%23` is part of the query: a different address than the one without it.
+    expect((await s.request({ url: "https://site.example/b?q=1" })).fulfill).toHaveBeenCalled();
   });
 
   it("does not take a link for a form, or another address for the same", async () => {

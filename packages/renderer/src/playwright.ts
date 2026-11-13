@@ -60,6 +60,8 @@ export interface PlaywrightRendererOptions {
   settleMs?: number;
   /** The click observation's time limit, in milliseconds. Default 3 minutes. */
   observerLimitMs?: number;
+  /** How long a page is given to close at that limit before the browser is closed. Default 2 seconds. */
+  observerCloseMs?: number;
   now?: () => number;
 }
 
@@ -211,8 +213,7 @@ export function createPlaywrightRenderer(options: PlaywrightRendererOptions): Re
         `the browser at ${located.path} could not start: ${line}`,
         /sandbox|root/i.test(line)
           ? `Run Gaugeline as an ordinary user, not as root: the browser's own sandbox stays on. If ${BROWSER_PATH_VARIABLE} is not what you meant, unset it.`
-          : "Check that the browser runs on its own (for example `chromium --version`), or point " +
-              `${BROWSER_PATH_VARIABLE} at another one.`,
+          : `Check that the browser runs on its own (for example \`chromium --version\`), or point ${BROWSER_PATH_VARIABLE} at another one.`,
       );
     }
   }
@@ -344,6 +345,7 @@ export function createPlaywrightRenderer(options: PlaywrightRendererOptions): Re
         await b?.close().catch(() => undefined);
       },
       ...(options.observerLimitMs === undefined ? {} : { limitMs: options.observerLimitMs }),
+      ...(options.observerCloseMs === undefined ? {} : { closeMs: options.observerCloseMs }),
       ...(options.settleMs === undefined ? {} : { settleMs: options.settleMs }),
     }),
     async availability() {
