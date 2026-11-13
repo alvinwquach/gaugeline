@@ -272,8 +272,14 @@ that opens a connection fails both.
   `application/json` (with `charset=utf-8`, if any); anything else is refused without being read or repeated.
 - **A hard timeout.** 60 seconds at most, whatever the config says, and the request is destroyed when the gateway
   gives up sooner. The answer is read up to 256 KB.
-- **Plain errors.** An error says the host and a status or an error code. It never repeats the answer, the
-  request, an address or a key.
+- **Plain errors, with a class.** An error says the host and a status or an error code. It never repeats the answer,
+  the request, an address or a key. It also carries a class, decided by the status or the error code and never by
+  words: a 5xx, a lost connection (`ECONNREFUSED`, `ECONNRESET`, `ETIMEDOUT`, `EHOSTUNREACH`, `ENETUNREACH`,
+  `ENOTFOUND`, `EAI_AGAIN`, `EPIPE`) and a timeout are an `outage`; 401 and 403 are `bad-key`; 429 is
+  `rate-limited`; 400 and 422 (and a prompt the sender will not send) are `bad-request`; a 3xx is `redirect`; a name
+  that resolves to a private address is `blocked-address`; an answer that is not JSON is `not-json` and one in the
+  wrong shape is `bad-answer`; any other status is `refused` and any other error code is `unclassified`. The
+  [router](#routing-and-escalation) tries a second provider after an `outage` and after nothing else.
 
 The request is a POST of `{ model, prompt, max_output_tokens }` with `Authorization: Bearer <key>`, and the answer is
 `{ text, usage: { input_tokens, output_tokens } }`; the cost is worked out in whole micro-units from a price in
