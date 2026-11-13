@@ -5,6 +5,7 @@ export * from "./config.js";
 export * from "./errors.js";
 export * from "./eval-bridge.js";
 export * from "./gateway.js";
+export * from "./known.js";
 export * from "./model-pins.js";
 export { ApiKey, isUsableKey, scrub } from "./key.js";
 export * from "./recorded.js";

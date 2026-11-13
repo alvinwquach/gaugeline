@@ -188,6 +188,96 @@ describe("the config file", () => {
     },
   );
 
+  describe("a key in no shape anyone knows, in any field, with the variable not set", () => {
+    const UUID = "3f2a9c1e-7b4d-4e8a-9c21-5d6e7f8a9b0c";
+    const HEX_DASH = "0123abcd-4567-89ef-0123-456789abcdef-01234567";
+    const BASE32 = "mfrggzdfmztwq2lknnwg23tpobyxe43u";
+    const UNDER = "k9x2m7_q4w8e1_r5t6y3_u0i2o7";
+    const KEYS = [UUID, HEX_DASH, BASE32, UNDER];
+    const base = JSON.parse(FILE);
+    const files = (k: string) =>
+      [
+        ["a model id", { ...base, tiers: { fast: k } }],
+        ["the second model id", { ...base, tiers: { fast: "small-model", strong: k } }],
+        ["the provider", { ...base, provider: k }],
+        ["the variable name", { ...base, keyEnv: k }],
+        ["a setting name", { ...base, [k]: 1 }],
+        ["a nested name", { ...base, tiers: { fast: "small-model", [k]: "x" } }],
+      ] as const;
+
+    it.each(KEYS)(
+      "refuses %s in every field it could be printed from, and never repeats it",
+      (key) => {
+        for (const [where, content] of files(key)) {
+          let thrown: ByokError | undefined;
+          try {
+            readByokConfig(JSON.stringify(content));
+          } catch (e) {
+            thrown = e as ByokError;
+          }
+          expect(thrown, where).toBeInstanceOf(ByokError);
+          expect(thrown!.message, where).not.toContain(key);
+        }
+      },
+    );
+
+    it("prints a provider or model id that is not on the known list masked: three characters and a length", () => {
+      const config = readByokConfig(
+        JSON.stringify({
+          provider: "acme-ai",
+          keyEnv: "OPENAI_API_KEY",
+          tiers: { fast: "acme-large-2026" },
+        }),
+      );
+      const s = describeByok(config, {}, "cli");
+      expect(s.provider).toBe("acm... (a provider name of 7 characters, not on the known list)");
+      expect(s.tiers.fast).toBe("acm... (a model id of 15 characters, not on the known list)");
+      const text = renderByokStatus(s);
+      expect(text).not.toContain("acme-ai");
+      expect(text).not.toContain("acme-large-2026");
+    });
+
+    it("prints a known provider and a known model id as written", () => {
+      const config = readByokConfig(
+        JSON.stringify({
+          provider: "example",
+          keyEnv: "EXAMPLE_API_KEY",
+          tiers: { fast: "example-small", strong: "example-large-2026-01-15" },
+        }),
+      );
+      const s = describeByok(config, {}, "cli");
+      expect(s).toMatchObject({
+        provider: "example",
+        tiers: { fast: "example-small", strong: "example-large-2026-01-15" },
+      });
+    });
+
+    it("never prints an accepted custom value in full, in the status, the text or the JSON, even if it has a key's own shape", () => {
+      // Accepted by the shape rule (words and short numbers), so only the mask stands between it and the screen.
+      const custom = "abc1-def2-ghi3-jkl4-mno5";
+      const config = readByokConfig(
+        JSON.stringify({
+          ...base,
+          provider: "recorded",
+          keyEnv: undefined,
+          tiers: { fast: custom },
+        }),
+      );
+      const s = describeByok(config, {}, "worker");
+      for (const shown of [JSON.stringify(s), renderByokStatus(s)])
+        expect(shown).not.toContain(custom);
+    });
+  });
+
+  it("says mode 3 is parked for a mode 3 setting nested in the file too, tiers.mode included", () => {
+    for (const nested of [
+      { ...JSON.parse(FILE), tiers: { fast: "small-model", mode: "managed" } },
+      { ...JSON.parse(FILE), extra: { deeper: { vault: 1 } } },
+      { ...JSON.parse(FILE), list: [{ metered: true }] },
+    ])
+      expect(() => readByokConfig(JSON.stringify(nested))).toThrow(MODE_3_MESSAGE);
+  });
+
   it("refuses a file over 20000 characters before parsing it", () => {
     expect(() => readByokConfig(`{"provider":"x"${" ".repeat(20_001)}}`)).toThrow(/20000/);
   });
@@ -198,7 +288,7 @@ describe("describeByok: what is set up, never the key", () => {
 
   it("says the key is set, by name, and shows nothing of its value", () => {
     const s = describeByok(config, { [KEY_NAME]: ODD_KEY }, "cli");
-    expect(s).toMatchObject({ mode: "cli", provider: "test", keyEnv: KEY_NAME, keySet: true });
+    expect(s).toMatchObject({ mode: "cli", keyEnv: KEY_NAME, keySet: true });
     expect(JSON.stringify(s)).not.toContain(ODD_KEY);
     expect(renderByokStatus(s)).not.toContain(ODD_KEY);
   });

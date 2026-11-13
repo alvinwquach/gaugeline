@@ -24,7 +24,7 @@ const SHAPED = ["sk", "live", "q".repeat(24)].join("_");
 const SETTINGS = {
   provider: "example",
   keyEnv: "EXAMPLE_API_KEY",
-  tiers: { fast: "small-model", strong: "large-model" },
+  tiers: { fast: "example-small", strong: "example-large" },
 };
 
 let dir: string;
@@ -68,7 +68,7 @@ describe("gaugeline llm", () => {
     const r = await run(["llm"], { EXAMPLE_API_KEY: KEY_VALUE });
     expect(r.code).toBe(0);
     expect(r.out).toContain("key: EXAMPLE_API_KEY is set (its value is never shown)");
-    expect(r.out).toContain("fast: small-model");
+    expect(r.out).toContain("fast: example-small");
     expect(r.out).toContain("The call runs in: this command line");
     expect(r.out + r.err).not.toContain(KEY_VALUE);
   });
@@ -168,6 +168,65 @@ describe("gaugeline llm", () => {
       expect(r.err).toContain("Mode 3 (a key Gaugeline holds for you, with metering) is parked");
     },
   );
+
+  it.each([
+    ["a UUID", "3f2a9c1e-7b4d-4e8a-9c21-5d6e7f8a9b0c"],
+    ["hex with dashes", "0123abcd-4567-89ef-0123-456789abcdef-01234567"],
+    ["base32", "mfrggzdfmztwq2lknnwg23tpobyxe43u"],
+    ["underscores", "k9x2m7_q4w8e1_r5t6y3_u0i2o7"],
+  ])(
+    "never prints %s pasted anywhere in the file, with the variable not set, in any output mode",
+    async (_n, key) => {
+      const fields = [
+        { ...SETTINGS, tiers: { fast: key } },
+        { ...SETTINGS, provider: key },
+        { ...SETTINGS, keyEnv: key },
+        { ...SETTINGS, [key]: 1 },
+        { ...SETTINGS, tiers: { fast: "example-small", [key]: "x" } },
+      ];
+      for (const content of fields) {
+        write("gaugeline.llm.json", content);
+        for (const extra of [[], ["--json"], ["--verbose"], ["--json", "--verbose"]]) {
+          const r = await run(["llm", ...extra]);
+          expect(r.code, `${JSON.stringify(Object.keys(content))} ${extra.join(" ")}`).toBe(2);
+          expect(r.out + r.err).not.toContain(key);
+        }
+      }
+    },
+  );
+
+  it("prints a provider or a model that is not on the known list as three characters and a length, in every mode", async () => {
+    write("gaugeline.llm.json", {
+      provider: "acme-ai",
+      keyEnv: "OPENAI_API_KEY",
+      tiers: { fast: "acme-large-2026" },
+    });
+    for (const extra of [[], ["--json"], ["--verbose"]]) {
+      const r = await run(["llm", ...extra], { OPENAI_API_KEY: KEY_VALUE });
+      expect(r.code).toBe(0);
+      expect(r.out + r.err).not.toContain("acme-ai");
+      expect(r.out + r.err).not.toContain("acme-large-2026");
+      expect(r.out).toContain("acm...");
+      expect(r.out + r.err).not.toContain(KEY_VALUE);
+    }
+  });
+
+  it.each(["MYPROVIDER_API_KEY", "GH_API_KEY", "TWILIO_API_KEY", "GITHUB_TOKEN", "PATH"])(
+    "refuses %s as the key variable without looking at it (only a known variable is read)",
+    async (name) => {
+      write("gaugeline.llm.json", { ...SETTINGS, keyEnv: name });
+      const r = await run(["llm", "--json"], { [name]: KEY_VALUE });
+      expect(r.code).toBe(2);
+      expect(r.out + r.err).not.toContain(KEY_VALUE);
+    },
+  );
+
+  it("says mode 3 is parked for tiers.mode", async () => {
+    write("gaugeline.llm.json", { ...SETTINGS, tiers: { fast: "example-small", mode: "managed" } });
+    const r = await run(["llm"]);
+    expect(r.code).toBe(2);
+    expect(r.err).toContain("Mode 3 (a key Gaugeline holds for you, with metering) is parked");
+  });
 
   it("takes no word on the line: the file is named with --llm-config", () => {
     expect(parseCliArgs(["llm", "settings.json"]).kind).toBe("error");

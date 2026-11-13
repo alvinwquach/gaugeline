@@ -9,6 +9,7 @@ import { redactForTrace } from "../agent-trace.js";
 import { parseRecording } from "../evals/replay.js";
 import { parseGatewayConfig } from "./config.js";
 import { ModelGatewayError, type GatewayErrorCode } from "./errors.js";
+import { shownProvider } from "./known.js";
 import { ApiKey, isUsableKey } from "./key.js";
 import {
   MAX_ANSWER_CHARS,
@@ -62,7 +63,10 @@ export function createGateway(options: GatewayOptions): ModelGateway {
   }
   const adapter = providers.get(config.provider);
   if (!adapter)
-    return fail("unknown-provider", `There is no adapter for the provider "${config.provider}".`);
+    return fail(
+      "unknown-provider",
+      `There is no adapter for the provider ${shownProvider(config.provider)}.`,
+    );
   if (adapter.needsKey && config.keyEnv === undefined)
     return fail(
       "bad-config",

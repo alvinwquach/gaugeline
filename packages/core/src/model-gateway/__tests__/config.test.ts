@@ -72,7 +72,17 @@ describe("a config with a key in it", () => {
     "PATH",
     "HOME",
     "DATABASE_URL",
-    "MODEL",
+    "GH_API_KEY",
+    "TWILIO_API_KEY",
+    "SENDGRID_API_KEY",
+    "CLOUDFLARE_API_KEY",
+    "VERCEL_API_KEY",
+    "SHOPIFY_API_KEY",
+    "MAILGUN_API_KEY",
+    "LINEAR_API_KEY",
+    "STRIPESECRET_API_KEY",
+    "MYPROVIDER_API_KEY",
+    "MY_CUSTOM_API_KEY",
     "EXAMPLE_KEY",
     "EXAMPLE_API_TOKEN",
     "STRIPE_API_KEY",
@@ -88,10 +98,10 @@ describe("a config with a key in it", () => {
 
   it.each([
     "EXAMPLE_API_KEY",
-    "MYPROVIDER_API_KEY",
-    "A_API_KEY",
-    "OPEN_MODEL_API_KEY",
-    "AZURE_MODEL_API_KEY",
+    "ANTHROPIC_API_KEY",
+    "OPENAI_API_KEY",
+    "GAUGELINE_MODEL_API_KEY",
+    "MISTRAL_API_KEY",
   ])("accepts %s as keyEnv", (name) => {
     expect(parseGatewayConfig({ ...GOOD, keyEnv: name }).ok).toBe(true);
   });

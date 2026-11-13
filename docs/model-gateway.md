@@ -36,21 +36,21 @@ code, not in a file.
 {
   "provider": "example",
   "keyEnv": "EXAMPLE_API_KEY",
-  "tiers": { "fast": "small-model", "strong": "large-model-2026-01" },
+  "tiers": { "fast": "example-small", "strong": "example-large-2026-01-15" },
   "timeoutMs": 30000,
   "maxInputChars": 50000,
   "maxOutputTokens": 1024
 }
 ```
 
-| Setting           | Meaning                                                                                                                                                    |
-| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `provider`        | a lower-case name; the gateway needs an adapter registered under it                                                                                        |
-| `keyEnv`          | the name of the variable that holds your key: capitals, ending in `_API_KEY`. Any other name (`GITHUB_TOKEN`, `PATH`) or a pasted key is refused           |
-| `tiers`           | a model id for `fast`, `strong` or both: lower case letters, digits, dots, colons and dashes, up to 64, and no run of 20 letters or digits (that is a key) |
-| `timeoutMs`       | 100 to 120000, default 30000: the call is stopped after this long                                                                                          |
-| `maxInputChars`   | 1 to 100000, default 100000: a longer prompt is refused and nothing is sent                                                                                |
-| `maxOutputTokens` | 1 to 8192, default 1024                                                                                                                                    |
+| Setting           | Meaning                                                                                                                                                                                                             |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `provider`        | lower case words joined by dashes; the gateway needs an adapter registered under it (today `example` and `recorded`)                                                                                                |
+| `keyEnv`          | the variable that holds your key, from a closed list kept in the code (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `EXAMPLE_API_KEY` and others). Any other name, or a pasted key, is refused. There are no custom names |
+| `tiers`           | a model id for `fast`, `strong` or both: lower case words and short version numbers joined by dashes, dots or colons (`gpt-4o-mini-2024-07-18`). A UUID, hex, base32 or any key-like value is refused               |
+| `timeoutMs`       | 100 to 120000, default 30000: the call is stopped after this long                                                                                                                                                   |
+| `maxInputChars`   | 1 to 100000, default 100000: a longer prompt is refused and nothing is sent                                                                                                                                         |
+| `maxOutputTokens` | 1 to 8192, default 1024                                                                                                                                                                                             |
 
 The file is strict. A setting the page does not know (`apiKey`, `token`, `host`, `baseUrl`, `allowPrivate`) is an
 error, and an error says where the problem is and never repeats what was written there, because the value may
@@ -112,15 +112,21 @@ it ran, also when the key is not set.
 ```text title=Setup
 Model setup (mode 1)
 provider: example
-fast: small-model
-strong: large-model
+fast: example-small
+strong: example-large
 key: EXAMPLE_API_KEY is set (its value is never shown)
 The call runs in: this command line, in your own process, with your own key.
 Gaugeline keeps no key: it reads yours from your environment when a call is made, and prints or logs none.
 This sent nothing.
 ```
 
-The file is refused if it holds anything that looks like a key, a host, or a setting it does not know. The gateway
+The file is refused if it holds anything that looks like a key, a host, or a setting it does not know. What a file
+says is never repeated back unless it is on a closed list kept in the code: a provider, a model id and a key variable
+are printed as written only if they are known (`example`, `example-small`, `OPENAI_API_KEY`). Any other provider or
+model id is printed as its first three characters and its length, and an unknown setting as "setting 2". A key
+variable that is not on the list is refused without being shown or read, because a deny list could never be complete.
+To use another provider's variable, add it to the list in `known.ts`, the way a provider host is added to the
+sending module. The gateway
 reads the variable when a call is made and never keeps it, and it writes no file, so unsetting the variable stops
 the next call. What leaves your machine in each mode is [AG-23](https://github.com/alvinwquach/gaugeline/blob/main/docs/adr/0014-agent-safety-model.md)'s page.
 

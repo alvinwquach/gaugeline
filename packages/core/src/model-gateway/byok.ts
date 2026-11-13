@@ -9,6 +9,7 @@ import { secretsInValue, stringsOf } from "../secrets.js";
 import { parseGatewayConfig } from "./config.js";
 import { createGateway } from "./gateway.js";
 import { isUsableKey } from "./key.js";
+import { shownModelId, shownProvider } from "./known.js";
 import { RECORDED_PROVIDER } from "./recorded.js";
 import type { GatewayConfig, GatewayConfigInput, GatewayOptions, ModelGateway } from "./types.js";
 
@@ -32,6 +33,15 @@ const MODE_3_SETTINGS: ReadonlySet<string> = new Set([
 ]);
 export const MODE_3_MESSAGE =
   "Mode 3 (a key Gaugeline holds for you, with metering) is parked with billing. Only your own key is supported: mode 1, the command line, and mode 2, your own worker.";
+
+/** Whether any object in the file, at any depth up to four, has a setting that asks for mode 3. */
+function asksForMode3(value: unknown, depth = 0): boolean {
+  if (value === null || typeof value !== "object" || depth > 4) return false;
+  if (Array.isArray(value)) return value.some((v) => asksForMode3(v, depth + 1));
+  return Object.entries(value).some(
+    ([name, v]) => MODE_3_SETTINGS.has(name.toLowerCase()) || asksForMode3(v, depth + 1),
+  );
+}
 
 export class ByokError extends Error {
   readonly code: "mode-not-supported" | "bad-config";
@@ -62,10 +72,7 @@ export function readByokConfig(
   } catch {
     throw new ByokError("bad-config", `${LLM_CONFIG_FILE} is not valid JSON.`);
   }
-  if (raw !== null && typeof raw === "object" && !Array.isArray(raw))
-    for (const name of Object.keys(raw))
-      if (MODE_3_SETTINGS.has(name.toLowerCase()))
-        throw new ByokError("mode-not-supported", MODE_3_MESSAGE);
+  if (asksForMode3(raw)) throw new ByokError("mode-not-supported", MODE_3_MESSAGE);
   // The value of the variable the file names is a key whatever its shape: it may be in no field of the file.
   const named =
     raw !== null && typeof raw === "object" ? (raw as { keyEnv?: unknown }).keyEnv : undefined;
@@ -109,8 +116,11 @@ export function describeByok(
   const needsKey = config.provider !== RECORDED_PROVIDER;
   return {
     mode,
-    provider: shown(config.provider),
-    tiers: Object.fromEntries(Object.entries(config.tiers).map(([t, m]) => [t, shown(m)])),
+    // Only a known provider or model id is printed as written; anything else is masked, whatever it looks like.
+    provider: shown(shownProvider(config.provider)),
+    tiers: Object.fromEntries(
+      Object.entries(config.tiers).map(([t, m]) => [t, shown(shownModelId(config.provider, m))]),
+    ),
     keyEnv: keyEnv === null ? null : shown(keyEnv),
     keySet: !needsKey ? null : keyEnv === null ? false : isUsableKey(own),
   };
