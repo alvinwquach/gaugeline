@@ -96,6 +96,7 @@ export const UNLISTED: NavPage[] = [
   { slug: "security/untrusted-content", title: "Text from the sites you check" },
   { slug: "agent-safety", title: "Agents: what they can and cannot do" },
   { slug: "agent-evals", title: "Agent evals: prove an agent before it ships" },
+  { slug: "model-gateway", title: "The model gateway: one way to reach a model" },
   { slug: "approvals-digest", title: "The pending-approvals digest" },
   { slug: "regression-watcher", title: "The regression watcher" },
   { slug: "field-findings-miner", title: "The field-findings miner" },
