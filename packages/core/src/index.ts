@@ -1773,3 +1773,4 @@ export {
   stripAnsi,
 } from "./untrusted-output.js";
 export type { OutputFormat, SafeText } from "./untrusted-output.js";
+export * from "./fixes/index.js";

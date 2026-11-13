@@ -135,6 +135,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze<FlagDef[]>([
       "tags",
       "query",
       "emails",
+      "propose",
     ],
   },
   {
@@ -460,7 +461,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze<FlagDef[]>([
     description:
       "The site a plan is checked against (a preview); the site emails link to; or the site to ask for --routes",
     since: "0.2.0",
-    commands: ["plan", "check", "emails"],
+    commands: ["plan", "check", "emails", "propose"],
   },
   {
     name: "annotate",
@@ -592,8 +593,9 @@ export const FLAGS: readonly FlagDef[] = Object.freeze<FlagDef[]>([
     type: "string",
     description:
       "snapshot: the file (default before.json). query --page: the folder. brief: the file. handoff, audit: the folder",
+    commandDescriptions: { propose: "The proposals file (default gaugeline.proposals.json)" },
     since: "0.2.0",
-    commands: ["snapshot", "query", "brief", "handoff", "audit"],
+    commands: ["snapshot", "query", "brief", "handoff", "audit", "propose"],
   },
   {
     name: "business",
@@ -698,6 +700,38 @@ export const FLAGS: readonly FlagDef[] = Object.freeze<FlagDef[]>([
     env: "GAUGELINE_GATE_BLOCK",
     since: "0.2.0",
     commands: ["deploy-gate"],
+  },
+  {
+    name: "fixes",
+    type: "boolean",
+    description:
+      "propose: turn fix proposals on (they are off by default); nothing is sent, the diffs are written to a file",
+    env: "GAUGELINE_FIXES",
+    since: "0.2.0",
+    commands: ["propose"],
+  },
+  {
+    name: "repo",
+    type: "string",
+    description: "propose: the project's folder on this computer (a checkout of its repository)",
+    since: "0.2.0",
+    commands: ["propose"],
+  },
+  {
+    name: "plan",
+    type: "string",
+    description:
+      "propose: the launch plan (CSV); with --base, each old address that does not redirect gets a proposal",
+    since: "0.2.0",
+    commands: ["propose"],
+  },
+  {
+    name: "repository",
+    type: "string",
+    description:
+      "propose: the repository's name on GitHub (owner/name), written into each proposal; optional",
+    since: "0.2.0",
+    commands: ["propose"],
   },
   {
     name: "dry-run",

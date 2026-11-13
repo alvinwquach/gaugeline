@@ -45,6 +45,7 @@ export const SUBCOMMANDS = [
   "changes",
   "receipt",
   "deploy-gate",
+  "propose",
 ] as const;
 export type CliCommand = "check" | (typeof SUBCOMMANDS)[number];
 
@@ -265,6 +266,20 @@ export type ParsedArgs =
       dryRun: boolean;
       force: boolean;
       dns: boolean;
+      allowPrivate: boolean;
+      verbose: boolean;
+      quiet: boolean;
+    }
+  | {
+      kind: "propose";
+      /** A saved run (--json output), when proposals are wanted for its findings. */
+      run?: string;
+      repo: string;
+      plan?: string;
+      base?: string;
+      repository?: string;
+      out: string;
+      fixes: boolean;
       allowPrivate: boolean;
       verbose: boolean;
       quiet: boolean;
@@ -1314,6 +1329,60 @@ export function parseCliArgs(
     return {
       kind: "cutover",
       before: values.before,
+      allowPrivate: values["allow-private"] === true,
+      verbose,
+      quiet: values.quiet === true,
+    };
+  }
+  if (command === "propose") {
+    const problem = (message: string, hint: string): ParsedArgs => ({
+      kind: "error",
+      message,
+      hint,
+      verbose,
+    });
+    const text = (name: string): string | undefined =>
+      typeof values[name] === "string" && values[name] !== ""
+        ? (values[name] as string)
+        : undefined;
+    const repo = text("repo");
+    const plan = text("plan");
+    const base = text("base");
+    const repository = text("repository");
+    if (positionals.length > 1)
+      return problem(
+        `gaugeline propose takes one saved run, got ${positionals.length}: ${positionals.join(", ")}.`,
+        "Save a run with gaugeline <address> --json > run.json, then gaugeline propose run.json --repo <folder> --fixes.",
+      );
+    if (repo === undefined)
+      return problem(
+        "gaugeline propose needs the project's folder: --repo <folder>.",
+        "For example: gaugeline propose run.json --repo ../client-site --fixes",
+      );
+    if (plan !== undefined && base === undefined)
+      return problem(
+        "--plan needs the preview to check it against: add --base <preview address>.",
+        "For example: gaugeline propose --plan plan.csv --base https://preview.example.com --repo . --fixes",
+      );
+    if (positionals[0] === undefined && plan === undefined)
+      return problem(
+        "gaugeline propose needs findings to answer: a saved run (run.json) or --plan with --base.",
+        "Save a run with gaugeline <address> --json > run.json.",
+      );
+    if (repository !== undefined && !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository))
+      return problem(
+        `--repository "${repository}" is not owner/name.`,
+        "For example: --repository studio/lantern-books",
+      );
+    return {
+      kind: "propose",
+      ...(positionals[0] !== undefined ? { run: positionals[0] } : {}),
+      repo,
+      ...(plan !== undefined ? { plan } : {}),
+      ...(base !== undefined ? { base } : {}),
+      ...(repository !== undefined ? { repository } : {}),
+      out: text("out") ?? "gaugeline.proposals.json",
+      fixes: values.fixes === true,
       allowPrivate: values["allow-private"] === true,
       verbose,
       quiet: values.quiet === true,
