@@ -24,7 +24,7 @@ describe("webhook-timestamp-unbounded: fixtures", () => {
       checkId: ID,
       severity: "medium",
       evidence:
-        "app/api/revalidate/route.ts:13: the signed timestamp is read but never compared with the time now.",
+        "app/api/revalidate/route.ts:17: the signed timestamp is read but never compared with the time now.",
     });
   });
 

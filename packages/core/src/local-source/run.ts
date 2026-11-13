@@ -6,6 +6,8 @@ import { sitemapWhileIndexingOff } from "../checks/static/sitemap-while-indexing
 import { sanityCdnTaggedReads } from "../checks/static/sanity-cdn-tagged-reads.js";
 import { webhookSignatureComparedPlainly } from "../checks/static/webhook-signature-compared-plainly.js";
 import { webhookTimestampUnbounded } from "../checks/static/webhook-timestamp-unbounded.js";
+import { webhookBodyReadUnsafely } from "../checks/static/webhook-body-read-unsafely.js";
+import { webhookLogsPrivateValues } from "../checks/static/webhook-logs-private-values.js";
 import { webhookMissingSecretStatus } from "../checks/static/webhook-missing-secret-status.js";
 import { CheckRegistry, type Check } from "../model.js";
 import { buildResult, type Result } from "../result.js";
@@ -68,6 +70,8 @@ export const STATIC_CHECKS: readonly Check<LocalSourceInput>[] = [
   webhookTimestampUnbounded,
   personalDataInAnalytics,
   formValuesInLogs,
+  webhookBodyReadUnsafely,
+  webhookLogsPrivateValues,
 ];
 
 export function createStaticRegistry(): CheckRegistry {
