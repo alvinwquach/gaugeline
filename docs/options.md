@@ -759,10 +759,10 @@ Read a site's source folder (a Next.js app router project) and run the checks
 that look at code, not at a page: what the project says about search (a page's
 robots setting that replaces the layout's noindex, a sitemap on a site set to
 stay out of search, robots.txt blocking a page that carries noindex), and the
-Sanity publish webhook and the cache. It reads files and nothing else: it makes
-no request, runs no code, never follows a link out of the folder, and never opens
-.env or other secret-looking files. A check that cannot tell says so; it never
-passes.
+Sanity publish webhook and the cache. It reads files and nothing else: it
+makes no request, runs no code, never follows a link out of the folder, and
+never opens .env or other secret-looking files. A check that cannot tell says
+so; it never passes.
 
 Options:
       --ci         Exit 1 when a "Fix this first" finding is found [CI]
