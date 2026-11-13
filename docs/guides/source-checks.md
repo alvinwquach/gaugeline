@@ -37,6 +37,8 @@ Read 5 files in ./harbour-bar-preview. No request was made and no code was run.
 ✓ webhook-url-hardcoded
 ✓ webhook-signature-compared-plainly
 ✓ webhook-timestamp-unbounded
+✓ personal-data-in-analytics
+✓ form-values-in-logs
 
 2 to look at, 2 to fix first.
 ```
