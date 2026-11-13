@@ -72,6 +72,10 @@ export const NAV: NavGroup[] = [
     pages: [
       { slug: "mcp", title: "MCP server" },
       { slug: "mcp-install", title: "Add the MCP server to your assistant" },
+      {
+        slug: "ag-25-agent-client-compat",
+        title: "Agent clients: what an MCP client needs to connect",
+      },
       { slug: "writes", title: "What it can and can't write" },
       { slug: "private-datasets", title: "Private datasets" },
       { slug: "privacy", title: "Privacy and safety" },
