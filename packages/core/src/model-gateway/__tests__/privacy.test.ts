@@ -44,11 +44,18 @@ import {
 } from "./privacy-fixtures.js";
 
 const UUID = "a1000000-0000-4000-8000-0000000000a1";
+/** The gate with its character allowlist off: what the redaction rules do on their own, as the second layer. */
+const LAYER_TWO = { ...DEFAULT_PAYLOAD_PARTS, allowed: () => true };
+function two(i: unknown) {
+  const r = buildPayloadWith(i, LAYER_TWO);
+  if (!r.ok) throw new Error(`refused: ${r.reason} at ${r.path}`);
+  return r;
+}
 const finding = (over: Record<string, unknown> = {}) => ({
   id: "f-1",
   severity: "high",
   title: "An image has no alternative text",
-  snippet: '<img src="/menu.png">',
+  snippet: "The image tag has no alt text",
   ...over,
 });
 const input = (over: Record<string, unknown> = {}): ModelInput =>
@@ -85,7 +92,7 @@ describe("the payload", () => {
           id: "f-1",
           severity: "high",
           title: "An image has no alternative text",
-          snippet: '<img src="/menu.png">',
+          snippet: "The image tag has no alt text",
         },
       ],
       ids: [],
@@ -95,7 +102,7 @@ describe("the payload", () => {
   it("is the same text for the same input, and leaves the input as it was", () => {
     const i = Object.freeze(input({ findings: Object.freeze([Object.freeze(finding())]) }));
     expect(sent(i).payload).toBe(sent(i).payload);
-    expect(i.findings![0]!.snippet).toBe('<img src="/menu.png">');
+    expect(i.findings![0]!.snippet).toBe("The image tag has no alt text");
   });
 
   it("counts what it sent and says it redacted nothing when there was nothing to redact", () => {
@@ -412,10 +419,16 @@ describe("redaction, one kind at a time", () => {
   it.each(REDACTION_KINDS)("takes %s out, counts it, and never records the value", (kind) => {
     const fx = KIND_FIXTURES[kind];
     for (const where of ["snippet", "title"] as const) {
-      const r = sent(input({ findings: [finding({ [where]: fx.text })] }));
+      const i = input({ findings: [finding({ [where]: fx.text })] });
+      // The rule on its own (the allowlist off): it takes the value out and counts it.
+      const r = two(i);
       expect(r.payload, `${kind} in a ${where}`).not.toContain(fx.value);
       expect(r.record.redactions[kind], `${kind} in a ${where}`).toBeGreaterThanOrEqual(1);
       expect(JSON.stringify(r.record)).not.toContain(fx.value);
+      // The whole gate: the value does not go, whichever layer stops it (the allowlist withholds markup and code).
+      const whole = sent(i);
+      expect(whole.payload, `${kind} in a ${where}, whole gate`).not.toContain(fx.value);
+      expect(JSON.stringify(whole.record)).not.toContain(fx.value);
     }
   });
 
@@ -449,8 +462,28 @@ describe("redaction, one kind at a time", () => {
     ["localhost with a port", "runs on localhost:3000", "network-address"],
     ["a private host name", "calls db.internal:5432", "network-address"],
   ] as const)("redacts %s", (_, text, kind) => {
-    const r = sent(input({ findings: [finding({ snippet: text })] }));
+    const i = input({ findings: [finding({ snippet: text })] });
+    const r = two(i);
     expect(r.record.redactions[kind]).toBeGreaterThanOrEqual(1);
+    const whole = sent(i).payload;
+    for (const v of [
+      STRIPE_KEY,
+      GITHUB_TOKEN,
+      "eyJzdWIi",
+      "demo-token-value",
+      "abcdef1234567890xyz",
+    ])
+      expect(whole).not.toContain(v);
+    for (const v of [
+      "plainvalue123",
+      CARD_BARE,
+      "WEST",
+      "west",
+      "a.b+menu",
+      "7946",
+      "abc123def456ghi789",
+    ])
+      expect(whole).not.toContain(v);
     for (const v of [
       STRIPE_KEY,
       GITHUB_TOKEN,
@@ -506,7 +539,7 @@ describe("redaction, one kind at a time", () => {
   });
 
   it("counts each value once, across titles and snippets", () => {
-    const { record } = sent(
+    const { record } = two(
       input({
         findings: [
           finding({ title: `Mail ${EMAIL}`, snippet: `${EMAIL} and ${PHONE}` }),
@@ -519,8 +552,8 @@ describe("redaction, one kind at a time", () => {
 
   it("applies the rules in a fixed order, hidden characters first, and phone last", () => {
     expect([...REDACTION_KINDS]).toEqual([
-      "encoding",
       "hidden-characters",
+      "encoding",
       "private-key",
       "url-credentials",
       "cookie",
@@ -592,9 +625,14 @@ describe("edge cases", () => {
 
   it("keeps a snippet that is itself JSON as text and redacts the secret inside it", () => {
     const nested = JSON.stringify({ a: { b: [{ token: "plain-token-value-123" }] } });
-    const r = sent(input({ findings: [finding({ snippet: nested })] }));
+    const i = input({ findings: [finding({ snippet: nested })] });
+    const r = two(i);
     expect(r.payload).not.toContain("plain-token-value-123");
     expect(r.record.redactions["credential-field"]).toBeGreaterThanOrEqual(1);
+    // Whole gate: braces, brackets and quotes are code characters, so the snippet is withheld, not cleaned.
+    const whole = sent(i);
+    expect(whole.payload).not.toContain("plain-token-value-123");
+    expect(whole.record.withheld).toBe(1);
   });
 
   it("finishes in time on text built to make a pattern back up", () => {
@@ -637,9 +675,11 @@ describe("edge cases", () => {
 
   it("reads a Cyrillic look-alike inside a word that has Latin letters as the Latin letter", () => {
     const cyr = String.fromCodePoint(0x0430);
-    const r = sent(input({ findings: [finding({ snippet: `p${cyr}ssword=hunter2hunter2` })] }));
+    const i = input({ findings: [finding({ snippet: `p${cyr}ssword=hunter2hunter2` })] });
+    const r = two(i);
     expect(r.payload).not.toContain("hunter2hunter2");
     expect(r.record.redactions["credential-field"]).toBe(1);
+    expect(sent(i).payload).not.toContain("hunter2hunter2");
     // A word that is wholly Cyrillic is left alone: it is not a disguise, it is a language.
     const word = String.fromCodePoint(0x043f, 0x0430, 0x0440, 0x043e, 0x043b, 0x044c);
     expect(sent(input({ findings: [finding({ snippet: word })] })).payload).toContain(word);
@@ -654,8 +694,10 @@ describe("edge cases", () => {
   it("reads full-width letters and digits as what they are: an email and a card", () => {
     const wideEmail = "ｂａｋｅｒ＠ｅｘａｍｐｌｅ．ｔｅｓｔ";
     const wideCard = "４１１１ １１１１ １１１１ １１１１";
-    const r = sent(input({ findings: [finding({ snippet: `${wideEmail} ${wideCard}` })] }));
+    const i = input({ findings: [finding({ snippet: `${wideEmail} ${wideCard}` })] });
+    const r = two(i);
     expect(r.record.redactions).toMatchObject({ email: 1, card: 1 });
+    expect(sent(i).payload).not.toContain("４１１１");
     expect(r.payload).not.toContain("ｂａｋｅｒ");
     expect(r.payload).not.toContain("４１１１");
   });
@@ -736,22 +778,14 @@ describe("a whole page is refused, not trimmed", () => {
   it("refuses a snippet with many tags, and lets a short quoted element through", () => {
     const tags = (n: number) => "<b>x</b>".repeat(n);
     expect(refusal(input({ findings: [finding({ snippet: tags(2) })] })).reason).toBe("many-tags");
-    expect(sent(input({ findings: [finding({ snippet: tags(1) })] })).record.snippets).toBe(1);
-    expect(sent(input({ findings: [finding({ snippet: '<img src="/a.png" alt="">' })] })).ok).toBe(
-      true,
-    );
-  });
-
-  it("refuses findings whose snippets together hold many tags", () => {
-    const three = '<a href="/x"><img src="/y"></a>';
-    const ok = Array.from({ length: 2 }, (_, k) => finding({ id: `f-${k}`, snippet: three }));
-    expect(sent(input({ findings: ok })).ok).toBe(true);
-    const r = refusal(
-      input({
-        findings: Array.from({ length: 3 }, (_, k) => finding({ id: `f-${k}`, snippet: three })),
-      }),
-    );
-    expect(r.reason).toBe("many-tags");
+    // A quoted element is not a page, so it is not refused; it holds `<` and `>`, so it is withheld.
+    const one = sent(input({ findings: [finding({ snippet: tags(1) })] }));
+    expect(one.record).toMatchObject({ snippets: 1, withheld: 1 });
+    expect(one.payload).not.toContain("<b>");
+    expect(
+      sent(input({ findings: [finding({ snippet: '<img src="/a.png" alt="">' })] })).record
+        .withheld,
+    ).toBe(1);
   });
 
   it("refuses a snippet of many lines, which is a file and not a snippet", () => {
@@ -832,7 +866,7 @@ describe("describeModelPayload: what would be sent, without sending", () => {
   it("says plainly what is and is not detected, and does not claim that headers and cookies stay", () => {
     expect(NOT_DETECTED.join(" ")).toMatch(/personal names/i);
     expect(NOT_DETECTED.join(" ")).toMatch(/street addresses/i);
-    expect(NOT_DETECTED.join(" ")).toMatch(/Cookie, Set-Cookie and Authorization/);
+    expect(NOT_DETECTED.join(" ")).toMatch(/Cookie, Set-Cookie or Authorization/);
     const stays = WHAT_STAYS.join(" ");
     expect(stays).toMatch(/cookie values/);
     expect(stays).toMatch(/network addresses/);
@@ -861,8 +895,10 @@ describe("describeModelPayload: what would be sent, without sending", () => {
 });
 
 describe("mutation-style: take a guard out and its test must fail", () => {
+  const NO_PAGE = () => ({ reason: null, tags: 0 });
+  /** Every layer but one off: the one under test. The allowlist is a layer too, so it is off when a rule is tried alone. */
   const without = (kind: string) => ({
-    ...DEFAULT_PAYLOAD_PARTS,
+    ...LAYER_TWO,
     redactions: DEFAULT_REDACTION_RULES.filter((r) => r.kind !== kind),
   });
 
@@ -879,20 +915,18 @@ describe("mutation-style: take a guard out and its test must fail", () => {
     expect(mutated.ok && mutated.record.redactions[kind], kind).toBe(0);
     // And the real gate does not let it through, which is the test above failing when the rule is gone.
     expect(sent(i).payload).not.toContain(fx.value);
+    expect(two(i).payload).not.toContain(fx.value);
   });
 
-  it("with the page check removed, a whole page is sent", () => {
+  it("with the page check removed, a whole page is sent (the allowlist is off too, for this test)", () => {
     const i = input({ findings: [finding({ snippet: WHOLE_PAGE })] });
-    const mutated = buildPayloadWith(i, {
-      ...DEFAULT_PAYLOAD_PARTS,
-      pageCheck: () => ({ reason: null, tags: 0 }),
-    });
+    const mutated = buildPayloadWith(i, { ...LAYER_TWO, pageCheck: NO_PAGE });
     expect(mutated.ok && mutated.payload).toContain("doctype");
     expect(buildModelPayload(i).ok).toBe(false);
   });
 
   it("with the page check removed, a main, a script and Base64 of a page are sent", () => {
-    const off = { ...DEFAULT_PAYLOAD_PARTS, pageCheck: () => ({ reason: null, tags: 0 }) };
+    const off = { ...LAYER_TWO, pageCheck: NO_PAGE };
     for (const snippet of [
       "<main>",
       "<script>x</script>",
@@ -903,16 +937,23 @@ describe("mutation-style: take a guard out and its test must fail", () => {
       );
   });
 
+  it("with the allowlist removed, a snippet of code and markup is sent: the allowlist is the layer that withholds it", () => {
+    const snippet = 'var a = {"b": [1, 2]}; x = y < z && q | r';
+    const i = input({ findings: [finding({ snippet })] });
+    expect(buildPayloadWith(i, LAYER_TWO).ok).toBe(true);
+    expect(
+      buildPayloadWith(i, LAYER_TWO).ok &&
+        (buildPayloadWith(i, LAYER_TWO) as { payload: string }).payload,
+    ).toContain("x = y");
+    expect(sent(i).payload).not.toContain("x = y");
+    expect(sent(i).record.withheld).toBe(1);
+  });
+
   it("with the size check removed from the parts, the 4,000 character limit still holds", () => {
     const i = input({ findings: [finding({ snippet: "x".repeat(4_001) })] });
+    expect(buildPayloadWith(i, { ...LAYER_TWO, pageCheck: NO_PAGE }).ok).toBe(false);
     expect(
-      buildPayloadWith(i, {
-        ...DEFAULT_PAYLOAD_PARTS,
-        pageCheck: () => ({ reason: null, tags: 0 }),
-      }).ok,
-    ).toBe(false);
-    expect(
-      buildPayloadWith(i, { redactions: [], pageCheck: () => ({ reason: null, tags: 0 }) }).ok,
+      buildPayloadWith(i, { redactions: [], pageCheck: NO_PAGE, allowed: () => true }).ok,
     ).toBe(false);
   });
 
@@ -922,7 +963,7 @@ describe("mutation-style: take a guard out and its test must fail", () => {
         .slice(0, 10)
         .map((f, k) => finding({ id: `f-${k}`, snippet: f.text.slice(0, 150) })),
     });
-    const bare = buildPayloadWith(i, { ...DEFAULT_PAYLOAD_PARTS, redactions: [] });
+    const bare = buildPayloadWith(i, { ...LAYER_TWO, redactions: [] });
     expect(bare.ok).toBe(true);
   });
 
@@ -930,12 +971,16 @@ describe("mutation-style: take a guard out and its test must fail", () => {
     expect(() =>
       buildPayloadWith(input(), {
         redactions: [{} as never],
-        pageCheck: () => ({ reason: null, tags: 0 }),
+        pageCheck: NO_PAGE,
+        allowed: () => true,
       }),
+    ).toThrow();
+    expect(() =>
+      buildPayloadWith(input(), { redactions: [], pageCheck: NO_PAGE } as never),
     ).toThrow();
   });
 
-  it("fails closed: a rule or a page check that throws sends nothing and does not throw", () => {
+  it("fails closed: a rule, a page check or an allowlist that throws sends nothing and does not throw", () => {
     const boom: RedactionRule = {
       kind: "email",
       apply: () => {
@@ -954,6 +999,13 @@ describe("mutation-style: take a guard out and its test must fail", () => {
       },
     });
     expect(p).toEqual({ ok: false, reason: "bad-field", path: "input" });
+    const a = buildPayloadWith(input(), {
+      ...DEFAULT_PAYLOAD_PARTS,
+      allowed: () => {
+        throw new Error("the allowlist broke");
+      },
+    });
+    expect(a).toEqual({ ok: false, reason: "bad-field", path: "input" });
   });
 
   it("never gives a payload an adapter may send from a gate with a part taken out", () => {

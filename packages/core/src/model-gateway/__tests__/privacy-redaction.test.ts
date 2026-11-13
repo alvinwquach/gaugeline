@@ -25,8 +25,10 @@ const finding = (over: Record<string, unknown> = {}) => ({
 const input = (over: Record<string, unknown> = {}): ModelInput =>
   ({ task: { template: "reword-findings" }, findings: [finding()], ...over }) as ModelInput;
 const withSnippet = (snippet: string) => input({ findings: [finding({ snippet })] });
+/** The redaction rules on their own, with the character allowlist off: the second layer. */
+const LAYER_TWO = { ...DEFAULT_PAYLOAD_PARTS, allowed: () => true };
 function sent(i: unknown) {
-  const r = buildModelPayload(i);
+  const r = buildPayloadWith(i, LAYER_TWO);
   if (!r.ok) throw new Error(`refused: ${r.reason} at ${r.path}`);
   return r;
 }
@@ -207,7 +209,8 @@ describe("the whole value goes, not its first word", () => {
   });
 
   it("stops at the end of the value: what follows a delimiter stays", () => {
-    expect(out("token=abc123def456&page=2")).toBe("token=[redacted]&page=2");
+    // A credential's value goes to the end of the line, and what follows it on the line goes with it.
+    expect(out("token=abc123def456&page=2")).toBe("token=[redacted]");
     expect(out('{"token": "abc123def456", "page": 2}')).toBe('{"token": [redacted], "page": 2}');
   });
 });
@@ -323,7 +326,7 @@ describe("ids and look-alike letters: the guards that mutants used to survive", 
   it("rebuilds with a rule removed, and the encoding rule is the one that finds an entity", () => {
     const i = withSnippet("&#65;KIAIOSFODNN7EXAMPLE");
     const without = buildPayloadWith(i, {
-      ...DEFAULT_PAYLOAD_PARTS,
+      ...LAYER_TWO,
       redactions: DEFAULT_REDACTION_RULES.filter((r) => r.kind !== "encoding"),
     });
     expect(without.ok && without.payload).toContain("&#65;KIAIOSF");

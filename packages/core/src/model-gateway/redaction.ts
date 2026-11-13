@@ -8,8 +8,8 @@ import { EMAIL_PATTERN, PHONE_PATTERN, redactSecretShapes } from "../agent-trace
 
 /** The kinds of redaction, in the order they run. Each has one rule and one fixture in the tests. */
 export const REDACTION_KINDS = [
-  "encoding",
   "hidden-characters",
+  "encoding",
   "private-key",
   "url-credentials",
   "cookie",
@@ -65,7 +65,7 @@ const HIDDEN = new RegExp(
   "gu",
 );
 /** A combining mark that follows an ASCII letter or digit: the way a key is split without changing how it reads. */
-const MARK_AFTER_ASCII = /(?<=[A-Za-z0-9])\p{M}+/gu;
+const MARK_AFTER_ASCII = /(?<=[ -~\t\n\r])\p{M}+/gu;
 
 /** Cyrillic and Greek letters that read as Latin ones, by code point. Used only inside a token that has an ASCII letter. */
 export const LOOKALIKES: ReadonlyMap<string, string> = new Map(
@@ -174,9 +174,11 @@ const NAMED: Readonly<Record<string, string>> = {
   tilde: "~",
   Tab: " ",
   NewLine: " ",
+  AMP: "&",
+  LT: "<",
+  GT: ">",
+  QUOT: '"',
 };
-/** The few names that browsers read with no semicolon; every other name needs its semicolon to count. */
-const LEGACY = new Set(["amp", "lt", "gt", "quot", "nbsp"]);
 const MAX_ROUNDS = 3;
 
 const codePoint = (n: number) =>
@@ -184,21 +186,107 @@ const codePoint = (n: number) =>
     ? String.fromCodePoint(n)
     : null;
 
-/** One round of decoding: entities, percent escapes and JSON string escapes. */
+/** The Unicode letters that sit outside the main run of a styled alphabet (double-struck, Fraktur, script). */
+const STYLED: Readonly<
+  Record<string, { upper: number; lower: number; odd: Record<string, number> }>
+> = {
+  opf: {
+    upper: 0x1d538,
+    lower: 0x1d552,
+    odd: { C: 0x2102, H: 0x210d, N: 0x2115, P: 0x2119, Q: 0x211a, R: 0x211d, Z: 0x2124 },
+  },
+  fr: {
+    upper: 0x1d504,
+    lower: 0x1d51e,
+    odd: { C: 0x212d, H: 0x210c, I: 0x2111, R: 0x211c, Z: 0x2128 },
+  },
+  scr: {
+    upper: 0x1d49c,
+    lower: 0x1d4b6,
+    odd: {
+      B: 0x212c,
+      E: 0x2130,
+      F: 0x2131,
+      H: 0x210b,
+      I: 0x2110,
+      L: 0x2112,
+      M: 0x2133,
+      R: 0x211b,
+      e: 0x212f,
+      g: 0x210a,
+      o: 0x2134,
+    },
+  },
+};
+/** `&Aopf;` and friends: a styled letter. The next normalisation folds it to the plain letter. */
+function styledLetter(name: string): string | null {
+  const m = /^([A-Za-z])(opf|fr|scr)$/.exec(name);
+  if (!m) return null;
+  const [, letter, family] = m as unknown as [string, string, string];
+  const f = STYLED[family]!;
+  if (Object.hasOwn(f.odd, letter)) return String.fromCodePoint(f.odd[letter]!);
+  const upper = letter >= "A" && letter <= "Z";
+  return String.fromCodePoint(
+    (upper ? f.upper : f.lower) + letter.charCodeAt(0) - (upper ? 65 : 97),
+  );
+}
+
+/** An entity name read with no semicolon: the longest known name that starts it, and what is left over. */
+function namedPrefix(name: string): { value: string; rest: string } | null {
+  for (let n = Math.min(name.length, 7); n >= 2; n--) {
+    const head = name.slice(0, n);
+    if (Object.hasOwn(NAMED, head)) return { value: NAMED[head]!, rest: name.slice(n) };
+  }
+  return null;
+}
+
+/** UTF-7: `+AEE-` is "A". Read only when every character it decodes to is plain printable ASCII. */
+function utf7(run: string): string | null {
+  try {
+    const bytes = Buffer.from(run.replace(/-$/, ""), "base64");
+    if (bytes.length < 2 || bytes.length % 2 !== 0) return null;
+    let out = "";
+    for (let i = 0; i < bytes.length; i += 2) {
+      const c = (bytes[i]! << 8) | bytes[i + 1]!;
+      if (c < 0x20 || c > 0x7e) return null;
+      out += String.fromCharCode(c);
+    }
+    return out;
+  } catch {
+    return null;
+  }
+}
+
+/** One round of decoding: entities, percent escapes (`%XX`, `%uXXXX`), script escapes (`\u0041`, `\u{41}`, `\x41`, `\101`) and UTF-7. */
 function decodeOnce(text: string): { text: string; count: number } {
   let count = 0;
   let t = text.replace(
-    /&(?:#(\d{1,7})|#[xX]([0-9a-fA-F]{1,6})|([A-Za-z][A-Za-z0-9]{1,31}));?/g,
+    /&(?:#(\d{1,7});?|#[xX]([0-9a-fA-F]{1,6});?|([A-Za-z][A-Za-z0-9]{1,31});?)/g,
     (m, dec: string | undefined, hexa: string | undefined, name: string | undefined) => {
       let out: string | null | undefined;
+      let rest = "";
       if (dec !== undefined) out = codePoint(Number(dec));
       else if (hexa !== undefined) out = codePoint(parseInt(hexa, 16));
-      else if (name !== undefined && Object.hasOwn(NAMED, name))
-        out = m.endsWith(";") || LEGACY.has(name) ? NAMED[name] : undefined;
+      else if (name !== undefined) {
+        const styled = m.endsWith(";") ? styledLetter(name) : null;
+        if (styled !== null) out = styled;
+        else if (m.endsWith(";") && Object.hasOwn(NAMED, name)) out = NAMED[name];
+        else {
+          const p = namedPrefix(name);
+          if (p) {
+            out = p.value;
+            rest = p.rest + (m.endsWith(";") ? ";" : "");
+          }
+        }
+      }
       if (out === null || out === undefined) return m;
       count += 1;
-      return out;
+      return out + rest;
     },
+  );
+  t = t.replace(
+    /%u([0-9a-fA-F]{4})/g,
+    (_m, h: string) => ((count += 1), String.fromCharCode(parseInt(h, 16))),
   );
   t = t.replace(/(?:%[0-9A-Fa-f]{2})+/g, (run) => {
     let out: string;
@@ -214,14 +302,29 @@ function decodeOnce(text: string): { text: string; count: number } {
     return out;
   });
   t = t.replace(
-    /\\(?:u([0-9a-fA-F]{4})|x([0-9a-fA-F]{2})|(["'\\/])|([nrt]))/g,
-    (_m, u: string | undefined, x: string | undefined, q: string | undefined) => {
+    /\\(?:u\{([0-9a-fA-F]{1,6})\}|u([0-9a-fA-F]{4})|x([0-9a-fA-F]{2})|([0-3][0-7]{2})|(["'\\/])|([nrt]))/g,
+    (
+      _m,
+      braced: string | undefined,
+      u: string | undefined,
+      x: string | undefined,
+      octal: string | undefined,
+      q: string | undefined,
+    ) => {
       count += 1;
+      if (braced !== undefined) return codePoint(parseInt(braced, 16)) ?? "";
       if (u !== undefined) return String.fromCharCode(parseInt(u, 16));
       if (x !== undefined) return String.fromCharCode(parseInt(x, 16));
+      if (octal !== undefined) return String.fromCharCode(parseInt(octal, 8));
       return q ?? " ";
     },
   );
+  t = t.replace(/\+([A-Za-z0-9/]{3,})-?/g, (m, run: string) => {
+    const d = utf7(run);
+    if (d === null) return m;
+    count += 1;
+    return d;
+  });
   return { text: t, count };
 }
 
@@ -252,29 +355,35 @@ const IBAN_MIN_DIGITS = 10;
 
 /** Names a credential is written under. No leading boundary: `x_api_key` and `myApiKey` count too. */
 const CREDENTIAL_NAMES =
-  "password|passwd|pwd|passphrase|secret[_-]?key|secret|client[_-]?secret|api[_-]?key|x-api-key|apikey|access[_-]?key|access[_-]?token|auth[_-]?token|refresh[_-]?token|id[_-]?token|private[_-]?key[_-]?id|private[_-]?key|credentials?|session[_-]?id|token|authorization|auth";
+  "password|passwd|pwd|passphrase|secret[_-]?key|secret|client[_-]?secret|api[_-]?key|x-api-key|apikey|access[_-]?key|access[_-]?token|auth[_-]?token|refresh[_-]?token|id[_-]?token|private[_-]?key[_-]?id|private[_-]?key|credentials?|session[_-]?id|token|authorization|auth|[_-](?:pass|key|secret|token|pwd)|(?<![A-Za-z])pass";
 /** Query and cookie parameter names that carry a credential or a signature (an S3 or CDN signed address, a login code). */
 const SECRET_PARAMS =
   "x-amz-[a-z0-9-]+|signature|sig|token|key|access_token|id_token|refresh_token|auth|authorization|code|session|sid|password|secret|apikey|api_key|jwt|credential|client_secret|private_key|private_key_id|access_key|secret_key|passwd|pwd";
-/** A value that is not quoted: up to six words, ending at a quote, a comma, a semicolon, an ampersand, a bracket or the end of the line. */
-const VALUE_WORD = "[^\\s\"'&<>,;]{1,256}";
-const VALUE_PHRASE = `${VALUE_WORD}(?:[ \\t]+${VALUE_WORD}){0,5}`;
+/** A value that is not quoted: the rest of the line. A password written as a phrase goes whole; so does what follows it. */
+const VALUE_PHRASE = "[^\\n]{1,512}";
 const FORM_NAMES = `(?:${CREDENTIAL_NAMES}|current-password|new-password)`;
 
 /** Provider key shapes, each with a name for the marker. Checked before the core rules so the count is theirs. */
 const PROVIDER_KEYS: readonly (readonly [string, RegExp])[] = [
   ["model-provider-key", /\bsk-(?:ant-|proj-|or-|svcacct-|admin-)?[A-Za-z0-9_-]{20,}/g],
-  ["google-api-key", /\bAIza[0-9A-Za-z_-]{30,}/g],
+  ["google-api-key", /AIza[0-9A-Za-z_-]{30,}/g],
   ["slack-token", /\bxox[a-z]-[A-Za-z0-9-]{10,}/g],
   [
     "source-host-token",
     /\bgh[a-z]_[A-Za-z0-9]{20,}|\bgithub_pat_[A-Za-z0-9_]{20,}|\bglpat-[A-Za-z0-9_-]{16,}/g,
   ],
-  ["package-token", /\bnpm_[A-Za-z0-9]{20,}/g],
+  ["package-token", /\bnpm_[A-Za-z0-9]{20,}|\bpypi-[A-Za-z0-9_-]{20,}/g],
   ["mail-api-key", /\bSG\.[A-Za-z0-9_-]{16,}\.[A-Za-z0-9_-]{16,}/g],
   ["generic-prefixed-key", /\b(?:key|hf|ya29|pk_live|pk_test)[-_.][A-Za-z0-9_-]{24,}/g],
-  ["cloud-access-key", /\b(?:AKIA|ASIA)[A-Z0-9]{16}\b/g],
+  // No word boundary: `aws_AKIA...` and `AKIA...X` are keys too.
+  ["cloud-access-key", /(?:AKIA|ASIA)[A-Z0-9]{16}/g],
+  [
+    "webhook-address",
+    /hooks\.slack\.com\/services\/[A-Za-z0-9/_-]{8,}|discord(?:app)?\.com\/api\/webhooks\/\d+\/[A-Za-z0-9_-]{8,}|outlook\.office\.com\/webhook\/[A-Za-z0-9@/_-]{8,}/g,
+  ],
 ];
+/** A bare AWS secret access key: 40 characters of the Base64 alphabet. Looked for only when an access key id is in the text. */
+const AWS_SECRET = /(?<![A-Za-z0-9/+=])[A-Za-z0-9/+]{40}(?![A-Za-z0-9/+=])/g;
 
 /** Whether `part` is one to four hexadecimal digits. */
 const hex4 = (part: string) => /^[0-9A-Fa-f]{1,4}$/.test(part);
@@ -291,47 +400,48 @@ function isIPv6(body: string): boolean {
 }
 const octets = (m: string) => m.split(".").every((p) => Number(p) <= 255);
 
+/** Step one of the pipeline, as a function: what a text looks like once nothing is hidden in it. */
+export function normalise(text: string): { text: string; count: number } {
+  let count = 0;
+  let t = text.normalize("NFKD").replace(MARK_AFTER_ASCII, () => ((count += 1), ""));
+  t = t.normalize("NFKC");
+  const a = strip(t);
+  count += a.count;
+  t = a.out.replace(/\S+/gu, (token) => {
+    if (!/[A-Za-z]/.test(token) || !HAS_LOOKALIKE.test(token)) return token;
+    count += 1;
+    return token.replace(LOOKALIKE_CHARS, (c) => LOOKALIKES.get(c) ?? c);
+  });
+  return { text: t.normalize("NFKC"), count };
+}
+
 export const DEFAULT_REDACTION_RULES: readonly RedactionRule[] = Object.freeze([
-  // 0. Decode what a page can hide a value behind: HTML entities (with or without the semicolon), percent
-  //    escapes and JSON string escapes, up to three layers deep. The rules below run on the decoded text, and the
-  //    decoded text is what is sent, never the original. A text that is still encoded after three rounds is not
-  //    cleaned: it is refused.
+  // 1. Normalise, before anything is read: full-width letters, ligatures and circled digits become plain ones,
+  //    accents and combining marks after an ASCII character are dropped (so a key split by a mark is whole),
+  //    every character a reader cannot see is removed, and a Cyrillic or Greek look-alike inside a word that
+  //    has Latin letters is read as the Latin letter.
+  rule("hidden-characters", (text) => normalise(text)),
+  // 2. Decode what a page can hide a value behind: entities (with or without the semicolon, named, numeric and
+  //    styled letters), percent escapes, script escapes and UTF-7, up to three layers deep, normalising again after
+  //    each round (a decoded text can show new marks). The rules below run on the decoded text, and the decoded
+  //    text is what is sent, never the original. A text still changing after three rounds is refused.
   rule("encoding", (text) => {
-    // Hidden characters can split an entity or an escape ("&#6" + zero-width space + "5;"), so they are read out
-    // of the copy that is decoded. When nothing needs decoding the text goes on untouched, and the next rule
-    // removes and counts them as before.
-    let t = strip(text).out;
+    let t = text;
     let count = 0;
     for (let round = 0; round < MAX_ROUNDS; round++) {
       const r = decodeOnce(t);
-      if (r.text === t) return count === 0 ? { text, count: 0 } : { text: t, count };
-      t = r.text;
+      if (r.text === t) return { text: t, count };
+      t = normalise(r.text).text;
       count += r.count;
     }
     if (decodeOnce(t).text !== t) throw new FailClosed("encoded more than three layers deep");
-    return { text: t, count };
-  }),
-  // 1. Normalise (full-width letters become ASCII, accents on an ASCII letter are dropped, so a key split by a
-  //    combining mark is whole), remove every character a reader cannot see, and read a Cyrillic or Greek
-  //    look-alike inside a word that has Latin letters as the Latin letter.
-  rule("hidden-characters", (text) => {
-    let count = 0;
-    let t = text.normalize("NFKD").replace(MARK_AFTER_ASCII, () => ((count += 1), ""));
-    t = t.normalize("NFKC");
-    const a = strip(t);
-    count += a.count;
-    t = a.out.replace(/\S+/gu, (token) => {
-      if (!/[A-Za-z]/.test(token) || !HAS_LOOKALIKE.test(token)) return token;
-      count += 1;
-      return token.replace(LOOKALIKE_CHARS, (c) => LOOKALIKES.get(c) ?? c);
-    });
     return { text: t, count };
   }),
   // 2. A private key block, to its end line or the end of the text.
   rule(
     "private-key",
     counting(
-      /-----BEGIN [A-Z0-9 ]{0,40}PRIVATE KEY-----[\s\S]*?(?:-----END [A-Z0-9 ]{0,40}PRIVATE KEY-----|$)/g,
+      /-----BEGIN [A-Z0-9 ]{0,40}PRIVATE KEY(?: BLOCK)?-----[\s\S]*?(?:-----END [A-Z0-9 ]{0,40}PRIVATE KEY(?: BLOCK)?-----|$)/g,
       () => "[private key]",
     ),
   ),
@@ -381,7 +491,7 @@ export const DEFAULT_REDACTION_RULES: readonly RedactionRule[] = Object.freeze([
     );
     const field = counting(
       new RegExp(
-        `(["']?(?:${CREDENTIAL_NAMES})["']?\\s*[:=]\\s*)(?:(?:Bearer|Basic|Digest|Token)\\s+)?("[^"\\n]{1,512}"|'[^'\\n]{1,512}'|${VALUE_PHRASE})`,
+        `(["']?(?:${CREDENTIAL_NAMES})["']?\\]?\\s*(?:=>|[:=])\\s*)(?:(?:Bearer|Basic|Digest|Token)\\s+)?("[^"\\n]{1,512}"|'[^'\\n]{1,512}'|${VALUE_PHRASE})`,
         "gi",
       ),
       (_m, head) => `${head}[redacted]`,
@@ -392,8 +502,14 @@ export const DEFAULT_REDACTION_RULES: readonly RedactionRule[] = Object.freeze([
   rule("secret", (text) => {
     let count = 0;
     let t = text;
+    const hadKeyId = /(?:AKIA|ASIA)[A-Z0-9]{16}/.test(t);
     for (const [name, re] of PROVIDER_KEYS)
       t = t.replace(new RegExp(re.source, re.flags), () => ((count += 1), `[secret:${name}]`));
+    if (hadKeyId)
+      t = t.replace(
+        new RegExp(AWS_SECRET.source, "g"),
+        () => ((count += 1), "[secret:aws-secret-key]"),
+      );
     const out = redactSecretShapes(t);
     return { text: out, count: count + Math.max(0, marks(out) - marks(t)) };
   }),
@@ -508,3 +624,42 @@ export function pageShape(text: string): PageVerdict {
   }
   return { reason: tags > MAX_TAGS_PER_FIELD ? "many-tags" : null, tags };
 }
+
+// ---------------------------------------------------------------------------------------------------------
+// The allowlist of characters: the real fail-closed.
+
+/**
+ * What a title or a snippet may hold once it is normalised: letters (of any script), marks, digits, a space, and
+ * `. , ; : ! ? ' " ( ) - _ / + * #`. Markup, code, addresses and assignments need characters outside this set
+ * (`< > = & % \ @ { } [ ] | $ ~ ^`), so they are not cleaned: they are withheld.
+ */
+const ALLOWED_CHARACTERS = /^[\p{L}\p{M}\p{N} .,;:!?'"()\-_/+*#]*$/u;
+
+/** Whether every character of `text` is in the set above (line breaks and runs of white space count as one space). */
+export function charactersAllowed(text: string): boolean {
+  return ALLOWED_CHARACTERS.test(text.replace(/\s+/g, " ").trim());
+}
+
+/** Runs that could be Base64 (or Base64url) or hexadecimal, long enough to hide `key=value`. */
+const ENCODED_RUN = /[A-Za-z0-9+/_-]{16,}={0,2}/g;
+const HEX_RUN = /(?:[0-9A-Fa-f]{2}){8,}/g;
+
+/**
+ * Whether `text` hides text in Base64 or hexadecimal: a long run that decodes to something that reads as text. A
+ * word that only looks like Base64 decodes to bytes that do not, and is not taken for it.
+ */
+export function hidesEncodedText(text: string): boolean {
+  for (const m of text.matchAll(ENCODED_RUN)) {
+    const bytes = Buffer.from(m[0].replace(/-/g, "+").replace(/_/g, "/"), "base64").toString(
+      "latin1",
+    );
+    if (readsAsText(bytes)) return true;
+  }
+  for (const m of text.matchAll(HEX_RUN))
+    if (readsAsText(Buffer.from(m[0], "hex").toString("latin1"))) return true;
+  return false;
+}
+
+/** The gate's character check: the allowlist, and no text hidden in Base64 or hexadecimal. */
+export const fieldAllowed = (text: string): boolean =>
+  charactersAllowed(text) && !hidesEncodedText(text);

@@ -22,13 +22,14 @@ import {
   MAX_TAGS_PER_FIELD,
   MAX_TAGS_TOTAL,
   REDACTION_KINDS,
+  fieldAllowed,
   pageShape,
   type PageVerdict,
   type RedactionKind,
   type RedactionRule,
 } from "./redaction.js";
 
-export { DEFAULT_REDACTION_RULES, REDACTION_KINDS, pageShape };
+export { DEFAULT_REDACTION_RULES, REDACTION_KINDS, fieldAllowed, pageShape };
 export type { PageVerdict, RedactionKind, RedactionRule };
 
 /** The bounds of one input. A config can lower the payload size (`maxInputChars`), never raise any of these. */
@@ -118,6 +119,8 @@ export interface PrivacyRecord {
   ids: number;
   /** Titles and snippets that were longer than their cap and were cut. */
   snippetsCut: number;
+  /** Titles and snippets that held characters outside the allowlist and were replaced by `[withheld]`. */
+  withheld: number;
   payloadBytes: number;
   redactions: Readonly<Record<RedactionKind, number>>;
 }
@@ -133,11 +136,14 @@ export type GatedResult =
 export interface PayloadParts {
   readonly redactions: readonly RedactionRule[];
   readonly pageCheck: (text: string) => PageVerdict;
+  /** Whether a normalised title or snippet may go on to be redacted and sent; if not it is withheld, not cleaned. */
+  readonly allowed: (text: string) => boolean;
 }
 
 export const DEFAULT_PAYLOAD_PARTS: PayloadParts = Object.freeze({
   redactions: DEFAULT_REDACTION_RULES,
   pageCheck: pageShape,
+  allowed: fieldAllowed,
 });
 
 // ---------------------------------------------------------------------------------------------------------
@@ -225,6 +231,7 @@ function validateParts(p: PayloadParts): void {
     p !== null &&
     typeof p === "object" &&
     typeof p.pageCheck === "function" &&
+    typeof p.allowed === "function" &&
     Array.isArray(p.redactions) &&
     p.redactions.every(
       (r) =>
@@ -240,7 +247,13 @@ interface Processed {
   text: string;
   cut: boolean;
   tags: number;
+  withheld: boolean;
 }
+
+/** What replaces a title or a snippet that is not cleaned. */
+export const WITHHELD = "[withheld]";
+/** The rules that normalise: the allowlist and the page check read the text once they have run, before any redaction. */
+const NORMALISERS: ReadonlySet<RedactionKind> = new Set(["hidden-characters", "encoding"]);
 
 /** One text field: size and line limits, redaction in order, the page check, then one line, cut to `cap`. */
 function processText(
@@ -258,23 +271,39 @@ function processText(
   if (lines > L.maxLinesPerField) return refuse("many-lines", at);
   let text = raw;
   const found = { ...counts };
+  let checked = false;
+  /** The page check on the normalised text and on the raw text, then the allowlist: a page is refused, anything else off the list is withheld. */
+  const checkpoint = (): Processed | null => {
+    checked = true;
+    const verdict = p.pageCheck(text);
+    const first = verdict.reason ?? p.pageCheck(raw).reason;
+    if (first !== null) return refuse(first, at);
+    tags = verdict.tags;
+    return p.allowed(text) ? null : { text: WITHHELD, cut: false, tags: 0, withheld: true };
+  };
+  let tags = 0;
   try {
     for (const r of p.redactions) {
+      if (!checked && !NORMALISERS.has(r.kind)) {
+        const stop = checkpoint();
+        if (stop) return stop;
+      }
       const out = r.apply(text);
       text = out.text;
       found[r.kind] += out.count;
+    }
+    if (!checked) {
+      const stop = checkpoint();
+      if (stop) return stop;
     }
   } catch (err) {
     // A rule that cannot make the text safe says so: the field is refused, never half cleaned.
     if (err instanceof FailClosed) return refuse("bad-field", at);
     throw err;
   }
-  const verdict = p.pageCheck(text);
-  const first = verdict.reason ?? p.pageCheck(raw).reason;
-  if (first !== null) return refuse(first, at);
   Object.assign(counts, found);
   const s = sanitise(text.replace(/\s+/g, " ").trim(), cap);
-  return { text: s.text, cut: s.cut, tags: verdict.tags };
+  return { text: s.text, cut: s.cut, tags, withheld: false };
 }
 
 /** An id: the one id shape, and not something a redaction rule would change. */
@@ -323,6 +352,7 @@ function gate(input: unknown, p: PayloadParts): { payload: string; record: Priva
   let tags = 0;
   let cut = 0;
   let snippets = 0;
+  let withheld = 0;
   const findings: Record<string, string>[] = [];
   for (let k = 0; k < list.length; k++) {
     const at = `findings.${k}`;
@@ -337,12 +367,14 @@ function gate(input: unknown, p: PayloadParts): { payload: string; record: Priva
     const title = processText(f.title, `${at}.title`, L.maxTitleChars, p, counts);
     if (title.text === "") refuse("bad-field", `${at}.title`);
     row.title = title.text;
+    withheld += title.withheld ? 1 : 0;
     chars += title.text.length;
     tags += title.tags;
     cut += title.cut ? 1 : 0;
     if (f.snippet !== undefined) {
       const s = processText(f.snippet, `${at}.snippet`, L.maxSnippetChars, p, counts);
       row.snippet = s.text;
+      withheld += s.withheld ? 1 : 0;
       chars += s.text.length;
       snippetChars += s.text.length;
       tags += s.tags;
@@ -375,6 +407,7 @@ function gate(input: unknown, p: PayloadParts): { payload: string; record: Priva
       snippets,
       ids: ids.length,
       snippetsCut: cut,
+      withheld,
       payloadBytes,
       redactions: Object.freeze({ ...counts }),
     }),
@@ -408,23 +441,24 @@ export function buildModelPayload(input: unknown): GatedResult {
 
 export const WHAT_LEAVES: readonly string[] = Object.freeze([
   "the task: one of a short list of sentences Gaugeline's own code wrote, and at most one fixed reason a last answer was refused",
-  "for each finding (at most 10): its id, its severity, its title and one short evidence snippet (at most 300 characters, 2,000 in all)",
+  "for each finding (at most 10): its id, its severity, its title and one short evidence snippet of plain words (letters, digits, spaces and . , ; : ! ? ' \" ( ) - _ / + * # only; at most 300 characters, 2,000 in all)",
   "extra ids (at most 10): a draft's id or a related finding's id, in the one id shape (a short prefix and a number, or a UUID)",
   "your key, but only in one request header to the provider's host, never inside the text",
 ]);
 export const WHAT_STAYS: readonly string[] = Object.freeze([
   "a whole page, its HTML or any response body from the checked site (refused, never trimmed)",
   "any field that is not on the allowlist, and any id, title or snippet that breaks its rules (refused, not dropped); there is no field for a page address, a header or a cookie",
-  "keys and tokens in a known shape (model providers, payment, source hosts, cloud, chat and mail services), private keys, cookie values, secret-named web address parameters, the value after a credential name (up to six words), the value of a password field, card and IBAN numbers, email addresses, network addresses and phone numbers (replaced by a marker)",
-  "text hidden in HTML entities, percent escapes or JSON string escapes (decoded up to three layers deep first; deeper is refused), hidden and control characters, and accents on Latin letters (removed)",
+  "a title or snippet with markup or code in it (any of < > = & % \\ @ { } [ ] | $ ~ ^, an emoji or a symbol), or text hidden in Base64 or hexadecimal: it is withheld whole, replaced by [withheld], and not cleaned; the finding's id, severity and other fields still go",
+  "keys and tokens in a known shape (model providers, payment, source hosts, cloud, chat and mail services, webhook addresses), private keys, cookie values, the value after a credential name (to the end of the line), card and IBAN numbers, network addresses and phone numbers (replaced by a marker)",
+  "text hidden in entities, percent escapes, script escapes or UTF-7 (decoded up to three layers deep first; deeper is refused), look-alike letters, hidden and control characters, and accents on Latin letters (normalised or removed)",
 ]);
 export const NOT_DETECTED: readonly string[] = Object.freeze([
   "personal names: no rule can tell a name from a word",
   "street addresses, postcodes and place names",
   "a business's trading name, a product or a price written in ordinary words",
   "a secret in a shape no rule knows, and a password or secret written in a sentence without a credential name in front of it",
-  "a web address quoted inside a snippet: only a password, token or signature in it is removed",
-  "a header quoted inside a snippet, other than Cookie, Set-Cookie and Authorization",
+  "a web address with no query string quoted inside a snippet: it is sent as written",
+  "a header quoted inside a snippet that is not Cookie, Set-Cookie or Authorization: it is sent as written",
   "a card number that fails its checksum, or a phone number outside 8 to 15 digits",
   "a personal identity number (a tax or social security number) that is not written like a card, an IBAN or a phone number",
 ]);
@@ -469,7 +503,7 @@ export function formatModelPayloadPreview(d: ModelPayloadDescription): string {
   const cutNote = d.record.snippetsCut > 0 ? `, ${d.record.snippetsCut} cut` : "";
   return [
     `Would send ${d.record.payloadBytes} bytes: ${n(d.record.findings, "finding")}, ${n(d.record.snippets, "snippet")}${cutNote}, ${n(d.record.ids, "id")}.`,
-    `Removed first: ${removed.length > 0 ? removed.join(", ") : "nothing"}.`,
+    `Removed first: ${removed.length > 0 ? removed.join(", ") : "nothing"}. Withheld whole: ${d.record.withheld}.`,
     "",
     d.payload,
     "",

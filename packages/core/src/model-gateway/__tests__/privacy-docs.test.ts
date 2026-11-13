@@ -42,12 +42,14 @@ describe("the example", () => {
     for (const line of shown) expect(source, line).toContain(line);
   });
 
-  it("shows a payload with no key and no address in it, and a page refused", async () => {
+  it("shows a payload with no key, no phone and no address in it, a withheld snippet and a page refused", async () => {
     const out = (await runPrivacyExample()).replace(/\n/g, " ");
     expect(out).toContain("sk_live_[redacted]");
-    expect(out).toContain("[email]");
+    expect(out).toContain("[phone]");
+    expect(out).toContain("[withheld]");
     expect(out).not.toContain("qqqq");
     expect(out).not.toContain("baker@");
+    expect(out).not.toContain("7946");
     expect(out).toContain(
       "Would not send: the input is refused (whole-page at findings.0.snippet)",
     );

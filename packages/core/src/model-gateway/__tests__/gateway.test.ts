@@ -200,12 +200,15 @@ describe("the input", () => {
     expect(a.redacted).toBe(true);
   });
 
-  it("also loses an email address and a phone number", async () => {
+  it("also loses a phone number, and withholds a snippet that holds an email address", async () => {
     const { gateway, calls } = setup();
+    await gateway.complete(withSnippet("Ask on +1 555 010 0199 today."));
+    expect(calls[0]!.prompt.text()).toContain("Ask on [phone] today.");
     await gateway.complete(
-      withSnippet(`Ask ${["test.person", "example.test"].join("@")} on +1 555 010 0199.`),
+      withSnippet(`Ask ${["test.person", "example.test"].join("@")} on the phone.`),
     );
-    expect(calls[0]!.prompt.text()).toContain("Ask [email] on [phone].");
+    expect(calls[1]!.prompt.text()).not.toContain("test.person");
+    expect(calls[1]!.prompt.text()).toContain("[withheld]");
   });
 
   it("is passed on as the gate built it when there is nothing to remove", async () => {

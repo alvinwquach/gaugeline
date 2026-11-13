@@ -166,8 +166,6 @@ import {
   ModelGatewayError,
   createGateway,
   createRecordedAdapter,
-  shownModelId,
-  shownProvider,
 } from "./src/model-gateway/index.js";
 
 // What a config file holds: a provider and a model id per tier. Never a key, never a host.
@@ -247,7 +245,7 @@ console.log(out.join("\n"));
 tier fast -> model recorded-small (provider recorded)
 text: The menu link on the pop-up page is broken. Point it at the live menu page.
 usage: 52 in, 14 out, 800 micro-units
-advisory: true, redacted: true
+advisory: true, redacted: false
 unknown tier: refused (unknown-tier)
 oversized input: refused (input-refused)
 ```

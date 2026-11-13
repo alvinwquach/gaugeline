@@ -154,14 +154,20 @@ const INPUTS = new Map<string, EvalInput>([
   [
     "golden-secrets-and-contacts-removed",
     input(
-      finding("f-201", "secret-in-js", "A payment key is in a script", `var k = "${KEY}"`),
+      finding(
+        "f-201",
+        "secret-in-js",
+        "A payment key is in a script",
+        `The key ${KEY} is set in a script`,
+      ),
       finding("f-202", "form-pii", "A form shows a card and an account", `${CARD} and ${IBAN}`),
       finding(
         "f-203",
         "contact",
-        "A contact address is in the markup",
-        `Mail ${MAIL} or call +44 20 7946 0958`,
+        "A phone number is in the markup",
+        "Call +44 20 7946 0958 for the menu",
       ),
+      finding("f-204", "contact", "An address is in the markup", `Mail ${MAIL} for the menu`),
     ),
   ],
   [
@@ -190,7 +196,9 @@ const INPUTS = new Map<string, EvalInput>([
   ],
   [
     "bad-key-left",
-    input(finding("f-602", "secret-in-js", "A key is in a script", `var k = "${KEY}"`)),
+    input(
+      finding("f-602", "secret-in-js", "A key is in a script", `The key ${KEY} is set in a script`),
+    ),
   ],
   ["bad-card-left", input(finding("f-603", "form-pii", "A card is shown", `Card ${CARD}`))],
   [
@@ -223,9 +231,11 @@ function answerWith(caseId: string, parts: PayloadParts): PrivacyOutput {
   return r.ok ? { refused: false, payload: r.payload } : { refused: true, payload: "" };
 }
 const real = (caseId: string) => answerWith(caseId, DEFAULT_PAYLOAD_PARTS);
+/** The gate with one rule out and its character allowlist off: the allowlist is a layer of its own, so it is off to show the rule. */
 const without = (kind: string, caseId: string) =>
   answerWith(caseId, {
     ...DEFAULT_PAYLOAD_PARTS,
+    allowed: () => true,
     redactions: DEFAULT_REDACTION_RULES.filter((r) => r.kind !== kind),
   });
 
@@ -248,8 +258,8 @@ export const modelPrivacyGateCases: EvalCase[] = [
   golden("golden-plain-findings", "Plain findings and their ids go through", ["f-101", "f-102"]),
   golden(
     "golden-secrets-and-contacts-removed",
-    "A key, a card, an IBAN, an address and a phone are replaced before the call",
-    ["f-201", "f-202", "f-203"],
+    "A key, a card, an IBAN and a phone are replaced, and an address is withheld, before the call",
+    ["f-201", "f-202", "f-203", "f-204"],
   ),
   golden("golden-order-in-snippet-is-data", "An order in a snippet is quoted as data, not obeyed", [
     "f-301",
@@ -310,6 +320,7 @@ const RECORDINGS = new Map<string, EvalRecording>([
     recording(
       answerWith("bad-page-sent", {
         ...DEFAULT_PAYLOAD_PARTS,
+        allowed: () => true,
         pageCheck: () => ({ reason: null, tags: 0 }),
       }),
     ),

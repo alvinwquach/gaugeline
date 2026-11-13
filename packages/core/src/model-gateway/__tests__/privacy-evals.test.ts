@@ -65,7 +65,7 @@ describe("the gate's eval set", () => {
       const r = buildPayloadWith(evalInputToModelInput(c.input), DEFAULT_PAYLOAD_PARTS);
       if (r.ok) for (const k of REDACTION_KINDS) if (r.record.redactions[k] > 0) seen.add(k);
     }
-    for (const k of ["hidden-characters", "secret", "iban", "card", "email", "phone"])
+    for (const k of ["hidden-characters", "secret", "iban", "card", "phone"])
       expect(seen.has(k), k).toBe(true);
   });
 });
@@ -107,6 +107,8 @@ describe("mutation-style: a gate with a guard removed turns the golden cases red
         cases,
         gateWith({
           ...DEFAULT_PAYLOAD_PARTS,
+          // The allowlist is a layer of its own: it is off, so that the rule under test is the only guard.
+          allowed: () => true,
           redactions: DEFAULT_REDACTION_RULES.filter((x) => x.kind !== kind),
         }),
       );
@@ -119,7 +121,11 @@ describe("mutation-style: a gate with a guard removed turns the golden cases red
     const r = await runEvals(
       modelPrivacyGateAgent,
       cases,
-      gateWith({ ...DEFAULT_PAYLOAD_PARTS, pageCheck: () => ({ reason: null, tags: 0 }) }),
+      gateWith({
+        ...DEFAULT_PAYLOAD_PARTS,
+        allowed: () => true,
+        pageCheck: () => ({ reason: null, tags: 0 }),
+      }),
     );
     expect(r.golden.passed).toBeLessThan(5);
     expect(r.ok).toBe(false);

@@ -42,17 +42,17 @@ export const KIND_FIXTURES: Record<
   RedactionKind,
   { text: string; value: string; survives: string }
 > = {
-  encoding: {
-    // An AWS example key with its first letter written as an entity: only decoded is it a key.
-    text: "Found &#65;KIAIOSFODNN7EXAMPLE in a script",
-    value: "IOSFODNN7EXAMPLE",
-    survives: "&#65;KIAIOSF",
-  },
   "hidden-characters": {
     // A key with a zero-width space inside it: only after the hidden characters are removed is it a key.
     text: `Key ${["sk", "live", `qqqqqqqq${ZWSP}qqqqqqqq${ZWSP}qqqqqqqq`].join("_")} in a script`,
     value: "qqqqqqqq",
     survives: "qqqqqqqq",
+  },
+  encoding: {
+    // An AWS example key with its first letter written as an entity: only decoded is it a key.
+    text: "Found &#65;KIAIOSFODNN7EXAMPLE in a script",
+    value: "IOSFODNN7EXAMPLE",
+    survives: "&#65;KIAIOSF",
   },
   "private-key": {
     text: `Found ${PRIVATE_KEY} in a file`,
