@@ -74,6 +74,7 @@ const FIXTURES = [
   "error-pages",
   "noindex-header-missing",
   "studio-cacheable",
+  "ai-key-in-js",
   "checkout-after",
   "printed-menu",
   "source-maps",
