@@ -27,13 +27,16 @@ describe("docs/guides/webhook-and-cache-source.md", () => {
     expect(examples.map((e) => e.id)).toEqual([
       "webhook-missing-secret-status",
       "sanity-cdn-tagged-reads",
+      "webhook-signature-compared-plainly",
+      "webhook-timestamp-unbounded",
     ]);
   });
 
   it.each(examples)(
     "prints $id/$kind as the page shows it",
     async ({ id, kind, command, expected }) => {
-      expect(command).toBe("$ npx gaugeline source ./harbor-lane-taproom");
+      const folder = command.replace("$ npx gaugeline source ", "");
+      expect(["./harbor-lane-taproom", "./bluebell-clinic"]).toContain(folder);
       const tree = await readLocalSource(
         fileURLToPath(new URL(`../../../fixtures/source/${id}/${kind}`, import.meta.url)),
         undefined,

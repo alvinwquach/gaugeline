@@ -41,9 +41,16 @@ $ npx gaugeline source ./harbor-lane-taproom
 ```sh title=Output
 ✗ A missing webhook secret is answered with the wrong status
     app/api/revalidate/route.ts:7: a missing webhook secret is answered with 401.
+· The webhook signature is compared with a plain comparison
+    app/api/revalidate/route.ts:10: this receiver uses the official verification helper, which compares signatures with a plain comparison (read in @sanity/webhook 4.0.4). Advice, not a failure.
+· The webhook's signed timestamp has no age limit
+    app/api/revalidate/route.ts:10: this receiver uses the official verification helper, which makes no age check (read in @sanity/webhook 4.0.4). Advice, not a failure.
 
-1 to look at, 1 to fix first.
+3 to look at, 1 to fix first.
 ```
+
+The two lines marked with a dot are advice from the checks further down this page: the receiver uses
+`next-sanity`'s `parseBody`, which is built on the official helper. They are not failures.
 
 The fix is one branch, before the signature is read:
 
@@ -80,6 +87,58 @@ $ npx gaugeline source ./harbor-lane-taproom
     lib/sanity/client.ts:8: useCdn is true, and reads are cached by tag (app/events/page.tsx).
 
 1 to look at, 1 to fix first.
+```
+
+## The signature compared with a plain comparison
+
+`webhook-signature-compared-plainly` (fix soon) finds a receiver that compares the signature, or a
+shared secret, with `===`, `!==`, `==` or `!=`. A plain comparison stops at the first character that
+differs, so how long it takes can tell a caller how much of a guess was right. Compare with
+`crypto.timingSafeEqual` on two Buffers, after checking that their lengths are equal (it throws when
+they differ).
+
+The official `@sanity/webhook` helper, read in its source at 4.0.4, compares with a plain `!==`
+itself. A receiver that uses the helper is not failed for it: it gets a "worth knowing" finding that
+says so.
+
+Bluebell Clinic is an invented clinic whose site shows its opening hours from Sanity.
+
+<!-- source-fixture: webhook-signature-compared-plainly/fail -->
+
+```sh title=Terminal untested="The command that runs the static checks on a folder arrives with the indexing checks. packages/cli/src/__tests__/source-webhook-docs.test.ts runs the same checks on the same invented folder (packages/fixtures/source/webhook-signature-compared-plainly/fail) and compares the Output block with what the CLI's own terminal report prints."
+$ npx gaugeline source ./bluebell-clinic
+```
+
+```sh title=Output
+! The webhook signature is compared with a plain comparison
+    app/api/revalidate/route.ts:16: the signature is compared with a plain comparison.
+
+1 to look at, none to fix first.
+```
+
+## The signed timestamp with no age limit
+
+`webhook-timestamp-unbounded` (fix soon) finds a receiver that reads the signed timestamp (the `t`
+in the `sanity-webhook-signature` header) and does not reject one that is old or one that is in the
+future. The signature covers the timestamp, but a request that was captured once stays valid for as
+long as nothing compares the timestamp with the time now.
+
+Read `t` from the header and reject the request when `Math.abs(Date.now() - t)` is more than a few
+minutes. The official helper makes no age check either (read at 4.0.4), so a receiver that only uses
+it gets a "worth knowing" finding, not a failure. A comparison with the time that Gaugeline cannot
+read as a limit on the timestamp is reported as could not check.
+
+<!-- source-fixture: webhook-timestamp-unbounded/fail -->
+
+```sh title=Terminal untested="The command that runs the static checks on a folder arrives with the indexing checks. packages/cli/src/__tests__/source-webhook-docs.test.ts runs the same checks on the same invented folder (packages/fixtures/source/webhook-timestamp-unbounded/fail) and compares the Output block with what the CLI's own terminal report prints."
+$ npx gaugeline source ./bluebell-clinic
+```
+
+```sh title=Output
+! The webhook's signed timestamp has no age limit
+    app/api/revalidate/route.ts:13: the signed timestamp is read but never compared with the time now.
+
+1 to look at, none to fix first.
 ```
 
 ## What could not be checked
