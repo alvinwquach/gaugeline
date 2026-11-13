@@ -227,3 +227,52 @@ export function unreadReason(input: LocalSourceInput): string | undefined {
 
 /** The address a finding carries, as the foundation's runner builds it. */
 export const sourceUrl = (input: LocalSourceInput): string => `source:${input.tree.label}`;
+
+/** True when the file calls the official verification helper (`@sanity/webhook`, or next-sanity's parseBody). */
+export const HELPER_CALL =
+  /\b(?:isValidSignature|assertValidSignature|isValidRequest|assertValidRequest|parseBody)\s*[<(]/;
+export const helperCall = (bare: string): RegExpExecArray | null => HELPER_CALL.exec(bare);
+
+/**
+ * The text of the operand to the left of the operator at `at` (a name, a member path, a call or an
+ * index, as written), and to the right of the operator that is `len` characters long.
+ */
+export function operandBefore(bare: string, at: number): string {
+  let i = at - 1;
+  while (i >= 0 && /\s/.test(bare[i] ?? "")) i--;
+  const end = i + 1;
+  while (i >= 0) {
+    const c = bare[i] ?? "";
+    if (c === ")" || c === "]") {
+      let depth = 0;
+      for (; i >= 0; i--) {
+        if (bare[i] === ")" || bare[i] === "]") depth++;
+        else if ((bare[i] === "(" || bare[i] === "[") && --depth === 0) break;
+      }
+      i--;
+    } else if (c === "'" || c === '"' || c === "`") {
+      i = bare.lastIndexOf(c, i - 1) - 1; // a string: its text is blanked, so jump to its other quote
+    } else if (/[\w$.!?]/.test(c)) i--;
+    else break;
+  }
+  return bare.slice(Math.max(i + 1, 0), end).trim();
+}
+
+export function operandAfter(bare: string, from: number): string {
+  let i = from;
+  while (i < bare.length && /\s/.test(bare[i] ?? "")) i++;
+  const start = i;
+  while (i < bare.length) {
+    const c = bare[i] ?? "";
+    if (c === "(" || c === "[") {
+      const close = closeOf(bare, i);
+      if (close < 0) break;
+      i = close + 1;
+    } else if (c === "'" || c === '"' || c === "`") {
+      const close = bare.indexOf(c, i + 1);
+      i = close < 0 ? bare.length : close + 1;
+    } else if (/[\w$.!?]/.test(c)) i++;
+    else break;
+  }
+  return bare.slice(start, i).trim();
+}
