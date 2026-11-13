@@ -1,5 +1,5 @@
 /**
- * The agent trace (AG-05, 0014) against a real Postgres, through REAL login roles: a person's login (a member
+ * The agent trace (AG-05, 0015) against a real Postgres, through REAL login roles: a person's login (a member
  * of `authenticated` only) and an agent's login (a member of `gaugeline_agent` only). The migration owner sets
  * things up and calls the private writer directly (no login may). Skipped without GAUGELINE_TEST_DATABASE_URL.
  */
@@ -204,6 +204,44 @@ describe.skipIf(!HAS_DATABASE)("agent trace", () => {
       expect(ids.filter((x) => x !== null && !x.startsWith("error"))).toHaveLength(2);
       expect((await traceOf(a.id)).map((r) => r.decision)).toEqual(["allowed", "allowed"]);
       expect((await traceOf(b.id)).map((r) => r.decision)).toEqual(["denied"]);
+    });
+  });
+
+  describe("the agent reads (AG-08)", () => {
+    /** The agent's login runs one read and commits; returns the jsonb answer as Postgres's own text. */
+    async function read(token: string, sql: string, args: unknown[]): Promise<string> {
+      let text = "";
+      await agent.begin(async (tx) => {
+        await tx.unsafe("set local role gaugeline_agent");
+        const [r] = await tx.unsafe(`select ${sql}::text as t`, args as never[]);
+        text = String(r!.t);
+      });
+      return text;
+    }
+
+    it("an allowed read of pending drafts and of runs each leave one row with the answer's hash", async () => {
+      const a = await register(["read:pending", "read:runs"]);
+      const p = await read(a.token, "private.agent_list_pending($1)", [a.token]);
+      const r = await read(a.token, "private.agent_list_runs($1, $2)", [a.token, SITE_A1]);
+      const rows = await traceOf(a.id);
+      expect(rows.map((x) => [x.tool, x.decision, x.reason, x.draft_id])).toEqual([
+        ["read:pending", "allowed", null, null],
+        ["read:runs", "allowed", null, null],
+      ]);
+      expect(rows[0]!.output_sha256).toBe(sha(p));
+      expect(rows[1]!.output_sha256).toBe(sha(r));
+      expect(rows[0]!.input_sha256).toMatch(HEX64);
+    });
+
+    it("a refused read leaves one denied row with the reason and no output hash", async () => {
+      const a = await register(["draft:email"]);
+      expect(JSON.parse(await read(a.token, "private.agent_list_pending($1)", [a.token]))).toEqual({
+        allowed: false,
+        reason: "scope",
+      });
+      expect(
+        (await traceOf(a.id)).map((x) => [x.tool, x.decision, x.reason, x.output_sha256]),
+      ).toEqual([["read:pending", "denied", "scope", null]]);
     });
   });
 
@@ -425,9 +463,12 @@ describe.skipIf(!HAS_DATABASE)("agent trace", () => {
   });
 
   describe("audit", () => {
-    it("the agent role still holds no table and runs one function; nobody runs the writer directly", async () => {
+    it("the agent role still holds no table and runs its three functions; nobody runs the writer directly", async () => {
       expect(await privateFunctionsExecutableBy(owner, "gaugeline_agent")).toEqual([
         "agent_insert_draft",
+        // AG-08 (0014): the two reads, each traced here too.
+        "agent_list_pending",
+        "agent_list_runs",
       ]);
       for (const role of [
         "anon",
@@ -443,6 +484,7 @@ describe.skipIf(!HAS_DATABASE)("agent trace", () => {
           "agent_trace_input",
           "agent_trace_ms",
           "agent_trace_decision",
+          "agent_trace_read",
         ])
           expect(fns, `${role} ${fn}`).not.toContain(fn);
       }

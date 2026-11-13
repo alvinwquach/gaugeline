@@ -507,7 +507,7 @@ export const agentDenies = pgTable(
 ).enableRLS();
 
 /**
- * One row per agent call (AG-05, 0014; append-only): ids, the tool, SHA-256 hashes of the input and output
+ * One row per agent call (AG-05, 0015; append-only): ids, the tool, SHA-256 hashes of the input and output
  * (never the input or output), whole-millisecond latency, integer tokens and cost, the decision, the deny
  * reason and the approver. No token, payload or text.
  */
@@ -535,7 +535,7 @@ export const agentTrace = pgTable(
   ],
 ).enableRLS();
 
-/** Calls counted instead of traced one by one (0014): unknown tokens, and an agent's denies past 60 a minute. */
+/** Calls counted instead of traced one by one (0015): unknown tokens, and an agent's denies past 60 a minute. */
 export const agentTraceOverflow = pgTable("agent_trace_overflow", {
   minute: timestamp("minute", { withTimezone: true }).notNull(),
   /** Null, with agentId, only for a token that matches no agent ("unknown-agent"). */

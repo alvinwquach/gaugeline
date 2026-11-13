@@ -14,7 +14,8 @@
 -- Who reaches what:
 --   agent_trace, agent_trace_overflow     owners and admins of the organisation, through RLS (read only)
 --   private.agent_trace_record            no login: only the agent's draft entry and the decisions trigger
--- The agent role still holds no privilege on any table and runs one function (agent_insert_draft).
+-- The agent role still holds no privilege on any table and runs its three functions (agent_insert_draft and
+-- AG-08's two reads, 0014), each now writing its trace row.
 
 create table public.agent_trace (
   id bigint generated always as identity primary key,
@@ -41,7 +42,8 @@ create table public.agent_trace (
   constraint agent_trace_reason_iff_denied check ((decision = 'denied') = (reason is not null)),
   constraint agent_trace_approver_iff_decided
     check ((decision in ('approved', 'declined')) = (approver_id is not null)),
-  constraint agent_trace_draft_unless_denied check (decision = 'denied' or draft_id is not null),
+  constraint agent_trace_draft_iff_decided
+    check (decision not in ('approved', 'declined') or draft_id is not null),
   foreign key (agent_id, org_id) references public.agents (id, org_id) on delete cascade
 );
 create index agent_trace_org_idx on public.agent_trace (org_id, id desc);
@@ -294,3 +296,212 @@ revoke all on function private.agent_trace_decision()
   from public, anon, authenticated, service_role, gaugeline_agent, gaugeline_worker, gaugeline_chat;
 create trigger decisions_agent_trace after insert on public.decisions
   for each row execute function private.agent_trace_decision();
+
+-- One trace row for an agent read (AG-08's two functions): the input hash is the SHA-256 of the call's
+-- arguments but the token (one jsonb object, NFC), the output hash that of the jsonb answer when the call
+-- was allowed. Tokens and cost are 0: a read runs no model.
+create function private.agent_trace_read(p_org uuid, p_agent uuid, p_tool text, p_input jsonb, p_out jsonb,
+  p_start timestamptz, p_reason text) returns void
+language plpgsql security definer set search_path = ''
+as $$
+begin
+  perform private.agent_trace_record(p_org, p_agent, p_tool,
+    case when p_agent is not null then pg_catalog.encode(pg_catalog.sha256(pg_catalog.convert_to(
+      pg_catalog.normalize(p_input::text, 'NFC'), 'UTF8')), 'hex') end,
+    case when p_reason is null then pg_catalog.encode(pg_catalog.sha256(pg_catalog.convert_to(
+      p_out::text, 'UTF8')), 'hex') end,
+    private.agent_trace_ms(p_start), 0, 0, case when p_reason is null then 'allowed' else 'denied' end,
+    p_reason, null, null);
+end
+$$;
+revoke all on function private.agent_trace_read(uuid, uuid, text, jsonb, jsonb, timestamptz, text)
+  from public, anon, authenticated, service_role, gaugeline_agent, gaugeline_worker, gaugeline_chat;
+
+-- AG-08's two reads (0014), unchanged but for one trace row at each way out: refused, timed out, or answered.
+create or replace function private.agent_list_pending(
+  p_token text,
+  p_limit integer default 20,
+  p_cursor_at timestamptz default null,
+  p_cursor_id uuid default null,
+  p_draft uuid default null,
+  p_site uuid default null
+) returns jsonb
+language plpgsql security definer set search_path = ''
+as $$
+declare
+  v_start timestamptz := pg_catalog.clock_timestamp();
+  v_out jsonb;
+  v_allowed boolean;
+  v_reason text;
+  v_agent uuid;
+  v_org uuid;
+  v_deadline timestamptz;
+  v_rows jsonb;
+  v_calls integer;
+  v_spent bigint;
+begin
+  -- The caller's own mistakes, refused before the policy (no count, no deny row): a page of 1 to 50, and a
+  -- cursor that is both halves or neither.
+  if p_limit is null or p_limit < 1 or p_limit > 50 then
+    raise exception 'limit must be 1 to 50' using errcode = '22023';
+  end if;
+  if (p_cursor_at is null) <> (p_cursor_id is null) then
+    raise exception 'a cursor has a time and an id' using errcode = '22023';
+  end if;
+  begin
+    select z.allowed, z.reason, z.agent_id, z.org_id, z.deadline
+      into v_allowed, v_reason, v_agent, v_org, v_deadline
+      from private.agent_authorize(p_token, 'read:pending', 0) z;
+    if not v_allowed then
+      v_out := pg_catalog.jsonb_build_object('allowed', false, 'reason', v_reason);
+      perform private.agent_trace_read(v_org, v_agent, 'read:pending', pg_catalog.jsonb_build_object('limit', p_limit, 'cursor_at', p_cursor_at, 'cursor_id', p_cursor_id, 'draft', p_draft, 'site', p_site), v_out, v_start, v_reason);
+      return v_out;
+    end if;
+    select coalesce(pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
+        'id', p.id, 'site_id', p.site_id, 'kind', p.kind, 'title', p.title, 'excerpt', p.excerpt,
+        'payload_sha256', p.sha, 'created_at', p.created, 'expires_at', p.expires, 'cursor_at', p.cursor_at,
+        'finding_ids', p.finding_ids) order by p.created_at desc, p.id desc), '[]'::jsonb)
+      into v_rows
+      from (
+        select d.id, d.site_id, d.kind, d.created_at, d.created_at::text as cursor_at,
+          pg_catalog.to_char(d.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as created,
+          pg_catalog.to_char((d.created_at + interval '72 hours') at time zone 'UTC',
+            'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as expires,
+          case d.kind
+            when 'email' then d.payload ->> 'subject'
+            when 'pull_request' then d.payload ->> 'title'
+            when 'sanity_draft' then (d.payload ->> 'documentType') || ' ' || (d.payload ->> 'documentId')
+          end as title,
+          -- At most 600 characters of the body; for a Sanity draft, the names of the fields it sets (not
+          -- their values). The API cuts it shorter.
+          case d.kind
+            when 'sanity_draft' then 'fields: ' || (select pg_catalog.string_agg(k, ', ' order by k)
+              from pg_catalog.jsonb_object_keys(d.payload -> 'set') k)
+            else pg_catalog.left(d.payload ->> 'body', 600)
+          end as excerpt,
+          pg_catalog.encode(pg_catalog.sha256(pg_catalog.convert_to(d.payload::text, 'UTF8')), 'hex') as sha,
+          d.finding_ids
+        from public.drafts d
+        where d.org_id = v_org
+          and d.created_at > pg_catalog.now() - interval '72 hours'
+          and not exists (select 1 from public.decisions x where x.draft_id = d.id)
+          and (p_draft is null or d.id = p_draft)
+          and (p_site is null or d.site_id = p_site)
+          and (p_cursor_at is null or (d.created_at, d.id) < (p_cursor_at, p_cursor_id))
+        order by d.created_at desc, d.id desc
+        limit p_limit + 1
+      ) p;
+    if pg_catalog.clock_timestamp() > v_deadline then
+      raise exception 'past the deadline' using errcode = 'GLT01';
+    end if;
+  exception when sqlstate 'GLT01' then
+    -- As in agent_insert_draft (0013): the block is undone, the policy's count with it, and the deny row
+    -- carries the counters as they are once it is undone.
+    select case when l.window_started_at is null or pg_catalog.clock_timestamp()
+                  >= l.window_started_at + pg_catalog.make_interval(secs => l.window_seconds)
+                then 0 else l.window_calls end,
+           case when l.cost_day = (pg_catalog.clock_timestamp() at time zone 'UTC')::date
+                then l.cost_day_micros else 0 end
+      into v_calls, v_spent
+      from public.agent_limits l where l.agent_id = v_agent;
+    perform private.agent_deny(v_org, v_agent, 'read:pending', 'timeout', 0, v_calls, v_spent);
+    v_out := pg_catalog.jsonb_build_object('allowed', false, 'reason', 'timeout');
+    perform private.agent_trace_read(v_org, v_agent, 'read:pending', pg_catalog.jsonb_build_object('limit', p_limit, 'cursor_at', p_cursor_at, 'cursor_id', p_cursor_id, 'draft', p_draft, 'site', p_site), v_out, v_start, 'timeout');
+    return v_out;
+  end;
+  update public.agents a set last_used_at = pg_catalog.now() where a.id = v_agent;
+  v_out := pg_catalog.jsonb_build_object('allowed', true,
+    'more', pg_catalog.jsonb_array_length(v_rows) > p_limit,
+    'drafts', case when pg_catalog.jsonb_array_length(v_rows) > p_limit
+                   then v_rows - p_limit else v_rows end);
+  perform private.agent_trace_read(v_org, v_agent, 'read:pending', pg_catalog.jsonb_build_object('limit', p_limit, 'cursor_at', p_cursor_at, 'cursor_id', p_cursor_id, 'draft', p_draft, 'site', p_site), v_out, v_start, null);
+  return v_out;
+end
+$$;
+
+create or replace function private.agent_list_runs(
+  p_token text,
+  p_site uuid,
+  p_limit integer default 20,
+  p_cursor_at timestamptz default null,
+  p_cursor_id uuid default null,
+  p_since timestamptz default null
+) returns jsonb
+language plpgsql security definer set search_path = ''
+as $$
+declare
+  v_start timestamptz := pg_catalog.clock_timestamp();
+  v_out jsonb;
+  v_allowed boolean;
+  v_reason text;
+  v_agent uuid;
+  v_org uuid;
+  v_deadline timestamptz;
+  v_rows jsonb;
+  v_found boolean;
+  v_calls integer;
+  v_spent bigint;
+begin
+  if p_limit is null or p_limit < 1 or p_limit > 50 then
+    raise exception 'limit must be 1 to 50' using errcode = '22023';
+  end if;
+  if (p_cursor_at is null) <> (p_cursor_id is null) then
+    raise exception 'a cursor has a time and an id' using errcode = '22023';
+  end if;
+  begin
+    select z.allowed, z.reason, z.agent_id, z.org_id, z.deadline
+      into v_allowed, v_reason, v_agent, v_org, v_deadline
+      from private.agent_authorize(p_token, 'read:runs', 0) z;
+    if not v_allowed then
+      v_out := pg_catalog.jsonb_build_object('allowed', false, 'reason', v_reason);
+      perform private.agent_trace_read(v_org, v_agent, 'read:runs', pg_catalog.jsonb_build_object('site', p_site, 'limit', p_limit, 'cursor_at', p_cursor_at, 'cursor_id', p_cursor_id, 'since', p_since), v_out, v_start, v_reason);
+      return v_out;
+    end if;
+    v_found := exists (select 1 from public.sites s where s.id = p_site and s.org_id = v_org);
+    if v_found then
+      select coalesce(pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
+          'id', r.id, 'started_at', r.started, 'finished_at', r.finished, 'summary', r.summary,
+          'cursor_at', r.cursor_at) order by r.started_at desc, r.id desc), '[]'::jsonb)
+        into v_rows
+        from (
+          select x.id, x.started_at, x.started_at::text as cursor_at, x.summary,
+            pg_catalog.to_char(x.started_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as started,
+            pg_catalog.to_char(x.finished_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as finished
+          from public.runs x
+          where x.org_id = v_org and x.site_id = p_site
+            and (p_since is null or x.started_at > p_since)
+            and (p_cursor_at is null or (x.started_at, x.id) < (p_cursor_at, p_cursor_id))
+          order by x.started_at desc, x.id desc
+          limit p_limit + 1
+        ) r;
+    end if;
+    if pg_catalog.clock_timestamp() > v_deadline then
+      raise exception 'past the deadline' using errcode = 'GLT01';
+    end if;
+  exception when sqlstate 'GLT01' then
+    select case when l.window_started_at is null or pg_catalog.clock_timestamp()
+                  >= l.window_started_at + pg_catalog.make_interval(secs => l.window_seconds)
+                then 0 else l.window_calls end,
+           case when l.cost_day = (pg_catalog.clock_timestamp() at time zone 'UTC')::date
+                then l.cost_day_micros else 0 end
+      into v_calls, v_spent
+      from public.agent_limits l where l.agent_id = v_agent;
+    perform private.agent_deny(v_org, v_agent, 'read:runs', 'timeout', 0, v_calls, v_spent);
+    v_out := pg_catalog.jsonb_build_object('allowed', false, 'reason', 'timeout');
+    perform private.agent_trace_read(v_org, v_agent, 'read:runs', pg_catalog.jsonb_build_object('site', p_site, 'limit', p_limit, 'cursor_at', p_cursor_at, 'cursor_id', p_cursor_id, 'since', p_since), v_out, v_start, 'timeout');
+    return v_out;
+  end;
+  update public.agents a set last_used_at = pg_catalog.now() where a.id = v_agent;
+  if not v_found then
+    v_out := pg_catalog.jsonb_build_object('allowed', true, 'found', false);
+    perform private.agent_trace_read(v_org, v_agent, 'read:runs', pg_catalog.jsonb_build_object('site', p_site, 'limit', p_limit, 'cursor_at', p_cursor_at, 'cursor_id', p_cursor_id, 'since', p_since), v_out, v_start, null);
+    return v_out;
+  end if;
+  v_out := pg_catalog.jsonb_build_object('allowed', true, 'found', true,
+    'more', pg_catalog.jsonb_array_length(v_rows) > p_limit,
+    'runs', case when pg_catalog.jsonb_array_length(v_rows) > p_limit
+                 then v_rows - p_limit else v_rows end);
+  perform private.agent_trace_read(v_org, v_agent, 'read:runs', pg_catalog.jsonb_build_object('site', p_site, 'limit', p_limit, 'cursor_at', p_cursor_at, 'cursor_id', p_cursor_id, 'since', p_since), v_out, v_start, null);
+  return v_out;
+end
+$$;
