@@ -247,7 +247,10 @@ async function decideInTransaction(
       return { status: "already-decided", decision: won!.decision, decidedBy: won!.decided_by };
     }
     const decisionId = String(row.id);
-    if (decision !== "declined") {
+    // A weekly client update (X66) is an email draft that sendApprovedUpdates sends once, after this approval.
+    // It never becomes an apply job, so the writer cannot send it a second time.
+    const [weekly] = await tx`select 1 from public.weekly_updates where draft_id = ${draftId}`;
+    if (decision !== "declined" && !weekly) {
       await queue.enqueueApply(tx, {
         orgId: draft.org_id as string,
         draftId,
