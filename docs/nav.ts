@@ -130,6 +130,10 @@ export const UNLISTED: NavPage[] = [
   },
   { slug: "guides/studio-caching", title: "Is the editor studio cached?" },
   {
+    slug: "guides/purges-and-config-source",
+    title: "Wasted cache clears and a client in the config, read from your code",
+  },
+  {
     slug: "guides/image-optimizers",
     title: "Open image optimizers: who can use your site to resize images",
   },

@@ -86,6 +86,36 @@ export function matchingBack(code: string, close: number): number {
   return -1;
 }
 
+/**
+ * True when `at` (an index in a blanked view) is inside the body of a function: a declaration, an
+ * expression, an arrow or a method. False at the top level, inside an object or array literal, and
+ * inside a plain block (`if`, `for`, `try`, ...), which runs when the module loads.
+ */
+export function inFunctionBody(bare: string, at: number): boolean {
+  const open: boolean[] = [];
+  for (let i = 0; i < at && i < bare.length; i++) {
+    if (bare[i] === "{") open.push(opensFunction(bare, i));
+    else if (bare[i] === "}") open.pop();
+  }
+  if (open.includes(true)) return true;
+  // An arrow whose body is the expression itself: `() => createClient(...)`.
+  return /=>\s*[(\s]*(?:(?:await|new)\s+)?(?:[\w$]+\.)*$/.test(
+    bare.slice(Math.max(0, at - 80), at),
+  );
+}
+
+/** True when the `{` at `brace` opens a function body, from what comes before it. */
+function opensFunction(bare: string, brace: number): boolean {
+  const head = bare.slice(Math.max(0, brace - 240), brace);
+  if (/=>\s*$/.test(head)) return true;
+  const m = /\)\s*(?::\s*[^(){};=]*)?\s*$/.exec(head);
+  if (m === null) return false;
+  const close = brace - head.length + m.index;
+  const start = matchingBack(bare, close);
+  if (start < 0) return false;
+  return !/\b(?:if|for|while|switch|catch|with)\s*$/.test(bare.slice(0, start));
+}
+
 /** True when the file's first statement is the directive `"use client"` (or `use server`, ...). */
 export function hasDirective(text: string, directive: string): boolean {
   const head = scrub(text, false).trimStart();
