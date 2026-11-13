@@ -8,6 +8,7 @@ import { aiCrawlersDirectives } from "./ai-crawlers-directives.js";
 import { aiCrawlersIntent } from "./ai-crawlers-intent.js";
 import { aiKeyInJs } from "./ai-key-in-js.js";
 import { aiWidgetInventory } from "./ai-widget-inventory.js";
+import { analyticsLoadedTwice } from "./analytics-loaded-twice.js";
 import { angularAnalogEndpointsListed } from "./angular-analog-endpoints-listed.js";
 import { angularDevToolsPublic } from "./angular-dev-tools-public.js";
 import { angularPreviewCanonical } from "./angular-preview-canonical.js";
@@ -267,6 +268,7 @@ export const PAGE_CHECKS = [
   aiCrawlersIntent,
   aiKeyInJs,
   aiWidgetInventory,
+  analyticsLoadedTwice,
   angularAnalogEndpointsListed,
   angularDevToolsPublic,
   angularPreviewCanonical,
