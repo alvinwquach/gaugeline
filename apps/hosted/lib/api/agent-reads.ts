@@ -172,7 +172,7 @@ export async function getPendingDrafts(req: Request, deps: ApiDeps): Promise<Res
       site: param(url, "site"),
     });
     if (!q.success) return badQuery(q.error.issues);
-    const cursor = q.data.cursor === undefined ? null : decodeCursor(q.data.cursor, "runs");
+    const cursor = q.data.cursor === undefined ? null : decodeCursor(q.data.cursor, "drafts");
     if (q.data.cursor !== undefined && !cursor)
       return problem(400, "invalid_cursor", "cursor is not one this API gave you.");
     const page = await listPending(deps, g.token, {
@@ -186,7 +186,8 @@ export async function getPendingDrafts(req: Request, deps: ApiDeps): Promise<Res
     const last = rows[rows.length - 1];
     return json(200, {
       drafts: rows.map(draftOut),
-      nextCursor: page.more && last ? encodeCursor({ t: last.cursor_at, id: last.id }) : null,
+      nextCursor:
+        page.more && last ? encodeCursor({ t: last.cursor_at, id: last.id }, "drafts") : null,
     });
   } catch (e) {
     return failed(e);

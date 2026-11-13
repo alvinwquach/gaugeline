@@ -20,19 +20,26 @@ function validTime(t: string): boolean {
   );
 }
 
-export function encodeCursor(c: Cursor): string {
-  return Buffer.from(JSON.stringify({ t: c.t, id: c.id })).toString("base64url");
+/** A drafts cursor (AG-08) carries `k: "drafts"`, so it cannot be passed to /runs, nor a runs cursor to /drafts. */
+export function encodeCursor(c: Cursor, kind?: "drafts"): string {
+  return Buffer.from(
+    JSON.stringify(kind ? { k: kind, t: c.t, id: c.id } : { t: c.t, id: c.id }),
+  ).toString("base64url");
 }
 
 /**
  * The cursor, or null for anything this API did not make. A runs cursor holds a time; a findings cursor
  * holds the word "findings": anything else would reach the database as a value it cannot read.
  */
-export function decodeCursor(text: string, kind: "runs" | "findings" = "runs"): Cursor | null {
+export function decodeCursor(
+  text: string,
+  kind: "runs" | "findings" | "drafts" = "runs",
+): Cursor | null {
   try {
     const v = JSON.parse(Buffer.from(text, "base64url").toString("utf8")) as unknown;
     if (typeof v !== "object" || v === null) return null;
-    const { t, id } = v as Record<string, unknown>;
+    const { t, id, k } = v as Record<string, unknown>;
+    if (k !== (kind === "drafts" ? "drafts" : undefined)) return null;
     if (typeof t !== "string" || typeof id !== "string" || !UUID.test(id)) return null;
     if (kind === "findings" ? t !== "findings" : !TIME.test(t) || !validTime(t)) return null;
     return { t, id };

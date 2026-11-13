@@ -250,9 +250,11 @@ describe.skipIf(!HAS_DATABASE)("agent reads API: integration", () => {
         "limit=two",
         "cursor=not-a-cursor",
         `cursor=${encodeCursor({ t: "findings", id: D(1) })}`,
+        // A runs cursor is not a drafts cursor.
+        `cursor=${encodeCursor({ t: "2026-11-13 09:15:00+00", id: D(1) })}`,
         `cursor=${"A".repeat(300)}`,
         // A cursor this API would read, padded past the 200-character cap: refused for its size alone.
-        `cursor=${Buffer.from(JSON.stringify({ t: "2026-11-13 09:15:00+00", id: D(1), pad: "p".repeat(200) })).toString("base64url")}`,
+        `cursor=${Buffer.from(JSON.stringify({ k: "drafts", t: "2026-11-13 09:15:00+00", id: D(1), pad: "p".repeat(200) })).toString("base64url")}`,
         "status=approved",
         "site=not-a-site",
       ]) {
@@ -319,6 +321,8 @@ describe.skipIf(!HAS_DATABASE)("agent reads API: integration", () => {
       expect((await get(`/runs?site=${SITE_B1}`, a.token)).status).toBe(404);
       expect((await get("/runs", a.token)).status).toBe(400);
       expect((await get(`/runs?site=${SITE_A1}&limit=51`, a.token)).status).toBe(400);
+      const draftsCursor = encodeCursor({ t: "2026-11-13 09:15:00+00", id: RUN_A1 }, "drafts");
+      expect((await get(`/runs?site=${SITE_A1}&cursor=${draftsCursor}`, a.token)).status).toBe(400);
       const p = await register(["read:pending"]);
       const r = await get(`/runs?site=${SITE_A1}`, p.token);
       expect([r.status, (await body(r)).reason]).toEqual([403, "scope"]);
