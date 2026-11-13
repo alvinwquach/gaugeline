@@ -15,9 +15,9 @@ import {
   type TriageFinding,
 } from "@gaugeline/core";
 import postgres from "postgres";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { createAgentDrafts } from "../../agents/draft.js";
-import { triageDraftSink } from "../../agents/triage.js";
+import { triageDraftSink, triagePendingSource } from "../../agents/triage.js";
 import {
   HAS_DATABASE,
   ORG_A,
@@ -85,6 +85,34 @@ describe("the sink", () => {
     expect([out.created, out.stopped, connects]).toEqual([[], "kill-switch-global", 0]);
     expect(log.map((l) => [l.tool, l.reason])).toEqual([["draft:email", "kill-switch-global"]]);
     await drafts.end();
+  });
+});
+
+describe("the pending source", () => {
+  const TOKEN = `gla_${"a".repeat(8)}_${"b".repeat(43)}`;
+  const call = { siteId: SITE_A1, cursor: null, limit: 50 };
+
+  it("failing fixture: the environment kill switch is a refusal with its reason, and no login is needed", async () => {
+    vi.stubEnv(AGENTS_OFF_ENV, "1");
+    try {
+      expect(await triagePendingSource({}, TOKEN)(call)).toEqual({
+        read: false,
+        reason: "kill-switch-global",
+      });
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("failing fixture: a server with no agent login, or a refused one, is a failure the run treats as unavailable", async () => {
+    await expect(triagePendingSource({}, TOKEN)(call)).rejects.toThrow(/status 503/);
+    await expect(triagePendingSource({ agentUnavailable: true }, TOKEN)(call)).rejects.toThrow(
+      /status 503/,
+    );
+  });
+
+  it("failing fixture: a token that is not an agent's is refused as unauthorized, not read", async () => {
+    await expect(triagePendingSource({}, "not-a-token")(call)).rejects.toThrow(/status 401/);
   });
 });
 
@@ -222,12 +250,65 @@ describe.skipIf(!HAS_DATABASE)("the triage agent against Postgres", () => {
     expect(Number((await owner`select count(*) as n from public.drafts`)[0]!.n)).toBe(before);
   });
 
-  it("the agent's registered limits (20 calls, cost 0) are the ones the database enforces", async () => {
+  it("passing fixture: a second run reads the waiting drafts as the agent and drafts nothing again", async () => {
+    const a = await register();
+    const agentSql = postgres(loginUrl(AGENT), { max: 2, onnotice: () => {} });
+    try {
+      const all = await findings();
+      const first = await runTriage({ siteId: SITE_A1, findings: all }, deps(a.token));
+      expect(first.created.length).toBeGreaterThan(0);
+      const before = Number((await owner`select count(*) as n from public.drafts`)[0]!.n);
+      const second = await runTriage(
+        { siteId: SITE_A1, findings: all },
+        { ...deps(a.token), readPending: triagePendingSource({ agentSql }, a.token) },
+      );
+      expect(second.created).toEqual([]);
+      expect(second.skipped.map((s) => s.causeKey).sort()).toEqual(
+        first.created.map((c) => c.causeKey).sort(),
+      );
+      expect(second.pending).toMatchObject({ read: true, pages: 1, problem: null });
+      expect(second.pending.rows).toBeGreaterThanOrEqual(first.created.length);
+      expect(Number((await owner`select count(*) as n from public.drafts`)[0]!.n)).toBe(before);
+      const reads =
+        await owner`select decision, tool from public.agent_trace where agent_id = ${a.id} and tool = 'read:pending'`;
+      expect(reads.map((t) => t.decision)).toEqual(["allowed"]);
+    } finally {
+      await agentSql.end();
+    }
+  });
+
+  it("failing fixture: an agent without the read scope is refused by the database, and the run drafts nothing", async () => {
+    let draftOnly: { token: string } | undefined;
+    await person.begin(async (tx) => {
+      await tx`select set_config('request.jwt.claims', ${JSON.stringify({ sub: USER_A_OWNER })}, true)`;
+      await tx.unsafe("set local role authenticated");
+      const [r] =
+        await tx`select * from private.register_agent(${ORG_A}, ${`Draft only ${tag}`}, ${USER_A_OWNER}, ${["draft:email"]})`;
+      draftOnly = { token: r!.token as string };
+    });
+    const agentSql = postgres(loginUrl(AGENT), { max: 2, onnotice: () => {} });
+    try {
+      const before = Number((await owner`select count(*) as n from public.drafts`)[0]!.n);
+      const out = await runTriage(
+        { siteId: SITE_A1, findings: await findings() },
+        {
+          ...deps(draftOnly!.token),
+          readPending: triagePendingSource({ agentSql }, draftOnly!.token),
+        },
+      );
+      expect([out.created, out.stopped, out.pending.problem]).toEqual([[], "scope", "unavailable"]);
+      expect(Number((await owner`select count(*) as n from public.drafts`)[0]!.n)).toBe(before);
+    } finally {
+      await agentSql.end();
+    }
+  });
+
+  it("the agent's registered limits (25 calls, cost 0) are the ones the database enforces", async () => {
     const a = await register();
     const [l] =
       await owner`select calls_per_window, window_seconds, cost_ceiling_micros, timeout_ms from public.agent_limits where agent_id = ${a.id}`;
     expect(l).toEqual({
-      calls_per_window: 20,
+      calls_per_window: TRIAGE_REGISTRATION.limits.callsPerWindow,
       window_seconds: 60,
       cost_ceiling_micros: "0",
       timeout_ms: 10_000,

@@ -7,5 +7,7 @@ export interface ExampleGroup {
   findingIds: string[];
   summary: string;
 }
-export const exampleOutput = (rec: EvalRecording): { groups: ExampleGroup[] } =>
-  JSON.parse(rec.text) as { groups: ExampleGroup[] };
+export const exampleOutput = (
+  rec: EvalRecording,
+): { groups: ExampleGroup[]; alreadyWaiting?: string[] } =>
+  JSON.parse(rec.text) as { groups: ExampleGroup[]; alreadyWaiting?: string[] };

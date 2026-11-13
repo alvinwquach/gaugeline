@@ -1,6 +1,7 @@
 /**
  * The triage agent's run (AG-12): plan, then one draft per cause through the draft path, each call checked
- * by the agent policy first and traced. Draft-only: the one tool it ever asks for is `draft:email`.
+ * by the agent policy first and traced. Draft-only: the tools it asks for are `draft:email` and the read
+ * `read:pending`; a cause that already has a draft waiting is skipped.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AGENTS_OFF_ENV, createAgentPolicy, isAgentDenyReason } from "../../../agent-policy.js";
@@ -80,13 +81,13 @@ describe("a run that drafts", () => {
     expect(out.created.map((c) => c.draftId)).toEqual(["d-1", "d-2", "d-3"]);
   });
 
-  it("is draft-only: the only tool it asks the policy for is draft:email, and that is not a write tool", async () => {
+  it("is draft-only: the tools it asks the policy for are draft:email and read:pending, and neither is a write tool", async () => {
     const r = rig();
     await runTriage({ siteId: SITE, findings: bakery }, r.deps);
     expect(new Set(r.asked)).toEqual(new Set(["draft:email"]));
-    expect(TRIAGE_TOOLS).toEqual(["draft:email"]);
+    expect(TRIAGE_TOOLS).toEqual(["draft:email", "read:pending"]);
     expect(TRIAGE_TOOLS.some(isWriteTool)).toBe(false);
-    expect(TRIAGE_REGISTRATION.scopes).toEqual(["draft:email"]);
+    expect(TRIAGE_REGISTRATION.scopes).toEqual(["draft:email", "read:pending"]);
   });
 
   it("a site with nothing to triage makes no draft and no call", async () => {
@@ -104,7 +105,7 @@ describe("a run that drafts", () => {
       { siteId: SITE, findings: bakery },
       { ...r.deps, alreadyDrafted: new Set(["canonical-links"]) },
     );
-    expect(out.skipped).toEqual(["canonical-links"]);
+    expect(out.skipped).toEqual([{ causeKey: "canonical-links", reason: "already waiting" }]);
     expect(out.created.map((c) => c.causeKey)).toEqual(["certificate", "image-alt-text"]);
   });
 
@@ -164,12 +165,12 @@ describe("limited: the policy decides before every draft", () => {
     ).toBe(true);
   });
 
-  it("any tool but draft:email is refused by the agent's policy (deny by default)", () => {
+  it("any tool but draft:email and read:pending is refused by the agent's policy (deny by default)", () => {
     const policy = createTriagePolicy({ env: {}, now: () => T0 });
     for (const tool of [
       "publish_site",
       "draft:pull_request",
-      "read:pending",
+      "read:runs",
       "model:complete",
       "send_email",
     ]) {
@@ -316,7 +317,7 @@ describe("offline and deterministic", () => {
 
   it("the policy it builds has the registration's limits and nothing wider", () => {
     expect(TRIAGE_REGISTRATION.limits).toEqual({
-      callsPerWindow: 20,
+      callsPerWindow: 25, // 20 drafts and at most 5 pages of the pending read
       windowMs: 60_000,
       costCeilingMicros: 0,
       timeoutMs: 10_000,

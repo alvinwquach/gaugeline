@@ -33,6 +33,9 @@ const CURSOR_MAX = 200;
 /** Both token shapes Gaugeline mints, redacted wherever an agent's text quotes one. */
 const OUR_TOKENS = /\bgl[at]_[0-9a-f]{8}_[A-Za-z0-9_-]{43}(?![A-Za-z0-9_-])/g;
 
+/** What the agent reads need of the API's dependencies: the agent's own login, and whether it was refused. */
+export type AgentReadDeps = Pick<ApiDeps, "agentSql" | "agentUnavailable">;
+
 /** The agent's token in an `Authorization: Bearer gla_...` header, or null. */
 export function agentBearer(header: string | null): string | null {
   const m = header === null ? null : /^Bearer ([^\s]+)$/i.exec(header);
@@ -68,7 +71,7 @@ function denied(reason: string): Response {
 }
 
 /** Not configured, the kill switch, or the agent's token; else the answer to send. */
-function gate(req: Request, deps: ApiDeps): { token: string } | Response {
+function gate(req: Request, deps: AgentReadDeps): { token: string } | Response {
   const token = agentBearer(req.headers.get("authorization"));
   if (!token) return UNAUTHORIZED_AGENT();
   if (agentsOff(process.env)) return denied("kill-switch-global");
@@ -148,7 +151,7 @@ function refusal(page: Page): Response | undefined {
 }
 
 async function listPending(
-  deps: ApiDeps,
+  deps: AgentReadDeps,
   token: string,
   o: { limit: number; cursor: { t: string; id: string } | null; site?: string; draft?: string },
 ): Promise<Page> {
@@ -160,7 +163,7 @@ async function listPending(
   });
 }
 
-export async function getPendingDrafts(req: Request, deps: ApiDeps): Promise<Response> {
+export async function getPendingDrafts(req: Request, deps: AgentReadDeps): Promise<Response> {
   try {
     const g = gate(req, deps);
     if (g instanceof Response) return g;

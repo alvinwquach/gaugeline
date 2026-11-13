@@ -38,6 +38,11 @@ export interface EvalInput {
   findings: readonly EvalFinding[];
   /** Text lifted from a checked page: untrusted data, never an instruction. */
   pageText?: string;
+  /**
+   * What a read of the hosted app returned (AG-12: the pending-approvals page for one site), as the API sent
+   * it. Untrusted data like the rest, and counted by `inputChars`. Absent for agents that read nothing.
+   */
+  pending?: unknown;
 }
 
 export interface EvalToolCall {
