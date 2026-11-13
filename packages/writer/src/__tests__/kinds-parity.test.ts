@@ -178,6 +178,18 @@ describe("the writer's shape checks agree with the inbox's", () => {
       expect(writer(kind, payload).ok).toBe(inbox(kind, payload).ok);
     });
 
+  it("a set key that is not a plain field name is refused by both, with a matching before", () => {
+    for (const key of ["_rev", "_id", "_type", "a.b", "9x", "a b", "a-b", "", "x".repeat(65)]) {
+      const p = {
+        ...sanityBase,
+        set: { [key]: "x" },
+        before: { [key]: digest(key) },
+      };
+      expect(writer("sanity_draft", p).ok, `writer ${JSON.stringify(key)}`).toBe(false);
+      expect(inbox("sanity_draft", p).ok, `inbox ${JSON.stringify(key)}`).toBe(false);
+    }
+  });
+
   it("a sanity payload with its before digests is accepted by both", () => {
     const p = withBefore(sanityBase);
     expect(writer("sanity_draft", p).ok).toBe(true);

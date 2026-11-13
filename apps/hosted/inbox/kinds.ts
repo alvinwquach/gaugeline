@@ -148,8 +148,9 @@ const sanityDraft = z
         (o) => Object.keys(o).length >= 1 && Object.keys(o).length <= 20,
         "sets 1 to 20 fields",
       ),
+    // The names are the same as `set`'s (checked below), so they are plain names by that check alone.
     before: z.record(
-      z.string().regex(FIELD_NAME, "is not a plain field name"),
+      z.string(),
       z.string().regex(/^[0-9a-f]{64}$/, "is not a SHA-256 digest in lower-case hex"),
     ),
   })
