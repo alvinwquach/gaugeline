@@ -9,6 +9,7 @@ import {
 import { DEFAULT_CALL_MS, contextFor, createState, type ServerOptions } from "./state.js";
 import { ToolError } from "./errors.js";
 import { asToolError } from "./tools/shared.js";
+import { MCP_AGENT_ID, TOOL_COST_MICROS, createServerPolicy, refusal } from "./policy.js";
 
 export const SERVER_NAME = "gaugeline";
 export const SERVER_VERSION = "0.1.0";
@@ -27,6 +28,8 @@ export function createGaugelineServer(options: ServerOptions = {}): McpServer {
   const ctx = contextFor(options, state);
   const server = new McpServer({ name: SERVER_NAME, version: SERVER_VERSION });
   const limit = options.maxActiveCalls ?? 16;
+  state.policy ??= createServerPolicy(options);
+  const policy = state.policy;
   // The operator's own plan bases stay readable in an error; every other address is withheld.
   const keep = (options.planBases ?? []).flatMap((b) =>
     URL.canParse(b) ? [new URL(b).origin, new URL(b).host] : [],
@@ -51,6 +54,17 @@ export function createGaugelineServer(options: ServerOptions = {}): McpServer {
         _meta: { "gaugeline/kind": def.kind, "gaugeline/untrustedSlots": def.untrustedSlots ?? [] },
       },
       async (args: unknown) => {
+        // The policy first: before the busy check, the tool body and any request. A deny says the reason only.
+        const decision = policy.decide({
+          agentId: MCP_AGENT_ID,
+          tool: name,
+          costMicros: TOOL_COST_MICROS,
+        });
+        if (!decision.allowed)
+          return {
+            isError: true,
+            content: [{ type: "text" as const, text: refusal(decision.reason ?? "bad-input") }],
+          };
         // Calls that make requests wait behind one shared in-flight limit; the waiting line is bounded, so
         // a flood is refused with a clear message instead of queueing memory and time without end.
         if (def.requests && state.active >= limit)

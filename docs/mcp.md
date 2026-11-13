@@ -225,6 +225,38 @@ To listen on another address you must pass `--allow-non-loopback`, name each hos
 
 A request body larger than 1 MiB is answered with `413` and `Connection: close`. Before answering, the server reads and throws away the rest of that body for up to 16 MiB or 10 seconds, whichever comes first, so a client that is still sending (on Windows and macOS especially) receives the `413` instead of a reset connection. After that limit the connection is closed. None of the discarded bytes is kept, and nothing about the limits can be changed from the command line.
 
+## The agent policy
+
+Every tool call is checked **before** it runs, against a policy you set when you start the server, and is refused unless the policy allows it. The check runs before the tool's own code, so a refused call makes no request to any site and reads no file. With none of these flags, the server behaves as before: all six tools (`run_check`, `list_checks`, `explain_finding`, `compare_runs`, `plan_check`, `draft_fix`) are allowed, at up to 120 calls a minute.
+
+| Flag                        | Default       | What it does                                                                           |
+| --------------------------- | ------------- | -------------------------------------------------------------------------------------- |
+| `--allow-tool <name>`       | every tool    | a tool calls may use (repeat for more). Any other tool is refused with `scope`         |
+| `--calls-per-minute <n>`    | 120           | calls per minute, every tool together, 0 to 10000. `0` refuses every call              |
+| `--cost-ceiling-micros <n>` | 1000000 a day | cost per UTC day, in whole micro-units. No tool costs anything today (each declares 0) |
+
+The time limit of a call is the one below (two minutes). The budget belongs to the server: over HTTP every caller with the token shares it, because there is one operator.
+
+**The global kill switch.** Set `GAUGELINE_AGENTS_OFF` in the server's environment to stop every call (reason `kill-switch-global`). It is read at every call, so it takes effect on the next call without a restart. Only an unset variable or exactly `0` lets calls run; any other value, an empty or misspelt one included, stops them. The hosted agents read the same variable ([agent policy](./hosted/agent-policy.md)).
+
+A refused call is a tool error with fixed words and one reason, and nothing from the call or the page:
+
+```text
+Refused by this server's agent policy: scope.
+```
+
+The reasons are the hosted policy's closed list; the server can give `kill-switch-global`, `scope`, `rate-limit` and `cost-ceiling`. Each refusal is one line on stderr with the tool, the reason and the time, never the arguments. This is the server's output for a call to `run_check` started with `--allow-tool list_checks --allow-tool explain_finding`, then for two calls with `GAUGELINE_AGENTS_OFF=1`:
+
+```text title=stderr
+gaugeline-mcp 0.1.0 serving over stdio (read-only)
+gaugeline-mcp: denied tool=run_check reason=scope at=2026-11-13T10:40:49.881Z
+gaugeline-mcp 0.1.0 serving over stdio (read-only)
+gaugeline-mcp: denied tool=run_check reason=kill-switch-global at=2026-11-13T10:40:47.844Z
+gaugeline-mcp: denied tool=list_checks reason=kill-switch-global at=2026-11-13T10:40:47.844Z
+```
+
+For a juice bar's site you check by hand while building it, the defaults are enough. For an assistant left running a loop over a client's pages, start it with `--calls-per-minute 20`, and if it should only read, `--allow-tool run_check --allow-tool list_checks --allow-tool explain_finding`.
+
 ## Limits on one call
 
 A call that makes requests has an overall time limit (two minutes): no new request is started after it, and the call is answered at the limit. At most 16 such calls run or wait at once; more are refused with a clear message. A redirect to an address that is not http or https (`javascript:`, `file:`, `data:`) is reported as could not be read. An unexpected failure inside one call is logged as one fixed line on stderr and never stops the server.
@@ -239,5 +271,5 @@ The work order (`gaugeline brief`) is built from two functions in the core packa
 
 ## In this version
 
-- stdio and streamable HTTP, six tools, one registry, stateless HTTP.
+- stdio and streamable HTTP, six tools, one registry, stateless HTTP, an agent policy checked before every call.
 - Not offered: the CLI flags that read a config file or a credential, DNS checks, and any tool that changes anything.

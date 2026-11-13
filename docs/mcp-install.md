@@ -46,6 +46,8 @@ To check a site running on your own computer, such as a Next.js dev server, add 
 
 Probing checks (the ones that ask for non-public paths such as `/.env`) stay off. Only you can turn them on, for a site you own, by adding `--allow-probing` and `--probing-origin https://your-site.example` to `args`; an assistant cannot ask for them (see [probing checks](./mcp.md#probing-checks-need-the-operator-every-time)).
 
+Every call is checked against the server's agent policy first. With no flags, all six tools run, at up to 120 calls a minute; `--allow-tool`, `--calls-per-minute` and `--cost-ceiling-micros` narrow it, and `GAUGELINE_AGENTS_OFF=1` in `env` stops every call (see [the agent policy](./mcp.md#the-agent-policy)).
+
 ## Claude Code
 
 **[docs]** [Claude Code: connect to tools with MCP](https://code.claude.com/docs/en/mcp): `claude mcp add [options] name -- command [args...]`. For a stdio server, "the `--` (double dash) separates Claude's own options, such as `--transport`, `--env`, and `--scope`, from the command and arguments that run the server." The scope (`-s` or `--scope`) is `local` (the default: you, in the current project), `project` (everyone in the project, through a `.mcp.json` file) or `user` (you, in every project).
