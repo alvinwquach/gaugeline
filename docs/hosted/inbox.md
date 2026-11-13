@@ -94,7 +94,7 @@ ROLLBACK
 BEGIN
 SET
 ERROR:  site not found for this agent
-CONTEXT:  PL/pgSQL function private.agent_insert_draft(text,uuid,text,jsonb,uuid[]) line 23 at RAISE
+CONTEXT:  PL/pgSQL function private.agent_insert_draft(text,uuid,text,jsonb,uuid[]) line 35 at RAISE
 ROLLBACK
 BEGIN
 SET
@@ -111,7 +111,7 @@ CONTEXT:  PL/pgSQL function private.drafts_check_payload() line 8 at RAISE
 SQL statement "insert into public.drafts (org_id, site_id, kind, payload, finding_ids, created_by)
       values (v_org, p_site_id, p_kind, p_payload, coalesce(p_finding_ids, '{}'), null)
       returning id"
-PL/pgSQL function private.agent_insert_draft(text,uuid,text,jsonb,uuid[]) line 44 at SQL statement
+PL/pgSQL function private.agent_insert_draft(text,uuid,text,jsonb,uuid[]) line 56 at SQL statement
 ROLLBACK
 ```
 
