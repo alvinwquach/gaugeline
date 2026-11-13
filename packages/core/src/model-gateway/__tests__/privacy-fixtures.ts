@@ -4,7 +4,7 @@
  * use reserved names, the phone number is in the range set aside for fiction, and the card and IBAN are the
  * published test values that belong to no one.
  */
-import type { RedactionKind } from "../privacy.js";
+import { buildModelPayload, type ModelInput, type RedactionKind } from "../privacy.js";
 
 export const EMAIL = ["baker", "example.test"].join("@");
 export const PHONE = "+44 20 7946 0958";
@@ -75,3 +75,33 @@ export const WHOLE_PAGE = [
   '<html lang="en"><head><title>Pop-up</title></head>',
   "<body><h1>Menu</h1><p>Opening hours</p></body></html>",
 ].join("\n");
+
+/**
+ * An input whose payload is exactly `chars` characters long, for the tests that count characters (budgets):
+ * as many 300-character snippets as fit, and the rest made up in the task. Findings carry plain letters, so
+ * nothing in the payload is escaped and the length is the one asked for.
+ */
+export function sizedInput(chars: number): ModelInput {
+  const finding = (k: number) => ({
+    id: `f-${k}`,
+    checkId: "menu-link",
+    title: "Menu link",
+    snippet: "a".repeat(300),
+  });
+  const length = (task: string, n: number) => {
+    const r = buildModelPayload({
+      task,
+      findings: Array.from({ length: n }, (_, k) => finding(k)),
+    });
+    if (!r.ok) throw new Error(`refused: ${r.reason}`);
+    return r.payload.length;
+  };
+  let n = 0;
+  while (n < 20 && length("Reword.", n + 1) <= chars) n += 1;
+  const pad = chars - length("Reword.", n);
+  if (pad < 0 || pad > 900) throw new Error("this size cannot be built from whole findings");
+  return {
+    task: `Reword.${"a".repeat(pad)}`,
+    findings: Array.from({ length: n }, (_, k) => finding(k)),
+  };
+}

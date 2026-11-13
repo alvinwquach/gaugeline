@@ -182,6 +182,14 @@ export const FLAGS: readonly FlagDef[] = Object.freeze<FlagDef[]>([
     commands: ["check", "run"],
   },
   {
+    name: "renderer",
+    type: "string",
+    description:
+      "Also load the page in a browser you installed (playwright), to read what scripts add; never downloads one",
+    since: "0.2.0",
+    commands: ["check"],
+  },
+  {
     name: "libraries",
     type: "boolean",
     description:

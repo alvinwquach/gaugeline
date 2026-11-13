@@ -13,6 +13,9 @@ export default defineConfig({
       "@gaugeline/app-server": fileURLToPath(
         new URL("./packages/app-server/src/index.ts", import.meta.url),
       ),
+      "@gaugeline/renderer": fileURLToPath(
+        new URL("./packages/renderer/src/index.ts", import.meta.url),
+      ),
       "@gaugeline/testkit": fileURLToPath(
         new URL("./packages/testkit/src/index.ts", import.meta.url),
       ),

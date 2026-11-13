@@ -180,9 +180,11 @@ file that is missing, not text or too big, a draft that already exists, a name t
 
 ## It is registered, limited, traced and evaluated
 
-- **Registered.** The descriptor `HOUSE_RULES_AGENT` names the agent "House-rules compiler" with no hosted scope
-  and one read tool, `read:rules-file`. It holds no draft scope and no tool that writes, and a test refuses one
-  ([the registry](./hosted/agent-registry.md)).
+- **Registered.** The descriptor `HOUSE_RULES_AGENT` names the agent "House-rules compiler" with one scope and
+  one read tool, both `read:rules-file`. It holds no draft scope and no tool that writes, and a test refuses one.
+  The hosted [registry](./hosted/agent-registry.md#the-two-scopes-for-agents-that-read-a-local-file)'s closed
+  list holds the scope, so the owner can register the agent; the policy does not list the tool yet, so a hosted
+  call is refused until a later reviewed change adds it.
 - **Limited.** At most 60 reads a minute, a cost ceiling of 50,000 micro-units a day (it costs nothing today) and
   a 5 second timeout, checked by the [agent policy](./hosted/agent-policy.md), which refuses any other tool.
 - **Traced.** Its one read is recorded like every agent call, with hashes and codes and no rule text

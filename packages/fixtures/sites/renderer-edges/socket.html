@@ -1,0 +1,9 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Sockets</title></head>
+<body>
+<h1>Sockets</h1>
+<script>
+try { new WebSocket("ws://" + location.host + "/socket"); } catch (e) {}
+try { new WebSocket("wss://chat.example/socket"); } catch (e) {}
+</script>
+</body></html>

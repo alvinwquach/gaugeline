@@ -53,13 +53,15 @@ const ALL_DRAFTS = ["draft:pull_request", "draft:email", "draft:sanity_draft"];
 class Rollback extends Error {}
 
 describe("the scope list (no database)", () => {
-  it("the scopes are one draft scope per registered kind plus two reads, and none writes", () => {
+  it("the scopes are one draft scope per registered kind plus four reads, and none writes", () => {
     expect(AGENT_SCOPES.filter((s) => s.startsWith("draft:"))).toEqual(
       DRAFT_KINDS.map((k) => `draft:${k}`),
     );
     expect(AGENT_SCOPES.filter((s) => !s.startsWith("draft:"))).toEqual([
       "read:runs",
       "read:pending",
+      "read:notes",
+      "read:rules-file",
     ]);
     for (const s of AGENT_SCOPES)
       expect(s).not.toMatch(/write|publish|send|merge|apply|delete|admin/);
@@ -755,7 +757,7 @@ describe.skipIf(!HAS_DATABASE)("agent registry", () => {
     it("the closed scope list in the database is the app's list", async () => {
       const [c] = await owner`select pg_get_constraintdef(oid) as d from pg_constraint
         where conname = 'agents_scopes_known'`;
-      const listed = [...String(c!.d).matchAll(/'([a-z_]+:[a-z_]+)'/g)].map((m) => m[1]);
+      const listed = [...String(c!.d).matchAll(/'([a-z_]+:[a-z_-]+)'/g)].map((m) => m[1]);
       expect(listed).toEqual([...AGENT_SCOPES]);
     });
   });

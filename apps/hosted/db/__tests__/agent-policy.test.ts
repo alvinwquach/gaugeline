@@ -9,7 +9,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import postgres from "postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { AGENT_SCOPES } from "../../agents/registry.js";
+import { AGENT_SCOPES, SCOPES_NOT_YET_IN_POLICY } from "../../agents/registry.js";
 import {
   agentLoginsWithOtherRoles,
   definerFunctionsWithoutEmptySearchPath,
@@ -813,11 +813,13 @@ describe.skipIf(!HAS_DATABASE)("agent policy and limits", () => {
       expect(await definerFunctionsWithoutEmptySearchPath(owner)).toEqual([]);
     });
 
-    it("the tools the policy knows are the registry's scopes", async () => {
+    it("the tools the policy knows are the registry's scopes, except the two that are not in it yet (deny by default)", async () => {
       const [fn] = await owner`select prosrc from pg_proc where proname = 'agent_authorize'`;
       const m = /c_tools constant text\[\] := array\[([^\]]+)\]/.exec(String(fn!.prosrc));
-      const listed = [...m![1]!.matchAll(/'([a-z_]+:[a-z_]+)'/g)].map((x) => x[1]);
-      expect(listed).toEqual([...AGENT_SCOPES]);
+      const listed = [...m![1]!.matchAll(/'([a-z_]+:[a-z_-]+)'/g)].map((x) => x[1]);
+      expect(listed).toEqual(
+        AGENT_SCOPES.filter((s) => !(SCOPES_NOT_YET_IN_POLICY as readonly string[]).includes(s)),
+      );
     });
 
     it("every agent has exactly one limits row, including the ones from before this migration", async () => {

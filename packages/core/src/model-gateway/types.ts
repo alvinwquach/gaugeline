@@ -86,6 +86,8 @@ export interface ModelAdapter {
 /** What a budget is asked before a call. Whole numbers: the token count is an estimate (4 characters each). */
 export interface BudgetEstimate {
   agentId: string;
+  /** The call's id: the same one is handed to `after`, so a budget can settle what it held for this call. */
+  callId: string;
   tier: ModelTier;
   provider: string;
   model: string;
@@ -94,7 +96,7 @@ export interface BudgetEstimate {
 }
 export type BudgetDecision = { allowed: true } | { allowed: false; reason: string };
 
-/** The seam AG-22 fills in with ceilings. Today both are no-ops. */
+/** The seam AG-22 fills in with ceilings (`createBudgetLedger`, ./budget.ts). The default, `NO_BUDGET`, is a no-op. */
 export interface BudgetHooks {
   /** Before anything is sent. Anything but an explicit yes stops the call. */
   before(estimate: BudgetEstimate): BudgetDecision | Promise<BudgetDecision>;

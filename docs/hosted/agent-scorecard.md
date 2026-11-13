@@ -22,7 +22,9 @@ link is not in their menu, and the page tells them who can see it).
 **Real numbers only.** Every figure is a count from the agent trace and the decisions log, or a ratio of
 two counts worked out in whole numbers (a percent rounds half up). A figure with nothing to measure yet is
 blank and says so: "none yet" for a rate before the first decision or a cost before the first approval,
-never 0. Cost is 0 today because no agent call runs a model; that 0 is measured, not a placeholder.
+never 0. Cost is 0 today because no agent call runs a model; that 0 is measured, not a placeholder. When a call
+does run a model, the [budget](../model-budgets.md) works out its cost from the recorded token counts and hands
+it to the trace; this page needs no change to show it.
 
 The counts start when the trace began (migration `0015_agent_trace.sql`); calls made before it are not
 in them. A token prefix is shown (`gla_1a2b3c4d`), never a token.
