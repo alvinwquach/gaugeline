@@ -66,7 +66,6 @@ const FIXTURES = [
   "nav-after",
   "nav-chain",
   "analytics-twice",
-  "nav-events-csv",
   "nav-names",
   "nav-utm",
   "nav-attributes",
@@ -177,6 +176,7 @@ const NEEDS_LIVE_STORES = new Set([
   // (packages/core/src/checks/__tests__/click-events.test.ts).
   "events-fire",
   "events-distinct",
+  "events-unlisted",
   // Need two runs with --since last: confirmed in-process (since.test.ts).
   "price-changed",
   "form-provider-changed",
