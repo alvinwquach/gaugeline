@@ -416,6 +416,13 @@ async function deliver(deps: NotifyDeps, d: Claimed): Promise<Delivered> {
   const code = outcome.error === "channel-disabled" ? "channel-disabled" : deliveryCode(outcome);
   const now = (deps.now ?? (() => new Date()))();
   await withService(deps.sql, async (tx) => {
+    // The channel row first, then the delivery row, for an agent message: the outbox guard (0017) takes the
+    // channel and then looks at the rows, so a worker that held the row and waited for the channel, while a
+    // second queueing of the same message held the channel and waited for the row, would deadlock, and the
+    // POST would already have gone out. One order, everywhere: channel, then row.
+    if (d.kind === "agent" && ch)
+      await tx`select 1 from public.notification_channels
+        where id = ${d.channelId} and org_id = ${d.orgId} for no key update`;
     await tx`update public.notification_deliveries set status = ${outcome.ok ? "sent" : "failed"},
         attempts = ${outcome.attempts}, http_status = ${outcome.status ?? null}, error_code = ${code},
         findings = ${findings}, sent_at = ${outcome.ok ? now : null}, locked_at = null
@@ -423,8 +430,14 @@ async function deliver(deps: NotifyDeps, d: Claimed): Promise<Delivered> {
     if (!ch || code === "channel-disabled") return;
     // An agent message (0017) never counts toward a channel's strikes, and a success of one does not clear
     // them: a burst of agent messages failing must not switch off the findings that share the channel. What
-    // says the address itself is wrong (revoked, refused as not public) still turns the channel off.
-    if (d.kind === "agent" && !(outcome.permanent || code === "address-refused")) return;
+    // says the address itself is wrong still turns the channel off: Slack's 401, 403, 404 or 410 (a revoked
+    // webhook), or an address that is not public. A 400 is about the message (invalid blocks), not the address:
+    // for an agent message it is a failed message and nothing more.
+    if (
+      d.kind === "agent" &&
+      !((outcome.permanent && outcome.status !== 400) || code === "address-refused")
+    )
+      return;
     if (outcome.ok)
       await tx`update public.notification_channels set failures = 0, status = 'active',
           disabled_reason = null, disabled_at = null where id = ${d.channelId}`;

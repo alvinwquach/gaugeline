@@ -259,6 +259,78 @@ describe("the Slack messages", () => {
     expect(p.text).not.toMatch(/https?:\/\/|www\./);
   });
 
+  describe("an address a page splits with invisible characters is still defanged", () => {
+    const c = (cp: number) => String.fromCodePoint(cp);
+    // Characters the cleaner deletes or shows: bidi marks, tag characters, zero-width and soft hyphen.
+    const INVISIBLE = [
+      0x202e, 0x2066, 0x200e, 0xe0020, 0xe0041, 0x200b, 0x200d, 0x2060, 0xfeff, 0x00ad,
+    ].map(c);
+    const live = (text: string) =>
+      /[a-z][a-z0-9+.-]*:\/\//i.test(text) || /\bwww\.[a-z]/i.test(text);
+    const alertFor = (title: string, site = "A site") =>
+      slackRegressionPayload(
+        buildRegressionReport(
+          before,
+          run([...before.findings, { id: "x", severity: "high", title }]),
+        ),
+        site,
+      );
+
+    it("the four known ways: a bidi mark, a tag character, a left-to-right mark and an isolate", () => {
+      for (const title of [
+        `Reset at https${c(0x202e)}://evil.example/login`,
+        `Reset at https:${c(0xe0020)}//evil.example/login`,
+        `Reset at https:${c(0x200e)}//evil.example/login`,
+        `Reset at www${c(0x2066)}.evil.example`,
+      ]) {
+        const p = alertFor(title, title);
+        expect(live(JSON.stringify(p)), title).toBe(false);
+        expect(live(p.text), title).toBe(false);
+        expect(JSON.stringify(p)).toMatch(/https\[:\]\/\/evil|www\[\.\]evil/);
+      }
+    });
+
+    it("an invisible character at every position inside a scheme or www. never leaves a live address", () => {
+      let tried = 0;
+      for (const word of ["https://", "http://", "www.", "ftp://", "javascript:"])
+        for (let i = 0; i <= word.length; i++)
+          for (const ch of INVISIBLE) {
+            const mutated = `${word.slice(0, i)}${ch}${word.slice(i)}`;
+            const p = alertFor(`Reset at ${mutated}evil.example/login`, `${mutated}evil.example`);
+            tried += 1;
+            expect(live(JSON.stringify(p)), JSON.stringify(mutated)).toBe(false);
+            expect(live(p.text), JSON.stringify(mutated)).toBe(false);
+            // Whatever was shown of the address sits inside a code span.
+            expect(outsideSpans(p)).not.toMatch(/evil/);
+          }
+      expect(tried).toBeGreaterThan(400);
+    });
+
+    it("the digest's titles and names take the same path", () => {
+      const digest = buildApprovalsDigest(
+        [
+          {
+            id: "a1d20000-0000-4000-8000-000000000001",
+            siteId: SITE_A1,
+            kind: "email",
+            title: `Reset at https${c(0x202e)}://evil.example/login www${c(0x2066)}.evil.example`,
+            createdAt: "2026-11-10T09:00:00.000Z",
+            expiresAt: "2026-11-13T09:00:00.000Z",
+          },
+        ],
+        LONDON_MORNING,
+        {
+          siteNames: new Map([
+            [SITE_A1, `www${c(0x200e)}.evil.example https${c(0xe0020)}://evil.example`],
+          ]),
+        },
+      );
+      const p = slackDigestPayload(digest);
+      expect(live(JSON.stringify(p))).toBe(false);
+      expect(live(p.text)).toBe(false);
+    });
+  });
+
   it("lists at most eight of each and says how many it left out", () => {
     const many = Array.from({ length: 12 }, (_, i) => ({
       id: `n${i}`,
@@ -355,6 +427,14 @@ describe.skipIf(!HAS_DATABASE)("agent messages through the worker", () => {
       from public.notification_deliveries where kind = 'agent' order by created_at, id`;
   const clear = async () => {
     await owner`delete from public.notification_deliveries where kind = 'agent'`;
+  };
+  // The statement on the other connection is waiting for a lock this one holds.
+  const blocked = async () => {
+    for (let i = 0; i < 400; i++) {
+      if ((await owner`select 1 from pg_locks where not granted`).length > 0) return;
+      await new Promise((r) => setTimeout(r, 25));
+    }
+    throw new Error("the second statement never waited for the first");
   };
   const draft = (n: number, org: string, site: string, subject: string, createdAt: string) =>
     owner`insert into public.drafts (id, org_id, site_id, kind, payload, finding_ids, created_at)
@@ -619,6 +699,31 @@ describe.skipIf(!HAS_DATABASE)("agent messages through the worker", () => {
         expect(JSON.stringify(hits[0]!.body)).toContain("at most 10 alerts a day");
       });
 
+      it("two nights' jobs queueing for one channel take turns: one that comes while another holds the channel waits, then sees the allowance used", async () => {
+        await owner`delete from public.runs where site_id = ${SITE_A2}`;
+        await night(110, [canonical("medium")]);
+        await night(111, [canonical("high"), bookingForm], { queueAgentMessages: async () => 0 });
+        await used(10, new Date(T0 + 111 * DAY)); // the day's allowance is spent: a late count would see it
+        const [cur] =
+          await owner`select id from public.runs where site_id = ${SITE_A2} order by started_at desc limit 1`;
+        let second: Promise<number> | undefined;
+        // Another job holds the channel while it counts and queues; this one must wait for it.
+        await owner.begin(async (tx) => {
+          await tx`select 1 from public.notification_channels where id = ${channelA} for no key update`;
+          second = owner.begin((tx2) =>
+            queueRegressionAlert(tx2, {
+              orgId: ORG_A,
+              siteId: SITE_A2,
+              runId: cur!.id as string,
+              now: new Date(T0 + 111 * DAY),
+            }),
+          );
+          await blocked();
+        });
+        expect(await second).toBe(0);
+        expect(await queued()).toHaveLength(10);
+      });
+
       it("counts a day, not for ever: the next day has its allowance again", async () => {
         await owner`delete from public.runs where site_id = ${SITE_A2}`;
         await night(80, [canonical("medium")]);
@@ -804,6 +909,68 @@ describe.skipIf(!HAS_DATABASE)("agent messages through the worker", () => {
       expect(
         await owner`select status, disabled_reason from public.notification_channels where id = ${channelA}`,
       ).toEqual([{ status: "disabled", disabled_reason: "rejected" }]);
+    });
+
+    it("only a revoked or refused address switches a channel off: 401, 403, 404 and 410 do, a 400 is a failed message", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => undefined);
+      const row = async () => {
+        await owner`delete from public.notification_deliveries where kind = 'agent'`;
+        await setAgentMessages(deps(), ORG_A, channelA, true);
+        await owner`update public.notification_channels set status = 'active', failures = 0,
+          disabled_reason = null, disabled_at = null where id = ${channelA}`;
+        await owner`insert into public.notification_deliveries (org_id, channel_id, kind, agent_kind, digest_date, send_after)
+          values (${ORG_A}, ${channelA}, 'agent', 'approvals-digest', '2026-11-13', ${LONDON_MORNING})`;
+      };
+      const state = async () =>
+        (
+          await owner`select c.status, c.disabled_reason, c.failures, d.status as row, d.error_code
+            from public.notification_channels c, public.notification_deliveries d
+            where c.id = ${channelA} and d.kind = 'agent'`
+        )[0];
+      await row();
+      answer = 400; // Slack: invalid_blocks. The message is bad; the address is fine.
+      await deliverDue(deps());
+      expect(await state()).toEqual({
+        status: "active",
+        disabled_reason: null,
+        failures: 0,
+        row: "failed",
+        error_code: "http-400",
+      });
+      for (const status of [401, 403, 404, 410]) {
+        await row();
+        answer = status;
+        await deliverDue(deps());
+        expect(await state(), String(status)).toMatchObject({
+          status: "disabled",
+          disabled_reason: "rejected",
+          row: "failed",
+          error_code: `http-${status}`,
+        });
+      }
+    });
+
+    it("a worker finishing a send and a second queueing of the same digest do not deadlock, in either order", async () => {
+      await setAgentMessages(deps(), ORG_A, channelA, true);
+      await owner`insert into public.notification_deliveries (org_id, channel_id, kind, agent_kind, digest_date, send_after)
+        values (${ORG_A}, ${channelA}, 'agent', 'approvals-digest', '2026-11-13', ${LONDON_MORNING})`;
+      answer = 404; // the failure path updates the channel after the row: the order that deadlocked
+      vi.spyOn(console, "error").mockImplementation(() => undefined);
+      let worker: Promise<number> | undefined;
+      // The queueing side holds the channel, as the outbox guard does, and then queues the same digest again.
+      await owner.begin(async (tx) => {
+        await tx`select 1 from public.notification_channels where id = ${channelA} for no key update`;
+        worker = deliverDue(deps());
+        await blocked(); // the worker has sent and is waiting for the channel, before it touches the row
+        const again =
+          await tx`insert into public.notification_deliveries (org_id, channel_id, kind, agent_kind, digest_date)
+          values (${ORG_A}, ${channelA}, 'agent', 'approvals-digest', '2026-11-13') on conflict do nothing returning id`;
+        expect(again).toHaveLength(0);
+      });
+      expect(await worker).toBe(1);
+      expect(
+        await owner`select status, error_code from public.notification_deliveries where kind = 'agent'`,
+      ).toEqual([{ status: "failed", error_code: "http-404" }]);
     });
 
     it("a success of an agent message does not clear the strikes findings have earned", async () => {

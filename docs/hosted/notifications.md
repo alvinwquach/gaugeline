@@ -150,8 +150,9 @@ How it is kept safe, in the same terms as the rest of this page:
   through the same one POST module, to the address on the channel (checked again before every send, public
   addresses only), at most once, with the same log. No new file sends, no new host is allowed, and a test fails
   if one does. A failing agent message does not count toward the three-failures rule and a success does not
-  clear it, so a burst of agent messages cannot switch off the findings that share the channel; a webhook
-  Slack says is gone (or an address that is not public) still turns the channel off, as for findings.
+  clear it, so a burst of agent messages cannot switch off the findings that share the channel. Only an
+  address that is bad turns the channel off, as for findings: Slack's 401, 403, 404 or 410, or an address that is
+  not public. A 400 is about the message, so it is a failed message and nothing more.
 - **No words are stored.** The row says which message and what it is about: the run an alert is for, or the
   local day a digest is for. The worker builds the words when it sends, from your organisation's own rows, so
   no column can hold an address or a message, and a message is never another organisation's.

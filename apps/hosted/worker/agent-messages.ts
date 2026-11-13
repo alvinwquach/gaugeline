@@ -22,6 +22,7 @@ import {
   forSlack,
   forSlackPlain,
   redact,
+  sanitise,
   type RegressionReport,
   SEVERITY_LABEL,
 } from "@gaugeline/core";
@@ -69,9 +70,17 @@ const TITLE_MAX = 120;
  */
 const defang = (t: string): string =>
   t.replace(/\b([a-z][a-z0-9+.-]*):\/\//gi, "$1[:]//").replace(/\bwww\./gi, "www[.]");
-const untrusted = (t: string, max: number): string => `\`${forSlack(defang(t), max)}\``;
+/**
+ * The order matters: core's sanitise goes FIRST, because it deletes bidi and tag characters and so can join
+ * the halves of an address a page split with them (`https` + U+202E + `://`). The escaper runs sanitise again
+ * (it is idempotent, and the room it is given is wide enough not to cut twice), so the defang is applied
+ * once more to what it returns: nothing after the last defang changes a character.
+ */
+const cleaned = (t: string, max: number): string => defang(sanitise(t, max).text);
+const untrusted = (t: string, max: number): string =>
+  `\`${defang(forSlack(cleaned(t, max), max * 2))}\``;
 /** The same text for a place that cannot hold a span (Slack's plain notification line). */
-const plain = (t: string, max: number): string => forSlackPlain(defang(t), max);
+const plain = (t: string, max: number): string => defang(forSlackPlain(cleaned(t, max), max * 2));
 
 /** What each message carries about the message itself. Links off, so no address gets a preview. */
 const payload = (text: string, blocks: SlackBlock[]): SlackAgentPayload => ({
@@ -299,6 +308,11 @@ export async function queueRegressionAlert(
     ?.timezone as string | undefined;
   let queued = 0;
   for (const c of channels) {
+    // The channel row is locked (for no key update, the mode the outbox guard takes) before the allowance is
+    // counted, and held until this transaction ends: two nights' jobs of one organisation queue one after the
+    // other, so the count each sees includes the other's alerts and the allowance cannot be overshot.
+    await tx`select 1 from public.notification_channels where id = ${c.id} and org_id = ${run.orgId}
+      for no key update`;
     if ((await alertsForChannel(tx, c.id as string, run.now)) >= ALERTS_PER_CHANNEL_PER_DAY)
       continue;
     // The latest end of the channel's quiet hours wins, so no rule's quiet time is broken.
