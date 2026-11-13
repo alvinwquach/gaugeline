@@ -126,21 +126,144 @@ A channel is turned off, with the reason shown, when Slack or Sentry refuses it 
 revoked: `rejected`) or after three deliveries in a row fail (`failed-repeatedly`). **Send test message**
 posts a short message now; when it gets through, the channel is turned back on.
 
-## Agent messages: a place in the outbox (not sent yet)
+## Agent messages in your Slack channel
 
-An [agent](../agent-safety.md) can build a message for the people who run a site: the
-regression watcher's alert (row AG-13) when a night's run got worse than the one before, and
-the [pending-approvals digest](../approvals-digest.md) of what waits for a decision. **Today** the outbox has a
-place for them (migration `0017_agent_message_outbox.sql`). **Not built:** nothing queues or sends one yet.
-A later row adds the worker step, and it sends through the sender this page already describes: one message
-to your own Slack channel, to the address you saved, and nowhere else.
+An [agent](../agent-safety.md) can build a message for the people who run a site, and the hosted worker can
+send it to your Slack channel. There are two, both plain code with no model:
 
-What the database holds for one:
+- **A regression alert**, from the [regression watcher](../regression-watcher.md): when a night's run got
+  worse than the one before (a new finding, or one whose severity went up). A night that did not get worse
+  sends nothing, and neither does a site's first run.
+- **The morning digest**, from the [pending-approvals digest](../approvals-digest.md): once a day, between 07:00
+  and 11:00 where most of the organisation's sites are, when at least one draft is waiting for a decision. A
+  morning with nothing waiting sends nothing.
+
+**Today** both are built (migration `0017_agent_message_outbox.sql` and the worker). **Not built:** a button for
+turning them on. A channel takes agent messages only when its `agent_messages` setting is on, and it is off for
+every channel until the app turns it on (`setAgentMessages` in `apps/hosted/worker/agent-messages.ts`, for a
+Slack channel of your own organisation; a Sentry project cannot take it). **Not covered:** email. The morning
+email has its own per-person settings and log, so an agent message by email needs its own decision.
+
+How it is kept safe, in the same terms as the rest of this page:
+
+- **One sender.** An agent message is a delivery of kind `agent` in the same outbox. It is sent by the same loop,
+  through the same one POST module, to the address on the channel (checked again before every send, public
+  addresses only), at most once, with the same log. No new file sends, no new host is allowed, and a test fails
+  if one does. A failing agent message does not count toward the three-failures rule and a success does not
+  clear it, so a burst of agent messages cannot switch off the findings that share the channel. Only an
+  address that is bad turns the channel off, as for findings: Slack's 401, 403, 404 or 410, or an address that is
+  not public. A 400 is about the message, so it is a failed message and nothing more.
+- **No words are stored.** The row says which message and what it is about: the run an alert is for, or the
+  local day a digest is for. The worker builds the words when it sends, from your organisation's own rows, so
+  no column can hold an address or a message, and a message is never another organisation's.
+- **Once.** One row per channel and run (an alert) or per channel and day (a digest): a restart, a second worker
+  or a second look is one row.
+- **Text from a page is data.** A finding's title, a draft's title and a site's name are cleaned, cut and
+  escaped for Slack (`&`, `<` and `>` become entities, so `<!channel>` is shown as text and pings nobody), and
+  each is put inside a code span, where Slack makes no link of an address, a domain or a mention. An address in
+  it is also defanged (`https://` is written `https[:]//`, `www.` as `www[.]`), and the message asks Slack for
+  no preview of any address (`unfurl_links` and `unfurl_media` off; whether a Slack incoming webhook honours
+  them is unverified). The only links in a message are the ones the code builds from your app's address: your
+  site's page, the inbox, and a draft's id. Key-shaped strings in a draft's title are redacted.
+- **No flood.** A channel gets at most 10 alerts in a day. When many sites get worse in one night, the first ten
+  are sent, the tenth says other sites may have got worse too, and the rest are not queued. The digest is one
+  message a day.
+- **An agent queues nothing.** The agent role has no privilege on the outbox. The worker, as the server's role,
+  queues the row; the agent code only returns text.
+- **Quiet hours.** An alert waits for the end of the quiet hours of the channel's [rules](#rules) for that site,
+  as findings do; with no rule it goes out when the night's run finishes. The digest goes out in the morning
+  window.
+
+This is the alert for a night that got worse, as the worker builds it (run with `node --import tsx example.mts`
+in `apps/hosted`). The page's own `<!channel>` is shown as text:
+
+```ts
+import { buildRegressionReport } from "@gaugeline/core";
+import { slackRegressionPayload } from "./worker/agent-messages.js";
+
+const row = (id: string, severity: "high" | "medium" | "low", title: string) => ({
+  id,
+  severity,
+  title,
+});
+const report = buildRegressionReport(
+  {
+    runId: "r-20261112T020000Z",
+    takenAt: "2026-11-12T02:00:00.000Z",
+    findings: [
+      row("f-201", "medium", "Menu page has no canonical link"),
+      row("f-203", "low", "Certificate expires in 30 days"),
+      row("f-204", "low", "Sitemap lists a page that is gone"),
+    ],
+  },
+  {
+    runId: "r-20261113T020000Z",
+    takenAt: "2026-11-13T02:00:00.000Z",
+    findings: [
+      row("f-201", "medium", "Menu page has no canonical link"),
+      row("f-203", "high", "Certificate expires in 9 days"),
+      row(
+        "f-205",
+        "high",
+        "Booking form has no submit button <!channel> https://evil.example/login",
+      ),
+    ],
+  },
+);
+console.log(
+  JSON.stringify(
+    slackRegressionPayload(report, "Juniper Pop-up Kitchen", "https://app.northgate.test/sites/a2"),
+    null,
+    2,
+  ),
+);
+```
+
+```json title=Message
+{
+  "text": "Gaugeline: Juniper Pop-up Kitchen: 2 findings got worse",
+  "blocks": [
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": "*Gaugeline*: `Juniper Pop-up Kitchen`: *2 findings got worse*"
+      }
+    },
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": "Went up in severity\n*Fix this first* (was Worth knowing): `Certificate expires in 9 days`"
+      }
+    },
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": "New\n*Fix this first*: `Booking form has no submit button &lt;!channel&gt; https[:]//evil.example/login`"
+      }
+    },
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": "1 fixed since the last run · <https://app.northgate.test/sites/a2|Open in Gaugeline>"
+      }
+    }
+  ],
+  "unfurl_links": false,
+  "unfurl_media": false
+}
+```
+
+A test runs this code and fails if the message shown here differs from it.
+
+What the database holds for one (migration `0017`):
 
 - A delivery of kind `agent` says **which** message (`agent_kind`: `regression-alert` or `approvals-digest`)
   and **what it is about**: the run an alert is for (`subject_run_id`, with its site), or the local day a
-  digest is for (`digest_date`). It holds **no words**. As for a night's findings, the worker builds the
-  message when it sends, from your organisation's own rows, so no column can hold an address or a message.
+  digest is for (`digest_date`). It holds **no words**.
 - A channel takes agent messages only when you turn it on (`agent_messages`, off by default), and only a
   Slack channel can: a Sentry project takes events, not messages. The database checks it when the row is
   queued, not only the worker: a row for a channel that is off, disabled or not Slack is refused.
@@ -149,9 +272,8 @@ What the database holds for one:
 - One row per channel and per run (an alert), or per channel and per day (a digest): queueing it twice is one
   row.
 - The same people read it as read the rest of the log (staff of the organisation, not a client viewer), and
-  only the worker's role writes it. An agent has no privilege on it: an agent returns text, and the worker
-  queues it.
-- A row cannot point at another organisation's channel, run or site: the database refuses it.
+  only the worker's role writes it. A row cannot point at another organisation's channel, run or site: the
+  database refuses it.
 
 The database refuses a row for a channel that does not take agent messages, so the channel is turned on first.
 The worker then queues an alert for the night's run. This is the row, as

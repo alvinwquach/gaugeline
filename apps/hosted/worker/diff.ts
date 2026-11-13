@@ -53,3 +53,14 @@ export function diffRuns(previous: RunSide, current: RunSide): FingerprintDiff {
     closed: d.closed.filter((fp) => !missedNow.has(checkOf.get(fp)!)),
   };
 }
+
+/** The ids of the checks a stored run's summary says gave no answer: they threw, or could not check. */
+export const notRunIn = (summary: unknown): string[] => {
+  const s = (summary ?? {}) as { failed?: unknown; couldNotCheck?: unknown };
+  const ids = (xs: unknown, pick: (x: unknown) => unknown) =>
+    (Array.isArray(xs) ? xs : []).map(pick).filter((x): x is string => typeof x === "string");
+  return [
+    ...ids(s.failed, (x) => x),
+    ...ids(s.couldNotCheck, (x) => (x as { id?: unknown } | null)?.id),
+  ];
+};

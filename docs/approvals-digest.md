@@ -8,8 +8,10 @@ It is [agent](./agent-safety.md) work with the same rules as every agent: it **d
 and approves nothing**. A person decides each draft in the inbox.
 
 **Today.** The digest is built and tested (row AG-14) as code in `@gaugeline/core` that turns the pending
-drafts into a summary and Markdown. **Not built.** Nothing sends it yet, and nothing runs it on a schedule;
-see "What is missing" below.
+drafts into a summary and Markdown, and the hosted worker sends it to a Slack channel that takes agent messages
+(row AG-13, [agent messages in your Slack channel](./hosted/notifications.md#agent-messages-in-your-slack-channel)):
+once a day, in the morning where your sites are, when a draft is waiting. **Not built:** a button for turning it
+on, and email.
 
 ## What it reads
 
@@ -123,11 +125,11 @@ golden 3/3 pass; known-bad 7/7 caught; cost 60000 micro-units
 
 ## What is missing, and what you do to run it for real
 
-The digest is text. Gaugeline's one way to send to your own Slack or email
-([ADR-0005](https://github.com/alvinwquach/gaugeline/blob/main/docs/adr/0005-notifications-post-to-your-own-channels.md))
-sends a check's findings, and the hosted channels are queued with a night's run, so neither can carry a digest of
-pending drafts yet. This row adds no sender and no POST. Sending it needs a later row that adds a digest payload
-to that path and a morning step in the worker. Until then:
+The Slack delivery is described in [agent messages in your Slack channel](./hosted/notifications.md#agent-messages-in-your-slack-channel):
+it goes through the sender every hosted notification uses, builds the words when it sends, and sends nothing on a
+morning with nothing waiting. Two things are missing: a button in the hosted app for turning agent messages on
+for a channel (until then the app's server calls `setAgentMessages`), and email, whose settings and log are per
+person. To use the digest as text without the hosted app:
 
 1. In the hosted app, register an agent with the scope `read:pending` and keep its token.
 2. Set `GAUGELINE_HOSTED_API` and `GAUGELINE_AGENT_TOKEN` for the MCP server, or call the API with the token.

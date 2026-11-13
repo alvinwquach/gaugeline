@@ -9,6 +9,10 @@
  * keeps a status, a count, an HTTP status and a short code: never an address, a header or a message body.
  * A channel that fails three deliveries in a row, or is refused outright (a revoked webhook), is disabled
  * with a reason; a test message that gets through turns it back on.
+ *
+ * An agent's message (AG-13 regression alert, AG-14 morning digest) is a delivery of kind "agent": agent-messages.ts
+ * queues it and builds its words; the sending below is the same, to the same address, through the same POST module.
+ * No other file sends it, and nothing here adds a host or a request of another shape.
  */
 import { randomUUID } from "node:crypto";
 import {
@@ -26,6 +30,8 @@ import {
   slackChangesPayload,
 } from "@gaugeline/core";
 import { type Sql, type Tx, withService } from "../lib/api/db.js";
+import { type AgentDelivery, agentBodies } from "./agent-messages.js";
+import { sendAfter } from "./quiet-hours.js";
 import { SecretError, type SecretStore, secretStoreFrom } from "./secrets.js";
 
 type PostResult = Awaited<ReturnType<typeof postJson>>;
@@ -104,41 +110,7 @@ export function matchesRule(rule: RuleFilter, f: { checkId: string; severity: Se
   return rule.checkIds === null || rule.checkIds.includes(f.checkId);
 }
 
-/** The zone if this runtime knows it, else UTC (as the dashboard does): Postgres knows names ICU does not. */
-function knownZone(zone: string): string {
-  try {
-    new Intl.DateTimeFormat("en-GB", { timeZone: zone });
-    return zone;
-  } catch {
-    return "UTC";
-  }
-}
-
-function localHour(at: Date, zone: string): number {
-  const h = new Intl.DateTimeFormat("en-GB", { timeZone: zone, hour: "2-digit", hourCycle: "h23" })
-    .formatToParts(at)
-    .find((p) => p.type === "hour")?.value;
-  return Number(h ?? "0");
-}
-
-/**
- * When a message may go: now, or the first minute after quiet hours end in the site's own zone. Hours are
- * whole local hours, start inclusive and end exclusive; a span that crosses midnight (22 to 7) works, and
- * the walk is by minute, so a clock change cannot skip or repeat the end hour.
- */
-export function sendAfter(now: Date, zone: string, start: number | null, end: number | null): Date {
-  if (start === null || end === null || start === end) return now;
-  zone = knownZone(zone);
-  const quiet = (h: number) => (start < end ? h >= start && h < end : h >= start || h < end);
-  if (!quiet(localHour(now, zone))) return now;
-  const t = new Date(now);
-  t.setUTCSeconds(0, 0);
-  for (let i = 0; i < 26 * 60; i++) {
-    t.setUTCMinutes(t.getUTCMinutes() + 1);
-    if (!quiet(localHour(t, zone))) return t;
-  }
-  return now;
-}
+export { sendAfter };
 
 /** The delivery log's code for a send: never the error text, which names a host and could carry more. */
 export function deliveryCode(r: Delivered): string | null {
@@ -323,14 +295,8 @@ export async function queueRunNotifications(
 
 // --- Sending ----------------------------------------------------------------------------------------
 
-interface Claimed {
-  id: string;
-  orgId: string;
-  channelId: string;
-  kind: "run" | "test";
-  runId: string | null;
-  siteId: string | null;
-}
+/** A delivery a worker has claimed. A row of kind "agent" (0017) says which agent message, never its words. */
+type Claimed = AgentDelivery;
 
 /** Build the bodies for one delivery: one Slack message, or one Sentry event per finding. */
 async function bodies(
@@ -340,6 +306,9 @@ async function bodies(
   label: string,
 ): Promise<{ bodies: unknown[]; findings: number }> {
   const now = (deps.now ?? (() => new Date()))();
+  // An agent's message (AG-13, AG-14): its words are built here, as a night's findings are, and sent below
+  // by the same loop through the same sender as everything else in this file.
+  if (d.kind === "agent") return agentBodies(deps, d);
   if (d.kind === "test") {
     const testFinding: ChangedFinding = {
       checkId: "test-message",
@@ -398,13 +367,20 @@ async function deliver(deps: NotifyDeps, d: Claimed): Promise<Delivered> {
   const send = sender(deps);
   const chRows = await withService(
     deps.sql,
-    (tx) => tx`select kind, label, secret_name, status from public.notification_channels
+    (
+      tx,
+    ) => tx`select kind, label, secret_name, status, agent_messages from public.notification_channels
       where id = ${d.channelId} and org_id = ${d.orgId}`,
   );
   const ch = chRows[0];
   let outcome: Delivered;
   let findings = 0;
-  if (!ch || (ch.status !== "active" && d.kind === "run")) {
+  // A channel that is off, or no longer takes agent messages, is not asked: not its fault, so no strike.
+  if (
+    !ch ||
+    (ch.status !== "active" && d.kind !== "test") ||
+    (d.kind === "agent" && ch.agent_messages !== true)
+  ) {
     outcome = { ok: false, attempts: 0, error: "channel-disabled" };
   } else {
     let address: string | null;
@@ -440,11 +416,28 @@ async function deliver(deps: NotifyDeps, d: Claimed): Promise<Delivered> {
   const code = outcome.error === "channel-disabled" ? "channel-disabled" : deliveryCode(outcome);
   const now = (deps.now ?? (() => new Date()))();
   await withService(deps.sql, async (tx) => {
+    // The channel row first, then the delivery row, for an agent message: the outbox guard (0017) takes the
+    // channel and then looks at the rows, so a worker that held the row and waited for the channel, while a
+    // second queueing of the same message held the channel and waited for the row, would deadlock, and the
+    // POST would already have gone out. One order, everywhere: channel, then row.
+    if (d.kind === "agent" && ch)
+      await tx`select 1 from public.notification_channels
+        where id = ${d.channelId} and org_id = ${d.orgId} for no key update`;
     await tx`update public.notification_deliveries set status = ${outcome.ok ? "sent" : "failed"},
         attempts = ${outcome.attempts}, http_status = ${outcome.status ?? null}, error_code = ${code},
         findings = ${findings}, sent_at = ${outcome.ok ? now : null}, locked_at = null
       where id = ${d.id}`;
     if (!ch || code === "channel-disabled") return;
+    // An agent message (0017) never counts toward a channel's strikes, and a success of one does not clear
+    // them: a burst of agent messages failing must not switch off the findings that share the channel. What
+    // says the address itself is wrong still turns the channel off: Slack's 401, 403, 404 or 410 (a revoked
+    // webhook), or an address that is not public. A 400 is about the message (invalid blocks), not the address:
+    // for an agent message it is a failed message and nothing more.
+    if (
+      d.kind === "agent" &&
+      !((outcome.permanent && outcome.status !== 400) || code === "address-refused")
+    )
+      return;
     if (outcome.ok)
       await tx`update public.notification_channels set failures = 0, status = 'active',
           disabled_reason = null, disabled_at = null where id = ${d.channelId}`;
@@ -476,16 +469,20 @@ export async function deliverDue(deps: NotifyDeps, limit = 20): Promise<number> 
       where d.id in (select id from public.notification_deliveries
         where status = 'queued' and send_after <= ${now}
         order by send_after, id limit ${limit} for update skip locked)
-      returning id, org_id, channel_id, kind, run_id, site_id`,
+      returning id, org_id, channel_id, kind, run_id, site_id, agent_kind, subject_run_id,
+        digest_date::text as digest_date`,
   );
   for (const r of claimed)
     await deliverSafely(deps, {
       id: r.id as string,
       orgId: r.org_id as string,
       channelId: r.channel_id as string,
-      kind: r.kind as "run" | "test",
+      kind: r.kind as "run" | "test" | "agent",
       runId: (r.run_id as string | null) ?? null,
       siteId: (r.site_id as string | null) ?? null,
+      agentKind: (r.agent_kind as Claimed["agentKind"]) ?? null,
+      subjectRunId: (r.subject_run_id as string | null) ?? null,
+      digestDate: (r.digest_date as string | null) ?? null,
     });
   return claimed.length;
 }
@@ -565,6 +562,9 @@ export async function sendTestMessage(
     kind: "test",
     runId: null,
     siteId: null,
+    agentKind: null,
+    subjectRunId: null,
+    digestDate: null,
   });
   return { ok: r.ok, code: deliveryCode(r) };
 }
