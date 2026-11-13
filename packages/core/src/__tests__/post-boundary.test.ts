@@ -24,6 +24,11 @@ import { scan, type Category, type Finding } from "./post-scan.js";
  *   whose method is the registered endpoint's, after `checkRequest` has accepted the request. Named here
  *   so the scan reads it (it is a tightening: the file used to be invisible to this list). Any other
  *   file in the writer that opens a connection fails this test and the lint rule on packages/writer.
+ * - `writer/src/gmail/endpoints.ts` and `writer/src/gmail/send.ts`: ADR-0010 (X75, Gmail drafts), named the
+ *   same way as the two above. The registry has one request, `users.drafts.create` (a POST to
+ *   gmail.googleapis.com/gmail/v1/users/me/drafts) and no send; the sender is a `fetch` with the method
+ *   the registry gives, after `checkGmailRequest` has accepted the request. The only addition to this
+ *   list for X75; for the independent reviewer.
  */
 const ALLOWED: Readonly<Record<string, readonly Category[]>> = {
   "core/src/transport.ts": ["method", "network"],
@@ -32,6 +37,8 @@ const ALLOWED: Readonly<Record<string, readonly Category[]>> = {
   "app/src/api.ts": ["verb", "network"],
   "writer/src/github/endpoints.ts": ["verb"], // ADR-0010
   "writer/src/github/send.ts": ["network", "method"], // ADR-0010
+  "writer/src/gmail/endpoints.ts": ["verb"], // ADR-0010, X75
+  "writer/src/gmail/send.ts": ["network", "method"], // ADR-0010, X75
 };
 
 const packagesDir = fileURLToPath(new URL("../../../", import.meta.url));

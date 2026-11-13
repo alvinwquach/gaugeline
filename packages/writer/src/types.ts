@@ -52,13 +52,16 @@ export interface TrailEntry {
   draftId: string;
   decisionId: string;
   outcome: Outcome;
-  /** The pull request's address, when one exists. */
+  /** The pull request's address, or the mailbox draft's id (Gmail's `Draft.id`), when one exists. */
   ref?: string;
-  /** GitHub's HTTP status, when a request failed. */
+  /** The provider's HTTP status, when a request failed. */
   status?: number;
   /**
    * Why nothing was written: "kind", "target", "kill switch", "organisation paused", "approval",
-   * "draft", "org", "site", "hash", "withdrawn", "expired", "payload", "path", "registry".
+   * "draft", "org", "site", "hash", "withdrawn", "expired", "payload", "path", "registry"; for a mailbox
+   * draft also "recipient" (every contact bounced), "duplicate" (one approval, one draft) and
+   * "disconnected" (no access token stored). With an `apply_failed` status, "reconnect" means Gmail no
+   * longer accepts the token (401 or 403): the draft stays in the inbox, with a note to reconnect.
    */
   reason?: string;
   /** A dry run's plan: the registered endpoint and the path it would call. */

@@ -30,4 +30,28 @@ export {
   type Switches,
 } from "./switches.js";
 export type { Approval, Approvals, ApplyJob, Outcome, Trail, TrailEntry } from "./types.js";
-export type { DraftWriter, EmailDraftWriter, SanityDraftWriter } from "./drafts.js";
+export {
+  emailDraftWriter,
+  type DraftWriter,
+  type EmailDraftWriter,
+  type SanityDraftWriter,
+} from "./drafts.js";
+export { applyEmailDraft, type MailDeps, type MailTarget } from "./gmail/apply.js";
+export {
+  checkGmailRequest,
+  DRAFTS_PATH,
+  GMAIL_ENDPOINTS,
+  GMAIL_SCOPE,
+  type GmailRequest,
+} from "./gmail/endpoints.js";
+export { buildMessage, buildRaw, isPlainAddress, MimeError, readRaw } from "./gmail/mime.js";
+export {
+  draftsUrl,
+  gmailSender,
+  MailTokenError,
+  tokenFromStore,
+  type CreateDraft,
+  type GmailResponse,
+  type TokenSource,
+} from "./gmail/send.js";
+export { mailBody } from "./gmail/text.js";
