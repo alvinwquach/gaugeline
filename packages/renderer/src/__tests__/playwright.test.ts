@@ -519,16 +519,23 @@ describe("the Playwright adapter: could-not-check, never a pass", () => {
 });
 
 describe("the Playwright adapter: nothing but the gate answers a request", () => {
-  it("never lets the browser fetch for itself, never installs a browser and never acts on the page", async () => {
+  async function sources() {
     const { readFileSync, readdirSync } = await import("node:fs");
     const { fileURLToPath } = await import("node:url");
     const dir = fileURLToPath(new URL("..", import.meta.url));
-    const source = readdirSync(dir)
-      .filter((f) => f.endsWith(".ts"))
-      .map((f) => readFileSync(`${dir}/${f}`, "utf8"))
-      .join("\n")
-      // Comments name these on purpose, to say they are never used.
-      .replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, "");
+    return Object.fromEntries(
+      readdirSync(dir)
+        .filter((f) => f.endsWith(".ts"))
+        // Comments name these on purpose, to say they are never used.
+        .map((f) => [
+          f,
+          readFileSync(`${dir}/${f}`, "utf8").replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, ""),
+        ]),
+    );
+  }
+
+  it("never lets the browser fetch for itself, never installs a browser and never carries state", async () => {
+    const source = Object.values(await sources()).join("\n");
     // A route answered by continue, fallback or fetch would let the browser's own network carry the request.
     for (const forbidden of [
       /\.continue\(/,
@@ -536,10 +543,28 @@ describe("the Playwright adapter: nothing but the gate answers a request", () =>
       /\.fetch\(/,
       /\b(?:page|context|browser)\.request\b/,
       /connectToServer/,
-      /\.click\(|\.fill\(|\.type\(|\.press\(|\.check\(|\.selectOption\(|\.dispatchEvent\(|\.setInputFiles\(/,
       /\.install\(|browserType\.install|child_process|execFile|spawn\(/,
       /storageState|httpCredentials|extraHTTPHeaders|setExtraHTTPHeaders|addCookies/,
     ])
       expect(source, String(forbidden)).not.toMatch(forbidden);
+  });
+
+  it("acts on the page in one file only, with a click on a link and the Tab key and nothing else", async () => {
+    const all = await sources();
+    const acting =
+      /\.click\(|\.dblclick\(|\.tap\(|\.fill\(|\.type\(|\.press\(|\.pressSequentially\(|\.check\(|\.uncheck\(|\.selectOption\(|\.dispatchEvent\(|\.setInputFiles\(|\.hover\(|\.dragTo\(|\.focus\(|\.mouse\b|\.touchscreen\b|\.evaluate[A-Za-z]*\(\s*["'`(]*\s*\w*\.(?:click|submit)/;
+    for (const [file, text] of Object.entries(all))
+      if (file !== "observer.ts") expect(text, file).not.toMatch(acting);
+    const observer = all["observer.ts"] ?? "";
+    // The two clicks are on a path that was looked at first: the consent link and a listed link.
+    expect(observer.match(/\.click\(/g)).toHaveLength(2);
+    expect(observer.match(/\.press\(/g)).toEqual([".press("]);
+    expect(observer).toContain('.press("Tab")');
+    expect(observer).not.toMatch(
+      /\.dblclick\(|\.tap\(|\.fill\(|\.type\(|\.pressSequentially\(|\.check\(|\.selectOption\(|\.dispatchEvent\(|\.setInputFiles\(|\.hover\(|\.dragTo\(|\.mouse\b|\.touchscreen\b|\.requestSubmit|\.submit\(/,
+    );
+    // Each click comes after looking in the page: the consent link is found by its text, a listed link is inspected.
+    expect(observer.indexOf("findLinkByText(")).toBeLessThan(observer.indexOf(".click("));
+    expect(observer.indexOf("inspectExpression(")).toBeLessThan(observer.lastIndexOf(".click("));
   });
 });

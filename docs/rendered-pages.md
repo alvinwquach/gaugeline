@@ -5,11 +5,12 @@ run: a price filled in by a script, a menu a script builds, the order links get 
 Gaugeline can load the page in a browser **you installed**, read what it did, and hand that to the checks that
 need it. It is off unless you ask for it, and it is read-only: the browser can look, and it cannot send.
 
-**Today.** The renderer is built and tested (row render-01) and `--renderer playwright` turns it on. **Not
-built.** No check reads a rendered page yet: the click observer for your [tracking plan](./guides/click-events.md)
-is the next change, and the layout, contrast and calculator checks follow it. **Not accepted.** A hosted
+**Today.** The renderer is built and tested (row render-01) and `--renderer playwright` turns it on. With it, the
+click checks for your [tracking plan](./guides/click-events.md) click the plan's links in the browser (row
+render-02, below). **Not built.** The layout, contrast and calculator checks. **Not accepted.** A hosted
 renderer, a service that renders the page on someone else's machine and Firecrawl: the owner decided on 13 Nov
-2026 that the only renderer is the browser on your own machine (decision record 0009, `docs/adr/0009-rendered-checks.md` in the repository).
+2026 that the only renderer is the browser on your own machine (decision record 0009,
+`docs/adr/0009-rendered-checks.md` in the repository).
 
 ## Turn it on
 
@@ -140,6 +141,17 @@ one line after the page loads:
 
 The second line of `text` was not in the HTML the server sent: a script wrote it. The `bytes` of each request
 and of the total are left out here, and the query string of every address is never kept (it can carry a token).
+
+## Clicking the plan's links
+
+With a tracking plan (`gaugeline.events.json`), `--renderer playwright` also lets the click checks run. The
+observer clicks each link the plan lists, once, at a desktop width and again at a phone width, and reads what the
+page reported: pushes to `dataLayer` and the analytics requests the page tried to make, which are recorded and
+never sent. Only links are clicked (never a button, an input or anything in a form), at most 20, and a link to
+another site only when the plan names it by selector, with its navigation cancelled. A click that navigates is
+undone by loading the page again. A click that cannot be watched is could not check. The Tab key is pressed (and
+nothing else is typed) to read the order the keyboard reaches the listed links in. What it reads and how the checks
+judge it: [Click events](./guides/click-events.md).
 
 ## The caps
 

@@ -168,7 +168,7 @@ describe("--renderer: a run that does not name it loads nothing", () => {
       sources.filter((f) => needle.test(readFileSync(f, "utf8"))).map(rel);
     // No static import of the driver anywhere but the adapter, and none of the adapter in the CLI.
     expect(
-      importing(/from\s+["']playwright-core["']/).filter(
+      importing(/import\s+(?!type\b)[^;]*from\s+["']playwright-core["']/).filter(
         (f) => !f.endsWith("renderer/src/playwright.ts"),
       ),
     ).toEqual([]);

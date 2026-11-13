@@ -5,10 +5,11 @@ Tracking breaks quietly when templates change, and nobody learns until the repor
 Gaugeline reads your tracking plan, clicks each element it names, and checks what was pushed to
 `dataLayer`.
 
-::: warning Not switched on yet
-Clicking needs a rendered read of the page, and rendered reads are an open decision (G39). Until
-then the plan is read and its elements are found, but nothing is clicked: the click checks are listed
-under could not check, with the reason. Nothing is ever reported as passed without being clicked.
+::: warning Off unless you ask
+Clicking needs a browser, so it happens only with `--renderer playwright` (a browser you installed:
+[Rendered pages](../rendered-pages.md)). Without it the plan is read and its elements are found, but nothing is
+clicked: the click checks are listed under could not check, with the reason. Nothing is ever reported as passed
+without being clicked.
 :::
 
 ## Writing the plan
@@ -21,21 +22,33 @@ that arrives). Each line names the elements, by a CSS selector or as every link 
 {
   "events": [
     { "region": "nav", "event": "menu_click", "params": ["link_text", "link_url", "menu_parent"] },
-    { "selector": "button.book", "event": "book_click", "params": ["button_text"] }
+    { "selector": "a.book", "event": "book_click", "params": ["link_text"] }
   ],
-  "consent": { "accept": "#accept-all" }
+  "consent": { "accept": "Accept all" }
 }
 ```
 
 A line with both a selector and a region, or neither, stops the run (exit 2) naming it. `consent`
-is optional: it says which button accepts the consent banner. Without it, a banner that blocks
-analytics makes the click checks could not check, with the reason.
+is optional: it is the exact text of a **link** that accepts the consent banner. Gaugeline clicks links only,
+never a button, so a banner whose accept control is a button leaves the click checks could not check, with the
+reason.
 
 ## What happens on each click
 
-- At most 20 elements are clicked per run, in the plan's order.
-- Every analytics request a click starts is intercepted and recorded, never delivered, so checking
-  never pollutes your real reports. A link that opens a new tab is clicked without leaving the page.
+- At most 20 elements are listed per run, in the plan's order. **Only links are clicked**: an element with an
+  address that is a web address, visible, and not inside a form. A button, an input, a link in a form and a link
+  whose address is not http or https are never clicked; they are reported as not observed, with the reason, and
+  that is could not check, never a pass. A link to another site is clicked only when the plan names it by a
+  selector (a region such as `nav` is not a list of other sites to visit), and then the browser does not go
+  there: the page's own handlers run and the move is cancelled.
+- A click that navigates away is undone by loading the page again, so every click starts from the page the plan
+  describes. Each element is clicked once at a desktop width (1280 px) and once at a phone width (375 px).
+  A link that is not visible at a width is not observed there.
+- Every analytics request a click starts is intercepted and recorded, never delivered. What it would have sent
+  (the event name and its parameters, read from the request; never an identifier) counts as the click's event,
+  beside the pushes to `dataLayer` (including `gtag('event', ...)`). The analytics libraries themselves are not
+  loaded, so an event only a tag manager would send is not seen: the page's own pushes and requests are. A link
+  that opens a new tab is clicked without leaving the page.
 - Pushes to `dataLayer` are read for 1500 ms after each click. A push after that is reported as late.
 - A parameter counts as filled when it is a non-empty string, a number or a boolean.
 
@@ -46,8 +59,10 @@ analytics makes the click checks could not check, with the reason.
 - `events-distinct`: two links to the same page under different parent menus send identical values,
   so the report can't tell them apart.
 
-`gaugeline events export`, which writes the observed events as a CSV to start a tracking plan from,
-arrives with the rendered read.
+Two more reads come with the clicks and are not findings yet: whether each link reports the same on the phone
+as on the desktop, and the order the Tab key reaches the listed links in. They are in the observation for the
+checks that will judge them. `gaugeline events export`, which writes the observed events as a CSV to start a
+tracking plan from, is not built.
 
 ## Attributes every link must carry
 
