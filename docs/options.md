@@ -913,6 +913,41 @@ nothing, says which kind and which line, and exits 1. Exit 2 when the folder, a 
 cannot be read. See [The field-findings miner](field-findings-miner.md) for the note format, an example and what
 the scrub does not catch.
 
+### The llm command
+
+`gaugeline llm --help` prints:
+
+```text title=Output
+Usage: gaugeline llm [options]
+
+Check your model setup, with your own key (ADR-0005, modes 1 and 2). It reads
+one settings file (a provider, a model for each tier of fast and strong, and the
+NAME of the environment variable that holds your key) and says whether that
+variable is set. It sends nothing and calls no model, and it never shows the
+key: Gaugeline keeps no key, and reads yours from your environment when a call
+is made. A file that holds a key or a host is refused.
+
+Options:
+      --json                  Print the result as JSON on stdout, and nothing
+                              else
+      --llm-config <value>    llm: the model settings file (default
+                              gaugeline.llm.json); it names your key's variable,
+                              never the key
+      --quiet                 Print only results and errors
+      --verbose               Show each request, and technical detail when
+                              something goes wrong
+  -h, --help                  Show this help and exit
+  -v, --version               Print the version and exit
+
+Exit codes: 0 ran (also when the key is not set), 2 could not run
+```
+
+`gaugeline llm` checks the model setup you would use for an agent that words a draft, with your own key. It
+reads the one settings file named with `--llm-config` (default `gaugeline.llm.json`) and the one environment
+variable that file names, and says whether that variable holds a usable key. It makes no request, calls no model
+and never shows the key. A file that holds a key, a host or any setting it does not know is refused. The file's
+shape, the two modes and what Gaugeline keeps: [The model gateway](model-gateway.md#your-own-key).
+
 ### The house-rules command
 
 `gaugeline house-rules --help` prints:
@@ -1091,6 +1126,7 @@ between the markers; CI fails when it differs from the flag table.
 | `--block`                   | deploy-gate: exit 1 when a "Fix this first" finding is found; without it the gate only reports                       | `GAUGELINE_GATE_BLOCK`     | 0.2.0 |
 | `--only <value>`            | source: run just these checks, by id, separated by commas (an unknown id is refused)                                 |                            | 0.2.0 |
 | `--agent <value>`           | evals: run just this agent's eval set, by id (an agent with no set is refused)                                       |                            | 0.2.0 |
+| `--llm-config <value>`      | llm: the model settings file (default gaugeline.llm.json); it names your key's variable, never the key               |                            | 0.2.0 |
 | `--rules <value>`           | house-rules: the file of written rules to compile (plain text or Markdown, up to 50,000 characters)                  |                            | 0.2.0 |
 | `--head <value>`            | receipts verify: a head hash written down earlier, which the chain must still contain                                |                            | 0.2.0 |
 | `--review-notes <value>`    | mine: the folder of review notes (Markdown or text) to read; only lines that start with #pattern-name are used       |                            | 0.2.0 |

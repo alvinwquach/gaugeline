@@ -1,0 +1,225 @@
+/**
+ * Bring your own key (AG-20, ADR-0005 as amended: modes 1 and 2). The key is the person's, in the person's own
+ * environment; Gaugeline holds none. Mode 3 (a key Gaugeline keeps, with metering) is parked and refused.
+ */
+import { readFileSync, readdirSync, statSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { describe, expect, it } from "vitest";
+import {
+  BYOK_MODES,
+  ByokError,
+  LLM_CONFIG_FILE,
+  createByokGateway,
+  describeByok,
+  readByokConfig,
+  renderByokStatus,
+} from "../byok.js";
+import { createRecordedAdapter } from "../recorded.js";
+import { KEY_NAME, ODD_KEY, PLAIN_KEY, REQUEST, SHAPED_KEY, testAdapter } from "./helpers.js";
+
+const FILE = JSON.stringify({
+  provider: "test",
+  keyEnv: KEY_NAME,
+  tiers: { fast: "small-model", strong: "large-model" },
+});
+const root = fileURLToPath(new URL("../../../../../", import.meta.url));
+
+describe("the modes", () => {
+  it("are the command line and the customer's own worker, and no third", () => {
+    expect([...BYOK_MODES]).toEqual(["cli", "worker"]);
+  });
+
+  it.each(["managed", "vault", "metered", "mode 3", "", "CLI"])(
+    "refuses %j: a key Gaugeline holds is parked with billing",
+    (mode) => {
+      const { adapter } = testAdapter();
+      let thrown: unknown;
+      try {
+        createByokGateway({
+          mode: mode as never,
+          config: readByokConfig(FILE),
+          adapters: [adapter],
+          env: () => ({}),
+        });
+      } catch (e) {
+        thrown = e;
+      }
+      expect(thrown).toBeInstanceOf(ByokError);
+      expect((thrown as ByokError).code).toBe("mode-not-supported");
+      expect((thrown as ByokError).message).toMatch(/parked/);
+    },
+  );
+});
+
+describe("the config file", () => {
+  it("is named gaugeline.llm.json, and is read into the gateway's own config shape", () => {
+    expect(LLM_CONFIG_FILE).toBe("gaugeline.llm.json");
+    expect(readByokConfig(FILE)).toMatchObject({
+      provider: "test",
+      keyEnv: KEY_NAME,
+      timeoutMs: 30_000,
+    });
+  });
+
+  it.each([
+    ["not JSON", "{"],
+    ["a list", "[]"],
+    ["a key as a setting", JSON.stringify({ ...JSON.parse(FILE), apiKey: PLAIN_KEY })],
+    [
+      "a key where the variable name goes",
+      JSON.stringify({ ...JSON.parse(FILE), keyEnv: SHAPED_KEY }),
+    ],
+    [
+      "a key-shaped string in a model id",
+      JSON.stringify({ ...JSON.parse(FILE), tiers: { fast: SHAPED_KEY } }),
+    ],
+    ["a host", JSON.stringify({ ...JSON.parse(FILE), baseUrl: "https://api.example.test" })],
+    ["no tiers", JSON.stringify({ provider: "test", tiers: {} })],
+  ])("refuses %s, and never repeats a key it was given", (_n, text) => {
+    let thrown: ByokError | undefined;
+    try {
+      readByokConfig(text);
+    } catch (e) {
+      thrown = e as ByokError;
+    }
+    expect(thrown).toBeInstanceOf(ByokError);
+    expect(thrown!.code).toBe("bad-config");
+    for (const k of [PLAIN_KEY, SHAPED_KEY]) expect(thrown!.message).not.toContain(k);
+  });
+
+  it("refuses a file over 20000 characters before parsing it", () => {
+    expect(() => readByokConfig(`{"provider":"x"${" ".repeat(20_001)}}`)).toThrow(/20000/);
+  });
+});
+
+describe("describeByok: what is set up, never the key", () => {
+  const config = readByokConfig(FILE);
+
+  it("says the key is set, by name, and shows nothing of its value", () => {
+    const s = describeByok(config, { [KEY_NAME]: ODD_KEY }, "cli");
+    expect(s).toMatchObject({ mode: "cli", provider: "test", keyEnv: KEY_NAME, keySet: true });
+    expect(JSON.stringify(s)).not.toContain(ODD_KEY);
+    expect(renderByokStatus(s)).not.toContain(ODD_KEY);
+  });
+
+  it.each([
+    ["unset", undefined],
+    ["empty", ""],
+    ["blanks", "   "],
+    ["with a line break", `${PLAIN_KEY}\nX: 1`],
+    ["too short", "abc"],
+  ])("says the key is not set when it is %s", (_n, value) => {
+    const s = describeByok(config, { [KEY_NAME]: value }, "worker");
+    expect(s.keySet).toBe(false);
+    expect(renderByokStatus(s)).toContain(`${KEY_NAME} is not set`);
+  });
+
+  it("says where the call runs and what Gaugeline keeps, for each mode", () => {
+    const cli = renderByokStatus(describeByok(config, { [KEY_NAME]: PLAIN_KEY }, "cli"));
+    const worker = renderByokStatus(describeByok(config, { [KEY_NAME]: PLAIN_KEY }, "worker"));
+    expect(cli).toMatch(/this command line/);
+    expect(worker).toMatch(/your own worker/);
+    for (const t of [cli, worker]) expect(t).toMatch(/Gaugeline keeps no key/);
+  });
+
+  it("reads nothing but the one variable the config names", () => {
+    const seen: string[] = [];
+    const env = new Proxy({ [KEY_NAME]: PLAIN_KEY } as Record<string, string | undefined>, {
+      get: (t, p) => (seen.push(String(p)), t[p as string]),
+      ownKeys: () => {
+        throw new Error("the environment was listed");
+      },
+    });
+    describeByok(config, env, "cli");
+    expect(seen).toEqual([KEY_NAME]);
+  });
+
+  it("does not need a key for a provider that has none (the recorded fake)", () => {
+    const c = readByokConfig(JSON.stringify({ provider: "recorded", tiers: { fast: "x" } }));
+    expect(describeByok(c, {}, "cli")).toMatchObject({ keySet: null, keyEnv: null });
+    expect(renderByokStatus(describeByok(c, {}, "cli"))).toMatch(/needs no key/);
+  });
+});
+
+describe("createByokGateway", () => {
+  it("is the gateway, for either mode, with the key read from the environment handed in at each call", async () => {
+    for (const mode of BYOK_MODES) {
+      const { adapter, calls } = testAdapter();
+      const env: Record<string, string | undefined> = { [KEY_NAME]: PLAIN_KEY };
+      const g = createByokGateway({
+        mode,
+        config: readByokConfig(FILE),
+        adapters: [adapter],
+        env: () => env,
+      });
+      await g.complete(REQUEST);
+      expect(calls[0]!.key?.reveal()).toBe(PLAIN_KEY);
+      delete env[KEY_NAME];
+      await expect(g.complete(REQUEST)).rejects.toMatchObject({ code: "missing-key" });
+    }
+  });
+
+  it("works with the recorded fake and no key at all", async () => {
+    const g = createByokGateway({
+      mode: "cli",
+      config: readByokConfig(JSON.stringify({ provider: "recorded", tiers: { fast: "x" } })),
+      adapters: [
+        createRecordedAdapter(
+          new Map([
+            [
+              "call-1",
+              {
+                text: "ok",
+                usage: { inputTokens: 1, outputTokens: 1, costMicros: 0, latencyMs: 0 },
+              },
+            ],
+          ]),
+        ),
+      ],
+      env: () => ({}),
+    });
+    expect((await g.complete(REQUEST)).text).toBe("ok");
+  });
+});
+
+describe("Gaugeline stores no key", () => {
+  const walk = (dir: string, keep: (f: string) => boolean): string[] =>
+    readdirSync(dir).flatMap((n) => {
+      if (["node_modules", "dist", ".next", ".turbo", "__tests__"].includes(n)) return [];
+      const full = join(dir, n);
+      return statSync(full).isDirectory() ? walk(full, keep) : keep(n) ? [full] : [];
+    });
+  const gatewayFiles = walk(join(root, "packages/core/src/model-gateway"), (n) =>
+    n.endsWith(".ts"),
+  );
+
+  it("the gateway writes no file, keeps no key in a global, and never reads the process environment", () => {
+    expect(gatewayFiles.length).toBeGreaterThan(8);
+    for (const f of gatewayFiles)
+      expect(readFileSync(f, "utf8"), f).not.toMatch(
+        /node:fs|writeFile|appendFile|createWriteStream|localStorage|sessionStorage|process\s*\.\s*env|globalThis\s*\./,
+      );
+  });
+
+  it("the hosted app never imports the gateway or the sender: its own service makes no model call", () => {
+    const files = walk(
+      join(root, "apps/hosted"),
+      (n) => /\.(ts|tsx|sql|json)$/.test(n) && n !== "package.json",
+    );
+    expect(files.length).toBeGreaterThan(20);
+    for (const f of files)
+      expect(readFileSync(f, "utf8"), f).not.toMatch(
+        /model-gateway|createGateway|createByokGateway|createProviderAdapter/,
+      );
+  });
+
+  it("no hosted table or column holds a model key", () => {
+    const sql = walk(join(root, "apps/hosted/db"), (n) => n.endsWith(".sql"));
+    expect(sql.length).toBeGreaterThan(5);
+    for (const f of sql)
+      expect(readFileSync(f, "utf8"), f).not.toMatch(
+        /\b(model|llm|provider|openai|ai)_?(api_?)?(key|token|secret)\b/i,
+      );
+  });
+});

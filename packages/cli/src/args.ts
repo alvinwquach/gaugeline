@@ -55,6 +55,7 @@ export const SUBCOMMANDS = [
   "mine",
   "house-rules",
   "write-check",
+  "llm",
 ] as const;
 export type CliCommand = "check" | (typeof SUBCOMMANDS)[number];
 
@@ -293,6 +294,15 @@ export type ParsedArgs =
       only?: string[];
       json: boolean;
       ci: boolean;
+      verbose: boolean;
+      quiet: boolean;
+    }
+  | {
+      kind: "llm";
+      /** --llm-config: the model settings file. Absent: gaugeline.llm.json. */
+      llmConfig?: string;
+      /** The environment the key is looked for in (the process's own). */
+      json: boolean;
       verbose: boolean;
       quiet: boolean;
     }
@@ -1491,6 +1501,22 @@ export function parseCliArgs(
       ...(only ? { only } : {}),
       json: values.json === true,
       ci: values.ci === true,
+      verbose,
+      quiet: values.quiet === true,
+    };
+  }
+  if (command === "llm") {
+    if (positionals.length > 0)
+      return {
+        kind: "error",
+        message: `gaugeline llm takes the file with --llm-config, not as a word: ${positionals.join(", ")}.`,
+        hint: "For example: gaugeline llm --llm-config gaugeline.llm.json",
+        verbose,
+      };
+    return {
+      kind: "llm",
+      ...(typeof values["llm-config"] === "string" ? { llmConfig: values["llm-config"] } : {}),
+      json: values.json === true,
       verbose,
       quiet: values.quiet === true,
     };

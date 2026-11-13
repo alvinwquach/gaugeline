@@ -92,6 +92,38 @@ logs nothing.
 | `provider-error`      | the adapter failed; its message is cleaned                             |
 | `bad-answer`          | the answer is not in the expected shape                                |
 
+## Your own key
+
+Gaugeline uses your key, never its own, and keeps none. There are two modes, both with the key in your own
+environment:
+
+- **Mode 1, the command line.** The call runs in your own process, with the key in the environment you start it from.
+- **Mode 2, hosted.** The call runs in your own worker (the process you run for the hosted tier, the same one that
+  applies approved drafts), with your own key in its environment. Gaugeline's hosted service makes no model call
+  and holds no key: no table or column holds one, and a test fails if the hosted app imports the gateway.
+
+A key Gaugeline would hold for you, with metering (mode 3), is parked with billing. `createByokGateway` refuses it
+by name, and the only modes it accepts are `cli` and `worker`.
+
+Your settings go in `gaugeline.llm.json`: the config above, and nothing else. `gaugeline llm` reads that file
+and the one variable it names, and tells you what is set up. It never shows the key, sends nothing, and exits 0 when
+it ran, also when the key is not set.
+
+```text title=Setup
+Model setup (mode 1)
+provider: example
+fast: small-model
+strong: large-model
+key: EXAMPLE_API_KEY is set (its value is never shown)
+The call runs in: this command line, in your own process, with your own key.
+Gaugeline keeps no key: it reads yours from your environment when a call is made, and prints or logs none.
+This sent nothing.
+```
+
+The file is refused if it holds anything that looks like a key, a host, or a setting it does not know. The gateway
+reads the variable when a call is made and never keeps it, and it writes no file, so unsetting the variable stops
+the next call. What leaves your machine in each mode is [AG-23](https://github.com/alvinwquach/gaugeline/blob/main/docs/adr/0014-agent-safety-model.md)'s page.
+
 ## A model's answer is never a pass
 
 Every answer carries `advisory: true` and has no field for a verdict. Grouping, ranking, diffing and checking
