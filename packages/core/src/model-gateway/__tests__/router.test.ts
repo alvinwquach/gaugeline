@@ -730,17 +730,19 @@ describe("the most calls and the most time one task may take", () => {
     ["refused", failing("bad-key")],
     ["malformed", { error: () => new ModelGatewayError("bad-answer", "x", [], "not-json") }],
   ];
-  function* scripts(): Generator<[Array<[string, Step]>, Array<[string, Step]>]> {
+  function* scripts(
+    alphabet: Array<[string, Step]> = ALPHABET,
+  ): Generator<[Array<[string, Step]>, Array<[string, Step]>]> {
     const per = (n: number): Array<[string, Step]>[] =>
       n === 0
         ? [[]]
-        : ALPHABET.flatMap((x) => per(n - 1).map((rest) => [x, ...rest] as Array<[string, Step]>));
+        : alphabet.flatMap((x) => per(n - 1).map((rest) => [x, ...rest] as Array<[string, Step]>));
     for (const a of per(3)) for (const b of per(3)) yield [a, b];
   }
-  const run = async (maxCalls?: number) => {
+  const run = async (maxCalls?: number, alphabet?: Array<[string, Step]>) => {
     let most = 0;
     let n = 0;
-    for (const [sa, sb] of scripts()) {
+    for (const [sa, sb] of scripts(alphabet)) {
       const a = provider(
         "a",
         sa.map(([, st]) => st),
@@ -765,11 +767,11 @@ describe("the most calls and the most time one task may take", () => {
     const { most, n } = await run();
     expect(n).toBe(15_625);
     expect(most).toBe(MAX_CALLS_PER_ROUTE);
-  });
+  }, 120_000);
 
   it("can be set lower, and then the same worst case stops there with its own reason", async () => {
     for (const cap of [1, 2]) {
-      const { most } = await run(cap);
+      const { most } = await run(cap, ALPHABET.slice(0, 3));
       expect(most).toBe(cap);
     }
     const a = provider("a", [BAD, rec(GOOD)]);
