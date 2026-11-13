@@ -904,6 +904,46 @@ nothing, says which kind and which line, and exits 1. Exit 2 when the folder, a 
 cannot be read. See [The field-findings miner](field-findings-miner.md) for the note format, an example and what
 the scrub does not catch.
 
+### The house-rules command
+
+`gaugeline house-rules --help` prints:
+
+```text title=Output
+Usage: gaugeline house-rules --rules <file> [options]
+
+Turn a site's written rules (a plain-text or Markdown style guide: headings in
+sentence case, no em dashes, buttons say Book now, never use the word cheap,
+phone numbers formatted like 000 000 0000) into a DRAFT house-rules file for
+you to review. It reads that one file and nothing else: no request, no model,
+no key. A line it has no pattern for is listed as not understood and never
+guessed; a line that names a pattern or a file path is refused; a line that
+gives an order is listed and ignored. It writes only a new file whose name ends
+in .draft.json, never over one that exists and never gaugeline.house.json:
+you read the draft, then rename it to adopt it.
+
+Options:
+      --json             Print the result as JSON on stdout, and nothing else
+      --out <value>      The draft file to write (default
+                         gaugeline.house.draft.json); its name must end in
+                         .draft.json and it must not exist yet
+      --rules <value>    house-rules: the file of written rules to compile
+                         (plain text or Markdown, up to 50,000 characters)
+      --quiet            Print only results and errors
+      --verbose          Show each request, and technical detail when something
+                         goes wrong
+  -h, --help             Show this help and exit
+  -v, --version          Print the version and exit
+
+Exit codes: 0 ran (also when nothing was understood), 2 could not run
+```
+
+`gaugeline house-rules` turns a site's written rules (a plain-text or Markdown style guide) into a draft
+house-rules file. It reads the one file named with `--rules`, makes no request, calls no model and needs no key,
+and writes only a new file whose name ends in `.draft.json`: never over a file that exists, and never
+`gaugeline.house.json`, which you make by renaming a draft you have read. A line it has no pattern for is listed
+as not understood, never guessed. What it understands, the file's shape and an example with its real output:
+[House rules](house-rules.md).
+
 ### Flags
 
 The table below is generated from `packages/cli/src/flags.ts` (`pnpm docs:flags`). Do not edit

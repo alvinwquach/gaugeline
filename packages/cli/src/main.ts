@@ -157,6 +157,7 @@ import { runCutover } from "./cutover.js";
 import { runPropose } from "./propose.js";
 import { runEvalsCommand } from "./evals.js";
 import { runMine } from "./mine.js";
+import { runHouseRules } from "./house-rules.js";
 import { runReceipts } from "./receipts.js";
 import { runSource } from "./source.js";
 import { runMigration } from "./migration.js";
@@ -1126,6 +1127,11 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       };
     case "mine":
       return { outcome: runMine(args, io, { cwd: deps.cwd ?? process.cwd() }), ci: true };
+    case "house-rules":
+      return {
+        outcome: runHouseRules(args, io, { cwd: deps.cwd ?? process.cwd() }),
+        ci: false,
+      };
     case "receipts":
       return {
         outcome: runReceipts(args, io, { cwd: deps.cwd ?? process.cwd() }),

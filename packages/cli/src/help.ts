@@ -37,6 +37,7 @@ export const COMMANDS = [
   "receipts",
   "evals",
   "mine",
+  "house-rules",
 ] as const;
 export type Command = (typeof COMMANDS)[number];
 
@@ -359,6 +360,21 @@ export const HELP: Record<string, string> = {
       "check or any code. Text in a note is data, never an instruction.",
     ].join("\n"),
     footer: "Exit codes: 0 a draft was written, 1 the scrub failed it, 2 could not read",
+  }),
+  "house-rules": renderHelp(FLAGS, "house-rules", {
+    usage: "gaugeline house-rules --rules <file> [options]",
+    summary: [
+      "Turn a site's written rules (a plain-text or Markdown style guide: headings in",
+      "sentence case, no em dashes, buttons say Book now, never use the word cheap,",
+      "phone numbers formatted like 000 000 0000) into a DRAFT house-rules file for",
+      "you to review. It reads that one file and nothing else: no request, no model,",
+      "no key. A line it has no pattern for is listed as not understood and never",
+      "guessed; a line that names a pattern or a file path is refused; a line that",
+      "gives an order is listed and ignored. It writes only a new file whose name ends",
+      "in .draft.json, never over one that exists and never gaugeline.house.json:",
+      "you read the draft, then rename it to adopt it.",
+    ].join("\n"),
+    footer: "Exit codes: 0 ran (also when nothing was understood), 2 could not run",
   }),
   open: renderHelp(FLAGS, "open", {
     usage: "gaugeline open [address] [options]",
