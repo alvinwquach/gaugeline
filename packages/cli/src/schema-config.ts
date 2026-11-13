@@ -19,6 +19,7 @@ import {
   adaptersConfigSchema,
   servicesConfigSchema,
   eventsConfigSchema,
+  readEventsCsv,
   documentsConfigSchema,
   factsConfigSchema,
   hiddenConfigSchema,
@@ -321,8 +322,26 @@ export function readTags(dir: string): TagContainer | undefined {
   return readContainer(json, config.container);
 }
 
+/** The same plan as a spreadsheet export (gaugeline.events.csv): one row per plan line. */
+export const EVENTS_CSV_FILE = "gaugeline.events.csv";
+/** A tracking spec is a few dozen rows; a bigger file is not one. */
+const EVENTS_CSV_MAX_BYTES = 1_000_000;
+
 export function readEvents(dir: string): EventsConfig | undefined {
-  return readJsonConfig(dir, EVENTS_CONFIG_FILE, eventsConfigSchema, "the click event checks");
+  const csvPath = join(dir, EVENTS_CSV_FILE);
+  if (!existsSync(csvPath))
+    return readJsonConfig(dir, EVENTS_CONFIG_FILE, eventsConfigSchema, "the click event checks");
+  if (existsSync(join(dir, EVENTS_CONFIG_FILE)))
+    throw new ConfigError(
+      `${EVENTS_CONFIG_FILE} and ${EVENTS_CSV_FILE} are both here: the tracking plan is one or the other.`,
+      { hint: "Remove one of the two files, or move it out of this folder." },
+    );
+  const bytes = readFileSync(csvPath);
+  if (bytes.length > EVENTS_CSV_MAX_BYTES)
+    throw new ConfigError(`${EVENTS_CSV_FILE} is larger than 1 MB: it is not a tracking spec.`, {
+      hint: "Export just the tracking spec sheet, one row per element.",
+    });
+  return readEventsCsv(bytes.toString("utf8"), EVENTS_CSV_FILE);
 }
 
 export function readNavRules(dir: string): NavRules | undefined {

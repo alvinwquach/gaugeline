@@ -7,7 +7,7 @@ Gaugeline reads your tracking plan, clicks each element it names, and checks wha
 
 ::: warning Not switched on yet
 Clicking needs a rendered read of the page, and rendered reads are an open decision (G39). Until
-then the plan is read and its elements are found, but nothing is clicked: both checks are listed
+then the plan is read and its elements are found, but nothing is clicked: the click checks are listed
 under could not check, with the reason. Nothing is ever reported as passed without being clicked.
 :::
 
@@ -29,7 +29,7 @@ that arrives). Each line names the elements, by a CSS selector or as every link 
 
 A line with both a selector and a region, or neither, stops the run (exit 2) naming it. `consent`
 is optional: it says which button accepts the consent banner. Without it, a banner that blocks
-analytics makes both checks could not check, with the reason.
+analytics makes the click checks could not check, with the reason.
 
 ## What happens on each click
 
@@ -98,6 +98,63 @@ Checked 4 of 5 other pages.
 The invented fixture is `packages/fixtures/sites/nav-attributes`. The output is asserted by
 `packages/cli/src/__tests__/nav-attributes.test.ts` and checked by `pnpm docs:examples`.
 
+## The plan as a spreadsheet
+
+A tracking spec usually starts as a sheet. Export it as CSV, name it `gaugeline.events.csv` and put it in the
+folder you run Gaugeline from instead of `gaugeline.events.json` (both in one folder stops the run, exit 2). It is
+read the way the [launch plan](/docs/plan-check) is read: RFC 4180 quoting, headers matched loosely (case and
+punctuation do not matter), a byte-order mark and blank rows ignored, and one plan line per row.
+
+| Column (any of these names)                   | What it holds                                                                    |
+| --------------------------------------------- | -------------------------------------------------------------------------------- |
+| `Region`                                      | `nav`, `header`, `footer` or `main`: every link in it                            |
+| `Selector`, `CSS selector`                    | A CSS selector for the elements                                                  |
+| `Element`, `Elements`, `Target`               | Either: a region name is a region, anything else is a selector                   |
+| `Event`, `Event name`                         | The event a click must push                                                      |
+| `Parameters`, `Params`, `Required parameters` | Names that must be filled, separated by commas, semicolons or line breaks        |
+| `Attributes`, `Required attributes`           | Attributes the elements must carry (see above); a row may have this and an event |
+
+```text
+Region,Selector,Event,Parameters,Attributes
+nav,,menu_click,"link_text, link_url, menu_parent",data-track
+,button.book,book_click,button_text,
+```
+
+A row names exactly one of a region or a selector, and needs an event, attributes or both. A row that cannot be read
+stops the run (exit 2) with the file name and the line, for example
+`gaugeline.events.csv line 3: the region "sidebar" is not one of nav, header, footer, main`. A cell is text: a formula
+or markup in one is never run.
+
+## Events nobody planned
+
+`events-unlisted` is the other half of the spec. The spec's events that never fire are `events-fire` (an element that
+sent nothing). `events-unlisted` lists the events a click sent that no line of the plan names, with the element and
+what it sent; the tag manager's own `gtm.*` events and pushes with no event name are left out, and the same event on
+several links is one finding. It reads the same clicks as `events-fire`, so it needs the same rendered read: until
+then it is could not check, and nothing is reported as passed.
+
+For the coffee roastery with its plan in a spreadsheet:
+
+<!-- fixture: nav-events-csv -->
+
+```sh title=Terminal
+$ npx gaugeline roastery.example
+```
+
+```text title=Output
+? events-distinct could not be checked: clicking elements needs a rendered read of the page, which this version doesn't have (decision record G39) (/)
+? events-fire could not be checked: clicking elements needs a rendered read of the page, which this version doesn't have (decision record G39) (/)
+? events-unlisted could not be checked: clicking elements needs a rendered read of the page, which this version doesn't have (decision record G39) (/)
+? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
+    Mail records are read from DNS only with --dns. Rerun with --dns to check them.
+
+Checked 4 of 5 other pages.
+Nothing to look at.
+```
+
+The output is asserted by `packages/cli/src/__tests__/events-csv.test.ts` and checked by `pnpm docs:examples`; the
+recorded replay of `events-unlisted` is in `packages/core/src/checks/__tests__/events-unlisted.test.ts`.
+
 ## Example
 
 Against the invented `nav-events` fixture, a coffee roastery whose rebuilt menu declares every nav
@@ -106,6 +163,7 @@ link, version 0.1.0 prints:
 ```text title=Output
 ? events-distinct could not be checked: clicking elements needs a rendered read of the page, which this version doesn't have (decision record G39) (/)
 ? events-fire could not be checked: clicking elements needs a rendered read of the page, which this version doesn't have (decision record G39) (/)
+? events-unlisted could not be checked: clicking elements needs a rendered read of the page, which this version doesn't have (decision record G39) (/)
 ? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
     Mail records are read from DNS only with --dns. Rerun with --dns to check them.
 

@@ -512,6 +512,7 @@ export type { HiddenConfig, HiddenSection } from "./hidden.js";
 export { studioConfigSchema } from "./studio.js";
 export type { StudioConfig } from "./studio.js";
 export { eventRuleSchema, eventsConfigSchema, REGIONS } from "./events/types.js";
+export { readEventsCsv } from "./events/spec-csv.js";
 export type { EventRule, EventsConfig, Region } from "./events/types.js";
 export {
   EVENT_WAIT_MS,
