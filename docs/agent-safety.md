@@ -42,8 +42,10 @@ and not built.
 - **Today.** Pass or fail your build with a model's opinion. Checks never call a model.
 - **Planned (row AG-03).** Call a tool it was not granted, run past its rate limit, cost ceiling or
   timeout. Everything is denied unless allowed, and every deny is recorded with its reason.
-- **Planned (rows AG-09, AG-10).** Ship without passing its evals and a red-team suite, where every case
-  (a hostile page, a replayed approval, a revoked agent, a blown budget) must fail closed.
+- **Today (row AG-09).** Ship without passing its [evals](./agent-evals.md): golden cases, known-bad cases and
+  a replay of recorded model output, run offline in the normal test run.
+- **Planned (row AG-10).** Ship without a red-team suite where every case (a hostile page, a replayed
+  approval, a revoked agent, a blown budget) fails closed.
 
 ### An example: a coffee shop's opening hours with a hidden line
 
