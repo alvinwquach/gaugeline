@@ -26,7 +26,8 @@ and not built.
   runs, and draft a fix as text (`draft_fix`). Nothing is applied.
 - **Today.** Write a draft into your inbox for one of your own sites: a pull request, a content-system
   draft or an email. The database checks the draft's shape and caps how many can wait (200 per site).
-- **Planned (row AG-08).** Read the list of drafts waiting for you, and a site's run history, read-only.
+- **Today (row AG-08).** Read the list of drafts waiting for you, and a site's run history, read-only, with
+  a registered agent's token that has the `read:pending` or `read:runs` scope ([the API](./hosted/api.md)).
 - **Planned (row AG-19).** Word a draft with a model. Grouping, ranking and checking stay plain code; a
   model only writes the sentences, and tests use a recorded fake, so no key is needed to run them.
 

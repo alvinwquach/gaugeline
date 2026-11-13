@@ -9,12 +9,14 @@ import { TEST_DATABASE_URL, type Sql } from "../../../db/__tests__/harness.js";
 
 export async function appLogin(
   owner: Sql,
+  /** The roles the login is a member of; the agent's login (AG-08) is a member of gaugeline_agent only. */
+  grants = "service_role, authenticated",
 ): Promise<{ sql: Sql; url: string; role: string; drop: () => Promise<void> }> {
   const role = `gl_app_${randomBytes(4).toString("hex")}`;
   const password = randomBytes(12).toString("hex");
   await owner.unsafe(
     `create role ${role} login noinherit nosuperuser nobypassrls password '${password}';
-     grant service_role, authenticated to ${role};`,
+     grant ${grants} to ${role};`,
   );
   const dbName = (await owner`select current_database() as n`)[0]!.n as string;
   const u = new URL(TEST_DATABASE_URL);

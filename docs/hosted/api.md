@@ -208,6 +208,109 @@ A run that does not exist, or belongs to another site, is a `404`.
 }
 ```
 
+## Agent reads: pending drafts and run history
+
+A registered agent ([the agent registry](./agent-registry.md)) reads with its own token,
+`Authorization: Bearer gla_...`, never a site's upload token. Its token reads; it cannot upload a run, read a
+run's findings, decide a draft or change anything. Two scopes, each checked by the
+[agent policy](./agent-policy.md) once per request, before anything is read:
+
+| Request                             | Scope          | What it returns                                                                       |
+| ----------------------------------- | -------------- | ------------------------------------------------------------------------------------- |
+| `GET /api/v1/drafts?status=pending` | `read:pending` | the organisation's drafts waiting for a decision, newest first                        |
+| `GET /api/v1/drafts/:id`            | `read:pending` | one of them; `404` once it is decided or expired, or if it is not this organisation's |
+| `GET /api/v1/runs?site=<id>`        | `read:runs`    | one site's runs, the same answer as the site's own token gets; `site` is required     |
+
+**Pending** means no decision yet and younger than 72 hours (an approval after 72 hours is refused). The
+organisation is the token's: no query names it, and another organisation's draft or site is a `404`, the same
+as one that does not exist. Query: `site` (optional on `/drafts`), `limit` (1 to 50, default 20), `cursor` (the
+`nextCursor` of the previous page). `status` may only be `pending`.
+
+### An example: the morning digest reads the bar's inbox
+
+Northgate Studio registers a "Morning digest" agent with `read:pending` and `read:runs`, and a "Menu fixer"
+with `draft:email` only. This is the output of the API's own handlers against the seeded test database
+(`apps/hosted/app/api/__tests__/agent-api.test.ts` seeds the same way), the digest's token in `$DIGEST`:
+
+```sh title=Terminal untested="Needs a hosted workspace, which does not exist yet; the output below was captured from the API's handlers on the seeded test database."
+$ curl -sS "https://hosted.example/api/v1/drafts?status=pending" -H "Authorization: Bearer $DIGEST"
+```
+
+```json title=Output
+{
+  "drafts": [
+    {
+      "id": "a1d20000-0000-4000-8000-0000000000a2",
+      "siteId": "a1000000-0000-4000-8000-0000000000a1",
+      "kind": "email",
+      "title": {
+        "untrusted": true,
+        "source": "draft title",
+        "text": "Your menu link is fixed",
+        "truncated": false,
+        "strippedDirectives": 0
+      },
+      "excerpt": {
+        "untrusted": true,
+        "source": "draft excerpt",
+        "text": "The drinks page is back: /menu now links to /drinks.",
+        "truncated": false,
+        "strippedDirectives": 0
+      },
+      "payloadSha256": "ba75ce8fdae2a08b01b04f4a7b7ebeda0277255a389dc10da59f5cd4a2d676a0",
+      "createdAt": "2026-11-13T09:15:00.000Z",
+      "expiresAt": "2026-11-16T09:15:00.000Z",
+      "findingIds": []
+    }
+  ],
+  "nextCursor": null
+}
+```
+
+The same request with the Menu fixer's token, which has no `read:pending`:
+
+```json title=Output
+{
+  "code": "denied",
+  "message": "Refused by the agent policy: scope.",
+  "reason": "scope"
+}
+```
+
+That answer is a `403`, and the refusal is a row in the deny log (`tool` `read:pending`, `reason` `scope`).
+`GET /api/v1/runs?site=b1000000-0000-4000-8000-0000000000b1` with the digest's token, a site of another agency,
+is a `404` `not_found`.
+
+**Only safe fields.** A draft's payload never leaves as it is: `payloadSha256` is the SHA-256 of the exact
+payload, the hash an approval of it records. `title` is the email's subject, the pull request's title, or a
+Sanity draft's document type and id; `excerpt` is the start of the body (a pull request's files are not in
+it), or for a Sanity draft the names of the fields it sets, never their values. Both are what an agent wrote,
+and an agent's text may quote a page, so each is labelled `untrusted: true`, cleaned like page text (hidden
+characters shown as `\u{...}`), cut to 120 and 280 characters, and anything shaped like a key or a Gaugeline
+token is replaced with `[redacted]`.
+
+| Status | Code                                                        | When                                                                    |
+| ------ | ----------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `400`  | `invalid_query`, `invalid_cursor`                           | `limit` over 50, `status` other than `pending`, a bad `site` or cursor  |
+| `401`  | `unauthorized` (with `reason` when the token is an agent's) | no agent token, or an unknown, disabled or revoked agent                |
+| `403`  | `denied`                                                    | no scope, a kill switch, or another policy refusal; `reason` says which |
+| `404`  | `not_found`                                                 | another organisation's draft or site, or a draft that is not pending    |
+| `429`  | `denied`                                                    | the agent's rate limit or daily cost ceiling                            |
+| `503`  | `agents_not_configured`                                     | the server has no agent login (`GAUGELINE_AGENT_DATABASE_URL`)          |
+
+**How it is held.** The API answers an agent's token on a third database login,
+`GAUGELINE_AGENT_DATABASE_URL`: a member of `gaugeline_agent` and nothing else (the server refuses to start
+otherwise). That role holds no table. It runs `private.agent_list_pending` and `private.agent_list_runs`,
+which take the organisation from the token and call the policy (`private.agent_authorize`) exactly once with
+their scope; a refused call reads nothing. An agent's token never reaches the `service_role` connection.
+`GAUGELINE_AGENTS_OFF` on the server refuses every agent request before the database. Nothing here approves:
+assistants plan, people approve.
+
+**Why agents read runs with their own token and not a site's.** A site's token can also upload runs; an agent
+that only reads should hold a credential that only reads. One agent token covers the organisation's sites,
+each request still names one site, and revoking the agent stops every read at once. The run's findings stay on
+the site's token for now (`GET /runs/:id/findings` with an agent token is a `401`).
+
 ## Versions
 
 The `/v1` in the address is the API's version. Within v1, fields may be added to answers; a field is never
@@ -221,7 +324,7 @@ What the code in this repository does today.
   in `apps/hosted/app/api/v1`. The Next.js app around them (sign-in, the dashboard) is not built yet.
 - There is no screen to make or revoke a token yet; `mintToken` and `revokeToken` in `lib/api/tokens.ts` do
   it, and the database holds only the hash.
-- There is no rate limit yet, and old idempotency keys are not pruned yet. The size cap, the 10,000-finding cap and the token are the limits.
+- There is no rate limit on a site's token yet (an agent's token has the policy's), and old idempotency keys are not pruned yet. The size cap, the 10,000-finding cap and the token are the limits.
 - Server Actions for what a signed-in person owns (rename a site, invite a member) need sign-in and are not part of this page.
 - Two database logins, two variables, both secrets that stay on the server. `GAUGELINE_MIGRATE_URL` is the
   owner (the role that creates the tables) and only `db:migrate` reads it. `GAUGELINE_DATABASE_URL` is the

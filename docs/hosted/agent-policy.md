@@ -18,7 +18,7 @@ One function, `private.agent_authorize(token, tool, cost)`, decides every agent 
 entry (`private.agent_insert_draft`) calls it first, on the token and the tool name alone (`draft:email`
 for an email draft), before it looks at the site, the findings or the payload. The two reads (AG-08,
 `private.agent_list_pending` and `private.agent_list_runs`) call it the same way, once, with `read:pending`
-or `read:runs`. The first rule that applies is the reason:
+or `read:runs` ([the API](./api.md#agent-reads-pending-drafts-and-run-history)). The first rule that applies is the reason:
 
 | Reason               | When                                                                                               |
 | -------------------- | -------------------------------------------------------------------------------------------------- |

@@ -7,7 +7,8 @@
  *   GET  /runs/:id/findings  ?limit=&cursor=               the findings of one run
  *
  * Auth is a per-site Bearer token. The token names the site (and so the organisation); a `site` in the
- * request must be that site. Everything runs as service_role (db.ts).
+ * request must be that site. Everything runs as service_role (db.ts). GET /runs also takes a registered
+ * agent's token (`gla_...`, scope read:runs): agent-reads.ts answers that, as gaugeline_agent, never here.
  */
 import { createHash } from "node:crypto";
 import * as z from "zod";
@@ -15,11 +16,14 @@ import { decodeCursor, encodeCursor, isUuid } from "./cursor.js";
 import { type Sql, type Tx, withService } from "./db.js";
 import { json, problem, UNAUTHORIZED } from "./http.js";
 import { MAX_BODY_BYTES, parseIdempotencyKey, parseUpload, type Upload } from "./schema.js";
+import { agentBearer, getRunsForAgent } from "./agent-reads.js";
 import { secretsInValue, stringsOf } from "./secrets.js";
 import { type Authorised, authenticate, parseBearer } from "./tokens.js";
 
 export interface ApiDeps {
   sql: Sql;
+  /** The agent's own login (agent-db.ts), when GAUGELINE_AGENT_DATABASE_URL is set; never service_role. */
+  agentSql?: Sql;
 }
 
 const FINDINGS_PER_INSERT = 1000;
@@ -226,6 +230,7 @@ const listQuery = z.object({
 });
 
 export async function getRuns(req: Request, deps: ApiDeps): Promise<Response> {
+  if (agentBearer(req.headers.get("authorization"))) return getRunsForAgent(req, deps);
   try {
     const who = await authorise(req, deps);
     if (who instanceof Response) return who;

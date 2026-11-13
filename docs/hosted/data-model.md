@@ -95,7 +95,7 @@ A person in two organisations sees both, and nothing else.
   plan's "app" role) and `service_role` is the server and worker (the plan's "service" role). The
   plan's `agent` role is `gaugeline_agent` (G37): it may insert drafts through one function, and read pending
   drafts and run history through two more (AG-08), each taking the organisation from the agent's token, and
-  nothing else ([the inbox and approvals](./inbox.md)). Its
+  nothing else ([the inbox and approvals](./inbox.md), [the API](./api.md)). Its
   login must be a member of that role only: `agentLoginsWithOtherRoles` in `db/audit.ts` lists any login
   that could also act as `authenticated` or `service_role`.
 - **The app must never connect as the table owner.** The owner (`postgres` on Supabase) skips
