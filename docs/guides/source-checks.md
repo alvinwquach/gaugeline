@@ -35,6 +35,8 @@ Read 5 files in ./harbour-bar-preview. No request was made and no code was run.
 ✓ sanity-cdn-tagged-reads
 ✓ cms-token-in-client-code
 ✓ webhook-url-hardcoded
+✓ webhook-signature-compared-plainly
+✓ webhook-timestamp-unbounded
 
 2 to look at, 2 to fix first.
 ```
