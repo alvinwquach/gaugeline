@@ -10,7 +10,7 @@ draft**, and what it says is advice for a person to read, never a result that de
 and tested (row AG-19, part 1). **Not built.** There is no provider behind it, so nothing here can reach a
 model, and no code in it opens a connection. The one module that may send a request to a provider, from your
 own machine with your own key, is the next pull request; reading your key on the command line is
-[AG-20](https://github.com/alvinwquach/gaugeline/blob/main/docs/adr/0014-agent-safety-model.md), budgets are AG-22 and the
+[AG-20](https://github.com/alvinwquach/gaugeline/blob/main/docs/adr/0014-agent-safety-model.md), budgets are built ([model budgets](./model-budgets.md), AG-22) and the
 privacy rules for what is sent are AG-23. The decision behind all of this is
 [ADR-0005, as amended on 13 Nov 2026](https://github.com/alvinwquach/gaugeline/blob/main/docs/adr/0005-notifications-post-to-your-own-channels.md):
 your own key, from your own environment, findings and ids and snippets only, never a whole page.
@@ -63,8 +63,9 @@ be a key someone pasted in the wrong place.
    the next call. An unset or blank variable is `missing-key`, and the error names the variable, never a value.
 3. Refuses the call if the prompt holds your own key (`key-in-prompt`), and replaces any other secret, email
    address or phone number in the prompt with a marker.
-4. Asks the budget hooks. Today they say yes to everything; AG-22 fills them in with ceilings. Anything that is
-   not a clear yes (an error, an empty answer) stops the call.
+4. Asks the budget hooks. With no budget they say yes to everything; with a
+   [budget ledger](./model-budgets.md) (AG-22) they check the run, day and workspace ceilings against the worst the
+   call can cost. Anything that is not a clear yes (an error, an empty answer) stops the call.
 5. Calls the adapter with a hard timeout and a signal that is aborted when it runs out.
 6. Checks the answer: text, the tool calls it tried and its usage as whole numbers, nothing else, and not more
    than 100000 characters. Anything else is `bad-answer`, and the error does not repeat the answer.
@@ -207,7 +208,7 @@ golden 3/3 pass; known-bad 8/8 caught; cost 1008000 micro-units
 - It does not send anything. The next pull request adds the one sending module, with a list of provider hosts
   in code, https only, no redirects, no private address, a size cap and a timeout.
 - It does not choose between tiers, retry, or fall back to a second provider (AG-21), and it does not enforce a
-  budget (AG-22).
+  budget by itself: the [budget ledger](./model-budgets.md) (AG-22) is handed to it as `budget`.
 - It does not decide what may be sent. A caller passes findings, evidence snippets and ids, never a page; the
   redaction here is a last line of defence, and the privacy rules are AG-23.
 - A redaction by pattern misses a secret in a shape it does not know, and it replaces any run of eight or more
