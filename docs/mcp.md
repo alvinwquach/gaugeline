@@ -92,6 +92,10 @@ It needs a token (below) when you pass `--allow-private`, `--allow-private-host`
 
 To listen on another address you must pass `--allow-non-loopback`, name each host clients will use with `--allowed-host`, and set the token in the environment: `GAUGELINE_MCP_TOKEN` (never on the command line). With a token set, every request needs `Authorization: Bearer <token>`.
 
+### Oversize requests over HTTP
+
+A request body larger than 1 MiB is answered with `413` and `Connection: close`. Before answering, the server reads and throws away the rest of that body for up to 16 MiB or 10 seconds, whichever comes first, so a client that is still sending (on Windows and macOS especially) receives the `413` instead of a reset connection. After that limit the connection is closed. None of the discarded bytes is kept, and nothing about the limits can be changed from the command line.
+
 ## Limits on one call
 
 A call that makes requests has an overall time limit (two minutes): no new request is started after it, and the call is answered at the limit. At most 16 such calls run or wait at once; more are refused with a clear message. A redirect to an address that is not http or https (`javascript:`, `file:`, `data:`) is reported as could not be read. An unexpected failure inside one call is logged as one fixed line on stderr and never stops the server.

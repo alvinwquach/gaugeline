@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { createServer, request as httpRequest, type Server } from "node:http";
+import { connect as netConnect } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
@@ -327,6 +328,66 @@ describe("the HTTP transport", () => {
       req.end();
     });
     expect(status).toBe(413);
+  });
+
+  it("an oversize body that is still being sent is read to its end, then answered 413: the client's writes are never reset", async () => {
+    // A client that is still writing when the server answers is reset by the operating system if the server closes
+    // the socket with unread data (Windows and macOS did: ECONNRESET / EPIPE before the 413 was read). So the server
+    // keeps reading and discarding, and answers when the body has ended.
+    const r = await startHttp({ makeServer: () => createGaugelineServer() });
+    https.push(r);
+    const total = 3 * 1024 * 1024;
+    const sock = netConnect({ host: "127.0.0.1", port: r.port });
+    const errors: string[] = [];
+    sock.on("error", (e) => errors.push(e.message));
+    let reply = "";
+    sock.on("data", (d: Buffer) => (reply += d.toString("latin1")));
+    const closed = new Promise<void>((resolve) => sock.once("close", () => resolve()));
+    const write = (b: Buffer | string) =>
+      new Promise<void>((resolve) =>
+        sock.write(b, (e) => resolve(void (e && errors.push(e.message)))),
+      );
+    await write(
+      [
+        "POST /mcp HTTP/1.1",
+        `Host: 127.0.0.1:${r.port}`,
+        "Content-Type: application/json",
+        "Accept: application/json, text/event-stream",
+        `Content-Length: ${total}`,
+        "",
+        "",
+      ].join("\r\n"),
+    );
+    // Three chunks with a pause between them: the second one passes the 1 MiB limit while the third is yet to come.
+    for (let i = 0; i < 3; i++) {
+      await write(Buffer.alloc(1024 * 1024, "a"));
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    await closed;
+    expect(errors).toEqual([]);
+    expect(reply.startsWith("HTTP/1.1 413")).toBe(true);
+    expect(reply).toContain("Request body too large");
+  });
+
+  it("a body that never stops is cut off at the drain limit instead of being read for ever", async () => {
+    const r = await startHttp({
+      makeServer: () => createGaugelineServer(),
+      maxDrainBytes: 2 * 1024 * 1024,
+    });
+    https.push(r);
+    const sock = netConnect({ host: "127.0.0.1", port: r.port });
+    sock.on("error", () => undefined);
+    let reply = "";
+    sock.on("data", (d: Buffer) => (reply += d.toString("latin1")));
+    const closed = new Promise<void>((resolve) => sock.once("close", () => resolve()));
+    sock.write(
+      `POST /mcp HTTP/1.1\r\nHost: 127.0.0.1:${r.port}\r\nContent-Type: application/json\r\nAccept: application/json, text/event-stream\r\nContent-Length: ${1024 * 1024 * 1024}\r\n\r\n`,
+    );
+    // Push until the server hangs up; a server that reads for ever would never close and this would time out.
+    const pump = setInterval(() => sock.write(Buffer.alloc(512 * 1024, "a")), 20);
+    await closed;
+    clearInterval(pump);
+    expect(reply.startsWith("HTTP/1.1 413")).toBe(true);
   });
 
   it("needs a token for every option that widens what a tool can reach", async () => {
