@@ -58,6 +58,8 @@ export interface PlaywrightRendererOptions {
   chromiumSandbox?: boolean;
   /** How long the network must be quiet after load before the page is read. */
   settleMs?: number;
+  /** The click observation's time limit, in milliseconds. Default 3 minutes. */
+  observerLimitMs?: number;
   now?: () => number;
 }
 
@@ -335,6 +337,13 @@ export function createPlaywrightRenderer(options: PlaywrightRendererOptions): Re
       ...(options.limits ? { limits: options.limits } : {}),
       now,
       reserve,
+      abandonBrowser: async () => {
+        const b = browser;
+        browser = undefined;
+        started = undefined;
+        await b?.close().catch(() => undefined);
+      },
+      ...(options.observerLimitMs === undefined ? {} : { limitMs: options.observerLimitMs }),
       ...(options.settleMs === undefined ? {} : { settleMs: options.settleMs }),
     }),
     async availability() {

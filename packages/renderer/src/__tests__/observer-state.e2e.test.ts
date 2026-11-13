@@ -114,6 +114,12 @@ describe.skipIf(!driver || !found.ok)("the click observer: state and where a cli
     expect(site.hits.get("/submit-hover")).toBeUndefined();
   });
 
+  test("a form submitted in an iframe's own realm gets nothing: not even a GET with a query", () => {
+    expect(click("Frame")?.unobserved).toBeUndefined();
+    expect(site.hits.get("/xgetform")).toBeUndefined();
+    expect(asked.filter((a) => a.includes("xgetform"))).toEqual([]);
+  });
+
   test("a plain link the plan lists is clicked, as a GET: the plan's author chose it", () => {
     expect(click("Logout")?.unobserved).toBeUndefined();
     expect(site.hits.get("/logout.html")).toBeGreaterThanOrEqual(1);

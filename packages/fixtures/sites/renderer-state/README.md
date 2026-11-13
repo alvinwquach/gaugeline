@@ -9,6 +9,7 @@ An invented bakery (Quillfeather Bakery) for the click observer's tests of what 
 | Redir  | Goes to a page on this site that redirects (302) to another site: the other site is never asked                          |
 | Swap   | Has its address changed to a `javascript:` address by a script after the page loads: never clicked                       |
 | Hover  | Swaps itself for a form button when the pointer arrives: the click must not land on the button, and the form is never submitted |
+| Frame  | Builds an iframe on click and submits a GET form in the iframe's own realm, calling that realm's `submit`: nothing may be asked for `/xgetform` |
 | Logout | A plain link to `/logout.html` on this site: the plan lists it, so it is clicked (a GET with no credentials)             |
 
 `redirected.example` is never answered: the tests assert nothing is asked of it.

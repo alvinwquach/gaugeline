@@ -44,6 +44,9 @@ reason.
   any other way, such as a link on this site that redirects there, is refused: the other site is never asked.
   What is clicked is checked again in the page as the click lands: if a script changed the link's address to
   something that is not a web address, or swapped the link for a button, the click is stopped.
+  Nothing a click makes is submitted: a frame a click builds loads nothing, and the browser is asked which
+  navigations are a form's, in any frame, and none is requested. A page that never returns after it loads is
+  given up on, and its browser tab is closed.
 - **Every click starts from a fresh page.** Each click gets a new browser context that loads the page again, so
   no cookie, storage or cache from an earlier click is there. Each element is clicked once at a desktop width
   (1280 px) and once at a phone width (375 px). A link that is not visible at a width is not observed there.

@@ -66,6 +66,11 @@ export interface ObserverDeps {
   settleMs?: number;
   /** The whole observation, both widths, at the longest. Default 3 minutes. */
   limitMs?: number;
+  /**
+   * Last resort when the limit passes and a page will not close (a script that never returns): close the whole
+   * browser, which ends every process it started. A later render starts a new one.
+   */
+  abandonBrowser?: () => Promise<void>;
 }
 
 /** A page's own limits for one click: it is loaded again for each. */
@@ -85,6 +90,36 @@ const firstLine = (err: unknown): string =>
   sanitise(String((err as Error)?.message ?? err).split("\n")[0] ?? "", 160).text;
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+/** A call into a page that may be busy for ever (Playwright's evaluate has no timeout of its own). */
+const PAGE_CALL_MS = 4000;
+class PageStopped extends Error {}
+async function bounded<T>(call: Promise<T>, ms = PAGE_CALL_MS): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  const late = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new PageStopped("the page stopped responding")), ms);
+  });
+  try {
+    return await Promise.race([call, late]);
+  } finally {
+    clearTimeout(timer);
+    // The call may still settle later: it must not be an unhandled rejection.
+    call.catch(() => undefined);
+  }
+}
+
+/** Close a context, and say whether it closed within the time: a busy page can hold it up. */
+async function closeWithin(opened: OpenedPage, ms: number): Promise<boolean> {
+  let closed = false;
+  await Promise.race([
+    opened.context.close().then(
+      () => (closed = true),
+      () => (closed = true),
+    ),
+    sleep(ms),
+  ]);
+  return closed;
+}
 
 interface Push {
   t: number;
@@ -148,8 +183,15 @@ export function createClickObserver(deps: ObserverDeps): EventObserver {
     input: Input,
     focus: boolean,
     stop: { stopped: boolean },
+    open: Set<OpenedPage>,
   ): Promise<ViewportResult> {
     const pageOrigin = new URL(input.page).origin;
+
+    /** Close a context for good: a busy page can hold it up, so it is waited for only so long. */
+    async function release(opened: OpenedPage): Promise<void> {
+      open.delete(opened);
+      await closeWithin(opened, 3000);
+    }
 
     /**
      * A fresh browser context with the original page loaded (and the consent link accepted, if the plan says
@@ -165,6 +207,7 @@ export function createClickObserver(deps: ObserverDeps): EventObserver {
           used: { chars: number };
           refused: string[];
           clickRefused: { why?: string };
+          state: { clicking: boolean };
         }
     > {
       const gate = createEgressGate({ transport: deps.transport, limits });
@@ -173,6 +216,8 @@ export function createClickObserver(deps: ObserverDeps): EventObserver {
       const used = { chars: 0 };
       const refused: string[] = [];
       const clickRefused: { why?: string } = {};
+      /** True from the moment the click is made: a frame that loads a document then is the click's. */
+      const state = { clicking: false };
       const allowed = new Set([pageOrigin]);
       if (allow?.allowCrossSite && allow.destination)
         allowed.add(new URL(allow.destination).origin);
@@ -192,12 +237,14 @@ export function createClickObserver(deps: ObserverDeps): EventObserver {
         onNavigationRefused: (u) => {
           if (refused.length < 10) refused.push(u.hostname.toLowerCase());
         },
+        blockSubframes: () => state.clicking,
       });
+      open.add(opened);
       const { page } = opened;
       try {
         await page.goto(input.page, { timeout: limits.ms, waitUntil: "load" });
       } catch (err) {
-        await opened.context.close().catch(() => undefined);
+        await release(opened);
         const why = gate.state.mainBlock ?? gate.state.capped;
         return {
           unchecked: why
@@ -212,21 +259,33 @@ export function createClickObserver(deps: ObserverDeps): EventObserver {
       )
         await sleep(25);
       if (gate.state.capped || gate.state.mainBlock || gate.state.status === undefined) {
-        await opened.context.close().catch(() => undefined);
+        await release(opened);
         return { unchecked: `the page was not answered as a page at ${viewport.width} px` };
       }
       if (input.consent) {
-        const path = (await page.evaluate(findLinkByText(input.consent.accept))) as string | null;
+        let path: string | null;
+        try {
+          path = (await bounded(page.evaluate(findLinkByText(input.consent.accept)))) as
+            string | null;
+        } catch (err) {
+          await release(opened);
+          return {
+            unchecked: `the page could not be read at ${viewport.width} px: ${firstLine(err)}`,
+          };
+        }
         if (path === null) {
-          await opened.context.close().catch(() => undefined);
+          await release(opened);
           return {
             unchecked: `the plan accepts the consent banner by "${sanitise(input.consent.accept, 60).text}", which is not a link on the page, and only links are clicked`,
           };
         }
         try {
-          await page.locator(path).first().click({ timeout: CLICK_TIMEOUT_MS, noWaitAfter: true });
+          await bounded(
+            page.locator(path).first().click({ timeout: CLICK_TIMEOUT_MS, noWaitAfter: true }),
+            CLICK_TIMEOUT_MS + 1000,
+          );
         } catch (err) {
-          await opened.context.close().catch(() => undefined);
+          await release(opened);
           return { unchecked: `the consent link could not be clicked: ${firstLine(err)}` };
         }
         await sleep(500);
@@ -236,10 +295,11 @@ export function createClickObserver(deps: ObserverDeps): EventObserver {
       attempts.length = 0;
       refused.length = 0;
       clickRefused.why = undefined;
-      return { opened, gate, attempts, pushes, used, refused, clickRefused };
+      return { opened, gate, attempts, pushes, used, refused, clickRefused, state };
     }
 
     const clicks: ObservedClick[] = [];
+    let hung = false;
     for (const [index, target] of input.targets.slice(0, MAX_EVENT_TARGETS).entries()) {
       const none = (reason: string): ObservedClick => ({
         path: target.path,
@@ -251,6 +311,10 @@ export function createClickObserver(deps: ObserverDeps): EventObserver {
         clicks.push(none("the observation reached its time limit"));
         continue;
       }
+      if (hung) {
+        clicks.push(none(`the page stopped responding at ${viewport.width} px`));
+        continue;
+      }
       const s = await fresh(target);
       if ("unchecked" in s) {
         // The first page that will not load ends the observation at this width; a later one is that click's.
@@ -258,13 +322,16 @@ export function createClickObserver(deps: ObserverDeps): EventObserver {
         clicks.push(none(s.unchecked));
         continue;
       }
-      const { opened, attempts, pushes, refused, clickRefused } = s;
+      const { opened, attempts, pushes, refused, clickRefused, state } = s;
       const { page } = opened;
       try {
         let inspected: TargetInspection;
         try {
-          inspected = (await page.evaluate(inspectExpression(target.path))) as TargetInspection;
+          inspected = (await bounded(
+            page.evaluate(inspectExpression(target.path)),
+          )) as TargetInspection;
         } catch (err) {
+          hung ||= err instanceof PageStopped;
           clicks.push(none(`the page could not be read: ${firstLine(err)}`));
           continue;
         }
@@ -301,13 +368,25 @@ export function createClickObserver(deps: ObserverDeps): EventObserver {
           continue;
         }
 
-        const t0 = (await page.evaluate("Date.now()")) as number;
+        let t0: number;
         try {
-          await page
-            .locator(target.path)
-            .first()
-            .click({ timeout: CLICK_TIMEOUT_MS, noWaitAfter: true });
+          t0 = (await bounded(page.evaluate("Date.now()"))) as number;
         } catch (err) {
+          hung ||= err instanceof PageStopped;
+          clicks.push(none(`the page could not be read: ${firstLine(err)}`));
+          continue;
+        }
+        state.clicking = true;
+        try {
+          await bounded(
+            page
+              .locator(target.path)
+              .first()
+              .click({ timeout: CLICK_TIMEOUT_MS, noWaitAfter: true }),
+            CLICK_TIMEOUT_MS + 1000,
+          );
+        } catch (err) {
+          hung ||= err instanceof PageStopped;
           clicks.push(
             none(`it could not be clicked (covered, moving or not reachable): ${firstLine(err)}`),
           );
@@ -343,20 +422,21 @@ export function createClickObserver(deps: ObserverDeps): EventObserver {
           ...(refused.length > 0 ? { refusedNavigation: [...new Set(refused)] } : {}),
         });
       } finally {
-        await opened.context.close().catch(() => undefined);
+        await release(opened);
       }
     }
 
     if (!focus) return { clicks };
     // The Tab key, from the top of a fresh page: which listed links take focus, in what order.
+    if (hung || stop.stopped) return { clicks };
     const f = await fresh(undefined);
     if ("unchecked" in f) return { clicks };
     try {
       const paths = input.targets.map((t) => t.path);
       const order: string[] = [];
       for (let stopAt = 0; stopAt < MAX_TAB_STOPS && !stop.stopped; stopAt++) {
-        await f.opened.page.keyboard.press("Tab");
-        const at = (await f.opened.page.evaluate(focusExpression(paths))) as number;
+        await bounded(f.opened.page.keyboard.press("Tab"));
+        const at = (await bounded(f.opened.page.evaluate(focusExpression(paths)))) as number;
         if (at === -2) break;
         const path = paths[at];
         if (at >= 0 && path !== undefined && !order.includes(path)) order.push(path);
@@ -365,7 +445,7 @@ export function createClickObserver(deps: ObserverDeps): EventObserver {
     } catch {
       return { clicks };
     } finally {
-      await f.opened.context.close().catch(() => undefined);
+      await release(f.opened);
     }
   }
 
@@ -377,9 +457,10 @@ export function createClickObserver(deps: ObserverDeps): EventObserver {
       if ("kind" in b)
         return { unchecked: `${b.reason}${b.hint ? `. ${b.hint.split("\n")[0]}` : ""}` };
       const stop = { stopped: false };
+      const open = new Set<OpenedPage>();
       const run = Promise.all([
-        observeViewport(b, DESKTOP_VIEWPORT, input, true, stop),
-        observeViewport(b, PHONE_VIEWPORT, input, false, stop),
+        observeViewport(b, DESKTOP_VIEWPORT, input, true, stop, open),
+        observeViewport(b, PHONE_VIEWPORT, input, false, stop, open),
       ]).then(([desktop, phone]): ObserveResult => {
         if ("unchecked" in desktop) return { unchecked: desktop.unchecked };
         return {
@@ -391,11 +472,17 @@ export function createClickObserver(deps: ObserverDeps): EventObserver {
       let timer: NodeJS.Timeout | undefined;
       const late = new Promise<ObserveResult>((resolve) => {
         timer = setTimeout(() => {
-          // Stop the work, not just the wait: no click starts after this, and the context in use is closed.
+          // Stop the work, not just the wait: no click starts after this, the contexts in use are closed
+          // (a page that never returns cannot hold the run up: if one will not close, the browser goes).
           stop.stopped = true;
-          resolve({
-            unchecked: `the click observation took longer than ${Math.round(limitMs / 1000)} seconds`,
-          });
+          void (async () => {
+            const closed = await Promise.all([...open].map((o) => closeWithin(o, 2000)));
+            if (closed.includes(false))
+              await Promise.race([deps.abandonBrowser?.().catch(() => undefined), sleep(5000)]);
+            resolve({
+              unchecked: `the click observation took longer than ${Math.round(limitMs / 1000)} seconds`,
+            });
+          })();
         }, limitMs);
       });
       try {

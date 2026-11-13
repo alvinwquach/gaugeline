@@ -31,6 +31,13 @@ export interface OpenOptions {
    */
   allowNavigation?: (url: URL) => boolean;
   onNavigationRefused?: (url: URL) => void;
+  /**
+   * Asked for each document a frame INSIDE the page is about to load. True: it is aborted and
+   * `onNavigationRefused` is told. The observer says true while a click is under way: the plan's link
+   * navigates the page itself, so a frame that loads a document then is something the click made (an iframe a
+   * handler built to submit a form in, say), and nothing is asked for it.
+   */
+  blockSubframes?: () => boolean;
   /** More scripts to run before the page's own, in every frame. */
   scripts?: readonly string[];
 }
@@ -54,6 +61,8 @@ export async function openPage(b: Playwright.Browser, options: OpenOptions): Pro
   });
   try {
     const ref: { page?: Playwright.Page } = {};
+    /** Addresses the browser reported as the target of a form submission, in any frame or realm. */
+    const formNavigations = new Set<string>();
     let lastActivity = now();
     await context.exposeFunction(FORM_COUNTER, () => gate.note("form"));
     for (const [name, fn] of Object.entries(options.bindings ?? {}))
@@ -71,6 +80,26 @@ export async function openPage(b: Playwright.Browser, options: OpenOptions): Pro
         if (f.page() === ref.page) frame = f === ref.page?.mainFrame() ? "main" : "sub";
       } catch {
         frame = "popup";
+      }
+      if (req.resourceType() === "document" && formNavigations.has(req.url())) {
+        // The browser said this document is the answer to a form being submitted (whatever realm the form
+        // is in): a form is never submitted, so nothing is asked for it.
+        gate.note("form");
+        await route.abort("blockedbyclient").catch(() => undefined);
+        return;
+      }
+      if (
+        req.resourceType() === "document" &&
+        frame === "sub" &&
+        options.blockSubframes?.() === true
+      ) {
+        try {
+          options.onNavigationRefused?.(new URL(req.url()));
+        } catch {
+          // an address that will not parse is refused all the same
+        }
+        await route.abort("blockedbyclient").catch(() => undefined);
+        return;
       }
       if (options.allowNavigation && req.resourceType() === "document" && frame === "main") {
         let target: URL | undefined;
@@ -125,6 +154,26 @@ export async function openPage(b: Playwright.Browser, options: OpenOptions): Pro
       void popup.close().catch(() => undefined);
     });
     page.on("dialog", (dialog) => void dialog.dismiss().catch(() => undefined));
+    // The init scripts guard the form methods of the page's own realm. A page can reach another realm's
+    // (an iframe it builds), where a script may not have run, so the browser is also asked to say when a
+    // navigation is a form's: that event comes before the request, and the request is then refused above.
+    try {
+      const cdp = await context.newCDPSession(page);
+      await cdp.send("Page.enable");
+      cdp.on(
+        "Page.frameRequestedNavigation" as never,
+        ((event: { reason?: string; url?: string }) => {
+          if (
+            typeof event?.reason === "string" &&
+            event.reason.startsWith("formSubmission") &&
+            event.url
+          )
+            formNavigations.add(event.url);
+        }) as never,
+      );
+    } catch {
+      // Not a browser that speaks this: the other guards stand.
+    }
     return { context, page, lastActivity: () => lastActivity };
   } catch (err) {
     await context.close().catch(() => undefined);
