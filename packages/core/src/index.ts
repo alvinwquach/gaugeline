@@ -1202,6 +1202,20 @@ export {
 } from "./checks/supabase-platform.js";
 export type { SupabasePlatformInput } from "./checks/supabase-platform.js";
 export {
+  SOURCE_LIMITS,
+  isSecretLookingName,
+  readLocalSource,
+  sourcePaths,
+} from "./local-source/read.js";
+export type { SkipReason, SourceLimits, SourceTree } from "./local-source/read.js";
+export {
+  STATIC_CHECKS,
+  createStaticRegistry,
+  runStaticChecks,
+  staticFile,
+} from "./local-source/run.js";
+export type { LocalSourceInput, StaticFile } from "./local-source/run.js";
+export {
   PROJECT_REF as SUPABASE_PROJECT_REF,
   SUPABASE_ACCESS_TOKEN,
   platformsConfigSchema,

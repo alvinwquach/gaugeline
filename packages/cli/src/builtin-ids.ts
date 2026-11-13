@@ -39,6 +39,7 @@ import {
   SITECORE_CHECKS,
   SQUARESPACE_COMMERCE_CHECKS,
   STRAPI_CHECKS,
+  STATIC_CHECKS,
   SUBSCRIPTION_CHECKS,
   SUPABASE_PLATFORM_CHECKS,
   TRACKER_CHECKS,
@@ -102,6 +103,7 @@ export function builtInCheckIds(): Set<string> {
     HUBSPOT_CMS_CHECKS,
     PAYLOAD_CHECKS,
     SUPABASE_PLATFORM_CHECKS,
+    STATIC_CHECKS,
   ];
   return new Set([
     ...createPageRegistry()

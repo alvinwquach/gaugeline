@@ -13,7 +13,13 @@ const docsDir = fileURLToPath(new URL("../docs/", import.meta.url));
 function markdownFiles(dir: string): string[] {
   const out: string[] = [];
   for (const name of readdirSync(dir)) {
-    if (name.startsWith(".") || name === "__tests__" || name === "node_modules" || name === "adr")
+    if (
+      name.startsWith(".") ||
+      name === "__tests__" ||
+      name === "node_modules" ||
+      name === "adr" ||
+      name === "specs"
+    )
       continue;
     const full = join(dir, name);
     if (statSync(full).isDirectory()) out.push(...markdownFiles(full));

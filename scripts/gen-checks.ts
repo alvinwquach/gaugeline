@@ -35,6 +35,7 @@ import {
   ROUTE_CHECKS,
   WEBHOOK_CHECKS,
   SUPABASE_PLATFORM_CHECKS,
+  STATIC_CHECKS,
   SUBSCRIPTION_CHECKS,
   CUTOVER_ONLY_CHECKS,
   MIGRATION_CHECKS,
@@ -110,6 +111,7 @@ for (const c of RECEIPT_CHECKS) registry.register(c);
 for (const c of ROUTE_CHECKS) registry.register(c);
 for (const c of WEBHOOK_CHECKS) registry.register(c);
 for (const c of SUPABASE_PLATFORM_CHECKS) registry.register(c);
+for (const c of STATIC_CHECKS) registry.register(c);
 for (const c of CUTOVER_ONLY_CHECKS) registry.register(c);
 for (const c of MIGRATION_CHECKS) registry.register(c);
 for (const c of WEBFLOW_CHECKS) registry.register(c);
