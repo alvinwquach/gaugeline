@@ -105,4 +105,8 @@ client, a commit in your own repository) and check each later export with `--hea
 contain it. Publishing the head there automatically (anchoring) is a later option and is not built. There
 are no signatures, no keys and no WebAuthn in this version.
 
+`decidedAt` is the decision's transaction start time (the database's `now()`), not the moment its receipt
+took the chain head. Two decisions that wait on each other can therefore have times that go backwards along
+`seq`; the verifier checks the chain's order, not its times.
+
 Not decided yet: how long receipts are kept (ADR-0014, "Needs from the owner"). Today they are kept.
