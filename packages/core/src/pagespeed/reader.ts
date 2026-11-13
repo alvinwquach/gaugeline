@@ -84,18 +84,65 @@ const underDomain = (host: string, domain: string): boolean =>
   host === domain || host.endsWith(`.${domain}`);
 
 /**
- * The only shape of path that is sent: every segment a lowercase word-like slug (a letter first, then letters,
- * digits and dashes, at most 40), at most six segments and 120 characters, an optional trailing slash, or the
- * root. Anything else (a digit-only part, a dot, an underscore, upper case, an encoded character, a `:` or `@`,
- * an empty part, a long path) fails closed: it can be a token, a code, a session or a user name, and a page
- * address that is not plain is not worth the risk of sending.
+ * The only shape of path that is sent: the root, or at most six segments and 120 characters (an optional
+ * trailing slash), each segment either a number of at most 4 digits (a year, a page number) or a lowercase slug
+ * (see segmentOk). Anything else fails closed: it can be a token, a code, a session, a date of birth or a name, and
+ * a page address that is not plain is not worth the risk of sending. No rule can see a person's name or other
+ * detail written as a page-name slug: that is why the flag is opt-in and says the address is sent.
  */
-const SLUG = /^[a-z][a-z0-9-]{0,39}$/;
 const MAX_SEGMENTS = 6;
 const MAX_PATH_CHARS = 120;
+const MAX_SEGMENT_CHARS = 30;
+const MAX_WORD_CHARS = 20;
+/** Digits in one slug, and in the whole path: a code or a date needs more than this. */
+const MAX_SEGMENT_DIGITS = 4;
+const MAX_PATH_DIGITS = 8;
 /** A slug that says it is a secret is not sent either (a reset or invite link, a session, a key). */
-const SECRET_WORDS =
+const SECRET_SUBSTRINGS =
   /token|key|secret|reset|invite|session|password|passwd|auth|verify|otp|unsubscribe/;
+/** Short words that only count as a whole word of the slug, so `shipping` and `barcode` are not caught by `pin`. */
+const SECRET_WORDS = new Set([
+  "magic",
+  "link",
+  "share",
+  "sig",
+  "signature",
+  "hmac",
+  "confirm",
+  "activate",
+  "access",
+  "code",
+  "pin",
+  "hash",
+  "bearer",
+  "credential",
+]);
+/** An email address written as a slug: `john-smith-at-example-com`. */
+const EMAIL_SHAPE = /-at-.+-(?:com|net|org|co|io|uk|de|fr|edu|gov)$/;
+
+/** Whether one path segment is plain: a short number, or a short slug of whole words that are not secret-looking. */
+function segmentOk(segment: string): boolean {
+  if (/^[0-9]{1,4}$/.test(segment)) return true;
+  if (segment.length > MAX_SEGMENT_CHARS || !/^[a-z][a-z0-9-]*$/.test(segment)) return false;
+  if (segment.startsWith("xn--") || EMAIL_SHAPE.test(segment) || SECRET_SUBSTRINGS.test(segment))
+    return false;
+  const words = segment.split("-");
+  let digits = 0;
+  let kinds = "";
+  for (const word of words) {
+    if (word === "" || word.length > MAX_WORD_CHARS || SECRET_WORDS.has(word)) return false;
+    // A word is all letters or all digits (at most 4): a mixed word is a code.
+    if (/^[a-z]+$/.test(word)) kinds += "l";
+    else if (/^[0-9]{1,4}$/.test(word)) {
+      kinds += "d";
+      digits += word.length;
+    } else return false;
+  }
+  if (digits > MAX_SEGMENT_DIGITS) return false;
+  // Letters and digits that alternate (a-1-b-2) are a code spelt with dashes.
+  const switches = kinds.replace(/(.)\1+/g, "$1").length - 1;
+  return switches < 3;
+}
 
 /** Why a name is not a public site's, or undefined when its spelling is fine (what it resolves to is checked later). */
 function nameProblem(host: string): string | undefined {
@@ -115,15 +162,13 @@ function nameProblem(host: string): string | undefined {
 const PLAIN_ADDRESS =
   "This page's address does not look like a plain public page address, so it was not sent to Google (nothing was asked of Google).";
 
-/** Why a path may not be sent, or undefined: only a plain path made of word-like slugs is. */
+/** Why a path may not be sent, or undefined: only a plain path is. */
 function pathProblem(pathname: string): string | undefined {
-  const plain = PLAIN_ADDRESS;
   if (pathname === "/") return undefined;
-  if (pathname.length > MAX_PATH_CHARS || !pathname.startsWith("/")) return plain;
+  if (pathname.length > MAX_PATH_CHARS || !pathname.startsWith("/")) return PLAIN_ADDRESS;
   const parts = pathname.slice(1).replace(/\/$/, "").split("/");
-  if (parts.length > MAX_SEGMENTS) return plain;
-  for (const part of parts)
-    if (!SLUG.test(part) || part.startsWith("xn--") || SECRET_WORDS.test(part)) return plain;
+  if (parts.length > MAX_SEGMENTS || !parts.every(segmentOk)) return PLAIN_ADDRESS;
+  if ((pathname.match(/[0-9]/g) ?? []).length > MAX_PATH_DIGITS) return PLAIN_ADDRESS;
   return undefined;
 }
 

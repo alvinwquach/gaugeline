@@ -109,7 +109,13 @@ describe("sendableAddress: only a public page's name and a path that is not a se
       "/about-us/our-story",
       "/blog/new-opening",
       "/a/b/c/d/e/f",
-      "/p1",
+      "/contact",
+      "/shop/summer-collection",
+      "/2024/",
+      "/blog/2024/11/13",
+      "/top-10-breads",
+      "/shipping",
+      "/barcode-reader",
     ])
       expect(sendableAddress(`https://shop.invented-store.com${path}`).ok, path).toBe(true);
   });
@@ -138,10 +144,30 @@ describe("sendableAddress: only a public page's name and a path that is not a se
       "/caf%C3%A9",
       "/caf\u00e9",
       "/xn--caf-dma",
+      // digit-mixed tokens, dates, names and addresses written as slugs
+      "/a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0",
+      "/s/mfrggzdfmztwq2lknnwg23tpobyxe",
+      "/c/k7f3m9q2x8w4z6p1r5t0",
+      "/magic-link-q8w7e6r5t4y3",
+      "/share/gh8k2m4n6p8r",
+      "/sig/hmac9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4",
+      "/user-12345",
+      "/12345",
+      "/download/jdoe-1985-03-12",
+      "/orders/john-smith-at-gmail-com",
+      "/a-1-b-2-c-3-d",
+      "/blog/2024/11/130",
+      "/aaaaaaaaaaaaaaaaaaaaa",
+      "/magic",
+      "/confirm-email",
+      "/pin",
+      "/one-time-code",
+      "/bearer",
+      "/access-granted",
+      "/x-share",
       // shape
       "/Menu",
       "/about_us",
-      "/2026",
       "/1abc",
       "/a.b",
       "/a+b",
@@ -164,14 +190,30 @@ describe("sendableAddress: only a public page's name and a path that is not a se
     }
   });
 
-  it("allows 40 characters in a part and not 41, and 120 in all and not 121", () => {
-    const part = (n: number) => `/a${"b".repeat(n - 1)}`;
-    expect(sendableAddress(`https://shop.invented-store.com${part(40)}`).ok).toBe(true);
-    expect(sendableAddress(`https://shop.invented-store.com${part(41)}`).ok).toBe(false);
-    const ok120 = `${part(40)}${part(40)}${part(37)}`; // 3 slashes + 117 letters = 120
+  it("allows 30 characters in a part and not 31, a 20-letter word and not a 21-letter one, 120 in all and not 121", () => {
+    // Letters in words of nine, joined with dashes, so no word is longer than it may be.
+    const seg = (n: number) =>
+      Array.from({ length: n }, (_, i) => (i % 10 === 9 && i !== n - 1 ? "-" : "b")).join("");
+    const at = (path: string) => sendableAddress(`https://shop.invented-store.com${path}`).ok;
+    expect(at(`/${seg(30)}`)).toBe(true);
+    expect(at(`/${seg(31)}`)).toBe(false);
+    expect(at(`/${"a".repeat(20)}`)).toBe(true);
+    expect(at(`/${"a".repeat(21)}`)).toBe(false);
+    const ok120 = `/${seg(29)}`.repeat(4);
     expect(ok120).toHaveLength(120);
-    expect(sendableAddress(`https://shop.invented-store.com${ok120}`).ok).toBe(true);
-    expect(sendableAddress(`https://shop.invented-store.com${ok120}c`).ok).toBe(false);
+    expect(at(ok120)).toBe(true);
+    expect(at(`${ok120}c`)).toBe(false);
+  });
+
+  it("allows a number of at most 4 digits as a part and 4 digits in a slug, and 8 digits in all", () => {
+    const at = (path: string) => sendableAddress(`https://shop.invented-store.com${path}`).ok;
+    expect(at("/2024")).toBe(true);
+    expect(at("/12345")).toBe(false);
+    expect(at("/top-1234-breads")).toBe(true);
+    expect(at("/top-12345-breads")).toBe(false);
+    expect(at("/a-12-b-34-c")).toBe(false);
+    expect(at("/2024/2024")).toBe(true);
+    expect(at("/2024/2024/1")).toBe(false);
   });
 
   it("only lets an invented name through when the tests say so", () => {
@@ -406,7 +448,9 @@ describe("createPageSpeed: the safeguards each have a test that fails without th
     };
     const fetcher = createFetcher({ transport });
     const psi = createPageSpeed(fetcher, { resolver: publicName, reservedNamesAllowed: true });
-    const pages = [1, 2, 3, 4, 5].map((n) => `https://bakery.example/p${n}`);
+    const pages = ["alpha", "beta", "gamma", "delta", "epsilon"].map(
+      (n) => `https://bakery.example/${n}`,
+    );
     const reads = pages.map((p) => psi.read(p));
     // Let the reader get as far as it will go while Google has not answered.
     await new Promise((r) => setTimeout(r, 20));

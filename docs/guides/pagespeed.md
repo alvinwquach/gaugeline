@@ -31,13 +31,21 @@ This is the one flag whose job is to send something to a company you did not typ
   address written in it (`nip.io`, `sslip.io`) and a name that resolves, on this computer, to any private,
   loopback, link-local or metadata address are never sent. If the name cannot be looked up, it is not sent.
   The check says could not check, and says why. A staging site behind a login cannot be read either.
-- **Only a plain page address.** A path goes out only when every part is a lowercase word (a letter first, then
-  letters, digits and dashes, at most 40), there are at most 6 parts and 120 characters, and no part says
-  `token`, `key`, `secret`, `reset`, `invite`, `session`, `password`, `verify`, `otp` or `unsubscribe`. The root
-  and `/menu`, `/about-us/` or `/blog/new-opening` are sent. Anything else (a digit-only part, a capital letter, a
-  dot, an underscore, an encoded character, a `:` or `@`, an empty part, a very long path) fails closed: the page
-  is could not check, "this page's address does not look like a plain public page address, so it was not sent",
-  and nothing was asked of Google.
+- **Only a plain page address.** A path goes out only when it is the root, or has at most 6 parts and 120
+  characters and every part is a short number (up to 4 digits: a year, a page number) or a lowercase slug of
+  whole words: at most 30 characters, no word over 20, each word all letters or all digits (a word that mixes
+  them is a code), at most 4 digits in the slug and 8 in the whole path, letters and digits never alternating,
+  and no secret-looking word (`token`, `key`, `secret`, `reset`, `invite`, `session`, `password`, `verify`,
+  `otp`, `unsubscribe`, and the whole words `magic`, `link`, `share`, `sig`, `signature`, `hmac`, `confirm`,
+  `activate`, `access`, `code`, `pin`, `hash`, `bearer`, `credential`). A slug shaped like an email address
+  (`...-at-...-com`) is not sent. The root and `/menu`, `/about-us/`, `/contact`, `/shop/summer-collection`,
+  `/blog/2024/11/13` and `/blog/new-opening` are sent; `/user-12345`, `/jdoe-1985-03-12`, a long mixed
+  token or a path with a capital letter, a dot, an underscore or an encoded character are not. Anything not
+  plain fails closed: the page is could not check, "this page's address does not look like a plain public page
+  address, so it was not sent", and nothing was asked of Google.
+- **What no rule can see.** A person's name or other detail written as a page-name slug (`/team/ana-garcia`)
+  cannot be detected by any rule. That is why `--pagespeed` is opt-in and tells you, before the first request,
+  that page addresses are sent.
 - **One call at a time.** Google's answers are slow, so the calls go one after another and never fill every slot
   the run's own requests to your site need.
 - **One `GET` each, to one host.** Never a `POST`, never another host. Gaugeline says so on stderr before the

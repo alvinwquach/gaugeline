@@ -162,7 +162,9 @@ describe("pagespeed-field-vitals: real visitors decide", () => {
   });
 
   it("reads the checked page and the next pages of the sample, at most five, and says how many it left out", async () => {
-    const urls = [1, 2, 3, 4, 5, 6, 7].map((n) => `https://bakery.example/p${n}`);
+    const urls = ["alpha", "beta", "gamma", "delta", "epsilon", "zeta", "eta"].map(
+      (n) => `https://bakery.example/${n}`,
+    );
     const replies = Object.fromEntries(urls.map((u) => [u, ok(u, { field: ALL_GOOD })]));
     const { ctx, notes, seen } = setup({ [HOME]: ok(HOME, { field: ALL_GOOD }), ...replies }, [
       HOME,

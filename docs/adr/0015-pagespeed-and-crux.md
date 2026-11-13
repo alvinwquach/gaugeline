@@ -52,9 +52,13 @@ Three questions had to be settled before a line was written.
    and only for a public page: nothing at all with `--allow-private`; no numeric address, single-label name,
    reserved or private-use ending (a trailing dot is dropped first) or wildcard-DNS name; no name that resolves,
    through the fetcher's resolver, to any private, loopback, link-local or metadata address (a failed lookup is a
-   refusal); and no path unless every part is a lowercase word-like slug (`^[a-z][a-z0-9-]{0,39}$`, no secret word in it;
-   at most 6 parts and 120 characters): an allowlist that fails closed, not a list of bad shapes. The calls to Google go one at a time, so they cannot fill the fetcher's slots. A run says so on
-   stderr before the first request. The flag is off by default.
+   refusal); and no path unless it is the root or at most 6 parts and 120 characters, each a number of up to 4
+   digits or a lowercase slug of whole words (at most 30 characters, no word over 20, no mixed letter-and-digit
+   word, at most 4 digits in a slug and 8 in the path, no alternating letters and digits, no secret-looking
+   word, nothing shaped like an email address): an allowlist that fails closed, not a list of bad shapes. A
+   person's name or other detail written as a page-name slug cannot be detected by any rule; the flag is opt-in
+   and says the address is sent. The calls to Google go one at a time, so they cannot fill the fetcher's slots. A
+   run says so on stderr before the first request. The flag is off by default.
 7. **No local Lighthouse yet.** Google runs Lighthouse on its servers, so no browser is needed here and the
    egress gate is not bypassed. Running Lighthouse on the person's own machine, behind the renderer's gate, is
    a separate decision: Lighthouse navigates by itself, so it needs the same interception the renderer has,
