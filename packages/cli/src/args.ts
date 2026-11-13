@@ -48,6 +48,7 @@ export const SUBCOMMANDS = [
   "propose",
   "source",
   "receipts",
+  "evals",
 ] as const;
 export type CliCommand = "check" | (typeof SUBCOMMANDS)[number];
 
@@ -294,6 +295,16 @@ export type ParsedArgs =
       /** --head: a head hash written down earlier; the chain must still contain it. */
       head?: string;
       json: boolean;
+      verbose: boolean;
+      quiet: boolean;
+    }
+  | {
+      kind: "evals";
+      /** --agent: run just this agent's eval set. Absent: every set. */
+      agent?: string;
+      /** --out: the JSON report's file, inside the folder the command ran in. */
+      out: string;
+      force: boolean;
       verbose: boolean;
       quiet: boolean;
     }
@@ -1428,6 +1439,39 @@ export function parseCliArgs(
       path,
       ...(head !== undefined ? { head } : {}),
       json: values.json === true,
+      verbose,
+      quiet: values.quiet === true,
+    };
+  }
+  if (command === "evals") {
+    const problem = (message: string, hint: string): ParsedArgs => ({
+      kind: "error",
+      message,
+      hint,
+      verbose,
+    });
+    if (positionals.length > 0)
+      return problem(
+        `gaugeline evals takes no argument, got ${positionals.length}: ${positionals.join(", ")}.`,
+        "To run one agent's set: gaugeline evals --agent triage",
+      );
+    const agent = typeof values.agent === "string" ? values.agent.trim() : undefined;
+    if (agent === "")
+      return problem(
+        "--agent needs the id of an agent.",
+        "For example: gaugeline evals --agent triage. Leave it out to run every agent's set.",
+      );
+    const out = typeof values.out === "string" ? values.out.trim() : "gaugeline-evals.json";
+    if (out === "")
+      return problem(
+        "--out needs the name of the JSON file to write.",
+        "For example: gaugeline evals --out evals.json. Leave it out to write gaugeline-evals.json.",
+      );
+    return {
+      kind: "evals",
+      ...(agent !== undefined ? { agent } : {}),
+      out,
+      force: values.force === true,
       verbose,
       quiet: values.quiet === true,
     };

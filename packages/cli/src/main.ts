@@ -57,6 +57,7 @@ import {
   type McpTransport,
   type AssertionsRead,
   type CheckRegistry,
+  type EvalSet,
   type DnsReader,
   type FetcherOptions,
   type Outcome,
@@ -153,6 +154,7 @@ import { formatLegacyTable, formatPlanSummary } from "./plan.js";
 import { formatTerminal } from "./reporter.js";
 import { runCutover } from "./cutover.js";
 import { runPropose } from "./propose.js";
+import { runEvalsCommand } from "./evals.js";
 import { runReceipts } from "./receipts.js";
 import { runSource } from "./source.js";
 import { runMigration } from "./migration.js";
@@ -330,6 +332,10 @@ export interface Deps {
   ads?: AdsEngine;
   /** `gaugeline brief --out`: the file system calls the work order is written with. Tests pass one that fails. */
   briefFs?: ScaffoldFs;
+  /** `gaugeline evals`: the eval sets to run. Defaults to the ones that ship; tests pass stand-ins. */
+  evalSets?: readonly EvalSet[];
+  /** `gaugeline evals --out`: the file system calls the report is written with. Tests pass one that fails. */
+  evalsFs?: ScaffoldFs;
   /** `gaugeline handoff`: the file system calls the report is written with. Tests pass one that fails. */
   handoffFs?: ScaffoldFs;
   /** `gaugeline audit --pack`: the file system calls the pack is written with. Tests pass one that fails. */
@@ -1116,6 +1122,15 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
     case "receipts":
       return {
         outcome: runReceipts(args, io, { cwd: deps.cwd ?? process.cwd() }),
+        ci: true,
+      };
+    case "evals":
+      return {
+        outcome: await runEvalsCommand(args, io, {
+          cwd: deps.cwd ?? process.cwd(),
+          ...(deps.evalSets ? { sets: deps.evalSets } : {}),
+          ...(deps.evalsFs ? { fs: deps.evalsFs } : {}),
+        }),
         ci: true,
       };
     case "propose":

@@ -825,6 +825,45 @@ when the chain checks out, 1 at the first broken receipt (which one and why), 2 
 It is tamper evidence, not a signature: see [Verify approval receipts](guides/verify-receipts.md) for what it
 does and does not prove.
 
+### The evals command
+
+`gaugeline evals --help` prints:
+
+```text title=Output
+Usage: gaugeline evals [--agent <id>] [--out <file>] [options]
+
+Run the offline eval sets of Gaugeline's agents from their recorded model
+answers, with no key, no network and no secret, and print each agent's pass
+rate, refusal rate and cost. Cost is added up from the recorded answers only;
+with none it says not measured. Writes the same numbers to a JSON report,
+gaugeline-evals.json in this folder unless --out says otherwise, and never
+over a file unless --force. Exits 1 when a golden case fails or a known-bad
+case is not caught. There is no live-model mode: a model's opinion never
+counts as a pass.
+
+Options:
+      --force            Replace a report that is already there; never a folder
+                         or a link
+      --out <value>      The JSON report's file (default gaugeline-evals.json),
+                         in this folder or one inside it
+      --agent <value>    evals: run just this agent's eval set, by id (an agent
+                         with no set is refused)
+      --quiet            Print only results and errors
+      --verbose          Show each request, and technical detail when something
+                         goes wrong
+  -h, --help             Show this help and exit
+  -v, --version          Print the version and exit
+
+Exit codes: 0 all cases behaved, 1 a case failed or was missed, 2 could not run
+```
+
+`gaugeline evals` runs the offline eval sets of Gaugeline's agents from their recorded model answers and
+prints each agent's pass rate, refusal rate and cost. It needs no key, no network and no account, and it has
+no live-model mode. Exit 0 when every golden case passed and every known-bad case was caught, 1 when one did
+not, 2 when it could not run or write. The JSON report goes to `gaugeline-evals.json` in the folder you ran it
+in, or to `--out`, and never over a file unless you add `--force`. A runnable example with its real output is
+in [Agent evals](agent-evals.md).
+
 ### Flags
 
 The table below is generated from `packages/cli/src/flags.ts` (`pnpm docs:flags`). Do not edit

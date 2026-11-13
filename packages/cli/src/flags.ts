@@ -487,8 +487,11 @@ export const FLAGS: readonly FlagDef[] = Object.freeze<FlagDef[]>([
     type: "boolean",
     description:
       "Let --annotate (plan), --page, --save (query), --out (brief), handoff or audit replace files, never a folder or link",
+    commandDescriptions: {
+      evals: "Replace a report that is already there; never a folder or a link",
+    },
     since: "0.2.0",
-    commands: ["plan", "query", "brief", "handoff", "audit", "init"],
+    commands: ["plan", "query", "brief", "handoff", "audit", "init", "evals"],
   },
   {
     name: "progress",
@@ -604,9 +607,13 @@ export const FLAGS: readonly FlagDef[] = Object.freeze<FlagDef[]>([
     type: "string",
     description:
       "snapshot: the file (default before.json). query --page: the folder. brief: the file. handoff, audit: the folder",
-    commandDescriptions: { propose: "The proposals file (default gaugeline.proposals.json)" },
+    commandDescriptions: {
+      propose: "The proposals file (default gaugeline.proposals.json)",
+      evals:
+        "The JSON report's file (default gaugeline-evals.json), in this folder or one inside it",
+    },
     since: "0.2.0",
-    commands: ["snapshot", "query", "brief", "handoff", "audit", "propose"],
+    commands: ["snapshot", "query", "brief", "handoff", "audit", "propose", "evals"],
   },
   {
     name: "business",
@@ -719,6 +726,13 @@ export const FLAGS: readonly FlagDef[] = Object.freeze<FlagDef[]>([
       "source: run just these checks, by id, separated by commas (an unknown id is refused)",
     since: "0.2.0",
     commands: ["source"],
+  },
+  {
+    name: "agent",
+    type: "string",
+    description: "evals: run just this agent's eval set, by id (an agent with no set is refused)",
+    since: "0.2.0",
+    commands: ["evals"],
   },
   {
     name: "head",

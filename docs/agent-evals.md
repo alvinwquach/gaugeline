@@ -7,9 +7,10 @@ run**: no key, no network, no secret, and no real model. The reasons are in
 [ADR-0014](https://github.com/alvinwquach/gaugeline/blob/main/docs/adr/0014-agent-safety-model.md), and the
 wider picture is in [Agents: what they can and cannot do](./agent-safety.md).
 
-**Today.** The harness is built and tested (row AG-09) and proved with one invented agent. **Planned.** The
-`gaugeline evals` command that prints a pass rate and writes a file is row AG-11; a red-team suite of attacks
-is row AG-10; running against a live model is manual only and never in CI.
+**Today.** The harness is built and tested (row AG-09), proved with one invented agent, and
+`gaugeline evals` runs every eval set and prints a pass rate, a refusal rate and a cost for each agent (row
+AG-11, below). **Planned.** A red-team suite of attacks is row AG-10. Running against a live model is not
+built, and when it is it will be manual only and never in CI.
 
 ## What an agent's eval set holds
 
@@ -81,6 +82,70 @@ A test runs this same code and fails if this page's output differs from it.
 
 The first real agent on this harness is the [triage agent](./hosted/agent-triage.md), whose golden cases run
 its own planner and whose known-bad cases replay wrong answers.
+
+## Run them all: `gaugeline evals`
+
+`gaugeline evals` runs every agent's eval set from its recorded model answers and prints, for each agent, how
+many cases behaved, how many answers a guard refused and what the recorded answers cost. It reads no
+environment variable, makes no request and needs no key, so it is safe in CI. A studio that lets the triage
+agent group a bakery pop-up's findings runs it in the project's folder:
+
+```text title="Terminal" untested="The command writes a report file into the working folder. packages/cli/src/__tests__/evals-docs.test.ts runs it in an empty folder and compares the output."
+$ npx gaugeline evals
+```
+
+```text title="Output"
+agent approvals-digest
+  pass rate     10 of 10 cases (100%): golden 3 of 3 pass, known-bad 7 of 7 caught
+  refusal rate  5 of 10 cases (50%): the answer was stopped by schema, limits or no-write-call
+  cost          60000 micro-units over 9 cases with a recorded answer
+
+agent triage
+  pass rate     15 of 15 cases (100%): golden 5 of 5 pass, known-bad 10 of 10 caught
+  refusal rate  8 of 15 cases (53%): the answer was stopped by schema, limits or no-write-call
+  cost          12000 micro-units over 14 cases with a recorded answer
+
+Result: every golden case passed and every known-bad case was caught.
+```
+
+It also prints `Report written to gaugeline-evals.json` on stderr, and exits 0.
+
+- **Pass rate.** A golden case that passed or a known-bad case that was caught counts as a pass. A known-bad
+  case nothing caught, a golden case that failed and a case that could not run (for example, no recording for
+  it) are what make the suite red.
+- **Refusal rate.** The share of cases where a guard stopped the answer: it was not valid for the agent's
+  schema, it broke a limit (or the input was over the size cap and never reached the model), or it tried a
+  write call or a tool it was not given. The other assertions are about content, not refusals.
+- **Cost.** Added up, in whole micro-units, from the cases a recorded answer was replayed for. It is never
+  estimated. An agent that is plain code, with no model, records 0 for its own cases. A case with no recorded
+  answer adds nothing, and an agent with none says `not measured` and the file has `null`.
+- **Exit code.** 0 when every golden case passed and every known-bad case was caught. 1 when a golden case
+  failed, a known-bad case got through, a case errored or a set could not be run. 2 when the command itself
+  could not run or write, for example an unknown `--agent`, no eval sets at all, or a file in the way.
+
+The report file holds the same numbers for a script or a build log: `schema`, `ok`, and per agent its
+`passRatePercent`, `refusalRatePercent`, `cost` (`measured`, `micros`, `cases`) and one row per case with
+its status, the assertions that failed, whether a guard refused it and its recorded cost (`null` when no
+answer was replayed). It holds no date, no path and nothing from the environment, so two runs on the same
+code write the same bytes.
+
+| Flag           | Does                                                                               |
+| -------------- | ---------------------------------------------------------------------------------- |
+| `--out <file>` | Where the report goes. Default `gaugeline-evals.json`, in the folder you ran it in |
+| `--force`      | Replace a report that is already there. Without it, a file in the way is exit 2    |
+| `--agent <id>` | Run one agent's set only. An agent with no set is exit 2                           |
+
+The file is checked before anything is run: a path outside the folder, a folder, a link, or a file that is
+already there without `--force` stops the command (exit 2) with nothing written. If the write itself fails
+(a folder you cannot write to), the results are still on the screen, nothing is left half written, and the
+exit code is not 0.
+
+**There is no live-model mode.** Nothing in this command can be pointed at a real model, so no key is read
+and nothing is sent anywhere. Trying an agent on a live model is manual work outside this repository; if a
+flag for it is ever added it will be off by default, behind its own explicit flag and your own key from the
+environment, within what [ADR-0005](https://github.com/alvinwquach/gaugeline/blob/main/docs/adr/0005-notifications-post-to-your-own-channels.md)
+allows for model providers, and it will never run in CI. A model's opinion about an answer is `advisory` or
+`unsure` and never a pass, here and anywhere else.
 
 ## Adding evals for a new agent
 
