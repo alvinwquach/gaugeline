@@ -20,7 +20,7 @@ Harbour Bar is a pop-up bar. The site is built with Next.js and its root layout 
 is not ready to be found. Someone then added a menu page, a sitemap, and a line in `robots.txt`.
 
 ```text title="Terminal" untested="Reads a project folder. packages/cli/src/__tests__/source-docs.test.ts runs this command on the invented folder packages/fixtures/source/harbour-bar-preview and compares the output."
-$ npx gaugeline source ./harbour-bar-preview
+$ npx gaugeline source ./harbour-bar-preview --only page-robots-overrides-layout,sitemap-while-indexing-off,robots-disallow-hides-noindex
 ```
 
 ```text title=Output
@@ -31,18 +31,6 @@ Read 5 files in ./harbour-bar-preview. No request was made and no code was run.
 ✗ A sitemap is served while the site is set to stay out of search
     app/sitemap.ts serves a sitemap while the site is set to stay out of search (app/layout.tsx says noindex)
 ✓ robots-disallow-hides-noindex
-✓ indexing-switch-loose
-✓ noindex-smoke-production
-✓ webhook-missing-secret-status
-✓ sanity-cdn-tagged-reads
-✓ cms-token-in-client-code
-✓ webhook-url-hardcoded
-✓ webhook-signature-compared-plainly
-✓ webhook-timestamp-unbounded
-✓ personal-data-in-analytics
-✓ form-values-in-logs
-✓ webhook-body-read-unsafely
-✓ webhook-logs-private-values
 
 2 to look at, 2 to fix first.
 ```
@@ -53,7 +41,7 @@ Harbour Bar's team turns indexing on for the live site with an environment varia
 layout treats anything but the word `false` as "on", and the only CI test for noindex runs on previews.
 
 ```text title="Terminal" untested="Reads a project folder. packages/cli/src/__tests__/source-docs.test.ts runs this command on the invented folder packages/fixtures/source/harbour-bar-switch and compares the output."
-$ npx gaugeline source ./harbour-bar-switch
+$ npx gaugeline source ./harbour-bar-switch --only indexing-switch-loose,noindex-smoke-production
 ```
 
 ```text title=Output
@@ -63,25 +51,19 @@ Read 4 files in ./harbour-bar-switch. No request was made and no code was run.
     app/layout.tsx:3 SITE_INDEXING turns indexing on for any value except "false", so an unset variable or a typo turns it on
 ! The noindex smoke test runs on previews but not on production
     .github/workflows/preview-smoke.yml:10 tests noindex on previews, and no workflow tests it on production
-✓ page-robots-overrides-layout
-✓ sitemap-while-indexing-off
-✓ robots-disallow-hides-noindex
-✓ webhook-missing-secret-status
-✓ sanity-cdn-tagged-reads
-✓ cms-token-in-client-code
-✓ webhook-url-hardcoded
-✓ webhook-signature-compared-plainly
-✓ webhook-timestamp-unbounded
-✓ personal-data-in-analytics
-✓ form-values-in-logs
-✓ webhook-body-read-unsafely
-✓ webhook-logs-private-values
 
 2 to look at, none to fix first.
 ```
 
 An unset variable on a new preview, or a typo such as `ture`, would put that preview in front of search
 engines: only the exact word `true` should turn indexing on.
+
+## Running some of the checks
+
+A project folder can be run against every source check, or against the ones you name: `--only` takes check
+ids separated by commas (the [checks reference](/docs/checks) lists every id), and an id that does not exist is
+refused. The examples on this page use it, so each shows the checks it is about and nothing a new check
+elsewhere could change; the output is exactly what the command prints with that flag.
 
 ## The checks
 

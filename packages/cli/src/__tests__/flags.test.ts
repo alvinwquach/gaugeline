@@ -447,6 +447,8 @@ describe("flag table: e2e", () => {
         const queryOnly = f.commands.length === 1 && f.commands[0] === "query";
         // propose reads a folder and findings: its own flags are proved the same way, with --help.
         const proposeOnly = f.commands.length === 1 && f.commands[0] === "propose";
+        // source reads a folder of source: its own flag (--only) is proved the same way, with --help.
+        const sourceOnly = f.commands.length === 1 && f.commands[0] === "source";
         // brief runs the page check and writes a work order: its own flags are proved on a run.
         const briefOnly = f.commands.length === 1 && f.commands[0] === "brief";
         // --business is brief's and audit's, proved on brief. audit --pack runs the page check too, and its own flags
@@ -470,6 +472,7 @@ describe("flag table: e2e", () => {
           !platformOnly &&
           !queryOnly &&
           !proposeOnly &&
+          !sourceOnly &&
           !briefOnly &&
           !businessFlag &&
           !auditOnly &&
@@ -574,7 +577,7 @@ describe("flag table: e2e", () => {
                                 `--${f.name}`,
                                 join(scratch, "snapshot.json"),
                               ]
-                            : deliveryOnly || platformOnly || queryOnly || proposeOnly
+                            : deliveryOnly || platformOnly || queryOnly || proposeOnly || sourceOnly
                               ? [
                                   deliveryOnly
                                     ? "delivery"
@@ -582,7 +585,9 @@ describe("flag table: e2e", () => {
                                       ? "platform"
                                       : proposeOnly
                                         ? "propose"
-                                        : "query",
+                                        : sourceOnly
+                                          ? "source"
+                                          : "query",
                                   `--${f.name}`,
                                   ...value,
                                   "--help",

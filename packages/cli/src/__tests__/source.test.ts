@@ -120,3 +120,47 @@ describe("gaugeline source: what it never does", () => {
     expect(r.out).not.toContain("✓");
   }, 30_000);
 });
+
+describe("gaugeline source --only", () => {
+  const FAIL = "./sitemap-while-indexing-off/fail";
+
+  it("runs just the checks it names, so the report holds those and nothing else", async () => {
+    const r = await run(["source", FAIL, "--only", "sitemap-while-indexing-off"]);
+    expect(r.code).toBe(0);
+    expect(r.out).toContain("A sitemap is served while the site is set to stay out of search");
+    const ticks = r.out.split("\n").filter((l) => l.startsWith("✓"));
+    expect(ticks).toEqual([]);
+    const pass = await run([
+      "source",
+      "./sitemap-while-indexing-off/pass",
+      "--only",
+      "sitemap-while-indexing-off,page-robots-overrides-layout",
+    ]);
+    expect(pass.out.split("\n").filter((l) => l.startsWith("✓"))).toEqual([
+      "✓ page-robots-overrides-layout",
+      "✓ sitemap-while-indexing-off",
+    ]);
+  });
+
+  it("another check elsewhere in the pack changes nothing about the output", async () => {
+    const one = await run(["source", FAIL, "--only", "sitemap-while-indexing-off"]);
+    const again = await run(["source", FAIL, "--only", "sitemap-while-indexing-off", "--json"]);
+    expect(JSON.parse(again.out)).toMatchObject({ passed: [], failed: [] });
+    expect(one.out).not.toContain("webhook");
+  });
+
+  it("an unknown id is exit 2 with the id in the message; an empty list is a usage error", async () => {
+    const a = await run(["source", FAIL, "--only", "no-such-check"]);
+    expect(a.code).toBe(2);
+    expect(a.err).toContain("Unknown check id: no-such-check.");
+    expect((await run(["source", FAIL, "--only", " , "])).code).toBe(2);
+    expect(parseCliArgs(["source", "./a", "--only", "a-b, c-d"])).toMatchObject({
+      kind: "source",
+      only: ["a-b", "c-d"],
+    });
+  });
+
+  it("is refused by the other commands: it is a source flag", () => {
+    expect(parseCliArgs(["example.com", "--only", "noindex"])).toMatchObject({ kind: "error" });
+  });
+});

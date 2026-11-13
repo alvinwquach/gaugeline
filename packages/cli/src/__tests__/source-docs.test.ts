@@ -29,45 +29,36 @@ describe("docs/options.md: gaugeline source --help", () => {
   });
 });
 
-describe("docs/guides/source-checks.md: the example is real output", () => {
-  it("the bar's pre-launch copy", async () => {
-    expect(page).toContain("$ npx gaugeline source ./harbour-bar-preview");
-    const out: string[] = [];
-    const code = await main(
-      ["source", "./harbour-bar-preview"],
-      {
-        stdout: { write: (s: string) => out.push(s) },
-        stderr: { write: () => true },
-        env: { NO_COLOR: "1" },
-      },
-      { cwd: FIXTURES, now: () => new Date("2026-11-13T12:00:00Z") },
-    );
-    expect(code).toBe(0);
-    expect(out.join("").trimEnd()).toBe(
-      expectedOutput(
-        "guides/source-checks",
-        "An example: a bar's site that is not meant to be found yet",
-      ),
-    );
+/** Each example on the page: the command it shows (after "$ npx gaugeline"), and its Output block. */
+const examples = [
+  ...page.matchAll(
+    /```text title="Terminal"[^\n]*\n\$ npx gaugeline ([^\n]+)\n```\n\n```text title=Output\n([\s\S]*?)\n```/g,
+  ),
+].map((m) => ({ args: (m[1] ?? "").split(" "), expected: m[2] ?? "" }));
+
+describe("docs/guides/source-checks.md: the examples are real output", () => {
+  it("shows two examples, each with the --only it ran with", () => {
+    expect(examples).toHaveLength(2);
+    for (const e of examples) expect(e.args).toContain("--only");
   });
 
-  it("the bar's indexing switch and its CI", async () => {
-    expect(page).toContain("$ npx gaugeline source ./harbour-bar-switch");
-    const out: string[] = [];
-    const code = await main(
-      ["source", "./harbour-bar-switch"],
-      {
-        stdout: { write: (s: string) => out.push(s) },
-        stderr: { write: () => true },
-        env: { NO_COLOR: "1" },
-      },
-      { cwd: FIXTURES, now: () => new Date("2026-11-13T12:00:00Z") },
-    );
-    expect(code).toBe(0);
-    expect(out.join("").trimEnd()).toBe(
-      expectedOutput("guides/source-checks", "Another example: a switch that accepts too much"),
-    );
-  });
+  it.each([0, 1])(
+    "example %i: the command on the page prints exactly the Output block",
+    async (n) => {
+      const out: string[] = [];
+      const code = await main(
+        examples[n]?.args ?? [],
+        {
+          stdout: { write: (s: string) => out.push(s) },
+          stderr: { write: () => true },
+          env: { NO_COLOR: "1" },
+        },
+        { cwd: FIXTURES, now: () => new Date("2026-11-13T12:00:00Z") },
+      );
+      expect(code).toBe(0);
+      expect(out.join("").trimEnd()).toBe(examples[n]?.expected);
+    },
+  );
 
   it("promises what the command promises", () => {
     expect(page).toContain("It only reads.");
