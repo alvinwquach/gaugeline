@@ -125,6 +125,10 @@ export const UNLISTED: NavPage[] = [
     title: "The publish webhook and the cache, read from your code",
   },
   {
+    slug: "guides/versions-config-licence-source",
+    title: "Versions, settings and licences, read from your code",
+  },
+  {
     slug: "guides/image-optimizers",
     title: "Open image optimizers: who can use your site to resize images",
   },

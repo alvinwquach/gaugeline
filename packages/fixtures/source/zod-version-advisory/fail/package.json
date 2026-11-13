@@ -1,0 +1,7 @@
+{
+  "name": "harbor-lane-taproom",
+  "private": true,
+  "dependencies": {
+    "zod": "^4.6.0"
+  }
+}
