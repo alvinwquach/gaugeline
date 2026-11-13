@@ -94,7 +94,8 @@ Gaugeline never asks to read or send from a personal mailbox.
 
 **The access token is an environment variable on your worker**, `GAUGELINE_GMAIL_ACCESS_TOKEN` by default
 (`tokenFromEnv(name)` reads any other capitalised name). It is a write credential, so it is separate from every
-read-only key, and the hosted service never holds it (ADR-0010). The writer reads it at each request, checks its
+read-only key, and the hosted service never holds it (ADR-0010). The writer reads it at each request, from the running worker's own environment (a change made outside the
+process needs a restart: see [If the token stops working](#if-the-token-stops-working)), checks its
 shape (visible characters, no space, at most 4096) and sends it nowhere but the `Authorization` header. A missing
 or malformed token is one fixed error, and the value is never in it. There is no refresh flow: when the token
 expires or is revoked, Gmail answers 401 and you reconnect (below). A source behind the same `TokenSource`
@@ -140,8 +141,15 @@ already says `applied`, or two calls at once. Gmail has no idempotency key and t
 
 - Gmail answers 401 or 403 (revoked, expired, scope removed): the entry is `apply_failed` with that status and the
   reason `reconnect`. The draft stays in the inbox, with a note to reconnect the mailbox.
-- You disconnect the mailbox: you unset the variable (or delete the stored token). The writer reads the token
-  before every request, so the next draft is refused as `disconnected` and no request is made.
+- You disconnect the mailbox: you remove the token. **Unsetting the environment variable only takes effect after
+  the worker restarts.** `tokenFromEnv` (`packages/writer/src/gmail/send.ts`) reads `process.env` of the running
+  worker each time `gmailSender` makes a request, but a running process does not see a change made to its
+  environment from outside: the value it started with stays in `process.env`. Unset the variable in your worker's
+  configuration and restart the worker; until it has restarted, an approved note is still saved with the old
+  token. After the restart the next draft is refused as `disconnected` and no request is made. If you cannot
+  restart yet, revoke the token in your Google account: Gmail then answers 401 and the entry is `apply_failed`
+  with the reason `reconnect` (above). A token kept in a store behind `tokenFromStore` is read from the store at
+  each request, so deleting it there takes effect at once and needs no restart.
 - The token is sent in the `Authorization` header to `gmail.googleapis.com` only, over https, with redirects
   refused. It is never in a log, a trail entry, an error or a request address.
 
