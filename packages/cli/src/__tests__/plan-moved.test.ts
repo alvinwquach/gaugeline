@@ -49,7 +49,7 @@ describe("plan-moved-not-indexable: end to end", () => {
         expectedOutput("plan-check", "Moved pages: can they be indexed?"),
       );
       expect([...site.methods.keys()]).toEqual(["GET"]);
-      expect(site.hits.get("/robots.txt")).toBe(1);
+      expect(site.hits.get("/robots.txt")).toBeUndefined();
     } finally {
       await site.close();
     }

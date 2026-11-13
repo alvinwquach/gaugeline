@@ -8,4 +8,4 @@ the fixture server stands in for the preview.
 - `/prices` (moved from `/old/fees`) can be indexed: fine.
 - `/treatments` (moved from `/old/treatments`) says noindex in its robots meta tag: a finding.
 - `/team` (moved from `/old/staff`) sends `X-Robots-Tag: noindex`: a finding.
-- All three old addresses 301 to the right page, so the 301 map checks pass; `robots.txt` allows everything.
+- All three old addresses 301 to the right page, so the 301 map checks pass.

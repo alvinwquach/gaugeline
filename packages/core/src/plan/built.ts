@@ -2,7 +2,6 @@ import { ConfigError, NetworkError } from "../errors.js";
 import type { Fetcher } from "../fetcher.js";
 import { SEVERITY_ORDER, type Finding } from "../model.js";
 import { protectionMessage, protectionOf, type PreviewAuth } from "../fetch/preview-auth.js";
-import { decidingRule, parseRobots, type RobotsFile } from "../robots.js";
 import { buildSnapshot, type PageSnapshot } from "../snapshot.js";
 import { addressKey, groupBy, textKey } from "./keys.js";
 import type { PlanRow } from "./read.js";
@@ -103,12 +102,10 @@ function movedFrom(rows: readonly PlanRow[]): { legacy: string; lines: number[] 
   return legacy === undefined ? undefined : { legacy, lines };
 }
 
-/** Why a page can't be indexed: what it sends (a robots meta tag, X-Robots-Tag) and what robots.txt says. */
+/** Why a page can't be indexed: what it sends (a robots meta tag, an X-Robots-Tag header). */
 function indexability(
   hop: { headers: Record<string, string> } | undefined,
   page: PageSnapshot,
-  path: string,
-  robots: RobotsFile | undefined,
 ): string[] {
   const why: string[] = [];
   if (page.metaRobots && NOINDEX.test(page.metaRobots))
@@ -116,8 +113,6 @@ function indexability(
   const header = hop?.headers["x-robots-tag"];
   if (header && NOINDEX.test(header))
     why.push(`says noindex in the X-Robots-Tag header (${header})`);
-  const rule = robots ? decidingRule(robots, "googlebot", path) : undefined;
-  if (rule && !rule.allow) why.push(`is blocked by robots.txt (Disallow: ${rule.path})`);
   return why;
 }
 
@@ -255,12 +250,6 @@ export async function checkBuilt(
   const out: Finding[] = [];
   const couldNotCheck: BuiltCouldNotCheck[] = [];
   let done = 0;
-  // robots.txt is read once, and only when a page has moved: that is the only row that asks about it.
-  let robots: RobotsFile | undefined;
-  if (groups.some((g) => movedFrom(g) !== undefined)) {
-    const answer = (await read(opts.fetcher, `${origin}/robots.txt`, origin)).at(-1);
-    if (answer?.status === 200) robots = parseRobots(answer.body ?? "");
-  }
   /** Every page that was read, with why it can't be indexed: the moved ones are judged after the loop. */
   const states: { path: string; url: string; group: readonly PlanRow[]; why: string[] }[] = [];
   for (const group of groups) {
@@ -307,7 +296,7 @@ export async function checkBuilt(
     }
     const snapshot = buildSnapshot(hops);
     out.push(...compare(snapshot, group, origin, file));
-    states.push({ path, url, group, why: indexability(last, snapshot, path, robots) });
+    states.push({ path, url, group, why: indexability(last, snapshot) });
   }
   // A moved page set not to be indexed is a finding. When every page read is set that way (two or
   // more), it is the preview's own switch and says nothing about the moved page: could not check.

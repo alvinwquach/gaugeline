@@ -19,8 +19,8 @@ interface Page {
 const doc = (head = "") =>
   `<!doctype html><html><head><title>t</title>${head}</head><body><h1>h</h1></body></html>`;
 
-/** A fetcher answering from a table by path: pages, and /robots.txt as text. */
-function site(pages: Record<string, Page>, robots?: string) {
+/** A fetcher answering from a table by path. */
+function site(pages: Record<string, Page>) {
   const asked: string[] = [];
   return {
     asked,
@@ -28,16 +28,6 @@ function site(pages: Record<string, Page>, robots?: string) {
       get: async (url: string): Promise<Hop[]> => {
         asked.push(new URL(url).pathname);
         const path = new URL(url).pathname;
-        if (path === "/robots.txt")
-          return [
-            {
-              url,
-              status: robots === undefined ? 404 : 200,
-              headers: { "content-type": "text/plain" },
-              body: robots ?? "",
-              ms: 1,
-            },
-          ];
         const p = pages[path];
         return [
           {
@@ -110,33 +100,10 @@ describe("plan-moved-not-indexable: which pages it judges", () => {
     expect(ids(r)[0]?.evidence).toContain("the X-Robots-Tag header (noindex)");
   });
 
-  it("robots.txt that blocks a moved page's path for Googlebot is a finding, and an allow rule that is longer wins", async () => {
-    const s = site(
-      { "/": {}, "/clinic/hours": {}, "/clinic/team": {} },
-      "User-agent: *\nDisallow: /clinic/\nAllow: /clinic/team\n",
-    );
-    const r = await run(
-      [row(2, "/"), row(3, "/clinic/hours", "/old/hours"), row(4, "/clinic/team", "/old/team")],
-      s,
-    );
-    expect(ids(r)).toHaveLength(1);
-    expect(ids(r)[0]?.evidence).toBe(
-      "/clinic/hours (moved from /old/hours) is blocked by robots.txt (Disallow: /clinic/)",
-    );
-  });
-
-  it("asks for robots.txt once, and only when the plan has a moved page", async () => {
-    const withMove = site({ "/": {}, "/a": {} });
-    await run([row(2, "/"), row(3, "/a", "/o/a")], withMove);
-    expect(withMove.asked.filter((p) => p === "/robots.txt")).toHaveLength(1);
-    const without = site({ "/": {}, "/a": {} });
-    await run([row(2, "/"), row(3, "/a")], without);
-    expect(without.asked).not.toContain("/robots.txt");
-  });
-
-  it("a robots.txt that does not exist, or fails, blocks nothing", async () => {
-    const s = site({ "/": {}, "/a": {} });
-    expect(ids(await run([row(2, "/"), row(3, "/a", "/o/a")], s))).toEqual([]);
+  it("asks for nothing beyond each planned page once: no robots.txt, however many pages have moved", async () => {
+    const s = site({ "/": {}, "/a": {}, "/b": {} });
+    await run([row(2, "/"), row(3, "/a", "/o/a"), row(4, "/b", "/o/b")], s);
+    expect(s.asked.sort()).toEqual(["/", "/", "/a", "/b"].sort());
   });
 
   it("a moved page that does not exist is plan-404 only, never also not indexable", async () => {
@@ -167,13 +134,6 @@ describe("plan-moved-not-indexable: a preview that is hidden as a whole", () => 
       "every page read on the preview is set not to be indexed, so a moved page's own setting can't be told from the preview's: run the plan again against the live site after launch",
     );
     expect(r.couldNotCheck[0]?.lines).toEqual([3]);
-  });
-
-  it("every page blocked by robots.txt is the same: could not check", async () => {
-    const s = site({ "/": {}, "/a": {} }, "User-agent: *\nDisallow: /\n");
-    const r = await run([row(2, "/"), row(3, "/a", "/o/a")], s);
-    expect(ids(r)).toEqual([]);
-    expect(r.couldNotCheck).toHaveLength(1);
   });
 
   it("one page alone cannot show a preview-wide switch: it is reported", async () => {

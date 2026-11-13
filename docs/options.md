@@ -871,6 +871,8 @@ between the markers; CI fails when it differs from the flag table.
 | `--package <value>`         | advisory: a package@range to use instead of looking the id up in OSV (repeatable)                                    |                            | 0.2.0 |
 | `--host <value>`            | advisory: another hostname of the client to look at, such as an old subdomain (up to 5)                              |                            | 0.2.0 |
 | `--block`                   | deploy-gate: exit 1 when a "Fix this first" finding is found; without it the gate only reports                       | `GAUGELINE_GATE_BLOCK`     | 0.2.0 |
+| `--only <value>`            | source: run just these checks, by id, separated by commas (an unknown id is refused)                                 |                            | 0.2.0 |
+| `--head <value>`            | receipts verify: a head hash written down earlier, which the chain must still contain                                |                            | 0.2.0 |
 | `--fixes`                   | propose: turn fix proposals on (they are off by default); nothing is sent, the diffs are written to a file           | `GAUGELINE_FIXES`          | 0.2.0 |
 | `--repo <value>`            | propose: the project's folder on this computer (a checkout of its repository)                                        |                            | 0.2.0 |
 | `--plan <value>`            | propose: the launch plan (CSV); with --base, each old address that does not redirect gets a proposal                 |                            | 0.2.0 |
