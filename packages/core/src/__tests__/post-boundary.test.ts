@@ -29,6 +29,10 @@ import { scan, type Category, type Finding } from "./post-scan.js";
  *   gmail.googleapis.com/gmail/v1/users/me/drafts) and no send; the sender is a `fetch` with the method
  *   the registry gives, after `checkGmailRequest` has accepted the request. The only addition to this
  *   list for X75; for the independent reviewer.
+ * - `writer/src/sanity/endpoints.ts` and `writer/src/sanity/send.ts`: ADR-0010, X71. The same two roles
+ *   for the content system: a registry of one read and one mutation request that can only create a
+ *   `drafts.<id>` copy and set plain fields on it (no live id, no replace, no removal, no action), and the
+ *   one `fetch` to `<project>.api.sanity.io`. Named by the same rule as the GitHub pair; nothing is loosened.
  */
 const ALLOWED: Readonly<Record<string, readonly Category[]>> = {
   "core/src/transport.ts": ["method", "network"],
@@ -39,6 +43,8 @@ const ALLOWED: Readonly<Record<string, readonly Category[]>> = {
   "writer/src/github/send.ts": ["network", "method"], // ADR-0010
   "writer/src/gmail/endpoints.ts": ["verb"], // ADR-0010, X75
   "writer/src/gmail/send.ts": ["network", "method"], // ADR-0010, X75
+  "writer/src/sanity/endpoints.ts": ["verb"], // ADR-0010, X71
+  "writer/src/sanity/send.ts": ["network", "method"], // ADR-0010, X71
 };
 
 const packagesDir = fileURLToPath(new URL("../../../", import.meta.url));

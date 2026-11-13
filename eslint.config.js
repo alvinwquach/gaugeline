@@ -48,7 +48,7 @@ const NETWORK_IMPORTS = [
   })),
 ];
 
-/** ADR-0010: the writer's connections are packages/writer/src/github/send.ts and gmail/send.ts (X75), through fetch. */
+/** ADR-0010: the writer's connections are packages/writer/src/github/send.ts, gmail/send.ts (X75) and sanity/send.ts (X71), through fetch. */
 const WRITER_NETWORK_GLOBALS = ["fetch", "XMLHttpRequest", "WebSocket", "EventSource"];
 
 export default tseslint.config(
@@ -134,8 +134,8 @@ export default tseslint.config(
     rules: { "no-restricted-imports": ["error", CORE_RESTRICTED_IMPORTS] },
   },
   {
-    // ADR-0010: in the writer, only github/send.ts may open a connection. An added restriction: it
-    // changes nothing for any other package.
+    // ADR-0010: in the writer, only github/send.ts, gmail/send.ts and sanity/send.ts may open a connection. An added
+    // restriction: it changes nothing for any other package.
     files: ["packages/writer/src/**/*.ts"],
     rules: {
       "no-restricted-imports": [
@@ -145,7 +145,7 @@ export default tseslint.config(
             (name) => ({
               name,
               message:
-                "Only packages/writer/src/github/send.ts and gmail/send.ts may make requests (ADR-0010).",
+                "Only packages/writer/src/github/send.ts, gmail/send.ts and sanity/send.ts may make requests (ADR-0010).",
             }),
           ),
         },
@@ -155,21 +155,26 @@ export default tseslint.config(
         ...WRITER_NETWORK_GLOBALS.map((name) => ({
           name,
           message:
-            "Only packages/writer/src/github/send.ts and gmail/send.ts may make requests (ADR-0010).",
+            "Only packages/writer/src/github/send.ts, gmail/send.ts and sanity/send.ts may make requests (ADR-0010).",
         })),
       ],
     },
   },
   {
-    // The senders call fetch (and nothing else that opens a connection).
-    files: ["packages/writer/src/github/send.ts", "packages/writer/src/gmail/send.ts"],
+    // Each named sender calls fetch (and nothing else that opens a connection). X71 adds sanity/send.ts by
+    // name, the way G37 added github/send.ts and X75 gmail/send.ts; no rule is loosened for any other file.
+    files: [
+      "packages/writer/src/github/send.ts",
+      "packages/writer/src/gmail/send.ts",
+      "packages/writer/src/sanity/send.ts",
+    ],
     rules: {
       "no-restricted-globals": [
         "error",
         ...WRITER_NETWORK_GLOBALS.filter((name) => name !== "fetch").map((name) => ({
           name,
           message:
-            "Only fetch, in packages/writer/src/github/send.ts and gmail/send.ts (ADR-0010).",
+            "Only fetch, in packages/writer/src/github/send.ts, gmail/send.ts and sanity/send.ts (ADR-0010).",
         })),
       ],
     },
