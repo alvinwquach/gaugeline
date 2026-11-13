@@ -505,3 +505,42 @@ export const agentDenies = pgTable(
   },
   (t) => [index("agent_denies_org_idx").on(t.orgId, t.id.desc())],
 ).enableRLS();
+
+/**
+ * One row per agent call (AG-05, 0014; append-only): ids, the tool, SHA-256 hashes of the input and output
+ * (never the input or output), whole-millisecond latency, integer tokens and cost, the decision, the deny
+ * reason and the approver. No token, payload or text.
+ */
+export const agentTrace = pgTable(
+  "agent_trace",
+  {
+    id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+    orgId: uuid("org_id").notNull(),
+    agentId: uuid("agent_id").notNull(),
+    tool: text("tool"),
+    inputSha256: text("input_sha256"),
+    outputSha256: text("output_sha256"),
+    latencyMs: bigint("latency_ms", { mode: "number" }).notNull(),
+    tokens: bigint("tokens", { mode: "bigint" }).notNull().default(0n),
+    costMicros: bigint("cost_micros", { mode: "bigint" }).notNull().default(0n),
+    decision: text("decision").notNull(),
+    reason: text("reason"),
+    approverId: uuid("approver_id"),
+    draftId: uuid("draft_id"),
+    at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("agent_trace_org_idx").on(t.orgId, t.id.desc()),
+    index("agent_trace_agent_idx").on(t.agentId, t.at),
+  ],
+).enableRLS();
+
+/** Calls counted instead of traced one by one (0014): unknown tokens, and an agent's denies past 60 a minute. */
+export const agentTraceOverflow = pgTable("agent_trace_overflow", {
+  minute: timestamp("minute", { withTimezone: true }).notNull(),
+  /** Null, with agentId, only for a token that matches no agent ("unknown-agent"). */
+  orgId: uuid("org_id"),
+  agentId: uuid("agent_id"),
+  reason: text("reason").notNull(),
+  calls: bigint("calls", { mode: "number" }).notNull(),
+}).enableRLS();
