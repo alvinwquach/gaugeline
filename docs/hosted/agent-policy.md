@@ -294,7 +294,7 @@ append-only, for everyone.
 
 - An agent that wraps its call in its own transaction and rolls it back also rolls back its deny row
   (Postgres has no autonomous transactions). It gains nothing from that call either: nothing was inserted.
-  A log written outside the caller's transaction is the job of the per-call traces (AG-05).
+  The per-call [trace](./agent-trace.md) is written in the same transaction, so the same holds for it.
 - An unknown token can add rows to the deny log as fast as it can call. They belong to no organisation,
   so no customer sees them; they are bounded by the database's connection limits only.
 - A call refused for another reason after the policy allowed it (another organisation's site, a payload of
