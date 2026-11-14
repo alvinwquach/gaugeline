@@ -155,6 +155,14 @@ pressed (and nothing else is typed) to read the order the keyboard reaches the l
 keyboard read are judged by `events-parity` and `events-tab-order`. What it reads and how the checks judge it:
 [Click events](./guides/click-events.md#on-a-phone-and-with-the-keyboard).
 
+## Accessibility facts
+
+A check can also ask for the page's accessibility facts (`expose.a11y`): the colours the browser resolved for
+text, the order Tab visits things in, the names it can give them, the landmarks, and whether animation has a
+reduced-motion rule. The browser only reads them: nothing is focused, clicked or requested, and what comes back is
+cut to a shape and a size before a check sees it. [Rendered accessibility](./guides/rendered-accessibility.md)
+says what the five checks do with them.
+
 ## The caps
 
 A page that goes past one of these is **could not check**, never a finding. The numbers are the decision

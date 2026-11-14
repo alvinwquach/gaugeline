@@ -529,6 +529,15 @@ type, so it is off unless named and says so on stderr before the first request.
   PageSpeed answer, so that host is not contacted (decision record 0015).
 - **No secrets, no model.** The same answers give the same findings.
 
+### Rendered accessibility (--renderer playwright)
+
+With `--renderer playwright` the accessibility checks ([Rendered accessibility](guides/rendered-accessibility.md))
+ask the browser for computed colours, the keyboard order, names, landmarks and animations of the page it already
+loaded. Nothing more leaves your computer: the checks make no request, and the expression that reads the page
+focuses nothing, clicks nothing and asks for no address (a stylesheet from another origin is counted as
+unreadable, never fetched). What the page returns is data: numbers, short cleaned strings and capped lists. No
+page text is kept except the first words of an element, cut to 60 characters, in a finding's evidence.
+
 ### Served libraries (--libraries)
 
 `--libraries` on the page check lists the JavaScript libraries a page serves that a published advisory names

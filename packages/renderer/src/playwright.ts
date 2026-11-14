@@ -4,10 +4,12 @@ import {
   DESKTOP_VIEWPORT,
   createEgressGate,
   emptyBlocked,
+  readA11y,
   sanitise,
   type BlockReason,
   type CapName,
   type EgressGate,
+  type A11yRead,
   type RenderCouldNotCheck,
   type RenderLimits,
   type RenderRequest,
@@ -24,6 +26,7 @@ import {
   installHint,
   type FindBrowserOptions,
 } from "./browser.js";
+import { a11yExpression } from "./a11y-script.js";
 import { readDomExpression, type DomRead } from "./page-script.js";
 import { createClickObserver } from "./observer.js";
 import { openPage } from "./session.js";
@@ -281,6 +284,16 @@ export function createPlaywrightRenderer(options: PlaywrightRendererOptions): Re
         const after = problem(undefined);
         if (after) return after;
         const state = gate.state;
+        // What the browser computed for accessibility, only when a check asked. A probe that cannot run leaves
+        // the field out, and the check says could not check.
+        let a11y: A11yRead | undefined;
+        if (request.expose?.a11y) {
+          try {
+            a11y = readA11y(await page.evaluate(a11yExpression()));
+          } catch {
+            a11y = undefined;
+          }
+        }
 
         const truncated: string[] = [];
         const text = ask.text ? sanitise(String(dom.text ?? ""), limits.textChars) : undefined;
@@ -305,6 +318,7 @@ export function createPlaywrightRenderer(options: PlaywrightRendererOptions): Re
           blocked: { ...state.blocked },
           totals: { requests: state.totalRequests, bytes: state.bytes },
           truncated,
+          ...(a11y ? { a11y } : {}),
         };
       })();
 

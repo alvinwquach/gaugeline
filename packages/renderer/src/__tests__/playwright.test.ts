@@ -625,7 +625,7 @@ describe("the Playwright adapter: nothing but the gate answers a request", () =>
 
   it("evaluates only code this package wrote: each call names one of its page-script builders", async () => {
     const allowed = [
-      /^(?:inspectExpression|findLinkByText|focusExpression|readDomExpression)\(/,
+      /^(?:inspectExpression|findLinkByText|focusExpression|readDomExpression|a11yExpression)\(/,
       /^"Date\.now\(\)"$/,
     ];
     for (const [file, text] of Object.entries(await sources())) {
