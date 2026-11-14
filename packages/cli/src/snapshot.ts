@@ -12,6 +12,7 @@ import {
   type HostBehaviour,
   type Outcome,
 } from "@gaugeline/core";
+import { manualChecklist } from "./manual-checklist.js";
 import { readCutoverConfig } from "./schema-config.js";
 
 export interface CutoverIo {
@@ -25,10 +26,6 @@ export interface CutoverDeps {
   dns?: DnsReader;
   now?: () => Date;
 }
-
-/** Registrar data needs registrar access: said, never guessed. */
-export const REGISTRATION_NOTE =
-  "Domain registration expiry needs the registrar's records: not checked. Look it up at your registrar.";
 
 const host = (h: HostBehaviour) =>
   "error" in h ? `no answer (${h.error})` : `${h.status}${h.location ? ` to ${h.location}` : ""}`;
@@ -96,7 +93,7 @@ export async function runSnapshot(
     `Snapshot of ${snap.domain} written to ${args.out}\n${describeSnapshot(snap, (deps.now ?? (() => new Date()))())}\n`,
   );
   for (const f of snap.records.failed) io.stdout.write(`? ${f}: could not be read\n`);
-  if (!args.quiet) io.stderr.write(`${REGISTRATION_NOTE}\n`);
+  if (!args.quiet) io.stderr.write(`${manualChecklist("snapshot")}\n`);
   return {
     kind: "ran",
     highFindings: 0,

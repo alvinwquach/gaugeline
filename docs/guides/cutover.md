@@ -57,6 +57,21 @@ It reads the same domain again and reports what changed:
 - Domain registration expiry needs the registrar's records, which a lookup can't reach: it is not
   checked, and the command says so instead of guessing.
 
+## Then do these by hand
+
+Both commands end with a short list on stderr of what a lookup can't do for you:
+
+1. Send a test email from outside to an address on the client's domain, and one from the client's
+   mail to outside. Check that both arrive.
+2. Compare the SPF, DKIM and DMARC records with the snapshot, and with what the new mail host
+   documents.
+3. Look up the domain's registration expiry at your registrar.
+
+Gaugeline sends nothing: no mail, and no change to your DNS. The list is a reminder, not a result:
+it says nothing about whether mail works, and it is the same whatever the run found. It is not
+part of the exit code or the snapshot file, and `--quiet` leaves it out with the other notes on
+stderr.
+
 ## Example
 
 The invented Fern and Kiln studio (`fernkiln.example`), read through a stand-in resolver in the
@@ -78,6 +93,15 @@ Snapshot of fernkiln.example written to before.json
   www.fernkiln.example  301 to fernkiln.example/
 ```
 
+#### Stderr after the snapshot
+
+```text title=Output
+Do by hand (Gaugeline sends nothing):
+  1. Send a test email from outside to an address on the client's domain, and one from the client's mail to outside. Check that both arrive.
+  2. Compare the SPF, DKIM and DMARC records in this snapshot with what the new mail host documents.
+  3. Domain registration expiry needs the registrar's records: not checked. Look it up at your registrar.
+```
+
 ### The comparison
 
 The new host's DNS template replaced the mail record. `gaugeline cutover --before before.json`
@@ -96,8 +120,11 @@ Comparing fernkiln.example with before.json (taken 2026-11-07 09:00 UTC)
 2 to look at, 1 to fix first.
 ```
 
-and on stderr:
+#### Stderr after the comparison
 
-```text
-Domain registration expiry needs the registrar's records: not checked. Look it up at your registrar.
+```text title=Output
+Do by hand (Gaugeline sends nothing):
+  1. Send a test email from outside to an address on the client's domain, and one from the client's mail to outside. Check that both arrive.
+  2. Compare the SPF, DKIM and DMARC records now in DNS with the snapshot, and with what the new mail host documents.
+  3. Domain registration expiry needs the registrar's records: not checked. Look it up at your registrar.
 ```
