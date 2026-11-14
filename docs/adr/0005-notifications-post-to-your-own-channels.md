@@ -50,11 +50,12 @@ host allowlist and that no other file imports `node:http`, `node:https` or calls
 
 ## Amendment, 14 Nov 2026: a summary comment on the pull request
 
-Proposed on 14 November 2026; it waits for the owner's acceptance and is not in force until the owner accepts it.
-On 14 November 2026 the owner asked for the Action pull request comment to be built as one row: this amendment
-first, one named sender, a summary of this run's findings and nothing else, an independent review, no auto-merge.
-That is the request, not the acceptance. This adds a third kind of `POST` to the two the record and ADR-0006
-already allow. Like the channel notifications and the model call, it never goes to the site being checked.
+Accepted by the owner on 14 November 2026. The owner asked for the Action pull request comment to be built as one
+row: this amendment first, one named sender, a summary of this run's findings and nothing else, an independent
+review, no auto-merge. Conditions of acceptance: part 2 gets its own independent review before it merges; the
+CLAUDE.md rule 6 sentence for this exception is a separate pull request that waits for the owner's approval of its
+text. This adds a third kind of `POST` to the two the record and ADR-0006 already allow. Like the channel
+notifications and the model call, it never goes to the site being checked.
 
 - **What it is.** One `POST` per run to the GitHub REST API, `POST /repos/{owner}/{repo}/issues/{pull_number}/comments`
   ("Create an issue comment", which comments on a pull request too), on the person's own pull request, made by the
@@ -74,7 +75,10 @@ already allow. Like the channel notifications and the model call, it never goes 
 - **A host allowlist of one.** `api.github.com`, over https on the default port, kept in that module. The module
   builds the address itself from a validated owner, repository name and pull request number, and refuses any
   other. It follows no redirect (a 3xx is a failure), refuses a name that resolves to an address the fetcher
-  would refuse, at connect time, and uses its own https agent so Node's proxy support cannot skip that rule. GitHub
+  would refuse, at connect time, and uses its own https agent so Node's proxy support cannot skip that rule. That
+  agent never uses a proxy, so the token is never sent to a proxy and there is no `CONNECT`; a self-hosted runner
+  that can reach the internet only through a proxy gets `unreachable`, the comment is not posted, one plain line is
+  printed and the check's result is unchanged. GitHub
   Enterprise Server is out of scope: the sender never reads `GITHUB_API_URL`, and a different host is a change to
   this list and its test, never a setting.
 - **`POST` only, so a new comment every run.** No `PATCH`, `PUT` or `DELETE`: Gaugeline cannot edit or remove a
@@ -84,7 +88,8 @@ already allow. Like the channel notifications and the model call, it never goes 
   sender per call. It goes into one `Authorization` header and is never kept, logged, put in a finding, a
   report, an error or the comment. Gaugeline asks for no other token and stores none.
 - **What the comment may hold.** Counts by severity; up to 10 finding titles, each with its check id and a link
-  to that check's page on gaugeline.dev; how many findings are new compared with the main branch's baseline, or the
+  to that check's entry in the repository's own checks reference (`docs/checks` on github.com, no other domain);
+  how many findings are new compared with the main branch's baseline, or the
   words "no baseline to compare with" when there is none; the exit state. Never a response body, a page's text, a
   key, an address, or a snippet from the checked site beyond the finding's title. Page-derived text is cut,
   sanitised and shown inside a code span, so it cannot mention a person, link to another host, open a tag or
