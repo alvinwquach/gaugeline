@@ -111,9 +111,9 @@ agent model-privacy-gate
   cost          60000 micro-units over 15 cases with a recorded answer
 
 agent triage
-  pass rate     19 of 19 cases (100%): golden 6 of 6 pass, known-bad 13 of 13 caught
-  refusal rate  11 of 19 cases (58%): the answer was stopped by schema, limits or no-write-call
-  cost          12000 micro-units over 17 cases with a recorded answer
+  pass rate     20 of 20 cases (100%): golden 7 of 7 pass, known-bad 13 of 13 caught
+  refusal rate  11 of 20 cases (55%): the answer was stopped by schema, limits or no-write-call
+  cost          12000 micro-units over 18 cases with a recorded answer
 
 Result: every golden case passed and every known-bad case was caught.
 ```

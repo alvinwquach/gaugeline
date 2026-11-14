@@ -39,6 +39,7 @@ describe("the triage eval set", () => {
       ["golden-only-worth-knowing", "pass"],
       ["golden-one-big-cause", "pass"],
       ["golden-already-waiting", "pass"],
+      ["golden-stale-content", "pass"],
     ]);
   });
 
@@ -68,7 +69,7 @@ describe("the triage eval set", () => {
       "bad-extra-key": ["caught", "schema"],
     });
     expect(report.ok).toBe(true);
-    expect(report.golden).toEqual({ total: 6, passed: 6 });
+    expect(report.golden).toEqual({ total: 7, passed: 7 });
     expect(report.knownBad).toEqual({ total: 13, caught: 13 });
     // Only the recorded wrong answer that declared a cost has one: the real agent's cost is 0.
     expect(report.costMicros).toBe(12_000);
@@ -121,6 +122,26 @@ describe("the triage eval set", () => {
     expect(out.alreadyWaiting).toEqual(["Canonical links"]);
   });
 
+  it("the stale-content case names four likely causes, fix-first first, citing every finding once", async () => {
+    const out = exampleOutput(
+      await createTriageEvalModel().complete({
+        caseId: "golden-stale-content",
+        agentId: "triage",
+        prompt: "",
+      }),
+    );
+    expect(out.groups.map((g) => [g.priority, g.findingIds])).toEqual([
+      ["fix-first", ["f-402"]],
+      ["fix-first", ["f-403"]],
+      ["fix-soon", ["f-404"]],
+      ["fix-soon", ["f-401"]],
+    ]);
+    for (const g of out.groups) {
+      expect(g.cause).toMatch(/\blikely\b/i);
+      expect(`${g.cause} ${g.summary}`).not.toMatch(/confirm/i);
+    }
+  });
+
   it("a pending title that carries an order changes nothing the planner does", async () => {
     const model = createTriageEvalModel();
     const ask = (caseId: string) =>
@@ -168,7 +189,7 @@ describe("the triage eval set", () => {
     const report = await runEvals(triageEval.agent, triageEval.cases, model);
     expect(report.ok).toBe(false);
     expect(report.results.filter((r) => r.kind === "golden").map((r) => r.status)).toEqual(
-      Array(6).fill("error"),
+      Array(7).fill("error"),
     );
   });
 

@@ -29,6 +29,8 @@ export interface TriageGroup {
   causeKey: string;
   /** Written by Gaugeline (the cause table, or the check id); never page text. */
   label: string;
+  /** The cause table's own note, when it has one (a cause that is only likely). Never page text. */
+  note?: string;
   priority: TriagePriority;
   /** Most urgent first, then by id. */
   findings: readonly TriageFinding[];
@@ -48,7 +50,7 @@ const CHECK_ID = /^[a-z0-9][a-z0-9-]{0,63}$/;
 
 const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
 
-function causeOf(checkId: string): { key: string; label: string } {
+function causeOf(checkId: string): { key: string; label: string; note?: string } {
   const named = causeOfCheck.get(checkId);
   if (named) return named;
   if (CHECK_ID.test(checkId))
@@ -72,7 +74,7 @@ export function causeKeyOfLabel(label: string): string | null {
 }
 
 export function planTriage(findings: readonly TriageFinding[]): TriagePlan {
-  const byCause = new Map<string, { label: string; items: TriageFinding[] }>();
+  const byCause = new Map<string, { label: string; note?: string; items: TriageFinding[] }>();
   const seen = new Set<string>();
   let notTriaged = 0;
   const sorted = [...findings].sort((a, b) => cmp(a.id, b.id) || cmp(a.checkId, b.checkId));
@@ -84,17 +86,22 @@ export function planTriage(findings: readonly TriageFinding[]): TriagePlan {
       continue;
     }
     const c = causeOf(f.checkId);
-    const entry = byCause.get(c.key) ?? { label: c.label, items: [] };
+    const entry = byCause.get(c.key) ?? {
+      label: c.label,
+      ...(c.note !== undefined ? { note: c.note } : {}),
+      items: [],
+    };
     entry.items.push(f);
     byCause.set(c.key, entry);
   }
-  const groups = [...byCause].map(([causeKey, { label, items }]): TriageGroup => {
+  const groups = [...byCause].map(([causeKey, { label, note, items }]): TriageGroup => {
     const ordered = [...items].sort(
       (a, b) => Number(b.severity === "high") - Number(a.severity === "high") || cmp(a.id, b.id),
     );
     return {
       causeKey,
       label,
+      ...(note !== undefined ? { note } : {}),
       priority: ordered.some((f) => f.severity === "high") ? "fix-first" : "fix-soon",
       findings: ordered,
       pages: new Set(ordered.map((f) => f.url)).size,

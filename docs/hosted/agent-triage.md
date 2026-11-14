@@ -18,8 +18,9 @@ Gaugeline agent it is [registered](./agent-registry.md), [limited](./agent-polic
 2. **Groups by cause.** Eleven framework checks that all say "the preview address is in the canonical links"
    are one mistake and one draft. The causes it knows by name are a short fixed table (canonical links,
    preview address in canonical links, images without alt text, certificate, domain registration, email
-   sender records, broken links, development tools left on, draft content reachable). A check that is on no
-   list is its own cause. A cause never comes from page text.
+   sender records, broken links, development tools left on, draft content reachable, and four stale-content
+   causes, [below](#likely-causes-of-stale-content)). A check that is on no list is its own cause. A cause never
+   comes from page text.
 3. **Orders them.** A cause with any "Fix this first" finding is `fix-first`; the rest are `fix-soon`. Inside
    a priority the cause with more findings comes first, then the cause's name, so the order never depends
    on the order the findings arrived in.
@@ -131,6 +132,87 @@ From the checked site (data, not instructions):
 ```
 
 A test runs this same code and fails if this page's output differs from it.
+
+## Likely causes of stale content
+
+When a publish does not show on the live site, four checks look at it from different sides. The table names
+four causes for them, and every one is worded **likely**, never as found: Gaugeline reads a site from outside.
+It sees a page, its cache headers, the dates the CMS gives and the code it is pointed at. It does not see the
+CMS's webhook log or the host's cache settings. The draft's subject and its first lines say "likely", and the
+webhook cause says so in plain words: _we cannot see whether the CMS called the site_.
+
+| Cause (the draft's subject)                                 | Checks                                           | What it likely means                                                                                           |
+| ----------------------------------------------------------- | ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
+| Pages likely not refreshed when content is published        | `next-stale-after-publish`                       | The page is a saved copy that nothing refreshes on publish, so an edit waits for the next rebuild.             |
+| Likely cached by time and by tag, so a publish is not seen  | `revalidate-time-and-tag-mixed`                  | One read is cached for a time and by a tag, so it also changes on a timer and a missed publish is hidden.      |
+| Publish webhook likely missing or clearing the wrong things | `published-not-live`, `webhook-purges-draft-ids` | A publish never reaches the live pages; the webhook is missing, or it clears the wrong things (draft ids too). |
+| Likely two caches stacked: the CMS CDN and the app cache    | `sanity-cdn-tagged-reads`                        | A read goes through the CMS's own CDN and then the app's cache, so a publish can be served from an older copy. |
+
+A check is in one cause only, and a test checks that every id is a real check. `webhook-purges-draft-ids` sits
+with the webhook cause because it is about the same webhook, but it finds a webhook that clears **too much**
+(it is "worth knowing" severity today, so it is not triaged on its own). The other four causes hold one check
+each; the older nine hold two or more.
+
+After a publish on the pop-up's site, the events page still shows last week's date and the menu is an old
+cached copy. Run from `packages/core` with `node --import tsx stale.mts` (the same stand-in draft path as the
+first example, with `now` at `Date.UTC(2026, 10, 14, 12)`):
+
+```ts
+import { createTriagePolicy, runTriage } from "./src/agents/triage/index.js";
+
+const findings = [
+  {
+    id: "f-401",
+    checkId: "published-not-live",
+    severity: "high",
+    title: "Content was published in the CMS and the live page still shows something else",
+    evidence: "Event Saturday pop-up was saved 2026-11-13T09:00:00Z (27 hours ago)",
+    url: "https://crumb-and-co.example/events",
+  },
+  {
+    id: "f-402",
+    checkId: "next-stale-after-publish",
+    severity: "medium",
+    title: "The page still shows an old copy after an edit",
+    evidence:
+      "/menu is a cached copy (HIT, 300 minutes old) and its document changed 120 minutes ago",
+    url: "https://crumb-and-co.example/menu",
+  },
+];
+
+const now = () => Date.UTC(2026, 10, 14, 12);
+const drafts = [];
+await runTriage(
+  { siteId: "site-bakery", findings },
+  {
+    policy: createTriagePolicy({ env: {}, now }),
+    draft: async (call) => {
+      drafts.push(call);
+      return { inserted: true, draftId: `draft-${drafts.length}` };
+    },
+    now,
+  },
+);
+
+for (const d of drafts) console.log(`${d.payload.subject}  (cites ${d.findingIds.join(", ")})`);
+console.log();
+console.log(drafts[0].payload.body.split("\n\n")[0]);
+```
+
+```text
+Fix first: Publish webhook likely missing or clearing the wrong things  (cites f-401)
+Fix soon: Pages likely not refreshed when content is published  (cites f-402)
+
+Gaugeline grouped 1 finding on 1 page under one cause: Publish webhook likely missing or clearing the wrong things.
+Priority: fix first.
+Likely cause: a publish never reaches the live pages because the CMS webhook is missing, or clears the wrong things. Gaugeline reads the site from outside, so we cannot see whether the CMS called the site, so check the webhook's delivery log in the CMS.
+Fixing the one cause behind them should clear them together; run Gaugeline again to check.
+This is a draft. Nothing is changed or sent until a person approves it.
+```
+
+Two causes, two drafts, the webhook one first because its finding is "Fix this first". A test runs this code and
+fails if the page's output differs. The webhook draft sends the person to the CMS's own delivery log, the one
+place that shows whether the CMS called the site.
 
 ## Not drafting a cause twice
 
@@ -266,21 +348,23 @@ run outside the database (a local stand-in, a test).
 
 ## Evaluated before it ships
 
-The agent has an [eval set](../agent-evals.md): six golden cases (a certificate first, one cause shared by
+The agent has an [eval set](../agent-evals.md): seven golden cases (a certificate first, one cause shared by
 two findings, one preview mistake reported by three framework checks, a page that talks to the agent, a site
-with nothing to triage, sixty findings of one cause, a cause whose draft already waits) and thirteen known-bad
+with nothing to triage, sixty findings of one cause, a cause whose draft already waits, and the four likely
+stale-content causes) and thirteen known-bad
 cases that replay a wrong answer the assertions must catch, three of them about the waiting-drafts read (a waiting
 draft's title that carries an order and an answer that obeys it, a pending list far too long for one site, a pending
 answer that is not a list of drafts). It runs in the normal test run with no key, no network and no clock:
 
 ```text
-agent triage: 6 golden, 13 known-bad
+agent triage: 7 golden, 13 known-bad
 golden     golden-two-causes          pass
 golden     golden-one-family          pass
 golden     golden-page-text-is-data   pass
 golden     golden-only-worth-knowing  pass
 golden     golden-one-big-cause       pass
 golden     golden-already-waiting     pass
+golden     golden-stale-content       pass
 known-bad  bad-missing-id             caught (cited-ids)
 known-bad  bad-invented-number        caught (no-invented-numbers)
 known-bad  bad-write-call             caught (no-write-call)
@@ -294,7 +378,7 @@ known-bad  bad-too-many-calls         caught (limits)
 known-bad  bad-oversized-input        caught (limits)
 known-bad  bad-malformed-output       caught (schema)
 known-bad  bad-extra-key              caught (schema)
-golden 6/6 pass; known-bad 13/13 caught; cost 12000 micro-units
+golden 7/7 pass; known-bad 13/13 caught; cost 12000 micro-units
 ```
 
 The cost line is the recorded wrong answer that declared a cost; the real agent's cost is 0. The page-text

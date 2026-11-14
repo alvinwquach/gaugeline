@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { CAUSES, causeOfCheck } from "../causes.js";
-import { planTriage } from "../plan.js";
+import { causeKeyOfLabel, planTriage } from "../plan.js";
 import { bakery, finding } from "./fixtures.js";
 
 const shape = (findings = bakery) =>
@@ -151,6 +151,22 @@ describe("hostile and odd input", () => {
   });
 });
 
+/**
+ * The four stale-content causes (owner spec, 14 Nov 2026) name one check each, except the webhook cause. The nine
+ * older causes still need more than one check: only these three keys may hold a single check, listed by name.
+ */
+const SINGLE_CHECK_CAUSES = new Set([
+  "stale-no-revalidate",
+  "fetch-cache-time-and-tag",
+  "stacked-caches",
+]);
+const STALE_CONTENT_KEYS = [
+  "stale-no-revalidate",
+  "fetch-cache-time-and-tag",
+  "publish-webhook-gap",
+  "stacked-caches",
+];
+
 describe("the table of causes", () => {
   const ids = new Set(
     JSON.parse(
@@ -164,7 +180,7 @@ describe("the table of causes", () => {
   it("names only checks that exist, each in one cause, with unique keys", () => {
     const seen = new Set<string>();
     for (const c of CAUSES) {
-      expect(c.checks.length, c.key).toBeGreaterThan(1);
+      expect(c.checks.length, c.key).toBeGreaterThan(SINGLE_CHECK_CAUSES.has(c.key) ? 0 : 1);
       for (const id of c.checks) {
         expect(ids.has(id), `${c.key}: ${id}`).toBe(true);
         expect(seen.has(id), `${id} is in two causes`).toBe(false);
@@ -180,5 +196,100 @@ describe("the table of causes", () => {
       expect(c.key).toMatch(/^[a-z][a-z-]{2,40}$/);
       expect(c.label).toMatch(/^[A-Z][\x20-\x7e]{5,80}$/);
     }
+  });
+});
+
+describe("the stale-content causes", () => {
+  it("the table has the four new keys, with the five check ids each in one cause only", () => {
+    const keys = CAUSES.map((c) => c.key);
+    for (const k of STALE_CONTENT_KEYS) expect(keys, k).toContain(k);
+    const of = (id: string) => causeOfCheck.get(id)?.key;
+    expect(of("next-stale-after-publish")).toBe("stale-no-revalidate");
+    expect(of("revalidate-time-and-tag-mixed")).toBe("fetch-cache-time-and-tag");
+    expect(of("sanity-cdn-tagged-reads")).toBe("stacked-caches");
+    expect(of("published-not-live")).toBe("publish-webhook-gap");
+    expect(of("webhook-purges-draft-ids")).toBe("publish-webhook-gap");
+    const holders = (id: string) => CAUSES.filter((c) => c.checks.includes(id)).length;
+    for (const id of [
+      "next-stale-after-publish",
+      "revalidate-time-and-tag-mixed",
+      "sanity-cdn-tagged-reads",
+      "published-not-live",
+      "webhook-purges-draft-ids",
+    ])
+      expect(holders(id), id).toBe(1);
+  });
+
+  it("a stale page and a webhook gap are two groups, in fix-first then fix-soon order", () => {
+    const groups = planTriage([
+      finding("f-1", "next-stale-after-publish", "medium"),
+      finding("f-2", "published-not-live", "high"),
+    ]).groups;
+    expect(groups.map((g) => [g.causeKey, g.priority])).toEqual([
+      ["publish-webhook-gap", "fix-first"],
+      ["stale-no-revalidate", "fix-soon"],
+    ]);
+  });
+
+  it("sanity-cdn-tagged-reads alone is the stacked-caches cause", () => {
+    const [g, ...rest] = planTriage([finding("f-1", "sanity-cdn-tagged-reads", "high")]).groups;
+    expect(rest).toEqual([]);
+    expect(g).toMatchObject({ causeKey: "stacked-caches", priority: "fix-first", pages: 1 });
+  });
+
+  it("the two webhook checks are one group", () => {
+    const groups = planTriage([
+      finding("f-1", "published-not-live", "medium"),
+      finding("f-2", "webhook-purges-draft-ids", "medium"),
+    ]).groups;
+    expect(groups.map((g) => [g.causeKey, g.findings.length])).toEqual([
+      ["publish-webhook-gap", 2],
+    ]);
+  });
+
+  it("ties still go by the key: equal counts inside one priority are ordered by cause key", () => {
+    const keys = planTriage([
+      finding("f-1", "next-stale-after-publish", "medium"),
+      finding("f-2", "revalidate-time-and-tag-mixed", "medium"),
+      finding("f-3", "sanity-cdn-tagged-reads", "medium"),
+      finding("f-4", "canonical-missing", "medium"),
+    ]).groups.map((g) => g.causeKey);
+    expect(keys).toEqual([
+      "canonical-links",
+      "fetch-cache-time-and-tag",
+      "stacked-caches",
+      "stale-no-revalidate",
+    ]);
+    // A cause with more findings still goes first.
+    const more = planTriage([
+      finding("f-1", "next-stale-after-publish", "medium"),
+      finding("f-2", "next-stale-after-publish", "medium"),
+      finding("f-3", "canonical-missing", "medium"),
+    ]).groups.map((g) => g.causeKey);
+    expect(more).toEqual(["stale-no-revalidate", "canonical-links"]);
+  });
+
+  it("a cause label is found again from its own label (the draft subject read back)", () => {
+    for (const k of STALE_CONTENT_KEYS) {
+      const c = CAUSES.find((x) => x.key === k)!;
+      expect(causeKeyOfLabel(c.label)).toBe(k);
+    }
+  });
+
+  it("the labels say 'likely' and never 'confirmed'; so does the note a draft carries", () => {
+    for (const k of STALE_CONTENT_KEYS) {
+      const c = CAUSES.find((x) => x.key === k)!;
+      expect(c.label, k).toMatch(/\blikely\b/i);
+      expect(c.note, k).toMatch(/\blikely\b/i);
+      expect(`${c.label} ${c.note}`, k).not.toMatch(/confirm/i);
+    }
+    // No cause in the whole table may claim a certainty it cannot have.
+    for (const c of CAUSES) expect(`${c.label} ${c.note ?? ""}`, c.key).not.toMatch(/confirm/i);
+  });
+
+  it("the webhook cause says in plain words that Gaugeline cannot see the webhook being called", () => {
+    const c = CAUSES.find((x) => x.key === "publish-webhook-gap")!;
+    expect(c.note).toContain("we cannot see whether the CMS called the site");
+    expect(c.note).not.toMatch(/\b(was|were|never|did not) (called|delivered|sent)\b/i);
   });
 });
