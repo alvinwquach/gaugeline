@@ -117,6 +117,7 @@ $ npx gaugeline tideline-coaching.example/book --trackers
     Tag Manager container GTM-ABC1234 holds Meta pixel (id 123456789012345); it loads on /book, a page with a form. Whether it fires there depends on the container's triggers, which Gaugeline does not run
 · A Tag Manager container on a page with a form or a listed path holds trackers
     Tag Manager container GTM-ABC1234 holds Google Analytics 4 (id G-MEAD0W4K1Z); it loads on /book, a page with a form. Whether it fires there depends on the container's triggers, which Gaugeline does not run
+? form-redirect-leaks-details could not be checked: 1 form has no address of its own to read (no action, or an action of # or javascript:) and no thank-you field, so where it sends a visitor is only known after it is submitted or a script runs (/book)
 ? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
     Mail records are read from DNS only with --dns. Rerun with --dns to check them.
 

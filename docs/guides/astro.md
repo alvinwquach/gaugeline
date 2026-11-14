@@ -76,6 +76,7 @@ its teacher's internal notes. Version 0.1.0 prints:
     http://fernlight.test/sitemap.xml returned 404; there is no robots.txt
 · This Astro page calls public endpoints that need a second look
     the page calls actions subscribe, bookClass and loads server island NextClass
+? form-redirect-leaks-details could not be checked: 1 form has no address of its own to read (no action, or an action of # or javascript:) and no thank-you field, so where it sends a visitor is only known after it is submitted or a script runs (/)
 ? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
     Mail records are read from DNS only with --dns. Rerun with --dns to check them.
 
